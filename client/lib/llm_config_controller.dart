@@ -18,12 +18,26 @@ class LlmConfigController extends ChangeNotifier {
   late LlmConfig _savedConfig;
   late bool _isLoading;
   String _statusMessage = '';
+  String? _selectedProviderName;
 
   LlmConfig get config => _config;
   bool get isLoading => _isLoading;
   String get statusMessage => _statusMessage;
   String get filePath =>
       _repository?.file.path ?? 'flashshkyai/llm/llm_config.json';
+  String? get selectedProviderName {
+    if (_selectedProviderName != null &&
+        _config.providers.containsKey(_selectedProviderName)) {
+      return _selectedProviderName;
+    }
+    return _config.providers.keys.firstOrNull;
+  }
+
+  void selectProvider(String name) {
+    if (_selectedProviderName == name) return;
+    _selectedProviderName = name;
+    notifyListeners();
+  }
 
   Future<void> load() async {
     _isLoading = true;
@@ -62,6 +76,9 @@ class LlmConfigController extends ChangeNotifier {
     final updated = Map<String, LlmProviderConfig>.from(_config.providers);
     updated.remove(name);
     _config = _config.copyWith(providers: updated);
+    if (_selectedProviderName == name) {
+      _selectedProviderName = updated.keys.firstOrNull;
+    }
     _statusMessage = 'Deleted provider $name.';
     notifyListeners();
   }

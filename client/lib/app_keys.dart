@@ -95,6 +95,13 @@ class AppKeys {
   static const addAccountPathButton = Key('add-account-path-button');
   static const deleteAccountPathButton = Key('delete-account-path-button');
   static const accountPathField = Key('account-path-field');
+  static const llmProviderSearch = Key('llm-provider-search');
+  static const llmProviderList = Key('llm-provider-list');
+  static const llmProviderDetail = Key('llm-provider-detail');
+  static const llmSidePanel = Key('llm-side-panel');
+  static const llmSummaryStats = Key('llm-summary-stats');
+  static const providerModelsTable = Key('provider-models-table');
+  static const llmModelsTable = Key('llm-models-table');
 
   static Key deleteProviderButton(String name) =>
       Key('delete-provider-$name');

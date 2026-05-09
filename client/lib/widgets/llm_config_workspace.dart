@@ -14,16 +14,7 @@ class LlmConfigWorkspace extends StatefulWidget {
 }
 
 class _LlmConfigWorkspaceState extends State<LlmConfigWorkspace> {
-  String? _editingProviderName;
-  String? _editingModelId;
-
   LlmConfigController get controller => widget.controller;
-
-  void _startEditProvider(String name) =>
-      setState(() => _editingProviderName = name);
-  void _cancelEditProvider() => setState(() => _editingProviderName = null);
-  void _startEditModel(String id) => setState(() => _editingModelId = id);
-  void _cancelEditModel() => setState(() => _editingModelId = null);
 
   @override
   Widget build(BuildContext context) {
@@ -39,8 +30,6 @@ class _LlmConfigWorkspaceState extends State<LlmConfigWorkspace> {
             subtitle:
                 '${controller.filePath} / ${config.providers.length} providers / ${config.models.length} models',
           ),
-          const SizedBox(height: 10),
-          _LlmValidationSummary(config: config),
           const SizedBox(height: 10),
           Row(
             children: [
@@ -64,33 +53,21 @@ class _LlmConfigWorkspaceState extends State<LlmConfigWorkspace> {
           ),
           const SizedBox(height: 10),
           Expanded(
-            child: TabBarView(
+            child: Row(
               children: [
-                _ProvidersTab(
-                  config: config,
-                  editingName: _editingProviderName,
-                  onStartEdit: _startEditProvider,
-                  onCancelEdit: _cancelEditProvider,
-                  onAdd: _addProvider,
-                  onUpdate: (name, provider) {
-                    controller.updateProvider(name, provider);
-                    _cancelEditProvider();
-                  },
-                  onDelete: _deleteProvider,
+                Expanded(
+                  child: TabBarView(
+                    children: [
+                      _ProvidersTabContent(controller: controller),
+                      _ModelsTabContent(controller: controller),
+                      _RawJsonTabContent(controller: controller),
+                    ],
+                  ),
                 ),
-                _ModelsTab(
-                  config: config,
-                  editingId: _editingModelId,
-                  onStartEdit: _startEditModel,
-                  onCancelEdit: _cancelEditModel,
-                  onAdd: _addModel,
-                  onUpdate: (id, model) {
-                    controller.updateModel(id, model);
-                    _cancelEditModel();
-                  },
-                  onDelete: _deleteModel,
+                SizedBox(
+                  width: 340,
+                  child: _LlmSidePanel(config: config),
                 ),
-                _RawJsonTab(config: config),
               ],
             ),
           ),
@@ -98,8 +75,53 @@ class _LlmConfigWorkspaceState extends State<LlmConfigWorkspace> {
       ),
     );
   }
+}
 
-  Future<void> _addProvider() async {
+// --- Providers tab: split view ---
+
+class _ProvidersTabContent extends StatelessWidget {
+  const _ProvidersTabContent({required this.controller});
+
+  final LlmConfigController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    final config = controller.config;
+    final selectedName = controller.selectedProviderName;
+    final selectedProvider =
+        selectedName != null ? config.providers[selectedName] : null;
+
+    return Row(
+      children: [
+        _ProviderListPanel(
+          config: config,
+          selectedName: selectedName,
+          onSelect: (name) => controller.selectProvider(name),
+          onAdd: () => _addProvider(context, controller),
+          onDelete: (name) => _deleteProvider(context, controller, name),
+        ),
+        const SizedBox(width: 14),
+        Expanded(
+          child: _ProviderDetailPanel(
+            config: config,
+            provider: selectedProvider,
+            controller: controller,
+            onSave: (name, provider) {
+              controller.updateProvider(name, provider);
+            },
+            onDelete: (name) {
+              _deleteProvider(context, controller, name);
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _addProvider(
+    BuildContext context,
+    LlmConfigController controller,
+  ) async {
     final nameController = TextEditingController();
     final name = await showDialog<String>(
       context: context,
@@ -130,11 +152,15 @@ class _LlmConfigWorkspaceState extends State<LlmConfigWorkspace> {
       controller.addProvider(
         LlmProviderConfig(name: name, type: 'api', providerType: 'openai'),
       );
-      setState(() => _editingProviderName = name);
+      controller.selectProvider(name);
     }
   }
 
-  Future<void> _deleteProvider(String name) async {
+  Future<void> _deleteProvider(
+    BuildContext context,
+    LlmConfigController controller,
+    String name,
+  ) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -154,103 +180,288 @@ class _LlmConfigWorkspaceState extends State<LlmConfigWorkspace> {
     );
     if (confirmed == true) {
       controller.deleteProvider(name);
-      if (_editingProviderName == name) {
-        _editingProviderName = null;
-      }
-    }
-  }
-
-  Future<void> _addModel() async {
-    final nameController = TextEditingController();
-    final name = await showDialog<String>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Add Model'),
-        content: TextField(
-          key: AppKeys.modelNameDialogField,
-          controller: nameController,
-          autofocus: true,
-          decoration: const InputDecoration(labelText: 'Model alias/name'),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, nameController.text.trim()),
-            child: const Text('Add'),
-          ),
-        ],
-      ),
-    );
-    nameController.dispose();
-    if (name != null &&
-        name.isNotEmpty &&
-        !controller.config.models.containsKey(name)) {
-      final defaultProvider =
-          controller.config.providers.keys.firstOrNull ?? '';
-      controller.addModel(
-        LlmModelConfig(
-          id: name,
-          name: name,
-          provider: defaultProvider,
-          model: name,
-          enabled: true,
-        ),
-      );
-      setState(() => _editingModelId = name);
-    }
-  }
-
-  Future<void> _deleteModel(String id) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Delete Model'),
-        content: Text('Delete model $id?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
-    );
-    if (confirmed == true) {
-      controller.deleteModel(id);
-      if (_editingModelId == id) {
-        _editingModelId = null;
-      }
     }
   }
 }
 
-// --- Provider Edit Form ---
+// --- Provider list panel (left side of split) ---
 
-class _ProviderEditForm extends StatefulWidget {
-  const _ProviderEditForm({
-    required this.provider,
+class _ProviderListPanel extends StatefulWidget {
+  const _ProviderListPanel({
     required this.config,
-    required this.onSave,
-    required this.onCancel,
-    super.key,
+    required this.selectedName,
+    required this.onSelect,
+    required this.onAdd,
+    required this.onDelete,
+  });
+
+  final LlmConfig config;
+  final String? selectedName;
+  final ValueChanged<String> onSelect;
+  final VoidCallback onAdd;
+  final ValueChanged<String> onDelete;
+
+  @override
+  State<_ProviderListPanel> createState() => _ProviderListPanelState();
+}
+
+class _ProviderListPanelState extends State<_ProviderListPanel> {
+  final _searchController = TextEditingController();
+  String _searchQuery = '';
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final providers = widget.config.providers.values
+        .where(
+          (p) =>
+              _searchQuery.isEmpty ||
+              p.name.toLowerCase().contains(_searchQuery.toLowerCase()),
+        )
+        .toList();
+
+    return SizedBox(
+      width: 180,
+      child: Container(
+        key: AppKeys.llmProviderList,
+        decoration: BoxDecoration(
+          color: const Color(0xFF0F172A),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: const Color(0x2B94A3B8)),
+        ),
+        child: Column(
+          children: [
+            // Header
+            Container(
+              height: 42,
+              padding: const EdgeInsets.symmetric(horizontal: 11),
+              decoration: const BoxDecoration(
+                border: Border(bottom: BorderSide(color: Color(0x2494A3B8))),
+              ),
+              child: Row(
+                children: [
+                  const Expanded(
+                    child: Text(
+                      'Provider List',
+                      style: TextStyle(fontWeight: FontWeight.w800),
+                    ),
+                  ),
+                  InkWell(
+                    onTap: widget.onAdd,
+                    child: const Text(
+                      '+ Add',
+                      style: TextStyle(
+                        color: Color(0xFF93C5FD),
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            // Search
+            Padding(
+              padding: const EdgeInsets.all(10),
+              child: TextField(
+                key: AppKeys.llmProviderSearch,
+                controller: _searchController,
+                decoration: InputDecoration(
+                  hintText: 'Filter providers...',
+                  isDense: true,
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 8,
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(7),
+                    borderSide: const BorderSide(
+                      color: Color(0x3894A3B8),
+                    ),
+                  ),
+                ),
+                onChanged: (value) => setState(() => _searchQuery = value),
+              ),
+            ),
+            // List
+            Expanded(
+              child: ListView.builder(
+                padding: const EdgeInsets.only(left: 10, right: 10, bottom: 10),
+                itemCount: providers.length,
+                itemBuilder: (context, index) {
+                  final provider = providers[index];
+                  final isSelected = provider.name == widget.selectedName;
+                  final modelCount = widget.config.models.values
+                      .where((m) => m.provider == provider.name)
+                      .length;
+                  return _ProviderListRow(
+                    provider: provider,
+                    isSelected: isSelected,
+                    modelCount: modelCount,
+                    onTap: () => widget.onSelect(provider.name),
+                    onDelete: () => widget.onDelete(provider.name),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ProviderListRow extends StatelessWidget {
+  const _ProviderListRow({
+    required this.provider,
+    required this.isSelected,
+    required this.modelCount,
+    required this.onTap,
+    required this.onDelete,
   });
 
   final LlmProviderConfig provider;
-  final LlmConfig config;
-  final ValueChanged<LlmProviderConfig> onSave;
-  final VoidCallback onCancel;
+  final bool isSelected;
+  final int modelCount;
+  final VoidCallback onTap;
+  final VoidCallback onDelete;
 
   @override
-  State<_ProviderEditForm> createState() => _ProviderEditFormState();
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Material(
+        color: isSelected
+            ? const Color(0x2E1E40AF)
+            : const Color(0x9E0F172A),
+        borderRadius: BorderRadius.circular(8),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(8),
+          onTap: onTap,
+          child: Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: isSelected
+                    ? const Color(0x7360A5FA)
+                    : const Color(0x2B94A3B8),
+              ),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Flexible(
+                            child: Text(
+                              provider.name,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(fontWeight: FontWeight.w700),
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          _TypeBadge(type: provider.type),
+                        ],
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        '$modelCount models / proxy ${provider.proxy ? "on" : "off"}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.48),
+                          fontSize: 11,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                PopupMenuButton<String>(
+                  icon: const Icon(Icons.more_horiz, size: 16),
+                  padding: EdgeInsets.zero,
+                  itemBuilder: (context) => [
+                    const PopupMenuItem(value: 'delete', child: Text('Delete')),
+                  ],
+                  onSelected: (value) {
+                    if (value == 'delete') onDelete();
+                  },
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
-class _ProviderEditFormState extends State<_ProviderEditForm> {
+class _TypeBadge extends StatelessWidget {
+  const _TypeBadge({required this.type});
+
+  final String type;
+
+  @override
+  Widget build(BuildContext context) {
+    final isAccount = type == 'account';
+    return Container(
+      height: 18,
+      padding: const EdgeInsets.symmetric(horizontal: 6),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(99),
+        color: isAccount
+            ? const Color(0x1C34D399)
+            : const Color(0x1C60A5FA),
+        border: Border.all(
+          color: isAccount
+              ? const Color(0x3834D399)
+              : const Color(0x3860A5FA),
+        ),
+      ),
+      child: Text(
+        type,
+        style: TextStyle(
+          fontSize: 10,
+          color: isAccount
+              ? const Color(0xFFA7F3D0)
+              : const Color(0xFF93C5FD),
+        ),
+      ),
+    );
+  }
+}
+
+// --- Provider detail panel (right side of split) ---
+
+class _ProviderDetailPanel extends StatefulWidget {
+  const _ProviderDetailPanel({
+    required this.config,
+    required this.provider,
+    required this.controller,
+    required this.onSave,
+    required this.onDelete,
+  });
+
+  final LlmConfig config;
+  final LlmProviderConfig? provider;
+  final LlmConfigController controller;
+  final void Function(String name, LlmProviderConfig provider) onSave;
+  final ValueChanged<String> onDelete;
+
+  @override
+  State<_ProviderDetailPanel> createState() => _ProviderDetailPanelState();
+}
+
+class _ProviderDetailPanelState extends State<_ProviderDetailPanel> {
   late String _type;
   late String _providerType;
   late final TextEditingController _baseUrlController;
@@ -258,24 +469,27 @@ class _ProviderEditFormState extends State<_ProviderEditForm> {
   late bool _proxy;
   late final TextEditingController _proxyUrlController;
   late final TextEditingController _apiKeyController;
-  late final List<TextEditingController> _accountControllers;
+  late List<TextEditingController> _accountControllers;
   bool _apiKeyRevealed = false;
+  bool _apiKeyReplaced = false;
+  String? _providerName;
 
   @override
   void initState() {
     super.initState();
-    _type = widget.provider.type;
-    _providerType = widget.provider.providerType;
-    _baseUrlController = TextEditingController(text: widget.provider.baseUrl);
-    _apiKey = widget.provider.apiKey;
-    _proxy = widget.provider.proxy;
-    _proxyUrlController = TextEditingController(text: widget.provider.proxyUrl);
-    _apiKeyController = TextEditingController(
-      text: widget.provider.apiKey.isEmpty ? '' : LlmConfig.maskedSecret,
-    );
-    _accountControllers = widget.provider.accounts
-        .map((a) => TextEditingController(text: a))
-        .toList();
+    _baseUrlController = TextEditingController();
+    _proxyUrlController = TextEditingController();
+    _apiKeyController = TextEditingController();
+    _accountControllers = [];
+    _syncFromProvider();
+  }
+
+  @override
+  void didUpdateWidget(covariant _ProviderDetailPanel oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.provider?.name != _providerName) {
+      _syncFromProvider();
+    }
   }
 
   @override
@@ -289,181 +503,363 @@ class _ProviderEditFormState extends State<_ProviderEditForm> {
     super.dispose();
   }
 
+  void _syncFromProvider() {
+    final provider = widget.provider;
+    if (provider == null) {
+      _providerName = null;
+      return;
+    }
+    _providerName = provider.name;
+    _type = provider.type;
+    _providerType = provider.providerType;
+    _baseUrlController.text = provider.baseUrl;
+    _apiKey = provider.apiKey;
+    _proxy = provider.proxy;
+    _proxyUrlController.text = provider.proxyUrl;
+    _apiKeyController.text =
+        provider.apiKey.isEmpty ? '' : LlmConfig.maskedSecret;
+    _apiKeyRevealed = false;
+    _apiKeyReplaced = false;
+
+    for (final c in _accountControllers) {
+      c.dispose();
+    }
+    _accountControllers = provider.accounts
+        .map((a) => TextEditingController(text: a))
+        .toList();
+  }
+
   @override
   Widget build(BuildContext context) {
-    return _Section(
-      title: 'Edit ${widget.provider.name}',
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Wrap(
-            spacing: 14,
-            runSpacing: 10,
-            children: [
-              _SizedField(
-                child: DropdownButtonFormField<String>(
-                  value: _type,
-                  decoration: const InputDecoration(labelText: 'Type'),
-                  items: const [
-                    DropdownMenuItem(value: 'api', child: Text('api')),
-                    DropdownMenuItem(value: 'account', child: Text('account')),
-                  ],
-                  onChanged: (value) => setState(() => _type = value ?? 'api'),
-                ),
-              ),
-              if (_type == 'api')
-                _SizedField(
-                  child: TextField(
-                    key: AppKeys.providerTypeField,
-                    controller: TextEditingController(text: _providerType)
-                      ..selection = TextSelection.collapsed(
-                        offset: _providerType.length,
-                      ),
-                    decoration: const InputDecoration(
-                      labelText: 'Provider type',
-                      hintText: 'openai, claude, or custom',
-                    ),
-                    onChanged: (value) => _providerType = value,
-                  ),
-                ),
-            ],
+    final provider = widget.provider;
+    if (provider == null) {
+      return Container(
+        key: AppKeys.llmProviderDetail,
+        decoration: BoxDecoration(
+          color: const Color(0xFF0F172A),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: const Color(0x2B94A3B8)),
+        ),
+        child: const Center(
+          child: Text(
+            'Select a provider from the list',
+            style: TextStyle(color: Color(0xFF8B949E)),
           ),
-          if (_type == 'api') ...[
-            const SizedBox(height: 10),
-            TextField(
-              key: AppKeys.baseUrlField,
-              controller: _baseUrlController,
-              decoration: const InputDecoration(labelText: 'Base URL'),
+        ),
+      );
+    }
+
+    final providerModels = widget.config.models.values
+        .where((m) => m.provider == provider.name)
+        .toList();
+
+    return Container(
+      key: AppKeys.llmProviderDetail,
+      decoration: BoxDecoration(
+        color: const Color(0xFF0F172A),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0x2B94A3B8)),
+      ),
+      child: Column(
+        children: [
+          // Detail header
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: const BoxDecoration(
+              border: Border(bottom: BorderSide(color: Color(0x2494A3B8))),
             ),
-            const SizedBox(height: 10),
-            Row(
+            child: Row(
               children: [
                 Expanded(
-                  child: TextField(
-                    key: AppKeys.apiKeyField,
-                    controller: _apiKeyController,
-                    obscureText: !_apiKeyRevealed && _apiKey.isNotEmpty,
-                    decoration: InputDecoration(
-                      labelText: 'API Key',
-                      suffixIcon: _apiKey.isNotEmpty
-                          ? Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                IconButton(
-                                  key: AppKeys.revealApiKeyButton,
-                                  icon: Icon(
-                                    _apiKeyRevealed
-                                        ? Icons.visibility_off
-                                        : Icons.visibility,
-                                  ),
-                                  tooltip:
-                                      _apiKeyRevealed ? 'Hide' : 'Reveal',
-                                  onPressed: () => setState(
-                                    () => _apiKeyRevealed = !_apiKeyRevealed,
-                                  ),
-                                ),
-                              ],
-                            )
-                          : null,
-                    ),
-                    onChanged: (value) {
-                      if (value != LlmConfig.maskedSecret) {
-                        _apiKey = value;
-                      }
-                    },
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Text(
+                            provider.name,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 14,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          _TypeBadge(type: provider.type),
+                        ],
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        '${provider.type.toUpperCase()} provider, used by ${providerModels.length} models',
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.48),
+                          fontSize: 11,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(width: 8),
                 IconButton(
-                  key: AppKeys.replaceApiKeyButton,
-                  tooltip: 'Replace key',
-                  onPressed: () {
-                    _apiKeyController.clear();
-                    _apiKey = '';
-                    _apiKeyRevealed = true;
-                  },
-                  icon: const Icon(Icons.key_outlined),
+                  tooltip: 'Delete provider',
+                  icon: const Icon(Icons.delete_outline, size: 18),
+                  onPressed: () => widget.onDelete(provider.name),
                 ),
               ],
             ),
-          ],
-          if (_type == 'account') ...[
-            const SizedBox(height: 10),
-            ...List.generate(_accountControllers.length, (index) {
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        key: index == 0 ? AppKeys.accountPathField : null,
-                        controller: _accountControllers[index],
+          ),
+          // Scrollable form area
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(13),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Form fields
+                  Wrap(
+                    spacing: 14,
+                    runSpacing: 10,
+                    children: [
+                      _SizedField(
+                        child: _ReadOnlyField(
+                          label: 'Provider name',
+                          value: provider.name,
+                        ),
+                      ),
+                      _SizedField(
+                        child: DropdownButtonFormField<String>(
+                          value: _type,
+                          decoration: const InputDecoration(labelText: 'Type'),
+                          items: const [
+                            DropdownMenuItem(value: 'api', child: Text('api')),
+                            DropdownMenuItem(
+                              value: 'account',
+                              child: Text('account'),
+                            ),
+                          ],
+                          onChanged: (value) =>
+                              setState(() => _type = value ?? 'api'),
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (_type == 'api') ...[
+                    const SizedBox(height: 10),
+                    Wrap(
+                      spacing: 14,
+                      runSpacing: 10,
+                      children: [
+                        _SizedField(
+                          child: TextField(
+                            key: AppKeys.providerTypeField,
+                            decoration: const InputDecoration(
+                              labelText: 'Provider type',
+                              hintText: 'openai, claude, or custom',
+                            ),
+                            controller: TextEditingController(
+                              text: _providerType,
+                            )..selection = TextSelection.collapsed(
+                                offset: _providerType.length,
+                              ),
+                            onChanged: (value) => _providerType = value,
+                          ),
+                        ),
+                        _SizedField(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Proxy',
+                                style: TextStyle(fontSize: 12),
+                              ),
+                              Switch(
+                                key: AppKeys.providerProxyToggle,
+                                value: _proxy,
+                                onChanged: (value) =>
+                                    setState(() => _proxy = value),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (_proxy) ...[
+                      const SizedBox(height: 10),
+                      TextField(
+                        key: AppKeys.proxyUrlField,
+                        controller: _proxyUrlController,
                         decoration: const InputDecoration(
-                          labelText: 'Account credential path',
+                          labelText: 'Proxy URL',
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 10),
+                    TextField(
+                      key: AppKeys.baseUrlField,
+                      controller: _baseUrlController,
+                      decoration: const InputDecoration(labelText: 'Base URL'),
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            key: AppKeys.apiKeyField,
+                            controller: _apiKeyController,
+                            obscureText:
+                                !_apiKeyRevealed && _apiKey.isNotEmpty,
+                            decoration: InputDecoration(
+                              labelText: 'API Key',
+                              suffixIcon: _apiKey.isNotEmpty
+                                  ? Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        IconButton(
+                                          key: AppKeys.revealApiKeyButton,
+                                          icon: Icon(
+                                            _apiKeyRevealed
+                                                ? Icons.visibility_off
+                                                : Icons.visibility,
+                                          ),
+                                          tooltip: _apiKeyRevealed
+                                              ? 'Hide'
+                                              : 'Reveal',
+                                          onPressed: () => setState(() {
+                                            _apiKeyRevealed =
+                                                !_apiKeyRevealed;
+                                            if (_apiKeyRevealed &&
+                                                !_apiKeyReplaced) {
+                                              _apiKeyController.text =
+                                                  widget.controller
+                                                      .revealApiKey(
+                                                        provider.name,
+                                                      );
+                                            } else if (!_apiKeyRevealed) {
+                                              _apiKeyController.text =
+                                                  LlmConfig.maskedSecret;
+                                            }
+                                          }),
+                                        ),
+                                      ],
+                                    )
+                                  : null,
+                            ),
+                            onChanged: (value) {
+                              if (value != LlmConfig.maskedSecret) {
+                                _apiKey = value;
+                                _apiKeyReplaced = true;
+                              }
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        IconButton(
+                          key: AppKeys.replaceApiKeyButton,
+                          tooltip: 'Replace key',
+                          onPressed: () {
+                            _apiKeyController.clear();
+                            _apiKey = '';
+                            _apiKeyRevealed = true;
+                            _apiKeyReplaced = true;
+                          },
+                          icon: const Icon(Icons.key_outlined),
+                        ),
+                      ],
+                    ),
+                  ],
+                  if (_type == 'account') ...[
+                    const SizedBox(height: 10),
+                    ...List.generate(_accountControllers.length, (index) {
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: TextField(
+                                key:
+                                    index == 0
+                                        ? AppKeys.accountPathField
+                                        : null,
+                                controller: _accountControllers[index],
+                                decoration: const InputDecoration(
+                                  labelText: 'Account credential path',
+                                ),
+                              ),
+                            ),
+                            IconButton(
+                              key: AppKeys.deleteAccountPathButton,
+                              icon: const Icon(Icons.remove_circle_outline),
+                              tooltip: 'Remove path',
+                              onPressed: () => setState(() {
+                                _accountControllers[index].dispose();
+                                _accountControllers.removeAt(index);
+                              }),
+                            ),
+                          ],
+                        ),
+                      );
+                    }),
+                    OutlinedButton.icon(
+                      key: AppKeys.addAccountPathButton,
+                      onPressed: () => setState(
+                        () => _accountControllers.add(TextEditingController()),
+                      ),
+                      icon: const Icon(Icons.add),
+                      label: const Text('Add account path'),
+                    ),
+                  ],
+                  const SizedBox(height: 12),
+                  // Save / Cancel buttons
+                  Row(
+                    spacing: 10,
+                    children: [
+                      FilledButton.icon(
+                        onPressed: _save,
+                        icon: const Icon(Icons.save_outlined),
+                        label: const Text('Save'),
+                      ),
+                      OutlinedButton(
+                        onPressed: () {
+                          _syncFromProvider();
+                        },
+                        child: const Text('Cancel'),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  // Models using this provider
+                  if (providerModels.isNotEmpty) ...[
+                    _Section(
+                      title: 'Models using this provider',
+                      child: _ProviderModelsTable(
+                        key: AppKeys.providerModelsTable,
+                        models: providerModels,
+                        providers: widget.config.providers,
+                        onUpdate: (id, model) {
+                          widget.controller.updateModel(id, model);
+                        },
+                        onDelete: (id) {
+                          widget.controller.deleteModel(id);
+                        },
+                      ),
+                    ),
+                  ] else ...[
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: const Color(0x1C94A3B8),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Text(
+                        'No models are using this provider.',
+                        style: TextStyle(
+                          color: Color(0xFF8B949E),
+                          fontSize: 11,
                         ),
                       ),
                     ),
-                    IconButton(
-                      key: AppKeys.deleteAccountPathButton,
-                      icon: const Icon(Icons.remove_circle_outline),
-                      tooltip: 'Remove path',
-                      onPressed: () => setState(() {
-                        _accountControllers[index].dispose();
-                        _accountControllers.removeAt(index);
-                      }),
-                    ),
                   ],
-                ),
-              );
-            }),
-            OutlinedButton.icon(
-              key: AppKeys.addAccountPathButton,
-              onPressed: () => setState(
-                () => _accountControllers.add(TextEditingController()),
-              ),
-              icon: const Icon(Icons.add),
-              label: const Text('Add account path'),
-            ),
-          ],
-          const SizedBox(height: 10),
-          Row(
-            spacing: 14,
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('Proxy', style: TextStyle(fontSize: 12)),
-                  Switch(
-                    key: AppKeys.providerProxyToggle,
-                    value: _proxy,
-                    onChanged: (value) => setState(() => _proxy = value),
-                  ),
                 ],
               ),
-              if (_proxy)
-                _SizedField(
-                  child: TextField(
-                    key: AppKeys.proxyUrlField,
-                    controller: _proxyUrlController,
-                    decoration: const InputDecoration(labelText: 'Proxy URL'),
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            spacing: 10,
-            children: [
-              FilledButton.icon(
-                onPressed: _save,
-                icon: const Icon(Icons.save_outlined),
-                label: const Text('Save'),
-              ),
-              OutlinedButton(
-                onPressed: widget.onCancel,
-                child: const Text('Cancel'),
-              ),
-            ],
+            ),
           ),
         ],
       ),
@@ -471,8 +867,11 @@ class _ProviderEditFormState extends State<_ProviderEditForm> {
   }
 
   void _save() {
+    final provider = widget.provider;
+    if (provider == null) return;
     widget.onSave(
-      widget.provider.copyWith(
+      provider.name,
+      provider.copyWith(
         type: _type,
         providerType: _type == 'api' ? _providerType : '',
         baseUrl: _type == 'api' ? _baseUrlController.text : '',
@@ -480,46 +879,729 @@ class _ProviderEditFormState extends State<_ProviderEditForm> {
         proxy: _proxy,
         proxyUrl: _proxy ? _proxyUrlController.text : '',
         accounts: _type == 'account'
-                ? _accountControllers.map((c) => c.text).toList()
-                : const [],
+            ? _accountControllers.map((c) => c.text).toList()
+            : const [],
       ),
     );
   }
 }
 
-// --- Model Edit Form ---
+class _ReadOnlyField extends StatelessWidget {
+  const _ReadOnlyField({required this.label, required this.value});
 
-class _ModelEditForm extends StatefulWidget {
-  const _ModelEditForm({
-    required this.model,
-    required this.config,
-    required this.onSave,
-    required this.onCancel,
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            color: Colors.white.withValues(alpha: 0.58),
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          height: 38,
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          decoration: BoxDecoration(
+            color: const Color(0xFF090F1A),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: const Color(0x3D94A3B8)),
+          ),
+          alignment: Alignment.centerLeft,
+          child: Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(color: Color(0xFFDBEAFE)),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// --- Provider models mini table ---
+
+class _ProviderModelsTable extends StatelessWidget {
+  const _ProviderModelsTable({
+    required this.models,
+    required this.providers,
+    required this.onUpdate,
+    required this.onDelete,
     super.key,
   });
 
-  final LlmModelConfig model;
-  final LlmConfig config;
-  final ValueChanged<LlmModelConfig> onSave;
-  final VoidCallback onCancel;
+  final List<LlmModelConfig> models;
+  final Map<String, LlmProviderConfig> providers;
+  final void Function(String, LlmModelConfig) onUpdate;
+  final ValueChanged<String> onDelete;
 
   @override
-  State<_ModelEditForm> createState() => _ModelEditFormState();
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // Rows
+        for (final model in models)
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Row(
+              children: [
+                Expanded(
+                  flex: 3,
+                  child: Text(
+                    model.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                Expanded(
+                  flex: 3,
+                  child: Text(
+                    model.model,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                SizedBox(
+                  width: 50,
+                  child: Switch(
+                    key: AppKeys.modelEnabledToggle,
+                    value: model.enabled,
+                    onChanged: (value) {
+                      onUpdate(model.id, model.copyWith(enabled: value));
+                    },
+                  ),
+                ),
+                _CompactIconButton(
+                  tooltip: 'Edit',
+                  icon: Icons.edit_outlined,
+                  onTap: () {
+                    _editModel(context, model);
+                  },
+                ),
+                _CompactIconButton(
+                  tooltip: 'Delete',
+                  icon: Icons.delete_outline,
+                  onTap: () {
+                    onDelete(model.id);
+                  },
+                ),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+
+  Future<void> _editModel(BuildContext context, LlmModelConfig model) async {
+    final result = await showDialog<LlmModelConfig>(
+      context: context,
+      builder:
+          (context) => _ModelEditDialog(
+            model: model,
+            providers: providers,
+            title: 'Edit ${model.name}',
+          ),
+    );
+    if (result != null) {
+      onUpdate(model.id, result);
+    }
+  }
 }
 
-class _ModelEditFormState extends State<_ModelEditForm> {
+// --- Models tab ---
+
+class _ModelsTabContent extends StatelessWidget {
+  const _ModelsTabContent({required this.controller});
+
+  final LlmConfigController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    final config = controller.config;
+    return _ModelsTable(
+      config: config,
+      onAdd: () => _addModel(context, controller),
+      onUpdate: (id, model) {
+        controller.updateModel(id, model);
+      },
+      onDelete: (id) {
+        controller.deleteModel(id);
+      },
+    );
+  }
+
+  Future<void> _addModel(
+    BuildContext context,
+    LlmConfigController controller,
+  ) async {
+    final defaultProvider = controller.config.providers.keys.firstOrNull ?? '';
+    final result = await showDialog<LlmModelConfig>(
+      context: context,
+      builder:
+          (context) => _ModelEditDialog(
+            providers: controller.config.providers,
+            defaultProvider: defaultProvider,
+            title: 'Add Model',
+          ),
+    );
+    if (result != null) {
+      controller.addModel(result);
+    }
+  }
+}
+
+class _ModelsTable extends StatelessWidget {
+  const _ModelsTable({
+    required this.config,
+    required this.onAdd,
+    required this.onUpdate,
+    required this.onDelete,
+  });
+
+  final LlmConfig config;
+  final VoidCallback onAdd;
+  final void Function(String, LlmModelConfig) onUpdate;
+  final ValueChanged<String> onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    final models = config.models.values.toList();
+    final headerStyle = TextStyle(
+      color: Colors.white.withValues(alpha: 0.58),
+      fontSize: 10,
+      fontWeight: FontWeight.w700,
+      letterSpacing: 0.6,
+    );
+
+    return Container(
+      key: AppKeys.llmModelsTable,
+      decoration: BoxDecoration(
+        color: const Color(0xFF0F172A),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0x2B94A3B8)),
+      ),
+      child: Column(
+        children: [
+          // Header
+          Container(
+            height: 42,
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            decoration: const BoxDecoration(
+              border: Border(bottom: BorderSide(color: Color(0x2494A3B8))),
+            ),
+            child: Row(
+              children: [
+                const Expanded(
+                  child: Text('Models', style: TextStyle(fontWeight: FontWeight.w800)),
+                ),
+                InkWell(
+                  onTap: onAdd,
+                  child: const Text(
+                    '+ Add',
+                    style: TextStyle(
+                      color: Color(0xFF93C5FD),
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Column headers
+          Container(
+            padding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 8,
+            ),
+            color: const Color(0x1494A3B8),
+            child: Row(
+              children: [
+                const SizedBox(width: 10),
+                Expanded(
+                  flex: 3,
+                  child: Text('Name', style: headerStyle),
+                ),
+                Expanded(
+                  flex: 2,
+                  child: Text('Provider', style: headerStyle),
+                ),
+                Expanded(
+                  flex: 3,
+                  child: Text('Actual Model', style: headerStyle),
+                ),
+                SizedBox(
+                  width: 80,
+                  child: Text('Enabled', style: headerStyle),
+                ),
+                const SizedBox(width: 80),
+              ],
+            ),
+          ),
+          // Model rows
+          Expanded(
+            child: models.isEmpty
+                ? const Center(
+                    child: Text(
+                      'No models configured',
+                      style: TextStyle(color: Color(0xFF8B949E)),
+                    ),
+                  )
+                : ListView.separated(
+                    padding: EdgeInsets.zero,
+                    itemCount: models.length,
+                    separatorBuilder: (_, __) => const Divider(height: 1),
+                    itemBuilder: (context, index) {
+                      final model = models[index];
+                      final providerExists =
+                          config.providers.containsKey(model.provider);
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
+                        child: Row(
+                          children: [
+                            if (!providerExists)
+                              Padding(
+                                padding: const EdgeInsets.only(right: 6),
+                                child: Tooltip(
+                                  message:
+                                      'Missing provider: ${model.provider}',
+                                  child: const Icon(
+                                    Icons.warning_amber_rounded,
+                                    size: 14,
+                                    color: Color(0xFFFDE68A),
+                                  ),
+                                ),
+                              ),
+                            Expanded(
+                              flex: 3,
+                              child: Text(
+                                model.name,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            Expanded(
+                              flex: 2,
+                              child: Text(
+                                model.provider,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  color: providerExists
+                                      ? null
+                                      : const Color(0xFFFCA5A5),
+                                ),
+                              ),
+                            ),
+                            Expanded(
+                              flex: 3,
+                              child: Text(
+                                model.model,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            SizedBox(
+                              width: 80,
+                              child: Switch(
+                                value: model.enabled,
+                                onChanged: (value) {
+                                  onUpdate(
+                                    model.id,
+                                    model.copyWith(enabled: value),
+                                  );
+                                },
+                              ),
+                            ),
+                            SizedBox(
+                              width: 80,
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  IconButton(
+                                    key: AppKeys.editModelButton(model.id),
+                                    tooltip: 'Edit',
+                                    visualDensity: VisualDensity.compact,
+                                    constraints: const BoxConstraints(
+                                      minWidth: 36,
+                                      minHeight: 36,
+                                    ),
+                                    icon: const Icon(
+                                      Icons.edit_outlined,
+                                      size: 16,
+                                    ),
+                                    onPressed: () {
+                                      _editModel(context, model);
+                                    },
+                                  ),
+                                  IconButton(
+                                    key: AppKeys.deleteModelButton(model.id),
+                                    tooltip: 'Delete',
+                                    visualDensity: VisualDensity.compact,
+                                    constraints: const BoxConstraints(
+                                      minWidth: 36,
+                                      minHeight: 36,
+                                    ),
+                                    icon: const Icon(
+                                      Icons.delete_outline,
+                                      size: 16,
+                                    ),
+                                    onPressed: () {
+                                      onDelete(model.id);
+                                    },
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _editModel(
+    BuildContext context,
+    LlmModelConfig model,
+  ) async {
+    final result = await showDialog<LlmModelConfig>(
+      context: context,
+      builder:
+          (context) => _ModelEditDialog(
+            model: model,
+            providers: config.providers,
+            title: 'Edit ${model.name}',
+          ),
+    );
+    if (result != null) {
+      onUpdate(model.id, result);
+    }
+  }
+}
+
+// --- Raw JSON tab ---
+
+class _RawJsonTabContent extends StatelessWidget {
+  const _RawJsonTabContent({required this.controller});
+
+  final LlmConfigController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    final config = controller.config;
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(14),
+      child: SelectableText(
+        key: AppKeys.llmRawJsonPreview,
+        config.toMaskedJsonString(),
+        style: TextStyle(
+          color: Colors.white.withValues(alpha: 0.72),
+          fontFamily: 'monospace',
+          fontSize: 12,
+        ),
+      ),
+    );
+  }
+}
+
+// --- Side panel (always visible) ---
+
+class _LlmSidePanel extends StatelessWidget {
+  const _LlmSidePanel({required this.config});
+
+  final LlmConfig config;
+
+  @override
+  Widget build(BuildContext context) {
+    final messages = config.validationMessages;
+    final missingRefs = config.models.values
+        .where((m) => !config.providers.containsKey(m.provider))
+        .length;
+    final emptyKeys = config.providers.values
+        .where((p) => p.type == 'api' && p.apiKey.trim().isEmpty)
+        .length;
+    final jsonString = config.toMaskedJsonString();
+    final jsonSnippet = jsonString.length > 500
+        ? '${jsonString.substring(0, 500)}...'
+        : jsonString;
+
+    return Container(
+      key: AppKeys.llmSidePanel,
+      color: const Color(0xFF10141B),
+      child: Column(
+        children: [
+          // Section 1: Summary
+          Expanded(
+            flex: 35,
+            child: Container(
+              padding: const EdgeInsets.all(13),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    'Summary',
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.58),
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.8,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Expanded(
+                    child: Container(
+                      key: AppKeys.llmSummaryStats,
+                      child: GridView.count(
+                        crossAxisCount: 2,
+                        childAspectRatio: 1.8,
+                        crossAxisSpacing: 8,
+                        mainAxisSpacing: 8,
+                        children: [
+                          _StatBox(
+                            value: '${config.providers.length}',
+                            label: 'providers',
+                          ),
+                          _StatBox(
+                            value: '${config.models.length}',
+                            label: 'models',
+                          ),
+                          _StatBox(
+                            value: '$missingRefs',
+                            label: 'missing refs',
+                            warn: missingRefs > 0,
+                          ),
+                          _StatBox(
+                            value: '$emptyKeys',
+                            label: 'empty keys',
+                            warn: emptyKeys > 0,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          Container(height: 1, color: const Color(0x2E94A3B8)),
+          // Section 2: Validation
+          Expanded(
+            flex: 32,
+            child: Container(
+              key: AppKeys.llmValidationSummary,
+              padding: const EdgeInsets.all(13),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    'Validation',
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.58),
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.8,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Expanded(
+                    child: messages.isEmpty
+                        ? Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: const Color(0x1434D399),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: const Color(0x3834D399),
+                              ),
+                            ),
+                            child: const Text(
+                              'All checks passed.',
+                              style: TextStyle(
+                                color: Color(0xFFA7F3D0),
+                                fontSize: 12,
+                              ),
+                            ),
+                          )
+                        : ListView.separated(
+                            itemCount: messages.length,
+                            separatorBuilder: (_, __) =>
+                                const SizedBox(height: 8),
+                            itemBuilder: (context, index) => Container(
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: const Color(0x14FBBF24),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color: const Color(0x40FBBF24),
+                                ),
+                              ),
+                              child: Text(
+                                messages[index],
+                                style: const TextStyle(
+                                  color: Color(0xFFFDE68A),
+                                  fontSize: 12,
+                                  height: 1.35,
+                                ),
+                              ),
+                            ),
+                          ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          Container(height: 1, color: const Color(0x2E94A3B8)),
+          // Section 3: JSON Preview
+          Expanded(
+            flex: 33,
+            child: Container(
+              padding: const EdgeInsets.all(13),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    'JSON Preview',
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.58),
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.8,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Expanded(
+                    child: Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF05070B),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: const Color(0x2B94A3B8)),
+                      ),
+                      child: SingleChildScrollView(
+                        child: SelectableText(
+                          jsonSnippet,
+                          style: const TextStyle(
+                            color: Color(0xFFA7F3D0),
+                            fontFamily: 'monospace',
+                            fontSize: 11,
+                            height: 1.5,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StatBox extends StatelessWidget {
+  const _StatBox({
+    required this.value,
+    required this.label,
+    this.warn = false,
+  });
+
+  final String value;
+  final String label;
+  final bool warn;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: const Color(0xA60F172A),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: warn ? const Color(0x40FBBF24) : const Color(0x2994A3B8),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            value,
+            style: TextStyle(
+              color: warn ? const Color(0xFFFDE68A) : null,
+              fontSize: 16,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 3),
+          Text(
+            label,
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.54),
+              fontSize: 11,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// --- Model edit dialog ---
+
+class _ModelEditDialog extends StatefulWidget {
+  const _ModelEditDialog({
+    required this.providers,
+    this.model,
+    this.defaultProvider = '',
+    required this.title,
+  });
+
+  final Map<String, LlmProviderConfig> providers;
+  final LlmModelConfig? model;
+  final String defaultProvider;
+  final String title;
+
+  @override
+  State<_ModelEditDialog> createState() => _ModelEditDialogState();
+}
+
+class _ModelEditDialogState extends State<_ModelEditDialog> {
   late final TextEditingController _nameController;
   late String _provider;
   late final TextEditingController _modelController;
   late bool _enabled;
 
+  bool get isEditing => widget.model != null;
+
   @override
   void initState() {
     super.initState();
-    _nameController = TextEditingController(text: widget.model.name);
-    _provider = widget.model.provider;
-    _modelController = TextEditingController(text: widget.model.model);
-    _enabled = widget.model.enabled;
+    final model = widget.model;
+    _nameController = TextEditingController(
+      text: model?.name ?? '',
+    );
+    _provider = model?.provider ?? widget.defaultProvider;
+    _modelController = TextEditingController(
+      text: model?.model ?? '',
+    );
+    _enabled = model?.enabled ?? true;
   }
 
   @override
@@ -531,80 +1613,71 @@ class _ModelEditFormState extends State<_ModelEditForm> {
 
   @override
   Widget build(BuildContext context) {
-    return _Section(
-      title: 'Edit ${widget.model.name}',
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Wrap(
-            spacing: 14,
-            runSpacing: 10,
-            children: [
-              _SizedField(
-                child: TextField(
-                  controller: _nameController,
-                  decoration: const InputDecoration(labelText: 'Name'),
-                ),
-              ),
-              _SizedField(
-                child: DropdownButtonFormField<String>(
-                  key: AppKeys.modelProviderField,
-                  value: widget.config.providers.containsKey(_provider)
-                      ? _provider
-                      : null,
-                  decoration: const InputDecoration(labelText: 'Provider'),
-                  items: [
-                    for (final p in widget.config.providers.values)
-                      DropdownMenuItem(value: p.name, child: Text(p.name)),
-                  ],
-                  onChanged: (value) =>
-                      setState(() => _provider = value ?? ''),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          TextField(
-            key: AppKeys.modelModelIdField,
-            controller: _modelController,
-            decoration: const InputDecoration(labelText: 'Model ID'),
-          ),
-          const SizedBox(height: 10),
-          SwitchListTile(
-            contentPadding: EdgeInsets.zero,
-            key: AppKeys.modelEnabledToggle,
-            title: const Text('Enabled'),
-            value: _enabled,
-            onChanged: (value) => setState(() => _enabled = value),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            spacing: 10,
-            children: [
-              FilledButton.icon(
-                onPressed: _save,
-                icon: const Icon(Icons.save_outlined),
-                label: const Text('Save'),
-              ),
-              OutlinedButton(
-                onPressed: widget.onCancel,
-                child: const Text('Cancel'),
-              ),
-            ],
-          ),
-        ],
+    return AlertDialog(
+      title: Text(widget.title),
+      content: SizedBox(
+        width: 400,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              key: AppKeys.modelNameDialogField,
+              controller: _nameController,
+              autofocus: true,
+              decoration: const InputDecoration(labelText: 'Model alias/name'),
+            ),
+            const SizedBox(height: 14),
+            DropdownButtonFormField<String>(
+              key: AppKeys.modelProviderField,
+              value:
+                  widget.providers.containsKey(_provider) ? _provider : null,
+              decoration: const InputDecoration(labelText: 'Provider'),
+              items: [
+                for (final p in widget.providers.values)
+                  DropdownMenuItem(value: p.name, child: Text(p.name)),
+              ],
+              onChanged: (value) => setState(() => _provider = value ?? ''),
+            ),
+            const SizedBox(height: 14),
+            TextField(
+              key: AppKeys.modelModelIdField,
+              controller: _modelController,
+              decoration: const InputDecoration(labelText: 'Model ID'),
+            ),
+            const SizedBox(height: 14),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              key: AppKeys.modelEnabledToggle,
+              title: const Text('Enabled'),
+              value: _enabled,
+              onChanged: (value) => setState(() => _enabled = value),
+            ),
+          ],
+        ),
       ),
-    );
-  }
-
-  void _save() {
-    widget.onSave(
-      widget.model.copyWith(
-        name: _nameController.text,
-        provider: _provider,
-        model: _modelController.text,
-        enabled: _enabled,
-      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: () {
+            final name = _nameController.text.trim();
+            if (name.isEmpty) return;
+            Navigator.pop(
+              context,
+              LlmModelConfig(
+                id: isEditing ? widget.model!.id : name,
+                name: name,
+                provider: _provider,
+                model: _modelController.text.trim(),
+                enabled: _enabled,
+              ),
+            );
+          },
+          child: const Text('Save'),
+        ),
+      ],
     );
   }
 }
@@ -636,265 +1709,11 @@ class _WorkspaceHeading extends StatelessWidget {
   }
 }
 
-class _LlmValidationSummary extends StatelessWidget {
-  const _LlmValidationSummary({required this.config});
-
-  final LlmConfig config;
-
-  @override
-  Widget build(BuildContext context) {
-    final messages = config.validationMessages;
-    return Container(
-      key: AppKeys.llmValidationSummary,
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: const Color(0xFF0F172A),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: const Color(0x2B94A3B8)),
-      ),
-      child: messages.isEmpty
-          ? const Text('No validation warnings.')
-          : Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text('${messages.length} validation warnings'),
-                const SizedBox(height: 6),
-                for (final message in messages)
-                  Text(
-                    message,
-                    style: const TextStyle(color: Color(0xFFFFD166)),
-                  ),
-              ],
-            ),
-    );
-  }
-}
-
-class _ProvidersTab extends StatelessWidget {
-  const _ProvidersTab({
-    required this.config,
-    required this.editingName,
-    required this.onStartEdit,
-    required this.onCancelEdit,
-    required this.onAdd,
-    required this.onUpdate,
-    required this.onDelete,
-  });
-
-  final LlmConfig config;
-  final String? editingName;
-  final ValueChanged<String> onStartEdit;
-  final VoidCallback onCancelEdit;
-  final VoidCallback onAdd;
-  final void Function(String, LlmProviderConfig) onUpdate;
-  final ValueChanged<String> onDelete;
-
-  @override
-  Widget build(BuildContext context) {
-    return ListView(
-      children: [
-        Padding(
-          padding: const EdgeInsets.only(bottom: 10),
-          child: OutlinedButton.icon(
-            key: AppKeys.addProviderButton,
-            onPressed: onAdd,
-            icon: const Icon(Icons.add),
-            label: const Text('Add Provider'),
-          ),
-        ),
-        for (final provider in config.providers.values)
-          if (provider.name == editingName)
-            _ProviderEditForm(
-              key: AppKeys.providerEditForm,
-              provider: provider,
-              config: config,
-              onSave: (updated) => onUpdate(provider.name, updated),
-              onCancel: onCancelEdit,
-            )
-          else
-            _Section(
-              title: provider.name,
-              trailing: Wrap(
-                spacing: 4,
-                children: [
-                  IconButton(
-                    key: AppKeys.editProviderButton(provider.name),
-                    icon: const Icon(Icons.edit_outlined, size: 18),
-                    tooltip: 'Edit',
-                    onPressed: () => onStartEdit(provider.name),
-                  ),
-                  IconButton(
-                    key: AppKeys.deleteProviderButton(provider.name),
-                    icon: const Icon(Icons.delete_outline, size: 18),
-                    tooltip: 'Delete',
-                    onPressed: () => onDelete(provider.name),
-                  ),
-                ],
-              ),
-              child: Wrap(
-                spacing: 16,
-                runSpacing: 8,
-                children: [
-                  _Info(label: 'Type', value: provider.type),
-                  if (provider.providerType.isNotEmpty)
-                    _Info(label: 'Provider type', value: provider.providerType),
-                  if (provider.baseUrl.isNotEmpty)
-                    _Info(label: 'Base URL', value: provider.baseUrl),
-                  if (provider.accounts.isNotEmpty)
-                    _Info(
-                      label: 'Accounts',
-                      value: provider.accounts.join(', '),
-                    ),
-                  _Info(label: 'Proxy', value: provider.proxy ? 'on' : 'off'),
-                  _Info(
-                    label: 'API key',
-                    value: provider.apiKey.isEmpty
-                        ? 'empty'
-                        : LlmConfig.maskedSecret,
-                  ),
-                ],
-              ),
-            ),
-      ],
-    );
-  }
-}
-
-class _ModelsTab extends StatelessWidget {
-  const _ModelsTab({
-    required this.config,
-    required this.editingId,
-    required this.onStartEdit,
-    required this.onCancelEdit,
-    required this.onAdd,
-    required this.onUpdate,
-    required this.onDelete,
-  });
-
-  final LlmConfig config;
-  final String? editingId;
-  final ValueChanged<String> onStartEdit;
-  final VoidCallback onCancelEdit;
-  final VoidCallback onAdd;
-  final void Function(String, LlmModelConfig) onUpdate;
-  final ValueChanged<String> onDelete;
-
-  @override
-  Widget build(BuildContext context) {
-    return ListView(
-      children: [
-        Padding(
-          padding: const EdgeInsets.only(bottom: 10),
-          child: OutlinedButton.icon(
-            key: AppKeys.addModelButton,
-            onPressed: onAdd,
-            icon: const Icon(Icons.add),
-            label: const Text('Add Model'),
-          ),
-        ),
-        for (final model in config.models.values)
-          if (model.id == editingId)
-            _ModelEditForm(
-              key: AppKeys.modelEditForm,
-              model: model,
-              config: config,
-              onSave: (updated) => onUpdate(model.id, updated),
-              onCancel: onCancelEdit,
-            )
-          else
-            _Section(
-              title: model.name,
-              trailing: Wrap(
-                spacing: 4,
-                children: [
-                  IconButton(
-                    key: AppKeys.editModelButton(model.id),
-                    icon: const Icon(Icons.edit_outlined, size: 18),
-                    tooltip: 'Edit',
-                    onPressed: () => onStartEdit(model.id),
-                  ),
-                  IconButton(
-                    key: AppKeys.deleteModelButton(model.id),
-                    icon: const Icon(Icons.delete_outline, size: 18),
-                    tooltip: 'Delete',
-                    onPressed: () => onDelete(model.id),
-                  ),
-                ],
-              ),
-              child: Wrap(
-                spacing: 16,
-                runSpacing: 8,
-                children: [
-                  _Info(label: 'Provider', value: model.provider),
-                  _Info(label: 'Actual model', value: model.model),
-                  _Info(label: 'Enabled', value: model.enabled ? 'yes' : 'no'),
-                ],
-              ),
-            ),
-      ],
-    );
-  }
-}
-
-class _RawJsonTab extends StatelessWidget {
-  const _RawJsonTab({required this.config});
-
-  final LlmConfig config;
-
-  @override
-  Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      child: SelectableText(
-        key: AppKeys.llmRawJsonPreview,
-        config.toMaskedJsonString(),
-        style: TextStyle(
-          color: Colors.white.withValues(alpha: 0.72),
-          fontFamily: 'monospace',
-          fontSize: 12,
-        ),
-      ),
-    );
-  }
-}
-
-class _Info extends StatelessWidget {
-  const _Info({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: 240,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.54),
-              fontSize: 11,
-            ),
-          ),
-          const SizedBox(height: 3),
-          Text(value, maxLines: 2, overflow: TextOverflow.ellipsis),
-        ],
-      ),
-    );
-  }
-}
-
 class _Section extends StatelessWidget {
-  const _Section({
-    required this.title,
-    required this.child,
-    this.trailing,
-  });
+  const _Section({required this.title, required this.child});
 
   final String title;
   final Widget child;
-  final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
@@ -909,16 +1728,9 @@ class _Section extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  title,
-                  style: const TextStyle(fontWeight: FontWeight.w800),
-                ),
-              ),
-              if (trailing != null) trailing!,
-            ],
+          Text(
+            title,
+            style: const TextStyle(fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: 10),
           child,
@@ -935,6 +1747,33 @@ class _SizedField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(width: 360, child: child);
+    return SizedBox(width: 200, child: child);
+  }
+}
+
+class _CompactIconButton extends StatelessWidget {
+  const _CompactIconButton({
+    required this.icon,
+    required this.onTap,
+    this.tooltip,
+  });
+
+  final IconData icon;
+  final VoidCallback onTap;
+  final String? tooltip;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: tooltip ?? '',
+      child: InkWell(
+        borderRadius: BorderRadius.circular(4),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(6),
+          child: Icon(icon, size: 16),
+        ),
+      ),
+    );
   }
 }
