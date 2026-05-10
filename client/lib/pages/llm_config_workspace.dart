@@ -60,10 +60,7 @@ class LlmConfigWorkspace extends StatelessWidget {
                     ],
                   ),
                 ),
-                SizedBox(
-                  width: 340,
-                  child: _LlmSidePanel(config: config),
-                ),
+                SizedBox(width: 340, child: _LlmSidePanel(config: config)),
               ],
             ),
           ),
@@ -84,8 +81,9 @@ class _ProvidersTabContent extends StatelessWidget {
   Widget build(BuildContext context) {
     final config = controller.state.config;
     final selectedName = controller.state.effectiveProviderName;
-    final selectedProvider =
-        selectedName != null ? config.providers[selectedName] : null;
+    final selectedProvider = selectedName != null
+        ? config.providers[selectedName]
+        : null;
 
     return Row(
       children: [
@@ -242,9 +240,7 @@ class _ProviderListPanelState extends State<_ProviderListPanel> {
               height: 42,
               padding: const EdgeInsets.symmetric(horizontal: 11),
               decoration: BoxDecoration(
-                border: Border(
-                  bottom: BorderSide(color: colors.tabBarDivider),
-                ),
+                border: Border(bottom: BorderSide(color: colors.tabBarDivider)),
               ),
               child: Row(
                 children: [
@@ -524,8 +520,9 @@ class _ProviderDetailPanelState extends State<_ProviderDetailPanel> {
     _apiKey = provider.apiKey;
     _proxy = provider.proxy;
     _proxyUrlController.text = provider.proxyUrl;
-    _apiKeyController.text =
-        provider.apiKey.isEmpty ? '' : LlmConfig.maskedSecret;
+    _apiKeyController.text = provider.apiKey.isEmpty
+        ? ''
+        : LlmConfig.maskedSecret;
     _apiKeyRevealed = false;
     _apiKeyReplaced = false;
 
@@ -577,9 +574,7 @@ class _ProviderDetailPanelState extends State<_ProviderDetailPanel> {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              border: Border(
-                bottom: BorderSide(color: colors.tabBarDivider),
-              ),
+              border: Border(bottom: BorderSide(color: colors.tabBarDivider)),
             ),
             child: Row(
               children: [
@@ -669,11 +664,11 @@ class _ProviderDetailPanelState extends State<_ProviderDetailPanel> {
                               labelText: l10n.providerType,
                               hintText: l10n.providerTypeHint,
                             ),
-                            controller: TextEditingController(
-                              text: _providerType,
-                            )..selection = TextSelection.collapsed(
-                                offset: _providerType.length,
-                              ),
+                            controller:
+                                TextEditingController(text: _providerType)
+                                  ..selection = TextSelection.collapsed(
+                                    offset: _providerType.length,
+                                  ),
                             onChanged: (value) => _providerType = value,
                           ),
                         ),
@@ -717,8 +712,7 @@ class _ProviderDetailPanelState extends State<_ProviderDetailPanel> {
                           child: TextField(
                             key: AppKeys.apiKeyField,
                             controller: _apiKeyController,
-                            obscureText:
-                                !_apiKeyRevealed && _apiKey.isNotEmpty,
+                            obscureText: !_apiKeyRevealed && _apiKey.isNotEmpty,
                             decoration: InputDecoration(
                               labelText: l10n.apiKey,
                               suffixIcon: _apiKey.isNotEmpty
@@ -736,15 +730,12 @@ class _ProviderDetailPanelState extends State<_ProviderDetailPanel> {
                                               ? l10n.hide
                                               : l10n.reveal,
                                           onPressed: () => setState(() {
-                                            _apiKeyRevealed =
-                                                !_apiKeyRevealed;
+                                            _apiKeyRevealed = !_apiKeyRevealed;
                                             if (_apiKeyRevealed &&
                                                 !_apiKeyReplaced) {
-                                              _apiKeyController.text =
-                                                  widget.controller
-                                                      .revealApiKey(
-                                                        provider.name,
-                                                      );
+                                              _apiKeyController.text = widget
+                                                  .controller
+                                                  .revealApiKey(provider.name);
                                             } else if (!_apiKeyRevealed) {
                                               _apiKeyController.text =
                                                   LlmConfig.maskedSecret;
@@ -787,10 +778,9 @@ class _ProviderDetailPanelState extends State<_ProviderDetailPanel> {
                           children: [
                             Expanded(
                               child: TextField(
-                                key:
-                                    index == 0
-                                        ? AppKeys.accountPathField
-                                        : null,
+                                key: index == 0
+                                    ? AppKeys.accountPathField
+                                    : null,
                                 controller: _accountControllers[index],
                                 decoration: InputDecoration(
                                   labelText: l10n.accountCredentialPath,
@@ -1019,12 +1009,11 @@ class _ProviderModelsTable extends StatelessWidget {
     final l10n = context.l10n;
     final result = await showDialog<LlmModelConfig>(
       context: context,
-      builder:
-          (context) => _ModelEditDialog(
-            model: model,
-            providers: providers,
-            title: l10n.editModelTitle(model.name),
-          ),
+      builder: (context) => _ModelEditDialog(
+        model: model,
+        providers: providers,
+        title: l10n.editModelTitle(model.name),
+      ),
     );
     if (result != null) {
       onUpdate(model.id, result);
@@ -1059,15 +1048,15 @@ class _ModelsTabContent extends StatelessWidget {
     LlmConfigCubit controller,
   ) async {
     final l10n = context.l10n;
-    final defaultProvider = controller.state.config.providers.keys.firstOrNull ?? '';
+    final defaultProvider =
+        controller.state.config.providers.keys.firstOrNull ?? '';
     final result = await showDialog<LlmModelConfig>(
       context: context,
-      builder:
-          (context) => _ModelEditDialog(
-            providers: controller.state.config.providers,
-            defaultProvider: defaultProvider,
-            title: l10n.addModel,
-          ),
+      builder: (context) => _ModelEditDialog(
+        providers: controller.state.config.providers,
+        defaultProvider: defaultProvider,
+        title: l10n.addModel,
+      ),
     );
     if (result != null) {
       controller.addModel(result);
@@ -1115,9 +1104,7 @@ class _ModelsTable extends StatelessWidget {
             height: 42,
             padding: const EdgeInsets.symmetric(horizontal: 12),
             decoration: BoxDecoration(
-              border: Border(
-                bottom: BorderSide(color: colors.tabBarDivider),
-              ),
+              border: Border(bottom: BorderSide(color: colors.tabBarDivider)),
             ),
             child: Row(
               children: [
@@ -1181,8 +1168,9 @@ class _ModelsTable extends StatelessWidget {
                     separatorBuilder: (_, __) => const Divider(height: 1),
                     itemBuilder: (context, index) {
                       final model = models[index];
-                      final providerExists =
-                          config.providers.containsKey(model.provider);
+                      final providerExists = config.providers.containsKey(
+                        model.provider,
+                      );
                       return Padding(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 12,
@@ -1299,12 +1287,11 @@ class _ModelsTable extends StatelessWidget {
     final l10n = context.l10n;
     final result = await showDialog<LlmModelConfig>(
       context: context,
-      builder:
-          (context) => _ModelEditDialog(
-            model: model,
-            providers: config.providers,
-            title: l10n.editModelTitle(model.name),
-          ),
+      builder: (context) => _ModelEditDialog(
+        model: model,
+        providers: config.providers,
+        title: l10n.editModelTitle(model.name),
+      ),
     );
     if (result != null) {
       onUpdate(model.id, result);
@@ -1447,9 +1434,7 @@ class _LlmSidePanel extends StatelessWidget {
                             decoration: BoxDecoration(
                               color: colors.successBackground,
                               borderRadius: BorderRadius.circular(8),
-                              border: Border.all(
-                                color: colors.successBorder,
-                              ),
+                              border: Border.all(color: colors.successBorder),
                             ),
                             child: Text(
                               l10n.allChecksPassed,
@@ -1468,9 +1453,7 @@ class _LlmSidePanel extends StatelessWidget {
                               decoration: BoxDecoration(
                                 color: colors.warningBackground,
                                 borderRadius: BorderRadius.circular(8),
-                                border: Border.all(
-                                  color: colors.warningBorder,
-                                ),
+                                border: Border.all(color: colors.warningBorder),
                               ),
                               child: Text(
                                 messages[index],
@@ -1514,7 +1497,7 @@ class _LlmSidePanel extends StatelessWidget {
                         border: Border.all(color: colors.border),
                       ),
                       child: SingleChildScrollView(
-                        child: SelectableText(
+                        child: Text(
                           jsonSnippet,
                           style: TextStyle(
                             color: colors.accentGreenLight,
@@ -1537,11 +1520,7 @@ class _LlmSidePanel extends StatelessWidget {
 }
 
 class _StatBox extends StatelessWidget {
-  const _StatBox({
-    required this.value,
-    required this.label,
-    this.warn = false,
-  });
+  const _StatBox({required this.value, required this.label, this.warn = false});
 
   final String value;
   final String label;
@@ -1649,8 +1628,7 @@ class _ModelEditDialogState extends State<_ModelEditDialog> {
             const SizedBox(height: 14),
             DropdownButtonFormField<String>(
               key: AppKeys.modelProviderField,
-              value:
-                  widget.providers.containsKey(_provider) ? _provider : null,
+              value: widget.providers.containsKey(_provider) ? _provider : null,
               decoration: InputDecoration(labelText: l10n.provider),
               items: [
                 for (final p in widget.providers.values)

@@ -263,6 +263,8 @@ ThemeData _buildTheme(Brightness brightness, AppColors colors) {
   final isDark = brightness == Brightness.dark;
   return ThemeData(
     brightness: brightness,
+    fontFamily: 'sans-serif',
+    fontFamilyFallback: const ['sans-serif'],
     colorScheme: ColorScheme(
       brightness: brightness,
       primary: const Color(0xFF5B8DEF),

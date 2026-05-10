@@ -8,6 +8,7 @@ import '../cubits/config_cubit.dart';
 import '../cubits/layout_cubit.dart';
 import '../pages/chat_page.dart';
 import '../pages/config_workspace.dart';
+import '../utils/perf.dart';
 import '../widgets/context_sidebar.dart';
 
 final appRouter = GoRouter(
@@ -21,12 +22,15 @@ final appRouter = GoRouter(
         final areas = <Area>[
           if (preferences.contextSidebarVisible)
             Area(
-                min: 180,
-                size: preferences.sidebarWidth,
-                builder: (_, __) => const ContextSidebar()),
+              min: 180,
+              size: preferences.sidebarWidth,
+              builder: (_, __) => const ContextSidebar(),
+            ),
           Area(min: 400, builder: (_, __) => child),
         ];
-        print('[perf] ShellRoute builder ${state.uri}: ${sw.elapsedMilliseconds}ms');
+        print(
+          '[perf] ShellRoute builder ${state.uri}: ${sw.elapsedMilliseconds}ms',
+        );
         return Scaffold(
           body: SafeArea(
             child: MultiSplitViewTheme(
@@ -37,10 +41,13 @@ final appRouter = GoRouter(
                   color: Theme.of(context).dividerColor,
                 ),
               ),
-              child: MultiSplitView(
-                key: ValueKey(state.uri.toString()),
-                axis: Axis.horizontal,
-                initialAreas: areas,
+              child: PipelinePerf(
+                label: 'shell split ${state.uri}',
+                child: MultiSplitView(
+                  key: ValueKey(state.uri.toString()),
+                  axis: Axis.horizontal,
+                  initialAreas: areas,
+                ),
               ),
             ),
           ),
@@ -55,15 +62,12 @@ final appRouter = GoRouter(
             GoRoute(
               path: 'session/:sessionId',
               pageBuilder: (context, state) => NoTransitionPage(
-                child: ChatPage(
-                    sessionId: state.pathParameters['sessionId']),
+                child: ChatPage(sessionId: state.pathParameters['sessionId']),
               ),
             ),
           ],
         ),
-        GoRoute(
-            path: '/config',
-            redirect: (context, state) => '/config/team'),
+        GoRoute(path: '/config', redirect: (context, state) => '/config/team'),
         GoRoute(
           path: '/config/team',
           pageBuilder: (context, state) => const NoTransitionPage(

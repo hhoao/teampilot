@@ -11,6 +11,7 @@ import '../models/team_config.dart';
 import '../services/launch_command_builder.dart';
 import '../theme/app_theme.dart';
 import '../utils/app_keys.dart';
+import '../utils/perf.dart';
 import 'llm_config_workspace.dart';
 
 class ConfigWorkspace extends StatelessWidget {
@@ -44,37 +45,43 @@ class ConfigWorkspace extends StatelessWidget {
           _ConfigNavPanel(
             section: configCubit.state.section,
             onSelectSection: (s) {
+              FramePerf.mark('nav config ${s.name}');
               context.read<ConfigCubit>().selectSection(s);
               context.go('/config/${s.name}');
             },
             l10n: l10n,
           ),
           Expanded(
-            child: switch (configCubit.state.section) {
-              ConfigSection.team => Padding(
-                padding: const EdgeInsets.all(16),
-                child: TeamConfigWorkspace(team: team),
+            child: PipelinePerf(
+              label: 'config body ${configCubit.state.section.name}',
+              child: BuildPerf(
+                label: 'config ${configCubit.state.section.name}',
+                builder: (_) => switch (configCubit.state.section) {
+                  ConfigSection.team => Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: TeamConfigWorkspace(team: team),
+                  ),
+                  ConfigSection.members => Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: MemberConfigWorkspace(team: team),
+                  ),
+                  ConfigSection.layout => const Padding(
+                    padding: EdgeInsets.all(16),
+                    child: LayoutConfigWorkspace(),
+                  ),
+                  ConfigSection.llm => const Padding(
+                    padding: EdgeInsets.all(16),
+                    child: LlmConfigWorkspace(),
+                  ),
+                },
               ),
-              ConfigSection.members => Padding(
-                padding: const EdgeInsets.all(16),
-                child: MemberConfigWorkspace(team: team),
-              ),
-              ConfigSection.layout => const Padding(
-                padding: EdgeInsets.all(16),
-                child: LayoutConfigWorkspace(),
-              ),
-              ConfigSection.llm => const Padding(
-                padding: EdgeInsets.all(16),
-                child: LlmConfigWorkspace(),
-              ),
-            },
+            ),
           ),
         ],
       ),
     );
   }
 }
-
 
 class TeamConfigWorkspace extends StatefulWidget {
   const TeamConfigWorkspace({required this.team, super.key});
@@ -138,66 +145,73 @@ class _TeamConfigWorkspaceState extends State<TeamConfigWorkspace> {
         ),
         const SizedBox(height: 14),
         Expanded(
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Wrap(
-                  spacing: 14,
-                  runSpacing: 14,
+          child: ListView.builder(
+            itemCount: widget.team.members.length + 1,
+            itemBuilder: (context, index) {
+              if (index == 0) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    _SizedField(
-                      child: TextField(
-                        key: AppKeys.teamNameField,
-                        controller: _nameController,
-                        decoration: InputDecoration(
-                          labelText: l10n.teamName,
-                          prefixIcon: const Icon(Icons.badge_outlined),
+                    Wrap(
+                      spacing: 14,
+                      runSpacing: 14,
+                      children: [
+                        _SizedField(
+                          child: TextField(
+                            key: AppKeys.teamNameField,
+                            controller: _nameController,
+                            decoration: InputDecoration(
+                              labelText: l10n.teamName,
+                              prefixIcon: const Icon(Icons.badge_outlined),
+                            ),
+                          ),
                         ),
+                        _SizedField(
+                          child: TextField(
+                            key: AppKeys.workingDirectoryField,
+                            controller: _directoryController,
+                            decoration: InputDecoration(
+                              labelText: l10n.workingDirectory,
+                              prefixIcon: const Icon(
+                                Icons.folder_open_outlined,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                    TextField(
+                      key: AppKeys.extraArgsField,
+                      controller: _extraArgsController,
+                      minLines: 2,
+                      maxLines: 3,
+                      decoration: InputDecoration(
+                        labelText: l10n.teamExtraArgs,
+                        hintText: l10n.teamExtraArgsHint,
+                        prefixIcon: const Icon(Icons.terminal_outlined),
                       ),
                     ),
-                    _SizedField(
-                      child: TextField(
-                        key: AppKeys.workingDirectoryField,
-                        controller: _directoryController,
-                        decoration: InputDecoration(
-                          labelText: l10n.workingDirectory,
-                          prefixIcon: const Icon(Icons.folder_open_outlined),
-                        ),
+                    const SizedBox(height: 18),
+                    Text(
+                      l10n.memberLaunchOrder,
+                      style: TextStyle(
+                        fontWeight: FontWeight.w800,
+                        color: textBase,
                       ),
                     ),
+                    const SizedBox(height: 10),
                   ],
-                ),
-                const SizedBox(height: 14),
-                TextField(
-                  key: AppKeys.extraArgsField,
-                  controller: _extraArgsController,
-                  minLines: 2,
-                  maxLines: 3,
-                  decoration: InputDecoration(
-                    labelText: l10n.teamExtraArgs,
-                    hintText: l10n.teamExtraArgsHint,
-                    prefixIcon: const Icon(Icons.terminal_outlined),
-                  ),
-                ),
-                const SizedBox(height: 18),
-                Text(
-                  l10n.memberLaunchOrder,
-                  style: TextStyle(
-                    fontWeight: FontWeight.w800,
-                    color: textBase,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                for (var index = 0; index < widget.team.members.length; index++)
-                  _LaunchOrderRow(
-                    index: index,
-                    team: widget.team,
-                    member: widget.team.members[index],
-                    controller: context.read<TeamCubit>(),
-                  ),
-              ],
-            ),
+                );
+              }
+              final memberIndex = index - 1;
+              return _LaunchOrderRow(
+                index: memberIndex,
+                team: widget.team,
+                member: widget.team.members[memberIndex],
+                controller: context.read<TeamCubit>(),
+              );
+            },
           ),
         ),
         const SizedBox(height: 12),
@@ -471,7 +485,10 @@ class LayoutConfigWorkspace extends StatelessWidget {
           subtitle: l10n.layoutPageSubtitle,
         ),
         const SizedBox(height: 16),
-        _LayoutControls(preferences: layoutController.state.preferences, controller: layoutController),
+        _LayoutControls(
+          preferences: layoutController.state.preferences,
+          controller: layoutController,
+        ),
       ],
     );
   }
@@ -718,9 +735,11 @@ class _LaunchOrderRow extends StatelessWidget {
           const SizedBox(width: 8),
           Expanded(
             flex: 2,
-            child: SelectableText(
+            child: Text(
               LaunchCommandBuilder.preview(team, member),
               maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
             ),
           ),
         ],
@@ -851,7 +870,12 @@ class _ConfigNavPanel extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         mainAxisSize: MainAxisSize.min,
         children: [
-          _SidebarSectionTitle(title: l10n.configure, actionLabel: '', colors: colors, textBase: textBase),
+          _SidebarSectionTitle(
+            title: l10n.configure,
+            actionLabel: '',
+            colors: colors,
+            textBase: textBase,
+          ),
           _ConfigNavItem(
             key: AppKeys.configTeamSectionButton,
             title: l10n.teamSettings,
@@ -908,7 +932,9 @@ class _ConfigNavItem extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Material(
-        color: selected ? colors.selectedBackground : colors.unselectedBackground,
+        color: selected
+            ? colors.selectedBackground
+            : colors.unselectedBackground,
         borderRadius: BorderRadius.circular(8),
         child: InkWell(
           borderRadius: BorderRadius.circular(8),
@@ -918,7 +944,9 @@ class _ConfigNavItem extends StatelessWidget {
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(8),
               border: Border.all(
-                color: selected ? colors.selectedBorder : colors.unselectedBorder,
+                color: selected
+                    ? colors.selectedBorder
+                    : colors.unselectedBorder,
               ),
             ),
             child: Column(
@@ -928,7 +956,10 @@ class _ConfigNavItem extends StatelessWidget {
                   title,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(fontWeight: FontWeight.w700, color: textBase),
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    color: textBase,
+                  ),
                 ),
                 const SizedBox(height: 4),
                 Text(

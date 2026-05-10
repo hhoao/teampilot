@@ -8,12 +8,30 @@ import '../l10n/app_localizations.dart';
 import '../models/team_config.dart';
 import '../theme/app_theme.dart';
 import '../utils/app_keys.dart';
+import '../utils/perf.dart';
 
-class ContextSidebar extends StatelessWidget {
+class ContextSidebar extends StatefulWidget {
   const ContextSidebar({this.onNewSession, this.width = 260, super.key});
 
   final VoidCallback? onNewSession;
   final double width;
+
+  @override
+  State<ContextSidebar> createState() => _ContextSidebarState();
+}
+
+class _ContextSidebarState extends State<ContextSidebar> {
+  var _showSessions = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        setState(() => _showSessions = true);
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -23,55 +41,75 @@ class ContextSidebar extends StatelessWidget {
     final chatCubit = context.watch<ChatCubit>();
     final selected = teamCubit.state.selectedTeam;
 
-    return Container(
-      key: AppKeys.contextSidebar,
-      width: width,
-      color: colors.sidebarBackground,
-      padding: const EdgeInsets.all(13),
-      child: selected == null
-          ? const Center(child: CircularProgressIndicator())
-          : Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _TeamSelector(
+    return PipelinePerf(
+      label: 'context sidebar',
+      child: Container(
+        key: AppKeys.contextSidebar,
+        width: widget.width,
+        color: colors.sidebarBackground,
+        padding: const EdgeInsets.all(13),
+        child: selected == null
+            ? const Center(child: CircularProgressIndicator())
+            : Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _TeamSelector(
                     teams: teamCubit.state.teams,
                     selected: selected,
-                    onSelect: teamCubit.selectTeam),
-                const SizedBox(height: 14),
-                _SidebarSectionTitle(
-                  title: l10n.teamSessions,
-                  actionLabel: '+',
-                  onAction: onNewSession,
-                ),
-                Expanded(
-                  child: ListView(
-                    children: [
-                      for (final session in chatCubit.state.sessions)
-                        _SidebarTile(
-                          key: AppKeys.sessionTile(session.sessionId),
-                          title: session.display.isNotEmpty
-                              ? session.display
-                              : session.kind,
-                          subtitle: session.cwd,
-                          selected: chatCubit.state.activeSessionId ==
-                              session.sessionId,
-                          onTap: () {
-                            context.read<ChatCubit>().openSessionTab(session);
-                            context.go('/chat/session/${session.sessionId}');
-                          },
-                        ),
-                    ],
+                    onSelect: teamCubit.selectTeam,
                   ),
-                ),
-                const Divider(height: 1),
-                const SizedBox(height: 8),
-                _SettingsTile(onTap: () {
-                  final sw = Stopwatch()..start();
-                  context.go('/config/team');
-                  print('[perf] context.go /config/team: ${sw.elapsedMilliseconds}ms');
-                }),
-              ],
-            ),
+                  const SizedBox(height: 14),
+                  _SidebarSectionTitle(
+                    title: l10n.teamSessions,
+                    actionLabel: '+',
+                    onAction: widget.onNewSession,
+                  ),
+                  Expanded(
+                    child: _showSessions
+                        ? ListView.builder(
+                            itemCount: chatCubit.state.sessions.length,
+                            itemBuilder: (context, index) {
+                              final session = chatCubit.state.sessions[index];
+                              return _SidebarTile(
+                                key: AppKeys.sessionTile(session.sessionId),
+                                title: session.display.isNotEmpty
+                                    ? session.display
+                                    : session.kind,
+                                subtitle: session.cwd,
+                                selected:
+                                    chatCubit.state.activeSessionId ==
+                                    session.sessionId,
+                                onTap: () {
+                                  FramePerf.mark(
+                                    'nav session ${session.sessionId}',
+                                  );
+                                  context.read<ChatCubit>().openSessionTab(
+                                    session,
+                                  );
+                                  context.go(
+                                    '/chat/session/${session.sessionId}',
+                                  );
+                                },
+                              );
+                            },
+                          )
+                        : const SizedBox.shrink(),
+                  ),
+                  const Divider(height: 1),
+                  const SizedBox(height: 8),
+                  _SettingsTile(
+                    onTap: () {
+                      final sw = Stopwatch()..start();
+                      FramePerf.mark('nav settings team');
+                      context.go('/config/team');
+                      print(
+                        '[perf] context.go /config/team: ${sw.elapsedMilliseconds}ms',
+                      );
+                    },
+                  ),
+                ],
+              ),
+      ),
     );
   }
 }
@@ -98,9 +136,10 @@ class _SettingsTile extends StatelessWidget {
             children: [
               Icon(Icons.tune_outlined, size: 18, color: textBase),
               const SizedBox(width: 10),
-              Text('Settings',
-                  style:
-                      TextStyle(fontWeight: FontWeight.w700, color: textBase)),
+              Text(
+                'Settings',
+                style: TextStyle(fontWeight: FontWeight.w700, color: textBase),
+              ),
             ],
           ),
         ),
@@ -110,8 +149,11 @@ class _SettingsTile extends StatelessWidget {
 }
 
 class _TeamSelector extends StatelessWidget {
-  const _TeamSelector(
-      {required this.teams, required this.selected, required this.onSelect});
+  const _TeamSelector({
+    required this.teams,
+    required this.selected,
+    required this.onSelect,
+  });
 
   final List<TeamConfig> teams;
   final TeamConfig selected;
@@ -188,8 +230,10 @@ class _SidebarSectionTitle extends StatelessWidget {
           if (actionLabel.isNotEmpty)
             GestureDetector(
               onTap: onAction,
-              child:
-                  Text(actionLabel, style: TextStyle(color: colors.linkText)),
+              child: Text(
+                actionLabel,
+                style: TextStyle(color: colors.linkText),
+              ),
             ),
         ],
       ),
@@ -244,7 +288,9 @@ class _SidebarTile extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                      fontWeight: FontWeight.w700, color: textBase),
+                    fontWeight: FontWeight.w700,
+                    color: textBase,
+                  ),
                 ),
                 const SizedBox(height: 4),
                 Text(

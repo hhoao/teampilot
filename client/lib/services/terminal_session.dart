@@ -9,12 +9,12 @@ import '../models/team_config.dart';
 
 class TerminalSession {
   TerminalSession()
-      : terminal = Terminal(
-          maxLines: 10000,
-          platform: defaultTargetPlatform == TargetPlatform.macOS
-              ? TerminalTargetPlatform.macos
-              : TerminalTargetPlatform.linux,
-        );
+    : terminal = Terminal(
+        maxLines: 10000,
+        platform: defaultTargetPlatform == TargetPlatform.macOS
+            ? TerminalTargetPlatform.macos
+            : TerminalTargetPlatform.linux,
+      );
 
   final Terminal terminal;
   Pty? _pty;
@@ -34,7 +34,7 @@ class TerminalSession {
       );
 
       _pty!.output.listen((data) {
-        terminal.write(utf8.decode(data, allowMalformed: true));
+        _writeOutput(data, label: 'resume');
       });
 
       terminal.onOutput = (String data) {
@@ -79,7 +79,7 @@ class TerminalSession {
       );
 
       _pty!.output.listen((data) {
-        terminal.write(utf8.decode(data, allowMalformed: true));
+        _writeOutput(data, label: 'connect');
       });
 
       terminal.onOutput = (String data) {
@@ -116,6 +116,24 @@ class TerminalSession {
 
   void writeln(String text) {
     write('$text\r');
+  }
+
+  void _writeOutput(Uint8List data, {required String label}) {
+    final sw = Stopwatch()..start();
+    final text = utf8.decode(data, allowMalformed: true);
+    final decodeMs = sw.elapsedMilliseconds;
+    terminal.write(text);
+    sw.stop();
+    if (sw.elapsedMilliseconds > 16 || data.length > 8192) {
+      // ignore: avoid_print
+      print(
+        '[perf] terminal.write $label '
+        'bytes=${data.length} '
+        'chars=${text.length} '
+        'decode=${decodeMs}ms '
+        'total=${sw.elapsedMilliseconds}ms',
+      );
+    }
   }
 
   void disconnect() {

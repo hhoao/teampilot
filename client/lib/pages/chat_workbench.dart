@@ -7,6 +7,7 @@ import '../cubits/team_cubit.dart';
 import '../services/terminal_session.dart';
 import '../theme/app_theme.dart';
 import '../utils/app_keys.dart';
+import '../utils/perf.dart';
 
 class ChatWorkbench extends StatefulWidget {
   const ChatWorkbench({this.sessionId, super.key});
@@ -89,17 +90,29 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
             child: Container(
               color: const Color(0xFF0A0C10),
               child: session.isRunning
-                  ? TerminalView(
-                      session.terminal,
-                      backgroundOpacity: 0.92,
-                      padding: const EdgeInsets.all(6),
-                      hardwareKeyboardOnly: true,
-                      autofocus: true,
+                  ? PipelinePerf(
+                      label: 'terminal view',
+                      child: BuildPerf(
+                        label: 'terminal view',
+                        builder: (_) => TerminalView(
+                          session.terminal,
+                          backgroundOpacity: 0.92,
+                          padding: const EdgeInsets.all(6),
+                          textStyle: const TerminalStyle(
+                            fontFamily: 'monospace',
+                            fontFamilyFallback: ['monospace'],
+                          ),
+                          hardwareKeyboardOnly: true,
+                          autofocus: true,
+                        ),
+                      ),
                     )
-                  : _TerminalPlaceholder(onConnect: () {
-                      chatCubit.connectSession(team);
-                      setState(() {});
-                    }),
+                  : _TerminalPlaceholder(
+                      onConnect: () {
+                        chatCubit.connectSession(team);
+                        setState(() {});
+                      },
+                    ),
             ),
           ),
         ],
@@ -147,15 +160,17 @@ class _TerminalToolbar extends StatelessWidget {
           Text(
             session.isRunning ? 'flashskyai' : 'disconnected',
             style: TextStyle(
-                fontSize: 11,
-                color: Colors.white.withValues(alpha: 0.68)),
+              fontSize: 11,
+              color: Colors.white.withValues(alpha: 0.68),
+            ),
           ),
           const SizedBox(width: 12),
           Text(
             '→ $memberName',
             style: TextStyle(
-                fontSize: 11,
-                color: Colors.white.withValues(alpha: 0.4)),
+              fontSize: 11,
+              color: Colors.white.withValues(alpha: 0.4),
+            ),
           ),
           const Spacer(),
           if (session.isRunning) ...[
@@ -166,8 +181,7 @@ class _TerminalToolbar extends StatelessWidget {
                 onPressed: onDisconnect,
                 icon: const Icon(Icons.link_off, size: 14),
                 padding: EdgeInsets.zero,
-                constraints:
-                    const BoxConstraints(minWidth: 28, minHeight: 22),
+                constraints: const BoxConstraints(minWidth: 28, minHeight: 22),
               ),
             ),
             const SizedBox(width: 4),
@@ -178,8 +192,7 @@ class _TerminalToolbar extends StatelessWidget {
                 onPressed: onRestart,
                 icon: const Icon(Icons.refresh, size: 14),
                 padding: EdgeInsets.zero,
-                constraints:
-                    const BoxConstraints(minWidth: 28, minHeight: 22),
+                constraints: const BoxConstraints(minWidth: 28, minHeight: 22),
               ),
             ),
           ] else
@@ -188,8 +201,7 @@ class _TerminalToolbar extends StatelessWidget {
               child: TextButton.icon(
                 onPressed: onConnect,
                 icon: const Icon(Icons.play_arrow, size: 14),
-                label:
-                    const Text('Connect', style: TextStyle(fontSize: 11)),
+                label: const Text('Connect', style: TextStyle(fontSize: 11)),
                 style: TextButton.styleFrom(
                   padding: const EdgeInsets.symmetric(horizontal: 8),
                   minimumSize: const Size(0, 22),
@@ -215,19 +227,26 @@ class _TerminalPlaceholder extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.terminal,
-              size: 48, color: textBase.withValues(alpha: 0.24)),
+          Icon(
+            Icons.terminal,
+            size: 48,
+            color: textBase.withValues(alpha: 0.24),
+          ),
           const SizedBox(height: 12),
           Text(
             'Terminal not connected',
             style: TextStyle(
-                color: textBase.withValues(alpha: 0.54), fontSize: 14),
+              color: textBase.withValues(alpha: 0.54),
+              fontSize: 14,
+            ),
           ),
           const SizedBox(height: 6),
           Text(
             'Connect to start a flashskyai session',
             style: TextStyle(
-                color: textBase.withValues(alpha: 0.34), fontSize: 12),
+              color: textBase.withValues(alpha: 0.34),
+              fontSize: 12,
+            ),
           ),
           const SizedBox(height: 16),
           FilledButton.icon(

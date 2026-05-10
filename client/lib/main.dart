@@ -19,9 +19,12 @@ import 'repositories/session_repository.dart';
 import 'repositories/team_repository.dart';
 import 'router/app_router.dart';
 import 'theme/app_theme.dart';
+import 'utils/perf.dart';
+import 'widgets/ui_warmup.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  FramePerf.install();
 
   await windowManager.ensureInitialized();
   final windowRect = await windowManager.getBounds();
@@ -44,15 +47,18 @@ void main() async {
   final teamCubit = TeamCubit(repository: TeamRepository(preferences));
   final chatCubit = ChatCubit();
   final configCubit = ConfigCubit();
-  final configPath = p.absolute(p.join(
-    Directory.current.path,
-    '..',
-    'flashshkyai',
-    'llm',
-    'llm_config.json',
-  ));
+  final configPath = p.absolute(
+    p.join(
+      Directory.current.path,
+      '..',
+      'flashshkyai',
+      'llm',
+      'llm_config.json',
+    ),
+  );
   final llmConfigCubit = LlmConfigCubit(
-      repository: LlmConfigRepository(File(configPath)));
+    repository: LlmConfigRepository(File(configPath)),
+  );
   final layoutCubit = LayoutCubit(repository: LayoutRepository(preferences));
 
   await teamCubit.load();
@@ -84,10 +90,10 @@ class FlashskyAiClientApp extends StatelessWidget {
     final savedLocale = prefs.locale;
 
     ThemeMode themeModeFromPrefs(String mode) => switch (mode) {
-          'light' => ThemeMode.light,
-          'dark' => ThemeMode.dark,
-          _ => ThemeMode.system,
-        };
+      'light' => ThemeMode.light,
+      'dark' => ThemeMode.dark,
+      _ => ThemeMode.system,
+    };
 
     return MaterialApp.router(
       debugShowCheckedModeBanner: false,
@@ -103,6 +109,8 @@ class FlashskyAiClientApp extends StatelessWidget {
       ],
       supportedLocales: const [Locale('en'), Locale('zh')],
       locale: savedLocale.isNotEmpty ? Locale(savedLocale) : null,
+      builder: (context, child) =>
+          UiWarmup(child: child ?? const SizedBox.shrink()),
       localeResolutionCallback: (locale, supportedLocales) {
         if (savedLocale.isNotEmpty) return Locale(savedLocale);
         for (final supportedLocale in supportedLocales) {
