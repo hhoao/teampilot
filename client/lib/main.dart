@@ -1,25 +1,28 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'app_keys.dart';
-import 'chat_controller.dart';
-import 'config_controller.dart';
-import 'layout_controller.dart';
-import 'layout_preferences.dart';
-import 'layout_repository.dart';
-import 'llm_config_controller.dart';
-import 'llm_config_repository.dart';
-import 'team_config.dart';
-import 'team_controller.dart';
-import 'team_repository.dart';
+import 'controllers/chat_controller.dart';
+import 'controllers/config_controller.dart';
+import 'controllers/layout_controller.dart';
+import 'controllers/llm_config_controller.dart';
+import 'controllers/team_controller.dart';
+import 'l10n/app_localizations.dart';
+import 'models/layout_preferences.dart';
+import 'models/team_config.dart';
+import 'pages/chat_workbench.dart';
+import 'pages/config_workspace.dart';
+import 'pages/workspace_shell.dart';
+import 'repositories/layout_repository.dart';
+import 'repositories/llm_config_repository.dart';
+import 'repositories/team_repository.dart';
+import 'theme/app_theme.dart';
+import 'utils/app_keys.dart';
 import 'widgets/app_rail.dart';
-import 'widgets/chat_workbench.dart';
-import 'widgets/config_workspace.dart';
 import 'widgets/context_sidebar.dart';
 import 'widgets/right_tools_panel.dart';
-import 'widgets/workspace_shell.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -52,8 +55,7 @@ class FlashskyAiClientApp extends StatelessWidget {
     this.layoutController,
     super.key,
   }) : chatController =
-           chatController ??
-           ChatController(clipboard: const SystemClipboardWriter()),
+           chatController ?? ChatController(),
        configController = configController ?? ConfigController(),
        llmConfigController = llmConfigController ?? LlmConfigController();
 
@@ -68,33 +70,27 @@ class FlashskyAiClientApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'FlashskyAI Teams',
-      theme: ThemeData(
-        brightness: Brightness.dark,
-        colorScheme: const ColorScheme.dark(
-          primary: Color(0xFF5B8DEF),
-          secondary: Color(0xFF38CFA2),
-          surface: Color(0xFF181614),
-          error: Color(0xFFFF7A7A),
-        ),
-        scaffoldBackgroundColor: const Color(0xFF090807),
-        inputDecorationTheme: InputDecorationTheme(
-          filled: true,
-          fillColor: const Color(0xFF12100E),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-            borderSide: const BorderSide(color: Color(0xFF34302B)),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-            borderSide: const BorderSide(color: Color(0xFF34302B)),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-            borderSide: const BorderSide(color: Color(0xFF5B8DEF)),
-          ),
-        ),
-        useMaterial3: true,
-      ),
+      theme: buildLightTheme(),
+      darkTheme: buildDarkTheme(),
+      themeMode: ThemeMode.system,
+      localizationsDelegates: const [
+        AppLocalizations.delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: const [
+        Locale('en'),
+        Locale('zh'),
+      ],
+      localeResolutionCallback: (locale, supportedLocales) {
+        for (final supportedLocale in supportedLocales) {
+          if (supportedLocale.languageCode == locale?.languageCode) {
+            return supportedLocale;
+          }
+        }
+        return const Locale('en');
+      },
       home: WorkbenchPage(
         controller: controller,
         chatController: chatController,
@@ -257,13 +253,12 @@ class _WorkbenchPageState extends State<WorkbenchPage> {
     final lead = team.members.where((member) => member.name == 'team-lead');
     if (lead.isEmpty) {
       chatController.addSystemMessage(
-        team.id,
         'FlashskyAI requires a member named team-lead before opening the team lead.',
       );
       return;
     }
     await controller.launchMember(lead.first.id);
-    chatController.addSystemMessage(team.id, controller.statusMessage);
+    chatController.addSystemMessage(controller.statusMessage);
   }
 
   Future<void> _openMember(String memberId) async {
@@ -272,7 +267,7 @@ class _WorkbenchPageState extends State<WorkbenchPage> {
       return;
     }
     await controller.launchMember(memberId);
-    chatController.addSystemMessage(team.id, controller.statusMessage);
+    chatController.addSystemMessage(controller.statusMessage);
   }
 
   Future<void> _openTeam() async {
@@ -281,7 +276,7 @@ class _WorkbenchPageState extends State<WorkbenchPage> {
       return;
     }
     await controller.launchSelectedTeam();
-    chatController.addSystemMessage(team.id, controller.statusMessage);
+    chatController.addSystemMessage(controller.statusMessage);
   }
 
   String _configSubtitle(TeamConfig team) {

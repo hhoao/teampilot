@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
 
-import '../app_keys.dart';
-import '../config_controller.dart';
-import '../launch_command_builder.dart';
-import '../layout_controller.dart';
-import '../layout_preferences.dart';
-import '../llm_config_controller.dart';
-import '../team_config.dart';
-import '../team_controller.dart';
+import '../utils/app_keys.dart';
+import '../controllers/config_controller.dart';
+import '../l10n/app_localizations.dart';
+import '../services/launch_command_builder.dart';
+import '../controllers/layout_controller.dart';
+import '../models/layout_preferences.dart';
+import '../controllers/llm_config_controller.dart';
+import '../models/team_config.dart';
+import '../controllers/team_controller.dart';
+import '../theme/app_theme.dart';
 import 'llm_config_workspace.dart';
 
 class ConfigWorkspace extends StatelessWidget {
@@ -26,13 +28,14 @@ class ConfigWorkspace extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
     final team = teamController.selectedTeam;
     if (team == null) {
       return const Center(child: CircularProgressIndicator());
     }
     return Container(
       key: AppKeys.configWorkspace,
-      color: const Color(0xFF090D13),
+      color: colors.workspaceBackground,
       padding: const EdgeInsets.all(16),
       child: switch (configController.section) {
         ConfigSection.team => TeamConfigWorkspace(
@@ -110,13 +113,16 @@ class _TeamConfigWorkspaceState extends State<TeamConfigWorkspace> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textBase = isDark ? Colors.white : const Color(0xFF111827);
     return Column(
       key: AppKeys.teamConfigWorkspace,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const _WorkspaceHeading(
-          title: 'Team Settings',
-          subtitle: 'Edit team identity, working directory, and launch order.',
+        _WorkspaceHeading(
+          title: l10n.teamSettings,
+          subtitle: l10n.editTeamSubtitle,
         ),
         const SizedBox(height: 14),
         Expanded(
@@ -132,9 +138,9 @@ class _TeamConfigWorkspaceState extends State<TeamConfigWorkspace> {
                       child: TextField(
                         key: AppKeys.teamNameField,
                         controller: _nameController,
-                        decoration: const InputDecoration(
-                          labelText: 'Team name',
-                          prefixIcon: Icon(Icons.badge_outlined),
+                        decoration: InputDecoration(
+                          labelText: l10n.teamName,
+                          prefixIcon: const Icon(Icons.badge_outlined),
                         ),
                       ),
                     ),
@@ -142,9 +148,9 @@ class _TeamConfigWorkspaceState extends State<TeamConfigWorkspace> {
                       child: TextField(
                         key: AppKeys.workingDirectoryField,
                         controller: _directoryController,
-                        decoration: const InputDecoration(
-                          labelText: 'Working directory',
-                          prefixIcon: Icon(Icons.folder_open_outlined),
+                        decoration: InputDecoration(
+                          labelText: l10n.workingDirectory,
+                          prefixIcon: const Icon(Icons.folder_open_outlined),
                         ),
                       ),
                     ),
@@ -156,16 +162,19 @@ class _TeamConfigWorkspaceState extends State<TeamConfigWorkspace> {
                   controller: _extraArgsController,
                   minLines: 2,
                   maxLines: 3,
-                  decoration: const InputDecoration(
-                    labelText: 'Team extra CLI arguments',
-                    hintText: '--permission-mode acceptEdits',
-                    prefixIcon: Icon(Icons.terminal_outlined),
+                  decoration: InputDecoration(
+                    labelText: l10n.teamExtraArgs,
+                    hintText: l10n.teamExtraArgsHint,
+                    prefixIcon: const Icon(Icons.terminal_outlined),
                   ),
                 ),
                 const SizedBox(height: 18),
-                const Text(
-                  'Member launch order',
-                  style: TextStyle(fontWeight: FontWeight.w800),
+                Text(
+                  l10n.memberLaunchOrder,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    color: textBase,
+                  ),
                 ),
                 const SizedBox(height: 10),
                 for (var index = 0; index < widget.team.members.length; index++)
@@ -188,11 +197,11 @@ class _TeamConfigWorkspaceState extends State<TeamConfigWorkspace> {
               key: AppKeys.saveButton,
               onPressed: _save,
               icon: const Icon(Icons.save_outlined),
-              label: const Text('Save'),
+              label: Text(l10n.save),
             ),
             Text(
               widget.controller.statusMessage,
-              style: TextStyle(color: Colors.white.withValues(alpha: 0.66)),
+              style: TextStyle(color: textBase.withValues(alpha: 0.66)),
             ),
           ],
         ),
@@ -287,6 +296,9 @@ class _MemberConfigWorkspaceState extends State<MemberConfigWorkspace> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textBase = isDark ? Colors.white : const Color(0xFF111827);
     final member = _member;
     final draft = member.copyWith(
       name: _nameController.text,
@@ -308,7 +320,7 @@ class _MemberConfigWorkspaceState extends State<MemberConfigWorkspace> {
       children: [
         _WorkspaceHeading(
           title: member.name,
-          subtitle: 'Edit provider, model, agent, and command arguments.',
+          subtitle: l10n.editMemberSubtitle,
         ),
         const SizedBox(height: 14),
         Expanded(
@@ -324,9 +336,9 @@ class _MemberConfigWorkspaceState extends State<MemberConfigWorkspace> {
                       child: TextField(
                         key: AppKeys.memberNameField(member.id),
                         controller: _nameController,
-                        decoration: const InputDecoration(
-                          labelText: 'Member name',
-                          prefixIcon: Icon(Icons.person_outline),
+                        decoration: InputDecoration(
+                          labelText: l10n.memberName,
+                          prefixIcon: const Icon(Icons.person_outline),
                         ),
                         onChanged: (_) => setState(() {}),
                       ),
@@ -335,9 +347,9 @@ class _MemberConfigWorkspaceState extends State<MemberConfigWorkspace> {
                       child: TextField(
                         key: AppKeys.memberProviderField(member.id),
                         controller: _providerController,
-                        decoration: const InputDecoration(
-                          labelText: 'Provider',
-                          prefixIcon: Icon(Icons.hub_outlined),
+                        decoration: InputDecoration(
+                          labelText: l10n.provider,
+                          prefixIcon: const Icon(Icons.hub_outlined),
                         ),
                         onChanged: (_) => setState(() {}),
                       ),
@@ -346,9 +358,9 @@ class _MemberConfigWorkspaceState extends State<MemberConfigWorkspace> {
                       child: TextField(
                         key: AppKeys.memberModelField(member.id),
                         controller: _modelController,
-                        decoration: const InputDecoration(
-                          labelText: 'Model',
-                          prefixIcon: Icon(Icons.memory_outlined),
+                        decoration: InputDecoration(
+                          labelText: l10n.model,
+                          prefixIcon: const Icon(Icons.memory_outlined),
                         ),
                         onChanged: (_) => setState(() {}),
                       ),
@@ -357,9 +369,9 @@ class _MemberConfigWorkspaceState extends State<MemberConfigWorkspace> {
                       child: TextField(
                         key: AppKeys.memberAgentField(member.id),
                         controller: _agentController,
-                        decoration: const InputDecoration(
-                          labelText: 'Agent',
-                          prefixIcon: Icon(Icons.badge_outlined),
+                        decoration: InputDecoration(
+                          labelText: l10n.agent,
+                          prefixIcon: const Icon(Icons.badge_outlined),
                         ),
                         onChanged: (_) => setState(() {}),
                       ),
@@ -372,15 +384,15 @@ class _MemberConfigWorkspaceState extends State<MemberConfigWorkspace> {
                   controller: _extraArgsController,
                   minLines: 2,
                   maxLines: 3,
-                  decoration: const InputDecoration(
-                    labelText: 'Member extra CLI arguments',
-                    prefixIcon: Icon(Icons.tune_outlined),
+                  decoration: InputDecoration(
+                    labelText: l10n.memberExtraArgs,
+                    prefixIcon: const Icon(Icons.tune_outlined),
                   ),
                   onChanged: (_) => setState(() {}),
                 ),
                 if (member.name == 'team-lead') ...[
                   const SizedBox(height: 12),
-                  const _TeamLeadNotice(),
+                  _TeamLeadNotice(),
                 ],
                 if (_validationMessage.isNotEmpty) ...[
                   const SizedBox(height: 12),
@@ -395,7 +407,7 @@ class _MemberConfigWorkspaceState extends State<MemberConfigWorkspace> {
                   key: AppKeys.memberConfigCommandPreview,
                   LaunchCommandBuilder.preview(previewTeam, draft),
                   style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.68),
+                    color: textBase.withValues(alpha: 0.68),
                     fontFamily: 'monospace',
                     fontSize: 12,
                   ),
@@ -409,7 +421,7 @@ class _MemberConfigWorkspaceState extends State<MemberConfigWorkspace> {
           key: AppKeys.memberConfigSaveButton,
           onPressed: () => _save(member),
           icon: const Icon(Icons.save_outlined),
-          label: const Text('Save Member'),
+          label: Text(l10n.saveMember),
         ),
       ],
     );
@@ -419,8 +431,7 @@ class _MemberConfigWorkspaceState extends State<MemberConfigWorkspace> {
     if (member.name == 'team-lead' &&
         _nameController.text.trim() != 'team-lead') {
       setState(() {
-        _validationMessage =
-            'FlashskyAI team delegation expects this member to be named exactly team-lead.';
+        _validationMessage = context.l10n.teamLeadNameRequired;
       });
       return;
     }
@@ -447,16 +458,16 @@ class LayoutConfigWorkspace extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final preferences = layoutController.preferences;
+    final l10n = context.l10n;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const _WorkspaceHeading(
-          title: 'Layout',
-          subtitle: 'Structure controls are global and apply across teams.',
+        _WorkspaceHeading(
+          title: l10n.layout,
+          subtitle: l10n.layoutPageSubtitle,
         ),
         const SizedBox(height: 16),
-        _LayoutControls(preferences: preferences, controller: layoutController),
+        _LayoutControls(preferences: layoutController.preferences, controller: layoutController),
       ],
     );
   }
@@ -470,24 +481,25 @@ class _LayoutControls extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return Expanded(
       child: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             _Section(
-              title: 'Tool Placement',
+              title: l10n.toolPlacement,
               child: SegmentedButton<ToolPanelPlacement>(
-                segments: const [
+                segments: [
                   ButtonSegment(
                     value: ToolPanelPlacement.right,
-                    label: Text('Right'),
-                    icon: Icon(Icons.vertical_split_outlined),
+                    label: Text(l10n.right),
+                    icon: const Icon(Icons.vertical_split_outlined),
                   ),
                   ButtonSegment(
                     value: ToolPanelPlacement.bottom,
-                    label: Text('Bottom'),
-                    icon: Icon(Icons.splitscreen_outlined),
+                    label: Text(l10n.bottom),
+                    icon: const Icon(Icons.splitscreen_outlined),
                   ),
                 ],
                 selected: {preferences.toolPlacement},
@@ -503,30 +515,30 @@ class _LayoutControls extends StatelessWidget {
                   key: AppKeys.toolPlacementRightButton,
                   onPressed: () =>
                       controller.setToolPlacement(ToolPanelPlacement.right),
-                  child: const Text('Right Tools'),
+                  child: Text(l10n.rightTools),
                 ),
                 OutlinedButton(
                   key: AppKeys.toolPlacementBottomButton,
                   onPressed: () =>
                       controller.setToolPlacement(ToolPanelPlacement.bottom),
-                  child: const Text('Bottom Tray'),
+                  child: Text(l10n.bottomTray),
                 ),
               ],
             ),
             const SizedBox(height: 14),
             _Section(
-              title: 'Members and File Tree',
+              title: l10n.membersAndFileTree,
               child: SegmentedButton<ToolsArrangement>(
-                segments: const [
+                segments: [
                   ButtonSegment(
                     value: ToolsArrangement.stacked,
-                    label: Text('Stacked'),
-                    icon: Icon(Icons.view_agenda_outlined),
+                    label: Text(l10n.stacked),
+                    icon: const Icon(Icons.view_agenda_outlined),
                   ),
                   ButtonSegment(
                     value: ToolsArrangement.tabs,
-                    label: Text('Tabs'),
-                    icon: Icon(Icons.tab_outlined),
+                    label: Text(l10n.tabs),
+                    icon: const Icon(Icons.tab_outlined),
                   ),
                 ],
                 selected: {preferences.toolsArrangement},
@@ -542,43 +554,43 @@ class _LayoutControls extends StatelessWidget {
                   key: AppKeys.toolsArrangementStackedButton,
                   onPressed: () =>
                       controller.setToolsArrangement(ToolsArrangement.stacked),
-                  child: const Text('Stacked Tools'),
+                  child: Text(l10n.stackedTools),
                 ),
                 OutlinedButton(
                   key: AppKeys.toolsArrangementTabsButton,
                   onPressed: () =>
                       controller.setToolsArrangement(ToolsArrangement.tabs),
-                  child: const Text('Tabbed Tools'),
+                  child: Text(l10n.tabbedTools),
                 ),
               ],
             ),
             const SizedBox(height: 14),
             _Section(
-              title: 'Region Visibility',
+              title: l10n.regionVisibility,
               child: Column(
                 children: [
                   SwitchListTile(
                     key: AppKeys.appRailVisibilitySwitch,
-                    title: const Text('App rail'),
+                    title: Text(l10n.appRail),
                     value: preferences.appRailVisible,
                     onChanged: (value) => _setVisibility(appRailVisible: value),
                   ),
                   SwitchListTile(
                     key: AppKeys.contextSidebarVisibilitySwitch,
-                    title: const Text('Team sessions'),
+                    title: Text(l10n.teamSessions),
                     value: preferences.contextSidebarVisible,
                     onChanged: (value) =>
                         _setVisibility(contextSidebarVisible: value),
                   ),
                   SwitchListTile(
                     key: AppKeys.membersVisibilitySwitch,
-                    title: const Text('Members'),
+                    title: Text(l10n.members),
                     value: preferences.membersVisible,
                     onChanged: (value) => _setVisibility(membersVisible: value),
                   ),
                   SwitchListTile(
                     key: AppKeys.fileTreeVisibilitySwitch,
-                    title: const Text('File Tree'),
+                    title: Text(l10n.fileTree),
                     value: preferences.fileTreeVisible,
                     onChanged: (value) =>
                         _setVisibility(fileTreeVisible: value),
@@ -623,13 +635,15 @@ class _LaunchOrderRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
+    final l10n = context.l10n;
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: const Color(0xFF0F172A),
+        color: colors.cardBackground,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: const Color(0x2B94A3B8)),
+        border: Border.all(color: colors.border),
       ),
       child: Row(
         children: [
@@ -637,7 +651,7 @@ class _LaunchOrderRow extends StatelessWidget {
           Expanded(child: Text(member.name)),
           IconButton(
             key: AppKeys.memberOpenButton(member.id),
-            tooltip: 'Open member',
+            tooltip: l10n.openMember,
             onPressed: () => controller.launchMember(member.id),
             icon: const Icon(Icons.open_in_new),
           ),
@@ -660,15 +674,18 @@ class _TeamLeadNotice extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
+    final l10n = context.l10n;
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: const Color(0x1FFFCC80),
+        color: colors.warningBackground,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: const Color(0x66FFCC80)),
+        border: Border.all(color: colors.warningBorder),
       ),
-      child: const Text(
-        'FlashskyAI team delegation expects this member to be named exactly team-lead.',
+      child: Text(
+        l10n.teamLeadNotice,
+        style: TextStyle(color: colors.warningText),
       ),
     );
   }
@@ -682,17 +699,23 @@ class _WorkspaceHeading extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textBase = isDark ? Colors.white : const Color(0xFF111827);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text(
           title,
-          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w800,
+            color: textBase,
+          ),
         ),
         const SizedBox(height: 6),
         Text(
           subtitle,
-          style: TextStyle(color: Colors.white.withValues(alpha: 0.64)),
+          style: TextStyle(color: textBase.withValues(alpha: 0.64)),
         ),
       ],
     );
@@ -707,18 +730,24 @@ class _Section extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textBase = isDark ? Colors.white : const Color(0xFF111827);
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0xFF0F172A),
+        color: colors.cardBackground,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: const Color(0x2B94A3B8)),
+        border: Border.all(color: colors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
+          Text(
+            title,
+            style: TextStyle(fontWeight: FontWeight.w800, color: textBase),
+          ),
           const SizedBox(height: 10),
           child,
         ],

@@ -1,26 +1,17 @@
 import 'dart:ui';
 
-import 'package:flashskyai_client/app_keys.dart';
-import 'package:flashskyai_client/chat_controller.dart';
-import 'package:flashskyai_client/layout_controller.dart';
-import 'package:flashskyai_client/layout_repository.dart';
-import 'package:flashskyai_client/llm_config.dart';
-import 'package:flashskyai_client/llm_config_controller.dart';
+import 'package:flashskyai_client/utils/app_keys.dart';
+import 'package:flashskyai_client/controllers/chat_controller.dart';
+import 'package:flashskyai_client/controllers/layout_controller.dart';
+import 'package:flashskyai_client/repositories/layout_repository.dart';
+import 'package:flashskyai_client/models/llm_config.dart';
+import 'package:flashskyai_client/controllers/llm_config_controller.dart';
 import 'package:flashskyai_client/main.dart';
-import 'package:flashskyai_client/team_config.dart';
-import 'package:flashskyai_client/team_controller.dart';
-import 'package:flashskyai_client/team_repository.dart';
+import 'package:flashskyai_client/models/team_config.dart';
+import 'package:flashskyai_client/controllers/team_controller.dart';
+import 'package:flashskyai_client/repositories/team_repository.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
-class RecordingClipboardWriter implements ClipboardWriter {
-  final copied = <String>[];
-
-  @override
-  Future<void> setText(String text) async {
-    copied.add(text);
-  }
-}
 
 void main() {
   setUp(() {
@@ -53,7 +44,7 @@ void main() {
   }) {
     return FlashskyAiClientApp(
       controller: controller,
-      chatController: ChatController(clipboard: RecordingClipboardWriter()),
+      chatController: ChatController(),
       layoutController: layoutController,
       llmConfigController: llmConfigController,
     );
@@ -76,6 +67,7 @@ void main() {
         llmConfigController: llmConfigController,
       ),
     );
+    await tester.pumpAndSettle();
   }
 
   LlmConfigController createLlmController() {
@@ -358,26 +350,19 @@ void main() {
     );
   });
 
-  testWidgets('sending a prompt adds local user and system messages', (
+  testWidgets('chat workbench shows terminal placeholder when disconnected', (
     tester,
   ) async {
     final controller = await createController();
 
     await pumpDesktopApp(tester, controller);
-    await tester.enterText(find.byKey(AppKeys.chatInput), 'Continue the plan');
-    await tester.tap(find.byKey(AppKeys.sendPromptButton));
-    await tester.pumpAndSettle();
 
-    expect(find.text('Continue the plan'), findsOneWidget);
-    expect(
-      find.text(
-        'Copied prompt for team-lead. Paste it into the FlashskyAI terminal.',
-      ),
-      findsOneWidget,
-    );
+    expect(find.byKey(AppKeys.chatWorkspace), findsOneWidget);
+    expect(find.text('Terminal not connected'), findsOneWidget);
+    expect(find.text('Connect'), findsWidgets);
   });
 
-  testWidgets('selecting a member changes the composer target', (tester) async {
+  testWidgets('selecting a member changes the terminal target', (tester) async {
     final controller = await createController();
     await controller.addMember();
     final member = controller.selectedTeam!.members.last;
@@ -386,7 +371,7 @@ void main() {
     await tester.tap(find.byKey(AppKeys.memberRow(member.id)));
     await tester.pumpAndSettle();
 
-    expect(find.text('To: New Member'), findsOneWidget);
+    expect(find.text('→ New Member'), findsOneWidget);
   });
 
   testWidgets('member open button launches one member from right panel', (
@@ -405,7 +390,6 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(launchedMember?.name, 'team-lead');
-    expect(find.textContaining('Started team-lead:'), findsOneWidget);
   });
 
   testWidgets('open team button launches all members', (tester) async {
@@ -422,7 +406,6 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(launched, ['team-lead', 'New Member']);
-    expect(find.text('Started 2 members.'), findsOneWidget);
   });
 
   testWidgets('open team-lead shows local status when team-lead is missing', (
@@ -440,11 +423,7 @@ void main() {
     await tester.tap(find.byKey(AppKeys.openTeamLeadButton));
     await tester.pumpAndSettle();
 
-    expect(
-      find.text(
-        'FlashskyAI requires a member named team-lead before opening the team lead.',
-      ),
-      findsOneWidget,
-    );
+    // system message written to terminal buffer
+    expect(controller.statusMessage, isNotEmpty);
   });
 }

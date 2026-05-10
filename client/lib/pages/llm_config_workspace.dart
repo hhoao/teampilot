@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 
-import '../app_keys.dart';
-import '../llm_config.dart';
-import '../llm_config_controller.dart';
+import '../utils/app_keys.dart';
+import '../l10n/app_localizations.dart';
+import '../models/llm_config.dart';
+import '../controllers/llm_config_controller.dart';
+import '../theme/app_theme.dart';
 
 class LlmConfigWorkspace extends StatefulWidget {
   const LlmConfigWorkspace({required this.controller, super.key});
@@ -18,6 +20,7 @@ class _LlmConfigWorkspaceState extends State<LlmConfigWorkspace> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final config = controller.config;
     return DefaultTabController(
       length: 3,
@@ -26,19 +29,19 @@ class _LlmConfigWorkspaceState extends State<LlmConfigWorkspace> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           _WorkspaceHeading(
-            title: 'LLM Config',
+            title: l10n.llmConfig,
             subtitle:
                 '${controller.filePath} / ${config.providers.length} providers / ${config.models.length} models',
           ),
           const SizedBox(height: 10),
           Row(
             children: [
-              const Expanded(
+              Expanded(
                 child: TabBar(
                   tabs: [
-                    Tab(key: AppKeys.llmProvidersTab, text: 'Providers'),
-                    Tab(key: AppKeys.llmModelsTab, text: 'Models'),
-                    Tab(key: AppKeys.llmRawJsonTab, text: 'Raw JSON'),
+                    Tab(key: AppKeys.llmProvidersTab, text: l10n.providersTab),
+                    Tab(key: AppKeys.llmModelsTab, text: l10n.modelsTab),
+                    Tab(key: AppKeys.llmRawJsonTab, text: l10n.rawJsonTab),
                   ],
                 ),
               ),
@@ -47,7 +50,7 @@ class _LlmConfigWorkspaceState extends State<LlmConfigWorkspace> {
                 key: AppKeys.saveLlmConfigButton,
                 onPressed: controller.save,
                 icon: const Icon(Icons.save_outlined),
-                label: const Text('Save'),
+                label: Text(l10n.save),
               ),
             ],
           ),
@@ -122,25 +125,26 @@ class _ProvidersTabContent extends StatelessWidget {
     BuildContext context,
     LlmConfigController controller,
   ) async {
+    final l10n = context.l10n;
     final nameController = TextEditingController();
     final name = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Add Provider'),
+        title: Text(l10n.addProvider),
         content: TextField(
           key: AppKeys.providerNameDialogField,
           controller: nameController,
           autofocus: true,
-          decoration: const InputDecoration(labelText: 'Provider name'),
+          decoration: InputDecoration(labelText: l10n.providerName),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
+            child: Text(l10n.cancel),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, nameController.text.trim()),
-            child: const Text('Add'),
+            child: Text(l10n.add),
           ),
         ],
       ),
@@ -161,19 +165,20 @@ class _ProvidersTabContent extends StatelessWidget {
     LlmConfigController controller,
     String name,
   ) async {
+    final l10n = context.l10n;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete Provider'),
-        content: Text('Delete provider $name?'),
+        title: Text(l10n.deleteProvider),
+        content: Text(l10n.deleteProviderConfirm(name)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
+            child: Text(l10n.cancel),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Delete'),
+            child: Text(l10n.delete),
           ),
         ],
       ),
@@ -217,6 +222,10 @@ class _ProviderListPanelState extends State<_ProviderListPanel> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
+    final l10n = context.l10n;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textBase = isDark ? Colors.white : const Color(0xFF111827);
     final providers = widget.config.providers.values
         .where(
           (p) =>
@@ -230,33 +239,37 @@ class _ProviderListPanelState extends State<_ProviderListPanel> {
       child: Container(
         key: AppKeys.llmProviderList,
         decoration: BoxDecoration(
-          color: const Color(0xFF0F172A),
+          color: colors.cardBackground,
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: const Color(0x2B94A3B8)),
+          border: Border.all(color: colors.border),
         ),
         child: Column(
           children: [
-            // Header
             Container(
               height: 42,
               padding: const EdgeInsets.symmetric(horizontal: 11),
-              decoration: const BoxDecoration(
-                border: Border(bottom: BorderSide(color: Color(0x2494A3B8))),
+              decoration: BoxDecoration(
+                border: Border(
+                  bottom: BorderSide(color: colors.tabBarDivider),
+                ),
               ),
               child: Row(
                 children: [
-                  const Expanded(
+                  Expanded(
                     child: Text(
-                      'Provider List',
-                      style: TextStyle(fontWeight: FontWeight.w800),
+                      l10n.providerList,
+                      style: TextStyle(
+                        fontWeight: FontWeight.w800,
+                        color: textBase,
+                      ),
                     ),
                   ),
                   InkWell(
                     onTap: widget.onAdd,
-                    child: const Text(
-                      '+ Add',
+                    child: Text(
+                      '+ ${l10n.add}',
                       style: TextStyle(
-                        color: Color(0xFF93C5FD),
+                        color: colors.linkText,
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
                       ),
@@ -265,14 +278,13 @@ class _ProviderListPanelState extends State<_ProviderListPanel> {
                 ],
               ),
             ),
-            // Search
             Padding(
               padding: const EdgeInsets.all(10),
               child: TextField(
                 key: AppKeys.llmProviderSearch,
                 controller: _searchController,
                 decoration: InputDecoration(
-                  hintText: 'Filter providers...',
+                  hintText: l10n.filterProviders,
                   isDense: true,
                   contentPadding: const EdgeInsets.symmetric(
                     horizontal: 10,
@@ -280,15 +292,12 @@ class _ProviderListPanelState extends State<_ProviderListPanel> {
                   ),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(7),
-                    borderSide: const BorderSide(
-                      color: Color(0x3894A3B8),
-                    ),
+                    borderSide: BorderSide(color: colors.border),
                   ),
                 ),
                 onChanged: (value) => setState(() => _searchQuery = value),
               ),
             ),
-            // List
             Expanded(
               child: ListView.builder(
                 padding: const EdgeInsets.only(left: 10, right: 10, bottom: 10),
@@ -333,12 +342,16 @@ class _ProviderListRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
+    final l10n = context.l10n;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textBase = isDark ? Colors.white : const Color(0xFF111827);
     return Padding(
       padding: const EdgeInsets.only(bottom: 6),
       child: Material(
         color: isSelected
-            ? const Color(0x2E1E40AF)
-            : const Color(0x9E0F172A),
+            ? colors.selectedBackground
+            : colors.unselectedBackground,
         borderRadius: BorderRadius.circular(8),
         child: InkWell(
           borderRadius: BorderRadius.circular(8),
@@ -349,8 +362,8 @@ class _ProviderListRow extends StatelessWidget {
               borderRadius: BorderRadius.circular(8),
               border: Border.all(
                 color: isSelected
-                    ? const Color(0x7360A5FA)
-                    : const Color(0x2B94A3B8),
+                    ? colors.selectedBorder
+                    : colors.unselectedBorder,
               ),
             ),
             child: Row(
@@ -366,7 +379,10 @@ class _ProviderListRow extends StatelessWidget {
                               provider.name,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(fontWeight: FontWeight.w700),
+                              style: TextStyle(
+                                fontWeight: FontWeight.w700,
+                                color: textBase,
+                              ),
                             ),
                           ),
                           const SizedBox(width: 4),
@@ -379,7 +395,7 @@ class _ProviderListRow extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.48),
+                          color: textBase.withValues(alpha: 0.48),
                           fontSize: 11,
                         ),
                       ),
@@ -390,7 +406,7 @@ class _ProviderListRow extends StatelessWidget {
                   icon: const Icon(Icons.more_horiz, size: 16),
                   padding: EdgeInsets.zero,
                   itemBuilder: (context) => [
-                    const PopupMenuItem(value: 'delete', child: Text('Delete')),
+                    PopupMenuItem(value: 'delete', child: Text(l10n.delete)),
                   ],
                   onSelected: (value) {
                     if (value == 'delete') onDelete();
@@ -412,19 +428,18 @@ class _TypeBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
     final isAccount = type == 'account';
     return Container(
       height: 18,
       padding: const EdgeInsets.symmetric(horizontal: 6),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(99),
-        color: isAccount
-            ? const Color(0x1C34D399)
-            : const Color(0x1C60A5FA),
+        color: isAccount ? colors.typeBadgeAccountBg : colors.typeBadgeApiBg,
         border: Border.all(
           color: isAccount
-              ? const Color(0x3834D399)
-              : const Color(0x3860A5FA),
+              ? colors.typeBadgeAccountBorder
+              : colors.typeBadgeApiBorder,
         ),
       ),
       child: Text(
@@ -432,8 +447,8 @@ class _TypeBadge extends StatelessWidget {
         style: TextStyle(
           fontSize: 10,
           color: isAccount
-              ? const Color(0xFFA7F3D0)
-              : const Color(0xFF93C5FD),
+              ? colors.typeBadgeAccountText
+              : colors.typeBadgeApiText,
         ),
       ),
     );
@@ -531,19 +546,23 @@ class _ProviderDetailPanelState extends State<_ProviderDetailPanel> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
+    final l10n = context.l10n;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textBase = isDark ? Colors.white : const Color(0xFF111827);
     final provider = widget.provider;
     if (provider == null) {
       return Container(
         key: AppKeys.llmProviderDetail,
         decoration: BoxDecoration(
-          color: const Color(0xFF0F172A),
+          color: colors.cardBackground,
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: const Color(0x2B94A3B8)),
+          border: Border.all(color: colors.border),
         ),
-        child: const Center(
+        child: Center(
           child: Text(
-            'Select a provider from the list',
-            style: TextStyle(color: Color(0xFF8B949E)),
+            l10n.selectProvider,
+            style: TextStyle(color: colors.emptyMessageText),
           ),
         ),
       );
@@ -556,17 +575,18 @@ class _ProviderDetailPanelState extends State<_ProviderDetailPanel> {
     return Container(
       key: AppKeys.llmProviderDetail,
       decoration: BoxDecoration(
-        color: const Color(0xFF0F172A),
+        color: colors.cardBackground,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0x2B94A3B8)),
+        border: Border.all(color: colors.border),
       ),
       child: Column(
         children: [
-          // Detail header
           Container(
             padding: const EdgeInsets.all(12),
-            decoration: const BoxDecoration(
-              border: Border(bottom: BorderSide(color: Color(0x2494A3B8))),
+            decoration: BoxDecoration(
+              border: Border(
+                bottom: BorderSide(color: colors.tabBarDivider),
+              ),
             ),
             child: Row(
               children: [
@@ -578,9 +598,10 @@ class _ProviderDetailPanelState extends State<_ProviderDetailPanel> {
                         children: [
                           Text(
                             provider.name,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontWeight: FontWeight.w800,
                               fontSize: 14,
+                              color: textBase,
                             ),
                           ),
                           const SizedBox(width: 6),
@@ -591,7 +612,7 @@ class _ProviderDetailPanelState extends State<_ProviderDetailPanel> {
                       Text(
                         '${provider.type.toUpperCase()} provider, used by ${providerModels.length} models',
                         style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.48),
+                          color: textBase.withValues(alpha: 0.48),
                           fontSize: 11,
                         ),
                       ),
@@ -599,40 +620,41 @@ class _ProviderDetailPanelState extends State<_ProviderDetailPanel> {
                   ),
                 ),
                 IconButton(
-                  tooltip: 'Delete provider',
+                  tooltip: l10n.deleteProviderTooltip,
                   icon: const Icon(Icons.delete_outline, size: 18),
                   onPressed: () => widget.onDelete(provider.name),
                 ),
               ],
             ),
           ),
-          // Scrollable form area
           Expanded(
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(13),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Form fields
                   Wrap(
                     spacing: 14,
                     runSpacing: 10,
                     children: [
                       _SizedField(
                         child: _ReadOnlyField(
-                          label: 'Provider name',
+                          label: l10n.providerName,
                           value: provider.name,
                         ),
                       ),
                       _SizedField(
                         child: DropdownButtonFormField<String>(
                           value: _type,
-                          decoration: const InputDecoration(labelText: 'Type'),
-                          items: const [
-                            DropdownMenuItem(value: 'api', child: Text('api')),
+                          decoration: InputDecoration(labelText: l10n.type),
+                          items: [
+                            DropdownMenuItem(
+                              value: 'api',
+                              child: Text(l10n.api),
+                            ),
                             DropdownMenuItem(
                               value: 'account',
-                              child: Text('account'),
+                              child: Text(l10n.account),
                             ),
                           ],
                           onChanged: (value) =>
@@ -650,9 +672,9 @@ class _ProviderDetailPanelState extends State<_ProviderDetailPanel> {
                         _SizedField(
                           child: TextField(
                             key: AppKeys.providerTypeField,
-                            decoration: const InputDecoration(
-                              labelText: 'Provider type',
-                              hintText: 'openai, claude, or custom',
+                            decoration: InputDecoration(
+                              labelText: l10n.providerType,
+                              hintText: l10n.providerTypeHint,
                             ),
                             controller: TextEditingController(
                               text: _providerType,
@@ -666,9 +688,9 @@ class _ProviderDetailPanelState extends State<_ProviderDetailPanel> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text(
-                                'Proxy',
-                                style: TextStyle(fontSize: 12),
+                              Text(
+                                l10n.proxy,
+                                style: const TextStyle(fontSize: 12),
                               ),
                               Switch(
                                 key: AppKeys.providerProxyToggle,
@@ -686,16 +708,14 @@ class _ProviderDetailPanelState extends State<_ProviderDetailPanel> {
                       TextField(
                         key: AppKeys.proxyUrlField,
                         controller: _proxyUrlController,
-                        decoration: const InputDecoration(
-                          labelText: 'Proxy URL',
-                        ),
+                        decoration: InputDecoration(labelText: l10n.proxyUrl),
                       ),
                     ],
                     const SizedBox(height: 10),
                     TextField(
                       key: AppKeys.baseUrlField,
                       controller: _baseUrlController,
-                      decoration: const InputDecoration(labelText: 'Base URL'),
+                      decoration: InputDecoration(labelText: l10n.baseUrl),
                     ),
                     const SizedBox(height: 10),
                     Row(
@@ -707,7 +727,7 @@ class _ProviderDetailPanelState extends State<_ProviderDetailPanel> {
                             obscureText:
                                 !_apiKeyRevealed && _apiKey.isNotEmpty,
                             decoration: InputDecoration(
-                              labelText: 'API Key',
+                              labelText: l10n.apiKey,
                               suffixIcon: _apiKey.isNotEmpty
                                   ? Row(
                                       mainAxisSize: MainAxisSize.min,
@@ -720,8 +740,8 @@ class _ProviderDetailPanelState extends State<_ProviderDetailPanel> {
                                                 : Icons.visibility,
                                           ),
                                           tooltip: _apiKeyRevealed
-                                              ? 'Hide'
-                                              : 'Reveal',
+                                              ? l10n.hide
+                                              : l10n.reveal,
                                           onPressed: () => setState(() {
                                             _apiKeyRevealed =
                                                 !_apiKeyRevealed;
@@ -753,7 +773,7 @@ class _ProviderDetailPanelState extends State<_ProviderDetailPanel> {
                         const SizedBox(width: 8),
                         IconButton(
                           key: AppKeys.replaceApiKeyButton,
-                          tooltip: 'Replace key',
+                          tooltip: l10n.replaceKey,
                           onPressed: () {
                             _apiKeyController.clear();
                             _apiKey = '';
@@ -779,15 +799,15 @@ class _ProviderDetailPanelState extends State<_ProviderDetailPanel> {
                                         ? AppKeys.accountPathField
                                         : null,
                                 controller: _accountControllers[index],
-                                decoration: const InputDecoration(
-                                  labelText: 'Account credential path',
+                                decoration: InputDecoration(
+                                  labelText: l10n.accountCredentialPath,
                                 ),
                               ),
                             ),
                             IconButton(
                               key: AppKeys.deleteAccountPathButton,
                               icon: const Icon(Icons.remove_circle_outline),
-                              tooltip: 'Remove path',
+                              tooltip: l10n.removePath,
                               onPressed: () => setState(() {
                                 _accountControllers[index].dispose();
                                 _accountControllers.removeAt(index);
@@ -803,32 +823,30 @@ class _ProviderDetailPanelState extends State<_ProviderDetailPanel> {
                         () => _accountControllers.add(TextEditingController()),
                       ),
                       icon: const Icon(Icons.add),
-                      label: const Text('Add account path'),
+                      label: Text(l10n.addAccountPath),
                     ),
                   ],
                   const SizedBox(height: 12),
-                  // Save / Cancel buttons
                   Row(
                     spacing: 10,
                     children: [
                       FilledButton.icon(
                         onPressed: _save,
                         icon: const Icon(Icons.save_outlined),
-                        label: const Text('Save'),
+                        label: Text(l10n.save),
                       ),
                       OutlinedButton(
                         onPressed: () {
                           _syncFromProvider();
                         },
-                        child: const Text('Cancel'),
+                        child: Text(l10n.cancel),
                       ),
                     ],
                   ),
                   const SizedBox(height: 16),
-                  // Models using this provider
                   if (providerModels.isNotEmpty) ...[
                     _Section(
-                      title: 'Models using this provider',
+                      title: l10n.modelsUsingProviderTitle,
                       child: _ProviderModelsTable(
                         key: AppKeys.providerModelsTable,
                         models: providerModels,
@@ -845,13 +863,13 @@ class _ProviderDetailPanelState extends State<_ProviderDetailPanel> {
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: const Color(0x1C94A3B8),
+                        color: textBase.withValues(alpha: 0.05),
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      child: const Text(
-                        'No models are using this provider.',
+                      child: Text(
+                        l10n.noModelsUsingProvider,
                         style: TextStyle(
-                          color: Color(0xFF8B949E),
+                          color: colors.emptyMessageText,
                           fontSize: 11,
                         ),
                       ),
@@ -894,13 +912,16 @@ class _ReadOnlyField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textBase = isDark ? Colors.white : const Color(0xFF111827);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           label,
           style: TextStyle(
-            color: Colors.white.withValues(alpha: 0.58),
+            color: textBase.withValues(alpha: 0.58),
             fontSize: 11,
             fontWeight: FontWeight.w700,
           ),
@@ -910,16 +931,16 @@ class _ReadOnlyField extends StatelessWidget {
           height: 38,
           padding: const EdgeInsets.symmetric(horizontal: 10),
           decoration: BoxDecoration(
-            color: const Color(0xFF090F1A),
+            color: colors.readOnlyFieldBg,
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: const Color(0x3D94A3B8)),
+            border: Border.all(color: colors.readOnlyFieldBorder),
           ),
           alignment: Alignment.centerLeft,
           child: Text(
             value,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(color: Color(0xFFDBEAFE)),
+            style: TextStyle(color: colors.readOnlyFieldText),
           ),
         ),
       ],
@@ -945,10 +966,10 @@ class _ProviderModelsTable extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // Rows
         for (final model in models)
           Padding(
             padding: const EdgeInsets.only(top: 4),
@@ -981,14 +1002,14 @@ class _ProviderModelsTable extends StatelessWidget {
                   ),
                 ),
                 _CompactIconButton(
-                  tooltip: 'Edit',
+                  tooltip: l10n.edit,
                   icon: Icons.edit_outlined,
                   onTap: () {
                     _editModel(context, model);
                   },
                 ),
                 _CompactIconButton(
-                  tooltip: 'Delete',
+                  tooltip: l10n.delete,
                   icon: Icons.delete_outline,
                   onTap: () {
                     onDelete(model.id);
@@ -1002,13 +1023,14 @@ class _ProviderModelsTable extends StatelessWidget {
   }
 
   Future<void> _editModel(BuildContext context, LlmModelConfig model) async {
+    final l10n = context.l10n;
     final result = await showDialog<LlmModelConfig>(
       context: context,
       builder:
           (context) => _ModelEditDialog(
             model: model,
             providers: providers,
-            title: 'Edit ${model.name}',
+            title: l10n.editModelTitle(model.name),
           ),
     );
     if (result != null) {
@@ -1043,6 +1065,7 @@ class _ModelsTabContent extends StatelessWidget {
     BuildContext context,
     LlmConfigController controller,
   ) async {
+    final l10n = context.l10n;
     final defaultProvider = controller.config.providers.keys.firstOrNull ?? '';
     final result = await showDialog<LlmModelConfig>(
       context: context,
@@ -1050,7 +1073,7 @@ class _ModelsTabContent extends StatelessWidget {
           (context) => _ModelEditDialog(
             providers: controller.config.providers,
             defaultProvider: defaultProvider,
-            title: 'Add Model',
+            title: l10n.addModel,
           ),
     );
     if (result != null) {
@@ -1074,9 +1097,13 @@ class _ModelsTable extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
+    final l10n = context.l10n;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textBase = isDark ? Colors.white : const Color(0xFF111827);
     final models = config.models.values.toList();
     final headerStyle = TextStyle(
-      color: Colors.white.withValues(alpha: 0.58),
+      color: textBase.withValues(alpha: 0.58),
       fontSize: 10,
       fontWeight: FontWeight.w700,
       letterSpacing: 0.6,
@@ -1085,30 +1112,37 @@ class _ModelsTable extends StatelessWidget {
     return Container(
       key: AppKeys.llmModelsTable,
       decoration: BoxDecoration(
-        color: const Color(0xFF0F172A),
+        color: colors.cardBackground,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0x2B94A3B8)),
+        border: Border.all(color: colors.border),
       ),
       child: Column(
         children: [
-          // Header
           Container(
             height: 42,
             padding: const EdgeInsets.symmetric(horizontal: 12),
-            decoration: const BoxDecoration(
-              border: Border(bottom: BorderSide(color: Color(0x2494A3B8))),
+            decoration: BoxDecoration(
+              border: Border(
+                bottom: BorderSide(color: colors.tabBarDivider),
+              ),
             ),
             child: Row(
               children: [
-                const Expanded(
-                  child: Text('Models', style: TextStyle(fontWeight: FontWeight.w800)),
+                Expanded(
+                  child: Text(
+                    l10n.models,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w800,
+                      color: textBase,
+                    ),
+                  ),
                 ),
                 InkWell(
                   onTap: onAdd,
-                  child: const Text(
-                    '+ Add',
+                  child: Text(
+                    '+ ${l10n.add}',
                     style: TextStyle(
-                      color: Color(0xFF93C5FD),
+                      color: colors.linkText,
                       fontSize: 11,
                       fontWeight: FontWeight.w700,
                     ),
@@ -1117,43 +1151,35 @@ class _ModelsTable extends StatelessWidget {
               ],
             ),
           ),
-          // Column headers
           Container(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 12,
-              vertical: 8,
-            ),
-            color: const Color(0x1494A3B8),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            color: textBase.withValues(alpha: 0.04),
             child: Row(
               children: [
                 const SizedBox(width: 10),
-                Expanded(
-                  flex: 3,
-                  child: Text('Name', style: headerStyle),
-                ),
+                Expanded(flex: 3, child: Text(l10n.name, style: headerStyle)),
                 Expanded(
                   flex: 2,
-                  child: Text('Provider', style: headerStyle),
+                  child: Text(l10n.provider, style: headerStyle),
                 ),
                 Expanded(
                   flex: 3,
-                  child: Text('Actual Model', style: headerStyle),
+                  child: Text(l10n.actualModel, style: headerStyle),
                 ),
                 SizedBox(
                   width: 80,
-                  child: Text('Enabled', style: headerStyle),
+                  child: Text(l10n.enabled, style: headerStyle),
                 ),
                 const SizedBox(width: 80),
               ],
             ),
           ),
-          // Model rows
           Expanded(
             child: models.isEmpty
-                ? const Center(
+                ? Center(
                     child: Text(
-                      'No models configured',
-                      style: TextStyle(color: Color(0xFF8B949E)),
+                      l10n.noModelsConfigured,
+                      style: TextStyle(color: colors.emptyMessageText),
                     ),
                   )
                 : ListView.separated(
@@ -1176,7 +1202,7 @@ class _ModelsTable extends StatelessWidget {
                                 padding: const EdgeInsets.only(right: 6),
                                 child: Tooltip(
                                   message:
-                                      'Missing provider: ${model.provider}',
+                                      '${l10n.missingProvider} ${model.provider}',
                                   child: const Icon(
                                     Icons.warning_amber_rounded,
                                     size: 14,
@@ -1232,7 +1258,7 @@ class _ModelsTable extends StatelessWidget {
                                 children: [
                                   IconButton(
                                     key: AppKeys.editModelButton(model.id),
-                                    tooltip: 'Edit',
+                                    tooltip: l10n.edit,
                                     visualDensity: VisualDensity.compact,
                                     constraints: const BoxConstraints(
                                       minWidth: 36,
@@ -1248,7 +1274,7 @@ class _ModelsTable extends StatelessWidget {
                                   ),
                                   IconButton(
                                     key: AppKeys.deleteModelButton(model.id),
-                                    tooltip: 'Delete',
+                                    tooltip: l10n.delete,
                                     visualDensity: VisualDensity.compact,
                                     constraints: const BoxConstraints(
                                       minWidth: 36,
@@ -1276,17 +1302,15 @@ class _ModelsTable extends StatelessWidget {
     );
   }
 
-  Future<void> _editModel(
-    BuildContext context,
-    LlmModelConfig model,
-  ) async {
+  Future<void> _editModel(BuildContext context, LlmModelConfig model) async {
+    final l10n = context.l10n;
     final result = await showDialog<LlmModelConfig>(
       context: context,
       builder:
           (context) => _ModelEditDialog(
             model: model,
             providers: config.providers,
-            title: 'Edit ${model.name}',
+            title: l10n.editModelTitle(model.name),
           ),
     );
     if (result != null) {
@@ -1304,6 +1328,8 @@ class _RawJsonTabContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textBase = isDark ? Colors.white : const Color(0xFF111827);
     final config = controller.config;
     return SingleChildScrollView(
       padding: const EdgeInsets.all(14),
@@ -1311,7 +1337,7 @@ class _RawJsonTabContent extends StatelessWidget {
         key: AppKeys.llmRawJsonPreview,
         config.toMaskedJsonString(),
         style: TextStyle(
-          color: Colors.white.withValues(alpha: 0.72),
+          color: textBase.withValues(alpha: 0.72),
           fontFamily: 'monospace',
           fontSize: 12,
         ),
@@ -1329,6 +1355,10 @@ class _LlmSidePanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
+    final l10n = context.l10n;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textBase = isDark ? Colors.white : const Color(0xFF111827);
     final messages = config.validationMessages;
     final missingRefs = config.models.values
         .where((m) => !config.providers.containsKey(m.provider))
@@ -1343,10 +1373,9 @@ class _LlmSidePanel extends StatelessWidget {
 
     return Container(
       key: AppKeys.llmSidePanel,
-      color: const Color(0xFF10141B),
+      color: colors.rightPanelBackground,
       child: Column(
         children: [
-          // Section 1: Summary
           Expanded(
             flex: 35,
             child: Container(
@@ -1355,9 +1384,9 @@ class _LlmSidePanel extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Text(
-                    'Summary',
+                    l10n.summary,
                     style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.58),
+                      color: textBase.withValues(alpha: 0.58),
                       fontSize: 11,
                       fontWeight: FontWeight.w700,
                       letterSpacing: 0.8,
@@ -1375,20 +1404,20 @@ class _LlmSidePanel extends StatelessWidget {
                         children: [
                           _StatBox(
                             value: '${config.providers.length}',
-                            label: 'providers',
+                            label: l10n.statProviders,
                           ),
                           _StatBox(
                             value: '${config.models.length}',
-                            label: 'models',
+                            label: l10n.statModels,
                           ),
                           _StatBox(
                             value: '$missingRefs',
-                            label: 'missing refs',
+                            label: l10n.statMissingRefs,
                             warn: missingRefs > 0,
                           ),
                           _StatBox(
                             value: '$emptyKeys',
-                            label: 'empty keys',
+                            label: l10n.statEmptyKeys,
                             warn: emptyKeys > 0,
                           ),
                         ],
@@ -1399,8 +1428,7 @@ class _LlmSidePanel extends StatelessWidget {
               ),
             ),
           ),
-          Container(height: 1, color: const Color(0x2E94A3B8)),
-          // Section 2: Validation
+          Container(height: 1, color: colors.subtleBorder),
           Expanded(
             flex: 32,
             child: Container(
@@ -1410,9 +1438,9 @@ class _LlmSidePanel extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Text(
-                    'Validation',
+                    l10n.validation,
                     style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.58),
+                      color: textBase.withValues(alpha: 0.58),
                       fontSize: 11,
                       fontWeight: FontWeight.w700,
                       letterSpacing: 0.8,
@@ -1424,16 +1452,16 @@ class _LlmSidePanel extends StatelessWidget {
                         ? Container(
                             padding: const EdgeInsets.all(10),
                             decoration: BoxDecoration(
-                              color: const Color(0x1434D399),
+                              color: colors.successBackground,
                               borderRadius: BorderRadius.circular(8),
                               border: Border.all(
-                                color: const Color(0x3834D399),
+                                color: colors.successBorder,
                               ),
                             ),
-                            child: const Text(
-                              'All checks passed.',
+                            child: Text(
+                              l10n.allChecksPassed,
                               style: TextStyle(
-                                color: Color(0xFFA7F3D0),
+                                color: colors.successText,
                                 fontSize: 12,
                               ),
                             ),
@@ -1445,10 +1473,10 @@ class _LlmSidePanel extends StatelessWidget {
                             itemBuilder: (context, index) => Container(
                               padding: const EdgeInsets.all(10),
                               decoration: BoxDecoration(
-                                color: const Color(0x14FBBF24),
+                                color: colors.warningBackground,
                                 borderRadius: BorderRadius.circular(8),
                                 border: Border.all(
-                                  color: const Color(0x40FBBF24),
+                                  color: colors.warningBorder,
                                 ),
                               ),
                               child: Text(
@@ -1466,8 +1494,7 @@ class _LlmSidePanel extends StatelessWidget {
               ),
             ),
           ),
-          Container(height: 1, color: const Color(0x2E94A3B8)),
-          // Section 3: JSON Preview
+          Container(height: 1, color: colors.subtleBorder),
           Expanded(
             flex: 33,
             child: Container(
@@ -1476,9 +1503,9 @@ class _LlmSidePanel extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Text(
-                    'JSON Preview',
+                    l10n.jsonPreview,
                     style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.58),
+                      color: textBase.withValues(alpha: 0.58),
                       fontSize: 11,
                       fontWeight: FontWeight.w700,
                       letterSpacing: 0.8,
@@ -1489,15 +1516,15 @@ class _LlmSidePanel extends StatelessWidget {
                     child: Container(
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF05070B),
+                        color: colors.codeBackground,
                         borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: const Color(0x2B94A3B8)),
+                        border: Border.all(color: colors.border),
                       ),
                       child: SingleChildScrollView(
                         child: SelectableText(
                           jsonSnippet,
-                          style: const TextStyle(
-                            color: Color(0xFFA7F3D0),
+                          style: TextStyle(
+                            color: colors.accentGreenLight,
                             fontFamily: 'monospace',
                             fontSize: 11,
                             height: 1.5,
@@ -1529,13 +1556,16 @@ class _StatBox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textBase = isDark ? Colors.white : const Color(0xFF111827);
     return Container(
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: const Color(0xA60F172A),
+        color: colors.statBoxBg,
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          color: warn ? const Color(0x40FBBF24) : const Color(0x2994A3B8),
+          color: warn ? colors.statBoxWarnBorder : colors.statBoxBorder,
         ),
       ),
       child: Column(
@@ -1544,7 +1574,7 @@ class _StatBox extends StatelessWidget {
           Text(
             value,
             style: TextStyle(
-              color: warn ? const Color(0xFFFDE68A) : null,
+              color: warn ? const Color(0xFFFDE68A) : textBase,
               fontSize: 16,
               fontWeight: FontWeight.w800,
             ),
@@ -1553,7 +1583,7 @@ class _StatBox extends StatelessWidget {
           Text(
             label,
             style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.54),
+              color: textBase.withValues(alpha: 0.54),
               fontSize: 11,
             ),
           ),
@@ -1594,13 +1624,9 @@ class _ModelEditDialogState extends State<_ModelEditDialog> {
   void initState() {
     super.initState();
     final model = widget.model;
-    _nameController = TextEditingController(
-      text: model?.name ?? '',
-    );
+    _nameController = TextEditingController(text: model?.name ?? '');
     _provider = model?.provider ?? widget.defaultProvider;
-    _modelController = TextEditingController(
-      text: model?.model ?? '',
-    );
+    _modelController = TextEditingController(text: model?.model ?? '');
     _enabled = model?.enabled ?? true;
   }
 
@@ -1613,6 +1639,7 @@ class _ModelEditDialogState extends State<_ModelEditDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return AlertDialog(
       title: Text(widget.title),
       content: SizedBox(
@@ -1624,14 +1651,14 @@ class _ModelEditDialogState extends State<_ModelEditDialog> {
               key: AppKeys.modelNameDialogField,
               controller: _nameController,
               autofocus: true,
-              decoration: const InputDecoration(labelText: 'Model alias/name'),
+              decoration: InputDecoration(labelText: l10n.modelName),
             ),
             const SizedBox(height: 14),
             DropdownButtonFormField<String>(
               key: AppKeys.modelProviderField,
               value:
                   widget.providers.containsKey(_provider) ? _provider : null,
-              decoration: const InputDecoration(labelText: 'Provider'),
+              decoration: InputDecoration(labelText: l10n.provider),
               items: [
                 for (final p in widget.providers.values)
                   DropdownMenuItem(value: p.name, child: Text(p.name)),
@@ -1642,13 +1669,13 @@ class _ModelEditDialogState extends State<_ModelEditDialog> {
             TextField(
               key: AppKeys.modelModelIdField,
               controller: _modelController,
-              decoration: const InputDecoration(labelText: 'Model ID'),
+              decoration: InputDecoration(labelText: l10n.modelId),
             ),
             const SizedBox(height: 14),
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
               key: AppKeys.modelEnabledToggle,
-              title: const Text('Enabled'),
+              title: Text(l10n.enabled),
               value: _enabled,
               onChanged: (value) => setState(() => _enabled = value),
             ),
@@ -1658,7 +1685,7 @@ class _ModelEditDialogState extends State<_ModelEditDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: const Text('Cancel'),
+          child: Text(l10n.cancel),
         ),
         FilledButton(
           onPressed: () {
@@ -1675,7 +1702,7 @@ class _ModelEditDialogState extends State<_ModelEditDialog> {
               ),
             );
           },
-          child: const Text('Save'),
+          child: Text(l10n.save),
         ),
       ],
     );
@@ -1692,17 +1719,23 @@ class _WorkspaceHeading extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textBase = isDark ? Colors.white : const Color(0xFF111827);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text(
           title,
-          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w800,
+            color: textBase,
+          ),
         ),
         const SizedBox(height: 6),
         Text(
           subtitle,
-          style: TextStyle(color: Colors.white.withValues(alpha: 0.64)),
+          style: TextStyle(color: textBase.withValues(alpha: 0.64)),
         ),
       ],
     );
@@ -1717,20 +1750,23 @@ class _Section extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textBase = isDark ? Colors.white : const Color(0xFF111827);
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0xFF0F172A),
+        color: colors.cardBackground,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: const Color(0x2B94A3B8)),
+        border: Border.all(color: colors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
             title,
-            style: const TextStyle(fontWeight: FontWeight.w800),
+            style: TextStyle(fontWeight: FontWeight.w800, color: textBase),
           ),
           const SizedBox(height: 10),
           child,

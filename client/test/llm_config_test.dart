@@ -1,9 +1,9 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:flashskyai_client/llm_config.dart';
-import 'package:flashskyai_client/llm_config_controller.dart';
-import 'package:flashskyai_client/llm_config_repository.dart';
+import 'package:flashskyai_client/models/llm_config.dart';
+import 'package:flashskyai_client/controllers/llm_config_controller.dart';
+import 'package:flashskyai_client/repositories/llm_config_repository.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 
-import '../app_keys.dart';
-import '../config_controller.dart';
-import '../llm_config_controller.dart';
-import '../team_config.dart';
-import '../team_controller.dart';
+import '../utils/app_keys.dart';
+import '../controllers/config_controller.dart';
+import '../l10n/app_localizations.dart';
+import '../controllers/llm_config_controller.dart';
+import '../models/team_config.dart';
+import '../controllers/team_controller.dart';
+import '../theme/app_theme.dart';
 
 class ContextSidebar extends StatelessWidget {
   const ContextSidebar({
@@ -22,11 +24,13 @@ class ContextSidebar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
+    final l10n = context.l10n;
     final selected = controller.selectedTeam;
     return Container(
       key: AppKeys.contextSidebar,
       width: 260,
-      color: const Color(0xFF111827),
+      color: colors.sidebarBackground,
       padding: const EdgeInsets.all(13),
       child: selected == null
           ? const Center(child: CircularProgressIndicator())
@@ -37,23 +41,23 @@ class ContextSidebar extends StatelessWidget {
                 const SizedBox(height: 14),
                 _SidebarSectionTitle(
                   title: selectedSectionLabel == 'Config'
-                      ? 'Configure'
-                      : 'Team Sessions',
+                      ? l10n.configure
+                      : l10n.teamSessions,
                   actionLabel: selectedSectionLabel == 'Config' ? '' : '+',
                 ),
                 if (selectedSectionLabel == 'Config') ...[
                   _SidebarTile(
                     key: AppKeys.configTeamSectionButton,
-                    title: 'Team Settings',
-                    subtitle: 'workspace teams',
+                    title: l10n.teamSettings,
+                    subtitle: l10n.teamSettingsSubtitle,
                     selected: configController?.section == ConfigSection.team,
                     onTap: () =>
                         configController?.selectSection(ConfigSection.team),
                   ),
                   _SidebarTile(
                     key: AppKeys.configMembersSectionButton,
-                    title: 'Members',
-                    subtitle: 'team agents',
+                    title: l10n.members,
+                    subtitle: l10n.membersSubtitle,
                     selected:
                         configController?.section == ConfigSection.members,
                     onTap: () =>
@@ -61,16 +65,16 @@ class ContextSidebar extends StatelessWidget {
                   ),
                   _SidebarTile(
                     key: AppKeys.configLlmSectionButton,
-                    title: 'LLM Config',
-                    subtitle: 'providers and models',
+                    title: l10n.llmConfig,
+                    subtitle: l10n.llmConfigSubtitle,
                     selected: configController?.section == ConfigSection.llm,
                     onTap: () =>
                         configController?.selectSection(ConfigSection.llm),
                   ),
                   _SidebarTile(
                     key: AppKeys.configLayoutSectionButton,
-                    title: 'Layout',
-                    subtitle: 'global workbench',
+                    title: l10n.layout,
+                    subtitle: l10n.layoutSubtitle,
                     selected: configController?.section == ConfigSection.layout,
                     onTap: () =>
                         configController?.selectSection(ConfigSection.layout),
@@ -78,7 +82,7 @@ class ContextSidebar extends StatelessWidget {
                   if (configController?.section == ConfigSection.members) ...[
                     const SizedBox(height: 8),
                     _SidebarSectionTitle(
-                      title: 'MEMBER QUICK LIST',
+                      title: l10n.memberQuickList,
                       actionLabel: '',
                     ),
                     for (final member in selected.members)
@@ -94,7 +98,7 @@ class ContextSidebar extends StatelessWidget {
                   if (configController?.section == ConfigSection.llm &&
                       llmConfigController != null) ...[
                     const SizedBox(height: 8),
-                    _SidebarSectionTitle(title: 'PROVIDERS', actionLabel: ''),
+                    _SidebarSectionTitle(title: l10n.providers, actionLabel: ''),
                     for (final provider
                         in llmConfigController!.config.providers.values)
                       _SidebarTile(
@@ -109,8 +113,8 @@ class ContextSidebar extends StatelessWidget {
                       ),
                   ],
                 ] else ...[
-                  const _SidebarTile(
-                    title: 'Shell chat workbench',
+                  _SidebarTile(
+                    title: l10n.shellChatWorkbench,
                     subtitle: 'team-lead / local',
                     selected: true,
                   ),
@@ -139,8 +143,10 @@ class _TeamSelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
+    final l10n = context.l10n;
     return PopupMenuButton<String>(
-      tooltip: 'Select team',
+      tooltip: l10n.selectTeam,
       onSelected: controller.selectTeam,
       itemBuilder: (context) => [
         for (final team in controller.teams)
@@ -151,8 +157,8 @@ class _TeamSelector extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 10),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(8),
-          color: const Color(0x2B1E40AF),
-          border: Border.all(color: const Color(0x5260A5FA)),
+          color: colors.teamSelectorBackground,
+          border: Border.all(color: colors.teamSelectorBorder),
         ),
         child: Row(
           children: [
@@ -180,6 +186,9 @@ class _SidebarSectionTitle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textBase = isDark ? Colors.white : const Color(0xFF111827);
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: Row(
@@ -188,7 +197,7 @@ class _SidebarSectionTitle extends StatelessWidget {
             child: Text(
               title,
               style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.58),
+                color: textBase.withValues(alpha: 0.58),
                 fontSize: 11,
                 fontWeight: FontWeight.w700,
                 letterSpacing: 0.8,
@@ -196,7 +205,7 @@ class _SidebarSectionTitle extends StatelessWidget {
             ),
           ),
           if (actionLabel.isNotEmpty)
-            Text(actionLabel, style: const TextStyle(color: Color(0xFF93C5FD))),
+            Text(actionLabel, style: TextStyle(color: colors.linkText)),
         ],
       ),
     );
@@ -219,10 +228,13 @@ class _SidebarTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textBase = isDark ? Colors.white : const Color(0xFF111827);
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Material(
-        color: selected ? const Color(0x2E1E40AF) : const Color(0x9E0F172A),
+        color: selected ? colors.selectedBackground : colors.unselectedBackground,
         borderRadius: BorderRadius.circular(8),
         child: InkWell(
           borderRadius: BorderRadius.circular(8),
@@ -233,8 +245,8 @@ class _SidebarTile extends StatelessWidget {
               borderRadius: BorderRadius.circular(8),
               border: Border.all(
                 color: selected
-                    ? const Color(0x7360A5FA)
-                    : const Color(0x2B94A3B8),
+                    ? colors.selectedBorder
+                    : colors.unselectedBorder,
               ),
             ),
             child: Column(
@@ -244,7 +256,7 @@ class _SidebarTile extends StatelessWidget {
                   title,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontWeight: FontWeight.w700),
+                  style: TextStyle(fontWeight: FontWeight.w700, color: textBase),
                 ),
                 const SizedBox(height: 4),
                 Text(
@@ -252,7 +264,7 @@ class _SidebarTile extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.52),
+                    color: textBase.withValues(alpha: 0.52),
                     fontSize: 11,
                   ),
                 ),
