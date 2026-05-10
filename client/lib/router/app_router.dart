@@ -36,7 +36,7 @@ final appRouter = GoRouter(
                 ),
               ),
               child: MultiSplitView(
-                key: ValueKey(areas.length),
+                key: ValueKey(state.uri.toString()),
                 axis: Axis.horizontal,
                 initialAreas: areas,
               ),
