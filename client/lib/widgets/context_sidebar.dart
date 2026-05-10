@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../cubits/chat_cubit.dart';
 import '../cubits/team_cubit.dart';
 import '../l10n/app_localizations.dart';
+import '../models/session.dart';
 import '../models/team_config.dart';
 import '../theme/app_theme.dart';
 import '../utils/app_keys.dart';
@@ -38,7 +39,6 @@ class _ContextSidebarState extends State<ContextSidebar> {
     final colors = AppColors.of(context);
     final l10n = context.l10n;
     final teamCubit = context.watch<TeamCubit>();
-    final chatCubit = context.watch<ChatCubit>();
     final selected = teamCubit.state.selectedTeam;
 
     return PipelinePerf(
@@ -66,33 +66,7 @@ class _ContextSidebarState extends State<ContextSidebar> {
                   ),
                   Expanded(
                     child: _showSessions
-                        ? ListView.builder(
-                            itemCount: chatCubit.state.sessions.length,
-                            itemBuilder: (context, index) {
-                              final session = chatCubit.state.sessions[index];
-                              return _SidebarTile(
-                                key: AppKeys.sessionTile(session.sessionId),
-                                title: session.display.isNotEmpty
-                                    ? session.display
-                                    : session.kind,
-                                subtitle: session.cwd,
-                                selected:
-                                    chatCubit.state.activeSessionId ==
-                                    session.sessionId,
-                                onTap: () {
-                                  FramePerf.mark(
-                                    'nav session ${session.sessionId}',
-                                  );
-                                  context.read<ChatCubit>().openSessionTab(
-                                    session,
-                                  );
-                                  context.go(
-                                    '/chat/session/${session.sessionId}',
-                                  );
-                                },
-                              );
-                            },
-                          )
+                        ? const _SessionList()
                         : const SizedBox.shrink(),
                   ),
                   const Divider(height: 1),
@@ -110,6 +84,47 @@ class _ContextSidebarState extends State<ContextSidebar> {
                 ],
               ),
       ),
+    );
+  }
+}
+
+class _SessionList extends StatelessWidget {
+  const _SessionList();
+
+  @override
+  Widget build(BuildContext context) {
+    final sessions = context.select<ChatCubit, List<FlashskySession>>(
+      (cubit) => cubit.state.sessions,
+    );
+    return ListView.builder(
+      itemCount: sessions.length,
+      itemBuilder: (context, index) {
+        return _SessionTileEntry(session: sessions[index]);
+      },
+    );
+  }
+}
+
+class _SessionTileEntry extends StatelessWidget {
+  const _SessionTileEntry({required this.session});
+
+  final FlashskySession session;
+
+  @override
+  Widget build(BuildContext context) {
+    final selected = context.select<ChatCubit, bool>(
+      (cubit) => cubit.state.activeSessionId == session.sessionId,
+    );
+    return _SidebarTile(
+      key: AppKeys.sessionTile(session.sessionId),
+      title: session.display.isNotEmpty ? session.display : session.kind,
+      subtitle: session.cwd,
+      selected: selected,
+      onTap: () {
+        FramePerf.mark('nav session ${session.sessionId}');
+        context.read<ChatCubit>().openSessionTab(session);
+        context.go('/chat/session/${session.sessionId}');
+      },
     );
   }
 }
