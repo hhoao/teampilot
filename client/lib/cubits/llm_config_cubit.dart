@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../models/llm_config.dart';
 import '../repositories/llm_config_repository.dart';
+import '../utils/logger.dart';
 
 class LlmConfigState extends Equatable {
   const LlmConfigState({
@@ -69,6 +70,7 @@ class LlmConfigCubit extends Cubit<LlmConfigState> {
   }
 
   Future<void> load() async {
+    appLogger.i('LlmConfigCubit loading...');
     emit(state.copyWith(isLoading: true));
     final config = await _repository?.load() ?? const LlmConfig();
     emit(state.copyWith(
@@ -76,6 +78,8 @@ class LlmConfigCubit extends Cubit<LlmConfigState> {
         savedConfig: config,
         isLoading: false,
         statusMessage: 'Loaded LLM config.'));
+    appLogger.i(
+        'LlmConfigCubit loaded ${config.providers.length} providers, ${config.models.length} models');
   }
 
   Future<void> save() async {

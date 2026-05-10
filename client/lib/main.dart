@@ -3,7 +3,9 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:path/path.dart' as p;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:window_manager/window_manager.dart';
 
 import 'cubits/chat_cubit.dart';
 import 'cubits/config_cubit.dart';
@@ -20,14 +22,37 @@ import 'theme/app_theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  await windowManager.ensureInitialized();
+  final windowRect = await windowManager.getBounds();
+  WindowOptions windowOptions = WindowOptions(
+    size: Size(
+      (windowRect.width > 400) ? windowRect.width : 1200,
+      (windowRect.height > 300) ? windowRect.height : 700,
+    ),
+    minimumSize: const Size(800, 500),
+    center: false,
+    title: 'FlashskyAI Teams',
+  );
+  windowManager.waitUntilReadyToShow(windowOptions, () async {
+    await windowManager.show();
+    await windowManager.focus();
+  });
+
   final preferences = await SharedPreferences.getInstance();
 
   final teamCubit = TeamCubit(repository: TeamRepository(preferences));
   final chatCubit = ChatCubit();
   final configCubit = ConfigCubit();
+  final configPath = p.absolute(p.join(
+    Directory.current.path,
+    '..',
+    'flashshkyai',
+    'llm',
+    'llm_config.json',
+  ));
   final llmConfigCubit = LlmConfigCubit(
-      repository:
-          LlmConfigRepository(File('../flashshkyai/llm/llm_config.json')));
+      repository: LlmConfigRepository(File(configPath)));
   final layoutCubit = LayoutCubit(repository: LayoutRepository(preferences));
 
   await teamCubit.load();

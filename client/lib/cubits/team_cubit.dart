@@ -2,10 +2,12 @@ import 'dart:io';
 
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:uuid/uuid.dart';
 
 import '../models/team_config.dart';
 import '../repositories/team_repository.dart';
 import '../services/launch_command_builder.dart';
+import '../utils/logger.dart';
 
 class TeamState extends Equatable {
   const TeamState({
@@ -68,8 +70,7 @@ class TeamCubit extends Cubit<TeamState> {
                 LaunchCommandBuilder.launch(team, member: member)),
         _currentDirectoryProvider =
             currentDirectoryProvider ?? (() => Directory.current.path),
-        _idProvider = idProvider ??
-            (() => DateTime.now().microsecondsSinceEpoch.toString()),
+        _idProvider = idProvider ?? (() => const Uuid().v4()),
         super(const TeamState());
 
   final TeamRepository _repository;
@@ -89,6 +90,7 @@ class TeamCubit extends Cubit<TeamState> {
   }
 
   Future<void> load() async {
+    appLogger.i('TeamCubit loading teams...');
     emit(state.copyWith(isLoading: true));
     var teams = await _repository.loadTeams();
     if (teams.isEmpty) {
@@ -101,6 +103,7 @@ class TeamCubit extends Cubit<TeamState> {
       isLoading: false,
       statusMessage: 'Ready.',
     ));
+    appLogger.i('TeamCubit loaded ${teams.length} teams');
   }
 
   void selectTeam(String id) {
