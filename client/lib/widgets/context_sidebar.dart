@@ -55,15 +55,21 @@ class ContextSidebar extends StatelessWidget {
                           subtitle: session.cwd,
                           selected: chatCubit.state.activeSessionId ==
                               session.sessionId,
-                          onTap: () =>
-                              context.read<ChatCubit>().openSessionTab(session),
+                          onTap: () {
+                            context.read<ChatCubit>().openSessionTab(session);
+                            context.go('/chat/session/${session.sessionId}');
+                          },
                         ),
                     ],
                   ),
                 ),
                 const Divider(height: 1),
                 const SizedBox(height: 8),
-                _SettingsTile(onTap: () => context.go('/config/team')),
+                _SettingsTile(onTap: () {
+                  final sw = Stopwatch()..start();
+                  context.go('/config/team');
+                  print('[perf] context.go /config/team: ${sw.elapsedMilliseconds}ms');
+                }),
               ],
             ),
     );

@@ -116,14 +116,14 @@ class WorkspaceShell extends StatelessWidget {
               activeIndex: activeTabIndex,
               onTabSelected: onTabSelected,
               onTabClosed: onTabClosed,
-              trailing: actions.isNotEmpty
+              trailing: actions.isNotEmpty && showHeader
                   ? Padding(
                       padding: const EdgeInsets.only(left: 8),
                       child: Wrap(spacing: 6, children: actions),
                     )
                   : null,
             ),
-          if (tabs.isEmpty && actions.isNotEmpty)
+          if (tabs.isEmpty && actions.isNotEmpty && showHeader)
             _ActionsBar(actions: actions),
           Expanded(
             child: _WorkspaceBody(

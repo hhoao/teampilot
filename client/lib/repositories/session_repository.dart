@@ -2,34 +2,29 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:path/path.dart' as p;
-import 'package:path_provider/path_provider.dart';
 
 import '../models/session.dart';
 
 class SessionRepository {
   const SessionRepository();
 
-  Future<String> get _baseDir async {
-    final dir = await getApplicationSupportDirectory();
-    return p.join(dir.path, 'flashskyai');
+  String get _baseDir {
+    final home = Platform.environment['HOME'] ??
+        Platform.environment['USERPROFILE'] ??
+        '.';
+    return p.join(home, '.flashskyai');
   }
 
-  Future<String> get _historyPath async {
-    final base = await _baseDir;
-    return p.join(base, 'history.jsonl');
-  }
+  String get _historyPath => p.join(_baseDir, 'history.jsonl');
 
-  Future<String> get _sessionsDir async {
-    final base = await _baseDir;
-    return p.join(base, 'sessions');
-  }
+  String get _sessionsDir => p.join(_baseDir, 'sessions');
 
   Future<List<FlashskySession>> loadSessions() async {
     final sessions = <FlashskySession>{};
 
     // Primary source: active PID files in sessions/
     try {
-      final dir = Directory(await _sessionsDir);
+      final dir = Directory(_sessionsDir);
       if (await dir.exists()) {
         await for (final entity in dir.list()) {
           if (entity is File && entity.path.endsWith('.json')) {
@@ -61,7 +56,7 @@ class SessionRepository {
   }
 
   Future<List<FlashskySession>> _loadFromHistory() async {
-    final file = File(await _historyPath);
+    final file = File(_historyPath);
     if (!await file.exists()) {
       return [];
     }

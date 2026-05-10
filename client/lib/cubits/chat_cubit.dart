@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../models/session.dart';
@@ -98,6 +99,7 @@ class ChatCubit extends Cubit<ChatState> {
   }
 
   void openSessionTab(FlashskySession session) {
+    final sw = Stopwatch()..start();
     final existingIdx =
         _internalTabs.indexWhere((t) => t.info.id == session.sessionId);
     if (existingIdx != -1) {
@@ -118,15 +120,21 @@ class ChatCubit extends Cubit<ChatState> {
       activeTabIndex: _internalTabs.length - 1,
       activeSessionId: session.sessionId,
     ));
-    try {
-      ts.connectResume(session.sessionId);
-      _updateTabRunning(info.id, true);
-    } on Object catch (e) {
-      ts.terminal.write('\r\n[Failed to resume session: $e]\r\n');
-    }
+    print('[perf] openSessionTab emit: ${sw.elapsedMilliseconds}ms');
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      try {
+        final sw2 = Stopwatch()..start();
+        ts.connectResume(session.sessionId);
+        print('[perf] connectResume: ${sw2.elapsedMilliseconds}ms');
+        _updateTabRunning(info.id, true);
+      } on Object catch (e) {
+        ts.terminal.write('\r\n[Failed to resume session: $e]\r\n');
+      }
+    });
   }
 
   void openMemberTab(TeamConfig team, TeamMemberConfig member) {
+    final sw = Stopwatch()..start();
     final tabId = 'member-${member.id}';
     final existingIdx =
         _internalTabs.indexWhere((t) => t.info.id == tabId);
@@ -147,12 +155,17 @@ class ChatCubit extends Cubit<ChatState> {
       activeTabIndex: _internalTabs.length - 1,
       selectedMemberId: member.id,
     ));
-    try {
-      ts.connect(team, member);
-      _updateTabRunning(tabId, true);
-    } on Object catch (e) {
-      ts.terminal.write('\r\n[Failed to start session: $e]\r\n');
-    }
+    print('[perf] openMemberTab emit: ${sw.elapsedMilliseconds}ms');
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      try {
+        final sw2 = Stopwatch()..start();
+        ts.connect(team, member);
+        print('[perf] connect: ${sw2.elapsedMilliseconds}ms');
+        _updateTabRunning(tabId, true);
+      } on Object catch (e) {
+        ts.terminal.write('\r\n[Failed to start session: $e]\r\n');
+      }
+    });
   }
 
   void closeTab(int index) {
@@ -197,8 +210,28 @@ class ChatCubit extends Cubit<ChatState> {
 
   void selectMember(String memberId) {
     if (state.selectedMemberId == memberId) return;
+    final tabId = 'member-$memberId';
+    final existingIdx = _internalTabs.indexWhere((t) => t.info.id == tabId);
+    if (existingIdx != -1) {
+      emit(state.copyWith(
+          activeTabIndex: existingIdx, selectedMemberId: memberId));
+      return;
+    }
     _killLegacySession();
     emit(state.copyWith(selectedMemberId: memberId));
+  }
+
+  bool isMemberRunning(String memberId) {
+    final tabId = 'member-$memberId';
+    final idx = _internalTabs.indexWhere((t) => t.info.id == tabId);
+    return idx != -1 && _internalTabs[idx].info.isRunning;
+  }
+
+  void launchAllMembers(TeamConfig team) {
+    final validMembers = team.members.where((m) => m.isValid).toList();
+    for (final member in validMembers) {
+      openMemberTab(team, member);
+    }
   }
 
   String selectedMemberName(TeamConfig team) {

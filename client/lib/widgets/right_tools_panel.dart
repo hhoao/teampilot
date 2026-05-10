@@ -38,13 +38,21 @@ class RightToolsPanel extends StatelessWidget {
         _MembersPanel(
           members: members,
           selectedMemberId: chatCubit.state.selectedMemberId,
-          onSelected: (id) => context.read<ChatCubit>().selectMember(id),
-          onOpen: (id) {
-            context.read<TeamCubit>().launchMember(id);
-            context
-                .read<ChatCubit>()
-                .addSystemMessage(teamCubit.state.statusMessage);
+          onSelected: (id) {
+            final member =
+                team.members.firstWhere((m) => m.id == id);
+            context.read<ChatCubit>().openMemberTab(team, member);
           },
+          onOpen: (id) {
+            final member =
+                team.members.firstWhere((m) => m.id == id);
+            context.read<ChatCubit>().openMemberTab(team, member);
+          },
+          onLaunchAll: () {
+            context.read<ChatCubit>().launchAllMembers(team);
+          },
+          isMemberRunning: (id) =>
+              context.read<ChatCubit>().isMemberRunning(id),
         ),
       if (preferences.fileTreeVisible) _FileTreePanel(team: team),
     ];
@@ -117,30 +125,63 @@ class _MembersPanel extends StatelessWidget {
     required this.selectedMemberId,
     required this.onSelected,
     required this.onOpen,
+    required this.onLaunchAll,
+    required this.isMemberRunning,
   });
 
   final List<TeamMemberConfig> members;
   final String selectedMemberId;
   final ValueChanged<String> onSelected;
   final ValueChanged<String> onOpen;
+  final VoidCallback onLaunchAll;
+  final bool Function(String memberId) isMemberRunning;
 
   @override
   Widget build(BuildContext context) {
     final colors = AppColors.of(context);
     final l10n = context.l10n;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textBase = isDark ? Colors.white : const Color(0xFF111827);
     return Container(
       key: AppKeys.membersPanel,
       padding: const EdgeInsets.all(13),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _PanelTitle(title: l10n.members, action: l10n.openTeam),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  l10n.members,
+                  style: TextStyle(
+                    color: textBase.withValues(alpha: 0.58),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.8,
+                  ),
+                ),
+              ),
+              SizedBox(
+                height: 22,
+                child: IconButton(
+                  tooltip: l10n.openTeam,
+                  onPressed: onLaunchAll,
+                  icon: const Icon(Icons.keyboard_double_arrow_right,
+                      size: 18),
+                  padding: EdgeInsets.zero,
+                  constraints:
+                      const BoxConstraints(minWidth: 28, minHeight: 22),
+                ),
+              ),
+            ],
+          ),
           Expanded(
             child: ListView.builder(
               itemCount: members.length,
               itemBuilder: (context, index) {
                 final member = members[index];
                 final selected = member.id == selectedMemberId;
+                final running = isMemberRunning(member.id);
                 return Container(
                   key: AppKeys.memberRow(member.id),
                   margin: const EdgeInsets.only(bottom: 8),
@@ -159,11 +200,16 @@ class _MembersPanel extends StatelessWidget {
                             .where((v) => v.isNotEmpty)
                             .join(' / '),
                       ),
-                      trailing: IconButton(
+                      trailing: Container(
                         key: AppKeys.memberOpenButton(member.id),
-                        tooltip: l10n.openMember,
-                        onPressed: () => onOpen(member.id),
-                        icon: const Icon(Icons.open_in_new, size: 18),
+                        width: 12,
+                        height: 12,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: running
+                              ? colors.accentGreen
+                              : const Color(0xFFEF4444),
+                        ),
                       ),
                       onTap: () => onSelected(member.id),
                     ),

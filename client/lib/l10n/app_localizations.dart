@@ -129,6 +129,15 @@ class AppLocalizations {
 
   String get runsPlaceholder => _strings['runsPlaceholder']!;
 
+  String get appearance => _strings['appearance']!;
+  String get theme => _strings['theme']!;
+  String get themeSystem => _strings['themeSystem']!;
+  String get themeDark => _strings['themeDark']!;
+  String get themeLight => _strings['themeLight']!;
+  String get language => _strings['language']!;
+  String get languageEnglish => _strings['languageEnglish']!;
+  String get languageChinese => _strings['languageChinese']!;
+
   static AppLocalizations of(BuildContext context) =>
       Localizations.of<AppLocalizations>(context, AppLocalizations)!;
 
@@ -337,6 +346,14 @@ class _AppLocalizationsDelegate
       'en': 'Run history will appear here.',
       'zh': '运行历史将显示在此处。',
     },
+    'appearance': {'en': 'Appearance', 'zh': '外观'},
+    'theme': {'en': 'Theme', 'zh': '主题'},
+    'themeSystem': {'en': 'System', 'zh': '跟随系统'},
+    'themeDark': {'en': 'Dark', 'zh': '深色'},
+    'themeLight': {'en': 'Light', 'zh': '浅色'},
+    'language': {'en': 'Language', 'zh': '语言'},
+    'languageEnglish': {'en': 'English', 'zh': 'English'},
+    'languageChinese': {'en': '中文', 'zh': '中文'},
   };
 
   @override

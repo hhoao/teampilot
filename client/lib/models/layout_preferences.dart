@@ -15,7 +15,10 @@ class LayoutPreferences {
     this.fileTreeVisible = true,
     this.rightToolsWidth = defaultRightToolsWidth,
     this.bottomToolsHeight = defaultBottomToolsHeight,
+    this.sidebarWidth = defaultSidebarWidth,
     this.membersSplit = 0.42,
+    this.themeMode = 'system',
+    this.locale = '',
   });
 
   factory LayoutPreferences.fromJson(Map<String, Object?> json) {
@@ -39,10 +42,16 @@ class LayoutPreferences {
       bottomToolsHeight: _doubleValue(
         json['bottomToolsHeight'],
       ).clamp(minBottomToolsHeight, maxBottomToolsHeight),
+      sidebarWidth: _doubleValue(
+        json['sidebarWidth'],
+        fallback: defaultSidebarWidth,
+      ).clamp(minSidebarWidth, maxSidebarWidth),
       membersSplit: _doubleValue(
         json['membersSplit'],
         fallback: 0.42,
       ).clamp(0.25, 0.75),
+      themeMode: json['themeMode'] as String? ?? 'system',
+      locale: json['locale'] as String? ?? '',
     ).withAtLeastOneToolVisible();
   }
 
@@ -50,6 +59,9 @@ class LayoutPreferences {
   static const minRightToolsWidth = 240.0;
   static const maxRightToolsWidth = 520.0;
   static const defaultBottomToolsHeight = 240.0;
+  static const defaultSidebarWidth = 260.0;
+  static const minSidebarWidth = 180.0;
+  static const maxSidebarWidth = 420.0;
   static const minBottomToolsHeight = 180.0;
   static const maxBottomToolsHeight = 420.0;
 
@@ -62,7 +74,10 @@ class LayoutPreferences {
   final bool fileTreeVisible;
   final double rightToolsWidth;
   final double bottomToolsHeight;
+  final double sidebarWidth;
   final double membersSplit;
+  final String themeMode;
+  final String locale;
 
   LayoutPreferences copyWith({
     LayoutPreset? preset,
@@ -74,7 +89,10 @@ class LayoutPreferences {
     bool? fileTreeVisible,
     double? rightToolsWidth,
     double? bottomToolsHeight,
+    double? sidebarWidth,
     double? membersSplit,
+    String? themeMode,
+    String? locale,
   }) {
     return LayoutPreferences(
       preset: preset ?? this.preset,
@@ -93,7 +111,13 @@ class LayoutPreferences {
         minBottomToolsHeight,
         maxBottomToolsHeight,
       ),
+      sidebarWidth: (sidebarWidth ?? this.sidebarWidth).clamp(
+        minSidebarWidth,
+        maxSidebarWidth,
+      ),
       membersSplit: (membersSplit ?? this.membersSplit).clamp(0.25, 0.75),
+      themeMode: themeMode ?? this.themeMode,
+      locale: locale ?? this.locale,
     ).withAtLeastOneToolVisible();
   }
 
@@ -111,7 +135,10 @@ class LayoutPreferences {
       fileTreeVisible: false,
       rightToolsWidth: rightToolsWidth,
       bottomToolsHeight: bottomToolsHeight,
+      sidebarWidth: sidebarWidth,
       membersSplit: membersSplit,
+      themeMode: themeMode,
+      locale: locale,
     );
   }
 
@@ -126,7 +153,10 @@ class LayoutPreferences {
       'fileTreeVisible': fileTreeVisible,
       'rightToolsWidth': rightToolsWidth,
       'bottomToolsHeight': bottomToolsHeight,
+      'sidebarWidth': sidebarWidth,
       'membersSplit': membersSplit,
+      'themeMode': themeMode,
+      'locale': locale,
     };
   }
 }

@@ -15,6 +15,7 @@ final appRouter = GoRouter(
   routes: [
     ShellRoute(
       builder: (context, state, child) {
+        final sw = Stopwatch()..start();
         final layoutCubit = context.watch<LayoutCubit>();
         final preferences = layoutCubit.state.preferences;
         final areas = <Area>[
@@ -25,6 +26,7 @@ final appRouter = GoRouter(
                 builder: (_, __) => const ContextSidebar()),
           Area(min: 400, builder: (_, __) => child),
         ];
+        print('[perf] ShellRoute builder ${state.uri}: ${sw.elapsedMilliseconds}ms');
         return Scaffold(
           body: SafeArea(
             child: MultiSplitViewTheme(

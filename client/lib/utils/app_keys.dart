@@ -3,9 +3,9 @@ import 'package:flutter/widgets.dart';
 class AppKeys {
   const AppKeys._();
 
-  static const appRailChatButton = Key('app-rail-chat-button');
-  static const appRailRunsButton = Key('app-rail-runs-button');
-  static const appRailConfigButton = Key('app-rail-config-button');
+  static const sectionBarChatChip = Key('section-bar-chat-chip');
+  static const sectionBarRunsChip = Key('section-bar-runs-chip');
+  static const sidebarSettingsButton = Key('sidebar-settings-button');
   static const contextSidebar = Key('context-sidebar');
   static const workspaceTopbar = Key('workspace-topbar');
   static const chatWorkspace = Key('chat-workspace');
@@ -67,6 +67,7 @@ class AppKeys {
   static const addMemberButton = Key('add-member-button');
 
   static Key memberRow(String id) => Key('member-row-$id');
+  static Key sessionTile(String id) => Key('session-tile-$id');
   static Key memberNameField(String id) => Key('member-name-field-$id');
   static Key memberProviderField(String id) => Key('member-provider-field-$id');
   static Key memberModelField(String id) => Key('member-model-field-$id');
@@ -111,4 +112,10 @@ class AppKeys {
       Key('delete-model-$id');
   static Key editModelButton(String id) =>
       Key('edit-model-$id');
+
+  static const themeSystemButton = Key('theme-system-button');
+  static const themeDarkButton = Key('theme-dark-button');
+  static const themeLightButton = Key('theme-light-button');
+  static const languageEnButton = Key('language-en-button');
+  static const languageZhButton = Key('language-zh-button');
 }

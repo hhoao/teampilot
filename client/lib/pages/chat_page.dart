@@ -46,32 +46,26 @@ class ChatPage extends StatelessWidget {
         IconButton.filledTonal(
           key: AppKeys.openTeamLeadButton,
           tooltip: 'Open team-lead',
-          onPressed: teamCubit.state.isLaunching
-              ? null
-              : () {
-                  final lead = team.members
-                      .where((m) => m.name == 'team-lead');
-                  if (lead.isEmpty) {
-                    context.read<ChatCubit>().addSystemMessage(
-                        'FlashskyAI requires a member named team-lead.');
-                    return;
-                  }
-                  context.read<TeamCubit>().launchMember(lead.first.id);
-                  context.read<ChatCubit>().addSystemMessage(
-                      teamCubit.state.statusMessage);
-                },
+          onPressed: () {
+            final lead =
+                team.members.where((m) => m.name == 'team-lead');
+            if (lead.isEmpty) {
+              context.read<ChatCubit>().addSystemMessage(
+                  'FlashskyAI requires a member named team-lead.');
+              return;
+            }
+            context
+                .read<ChatCubit>()
+                .openMemberTab(team, lead.first);
+          },
           icon: const Icon(Icons.person_outline),
         ),
         IconButton.filled(
           key: AppKeys.openTeamButton,
           tooltip: 'Open Team',
-          onPressed: teamCubit.state.isLaunching
-              ? null
-              : () {
-                  context.read<TeamCubit>().launchSelectedTeam();
-                  context.read<ChatCubit>().addSystemMessage(
-                      teamCubit.state.statusMessage);
-                },
+          onPressed: () {
+            context.read<ChatCubit>().launchAllMembers(team);
+          },
           icon: const Icon(Icons.groups_outlined),
         ),
       ],

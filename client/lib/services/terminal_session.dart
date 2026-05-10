@@ -22,6 +22,47 @@ class TerminalSession {
 
   bool get isRunning => _running;
 
+  void connectResume(String sessionId) {
+    if (_running) {
+      disconnect();
+    }
+
+    try {
+      _pty = Pty.start(
+        LaunchCommandBuilder.executable,
+        arguments: ['--resume', sessionId],
+      );
+
+      _pty!.output.listen((data) {
+        terminal.write(utf8.decode(data, allowMalformed: true));
+      });
+
+      terminal.onOutput = (String data) {
+        if (_running && _pty != null) {
+          _pty!.write(Uint8List.fromList(utf8.encode(data)));
+        }
+      };
+
+      terminal.onResize = (int width, int height, int pw, int ph) {
+        if (_running && _pty != null) {
+          _pty!.resize(height, width);
+        }
+      };
+
+      _pty!.exitCode.then((_) {
+        if (_running) {
+          terminal.write('\r\n[process exited]\r\n');
+        }
+        _running = false;
+      });
+
+      _running = true;
+    } on Object catch (error) {
+      terminal.write('\r\n[Failed to start flashskyai: $error]\r\n');
+      _running = false;
+    }
+  }
+
   void connect(TeamConfig team, TeamMemberConfig member) {
     if (_running) {
       disconnect();
