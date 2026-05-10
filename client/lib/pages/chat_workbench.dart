@@ -1,21 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:xterm/xterm.dart';
 
-import '../utils/app_keys.dart';
-import '../controllers/chat_controller.dart';
-import '../models/team_config.dart';
+import '../cubits/chat_cubit.dart';
+import '../cubits/team_cubit.dart';
 import '../services/terminal_session.dart';
 import '../theme/app_theme.dart';
+import '../utils/app_keys.dart';
 
 class ChatWorkbench extends StatefulWidget {
-  const ChatWorkbench({
-    required this.team,
-    required this.chatController,
-    super.key,
-  });
+  const ChatWorkbench({this.sessionId, super.key});
 
-  final TeamConfig team;
-  final ChatController chatController;
+  final String? sessionId;
 
   @override
   State<ChatWorkbench> createState() => _ChatWorkbenchState();
@@ -27,29 +23,42 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
   @override
   void initState() {
     super.initState();
-    widget.chatController.addListener(_onControllerChanged);
-  }
-
-  @override
-  void dispose() {
-    widget.chatController.removeListener(_onControllerChanged);
-    super.dispose();
-  }
-
-  void _onControllerChanged() {
-    if (!mounted) {
-      return;
+    // If sessionId is provided, open it
+    if (widget.sessionId != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final chatCubit = context.read<ChatCubit>();
+        final sessions = chatCubit.state.sessions;
+        final session = sessions.firstWhere(
+          (s) => s.sessionId == widget.sessionId,
+          orElse: () => sessions.first,
+        );
+        if (sessions.isNotEmpty) {
+          chatCubit.openSessionTab(session);
+        }
+      });
     }
+    context.read<ChatCubit>().stream.listen(_onCubitChanged);
+  }
+
+  void _onCubitChanged(ChatState state) {
+    if (!mounted) return;
     setState(() {
-      _session = widget.chatController.session;
+      _session = context.read<ChatCubit>().currentSession;
     });
   }
 
   @override
   Widget build(BuildContext context) {
     final colors = AppColors.of(context);
+    final teamCubit = context.watch<TeamCubit>();
+    final chatCubit = context.read<ChatCubit>();
+    final team = teamCubit.state.selectedTeam;
 
-    _session ??= widget.chatController.ensureSession(widget.team);
+    if (team == null) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    _session ??= chatCubit.ensureSession(team);
     final session = _session!;
 
     return Container(
@@ -60,20 +69,19 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
           _TerminalToolbar(
             colors: colors,
             session: session,
-            memberName:
-                widget.chatController.selectedMemberName(widget.team),
+            memberName: chatCubit.selectedMemberName(team),
             onConnect: () {
-              widget.chatController.connectSession(widget.team);
+              chatCubit.connectSession(team);
               setState(() {});
             },
             onDisconnect: () {
-              widget.chatController.disconnectSession();
+              chatCubit.disconnectSession();
               setState(() {});
             },
             onRestart: () {
-              widget.chatController.restartSession(widget.team);
+              chatCubit.restartSession(team);
               setState(() {
-                _session = widget.chatController.session;
+                _session = chatCubit.currentSession;
               });
             },
           ),
@@ -89,7 +97,7 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
                       autofocus: true,
                     )
                   : _TerminalPlaceholder(onConnect: () {
-                      widget.chatController.connectSession(widget.team);
+                      chatCubit.connectSession(team);
                       setState(() {});
                     }),
             ),
@@ -139,17 +147,15 @@ class _TerminalToolbar extends StatelessWidget {
           Text(
             session.isRunning ? 'flashskyai' : 'disconnected',
             style: TextStyle(
-              fontSize: 11,
-              color: Colors.white.withValues(alpha: 0.68),
-            ),
+                fontSize: 11,
+                color: Colors.white.withValues(alpha: 0.68)),
           ),
           const SizedBox(width: 12),
           Text(
             '→ $memberName',
             style: TextStyle(
-              fontSize: 11,
-              color: Colors.white.withValues(alpha: 0.4),
-            ),
+                fontSize: 11,
+                color: Colors.white.withValues(alpha: 0.4)),
           ),
           const Spacer(),
           if (session.isRunning) ...[
@@ -182,7 +188,8 @@ class _TerminalToolbar extends StatelessWidget {
               child: TextButton.icon(
                 onPressed: onConnect,
                 icon: const Icon(Icons.play_arrow, size: 14),
-                label: const Text('Connect', style: TextStyle(fontSize: 11)),
+                label:
+                    const Text('Connect', style: TextStyle(fontSize: 11)),
                 style: TextButton.styleFrom(
                   padding: const EdgeInsets.symmetric(horizontal: 8),
                   minimumSize: const Size(0, 22),
@@ -208,23 +215,19 @@ class _TerminalPlaceholder extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.terminal, size: 48,
-              color: textBase.withValues(alpha: 0.24)),
+          Icon(Icons.terminal,
+              size: 48, color: textBase.withValues(alpha: 0.24)),
           const SizedBox(height: 12),
           Text(
             'Terminal not connected',
             style: TextStyle(
-              color: textBase.withValues(alpha: 0.54),
-              fontSize: 14,
-            ),
+                color: textBase.withValues(alpha: 0.54), fontSize: 14),
           ),
           const SizedBox(height: 6),
           Text(
             'Connect to start a flashskyai session',
             style: TextStyle(
-              color: textBase.withValues(alpha: 0.34),
-              fontSize: 12,
-            ),
+                color: textBase.withValues(alpha: 0.34), fontSize: 12),
           ),
           const SizedBox(height: 16),
           FilledButton.icon(

@@ -1,73 +1,85 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 
-import '../utils/app_keys.dart';
-import '../controllers/config_controller.dart';
+import '../cubits/config_cubit.dart';
+import '../cubits/layout_cubit.dart';
+import '../cubits/team_cubit.dart';
 import '../l10n/app_localizations.dart';
-import '../services/launch_command_builder.dart';
-import '../controllers/layout_controller.dart';
 import '../models/layout_preferences.dart';
-import '../controllers/llm_config_controller.dart';
 import '../models/team_config.dart';
-import '../controllers/team_controller.dart';
+import '../services/launch_command_builder.dart';
 import '../theme/app_theme.dart';
+import '../utils/app_keys.dart';
 import 'llm_config_workspace.dart';
 
 class ConfigWorkspace extends StatelessWidget {
-  const ConfigWorkspace({
-    required this.configController,
-    required this.layoutController,
-    required this.llmConfigController,
-    required this.teamController,
-    super.key,
-  });
+  const ConfigWorkspace({this.section, super.key});
 
-  final ConfigController configController;
-  final LayoutController layoutController;
-  final LlmConfigController llmConfigController;
-  final TeamController teamController;
+  final ConfigSection? section;
 
   @override
   Widget build(BuildContext context) {
     final colors = AppColors.of(context);
-    final team = teamController.selectedTeam;
+    final l10n = context.l10n;
+    final configCubit = context.watch<ConfigCubit>();
+    final teamCubit = context.watch<TeamCubit>();
+    final team = teamCubit.state.selectedTeam;
+
+    if (section != null && configCubit.state.section != section) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        configCubit.selectSection(section!);
+      });
+    }
+
     if (team == null) {
       return const Center(child: CircularProgressIndicator());
     }
     return Container(
       key: AppKeys.configWorkspace,
       color: colors.workspaceBackground,
-      padding: const EdgeInsets.all(16),
-      child: switch (configController.section) {
-        ConfigSection.team => TeamConfigWorkspace(
-          team: team,
-          controller: teamController,
-        ),
-        ConfigSection.members => MemberConfigWorkspace(
-          team: team,
-          teamController: teamController,
-          configController: configController,
-        ),
-        ConfigSection.layout => LayoutConfigWorkspace(
-          layoutController: layoutController,
-        ),
-        ConfigSection.llm => LlmConfigWorkspace(
-          controller: llmConfigController,
-        ),
-      },
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _ConfigNavPanel(
+            section: configCubit.state.section,
+            onSelectSection: (s) {
+              context.read<ConfigCubit>().selectSection(s);
+              context.go('/config/${s.name}');
+            },
+            l10n: l10n,
+          ),
+          Expanded(
+            child: switch (configCubit.state.section) {
+              ConfigSection.team => Padding(
+                padding: const EdgeInsets.all(16),
+                child: TeamConfigWorkspace(team: team),
+              ),
+              ConfigSection.members => Padding(
+                padding: const EdgeInsets.all(16),
+                child: MemberConfigWorkspace(team: team),
+              ),
+              ConfigSection.layout => const Padding(
+                padding: EdgeInsets.all(16),
+                child: LayoutConfigWorkspace(),
+              ),
+              ConfigSection.llm => const Padding(
+                padding: EdgeInsets.all(16),
+                child: LlmConfigWorkspace(),
+              ),
+            },
+          ),
+        ],
+      ),
     );
   }
 }
 
 
 class TeamConfigWorkspace extends StatefulWidget {
-  const TeamConfigWorkspace({
-    required this.team,
-    required this.controller,
-    super.key,
-  });
+  const TeamConfigWorkspace({required this.team, super.key});
 
   final TeamConfig team;
-  final TeamController controller;
 
   @override
   State<TeamConfigWorkspace> createState() => _TeamConfigWorkspaceState();
@@ -182,7 +194,7 @@ class _TeamConfigWorkspaceState extends State<TeamConfigWorkspace> {
                     index: index,
                     team: widget.team,
                     member: widget.team.members[index],
-                    controller: widget.controller,
+                    controller: context.read<TeamCubit>(),
                   ),
               ],
             ),
@@ -200,7 +212,7 @@ class _TeamConfigWorkspaceState extends State<TeamConfigWorkspace> {
               label: Text(l10n.save),
             ),
             Text(
-              widget.controller.statusMessage,
+              context.read<TeamCubit>().state.statusMessage,
               style: TextStyle(color: textBase.withValues(alpha: 0.66)),
             ),
           ],
@@ -210,7 +222,7 @@ class _TeamConfigWorkspaceState extends State<TeamConfigWorkspace> {
   }
 
   Future<void> _save() {
-    return widget.controller.updateSelected(
+    return context.read<TeamCubit>().updateSelected(
       widget.team.copyWith(
         name: _nameController.text,
         workingDirectory: _directoryController.text,
@@ -221,16 +233,9 @@ class _TeamConfigWorkspaceState extends State<TeamConfigWorkspace> {
 }
 
 class MemberConfigWorkspace extends StatefulWidget {
-  const MemberConfigWorkspace({
-    required this.team,
-    required this.teamController,
-    required this.configController,
-    super.key,
-  });
+  const MemberConfigWorkspace({required this.team, super.key});
 
   final TeamConfig team;
-  final TeamController teamController;
-  final ConfigController configController;
 
   @override
   State<MemberConfigWorkspace> createState() => _MemberConfigWorkspaceState();
@@ -247,7 +252,7 @@ class _MemberConfigWorkspaceState extends State<MemberConfigWorkspace> {
 
   TeamMemberConfig get _member {
     for (final member in widget.team.members) {
-      if (member.id == widget.configController.selectedMemberId) {
+      if (member.id == context.read<ConfigCubit>().state.selectedMemberId) {
         return member;
       }
     }
@@ -435,7 +440,7 @@ class _MemberConfigWorkspaceState extends State<MemberConfigWorkspace> {
       });
       return;
     }
-    await widget.teamController.updateMember(
+    await context.read<TeamCubit>().updateMember(
       member.id,
       member.copyWith(
         name: _nameController.text,
@@ -452,13 +457,12 @@ class _MemberConfigWorkspaceState extends State<MemberConfigWorkspace> {
 }
 
 class LayoutConfigWorkspace extends StatelessWidget {
-  const LayoutConfigWorkspace({required this.layoutController, super.key});
-
-  final LayoutController layoutController;
+  const LayoutConfigWorkspace({super.key});
 
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
+    final layoutController = context.watch<LayoutCubit>();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -467,7 +471,7 @@ class LayoutConfigWorkspace extends StatelessWidget {
           subtitle: l10n.layoutPageSubtitle,
         ),
         const SizedBox(height: 16),
-        _LayoutControls(preferences: layoutController.preferences, controller: layoutController),
+        _LayoutControls(preferences: layoutController.state.preferences, controller: layoutController),
       ],
     );
   }
@@ -477,11 +481,13 @@ class _LayoutControls extends StatelessWidget {
   const _LayoutControls({required this.preferences, required this.controller});
 
   final LayoutPreferences preferences;
-  final LayoutController controller;
+  final LayoutCubit controller;
 
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textBase = isDark ? Colors.white : const Color(0xFF111827);
     return Expanded(
       child: SingleChildScrollView(
         child: Column(
@@ -570,12 +576,6 @@ class _LayoutControls extends StatelessWidget {
               child: Column(
                 children: [
                   SwitchListTile(
-                    key: AppKeys.appRailVisibilitySwitch,
-                    title: Text(l10n.appRail),
-                    value: preferences.appRailVisible,
-                    onChanged: (value) => _setVisibility(appRailVisible: value),
-                  ),
-                  SwitchListTile(
                     key: AppKeys.contextSidebarVisibilitySwitch,
                     title: Text(l10n.teamSessions),
                     value: preferences.contextSidebarVisible,
@@ -598,6 +598,67 @@ class _LayoutControls extends StatelessWidget {
                 ],
               ),
             ),
+            const SizedBox(height: 14),
+            _Section(
+              title: l10n.appearance,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    l10n.theme,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: textBase.withValues(alpha: 0.68),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    children: [
+                      OutlinedButton(
+                        key: AppKeys.themeSystemButton,
+                        onPressed: () => controller.setThemeMode('system'),
+                        child: Text(l10n.themeSystem),
+                      ),
+                      OutlinedButton(
+                        key: AppKeys.themeDarkButton,
+                        onPressed: () => controller.setThemeMode('dark'),
+                        child: Text(l10n.themeDark),
+                      ),
+                      OutlinedButton(
+                        key: AppKeys.themeLightButton,
+                        onPressed: () => controller.setThemeMode('light'),
+                        child: Text(l10n.themeLight),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    l10n.language,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: textBase.withValues(alpha: 0.68),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    children: [
+                      OutlinedButton(
+                        key: AppKeys.languageEnButton,
+                        onPressed: () => controller.setLocale('en'),
+                        child: Text(l10n.languageEnglish),
+                      ),
+                      OutlinedButton(
+                        key: AppKeys.languageZhButton,
+                        onPressed: () => controller.setLocale('zh'),
+                        child: Text(l10n.languageChinese),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
           ],
         ),
       ),
@@ -605,13 +666,12 @@ class _LayoutControls extends StatelessWidget {
   }
 
   void _setVisibility({
-    bool? appRailVisible,
     bool? contextSidebarVisible,
     bool? membersVisible,
     bool? fileTreeVisible,
   }) {
     controller.setRegionVisibility(
-      appRailVisible: appRailVisible ?? preferences.appRailVisible,
+      appRailVisible: true,
       contextSidebarVisible:
           contextSidebarVisible ?? preferences.contextSidebarVisible,
       membersVisible: membersVisible ?? preferences.membersVisible,
@@ -631,7 +691,7 @@ class _LaunchOrderRow extends StatelessWidget {
   final int index;
   final TeamConfig team;
   final TeamMemberConfig member;
-  final TeamController controller;
+  final TeamCubit controller;
 
   @override
   Widget build(BuildContext context) {
@@ -764,5 +824,165 @@ class _SizedField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(width: 360, child: child);
+  }
+}
+
+class _ConfigNavPanel extends StatelessWidget {
+  const _ConfigNavPanel({
+    required this.section,
+    required this.onSelectSection,
+    required this.l10n,
+  });
+
+  final ConfigSection section;
+  final ValueChanged<ConfigSection> onSelectSection;
+  final AppLocalizations l10n;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textBase = isDark ? Colors.white : const Color(0xFF111827);
+    return Container(
+      width: 180,
+      color: colors.sidebarBackground,
+      padding: const EdgeInsets.all(13),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _SidebarSectionTitle(title: l10n.configure, actionLabel: '', colors: colors, textBase: textBase),
+          _ConfigNavItem(
+            key: AppKeys.configTeamSectionButton,
+            title: l10n.teamSettings,
+            subtitle: l10n.teamSettingsSubtitle,
+            selected: section == ConfigSection.team,
+            onTap: () => onSelectSection(ConfigSection.team),
+          ),
+          _ConfigNavItem(
+            key: AppKeys.configMembersSectionButton,
+            title: l10n.members,
+            subtitle: l10n.membersSubtitle,
+            selected: section == ConfigSection.members,
+            onTap: () => onSelectSection(ConfigSection.members),
+          ),
+          _ConfigNavItem(
+            key: AppKeys.configLlmSectionButton,
+            title: l10n.llmConfig,
+            subtitle: l10n.llmConfigSubtitle,
+            selected: section == ConfigSection.llm,
+            onTap: () => onSelectSection(ConfigSection.llm),
+          ),
+          _ConfigNavItem(
+            key: AppKeys.configLayoutSectionButton,
+            title: l10n.layout,
+            subtitle: l10n.layoutSubtitle,
+            selected: section == ConfigSection.layout,
+            onTap: () => onSelectSection(ConfigSection.layout),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ConfigNavItem extends StatelessWidget {
+  const _ConfigNavItem({
+    super.key,
+    required this.title,
+    required this.subtitle,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String title;
+  final String subtitle;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textBase = isDark ? Colors.white : const Color(0xFF111827);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Material(
+        color: selected ? colors.selectedBackground : colors.unselectedBackground,
+        borderRadius: BorderRadius.circular(8),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(8),
+          onTap: onTap,
+          child: Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: selected ? colors.selectedBorder : colors.unselectedBorder,
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(fontWeight: FontWeight.w700, color: textBase),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  subtitle,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: textBase.withValues(alpha: 0.52),
+                    fontSize: 11,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SidebarSectionTitle extends StatelessWidget {
+  const _SidebarSectionTitle({
+    required this.title,
+    required this.actionLabel,
+    required this.colors,
+    required this.textBase,
+  });
+
+  final String title;
+  final String actionLabel;
+  final AppColors colors;
+  final Color textBase;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              title,
+              style: TextStyle(
+                color: textBase.withValues(alpha: 0.58),
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.8,
+              ),
+            ),
+          ),
+          if (actionLabel.isNotEmpty)
+            Text(actionLabel, style: TextStyle(color: colors.linkText)),
+        ],
+      ),
+    );
   }
 }

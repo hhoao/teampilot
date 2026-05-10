@@ -1,50 +1,50 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../utils/app_keys.dart';
-import '../controllers/chat_controller.dart';
+import '../cubits/chat_cubit.dart';
+import '../cubits/team_cubit.dart';
 import '../l10n/app_localizations.dart';
 import '../models/layout_preferences.dart';
 import '../models/team_config.dart';
 import '../theme/app_theme.dart';
-
-typedef OpenMemberCallback = Future<void> Function(String memberId);
+import '../utils/app_keys.dart';
 
 class RightToolsPanel extends StatelessWidget {
   const RightToolsPanel({
-    required this.team,
-    required this.chatController,
-    required this.onOpenMember,
     this.preferences = const LayoutPreferences(),
     this.panelKey = AppKeys.rightToolsPanel,
     super.key,
   });
 
-  final TeamConfig team;
-  final ChatController chatController;
-  final OpenMemberCallback onOpenMember;
   final LayoutPreferences preferences;
   final Key panelKey;
 
   @override
   Widget build(BuildContext context) {
     final colors = AppColors.of(context);
+    final teamCubit = context.watch<TeamCubit>();
+    final chatCubit = context.watch<ChatCubit>();
+    final team = teamCubit.state.selectedTeam;
+    if (team == null) return const SizedBox.shrink();
+
     final members = [...team.members]
       ..sort((a, b) {
-        if (a.name == 'team-lead') {
-          return -1;
-        }
-        if (b.name == 'team-lead') {
-          return 1;
-        }
+        if (a.name == 'team-lead') return -1;
+        if (b.name == 'team-lead') return 1;
         return 0;
       });
     final panels = <Widget>[
       if (preferences.membersVisible)
         _MembersPanel(
           members: members,
-          selectedMemberId: chatController.selectedMemberId,
-          onSelected: chatController.selectMember,
-          onOpen: onOpenMember,
+          selectedMemberId: chatCubit.state.selectedMemberId,
+          onSelected: (id) => context.read<ChatCubit>().selectMember(id),
+          onOpen: (id) {
+            context.read<TeamCubit>().launchMember(id);
+            context
+                .read<ChatCubit>()
+                .addSystemMessage(teamCubit.state.statusMessage);
+          },
         ),
       if (preferences.fileTreeVisible) _FileTreePanel(team: team),
     ];
@@ -59,7 +59,8 @@ class RightToolsPanel extends StatelessWidget {
 }
 
 class _StackedToolsPanel extends StatelessWidget {
-  const _StackedToolsPanel({required this.panels, required this.preferences});
+  const _StackedToolsPanel(
+      {required this.panels, required this.preferences});
 
   final List<Widget> panels;
   final LayoutPreferences preferences;
@@ -67,9 +68,7 @@ class _StackedToolsPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = AppColors.of(context);
-    if (panels.length == 1) {
-      return panels.single;
-    }
+    if (panels.length == 1) return panels.single;
     return Column(
       children: [
         Expanded(
@@ -87,7 +86,8 @@ class _StackedToolsPanel extends StatelessWidget {
 }
 
 class _TabbedToolsPanel extends StatelessWidget {
-  const _TabbedToolsPanel({required this.panels, required this.preferences});
+  const _TabbedToolsPanel(
+      {required this.panels, required this.preferences});
 
   final List<Widget> panels;
   final LayoutPreferences preferences;
@@ -122,7 +122,7 @@ class _MembersPanel extends StatelessWidget {
   final List<TeamMemberConfig> members;
   final String selectedMemberId;
   final ValueChanged<String> onSelected;
-  final OpenMemberCallback onOpen;
+  final ValueChanged<String> onOpen;
 
   @override
   Widget build(BuildContext context) {
@@ -152,14 +152,12 @@ class _MembersPanel extends StatelessWidget {
                     child: ListTile(
                       dense: true,
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
+                          borderRadius: BorderRadius.circular(8)),
                       title: Text(member.name),
                       subtitle: Text(
-                        [
-                          member.provider,
-                          member.model,
-                        ].where((value) => value.isNotEmpty).join(' / '),
+                        [member.provider, member.model]
+                            .where((v) => v.isNotEmpty)
+                            .join(' / '),
                       ),
                       trailing: IconButton(
                         key: AppKeys.memberOpenButton(member.id),
@@ -214,17 +212,15 @@ class _FileTreePanel extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    color: textBase.withValues(alpha: 0.56),
-                    fontSize: 12,
-                  ),
+                      color: textBase.withValues(alpha: 0.56), fontSize: 12),
                 ),
                 const SizedBox(height: 12),
-                const _FileLine(icon: Icons.folder_outlined, label: 'client'),
-                const _FileLine(icon: Icons.folder_outlined, label: 'docs'),
                 const _FileLine(
-                  icon: Icons.description_outlined,
-                  label: 'README.md',
-                ),
+                    icon: Icons.folder_outlined, label: 'client'),
+                const _FileLine(
+                    icon: Icons.folder_outlined, label: 'docs'),
+                const _FileLine(
+                    icon: Icons.description_outlined, label: 'README.md'),
               ],
             ),
           ),
@@ -279,8 +275,8 @@ class _FileLine extends StatelessWidget {
           Icon(icon, size: 18, color: Colors.white70),
           const SizedBox(width: 8),
           Expanded(
-            child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
-          ),
+              child: Text(label,
+                  maxLines: 1, overflow: TextOverflow.ellipsis)),
         ],
       ),
     );

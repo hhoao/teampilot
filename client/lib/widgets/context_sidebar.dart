@@ -1,35 +1,31 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 
-import '../utils/app_keys.dart';
-import '../controllers/config_controller.dart';
+import '../cubits/chat_cubit.dart';
+import '../cubits/team_cubit.dart';
 import '../l10n/app_localizations.dart';
-import '../controllers/llm_config_controller.dart';
 import '../models/team_config.dart';
-import '../controllers/team_controller.dart';
 import '../theme/app_theme.dart';
+import '../utils/app_keys.dart';
 
 class ContextSidebar extends StatelessWidget {
-  const ContextSidebar({
-    required this.controller,
-    required this.selectedSectionLabel,
-    this.configController,
-    this.llmConfigController,
-    super.key,
-  });
+  const ContextSidebar({this.onNewSession, this.width = 260, super.key});
 
-  final TeamController controller;
-  final String selectedSectionLabel;
-  final ConfigController? configController;
-  final LlmConfigController? llmConfigController;
+  final VoidCallback? onNewSession;
+  final double width;
 
   @override
   Widget build(BuildContext context) {
     final colors = AppColors.of(context);
     final l10n = context.l10n;
-    final selected = controller.selectedTeam;
+    final teamCubit = context.watch<TeamCubit>();
+    final chatCubit = context.watch<ChatCubit>();
+    final selected = teamCubit.state.selectedTeam;
+
     return Container(
       key: AppKeys.contextSidebar,
-      width: 260,
+      width: width,
       color: colors.sidebarBackground,
       padding: const EdgeInsets.all(13),
       child: selected == null
@@ -37,109 +33,83 @@ class ContextSidebar extends StatelessWidget {
           : Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                _TeamSelector(controller: controller, selected: selected),
+                _TeamSelector(
+                    teams: teamCubit.state.teams,
+                    selected: selected,
+                    onSelect: teamCubit.selectTeam),
                 const SizedBox(height: 14),
                 _SidebarSectionTitle(
-                  title: selectedSectionLabel == 'Config'
-                      ? l10n.configure
-                      : l10n.teamSessions,
-                  actionLabel: selectedSectionLabel == 'Config' ? '' : '+',
+                  title: l10n.teamSessions,
+                  actionLabel: '+',
+                  onAction: onNewSession,
                 ),
-                if (selectedSectionLabel == 'Config') ...[
-                  _SidebarTile(
-                    key: AppKeys.configTeamSectionButton,
-                    title: l10n.teamSettings,
-                    subtitle: l10n.teamSettingsSubtitle,
-                    selected: configController?.section == ConfigSection.team,
-                    onTap: () =>
-                        configController?.selectSection(ConfigSection.team),
+                Expanded(
+                  child: ListView(
+                    children: [
+                      for (final session in chatCubit.state.sessions)
+                        _SidebarTile(
+                          key: AppKeys.sessionTile(session.sessionId),
+                          title: session.display.isNotEmpty
+                              ? session.display
+                              : session.kind,
+                          subtitle: session.cwd,
+                          selected: chatCubit.state.activeSessionId ==
+                              session.sessionId,
+                          onTap: () =>
+                              context.read<ChatCubit>().openSessionTab(session),
+                        ),
+                    ],
                   ),
-                  _SidebarTile(
-                    key: AppKeys.configMembersSectionButton,
-                    title: l10n.members,
-                    subtitle: l10n.membersSubtitle,
-                    selected:
-                        configController?.section == ConfigSection.members,
-                    onTap: () =>
-                        configController?.selectSection(ConfigSection.members),
-                  ),
-                  _SidebarTile(
-                    key: AppKeys.configLlmSectionButton,
-                    title: l10n.llmConfig,
-                    subtitle: l10n.llmConfigSubtitle,
-                    selected: configController?.section == ConfigSection.llm,
-                    onTap: () =>
-                        configController?.selectSection(ConfigSection.llm),
-                  ),
-                  _SidebarTile(
-                    key: AppKeys.configLayoutSectionButton,
-                    title: l10n.layout,
-                    subtitle: l10n.layoutSubtitle,
-                    selected: configController?.section == ConfigSection.layout,
-                    onTap: () =>
-                        configController?.selectSection(ConfigSection.layout),
-                  ),
-                  if (configController?.section == ConfigSection.members) ...[
-                    const SizedBox(height: 8),
-                    _SidebarSectionTitle(
-                      title: l10n.memberQuickList,
-                      actionLabel: '',
-                    ),
-                    for (final member in selected.members)
-                      _SidebarTile(
-                        key: AppKeys.memberRow(member.id),
-                        title: member.name,
-                        subtitle: member.id,
-                        selected:
-                            configController?.selectedMemberId == member.id,
-                        onTap: () => configController?.selectMember(member.id),
-                      ),
-                  ],
-                  if (configController?.section == ConfigSection.llm &&
-                      llmConfigController != null) ...[
-                    const SizedBox(height: 8),
-                    _SidebarSectionTitle(title: l10n.providers, actionLabel: ''),
-                    for (final provider
-                        in llmConfigController!.config.providers.values)
-                      _SidebarTile(
-                        title: provider.name,
-                        subtitle:
-                            '${provider.type} / ${llmConfigController!.config.models.values.where((m) => m.provider == provider.name).length} models',
-                        selected:
-                            llmConfigController!.selectedProviderName ==
-                            provider.name,
-                        onTap: () =>
-                            llmConfigController!.selectProvider(provider.name),
-                      ),
-                  ],
-                ] else ...[
-                  _SidebarTile(
-                    title: l10n.shellChatWorkbench,
-                    subtitle: 'team-lead / local',
-                    selected: true,
-                  ),
-                  const _SidebarTile(
-                    title: 'Fix Linux launch',
-                    subtitle: 'reviewer / stopped',
-                    selected: false,
-                  ),
-                  const _SidebarTile(
-                    title: 'Docs cleanup',
-                    subtitle: 'team-lead / unknown',
-                    selected: false,
-                  ),
-                ],
+                ),
+                const Divider(height: 1),
+                const SizedBox(height: 8),
+                _SettingsTile(onTap: () => context.go('/config/team')),
               ],
             ),
     );
   }
 }
 
-class _TeamSelector extends StatelessWidget {
-  const _TeamSelector({required this.controller, required this.selected});
+class _SettingsTile extends StatelessWidget {
+  const _SettingsTile({required this.onTap});
 
-  final TeamController controller;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textBase = isDark ? Colors.white : const Color(0xFF111827);
+    return Material(
+      key: AppKeys.sidebarSettingsButton,
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(8),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(8),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.all(10),
+          child: Row(
+            children: [
+              Icon(Icons.tune_outlined, size: 18, color: textBase),
+              const SizedBox(width: 10),
+              Text('Settings',
+                  style:
+                      TextStyle(fontWeight: FontWeight.w700, color: textBase)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _TeamSelector extends StatelessWidget {
+  const _TeamSelector(
+      {required this.teams, required this.selected, required this.onSelect});
+
+  final List<TeamConfig> teams;
   final TeamConfig selected;
+  final ValueChanged<String> onSelect;
 
   @override
   Widget build(BuildContext context) {
@@ -147,9 +117,9 @@ class _TeamSelector extends StatelessWidget {
     final l10n = context.l10n;
     return PopupMenuButton<String>(
       tooltip: l10n.selectTeam,
-      onSelected: controller.selectTeam,
+      onSelected: onSelect,
       itemBuilder: (context) => [
-        for (final team in controller.teams)
+        for (final team in teams)
           PopupMenuItem(value: team.id, child: Text(team.name)),
       ],
       child: Container(
@@ -179,10 +149,15 @@ class _TeamSelector extends StatelessWidget {
 }
 
 class _SidebarSectionTitle extends StatelessWidget {
-  const _SidebarSectionTitle({required this.title, required this.actionLabel});
+  const _SidebarSectionTitle({
+    required this.title,
+    required this.actionLabel,
+    this.onAction,
+  });
 
   final String title;
   final String actionLabel;
+  final VoidCallback? onAction;
 
   @override
   Widget build(BuildContext context) {
@@ -205,7 +180,11 @@ class _SidebarSectionTitle extends StatelessWidget {
             ),
           ),
           if (actionLabel.isNotEmpty)
-            Text(actionLabel, style: TextStyle(color: colors.linkText)),
+            GestureDetector(
+              onTap: onAction,
+              child:
+                  Text(actionLabel, style: TextStyle(color: colors.linkText)),
+            ),
         ],
       ),
     );
@@ -234,7 +213,9 @@ class _SidebarTile extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Material(
-        color: selected ? colors.selectedBackground : colors.unselectedBackground,
+        color: selected
+            ? colors.selectedBackground
+            : colors.unselectedBackground,
         borderRadius: BorderRadius.circular(8),
         child: InkWell(
           borderRadius: BorderRadius.circular(8),
@@ -256,7 +237,8 @@ class _SidebarTile extends StatelessWidget {
                   title,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(fontWeight: FontWeight.w700, color: textBase),
+                  style: TextStyle(
+                      fontWeight: FontWeight.w700, color: textBase),
                 ),
                 const SizedBox(height: 4),
                 Text(

@@ -3,25 +3,18 @@ import 'package:flutter/material.dart';
 import '../utils/app_keys.dart';
 import '../l10n/app_localizations.dart';
 import '../models/llm_config.dart';
-import '../controllers/llm_config_controller.dart';
+import '../cubits/llm_config_cubit.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import '../theme/app_theme.dart';
 
-class LlmConfigWorkspace extends StatefulWidget {
-  const LlmConfigWorkspace({required this.controller, super.key});
-
-  final LlmConfigController controller;
-
-  @override
-  State<LlmConfigWorkspace> createState() => _LlmConfigWorkspaceState();
-}
-
-class _LlmConfigWorkspaceState extends State<LlmConfigWorkspace> {
-  LlmConfigController get controller => widget.controller;
+class LlmConfigWorkspace extends StatelessWidget {
+  const LlmConfigWorkspace({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final controller = context.watch<LlmConfigCubit>();
     final l10n = context.l10n;
-    final config = controller.config;
+    final config = controller.state.config;
     return DefaultTabController(
       length: 3,
       child: Column(
@@ -31,7 +24,7 @@ class _LlmConfigWorkspaceState extends State<LlmConfigWorkspace> {
           _WorkspaceHeading(
             title: l10n.llmConfig,
             subtitle:
-                '${controller.filePath} / ${config.providers.length} providers / ${config.models.length} models',
+                '${controller.state.filePath} / ${config.providers.length} providers / ${config.models.length} models',
           ),
           const SizedBox(height: 10),
           Row(
@@ -85,12 +78,12 @@ class _LlmConfigWorkspaceState extends State<LlmConfigWorkspace> {
 class _ProvidersTabContent extends StatelessWidget {
   const _ProvidersTabContent({required this.controller});
 
-  final LlmConfigController controller;
+  final LlmConfigCubit controller;
 
   @override
   Widget build(BuildContext context) {
-    final config = controller.config;
-    final selectedName = controller.selectedProviderName;
+    final config = controller.state.config;
+    final selectedName = controller.state.effectiveProviderName;
     final selectedProvider =
         selectedName != null ? config.providers[selectedName] : null;
 
@@ -123,7 +116,7 @@ class _ProvidersTabContent extends StatelessWidget {
 
   Future<void> _addProvider(
     BuildContext context,
-    LlmConfigController controller,
+    LlmConfigCubit controller,
   ) async {
     final l10n = context.l10n;
     final nameController = TextEditingController();
@@ -152,7 +145,7 @@ class _ProvidersTabContent extends StatelessWidget {
     nameController.dispose();
     if (name != null &&
         name.isNotEmpty &&
-        !controller.config.providers.containsKey(name)) {
+        !controller.state.config.providers.containsKey(name)) {
       controller.addProvider(
         LlmProviderConfig(name: name, type: 'api', providerType: 'openai'),
       );
@@ -162,7 +155,7 @@ class _ProvidersTabContent extends StatelessWidget {
 
   Future<void> _deleteProvider(
     BuildContext context,
-    LlmConfigController controller,
+    LlmConfigCubit controller,
     String name,
   ) async {
     final l10n = context.l10n;
@@ -468,7 +461,7 @@ class _ProviderDetailPanel extends StatefulWidget {
 
   final LlmConfig config;
   final LlmProviderConfig? provider;
-  final LlmConfigController controller;
+  final LlmConfigCubit controller;
   final void Function(String name, LlmProviderConfig provider) onSave;
   final ValueChanged<String> onDelete;
 
@@ -1044,11 +1037,11 @@ class _ProviderModelsTable extends StatelessWidget {
 class _ModelsTabContent extends StatelessWidget {
   const _ModelsTabContent({required this.controller});
 
-  final LlmConfigController controller;
+  final LlmConfigCubit controller;
 
   @override
   Widget build(BuildContext context) {
-    final config = controller.config;
+    final config = controller.state.config;
     return _ModelsTable(
       config: config,
       onAdd: () => _addModel(context, controller),
@@ -1063,15 +1056,15 @@ class _ModelsTabContent extends StatelessWidget {
 
   Future<void> _addModel(
     BuildContext context,
-    LlmConfigController controller,
+    LlmConfigCubit controller,
   ) async {
     final l10n = context.l10n;
-    final defaultProvider = controller.config.providers.keys.firstOrNull ?? '';
+    final defaultProvider = controller.state.config.providers.keys.firstOrNull ?? '';
     final result = await showDialog<LlmModelConfig>(
       context: context,
       builder:
           (context) => _ModelEditDialog(
-            providers: controller.config.providers,
+            providers: controller.state.config.providers,
             defaultProvider: defaultProvider,
             title: l10n.addModel,
           ),
@@ -1324,13 +1317,13 @@ class _ModelsTable extends StatelessWidget {
 class _RawJsonTabContent extends StatelessWidget {
   const _RawJsonTabContent({required this.controller});
 
-  final LlmConfigController controller;
+  final LlmConfigCubit controller;
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textBase = isDark ? Colors.white : const Color(0xFF111827);
-    final config = controller.config;
+    final config = controller.state.config;
     return SingleChildScrollView(
       padding: const EdgeInsets.all(14),
       child: SelectableText(
