@@ -61,7 +61,7 @@ class Skill {
     );
   }
 
-  Map<String, dynamic> toJson() => {
+  Map<String, Object?> toJson() => {
     'id': id,
     'name': name,
     'description': description,
@@ -76,7 +76,7 @@ class Skill {
     'updatedAt': updatedAt,
   };
 
-  factory Skill.fromJson(Map<String, dynamic> json) => Skill(
+  factory Skill.fromJson(Map<String, Object?> json) => Skill(
     id: json['id'] as String,
     name: json['name'] as String,
     description: json['description'] as String? ?? '',
@@ -95,6 +95,7 @@ class Skill {
   bool operator ==(Object other) =>
       identical(this, other) ||
       other is Skill &&
+          runtimeType == other.runtimeType &&
           id == other.id &&
           name == other.name &&
           directory == other.directory &&
@@ -128,14 +129,14 @@ class SkillRepo {
         enabled: enabled ?? this.enabled,
       );
 
-  Map<String, dynamic> toJson() => {
+  Map<String, Object?> toJson() => {
     'owner': owner,
     'name': name,
     'branch': branch,
     'enabled': enabled,
   };
 
-  factory SkillRepo.fromJson(Map<String, dynamic> json) => SkillRepo(
+  factory SkillRepo.fromJson(Map<String, Object?> json) => SkillRepo(
     owner: json['owner'] as String,
     name: json['name'] as String,
     branch: json['branch'] as String? ?? 'main',
@@ -146,6 +147,7 @@ class SkillRepo {
   bool operator ==(Object other) =>
       identical(this, other) ||
       other is SkillRepo &&
+          runtimeType == other.runtimeType &&
           owner == other.owner &&
           name == other.name &&
           branch == other.branch;
@@ -176,4 +178,27 @@ class DiscoverableSkill {
   final String repoBranch;
 
   String get source => '$repoOwner/$repoName';
+
+  Map<String, Object?> toJson() => {
+    'key': key,
+    'name': name,
+    'description': description,
+    'directory': directory,
+    'readmeUrl': readmeUrl,
+    'repoOwner': repoOwner,
+    'repoName': repoName,
+    'repoBranch': repoBranch,
+  };
+
+  factory DiscoverableSkill.fromJson(Map<String, Object?> json) =>
+      DiscoverableSkill(
+        key: json['key'] as String,
+        name: json['name'] as String,
+        description: json['description'] as String,
+        directory: json['directory'] as String,
+        readmeUrl: json['readmeUrl'] as String?,
+        repoOwner: json['repoOwner'] as String,
+        repoName: json['repoName'] as String,
+        repoBranch: json['repoBranch'] as String,
+      );
 }
