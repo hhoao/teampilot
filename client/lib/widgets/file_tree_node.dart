@@ -13,6 +13,7 @@ class FileTreeNode extends StatelessWidget {
     required this.entity,
     required this.depth,
     required this.cubit,
+    required this.textColor,
     this.isLast = true,
     super.key,
   });
@@ -21,6 +22,7 @@ class FileTreeNode extends StatelessWidget {
   final FileSystemEntity entity;
   final int depth;
   final FileTreeCubit cubit;
+  final Color textColor;
   final bool isLast;
 
   @override
@@ -28,7 +30,6 @@ class FileTreeNode extends StatelessWidget {
     final isDir = entity is Directory;
     final name = entity.uri.pathSegments.last;
     final isExpanded = cubit.state.expandedPaths.contains(entity.path);
-    final colors = Theme.of(context).colorScheme;
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -57,7 +58,7 @@ class FileTreeNode extends StatelessWidget {
                       turns: isExpanded ? 0.25 : 0.0,
                       duration: const Duration(milliseconds: 150),
                       child: Icon(Icons.chevron_right, size: 16,
-                          color: colors.onSurface.withValues(alpha: 0.55)),
+                          color: textColor.withValues(alpha: 0.55)),
                     ),
                   )
                 else
@@ -69,7 +70,7 @@ class FileTreeNode extends StatelessWidget {
                           : Icons.folder_outlined)
                       : _fileIcon(name),
                   size: 18,
-                  color: isDir ? const Color(0xFFE5B143) : colors.onSurface.withValues(alpha: 0.6),
+                  color: isDir ? const Color(0xFFE5B143) : textColor.withValues(alpha: 0.6),
                 ),
                 const SizedBox(width: 6),
                 Expanded(
@@ -79,7 +80,7 @@ class FileTreeNode extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       fontSize: 12,
-                      color: colors.onSurface.withValues(alpha: 0.8),
+                      color: textColor.withValues(alpha: 0.8),
                     ),
                   ),
                 ),
@@ -102,7 +103,7 @@ class FileTreeNode extends StatelessWidget {
           '(empty)',
           style: TextStyle(
             fontSize: 11,
-            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.35),
+            color: textColor.withValues(alpha: 0.35),
           ),
         ),
       );
@@ -117,6 +118,7 @@ class FileTreeNode extends StatelessWidget {
             entity: entries[i],
             depth: depth + 1,
             cubit: cubit,
+            textColor: textColor,
             isLast: i == entries.length - 1,
           ),
       ],

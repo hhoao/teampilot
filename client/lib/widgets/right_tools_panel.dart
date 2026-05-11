@@ -395,6 +395,7 @@ class _FileTreePanelState extends State<_FileTreePanel> {
                                       entity: entry,
                                       depth: 0,
                                       cubit: _cubit,
+                                      textColor: textBase,
                                     ),
                                   if (_cubit
                                       .entriesFor(state.rootPath)
