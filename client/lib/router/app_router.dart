@@ -1,4 +1,4 @@
-import 'package:file_selector/file_selector.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -41,15 +41,8 @@ final appRouter = GoRouter(
                       },
                       left: RepaintBoundary(
                         child: ContextSidebar(
-                          onNewProject: () async {
-                            final dir = await getDirectoryPath();
-                            if (dir != null && context.mounted) {
-                              context.read<ChatCubit>().createSession(
-                                dir,
-                                const SessionRepository(),
-                              );
-                            }
-                          },
+                          onNewProject: () =>
+                              _createProject(context),
                         ),
                       ),
                       right: child,
@@ -96,3 +89,13 @@ final appRouter = GoRouter(
     ),
   ],
 );
+
+Future<void> _createProject(BuildContext context) async {
+  final dir = await FilePicker.platform.getDirectoryPath();
+  if (dir != null && context.mounted) {
+    context.read<ChatCubit>().createSession(
+      dir,
+      const SessionRepository(),
+    );
+  }
+}

@@ -49,8 +49,7 @@ dependencies:
   web_socket_channel: ^2.4.0
   multi_split_view: ^3.6.1
   logger: ^2.6.0
-  file_selector: ^1.1.0
-  file_selector_linux: ^0.9.3
+  file_picker: ^9.0.0
 
 dev_dependencies:
   flutter_test:

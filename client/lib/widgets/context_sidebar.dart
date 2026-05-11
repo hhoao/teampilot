@@ -266,7 +266,7 @@ class _ProjectGroupState extends State<_ProjectGroup> {
   }
 }
 
-class _ProjectHeader extends StatelessWidget {
+class _ProjectHeader extends StatefulWidget {
   const _ProjectHeader({
     required this.name,
     required this.path,
@@ -290,81 +290,116 @@ class _ProjectHeader extends StatelessWidget {
   final VoidCallback? onDelete;
 
   @override
+  State<_ProjectHeader> createState() => _ProjectHeaderState();
+}
+
+class _ProjectHeaderState extends State<_ProjectHeader> {
+  var _hovered = false;
+  var _menuOpen = false;
+
+  @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textBase = isDark ? Colors.white : const Color(0xFF111827);
     final colors = AppColors.of(context);
+    final showActions = _hovered || _menuOpen;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 4, top: 4),
-      child: Material(
-        color: colors.unselectedBackground,
-        borderRadius: BorderRadius.circular(8),
-        child: InkWell(
+      child: MouseRegion(
+        onEnter: (_) => setState(() => _hovered = true),
+        onExit: (_) => setState(() => _hovered = false),
+        child: Material(
+          color: _hovered ? colors.selectedBackground : colors.unselectedBackground,
           borderRadius: BorderRadius.circular(8),
-          onTap: onToggle,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          child: Ink(
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: colors.unselectedBorder),
+              border: Border.all(
+                color: _hovered ? colors.selectedBorder : colors.unselectedBorder,
+              ),
             ),
             child: Row(
               children: [
-                Icon(
-                  expanded ? Icons.expand_more : Icons.chevron_right,
-                  size: 16,
-                  color: textBase.withValues(alpha: 0.5),
-                ),
-                const SizedBox(width: 6),
-                Icon(
-                  Icons.folder_outlined,
-                  size: 16,
-                  color: textBase.withValues(alpha: 0.7),
-                ),
-                const SizedBox(width: 6),
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 12,
-                          color: textBase,
-                        ),
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: widget.onToggle,
+                    child: Container(
+                      padding: const EdgeInsets.only(
+                        left: 10,
+                        right: 4,
+                        top: 8,
+                        bottom: 8,
                       ),
-                      if (path.isNotEmpty)
-                        Text(
-                          '$sessionCount sessions',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: textBase.withValues(alpha: 0.45),
-                            fontSize: 10,
+                      child: Row(
+                        children: [
+                          Icon(
+                            widget.expanded
+                                ? Icons.expand_more
+                                : Icons.chevron_right,
+                            size: 16,
+                            color: textBase.withValues(alpha: 0.5),
                           ),
-                        ),
-                    ],
-                  ),
-                ),
-                GestureDetector(
-                  onTap: onNewSession,
-                  child: Tooltip(
-                    message: l10n.newSessionTooltip,
-                    child: Icon(
-                      Icons.add,
-                      size: 16,
-                      color: colors.linkText,
+                          const SizedBox(width: 6),
+                          Icon(
+                            Icons.folder_outlined,
+                            size: 16,
+                            color: textBase.withValues(alpha: 0.7),
+                          ),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  widget.name,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 12,
+                                    color: textBase,
+                                  ),
+                                ),
+                                if (widget.path.isNotEmpty)
+                                  Text(
+                                    '${widget.sessionCount} sessions',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      color: textBase.withValues(alpha: 0.45),
+                                      fontSize: 10,
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
-                if (onOpenFolder != null ||
-                    onCopyPath != null ||
-                    onDelete != null)
+              if (showActions) ...[
+                InkWell(
+                  borderRadius: BorderRadius.circular(4),
+                  onTap: widget.onNewSession,
+                  child: Tooltip(
+                    message: l10n.newSessionTooltip,
+                    child: Padding(
+                      padding: const EdgeInsets.all(6),
+                      child: Icon(
+                        Icons.add,
+                        size: 16,
+                        color: colors.linkText,
+                      ),
+                    ),
+                  ),
+                ),
+                if (widget.onOpenFolder != null ||
+                    widget.onCopyPath != null ||
+                    widget.onDelete != null)
                   PopupMenuButton<String>(
                     tooltip: '',
                     padding: EdgeInsets.zero,
@@ -373,18 +408,21 @@ class _ProjectHeader extends StatelessWidget {
                       size: 16,
                       color: textBase.withValues(alpha: 0.5),
                     ),
+                    onOpened: () => setState(() => _menuOpen = true),
+                    onCanceled: () => setState(() => _menuOpen = false),
                     onSelected: (value) {
+                      setState(() => _menuOpen = false);
                       switch (value) {
                         case 'openFolder':
-                          onOpenFolder?.call();
+                          widget.onOpenFolder?.call();
                         case 'copyPath':
-                          onCopyPath?.call();
+                          widget.onCopyPath?.call();
                         case 'delete':
-                          onDelete?.call();
+                          widget.onDelete?.call();
                       }
                     },
                     itemBuilder: (context) => [
-                      if (onOpenFolder != null)
+                      if (widget.onOpenFolder != null)
                         PopupMenuItem(
                           value: 'openFolder',
                           child: Row(
@@ -395,7 +433,7 @@ class _ProjectHeader extends StatelessWidget {
                             ],
                           ),
                         ),
-                      if (onCopyPath != null)
+                      if (widget.onCopyPath != null)
                         PopupMenuItem(
                           value: 'copyPath',
                           child: Row(
@@ -406,7 +444,7 @@ class _ProjectHeader extends StatelessWidget {
                             ],
                           ),
                         ),
-                      if (onDelete != null)
+                      if (widget.onDelete != null)
                         PopupMenuItem(
                           value: 'delete',
                           child: Row(
@@ -423,11 +461,11 @@ class _ProjectHeader extends StatelessWidget {
                     ],
                   ),
               ],
-            ),
+            ],
           ),
         ),
       ),
-    );
+    ));
   }
 }
 
@@ -759,11 +797,26 @@ class _SidebarSectionTitle extends StatelessWidget {
             ),
           ),
           if (actionLabel.isNotEmpty)
-            GestureDetector(
-              onTap: onAction,
-              child: Text(
-                actionLabel,
-                style: TextStyle(color: colors.linkText),
+            Material(
+              color: Colors.transparent,
+              borderRadius: BorderRadius.circular(4),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(4),
+                onTap: onAction,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 2,
+                  ),
+                  child: Text(
+                    actionLabel,
+                    style: TextStyle(
+                      color: colors.linkText,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
               ),
             ),
         ],

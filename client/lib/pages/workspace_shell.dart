@@ -57,10 +57,10 @@ class WorkspaceShell extends StatelessWidget {
     final textBase = isDark ? Colors.white : const Color(0xFF111827);
     final textScale = MediaQuery.textScalerOf(context).scale(1.0);
     return Column(
-        children: [
-          if (showHeader)
-            Container(
-              key: AppKeys.workspaceTopbar,
+      children: [
+        if (showHeader)
+          Container(
+            key: AppKeys.workspaceTopbar,
             height: 82.0 * textScale,
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             decoration: BoxDecoration(
@@ -115,33 +115,33 @@ class WorkspaceShell extends StatelessWidget {
               ],
             ),
           ),
-          if (tabs.isNotEmpty)
-            _TabRow(
-              tabs: tabs,
-              activeIndex: activeTabIndex,
-              onTabSelected: onTabSelected,
-              onTabClosed: onTabClosed,
-              onTabCloseOthers: onTabCloseOthers,
-              onTabCloseRight: onTabCloseRight,
-              trailing: actions.isNotEmpty && showHeader
-                  ? Padding(
-                      padding: const EdgeInsets.only(left: 8),
-                      child: Wrap(spacing: 6, children: actions),
-                    )
-                  : null,
-            ),
-          if (tabs.isEmpty && actions.isNotEmpty && showHeader)
-            _ActionsBar(actions: actions),
-          Expanded(
-            child: _WorkspaceBody(
-              preferences: layoutPreferences,
-              rightTools: rightTools,
-              onRightToolsWidthChanged: onRightToolsWidthChanged,
-              child: child,
-            ),
+        if (tabs.isNotEmpty)
+          _TabRow(
+            tabs: tabs,
+            activeIndex: activeTabIndex,
+            onTabSelected: onTabSelected,
+            onTabClosed: onTabClosed,
+            onTabCloseOthers: onTabCloseOthers,
+            onTabCloseRight: onTabCloseRight,
+            trailing: actions.isNotEmpty && showHeader
+                ? Padding(
+                    padding: const EdgeInsets.only(left: 8),
+                    child: Wrap(spacing: 6, children: actions),
+                  )
+                : null,
           ),
-        ],
-      );
+        if (tabs.isEmpty && actions.isNotEmpty && showHeader)
+          _ActionsBar(actions: actions),
+        Expanded(
+          child: _WorkspaceBody(
+            preferences: layoutPreferences,
+            rightTools: rightTools,
+            onRightToolsWidthChanged: onRightToolsWidthChanged,
+            child: child,
+          ),
+        ),
+      ],
+    );
   }
 }
 
@@ -230,7 +230,7 @@ class _TabRow extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textBase = isDark ? Colors.white : const Color(0xFF111827);
     return Container(
-      height: 32,
+      height: 42,
       padding: const EdgeInsets.symmetric(horizontal: 6),
       decoration: BoxDecoration(
         color: colors.topbarBackground,
@@ -300,36 +300,42 @@ class _TabChipState extends State<_TabChip> {
           onExit: (_) => setState(() => _hovered = false),
           child: Material(
             color: widget.active ? widget.activeBg : Colors.transparent,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(6)),
             child: InkWell(
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(6),
+              ),
               onTap: widget.onTap,
               child: Container(
-                width: 160,
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-                height: 28,
+                width: 200,
+                padding: const EdgeInsets.only(left: 12, top: 6, right: 12),
+                height: 42,
                 decoration: BoxDecoration(
                   border: Border(
                     left: BorderSide(
-                        color: widget.active
-                            ? widget.borderColor
-                            : Colors.transparent),
+                      color: widget.active
+                          ? widget.borderColor
+                          : Colors.transparent,
+                    ),
                     right: BorderSide(
-                        color: widget.active
-                            ? widget.borderColor
-                            : Colors.transparent),
+                      color: widget.active
+                          ? widget.borderColor
+                          : Colors.transparent,
+                    ),
                     top: BorderSide(
-                        color: widget.active
-                            ? widget.borderColor
-                            : Colors.transparent),
+                      color: widget.active
+                          ? widget.borderColor
+                          : Colors.transparent,
+                    ),
                   ),
-                  borderRadius:
-                      const BorderRadius.vertical(top: Radius.circular(4)),
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(6),
+                  ),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.max,
                   children: [
-                    Flexible(
+                    Expanded(
                       child: Text(
                         widget.title,
                         maxLines: 1,
@@ -346,8 +352,11 @@ class _TabChipState extends State<_TabChip> {
                       PopupMenuButton<String>(
                         tooltip: '',
                         padding: EdgeInsets.zero,
-                        icon: Icon(Icons.more_horiz, size: 12,
-                            color: widget.textColor.withValues(alpha: 0.6)),
+                        icon: Icon(
+                          Icons.more_horiz,
+                          size: 12,
+                          color: widget.textColor.withValues(alpha: 0.6),
+                        ),
                         onSelected: (value) {
                           switch (value) {
                             case 'close':
@@ -375,8 +384,11 @@ class _TabChipState extends State<_TabChip> {
                       ),
                       GestureDetector(
                         onTap: widget.onClose,
-                        child: Icon(Icons.close, size: 14,
-                            color: widget.textColor.withValues(alpha: 0.5)),
+                        child: Icon(
+                          Icons.close,
+                          size: 14,
+                          color: widget.textColor.withValues(alpha: 0.5),
+                        ),
                       ),
                     ],
                   ],
