@@ -8,6 +8,7 @@ import '../pages/chat_page.dart';
 import '../pages/config_workspace.dart';
 import '../utils/perf.dart';
 import '../widgets/context_sidebar.dart';
+import '../widgets/resizable_split_view.dart';
 
 final appRouter = GoRouter(
   initialLocation: '/chat',
@@ -24,21 +25,19 @@ final appRouter = GoRouter(
           body: SafeArea(
             child: PipelinePerf(
               label: 'shell split ${state.uri}',
-              child: Row(
-                children: [
-                  if (preferences.contextSidebarVisible) ...[
-                    SizedBox(
-                      width: preferences.sidebarWidth,
-                      child: const RepaintBoundary(child: ContextSidebar()),
-                    ),
-                    ColoredBox(
-                      color: Theme.of(context).dividerColor,
-                      child: const SizedBox(width: 1),
-                    ),
-                  ],
-                  Expanded(child: child),
-                ],
-              ),
+              child: preferences.contextSidebarVisible
+                  ? ResizableSplitView(
+                      initialLeftWidth: preferences.sidebarWidth,
+                      minLeftWidth: 180,
+                      maxLeftWidth: 420,
+                      dividerWidth: 6,
+                      onWidthChanged: (width) {
+                        context.read<LayoutCubit>().setSidebarWidth(width);
+                      },
+                      left: const RepaintBoundary(child: ContextSidebar()),
+                      right: child,
+                    )
+                  : child,
             ),
           ),
         );

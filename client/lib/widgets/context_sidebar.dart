@@ -12,10 +12,9 @@ import '../utils/app_keys.dart';
 import '../utils/perf.dart';
 
 class ContextSidebar extends StatefulWidget {
-  const ContextSidebar({this.onNewSession, this.width = 260, super.key});
+  const ContextSidebar({this.onNewSession, super.key});
 
   final VoidCallback? onNewSession;
-  final double width;
 
   @override
   State<ContextSidebar> createState() => _ContextSidebarState();
@@ -45,7 +44,7 @@ class _ContextSidebarState extends State<ContextSidebar> {
       label: 'context sidebar',
       child: Container(
         key: AppKeys.contextSidebar,
-        width: widget.width,
+        width: double.infinity,
         color: colors.sidebarBackground,
         padding: const EdgeInsets.all(13),
         child: selected == null

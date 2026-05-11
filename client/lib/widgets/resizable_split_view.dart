@@ -9,6 +9,7 @@ class ResizableSplitView extends StatefulWidget {
     this.minLeftWidth = 120,
     this.maxLeftWidth = 500,
     this.dividerWidth = 6,
+    this.onWidthChanged,
   });
 
   final Widget left;
@@ -17,6 +18,7 @@ class ResizableSplitView extends StatefulWidget {
   final double minLeftWidth;
   final double maxLeftWidth;
   final double dividerWidth;
+  final ValueChanged<double>? onWidthChanged;
 
   @override
   State<ResizableSplitView> createState() => _ResizableSplitViewState();
@@ -32,10 +34,17 @@ class _ResizableSplitViewState extends State<ResizableSplitView> {
   }
 
   @override
+  void didUpdateWidget(covariant ResizableSplitView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.initialLeftWidth != oldWidget.initialLeftWidth) {
+      _leftWidth = widget.initialLeftWidth;
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).brightness == Brightness.dark
-        ? Colors.white12
-        : const Color(0xFFE5E7EB);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final dividerColor = isDark ? Colors.white12 : const Color(0xFFE5E7EB);
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -51,11 +60,14 @@ class _ResizableSplitViewState extends State<ResizableSplitView> {
               );
             });
           },
+          onHorizontalDragEnd: (_) {
+            widget.onWidthChanged?.call(_leftWidth);
+          },
           child: MouseRegion(
             cursor: SystemMouseCursors.resizeColumn,
             child: Container(
               width: widget.dividerWidth,
-              color: colors,
+              color: dividerColor,
             ),
           ),
         ),
