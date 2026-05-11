@@ -22,15 +22,45 @@ class TerminalSession {
 
   bool get isRunning => _running;
 
-  void connectResume(String sessionId) {
+  void connectResume(String sessionId, {
+    String? workingDirectory,
+    TeamConfig? team,
+    TeamMemberConfig? member,
+  }) {
     if (_running) {
       disconnect();
     }
 
     try {
+      final args = <String>['--resume', sessionId];
+      if (workingDirectory != null && workingDirectory.isNotEmpty) {
+        args.insertAll(0, ['--dir', workingDirectory]);
+      }
+      if (team != null && member != null) {
+        final teamFlag = member.isolated
+            ? '${team.name.trim()}::${member.name.trim()}'
+            : team.name.trim();
+        args.addAll(['--team', teamFlag, '--member', member.name.trim()]);
+        if (member.provider.trim().isNotEmpty) {
+          args.addAll(['--provider', member.provider.trim()]);
+        }
+        if (member.model.trim().isNotEmpty) {
+          args.addAll(['--model', member.model.trim()]);
+        }
+        if (member.agent.trim().isNotEmpty) {
+          args.addAll(['--agent', member.agent.trim()]);
+        }
+        if (team.extraArgs.trim().isNotEmpty) {
+          args.addAll(LaunchCommandBuilder.splitArgs(team.extraArgs.trim()));
+        }
+        if (member.extraArgs.trim().isNotEmpty) {
+          args.addAll(LaunchCommandBuilder.splitArgs(member.extraArgs.trim()));
+        }
+      }
       _pty = Pty.start(
         LaunchCommandBuilder.executable,
-        arguments: ['--resume', sessionId],
+        arguments: args,
+        workingDirectory: workingDirectory,
       );
 
       _pty!.output.listen((data) {

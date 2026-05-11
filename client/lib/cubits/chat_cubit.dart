@@ -40,7 +40,6 @@ class ChatTabInfo extends Equatable {
 class _InternalTab {
   _InternalTab({
     required this.info,
-    this.resumeSession,
     this.selectedMemberId = '',
   });
 
@@ -142,18 +141,19 @@ class ChatCubit extends Cubit<ChatState> {
     emit(state.copyWith(sessions: sessions));
   }
 
-  void openSessionTab(FlashskySession session) {
+  void openSessionTab(FlashskySession session, {TeamConfig? team, TeamMemberConfig? member}) {
     final sw = Stopwatch()..start();
     final existingIdx = _internalTabs.indexWhere(
       (t) => t.info.id == session.sessionId,
     );
     if (existingIdx != -1) {
       final existing = _internalTabs[existingIdx];
+      final memberId = member?.id ?? existing.selectedMemberId;
       emit(
         state.copyWith(
           activeTabIndex: existingIdx,
           activeSessionId: session.sessionId,
-          selectedMemberId: existing.selectedMemberId,
+          selectedMemberId: memberId,
         ),
       );
       return;
@@ -164,19 +164,31 @@ class ChatCubit extends Cubit<ChatState> {
       title: session.display.isNotEmpty ? session.display : session.kind,
       subtitle: session.cwd,
     );
-    _internalTabs.add(_InternalTab(info: info, resumeSession: ts));
+    final internalTab = _InternalTab(info: info);
+    if (team != null && member != null) {
+      internalTab.memberShells[member.id] = ts;
+      internalTab.selectedMemberId = member.id;
+    } else {
+      internalTab.resumeSession = ts;
+    }
+    _internalTabs.add(internalTab);
     emit(
       state.copyWith(
         tabs: [...state.tabs, info],
         activeTabIndex: _internalTabs.length - 1,
         activeSessionId: session.sessionId,
+        selectedMemberId: internalTab.selectedMemberId,
       ),
     );
     appLogger.d('[perf] openSessionTab emit: ${sw.elapsedMilliseconds}ms');
     _postFrameScheduler(() {
       try {
         final sw2 = Stopwatch()..start();
-        ts.connectResume(session.sessionId);
+        ts.connectResume(session.sessionId,
+          workingDirectory: session.cwd,
+          team: team,
+          member: member,
+        );
         appLogger.d('[perf] connectResume: ${sw2.elapsedMilliseconds}ms');
         _updateTabRunning(info.id);
       } on Object catch (e) {

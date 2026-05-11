@@ -521,11 +521,11 @@ class _SessionTileEntryState extends State<_SessionTileEntry> {
             teamCubit.selectTeam(matchingTeam.id);
           }
 
-          chatCubit.openSessionTab(session);
           final lead = matchingTeam.members.where((m) => m.name == 'team-lead');
           if (lead.isNotEmpty) {
-            chatCubit.openMemberTab(matchingTeam, lead.first);
+            chatCubit.openSessionTab(session, team: matchingTeam, member: lead.first);
           } else {
+            chatCubit.openSessionTab(session);
             chatCubit.addSystemMessage(
               'FlashskyAI requires a member named team-lead.',
             );

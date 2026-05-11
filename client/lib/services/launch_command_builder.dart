@@ -17,11 +17,15 @@ class LaunchCommandBuilder {
   const LaunchCommandBuilder._();
 
   static List<String> buildArguments(TeamConfig team, TeamMemberConfig member) {
+    final teamFlag = member.isolated
+        ? '${team.name.trim()}::${member.name.trim()}'
+        : team.name.trim();
+
     final args = <String>[
       '--dir',
       team.workingDirectory.trim(),
       '--team',
-      team.name.trim(),
+      teamFlag,
       '--member',
       member.name.trim(),
     ];

@@ -9,6 +9,8 @@ class TeamMemberConfig {
     this.model = '',
     this.agent = '',
     this.extraArgs = '',
+    this.prompt = '',
+    this.isolated = false,
   });
 
   factory TeamMemberConfig.fromJson(Map<String, Object?> json) {
@@ -19,6 +21,8 @@ class TeamMemberConfig {
       model: json['model'] as String? ?? '',
       agent: json['agent'] as String? ?? '',
       extraArgs: json['extraArgs'] as String? ?? '',
+      prompt: json['prompt'] as String? ?? '',
+      isolated: json['isolated'] as bool? ?? false,
     );
   }
 
@@ -28,6 +32,8 @@ class TeamMemberConfig {
   final String model;
   final String agent;
   final String extraArgs;
+  final String prompt;
+  final bool isolated;
 
   bool get isValid => name.trim().isNotEmpty;
 
@@ -38,6 +44,8 @@ class TeamMemberConfig {
     String? model,
     String? agent,
     String? extraArgs,
+    String? prompt,
+    bool? isolated,
   }) {
     return TeamMemberConfig(
       id: id ?? this.id,
@@ -46,6 +54,8 @@ class TeamMemberConfig {
       model: model ?? this.model,
       agent: agent ?? this.agent,
       extraArgs: extraArgs ?? this.extraArgs,
+      prompt: prompt ?? this.prompt,
+      isolated: isolated ?? this.isolated,
     );
   }
 
@@ -57,6 +67,8 @@ class TeamMemberConfig {
       'model': model,
       'agent': agent,
       'extraArgs': extraArgs,
+      'prompt': prompt,
+      'isolated': isolated,
     };
   }
 
@@ -70,11 +82,15 @@ class TeamMemberConfig {
             provider == other.provider &&
             model == other.model &&
             agent == other.agent &&
-            extraArgs == other.extraArgs;
+            extraArgs == other.extraArgs &&
+            prompt == other.prompt &&
+            isolated == other.isolated;
   }
 
   @override
-  int get hashCode => Object.hash(id, name, provider, model, agent, extraArgs);
+  int get hashCode =>
+      Object.hash(id, name, provider, model, agent, extraArgs, prompt,
+          isolated);
 }
 
 @immutable
