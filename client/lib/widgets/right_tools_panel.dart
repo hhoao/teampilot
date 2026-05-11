@@ -116,7 +116,7 @@ class _TabbedToolsPanel extends StatelessWidget {
       length: panels.length,
       child: Column(
         children: [
-          TabBar(tabs: tabs),
+          TabBar(tabs: tabs, isScrollable: true),
           Expanded(child: TabBarView(children: panels)),
         ],
       ),

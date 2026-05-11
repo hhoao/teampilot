@@ -27,6 +27,16 @@ import 'theme/app_theme.dart';
 import 'utils/perf.dart';
 import 'widgets/ui_warmup.dart';
 
+class _CleanupWindowListener extends WindowListener {
+  _CleanupWindowListener(this.cleaner);
+  final TempTeamCleaner cleaner;
+
+  @override
+  void onWindowClose() {
+    cleaner.cleanup().then((_) => windowManager.destroy());
+  }
+}
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   FramePerf.install();
@@ -53,6 +63,10 @@ void main() async {
 
   final tempTeamCleaner = TempTeamCleaner();
   await tempTeamCleaner.cleanup();
+
+  // Intercept window close so cleanup runs before the process exits.
+  await windowManager.setPreventClose(true);
+  windowManager.addListener(_CleanupWindowListener(tempTeamCleaner));
 
   final sessionRepo = const SessionRepository();
 

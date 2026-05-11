@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:io';
 
 import 'package:equatable/equatable.dart';
@@ -133,9 +132,10 @@ class ChatCubit extends Cubit<ChatState> {
     final name = '${baseName.trim()}-${_nextCounter()}';
     final cleaner = _tempTeamCleaner;
     if (cleaner != null) {
-      // Fire-and-forget; registry is persisted so a crash before completion
-      // only risks orphaning a single folder.
-      unawaited(cleaner.record(name));
+      appLogger.d('Recording temp team "$name"');
+      cleaner.record(name).catchError((e) {
+        appLogger.w('Failed to record temp team "$name": $e');
+      });
     }
     return name;
   }
@@ -192,9 +192,7 @@ class ChatCubit extends Cubit<ChatState> {
       title: session.display.isNotEmpty ? session.display : session.kind,
       subtitle: session.cwd,
     );
-    final sessionTeamName = session.sessionTeam.isNotEmpty
-        ? session.sessionTeam
-        : _assignSessionTeam(session.sessionId, team, repo);
+    final sessionTeamName = _assignSessionTeam(session.sessionId, team, repo);
     final internalTab = _InternalTab(
       info: info,
       sessionTeamName: sessionTeamName,

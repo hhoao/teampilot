@@ -503,7 +503,6 @@ class _SessionTileEntryState extends State<_SessionTileEntry> {
       child: _SidebarTile(
         key: AppKeys.sessionTile(session.sessionId),
         title: session.display.isNotEmpty ? session.display : session.kind,
-        subtitle: session.cwd,
         selected: selected,
         indent: true,
         onTap: () {
@@ -513,25 +512,8 @@ class _SessionTileEntryState extends State<_SessionTileEntry> {
 
           chatCubit.selectSession(session.sessionId);
 
-          TeamConfig? matchingTeam;
-          if (session.sessionTeam.isNotEmpty) {
-            final lastDash = session.sessionTeam.lastIndexOf('-');
-            if (lastDash > 0) {
-              final teamName = session.sessionTeam.substring(0, lastDash);
-              for (final t in teamCubit.state.teams) {
-                if (t.name == teamName) {
-                  matchingTeam = t;
-                  break;
-                }
-              }
-            }
-          }
-          matchingTeam ??= teamCubit.state.selectedTeam;
+          final matchingTeam = teamCubit.state.selectedTeam;
           if (matchingTeam == null) return;
-
-          if (teamCubit.state.selectedTeam?.id != matchingTeam.id) {
-            teamCubit.selectTeam(matchingTeam.id);
-          }
 
           final lead = matchingTeam.members.where((m) => m.name == 'team-lead');
           if (lead.isNotEmpty) {
@@ -545,31 +527,36 @@ class _SessionTileEntryState extends State<_SessionTileEntry> {
 
           context.go('/chat');
         },
-        trailing: _hovered
-            ? PopupMenuButton<String>(
-                tooltip: '',
-                padding: EdgeInsets.zero,
-                icon: const Icon(Icons.more_horiz, size: 16),
-                onSelected: (value) {
-                  switch (value) {
-                    case 'rename':
-                      _showRenameDialog(context, session, l10n);
-                    case 'delete':
-                      _showDeleteDialog(context, session, l10n);
-                  }
-                },
-                itemBuilder: (context) => [
-                  PopupMenuItem(
-                    value: 'rename',
-                    child: Text(l10n.renameConversation),
-                  ),
-                  PopupMenuItem(
-                    value: 'delete',
-                    child: Text(l10n.deleteConversation),
-                  ),
-                ],
-              )
-            : null,
+        trailing: SizedBox(
+            width: 24,
+            height: 24,
+            child: _hovered
+                ? PopupMenuButton<String>(
+                    tooltip: '',
+                    padding: EdgeInsets.zero,
+                    iconSize: 16,
+                    icon: const Icon(Icons.more_horiz, size: 16),
+                    onSelected: (value) {
+                      switch (value) {
+                        case 'rename':
+                          _showRenameDialog(context, session, l10n);
+                        case 'delete':
+                          _showDeleteDialog(context, session, l10n);
+                      }
+                    },
+                    itemBuilder: (context) => [
+                      PopupMenuItem(
+                        value: 'rename',
+                        child: Text(l10n.renameConversation),
+                      ),
+                      PopupMenuItem(
+                        value: 'delete',
+                        child: Text(l10n.deleteConversation),
+                      ),
+                    ],
+                  )
+                : null,
+          ),
       ),
     );
   }
@@ -909,7 +896,7 @@ class _SidebarSectionTitle extends StatelessWidget {
 class _SidebarTile extends StatelessWidget {
   const _SidebarTile({
     required this.title,
-    required this.subtitle,
+    this.subtitle = '',
     required this.selected,
     this.onTap,
     this.trailing,
@@ -964,16 +951,18 @@ class _SidebarTile extends StatelessWidget {
                           color: textBase,
                         ),
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        subtitle,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: textBase.withValues(alpha: 0.52),
-                          fontSize: 11,
+                      if (subtitle.isNotEmpty) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          subtitle,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: textBase.withValues(alpha: 0.52),
+                            fontSize: 11,
+                          ),
                         ),
-                      ),
+                      ],
                     ],
                   ),
                 ),

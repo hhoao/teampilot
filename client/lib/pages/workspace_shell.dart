@@ -238,19 +238,27 @@ class _TabRow extends StatelessWidget {
       ),
       child: Row(
         children: [
-          for (var i = 0; i < tabs.length; i++)
-            _TabChip(
-              title: tabs[i].title,
-              active: i == activeIndex,
-              onTap: () => onTabSelected?.call(i),
-              onClose: () => onTabClosed?.call(i),
-              onCloseOthers: () => onTabCloseOthers?.call(i),
-              onCloseRight: () => onTabCloseRight?.call(i),
-              textColor: textBase,
-              activeBg: colors.railButtonSelectedBg,
-              borderColor: colors.subtleBorder,
+          Expanded(
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  for (var i = 0; i < tabs.length; i++)
+                    _TabChip(
+                      title: tabs[i].title,
+                      active: i == activeIndex,
+                      onTap: () => onTabSelected?.call(i),
+                      onClose: () => onTabClosed?.call(i),
+                      onCloseOthers: () => onTabCloseOthers?.call(i),
+                      onCloseRight: () => onTabCloseRight?.call(i),
+                      textColor: textBase,
+                      activeBg: colors.railButtonSelectedBg,
+                      borderColor: colors.subtleBorder,
+                    ),
+                ],
+              ),
             ),
-          if (trailing != null) const Spacer(),
+          ),
           if (trailing != null) trailing!,
         ],
       ),
