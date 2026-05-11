@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import '../models/skill.dart';
+import '../utils/logger.dart';
 import 'app_storage.dart';
 
 class SkillRepoService {
@@ -58,7 +59,11 @@ class SkillRepoService {
     try {
       final content = await file.readAsString();
       return (json.decode(content) as Map<String, dynamic>).cast<String, Object?>();
-    } catch (_) {
+    } on FormatException catch (e) {
+      appLogger.w('[SkillRepoService] Corrupt skills.json, resetting: $e');
+      return {};
+    } on FileSystemException catch (e) {
+      appLogger.w('[SkillRepoService] Cannot read skills.json: $e');
       return {};
     }
   }

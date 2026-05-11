@@ -149,11 +149,10 @@ class SkillRepo {
       other is SkillRepo &&
           runtimeType == other.runtimeType &&
           owner == other.owner &&
-          name == other.name &&
-          branch == other.branch;
+          name == other.name;
 
   @override
-  int get hashCode => Object.hash(owner, name, branch);
+  int get hashCode => Object.hash(owner, name);
 }
 
 class DiscoverableSkill {
