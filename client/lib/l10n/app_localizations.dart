@@ -125,6 +125,7 @@ class AppLocalizations {
   String get statEmptyKeys => _strings['statEmptyKeys']!;
   String get validation => _strings['validation']!;
   String get allChecksPassed => _strings['allChecksPassed']!;
+  String get validate => _strings['validate']!;
   String get jsonPreview => _strings['jsonPreview']!;
 
   String get runsPlaceholder => _strings['runsPlaceholder']!;
@@ -340,6 +341,7 @@ class _AppLocalizationsDelegate
     'statEmptyKeys': {'en': 'empty keys', 'zh': '空密钥'},
     'validation': {'en': 'Validation', 'zh': '验证'},
     'allChecksPassed': {'en': 'All checks passed.', 'zh': '所有检查通过。'},
+    'validate': {'en': 'Validate', 'zh': '校验'},
     'jsonPreview': {'en': 'JSON Preview', 'zh': 'JSON 预览'},
 
     'runsPlaceholder': {

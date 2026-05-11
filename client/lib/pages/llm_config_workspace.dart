@@ -39,6 +39,12 @@ class LlmConfigWorkspace extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 12),
+              OutlinedButton.icon(
+                onPressed: () => _showValidationDialog(context, config),
+                icon: const Icon(Icons.check_circle_outline),
+                label: Text(l10n.validate),
+              ),
+              const SizedBox(width: 8),
               FilledButton.icon(
                 key: AppKeys.saveLlmConfigButton,
                 onPressed: controller.save,
@@ -49,18 +55,11 @@ class LlmConfigWorkspace extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           Expanded(
-            child: Row(
+            child: TabBarView(
               children: [
-                Expanded(
-                  child: TabBarView(
-                    children: [
-                      _ProvidersTabContent(controller: controller),
-                      _ModelsTabContent(controller: controller),
-                      _RawJsonTabContent(controller: controller),
-                    ],
-                  ),
-                ),
-                SizedBox(width: 340, child: _LlmSidePanel(config: config)),
+                _ProvidersTabContent(controller: controller),
+                _ModelsTabContent(controller: controller),
+                _RawJsonTabContent(controller: controller),
               ],
             ),
           ),
@@ -1326,243 +1325,37 @@ class _RawJsonTabContent extends StatelessWidget {
   }
 }
 
-// --- Side panel (always visible) ---
+// --- Validation dialog ---
 
-class _LlmSidePanel extends StatelessWidget {
-  const _LlmSidePanel({required this.config});
-
-  final LlmConfig config;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = AppColors.of(context);
-    final l10n = context.l10n;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textBase = isDark ? Colors.white : const Color(0xFF111827);
-    final messages = config.validationMessages;
-    final missingRefs = config.models.values
-        .where((m) => !config.providers.containsKey(m.provider))
-        .length;
-    final emptyKeys = config.providers.values
-        .where((p) => p.type == 'api' && p.apiKey.trim().isEmpty)
-        .length;
-    final jsonString = config.toMaskedJsonString();
-    final jsonSnippet = jsonString.length > 500
-        ? '${jsonString.substring(0, 500)}...'
-        : jsonString;
-
-    return Container(
-      key: AppKeys.llmSidePanel,
-      color: colors.rightPanelBackground,
-      child: Column(
-        children: [
-          Expanded(
-            flex: 35,
-            child: Container(
-              padding: const EdgeInsets.all(13),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Text(
-                    l10n.summary,
-                    style: TextStyle(
-                      color: textBase.withValues(alpha: 0.58),
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 0.8,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  Expanded(
-                    child: Container(
-                      key: AppKeys.llmSummaryStats,
-                      child: GridView.count(
-                        crossAxisCount: 2,
-                        childAspectRatio: 1.8,
-                        crossAxisSpacing: 8,
-                        mainAxisSpacing: 8,
-                        children: [
-                          _StatBox(
-                            value: '${config.providers.length}',
-                            label: l10n.statProviders,
-                          ),
-                          _StatBox(
-                            value: '${config.models.length}',
-                            label: l10n.statModels,
-                          ),
-                          _StatBox(
-                            value: '$missingRefs',
-                            label: l10n.statMissingRefs,
-                            warn: missingRefs > 0,
-                          ),
-                          _StatBox(
-                            value: '$emptyKeys',
-                            label: l10n.statEmptyKeys,
-                            warn: emptyKeys > 0,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
+Future<void> _showValidationDialog(BuildContext context, LlmConfig config) {
+  final l10n = context.l10n;
+  final messages = config.validationMessages;
+  return showDialog<void>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: Text(l10n.validation),
+      content: SizedBox(
+        width: 400,
+        child: messages.isEmpty
+            ? Text(l10n.allChecksPassed)
+            : ListView.separated(
+                shrinkWrap: true,
+                itemCount: messages.length,
+                separatorBuilder: (_, __) => const SizedBox(height: 8),
+                itemBuilder: (context, index) => Text(
+                  '${index + 1}. ${messages[index]}',
+                  style: const TextStyle(height: 1.35),
+                ),
               ),
-            ),
-          ),
-          Container(height: 1, color: colors.subtleBorder),
-          Expanded(
-            flex: 32,
-            child: Container(
-              key: AppKeys.llmValidationSummary,
-              padding: const EdgeInsets.all(13),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Text(
-                    l10n.validation,
-                    style: TextStyle(
-                      color: textBase.withValues(alpha: 0.58),
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 0.8,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  Expanded(
-                    child: messages.isEmpty
-                        ? Container(
-                            padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              color: colors.successBackground,
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: colors.successBorder),
-                            ),
-                            child: Text(
-                              l10n.allChecksPassed,
-                              style: TextStyle(
-                                color: colors.successText,
-                                fontSize: 12,
-                              ),
-                            ),
-                          )
-                        : ListView.separated(
-                            itemCount: messages.length,
-                            separatorBuilder: (_, __) =>
-                                const SizedBox(height: 8),
-                            itemBuilder: (context, index) => Container(
-                              padding: const EdgeInsets.all(10),
-                              decoration: BoxDecoration(
-                                color: colors.warningBackground,
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(color: colors.warningBorder),
-                              ),
-                              child: Text(
-                                messages[index],
-                                style: const TextStyle(
-                                  color: Color(0xFFFDE68A),
-                                  fontSize: 12,
-                                  height: 1.35,
-                                ),
-                              ),
-                            ),
-                          ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          Container(height: 1, color: colors.subtleBorder),
-          Expanded(
-            flex: 33,
-            child: Container(
-              padding: const EdgeInsets.all(13),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Text(
-                    l10n.jsonPreview,
-                    style: TextStyle(
-                      color: textBase.withValues(alpha: 0.58),
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 0.8,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  Expanded(
-                    child: Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: colors.codeBackground,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: colors.border),
-                      ),
-                      child: SingleChildScrollView(
-                        child: Text(
-                          jsonSnippet,
-                          style: TextStyle(
-                            color: colors.accentGreenLight,
-                            fontFamily: 'monospace',
-                            fontSize: 11,
-                            height: 1.5,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
       ),
-    );
-  }
-}
-
-class _StatBox extends StatelessWidget {
-  const _StatBox({required this.value, required this.label, this.warn = false});
-
-  final String value;
-  final String label;
-  final bool warn;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = AppColors.of(context);
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textBase = isDark ? Colors.white : const Color(0xFF111827);
-    return Container(
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: colors.statBoxBg,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: warn ? colors.statBoxWarnBorder : colors.statBoxBorder,
+      actions: [
+        FilledButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text(l10n.cancel),
         ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            value,
-            style: TextStyle(
-              color: warn ? const Color(0xFFFDE68A) : textBase,
-              fontSize: 16,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-          const SizedBox(height: 3),
-          Text(
-            label,
-            style: TextStyle(
-              color: textBase.withValues(alpha: 0.54),
-              fontSize: 11,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+      ],
+    ),
+  );
 }
 
 // --- Model edit dialog ---
