@@ -16,30 +16,17 @@ class LlmConfigWorkspace extends StatelessWidget {
     final controller = context.watch<LlmConfigCubit>();
     final l10n = context.l10n;
     final config = controller.state.config;
-    return DefaultTabController(
-      length: 3,
-      child: Column(
-        key: AppKeys.llmConfigWorkspace,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _WorkspaceHeading(
-            title: l10n.llmConfig,
-            subtitle:
-                '${controller.state.filePath} / ${config.providers.length} providers / ${config.models.length} models',
-          ),
-          const SizedBox(height: 10),
-          Row(
+    return Column(
+      key: AppKeys.llmConfigWorkspace,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _WorkspaceHeading(
+          title: l10n.llmConfig,
+          subtitle:
+              '${controller.state.filePath} / ${config.providers.length} providers / ${config.models.length} models',
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Expanded(
-                child: TabBar(
-                  tabs: [
-                    Tab(key: AppKeys.llmProvidersTab, text: l10n.providersTab),
-                    Tab(key: AppKeys.llmModelsTab, text: l10n.modelsTab),
-                    Tab(key: AppKeys.llmRawJsonTab, text: l10n.rawJsonTab),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 12),
               OutlinedButton.icon(
                 onPressed: () => _showValidationDialog(context, config),
                 icon: const Icon(Icons.check_circle_outline),
@@ -54,63 +41,79 @@ class LlmConfigWorkspace extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 10),
-          Expanded(
-            child: TabBarView(
-              children: [
-                _ProvidersTabContent(controller: controller),
-                _ModelsTabContent(controller: controller),
-                _RawJsonTabContent(controller: controller),
-              ],
-            ),
-          ),
-        ],
-      ),
+        ),
+        const SizedBox(height: 10),
+        Expanded(
+          child: _ProvidersTabContent(controller: controller),
+        ),
+      ],
     );
   }
 }
 
 // --- Providers tab: split view ---
 
-class _ProvidersTabContent extends StatelessWidget {
+class _ProvidersTabContent extends StatefulWidget {
   const _ProvidersTabContent({required this.controller});
 
   final LlmConfigCubit controller;
 
   @override
+  State<_ProvidersTabContent> createState() => _ProvidersTabContentState();
+}
+
+class _ProvidersTabContentState extends State<_ProvidersTabContent> {
+  String? _modelsProviderName;
+
+  LlmConfigCubit get _controller => widget.controller;
+
+  @override
   Widget build(BuildContext context) {
-    final config = controller.state.config;
-    final selectedName = controller.state.effectiveProviderName;
+    final config = _controller.state.config;
+    final selectedName = _controller.state.effectiveProviderName;
     final selectedProvider = selectedName != null
         ? config.providers[selectedName]
         : null;
+
+    final showModels = _modelsProviderName != null &&
+        selectedProvider != null &&
+        _modelsProviderName == selectedProvider.name;
 
     return ResizableSplitView(
       left: _ProviderListPanel(
         config: config,
         selectedName: selectedName,
-        onSelect: (name) => controller.selectProvider(name),
-        onAdd: () => _addProvider(context, controller),
-        onDelete: (name) => _deleteProvider(context, controller, name),
-      ),
-      right: _ProviderDetailPanel(
-        config: config,
-        provider: selectedProvider,
-        controller: controller,
-        onSave: (name, provider) {
-          controller.updateProvider(name, provider);
+        onSelect: (name) {
+          _controller.selectProvider(name);
+          setState(() => _modelsProviderName = null);
         },
-        onDelete: (name) {
-          _deleteProvider(context, controller, name);
-        },
+        onAdd: () => _addProvider(context),
+        onDelete: (name) => _deleteProvider(context, name),
       ),
+      right: showModels
+          ? _ProviderModelsView(
+              config: config,
+              provider: selectedProvider,
+              controller: _controller,
+              onBack: () => setState(() => _modelsProviderName = null),
+            )
+          : _ProviderDetailPanel(
+              config: config,
+              provider: selectedProvider,
+              controller: _controller,
+              onSave: (name, provider) {
+                _controller.updateProvider(name, provider);
+              },
+              onDelete: (name) {
+                _deleteProvider(context, name);
+              },
+              onShowModels: (name) =>
+                  setState(() => _modelsProviderName = name),
+            ),
     );
   }
 
-  Future<void> _addProvider(
-    BuildContext context,
-    LlmConfigCubit controller,
-  ) async {
+  Future<void> _addProvider(BuildContext context) async {
     final l10n = context.l10n;
     final nameController = TextEditingController();
     final name = await showDialog<String>(
@@ -138,19 +141,15 @@ class _ProvidersTabContent extends StatelessWidget {
     nameController.dispose();
     if (name != null &&
         name.isNotEmpty &&
-        !controller.state.config.providers.containsKey(name)) {
-      controller.addProvider(
+        !_controller.state.config.providers.containsKey(name)) {
+      _controller.addProvider(
         LlmProviderConfig(name: name, type: 'api', providerType: 'openai'),
       );
-      controller.selectProvider(name);
+      _controller.selectProvider(name);
     }
   }
 
-  Future<void> _deleteProvider(
-    BuildContext context,
-    LlmConfigCubit controller,
-    String name,
-  ) async {
+  Future<void> _deleteProvider(BuildContext context, String name) async {
     final l10n = context.l10n;
     final confirmed = await showDialog<bool>(
       context: context,
@@ -170,7 +169,7 @@ class _ProvidersTabContent extends StatelessWidget {
       ),
     );
     if (confirmed == true) {
-      controller.deleteProvider(name);
+      _controller.deleteProvider(name);
     }
   }
 }
@@ -445,6 +444,7 @@ class _ProviderDetailPanel extends StatefulWidget {
     required this.controller,
     required this.onSave,
     required this.onDelete,
+    required this.onShowModels,
   });
 
   final LlmConfig config;
@@ -452,6 +452,7 @@ class _ProviderDetailPanel extends StatefulWidget {
   final LlmConfigCubit controller;
   final void Function(String name, LlmProviderConfig provider) onSave;
   final ValueChanged<String> onDelete;
+  final ValueChanged<String> onShowModels;
 
   @override
   State<_ProviderDetailPanel> createState() => _ProviderDetailPanelState();
@@ -599,6 +600,12 @@ class _ProviderDetailPanelState extends State<_ProviderDetailPanel> {
                     ],
                   ),
                 ),
+                OutlinedButton.icon(
+                  onPressed: () => widget.onShowModels(provider.name),
+                  icon: const Icon(Icons.model_training_outlined, size: 16),
+                  label: Text(l10n.models),
+                ),
+                const SizedBox(width: 8),
                 IconButton(
                   tooltip: l10n.deleteProviderTooltip,
                   icon: const Icon(Icons.delete_outline, size: 18),
@@ -1013,61 +1020,20 @@ class _ProviderModelsTable extends StatelessWidget {
   }
 }
 
-// --- Models tab ---
+// --- Provider models view ---
 
-class _ModelsTabContent extends StatelessWidget {
-  const _ModelsTabContent({required this.controller});
-
-  final LlmConfigCubit controller;
-
-  @override
-  Widget build(BuildContext context) {
-    final config = controller.state.config;
-    return _ModelsTable(
-      config: config,
-      onAdd: () => _addModel(context, controller),
-      onUpdate: (id, model) {
-        controller.updateModel(id, model);
-      },
-      onDelete: (id) {
-        controller.deleteModel(id);
-      },
-    );
-  }
-
-  Future<void> _addModel(
-    BuildContext context,
-    LlmConfigCubit controller,
-  ) async {
-    final l10n = context.l10n;
-    final defaultProvider =
-        controller.state.config.providers.keys.firstOrNull ?? '';
-    final result = await showDialog<LlmModelConfig>(
-      context: context,
-      builder: (context) => _ModelEditDialog(
-        providers: controller.state.config.providers,
-        defaultProvider: defaultProvider,
-        title: l10n.addModel,
-      ),
-    );
-    if (result != null) {
-      controller.addModel(result);
-    }
-  }
-}
-
-class _ModelsTable extends StatelessWidget {
-  const _ModelsTable({
+class _ProviderModelsView extends StatelessWidget {
+  const _ProviderModelsView({
     required this.config,
-    required this.onAdd,
-    required this.onUpdate,
-    required this.onDelete,
+    required this.provider,
+    required this.controller,
+    required this.onBack,
   });
 
   final LlmConfig config;
-  final VoidCallback onAdd;
-  final void Function(String, LlmModelConfig) onUpdate;
-  final ValueChanged<String> onDelete;
+  final LlmProviderConfig provider;
+  final LlmConfigCubit controller;
+  final VoidCallback onBack;
 
   @override
   Widget build(BuildContext context) {
@@ -1075,16 +1041,11 @@ class _ModelsTable extends StatelessWidget {
     final l10n = context.l10n;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textBase = isDark ? Colors.white : const Color(0xFF111827);
-    final models = config.models.values.toList();
-    final headerStyle = TextStyle(
-      color: textBase.withValues(alpha: 0.58),
-      fontSize: 10,
-      fontWeight: FontWeight.w700,
-      letterSpacing: 0.6,
-    );
+    final providerModels = config.models.values
+        .where((m) => m.provider == provider.name)
+        .toList();
 
     return Container(
-      key: AppKeys.llmModelsTable,
       decoration: BoxDecoration(
         color: colors.cardBackground,
         borderRadius: BorderRadius.circular(10),
@@ -1093,24 +1054,43 @@ class _ModelsTable extends StatelessWidget {
       child: Column(
         children: [
           Container(
-            height: 42,
-            padding: const EdgeInsets.symmetric(horizontal: 12),
+            padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               border: Border(bottom: BorderSide(color: colors.tabBarDivider)),
             ),
             child: Row(
               children: [
+                IconButton(
+                  tooltip: l10n.back,
+                  icon: const Icon(Icons.arrow_back, size: 18),
+                  onPressed: onBack,
+                ),
+                const SizedBox(width: 8),
                 Expanded(
-                  child: Text(
-                    l10n.models,
-                    style: TextStyle(
-                      fontWeight: FontWeight.w800,
-                      color: textBase,
-                    ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '${l10n.models} — ${provider.name}',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 14,
+                          color: textBase,
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        '${providerModels.length} ${l10n.models.toLowerCase()}',
+                        style: TextStyle(
+                          color: textBase.withValues(alpha: 0.48),
+                          fontSize: 11,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 InkWell(
-                  onTap: onAdd,
+                  onTap: () => _addModel(context, provider.name),
                   child: Text(
                     '+ ${l10n.add}',
                     style: TextStyle(
@@ -1123,31 +1103,8 @@ class _ModelsTable extends StatelessWidget {
               ],
             ),
           ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            color: textBase.withValues(alpha: 0.04),
-            child: Row(
-              children: [
-                const SizedBox(width: 10),
-                Expanded(flex: 3, child: Text(l10n.name, style: headerStyle)),
-                Expanded(
-                  flex: 2,
-                  child: Text(l10n.provider, style: headerStyle),
-                ),
-                Expanded(
-                  flex: 3,
-                  child: Text(l10n.actualModel, style: headerStyle),
-                ),
-                SizedBox(
-                  width: 80,
-                  child: Text(l10n.enabled, style: headerStyle),
-                ),
-                const SizedBox(width: 80),
-              ],
-            ),
-          ),
           Expanded(
-            child: models.isEmpty
+            child: providerModels.isEmpty
                 ? Center(
                     child: Text(
                       l10n.noModelsConfigured,
@@ -1155,114 +1112,71 @@ class _ModelsTable extends StatelessWidget {
                     ),
                   )
                 : ListView.separated(
-                    padding: EdgeInsets.zero,
-                    itemCount: models.length,
-                    separatorBuilder: (_, __) => const Divider(height: 1),
+                    padding: const EdgeInsets.all(12),
+                    itemCount: providerModels.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 8),
                     itemBuilder: (context, index) {
-                      final model = models[index];
-                      final providerExists = config.providers.containsKey(
-                        model.provider,
-                      );
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 8,
+                      final model = providerModels[index];
+                      return Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: textBase.withValues(alpha: 0.03),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: colors.border),
                         ),
                         child: Row(
                           children: [
-                            if (!providerExists)
-                              Padding(
-                                padding: const EdgeInsets.only(right: 6),
-                                child: Tooltip(
-                                  message:
-                                      '${l10n.missingProvider} ${model.provider}',
-                                  child: const Icon(
-                                    Icons.warning_amber_rounded,
-                                    size: 14,
-                                    color: Color(0xFFFDE68A),
-                                  ),
-                                ),
-                              ),
                             Expanded(
                               flex: 3,
-                              child: Text(
-                                model.name,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                            Expanded(
-                              flex: 2,
-                              child: Text(
-                                model.provider,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  color: providerExists
-                                      ? null
-                                      : const Color(0xFFFCA5A5),
-                                ),
-                              ),
-                            ),
-                            Expanded(
-                              flex: 3,
-                              child: Text(
-                                model.model,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                            SizedBox(
-                              width: 80,
-                              child: Switch(
-                                value: model.enabled,
-                                onChanged: (value) {
-                                  onUpdate(
-                                    model.id,
-                                    model.copyWith(enabled: value),
-                                  );
-                                },
-                              ),
-                            ),
-                            SizedBox(
-                              width: 80,
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  IconButton(
-                                    key: AppKeys.editModelButton(model.id),
-                                    tooltip: l10n.edit,
-                                    visualDensity: VisualDensity.compact,
-                                    constraints: const BoxConstraints(
-                                      minWidth: 36,
-                                      minHeight: 36,
+                                  Text(
+                                    model.name,
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w700,
+                                      color: textBase,
                                     ),
-                                    icon: const Icon(
-                                      Icons.edit_outlined,
-                                      size: 16,
-                                    ),
-                                    onPressed: () {
-                                      _editModel(context, model);
-                                    },
                                   ),
-                                  IconButton(
-                                    key: AppKeys.deleteModelButton(model.id),
-                                    tooltip: l10n.delete,
-                                    visualDensity: VisualDensity.compact,
-                                    constraints: const BoxConstraints(
-                                      minWidth: 36,
-                                      minHeight: 36,
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    model.model,
+                                    style: TextStyle(
+                                      color: textBase.withValues(alpha: 0.54),
+                                      fontSize: 12,
                                     ),
-                                    icon: const Icon(
-                                      Icons.delete_outline,
-                                      size: 16,
-                                    ),
-                                    onPressed: () {
-                                      onDelete(model.id);
-                                    },
                                   ),
                                 ],
                               ),
+                            ),
+                            Switch(
+                              value: model.enabled,
+                              onChanged: (value) {
+                                controller.updateModel(
+                                  model.id,
+                                  model.copyWith(enabled: value),
+                                );
+                              },
+                            ),
+                            IconButton(
+                              tooltip: l10n.edit,
+                              visualDensity: VisualDensity.compact,
+                              constraints: const BoxConstraints(
+                                minWidth: 36,
+                                minHeight: 36,
+                              ),
+                              icon: const Icon(Icons.edit_outlined, size: 16),
+                              onPressed: () => _editModel(context, model),
+                            ),
+                            IconButton(
+                              tooltip: l10n.delete,
+                              visualDensity: VisualDensity.compact,
+                              constraints: const BoxConstraints(
+                                minWidth: 36,
+                                minHeight: 36,
+                              ),
+                              icon: const Icon(Icons.delete_outline, size: 16),
+                              onPressed: () => controller.deleteModel(model.id),
                             ),
                           ],
                         ),
@@ -1273,6 +1187,21 @@ class _ModelsTable extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  Future<void> _addModel(BuildContext context, String providerName) async {
+    final l10n = context.l10n;
+    final result = await showDialog<LlmModelConfig>(
+      context: context,
+      builder: (context) => _ModelEditDialog(
+        providers: config.providers,
+        defaultProvider: providerName,
+        title: l10n.addModel,
+      ),
+    );
+    if (result != null) {
+      controller.addModel(result);
+    }
   }
 
   Future<void> _editModel(BuildContext context, LlmModelConfig model) async {
@@ -1286,35 +1215,8 @@ class _ModelsTable extends StatelessWidget {
       ),
     );
     if (result != null) {
-      onUpdate(model.id, result);
+      controller.updateModel(model.id, result);
     }
-  }
-}
-
-// --- Raw JSON tab ---
-
-class _RawJsonTabContent extends StatelessWidget {
-  const _RawJsonTabContent({required this.controller});
-
-  final LlmConfigCubit controller;
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textBase = isDark ? Colors.white : const Color(0xFF111827);
-    final config = controller.state.config;
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(14),
-      child: SelectableText(
-        key: AppKeys.llmRawJsonPreview,
-        config.toMaskedJsonString(),
-        style: TextStyle(
-          color: textBase.withValues(alpha: 0.72),
-          fontFamily: 'monospace',
-          fontSize: 12,
-        ),
-      ),
-    );
   }
 }
 
@@ -1469,31 +1371,40 @@ class _ModelEditDialogState extends State<_ModelEditDialog> {
 // --- Shared helpers (private to this file) ---
 
 class _WorkspaceHeading extends StatelessWidget {
-  const _WorkspaceHeading({required this.title, required this.subtitle});
+  const _WorkspaceHeading({required this.title, required this.subtitle, this.trailing});
 
   final String title;
   final String subtitle;
+  final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textBase = isDark ? Colors.white : const Color(0xFF111827);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          title,
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w800,
-            color: textBase,
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                  color: textBase,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                subtitle,
+                style: TextStyle(color: textBase.withValues(alpha: 0.64)),
+              ),
+            ],
           ),
         ),
-        const SizedBox(height: 6),
-        Text(
-          subtitle,
-          style: TextStyle(color: textBase.withValues(alpha: 0.64)),
-        ),
+        if (trailing != null) trailing!,
       ],
     );
   }

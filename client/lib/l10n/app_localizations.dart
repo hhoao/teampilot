@@ -126,6 +126,7 @@ class AppLocalizations {
   String get validation => _strings['validation']!;
   String get allChecksPassed => _strings['allChecksPassed']!;
   String get validate => _strings['validate']!;
+  String get back => _strings['back']!;
   String get jsonPreview => _strings['jsonPreview']!;
 
   String get runsPlaceholder => _strings['runsPlaceholder']!;
@@ -342,6 +343,7 @@ class _AppLocalizationsDelegate
     'validation': {'en': 'Validation', 'zh': '验证'},
     'allChecksPassed': {'en': 'All checks passed.', 'zh': '所有检查通过。'},
     'validate': {'en': 'Validate', 'zh': '校验'},
+    'back': {'en': 'Back', 'zh': '返回'},
     'jsonPreview': {'en': 'JSON Preview', 'zh': 'JSON 预览'},
 
     'runsPlaceholder': {
