@@ -201,13 +201,13 @@ class ChatCubit extends Cubit<ChatState> {
     _postFrameScheduler(() {
       try {
         final sw2 = Stopwatch()..start();
-        ts.connectResume(session.sessionId,
+        ts.connect(
           workingDirectory: session.cwd,
           team: team,
           member: member,
           sessionTeam: sessionTeamName,
         );
-        appLogger.d('[perf] connectResume: ${sw2.elapsedMilliseconds}ms');
+        appLogger.d('[perf] connect: ${sw2.elapsedMilliseconds}ms');
         _updateTabRunning(info.id);
       } on Object catch (e) {
         ts.terminal.write('\r\n[Failed to resume session: $e]\r\n');
@@ -260,7 +260,12 @@ class ChatCubit extends Cubit<ChatState> {
     _postFrameScheduler(() {
       try {
         final sw2 = Stopwatch()..start();
-        shell.connect(team, member, sessionTeam: tab.sessionTeamName);
+        shell.connect(
+          workingDirectory: team.workingDirectory.trim(),
+          team: team,
+          member: member,
+          sessionTeam: tab.sessionTeamName,
+        );
         appLogger.d('[perf] connect: ${sw2.elapsedMilliseconds}ms');
         _updateTabRunning(tab.info.id);
       } on Object catch (e) {

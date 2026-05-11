@@ -80,15 +80,14 @@ class FakeTerminalSession extends TerminalSession {
   bool get isRunning => _running;
 
   @override
-  void connect(TeamConfig team, TeamMemberConfig member, {String? sessionTeam}) {
+  void connect({required String workingDirectory, String? resumeSessionId, TeamConfig? team, TeamMemberConfig? member, String? sessionTeam}) {
     _running = true;
-    connectedMembers.add(member.id);
-  }
-
-  @override
-  void connectResume(String sessionId, {String? workingDirectory, TeamConfig? team, TeamMemberConfig? member, String? sessionTeam}) {
-    _running = true;
-    resumedSessions.add(sessionId);
+    if (resumeSessionId != null) {
+      resumedSessions.add(resumeSessionId);
+    }
+    if (member != null) {
+      connectedMembers.add(member.id);
+    }
   }
 
   @override

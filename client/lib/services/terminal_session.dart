@@ -22,8 +22,9 @@ class TerminalSession {
 
   bool get isRunning => _running;
 
-  void connectResume(String sessionId, {
-    String? workingDirectory,
+  void connect({
+    required String workingDirectory,
+    String? resumeSessionId,
     TeamConfig? team,
     TeamMemberConfig? member,
     String? sessionTeam,
@@ -33,9 +34,12 @@ class TerminalSession {
     }
 
     try {
-      final args = <String>['--resume', sessionId];
-      if (workingDirectory != null && workingDirectory.isNotEmpty) {
-        args.insertAll(0, ['--dir', workingDirectory]);
+      final args = <String>[];
+      if (workingDirectory.isNotEmpty) {
+        args.addAll(['--dir', workingDirectory]);
+      }
+      if (resumeSessionId != null) {
+        args.addAll(['--resume', resumeSessionId]);
       }
       if (team != null && member != null) {
         final teamFlag = sessionTeam ?? team.name.trim();
@@ -56,57 +60,11 @@ class TerminalSession {
           args.addAll(LaunchCommandBuilder.splitArgs(member.extraArgs.trim()));
         }
       }
+
       _pty = Pty.start(
         LaunchCommandBuilder.executable,
         arguments: args,
         workingDirectory: workingDirectory,
-      );
-
-      _pty!.output.listen((data) {
-        _writeOutput(data, label: 'resume');
-      });
-
-      terminal.onOutput = (String data) {
-        if (_running && _pty != null) {
-          _pty!.write(Uint8List.fromList(utf8.encode(data)));
-        }
-      };
-
-      terminal.onResize = (int width, int height, int pw, int ph) {
-        if (_running && _pty != null) {
-          _pty!.resize(height, width);
-        }
-      };
-
-      _pty!.exitCode.then((_) {
-        if (_running) {
-          terminal.write('\r\n[process exited]\r\n');
-        }
-        _running = false;
-      });
-
-      _running = true;
-    } on Object catch (error) {
-      terminal.write('\r\n[Failed to start flashskyai: $error]\r\n');
-      _running = false;
-    }
-  }
-
-  void connect(TeamConfig team, TeamMemberConfig member, {String? sessionTeam}) {
-    if (_running) {
-      disconnect();
-    }
-
-    final args = LaunchCommandBuilder.buildArguments(
-      team, member, sessionTeam: sessionTeam,
-    );
-    final workingDir = team.workingDirectory.trim();
-
-    try {
-      _pty = Pty.start(
-        LaunchCommandBuilder.executable,
-        arguments: args,
-        workingDirectory: workingDir,
       );
 
       _pty!.output.listen((data) {
