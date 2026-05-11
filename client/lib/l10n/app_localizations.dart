@@ -37,6 +37,9 @@ class AppLocalizations {
   String get teamSessions => _strings['teamSessions']!;
   String get renameConversation => _strings['renameConversation']!;
   String get deleteConversation => _strings['deleteConversation']!;
+  String get closeTab => _strings['closeTab']!;
+  String get closeOtherTabs => _strings['closeOtherTabs']!;
+  String get closeRightTabs => _strings['closeRightTabs']!;
   String get renameConversationTitle => _strings['renameConversationTitle']!;
   String deleteConversationConfirm(String name) =>
       _strings['deleteConversationConfirm']!.replaceFirst('{name}', name);
@@ -221,6 +224,9 @@ class _AppLocalizationsDelegate
       'zh': '删除对话 "{name}"？此操作不可撤销。',
     },
     'conversationName': {'en': 'Conversation name', 'zh': '对话名称'},
+    'closeTab': {'en': 'Close', 'zh': '关闭'},
+    'closeOtherTabs': {'en': 'Close Others', 'zh': '关闭其他标签'},
+    'closeRightTabs': {'en': 'Close to the Right', 'zh': '关闭右侧标签'},
     'settings': {'en': 'Settings', 'zh': '设置'},
     'settingsPageSubtitle': {
       'en': 'Manage FlashskyAI team and model settings.',

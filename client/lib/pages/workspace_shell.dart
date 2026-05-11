@@ -26,7 +26,8 @@ class WorkspaceShell extends StatelessWidget {
     this.activeTabIndex = 0,
     this.onTabSelected,
     this.onTabClosed,
-    this.onTabRenamed,
+    this.onTabCloseOthers,
+    this.onTabCloseRight,
     this.layoutPreferences = const LayoutPreferences(),
     this.onRightToolsWidthChanged,
     this.rightTools,
@@ -43,7 +44,8 @@ class WorkspaceShell extends StatelessWidget {
   final int activeTabIndex;
   final ValueChanged<int>? onTabSelected;
   final ValueChanged<int>? onTabClosed;
-  final ValueChanged<int>? onTabRenamed;
+  final ValueChanged<int>? onTabCloseOthers;
+  final ValueChanged<int>? onTabCloseRight;
   final LayoutPreferences layoutPreferences;
   final ValueChanged<double>? onRightToolsWidthChanged;
   final Widget? rightTools;
@@ -119,7 +121,8 @@ class WorkspaceShell extends StatelessWidget {
               activeIndex: activeTabIndex,
               onTabSelected: onTabSelected,
               onTabClosed: onTabClosed,
-              onTabRenamed: onTabRenamed,
+              onTabCloseOthers: onTabCloseOthers,
+              onTabCloseRight: onTabCloseRight,
               trailing: actions.isNotEmpty && showHeader
                   ? Padding(
                       padding: const EdgeInsets.only(left: 8),
@@ -208,7 +211,8 @@ class _TabRow extends StatelessWidget {
     required this.activeIndex,
     this.onTabSelected,
     this.onTabClosed,
-    this.onTabRenamed,
+    this.onTabCloseOthers,
+    this.onTabCloseRight,
     this.trailing,
   });
 
@@ -216,7 +220,8 @@ class _TabRow extends StatelessWidget {
   final int activeIndex;
   final ValueChanged<int>? onTabSelected;
   final ValueChanged<int>? onTabClosed;
-  final ValueChanged<int>? onTabRenamed;
+  final ValueChanged<int>? onTabCloseOthers;
+  final ValueChanged<int>? onTabCloseRight;
   final Widget? trailing;
 
   @override
@@ -239,7 +244,8 @@ class _TabRow extends StatelessWidget {
               active: i == activeIndex,
               onTap: () => onTabSelected?.call(i),
               onClose: () => onTabClosed?.call(i),
-              onRename: () => onTabRenamed?.call(i),
+              onCloseOthers: () => onTabCloseOthers?.call(i),
+              onCloseRight: () => onTabCloseRight?.call(i),
               textColor: textBase,
               activeBg: colors.railButtonSelectedBg,
               borderColor: colors.subtleBorder,
@@ -258,7 +264,8 @@ class _TabChip extends StatefulWidget {
     required this.active,
     required this.onTap,
     required this.onClose,
-    this.onRename,
+    this.onCloseOthers,
+    this.onCloseRight,
     required this.textColor,
     required this.activeBg,
     required this.borderColor,
@@ -268,7 +275,8 @@ class _TabChip extends StatefulWidget {
   final bool active;
   final VoidCallback onTap;
   final VoidCallback onClose;
-  final VoidCallback? onRename;
+  final VoidCallback? onCloseOthers;
+  final VoidCallback? onCloseRight;
   final Color textColor;
   final Color activeBg;
   final Color borderColor;
@@ -285,84 +293,94 @@ class _TabChipState extends State<_TabChip> {
     final l10n = context.l10n;
     return Padding(
       padding: const EdgeInsets.only(right: 2),
-      child: MouseRegion(
-        onEnter: (_) => setState(() => _hovered = true),
-        onExit: (_) => setState(() => _hovered = false),
-        child: Material(
-          color: widget.active ? widget.activeBg : Colors.transparent,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
-          child: InkWell(
+      child: Tooltip(
+        message: widget.title,
+        child: MouseRegion(
+          onEnter: (_) => setState(() => _hovered = true),
+          onExit: (_) => setState(() => _hovered = false),
+          child: Material(
+            color: widget.active ? widget.activeBg : Colors.transparent,
             borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
-            onTap: widget.onTap,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              height: 28,
-              decoration: BoxDecoration(
-                border: Border(
-                  left: BorderSide(
-                      color: widget.active
-                          ? widget.borderColor
-                          : Colors.transparent),
-                  right: BorderSide(
-                      color: widget.active
-                          ? widget.borderColor
-                          : Colors.transparent),
-                  top: BorderSide(
-                      color: widget.active
-                          ? widget.borderColor
-                          : Colors.transparent),
-                ),
-                borderRadius:
-                    const BorderRadius.vertical(top: Radius.circular(4)),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    widget.title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: widget.textColor,
-                    ),
+            child: InkWell(
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
+              onTap: widget.onTap,
+              child: Container(
+                width: 160,
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                height: 28,
+                decoration: BoxDecoration(
+                  border: Border(
+                    left: BorderSide(
+                        color: widget.active
+                            ? widget.borderColor
+                            : Colors.transparent),
+                    right: BorderSide(
+                        color: widget.active
+                            ? widget.borderColor
+                            : Colors.transparent),
+                    top: BorderSide(
+                        color: widget.active
+                            ? widget.borderColor
+                            : Colors.transparent),
                   ),
-                  if (_hovered && widget.onRename != null) ...[
-                    const SizedBox(width: 4),
-                    PopupMenuButton<String>(
-                      tooltip: '',
-                      padding: EdgeInsets.zero,
-                      icon: Icon(Icons.more_horiz, size: 12,
-                          color: widget.textColor.withValues(alpha: 0.6)),
-                      onSelected: (value) {
-                        switch (value) {
-                          case 'rename':
-                            widget.onRename?.call();
-                          case 'delete':
-                            widget.onClose.call();
-                        }
-                      },
-                      itemBuilder: (context) => [
-                        PopupMenuItem(
-                          value: 'rename',
-                          child: Text(l10n.renameConversation),
+                  borderRadius:
+                      const BorderRadius.vertical(top: Radius.circular(4)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.max,
+                  children: [
+                    Flexible(
+                      child: Text(
+                        widget.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: widget.textColor,
                         ),
-                        PopupMenuItem(
-                          value: 'delete',
-                          child: Text(l10n.deleteConversation),
-                        ),
-                      ],
+                      ),
                     ),
-                  ] else ...[
-                    const SizedBox(width: 6),
-                    GestureDetector(
-                      onTap: widget.onClose,
-                      child: Icon(Icons.close, size: 14,
-                          color: widget.textColor.withValues(alpha: 0.5)),
-                    ),
+                    if (_hovered) ...[
+                      const SizedBox(width: 4),
+                      PopupMenuButton<String>(
+                        tooltip: '',
+                        padding: EdgeInsets.zero,
+                        icon: Icon(Icons.more_horiz, size: 12,
+                            color: widget.textColor.withValues(alpha: 0.6)),
+                        onSelected: (value) {
+                          switch (value) {
+                            case 'close':
+                              widget.onClose.call();
+                            case 'closeOthers':
+                              widget.onCloseOthers?.call();
+                            case 'closeRight':
+                              widget.onCloseRight?.call();
+                          }
+                        },
+                        itemBuilder: (context) => [
+                          PopupMenuItem(
+                            value: 'close',
+                            child: Text(l10n.closeTab),
+                          ),
+                          PopupMenuItem(
+                            value: 'closeOthers',
+                            child: Text(l10n.closeOtherTabs),
+                          ),
+                          PopupMenuItem(
+                            value: 'closeRight',
+                            child: Text(l10n.closeRightTabs),
+                          ),
+                        ],
+                      ),
+                      GestureDetector(
+                        onTap: widget.onClose,
+                        child: Icon(Icons.close, size: 14,
+                            color: widget.textColor.withValues(alpha: 0.5)),
+                      ),
+                    ],
                   ],
-                ],
+                ),
               ),
             ),
           ),

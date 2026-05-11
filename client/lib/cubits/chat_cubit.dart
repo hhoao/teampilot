@@ -261,6 +261,41 @@ class ChatCubit extends Cubit<ChatState> {
     }
   }
 
+  void closeOtherTabs(int index) {
+    if (index < 0 || index >= _internalTabs.length) return;
+    for (var i = _internalTabs.length - 1; i >= 0; i--) {
+      if (i == index) continue;
+      final tab = _internalTabs.removeAt(i);
+      for (final session in tab.sessions) {
+        session.dispose();
+      }
+    }
+    final kept = _internalTabs.single;
+    emit(state.copyWith(
+      tabs: _visibleTabs(),
+      activeTabIndex: 0,
+      activeSessionId: kept.info.id,
+      selectedMemberId: kept.selectedMemberId,
+    ));
+  }
+
+  void closeRightTabs(int index) {
+    if (index < 0 || index >= _internalTabs.length) return;
+    for (var i = _internalTabs.length - 1; i > index; i--) {
+      final tab = _internalTabs.removeAt(i);
+      for (final session in tab.sessions) {
+        session.dispose();
+      }
+    }
+    final active = _activeTab;
+    emit(state.copyWith(
+      tabs: _visibleTabs(),
+      activeTabIndex: state.activeTabIndex.clamp(0, _internalTabs.length - 1),
+      activeSessionId: active?.info.id,
+      selectedMemberId: active?.selectedMemberId ?? '',
+    ));
+  }
+
   void selectTab(int index) {
     if (index < 0 || index >= _internalTabs.length) return;
     final tab = _internalTabs[index];
