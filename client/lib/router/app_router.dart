@@ -60,12 +60,6 @@ final appRouter = GoRouter(
         ),
         GoRoute(path: '/config', redirect: (context, state) => '/config/layout'),
         GoRoute(
-          path: '/config/members',
-          pageBuilder: (context, state) => const NoTransitionPage(
-            child: ConfigWorkspace(section: ConfigSection.members),
-          ),
-        ),
-        GoRoute(
           path: '/config/layout',
           pageBuilder: (context, state) => const NoTransitionPage(
             child: ConfigWorkspace(section: ConfigSection.layout),

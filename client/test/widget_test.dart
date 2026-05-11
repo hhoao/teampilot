@@ -272,8 +272,8 @@ void main() {
     final cubit = ConfigCubit();
     expect(cubit.state.section, ConfigSection.layout);
 
-    cubit.selectSection(ConfigSection.members);
-    expect(cubit.state.section, ConfigSection.members);
+    cubit.selectSection(ConfigSection.llm);
+    expect(cubit.state.section, ConfigSection.llm);
 
     cubit.selectSection(ConfigSection.layout);
     expect(cubit.state.section, ConfigSection.layout);

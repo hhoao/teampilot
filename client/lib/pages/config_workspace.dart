@@ -7,8 +7,6 @@ import '../cubits/layout_cubit.dart';
 import '../cubits/team_cubit.dart';
 import '../l10n/app_localizations.dart';
 import '../models/layout_preferences.dart';
-import '../models/team_config.dart';
-import '../services/launch_command_builder.dart';
 import '../theme/app_theme.dart';
 import '../utils/app_keys.dart';
 import '../utils/perf.dart';
@@ -85,8 +83,6 @@ class ConfigWorkspace extends StatelessWidget {
                                   maxWidth: 1120,
                                 ),
                                 child: switch (configCubit.state.section) {
-                                  ConfigSection.members =>
-                                    MemberConfigWorkspace(team: team),
                                   ConfigSection.layout =>
                                     const LayoutConfigWorkspace(),
                                   ConfigSection.llm =>
@@ -110,229 +106,8 @@ class ConfigWorkspace extends StatelessWidget {
 }
 
 
-class MemberConfigWorkspace extends StatefulWidget {
-  const MemberConfigWorkspace({required this.team, super.key});
 
-  final TeamConfig team;
 
-  @override
-  State<MemberConfigWorkspace> createState() => _MemberConfigWorkspaceState();
-}
-
-class _MemberConfigWorkspaceState extends State<MemberConfigWorkspace> {
-  late final TextEditingController _nameController;
-  late final TextEditingController _providerController;
-  late final TextEditingController _modelController;
-  late final TextEditingController _agentController;
-  late final TextEditingController _extraArgsController;
-  String _memberId = '';
-  String _validationMessage = '';
-
-  TeamMemberConfig get _member {
-    for (final member in widget.team.members) {
-      if (member.id == context.read<ConfigCubit>().state.selectedMemberId) {
-        return member;
-      }
-    }
-    return widget.team.members.first;
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    _nameController = TextEditingController();
-    _providerController = TextEditingController();
-    _modelController = TextEditingController();
-    _agentController = TextEditingController();
-    _extraArgsController = TextEditingController();
-    _syncFromMember();
-  }
-
-  @override
-  void didUpdateWidget(covariant MemberConfigWorkspace oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (_member.id != _memberId) {
-      _syncFromMember();
-    }
-  }
-
-  @override
-  void dispose() {
-    _nameController.dispose();
-    _providerController.dispose();
-    _modelController.dispose();
-    _agentController.dispose();
-    _extraArgsController.dispose();
-    super.dispose();
-  }
-
-  void _syncFromMember() {
-    final member = _member;
-    _memberId = member.id;
-    _nameController.text = member.name;
-    _providerController.text = member.provider;
-    _modelController.text = member.model;
-    _agentController.text = member.agent;
-    _extraArgsController.text = member.extraArgs;
-    _validationMessage = '';
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = context.l10n;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textBase = isDark ? Colors.white : const Color(0xFF111827);
-    final member = _member;
-    final draft = member.copyWith(
-      name: _nameController.text,
-      provider: _providerController.text,
-      model: _modelController.text,
-      agent: _agentController.text,
-      extraArgs: _extraArgsController.text,
-    );
-    final previewTeam = widget.team.copyWith(
-      members: [
-        for (final item in widget.team.members)
-          if (item.id == member.id) draft else item,
-      ],
-    );
-
-    return Column(
-      key: AppKeys.memberConfigWorkspace,
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        _WorkspaceHeading(
-          title: member.name,
-          subtitle: l10n.editMemberSubtitle,
-        ),
-        const SizedBox(height: 14),
-        Expanded(
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Wrap(
-                  spacing: 14,
-                  runSpacing: 14,
-                  children: [
-                    _SizedField(
-                      child: TextField(
-                        key: AppKeys.memberNameField(member.id),
-                        controller: _nameController,
-                        decoration: InputDecoration(
-                          labelText: l10n.memberName,
-                          prefixIcon: const Icon(Icons.person_outline),
-                        ),
-                        onChanged: (_) => setState(() {}),
-                      ),
-                    ),
-                    _SizedField(
-                      child: TextField(
-                        key: AppKeys.memberProviderField(member.id),
-                        controller: _providerController,
-                        decoration: InputDecoration(
-                          labelText: l10n.provider,
-                          prefixIcon: const Icon(Icons.hub_outlined),
-                        ),
-                        onChanged: (_) => setState(() {}),
-                      ),
-                    ),
-                    _SizedField(
-                      child: TextField(
-                        key: AppKeys.memberModelField(member.id),
-                        controller: _modelController,
-                        decoration: InputDecoration(
-                          labelText: l10n.model,
-                          prefixIcon: const Icon(Icons.memory_outlined),
-                        ),
-                        onChanged: (_) => setState(() {}),
-                      ),
-                    ),
-                    _SizedField(
-                      child: TextField(
-                        key: AppKeys.memberAgentField(member.id),
-                        controller: _agentController,
-                        decoration: InputDecoration(
-                          labelText: l10n.agent,
-                          prefixIcon: const Icon(Icons.badge_outlined),
-                        ),
-                        onChanged: (_) => setState(() {}),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 14),
-                TextField(
-                  key: AppKeys.memberExtraArgsField(member.id),
-                  controller: _extraArgsController,
-                  minLines: 2,
-                  maxLines: 3,
-                  decoration: InputDecoration(
-                    labelText: l10n.memberExtraArgs,
-                    prefixIcon: const Icon(Icons.tune_outlined),
-                  ),
-                  onChanged: (_) => setState(() {}),
-                ),
-                if (member.name == 'team-lead') ...[
-                  const SizedBox(height: 12),
-                  _TeamLeadNotice(),
-                ],
-                if (_validationMessage.isNotEmpty) ...[
-                  const SizedBox(height: 12),
-                  Text(
-                    _validationMessage,
-                    key: AppKeys.memberConfigValidationMessage,
-                    style: const TextStyle(color: Color(0xFFFFB4AB)),
-                  ),
-                ],
-                const SizedBox(height: 16),
-                SelectableText(
-                  key: AppKeys.memberConfigCommandPreview,
-                  LaunchCommandBuilder.preview(previewTeam, draft),
-                  style: TextStyle(
-                    color: textBase.withValues(alpha: 0.68),
-                    fontFamily: 'monospace',
-                    fontSize: 12,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(height: 12),
-        FilledButton.icon(
-          key: AppKeys.memberConfigSaveButton,
-          onPressed: () => _save(member),
-          icon: const Icon(Icons.save_outlined),
-          label: Text(l10n.saveMember),
-        ),
-      ],
-    );
-  }
-
-  Future<void> _save(TeamMemberConfig member) async {
-    if (member.name == 'team-lead' &&
-        _nameController.text.trim() != 'team-lead') {
-      setState(() {
-        _validationMessage = context.l10n.teamLeadNameRequired;
-      });
-      return;
-    }
-    await context.read<TeamCubit>().updateMember(
-      member.id,
-      member.copyWith(
-        name: _nameController.text,
-        provider: _providerController.text,
-        model: _modelController.text,
-        agent: _agentController.text,
-        extraArgs: _extraArgsController.text,
-      ),
-    );
-    setState(() {
-      _validationMessage = '';
-    });
-  }
-}
 
 class LayoutConfigWorkspace extends StatelessWidget {
   const LayoutConfigWorkspace({super.key});
@@ -562,27 +337,6 @@ class _LayoutControls extends StatelessWidget {
 }
 
 
-class _TeamLeadNotice extends StatelessWidget {
-  const _TeamLeadNotice();
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = AppColors.of(context);
-    final l10n = context.l10n;
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: colors.warningBackground,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: colors.warningBorder),
-      ),
-      child: Text(
-        l10n.teamLeadNotice,
-        style: TextStyle(color: colors.warningText),
-      ),
-    );
-  }
-}
 
 class _SettingsTitleBar extends StatelessWidget {
   const _SettingsTitleBar({required this.title, required this.subtitle});
@@ -702,17 +456,6 @@ class _Section extends StatelessWidget {
   }
 }
 
-class _SizedField extends StatelessWidget {
-  const _SizedField({required this.child});
-
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(width: 360, child: child);
-  }
-}
-
 class _ConfigNavPanel extends StatelessWidget {
   const _ConfigNavPanel({
     required this.section,
@@ -737,14 +480,6 @@ class _ConfigNavPanel extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _ConfigNavItem(
-            key: AppKeys.configMembersSectionButton,
-            title: l10n.members,
-            icon: Icons.person_outline,
-            compact: compact,
-            selected: section == ConfigSection.members,
-            onTap: () => onSelectSection(ConfigSection.members),
-          ),
           _ConfigNavItem(
             key: AppKeys.configLlmSectionButton,
             title: l10n.llmConfig,
