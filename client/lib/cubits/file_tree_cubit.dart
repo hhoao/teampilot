@@ -107,7 +107,7 @@ class FileTreeCubit extends Cubit<FileTreeState> {
   }
 
   bool _matchesFilter(FileSystemEntity entity) {
-    final name = entity.uri.pathSegments.last;
+    final name = _entityName(entity);
     if (!state.showHiddenFiles && name.startsWith('.')) return false;
     if (state.filterText.isNotEmpty &&
         !name.toLowerCase().contains(state.filterText.toLowerCase())) {
@@ -121,8 +121,12 @@ class FileTreeCubit extends Cubit<FileTreeState> {
     final bIsDir = b is Directory;
     if (aIsDir && !bIsDir) return -1;
     if (!aIsDir && bIsDir) return 1;
-    return a.uri.pathSegments.last
+    return _entityName(a)
         .toLowerCase()
-        .compareTo(b.uri.pathSegments.last.toLowerCase());
+        .compareTo(_entityName(b).toLowerCase());
+  }
+
+  static String _entityName(FileSystemEntity entity) {
+    return entity.uri.pathSegments.where((s) => s.isNotEmpty).last;
   }
 }

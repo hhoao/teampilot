@@ -28,7 +28,7 @@ class FileTreeNode extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDir = entity is Directory;
-    final name = entity.uri.pathSegments.last;
+    final name = entity.uri.pathSegments.where((s) => s.isNotEmpty).last;
     final isExpanded = cubit.state.expandedPaths.contains(entity.path);
 
     return Column(
