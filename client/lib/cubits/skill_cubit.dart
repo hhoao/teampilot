@@ -142,20 +142,35 @@ class SkillCubit extends Cubit<SkillState> {
   }
 
   Future<void> refreshDiscoverable() async {
-    emit(state.copyWith(discoveryLoading: true));
-    try {
-      final list = await _repo.discover(state.repos);
+    emit(state.copyWith(discoveryLoading: true, discoverable: const []));
+    final enabled = state.repos.where((r) => r.enabled).toList();
+    if (enabled.isEmpty) {
+      emit(state.copyWith(discoveryLoading: false));
+      return;
+    }
+    // Emit incrementally as each repo's tarball is decoded so the UI never
+    // freezes for seconds waiting on the slowest repo.
+    final seen = <String>{};
+    final accumulated = <DiscoverableSkill>[];
+    for (final repo in enabled) {
+      List<DiscoverableSkill> batch;
+      try {
+        batch = await _repo.fetch.listSkills(repo);
+      } catch (_) {
+        batch = const [];
+      }
+      for (final d in batch) {
+        final key = '${d.directory}:${d.repoOwner}:${d.repoName}';
+        if (seen.add(key)) accumulated.add(d);
+      }
+      // Emit after every repo so the grid populates progressively.
       emit(state.copyWith(
-        discoverable: list,
-        discoveryLoading: false,
+        discoverable: List.of(accumulated),
+        discoveryLoading: true,
         clearError: true,
       ));
-    } catch (e) {
-      emit(state.copyWith(
-        discoveryLoading: false,
-        errorMessage: 'Discovery failed: $e',
-      ));
     }
+    emit(state.copyWith(discoveryLoading: false));
   }
 
   Future<void> addRepo(SkillRepo repo) async {

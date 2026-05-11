@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:infinite_scroll_pagination/infinite_scroll_pagination.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../cubits/skill_cubit.dart';
@@ -854,11 +855,67 @@ class _DiscoverySectionState extends State<_DiscoverySection> {
   String _filterRepo = 'all';
   String _filterStatus = 'all';
   final _skillsShCtl = TextEditingController();
+  static const _pageSize = 30;
+
+  late final PagingController<int, DiscoverableSkill> _pagingController;
+  SkillState? _lastState;
+
+  Set<String> _installedKeys(SkillState s) => s.installed
+      .map((sk) => '${sk.directory.toLowerCase()}:${(sk.repoOwner ?? '').toLowerCase()}:${(sk.repoName ?? '').toLowerCase()}')
+      .toSet();
+
+  @override
+  void initState() {
+    super.initState();
+    _pagingController = PagingController<int, DiscoverableSkill>(
+      getNextPageKey: (s) {
+        final allItems = (s.pages ?? const []).expand((p) => p).toList();
+        return allItems.length;
+      },
+      fetchPage: (pageKey) {
+        final ik = _installedKeys(widget.state);
+        final all = _filtered(ik);
+        final start = pageKey;
+        final end = (start + _pageSize).clamp(0, all.length);
+        if (start >= all.length) return const [];
+        return all.sublist(start, end);
+      },
+    );
+    _lastState = widget.state;
+  }
+
+  @override
+  void didUpdateWidget(covariant _DiscoverySection oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.state.discoverable != _lastState?.discoverable ||
+        oldWidget.state != widget.state) {
+      _lastState = widget.state;
+      _pagingController.refresh();
+    }
+  }
 
   @override
   void dispose() {
+    _pagingController.dispose();
     _skillsShCtl.dispose();
     super.dispose();
+  }
+
+  List<DiscoverableSkill> _filtered(Set<String> installedKeys) {
+    return widget.state.discoverable.where((d) {
+      if (_filterRepo != 'all') {
+        if ('${d.repoOwner}/${d.repoName}' != _filterRepo) return false;
+      }
+      final installKey =
+          '${d.directory.split('/').last.toLowerCase()}:${d.repoOwner.toLowerCase()}:${d.repoName.toLowerCase()}';
+      final installed = installedKeys.contains(installKey);
+      if (_filterStatus == 'installed' && !installed) return false;
+      if (_filterStatus == 'uninstalled' && installed) return false;
+      if (_searchQuery.trim().isEmpty) return true;
+      final q = _searchQuery.toLowerCase();
+      return d.name.toLowerCase().contains(q) ||
+          '${d.repoOwner}/${d.repoName}'.toLowerCase().contains(q);
+    }).toList();
   }
 
   @override
@@ -870,58 +927,62 @@ class _DiscoverySectionState extends State<_DiscoverySection> {
         .map((s) => '${s.directory.toLowerCase()}:${(s.repoOwner ?? '').toLowerCase()}:${(s.repoName ?? '').toLowerCase()}')
         .toSet();
 
-    return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _Card(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Row(
-                  children: [
-                    _SourceToggle(
-                      label: l10n.skillsSourceRepos,
-                      selected: _source == _SearchSource.repos,
-                      onTap: () => setState(() => _source = _SearchSource.repos),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _Card(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  _SourceToggle(
+                    label: l10n.skillsSourceRepos,
+                    selected: _source == _SearchSource.repos,
+                    onTap: () {
+                      setState(() => _source = _SearchSource.repos);
+                      _pagingController.refresh();
+                    },
+                  ),
+                  const SizedBox(width: 8),
+                  _SourceToggle(
+                    label: l10n.skillsSourceSkillsSh,
+                    selected: _source == _SearchSource.skillsSh,
+                    onTap: () {
+                      setState(() => _source = _SearchSource.skillsSh);
+                      _pagingController.refresh();
+                    },
+                  ),
+                  const Spacer(),
+                  if (_source == _SearchSource.repos)
+                    IconButton(
+                      tooltip: l10n.skillsCheckUpdates,
+                      onPressed: state.discoveryLoading
+                          ? null
+                          : cubit.refreshDiscoverable,
+                      icon: state.discoveryLoading
+                          ? const SizedBox(
+                              width: 14,
+                              height: 14,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.refresh, size: 18),
                     ),
-                    const SizedBox(width: 8),
-                    _SourceToggle(
-                      label: l10n.skillsSourceSkillsSh,
-                      selected: _source == _SearchSource.skillsSh,
-                      onTap: () => setState(() => _source = _SearchSource.skillsSh),
-                    ),
-                    const Spacer(),
-                    if (_source == _SearchSource.repos)
-                      IconButton(
-                        tooltip: l10n.skillsCheckUpdates,
-                        onPressed: state.discoveryLoading
-                            ? null
-                            : cubit.refreshDiscoverable,
-                        icon: state.discoveryLoading
-                            ? const SizedBox(
-                                width: 14,
-                                height: 14,
-                                child: CircularProgressIndicator(strokeWidth: 2),
-                              )
-                            : const Icon(Icons.refresh, size: 18),
-                      ),
-                  ],
-                ),
-                const SizedBox(height: 14),
-                if (_source == _SearchSource.repos)
-                  _buildReposFilters(context, state)
-                else
-                  _buildSkillsShInput(context, cubit, l10n),
-              ],
-            ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              if (_source == _SearchSource.repos)
+                _buildReposFilters(context, state)
+              else
+                _buildSkillsShInput(context, cubit, l10n),
+            ],
           ),
-          if (_source == _SearchSource.repos)
-            _buildReposGrid(context, state, installedKeys)
-          else
-            _buildSkillsShGrid(context, state, cubit, installedKeys),
-        ],
-      ),
+        ),
+        if (_source == _SearchSource.repos)
+          _buildReposPagedGrid(context, state, installedKeys)
+        else
+          _buildSkillsShGrid(context, state, cubit, installedKeys),
+      ],
     );
   }
 
@@ -943,7 +1004,10 @@ class _DiscoverySectionState extends State<_DiscoverySection> {
               hintText: l10n.skillsSearchPlaceholder,
               isDense: true,
             ),
-            onChanged: (v) => setState(() => _searchQuery = v),
+            onChanged: (v) {
+              setState(() => _searchQuery = v);
+              _pagingController.refresh();
+            },
           ),
         ),
         SizedBox(
@@ -952,11 +1016,17 @@ class _DiscoverySectionState extends State<_DiscoverySection> {
             initialValue: _filterRepo,
             isExpanded: true,
             items: [
-              DropdownMenuItem(value: 'all', child: Text(l10n.skillsFilterRepoAll)),
+              DropdownMenuItem(
+                  value: 'all', child: Text(l10n.skillsFilterRepoAll)),
               for (final repo in repoOptions)
-                DropdownMenuItem(value: repo, child: Text(repo, overflow: TextOverflow.ellipsis)),
+                DropdownMenuItem(
+                    value: repo,
+                    child: Text(repo, overflow: TextOverflow.ellipsis)),
             ],
-            onChanged: (v) => setState(() => _filterRepo = v ?? 'all'),
+            onChanged: (v) {
+              setState(() => _filterRepo = v ?? 'all');
+              _pagingController.refresh();
+            },
           ),
         ),
         SizedBox(
@@ -965,11 +1035,19 @@ class _DiscoverySectionState extends State<_DiscoverySection> {
             initialValue: _filterStatus,
             isExpanded: true,
             items: [
-              DropdownMenuItem(value: 'all', child: Text(l10n.skillsFilterAll)),
-              DropdownMenuItem(value: 'installed', child: Text(l10n.skillsFilterInstalled)),
-              DropdownMenuItem(value: 'uninstalled', child: Text(l10n.skillsFilterUninstalled)),
+              DropdownMenuItem(
+                  value: 'all', child: Text(l10n.skillsFilterAll)),
+              DropdownMenuItem(
+                  value: 'installed',
+                  child: Text(l10n.skillsFilterInstalled)),
+              DropdownMenuItem(
+                  value: 'uninstalled',
+                  child: Text(l10n.skillsFilterUninstalled)),
             ],
-            onChanged: (v) => setState(() => _filterStatus = v ?? 'all'),
+            onChanged: (v) {
+              setState(() => _filterStatus = v ?? 'all');
+              _pagingController.refresh();
+            },
           ),
         ),
       ],
@@ -1007,7 +1085,7 @@ class _DiscoverySectionState extends State<_DiscoverySection> {
     );
   }
 
-  Widget _buildReposGrid(
+  Widget _buildReposPagedGrid(
     BuildContext context,
     SkillState state,
     Set<String> installedKeys,
@@ -1019,7 +1097,7 @@ class _DiscoverySectionState extends State<_DiscoverySection> {
         child: Center(child: CircularProgressIndicator()),
       );
     }
-    if (state.discoverable.isEmpty) {
+    if (!state.discoveryLoading && state.discoverable.isEmpty) {
       return _Card(
         child: _EmptyBlock(
           icon: Icons.travel_explore_outlined,
@@ -1031,41 +1109,30 @@ class _DiscoverySectionState extends State<_DiscoverySection> {
       );
     }
 
-    final filtered = state.discoverable.where((d) {
-      if (_filterRepo != 'all') {
-        if ('${d.repoOwner}/${d.repoName}' != _filterRepo) return false;
-      }
-      final installKey =
-          '${d.directory.split('/').last.toLowerCase()}:${d.repoOwner.toLowerCase()}:${d.repoName.toLowerCase()}';
-      final installed = installedKeys.contains(installKey);
-      if (_filterStatus == 'installed' && !installed) return false;
-      if (_filterStatus == 'uninstalled' && installed) return false;
-      if (_searchQuery.trim().isNotEmpty) {
-        final q = _searchQuery.toLowerCase();
-        final hit = d.name.toLowerCase().contains(q) ||
-            '${d.repoOwner}/${d.repoName}'.toLowerCase().contains(q);
-        if (!hit) return false;
-      }
-      return true;
-    }).toList();
-
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final cols = constraints.maxWidth >= 1100
-            ? 3
-            : (constraints.maxWidth >= 700 ? 2 : 1);
-        return GridView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: cols,
-            crossAxisSpacing: 12,
-            mainAxisSpacing: 12,
-            mainAxisExtent: 168,
+    return Expanded(
+      child: ValueListenableBuilder<PagingState<int, DiscoverableSkill>>(
+        valueListenable: _pagingController,
+        builder: (context, pagingState, _) {
+          return PagedGridView<int, DiscoverableSkill>(
+            state: pagingState,
+            fetchNextPage: _pagingController.fetchNextPage,
+            gridDelegate:
+                const SliverGridDelegateWithMaxCrossAxisExtent(
+          maxCrossAxisExtent: 380,
+          crossAxisSpacing: 12,
+          mainAxisSpacing: 12,
+          mainAxisExtent: 168,
+        ),
+        padding: const EdgeInsets.only(top: 2),
+        builderDelegate: PagedChildBuilderDelegate<DiscoverableSkill>(
+          firstPageProgressIndicatorBuilder: (_) =>
+              const SizedBox.shrink(),
+          newPageProgressIndicatorBuilder: (_) => const Padding(
+            padding: EdgeInsets.symmetric(vertical: 24),
+            child: Center(child: CircularProgressIndicator()),
           ),
-          itemCount: filtered.length,
-          itemBuilder: (context, i) {
-            final d = filtered[i];
+          noItemsFoundIndicatorBuilder: (_) => const SizedBox.shrink(),
+          itemBuilder: (context, d, index) {
             final installKey =
                 '${d.directory.split('/').last.toLowerCase()}:${d.repoOwner.toLowerCase()}:${d.repoName.toLowerCase()}';
             return _SkillCard(
@@ -1079,8 +1146,10 @@ class _DiscoverySectionState extends State<_DiscoverySection> {
                   context.read<SkillCubit>().installFromDiscovery(d),
             );
           },
-        );
-      },
+        ),
+          );
+        },
+      ),
     );
   }
 
