@@ -270,7 +270,7 @@ void main() {
 
   test('config cubit navigates sections', () {
     final cubit = ConfigCubit();
-    expect(cubit.state.section, ConfigSection.team);
+    expect(cubit.state.section, ConfigSection.layout);
 
     cubit.selectSection(ConfigSection.members);
     expect(cubit.state.section, ConfigSection.members);
