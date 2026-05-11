@@ -24,6 +24,18 @@ class RightToolsPanel extends StatelessWidget {
   final LayoutPreferences preferences;
   final Key panelKey;
 
+  static String _sessionCwd(ChatCubit chatCubit) {
+    final tabs = chatCubit.state.tabs;
+    final index = chatCubit.state.activeTabIndex;
+    if (index >= 0 && index < tabs.length) {
+      final cwd = tabs[index].subtitle;
+      if (cwd.isNotEmpty && Directory(cwd).existsSync()) {
+        return cwd;
+      }
+    }
+    return Directory.current.path;
+  }
+
   @override
   Widget build(BuildContext context) {
     final colors = AppColors.of(context);
@@ -59,7 +71,11 @@ class RightToolsPanel extends StatelessWidget {
           isMemberRunning: (id) =>
               context.read<ChatCubit>().isMemberRunning(id),
         ),
-      if (preferences.fileTreeVisible) _FileTreePanel(team: team),
+      if (preferences.fileTreeVisible)
+        _FileTreePanel(
+          team: team,
+          cwd: _sessionCwd(chatCubit),
+        ),
     ];
     return Container(
       key: panelKey,
@@ -230,9 +246,10 @@ class _MembersPanel extends StatelessWidget {
 }
 
 class _FileTreePanel extends StatefulWidget {
-  const _FileTreePanel({required this.team});
+  const _FileTreePanel({required this.team, required this.cwd});
 
   final TeamConfig team;
+  final String cwd;
 
   @override
   State<_FileTreePanel> createState() => _FileTreePanelState();
@@ -248,8 +265,16 @@ class _FileTreePanelState extends State<_FileTreePanel> {
     _syncRoot();
   }
 
+  @override
+  void didUpdateWidget(covariant _FileTreePanel oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.cwd != oldWidget.cwd) {
+      _syncRoot();
+    }
+  }
+
   void _syncRoot() {
-    _cubit.setRoot(Directory.current.path);
+    _cubit.setRoot(widget.cwd);
   }
 
   @override

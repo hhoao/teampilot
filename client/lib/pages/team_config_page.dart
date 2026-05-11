@@ -35,7 +35,10 @@ class _TeamConfigPageState extends State<TeamConfigPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _TitleBar(title: l10n.teamConfig, subtitle: l10n.teamSettingsSubtitle),
+          _TitleBar(
+            title: l10n.teamConfig,
+            subtitle: l10n.teamSettingsSubtitle,
+          ),
           Expanded(
             child: LayoutBuilder(
               builder: (context, constraints) {
@@ -66,9 +69,13 @@ class _TeamConfigPageState extends State<TeamConfigPage> {
                             constraints: const BoxConstraints(maxWidth: 1120),
                             child: switch (_section) {
                               _TeamPageSection.team => _TeamInfoSection(
-                                  team: team, cubit: teamCubit),
+                                team: team,
+                                cubit: teamCubit,
+                              ),
                               _TeamPageSection.members => _MembersSection(
-                                  team: team, cubit: teamCubit),
+                                team: team,
+                                cubit: teamCubit,
+                              ),
                             },
                           ),
                         ),
@@ -226,8 +233,9 @@ class _NavItem extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         fontSize: compact ? 14 : 15,
-                        fontWeight:
-                            selected ? FontWeight.w700 : FontWeight.w600,
+                        fontWeight: selected
+                            ? FontWeight.w700
+                            : FontWeight.w600,
                         color: selected ? textBase : muted,
                       ),
                     ),
@@ -433,14 +441,6 @@ class _MembersSection extends StatelessWidget {
                           fontSize: 15,
                           fontWeight: FontWeight.w800,
                           color: textBase,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        '${team.members.length}',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: textBase.withValues(alpha: 0.6),
                         ),
                       ),
                     ],
@@ -678,8 +678,10 @@ class _DashedBorderPainter extends CustomPainter {
       var distance = 0.0;
       while (distance < metric.length) {
         final next = (distance + dashLength).clamp(0, metric.length);
-        dashed.addPath(metric.extractPath(distance, next.toDouble()),
-            Offset.zero);
+        dashed.addPath(
+          metric.extractPath(distance, next.toDouble()),
+          Offset.zero,
+        );
         distance = next + gapLength;
       }
     }
@@ -741,11 +743,12 @@ class _MemberEditorDialogState extends State<_MemberEditorDialog> {
       providerNames.add(_provider);
     }
 
-    final modelNames = llmState.config.models.values
-        .where((m) => _provider.isEmpty || m.provider == _provider)
-        .map((m) => m.name)
-        .toList()
-      ..sort();
+    final modelNames =
+        llmState.config.models.values
+            .where((m) => _provider.isEmpty || m.provider == _provider)
+            .map((m) => m.name)
+            .toList()
+          ..sort();
     if (_model.isNotEmpty && !modelNames.contains(_model)) {
       modelNames.add(_model);
     }
@@ -815,11 +818,7 @@ class _MemberEditorDialogState extends State<_MemberEditorDialog> {
                 const SizedBox(height: 12),
                 _FieldLabel(text: l10n.prompt),
                 const SizedBox(height: 6),
-                TextField(
-                  controller: _promptCtl,
-                  minLines: 3,
-                  maxLines: 6,
-                ),
+                TextField(controller: _promptCtl, minLines: 3, maxLines: 6),
                 const SizedBox(height: 22),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.end,
@@ -831,7 +830,8 @@ class _MemberEditorDialogState extends State<_MemberEditorDialog> {
                     const SizedBox(width: 8),
                     FilledButton(
                       onPressed: () {
-                        final base = widget.member ??
+                        final base =
+                            widget.member ??
                             const TeamMemberConfig(id: '', name: '');
                         Navigator.of(context).pop(
                           base.copyWith(

@@ -616,79 +616,88 @@ class _ProviderDetailPanelState extends State<_ProviderDetailPanel> {
           Expanded(
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(13),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Wrap(
-                    spacing: 14,
-                    runSpacing: 10,
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final fieldWidth =
+                      (constraints.maxWidth / 2 - 7).clamp(180.0, 400.0);
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      _SizedField(
-                        child: _ReadOnlyField(
-                          label: l10n.providerName,
-                          value: provider.name,
-                        ),
-                      ),
-                      _SizedField(
-                        child: DropdownButtonFormField<String>(
-                          initialValue: _type,
-                          decoration: InputDecoration(labelText: l10n.type),
-                          items: [
-                            DropdownMenuItem(
-                              value: 'api',
-                              child: Text(l10n.api),
+                      Wrap(
+                        spacing: 14,
+                        runSpacing: 10,
+                        children: [
+                          _SizedField(
+                            width: fieldWidth,
+                            child: _ReadOnlyField(
+                              label: l10n.providerName,
+                              value: provider.name,
                             ),
-                            DropdownMenuItem(
-                              value: 'account',
-                              child: Text(l10n.account),
+                          ),
+                          _SizedField(
+                            width: fieldWidth,
+                            child: DropdownButtonFormField<String>(
+                              initialValue: _type,
+                              decoration:
+                                  InputDecoration(labelText: l10n.type),
+                              items: [
+                                DropdownMenuItem(
+                                  value: 'api',
+                                  child: Text(l10n.api),
+                                ),
+                                DropdownMenuItem(
+                                  value: 'account',
+                                  child: Text(l10n.account),
+                                ),
+                              ],
+                              onChanged: (value) =>
+                                  setState(() => _type = value ?? 'api'),
+                            ),
+                          ),
+                        ],
+                      ),
+                      if (_type == 'api') ...[
+                        const SizedBox(height: 10),
+                        Wrap(
+                          spacing: 14,
+                          runSpacing: 10,
+                          children: [
+                            _SizedField(
+                              width: fieldWidth,
+                              child: TextField(
+                                key: AppKeys.providerTypeField,
+                                decoration: InputDecoration(
+                                  labelText: l10n.providerType,
+                                  hintText: l10n.providerTypeHint,
+                                ),
+                                controller:
+                                    TextEditingController(text: _providerType)
+                                      ..selection = TextSelection.collapsed(
+                                        offset: _providerType.length,
+                                      ),
+                                onChanged: (value) => _providerType = value,
+                              ),
+                            ),
+                            _SizedField(
+                              width: fieldWidth,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    l10n.proxy,
+                                    style: const TextStyle(fontSize: 12),
+                                  ),
+                                  Switch(
+                                    key: AppKeys.providerProxyToggle,
+                                    value: _proxy,
+                                    onChanged: (value) =>
+                                        setState(() => _proxy = value),
+                                  ),
+                                ],
+                              ),
                             ),
                           ],
-                          onChanged: (value) =>
-                              setState(() => _type = value ?? 'api'),
                         ),
-                      ),
-                    ],
-                  ),
-                  if (_type == 'api') ...[
-                    const SizedBox(height: 10),
-                    Wrap(
-                      spacing: 14,
-                      runSpacing: 10,
-                      children: [
-                        _SizedField(
-                          child: TextField(
-                            key: AppKeys.providerTypeField,
-                            decoration: InputDecoration(
-                              labelText: l10n.providerType,
-                              hintText: l10n.providerTypeHint,
-                            ),
-                            controller:
-                                TextEditingController(text: _providerType)
-                                  ..selection = TextSelection.collapsed(
-                                    offset: _providerType.length,
-                                  ),
-                            onChanged: (value) => _providerType = value,
-                          ),
-                        ),
-                        _SizedField(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                l10n.proxy,
-                                style: const TextStyle(fontSize: 12),
-                              ),
-                              Switch(
-                                key: AppKeys.providerProxyToggle,
-                                value: _proxy,
-                                onChanged: (value) =>
-                                    setState(() => _proxy = value),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
                     if (_proxy) ...[
                       const SizedBox(height: 10),
                       TextField(
@@ -857,9 +866,11 @@ class _ProviderDetailPanelState extends State<_ProviderDetailPanel> {
                     ),
                   ],
                 ],
-              ),
-            ),
+              );
+            },
           ),
+        ),
+      ),
         ],
       ),
     );
@@ -1454,13 +1465,13 @@ class _Section extends StatelessWidget {
 }
 
 class _SizedField extends StatelessWidget {
-  const _SizedField({required this.child});
-
+  const _SizedField({required this.child, this.width});
   final Widget child;
+  final double? width;
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(width: 200, child: child);
+    return SizedBox(width: width, child: child);
   }
 }
 

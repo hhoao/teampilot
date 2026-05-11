@@ -4,6 +4,7 @@ import '../l10n/app_localizations.dart';
 import '../utils/app_keys.dart';
 import '../models/layout_preferences.dart';
 import '../theme/app_theme.dart';
+import '../widgets/resizable_split_view.dart';
 
 enum AppSection { chat, runs, config }
 
@@ -171,39 +172,26 @@ class _WorkspaceBody extends StatelessWidget {
         ],
       );
     }
-    return Row(
-      children: [
-        Expanded(child: child),
-        _RightToolsDivider(
-          onDragged: (delta) => onRightToolsWidthChanged?.call(
-            preferences.rightToolsWidth - delta.delta.dx,
-          ),
-        ),
-        SizedBox(width: preferences.rightToolsWidth, child: rightTools),
-      ],
+    final rightWidth = preferences.rightToolsWidth;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return ResizableSplitView(
+          left: child,
+          right: rightTools!,
+          initialLeftWidth: (constraints.maxWidth - rightWidth)
+              .clamp(150, constraints.maxWidth - 80),
+          minLeftWidth: 150,
+          maxLeftWidth: (constraints.maxWidth - 80).clamp(150, double.infinity),
+          onWidthChanged: (leftWidth) {
+            onRightToolsWidthChanged
+                ?.call(constraints.maxWidth - leftWidth);
+          },
+        );
+      },
     );
   }
 }
 
-class _RightToolsDivider extends StatelessWidget {
-  const _RightToolsDivider({required this.onDragged});
-
-  final ValueChanged<DragUpdateDetails> onDragged;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = AppColors.of(context);
-    return MouseRegion(
-      cursor: SystemMouseCursors.resizeColumn,
-      child: GestureDetector(
-        key: AppKeys.rightToolsDivider,
-        behavior: HitTestBehavior.opaque,
-        onHorizontalDragUpdate: onDragged,
-        child: Container(width: 8, color: colors.topbarBackground),
-      ),
-    );
-  }
-}
 
 class _TabRow extends StatelessWidget {
   const _TabRow({

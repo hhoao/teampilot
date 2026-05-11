@@ -128,8 +128,22 @@ class ChatCubit extends Cubit<ChatState> {
 
   int _nextCounter() => _sessionCounter++;
 
+  /// Generates a session-team name the CLI will use as a directory name under
+  /// `~/.flashskyai/teams/`.  The CLI normalises names by lowercasing and
+  /// replacing non-alphanumeric runs with a single dash, so we produce the
+  /// same format here so the [TempTeamCleaner] can reliably locate and remove
+  /// the directories later.
+  static String _cliTeamName(String baseName, int counter) {
+    final slug = baseName
+        .trim()
+        .toLowerCase()
+        .replaceAll(RegExp(r'[^a-z0-9]+'), '-')
+        .replaceAll(RegExp(r'^-|-$'), '');
+    return '$slug-$counter';
+  }
+
   String _allocSessionTeamName(String baseName) {
-    final name = '${baseName.trim()}-${_nextCounter()}';
+    final name = _cliTeamName(baseName, _nextCounter());
     final cleaner = _tempTeamCleaner;
     if (cleaner != null) {
       appLogger.d('Recording temp team "$name"');

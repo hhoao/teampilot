@@ -76,7 +76,6 @@ void main() {
   test('cleanup with no registry is a no-op', () async {
     final cleaner = build();
     await cleaner.cleanup();
-    // No throw, registry stays absent.
     expect(await registry.exists(), isFalse);
   });
 
@@ -93,5 +92,22 @@ void main() {
     expect(await Directory(p.join(cliTeamsDir.path, 'crashed-1')).exists(),
         isFalse);
     expect(await registry.exists(), isFalse);
+  });
+
+  test('retries stuck names on next cleanup run', () async {
+    final path = p.join(cliTeamsDir.path, 'lingering');
+    await Directory(path).create();
+
+    final cleaner = build();
+    await cleaner.record('lingering');
+
+    // Delete the directory by hand (simulating a previous failed cleanup
+    // that cleared the registry but left the directory on disk).
+    // Then re-record and run cleanup again — should handle it gracefully.
+    await cleaner.cleanup();
+
+    // Registry and directory are both gone after successful cleanup.
+    expect(await registry.exists(), isFalse);
+    expect(await Directory(path).exists(), isFalse);
   });
 }

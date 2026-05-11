@@ -42,24 +42,34 @@ class TempTeamCleaner {
     await _writeRegistry(names);
   }
 
-  /// Deletes every recorded temp team directory under [cliTeamsDir] and
-  /// clears the registry.
+  /// Deletes every recorded temp team directory under [cliTeamsDir].
+  /// Names whose directories could not be deleted are kept in the registry
+  /// so the next [cleanup] will retry them.
   Future<void> cleanup() async {
     final names = await _loadRegistry();
-    if (names.isEmpty) {
-      await _clearRegistry();
-      return;
-    }
+    if (names.isEmpty) return;
+
+    final failed = <String>{};
     for (final name in names) {
       final dir = Directory(p.join(cliTeamsDir, name));
       if (!await dir.exists()) continue;
       try {
         await dir.delete(recursive: true);
       } on FileSystemException {
-        // best effort
+        failed.add(name);
       }
     }
-    await _clearRegistry();
+
+    // Only remove successful names from the registry. Failed ones stay so
+    // they will be retried on the next run.
+    final remaining = names
+        .where((n) => failed.contains(n) || Directory(p.join(cliTeamsDir, n)).existsSync())
+        .toSet();
+    if (remaining.isEmpty) {
+      await _clearRegistry();
+    } else {
+      await _writeRegistry(remaining);
+    }
   }
 
   Future<Set<String>> _loadRegistry() async {

@@ -25,20 +25,22 @@ class ResizableSplitView extends StatefulWidget {
 }
 
 class _ResizableSplitViewState extends State<ResizableSplitView> {
-  late double _leftWidth;
+  double? _fraction;
+  bool _initialized = false;
 
-  @override
-  void initState() {
-    super.initState();
-    _leftWidth = widget.initialLeftWidth;
+  double _leftWidth(double availableWidth) {
+    if (!_initialized) {
+      _fraction = (widget.initialLeftWidth / availableWidth).clamp(0.0, 1.0);
+      _initialized = true;
+    }
+    return (availableWidth * _fraction!).clamp(
+      widget.minLeftWidth,
+      widget.maxLeftWidth.clamp(0.0, availableWidth - widget.dividerWidth),
+    );
   }
 
-  @override
-  void didUpdateWidget(covariant ResizableSplitView oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (widget.initialLeftWidth != oldWidget.initialLeftWidth) {
-      _leftWidth = widget.initialLeftWidth;
-    }
+  double _fractionFromWidth(double availableWidth, double width) {
+    return (width / availableWidth).clamp(0.0, 1.0);
   }
 
   @override
@@ -46,33 +48,41 @@ class _ResizableSplitViewState extends State<ResizableSplitView> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final dividerColor = isDark ? Colors.white12 : const Color(0xFFE5E7EB);
 
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SizedBox(width: _leftWidth, child: widget.left),
-        GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onHorizontalDragUpdate: (details) {
-            setState(() {
-              _leftWidth = (_leftWidth + details.delta.dx).clamp(
-                widget.minLeftWidth,
-                widget.maxLeftWidth,
-              );
-            });
-          },
-          onHorizontalDragEnd: (_) {
-            widget.onWidthChanged?.call(_leftWidth);
-          },
-          child: MouseRegion(
-            cursor: SystemMouseCursors.resizeColumn,
-            child: Container(
-              width: widget.dividerWidth,
-              color: dividerColor,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final availableWidth = constraints.maxWidth;
+        final currentLeftWidth = _leftWidth(availableWidth);
+
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(width: currentLeftWidth, child: widget.left),
+            GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onHorizontalDragUpdate: (details) {
+                final maxWidth = widget.maxLeftWidth
+                    .clamp(0.0, availableWidth - widget.dividerWidth);
+                final newWidth = (currentLeftWidth + details.delta.dx)
+                    .clamp(widget.minLeftWidth, maxWidth);
+                setState(() {
+                  _fraction = _fractionFromWidth(availableWidth, newWidth);
+                });
+              },
+              onHorizontalDragEnd: (_) {
+                widget.onWidthChanged?.call(_leftWidth(availableWidth));
+              },
+              child: MouseRegion(
+                cursor: SystemMouseCursors.resizeColumn,
+                child: Container(
+                  width: widget.dividerWidth,
+                  color: dividerColor,
+                ),
+              ),
             ),
-          ),
-        ),
-        Expanded(child: widget.right),
-      ],
+            Expanded(child: widget.right),
+          ],
+        );
+      },
     );
   }
 }
