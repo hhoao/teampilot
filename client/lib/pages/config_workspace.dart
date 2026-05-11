@@ -12,6 +12,7 @@ import '../services/launch_command_builder.dart';
 import '../theme/app_theme.dart';
 import '../utils/app_keys.dart';
 import '../utils/perf.dart';
+import '../widgets/resizable_split_view.dart';
 import 'llm_config_workspace.dart';
 
 class ConfigWorkspace extends StatelessWidget {
@@ -39,45 +40,43 @@ class ConfigWorkspace extends StatelessWidget {
     return Container(
       key: AppKeys.configWorkspace,
       color: colors.workspaceBackground,
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _ConfigNavPanel(
-            section: configCubit.state.section,
-            onSelectSection: (s) {
-              FramePerf.mark('nav config ${s.name}');
-              context.read<ConfigCubit>().selectSection(s);
-              context.go('/config/${s.name}');
-            },
-            l10n: l10n,
-          ),
-          Expanded(
-            child: PipelinePerf(
-              label: 'config body ${configCubit.state.section.name}',
-              child: BuildPerf(
-                label: 'config ${configCubit.state.section.name}',
-                builder: (_) => switch (configCubit.state.section) {
-                  ConfigSection.team => Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: TeamConfigWorkspace(team: team),
-                  ),
-                  ConfigSection.members => Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: MemberConfigWorkspace(team: team),
-                  ),
-                  ConfigSection.layout => const Padding(
-                    padding: EdgeInsets.all(16),
-                    child: LayoutConfigWorkspace(),
-                  ),
-                  ConfigSection.llm => const Padding(
-                    padding: EdgeInsets.all(16),
-                    child: LlmConfigWorkspace(),
-                  ),
-                },
+      child: ResizableSplitView(
+        initialLeftWidth: 180,
+        minLeftWidth: 140,
+        maxLeftWidth: 320,
+        left: _ConfigNavPanel(
+          section: configCubit.state.section,
+          onSelectSection: (s) {
+            FramePerf.mark('nav config ${s.name}');
+            context.read<ConfigCubit>().selectSection(s);
+            context.go('/config/${s.name}');
+          },
+          l10n: l10n,
+        ),
+        right: PipelinePerf(
+          label: 'config body ${configCubit.state.section.name}',
+          child: BuildPerf(
+            label: 'config ${configCubit.state.section.name}',
+            builder: (_) => switch (configCubit.state.section) {
+              ConfigSection.team => Padding(
+                padding: const EdgeInsets.all(16),
+                child: TeamConfigWorkspace(team: team),
               ),
-            ),
+              ConfigSection.members => Padding(
+                padding: const EdgeInsets.all(16),
+                child: MemberConfigWorkspace(team: team),
+              ),
+              ConfigSection.layout => const Padding(
+                padding: EdgeInsets.all(16),
+                child: LayoutConfigWorkspace(),
+              ),
+              ConfigSection.llm => const Padding(
+                padding: EdgeInsets.all(16),
+                child: LlmConfigWorkspace(),
+              ),
+            },
           ),
-        ],
+        ),
       ),
     );
   }
@@ -863,7 +862,6 @@ class _ConfigNavPanel extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textBase = isDark ? Colors.white : const Color(0xFF111827);
     return Container(
-      width: 180,
       color: colors.sidebarBackground,
       padding: const EdgeInsets.all(13),
       child: Column(

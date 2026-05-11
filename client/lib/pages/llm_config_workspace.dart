@@ -6,6 +6,7 @@ import '../models/llm_config.dart';
 import '../cubits/llm_config_cubit.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../theme/app_theme.dart';
+import '../widgets/resizable_split_view.dart';
 
 class LlmConfigWorkspace extends StatelessWidget {
   const LlmConfigWorkspace({super.key});
@@ -84,30 +85,25 @@ class _ProvidersTabContent extends StatelessWidget {
         ? config.providers[selectedName]
         : null;
 
-    return Row(
-      children: [
-        _ProviderListPanel(
-          config: config,
-          selectedName: selectedName,
-          onSelect: (name) => controller.selectProvider(name),
-          onAdd: () => _addProvider(context, controller),
-          onDelete: (name) => _deleteProvider(context, controller, name),
-        ),
-        const SizedBox(width: 14),
-        Expanded(
-          child: _ProviderDetailPanel(
-            config: config,
-            provider: selectedProvider,
-            controller: controller,
-            onSave: (name, provider) {
-              controller.updateProvider(name, provider);
-            },
-            onDelete: (name) {
-              _deleteProvider(context, controller, name);
-            },
-          ),
-        ),
-      ],
+    return ResizableSplitView(
+      left: _ProviderListPanel(
+        config: config,
+        selectedName: selectedName,
+        onSelect: (name) => controller.selectProvider(name),
+        onAdd: () => _addProvider(context, controller),
+        onDelete: (name) => _deleteProvider(context, controller, name),
+      ),
+      right: _ProviderDetailPanel(
+        config: config,
+        provider: selectedProvider,
+        controller: controller,
+        onSave: (name, provider) {
+          controller.updateProvider(name, provider);
+        },
+        onDelete: (name) {
+          _deleteProvider(context, controller, name);
+        },
+      ),
     );
   }
 
@@ -224,9 +220,7 @@ class _ProviderListPanelState extends State<_ProviderListPanel> {
         )
         .toList();
 
-    return SizedBox(
-      width: 180,
-      child: Container(
+    return Container(
         key: AppKeys.llmProviderList,
         decoration: BoxDecoration(
           color: colors.cardBackground,
@@ -308,7 +302,6 @@ class _ProviderListPanelState extends State<_ProviderListPanel> {
             ),
           ],
         ),
-      ),
     );
   }
 }
