@@ -3,24 +3,22 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../models/team_config.dart';
 
-enum ConfigSection { team, members, layout, llm }
+enum ConfigSection { members, layout, llm }
 
 class ConfigState extends Equatable {
   const ConfigState(
-      {this.section = ConfigSection.team, this.selectedMemberId = ''});
+      {this.section = ConfigSection.layout, this.selectedMemberId = ''});
 
   final ConfigSection section;
   final String selectedMemberId;
 
   String get title => switch (section) {
-        ConfigSection.team => 'Team Configuration',
         ConfigSection.members => 'Member Configuration',
         ConfigSection.layout => 'Layout Configuration',
         ConfigSection.llm => 'LLM Configuration',
       };
 
   String get breadcrumb => switch (section) {
-        ConfigSection.team => 'Config / Team',
         ConfigSection.members => 'Config / Members',
         ConfigSection.layout => 'Config / Layout',
         ConfigSection.llm => 'Config / LLM',
