@@ -540,7 +540,6 @@ class _MemberCard extends StatelessWidget {
     final muted = textBase.withValues(alpha: 0.66);
 
     final details = <String>[
-      if (member.isolated) l10n.isolatedMember,
       if (member.provider.trim().isNotEmpty) member.provider.trim(),
       if (member.model.trim().isNotEmpty) member.model.trim(),
       if (member.agent.trim().isNotEmpty) member.agent.trim(),
@@ -743,7 +742,6 @@ class _MemberEditorDialogState extends State<_MemberEditorDialog> {
   late TextEditingController _promptCtl;
   String _provider = '';
   String _model = '';
-  bool _isolated = false;
 
   @override
   void initState() {
@@ -755,7 +753,6 @@ class _MemberEditorDialogState extends State<_MemberEditorDialog> {
     _promptCtl = TextEditingController(text: m?.prompt ?? '');
     _provider = m?.provider ?? '';
     _model = m?.model ?? '';
-    _isolated = m?.isolated ?? false;
   }
 
   @override
@@ -859,14 +856,6 @@ class _MemberEditorDialogState extends State<_MemberEditorDialog> {
                   maxLines: 6,
                 ),
                 const SizedBox(height: 22),
-                SwitchListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: Text(l10n.isolatedMember),
-                  subtitle: Text(l10n.isolatedMemberHint),
-                  value: _isolated,
-                  onChanged: (v) => setState(() => _isolated = v),
-                ),
-                const SizedBox(height: 8),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
@@ -887,7 +876,6 @@ class _MemberEditorDialogState extends State<_MemberEditorDialog> {
                             agent: _agentCtl.text,
                             extraArgs: _argsCtl.text,
                             prompt: _promptCtl.text,
-                            isolated: _isolated,
                           ),
                         );
                       },

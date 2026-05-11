@@ -76,8 +76,6 @@ class AppLocalizations {
   String get selectModel => _strings['selectModel']!;
   String get editMemberSubtitle => _strings['editMemberSubtitle']!;
   String get saveMember => _strings['saveMember']!;
-  String get isolatedMember => _strings['isolatedMember']!;
-  String get isolatedMemberHint => _strings['isolatedMemberHint']!;
   String get teamLeadNameRequired => _strings['teamLeadNameRequired']!;
   String get teamLeadNotice => _strings['teamLeadNotice']!;
 
@@ -277,11 +275,6 @@ class _AppLocalizationsDelegate
     'editMemberSubtitle': {
       'en': 'Edit provider, model, agent, and command arguments.',
       'zh': '编辑提供商、模型、代理和命令参数。',
-    },
-    'isolatedMember': {'en': 'Isolated', 'zh': '隔离模式'},
-    'isolatedMemberHint': {
-      'en': 'Run as an independent session (no team communication).',
-      'zh': '作为独立会话运行（不进行团队通讯）。',
     },
     'teamLeadNameRequired': {
       'en':

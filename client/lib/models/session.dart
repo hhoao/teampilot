@@ -9,6 +9,7 @@ class FlashskySession {
     this.kind = '',
     this.entrypoint = '',
     this.display = '',
+    this.sessionTeam = '',
   });
 
   factory FlashskySession.fromJson(Map<String, Object?> json) {
@@ -19,6 +20,7 @@ class FlashskySession {
       kind: json['kind'] as String? ?? '',
       entrypoint: json['entrypoint'] as String? ?? '',
       display: json['display'] as String? ?? '',
+      sessionTeam: json['sessionTeam'] as String? ?? '',
     );
   }
 
@@ -28,6 +30,7 @@ class FlashskySession {
   final String kind;
   final String entrypoint;
   final String display;
+  final String sessionTeam;
 
   FlashskySession copyWith({
     String? sessionId,
@@ -36,6 +39,7 @@ class FlashskySession {
     String? kind,
     String? entrypoint,
     String? display,
+    String? sessionTeam,
   }) {
     return FlashskySession(
       sessionId: sessionId ?? this.sessionId,
@@ -44,6 +48,7 @@ class FlashskySession {
       kind: kind ?? this.kind,
       entrypoint: entrypoint ?? this.entrypoint,
       display: display ?? this.display,
+      sessionTeam: sessionTeam ?? this.sessionTeam,
     );
   }
 
@@ -55,6 +60,7 @@ class FlashskySession {
       'kind': kind,
       'entrypoint': entrypoint,
       'display': display,
+      'sessionTeam': sessionTeam,
     };
   }
 
@@ -68,9 +74,10 @@ class FlashskySession {
             startedAt == other.startedAt &&
             kind == other.kind &&
             entrypoint == other.entrypoint &&
-            display == other.display;
+            display == other.display &&
+            sessionTeam == other.sessionTeam;
   }
 
   @override
-  int get hashCode => Object.hash(sessionId, cwd, startedAt, kind, entrypoint, display);
+  int get hashCode => Object.hash(sessionId, cwd, startedAt, kind, entrypoint, display, sessionTeam);
 }

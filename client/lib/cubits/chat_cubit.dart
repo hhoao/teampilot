@@ -5,6 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../models/session.dart';
 import '../models/team_config.dart';
 import '../repositories/session_repository.dart';
+import '../services/app_storage.dart';
 import '../services/terminal_session.dart';
 import '../utils/logger.dart';
 
@@ -40,12 +41,14 @@ class ChatTabInfo extends Equatable {
 class _InternalTab {
   _InternalTab({
     required this.info,
+    required this.sessionTeamName,
     this.selectedMemberId = '',
   });
 
   ChatTabInfo info;
   TerminalSession? resumeSession;
   String selectedMemberId;
+  final String sessionTeamName;
   final Map<String, TerminalSession> memberShells = {};
 
   Iterable<TerminalSession> get sessions sync* {
@@ -63,6 +66,7 @@ class ChatState extends Equatable {
     this.sessions = const [],
     this.activeSessionId,
     this.selectedMemberId = '',
+    this.stateVersion = 0,
   });
 
   final List<ChatTabInfo> tabs;
@@ -70,6 +74,7 @@ class ChatState extends Equatable {
   final List<FlashskySession> sessions;
   final String? activeSessionId;
   final String selectedMemberId;
+  final int stateVersion;
 
   ChatState copyWith({
     List<ChatTabInfo>? tabs,
@@ -78,6 +83,7 @@ class ChatState extends Equatable {
     String? activeSessionId,
     String? selectedMemberId,
     bool clearActiveSessionId = false,
+    int? stateVersion,
   }) {
     return ChatState(
       tabs: tabs ?? this.tabs,
@@ -87,6 +93,7 @@ class ChatState extends Equatable {
           ? null
           : (activeSessionId ?? this.activeSessionId),
       selectedMemberId: selectedMemberId ?? this.selectedMemberId,
+      stateVersion: stateVersion ?? this.stateVersion,
     );
   }
 
@@ -97,6 +104,7 @@ class ChatState extends Equatable {
     sessions,
     activeSessionId,
     selectedMemberId,
+    stateVersion,
   ];
 }
 
@@ -111,6 +119,9 @@ class ChatCubit extends Cubit<ChatState> {
   final List<_InternalTab> _internalTabs = [];
   final TerminalSessionFactory _terminalSessionFactory;
   final PostFrameScheduler _postFrameScheduler;
+  var _sessionCounter = 0;
+
+  int _nextCounter() => _sessionCounter++;
 
   static void _defaultPostFrameScheduler(VoidCallback callback) {
     WidgetsBinding.instance.addPostFrameCallback((_) => callback());
@@ -141,7 +152,7 @@ class ChatCubit extends Cubit<ChatState> {
     emit(state.copyWith(sessions: sessions));
   }
 
-  void openSessionTab(FlashskySession session, {TeamConfig? team, TeamMemberConfig? member}) {
+  void openSessionTab(FlashskySession session, {TeamConfig? team, TeamMemberConfig? member, SessionRepository? repo}) {
     final sw = Stopwatch()..start();
     final existingIdx = _internalTabs.indexWhere(
       (t) => t.info.id == session.sessionId,
@@ -164,7 +175,13 @@ class ChatCubit extends Cubit<ChatState> {
       title: session.display.isNotEmpty ? session.display : session.kind,
       subtitle: session.cwd,
     );
-    final internalTab = _InternalTab(info: info);
+    final sessionTeamName = session.sessionTeam.isNotEmpty
+        ? session.sessionTeam
+        : _assignSessionTeam(session.sessionId, team, repo);
+    final internalTab = _InternalTab(
+      info: info,
+      sessionTeamName: sessionTeamName,
+    );
     if (team != null && member != null) {
       internalTab.memberShells[member.id] = ts;
       internalTab.selectedMemberId = member.id;
@@ -188,6 +205,7 @@ class ChatCubit extends Cubit<ChatState> {
           workingDirectory: session.cwd,
           team: team,
           member: member,
+          sessionTeam: sessionTeamName,
         );
         appLogger.d('[perf] connectResume: ${sw2.elapsedMilliseconds}ms');
         _updateTabRunning(info.id);
@@ -201,7 +219,11 @@ class ChatCubit extends Cubit<ChatState> {
     if (_internalTabs.isEmpty) {
       final info = _localSessionInfo(team);
       _internalTabs.add(
-        _InternalTab(info: info, selectedMemberId: _defaultMemberId(team)),
+        _InternalTab(
+          info: info,
+          sessionTeamName: '${team.name.trim()}-${_nextCounter()}',
+          selectedMemberId: _defaultMemberId(team),
+        ),
       );
     }
     final tab = _activeTab;
@@ -238,7 +260,7 @@ class ChatCubit extends Cubit<ChatState> {
     _postFrameScheduler(() {
       try {
         final sw2 = Stopwatch()..start();
-        shell.connect(team, member);
+        shell.connect(team, member, sessionTeam: tab.sessionTeamName);
         appLogger.d('[perf] connect: ${sw2.elapsedMilliseconds}ms');
         _updateTabRunning(tab.info.id);
       } on Object catch (e) {
@@ -406,7 +428,6 @@ class ChatCubit extends Cubit<ChatState> {
       if (t.id == sessionId) return t.copyWith(title: newName);
       return t;
     }).toList();
-    // update the internal tab's info too, so it's reflected on next rebuild
     for (final tab in _internalTabs) {
       if (tab.info.id == sessionId) {
         tab.info = tab.info.copyWith(title: newName);
@@ -417,7 +438,6 @@ class ChatCubit extends Cubit<ChatState> {
 
   void deleteSession(SessionRepository repo, String sessionId) {
     final wasActive = state.activeSessionId == sessionId;
-    // Remove from in-memory state immediately
     final sessions = state.sessions.where((s) => s.sessionId != sessionId).toList();
     final idx = _internalTabs.indexWhere((t) => t.info.id == sessionId);
     if (idx != -1) {
@@ -449,7 +469,6 @@ class ChatCubit extends Cubit<ChatState> {
       emit(state.copyWith(sessions: sessions, tabs: tabs));
     }
 
-    // Best-effort filesystem cleanup (async)
     repo.deleteSession(sessionId);
   }
 
@@ -473,7 +492,7 @@ class ChatCubit extends Cubit<ChatState> {
     _internalTabs[idx].info = _internalTabs[idx].info.copyWith(
       isRunning: _internalTabs[idx].isRunning,
     );
-    emit(state.copyWith(tabs: _visibleTabs()));
+    emit(state.copyWith(tabs: _visibleTabs(), stateVersion: state.stateVersion + 1));
   }
 
   _InternalTab _ensureActiveSessionTab(
@@ -486,6 +505,7 @@ class ChatCubit extends Cubit<ChatState> {
     final info = _localSessionInfo(team);
     final tab = _InternalTab(
       info: info,
+      sessionTeamName: '${team.name.trim()}-${_nextCounter()}',
       selectedMemberId: _defaultMemberId(team),
     );
     _internalTabs.add(tab);
@@ -510,6 +530,15 @@ class ChatCubit extends Cubit<ChatState> {
     );
   }
 
+  String _assignSessionTeam(String sessionId, TeamConfig? team, SessionRepository? repo) {
+    final fallbackName = team?.name.trim() ?? 'session';
+    final name = '$fallbackName-${_nextCounter()}';
+    if (repo != null) {
+      repo.updateSessionTeam(sessionId, name);
+    }
+    return name;
+  }
+
   String _defaultMemberId(TeamConfig team) {
     if (team.members.isEmpty) return '';
     final lead = team.members.where((m) => m.name == 'team-lead');
@@ -528,6 +557,7 @@ class ChatCubit extends Cubit<ChatState> {
       }
     }
     _internalTabs.clear();
+    await AppStorage.clearTeams();
     await super.close();
   }
 }

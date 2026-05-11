@@ -16,10 +16,12 @@ class LaunchCommandBuilder {
 
   const LaunchCommandBuilder._();
 
-  static List<String> buildArguments(TeamConfig team, TeamMemberConfig member) {
-    final teamFlag = member.isolated
-        ? '${team.name.trim()}::${member.name.trim()}'
-        : team.name.trim();
+  static List<String> buildArguments(
+    TeamConfig team,
+    TeamMemberConfig member, {
+    String? sessionTeam,
+  }) {
+    final teamFlag = sessionTeam ?? team.name.trim();
 
     final args = <String>[
       '--dir',
@@ -49,10 +51,14 @@ class LaunchCommandBuilder {
     return args;
   }
 
-  static String preview(TeamConfig team, TeamMemberConfig member) {
+  static String preview(
+    TeamConfig team,
+    TeamMemberConfig member, {
+    String? sessionTeam,
+  }) {
     return [
       executable,
-      ...buildArguments(team, member),
+      ...buildArguments(team, member, sessionTeam: sessionTeam),
     ].map(_quoteForPreview).join(' ');
   }
 
@@ -107,9 +113,10 @@ class LaunchCommandBuilder {
   static Future<void> launch(
     TeamConfig team, {
     required TeamMemberConfig member,
+    String? sessionTeam,
     ProcessStarter starter = Process.start,
   }) async {
-    final args = buildArguments(team, member);
+    final args = buildArguments(team, member, sessionTeam: sessionTeam);
     final workingDirectory = team.workingDirectory.trim();
 
     if (Platform.isLinux) {

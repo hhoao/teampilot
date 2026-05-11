@@ -18,6 +18,7 @@ import 'repositories/llm_config_repository.dart';
 import 'repositories/session_repository.dart';
 import 'repositories/team_repository.dart';
 import 'router/app_router.dart';
+import 'services/app_storage.dart';
 import 'theme/app_theme.dart';
 import 'utils/perf.dart';
 import 'widgets/ui_warmup.dart';
@@ -42,7 +43,13 @@ void main() async {
     await windowManager.focus();
   });
 
+  await AppStorage.init();
+
   final preferences = await SharedPreferences.getInstance();
+
+  await AppStorage.clearTeams();
+
+  final sessionRepo = const SessionRepository();
 
   final teamCubit = TeamCubit(repository: TeamRepository(preferences));
   final chatCubit = ChatCubit();
@@ -64,7 +71,7 @@ void main() async {
   await teamCubit.load();
   await layoutCubit.load();
   await llmConfigCubit.load();
-  chatCubit.loadSessions(const SessionRepository());
+  chatCubit.loadSessions(sessionRepo);
 
   runApp(
     MultiBlocProvider(

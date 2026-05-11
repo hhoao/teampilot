@@ -5,16 +5,12 @@ import 'package:path/path.dart' as p;
 import 'package:uuid/uuid.dart';
 
 import '../models/session.dart';
+import '../services/app_storage.dart';
 
 class SessionRepository {
   const SessionRepository();
 
-  String get _baseDir {
-    final home = Platform.environment['HOME'] ??
-        Platform.environment['USERPROFILE'] ??
-        '.';
-    return p.join(home, '.flashskyai');
-  }
+  String get _baseDir => AppStorage.flashskyaiDir;
 
   String get _historyPath => p.join(_baseDir, 'history.jsonl');
 
@@ -56,7 +52,10 @@ class SessionRepository {
     return list;
   }
 
-  Future<FlashskySession> createSession(String cwd) async {
+  Future<FlashskySession> createSession(
+    String cwd, {
+    String sessionTeam = '',
+  }) async {
     final sessionId = const Uuid().v4();
     final nowMs = DateTime.now().millisecondsSinceEpoch;
     final session = FlashskySession(
@@ -65,6 +64,7 @@ class SessionRepository {
       startedAt: nowMs,
       kind: 'interactive',
       entrypoint: 'cli',
+      sessionTeam: sessionTeam,
     );
     await Directory(_sessionsDir).create(recursive: true);
     final file = File(p.join(_sessionsDir, '$sessionId.json'));
@@ -83,6 +83,42 @@ class SessionRepository {
       } on Object {
         // best effort
       }
+    }
+  }
+
+  Future<void> updateSessionTeam(String sessionId, String sessionTeam) async {
+    final file = File(p.join(_sessionsDir, '$sessionId.json'));
+    if (await file.exists()) {
+      try {
+        final content = await file.readAsString();
+        final json = jsonDecode(content) as Map<String, Object?>;
+        json['sessionTeam'] = sessionTeam;
+        await file.writeAsString(jsonEncode(json));
+      } on Object {
+        // best effort
+      }
+    }
+  }
+
+  Future<void> clearAllSessionTeams() async {
+    try {
+      final dir = Directory(_sessionsDir);
+      if (await dir.exists()) {
+        await for (final entity in dir.list()) {
+          if (entity is File && entity.path.endsWith('.json')) {
+            try {
+              final content = await entity.readAsString();
+              final json = jsonDecode(content) as Map<String, Object?>;
+              json.remove('sessionTeam');
+              await entity.writeAsString(jsonEncode(json));
+            } on Object {
+              // best effort per file
+            }
+          }
+        }
+      }
+    } on Object {
+      // directory operation failed
     }
   }
 
@@ -131,6 +167,10 @@ class SessionRepository {
             if (display.isNotEmpty) {
               builder.display = display;
             }
+            final sessionTeam = json['sessionTeam'] as String? ?? '';
+            if (sessionTeam.isNotEmpty) {
+              builder.sessionTeam = sessionTeam;
+            }
           }
         } on FormatException {
           // skip malformed lines
@@ -141,14 +181,17 @@ class SessionRepository {
     }
 
     return sessionMap.values
-        .map((b) => FlashskySession(
-              sessionId: b.sessionId,
-              cwd: b.cwd,
-              startedAt: b.startedAt,
-              display: b.display,
-              kind: 'interactive',
-              entrypoint: 'cli',
-            ))
+        .map(
+          (b) => FlashskySession(
+            sessionId: b.sessionId,
+            cwd: b.cwd,
+            startedAt: b.startedAt,
+            display: b.display,
+            kind: 'interactive',
+            entrypoint: 'cli',
+            sessionTeam: b.sessionTeam,
+          ),
+        )
         .toList();
   }
 }
@@ -160,4 +203,5 @@ class _SessionBuilder {
   String cwd = '';
   int startedAt = 0;
   String display = '';
+  String sessionTeam = '';
 }

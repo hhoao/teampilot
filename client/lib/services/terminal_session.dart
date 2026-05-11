@@ -26,6 +26,7 @@ class TerminalSession {
     String? workingDirectory,
     TeamConfig? team,
     TeamMemberConfig? member,
+    String? sessionTeam,
   }) {
     if (_running) {
       disconnect();
@@ -37,9 +38,7 @@ class TerminalSession {
         args.insertAll(0, ['--dir', workingDirectory]);
       }
       if (team != null && member != null) {
-        final teamFlag = member.isolated
-            ? '${team.name.trim()}::${member.name.trim()}'
-            : team.name.trim();
+        final teamFlag = sessionTeam ?? team.name.trim();
         args.addAll(['--team', teamFlag, '--member', member.name.trim()]);
         if (member.provider.trim().isNotEmpty) {
           args.addAll(['--provider', member.provider.trim()]);
@@ -93,12 +92,14 @@ class TerminalSession {
     }
   }
 
-  void connect(TeamConfig team, TeamMemberConfig member) {
+  void connect(TeamConfig team, TeamMemberConfig member, {String? sessionTeam}) {
     if (_running) {
       disconnect();
     }
 
-    final args = LaunchCommandBuilder.buildArguments(team, member);
+    final args = LaunchCommandBuilder.buildArguments(
+      team, member, sessionTeam: sessionTeam,
+    );
     final workingDir = team.workingDirectory.trim();
 
     try {
