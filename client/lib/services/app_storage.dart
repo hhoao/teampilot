@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
@@ -17,16 +15,5 @@ class AppStorage {
   static Future<void> init() async {
     final dir = await getApplicationSupportDirectory();
     _basePath = dir.path;
-  }
-
-  static Future<void> clearTeams() async {
-    try {
-      final dir = Directory(teamsDir);
-      if (await dir.exists()) {
-        await dir.delete(recursive: true);
-      }
-    } on Object {
-      // best effort
-    }
   }
 }

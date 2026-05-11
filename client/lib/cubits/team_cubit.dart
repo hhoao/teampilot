@@ -2,7 +2,6 @@ import 'dart:io';
 
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:uuid/uuid.dart';
 
 import '../models/team_config.dart';
 import '../repositories/team_repository.dart';
@@ -63,20 +62,17 @@ class TeamCubit extends Cubit<TeamState> {
     required TeamRepository repository,
     TeamLauncher? launcher,
     StringProvider? currentDirectoryProvider,
-    StringProvider? idProvider,
   })  : _repository = repository,
         _launcher = launcher ??
             ((team, member) =>
                 LaunchCommandBuilder.launch(team, member: member)),
         _currentDirectoryProvider =
             currentDirectoryProvider ?? (() => Directory.current.path),
-        _idProvider = idProvider ?? (() => const Uuid().v4()),
         super(const TeamState());
 
   final TeamRepository _repository;
   final TeamLauncher _launcher;
   final StringProvider _currentDirectoryProvider;
-  final StringProvider _idProvider;
 
   String previewFor(TeamMemberConfig member) {
     final team = state.selectedTeam;
@@ -115,11 +111,13 @@ class TeamCubit extends Cubit<TeamState> {
   }
 
   Future<void> addTeam() async {
+    final name = _uniqueTeamName('New Team');
+    final memberName = 'team-lead';
     final team = TeamConfig(
-      id: _idProvider(),
-      name: 'New Team',
+      id: name,
+      name: name,
       workingDirectory: _currentDirectoryProvider(),
-      members: [TeamMemberConfig(id: _idProvider(), name: 'New Member')],
+      members: [TeamMemberConfig(id: memberName, name: memberName)],
     );
     final teams = [...state.teams, team];
     emit(state.copyWith(
@@ -165,7 +163,8 @@ class TeamCubit extends Cubit<TeamState> {
   Future<void> addMember() async {
     final team = state.selectedTeam;
     if (team == null) return;
-    final member = TeamMemberConfig(id: _idProvider(), name: 'New Member');
+    final name = _uniqueMemberName(team, 'New Member');
+    final member = TeamMemberConfig(id: name, name: name);
     await updateSelected(
         team.copyWith(members: [...team.members, member]));
     emit(state.copyWith(statusMessage: 'Added ${member.name}.'));
@@ -256,13 +255,36 @@ class TeamCubit extends Cubit<TeamState> {
     }
   }
 
-  TeamConfig _defaultTeam() => TeamConfig(
-        id: 'default',
-        name: 'Default Team',
-        workingDirectory: _currentDirectoryProvider(),
-        members: [_defaultMember()],
-      );
+  TeamConfig _defaultTeam() {
+    const name = 'Default Team';
+    return TeamConfig(
+      id: name,
+      name: name,
+      workingDirectory: _currentDirectoryProvider(),
+      members: [_defaultMember()],
+    );
+  }
 
   TeamMemberConfig _defaultMember() =>
       const TeamMemberConfig(id: 'team-lead', name: 'team-lead');
+
+  String _uniqueTeamName(String base) {
+    final existing = state.teams.map((t) => t.name).toSet();
+    if (!existing.contains(base)) return base;
+    var i = 2;
+    while (existing.contains('$base $i')) {
+      i++;
+    }
+    return '$base $i';
+  }
+
+  String _uniqueMemberName(TeamConfig team, String base) {
+    final existing = team.members.map((m) => m.name).toSet();
+    if (!existing.contains(base)) return base;
+    var i = 2;
+    while (existing.contains('$base $i')) {
+      i++;
+    }
+    return '$base $i';
+  }
 }

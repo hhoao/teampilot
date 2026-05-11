@@ -61,7 +61,8 @@ Future<void> pumpDesktopApp(
 }
 
 Future<TeamCubit> createTeamCubit({TeamLauncher? launcher}) async {
-  final repository = TeamRepository(await SharedPreferences.getInstance());
+  final tmp = await Directory.systemTemp.createTemp('teams_widget_');
+  final repository = TeamRepository(rootDir: tmp.path);
   final cubit = TeamCubit(
     repository: repository,
     launcher: launcher ?? (_, __) async {},
@@ -234,7 +235,8 @@ void main() {
   });
 
   test('team cubit manages teams', () async {
-    final repository = TeamRepository(await SharedPreferences.getInstance());
+    final tmp = await Directory.systemTemp.createTemp('teams_cubit_');
+    final repository = TeamRepository(rootDir: tmp.path);
     final cubit = TeamCubit(
       repository: repository,
       currentDirectoryProvider: () => '/work/current',
@@ -244,7 +246,7 @@ void main() {
     expect(cubit.state.selectedTeam?.name, 'Default Team');
     expect(cubit.state.teams.length, 1);
 
-    cubit.selectTeam('default');
+    cubit.selectTeam('Default Team');
     expect(cubit.state.selectedTeam?.name, 'Default Team');
 
     await cubit.addMember();

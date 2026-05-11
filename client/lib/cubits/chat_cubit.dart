@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:equatable/equatable.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -5,7 +7,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../models/session.dart';
 import '../models/team_config.dart';
 import '../repositories/session_repository.dart';
-import '../services/app_storage.dart';
+import '../services/temp_team_cleaner.dart';
 import '../services/terminal_session.dart';
 import '../utils/logger.dart';
 
@@ -112,16 +114,30 @@ class ChatCubit extends Cubit<ChatState> {
   ChatCubit({
     TerminalSessionFactory terminalSessionFactory = TerminalSession.new,
     PostFrameScheduler? postFrameScheduler,
+    TempTeamCleaner? tempTeamCleaner,
   }) : _terminalSessionFactory = terminalSessionFactory,
        _postFrameScheduler = postFrameScheduler ?? _defaultPostFrameScheduler,
+       _tempTeamCleaner = tempTeamCleaner,
        super(const ChatState());
 
   final List<_InternalTab> _internalTabs = [];
   final TerminalSessionFactory _terminalSessionFactory;
   final PostFrameScheduler _postFrameScheduler;
+  final TempTeamCleaner? _tempTeamCleaner;
   var _sessionCounter = 0;
 
   int _nextCounter() => _sessionCounter++;
+
+  String _allocSessionTeamName(String baseName) {
+    final name = '${baseName.trim()}-${_nextCounter()}';
+    final cleaner = _tempTeamCleaner;
+    if (cleaner != null) {
+      // Fire-and-forget; registry is persisted so a crash before completion
+      // only risks orphaning a single folder.
+      unawaited(cleaner.record(name));
+    }
+    return name;
+  }
 
   static void _defaultPostFrameScheduler(VoidCallback callback) {
     WidgetsBinding.instance.addPostFrameCallback((_) => callback());
@@ -221,7 +237,7 @@ class ChatCubit extends Cubit<ChatState> {
       _internalTabs.add(
         _InternalTab(
           info: info,
-          sessionTeamName: '${team.name.trim()}-${_nextCounter()}',
+          sessionTeamName: _allocSessionTeamName(team.name),
           selectedMemberId: _defaultMemberId(team),
         ),
       );
@@ -510,7 +526,7 @@ class ChatCubit extends Cubit<ChatState> {
     final info = _localSessionInfo(team);
     final tab = _InternalTab(
       info: info,
-      sessionTeamName: '${team.name.trim()}-${_nextCounter()}',
+      sessionTeamName: _allocSessionTeamName(team.name),
       selectedMemberId: _defaultMemberId(team),
     );
     _internalTabs.add(tab);
@@ -536,8 +552,10 @@ class ChatCubit extends Cubit<ChatState> {
   }
 
   String _assignSessionTeam(String sessionId, TeamConfig? team, SessionRepository? repo) {
-    final fallbackName = team?.name.trim() ?? 'session';
-    final name = '$fallbackName-${_nextCounter()}';
+    final fallbackName = team?.name.trim().isNotEmpty == true
+        ? team!.name
+        : 'session';
+    final name = _allocSessionTeamName(fallbackName);
     if (repo != null) {
       repo.updateSessionTeam(sessionId, name);
     }
@@ -562,7 +580,14 @@ class ChatCubit extends Cubit<ChatState> {
       }
     }
     _internalTabs.clear();
-    await AppStorage.clearTeams();
+    final cleaner = _tempTeamCleaner;
+    if (cleaner != null) {
+      try {
+        await cleaner.cleanup();
+      } on Object catch (e) {
+        appLogger.w('TempTeamCleaner failed on close: $e');
+      }
+    }
     await super.close();
   }
 }

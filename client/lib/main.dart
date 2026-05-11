@@ -56,7 +56,10 @@ void main() async {
 
   final sessionRepo = const SessionRepository();
 
-  final teamCubit = TeamCubit(repository: TeamRepository());
+  final teamRepo = TeamRepository();
+  await teamRepo.importFromCli();
+
+  final teamCubit = TeamCubit(repository: teamRepo);
   final chatCubit = ChatCubit(tempTeamCleaner: tempTeamCleaner);
   final configCubit = ConfigCubit();
   final configPath = p.absolute(

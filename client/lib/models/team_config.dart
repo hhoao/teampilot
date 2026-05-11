@@ -10,17 +10,20 @@ class TeamMemberConfig {
     this.agent = '',
     this.extraArgs = '',
     this.prompt = '',
+    this.joinedAt = 0,
   });
 
   factory TeamMemberConfig.fromJson(Map<String, Object?> json) {
+    final name = json['name'] as String? ?? '';
     return TeamMemberConfig(
-      id: json['id'] as String? ?? '',
-      name: json['name'] as String? ?? '',
+      id: json['id'] as String? ?? name,
+      name: name,
       provider: json['provider'] as String? ?? '',
       model: json['model'] as String? ?? '',
       agent: json['agent'] as String? ?? '',
       extraArgs: json['extraArgs'] as String? ?? '',
       prompt: json['prompt'] as String? ?? '',
+      joinedAt: (json['joinedAt'] as num?)?.toInt() ?? 0,
     );
   }
 
@@ -31,6 +34,7 @@ class TeamMemberConfig {
   final String agent;
   final String extraArgs;
   final String prompt;
+  final int joinedAt;
 
   bool get isValid => name.trim().isNotEmpty;
 
@@ -42,6 +46,7 @@ class TeamMemberConfig {
     String? agent,
     String? extraArgs,
     String? prompt,
+    int? joinedAt,
   }) {
     return TeamMemberConfig(
       id: id ?? this.id,
@@ -51,6 +56,7 @@ class TeamMemberConfig {
       agent: agent ?? this.agent,
       extraArgs: extraArgs ?? this.extraArgs,
       prompt: prompt ?? this.prompt,
+      joinedAt: joinedAt ?? this.joinedAt,
     );
   }
 
@@ -63,6 +69,7 @@ class TeamMemberConfig {
       'agent': agent,
       'extraArgs': extraArgs,
       'prompt': prompt,
+      'joinedAt': joinedAt,
     };
   }
 
@@ -77,12 +84,21 @@ class TeamMemberConfig {
             model == other.model &&
             agent == other.agent &&
             extraArgs == other.extraArgs &&
-            prompt == other.prompt;
+            prompt == other.prompt &&
+            joinedAt == other.joinedAt;
   }
 
   @override
-  int get hashCode =>
-      Object.hash(id, name, provider, model, agent, extraArgs, prompt);
+  int get hashCode => Object.hash(
+        id,
+        name,
+        provider,
+        model,
+        agent,
+        extraArgs,
+        prompt,
+        joinedAt,
+      );
 }
 
 @immutable
@@ -93,26 +109,29 @@ class TeamConfig {
     required this.workingDirectory,
     this.extraArgs = '',
     this.members = const [],
+    this.createdAt = 0,
   });
 
   factory TeamConfig.fromJson(Map<String, Object?> json) {
     final rawMembers = json['members'];
     final members = rawMembers is List
         ? rawMembers
-              .whereType<Map>()
-              .map(
-                (item) =>
-                    TeamMemberConfig.fromJson(Map<String, Object?>.from(item)),
-              )
-              .toList(growable: false)
+            .whereType<Map>()
+            .map(
+              (item) =>
+                  TeamMemberConfig.fromJson(Map<String, Object?>.from(item)),
+            )
+            .toList(growable: false)
         : const <TeamMemberConfig>[];
 
+    final name = json['name'] as String? ?? '';
     return TeamConfig(
-      id: json['id'] as String? ?? '',
-      name: json['name'] as String? ?? '',
+      id: json['id'] as String? ?? name,
+      name: name,
       workingDirectory: json['workingDirectory'] as String? ?? '',
       extraArgs: json['extraArgs'] as String? ?? '',
       members: members,
+      createdAt: (json['createdAt'] as num?)?.toInt() ?? 0,
     );
   }
 
@@ -121,6 +140,7 @@ class TeamConfig {
   final String workingDirectory;
   final String extraArgs;
   final List<TeamMemberConfig> members;
+  final int createdAt;
 
   bool get isValid =>
       name.trim().isNotEmpty && workingDirectory.trim().isNotEmpty;
@@ -131,6 +151,7 @@ class TeamConfig {
     String? workingDirectory,
     String? extraArgs,
     List<TeamMemberConfig>? members,
+    int? createdAt,
   }) {
     return TeamConfig(
       id: id ?? this.id,
@@ -138,6 +159,7 @@ class TeamConfig {
       workingDirectory: workingDirectory ?? this.workingDirectory,
       extraArgs: extraArgs ?? this.extraArgs,
       members: members ?? this.members,
+      createdAt: createdAt ?? this.createdAt,
     );
   }
 
@@ -148,6 +170,7 @@ class TeamConfig {
       'workingDirectory': workingDirectory,
       'extraArgs': extraArgs,
       'members': members.map((member) => member.toJson()).toList(),
+      'createdAt': createdAt,
     };
   }
 
@@ -160,15 +183,17 @@ class TeamConfig {
             name == other.name &&
             workingDirectory == other.workingDirectory &&
             extraArgs == other.extraArgs &&
-            listEquals(members, other.members);
+            listEquals(members, other.members) &&
+            createdAt == other.createdAt;
   }
 
   @override
   int get hashCode => Object.hash(
-    id,
-    name,
-    workingDirectory,
-    extraArgs,
-    Object.hashAll(members),
-  );
+        id,
+        name,
+        workingDirectory,
+        extraArgs,
+        Object.hashAll(members),
+        createdAt,
+      );
 }
