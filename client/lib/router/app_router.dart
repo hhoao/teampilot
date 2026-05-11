@@ -6,6 +6,7 @@ import '../cubits/config_cubit.dart';
 import '../cubits/layout_cubit.dart';
 import '../pages/chat_page.dart';
 import '../pages/config_workspace.dart';
+import '../pages/team_config_page.dart';
 import '../utils/logger.dart';
 import '../utils/perf.dart';
 import '../widgets/context_sidebar.dart';
@@ -57,13 +58,7 @@ final appRouter = GoRouter(
             ),
           ],
         ),
-        GoRoute(path: '/config', redirect: (context, state) => '/config/team'),
-        GoRoute(
-          path: '/config/team',
-          pageBuilder: (context, state) => const NoTransitionPage(
-            child: ConfigWorkspace(section: ConfigSection.team),
-          ),
-        ),
+        GoRoute(path: '/config', redirect: (context, state) => '/config/layout'),
         GoRoute(
           path: '/config/members',
           pageBuilder: (context, state) => const NoTransitionPage(
@@ -80,6 +75,12 @@ final appRouter = GoRouter(
           path: '/config/llm',
           pageBuilder: (context, state) => const NoTransitionPage(
             child: ConfigWorkspace(section: ConfigSection.llm),
+          ),
+        ),
+        GoRoute(
+          path: '/team-config',
+          pageBuilder: (context, state) => const NoTransitionPage(
+            child: TeamConfigPage(),
           ),
         ),
       ],
