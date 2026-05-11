@@ -1,13 +1,18 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../cubits/chat_cubit.dart';
+import '../cubits/file_tree_cubit.dart';
 import '../cubits/team_cubit.dart';
 import '../l10n/app_localizations.dart';
 import '../models/layout_preferences.dart';
 import '../models/team_config.dart';
 import '../theme/app_theme.dart';
 import '../utils/app_keys.dart';
+import 'file_tree_node.dart';
 
 class RightToolsPanel extends StatelessWidget {
   const RightToolsPanel({
@@ -224,107 +229,197 @@ class _MembersPanel extends StatelessWidget {
   }
 }
 
-class _FileTreePanel extends StatelessWidget {
+class _FileTreePanel extends StatefulWidget {
   const _FileTreePanel({required this.team});
 
   final TeamConfig team;
+
+  @override
+  State<_FileTreePanel> createState() => _FileTreePanelState();
+}
+
+class _FileTreePanelState extends State<_FileTreePanel> {
+  final _cubit = FileTreeCubit();
+  final _filterController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _syncRoot();
+  }
+
+  @override
+  void didUpdateWidget(covariant _FileTreePanel oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.team.workingDirectory != widget.team.workingDirectory) {
+      _syncRoot();
+    }
+  }
+
+  void _syncRoot() {
+    _cubit.setRoot(widget.team.workingDirectory);
+  }
+
+  @override
+  void dispose() {
+    _filterController.dispose();
+    _cubit.close();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textBase = isDark ? Colors.white : const Color(0xFF111827);
-    return Container(
-      key: AppKeys.fileTreePanel,
-      padding: const EdgeInsets.all(13),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _PanelTitle(title: l10n.fileTree, action: l10n.copy),
-          const SizedBox(height: 8),
-          Expanded(
-            child: ListView(
+
+    return BlocProvider.value(
+      value: _cubit,
+      child: BlocBuilder<FileTreeCubit, FileTreeState>(
+        builder: (context, state) {
+          final rootExists = state.rootPath.isNotEmpty &&
+              Directory(state.rootPath).existsSync();
+          return Container(
+            key: AppKeys.fileTreePanel,
+            padding: const EdgeInsets.all(13),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                TextField(
-                  decoration: InputDecoration(
-                    isDense: true,
-                    hintText: l10n.filterFiles,
-                    prefixIcon: const Icon(Icons.search, size: 18),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        l10n.fileTree,
+                        style: TextStyle(
+                          color: textBase.withValues(alpha: 0.58),
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.8,
+                        ),
+                      ),
+                    ),
+                    SizedBox(
+                      height: 22,
+                      width: 28,
+                      child: IconButton(
+                        tooltip: state.showHiddenFiles
+                            ? 'Hide hidden files'
+                            : 'Show hidden files',
+                        onPressed: () => _cubit.toggleShowHidden(),
+                        icon: Icon(
+                          state.showHiddenFiles
+                              ? Icons.visibility_off_outlined
+                              : Icons.visibility_outlined,
+                          size: 16,
+                        ),
+                        padding: EdgeInsets.zero,
+                        constraints:
+                            const BoxConstraints(minWidth: 28, minHeight: 22),
+                      ),
+                    ),
+                    SizedBox(
+                      height: 22,
+                      width: 28,
+                      child: IconButton(
+                        tooltip: l10n.copy,
+                        onPressed: () {
+                          if (state.rootPath.isNotEmpty) {
+                            Clipboard.setData(
+                                ClipboardData(text: state.rootPath));
+                          }
+                        },
+                        icon: const Icon(Icons.copy, size: 14),
+                        padding: EdgeInsets.zero,
+                        constraints:
+                            const BoxConstraints(minWidth: 28, minHeight: 22),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      TextField(
+                        controller: _filterController,
+                        decoration: InputDecoration(
+                          isDense: true,
+                          hintText: l10n.filterFiles,
+                          prefixIcon:
+                              const Icon(Icons.search, size: 18),
+                          suffixIcon: _filterController.text.isNotEmpty
+                              ? IconButton(
+                                  icon: const Icon(Icons.clear, size: 16),
+                                  onPressed: () {
+                                    _filterController.clear();
+                                    _cubit.setFilter('');
+                                  },
+                                )
+                              : null,
+                        ),
+                        onChanged: (v) {
+                          _cubit.setFilter(v);
+                          setState(() {});
+                        },
+                      ),
+                      const SizedBox(height: 10),
+                      if (rootExists)
+                        Text(
+                          state.rootPath,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: textBase.withValues(alpha: 0.56),
+                            fontSize: 12,
+                          ),
+                        )
+                      else
+                        Text(
+                          'Directory unavailable',
+                          style: TextStyle(
+                            color: textBase.withValues(alpha: 0.4),
+                            fontSize: 12,
+                            fontStyle: FontStyle.italic,
+                          ),
+                        ),
+                      const SizedBox(height: 10),
+                      Expanded(
+                        child: rootExists
+                            ? ListView(
+                                children: [
+                                  for (final entry
+                                      in _cubit.entriesFor(state.rootPath))
+                                    FileTreeNode(
+                                      path: entry.path,
+                                      entity: entry,
+                                      depth: 0,
+                                      cubit: _cubit,
+                                    ),
+                                  if (_cubit
+                                      .entriesFor(state.rootPath)
+                                      .isEmpty)
+                                    Text(
+                                      '(empty)',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: textBase
+                                            .withValues(alpha: 0.35),
+                                      ),
+                                    ),
+                                ],
+                              )
+                            : const SizedBox.shrink(),
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 10),
-                Text(
-                  team.workingDirectory,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                      color: textBase.withValues(alpha: 0.56), fontSize: 12),
-                ),
-                const SizedBox(height: 12),
-                const _FileLine(
-                    icon: Icons.folder_outlined, label: 'client'),
-                const _FileLine(
-                    icon: Icons.folder_outlined, label: 'docs'),
-                const _FileLine(
-                    icon: Icons.description_outlined, label: 'README.md'),
               ],
             ),
-          ),
-        ],
+          );
+        },
       ),
     );
   }
 }
 
-class _PanelTitle extends StatelessWidget {
-  const _PanelTitle({required this.title, required this.action});
-
-  final String title;
-  final String action;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = AppColors.of(context);
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textBase = isDark ? Colors.white : const Color(0xFF111827);
-    return Row(
-      children: [
-        Expanded(
-          child: Text(
-            title,
-            style: TextStyle(
-              color: textBase.withValues(alpha: 0.58),
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 0.8,
-            ),
-          ),
-        ),
-        Text(action, style: TextStyle(color: colors.linkText)),
-      ],
-    );
-  }
-}
-
-class _FileLine extends StatelessWidget {
-  const _FileLine({required this.icon, required this.label});
-
-  final IconData icon;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        children: [
-          Icon(icon, size: 18, color: Colors.white70),
-          const SizedBox(width: 8),
-          Expanded(
-              child: Text(label,
-                  maxLines: 1, overflow: TextOverflow.ellipsis)),
-        ],
-      ),
-    );
-  }
-}
