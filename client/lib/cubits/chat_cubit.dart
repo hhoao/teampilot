@@ -135,6 +135,13 @@ class ChatCubit extends Cubit<ChatState> {
     emit(state.copyWith(sessions: sessions));
   }
 
+  Future<void> createSession(String cwd, SessionRepository repo) async {
+    final session = await repo.createSession(cwd);
+    final sessions = [...state.sessions, session]
+      ..sort((a, b) => b.startedAt.compareTo(a.startedAt));
+    emit(state.copyWith(sessions: sessions));
+  }
+
   void openSessionTab(FlashskySession session) {
     final sw = Stopwatch()..start();
     final existingIdx = _internalTabs.indexWhere(

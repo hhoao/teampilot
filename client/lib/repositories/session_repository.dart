@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:path/path.dart' as p;
+import 'package:uuid/uuid.dart';
 
 import '../models/session.dart';
 
@@ -53,6 +54,22 @@ class SessionRepository {
     final list = sessions.toList()
       ..sort((a, b) => b.startedAt.compareTo(a.startedAt));
     return list;
+  }
+
+  Future<FlashskySession> createSession(String cwd) async {
+    final sessionId = const Uuid().v4();
+    final nowMs = DateTime.now().millisecondsSinceEpoch;
+    final session = FlashskySession(
+      sessionId: sessionId,
+      cwd: cwd,
+      startedAt: nowMs,
+      kind: 'interactive',
+      entrypoint: 'cli',
+    );
+    await Directory(_sessionsDir).create(recursive: true);
+    final file = File(p.join(_sessionsDir, '$sessionId.json'));
+    await file.writeAsString(jsonEncode(session.toJson()));
+    return session;
   }
 
   Future<void> renameSession(String sessionId, String newName) async {

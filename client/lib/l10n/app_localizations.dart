@@ -24,6 +24,16 @@ class AppLocalizations {
   String get copy => _strings['copy']!;
 
   String get selectTeam => _strings['selectTeam']!;
+  String get projects => _strings['projects']!;
+  String get newProject => _strings['newProject']!;
+  String get newSessionTooltip => _strings['newSessionTooltip']!;
+  String get openFolder => _strings['openFolder']!;
+  String get copyFolderPath => _strings['copyFolderPath']!;
+  String get deleteProject => _strings['deleteProject']!;
+  String deleteProjectConfirm(String name) =>
+      _strings['deleteProjectConfirm']!.replaceFirst('{name}', name);
+  String get noSessions => _strings['noSessions']!;
+  String get unknownFolder => _strings['unknownFolder']!;
   String get teamSessions => _strings['teamSessions']!;
   String get renameConversation => _strings['renameConversation']!;
   String get deleteConversation => _strings['deleteConversation']!;
@@ -187,6 +197,18 @@ class _AppLocalizationsDelegate
     'copy': {'en': 'copy', 'zh': '复制'},
 
     'selectTeam': {'en': 'Select team', 'zh': '选择团队'},
+    'projects': {'en': 'Projects', 'zh': '项目'},
+    'newProject': {'en': 'New Project', 'zh': '新建项目'},
+    'newSessionTooltip': {'en': 'New session', 'zh': '新建会话'},
+    'openFolder': {'en': 'Open Folder', 'zh': '打开文件夹'},
+    'copyFolderPath': {'en': 'Copy Folder Path', 'zh': '复制文件夹路径'},
+    'deleteProject': {'en': 'Delete Project', 'zh': '删除项目'},
+    'deleteProjectConfirm': {
+      'en': 'Delete project "{name}" and all its sessions? This cannot be undone.',
+      'zh': '删除项目 "{name}" 及其所有会话？此操作不可撤销。',
+    },
+    'noSessions': {'en': 'No sessions yet', 'zh': '暂无会话'},
+    'unknownFolder': {'en': 'Unknown', 'zh': '未知'},
     'teamSessions': {'en': 'Team Sessions', 'zh': '团队会话'},
     'renameConversation': {'en': 'Rename conversation', 'zh': '重命名对话'},
     'deleteConversation': {'en': 'Delete conversation', 'zh': '删除对话'},

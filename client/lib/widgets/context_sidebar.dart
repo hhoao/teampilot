@@ -1,4 +1,7 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
@@ -14,9 +17,9 @@ import '../utils/logger.dart';
 import '../utils/perf.dart';
 
 class ContextSidebar extends StatefulWidget {
-  const ContextSidebar({this.onNewSession, super.key});
+  const ContextSidebar({this.onNewProject, super.key});
 
-  final VoidCallback? onNewSession;
+  final VoidCallback? onNewProject;
 
   @override
   State<ContextSidebar> createState() => _ContextSidebarState();
@@ -68,13 +71,13 @@ class _ContextSidebarState extends State<ContextSidebar> {
                   ),
                   const SizedBox(height: 14),
                   _SidebarSectionTitle(
-                    title: l10n.teamSessions,
+                    title: l10n.projects,
                     actionLabel: '+',
-                    onAction: widget.onNewSession,
+                    onAction: widget.onNewProject,
                   ),
                   Expanded(
                     child: _showSessions
-                        ? const _SessionList()
+                        ? const _ProjectList()
                         : const SizedBox.shrink(),
                   ),
                   const Divider(height: 1),
@@ -96,19 +99,334 @@ class _ContextSidebarState extends State<ContextSidebar> {
   }
 }
 
-class _SessionList extends StatelessWidget {
-  const _SessionList();
+class _ProjectList extends StatelessWidget {
+  const _ProjectList();
 
   @override
   Widget build(BuildContext context) {
     final sessions = context.select<ChatCubit, List<FlashskySession>>(
       (cubit) => cubit.state.sessions,
     );
+    final l10n = context.l10n;
+
+    // Group sessions by cwd
+    final groups = <String, List<FlashskySession>>{};
+    for (final s in sessions) {
+      groups.putIfAbsent(s.cwd, () => []).add(s);
+    }
+
+    if (groups.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.only(top: 16),
+        child: Text(
+          l10n.noSessions,
+          style: TextStyle(
+            color: Theme.of(context)
+                .textTheme
+                .bodySmall
+                ?.color
+                ?.withValues(alpha: 0.5),
+            fontSize: 12,
+          ),
+        ),
+      );
+    }
+
+    // Sort groups by the most recent session in each group
+    final sortedEntries = groups.entries.toList()
+      ..sort((a, b) {
+        final aMax = a.value
+            .map((s) => s.startedAt)
+            .reduce((x, y) => x > y ? x : y);
+        final bMax = b.value
+            .map((s) => s.startedAt)
+            .reduce((x, y) => x > y ? x : y);
+        return bMax.compareTo(aMax);
+      });
+
     return ListView.builder(
-      itemCount: sessions.length,
+      itemCount: sortedEntries.length,
       itemBuilder: (context, index) {
-        return _SessionTileEntry(session: sessions[index]);
+        final entry = sortedEntries[index];
+        return _ProjectGroup(
+          cwd: entry.key,
+          sessions: entry.value,
+        );
       },
+    );
+  }
+}
+
+class _ProjectGroup extends StatefulWidget {
+  const _ProjectGroup({required this.cwd, required this.sessions});
+
+  final String cwd;
+  final List<FlashskySession> sessions;
+
+  @override
+  State<_ProjectGroup> createState() => _ProjectGroupState();
+}
+
+class _ProjectGroupState extends State<_ProjectGroup> {
+  var _expanded = true;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final dirName = widget.cwd.isNotEmpty
+        ? widget.cwd.split(Platform.pathSeparator).last
+        : l10n.unknownFolder;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _ProjectHeader(
+          name: dirName,
+          path: widget.cwd,
+          sessionCount: widget.sessions.length,
+          expanded: _expanded,
+          onToggle: () => setState(() => _expanded = !_expanded),
+          onNewSession: () => _createSession(context, widget.cwd),
+          onOpenFolder: widget.cwd.isNotEmpty
+              ? () => _openFolder(widget.cwd)
+              : null,
+          onCopyPath: widget.cwd.isNotEmpty
+              ? () => _copyPath(widget.cwd)
+              : null,
+          onDelete: widget.cwd.isNotEmpty
+              ? () => _confirmDeleteProject(context, widget.cwd, dirName)
+              : null,
+        ),
+        if (_expanded)
+          ...widget.sessions.map(
+            (s) => _SessionTileEntry(session: s),
+          ),
+        const SizedBox(height: 4),
+      ],
+    );
+  }
+
+  void _createSession(BuildContext context, String cwd) {
+    context.read<ChatCubit>().createSession(cwd, const SessionRepository());
+  }
+
+  void _openFolder(String path) {
+    Process.run(_openCommand, [path]);
+  }
+
+  String get _openCommand {
+    if (Platform.isMacOS) return 'open';
+    if (Platform.isWindows) return 'start';
+    return 'xdg-open';
+  }
+
+  void _copyPath(String path) {
+    Clipboard.setData(ClipboardData(text: path));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Path copied: $path'),
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
+  void _confirmDeleteProject(
+    BuildContext context,
+    String cwd,
+    String name,
+  ) {
+    final l10n = context.l10n;
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.deleteProject),
+        content: Text(l10n.deleteProjectConfirm(name)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: Text(l10n.cancel),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.error,
+            ),
+            onPressed: () {
+              final cubit = context.read<ChatCubit>();
+              final repo = const SessionRepository();
+              for (final s in widget.sessions) {
+                cubit.deleteSession(repo, s.sessionId);
+              }
+              Navigator.of(ctx).pop();
+            },
+            child: Text(l10n.delete),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ProjectHeader extends StatelessWidget {
+  const _ProjectHeader({
+    required this.name,
+    required this.path,
+    required this.sessionCount,
+    required this.expanded,
+    required this.onToggle,
+    required this.onNewSession,
+    this.onOpenFolder,
+    this.onCopyPath,
+    this.onDelete,
+  });
+
+  final String name;
+  final String path;
+  final int sessionCount;
+  final bool expanded;
+  final VoidCallback onToggle;
+  final VoidCallback onNewSession;
+  final VoidCallback? onOpenFolder;
+  final VoidCallback? onCopyPath;
+  final VoidCallback? onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textBase = isDark ? Colors.white : const Color(0xFF111827);
+    final colors = AppColors.of(context);
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4, top: 4),
+      child: Material(
+        color: colors.unselectedBackground,
+        borderRadius: BorderRadius.circular(8),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(8),
+          onTap: onToggle,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: colors.unselectedBorder),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  expanded ? Icons.expand_more : Icons.chevron_right,
+                  size: 16,
+                  color: textBase.withValues(alpha: 0.5),
+                ),
+                const SizedBox(width: 6),
+                Icon(
+                  Icons.folder_outlined,
+                  size: 16,
+                  color: textBase.withValues(alpha: 0.7),
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 12,
+                          color: textBase,
+                        ),
+                      ),
+                      if (path.isNotEmpty)
+                        Text(
+                          '$sessionCount sessions',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: textBase.withValues(alpha: 0.45),
+                            fontSize: 10,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                GestureDetector(
+                  onTap: onNewSession,
+                  child: Tooltip(
+                    message: l10n.newSessionTooltip,
+                    child: Icon(
+                      Icons.add,
+                      size: 16,
+                      color: colors.linkText,
+                    ),
+                  ),
+                ),
+                if (onOpenFolder != null ||
+                    onCopyPath != null ||
+                    onDelete != null)
+                  PopupMenuButton<String>(
+                    tooltip: '',
+                    padding: EdgeInsets.zero,
+                    icon: Icon(
+                      Icons.more_horiz,
+                      size: 16,
+                      color: textBase.withValues(alpha: 0.5),
+                    ),
+                    onSelected: (value) {
+                      switch (value) {
+                        case 'openFolder':
+                          onOpenFolder?.call();
+                        case 'copyPath':
+                          onCopyPath?.call();
+                        case 'delete':
+                          onDelete?.call();
+                      }
+                    },
+                    itemBuilder: (context) => [
+                      if (onOpenFolder != null)
+                        PopupMenuItem(
+                          value: 'openFolder',
+                          child: Row(
+                            children: [
+                              const Icon(Icons.folder_open, size: 18),
+                              const SizedBox(width: 8),
+                              Text(l10n.openFolder),
+                            ],
+                          ),
+                        ),
+                      if (onCopyPath != null)
+                        PopupMenuItem(
+                          value: 'copyPath',
+                          child: Row(
+                            children: [
+                              const Icon(Icons.copy, size: 18),
+                              const SizedBox(width: 8),
+                              Text(l10n.copyFolderPath),
+                            ],
+                          ),
+                        ),
+                      if (onDelete != null)
+                        PopupMenuItem(
+                          value: 'delete',
+                          child: Row(
+                            children: [
+                              Icon(Icons.delete_outline,
+                                  size: 18,
+                                  color:
+                                      Theme.of(context).colorScheme.error),
+                              const SizedBox(width: 8),
+                              Text(l10n.deleteProject),
+                            ],
+                          ),
+                        ),
+                    ],
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
@@ -141,6 +459,7 @@ class _SessionTileEntryState extends State<_SessionTileEntry> {
         title: session.display.isNotEmpty ? session.display : session.kind,
         subtitle: session.cwd,
         selected: selected,
+        indent: true,
         onTap: () {
           FramePerf.mark('nav session ${session.sessionId}');
           final teamCubit = context.read<TeamCubit>();
@@ -460,6 +779,7 @@ class _SidebarTile extends StatelessWidget {
     required this.selected,
     this.onTap,
     this.trailing,
+    this.indent = false,
     super.key,
   });
 
@@ -468,6 +788,7 @@ class _SidebarTile extends StatelessWidget {
   final bool selected;
   final VoidCallback? onTap;
   final Widget? trailing;
+  final bool indent;
 
   @override
   Widget build(BuildContext context) {
@@ -475,7 +796,7 @@ class _SidebarTile extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textBase = isDark ? Colors.white : const Color(0xFF111827);
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
+      padding: EdgeInsets.only(left: indent ? 16.0 : 0, bottom: 8),
       child: Material(
         color: selected
             ? colors.selectedBackground

@@ -1,12 +1,15 @@
+import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../cubits/chat_cubit.dart';
 import '../cubits/config_cubit.dart';
 import '../cubits/layout_cubit.dart';
 import '../pages/chat_page.dart';
 import '../pages/config_workspace.dart';
 import '../pages/team_config_page.dart';
+import '../repositories/session_repository.dart';
 import '../utils/logger.dart';
 import '../utils/perf.dart';
 import '../widgets/context_sidebar.dart';
@@ -36,7 +39,19 @@ final appRouter = GoRouter(
                       onWidthChanged: (width) {
                         context.read<LayoutCubit>().setSidebarWidth(width);
                       },
-                      left: const RepaintBoundary(child: ContextSidebar()),
+                      left: RepaintBoundary(
+                        child: ContextSidebar(
+                          onNewProject: () async {
+                            final dir = await getDirectoryPath();
+                            if (dir != null && context.mounted) {
+                              context.read<ChatCubit>().createSession(
+                                dir,
+                                const SessionRepository(),
+                              );
+                            }
+                          },
+                        ),
+                      ),
                       right: child,
                     )
                   : child,
