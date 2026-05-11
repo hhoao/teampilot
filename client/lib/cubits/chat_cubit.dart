@@ -24,11 +24,11 @@ class ChatTabInfo extends Equatable {
   final String subtitle;
   final bool isRunning;
 
-  ChatTabInfo copyWith({bool? isRunning}) {
+  ChatTabInfo copyWith({String? title, String? subtitle, bool? isRunning}) {
     return ChatTabInfo(
       id: id,
-      title: title,
-      subtitle: subtitle,
+      title: title ?? this.title,
+      subtitle: subtitle ?? this.subtitle,
       isRunning: isRunning ?? this.isRunning,
     );
   }
@@ -340,6 +340,63 @@ class ChatCubit extends Cubit<ChatState> {
   void restartSession(TeamConfig team) {
     disconnectSession();
     connectSession(team);
+  }
+
+  Future<void> renameSession(SessionRepository repo, String sessionId, String newName) async {
+    await repo.renameSession(sessionId, newName);
+    final sessions = state.sessions.map((s) {
+      if (s.sessionId == sessionId) return s.copyWith(display: newName);
+      return s;
+    }).toList();
+    final tabs = state.tabs.map((t) {
+      if (t.id == sessionId) return t.copyWith(title: newName);
+      return t;
+    }).toList();
+    // update the internal tab's info too, so it's reflected on next rebuild
+    for (final tab in _internalTabs) {
+      if (tab.info.id == sessionId) {
+        tab.info = tab.info.copyWith(title: newName);
+      }
+    }
+    emit(state.copyWith(sessions: sessions, tabs: tabs));
+  }
+
+  void deleteSession(SessionRepository repo, String sessionId) {
+    final wasActive = state.activeSessionId == sessionId;
+    // Remove from in-memory state immediately
+    final sessions = state.sessions.where((s) => s.sessionId != sessionId).toList();
+    final idx = _internalTabs.indexWhere((t) => t.info.id == sessionId);
+    if (idx != -1) {
+      final tab = _internalTabs.removeAt(idx);
+      for (final session in tab.sessions) {
+        session.dispose();
+      }
+    }
+    final tabs = _internalTabs.map((t) => t.info).toList();
+
+    if (wasActive && _internalTabs.isNotEmpty) {
+      final newIdx = idx < _internalTabs.length ? idx : _internalTabs.length - 1;
+      final nextTab = _internalTabs[newIdx];
+      emit(state.copyWith(
+        sessions: sessions,
+        tabs: tabs,
+        activeTabIndex: newIdx,
+        activeSessionId: nextTab.info.id,
+        selectedMemberId: nextTab.selectedMemberId,
+      ));
+    } else if (_internalTabs.isEmpty) {
+      emit(state.copyWith(
+        sessions: sessions,
+        tabs: [],
+        activeTabIndex: 0,
+        clearActiveSessionId: true,
+      ));
+    } else {
+      emit(state.copyWith(sessions: sessions, tabs: tabs));
+    }
+
+    // Best-effort filesystem cleanup (async)
+    repo.deleteSession(sessionId);
   }
 
   void selectSession(String sessionId) {

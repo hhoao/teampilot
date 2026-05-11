@@ -178,6 +178,7 @@ class _SessionTileEntryState extends State<_SessionTileEntry> {
         },
         trailing: _hovered
             ? PopupMenuButton<String>(
+                tooltip: '',
                 padding: EdgeInsets.zero,
                 icon: const Icon(Icons.more_horiz, size: 16),
                 onSelected: (value) {

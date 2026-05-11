@@ -4,7 +4,9 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../cubits/chat_cubit.dart';
 import '../cubits/layout_cubit.dart';
 import '../cubits/team_cubit.dart';
+import '../l10n/app_localizations.dart';
 import '../models/layout_preferences.dart';
+import '../repositories/session_repository.dart';
 import '../utils/app_keys.dart';
 import '../widgets/right_tools_panel.dart';
 import 'chat_workbench.dart';
@@ -14,6 +16,58 @@ class ChatPage extends StatelessWidget {
   const ChatPage({this.sessionId, super.key});
 
   final String? sessionId;
+
+  static void _showTabRenameDialog(
+    BuildContext context,
+    String tabId,
+    String title,
+  ) {
+    final l10n = context.l10n;
+    final controller = TextEditingController(text: title);
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.renameConversationTitle),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          decoration: InputDecoration(
+            labelText: l10n.conversationName,
+          ),
+          onSubmitted: (value) {
+            if (value.trim().isNotEmpty) {
+              context.read<ChatCubit>().renameSession(
+                const SessionRepository(),
+                tabId,
+                value.trim(),
+              );
+            }
+            Navigator.of(ctx).pop();
+          },
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: Text(l10n.cancel),
+          ),
+          FilledButton(
+            onPressed: () {
+              final value = controller.text.trim();
+              if (value.isNotEmpty) {
+                context.read<ChatCubit>().renameSession(
+                  const SessionRepository(),
+                  tabId,
+                  value,
+                );
+              }
+              Navigator.of(ctx).pop();
+            },
+            child: Text(l10n.save),
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -39,6 +93,12 @@ class ChatPage extends StatelessWidget {
       activeTabIndex: chatCubit.state.activeTabIndex,
       onTabSelected: (index) => context.read<ChatCubit>().selectTab(index),
       onTabClosed: (index) => context.read<ChatCubit>().closeTab(index),
+      onTabRenamed: (index) {
+        final tabs = context.read<ChatCubit>().state.tabs;
+        if (index >= tabs.length) return;
+        final tab = tabs[index];
+        _showTabRenameDialog(context, tab.id, tab.title);
+      },
       layoutPreferences: preferences,
       onRightToolsWidthChanged:
           (w) => context.read<LayoutCubit>().setRightToolsWidth(w),

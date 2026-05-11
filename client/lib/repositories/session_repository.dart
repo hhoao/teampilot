@@ -55,6 +55,31 @@ class SessionRepository {
     return list;
   }
 
+  Future<void> renameSession(String sessionId, String newName) async {
+    final file = File(p.join(_sessionsDir, '$sessionId.json'));
+    if (await file.exists()) {
+      try {
+        final content = await file.readAsString();
+        final json = jsonDecode(content) as Map<String, Object?>;
+        json['display'] = newName;
+        await file.writeAsString(jsonEncode(json));
+      } on Object {
+        // best effort
+      }
+    }
+  }
+
+  Future<void> deleteSession(String sessionId) async {
+    final file = File(p.join(_sessionsDir, '$sessionId.json'));
+    if (await file.exists()) {
+      try {
+        await file.delete();
+      } on Object {
+        // best effort
+      }
+    }
+  }
+
   Future<List<FlashskySession>> _loadFromHistory() async {
     final file = File(_historyPath);
     if (!await file.exists()) {

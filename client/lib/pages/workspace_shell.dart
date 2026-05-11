@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../l10n/app_localizations.dart';
 import '../utils/app_keys.dart';
 import '../models/layout_preferences.dart';
 import '../theme/app_theme.dart';
@@ -25,6 +26,7 @@ class WorkspaceShell extends StatelessWidget {
     this.activeTabIndex = 0,
     this.onTabSelected,
     this.onTabClosed,
+    this.onTabRenamed,
     this.layoutPreferences = const LayoutPreferences(),
     this.onRightToolsWidthChanged,
     this.rightTools,
@@ -41,6 +43,7 @@ class WorkspaceShell extends StatelessWidget {
   final int activeTabIndex;
   final ValueChanged<int>? onTabSelected;
   final ValueChanged<int>? onTabClosed;
+  final ValueChanged<int>? onTabRenamed;
   final LayoutPreferences layoutPreferences;
   final ValueChanged<double>? onRightToolsWidthChanged;
   final Widget? rightTools;
@@ -116,6 +119,7 @@ class WorkspaceShell extends StatelessWidget {
               activeIndex: activeTabIndex,
               onTabSelected: onTabSelected,
               onTabClosed: onTabClosed,
+              onTabRenamed: onTabRenamed,
               trailing: actions.isNotEmpty && showHeader
                   ? Padding(
                       padding: const EdgeInsets.only(left: 8),
@@ -204,6 +208,7 @@ class _TabRow extends StatelessWidget {
     required this.activeIndex,
     this.onTabSelected,
     this.onTabClosed,
+    this.onTabRenamed,
     this.trailing,
   });
 
@@ -211,6 +216,7 @@ class _TabRow extends StatelessWidget {
   final int activeIndex;
   final ValueChanged<int>? onTabSelected;
   final ValueChanged<int>? onTabClosed;
+  final ValueChanged<int>? onTabRenamed;
   final Widget? trailing;
 
   @override
@@ -233,6 +239,7 @@ class _TabRow extends StatelessWidget {
               active: i == activeIndex,
               onTap: () => onTabSelected?.call(i),
               onClose: () => onTabClosed?.call(i),
+              onRename: () => onTabRenamed?.call(i),
               textColor: textBase,
               activeBg: colors.railButtonSelectedBg,
               borderColor: colors.subtleBorder,
@@ -245,12 +252,13 @@ class _TabRow extends StatelessWidget {
   }
 }
 
-class _TabChip extends StatelessWidget {
+class _TabChip extends StatefulWidget {
   const _TabChip({
     required this.title,
     required this.active,
     required this.onTap,
     required this.onClose,
+    this.onRename,
     required this.textColor,
     required this.activeBg,
     required this.borderColor,
@@ -260,50 +268,102 @@ class _TabChip extends StatelessWidget {
   final bool active;
   final VoidCallback onTap;
   final VoidCallback onClose;
+  final VoidCallback? onRename;
   final Color textColor;
   final Color activeBg;
   final Color borderColor;
 
   @override
+  State<_TabChip> createState() => _TabChipState();
+}
+
+class _TabChipState extends State<_TabChip> {
+  var _hovered = false;
+
+  @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return Padding(
       padding: const EdgeInsets.only(right: 2),
-      child: Material(
-        color: active ? activeBg : Colors.transparent,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
-        child: InkWell(
+      child: MouseRegion(
+        onEnter: (_) => setState(() => _hovered = true),
+        onExit: (_) => setState(() => _hovered = false),
+        child: Material(
+          color: widget.active ? widget.activeBg : Colors.transparent,
           borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
-          onTap: onTap,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8),
-            height: 28,
-            decoration: BoxDecoration(
-              border: Border(
-                left: BorderSide(color: active ? borderColor : Colors.transparent),
-                right: BorderSide(color: active ? borderColor : Colors.transparent),
-                top: BorderSide(color: active ? borderColor : Colors.transparent),
+          child: InkWell(
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
+            onTap: widget.onTap,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              height: 28,
+              decoration: BoxDecoration(
+                border: Border(
+                  left: BorderSide(
+                      color: widget.active
+                          ? widget.borderColor
+                          : Colors.transparent),
+                  right: BorderSide(
+                      color: widget.active
+                          ? widget.borderColor
+                          : Colors.transparent),
+                  top: BorderSide(
+                      color: widget.active
+                          ? widget.borderColor
+                          : Colors.transparent),
+                ),
+                borderRadius:
+                    const BorderRadius.vertical(top: Radius.circular(4)),
               ),
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: textColor,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    widget.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: widget.textColor,
+                    ),
                   ),
-                ),
-                const SizedBox(width: 6),
-                GestureDetector(
-                  onTap: onClose,
-                  child: Icon(Icons.close, size: 14, color: textColor.withValues(alpha: 0.5)),
-                ),
-              ],
+                  if (_hovered && widget.onRename != null) ...[
+                    const SizedBox(width: 4),
+                    PopupMenuButton<String>(
+                      tooltip: '',
+                      padding: EdgeInsets.zero,
+                      icon: Icon(Icons.more_horiz, size: 12,
+                          color: widget.textColor.withValues(alpha: 0.6)),
+                      onSelected: (value) {
+                        switch (value) {
+                          case 'rename':
+                            widget.onRename?.call();
+                          case 'delete':
+                            widget.onClose.call();
+                        }
+                      },
+                      itemBuilder: (context) => [
+                        PopupMenuItem(
+                          value: 'rename',
+                          child: Text(l10n.renameConversation),
+                        ),
+                        PopupMenuItem(
+                          value: 'delete',
+                          child: Text(l10n.deleteConversation),
+                        ),
+                      ],
+                    ),
+                  ] else ...[
+                    const SizedBox(width: 6),
+                    GestureDetector(
+                      onTap: widget.onClose,
+                      child: Icon(Icons.close, size: 14,
+                          color: widget.textColor.withValues(alpha: 0.5)),
+                    ),
+                  ],
+                ],
+              ),
             ),
           ),
         ),

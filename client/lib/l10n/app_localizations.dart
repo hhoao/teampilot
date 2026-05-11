@@ -25,6 +25,12 @@ class AppLocalizations {
 
   String get selectTeam => _strings['selectTeam']!;
   String get teamSessions => _strings['teamSessions']!;
+  String get renameConversation => _strings['renameConversation']!;
+  String get deleteConversation => _strings['deleteConversation']!;
+  String get renameConversationTitle => _strings['renameConversationTitle']!;
+  String deleteConversationConfirm(String name) =>
+      _strings['deleteConversationConfirm']!.replaceFirst('{name}', name);
+  String get conversationName => _strings['conversationName']!;
   String get settings => _strings['settings']!;
   String get settingsPageSubtitle => _strings['settingsPageSubtitle']!;
   String get configure => _strings['configure']!;
@@ -182,6 +188,17 @@ class _AppLocalizationsDelegate
 
     'selectTeam': {'en': 'Select team', 'zh': '选择团队'},
     'teamSessions': {'en': 'Team Sessions', 'zh': '团队会话'},
+    'renameConversation': {'en': 'Rename conversation', 'zh': '重命名对话'},
+    'deleteConversation': {'en': 'Delete conversation', 'zh': '删除对话'},
+    'renameConversationTitle': {
+      'en': 'Rename Conversation',
+      'zh': '重命名对话',
+    },
+    'deleteConversationConfirm': {
+      'en': 'Delete conversation "{name}"? This cannot be undone.',
+      'zh': '删除对话 "{name}"？此操作不可撤销。',
+    },
+    'conversationName': {'en': 'Conversation name', 'zh': '对话名称'},
     'settings': {'en': 'Settings', 'zh': '设置'},
     'settingsPageSubtitle': {
       'en': 'Manage FlashskyAI team and model settings.',
