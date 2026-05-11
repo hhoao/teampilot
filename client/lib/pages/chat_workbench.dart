@@ -102,7 +102,7 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
                             fontFamily: 'monospace',
                             fontFamilyFallback: ['monospace'],
                           ),
-                          hardwareKeyboardOnly: true,
+                          keyboardType: TextInputType.text,
                           autofocus: true,
                         ),
                       ),
