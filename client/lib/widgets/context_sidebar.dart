@@ -68,6 +68,7 @@ class _ContextSidebarState extends State<ContextSidebar> {
                     teams: teamCubit.state.teams,
                     selected: selected,
                     onSelect: teamCubit.selectTeam,
+                    onAddTeam: () => teamCubit.addTeam(),
                   ),
                   const SizedBox(height: 14),
                   _TeamConfigTile(
@@ -513,11 +514,15 @@ class _SessionTileEntryState extends State<_SessionTileEntry> {
           chatCubit.selectSession(session.sessionId);
 
           TeamConfig? matchingTeam;
-          if (session.cwd.isNotEmpty) {
-            for (final t in teamCubit.state.teams) {
-              if (t.workingDirectory.trim() == session.cwd.trim()) {
-                matchingTeam = t;
-                break;
+          if (session.sessionTeam.isNotEmpty) {
+            final lastDash = session.sessionTeam.lastIndexOf('-');
+            if (lastDash > 0) {
+              final teamName = session.sessionTeam.substring(0, lastDash);
+              for (final t in teamCubit.state.teams) {
+                if (t.name == teamName) {
+                  matchingTeam = t;
+                  break;
+                }
               }
             }
           }
@@ -762,45 +767,81 @@ class _TeamSelector extends StatelessWidget {
     required this.teams,
     required this.selected,
     required this.onSelect,
+    this.onAddTeam,
   });
 
   final List<TeamConfig> teams;
   final TeamConfig selected;
   final ValueChanged<String> onSelect;
+  final VoidCallback? onAddTeam;
 
   @override
   Widget build(BuildContext context) {
     final colors = AppColors.of(context);
     final l10n = context.l10n;
-    return PopupMenuButton<String>(
-      tooltip: l10n.selectTeam,
-      onSelected: onSelect,
-      itemBuilder: (context) => [
-        for (final team in teams)
-          PopupMenuItem(value: team.id, child: Text(team.name)),
-      ],
-      child: Container(
-        height: 38,
-        padding: const EdgeInsets.symmetric(horizontal: 10),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(8),
-          color: colors.teamSelectorBackground,
-          border: Border.all(color: colors.teamSelectorBorder),
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Text(
-                selected.name,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontWeight: FontWeight.w700),
+    return Row(
+      children: [
+        Expanded(
+          child: PopupMenuButton<String>(
+            tooltip: l10n.selectTeam,
+            onSelected: onSelect,
+            itemBuilder: (context) => [
+              for (final team in teams)
+                PopupMenuItem(value: team.id, child: Text(team.name)),
+            ],
+            child: Container(
+              height: 38,
+              padding: const EdgeInsets.symmetric(horizontal: 10),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(8),
+                color: colors.teamSelectorBackground,
+                border: Border.all(color: colors.teamSelectorBorder),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      selected.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                  const Icon(Icons.expand_more, size: 18),
+                ],
               ),
             ),
-            const Icon(Icons.expand_more, size: 18),
-          ],
+          ),
         ),
-      ),
+        if (onAddTeam != null) ...[
+          const SizedBox(width: 6),
+          Material(
+            color: Colors.transparent,
+            borderRadius: BorderRadius.circular(6),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(6),
+              onTap: onAddTeam,
+              child: Tooltip(
+                message: l10n.addTeamTooltip,
+                child: Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(color: colors.teamSelectorBorder),
+                    color: colors.teamSelectorBackground,
+                  ),
+                  child: Icon(
+                    Icons.add,
+                    size: 18,
+                    color: colors.linkText,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ],
     );
   }
 }

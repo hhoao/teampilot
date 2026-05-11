@@ -6,7 +6,6 @@ void main() {
     const team = TeamConfig(
       id: 'team-1',
       name: 'hello',
-      workingDirectory: '/home/hhoa/project',
       extraArgs: '--permission-mode acceptEdits',
       members: [
         TeamMemberConfig(
@@ -44,12 +43,11 @@ void main() {
     expect(team.members, isEmpty);
   });
 
-  test('is invalid when name or directory is blank', () {
+  test('is invalid when name is blank', () {
     expect(
       const TeamConfig(
         id: 'team-1',
         name: '',
-        workingDirectory: '/tmp',
       ).isValid,
       isFalse,
     );
@@ -57,9 +55,8 @@ void main() {
       const TeamConfig(
         id: 'team-1',
         name: 'hello',
-        workingDirectory: '   ',
       ).isValid,
-      isFalse,
+      isTrue,
     );
   });
 
@@ -78,7 +75,6 @@ void main() {
     const team = TeamConfig(
       id: 'team-1',
       name: 'hello',
-      workingDirectory: '/tmp',
     );
     final changedTeam = team.copyWith(
       extraArgs: '--continue',

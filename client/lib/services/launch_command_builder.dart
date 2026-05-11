@@ -20,12 +20,13 @@ class LaunchCommandBuilder {
     TeamConfig team,
     TeamMemberConfig member, {
     String? sessionTeam,
+    String? workingDirectory,
   }) {
     final teamFlag = sessionTeam ?? team.name.trim();
+    final wd = workingDirectory ?? '';
 
     final args = <String>[
-      '--dir',
-      team.workingDirectory.trim(),
+      if (wd.isNotEmpty) ...['--dir', wd],
       '--team',
       teamFlag,
       '--member',
@@ -58,7 +59,7 @@ class LaunchCommandBuilder {
   }) {
     return [
       executable,
-      ...buildArguments(team, member, sessionTeam: sessionTeam),
+      ...buildArguments(team, member, sessionTeam: sessionTeam, workingDirectory: ''),
     ].map(_quoteForPreview).join(' ');
   }
 
@@ -114,49 +115,50 @@ class LaunchCommandBuilder {
     TeamConfig team, {
     required TeamMemberConfig member,
     String? sessionTeam,
+    String? workingDirectory,
     ProcessStarter starter = Process.start,
   }) async {
-    final args = buildArguments(team, member, sessionTeam: sessionTeam);
-    final workingDirectory = team.workingDirectory.trim();
+    final wd = workingDirectory ?? '';
+    final args = buildArguments(team, member, sessionTeam: sessionTeam, workingDirectory: wd);
 
     if (Platform.isLinux) {
       if (await _tryStartTerminal(starter, 'x-terminal-emulator', [
         '-e',
         executable,
         ...args,
-      ], workingDirectory)) {
+      ], wd)) {
         return;
       }
       if (await _tryStartTerminal(starter, 'gnome-terminal', [
         '--',
         executable,
         ...args,
-      ], workingDirectory)) {
+      ], wd)) {
         return;
       }
       if (await _tryStartTerminal(starter, 'konsole', [
         '-e',
         executable,
         ...args,
-      ], workingDirectory)) {
+      ], wd)) {
         return;
       }
       if (await _tryStartTerminal(starter, 'xterm', [
         '-e',
         executable,
         ...args,
-      ], workingDirectory)) {
+      ], wd)) {
         return;
       }
     } else if (Platform.isMacOS) {
       final script =
-          'cd ${_shellQuote(workingDirectory)} && '
+          'cd ${_shellQuote(wd)} && '
           '${_shellQuote(executable)} ${args.map(_shellQuote).join(' ')}';
       if (await _tryStartTerminal(starter, 'open', [
         '-a',
         'Terminal',
         script,
-      ], workingDirectory)) {
+      ], wd)) {
         return;
       }
     } else if (Platform.isWindows) {
@@ -168,7 +170,7 @@ class LaunchCommandBuilder {
         'cmd',
         '/k',
         command,
-      ], workingDirectory)) {
+      ], wd)) {
         return;
       }
     }
@@ -176,7 +178,7 @@ class LaunchCommandBuilder {
     await starter(
       executable,
       args,
-      workingDirectory: workingDirectory,
+      workingDirectory: wd,
       runInShell: true,
     );
   }

@@ -106,7 +106,6 @@ class TeamConfig {
   const TeamConfig({
     required this.id,
     required this.name,
-    required this.workingDirectory,
     this.extraArgs = '',
     this.members = const [],
     this.createdAt = 0,
@@ -128,7 +127,6 @@ class TeamConfig {
     return TeamConfig(
       id: json['id'] as String? ?? name,
       name: name,
-      workingDirectory: json['workingDirectory'] as String? ?? '',
       extraArgs: json['extraArgs'] as String? ?? '',
       members: members,
       createdAt: (json['createdAt'] as num?)?.toInt() ?? 0,
@@ -137,18 +135,15 @@ class TeamConfig {
 
   final String id;
   final String name;
-  final String workingDirectory;
   final String extraArgs;
   final List<TeamMemberConfig> members;
   final int createdAt;
 
-  bool get isValid =>
-      name.trim().isNotEmpty && workingDirectory.trim().isNotEmpty;
+  bool get isValid => name.trim().isNotEmpty;
 
   TeamConfig copyWith({
     String? id,
     String? name,
-    String? workingDirectory,
     String? extraArgs,
     List<TeamMemberConfig>? members,
     int? createdAt,
@@ -156,7 +151,6 @@ class TeamConfig {
     return TeamConfig(
       id: id ?? this.id,
       name: name ?? this.name,
-      workingDirectory: workingDirectory ?? this.workingDirectory,
       extraArgs: extraArgs ?? this.extraArgs,
       members: members ?? this.members,
       createdAt: createdAt ?? this.createdAt,
@@ -167,7 +161,6 @@ class TeamConfig {
     return {
       'id': id,
       'name': name,
-      'workingDirectory': workingDirectory,
       'extraArgs': extraArgs,
       'members': members.map((member) => member.toJson()).toList(),
       'createdAt': createdAt,
@@ -181,7 +174,6 @@ class TeamConfig {
             runtimeType == other.runtimeType &&
             id == other.id &&
             name == other.name &&
-            workingDirectory == other.workingDirectory &&
             extraArgs == other.extraArgs &&
             listEquals(members, other.members) &&
             createdAt == other.createdAt;
@@ -191,7 +183,6 @@ class TeamConfig {
   int get hashCode => Object.hash(
         id,
         name,
-        workingDirectory,
         extraArgs,
         Object.hashAll(members),
         createdAt,

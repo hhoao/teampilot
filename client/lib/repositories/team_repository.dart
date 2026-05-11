@@ -70,7 +70,6 @@ class TeamRepository {
     final createdAt = (json['createdAt'] as num?)?.toInt() ?? 0;
 
     final rawMembers = json['members'];
-    String workingDirectory = '';
 
     final members = <TeamMemberConfig>[];
     if (rawMembers is List) {
@@ -80,19 +79,12 @@ class TeamRepository {
         final member = _cliJsonToMember(map);
         if (member.name.isEmpty) continue;
         members.add(member);
-        final cwd = (map['cwd'] as String?) ?? '';
-        if (member.name == 'team-lead' && cwd.isNotEmpty) {
-          workingDirectory = cwd;
-        } else if (workingDirectory.isEmpty && cwd.isNotEmpty) {
-          workingDirectory = cwd;
-        }
       }
     }
 
     return TeamConfig(
       id: name,
       name: name,
-      workingDirectory: workingDirectory,
       members: members,
       createdAt: createdAt,
     );

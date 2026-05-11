@@ -1,4 +1,3 @@
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -313,7 +312,6 @@ class _TeamInfoSection extends StatefulWidget {
 
 class _TeamInfoSectionState extends State<_TeamInfoSection> {
   late TextEditingController _nameCtl;
-  late TextEditingController _dirCtl;
   late TextEditingController _argsCtl;
   late String _trackedTeamId;
 
@@ -321,7 +319,6 @@ class _TeamInfoSectionState extends State<_TeamInfoSection> {
   void initState() {
     super.initState();
     _nameCtl = TextEditingController(text: widget.team.name);
-    _dirCtl = TextEditingController(text: widget.team.workingDirectory);
     _argsCtl = TextEditingController(text: widget.team.extraArgs);
     _trackedTeamId = widget.team.id;
   }
@@ -332,7 +329,6 @@ class _TeamInfoSectionState extends State<_TeamInfoSection> {
     if (widget.team.id != _trackedTeamId) {
       _trackedTeamId = widget.team.id;
       _nameCtl.text = widget.team.name;
-      _dirCtl.text = widget.team.workingDirectory;
       _argsCtl.text = widget.team.extraArgs;
     }
   }
@@ -340,18 +336,8 @@ class _TeamInfoSectionState extends State<_TeamInfoSection> {
   @override
   void dispose() {
     _nameCtl.dispose();
-    _dirCtl.dispose();
     _argsCtl.dispose();
     super.dispose();
-  }
-
-  Future<void> _pickDirectory() async {
-    final dir = await FilePicker.platform.getDirectoryPath();
-    if (dir == null) return;
-    setState(() => _dirCtl.text = dir);
-    await widget.cubit.updateSelected(
-      widget.team.copyWith(workingDirectory: dir),
-    );
   }
 
   @override
@@ -377,27 +363,6 @@ class _TeamInfoSectionState extends State<_TeamInfoSection> {
                   onChanged: (v) => widget.cubit.updateSelected(
                     widget.team.copyWith(name: v),
                   ),
-                ),
-                const SizedBox(height: 14),
-                _FieldLabel(text: l10n.workingDirectory),
-                const SizedBox(height: 6),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: _dirCtl,
-                        onChanged: (v) => widget.cubit.updateSelected(
-                          widget.team.copyWith(workingDirectory: v),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    OutlinedButton.icon(
-                      onPressed: _pickDirectory,
-                      icon: const Icon(Icons.folder_open_outlined, size: 18),
-                      label: Text(l10n.openFolder),
-                    ),
-                  ],
                 ),
                 const SizedBox(height: 14),
                 _FieldLabel(text: l10n.teamExtraArgs),

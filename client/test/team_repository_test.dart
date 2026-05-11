@@ -32,13 +32,11 @@ void main() {
         TeamConfig(
           id: 'hhoa',
           name: 'hhoa',
-          workingDirectory: '/work/hhoa',
           members: [TeamMemberConfig(id: 'planner', name: 'planner')],
         ),
         TeamConfig(
           id: 'agent',
           name: 'agent',
-          workingDirectory: '/work/agent',
           members: [
             TeamMemberConfig(id: 'planner', name: 'planner', model: 'sonnet'),
           ],
@@ -50,7 +48,6 @@ void main() {
 
       expect(loaded.map((t) => t.name).toSet(), {'hhoa', 'agent'});
       final agent = loaded.firstWhere((t) => t.name == 'agent');
-      expect(agent.workingDirectory, '/work/agent');
       expect(agent.members.single.model, 'sonnet');
     });
 
@@ -59,7 +56,6 @@ void main() {
       const team = TeamConfig(
         id: 'demo',
         name: 'demo',
-        workingDirectory: '/work/demo',
         members: [TeamMemberConfig(id: 'team-lead', name: 'team-lead')],
       );
 
@@ -69,7 +65,6 @@ void main() {
       expect(await file.exists(), isTrue);
       final raw = await file.readAsString();
       expect(raw, contains('"name": "demo"'));
-      expect(raw, contains('"workingDirectory": "/work/demo"'));
     });
 
     test('stamps createdAt on first save', () async {
@@ -77,7 +72,6 @@ void main() {
       const team = TeamConfig(
         id: 'demo',
         name: 'demo',
-        workingDirectory: '/work/demo',
         members: [TeamMemberConfig(id: 'm', name: 'm')],
       );
 
@@ -94,13 +88,11 @@ void main() {
         TeamConfig(
           id: 'keep',
           name: 'keep',
-          workingDirectory: '/w',
           members: [TeamMemberConfig(id: 'm', name: 'm')],
         ),
         TeamConfig(
           id: 'drop',
           name: 'drop',
-          workingDirectory: '/w',
           members: [TeamMemberConfig(id: 'm', name: 'm')],
         ),
       ]);
@@ -109,7 +101,6 @@ void main() {
         TeamConfig(
           id: 'keep',
           name: 'keep',
-          workingDirectory: '/w',
           members: [TeamMemberConfig(id: 'm', name: 'm')],
         ),
       ]);
@@ -189,7 +180,6 @@ void main() {
 
       final teams = await repository.loadTeams();
       expect(teams.single.name, 'huji');
-      expect(teams.single.workingDirectory, '/home/hhoa/git/hhoa/huji');
       expect(teams.single.createdAt, 1778231391883);
       expect(teams.single.members.length, 2);
       expect(
@@ -216,7 +206,6 @@ void main() {
         TeamConfig(
           id: 'existing',
           name: 'existing',
-          workingDirectory: '/already/here',
           members: [TeamMemberConfig(id: 'x', name: 'x')],
         ),
       ]);
@@ -225,7 +214,7 @@ void main() {
 
       final teams = await repository.loadTeams();
       expect(teams.length, 1);
-      expect(teams.single.workingDirectory, '/already/here');
+      expect(teams.single.name, 'existing');
     });
 
     test('is idempotent', () async {
@@ -246,25 +235,6 @@ void main() {
 
       final teams = await repository.loadTeams();
       expect(teams.length, 1);
-    });
-
-    test('derives workingDirectory from first member when no team-lead',
-        () async {
-      await writeCliTeam('solo', {
-        'name': 'solo',
-        'members': [
-          {'name': 'dev', 'cwd': '/project'},
-        ],
-      });
-
-      final repository = TeamRepository(
-        rootDir: uiRoot.path,
-        cliTeamsDir: cliRoot.path,
-      );
-      await repository.importFromCli();
-
-      final teams = await repository.loadTeams();
-      expect(teams.single.workingDirectory, '/project');
     });
 
     test('ignores non-directory entries and missing config.json', () async {

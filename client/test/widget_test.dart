@@ -66,7 +66,6 @@ Future<TeamCubit> createTeamCubit({TeamLauncher? launcher}) async {
   final cubit = TeamCubit(
     repository: repository,
     launcher: launcher ?? (_, __) async {},
-    currentDirectoryProvider: () => '/work/current',
   );
   await cubit.load();
   return cubit;
@@ -239,7 +238,6 @@ void main() {
     final repository = TeamRepository(rootDir: tmp.path);
     final cubit = TeamCubit(
       repository: repository,
-      currentDirectoryProvider: () => '/work/current',
     );
     await cubit.load();
 
@@ -288,7 +286,6 @@ void main() {
     final team = TeamConfig(
       id: 'test-team',
       name: 'Test',
-      workingDirectory: '/tmp',
       members: const [
         TeamMemberConfig(id: 'lead', name: 'team-lead'),
         TeamMemberConfig(id: 'dev', name: 'developer'),
@@ -310,7 +307,6 @@ void main() {
     final team = TeamConfig(
       id: 'test-team',
       name: 'Test',
-      workingDirectory: '/tmp',
       members: const [
         TeamMemberConfig(id: 'lead', name: 'team-lead'),
         TeamMemberConfig(id: 'dev', name: 'developer'),
@@ -343,7 +339,6 @@ void main() {
       final team = TeamConfig(
         id: 'test-team',
         name: 'Test',
-        workingDirectory: '/tmp',
         members: const [
           TeamMemberConfig(id: 'lead', name: 'team-lead'),
           TeamMemberConfig(id: 'dev', name: 'developer'),

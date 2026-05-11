@@ -24,6 +24,7 @@ class AppLocalizations {
   String get copy => _strings['copy']!;
 
   String get selectTeam => _strings['selectTeam']!;
+  String get addTeamTooltip => _strings['addTeamTooltip']!;
   String get projects => _strings['projects']!;
   String get newProject => _strings['newProject']!;
   String get newSessionTooltip => _strings['newSessionTooltip']!;
@@ -60,7 +61,6 @@ class AppLocalizations {
   String get shellChatWorkbench => _strings['shellChatWorkbench']!;
 
   String get teamName => _strings['teamName']!;
-  String get workingDirectory => _strings['workingDirectory']!;
   String get teamExtraArgs => _strings['teamExtraArgs']!;
   String get teamExtraArgsHint => _strings['teamExtraArgsHint']!;
   String get memberLaunchOrder => _strings['memberLaunchOrder']!;
@@ -278,6 +278,7 @@ class _AppLocalizationsDelegate
     'copy': {'en': 'copy', 'zh': '复制'},
 
     'selectTeam': {'en': 'Select team', 'zh': '选择团队'},
+    'addTeamTooltip': {'en': 'Add team', 'zh': '添加团队'},
     'projects': {'en': 'Projects', 'zh': '项目'},
     'newProject': {'en': 'New Project', 'zh': '新建项目'},
     'newSessionTooltip': {'en': 'New session', 'zh': '新建会话'},
@@ -324,7 +325,6 @@ class _AppLocalizationsDelegate
     'shellChatWorkbench': {'en': 'Shell chat workbench', 'zh': 'Shell 聊天工作台'},
 
     'teamName': {'en': 'Team name', 'zh': '团队名称'},
-    'workingDirectory': {'en': 'Working directory', 'zh': '工作目录'},
     'teamExtraArgs': {'en': 'Team extra CLI arguments', 'zh': '团队额外 CLI 参数'},
     'teamExtraArgsHint': {
       'en': '--permission-mode acceptEdits',

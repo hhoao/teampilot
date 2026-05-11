@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:equatable/equatable.dart';
 import 'package:flutter/widgets.dart';
@@ -277,7 +278,7 @@ class ChatCubit extends Cubit<ChatState> {
       try {
         final sw2 = Stopwatch()..start();
         shell.connect(
-          workingDirectory: team.workingDirectory.trim(),
+          workingDirectory: Directory.current.path,
           team: team,
           member: member,
           sessionTeam: tab.sessionTeamName,
@@ -547,7 +548,7 @@ class ChatCubit extends Cubit<ChatState> {
     return ChatTabInfo(
       id: 'local-${team.id}',
       title: team.name,
-      subtitle: '${team.workingDirectory} / local session',
+      subtitle: 'local session',
     );
   }
 

@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -61,18 +59,14 @@ class TeamCubit extends Cubit<TeamState> {
   TeamCubit({
     required TeamRepository repository,
     TeamLauncher? launcher,
-    StringProvider? currentDirectoryProvider,
   })  : _repository = repository,
         _launcher = launcher ??
             ((team, member) =>
                 LaunchCommandBuilder.launch(team, member: member)),
-        _currentDirectoryProvider =
-            currentDirectoryProvider ?? (() => Directory.current.path),
         super(const TeamState());
 
   final TeamRepository _repository;
   final TeamLauncher _launcher;
-  final StringProvider _currentDirectoryProvider;
 
   String previewFor(TeamMemberConfig member) {
     final team = state.selectedTeam;
@@ -116,7 +110,6 @@ class TeamCubit extends Cubit<TeamState> {
     final team = TeamConfig(
       id: name,
       name: name,
-      workingDirectory: _currentDirectoryProvider(),
       members: [TeamMemberConfig(id: memberName, name: memberName)],
     );
     final teams = [...state.teams, team];
@@ -142,7 +135,7 @@ class TeamCubit extends Cubit<TeamState> {
       selectedTeamId: normalized.id,
       statusMessage: normalized.isValid
           ? 'Saved ${normalized.name}.'
-          : 'Team name and directory are required.',
+          : 'Name is required.',
     ));
     await _repository.saveTeams(teams);
   }
@@ -200,9 +193,9 @@ class TeamCubit extends Cubit<TeamState> {
 
   Future<void> launchMember(String memberId) async {
     final team = state.selectedTeam;
-    if (team == null || !team.isValid) {
+    if (team == null || team.name.trim().isEmpty) {
       emit(state.copyWith(
-          statusMessage: 'Team name and directory are required.'));
+          statusMessage: 'Team name is required.'));
       return;
     }
     final member = team.members.firstWhere((m) => m.id == memberId,
@@ -227,9 +220,9 @@ class TeamCubit extends Cubit<TeamState> {
 
   Future<void> launchSelectedTeam() async {
     final team = state.selectedTeam;
-    if (team == null || !team.isValid) {
+    if (team == null || team.name.trim().isEmpty) {
       emit(state.copyWith(
-          statusMessage: 'Team name and directory are required.'));
+          statusMessage: 'Team name is required.'));
       return;
     }
     final validMembers =
@@ -260,7 +253,6 @@ class TeamCubit extends Cubit<TeamState> {
     return TeamConfig(
       id: name,
       name: name,
-      workingDirectory: _currentDirectoryProvider(),
       members: [_defaultMember()],
     );
   }

@@ -15,12 +15,31 @@ void main() {
     const team = TeamConfig(
       id: '1',
       name: 'agent',
-      workingDirectory: '/home/hhoa/git/agent',
+    );
+
+    expect(LaunchCommandBuilder.buildArguments(team, member, workingDirectory: '/home/hhoa/git/agent'), [
+      '--dir',
+      '/home/hhoa/git/agent',
+      '--team',
+      'agent',
+      '--member',
+      'planner',
+      '--provider',
+      'anthropic',
+      '--model',
+      'sonnet',
+      '--agent',
+      'builder',
+    ]);
+  });
+
+  test('omits --dir when workingDirectory is empty', () {
+    const team = TeamConfig(
+      id: '1',
+      name: 'agent',
     );
 
     expect(LaunchCommandBuilder.buildArguments(team, member), [
-      '--dir',
-      '/home/hhoa/git/agent',
       '--team',
       'agent',
       '--member',
@@ -38,7 +57,6 @@ void main() {
     const team = TeamConfig(
       id: '1',
       name: 'agent',
-      workingDirectory: '/home/hhoa/git/agent',
       extraArgs: '--permission-mode acceptEdits',
     );
     const reviewer = TeamMemberConfig(
@@ -47,7 +65,7 @@ void main() {
       extraArgs: '--continue --system-prompt "be careful"',
     );
 
-    expect(LaunchCommandBuilder.buildArguments(team, reviewer), [
+    expect(LaunchCommandBuilder.buildArguments(team, reviewer, workingDirectory: '/home/hhoa/git/agent'), [
       '--dir',
       '/home/hhoa/git/agent',
       '--team',
@@ -66,13 +84,12 @@ void main() {
     const team = TeamConfig(
       id: '1',
       name: 'hello team',
-      workingDirectory: '/home/hhoa/git/my app',
     );
     const reviewer = TeamMemberConfig(id: 'member-2', name: 'code reviewer');
 
     expect(
       LaunchCommandBuilder.preview(team, reviewer),
-      "flashskyai --dir '/home/hhoa/git/my app' --team 'hello team' --member 'code reviewer'",
+      "flashskyai --team 'hello team' --member 'code reviewer'",
     );
   });
 }

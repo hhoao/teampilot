@@ -248,16 +248,8 @@ class _FileTreePanelState extends State<_FileTreePanel> {
     _syncRoot();
   }
 
-  @override
-  void didUpdateWidget(covariant _FileTreePanel oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.team.workingDirectory != widget.team.workingDirectory) {
-      _syncRoot();
-    }
-  }
-
   void _syncRoot() {
-    _cubit.setRoot(widget.team.workingDirectory);
+    _cubit.setRoot(Directory.current.path);
   }
 
   @override
