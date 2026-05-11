@@ -122,8 +122,37 @@ class _SessionTileEntry extends StatelessWidget {
       selected: selected,
       onTap: () {
         FramePerf.mark('nav session ${session.sessionId}');
-        context.read<ChatCubit>().openSessionTab(session);
-        context.go('/chat/session/${session.sessionId}');
+        final teamCubit = context.read<TeamCubit>();
+        final chatCubit = context.read<ChatCubit>();
+
+        chatCubit.selectSession(session.sessionId);
+
+        TeamConfig? matchingTeam;
+        if (session.cwd.isNotEmpty) {
+          for (final t in teamCubit.state.teams) {
+            if (t.workingDirectory.trim() == session.cwd.trim()) {
+              matchingTeam = t;
+              break;
+            }
+          }
+        }
+        matchingTeam ??= teamCubit.state.selectedTeam;
+        if (matchingTeam == null) return;
+
+        if (teamCubit.state.selectedTeam?.id != matchingTeam.id) {
+          teamCubit.selectTeam(matchingTeam.id);
+        }
+
+        final lead =
+            matchingTeam.members.where((m) => m.name == 'team-lead');
+        if (lead.isNotEmpty) {
+          chatCubit.openMemberTab(matchingTeam, lead.first);
+        } else {
+          chatCubit.addSystemMessage(
+              'FlashskyAI requires a member named team-lead.');
+        }
+
+        context.go('/chat');
       },
     );
   }

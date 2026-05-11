@@ -277,6 +277,10 @@ class ChatCubit extends Cubit<ChatState> {
     connectSession(team);
   }
 
+  void selectSession(String sessionId) {
+    emit(state.copyWith(activeSessionId: sessionId));
+  }
+
   void addSystemMessage(String content) {
     final target = _internalTabs.isNotEmpty
         ? _internalTabs[state.activeTabIndex].session
