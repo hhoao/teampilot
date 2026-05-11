@@ -28,6 +28,7 @@ class AppLocalizations {
   String get settings => _strings['settings']!;
   String get settingsPageSubtitle => _strings['settingsPageSubtitle']!;
   String get configure => _strings['configure']!;
+  String get teamConfig => _strings['teamConfig']!;
   String get teamSettings => _strings['teamSettings']!;
   String get teamSettingsSubtitle => _strings['teamSettingsSubtitle']!;
   String get membersSubtitle => _strings['membersSubtitle']!;
@@ -187,6 +188,7 @@ class _AppLocalizationsDelegate
       'zh': '管理 FlashskyAI 团队和模型设置。',
     },
     'configure': {'en': 'Configure', 'zh': '配置'},
+    'teamConfig': {'en': 'Team Config', 'zh': '团队配置'},
     'teamSettings': {'en': 'Team Settings', 'zh': '团队设置'},
     'teamSettingsSubtitle': {'en': 'workspace teams', 'zh': '工作区团队'},
     'membersSubtitle': {'en': 'team agents', 'zh': '团队代理'},
