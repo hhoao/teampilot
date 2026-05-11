@@ -231,11 +231,6 @@ void main() {
         isNot(contains('hardwareKeyboardOnly: true')),
         reason: '${sourceFile.path} must use TextInput so Chinese IME works.',
       );
-      expect(
-        source,
-        contains('keyboardType: TextInputType.text'),
-        reason: '${sourceFile.path} should request regular text input.',
-      );
     }
   });
 

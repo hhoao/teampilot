@@ -111,7 +111,6 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
                             fontFamily: 'monospace',
                             fontFamilyFallback: ['monospace'],
                           ),
-                          keyboardType: TextInputType.text,
                           autofocus: true,
                         ),
                       ),

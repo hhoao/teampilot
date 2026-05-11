@@ -107,7 +107,6 @@ class _WarmupStage extends StatelessWidget {
             fontFamily: 'monospace',
             fontFamilyFallback: ['monospace'],
           ),
-          keyboardType: TextInputType.text,
         ),
         _ => const SizedBox.shrink(),
       },
