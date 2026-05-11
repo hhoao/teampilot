@@ -43,9 +43,7 @@ class LlmConfigWorkspace extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 10),
-        Expanded(
-          child: _ProvidersTabContent(controller: controller),
-        ),
+        Expanded(child: _ProvidersTabContent(controller: controller)),
       ],
     );
   }
@@ -75,7 +73,8 @@ class _ProvidersTabContentState extends State<_ProvidersTabContent> {
         ? config.providers[selectedName]
         : null;
 
-    final showModels = _modelsProviderName != null &&
+    final showModels =
+        _modelsProviderName != null &&
         selectedProvider != null &&
         _modelsProviderName == selectedProvider.name;
 
@@ -220,87 +219,87 @@ class _ProviderListPanelState extends State<_ProviderListPanel> {
         .toList();
 
     return Container(
-        key: AppKeys.llmProviderList,
-        decoration: BoxDecoration(
-          color: colors.cardBackground,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: colors.border),
-        ),
-        child: Column(
-          children: [
-            Container(
-              height: 42,
-              padding: const EdgeInsets.symmetric(horizontal: 11),
-              decoration: BoxDecoration(
-                border: Border(bottom: BorderSide(color: colors.tabBarDivider)),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      l10n.providerList,
-                      style: TextStyle(
-                        fontWeight: FontWeight.w800,
-                        color: textBase,
-                      ),
-                    ),
-                  ),
-                  InkWell(
-                    onTap: widget.onAdd,
-                    child: Text(
-                      '+ ${l10n.add}',
-                      style: TextStyle(
-                        color: colors.linkText,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+      key: AppKeys.llmProviderList,
+      decoration: BoxDecoration(
+        color: colors.cardBackground,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: colors.border),
+      ),
+      child: Column(
+        children: [
+          Container(
+            height: 42,
+            padding: const EdgeInsets.symmetric(horizontal: 11),
+            decoration: BoxDecoration(
+              border: Border(bottom: BorderSide(color: colors.tabBarDivider)),
             ),
-            Padding(
-              padding: const EdgeInsets.all(10),
-              child: TextField(
-                key: AppKeys.llmProviderSearch,
-                controller: _searchController,
-                decoration: InputDecoration(
-                  hintText: l10n.filterProviders,
-                  isDense: true,
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 8,
-                  ),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(7),
-                    borderSide: BorderSide(color: colors.border),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    l10n.providerList,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w800,
+                      color: textBase,
+                    ),
                   ),
                 ),
-                onChanged: (value) => setState(() => _searchQuery = value),
-              ),
+                InkWell(
+                  onTap: widget.onAdd,
+                  child: Text(
+                    '+ ${l10n.add}',
+                    style: TextStyle(
+                      color: colors.linkText,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ],
             ),
-            Expanded(
-              child: ListView.builder(
-                padding: const EdgeInsets.only(left: 10, right: 10, bottom: 10),
-                itemCount: providers.length,
-                itemBuilder: (context, index) {
-                  final provider = providers[index];
-                  final isSelected = provider.name == widget.selectedName;
-                  final modelCount = widget.config.models.values
-                      .where((m) => m.provider == provider.name)
-                      .length;
-                  return _ProviderListRow(
-                    provider: provider,
-                    isSelected: isSelected,
-                    modelCount: modelCount,
-                    onTap: () => widget.onSelect(provider.name),
-                    onDelete: () => widget.onDelete(provider.name),
-                  );
-                },
+          ),
+          Padding(
+            padding: const EdgeInsets.all(10),
+            child: TextField(
+              key: AppKeys.llmProviderSearch,
+              controller: _searchController,
+              decoration: InputDecoration(
+                hintText: l10n.filterProviders,
+                isDense: true,
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 8,
+                ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(7),
+                  borderSide: BorderSide(color: colors.border),
+                ),
               ),
+              onChanged: (value) => setState(() => _searchQuery = value),
             ),
-          ],
-        ),
+          ),
+          Expanded(
+            child: ListView.builder(
+              padding: const EdgeInsets.only(left: 10, right: 10, bottom: 10),
+              itemCount: providers.length,
+              itemBuilder: (context, index) {
+                final provider = providers[index];
+                final isSelected = provider.name == widget.selectedName;
+                final modelCount = widget.config.models.values
+                    .where((m) => m.provider == provider.name)
+                    .length;
+                return _ProviderListRow(
+                  provider: provider,
+                  isSelected: isSelected,
+                  modelCount: modelCount,
+                  onTap: () => widget.onSelect(provider.name),
+                  onDelete: () => widget.onDelete(provider.name),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -1316,7 +1315,9 @@ class _ModelEditDialogState extends State<_ModelEditDialog> {
             const SizedBox(height: 14),
             DropdownButtonFormField<String>(
               key: AppKeys.modelProviderField,
-              initialValue: widget.providers.containsKey(_provider) ? _provider : null,
+              initialValue: widget.providers.containsKey(_provider)
+                  ? _provider
+                  : null,
               decoration: InputDecoration(labelText: l10n.provider),
               items: [
                 for (final p in widget.providers.values)
@@ -1371,7 +1372,11 @@ class _ModelEditDialogState extends State<_ModelEditDialog> {
 // --- Shared helpers (private to this file) ---
 
 class _WorkspaceHeading extends StatelessWidget {
-  const _WorkspaceHeading({required this.title, required this.subtitle, this.trailing});
+  const _WorkspaceHeading({
+    required this.title,
+    required this.subtitle,
+    this.trailing,
+  });
 
   final String title;
   final String subtitle;

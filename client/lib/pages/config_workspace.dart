@@ -12,7 +12,6 @@ import '../services/launch_command_builder.dart';
 import '../theme/app_theme.dart';
 import '../utils/app_keys.dart';
 import '../utils/perf.dart';
-import '../widgets/resizable_split_view.dart';
 import 'llm_config_workspace.dart';
 
 class ConfigWorkspace extends StatelessWidget {
@@ -40,43 +39,74 @@ class ConfigWorkspace extends StatelessWidget {
     return Container(
       key: AppKeys.configWorkspace,
       color: colors.workspaceBackground,
-      child: ResizableSplitView(
-        initialLeftWidth: 180,
-        minLeftWidth: 140,
-        maxLeftWidth: 320,
-        left: _ConfigNavPanel(
-          section: configCubit.state.section,
-          onSelectSection: (s) {
-            FramePerf.mark('nav config ${s.name}');
-            context.read<ConfigCubit>().selectSection(s);
-            context.go('/config/${s.name}');
-          },
-          l10n: l10n,
-        ),
-        right: PipelinePerf(
-          label: 'config body ${configCubit.state.section.name}',
-          child: BuildPerf(
-            label: 'config ${configCubit.state.section.name}',
-            builder: (_) => switch (configCubit.state.section) {
-              ConfigSection.team => Padding(
-                padding: const EdgeInsets.all(16),
-                child: TeamConfigWorkspace(team: team),
-              ),
-              ConfigSection.members => Padding(
-                padding: const EdgeInsets.all(16),
-                child: MemberConfigWorkspace(team: team),
-              ),
-              ConfigSection.layout => const Padding(
-                padding: EdgeInsets.all(16),
-                child: LayoutConfigWorkspace(),
-              ),
-              ConfigSection.llm => const Padding(
-                padding: EdgeInsets.all(16),
-                child: LlmConfigWorkspace(),
-              ),
-            },
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _SettingsTitleBar(
+            title: l10n.settings,
+            subtitle: l10n.settingsPageSubtitle,
           ),
-        ),
+          Expanded(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final compact = constraints.maxWidth < 820;
+                final navWidth = compact ? 220.0 : 314.0;
+                final contentPadding = compact
+                    ? const EdgeInsets.fromLTRB(20, 24, 20, 20)
+                    : const EdgeInsets.fromLTRB(36, 36, 44, 28);
+                return Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    SizedBox(
+                      width: navWidth,
+                      child: _ConfigNavPanel(
+                        section: configCubit.state.section,
+                        compact: compact,
+                        onSelectSection: (s) {
+                          FramePerf.mark('nav config ${s.name}');
+                          context.read<ConfigCubit>().selectSection(s);
+                          context.go('/config/${s.name}');
+                        },
+                        l10n: l10n,
+                      ),
+                    ),
+                    Container(width: 1, color: colors.subtleBorder),
+                    Expanded(
+                      child: PipelinePerf(
+                        label: 'config body ${configCubit.state.section.name}',
+                        child: BuildPerf(
+                          label: 'config ${configCubit.state.section.name}',
+                          builder: (_) => Padding(
+                            padding: contentPadding,
+                            child: Align(
+                              alignment: Alignment.topCenter,
+                              child: ConstrainedBox(
+                                constraints: const BoxConstraints(
+                                  maxWidth: 1120,
+                                ),
+                                child: switch (configCubit.state.section) {
+                                  ConfigSection.team => TeamConfigWorkspace(
+                                    team: team,
+                                  ),
+                                  ConfigSection.members =>
+                                    MemberConfigWorkspace(team: team),
+                                  ConfigSection.layout =>
+                                    const LayoutConfigWorkspace(),
+                                  ConfigSection.llm =>
+                                    const LlmConfigWorkspace(),
+                                },
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -718,7 +748,7 @@ class _LaunchOrderRow extends StatelessWidget {
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
         color: colors.cardBackground,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(color: colors.border),
       ),
       child: Row(
@@ -764,6 +794,55 @@ class _TeamLeadNotice extends StatelessWidget {
       child: Text(
         l10n.teamLeadNotice,
         style: TextStyle(color: colors.warningText),
+      ),
+    );
+  }
+}
+
+class _SettingsTitleBar extends StatelessWidget {
+  const _SettingsTitleBar({required this.title, required this.subtitle});
+
+  final String title;
+  final String subtitle;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textBase = isDark ? Colors.white : const Color(0xFF111827);
+    return Container(
+      padding: const EdgeInsets.fromLTRB(40, 42, 40, 28),
+      decoration: BoxDecoration(
+        color: colors.workspaceBackground,
+        border: Border(bottom: BorderSide(color: colors.subtleBorder)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: textBase,
+              fontSize: 32,
+              fontWeight: FontWeight.w800,
+              height: 1.05,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            subtitle,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: textBase.withValues(alpha: 0.66),
+              fontSize: 19,
+              height: 1.25,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -816,7 +895,7 @@ class _Section extends StatelessWidget {
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: colors.cardBackground,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(color: colors.border),
       ),
       child: Column(
@@ -848,57 +927,56 @@ class _SizedField extends StatelessWidget {
 class _ConfigNavPanel extends StatelessWidget {
   const _ConfigNavPanel({
     required this.section,
+    required this.compact,
     required this.onSelectSection,
     required this.l10n,
   });
 
   final ConfigSection section;
+  final bool compact;
   final ValueChanged<ConfigSection> onSelectSection;
   final AppLocalizations l10n;
 
   @override
   Widget build(BuildContext context) {
     final colors = AppColors.of(context);
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textBase = isDark ? Colors.white : const Color(0xFF111827);
     return Container(
-      color: colors.sidebarBackground,
-      padding: const EdgeInsets.all(13),
+      color: colors.workspaceBackground,
+      padding: compact
+          ? const EdgeInsets.fromLTRB(14, 22, 12, 20)
+          : const EdgeInsets.fromLTRB(24, 28, 18, 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
-        mainAxisSize: MainAxisSize.min,
         children: [
-          _SidebarSectionTitle(
-            title: l10n.configure,
-            actionLabel: '',
-            colors: colors,
-            textBase: textBase,
-          ),
           _ConfigNavItem(
             key: AppKeys.configTeamSectionButton,
             title: l10n.teamSettings,
-            subtitle: l10n.teamSettingsSubtitle,
+            icon: Icons.groups_2_outlined,
+            compact: compact,
             selected: section == ConfigSection.team,
             onTap: () => onSelectSection(ConfigSection.team),
           ),
           _ConfigNavItem(
             key: AppKeys.configMembersSectionButton,
             title: l10n.members,
-            subtitle: l10n.membersSubtitle,
+            icon: Icons.person_outline,
+            compact: compact,
             selected: section == ConfigSection.members,
             onTap: () => onSelectSection(ConfigSection.members),
           ),
           _ConfigNavItem(
             key: AppKeys.configLlmSectionButton,
             title: l10n.llmConfig,
-            subtitle: l10n.llmConfigSubtitle,
+            icon: Icons.memory_outlined,
+            compact: compact,
             selected: section == ConfigSection.llm,
             onTap: () => onSelectSection(ConfigSection.llm),
           ),
           _ConfigNavItem(
             key: AppKeys.configLayoutSectionButton,
             title: l10n.layout,
-            subtitle: l10n.layoutSubtitle,
+            icon: Icons.dashboard_customize_outlined,
+            compact: compact,
             selected: section == ConfigSection.layout,
             onTap: () => onSelectSection(ConfigSection.layout),
           ),
@@ -912,13 +990,15 @@ class _ConfigNavItem extends StatelessWidget {
   const _ConfigNavItem({
     super.key,
     required this.title,
-    required this.subtitle,
+    required this.icon,
+    required this.compact,
     required this.selected,
     required this.onTap,
   });
 
   final String title;
-  final String subtitle;
+  final IconData icon;
+  final bool compact;
   final bool selected;
   final VoidCallback onTap;
 
@@ -927,90 +1007,47 @@ class _ConfigNavItem extends StatelessWidget {
     final colors = AppColors.of(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textBase = isDark ? Colors.white : const Color(0xFF111827);
+    final muted = textBase.withValues(alpha: 0.64);
+    final selectedColor = colors.selectedBackground;
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Material(
-        color: selected
-            ? colors.selectedBackground
-            : colors.unselectedBackground,
-        borderRadius: BorderRadius.circular(8),
+        color: selected ? selectedColor : Colors.transparent,
+        borderRadius: BorderRadius.circular(12),
         child: InkWell(
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(12),
           onTap: onTap,
-          child: Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(
-                color: selected
-                    ? colors.selectedBorder
-                    : colors.unselectedBorder,
+          child: SizedBox(
+            height: 54,
+            child: Padding(
+              padding: EdgeInsets.symmetric(horizontal: compact ? 14 : 18),
+              child: Row(
+                children: [
+                  Icon(
+                    icon,
+                    color: selected ? textBase : muted,
+                    size: compact ? 21 : 23,
+                  ),
+                  SizedBox(width: compact ? 12 : 16),
+                  Expanded(
+                    child: Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: compact ? 17 : 20,
+                        fontWeight: selected
+                            ? FontWeight.w700
+                            : FontWeight.w600,
+                        color: selected ? textBase : muted,
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontWeight: FontWeight.w700,
-                    color: textBase,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  subtitle,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: textBase.withValues(alpha: 0.52),
-                    fontSize: 11,
-                  ),
-                ),
-              ],
             ),
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _SidebarSectionTitle extends StatelessWidget {
-  const _SidebarSectionTitle({
-    required this.title,
-    required this.actionLabel,
-    required this.colors,
-    required this.textBase,
-  });
-
-  final String title;
-  final String actionLabel;
-  final AppColors colors;
-  final Color textBase;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              title,
-              style: TextStyle(
-                color: textBase.withValues(alpha: 0.58),
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 0.8,
-              ),
-            ),
-          ),
-          if (actionLabel.isNotEmpty)
-            Text(actionLabel, style: TextStyle(color: colors.linkText)),
-        ],
       ),
     );
   }

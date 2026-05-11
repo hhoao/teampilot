@@ -120,24 +120,24 @@ class AppColors extends ThemeExtension<AppColors> {
   final Color emptyMessageText;
 
   static const _dark = AppColors(
-    background: Color(0xFF090D13),
-    surface: Color(0xFF0F172A),
-    surfaceVariant: Color(0xFF111827),
-    cardBackground: Color(0xFF0F172A),
-    topbarBackground: Color(0xFF0B1017),
-    sidebarBackground: Color(0xFF111827),
-    railBackground: Color(0xFF090D12),
-    workspaceBackground: Color(0xFF090D13),
-    rightPanelBackground: Color(0xFF10141B),
-    inputFill: Color(0xFF12100E),
-    inputBorder: Color(0xFF34302B),
+    background: Color(0xFF080807),
+    surface: Color(0xFF0B0908),
+    surfaceVariant: Color(0xFF100E0C),
+    cardBackground: Color(0xFF0B0908),
+    topbarBackground: Color(0xFF0B0908),
+    sidebarBackground: Color(0xFF0B0908),
+    railBackground: Color(0xFF080807),
+    workspaceBackground: Color(0xFF080807),
+    rightPanelBackground: Color(0xFF0D0C0B),
+    inputFill: Color(0xFF0E0A08),
+    inputBorder: Color(0xFF2A2623),
     inputBorderFocused: Color(0xFF5B8DEF),
-    border: Color(0x2B94A3B8),
-    subtleBorder: Color(0x2E94A3B8),
-    selectedBackground: Color(0x2E1E40AF),
-    selectedBorder: Color(0x7360A5FA),
-    unselectedBackground: Color(0x9E0F172A),
-    unselectedBorder: Color(0x2B94A3B8),
+    border: Color(0xFF272321),
+    subtleBorder: Color(0xFF1B1816),
+    selectedBackground: Color(0xFF2B2727),
+    selectedBorder: Color(0xFF3A3431),
+    unselectedBackground: Color(0xFF100E0C),
+    unselectedBorder: Color(0xFF272321),
     linkText: Color(0xFF93C5FD),
     accentBlue: Color(0xFF60A5FA),
     accentBlueLight: Color(0xFFDBEAFE),
@@ -151,7 +151,7 @@ class AppColors extends ThemeExtension<AppColors> {
     successText: Color(0xFFA7F3D0),
     userBubbleBackground: Color(0xFF1D4ED8),
     systemBubbleBackground: Color(0x1F94A3B8),
-    assistantBubbleBackground: Color(0xFF111827),
+    assistantBubbleBackground: Color(0xFF100E0C),
     codeBackground: Color(0xFF05070B),
     teamSelectorBackground: Color(0x2B1E40AF),
     teamSelectorBorder: Color(0x5260A5FA),
@@ -160,7 +160,7 @@ class AppColors extends ThemeExtension<AppColors> {
     railButtonSelectedFg: Color(0xFFDBEAFE),
     railButtonUnselectedFg: Color(0xFFBFBFBF),
     selectedMemberBg: Color(0x2E064E3B),
-    unselectedMemberBg: Color(0x9E0F172A),
+    unselectedMemberBg: Color(0xFF100E0C),
     typeBadgeApiBg: Color(0x1C60A5FA),
     typeBadgeApiBorder: Color(0x3860A5FA),
     typeBadgeApiText: Color(0xFF93C5FD),
@@ -169,12 +169,12 @@ class AppColors extends ThemeExtension<AppColors> {
     typeBadgeAccountText: Color(0xFFA7F3D0),
     logoGradientStart: Color(0xFF60A5FA),
     logoGradientEnd: Color(0xFF34D399),
-    readOnlyFieldBg: Color(0xFF090F1A),
-    readOnlyFieldBorder: Color(0x3D94A3B8),
+    readOnlyFieldBg: Color(0xFF0E0A08),
+    readOnlyFieldBorder: Color(0xFF2A2623),
     readOnlyFieldText: Color(0xFFDBEAFE),
-    tabBarDivider: Color(0x2494A3B8),
-    statBoxBg: Color(0xA60F172A),
-    statBoxBorder: Color(0x2994A3B8),
+    tabBarDivider: Color(0xFF1B1816),
+    statBoxBg: Color(0xFF100E0C),
+    statBoxBorder: Color(0xFF272321),
     statBoxWarnBorder: Color(0x40FBBF24),
     emptyMessageText: Color(0xFF8B949E),
   );
@@ -261,6 +261,13 @@ ThemeData buildLightTheme() {
 
 ThemeData _buildTheme(Brightness brightness, AppColors colors) {
   final isDark = brightness == Brightness.dark;
+  final textBase = isDark ? Colors.white : const Color(0xFF111827);
+  final pillShape = RoundedRectangleBorder(
+    borderRadius: BorderRadius.circular(999),
+  );
+  final buttonPadding = WidgetStateProperty.all(
+    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+  );
   return ThemeData(
     brightness: brightness,
     fontFamily: 'sans-serif',
@@ -280,6 +287,69 @@ ThemeData _buildTheme(Brightness brightness, AppColors colors) {
         ? const Color(0xFF090807)
         : const Color(0xFFF8F9FA),
     dividerColor: colors.subtleBorder,
+    filledButtonTheme: FilledButtonThemeData(
+      style: ButtonStyle(
+        backgroundColor: WidgetStateProperty.all(colors.accentBlue),
+        foregroundColor: WidgetStateProperty.all(Colors.white),
+        iconColor: WidgetStateProperty.all(Colors.white),
+        overlayColor: WidgetStateProperty.all(
+          Colors.white.withValues(alpha: 0.10),
+        ),
+        shape: WidgetStateProperty.all(pillShape),
+        padding: buttonPadding,
+      ),
+    ),
+    outlinedButtonTheme: OutlinedButtonThemeData(
+      style: ButtonStyle(
+        foregroundColor: WidgetStateProperty.all(colors.linkText),
+        iconColor: WidgetStateProperty.all(colors.linkText),
+        overlayColor: WidgetStateProperty.all(
+          colors.linkText.withValues(alpha: 0.08),
+        ),
+        side: WidgetStateProperty.all(BorderSide(color: colors.inputBorder)),
+        shape: WidgetStateProperty.all(pillShape),
+        padding: buttonPadding,
+      ),
+    ),
+    iconButtonTheme: IconButtonThemeData(
+      style: ButtonStyle(
+        foregroundColor: WidgetStateProperty.all(
+          textBase.withValues(alpha: 0.86),
+        ),
+        overlayColor: WidgetStateProperty.all(textBase.withValues(alpha: 0.08)),
+      ),
+    ),
+    switchTheme: SwitchThemeData(
+      thumbColor: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.selected)) return Colors.white;
+        return textBase.withValues(alpha: 0.78);
+      }),
+      trackColor: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.selected)) {
+          return colors.accentBlue;
+        }
+        return textBase.withValues(alpha: 0.14);
+      }),
+      trackOutlineColor: WidgetStateProperty.all(Colors.transparent),
+    ),
+    segmentedButtonTheme: SegmentedButtonThemeData(
+      style: ButtonStyle(
+        foregroundColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) return textBase;
+          return textBase.withValues(alpha: 0.66);
+        }),
+        backgroundColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return colors.selectedBackground;
+          }
+          return colors.cardBackground;
+        }),
+        side: WidgetStateProperty.all(BorderSide(color: colors.border)),
+        shape: WidgetStateProperty.all(
+          RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+      ),
+    ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
       fillColor: colors.inputFill,

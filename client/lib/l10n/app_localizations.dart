@@ -25,6 +25,8 @@ class AppLocalizations {
 
   String get selectTeam => _strings['selectTeam']!;
   String get teamSessions => _strings['teamSessions']!;
+  String get settings => _strings['settings']!;
+  String get settingsPageSubtitle => _strings['settingsPageSubtitle']!;
   String get configure => _strings['configure']!;
   String get teamSettings => _strings['teamSettings']!;
   String get teamSettingsSubtitle => _strings['teamSettingsSubtitle']!;
@@ -150,10 +152,7 @@ class _AppLocalizationsDelegate
     extends LocalizationsDelegate<AppLocalizations> {
   const _AppLocalizationsDelegate();
 
-  static const _supportedLocales = [
-    Locale('en'),
-    Locale('zh'),
-  ];
+  static const _supportedLocales = [Locale('en'), Locale('zh')];
 
   static const _strings = <String, Map<String, String>>{
     'appTitle': {'en': 'FlashskyAI Teams', 'zh': 'FlashskyAI 团队'},
@@ -182,30 +181,26 @@ class _AppLocalizationsDelegate
 
     'selectTeam': {'en': 'Select team', 'zh': '选择团队'},
     'teamSessions': {'en': 'Team Sessions', 'zh': '团队会话'},
+    'settings': {'en': 'Settings', 'zh': '设置'},
+    'settingsPageSubtitle': {
+      'en': 'Manage FlashskyAI team and model settings.',
+      'zh': '管理 FlashskyAI 团队和模型设置。',
+    },
     'configure': {'en': 'Configure', 'zh': '配置'},
     'teamSettings': {'en': 'Team Settings', 'zh': '团队设置'},
     'teamSettingsSubtitle': {'en': 'workspace teams', 'zh': '工作区团队'},
     'membersSubtitle': {'en': 'team agents', 'zh': '团队代理'},
     'llmConfig': {'en': 'LLM Config', 'zh': 'LLM 配置'},
-    'llmConfigSubtitle': {
-      'en': 'providers and models',
-      'zh': '提供商和模型',
-    },
+    'llmConfigSubtitle': {'en': 'providers and models', 'zh': '提供商和模型'},
     'layout': {'en': 'Layout', 'zh': '布局'},
     'layoutSubtitle': {'en': 'global workbench', 'zh': '全局工作台'},
     'memberQuickList': {'en': 'MEMBER QUICK LIST', 'zh': '成员快速列表'},
     'providers': {'en': 'PROVIDERS', 'zh': '提供商'},
-    'shellChatWorkbench': {
-      'en': 'Shell chat workbench',
-      'zh': 'Shell 聊天工作台',
-    },
+    'shellChatWorkbench': {'en': 'Shell chat workbench', 'zh': 'Shell 聊天工作台'},
 
     'teamName': {'en': 'Team name', 'zh': '团队名称'},
     'workingDirectory': {'en': 'Working directory', 'zh': '工作目录'},
-    'teamExtraArgs': {
-      'en': 'Team extra CLI arguments',
-      'zh': '团队额外 CLI 参数',
-    },
+    'teamExtraArgs': {'en': 'Team extra CLI arguments', 'zh': '团队额外 CLI 参数'},
     'teamExtraArgsHint': {
       'en': '--permission-mode acceptEdits',
       'zh': '--permission-mode acceptEdits',
@@ -231,11 +226,13 @@ class _AppLocalizationsDelegate
       'zh': '编辑提供商、模型、代理和命令参数。',
     },
     'teamLeadNameRequired': {
-      'en': 'FlashskyAI team delegation expects this member to be named exactly team-lead.',
+      'en':
+          'FlashskyAI team delegation expects this member to be named exactly team-lead.',
       'zh': 'FlashskyAI 团队委托要求此成员名称必须为 team-lead。',
     },
     'teamLeadNotice': {
-      'en': 'FlashskyAI team delegation expects this member to be named exactly team-lead.',
+      'en':
+          'FlashskyAI team delegation expects this member to be named exactly team-lead.',
       'zh': 'FlashskyAI 团队委托要求此成员名称必须为 team-lead。',
     },
 
@@ -248,10 +245,7 @@ class _AppLocalizationsDelegate
     'bottom': {'en': 'Bottom', 'zh': '底部'},
     'rightTools': {'en': 'Right Tools', 'zh': '右侧工具栏'},
     'bottomTray': {'en': 'Bottom Tray', 'zh': '底部托盘'},
-    'membersAndFileTree': {
-      'en': 'Members and File Tree',
-      'zh': '成员和文件树',
-    },
+    'membersAndFileTree': {'en': 'Members and File Tree', 'zh': '成员和文件树'},
     'stacked': {'en': 'Stacked', 'zh': '堆叠'},
     'tabs': {'en': 'Tabs', 'zh': '标签页'},
     'stackedTools': {'en': 'Stacked Tools', 'zh': '堆叠工具栏'},
@@ -278,7 +272,10 @@ class _AppLocalizationsDelegate
     },
     'providerList': {'en': 'Provider List', 'zh': '提供商列表'},
     'filterProviders': {'en': 'Filter providers...', 'zh': '筛选提供商...'},
-    'modelsUsingProvider': {'en': 'Models using this provider:', 'zh': '使用此提供商的模型：'},
+    'modelsUsingProvider': {
+      'en': 'Models using this provider:',
+      'zh': '使用此提供商的模型：',
+    },
     'type': {'en': 'Type', 'zh': '类型'},
     'providerType': {'en': 'Provider type', 'zh': '提供商类型'},
     'providerTypeHint': {
@@ -292,10 +289,7 @@ class _AppLocalizationsDelegate
     'reveal': {'en': 'Reveal', 'zh': '显示'},
     'hide': {'en': 'Hide', 'zh': '隐藏'},
     'replaceKey': {'en': 'Replace key', 'zh': '替换密钥'},
-    'deleteProviderTooltip': {
-      'en': 'Delete provider',
-      'zh': '删除提供商',
-    },
+    'deleteProviderTooltip': {'en': 'Delete provider', 'zh': '删除提供商'},
     'noModelsUsingProvider': {
       'en': 'No models are using this provider.',
       'zh': '没有模型使用此提供商。',
@@ -308,10 +302,7 @@ class _AppLocalizationsDelegate
       'en': 'Select a provider from the list',
       'zh': '从列表中选择一个提供商',
     },
-    'accountCredentialPath': {
-      'en': 'Account credential path',
-      'zh': '账户凭证路径',
-    },
+    'accountCredentialPath': {'en': 'Account credential path', 'zh': '账户凭证路径'},
     'removePath': {'en': 'Remove path', 'zh': '移除路径'},
     'addAccountPath': {'en': 'Add account path', 'zh': '添加账户路径'},
     'api': {'en': 'api', 'zh': 'api'},
@@ -326,14 +317,8 @@ class _AppLocalizationsDelegate
     'editModelTitle': {'en': 'Edit {name}', 'zh': '编辑 {name}'},
     'name': {'en': 'Name', 'zh': '名称'},
     'actualModel': {'en': 'Actual Model', 'zh': '实际模型'},
-    'noModelsConfigured': {
-      'en': 'No models configured',
-      'zh': '未配置模型',
-    },
-    'missingProvider': {
-      'en': 'Missing provider:',
-      'zh': '缺少提供商：',
-    },
+    'noModelsConfigured': {'en': 'No models configured', 'zh': '未配置模型'},
+    'missingProvider': {'en': 'Missing provider:', 'zh': '缺少提供商：'},
 
     'summary': {'en': 'Summary', 'zh': '摘要'},
     'statProviders': {'en': 'providers', 'zh': '个提供商'},
@@ -366,15 +351,13 @@ class _AppLocalizationsDelegate
 
   @override
   Future<AppLocalizations> load(Locale locale) {
-    final langCode = _supportedLocales.any(
-      (l) => l.languageCode == locale.languageCode,
-    )
+    final langCode =
+        _supportedLocales.any((l) => l.languageCode == locale.languageCode)
         ? locale.languageCode
         : 'en';
     final strings = <String, String>{};
     for (final entry in _strings.entries) {
-      strings[entry.key] =
-          entry.value[langCode] ?? entry.value['en'] ?? '';
+      strings[entry.key] = entry.value[langCode] ?? entry.value['en'] ?? '';
     }
     return Future.value(AppLocalizations(strings));
   }
