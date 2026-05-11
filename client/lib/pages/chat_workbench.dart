@@ -20,6 +20,7 @@ class ChatWorkbench extends StatefulWidget {
 
 class _ChatWorkbenchState extends State<ChatWorkbench> {
   TerminalSession? _session;
+  var _ensuredLocalSession = false;
 
   @override
   void initState() {
@@ -57,6 +58,14 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
 
     if (team == null) {
       return const Center(child: CircularProgressIndicator());
+    }
+
+    if (!_ensuredLocalSession && chatCubit.state.tabs.isEmpty) {
+      _ensuredLocalSession = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        context.read<ChatCubit>().ensureSessionTab(team);
+      });
     }
 
     _session ??= chatCubit.ensureSession(team);

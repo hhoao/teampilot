@@ -6,6 +6,7 @@ import '../cubits/config_cubit.dart';
 import '../cubits/layout_cubit.dart';
 import '../pages/chat_page.dart';
 import '../pages/config_workspace.dart';
+import '../utils/logger.dart';
 import '../utils/perf.dart';
 import '../widgets/context_sidebar.dart';
 import '../widgets/resizable_split_view.dart';
@@ -18,7 +19,7 @@ final appRouter = GoRouter(
         final sw = Stopwatch()..start();
         final layoutCubit = context.watch<LayoutCubit>();
         final preferences = layoutCubit.state.preferences;
-        print(
+        appLogger.d(
           '[perf] ShellRoute builder ${state.uri}: ${sw.elapsedMilliseconds}ms',
         );
         return Scaffold(

@@ -632,7 +632,7 @@ class _ProviderDetailPanelState extends State<_ProviderDetailPanel> {
                       ),
                       _SizedField(
                         child: DropdownButtonFormField<String>(
-                          value: _type,
+                          initialValue: _type,
                           decoration: InputDecoration(labelText: l10n.type),
                           items: [
                             DropdownMenuItem(
@@ -1316,7 +1316,7 @@ class _ModelEditDialogState extends State<_ModelEditDialog> {
             const SizedBox(height: 14),
             DropdownButtonFormField<String>(
               key: AppKeys.modelProviderField,
-              value: widget.providers.containsKey(_provider) ? _provider : null,
+              initialValue: widget.providers.containsKey(_provider) ? _provider : null,
               decoration: InputDecoration(labelText: l10n.provider),
               items: [
                 for (final p in widget.providers.values)

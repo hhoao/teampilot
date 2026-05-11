@@ -9,6 +9,7 @@ import '../models/session.dart';
 import '../models/team_config.dart';
 import '../theme/app_theme.dart';
 import '../utils/app_keys.dart';
+import '../utils/logger.dart';
 import '../utils/perf.dart';
 
 class ContextSidebar extends StatefulWidget {
@@ -75,7 +76,7 @@ class _ContextSidebarState extends State<ContextSidebar> {
                       final sw = Stopwatch()..start();
                       FramePerf.mark('nav settings team');
                       context.go('/config/team');
-                      print(
+                      appLogger.d(
                         '[perf] context.go /config/team: ${sw.elapsedMilliseconds}ms',
                       );
                     },
@@ -142,13 +143,14 @@ class _SessionTileEntry extends StatelessWidget {
           teamCubit.selectTeam(matchingTeam.id);
         }
 
-        final lead =
-            matchingTeam.members.where((m) => m.name == 'team-lead');
+        chatCubit.openSessionTab(session);
+        final lead = matchingTeam.members.where((m) => m.name == 'team-lead');
         if (lead.isNotEmpty) {
           chatCubit.openMemberTab(matchingTeam, lead.first);
         } else {
           chatCubit.addSystemMessage(
-              'FlashskyAI requires a member named team-lead.');
+            'FlashskyAI requires a member named team-lead.',
+          );
         }
 
         context.go('/chat');

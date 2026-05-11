@@ -6,6 +6,10 @@ import '../models/session.dart';
 import '../models/team_config.dart';
 import '../repositories/session_repository.dart';
 import '../services/terminal_session.dart';
+import '../utils/logger.dart';
+
+typedef TerminalSessionFactory = TerminalSession Function();
+typedef PostFrameScheduler = void Function(VoidCallback callback);
 
 class ChatTabInfo extends Equatable {
   const ChatTabInfo({
@@ -34,9 +38,23 @@ class ChatTabInfo extends Equatable {
 }
 
 class _InternalTab {
-  _InternalTab({required this.info, required this.session});
+  _InternalTab({
+    required this.info,
+    this.resumeSession,
+    this.selectedMemberId = '',
+  });
+
   ChatTabInfo info;
-  final TerminalSession session;
+  TerminalSession? resumeSession;
+  String selectedMemberId;
+  final Map<String, TerminalSession> memberShells = {};
+
+  Iterable<TerminalSession> get sessions sync* {
+    if (resumeSession != null) yield resumeSession!;
+    yield* memberShells.values;
+  }
+
+  bool get isRunning => sessions.any((session) => session.isRunning);
 }
 
 class ChatState extends Equatable {
@@ -74,23 +92,42 @@ class ChatState extends Equatable {
   }
 
   @override
-  List<Object?> get props =>
-      [tabs, activeTabIndex, sessions, activeSessionId, selectedMemberId];
+  List<Object?> get props => [
+    tabs,
+    activeTabIndex,
+    sessions,
+    activeSessionId,
+    selectedMemberId,
+  ];
 }
 
 class ChatCubit extends Cubit<ChatState> {
-  ChatCubit() : super(const ChatState());
+  ChatCubit({
+    TerminalSessionFactory terminalSessionFactory = TerminalSession.new,
+    PostFrameScheduler? postFrameScheduler,
+  }) : _terminalSessionFactory = terminalSessionFactory,
+       _postFrameScheduler = postFrameScheduler ?? _defaultPostFrameScheduler,
+       super(const ChatState());
 
   final List<_InternalTab> _internalTabs = [];
-  TerminalSession? _legacySession;
-  String? _legacyTeamId;
-  String? _legacyMemberId;
+  final TerminalSessionFactory _terminalSessionFactory;
+  final PostFrameScheduler _postFrameScheduler;
+
+  static void _defaultPostFrameScheduler(VoidCallback callback) {
+    WidgetsBinding.instance.addPostFrameCallback((_) => callback());
+  }
+
+  _InternalTab? get _activeTab {
+    if (_internalTabs.isEmpty) return null;
+    final index = state.activeTabIndex.clamp(0, _internalTabs.length - 1);
+    return _internalTabs[index];
+  }
 
   TerminalSession? get currentSession {
-    if (_internalTabs.isNotEmpty) {
-      return _internalTabs[state.activeTabIndex].session;
-    }
-    return _legacySession;
+    final tab = _activeTab;
+    if (tab == null) return null;
+    final memberShell = tab.memberShells[tab.selectedMemberId];
+    return memberShell ?? tab.resumeSession;
   }
 
   Future<void> loadSessions(SessionRepository repo) async {
@@ -100,70 +137,93 @@ class ChatCubit extends Cubit<ChatState> {
 
   void openSessionTab(FlashskySession session) {
     final sw = Stopwatch()..start();
-    final existingIdx =
-        _internalTabs.indexWhere((t) => t.info.id == session.sessionId);
+    final existingIdx = _internalTabs.indexWhere(
+      (t) => t.info.id == session.sessionId,
+    );
     if (existingIdx != -1) {
-      emit(state.copyWith(
+      final existing = _internalTabs[existingIdx];
+      emit(
+        state.copyWith(
           activeTabIndex: existingIdx,
-          activeSessionId: session.sessionId));
+          activeSessionId: session.sessionId,
+          selectedMemberId: existing.selectedMemberId,
+        ),
+      );
       return;
     }
-    final ts = TerminalSession();
+    final ts = _terminalSessionFactory();
     final info = ChatTabInfo(
       id: session.sessionId,
       title: session.display.isNotEmpty ? session.display : session.kind,
       subtitle: session.cwd,
     );
-    _internalTabs.add(_InternalTab(info: info, session: ts));
-    emit(state.copyWith(
-      tabs: [...state.tabs, info],
-      activeTabIndex: _internalTabs.length - 1,
-      activeSessionId: session.sessionId,
-    ));
-    print('[perf] openSessionTab emit: ${sw.elapsedMilliseconds}ms');
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    _internalTabs.add(_InternalTab(info: info, resumeSession: ts));
+    emit(
+      state.copyWith(
+        tabs: [...state.tabs, info],
+        activeTabIndex: _internalTabs.length - 1,
+        activeSessionId: session.sessionId,
+      ),
+    );
+    appLogger.d('[perf] openSessionTab emit: ${sw.elapsedMilliseconds}ms');
+    _postFrameScheduler(() {
       try {
         final sw2 = Stopwatch()..start();
         ts.connectResume(session.sessionId);
-        print('[perf] connectResume: ${sw2.elapsedMilliseconds}ms');
-        _updateTabRunning(info.id, true);
+        appLogger.d('[perf] connectResume: ${sw2.elapsedMilliseconds}ms');
+        _updateTabRunning(info.id);
       } on Object catch (e) {
         ts.terminal.write('\r\n[Failed to resume session: $e]\r\n');
       }
     });
   }
 
+  void ensureSessionTab(TeamConfig team) {
+    if (_internalTabs.isEmpty) {
+      final info = _localSessionInfo(team);
+      _internalTabs.add(
+        _InternalTab(info: info, selectedMemberId: _defaultMemberId(team)),
+      );
+    }
+    final tab = _activeTab;
+    if (tab == null) return;
+    emit(
+      state.copyWith(
+        tabs: _visibleTabs(),
+        activeSessionId: tab.info.id,
+        selectedMemberId: tab.selectedMemberId,
+      ),
+    );
+  }
+
   void openMemberTab(TeamConfig team, TeamMemberConfig member) {
     final sw = Stopwatch()..start();
-    final tabId = 'member-${member.id}';
-    final existingIdx =
-        _internalTabs.indexWhere((t) => t.info.id == tabId);
-    if (existingIdx != -1) {
-      emit(state.copyWith(
-          activeTabIndex: existingIdx, selectedMemberId: member.id));
+    final tab = _ensureActiveSessionTab(team, emitChange: true);
+    tab.selectedMemberId = member.id;
+    final shell = tab.memberShells.putIfAbsent(
+      member.id,
+      _terminalSessionFactory,
+    );
+    emit(
+      state.copyWith(
+        tabs: _visibleTabs(),
+        activeSessionId: tab.info.id,
+        selectedMemberId: member.id,
+      ),
+    );
+    appLogger.d('[perf] openMemberTab emit: ${sw.elapsedMilliseconds}ms');
+    if (shell.isRunning) {
+      _updateTabRunning(tab.info.id);
       return;
     }
-    final ts = TerminalSession();
-    final info = ChatTabInfo(
-      id: tabId,
-      title: member.name,
-      subtitle: '${team.name} / local',
-    );
-    _internalTabs.add(_InternalTab(info: info, session: ts));
-    emit(state.copyWith(
-      tabs: [...state.tabs, info],
-      activeTabIndex: _internalTabs.length - 1,
-      selectedMemberId: member.id,
-    ));
-    print('[perf] openMemberTab emit: ${sw.elapsedMilliseconds}ms');
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    _postFrameScheduler(() {
       try {
         final sw2 = Stopwatch()..start();
-        ts.connect(team, member);
-        print('[perf] connect: ${sw2.elapsedMilliseconds}ms');
-        _updateTabRunning(tabId, true);
+        shell.connect(team, member);
+        appLogger.d('[perf] connect: ${sw2.elapsedMilliseconds}ms');
+        _updateTabRunning(tab.info.id);
       } on Object catch (e) {
-        ts.terminal.write('\r\n[Failed to start session: $e]\r\n');
+        shell.terminal.write('\r\n[Failed to start session: $e]\r\n');
       }
     });
   }
@@ -171,60 +231,61 @@ class ChatCubit extends Cubit<ChatState> {
   void closeTab(int index) {
     if (index < 0 || index >= _internalTabs.length) return;
     final tab = _internalTabs.removeAt(index);
-    tab.session.dispose();
+    for (final session in tab.sessions) {
+      session.dispose();
+    }
     if (_internalTabs.isEmpty) {
-      emit(state.copyWith(
-          tabs: [], activeTabIndex: 0, clearActiveSessionId: true));
+      emit(
+        state.copyWith(tabs: [], activeTabIndex: 0, clearActiveSessionId: true),
+      );
     } else {
       final newIdx = state.activeTabIndex >= _internalTabs.length
           ? _internalTabs.length - 1
           : state.activeTabIndex;
-      emit(state.copyWith(
-          tabs: _internalTabs.map((t) => t.info).toList(),
-          activeTabIndex: newIdx));
+      final nextTab = _internalTabs[newIdx];
+      emit(
+        state.copyWith(
+          tabs: _visibleTabs(),
+          activeTabIndex: newIdx,
+          activeSessionId: nextTab.info.id,
+          selectedMemberId: nextTab.selectedMemberId,
+        ),
+      );
     }
   }
 
   void selectTab(int index) {
     if (index < 0 || index >= _internalTabs.length) return;
     final tab = _internalTabs[index];
-    final memberId = tab.info.id.startsWith('member-')
-        ? tab.info.id.replaceFirst('member-', '')
-        : state.selectedMemberId;
-    emit(state.copyWith(activeTabIndex: index, selectedMemberId: memberId));
+    emit(
+      state.copyWith(
+        activeTabIndex: index,
+        activeSessionId: tab.info.id,
+        selectedMemberId: tab.selectedMemberId,
+      ),
+    );
   }
 
   void syncTeam(TeamConfig team) {
     if (team.members.isEmpty) {
-      _killLegacySession();
       emit(state.copyWith(selectedMemberId: ''));
       return;
     }
     if (team.members.any((m) => m.id == state.selectedMemberId)) return;
-    final lead = team.members.where((m) => m.name == 'team-lead');
-    final newId =
-        lead.isEmpty ? team.members.first.id : lead.first.id;
-    _killLegacySession();
+    final newId = _defaultMemberId(team);
+    _activeTab?.selectedMemberId = newId;
     emit(state.copyWith(selectedMemberId: newId));
   }
 
   void selectMember(String memberId) {
     if (state.selectedMemberId == memberId) return;
-    final tabId = 'member-$memberId';
-    final existingIdx = _internalTabs.indexWhere((t) => t.info.id == tabId);
-    if (existingIdx != -1) {
-      emit(state.copyWith(
-          activeTabIndex: existingIdx, selectedMemberId: memberId));
-      return;
-    }
-    _killLegacySession();
+    _activeTab?.selectedMemberId = memberId;
     emit(state.copyWith(selectedMemberId: memberId));
   }
 
   bool isMemberRunning(String memberId) {
-    final tabId = 'member-$memberId';
-    final idx = _internalTabs.indexWhere((t) => t.info.id == tabId);
-    return idx != -1 && _internalTabs[idx].info.isRunning;
+    final shell = _activeTab?.memberShells[memberId];
+    return shell?.isRunning ?? false;
   }
 
   void launchAllMembers(TeamConfig team) {
@@ -242,73 +303,118 @@ class ChatCubit extends Cubit<ChatState> {
   }
 
   TerminalSession ensureSession(TeamConfig team) {
-    if (_legacySession != null &&
-        _legacyTeamId == team.id &&
-        _legacyMemberId == state.selectedMemberId) {
-      return _legacySession!;
+    final tab = _ensureActiveSessionTab(team, emitChange: false);
+    if (tab.selectedMemberId.isEmpty) {
+      tab.selectedMemberId = _defaultMemberId(team);
     }
-    _legacySession?.dispose();
-    _legacySession = TerminalSession();
-    _legacyTeamId = team.id;
-    _legacyMemberId = state.selectedMemberId;
-    return _legacySession!;
+    if (tab.selectedMemberId.isNotEmpty) {
+      return tab.memberShells.putIfAbsent(
+        tab.selectedMemberId,
+        _terminalSessionFactory,
+      );
+    }
+    return tab.resumeSession ??= _terminalSessionFactory();
   }
 
   void connectSession(TeamConfig team) {
-    final session = ensureSession(team);
-    if (session.isRunning) return;
     final memberId = state.selectedMemberId;
     if (memberId.isEmpty) {
+      final session = ensureSession(team);
       session.terminal.write('\r\n[No member selected]\r\n');
       return;
     }
-    final member = team.members.firstWhere((m) => m.id == memberId,
-        orElse: () => team.members.first);
-    session.connect(team, member);
+    final member = team.members.firstWhere(
+      (m) => m.id == memberId,
+      orElse: () => team.members.first,
+    );
+    openMemberTab(team, member);
   }
 
   void disconnectSession() {
-    _legacySession?.disconnect();
+    final tab = _activeTab;
+    if (tab == null) return;
+    tab.memberShells[tab.selectedMemberId]?.disconnect();
+    _updateTabRunning(tab.info.id);
   }
 
   void restartSession(TeamConfig team) {
-    _killLegacySession();
-    ensureSession(team);
+    disconnectSession();
     connectSession(team);
   }
 
   void selectSession(String sessionId) {
-    emit(state.copyWith(activeSessionId: sessionId));
+    final idx = _internalTabs.indexWhere((t) => t.info.id == sessionId);
+    if (idx == -1) {
+      emit(state.copyWith(activeSessionId: sessionId));
+      return;
+    }
+    selectTab(idx);
   }
 
   void addSystemMessage(String content) {
-    final target = _internalTabs.isNotEmpty
-        ? _internalTabs[state.activeTabIndex].session
-        : _legacySession;
+    final target = currentSession;
     target?.terminal.write('\r\n[system] $content\r\n');
   }
 
-  void _killLegacySession() {
-    _legacySession?.dispose();
-    _legacySession = null;
-    _legacyTeamId = null;
-    _legacyMemberId = null;
-  }
-
-  void _updateTabRunning(String tabId, bool isRunning) {
+  void _updateTabRunning(String tabId) {
     final idx = _internalTabs.indexWhere((t) => t.info.id == tabId);
     if (idx == -1) return;
-    _internalTabs[idx].info =
-        _internalTabs[idx].info.copyWith(isRunning: isRunning);
-    emit(state.copyWith(
-        tabs: _internalTabs.map((t) => t.info).toList()));
+    _internalTabs[idx].info = _internalTabs[idx].info.copyWith(
+      isRunning: _internalTabs[idx].isRunning,
+    );
+    emit(state.copyWith(tabs: _visibleTabs()));
+  }
+
+  _InternalTab _ensureActiveSessionTab(
+    TeamConfig team, {
+    required bool emitChange,
+  }) {
+    final existing = _activeTab;
+    if (existing != null) return existing;
+
+    final info = _localSessionInfo(team);
+    final tab = _InternalTab(
+      info: info,
+      selectedMemberId: _defaultMemberId(team),
+    );
+    _internalTabs.add(tab);
+    if (emitChange) {
+      emit(
+        state.copyWith(
+          tabs: _visibleTabs(),
+          activeTabIndex: _internalTabs.length - 1,
+          activeSessionId: info.id,
+          selectedMemberId: tab.selectedMemberId,
+        ),
+      );
+    }
+    return tab;
+  }
+
+  ChatTabInfo _localSessionInfo(TeamConfig team) {
+    return ChatTabInfo(
+      id: 'local-${team.id}',
+      title: team.name,
+      subtitle: '${team.workingDirectory} / local session',
+    );
+  }
+
+  String _defaultMemberId(TeamConfig team) {
+    if (team.members.isEmpty) return '';
+    final lead = team.members.where((m) => m.name == 'team-lead');
+    return lead.isEmpty ? team.members.first.id : lead.first.id;
+  }
+
+  List<ChatTabInfo> _visibleTabs() {
+    return _internalTabs.map((t) => t.info).toList();
   }
 
   @override
   Future<void> close() async {
-    _killLegacySession();
     for (final tab in _internalTabs) {
-      tab.session.dispose();
+      for (final session in tab.sessions) {
+        session.dispose();
+      }
     }
     _internalTabs.clear();
     await super.close();
