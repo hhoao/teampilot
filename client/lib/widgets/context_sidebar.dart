@@ -7,6 +7,7 @@ import '../cubits/team_cubit.dart';
 import '../l10n/app_localizations.dart';
 import '../models/session.dart';
 import '../models/team_config.dart';
+import '../repositories/session_repository.dart';
 import '../theme/app_theme.dart';
 import '../utils/app_keys.dart';
 import '../utils/logger.dart';
@@ -59,6 +60,13 @@ class _ContextSidebarState extends State<ContextSidebar> {
                     onSelect: teamCubit.selectTeam,
                   ),
                   const SizedBox(height: 14),
+                  _TeamConfigTile(
+                    onTap: () {
+                      FramePerf.mark('nav team config');
+                      context.go('/team-config');
+                    },
+                  ),
+                  const SizedBox(height: 14),
                   _SidebarSectionTitle(
                     title: l10n.teamSessions,
                     actionLabel: '+',
@@ -74,10 +82,10 @@ class _ContextSidebarState extends State<ContextSidebar> {
                   _SettingsTile(
                     onTap: () {
                       final sw = Stopwatch()..start();
-                      FramePerf.mark('nav settings team');
-                      context.go('/config/team');
+                      FramePerf.mark('nav settings layout');
+                      context.go('/config/layout');
                       appLogger.d(
-                        '[perf] context.go /config/team: ${sw.elapsedMilliseconds}ms',
+                        '[perf] context.go /config/layout: ${sw.elapsedMilliseconds}ms',
                       );
                     },
                   ),
@@ -105,56 +113,181 @@ class _SessionList extends StatelessWidget {
   }
 }
 
-class _SessionTileEntry extends StatelessWidget {
+class _SessionTileEntry extends StatefulWidget {
   const _SessionTileEntry({required this.session});
 
   final FlashskySession session;
 
   @override
+  State<_SessionTileEntry> createState() => _SessionTileEntryState();
+}
+
+class _SessionTileEntryState extends State<_SessionTileEntry> {
+  var _hovered = false;
+
+  @override
   Widget build(BuildContext context) {
+    final session = widget.session;
     final selected = context.select<ChatCubit, bool>(
       (cubit) => cubit.state.activeSessionId == session.sessionId,
     );
-    return _SidebarTile(
-      key: AppKeys.sessionTile(session.sessionId),
-      title: session.display.isNotEmpty ? session.display : session.kind,
-      subtitle: session.cwd,
-      selected: selected,
-      onTap: () {
-        FramePerf.mark('nav session ${session.sessionId}');
-        final teamCubit = context.read<TeamCubit>();
-        final chatCubit = context.read<ChatCubit>();
+    final l10n = context.l10n;
 
-        chatCubit.selectSession(session.sessionId);
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: _SidebarTile(
+        key: AppKeys.sessionTile(session.sessionId),
+        title: session.display.isNotEmpty ? session.display : session.kind,
+        subtitle: session.cwd,
+        selected: selected,
+        onTap: () {
+          FramePerf.mark('nav session ${session.sessionId}');
+          final teamCubit = context.read<TeamCubit>();
+          final chatCubit = context.read<ChatCubit>();
 
-        TeamConfig? matchingTeam;
-        if (session.cwd.isNotEmpty) {
-          for (final t in teamCubit.state.teams) {
-            if (t.workingDirectory.trim() == session.cwd.trim()) {
-              matchingTeam = t;
-              break;
+          chatCubit.selectSession(session.sessionId);
+
+          TeamConfig? matchingTeam;
+          if (session.cwd.isNotEmpty) {
+            for (final t in teamCubit.state.teams) {
+              if (t.workingDirectory.trim() == session.cwd.trim()) {
+                matchingTeam = t;
+                break;
+              }
             }
           }
-        }
-        matchingTeam ??= teamCubit.state.selectedTeam;
-        if (matchingTeam == null) return;
+          matchingTeam ??= teamCubit.state.selectedTeam;
+          if (matchingTeam == null) return;
 
-        if (teamCubit.state.selectedTeam?.id != matchingTeam.id) {
-          teamCubit.selectTeam(matchingTeam.id);
-        }
+          if (teamCubit.state.selectedTeam?.id != matchingTeam.id) {
+            teamCubit.selectTeam(matchingTeam.id);
+          }
 
-        chatCubit.openSessionTab(session);
-        final lead = matchingTeam.members.where((m) => m.name == 'team-lead');
-        if (lead.isNotEmpty) {
-          chatCubit.openMemberTab(matchingTeam, lead.first);
-        } else {
-          chatCubit.addSystemMessage(
-            'FlashskyAI requires a member named team-lead.',
-          );
-        }
+          chatCubit.openSessionTab(session);
+          final lead = matchingTeam.members.where((m) => m.name == 'team-lead');
+          if (lead.isNotEmpty) {
+            chatCubit.openMemberTab(matchingTeam, lead.first);
+          } else {
+            chatCubit.addSystemMessage(
+              'FlashskyAI requires a member named team-lead.',
+            );
+          }
 
-        context.go('/chat');
-      },
+          context.go('/chat');
+        },
+        trailing: _hovered
+            ? PopupMenuButton<String>(
+                padding: EdgeInsets.zero,
+                icon: const Icon(Icons.more_horiz, size: 16),
+                onSelected: (value) {
+                  switch (value) {
+                    case 'rename':
+                      _showRenameDialog(context, session, l10n);
+                    case 'delete':
+                      _showDeleteDialog(context, session, l10n);
+                  }
+                },
+                itemBuilder: (context) => [
+                  PopupMenuItem(
+                    value: 'rename',
+                    child: Text(l10n.renameConversation),
+                  ),
+                  PopupMenuItem(
+                    value: 'delete',
+                    child: Text(l10n.deleteConversation),
+                  ),
+                ],
+              )
+            : null,
+      ),
+    );
+  }
+
+  void _showRenameDialog(
+    BuildContext context,
+    FlashskySession session,
+    AppLocalizations l10n,
+  ) {
+    final controller = TextEditingController(
+      text: session.display.isNotEmpty ? session.display : session.kind,
+    );
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.renameConversationTitle),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          decoration: InputDecoration(
+            labelText: l10n.conversationName,
+          ),
+          onSubmitted: (value) {
+            if (value.trim().isNotEmpty) {
+              context.read<ChatCubit>().renameSession(
+                const SessionRepository(),
+                session.sessionId,
+                value.trim(),
+              );
+            }
+            Navigator.of(ctx).pop();
+          },
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: Text(l10n.cancel),
+          ),
+          FilledButton(
+            onPressed: () {
+              final value = controller.text.trim();
+              if (value.isNotEmpty) {
+                context.read<ChatCubit>().renameSession(
+                  const SessionRepository(),
+                  session.sessionId,
+                  value,
+                );
+              }
+              Navigator.of(ctx).pop();
+            },
+            child: Text(l10n.save),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showDeleteDialog(
+    BuildContext context,
+    FlashskySession session,
+    AppLocalizations l10n,
+  ) {
+    final name = session.display.isNotEmpty ? session.display : session.kind;
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.deleteConversation),
+        content: Text(l10n.deleteConversationConfirm(name)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: Text(l10n.cancel),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.error,
+            ),
+            onPressed: () {
+              context.read<ChatCubit>().deleteSession(
+                const SessionRepository(),
+                session.sessionId,
+              );
+              Navigator.of(ctx).pop();
+            },
+            child: Text(l10n.delete),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -183,6 +316,39 @@ class _SettingsTile extends StatelessWidget {
               const SizedBox(width: 10),
               Text(
                 'Settings',
+                style: TextStyle(fontWeight: FontWeight.w700, color: textBase),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _TeamConfigTile extends StatelessWidget {
+  const _TeamConfigTile({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textBase = isDark ? Colors.white : const Color(0xFF111827);
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(8),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(8),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.all(10),
+          child: Row(
+            children: [
+              Icon(Icons.groups_2_outlined, size: 18, color: textBase),
+              const SizedBox(width: 10),
+              Text(
+                context.l10n.teamConfig,
                 style: TextStyle(fontWeight: FontWeight.w700, color: textBase),
               ),
             ],
@@ -292,6 +458,7 @@ class _SidebarTile extends StatelessWidget {
     required this.subtitle,
     required this.selected,
     this.onTap,
+    this.trailing,
     super.key,
   });
 
@@ -299,6 +466,7 @@ class _SidebarTile extends StatelessWidget {
   final String subtitle;
   final bool selected;
   final VoidCallback? onTap;
+  final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
@@ -325,28 +493,35 @@ class _SidebarTile extends StatelessWidget {
                     : colors.unselectedBorder,
               ),
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            child: Row(
               children: [
-                Text(
-                  title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontWeight: FontWeight.w700,
-                    color: textBase,
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          color: textBase,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        subtitle,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: textBase.withValues(alpha: 0.52),
+                          fontSize: 11,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  subtitle,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: textBase.withValues(alpha: 0.52),
-                    fontSize: 11,
-                  ),
-                ),
+                if (trailing != null) trailing!,
               ],
             ),
           ),
