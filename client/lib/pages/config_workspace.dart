@@ -826,7 +826,7 @@ class _SettingsTitleBar extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
               color: textBase,
-              fontSize: 32,
+              fontSize: 22,
               fontWeight: FontWeight.w800,
               height: 1.05,
             ),
@@ -838,7 +838,7 @@ class _SettingsTitleBar extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
               color: textBase.withValues(alpha: 0.66),
-              fontSize: 19,
+              fontSize: 14,
               height: 1.25,
             ),
           ),
@@ -864,7 +864,7 @@ class _WorkspaceHeading extends StatelessWidget {
         Text(
           title,
           style: TextStyle(
-            fontSize: 18,
+            fontSize: 15,
             fontWeight: FontWeight.w800,
             color: textBase,
           ),
@@ -903,7 +903,11 @@ class _Section extends StatelessWidget {
         children: [
           Text(
             title,
-            style: TextStyle(fontWeight: FontWeight.w800, color: textBase),
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w800,
+              color: textBase,
+            ),
           ),
           const SizedBox(height: 10),
           child,
@@ -1035,7 +1039,7 @@ class _ConfigNavItem extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        fontSize: compact ? 17 : 20,
+                        fontSize: compact ? 14 : 15,
                         fontWeight: selected
                             ? FontWeight.w700
                             : FontWeight.w600,

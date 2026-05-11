@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flashskyai_client/cubits/chat_cubit.dart';
 import 'package:flashskyai_client/cubits/config_cubit.dart';
 import 'package:flashskyai_client/cubits/layout_cubit.dart';
@@ -11,6 +13,7 @@ import 'package:flashskyai_client/models/team_config.dart';
 import 'package:flashskyai_client/repositories/layout_repository.dart';
 import 'package:flashskyai_client/repositories/team_repository.dart';
 import 'package:flashskyai_client/services/terminal_session.dart';
+import 'package:flashskyai_client/theme/app_theme.dart';
 import 'package:flashskyai_client/utils/app_keys.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -28,12 +31,8 @@ Widget buildTestApp({
       BlocProvider.value(value: teamCubit),
       BlocProvider.value(value: chatCubit ?? ChatCubit()),
       BlocProvider(create: (_) => ConfigCubit()),
-      BlocProvider.value(
-        value: llmConfigCubit ?? LlmConfigCubit(),
-      ),
-      BlocProvider.value(
-        value: layoutCubit ?? LayoutCubit(),
-      ),
+      BlocProvider.value(value: llmConfigCubit ?? LlmConfigCubit()),
+      BlocProvider.value(value: layoutCubit ?? LayoutCubit()),
     ],
     child: const FlashskyAiClientApp(),
   );
@@ -147,6 +146,53 @@ void main() {
     expect(chatCubit.isMemberRunning('team-lead'), isTrue);
   });
 
+  testWidgets('renders settings shell with title bar and icon navigation', (
+    tester,
+  ) async {
+    final teamCubit = await createTeamCubit();
+    await pumpDesktopApp(tester, teamCubit);
+
+    await tester.tap(find.byKey(AppKeys.sidebarSettingsButton));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('Manage FlashskyAI team and model settings.'),
+      findsOneWidget,
+    );
+    expect(find.byIcon(Icons.groups_2_outlined), findsOneWidget);
+    expect(find.byIcon(Icons.memory_outlined), findsOneWidget);
+  });
+
+  testWidgets('settings pages use the global component theme', (tester) async {
+    final teamCubit = await createTeamCubit();
+    await pumpDesktopApp(tester, teamCubit);
+
+    await tester.tap(find.byKey(AppKeys.sidebarSettingsButton));
+    await tester.pumpAndSettle();
+
+    final settingsTheme = Theme.of(
+      tester.element(find.byKey(AppKeys.configWorkspace)),
+    );
+    final appColors = AppColors.of(
+      tester.element(find.byKey(AppKeys.configWorkspace)),
+    );
+    final filledButtonColor = settingsTheme
+        .filledButtonTheme
+        .style
+        ?.backgroundColor
+        ?.resolve(<WidgetState>{});
+    expect(filledButtonColor, appColors.accentBlue);
+
+    await tester.tap(find.byKey(AppKeys.configLlmSectionButton));
+    await tester.pumpAndSettle();
+
+    final providerList = tester.widget<Container>(
+      find.byKey(AppKeys.llmProviderList),
+    );
+    final decoration = providerList.decoration! as BoxDecoration;
+    expect(decoration.color, appColors.cardBackground);
+  });
+
   testWidgets('opening a sidebar session starts team-lead member shell', (
     tester,
   ) async {
@@ -169,6 +215,28 @@ void main() {
     expect(chatCubit.state.activeSessionId, 'session-1');
     expect(chatCubit.state.selectedMemberId, 'team-lead');
     expect(chatCubit.isMemberRunning('team-lead'), isTrue);
+  });
+
+  test('terminal views keep IME text input enabled', () {
+    final terminalSources = [
+      File('lib/pages/chat_workbench.dart'),
+      File('lib/widgets/ui_warmup.dart'),
+    ];
+
+    for (final sourceFile in terminalSources) {
+      final source = sourceFile.readAsStringSync();
+
+      expect(
+        source,
+        isNot(contains('hardwareKeyboardOnly: true')),
+        reason: '${sourceFile.path} must use TextInput so Chinese IME works.',
+      );
+      expect(
+        source,
+        contains('keyboardType: TextInputType.text'),
+        reason: '${sourceFile.path} should request regular text input.',
+      );
+    }
   });
 
   test('team cubit manages teams', () async {
@@ -314,20 +382,20 @@ void main() {
 
     expect(cubit.state.config.providers.length, 1);
 
-    cubit.addProvider(const LlmProviderConfig(
-      name: 'new',
-      type: 'account',
-      providerType: '',
-    ));
+    cubit.addProvider(
+      const LlmProviderConfig(name: 'new', type: 'account', providerType: ''),
+    );
     expect(cubit.state.config.providers.length, 2);
 
-    cubit.addModel(const LlmModelConfig(
-      id: 'm1',
-      name: 'Model 1',
-      provider: 'test',
-      model: 'gpt-4',
-      enabled: true,
-    ));
+    cubit.addModel(
+      const LlmModelConfig(
+        id: 'm1',
+        name: 'Model 1',
+        provider: 'test',
+        model: 'gpt-4',
+        enabled: true,
+      ),
+    );
     expect(cubit.state.config.models.length, 1);
 
     cubit.deleteProvider('new');

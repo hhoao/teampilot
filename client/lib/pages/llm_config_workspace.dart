@@ -1396,7 +1396,7 @@ class _WorkspaceHeading extends StatelessWidget {
               Text(
                 title,
                 style: TextStyle(
-                  fontSize: 18,
+                  fontSize: 15,
                   fontWeight: FontWeight.w800,
                   color: textBase,
                 ),
@@ -1439,7 +1439,11 @@ class _Section extends StatelessWidget {
         children: [
           Text(
             title,
-            style: TextStyle(fontWeight: FontWeight.w800, color: textBase),
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w800,
+              color: textBase,
+            ),
           ),
           const SizedBox(height: 10),
           child,
