@@ -371,16 +371,6 @@ class _ProjectHeaderState extends State<_ProjectHeader> {
                                     color: textBase,
                                   ),
                                 ),
-                                if (widget.path.isNotEmpty)
-                                  Text(
-                                    '${widget.sessionCount} sessions',
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(
-                                      color: textBase.withValues(alpha: 0.45),
-                                      fontSize: 10,
-                                    ),
-                                  ),
                               ],
                             ),
                           ),

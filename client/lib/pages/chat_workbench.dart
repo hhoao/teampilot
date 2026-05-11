@@ -107,10 +107,6 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
                           session.terminal,
                           backgroundOpacity: 0.92,
                           padding: const EdgeInsets.all(6),
-                          textStyle: const TerminalStyle(
-                            fontFamily: 'monospace',
-                            fontFamilyFallback: ['monospace'],
-                          ),
                           autofocus: true,
                         ),
                       ),

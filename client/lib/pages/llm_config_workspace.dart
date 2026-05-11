@@ -14,37 +14,10 @@ class LlmConfigWorkspace extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final controller = context.watch<LlmConfigCubit>();
-    final l10n = context.l10n;
-    final config = controller.state.config;
     return Column(
       key: AppKeys.llmConfigWorkspace,
       crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        _WorkspaceHeading(
-          title: l10n.llmConfig,
-          subtitle:
-              '${controller.state.filePath} / ${config.providers.length} providers / ${config.models.length} models',
-          trailing: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              OutlinedButton.icon(
-                onPressed: () => _showValidationDialog(context, config),
-                icon: const Icon(Icons.check_circle_outline),
-                label: Text(l10n.validate),
-              ),
-              const SizedBox(width: 8),
-              FilledButton.icon(
-                key: AppKeys.saveLlmConfigButton,
-                onPressed: controller.save,
-                icon: const Icon(Icons.save_outlined),
-                label: Text(l10n.save),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 10),
-        Expanded(child: _ProvidersTabContent(controller: controller)),
-      ],
+      children: [Expanded(child: _ProvidersTabContent(controller: controller))],
     );
   }
 }
@@ -618,8 +591,10 @@ class _ProviderDetailPanelState extends State<_ProviderDetailPanel> {
               padding: const EdgeInsets.all(13),
               child: LayoutBuilder(
                 builder: (context, constraints) {
-                  final fieldWidth =
-                      (constraints.maxWidth / 2 - 7).clamp(180.0, 400.0);
+                  final fieldWidth = (constraints.maxWidth / 2 - 7).clamp(
+                    180.0,
+                    400.0,
+                  );
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
@@ -638,8 +613,7 @@ class _ProviderDetailPanelState extends State<_ProviderDetailPanel> {
                             width: fieldWidth,
                             child: DropdownButtonFormField<String>(
                               initialValue: _type,
-                              decoration:
-                                  InputDecoration(labelText: l10n.type),
+                              decoration: InputDecoration(labelText: l10n.type),
                               items: [
                                 DropdownMenuItem(
                                   value: 'api',
@@ -698,179 +672,187 @@ class _ProviderDetailPanelState extends State<_ProviderDetailPanel> {
                             ),
                           ],
                         ),
-                    if (_proxy) ...[
-                      const SizedBox(height: 10),
-                      TextField(
-                        key: AppKeys.proxyUrlField,
-                        controller: _proxyUrlController,
-                        decoration: InputDecoration(labelText: l10n.proxyUrl),
-                      ),
-                    ],
-                    const SizedBox(height: 10),
-                    TextField(
-                      key: AppKeys.baseUrlField,
-                      controller: _baseUrlController,
-                      decoration: InputDecoration(labelText: l10n.baseUrl),
-                    ),
-                    const SizedBox(height: 10),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: TextField(
-                            key: AppKeys.apiKeyField,
-                            controller: _apiKeyController,
-                            obscureText: !_apiKeyRevealed && _apiKey.isNotEmpty,
+                        if (_proxy) ...[
+                          const SizedBox(height: 10),
+                          TextField(
+                            key: AppKeys.proxyUrlField,
+                            controller: _proxyUrlController,
                             decoration: InputDecoration(
-                              labelText: l10n.apiKey,
-                              suffixIcon: _apiKey.isNotEmpty
-                                  ? Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        IconButton(
-                                          key: AppKeys.revealApiKeyButton,
-                                          icon: Icon(
-                                            _apiKeyRevealed
-                                                ? Icons.visibility_off
-                                                : Icons.visibility,
-                                          ),
-                                          tooltip: _apiKeyRevealed
-                                              ? l10n.hide
-                                              : l10n.reveal,
-                                          onPressed: () => setState(() {
-                                            _apiKeyRevealed = !_apiKeyRevealed;
-                                            if (_apiKeyRevealed &&
-                                                !_apiKeyReplaced) {
-                                              _apiKeyController.text = widget
-                                                  .controller
-                                                  .revealApiKey(provider.name);
-                                            } else if (!_apiKeyRevealed) {
-                                              _apiKeyController.text =
-                                                  LlmConfig.maskedSecret;
-                                            }
-                                          }),
-                                        ),
-                                      ],
-                                    )
-                                  : null,
+                              labelText: l10n.proxyUrl,
                             ),
-                            onChanged: (value) {
-                              if (value != LlmConfig.maskedSecret) {
-                                _apiKey = value;
-                                _apiKeyReplaced = true;
-                              }
-                            },
                           ),
+                        ],
+                        const SizedBox(height: 10),
+                        TextField(
+                          key: AppKeys.baseUrlField,
+                          controller: _baseUrlController,
+                          decoration: InputDecoration(labelText: l10n.baseUrl),
                         ),
-                        const SizedBox(width: 8),
-                        IconButton(
-                          key: AppKeys.replaceApiKeyButton,
-                          tooltip: l10n.replaceKey,
-                          onPressed: () {
-                            _apiKeyController.clear();
-                            _apiKey = '';
-                            _apiKeyRevealed = true;
-                            _apiKeyReplaced = true;
-                          },
-                          icon: const Icon(Icons.key_outlined),
-                        ),
-                      ],
-                    ),
-                  ],
-                  if (_type == 'account') ...[
-                    const SizedBox(height: 10),
-                    ...List.generate(_accountControllers.length, (index) {
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 8),
-                        child: Row(
+                        const SizedBox(height: 10),
+                        Row(
                           children: [
                             Expanded(
                               child: TextField(
-                                key: index == 0
-                                    ? AppKeys.accountPathField
-                                    : null,
-                                controller: _accountControllers[index],
+                                key: AppKeys.apiKeyField,
+                                controller: _apiKeyController,
+                                obscureText:
+                                    !_apiKeyRevealed && _apiKey.isNotEmpty,
                                 decoration: InputDecoration(
-                                  labelText: l10n.accountCredentialPath,
+                                  labelText: l10n.apiKey,
+                                  suffixIcon: _apiKey.isNotEmpty
+                                      ? Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            IconButton(
+                                              key: AppKeys.revealApiKeyButton,
+                                              icon: Icon(
+                                                _apiKeyRevealed
+                                                    ? Icons.visibility_off
+                                                    : Icons.visibility,
+                                              ),
+                                              tooltip: _apiKeyRevealed
+                                                  ? l10n.hide
+                                                  : l10n.reveal,
+                                              onPressed: () => setState(() {
+                                                _apiKeyRevealed =
+                                                    !_apiKeyRevealed;
+                                                if (_apiKeyRevealed &&
+                                                    !_apiKeyReplaced) {
+                                                  _apiKeyController.text =
+                                                      widget.controller
+                                                          .revealApiKey(
+                                                            provider.name,
+                                                          );
+                                                } else if (!_apiKeyRevealed) {
+                                                  _apiKeyController.text =
+                                                      LlmConfig.maskedSecret;
+                                                }
+                                              }),
+                                            ),
+                                          ],
+                                        )
+                                      : null,
                                 ),
+                                onChanged: (value) {
+                                  if (value != LlmConfig.maskedSecret) {
+                                    _apiKey = value;
+                                    _apiKeyReplaced = true;
+                                  }
+                                },
                               ),
                             ),
+                            const SizedBox(width: 8),
                             IconButton(
-                              key: AppKeys.deleteAccountPathButton,
-                              icon: const Icon(Icons.remove_circle_outline),
-                              tooltip: l10n.removePath,
-                              onPressed: () => setState(() {
-                                _accountControllers[index].dispose();
-                                _accountControllers.removeAt(index);
-                              }),
+                              key: AppKeys.replaceApiKeyButton,
+                              tooltip: l10n.replaceKey,
+                              onPressed: () {
+                                _apiKeyController.clear();
+                                _apiKey = '';
+                                _apiKeyRevealed = true;
+                                _apiKeyReplaced = true;
+                              },
+                              icon: const Icon(Icons.key_outlined),
                             ),
                           ],
                         ),
-                      );
-                    }),
-                    OutlinedButton.icon(
-                      key: AppKeys.addAccountPathButton,
-                      onPressed: () => setState(
-                        () => _accountControllers.add(TextEditingController()),
-                      ),
-                      icon: const Icon(Icons.add),
-                      label: Text(l10n.addAccountPath),
-                    ),
-                  ],
-                  const SizedBox(height: 12),
-                  Row(
-                    spacing: 10,
-                    children: [
-                      FilledButton.icon(
-                        onPressed: _save,
-                        icon: const Icon(Icons.save_outlined),
-                        label: Text(l10n.save),
-                      ),
-                      OutlinedButton(
-                        onPressed: () {
-                          _syncFromProvider();
-                        },
-                        child: Text(l10n.cancel),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  if (providerModels.isNotEmpty) ...[
-                    _Section(
-                      title: l10n.modelsUsingProviderTitle,
-                      child: _ProviderModelsTable(
-                        key: AppKeys.providerModelsTable,
-                        models: providerModels,
-                        providers: widget.config.providers,
-                        onUpdate: (id, model) {
-                          widget.controller.updateModel(id, model);
-                        },
-                        onDelete: (id) {
-                          widget.controller.deleteModel(id);
-                        },
-                      ),
-                    ),
-                  ] else ...[
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: textBase.withValues(alpha: 0.05),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        l10n.noModelsUsingProvider,
-                        style: TextStyle(
-                          color: colors.emptyMessageText,
-                          fontSize: 11,
+                      ],
+                      if (_type == 'account') ...[
+                        const SizedBox(height: 10),
+                        ...List.generate(_accountControllers.length, (index) {
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 8),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: TextField(
+                                    key: index == 0
+                                        ? AppKeys.accountPathField
+                                        : null,
+                                    controller: _accountControllers[index],
+                                    decoration: InputDecoration(
+                                      labelText: l10n.accountCredentialPath,
+                                    ),
+                                  ),
+                                ),
+                                IconButton(
+                                  key: AppKeys.deleteAccountPathButton,
+                                  icon: const Icon(Icons.remove_circle_outline),
+                                  tooltip: l10n.removePath,
+                                  onPressed: () => setState(() {
+                                    _accountControllers[index].dispose();
+                                    _accountControllers.removeAt(index);
+                                  }),
+                                ),
+                              ],
+                            ),
+                          );
+                        }),
+                        OutlinedButton.icon(
+                          key: AppKeys.addAccountPathButton,
+                          onPressed: () => setState(
+                            () => _accountControllers.add(
+                              TextEditingController(),
+                            ),
+                          ),
+                          icon: const Icon(Icons.add),
+                          label: Text(l10n.addAccountPath),
                         ),
+                      ],
+                      const SizedBox(height: 12),
+                      Row(
+                        spacing: 10,
+                        children: [
+                          FilledButton.icon(
+                            onPressed: _save,
+                            icon: const Icon(Icons.save_outlined),
+                            label: Text(l10n.save),
+                          ),
+                          OutlinedButton(
+                            onPressed: () {
+                              _syncFromProvider();
+                            },
+                            child: Text(l10n.cancel),
+                          ),
+                        ],
                       ),
-                    ),
-                  ],
-                ],
-              );
-            },
+                      const SizedBox(height: 16),
+                      if (providerModels.isNotEmpty) ...[
+                        _Section(
+                          title: l10n.modelsUsingProviderTitle,
+                          child: _ProviderModelsTable(
+                            key: AppKeys.providerModelsTable,
+                            models: providerModels,
+                            providers: widget.config.providers,
+                            onUpdate: (id, model) {
+                              widget.controller.updateModel(id, model);
+                            },
+                            onDelete: (id) {
+                              widget.controller.deleteModel(id);
+                            },
+                          ),
+                        ),
+                      ] else ...[
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: textBase.withValues(alpha: 0.05),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            l10n.noModelsUsingProvider,
+                            style: TextStyle(
+                              color: colors.emptyMessageText,
+                              fontSize: 11,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  );
+                },
+              ),
+            ),
           ),
-        ),
-      ),
         ],
       ),
     );
