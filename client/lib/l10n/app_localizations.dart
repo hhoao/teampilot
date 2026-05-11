@@ -164,6 +164,82 @@ class AppLocalizations {
   String get languageEnglish => _strings['languageEnglish']!;
   String get languageChinese => _strings['languageChinese']!;
 
+  // Skills
+  String get skillsTitle => _strings['skillsTitle']!;
+  String get skillsSubtitle => _strings['skillsSubtitle']!;
+  String get skillsSidebarLabel => _strings['skillsSidebarLabel']!;
+  String get skillsNavInstalled => _strings['skillsNavInstalled']!;
+  String get skillsNavDiscovery => _strings['skillsNavDiscovery']!;
+  String get skillsNavRepos => _strings['skillsNavRepos']!;
+  String get skillsNavBackups => _strings['skillsNavBackups']!;
+  String skillsInstalledCount(int count) =>
+      _strings['skillsInstalledCount']!.replaceFirst('{count}', '$count');
+  String get skillsCheckUpdates => _strings['skillsCheckUpdates']!;
+  String get skillsCheckingUpdates => _strings['skillsCheckingUpdates']!;
+  String skillsUpdateAll(int count) =>
+      _strings['skillsUpdateAll']!.replaceFirst('{count}', '$count');
+  String get skillsImportFromDisk => _strings['skillsImportFromDisk']!;
+  String get skillsInstallFromZip => _strings['skillsInstallFromZip']!;
+  String get skillsNoInstalled => _strings['skillsNoInstalled']!;
+  String get skillsNoInstalledHint => _strings['skillsNoInstalledHint']!;
+  String get skillsGoDiscovery => _strings['skillsGoDiscovery']!;
+  String get skillsSourceRepos => _strings['skillsSourceRepos']!;
+  String get skillsSourceSkillsSh => _strings['skillsSourceSkillsSh']!;
+  String get skillsSearchPlaceholder => _strings['skillsSearchPlaceholder']!;
+  String get skillsSkillsShPlaceholder =>
+      _strings['skillsSkillsShPlaceholder']!;
+  String get skillsFilterRepoAll => _strings['skillsFilterRepoAll']!;
+  String get skillsFilterAll => _strings['skillsFilterAll']!;
+  String get skillsFilterInstalled => _strings['skillsFilterInstalled']!;
+  String get skillsFilterUninstalled => _strings['skillsFilterUninstalled']!;
+  String get skillsCardInstall => _strings['skillsCardInstall']!;
+  String get skillsCardInstalled => _strings['skillsCardInstalled']!;
+  String get skillsCardUpdate => _strings['skillsCardUpdate']!;
+  String get skillsCardUninstall => _strings['skillsCardUninstall']!;
+  String get skillsUpdateAvailable => _strings['skillsUpdateAvailable']!;
+  String get skillsLocal => _strings['skillsLocal']!;
+  String get skillsReposEmpty => _strings['skillsReposEmpty']!;
+  String get skillsRepoAdd => _strings['skillsRepoAdd']!;
+  String get skillsRepoOwner => _strings['skillsRepoOwner']!;
+  String get skillsRepoName => _strings['skillsRepoName']!;
+  String get skillsRepoBranch => _strings['skillsRepoBranch']!;
+  String get skillsRepoRemove => _strings['skillsRepoRemove']!;
+  String skillsRepoRemoveConfirm(String name) =>
+      _strings['skillsRepoRemoveConfirm']!.replaceFirst('{name}', name);
+  String get skillsBackupsEmpty => _strings['skillsBackupsEmpty']!;
+  String get skillsBackupRestore => _strings['skillsBackupRestore']!;
+  String get skillsBackupDelete => _strings['skillsBackupDelete']!;
+  String skillsBackupDeleteConfirm(String name) =>
+      _strings['skillsBackupDeleteConfirm']!.replaceFirst('{name}', name);
+  String get skillsBackupCreatedAt => _strings['skillsBackupCreatedAt']!;
+  String skillsUninstallConfirm(String name) =>
+      _strings['skillsUninstallConfirm']!.replaceFirst('{name}', name);
+  String skillsOverwriteConfirm(String name) =>
+      _strings['skillsOverwriteConfirm']!.replaceFirst('{name}', name);
+  String skillsInstallSuccess(String name) =>
+      _strings['skillsInstallSuccess']!.replaceFirst('{name}', name);
+  String skillsUninstallSuccess(String name) =>
+      _strings['skillsUninstallSuccess']!.replaceFirst('{name}', name);
+  String skillsUpdateSuccess(String name) =>
+      _strings['skillsUpdateSuccess']!.replaceFirst('{name}', name);
+  String get skillsNoUpdates => _strings['skillsNoUpdates']!;
+  String get skillsImportTitle => _strings['skillsImportTitle']!;
+  String get skillsImportNothing => _strings['skillsImportNothing']!;
+  String skillsImportSelected(int count) =>
+      _strings['skillsImportSelected']!.replaceFirst('{count}', '$count');
+  String get skillsZipNoSkills => _strings['skillsZipNoSkills']!;
+  String get skillsSkillsShLoadMore => _strings['skillsSkillsShLoadMore']!;
+  String get skillsSkillsShPoweredBy => _strings['skillsSkillsShPoweredBy']!;
+  String get skillsSkillsShSearch => _strings['skillsSkillsShSearch']!;
+  String get skillsDiscoveryEmpty => _strings['skillsDiscoveryEmpty']!;
+  String get skillsDiscoveryEmptyHint =>
+      _strings['skillsDiscoveryEmptyHint']!;
+  String get skillsAdd => _strings['skillsAdd']!;
+  String get skillsRemove => _strings['skillsRemove']!;
+  String get skillsEnabled => _strings['skillsEnabled']!;
+  String skillsInstalls(int count) =>
+      _strings['skillsInstalls']!.replaceFirst('{count}', '$count');
+
   static AppLocalizations of(BuildContext context) =>
       Localizations.of<AppLocalizations>(context, AppLocalizations)!;
 
@@ -394,6 +470,129 @@ class _AppLocalizationsDelegate
     'language': {'en': 'Language', 'zh': '语言'},
     'languageEnglish': {'en': 'English', 'zh': 'English'},
     'languageChinese': {'en': '中文', 'zh': '中文'},
+
+    // Skills
+    'skillsTitle': {'en': 'Skills', 'zh': 'Skills'},
+    'skillsSubtitle': {
+      'en': 'Manage installable skills',
+      'zh': '管理可安装的 Skill',
+    },
+    'skillsSidebarLabel': {'en': 'Skills', 'zh': 'Skills'},
+    'skillsNavInstalled': {'en': 'Installed', 'zh': '已安装'},
+    'skillsNavDiscovery': {'en': 'Discovery', 'zh': '发现'},
+    'skillsNavRepos': {'en': 'Repos', 'zh': '仓库'},
+    'skillsNavBackups': {'en': 'Backups', 'zh': '备份'},
+    'skillsInstalledCount': {
+      'en': '{count} installed',
+      'zh': '已安装 {count}',
+    },
+    'skillsCheckUpdates': {'en': 'Check updates', 'zh': '检查更新'},
+    'skillsCheckingUpdates': {'en': 'Checking…', 'zh': '检查中…'},
+    'skillsUpdateAll': {
+      'en': 'Update all ({count})',
+      'zh': '全部更新 ({count})',
+    },
+    'skillsImportFromDisk': {'en': 'Import from disk', 'zh': '从磁盘导入'},
+    'skillsInstallFromZip': {'en': 'Install from ZIP', 'zh': '从 ZIP 安装'},
+    'skillsNoInstalled': {
+      'en': 'No skills installed yet',
+      'zh': '还没有安装 Skill',
+    },
+    'skillsNoInstalledHint': {
+      'en': 'Open Discovery to install your first skill.',
+      'zh': '打开发现页安装你的第一个 Skill。',
+    },
+    'skillsGoDiscovery': {'en': 'Go to Discovery', 'zh': '前往发现'},
+    'skillsSourceRepos': {'en': 'Repos', 'zh': '仓库'},
+    'skillsSourceSkillsSh': {'en': 'skills.sh', 'zh': 'skills.sh'},
+    'skillsSearchPlaceholder': {'en': 'Search skills…', 'zh': '搜索 Skill…'},
+    'skillsSkillsShPlaceholder': {
+      'en': 'Search skills.sh (≥ 2 chars)…',
+      'zh': '搜索 skills.sh (≥2 字)…',
+    },
+    'skillsFilterRepoAll': {'en': 'All repos', 'zh': '所有仓库'},
+    'skillsFilterAll': {'en': 'All', 'zh': '全部'},
+    'skillsFilterInstalled': {'en': 'Installed', 'zh': '已安装'},
+    'skillsFilterUninstalled': {'en': 'Not installed', 'zh': '未安装'},
+    'skillsCardInstall': {'en': 'Install', 'zh': '安装'},
+    'skillsCardInstalled': {'en': 'Installed', 'zh': '已安装'},
+    'skillsCardUpdate': {'en': 'Update', 'zh': '更新'},
+    'skillsCardUninstall': {'en': 'Uninstall', 'zh': '卸载'},
+    'skillsUpdateAvailable': {'en': 'Update available', 'zh': '有新版本'},
+    'skillsLocal': {'en': 'local', 'zh': '本地'},
+    'skillsReposEmpty': {'en': 'No repos yet', 'zh': '暂无仓库'},
+    'skillsRepoAdd': {'en': 'Add repo', 'zh': '添加仓库'},
+    'skillsRepoOwner': {'en': 'Owner', 'zh': 'Owner'},
+    'skillsRepoName': {'en': 'Name', 'zh': '名称'},
+    'skillsRepoBranch': {'en': 'Branch', 'zh': '分支'},
+    'skillsRepoRemove': {'en': 'Remove', 'zh': '移除'},
+    'skillsRepoRemoveConfirm': {
+      'en': 'Remove repo {name}?',
+      'zh': '确认移除仓库 {name}？',
+    },
+    'skillsBackupsEmpty': {'en': 'No backups yet', 'zh': '暂无备份'},
+    'skillsBackupRestore': {'en': 'Restore', 'zh': '恢复'},
+    'skillsBackupDelete': {'en': 'Delete', 'zh': '删除'},
+    'skillsBackupDeleteConfirm': {
+      'en': 'Delete backup {name}? This cannot be undone.',
+      'zh': '删除备份 {name}？此操作不可撤销。',
+    },
+    'skillsBackupCreatedAt': {'en': 'Created at', 'zh': '创建时间'},
+    'skillsUninstallConfirm': {
+      'en': 'Uninstall {name}? Files will be moved to backups.',
+      'zh': '卸载 {name}？文件会移入备份目录。',
+    },
+    'skillsOverwriteConfirm': {
+      'en': '{name} already installed. Overwrite?',
+      'zh': '{name} 已安装。是否覆盖？',
+    },
+    'skillsInstallSuccess': {
+      'en': 'Installed {name}',
+      'zh': '已安装 {name}',
+    },
+    'skillsUninstallSuccess': {
+      'en': 'Uninstalled {name}',
+      'zh': '已卸载 {name}',
+    },
+    'skillsUpdateSuccess': {'en': 'Updated {name}', 'zh': '已更新 {name}'},
+    'skillsNoUpdates': {
+      'en': 'All skills are up to date',
+      'zh': '所有 Skill 均为最新',
+    },
+    'skillsImportTitle': {
+      'en': 'Import unmanaged skills',
+      'zh': '导入未管理的 Skill',
+    },
+    'skillsImportNothing': {
+      'en': 'No unmanaged skills found.',
+      'zh': '未发现未管理的 Skill。',
+    },
+    'skillsImportSelected': {
+      'en': 'Import {count} selected',
+      'zh': '导入选中 {count} 个',
+    },
+    'skillsZipNoSkills': {
+      'en': 'No SKILL.md found in the archive.',
+      'zh': '压缩包中未发现 SKILL.md。',
+    },
+    'skillsSkillsShLoadMore': {'en': 'Load more', 'zh': '加载更多'},
+    'skillsSkillsShPoweredBy': {
+      'en': 'Powered by skills.sh',
+      'zh': '由 skills.sh 提供',
+    },
+    'skillsSkillsShSearch': {'en': 'Search', 'zh': '搜索'},
+    'skillsDiscoveryEmpty': {
+      'en': 'No skills discovered',
+      'zh': '未发现可用 Skill',
+    },
+    'skillsDiscoveryEmptyHint': {
+      'en': 'Add a repo or try skills.sh to find skills.',
+      'zh': '添加仓库或试用 skills.sh 来发现 Skill。',
+    },
+    'skillsAdd': {'en': 'Add', 'zh': '添加'},
+    'skillsRemove': {'en': 'Remove', 'zh': '移除'},
+    'skillsEnabled': {'en': 'Enabled', 'zh': '启用'},
+    'skillsInstalls': {'en': '{count} installs', 'zh': '{count} 次安装'},
   };
 
   @override

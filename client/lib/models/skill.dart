@@ -155,6 +155,121 @@ class SkillRepo {
   int get hashCode => Object.hash(owner, name);
 }
 
+class SkillUpdateInfo {
+  const SkillUpdateInfo({
+    required this.id,
+    required this.name,
+    required this.remoteHash,
+    this.currentHash,
+  });
+
+  final String id;
+  final String name;
+  final String? currentHash;
+  final String remoteHash;
+
+  Map<String, Object?> toJson() => {
+    'id': id,
+    'name': name,
+    'currentHash': currentHash,
+    'remoteHash': remoteHash,
+  };
+
+  factory SkillUpdateInfo.fromJson(Map<String, Object?> json) => SkillUpdateInfo(
+    id: json['id'] as String,
+    name: json['name'] as String,
+    currentHash: json['currentHash'] as String?,
+    remoteHash: json['remoteHash'] as String,
+  );
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is SkillUpdateInfo &&
+          runtimeType == other.runtimeType &&
+          id == other.id &&
+          remoteHash == other.remoteHash;
+
+  @override
+  int get hashCode => Object.hash(id, remoteHash);
+}
+
+class SkillBackup {
+  const SkillBackup({
+    required this.backupId,
+    required this.backupPath,
+    required this.createdAt,
+    required this.skill,
+  });
+
+  final String backupId;
+  final String backupPath;
+  final int createdAt;
+  final Skill skill;
+
+  Map<String, Object?> toJson() => {
+    'backupId': backupId,
+    'backupPath': backupPath,
+    'createdAt': createdAt,
+    'skill': skill.toJson(),
+  };
+
+  factory SkillBackup.fromJson(Map<String, Object?> json) => SkillBackup(
+    backupId: json['backupId'] as String,
+    backupPath: json['backupPath'] as String,
+    createdAt: json['createdAt'] as int,
+    skill: Skill.fromJson(
+      (json['skill'] as Map).cast<String, Object?>(),
+    ),
+  );
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is SkillBackup &&
+          runtimeType == other.runtimeType &&
+          backupId == other.backupId;
+
+  @override
+  int get hashCode => backupId.hashCode;
+}
+
+class UnmanagedSkill {
+  const UnmanagedSkill({
+    required this.directory,
+    required this.name,
+    required this.path,
+    this.description,
+  });
+
+  final String directory;
+  final String name;
+  final String? description;
+  final String path;
+}
+
+class SkillsShEntry {
+  const SkillsShEntry({
+    required this.key,
+    required this.name,
+    required this.directory,
+    required this.repoOwner,
+    required this.repoName,
+    required this.repoBranch,
+    required this.installs,
+    this.readmeUrl,
+  });
+
+  final String key;
+  final String name;
+  final String directory;
+  final String repoOwner;
+  final String repoName;
+  final String repoBranch;
+  final String? readmeUrl;
+  final int installs;
+}
+
 class DiscoverableSkill {
   const DiscoverableSkill({
     required this.key,

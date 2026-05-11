@@ -47,6 +47,22 @@ class SkillRepoService {
     await saveRepos(repos);
   }
 
+  Future<void> setEnabled(String owner, String name, bool enabled) async {
+    final repos = await loadRepos();
+    final idx = repos.indexWhere((r) => r.owner == owner && r.name == name);
+    if (idx < 0) return;
+    repos[idx] = repos[idx].copyWith(enabled: enabled);
+    await saveRepos(repos);
+  }
+
+  Future<void> updateBranch(String owner, String name, String branch) async {
+    final repos = await loadRepos();
+    final idx = repos.indexWhere((r) => r.owner == owner && r.name == name);
+    if (idx < 0) return;
+    repos[idx] = repos[idx].copyWith(branch: branch);
+    await saveRepos(repos);
+  }
+
   Future<void> _initDefaults() async {
     final cache = await _readManifest();
     cache['repos'] = _defaultRepos.map((r) => r.toJson()).toList();

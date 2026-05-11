@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -11,14 +12,17 @@ import 'cubits/chat_cubit.dart';
 import 'cubits/config_cubit.dart';
 import 'cubits/layout_cubit.dart';
 import 'cubits/llm_config_cubit.dart';
+import 'cubits/skill_cubit.dart';
 import 'cubits/team_cubit.dart';
 import 'l10n/app_localizations.dart';
 import 'repositories/layout_repository.dart';
 import 'repositories/llm_config_repository.dart';
 import 'repositories/session_repository.dart';
+import 'repositories/skill_repository.dart';
 import 'repositories/team_repository.dart';
 import 'router/app_router.dart';
 import 'services/app_storage.dart';
+import 'services/temp_team_cleaner.dart';
 import 'theme/app_theme.dart';
 import 'utils/perf.dart';
 import 'widgets/ui_warmup.dart';
@@ -47,12 +51,13 @@ void main() async {
 
   final preferences = await SharedPreferences.getInstance();
 
-  await AppStorage.clearTeams();
+  final tempTeamCleaner = TempTeamCleaner();
+  await tempTeamCleaner.cleanup();
 
   final sessionRepo = const SessionRepository();
 
-  final teamCubit = TeamCubit(repository: TeamRepository(preferences));
-  final chatCubit = ChatCubit();
+  final teamCubit = TeamCubit(repository: TeamRepository());
+  final chatCubit = ChatCubit(tempTeamCleaner: tempTeamCleaner);
   final configCubit = ConfigCubit();
   final configPath = p.absolute(
     p.join(
@@ -67,11 +72,13 @@ void main() async {
     repository: LlmConfigRepository(File(configPath)),
   );
   final layoutCubit = LayoutCubit(repository: LayoutRepository(preferences));
+  final skillCubit = SkillCubit(SkillRepository());
 
   await teamCubit.load();
   await layoutCubit.load();
   await llmConfigCubit.load();
   chatCubit.loadSessions(sessionRepo);
+  unawaited(skillCubit.loadAll());
 
   runApp(
     MultiBlocProvider(
@@ -81,6 +88,7 @@ void main() async {
         BlocProvider.value(value: configCubit),
         BlocProvider.value(value: llmConfigCubit),
         BlocProvider.value(value: layoutCubit),
+        BlocProvider.value(value: skillCubit),
       ],
       child: const FlashskyAiClientApp(),
     ),

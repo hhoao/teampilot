@@ -8,6 +8,7 @@ import '../cubits/config_cubit.dart';
 import '../cubits/layout_cubit.dart';
 import '../pages/chat_page.dart';
 import '../pages/config_workspace.dart';
+import '../pages/skill_management_page.dart';
 import '../pages/team_config_page.dart';
 import '../repositories/session_repository.dart';
 import '../utils/logger.dart';
@@ -83,6 +84,12 @@ final appRouter = GoRouter(
           path: '/team-config',
           pageBuilder: (context, state) => const NoTransitionPage(
             child: TeamConfigPage(),
+          ),
+        ),
+        GoRoute(
+          path: '/skills',
+          pageBuilder: (context, state) => const NoTransitionPage(
+            child: SkillManagementPage(),
           ),
         ),
       ],
