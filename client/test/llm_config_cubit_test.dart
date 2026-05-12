@@ -27,12 +27,13 @@ void main() {
     return file;
   }
 
-  test('load uses home default when no override and no CLI', () async {
+  test('load uses CLI install dir as default when CLI is known', () async {
     final prefs = await SharedPreferences.getInstance();
     final cubit = LlmConfigCubit(
       appSettings: SharedPrefsAppSettingsRepository(prefs),
       currentDirectory: tmp.path,
       homeDirectory: '/home/test',
+      cliExecutablePath: '/opt/flashskyai/dist/flashskyai',
       repositoryFactory: (path) => LlmConfigRepository(File(path)),
     );
 
@@ -41,7 +42,21 @@ void main() {
     expect(cubit.state.pathSource, LlmConfigPathSource.defaultPath);
     expect(cubit.state.configPathOverride, '');
     expect(cubit.state.effectiveConfigPath,
-        '/home/test/.flashskyai/llm/llm_config.json');
+        '/opt/flashskyai/llm/llm_config.json');
+  });
+
+  test('load returns empty effective path when CLI is unknown', () async {
+    final prefs = await SharedPreferences.getInstance();
+    final cubit = LlmConfigCubit(
+      appSettings: SharedPrefsAppSettingsRepository(prefs),
+      currentDirectory: tmp.path,
+      homeDirectory: '/home/test',
+    );
+
+    await cubit.load();
+
+    expect(cubit.state.pathSource, LlmConfigPathSource.defaultPath);
+    expect(cubit.state.effectiveConfigPath, '');
   });
 
   test('load uses override path when one is stored', () async {

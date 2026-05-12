@@ -21,6 +21,8 @@ class AppKeys {
   );
   static const membersVisibilitySwitch = Key('members-visibility-switch');
   static const fileTreeVisibilitySwitch = Key('file-tree-visibility-switch');
+  static const autoLaunchAllMembersOnConnectSwitch =
+      Key('auto-launch-all-members-on-connect-switch');
   static const toolPlacementRightButton = Key('tool-placement-right-button');
   static const toolPlacementBottomButton = Key('tool-placement-bottom-button');
   static const toolsArrangementStackedButton = Key(

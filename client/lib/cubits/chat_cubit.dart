@@ -116,10 +116,12 @@ class ChatCubit extends Cubit<ChatState> {
     PostFrameScheduler? postFrameScheduler,
     TempTeamCleaner? tempTeamCleaner,
     String? Function()? llmConfigPathOverride,
+    bool Function()? autoLaunchAllMembersOnConnect,
   }) : _terminalSessionFactory = terminalSessionFactory,
        _postFrameScheduler = postFrameScheduler ?? _defaultPostFrameScheduler,
        _tempTeamCleaner = tempTeamCleaner,
        _llmConfigPathOverride = llmConfigPathOverride,
+       _autoLaunchAllMembersOnConnect = autoLaunchAllMembersOnConnect,
        super(const ChatState());
 
   final List<_InternalTab> _internalTabs = [];
@@ -127,12 +129,14 @@ class ChatCubit extends Cubit<ChatState> {
   final PostFrameScheduler _postFrameScheduler;
   final TempTeamCleaner? _tempTeamCleaner;
   final String? Function()? _llmConfigPathOverride;
+  final bool Function()? _autoLaunchAllMembersOnConnect;
 
   Map<String, String>? _spawnEnvironment() {
     final override = _llmConfigPathOverride?.call();
     if (override == null || override.isEmpty) return null;
     return {'LLM_CONFIG_PATH': override};
   }
+
   var _sessionCounter = 0;
 
   int _nextCounter() => _sessionCounter++;
@@ -153,13 +157,6 @@ class ChatCubit extends Cubit<ChatState> {
 
   String _allocSessionTeamName(String baseName) {
     final name = _cliTeamName(baseName, _nextCounter());
-    final cleaner = _tempTeamCleaner;
-    if (cleaner != null) {
-      appLogger.d('Recording temp team "$name"');
-      cleaner.record(name).catchError((e) {
-        appLogger.w('Failed to record temp team "$name": $e');
-      });
-    }
     return name;
   }
 
@@ -348,12 +345,14 @@ class ChatCubit extends Cubit<ChatState> {
       }
     }
     final kept = _internalTabs.single;
-    emit(state.copyWith(
-      tabs: _visibleTabs(),
-      activeTabIndex: 0,
-      activeSessionId: kept.info.id,
-      selectedMemberId: kept.selectedMemberId,
-    ));
+    emit(
+      state.copyWith(
+        tabs: _visibleTabs(),
+        activeTabIndex: 0,
+        activeSessionId: kept.info.id,
+        selectedMemberId: kept.selectedMemberId,
+      ),
+    );
   }
 
   void closeRightTabs(int index) {
@@ -365,12 +364,14 @@ class ChatCubit extends Cubit<ChatState> {
       }
     }
     final active = _activeTab;
-    emit(state.copyWith(
-      tabs: _visibleTabs(),
-      activeTabIndex: state.activeTabIndex.clamp(0, _internalTabs.length - 1),
-      activeSessionId: active?.info.id,
-      selectedMemberId: active?.selectedMemberId ?? '',
-    ));
+    emit(
+      state.copyWith(
+        tabs: _visibleTabs(),
+        activeTabIndex: state.activeTabIndex.clamp(0, _internalTabs.length - 1),
+        activeSessionId: active?.info.id,
+        selectedMemberId: active?.selectedMemberId ?? '',
+      ),
+    );
   }
 
   void selectTab(int index) {
@@ -436,6 +437,22 @@ class ChatCubit extends Cubit<ChatState> {
   }
 
   void connectSession(TeamConfig team) {
+    if (_autoLaunchAllMembersOnConnect?.call() == true) {
+      final keepId = state.selectedMemberId.isNotEmpty
+          ? state.selectedMemberId
+          : _defaultMemberId(team);
+      if (keepId.isEmpty) {
+        final session = ensureSession(team);
+        session.terminal.write('\r\n[No member selected]\r\n');
+        return;
+      }
+      launchAllMembers(team);
+      if (team.members.any((m) => m.id == keepId)) {
+        selectMember(keepId);
+      }
+      return;
+    }
+
     final memberId = state.selectedMemberId;
     if (memberId.isEmpty) {
       final session = ensureSession(team);
@@ -457,11 +474,32 @@ class ChatCubit extends Cubit<ChatState> {
   }
 
   void restartSession(TeamConfig team) {
+    if (_autoLaunchAllMembersOnConnect?.call() == true) {
+      final keepId = state.selectedMemberId.isNotEmpty
+          ? state.selectedMemberId
+          : _defaultMemberId(team);
+      final tab = _activeTab;
+      if (tab != null) {
+        for (final shell in tab.memberShells.values) {
+          shell.disconnect();
+        }
+        _updateTabRunning(tab.info.id);
+      }
+      launchAllMembers(team);
+      if (keepId.isNotEmpty && team.members.any((m) => m.id == keepId)) {
+        selectMember(keepId);
+      }
+      return;
+    }
     disconnectSession();
     connectSession(team);
   }
 
-  Future<void> renameSession(SessionRepository repo, String sessionId, String newName) async {
+  Future<void> renameSession(
+    SessionRepository repo,
+    String sessionId,
+    String newName,
+  ) async {
     await repo.renameSession(sessionId, newName);
     final sessions = state.sessions.map((s) {
       if (s.sessionId == sessionId) return s.copyWith(display: newName);
@@ -481,7 +519,9 @@ class ChatCubit extends Cubit<ChatState> {
 
   void deleteSession(SessionRepository repo, String sessionId) {
     final wasActive = state.activeSessionId == sessionId;
-    final sessions = state.sessions.where((s) => s.sessionId != sessionId).toList();
+    final sessions = state.sessions
+        .where((s) => s.sessionId != sessionId)
+        .toList();
     final idx = _internalTabs.indexWhere((t) => t.info.id == sessionId);
     if (idx != -1) {
       final tab = _internalTabs.removeAt(idx);
@@ -492,22 +532,28 @@ class ChatCubit extends Cubit<ChatState> {
     final tabs = _internalTabs.map((t) => t.info).toList();
 
     if (wasActive && _internalTabs.isNotEmpty) {
-      final newIdx = idx < _internalTabs.length ? idx : _internalTabs.length - 1;
+      final newIdx = idx < _internalTabs.length
+          ? idx
+          : _internalTabs.length - 1;
       final nextTab = _internalTabs[newIdx];
-      emit(state.copyWith(
-        sessions: sessions,
-        tabs: tabs,
-        activeTabIndex: newIdx,
-        activeSessionId: nextTab.info.id,
-        selectedMemberId: nextTab.selectedMemberId,
-      ));
+      emit(
+        state.copyWith(
+          sessions: sessions,
+          tabs: tabs,
+          activeTabIndex: newIdx,
+          activeSessionId: nextTab.info.id,
+          selectedMemberId: nextTab.selectedMemberId,
+        ),
+      );
     } else if (_internalTabs.isEmpty) {
-      emit(state.copyWith(
-        sessions: sessions,
-        tabs: [],
-        activeTabIndex: 0,
-        clearActiveSessionId: true,
-      ));
+      emit(
+        state.copyWith(
+          sessions: sessions,
+          tabs: [],
+          activeTabIndex: 0,
+          clearActiveSessionId: true,
+        ),
+      );
     } else {
       emit(state.copyWith(sessions: sessions, tabs: tabs));
     }
@@ -535,7 +581,12 @@ class ChatCubit extends Cubit<ChatState> {
     _internalTabs[idx].info = _internalTabs[idx].info.copyWith(
       isRunning: _internalTabs[idx].isRunning,
     );
-    emit(state.copyWith(tabs: _visibleTabs(), stateVersion: state.stateVersion + 1));
+    emit(
+      state.copyWith(
+        tabs: _visibleTabs(),
+        stateVersion: state.stateVersion + 1,
+      ),
+    );
   }
 
   _InternalTab _ensureActiveSessionTab(
@@ -573,7 +624,11 @@ class ChatCubit extends Cubit<ChatState> {
     );
   }
 
-  String _assignSessionTeam(String sessionId, TeamConfig? team, SessionRepository? repo) {
+  String _assignSessionTeam(
+    String sessionId,
+    TeamConfig? team,
+    SessionRepository? repo,
+  ) {
     final fallbackName = team?.name.trim().isNotEmpty == true
         ? team!.name
         : 'session';

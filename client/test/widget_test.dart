@@ -275,6 +275,9 @@ void main() {
 
     await cubit.setThemeMode('dark');
     expect(cubit.state.preferences.themeMode, 'dark');
+
+    await cubit.setAutoLaunchAllMembersOnConnect(true);
+    expect(cubit.state.preferences.autoLaunchAllMembersOnConnect, isTrue);
   });
 
   test('config cubit navigates sections', () {
@@ -332,6 +335,59 @@ void main() {
     expect(cubit.isMemberRunning('lead'), isTrue);
     expect(cubit.isMemberRunning('dev'), isTrue);
   });
+
+  test(
+    'chat cubit connectSession starts all members when auto-launch enabled',
+    () {
+      final cubit = ChatCubit(
+        terminalSessionFactory: FakeTerminalSession.new,
+        postFrameScheduler: (callback) => callback(),
+        autoLaunchAllMembersOnConnect: () => true,
+      );
+      final team = TeamConfig(
+        id: 'test-team',
+        name: 'Test',
+        members: const [
+          TeamMemberConfig(id: 'lead', name: 'team-lead'),
+          TeamMemberConfig(id: 'dev', name: 'developer'),
+        ],
+      );
+
+      cubit.syncTeam(team);
+      cubit.connectSession(team);
+
+      expect(cubit.state.tabs.length, 1);
+      expect(cubit.isMemberRunning('lead'), isTrue);
+      expect(cubit.isMemberRunning('dev'), isTrue);
+      expect(cubit.state.selectedMemberId, 'lead');
+    },
+  );
+
+  test(
+    'chat cubit connectSession starts only selected member by default',
+    () {
+      final cubit = ChatCubit(
+        terminalSessionFactory: FakeTerminalSession.new,
+        postFrameScheduler: (callback) => callback(),
+      );
+      final team = TeamConfig(
+        id: 'test-team',
+        name: 'Test',
+        members: const [
+          TeamMemberConfig(id: 'lead', name: 'team-lead'),
+          TeamMemberConfig(id: 'dev', name: 'developer'),
+        ],
+      );
+
+      cubit.syncTeam(team);
+      cubit.connectSession(team);
+
+      expect(cubit.state.tabs.length, 1);
+      expect(cubit.isMemberRunning('lead'), isTrue);
+      expect(cubit.isMemberRunning('dev'), isFalse);
+      expect(cubit.state.selectedMemberId, 'lead');
+    },
+  );
 
   test(
     'chat cubit keeps persisted session tabs separate from member selection',

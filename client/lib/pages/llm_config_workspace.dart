@@ -115,9 +115,11 @@ class _ConfigPathBarState extends State<_ConfigPathBar> {
         children: [
           Row(
             children: [
-              Text(l10n.llmConfigPathLabel,
-                  style: theme.textTheme.labelMedium
-                      ?.copyWith(fontWeight: FontWeight.w600)),
+              Text(
+                l10n.llmConfigPathLabel,
+                style: theme.textTheme.labelMedium
+                    ?.copyWith(fontWeight: FontWeight.w600),
+              ),
               const SizedBox(width: 8),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
@@ -131,12 +133,21 @@ class _ConfigPathBarState extends State<_ConfigPathBar> {
                   style: theme.textTheme.labelSmall?.copyWith(color: badgeColor),
                 ),
               ),
-              const Spacer(),
-              SelectableText(
-                state.effectiveConfigPath,
-                style: theme.textTheme.bodySmall
-                    ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                maxLines: 1,
+              Expanded(
+                child: Tooltip(
+                  message: state.effectiveConfigPath,
+                  waitDuration: const Duration(milliseconds: 400),
+                  child: SelectionArea(
+                    child: Text(
+                      state.effectiveConfigPath,
+                      style: theme.textTheme.bodySmall
+                          ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.end,
+                    ),
+                  ),
+                ),
               ),
             ],
           ),
@@ -694,23 +705,27 @@ class _ProviderDetailPanelState extends State<_ProviderDetailPanel> {
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppColors.of(context);
+    final look = _ProviderDetailLook.of(context);
+    final theme = Theme.of(context);
     final l10n = context.l10n;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textBase = isDark ? Colors.white : const Color(0xFF111827);
     final provider = widget.provider;
+
     if (provider == null) {
       return Container(
         key: AppKeys.llmProviderDetail,
         decoration: BoxDecoration(
-          color: colors.cardBackground,
+          color: look.panelBg,
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: colors.border),
+          border: Border.all(color: look.borderColor),
         ),
         child: Center(
-          child: Text(
-            l10n.selectProvider,
-            style: TextStyle(color: colors.emptyMessageText),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Text(
+              l10n.selectProvider,
+              textAlign: TextAlign.center,
+              style: look.mutedBodyStyle.copyWith(height: 1.4),
+            ),
           ),
         ),
       );
@@ -723,18 +738,21 @@ class _ProviderDetailPanelState extends State<_ProviderDetailPanel> {
     return Container(
       key: AppKeys.llmProviderDetail,
       decoration: BoxDecoration(
-        color: colors.cardBackground,
+        color: look.panelBg,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: colors.border),
+        border: Border.all(color: look.borderColor),
       ),
       child: Column(
         children: [
           Container(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.fromLTRB(16, 14, 10, 14),
             decoration: BoxDecoration(
-              border: Border(bottom: BorderSide(color: colors.tabBarDivider)),
+              border: Border(
+                bottom: BorderSide(color: theme.dividerColor),
+              ),
             ),
             child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Expanded(
                   child: Column(
@@ -742,41 +760,45 @@ class _ProviderDetailPanelState extends State<_ProviderDetailPanel> {
                     children: [
                       Row(
                         children: [
-                          Text(
-                            provider.name,
-                            style: TextStyle(
-                              fontWeight: FontWeight.w800,
-                              fontSize: 14,
-                              color: textBase,
+                          Flexible(
+                            child: Tooltip(
+                              message: provider.name,
+                              waitDuration: const Duration(milliseconds: 400),
+                              child: Text(
+                                provider.name,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: look.panelTitleStyle,
+                              ),
                             ),
                           ),
-                          const SizedBox(width: 6),
+                          const SizedBox(width: 8),
                           _TypeBadge(type: provider.type),
                         ],
                       ),
-                      const SizedBox(height: 3),
+                      const SizedBox(height: 6),
                       Text(
                         l10n.providerDetailSubtitle(
                           _type == 'api' ? l10n.api : l10n.account,
                           providerModels.length,
                         ),
-                        style: TextStyle(
-                          color: textBase.withValues(alpha: 0.48),
-                          fontSize: 11,
-                        ),
+                        style: look.mutedBodyStyle,
                       ),
                     ],
                   ),
                 ),
                 OutlinedButton.icon(
                   onPressed: () => widget.onShowModels(provider.name),
-                  icon: const Icon(Icons.model_training_outlined, size: 16),
+                  icon: const Icon(Icons.model_training_outlined, size: 17),
                   label: Text(l10n.models),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 4),
                 IconButton(
                   tooltip: l10n.deleteProviderTooltip,
-                  icon: const Icon(Icons.delete_outline, size: 18),
+                  style: IconButton.styleFrom(
+                    foregroundColor: theme.colorScheme.error,
+                  ),
+                  icon: const Icon(Icons.delete_outline, size: 20),
                   onPressed: () => widget.onDelete(provider.name),
                 ),
               ],
@@ -784,213 +806,202 @@ class _ProviderDetailPanelState extends State<_ProviderDetailPanel> {
           ),
           Expanded(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.all(13),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: LayoutBuilder(
                 builder: (context, constraints) {
-                  final fieldWidth = (constraints.maxWidth / 2 - 7).clamp(
-                    180.0,
-                    400.0,
-                  );
+                  final trailingW =
+                      (constraints.maxWidth * 0.44).clamp(168.0, 280.0);
+
+                  String typeLabel(String v) =>
+                      v == 'api' ? l10n.api : l10n.account;
+
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      Wrap(
-                        spacing: 14,
-                        runSpacing: 10,
-                        children: [
-                          _SizedField(
-                            width: fieldWidth,
-                            child: _ReadOnlyField(
-                              label: l10n.providerName,
-                              value: provider.name,
-                            ),
+                      _SettingRow(
+                        title: l10n.providerName,
+                        trailing: SizedBox(
+                          width: trailingW,
+                          child: _InlineReadOnlyValue(value: provider.name),
+                        ),
+                      ),
+                      const Divider(height: 1),
+                      _SettingRow(
+                        title: l10n.type,
+                        trailing: SizedBox(
+                          width: trailingW,
+                          child: Builder(
+                            builder: (context) {
+                              final deco =
+                                  FlashskyDropdownDecorations.denseField(
+                                context,
+                              );
+                              return DropdownFlutter<String>(
+                                items: const ['api', 'account'],
+                                initialItem: _type,
+                                excludeSelected: false,
+                                decoration: deco,
+                                closedHeaderPadding:
+                                    const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 10,
+                                ),
+                                expandedHeaderPadding:
+                                    const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 10,
+                                ),
+                                listItemPadding: const EdgeInsets.symmetric(
+                                  vertical: 8,
+                                  horizontal: 10,
+                                ),
+                                overlayHeight: 160,
+                                onChanged: (value) => setState(
+                                  () => _type = value ?? 'api',
+                                ),
+                                headerBuilder: (context, value, _) => Text(
+                                  typeLabel(value),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: deco.headerStyle,
+                                ),
+                                listItemBuilder: (context, value, _, __) {
+                                  return Row(
+                                    children: [
+                                      Expanded(
+                                        child: Text(
+                                          typeLabel(value),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: deco.listItemStyle,
+                                        ),
+                                      ),
+                                    ],
+                                  );
+                                },
+                              );
+                            },
                           ),
-                          _SizedField(
-                            width: fieldWidth,
-                            child: Builder(
-                              builder: (context) {
-                                final deco =
-                                    FlashskyDropdownDecorations.denseField(
-                                        context);
-                                String typeLabel(String v) =>
-                                    v == 'api' ? l10n.api : l10n.account;
-                                return Column(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.stretch,
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Text(
-                                      l10n.type,
-                                      style: TextStyle(
-                                        color: textBase.withValues(alpha: 0.58),
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 8),
-                                    DropdownFlutter<String>(
-                                      items: const ['api', 'account'],
-                                      initialItem: _type,
-                                      excludeSelected: false,
-                                      decoration: deco,
-                                      closedHeaderPadding:
-                                          const EdgeInsets.symmetric(
-                                        horizontal: 10,
-                                        vertical: 10,
-                                      ),
-                                      expandedHeaderPadding:
-                                          const EdgeInsets.symmetric(
-                                        horizontal: 12,
-                                        vertical: 10,
-                                      ),
-                                      listItemPadding:
-                                          const EdgeInsets.symmetric(
-                                        vertical: 8,
-                                        horizontal: 10,
-                                      ),
-                                      overlayHeight: 160,
-                                      onChanged: (value) => setState(
-                                        () => _type = value ?? 'api',
-                                      ),
-                                      headerBuilder: (context, value, _) =>
-                                          Text(
-                                        typeLabel(value),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: deco.headerStyle,
-                                      ),
-                                      listItemBuilder:
-                                          (context, value, _, __) {
-                                        return Row(
-                                          children: [
-                                            Expanded(
-                                              child: Text(
-                                                typeLabel(value),
-                                                maxLines: 1,
-                                                overflow:
-                                                    TextOverflow.ellipsis,
-                                                style: deco.listItemStyle,
-                                              ),
-                                            ),
-                                          ],
-                                        );
-                                      },
-                                    ),
-                                  ],
-                                );
-                              },
-                            ),
-                          ),
-                        ],
+                        ),
                       ),
                       if (_type == 'api') ...[
-                        const SizedBox(height: 14),
-                        TextField(
-                          key: AppKeys.providerTypeField,
-                          controller: _providerTypeController,
-                          decoration: InputDecoration(
-                            labelText: l10n.providerType,
-                            hintText: l10n.providerTypeHint,
+                        _SettingFieldBlock(
+                          title: l10n.providerType,
+                          child: TextField(
+                            key: AppKeys.providerTypeField,
+                            controller: _providerTypeController,
+                            decoration: InputDecoration(
+                              hintText: l10n.providerTypeHint,
+                              isDense: true,
+                            ),
                           ),
                         ),
-                        SwitchListTile(
-                          key: AppKeys.providerProxyToggle,
-                          contentPadding: EdgeInsets.zero,
-                          title: Text(l10n.proxy),
-                          value: _proxy,
-                          onChanged: (value) =>
-                              setState(() => _proxy = value),
+                        const Divider(height: 1),
+                        _SettingRow(
+                          title: l10n.proxy,
+                          trailing: Switch(
+                            key: AppKeys.providerProxyToggle,
+                            value: _proxy,
+                            onChanged: (value) =>
+                                setState(() => _proxy = value),
+                          ),
                         ),
                         if (_proxy) ...[
-                          const SizedBox(height: 4),
-                          TextField(
-                            key: AppKeys.proxyUrlField,
-                            controller: _proxyUrlController,
-                            decoration: InputDecoration(
-                              labelText: l10n.proxyUrl,
+                          _SettingFieldBlock(
+                            title: l10n.proxyUrl,
+                            child: TextField(
+                              key: AppKeys.proxyUrlField,
+                              controller: _proxyUrlController,
+                              decoration: const InputDecoration(
+                                isDense: true,
+                              ),
                             ),
                           ),
                         ],
-                        const SizedBox(height: 14),
-                        TextField(
-                          key: AppKeys.baseUrlField,
-                          controller: _baseUrlController,
-                          decoration: InputDecoration(labelText: l10n.baseUrl),
+                        _SettingFieldBlock(
+                          title: l10n.baseUrl,
+                          child: TextField(
+                            key: AppKeys.baseUrlField,
+                            controller: _baseUrlController,
+                            decoration: const InputDecoration(
+                              isDense: true,
+                            ),
+                          ),
                         ),
-                        const SizedBox(height: 14),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: TextField(
-                                key: AppKeys.apiKeyField,
-                                controller: _apiKeyController,
-                                obscureText:
-                                    !_apiKeyRevealed && _apiKey.isNotEmpty,
-                                decoration: InputDecoration(
-                                  labelText: l10n.apiKey,
-                                  suffixIcon: _apiKey.isNotEmpty
-                                      ? Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            IconButton(
-                                              key: AppKeys.revealApiKeyButton,
-                                              icon: Icon(
-                                                _apiKeyRevealed
-                                                    ? Icons.visibility_off
-                                                    : Icons.visibility,
-                                              ),
-                                              tooltip: _apiKeyRevealed
-                                                  ? l10n.hide
-                                                  : l10n.reveal,
-                                              onPressed: () => setState(() {
-                                                _apiKeyRevealed =
-                                                    !_apiKeyRevealed;
-                                                if (_apiKeyRevealed &&
-                                                    !_apiKeyReplaced) {
-                                                  _apiKeyController.text =
-                                                      widget.controller
-                                                          .revealApiKey(
-                                                            provider.name,
-                                                          );
-                                                } else if (!_apiKeyRevealed) {
-                                                  _apiKeyController.text =
-                                                      LlmConfig.maskedSecret;
-                                                }
-                                              }),
+                        _SettingFieldBlock(
+                          title: l10n.apiKey,
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                child: TextField(
+                                  key: AppKeys.apiKeyField,
+                                  controller: _apiKeyController,
+                                  obscureText: !_apiKeyRevealed &&
+                                      _apiKey.isNotEmpty,
+                                  decoration: InputDecoration(
+                                    isDense: true,
+                                    suffixIcon: _apiKey.isNotEmpty
+                                        ? IconButton(
+                                            key: AppKeys.revealApiKeyButton,
+                                            icon: Icon(
+                                              _apiKeyRevealed
+                                                  ? Icons.visibility_off
+                                                  : Icons.visibility,
                                             ),
-                                          ],
-                                        )
-                                      : null,
+                                            tooltip: _apiKeyRevealed
+                                                ? l10n.hide
+                                                : l10n.reveal,
+                                            onPressed: () => setState(() {
+                                              _apiKeyRevealed =
+                                                  !_apiKeyRevealed;
+                                              if (_apiKeyRevealed &&
+                                                  !_apiKeyReplaced) {
+                                                _apiKeyController.text =
+                                                    widget.controller
+                                                        .revealApiKey(
+                                                  provider.name,
+                                                );
+                                              } else if (!_apiKeyRevealed) {
+                                                _apiKeyController.text =
+                                                    LlmConfig.maskedSecret;
+                                              }
+                                            }),
+                                          )
+                                        : null,
+                                  ),
+                                  onChanged: (value) {
+                                    if (value != LlmConfig.maskedSecret) {
+                                      _apiKey = value;
+                                      _apiKeyReplaced = true;
+                                    }
+                                  },
                                 ),
-                                onChanged: (value) {
-                                  if (value != LlmConfig.maskedSecret) {
-                                    _apiKey = value;
-                                    _apiKeyReplaced = true;
-                                  }
-                                },
                               ),
-                            ),
-                            const SizedBox(width: 8),
-                            IconButton(
-                              key: AppKeys.replaceApiKeyButton,
-                              tooltip: l10n.replaceKey,
-                              onPressed: () {
-                                _apiKeyController.clear();
-                                _apiKey = '';
-                                _apiKeyRevealed = true;
-                                _apiKeyReplaced = true;
-                              },
-                              icon: const Icon(Icons.key_outlined),
-                            ),
-                          ],
+                              const SizedBox(width: 4),
+                              IconButton(
+                                key: AppKeys.replaceApiKeyButton,
+                                tooltip: l10n.replaceKey,
+                                onPressed: () {
+                                  _apiKeyController.clear();
+                                  _apiKey = '';
+                                  _apiKeyRevealed = true;
+                                  _apiKeyReplaced = true;
+                                },
+                                icon: const Icon(Icons.key_outlined),
+                              ),
+                            ],
+                          ),
                         ),
                       ],
                       if (_type == 'account') ...[
-                        const SizedBox(height: 10),
+                        const SizedBox(height: 8),
                         ...List.generate(_accountControllers.length, (index) {
                           return Padding(
                             padding: const EdgeInsets.only(bottom: 8),
                             child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Expanded(
                                   child: TextField(
@@ -999,7 +1010,8 @@ class _ProviderDetailPanelState extends State<_ProviderDetailPanel> {
                                         : null,
                                     controller: _accountControllers[index],
                                     decoration: InputDecoration(
-                                      labelText: l10n.accountCredentialPath,
+                                      hintText: l10n.accountCredentialPath,
+                                      isDense: true,
                                     ),
                                   ),
                                 ),
@@ -1016,63 +1028,76 @@ class _ProviderDetailPanelState extends State<_ProviderDetailPanel> {
                             ),
                           );
                         }),
-                        OutlinedButton.icon(
-                          key: AppKeys.addAccountPathButton,
-                          onPressed: () => setState(
-                            () => _accountControllers.add(
-                              TextEditingController(),
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: OutlinedButton.icon(
+                            key: AppKeys.addAccountPathButton,
+                            onPressed: () => setState(
+                              () => _accountControllers.add(
+                                TextEditingController(),
+                              ),
                             ),
+                            icon: const Icon(Icons.add),
+                            label: Text(l10n.addAccountPath),
                           ),
-                          icon: const Icon(Icons.add),
-                          label: Text(l10n.addAccountPath),
                         ),
                       ],
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 16),
                       Row(
-                        spacing: 10,
+                        mainAxisAlignment: MainAxisAlignment.end,
                         children: [
+                          OutlinedButton(
+                            onPressed: _syncFromProvider,
+                            child: Text(l10n.cancel),
+                          ),
+                          const SizedBox(width: 10),
                           FilledButton.icon(
                             onPressed: _save,
-                            icon: const Icon(Icons.save_outlined),
+                            icon: const Icon(Icons.save_outlined, size: 18),
                             label: Text(l10n.save),
-                          ),
-                          OutlinedButton(
-                            onPressed: () {
-                              _syncFromProvider();
-                            },
-                            child: Text(l10n.cancel),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 20),
                       if (providerModels.isNotEmpty) ...[
-                        _Section(
-                          title: l10n.modelsUsingProviderTitle,
-                          child: _ProviderModelsTable(
-                            key: AppKeys.providerModelsTable,
-                            models: providerModels,
-                            providers: widget.config.providers,
-                            onUpdate: (id, model) {
-                              widget.controller.updateModel(id, model);
-                            },
-                            onDelete: (id) {
-                              widget.controller.deleteModel(id);
-                            },
+                        const Divider(height: 28),
+                        Text(
+                          l10n.modelsUsingProviderTitle,
+                          style: look.sectionTitleStyle,
+                        ),
+                        const SizedBox(height: 12),
+                        DecoratedBox(
+                          decoration: BoxDecoration(
+                            color: look.insetPanelBg,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: look.insetPanelBorder),
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
+                            child: _ProviderModelsTable(
+                              key: AppKeys.providerModelsTable,
+                              models: providerModels,
+                              providers: widget.config.providers,
+                              onUpdate: (id, model) {
+                                widget.controller.updateModel(id, model);
+                              },
+                              onDelete: (id) {
+                                widget.controller.deleteModel(id);
+                              },
+                            ),
                           ),
                         ),
                       ] else ...[
                         Container(
-                          padding: const EdgeInsets.all(12),
+                          padding: const EdgeInsets.all(14),
                           decoration: BoxDecoration(
-                            color: textBase.withValues(alpha: 0.05),
-                            borderRadius: BorderRadius.circular(8),
+                            color: look.insetPanelBg,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: look.insetPanelBorder),
                           ),
                           child: Text(
                             l10n.noModelsUsingProvider,
-                            style: TextStyle(
-                              color: colors.emptyMessageText,
-                              fontSize: 11,
-                            ),
+                            style: look.mutedBodyStyle.copyWith(height: 1.4),
                           ),
                         ),
                       ],
@@ -1107,46 +1132,151 @@ class _ProviderDetailPanelState extends State<_ProviderDetailPanel> {
   }
 }
 
-class _ReadOnlyField extends StatelessWidget {
-  const _ReadOnlyField({required this.label, required this.value});
+/// Provider detail pane: colors and typography aligned with [AppColors] and app [ThemeData].
+class _ProviderDetailLook {
+  const _ProviderDetailLook._(this.theme, this.colors);
 
-  final String label;
+  factory _ProviderDetailLook.of(BuildContext context) {
+    return _ProviderDetailLook._(Theme.of(context), AppColors.of(context));
+  }
+
+  final ThemeData theme;
+  final AppColors colors;
+
+  ColorScheme get colorScheme => theme.colorScheme;
+  TextTheme get textTheme => theme.textTheme;
+
+  Color get panelBg => colors.cardBackground;
+
+  Color get borderColor => colors.border;
+
+  Color get insetPanelBg => colors.statBoxBg;
+
+  Color get insetPanelBorder => colors.statBoxBorder;
+
+  TextStyle get panelTitleStyle => (textTheme.titleLarge ??
+          textTheme.titleMedium ??
+          const TextStyle(fontSize: 20))
+      .copyWith(
+        fontWeight: FontWeight.w800,
+        letterSpacing: -0.2,
+        color: colorScheme.onSurface,
+      );
+
+  TextStyle get mutedBodyStyle => (textTheme.bodySmall ??
+          textTheme.labelMedium ??
+          const TextStyle(fontSize: 12))
+      .copyWith(
+        color: colors.emptyMessageText,
+        height: 1.35,
+      );
+
+  TextStyle get rowLabelStyle => (textTheme.bodyLarge ??
+          textTheme.bodyMedium ??
+          const TextStyle(fontSize: 14))
+      .copyWith(
+        fontWeight: FontWeight.w600,
+        height: 1.2,
+        color: colorScheme.onSurface,
+      );
+
+  TextStyle get sectionTitleStyle => (textTheme.titleMedium ??
+          textTheme.titleLarge ??
+          const TextStyle(fontSize: 16))
+      .copyWith(
+        fontWeight: FontWeight.w800,
+        letterSpacing: -0.2,
+        color: colorScheme.onSurface,
+      );
+}
+
+class _SettingRow extends StatelessWidget {
+  const _SettingRow({
+    required this.title,
+    required this.trailing,
+  });
+
+  final String title;
+  final Widget trailing;
+
+  @override
+  Widget build(BuildContext context) {
+    final look = _ProviderDetailLook.of(context);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Expanded(
+            child: Text(
+              title,
+              style: look.rowLabelStyle,
+            ),
+          ),
+          const SizedBox(width: 16),
+          trailing,
+        ],
+      ),
+    );
+  }
+}
+
+class _InlineReadOnlyValue extends StatelessWidget {
+  const _InlineReadOnlyValue({required this.value});
+
   final String value;
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppColors.of(context);
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textBase = isDark ? Colors.white : const Color(0xFF111827);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: TextStyle(
-            color: textBase.withValues(alpha: 0.58),
-            fontSize: 11,
-            fontWeight: FontWeight.w700,
-          ),
+    final look = _ProviderDetailLook.of(context);
+    return Container(
+      height: 40,
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: BoxDecoration(
+        color: look.colors.readOnlyFieldBg,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: look.colors.readOnlyFieldBorder),
+      ),
+      alignment: Alignment.centerLeft,
+      child: Text(
+        value,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: (look.textTheme.bodyMedium ?? const TextStyle(fontSize: 14))
+            .copyWith(
+          color: look.colors.readOnlyFieldText,
+          fontWeight: FontWeight.w500,
         ),
-        const SizedBox(height: 8),
-        Container(
-          height: 38,
-          padding: const EdgeInsets.symmetric(horizontal: 10),
-          decoration: BoxDecoration(
-            color: colors.readOnlyFieldBg,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: colors.readOnlyFieldBorder),
+      ),
+    );
+  }
+}
+
+class _SettingFieldBlock extends StatelessWidget {
+  const _SettingFieldBlock({
+    required this.title,
+    required this.child,
+  });
+
+  final String title;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final look = _ProviderDetailLook.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(left: 4, right: 4, bottom: 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            title,
+            style: look.rowLabelStyle,
           ),
-          alignment: Alignment.centerLeft,
-          child: Text(
-            value,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(color: colors.readOnlyFieldText),
-          ),
-        ),
-      ],
+          const SizedBox(height: 8),
+          child,
+        ],
+      ),
     );
   }
 }
@@ -1701,55 +1831,6 @@ class _WorkspaceHeading extends StatelessWidget {
         if (trailing != null) trailing!,
       ],
     );
-  }
-}
-
-class _Section extends StatelessWidget {
-  const _Section({required this.title, required this.child});
-
-  final String title;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = AppColors.of(context);
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textBase = isDark ? Colors.white : const Color(0xFF111827);
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: colors.cardBackground,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: colors.border),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text(
-            title,
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w800,
-              color: textBase,
-            ),
-          ),
-          const SizedBox(height: 10),
-          child,
-        ],
-      ),
-    );
-  }
-}
-
-class _SizedField extends StatelessWidget {
-  const _SizedField({required this.child, this.width});
-  final Widget child;
-  final double? width;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(width: width, child: child);
   }
 }
 

@@ -82,4 +82,8 @@ class LayoutCubit extends Cubit<LayoutState> {
 
   Future<void> setLocale(String locale) =>
       _save(state.preferences.copyWith(locale: locale));
+
+  Future<void> setAutoLaunchAllMembersOnConnect(bool value) => _save(
+        state.preferences.copyWith(autoLaunchAllMembersOnConnect: value),
+      );
 }

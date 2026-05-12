@@ -232,6 +232,18 @@ class _LayoutControls extends StatelessWidget {
                 ),
                 showDividerBelow: true,
               ),
+              SettingsGroupHeader(title: l10n.shellSession),
+              SettingsLabeledRow(
+                title: l10n.autoLaunchAllMembersTitle,
+                subtitle: l10n.autoLaunchAllMembersDescription,
+                trailing: Switch(
+                  key: AppKeys.autoLaunchAllMembersOnConnectSwitch,
+                  value: preferences.autoLaunchAllMembersOnConnect,
+                  onChanged: (value) =>
+                      controller.setAutoLaunchAllMembersOnConnect(value),
+                ),
+                showDividerBelow: true,
+              ),
               SettingsGroupHeader(title: l10n.appearance),
               SettingsLabeledRow(
                 title: l10n.themeModeTitle,

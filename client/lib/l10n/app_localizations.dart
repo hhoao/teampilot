@@ -125,6 +125,11 @@ class AppLocalizations {
       _strings['visibilityTeamSessionsHint']!;
   String get visibilityMembersHint => _strings['visibilityMembersHint']!;
   String get visibilityFileTreeHint => _strings['visibilityFileTreeHint']!;
+  String get shellSession => _strings['shellSession']!;
+  String get autoLaunchAllMembersTitle =>
+      _strings['autoLaunchAllMembersTitle']!;
+  String get autoLaunchAllMembersDescription =>
+      _strings['autoLaunchAllMembersDescription']!;
   String get themeModeTitle => _strings['themeModeTitle']!;
   String get themeModeDescription => _strings['themeModeDescription']!;
   String get languageDescription => _strings['languageDescription']!;
@@ -516,6 +521,17 @@ class _AppLocalizationsDelegate
     'visibilityFileTreeHint': {
       'en': 'Show the project file tree for quick navigation.',
       'zh': '显示项目文件树以便快速浏览。',
+    },
+    'shellSession': {'en': 'Shell session', 'zh': 'Shell 会话'},
+    'autoLaunchAllMembersTitle': {
+      'en': 'Start all members on connect',
+      'zh': '连接时启动全部成员',
+    },
+    'autoLaunchAllMembersDescription': {
+      'en':
+          'When enabled, Connect and Restart launch every valid member shell; otherwise only the selected member starts.',
+      'zh':
+          '开启后，点击连接或重启会为每个有效成员启动终端；关闭则仅启动当前选中的成员。',
     },
     'themeModeTitle': {'en': 'Theme mode', 'zh': '主题模式'},
     'themeModeDescription': {

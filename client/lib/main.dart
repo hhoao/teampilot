@@ -92,12 +92,14 @@ void main() async {
     repository: teamRepo,
     llmConfigPathOverride: llmConfigPathOverrideForLaunch,
   );
+  final layoutCubit = LayoutCubit(repository: LayoutRepository(preferences));
   final chatCubit = ChatCubit(
     tempTeamCleaner: tempTeamCleaner,
     llmConfigPathOverride: llmConfigPathOverrideForLaunch,
+    autoLaunchAllMembersOnConnect: () =>
+        layoutCubit.state.preferences.autoLaunchAllMembersOnConnect,
   );
   final configCubit = ConfigCubit();
-  final layoutCubit = LayoutCubit(repository: LayoutRepository(preferences));
   final skillCubit = SkillCubit(SkillRepository());
 
   await teamCubit.load();

@@ -10,7 +10,6 @@ void main() {
           currentDirectory: '/cwd',
           homeDirectory: '/home/test',
           cliExecutablePath: '/opt/flashskyai/dist/flashskyai',
-          fileExistsSync: (_) => true,
         );
         expect(r.path, '/etc/flashskyai/llm_config.json');
         expect(r.source, LlmConfigPathSource.userOverride);
@@ -22,7 +21,6 @@ void main() {
           currentDirectory: '/cwd',
           homeDirectory: '/home/test',
           cliExecutablePath: null,
-          fileExistsSync: (_) => false,
         );
         expect(r.path, '/home/test/llm/llm_config.json');
         expect(r.source, LlmConfigPathSource.userOverride);
@@ -34,75 +32,43 @@ void main() {
           currentDirectory: '/cwd',
           homeDirectory: '/home/test',
           cliExecutablePath: null,
-          fileExistsSync: (_) => false,
         );
         expect(r.path, '/cwd/cfg/llm.json');
         expect(r.source, LlmConfigPathSource.userOverride);
       });
 
-      test('whitespace override is treated as empty', () {
+      test('whitespace override falls through to default', () {
         final r = resolveLlmConfigPath(
           userOverride: '   ',
           currentDirectory: '/cwd',
           homeDirectory: '/home/test',
           cliExecutablePath: '/opt/flashskyai/dist/flashskyai',
-          fileExistsSync: (path) =>
-              path == '/opt/flashskyai/llm/llm_config.json',
         );
+        expect(r.path, '/opt/flashskyai/llm/llm_config.json');
         expect(r.source, LlmConfigPathSource.defaultPath);
       });
     });
 
-    group('default path resolution', () {
-      test('uses CLI install dir when that file exists', () {
+    group('default path', () {
+      test('uses CLI install dir when CLI is known', () {
         final r = resolveLlmConfigPath(
           userOverride: null,
           currentDirectory: '/cwd',
           homeDirectory: '/home/test',
           cliExecutablePath: '/opt/flashskyai/dist/flashskyai',
-          fileExistsSync: (path) =>
-              path == '/opt/flashskyai/llm/llm_config.json',
         );
         expect(r.path, '/opt/flashskyai/llm/llm_config.json');
         expect(r.source, LlmConfigPathSource.defaultPath);
       });
 
-      test('falls back to ~/.flashskyai when CLI file is missing', () {
-        final r = resolveLlmConfigPath(
-          userOverride: null,
-          currentDirectory: '/cwd',
-          homeDirectory: '/home/test',
-          cliExecutablePath: '/opt/flashskyai/dist/flashskyai',
-          fileExistsSync: (path) =>
-              path == '/home/test/.flashskyai/llm/llm_config.json',
-        );
-        expect(r.path, '/home/test/.flashskyai/llm/llm_config.json');
-        expect(r.source, LlmConfigPathSource.defaultPath);
-      });
-
-      test('returns CLI candidate when neither file exists but CLI is known',
-          () {
-        final r = resolveLlmConfigPath(
-          userOverride: null,
-          currentDirectory: '/cwd',
-          homeDirectory: '/home/test',
-          cliExecutablePath: '/opt/flashskyai/dist/flashskyai',
-          fileExistsSync: (_) => false,
-        );
-        // Prefer CLI candidate so saves land where CLI looks first.
-        expect(r.path, '/opt/flashskyai/llm/llm_config.json');
-        expect(r.source, LlmConfigPathSource.defaultPath);
-      });
-
-      test('returns home candidate when CLI is unknown and no file exists', () {
+      test('returns empty path when CLI is unknown', () {
         final r = resolveLlmConfigPath(
           userOverride: null,
           currentDirectory: '/cwd',
           homeDirectory: '/home/test',
           cliExecutablePath: null,
-          fileExistsSync: (_) => false,
         );
-        expect(r.path, '/home/test/.flashskyai/llm/llm_config.json');
+        expect(r.path, '');
         expect(r.source, LlmConfigPathSource.defaultPath);
       });
 
@@ -113,9 +79,6 @@ void main() {
           homeDirectory: '/home/hhoa',
           cliExecutablePath:
               '/home/hhoa/Downloads/DingDing/flashshkyai/dist/flashskyai',
-          fileExistsSync: (path) =>
-              path ==
-              '/home/hhoa/Downloads/DingDing/flashshkyai/llm/llm_config.json',
         );
         expect(r.path,
             '/home/hhoa/Downloads/DingDing/flashshkyai/llm/llm_config.json');
