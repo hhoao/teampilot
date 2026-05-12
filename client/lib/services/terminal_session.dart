@@ -8,7 +8,7 @@ import 'launch_command_builder.dart';
 import '../models/team_config.dart';
 
 class TerminalSession {
-  TerminalSession()
+  TerminalSession({required this.executable})
     : terminal = Terminal(
         maxLines: 10000,
         platform: defaultTargetPlatform == TargetPlatform.macOS
@@ -16,6 +16,7 @@ class TerminalSession {
             : TerminalTargetPlatform.linux,
       );
 
+  final String executable;
   final Terminal terminal;
   Pty? _pty;
   var _running = false;
@@ -102,7 +103,7 @@ class TerminalSession {
   }) {
     try {
       _pty = Pty.start(
-        LaunchCommandBuilder.executable,
+        executable,
         arguments: args,
         workingDirectory: cwd,
         columns: cols,
