@@ -58,19 +58,23 @@ typedef StringProvider = String Function();
 class TeamCubit extends Cubit<TeamState> {
   TeamCubit({
     required TeamRepository repository,
+    required String Function() executableResolver,
     TeamLauncher? launcher,
     String? Function()? llmConfigPathOverride,
   })  : _repository = repository,
+        _executableResolver = executableResolver,
         _llmConfigPathOverride = llmConfigPathOverride,
         _launcher = launcher ??
             ((team, member) => LaunchCommandBuilder.launch(team,
                 member: member,
+                executable: executableResolver(),
                 extraEnvironment:
                     _envFromOverride(llmConfigPathOverride?.call()))),
         super(const TeamState());
 
   final TeamRepository _repository;
   final TeamLauncher _launcher;
+  final String Function() _executableResolver;
   // ignore: unused_field
   final String? Function()? _llmConfigPathOverride;
 
@@ -81,13 +85,23 @@ class TeamCubit extends Cubit<TeamState> {
 
   String previewFor(TeamMemberConfig member) {
     final team = state.selectedTeam;
-    return team == null ? '' : LaunchCommandBuilder.preview(team, member);
+    return team == null
+        ? ''
+        : LaunchCommandBuilder.preview(
+            team,
+            member,
+            executable: _executableResolver(),
+          );
   }
 
   String get selectedCommandPreview {
     final team = state.selectedTeam;
     if (team == null || team.members.isEmpty) return '';
-    return LaunchCommandBuilder.preview(team, team.members.first);
+    return LaunchCommandBuilder.preview(
+      team,
+      team.members.first,
+      executable: _executableResolver(),
+    );
   }
 
   Future<void> load() async {
@@ -222,7 +236,7 @@ class TeamCubit extends Cubit<TeamState> {
       emit(state.copyWith(
           isLaunching: false,
           statusMessage:
-              'Started ${member.name}: ${LaunchCommandBuilder.preview(team, member)}'));
+              'Started ${member.name}: ${LaunchCommandBuilder.preview(team, member, executable: _executableResolver())}'));
     } on Object catch (error) {
       emit(state.copyWith(
           isLaunching: false, statusMessage: 'Launch failed: $error'));
