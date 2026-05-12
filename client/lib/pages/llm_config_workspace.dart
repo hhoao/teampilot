@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 
-import '../utils/app_keys.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+
 import '../l10n/app_localizations.dart';
 import '../models/llm_config.dart';
 import '../cubits/llm_config_cubit.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import '../theme/app_theme.dart';
+import '../utils/app_keys.dart';
+import '../widgets/dropdown/custom_dropdown.dart';
+import '../widgets/dropdown/flashskyai_dropdown_decoration.dart';
 import '../widgets/resizable_split_view.dart';
 
 class LlmConfigWorkspace extends StatelessWidget {
@@ -214,8 +217,8 @@ class _ProviderListPanelState extends State<_ProviderListPanel> {
       child: Column(
         children: [
           Container(
-            height: 42,
-            padding: const EdgeInsets.symmetric(horizontal: 11),
+            height: 48,
+            padding: const EdgeInsets.symmetric(horizontal: 14),
             decoration: BoxDecoration(
               border: Border(bottom: BorderSide(color: colors.tabBarDivider)),
             ),
@@ -245,7 +248,7 @@ class _ProviderListPanelState extends State<_ProviderListPanel> {
             ),
           ),
           Padding(
-            padding: const EdgeInsets.all(10),
+            padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
             child: TextField(
               key: AppKeys.llmProviderSearch,
               controller: _searchController,
@@ -253,8 +256,8 @@ class _ProviderListPanelState extends State<_ProviderListPanel> {
                 hintText: l10n.filterProviders,
                 isDense: true,
                 contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 8,
+                  horizontal: 12,
+                  vertical: 10,
                 ),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(7),
@@ -265,9 +268,10 @@ class _ProviderListPanelState extends State<_ProviderListPanel> {
             ),
           ),
           Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.only(left: 10, right: 10, bottom: 10),
+            child: ListView.separated(
+              padding: const EdgeInsets.fromLTRB(12, 4, 12, 14),
               itemCount: providers.length,
+              separatorBuilder: (_, __) => const SizedBox(height: 8),
               itemBuilder: (context, index) {
                 final provider = providers[index];
                 final isSelected = provider.name == widget.selectedName;
@@ -311,69 +315,71 @@ class _ProviderListRow extends StatelessWidget {
     final l10n = context.l10n;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textBase = isDark ? Colors.white : const Color(0xFF111827);
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 6),
-      child: Material(
-        color: isSelected
-            ? colors.selectedBackground
-            : colors.unselectedBackground,
-        borderRadius: BorderRadius.circular(8),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(8),
-          onTap: onTap,
-          child: Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(
-                color: isSelected
-                    ? colors.selectedBorder
-                    : colors.unselectedBorder,
-              ),
+    return Material(
+      color: isSelected
+          ? colors.selectedBackground
+          : colors.unselectedBackground,
+      borderRadius: BorderRadius.circular(10),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(10),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(14, 13, 6, 13),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color: isSelected
+                  ? colors.selectedBorder
+                  : colors.unselectedBorder,
             ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        provider.name,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontWeight: FontWeight.w700,
-                          color: textBase,
-                          height: 1.2,
-                        ),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      provider.name,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        color: textBase,
+                        height: 1.25,
+                        fontSize: 13,
                       ),
-                      const SizedBox(height: 5),
-                      Row(
-                        children: [
-                          _TypeBadge(type: provider.type),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              l10n.providerListCaption(
-                                modelCount,
-                                provider.proxy,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                color: textBase.withValues(alpha: 0.48),
-                                fontSize: 11,
-                              ),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        _TypeBadge(type: provider.type),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            l10n.providerListCaption(
+                              modelCount,
+                              provider.proxy,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: textBase.withValues(alpha: 0.48),
+                              fontSize: 11,
+                              height: 1.35,
                             ),
                           ),
-                        ],
-                      ),
-                    ],
-                  ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
-                PopupMenuButton<String>(
-                  icon: const Icon(Icons.more_horiz, size: 16),
-                  padding: EdgeInsets.zero,
+              ),
+              PopupMenuButton<String>(
+                icon: const Icon(Icons.more_horiz, size: 18),
+                padding: const EdgeInsets.all(4),
+                constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
                   itemBuilder: (context) => [
                     PopupMenuItem(value: 'delete', child: Text(l10n.delete)),
                   ],
@@ -633,22 +639,78 @@ class _ProviderDetailPanelState extends State<_ProviderDetailPanel> {
                           ),
                           _SizedField(
                             width: fieldWidth,
-                            child: DropdownButtonFormField<String>(
-                              initialValue: _type,
-                              isExpanded: true,
-                              decoration: InputDecoration(labelText: l10n.type),
-                              items: [
-                                DropdownMenuItem(
-                                  value: 'api',
-                                  child: Text(l10n.api),
-                                ),
-                                DropdownMenuItem(
-                                  value: 'account',
-                                  child: Text(l10n.account),
-                                ),
-                              ],
-                              onChanged: (value) =>
-                                  setState(() => _type = value ?? 'api'),
+                            child: Builder(
+                              builder: (context) {
+                                final deco =
+                                    FlashskyDropdownDecorations.denseField(
+                                        context);
+                                String typeLabel(String v) =>
+                                    v == 'api' ? l10n.api : l10n.account;
+                                return Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      l10n.type,
+                                      style: TextStyle(
+                                        color: textBase.withValues(alpha: 0.58),
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    DropdownFlutter<String>(
+                                      items: const ['api', 'account'],
+                                      initialItem: _type,
+                                      excludeSelected: false,
+                                      decoration: deco,
+                                      closedHeaderPadding:
+                                          const EdgeInsets.symmetric(
+                                        horizontal: 10,
+                                        vertical: 10,
+                                      ),
+                                      expandedHeaderPadding:
+                                          const EdgeInsets.symmetric(
+                                        horizontal: 12,
+                                        vertical: 10,
+                                      ),
+                                      listItemPadding:
+                                          const EdgeInsets.symmetric(
+                                        vertical: 8,
+                                        horizontal: 10,
+                                      ),
+                                      overlayHeight: 160,
+                                      onChanged: (value) => setState(
+                                        () => _type = value ?? 'api',
+                                      ),
+                                      headerBuilder: (context, value, _) =>
+                                          Text(
+                                        typeLabel(value),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: deco.headerStyle,
+                                      ),
+                                      listItemBuilder:
+                                          (context, value, _, __) {
+                                        return Row(
+                                          children: [
+                                            Expanded(
+                                              child: Text(
+                                                typeLabel(value),
+                                                maxLines: 1,
+                                                overflow:
+                                                    TextOverflow.ellipsis,
+                                                style: deco.listItemStyle,
+                                              ),
+                                            ),
+                                          ],
+                                        );
+                                      },
+                                    ),
+                                  ],
+                                );
+                              },
                             ),
                           ),
                         ],
@@ -1305,6 +1367,11 @@ class _ModelEditDialogState extends State<_ModelEditDialog> {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
+    final providerNames = widget.providers.keys.toList()..sort();
+    final deco = FlashskyDropdownDecorations.denseField(context);
+    final initialProvider =
+        widget.providers.containsKey(_provider) ? _provider : null;
+
     return AlertDialog(
       title: Text(widget.title),
       content: SizedBox(
@@ -1319,17 +1386,65 @@ class _ModelEditDialogState extends State<_ModelEditDialog> {
               decoration: InputDecoration(labelText: l10n.modelName),
             ),
             const SizedBox(height: 14),
-            DropdownButtonFormField<String>(
-              key: AppKeys.modelProviderField,
-              initialValue: widget.providers.containsKey(_provider)
-                  ? _provider
-                  : null,
-              decoration: InputDecoration(labelText: l10n.provider),
-              items: [
-                for (final p in widget.providers.values)
-                  DropdownMenuItem(value: p.name, child: Text(p.name)),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  l10n.provider,
+                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ) ??
+                      const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                ),
+                const SizedBox(height: 8),
+                DropdownFlutter<String>(
+                  key: AppKeys.modelProviderField,
+                  items: providerNames,
+                  initialItem: initialProvider,
+                  hintText: l10n.provider,
+                  excludeSelected: false,
+                  decoration: deco,
+                  closedHeaderPadding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 12,
+                  ),
+                  expandedHeaderPadding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 12,
+                  ),
+                  listItemPadding: const EdgeInsets.symmetric(
+                    vertical: 10,
+                    horizontal: 12,
+                  ),
+                  overlayHeight: 260,
+                  onChanged: (value) =>
+                      setState(() => _provider = value ?? ''),
+                  headerBuilder: (context, value, _) => Text(
+                    value,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: deco.headerStyle,
+                  ),
+                  listItemBuilder: (context, value, _, __) {
+                    return Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            value,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: deco.listItemStyle,
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                ),
               ],
-              onChanged: (value) => setState(() => _provider = value ?? ''),
             ),
             const SizedBox(height: 14),
             TextField(

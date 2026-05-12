@@ -43,6 +43,27 @@ const _defaultErrorStyle = TextStyle(
   height: 0.5,
 );
 
+/// Prevents theme [InputDecorationTheme] borders from stacking on top of the
+/// custom-painted closed field inside [_DropDownField].
+InputDecoration _dropdownFormFieldDecoration({
+  required TextStyle? errorStyle,
+  required String? errorText,
+}) {
+  return InputDecoration(
+    errorStyle: errorStyle,
+    errorText: errorText,
+    filled: false,
+    isDense: true,
+    contentPadding: EdgeInsets.zero,
+    border: InputBorder.none,
+    enabledBorder: InputBorder.none,
+    focusedBorder: InputBorder.none,
+    disabledBorder: InputBorder.none,
+    errorBorder: InputBorder.none,
+    focusedErrorBorder: InputBorder.none,
+  );
+}
+
 class DropdownFlutter<T> extends StatefulWidget {
   /// The list of items user can select.
   final List<T>? items;
@@ -602,11 +623,9 @@ class _DropdownFlutterState<T> extends State<DropdownFlutter<T>> {
         builder: (formFieldState) {
           _formFieldState = formFieldState;
           return InputDecorator(
-            decoration: InputDecoration(
+            decoration: _dropdownFormFieldDecoration(
               errorStyle: decoration?.errorStyle ?? _defaultErrorStyle,
               errorText: formFieldState.errorText,
-              border: InputBorder.none,
-              contentPadding: EdgeInsets.zero,
             ),
             child: _OverlayBuilder(
               overlayPortalController: widget.overlayController,

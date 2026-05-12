@@ -136,7 +136,6 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
                           padding: const EdgeInsets.all(16),
                           textStyle: const TerminalStyle(
                             fontSize: 14,
-                            height: 1.0,
                             fontFamily: 'monospace',
                             fontFamilyFallback: [
                               'Ubuntu Mono',

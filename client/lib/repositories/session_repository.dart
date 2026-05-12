@@ -64,6 +64,7 @@ class SessionRepository {
       startedAt: nowMs,
       kind: 'interactive',
       entrypoint: 'cli',
+      display: FlashskySession.kDefaultDisplayTitle,
       sessionTeam: sessionTeam,
     );
     await Directory(_sessionsDir).create(recursive: true);

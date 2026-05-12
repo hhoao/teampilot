@@ -10,6 +10,7 @@ import '../models/layout_preferences.dart';
 import '../theme/app_theme.dart';
 import '../theme/app_workspace_settings_theme.dart';
 import '../utils/app_keys.dart';
+import '../widgets/settings/workspace_settings_toggle_strip.dart';
 import '../widgets/settings/workspace_settings_widgets.dart';
 import '../utils/perf.dart';
 import 'llm_config_workspace.dart';
@@ -149,9 +150,6 @@ class _LayoutControls extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final tokens = AppWorkspaceSettingsTokens.of(context);
-    final segmentStyle = workspaceSettingsEmphasizedSegmentButtonStyle(context);
-    final iconSize = tokens.segmentedIconSize;
     var themeMode = preferences.themeMode;
     if (themeMode != 'light' && themeMode != 'dark' && themeMode != 'system') {
       themeMode = 'system';
@@ -171,51 +169,42 @@ class _LayoutControls extends StatelessWidget {
               SettingsLabeledRow(
                 title: l10n.toolPlacement,
                 subtitle: l10n.toolPlacementDescription,
-                trailing: SegmentedButton<ToolPanelPlacement>(
-                  style: segmentStyle,
-                  showSelectedIcon: false,
+                trailing: WorkspaceSettingsToggleStrip<ToolPanelPlacement>(
                   segments: [
-                    ButtonSegment<ToolPanelPlacement>(
+                    WorkspaceToggleSegment<ToolPanelPlacement>(
                       value: ToolPanelPlacement.right,
-                      label: Text(l10n.right),
-                      icon: Icon(
-                        Icons.vertical_split_outlined,
-                        size: iconSize,
-                      ),
+                      label: l10n.right,
+                      icon: Icons.vertical_split_outlined,
                     ),
-                    ButtonSegment<ToolPanelPlacement>(
+                    WorkspaceToggleSegment<ToolPanelPlacement>(
                       value: ToolPanelPlacement.bottom,
-                      label: Text(l10n.bottom),
-                      icon: Icon(Icons.splitscreen_outlined, size: iconSize),
+                      label: l10n.bottom,
+                      icon: Icons.splitscreen_outlined,
                     ),
                   ],
-                  selected: {preferences.toolPlacement},
-                  onSelectionChanged: (selection) =>
-                      controller.setToolPlacement(selection.single),
+                  selected: preferences.toolPlacement,
+                  onChanged: controller.setToolPlacement,
                 ),
                 showDividerBelow: true,
               ),
               SettingsLabeledRow(
                 title: l10n.membersAndFileTree,
                 subtitle: l10n.membersAndFileTreeDescription,
-                trailing: SegmentedButton<ToolsArrangement>(
-                  style: segmentStyle,
-                  showSelectedIcon: false,
+                trailing: WorkspaceSettingsToggleStrip<ToolsArrangement>(
                   segments: [
-                    ButtonSegment<ToolsArrangement>(
+                    WorkspaceToggleSegment<ToolsArrangement>(
                       value: ToolsArrangement.stacked,
-                      label: Text(l10n.stacked),
-                      icon: Icon(Icons.view_agenda_outlined, size: iconSize),
+                      label: l10n.stacked,
+                      icon: Icons.view_agenda_outlined,
                     ),
-                    ButtonSegment<ToolsArrangement>(
+                    WorkspaceToggleSegment<ToolsArrangement>(
                       value: ToolsArrangement.tabs,
-                      label: Text(l10n.tabs),
-                      icon: Icon(Icons.tab_outlined, size: iconSize),
+                      label: l10n.tabs,
+                      icon: Icons.tab_outlined,
                     ),
                   ],
-                  selected: {preferences.toolsArrangement},
-                  onSelectionChanged: (selection) =>
-                      controller.setToolsArrangement(selection.single),
+                  selected: preferences.toolsArrangement,
+                  onChanged: controller.setToolsArrangement,
                 ),
                 showDividerBelow: true,
               ),
@@ -255,35 +244,26 @@ class _LayoutControls extends StatelessWidget {
               SettingsLabeledRow(
                 title: l10n.themeModeTitle,
                 subtitle: l10n.themeModeDescription,
-                trailing: SegmentedButton<String>(
-                  style: segmentStyle,
-                  showSelectedIcon: false,
+                trailing: WorkspaceSettingsToggleStrip<String>(
                   segments: [
-                    ButtonSegment<String>(
+                    WorkspaceToggleSegment<String>(
                       value: 'light',
-                      tooltip: l10n.themeLight,
-                      icon: Icon(Icons.light_mode_outlined, size: iconSize),
-                      label: Text(l10n.themeLight),
+                      label: l10n.themeLight,
+                      icon: Icons.light_mode_outlined,
                     ),
-                    ButtonSegment<String>(
+                    WorkspaceToggleSegment<String>(
                       value: 'dark',
-                      tooltip: l10n.themeDark,
-                      icon: Icon(Icons.dark_mode_outlined, size: iconSize),
-                      label: Text(l10n.themeDark),
+                      label: l10n.themeDark,
+                      icon: Icons.dark_mode_outlined,
                     ),
-                    ButtonSegment<String>(
+                    WorkspaceToggleSegment<String>(
                       value: 'system',
-                      tooltip: l10n.themeSystem,
-                      icon: Icon(
-                        Icons.desktop_windows_outlined,
-                        size: iconSize,
-                      ),
-                      label: Text(l10n.themeSystem),
+                      label: l10n.themeSystem,
+                      icon: Icons.desktop_windows_outlined,
                     ),
                   ],
-                  selected: {themeMode},
-                  onSelectionChanged: (selection) =>
-                      controller.setThemeMode(selection.single),
+                  selected: themeMode,
+                  onChanged: controller.setThemeMode,
                 ),
                 showDividerBelow: true,
               ),
@@ -292,18 +272,14 @@ class _LayoutControls extends StatelessWidget {
                 subtitle: l10n.languageDescription,
                 trailing: SettingsCompactDropdown<String>(
                   value: langValue,
-                  items: [
-                    DropdownMenuItem(
-                      key: AppKeys.languageEnButton,
-                      value: 'en',
-                      child: Text(l10n.languageEnglish),
-                    ),
-                    DropdownMenuItem(
-                      key: AppKeys.languageZhButton,
-                      value: 'zh',
-                      child: Text(l10n.languageChinese),
-                    ),
+                  entries: [
+                    ('en', l10n.languageEnglish),
+                    ('zh', l10n.languageChinese),
                   ],
+                  itemKeys: const {
+                    'en': AppKeys.languageEnButton,
+                    'zh': AppKeys.languageZhButton,
+                  },
                   onChanged: (v) {
                     if (v != null) controller.setLocale(v);
                   },

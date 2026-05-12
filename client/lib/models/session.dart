@@ -2,6 +2,9 @@ import 'package:flutter/foundation.dart';
 
 @immutable
 class FlashskySession {
+  /// Default [display] for new sessions and UI fallback when [display] is empty.
+  static const String kDefaultDisplayTitle = 'New Chat';
+
   const FlashskySession({
     required this.sessionId,
     this.cwd = '',
@@ -31,6 +34,10 @@ class FlashskySession {
   final String entrypoint;
   final String display;
   final String sessionTeam;
+
+  /// Title shown in tabs and session list ([display] or [kDefaultDisplayTitle]).
+  String get displayTitle =>
+      display.isNotEmpty ? display : kDefaultDisplayTitle;
 
   FlashskySession copyWith({
     String? sessionId,

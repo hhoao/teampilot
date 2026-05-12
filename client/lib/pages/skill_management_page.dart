@@ -10,6 +10,8 @@ import '../cubits/skill_cubit.dart';
 import '../l10n/app_localizations.dart';
 import '../models/skill.dart';
 import '../theme/app_theme.dart';
+import '../widgets/dropdown/custom_dropdown.dart';
+import '../widgets/dropdown/flashskyai_dropdown_decoration.dart';
 
 enum SkillSection { installed, discovery, repos, backups }
 
@@ -997,6 +999,33 @@ class _DiscoverySectionState extends State<_DiscoverySection> {
       for (final d in state.discoverable) '${d.repoOwner}/${d.repoName}',
     }.toList()
       ..sort();
+    final repoItems = <String>['all', ...repoOptions];
+    final effectiveRepo =
+        repoItems.contains(_filterRepo) ? _filterRepo : 'all';
+    if (effectiveRepo != _filterRepo) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        setState(() => _filterRepo = effectiveRepo);
+        _pagingController.refresh();
+      });
+    }
+    final deco = FlashskyDropdownDecorations.denseField(context);
+
+    String repoLabel(String v) =>
+        v == 'all' ? l10n.skillsFilterRepoAll : v;
+
+    String statusLabel(String v) {
+      switch (v) {
+        case 'installed':
+          return l10n.skillsFilterInstalled;
+        case 'uninstalled':
+          return l10n.skillsFilterUninstalled;
+        case 'all':
+        default:
+          return l10n.skillsFilterAll;
+      }
+    }
+
     return Wrap(
       spacing: 10,
       runSpacing: 10,
@@ -1017,41 +1046,93 @@ class _DiscoverySectionState extends State<_DiscoverySection> {
         ),
         SizedBox(
           width: 200,
-          child: DropdownButtonFormField<String>(
-            initialValue: _filterRepo,
-            isExpanded: true,
-            items: [
-              DropdownMenuItem(
-                  value: 'all', child: Text(l10n.skillsFilterRepoAll)),
-              for (final repo in repoOptions)
-                DropdownMenuItem(
-                    value: repo,
-                    child: Text(repo, overflow: TextOverflow.ellipsis)),
-            ],
+          child: DropdownFlutter<String>(
+            items: repoItems,
+            initialItem: effectiveRepo,
+            excludeSelected: false,
+            decoration: deco,
+            closedHeaderPadding: const EdgeInsets.symmetric(
+              horizontal: 10,
+              vertical: 10,
+            ),
+            expandedHeaderPadding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 10,
+            ),
+            listItemPadding: const EdgeInsets.symmetric(
+              vertical: 8,
+              horizontal: 10,
+            ),
+            overlayHeight: 240,
             onChanged: (v) {
               setState(() => _filterRepo = v ?? 'all');
               _pagingController.refresh();
+            },
+            headerBuilder: (context, value, _) => Text(
+              repoLabel(value),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: deco.headerStyle,
+            ),
+            listItemBuilder: (context, value, _, __) {
+              return Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      repoLabel(value),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: deco.listItemStyle,
+                    ),
+                  ),
+                ],
+              );
             },
           ),
         ),
         SizedBox(
           width: 160,
-          child: DropdownButtonFormField<String>(
-            initialValue: _filterStatus,
-            isExpanded: true,
-            items: [
-              DropdownMenuItem(
-                  value: 'all', child: Text(l10n.skillsFilterAll)),
-              DropdownMenuItem(
-                  value: 'installed',
-                  child: Text(l10n.skillsFilterInstalled)),
-              DropdownMenuItem(
-                  value: 'uninstalled',
-                  child: Text(l10n.skillsFilterUninstalled)),
-            ],
+          child: DropdownFlutter<String>(
+            items: const ['all', 'installed', 'uninstalled'],
+            initialItem: _filterStatus,
+            excludeSelected: false,
+            decoration: deco,
+            closedHeaderPadding: const EdgeInsets.symmetric(
+              horizontal: 10,
+              vertical: 10,
+            ),
+            expandedHeaderPadding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 10,
+            ),
+            listItemPadding: const EdgeInsets.symmetric(
+              vertical: 8,
+              horizontal: 10,
+            ),
+            overlayHeight: 200,
             onChanged: (v) {
               setState(() => _filterStatus = v ?? 'all');
               _pagingController.refresh();
+            },
+            headerBuilder: (context, value, _) => Text(
+              statusLabel(value),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: deco.headerStyle,
+            ),
+            listItemBuilder: (context, value, _, __) {
+              return Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      statusLabel(value),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: deco.listItemStyle,
+                    ),
+                  ),
+                ],
+              );
             },
           ),
         ),

@@ -352,6 +352,45 @@ ThemeData _buildTheme(Brightness brightness, AppColors colors) {
         ),
       ),
     ),
+    // Aligns PopupMenuButton / showMenu with custom dropdown overlay (card,
+    // border, shadow; no M3 surface tint halo).
+    popupMenuTheme: PopupMenuThemeData(
+      color: colors.cardBackground,
+      surfaceTintColor: Colors.transparent,
+      elevation: 14,
+      shadowColor: Colors.black.withValues(alpha: isDark ? 0.45 : 0.12),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(10),
+        side: BorderSide(color: colors.subtleBorder),
+      ),
+      textStyle: TextStyle(
+        fontSize: 14,
+        fontWeight: FontWeight.w500,
+        height: 1.25,
+        color: textBase,
+      ),
+      iconColor: textBase.withValues(alpha: 0.72),
+      menuPadding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+    ),
+    menuTheme: MenuThemeData(
+      style: MenuStyle(
+        backgroundColor: WidgetStatePropertyAll(colors.cardBackground),
+        surfaceTintColor: const WidgetStatePropertyAll(Colors.transparent),
+        elevation: const WidgetStatePropertyAll(14),
+        shadowColor: WidgetStatePropertyAll(
+          Colors.black.withValues(alpha: isDark ? 0.45 : 0.12),
+        ),
+        shape: WidgetStatePropertyAll(
+          RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+            side: BorderSide(color: colors.subtleBorder),
+          ),
+        ),
+        padding: const WidgetStatePropertyAll(
+          EdgeInsets.symmetric(vertical: 4, horizontal: 4),
+        ),
+      ),
+    ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
       fillColor: colors.inputFill,

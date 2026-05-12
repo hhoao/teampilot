@@ -55,6 +55,7 @@ dependencies:
   http: ^1.6.0
   crypto: ^3.0.7
   archive: ^4.0.9
+  toggle_switch: ^2.3.0
 
 dev_dependencies:
   flutter_test:

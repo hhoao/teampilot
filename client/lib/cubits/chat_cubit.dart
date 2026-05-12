@@ -203,7 +203,7 @@ class ChatCubit extends Cubit<ChatState> {
     final ts = _terminalSessionFactory();
     final info = ChatTabInfo(
       id: session.sessionId,
-      title: session.display.isNotEmpty ? session.display : session.kind,
+      title: session.displayTitle,
       subtitle: session.cwd,
     );
     final sessionTeamName = _assignSessionTeam(session.sessionId, team, repo);

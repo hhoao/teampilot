@@ -6,6 +6,8 @@ import '../cubits/team_cubit.dart';
 import '../l10n/app_localizations.dart';
 import '../models/team_config.dart';
 import '../theme/app_theme.dart';
+import '../widgets/dropdown/custom_dropdown.dart';
+import '../widgets/dropdown/flashskyai_dropdown_decoration.dart';
 
 enum _TeamPageSection { team, members }
 
@@ -56,8 +58,13 @@ class _TeamConfigPageState extends State<TeamConfigPage> {
                 final compact = constraints.maxWidth < 820;
                 final navWidth = compact ? 220.0 : 280.0;
                 final contentPadding = compact
-                    ? const EdgeInsets.fromLTRB(20, 24, 20, 20)
-                    : const EdgeInsets.fromLTRB(36, 32, 44, 28);
+                    ? const EdgeInsets.fromLTRB(16, 20, 16, 16)
+                    : const EdgeInsets.fromLTRB(24, 28, 28, 24);
+                final bodyPaneWidth =
+                    constraints.maxWidth - navWidth - 1;
+                final teamBodyMaxWidth =
+                    (bodyPaneWidth - contentPadding.horizontal)
+                        .clamp(480.0, 3200.0);
                 return Row(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
@@ -88,9 +95,11 @@ class _TeamConfigPageState extends State<TeamConfigPage> {
                       child: Padding(
                         padding: contentPadding,
                         child: Align(
-                          alignment: Alignment.topCenter,
+                          alignment: Alignment.topLeft,
                           child: ConstrainedBox(
-                            constraints: const BoxConstraints(maxWidth: 1120),
+                            constraints: BoxConstraints(
+                              maxWidth: teamBodyMaxWidth,
+                            ),
                             child: switch (_section) {
                               _TeamPageSection.team => _TeamInfoSection(
                                 team: team,
@@ -211,6 +220,9 @@ class _NavPanel extends StatelessWidget {
             icon: Icons.person_outline,
             compact: compact,
             selected: section == _TeamPageSection.members,
+            trailingIcon: section == _TeamPageSection.members
+                ? Icons.expand_less
+                : Icons.expand_more,
             onTap: () => onSelect(_TeamPageSection.members),
           ),
           if (section == _TeamPageSection.members) ...[
@@ -374,6 +386,7 @@ class _NavItem extends StatelessWidget {
     required this.compact,
     required this.selected,
     required this.onTap,
+    this.trailingIcon,
   });
 
   final String title;
@@ -381,6 +394,7 @@ class _NavItem extends StatelessWidget {
   final bool compact;
   final bool selected;
   final VoidCallback onTap;
+  final IconData? trailingIcon;
 
   @override
   Widget build(BuildContext context) {
@@ -422,6 +436,14 @@ class _NavItem extends StatelessWidget {
                       ),
                     ),
                   ),
+                  if (trailingIcon != null) ...[
+                    const SizedBox(width: 6),
+                    Icon(
+                      trailingIcon,
+                      color: selected ? textBase : muted,
+                      size: compact ? 22 : 24,
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -747,6 +769,8 @@ class _MemberConfigFormState extends State<_MemberConfigForm> {
       modelNames.add(model);
     }
 
+    final dropdownDeco = FlashskyDropdownDecorations.denseField(context);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -764,14 +788,25 @@ class _MemberConfigFormState extends State<_MemberConfigForm> {
         const SizedBox(height: 12),
         _FieldLabel(text: l10n.provider),
         const SizedBox(height: 6),
-        DropdownButtonFormField<String>(
-          initialValue: prov.isEmpty ? null : prov,
-          isExpanded: true,
-          hint: Text(l10n.selectProvider),
-          items: [
-            for (final name in providerNames)
-              DropdownMenuItem(value: name, child: Text(name)),
-          ],
+        DropdownFlutter<String>(
+          items: providerNames,
+          initialItem: prov.isEmpty ? null : prov,
+          hintText: l10n.selectProvider,
+          excludeSelected: false,
+          decoration: dropdownDeco,
+          closedHeaderPadding: const EdgeInsets.symmetric(
+            horizontal: 12,
+            vertical: 12,
+          ),
+          expandedHeaderPadding: const EdgeInsets.symmetric(
+            horizontal: 14,
+            vertical: 12,
+          ),
+          listItemPadding: const EdgeInsets.symmetric(
+            vertical: 10,
+            horizontal: 12,
+          ),
+          overlayHeight: 260,
           onChanged: (value) {
             final newProv = value ?? '';
             var newModel = m.model;
@@ -781,19 +816,70 @@ class _MemberConfigFormState extends State<_MemberConfigForm> {
             if (!stillValid) newModel = '';
             _update(m.copyWith(provider: newProv, model: newModel));
           },
+          headerBuilder: (context, value, _) => Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: dropdownDeco.headerStyle,
+          ),
+          listItemBuilder: (context, value, isSelected, _) {
+            return Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    value,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: dropdownDeco.listItemStyle,
+                  ),
+                ),
+              ],
+            );
+          },
         ),
         const SizedBox(height: 12),
         _FieldLabel(text: l10n.model),
         const SizedBox(height: 6),
-        DropdownButtonFormField<String>(
-          initialValue: model.isEmpty ? null : model,
-          isExpanded: true,
-          hint: Text(l10n.selectModel),
-          items: [
-            for (final name in modelNames)
-              DropdownMenuItem(value: name, child: Text(name)),
-          ],
+        DropdownFlutter<String>(
+          items: modelNames,
+          initialItem: model.isEmpty ? null : model,
+          hintText: l10n.selectModel,
+          excludeSelected: false,
+          decoration: dropdownDeco,
+          closedHeaderPadding: const EdgeInsets.symmetric(
+            horizontal: 12,
+            vertical: 12,
+          ),
+          expandedHeaderPadding: const EdgeInsets.symmetric(
+            horizontal: 14,
+            vertical: 12,
+          ),
+          listItemPadding: const EdgeInsets.symmetric(
+            vertical: 10,
+            horizontal: 12,
+          ),
+          overlayHeight: 260,
           onChanged: (value) => _update(m.copyWith(model: value ?? '')),
+          headerBuilder: (context, value, _) => Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: dropdownDeco.headerStyle,
+          ),
+          listItemBuilder: (context, value, isSelected, _) {
+            return Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    value,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: dropdownDeco.listItemStyle,
+                  ),
+                ),
+              ],
+            );
+          },
         ),
         const SizedBox(height: 12),
         _FieldLabel(text: l10n.agent),

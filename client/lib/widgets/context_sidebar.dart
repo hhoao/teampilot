@@ -15,6 +15,8 @@ import '../theme/app_theme.dart';
 import '../utils/app_keys.dart';
 import '../utils/logger.dart';
 import '../utils/perf.dart';
+import '../widgets/dropdown/custom_dropdown.dart';
+import '../widgets/dropdown/flashskyai_dropdown_decoration.dart';
 
 class ContextSidebar extends StatefulWidget {
   const ContextSidebar({this.onNewProject, super.key});
@@ -156,9 +158,14 @@ class _ProjectList extends StatelessWidget {
       itemCount: sortedEntries.length,
       itemBuilder: (context, index) {
         final entry = sortedEntries[index];
-        return _ProjectGroup(
-          cwd: entry.key,
-          sessions: entry.value,
+        return Padding(
+          padding: EdgeInsets.only(
+            bottom: index == sortedEntries.length - 1 ? 0 : 10,
+          ),
+          child: _ProjectGroup(
+            cwd: entry.key,
+            sessions: entry.value,
+          ),
         );
       },
     );
@@ -206,10 +213,19 @@ class _ProjectGroupState extends State<_ProjectGroup> {
               : null,
         ),
         if (_expanded)
-          ...widget.sessions.map(
-            (s) => _SessionTileEntry(session: s),
+          Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                for (var i = 0; i < widget.sessions.length; i++) ...[
+                  if (i > 0) const SizedBox(height: 6),
+                  _SessionTileEntry(session: widget.sessions[i]),
+                ],
+              ],
+            ),
           ),
-        const SizedBox(height: 4),
+        const SizedBox(height: 2),
       ],
     );
   }
@@ -336,7 +352,7 @@ class _ProjectHeaderState extends State<_ProjectHeader> {
                     onTap: widget.onToggle,
                     child: Container(
                       padding: const EdgeInsets.only(
-                        left: 10,
+                        left: 12,
                         right: 4,
                         top: 8,
                         bottom: 8,
@@ -492,9 +508,9 @@ class _SessionTileEntryState extends State<_SessionTileEntry> {
       onExit: (_) => setState(() => _hovered = false),
       child: _SidebarTile(
         key: AppKeys.sessionTile(session.sessionId),
-        title: session.display.isNotEmpty ? session.display : session.kind,
+        title: session.displayTitle,
         selected: selected,
-        indent: true,
+        indent: false,
         onTap: () {
           FramePerf.mark('nav session ${session.sessionId}');
           final teamCubit = context.read<TeamCubit>();
@@ -557,7 +573,7 @@ class _SessionTileEntryState extends State<_SessionTileEntry> {
     AppLocalizations l10n,
   ) {
     final controller = TextEditingController(
-      text: session.display.isNotEmpty ? session.display : session.kind,
+      text: session.displayTitle,
     );
     showDialog<void>(
       context: context,
@@ -609,7 +625,7 @@ class _SessionTileEntryState extends State<_SessionTileEntry> {
     FlashskySession session,
     AppLocalizations l10n,
   ) {
-    final name = session.display.isNotEmpty ? session.display : session.kind;
+    final name = session.displayTitle;
     showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -756,38 +772,55 @@ class _TeamSelector extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = AppColors.of(context);
     final l10n = context.l10n;
+    final decoration = FlashskyDropdownDecorations.sidebarTeam(context);
+
     return Row(
       children: [
         Expanded(
-          child: PopupMenuButton<String>(
-            tooltip: l10n.selectTeam,
-            onSelected: onSelect,
-            itemBuilder: (context) => [
-              for (final team in teams)
-                PopupMenuItem(value: team.id, child: Text(team.name)),
-            ],
-            child: Container(
-              height: 38,
-              padding: const EdgeInsets.symmetric(horizontal: 10),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(8),
-                color: colors.teamSelectorBackground,
-                border: Border.all(color: colors.teamSelectorBorder),
-              ),
-              child: Row(
+          child: DropdownFlutter<TeamConfig>(
+            items: teams,
+            initialItem: selected,
+            excludeSelected: false,
+            hintText: l10n.selectTeam,
+            decoration: decoration,
+            closedHeaderPadding: const EdgeInsets.symmetric(
+              horizontal: 10,
+              vertical: 8,
+            ),
+            expandedHeaderPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 12,
+            ),
+            listItemPadding: const EdgeInsets.symmetric(
+              vertical: 10,
+              horizontal: 12,
+            ),
+            overlayHeight: 280,
+            onChanged: (team) {
+              if (team != null && team.id != selected.id) {
+                onSelect(team.id);
+              }
+            },
+            headerBuilder: (context, team, _) => Text(
+              team.name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: decoration.headerStyle,
+            ),
+            listItemBuilder: (context, team, isSelected, _) {
+              return Row(
                 children: [
                   Expanded(
                     child: Text(
-                      selected.name,
+                      team.name,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontWeight: FontWeight.w700),
+                      style: decoration.listItemStyle,
                     ),
                   ),
-                  const Icon(Icons.expand_more, size: 18),
                 ],
-              ),
-            ),
+              );
+            },
           ),
         ),
         if (onAddTeam != null) ...[
@@ -907,7 +940,10 @@ class _SidebarTile extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textBase = isDark ? Colors.white : const Color(0xFF111827);
     return Padding(
-      padding: EdgeInsets.only(left: indent ? 16.0 : 0, bottom: 8),
+      padding: EdgeInsets.only(
+        left: indent ? 16.0 : 0,
+        bottom: indent ? 8 : 0,
+      ),
       child: Material(
         color: selected
             ? colors.selectedBackground
@@ -917,13 +953,13 @@ class _SidebarTile extends StatelessWidget {
           borderRadius: BorderRadius.circular(8),
           onTap: onTap,
           child: Container(
-            padding: const EdgeInsets.all(10),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(8),
               border: Border.all(
                 color: selected
                     ? colors.selectedBorder
-                    : colors.unselectedBorder,
+                    : colors.subtleBorder,
               ),
             ),
             child: Row(
@@ -938,6 +974,7 @@ class _SidebarTile extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           fontWeight: FontWeight.w700,
+                          fontSize: 12,
                           color: textBase,
                         ),
                       ),
