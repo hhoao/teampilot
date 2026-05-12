@@ -14,8 +14,6 @@ typedef ProcessStarter =
     });
 
 class LaunchCommandBuilder {
-  static const executable = 'flashskyai';
-
   const LaunchCommandBuilder._();
 
   static List<String> buildArguments(
@@ -66,6 +64,7 @@ class LaunchCommandBuilder {
     TeamConfig team,
     TeamMemberConfig member, {
     String? sessionTeam,
+    required String executable,
   }) {
     return [
       executable,
@@ -124,6 +123,7 @@ class LaunchCommandBuilder {
   static Future<void> launch(
     TeamConfig team, {
     required TeamMemberConfig member,
+    required String executable,
     String? sessionTeam,
     String? workingDirectory,
     Map<String, String>? extraEnvironment,

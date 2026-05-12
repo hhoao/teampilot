@@ -137,8 +137,26 @@ void main() {
     const reviewer = TeamMemberConfig(id: 'member-2', name: 'code reviewer');
 
     expect(
-      LaunchCommandBuilder.preview(team, reviewer),
+      LaunchCommandBuilder.preview(
+        team,
+        reviewer,
+        executable: 'flashskyai',
+      ),
       "flashskyai --team 'hello team' --member 'code reviewer'",
+    );
+  });
+
+  test('preview honours the supplied executable path', () {
+    const team = TeamConfig(id: '1', name: 'agent');
+    const planner = TeamMemberConfig(id: 'm', name: 'planner');
+
+    expect(
+      LaunchCommandBuilder.preview(
+        team,
+        planner,
+        executable: '/opt/custom/flashskyai',
+      ),
+      '/opt/custom/flashskyai --team agent --member planner',
     );
   });
 }
