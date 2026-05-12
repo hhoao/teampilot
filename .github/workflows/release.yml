@@ -32,6 +32,14 @@ jobs:
             libgtk-3-dev liblzma-dev libstdc++-12-dev libsecret-1-dev \
             dpkg fakeroot file libfuse2
 
+      - name: Install appimagetool
+        run: |
+          wget -qO /tmp/appimagetool \
+            https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage
+          chmod +x /tmp/appimagetool
+          sudo mv /tmp/appimagetool /usr/local/bin/appimagetool
+          appimagetool --version || true
+
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
