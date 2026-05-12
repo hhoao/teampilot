@@ -1,0 +1,144 @@
+name: Release Desktop Packages
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Git ref to build (branch / tag / sha). Leave empty for current."
+        required: false
+        default: ""
+
+defaults:
+  run:
+    working-directory: client
+
+jobs:
+  build-linux:
+    name: Build Linux (deb + AppImage)
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.ref || github.ref }}
+
+      - name: Install Linux build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            clang cmake git ninja-build pkg-config \
+            libgtk-3-dev liblzma-dev libstdc++-12-dev libsecret-1-dev \
+            dpkg fakeroot file libfuse2
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Activate fastforge
+        run: dart pub global activate fastforge
+
+      - name: Resolve Flutter packages
+        run: flutter pub get
+
+      - name: Package
+        run: fastforge package --platform linux --targets deb,appimage
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-packages
+          path: client/dist/**/*
+          if-no-files-found: error
+
+  build-macos:
+    name: Build macOS (DMG)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.ref || github.ref }}
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Install fastforge + create-dmg
+        run: |
+          dart pub global activate fastforge
+          brew install create-dmg
+
+      - name: Resolve Flutter packages
+        run: flutter pub get
+
+      - name: Package
+        run: fastforge package --platform macos --targets dmg
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos-packages
+          path: client/dist/**/*
+          if-no-files-found: error
+
+  build-windows:
+    name: Build Windows (MSIX + ZIP)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.ref || github.ref }}
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Activate fastforge
+        run: dart pub global activate fastforge
+
+      - name: Resolve Flutter packages
+        run: flutter pub get
+
+      - name: Package
+        shell: bash
+        run: fastforge package --platform windows --targets msix,zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-packages
+          path: client/dist/**/*
+          if-no-files-found: error
+
+  release:
+    name: Publish GitHub Release
+    needs: [build-linux, build-macos, build-windows]
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    defaults:
+      run:
+        working-directory: .
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Flatten artifacts
+        run: |
+          mkdir -p release-files
+          find artifacts -type f \
+            \( -name "*.deb" -o -name "*.AppImage" \
+               -o -name "*.dmg" \
+               -o -name "*.msix" -o -name "*.zip" \) \
+            -exec cp {} release-files/ \;
+          ls -la release-files
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release-files/*
+          generate_release_notes: true
+          fail_on_unmatched_files: true

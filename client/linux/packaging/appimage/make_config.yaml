@@ -1,0 +1,4 @@
+display_name: TeamPilot
+icon: assets/icons/icon.png
+include:
+  - linux/packaging/com.hhoa.teampilot.desktop

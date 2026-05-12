@@ -64,8 +64,7 @@ class AppLocalizations {
   String get llmConfigPathBadgeDefault =>
       _strings['llmConfigPathBadgeDefault']!;
   String get llmConfigPathBadgeCustom => _strings['llmConfigPathBadgeCustom']!;
-  String get llmConfigPathPickerTitle =>
-      _strings['llmConfigPathPickerTitle']!;
+  String get llmConfigPathPickerTitle => _strings['llmConfigPathPickerTitle']!;
   String get layout => _strings['layout']!;
   String get layoutSubtitle => _strings['layoutSubtitle']!;
   String get memberQuickList => _strings['memberQuickList']!;
@@ -337,10 +336,7 @@ class _AppLocalizationsDelegate
     'projects': {'en': 'Projects', 'zh': '项目'},
     'newProject': {'en': 'New Project', 'zh': '新建项目'},
     'newSessionTooltip': {'en': 'New session', 'zh': '新建会话'},
-    'defaultNewChatSessionTitle': {
-      'en': 'New Chat',
-      'zh': '新对话',
-    },
+    'defaultNewChatSessionTitle': {'en': 'New Chat', 'zh': '新对话'},
     'openFolder': {'en': 'Open Folder', 'zh': '打开文件夹'},
     'copyFolderPath': {'en': 'Copy Folder Path', 'zh': '复制文件夹路径'},
     'deleteProject': {'en': 'Delete Project', 'zh': '删除项目'},
@@ -375,17 +371,14 @@ class _AppLocalizationsDelegate
     'membersSubtitle': {'en': 'team agents', 'zh': '团队代理'},
     'llmConfig': {'en': 'Provider', 'zh': '服务商'},
     'llmConfigSubtitle': {'en': 'providers and models', 'zh': '提供商和模型'},
-    'llmConfigPathLabel': {
-      'en': 'LLM config file',
-      'zh': 'LLM 配置文件',
-    },
+    'llmConfigPathLabel': {'en': 'LLM config file', 'zh': 'LLM 配置文件'},
     'llmConfigPathHint': {
       'en': 'Leave empty to use the default path',
       'zh': '留空则使用默认路径',
     },
-    'llmConfigPathBrowse': {'en': 'Browse...', 'zh': '浏览...'},
-    'llmConfigPathSave': {'en': 'Apply', 'zh': '应用'},
-    'llmConfigPathReset': {'en': 'Use default', 'zh': '使用默认'},
+    'llmConfigPathBrowse': {'en': 'Browse...', 'zh': '选择文件'},
+    'llmConfigPathSave': {'en': 'Apply', 'zh': '更新'},
+    'llmConfigPathReset': {'en': 'Use default', 'zh': '默认'},
     'llmConfigPathBadgeDefault': {'en': 'default', 'zh': '默认'},
     'llmConfigPathBadgeCustom': {'en': 'custom', 'zh': '自定义'},
     'llmConfigPathPickerTitle': {
@@ -404,23 +397,14 @@ class _AppLocalizationsDelegate
       'en': '--permission-mode acceptEdits',
       'zh': '--permission-mode acceptEdits',
     },
-    'teamLoop': {
-      'en': 'Phase loop',
-      'zh': '阶段循环',
-    },
+    'teamLoop': {'en': 'Phase loop', 'zh': '阶段循环'},
     'teamLoopSubtitle': {
       'en':
           'Team mode: true auto-advances phases; false requires your confirmation.',
       'zh': '团队模式：true 自动推进阶段；false 需你确认后再继续。',
     },
-    'teamLoopDefault': {
-      'en': 'Default',
-      'zh': '默认',
-    },
-    'teamLoopTrue': {
-      'en': 'true — auto-advance',
-      'zh': 'true — 自动推进',
-    },
+    'teamLoopDefault': {'en': 'Default', 'zh': '默认'},
+    'teamLoopTrue': {'en': 'true — auto-advance', 'zh': 'true — 自动推进'},
     'teamLoopFalse': {
       'en': 'false — confirm each phase',
       'zh': 'false — 每阶段确认',
@@ -437,26 +421,14 @@ class _AppLocalizationsDelegate
     'provider': {'en': 'Provider', 'zh': '提供商'},
     'model': {'en': 'Model', 'zh': '模型'},
     'agent': {'en': 'Agent', 'zh': '代理'},
-    'selectAgent': {
-      'en': 'Select an agent',
-      'zh': '选择 Agent',
-    },
-    'agentBuiltInNone': {
-      'en': 'Default',
-      'zh': '默认',
-    },
-    'agentBuiltInCustom': {
-      'en': 'Custom…',
-      'zh': '自定义…',
-    },
+    'selectAgent': {'en': 'Select an agent', 'zh': '选择 Agent'},
+    'agentBuiltInNone': {'en': 'Default', 'zh': '默认'},
+    'agentBuiltInCustom': {'en': 'Custom…', 'zh': '自定义…'},
     'agentBuiltInSubtitle': {
       'en': 'Preset built-in agents.',
       'zh': '内置预设 Agent。',
     },
-    'agentCustomIdHint': {
-      'en': 'Custom agent id',
-      'zh': '自定义 Agent 标识',
-    },
+    'agentCustomIdHint': {'en': 'Custom agent id', 'zh': '自定义 Agent 标识'},
     'memberExtraArgs': {
       'en': 'Member extra CLI arguments',
       'zh': '成员额外 CLI 参数',
@@ -466,7 +438,8 @@ class _AppLocalizationsDelegate
       'zh': '跳过所有权限检查',
     },
     'memberDangerouslySkipPermissionsHint': {
-      'en': 'Only for isolated / no-network sandboxes. Extremely risky otherwise.',
+      'en':
+          'Only for isolated / no-network sandboxes. Extremely risky otherwise.',
       'zh': '仅限隔离或无网络沙箱使用，否则风险极高。',
     },
     'prompt': {'en': 'Prompt', 'zh': '提示词'},
@@ -530,8 +503,7 @@ class _AppLocalizationsDelegate
     'autoLaunchAllMembersDescription': {
       'en':
           'When enabled, Connect and Restart launch every valid member shell; otherwise only the selected member starts.',
-      'zh':
-          '开启后，点击连接或重启会为每个有效成员启动终端；关闭则仅启动当前选中的成员。',
+      'zh': '开启后，点击连接或重启会为每个有效成员启动终端；关闭则仅启动当前选中的成员。',
     },
     'themeModeTitle': {'en': 'Theme mode', 'zh': '主题模式'},
     'themeModeDescription': {

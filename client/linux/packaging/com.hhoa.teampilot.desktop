@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=TeamPilot
+GenericName=TeamPilot Client
+Comment=FlashSky AI TeamPilot client
+Exec=TeamPilot %U
+Icon=com.hhoa.teampilot
+Terminal=false
+Categories=Utility;Network;
+StartupNotify=true
+StartupWMClass=com.hhoa.teampilot

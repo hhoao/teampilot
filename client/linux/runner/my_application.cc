@@ -5,7 +5,26 @@
 #include <gdk/gdkx.h>
 #endif
 
+#include <limits.h>
+#include <unistd.h>
+#include <libgen.h>
+
 #include "flutter/generated_plugin_registrant.h"
+
+// Resolve the absolute path of the bundled application icon by walking up from
+// the running executable to <bundle>/data/app_icon.png.
+static gchar* resolve_app_icon_path() {
+  char exe_path[PATH_MAX] = {0};
+  ssize_t len = readlink("/proc/self/exe", exe_path, sizeof(exe_path) - 1);
+  if (len <= 0) {
+    return nullptr;
+  }
+  exe_path[len] = '\0';
+  gchar* exe_dir = g_path_get_dirname(exe_path);
+  gchar* icon_path = g_build_filename(exe_dir, "data", "app_icon.png", nullptr);
+  g_free(exe_dir);
+  return icon_path;
+}
 
 struct _MyApplication {
   GtkApplication parent_instance;
@@ -40,14 +59,23 @@ static void my_application_activate(GApplication* application) {
   if (use_header_bar) {
     GtkHeaderBar* header_bar = GTK_HEADER_BAR(gtk_header_bar_new());
     gtk_widget_show(GTK_WIDGET(header_bar));
-    gtk_header_bar_set_title(header_bar, "flashskyai_client");
+    gtk_header_bar_set_title(header_bar, "TeamPilot");
     gtk_header_bar_set_show_close_button(header_bar, TRUE);
     gtk_window_set_titlebar(window, GTK_WIDGET(header_bar));
   } else {
-    gtk_window_set_title(window, "flashskyai_client");
+    gtk_window_set_title(window, "TeamPilot");
   }
 
   gtk_window_set_default_size(window, 1280, 720);
+
+  g_autofree gchar* icon_path = resolve_app_icon_path();
+  if (icon_path != nullptr && g_file_test(icon_path, G_FILE_TEST_EXISTS)) {
+    g_autoptr(GError) icon_error = nullptr;
+    if (!gtk_window_set_icon_from_file(window, icon_path, &icon_error)) {
+      g_warning("Failed to load window icon: %s", icon_error->message);
+    }
+  }
+
   gtk_widget_show(GTK_WIDGET(window));
 
   g_autoptr(FlDartProject) project = fl_dart_project_new();

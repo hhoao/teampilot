@@ -63,6 +63,8 @@ dev_dependencies:
   flutter_lints: ^5.0.0
   build_runner: ^2.6.0
   json_serializable: ^6.9.5
+  flutter_launcher_icons: ^0.14.4
+  rename_app: ^1.6.6
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
@@ -105,3 +107,16 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+
+flutter_launcher_icons:
+  android: false
+  ios: false
+  image_path: assets/icons/icon.png
+  min_sdk_android: 21
+  windows:
+    generate: true
+    image_path: assets/icons/icon.png
+    icon_size: 48
+  macos:
+    generate: true
+    image_path: assets/icons/icon.png

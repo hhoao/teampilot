@@ -1,0 +1,12 @@
+display_name: TeamPilot
+publisher_display_name: hhoa
+identity_name: com.hhoa.teampilot
+publisher: CN=hhoa
+logo_path: assets/icons/icon.png
+languages:
+  - en-us
+  - zh-cn
+capabilities:
+  - internetClient
+  - internetClientServer
+  - privateNetworkClientServer
