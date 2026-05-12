@@ -91,7 +91,7 @@ class _DropDownFieldState<T> extends State<_DropDownField<T>> {
           TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.w500,
-            color: widget.enabled ? null : Colors.black.withOpacity(.5),
+            color: widget.enabled ? null : Colors.black.withValues(alpha: 0.5),
           ),
     );
   }
@@ -120,48 +120,68 @@ class _DropDownFieldState<T> extends State<_DropDownField<T>> {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: widget.onTap,
-      child: Container(
-        padding: widget.headerPadding ?? _defaultHeaderPadding,
-        decoration: BoxDecoration(
-          color:
-              widget.fillColor ??
-              (widget.enabled
-                  ? CustomDropdownDecoration._defaultFillColor
-                  : CustomDropdownDecoration._defaultFillColor.withOpacity(.5)),
-          border: widget.border,
-          borderRadius: widget.borderRadius ?? _defaultBorderRadius,
-          boxShadow: widget.shadow,
-        ),
-        child: Row(
-          children: [
-            if (widget.prefixIcon != null) ...[
-              widget.prefixIcon!,
-              const SizedBox(width: 12),
-            ],
-            Expanded(
-              child: switch (widget.dropdownType) {
-                _DropdownType.singleSelect =>
-                  selectedItem != null
-                      ? headerBuilder(context)
-                      : hintBuilder(context),
-                _DropdownType.multipleSelect =>
-                  selectedItems.isNotEmpty
-                      ? headerListBuilder(context)
-                      : hintBuilder(context),
-              },
+    final scheme = Theme.of(context).colorScheme;
+    final borderRadius = widget.borderRadius ?? _defaultBorderRadius;
+    final fill =
+        widget.fillColor ??
+        (widget.enabled
+            ? CustomDropdownDecoration._defaultFillColor
+            : CustomDropdownDecoration._defaultFillColor.withValues(alpha: 0.5));
+    final hover = scheme.onSurface.withValues(alpha: 0.07);
+    final splash = scheme.onSurface.withValues(alpha: 0.10);
+
+    return MouseRegion(
+      cursor: widget.enabled
+          ? SystemMouseCursors.click
+          : SystemMouseCursors.basic,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: widget.enabled ? widget.onTap : null,
+          borderRadius: borderRadius,
+          hoverColor: hover,
+          splashColor: splash,
+          highlightColor: Colors.transparent,
+          child: Ink(
+            decoration: BoxDecoration(
+              color: fill,
+              border: widget.border,
+              borderRadius: borderRadius,
+              boxShadow: widget.shadow,
             ),
-            const SizedBox(width: 12),
-            widget.suffixIcon ??
-                (widget.enabled
-                    ? _defaultOverlayIconDown
-                    : Icon(
-                        Icons.keyboard_arrow_down_rounded,
-                        color: Colors.black.withOpacity(.5),
-                        size: 20,
-                      )),
-          ],
+            child: Padding(
+              padding: widget.headerPadding ?? _defaultHeaderPadding,
+              child: Row(
+                children: [
+                  if (widget.prefixIcon != null) ...[
+                    widget.prefixIcon!,
+                    const SizedBox(width: 12),
+                  ],
+                  Expanded(
+                    child: switch (widget.dropdownType) {
+                      _DropdownType.singleSelect =>
+                        selectedItem != null
+                            ? headerBuilder(context)
+                            : hintBuilder(context),
+                      _DropdownType.multipleSelect =>
+                        selectedItems.isNotEmpty
+                            ? headerListBuilder(context)
+                            : hintBuilder(context),
+                    },
+                  ),
+                  const SizedBox(width: 12),
+                  widget.suffixIcon ??
+                      (widget.enabled
+                          ? _defaultOverlayIconDown
+                          : Icon(
+                              Icons.keyboard_arrow_down_rounded,
+                              color: Colors.black.withValues(alpha: 0.5),
+                              size: 20,
+                            )),
+                ],
+              ),
+            ),
+          ),
         ),
       ),
     );

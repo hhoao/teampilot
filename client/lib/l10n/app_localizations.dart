@@ -28,6 +28,8 @@ class AppLocalizations {
   String get projects => _strings['projects']!;
   String get newProject => _strings['newProject']!;
   String get newSessionTooltip => _strings['newSessionTooltip']!;
+  String get defaultNewChatSessionTitle =>
+      _strings['defaultNewChatSessionTitle']!;
   String get openFolder => _strings['openFolder']!;
   String get copyFolderPath => _strings['copyFolderPath']!;
   String get deleteProject => _strings['deleteProject']!;
@@ -306,6 +308,10 @@ class _AppLocalizationsDelegate
     'projects': {'en': 'Projects', 'zh': '项目'},
     'newProject': {'en': 'New Project', 'zh': '新建项目'},
     'newSessionTooltip': {'en': 'New session', 'zh': '新建会话'},
+    'defaultNewChatSessionTitle': {
+      'en': 'New Chat',
+      'zh': '新对话',
+    },
     'openFolder': {'en': 'Open Folder', 'zh': '打开文件夹'},
     'copyFolderPath': {'en': 'Copy Folder Path', 'zh': '复制文件夹路径'},
     'deleteProject': {'en': 'Delete Project', 'zh': '删除项目'},

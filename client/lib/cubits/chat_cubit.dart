@@ -183,7 +183,13 @@ class ChatCubit extends Cubit<ChatState> {
     emit(state.copyWith(sessions: sessions));
   }
 
-  void openSessionTab(FlashskySession session, {TeamConfig? team, TeamMemberConfig? member, SessionRepository? repo}) {
+  void openSessionTab(
+    FlashskySession session, {
+    TeamConfig? team,
+    TeamMemberConfig? member,
+    SessionRepository? repo,
+    String emptyDisplayTitleFallback = 'New Chat',
+  }) {
     final sw = Stopwatch()..start();
     final existingIdx = _internalTabs.indexWhere(
       (t) => t.info.id == session.sessionId,
@@ -203,7 +209,7 @@ class ChatCubit extends Cubit<ChatState> {
     final ts = _terminalSessionFactory();
     final info = ChatTabInfo(
       id: session.sessionId,
-      title: session.displayTitle,
+      title: session.resolveDisplayTitle(emptyDisplayTitleFallback),
       subtitle: session.cwd,
     );
     final sessionTeamName = _assignSessionTeam(session.sessionId, team, repo);

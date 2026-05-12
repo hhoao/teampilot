@@ -4,6 +4,7 @@ import 'package:xterm/xterm.dart';
 
 import '../cubits/chat_cubit.dart';
 import '../cubits/team_cubit.dart';
+import '../l10n/app_localizations.dart';
 import '../services/terminal_session.dart';
 import '../theme/app_theme.dart';
 import '../utils/app_keys.dart';
@@ -54,14 +55,19 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
     // If sessionId is provided, open it
     if (widget.sessionId != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
         final chatCubit = context.read<ChatCubit>();
+        final l10n = AppLocalizations.of(context);
         final sessions = chatCubit.state.sessions;
         final session = sessions.firstWhere(
           (s) => s.sessionId == widget.sessionId,
           orElse: () => sessions.first,
         );
         if (sessions.isNotEmpty) {
-          chatCubit.openSessionTab(session);
+          chatCubit.openSessionTab(
+            session,
+            emptyDisplayTitleFallback: l10n.defaultNewChatSessionTitle,
+          );
         }
       });
     }

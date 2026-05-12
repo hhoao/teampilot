@@ -18,6 +18,9 @@ import '../utils/perf.dart';
 import '../widgets/dropdown/custom_dropdown.dart';
 import '../widgets/dropdown/flashskyai_dropdown_decoration.dart';
 
+/// Matches [_ProjectHeader] label start: `padding.left` + chevron + gap + folder + gap.
+const double _kSidebarTreeTextInset = 12 + 16 + 6 + 16 + 6;
+
 class ContextSidebar extends StatefulWidget {
   const ContextSidebar({this.onNewProject, super.key});
 
@@ -183,7 +186,7 @@ class _ProjectGroup extends StatefulWidget {
 }
 
 class _ProjectGroupState extends State<_ProjectGroup> {
-  var _expanded = true;
+  var _expanded = false;
 
   @override
   Widget build(BuildContext context) {
@@ -214,12 +217,12 @@ class _ProjectGroupState extends State<_ProjectGroup> {
         ),
         if (_expanded)
           Padding(
-            padding: const EdgeInsets.only(top: 6),
+            padding: const EdgeInsets.only(top: 2),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 for (var i = 0; i < widget.sessions.length; i++) ...[
-                  if (i > 0) const SizedBox(height: 6),
+                  if (i > 0) const SizedBox(height: 2),
                   _SessionTileEntry(session: widget.sessions[i]),
                 ],
               ],
@@ -335,14 +338,11 @@ class _ProjectHeaderState extends State<_ProjectHeader> {
         onEnter: (_) => setState(() => _hovered = true),
         onExit: (_) => setState(() => _hovered = false),
         child: Material(
-          color: _hovered ? colors.selectedBackground : colors.unselectedBackground,
+          color: Colors.transparent,
           borderRadius: BorderRadius.circular(8),
           child: Ink(
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(
-                color: _hovered ? colors.selectedBorder : colors.unselectedBorder,
-              ),
             ),
             child: Row(
               children: [
@@ -381,11 +381,7 @@ class _ProjectHeaderState extends State<_ProjectHeader> {
                                   widget.name,
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.w700,
-                                    fontSize: 12,
-                                    color: textBase,
-                                  ),
+                                  style: Theme.of(context).textTheme.bodyMedium,
                                 ),
                               ],
                             ),
@@ -429,10 +425,13 @@ class _ProjectHeaderState extends State<_ProjectHeader> {
                       switch (value) {
                         case 'openFolder':
                           widget.onOpenFolder?.call();
+                          break;
                         case 'copyPath':
                           widget.onCopyPath?.call();
+                          break;
                         case 'delete':
                           widget.onDelete?.call();
+                          break;
                       }
                     },
                     itemBuilder: (context) => [
@@ -508,9 +507,9 @@ class _SessionTileEntryState extends State<_SessionTileEntry> {
       onExit: (_) => setState(() => _hovered = false),
       child: _SidebarTile(
         key: AppKeys.sessionTile(session.sessionId),
-        title: session.displayTitle,
+        title: session.resolveDisplayTitle(l10n.defaultNewChatSessionTitle),
         selected: selected,
-        indent: false,
+        contentLeftInset: _kSidebarTreeTextInset,
         onTap: () {
           FramePerf.mark('nav session ${session.sessionId}');
           final teamCubit = context.read<TeamCubit>();
@@ -523,9 +522,19 @@ class _SessionTileEntryState extends State<_SessionTileEntry> {
 
           final lead = matchingTeam.members.where((m) => m.name == 'team-lead');
           if (lead.isNotEmpty) {
-            chatCubit.openSessionTab(session, team: matchingTeam, member: lead.first, repo: const SessionRepository());
+            chatCubit.openSessionTab(
+              session,
+              team: matchingTeam,
+              member: lead.first,
+              repo: const SessionRepository(),
+              emptyDisplayTitleFallback: l10n.defaultNewChatSessionTitle,
+            );
           } else {
-            chatCubit.openSessionTab(session, repo: const SessionRepository());
+            chatCubit.openSessionTab(
+              session,
+              repo: const SessionRepository(),
+              emptyDisplayTitleFallback: l10n.defaultNewChatSessionTitle,
+            );
             chatCubit.addSystemMessage(
               'FlashskyAI requires a member named team-lead.',
             );
@@ -573,7 +582,7 @@ class _SessionTileEntryState extends State<_SessionTileEntry> {
     AppLocalizations l10n,
   ) {
     final controller = TextEditingController(
-      text: session.displayTitle,
+      text: session.resolveDisplayTitle(l10n.defaultNewChatSessionTitle),
     );
     showDialog<void>(
       context: context,
@@ -625,7 +634,7 @@ class _SessionTileEntryState extends State<_SessionTileEntry> {
     FlashskySession session,
     AppLocalizations l10n,
   ) {
-    final name = session.displayTitle;
+    final name = session.resolveDisplayTitle(l10n.defaultNewChatSessionTitle);
     showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -923,7 +932,7 @@ class _SidebarTile extends StatelessWidget {
     required this.selected,
     this.onTap,
     this.trailing,
-    this.indent = false,
+    this.contentLeftInset = 0,
     super.key,
   });
 
@@ -932,7 +941,8 @@ class _SidebarTile extends StatelessWidget {
   final bool selected;
   final VoidCallback? onTap;
   final Widget? trailing;
-  final bool indent;
+  /// Extra left padding so row text lines up with folder names (file tree).
+  final double contentLeftInset;
 
   @override
   Widget build(BuildContext context) {
@@ -940,27 +950,25 @@ class _SidebarTile extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textBase = isDark ? Colors.white : const Color(0xFF111827);
     return Padding(
-      padding: EdgeInsets.only(
-        left: indent ? 16.0 : 0,
-        bottom: indent ? 8 : 0,
-      ),
+      padding: const EdgeInsets.only(bottom: 2),
       child: Material(
-        color: selected
-            ? colors.selectedBackground
-            : colors.unselectedBackground,
+        color: selected ? colors.selectedBackground : Colors.transparent,
         borderRadius: BorderRadius.circular(8),
         child: InkWell(
           borderRadius: BorderRadius.circular(8),
           onTap: onTap,
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            padding: EdgeInsets.fromLTRB(
+              contentLeftInset,
+              6,
+              8,
+              6,
+            ),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(
-                color: selected
-                    ? colors.selectedBorder
-                    : colors.subtleBorder,
-              ),
+              border: selected
+                  ? Border.all(color: colors.selectedBorder)
+                  : null,
             ),
             child: Row(
               children: [
@@ -972,11 +980,7 @@ class _SidebarTile extends StatelessWidget {
                         title,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 12,
-                          color: textBase,
-                        ),
+                        style: Theme.of(context).textTheme.bodyMedium,
                       ),
                       if (subtitle.isNotEmpty) ...[
                         const SizedBox(height: 4),

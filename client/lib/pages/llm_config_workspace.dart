@@ -353,6 +353,7 @@ class _ProviderListRow extends StatelessWidget {
                     ),
                     const SizedBox(height: 8),
                     Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
                         _TypeBadge(type: provider.type),
                         const SizedBox(width: 8),
@@ -380,15 +381,14 @@ class _ProviderListRow extends StatelessWidget {
                 icon: const Icon(Icons.more_horiz, size: 18),
                 padding: const EdgeInsets.all(4),
                 constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
-                  itemBuilder: (context) => [
-                    PopupMenuItem(value: 'delete', child: Text(l10n.delete)),
-                  ],
-                  onSelected: (value) {
-                    if (value == 'delete') onDelete();
-                  },
-                ),
-              ],
-            ),
+                itemBuilder: (context) => [
+                  PopupMenuItem(value: 'delete', child: Text(l10n.delete)),
+                ],
+                onSelected: (value) {
+                  if (value == 'delete') onDelete();
+                },
+              ),
+            ],
           ),
         ),
       ),
@@ -405,9 +405,7 @@ class _TypeBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = AppColors.of(context);
     final isAccount = type == 'account';
-    return Container(
-      height: 18,
-      padding: const EdgeInsets.symmetric(horizontal: 6),
+    return DecoratedBox(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(99),
         color: isAccount ? colors.typeBadgeAccountBg : colors.typeBadgeApiBg,
@@ -417,13 +415,25 @@ class _TypeBadge extends StatelessWidget {
               : colors.typeBadgeApiBorder,
         ),
       ),
-      child: Text(
-        type,
-        style: TextStyle(
-          fontSize: 10,
-          color: isAccount
-              ? colors.typeBadgeAccountText
-              : colors.typeBadgeApiText,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+        child: Text(
+          type,
+          strutStyle: const StrutStyle(
+            fontSize: 11,
+            height: 1.0,
+            forceStrutHeight: true,
+            leading: 0,
+          ),
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+            height: 1.0,
+            letterSpacing: 0.2,
+            color: isAccount
+                ? colors.typeBadgeAccountText
+                : colors.typeBadgeApiText,
+          ),
         ),
       ),
     );
