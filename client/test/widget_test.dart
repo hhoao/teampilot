@@ -10,6 +10,7 @@ import 'package:flashskyai_client/models/layout_preferences.dart';
 import 'package:flashskyai_client/models/llm_config.dart';
 import 'package:flashskyai_client/models/session.dart';
 import 'package:flashskyai_client/models/team_config.dart';
+import 'package:flashskyai_client/repositories/app_settings_repository.dart';
 import 'package:flashskyai_client/repositories/layout_repository.dart';
 import 'package:flashskyai_client/repositories/team_repository.dart';
 import 'package:flashskyai_client/services/terminal_session.dart';
@@ -31,7 +32,7 @@ Widget buildTestApp({
       BlocProvider.value(value: teamCubit),
       BlocProvider.value(value: chatCubit ?? ChatCubit()),
       BlocProvider(create: (_) => ConfigCubit()),
-      BlocProvider.value(value: llmConfigCubit ?? LlmConfigCubit()),
+      BlocProvider.value(value: llmConfigCubit ?? testLlmConfigCubit()),
       BlocProvider.value(value: layoutCubit ?? LayoutCubit()),
     ],
     child: const FlashskyAiClientApp(),
@@ -60,6 +61,15 @@ Future<void> pumpDesktopApp(
   await tester.pumpAndSettle();
 }
 
+LlmConfigCubit testLlmConfigCubit({LlmConfig initialConfig = const LlmConfig()}) {
+  return LlmConfigCubit(
+    appSettings: InMemoryAppSettingsRepository(),
+    currentDirectory: Directory.systemTemp.path,
+    homeDirectory: '/tmp',
+    initialConfig: initialConfig,
+  );
+}
+
 Future<TeamCubit> createTeamCubit({TeamLauncher? launcher}) async {
   final tmp = await Directory.systemTemp.createTemp('teams_widget_');
   final repository = TeamRepository(rootDir: tmp.path);
@@ -80,7 +90,7 @@ class FakeTerminalSession extends TerminalSession {
   bool get isRunning => _running;
 
   @override
-  void connect({required String workingDirectory, String? resumeSessionId, TeamConfig? team, TeamMemberConfig? member, String? sessionTeam}) {
+  void connect({required String workingDirectory, String? resumeSessionId, TeamConfig? team, TeamMemberConfig? member, String? sessionTeam, Map<String, String>? extraEnvironment}) {
     _running = true;
     if (resumeSessionId != null) {
       resumedSessions.add(resumeSessionId);
@@ -359,7 +369,7 @@ void main() {
   );
 
   test('llm config cubit manages providers and models', () {
-    final cubit = LlmConfigCubit(
+    final cubit = testLlmConfigCubit(
       initialConfig: const LlmConfig(
         providers: {
           'test': LlmProviderConfig(

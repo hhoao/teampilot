@@ -11,8 +11,6 @@ import '../pages/config_workspace.dart';
 import '../pages/skill_management_page.dart';
 import '../pages/team_config_page.dart';
 import '../repositories/session_repository.dart';
-import '../utils/logger.dart';
-import '../utils/perf.dart';
 import '../widgets/context_sidebar.dart';
 import '../widgets/resizable_split_view.dart';
 
@@ -21,35 +19,28 @@ final appRouter = GoRouter(
   routes: [
     ShellRoute(
       builder: (context, state, child) {
-        final sw = Stopwatch()..start();
         final layoutCubit = context.watch<LayoutCubit>();
         final preferences = layoutCubit.state.preferences;
-        appLogger.d(
-          '[perf] ShellRoute builder ${state.uri}: ${sw.elapsedMilliseconds}ms',
-        );
         return Scaffold(
           body: SafeArea(
-            child: PipelinePerf(
-              label: 'shell split ${state.uri}',
-              child: preferences.contextSidebarVisible
-                  ? ResizableSplitView(
-                      initialLeftWidth: preferences.sidebarWidth,
-                      minLeftWidth: 180,
-                      maxLeftWidth: 420,
-                      dividerWidth: 6,
-                      onWidthChanged: (width) {
-                        context.read<LayoutCubit>().setSidebarWidth(width);
-                      },
-                      left: RepaintBoundary(
-                        child: ContextSidebar(
-                          onNewProject: () =>
-                              _createProject(context),
-                        ),
+            child: preferences.contextSidebarVisible
+                ? ResizableSplitView(
+                    initialLeftWidth: preferences.sidebarWidth,
+                    minLeftWidth: 180,
+                    maxLeftWidth: 420,
+                    dividerWidth: 6,
+                    onWidthChanged: (width) {
+                      context.read<LayoutCubit>().setSidebarWidth(width);
+                    },
+                    left: RepaintBoundary(
+                      child: ContextSidebar(
+                        onNewProject: () =>
+                            _createProject(context),
                       ),
-                      right: child,
-                    )
-                  : child,
-            ),
+                    ),
+                    right: child,
+                  )
+                : child,
           ),
         );
       },

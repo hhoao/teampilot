@@ -87,6 +87,7 @@ class TeamRepository {
       name: name,
       members: members,
       createdAt: createdAt,
+      loop: TeamConfig.decodeLoop(json['loop']),
     );
   }
 
@@ -96,6 +97,10 @@ class TeamRepository {
       id: name,
       name: name,
       joinedAt: (json['joinedAt'] as num?)?.toInt() ?? 0,
+      dangerouslySkipPermissions:
+          TeamMemberConfig.decodeDangerouslySkipPermissions(
+        json['dangerouslySkipPermissions'],
+      ),
     );
   }
 

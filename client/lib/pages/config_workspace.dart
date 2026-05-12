@@ -12,7 +12,6 @@ import '../theme/app_workspace_settings_theme.dart';
 import '../utils/app_keys.dart';
 import '../widgets/settings/workspace_settings_toggle_strip.dart';
 import '../widgets/settings/workspace_settings_widgets.dart';
-import '../utils/perf.dart';
 import 'llm_config_workspace.dart';
 
 class ConfigWorkspace extends StatelessWidget {
@@ -69,7 +68,6 @@ class ConfigWorkspace extends StatelessWidget {
                         section: configCubit.state.section,
                         compact: compact,
                         onSelectSection: (s) {
-                          FramePerf.mark('nav config ${s.name}');
                           context.read<ConfigCubit>().selectSection(s);
                           context.go('/config/${s.name}');
                         },
@@ -78,26 +76,20 @@ class ConfigWorkspace extends StatelessWidget {
                     ),
                     Container(width: 1, color: colors.subtleBorder),
                     Expanded(
-                      child: PipelinePerf(
-                        label: 'config body ${configCubit.state.section.name}',
-                        child: BuildPerf(
-                          label: 'config ${configCubit.state.section.name}',
-                          builder: (_) => Padding(
-                            padding: contentPadding,
-                            child: Align(
-                              alignment: Alignment.topLeft,
-                              child: ConstrainedBox(
-                                constraints: BoxConstraints(
-                                  maxWidth: configBodyMaxWidth,
-                                ),
-                                child: switch (configCubit.state.section) {
-                                  ConfigSection.layout =>
-                                    const LayoutConfigWorkspace(),
-                                  ConfigSection.llm =>
-                                    const LlmConfigWorkspace(),
-                                },
-                              ),
+                      child: Padding(
+                        padding: contentPadding,
+                        child: Align(
+                          alignment: Alignment.topLeft,
+                          child: ConstrainedBox(
+                            constraints: BoxConstraints(
+                              maxWidth: configBodyMaxWidth,
                             ),
+                            child: switch (configCubit.state.section) {
+                              ConfigSection.layout =>
+                                const LayoutConfigWorkspace(),
+                              ConfigSection.llm =>
+                                const LlmConfigWorkspace(),
+                            },
                           ),
                         ),
                       ),

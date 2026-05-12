@@ -8,7 +8,6 @@ import '../l10n/app_localizations.dart';
 import '../services/terminal_session.dart';
 import '../theme/app_theme.dart';
 import '../utils/app_keys.dart';
-import '../utils/perf.dart';
 
 class ChatWorkbench extends StatefulWidget {
   const ChatWorkbench({this.sessionId, super.key});
@@ -131,33 +130,27 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
             child: Container(
               color: const Color(0xFF0A0C10),
               child: session.isRunning
-                  ? PipelinePerf(
-                      label: 'terminal view',
-                      child: BuildPerf(
-                        label: 'terminal view',
-                        builder: (_) => TerminalView(
-                          session.terminal,
-                          theme: _terminalTheme,
-                          backgroundOpacity: 0.98,
-                          padding: const EdgeInsets.all(16),
-                          textStyle: const TerminalStyle(
-                            fontSize: 14,
-                            fontFamily: 'monospace',
-                            fontFamilyFallback: [
-                              'Ubuntu Mono',
-                              'DejaVu Sans Mono',
-                              'Liberation Mono',
-                              'Noto Mono',
-                              'Consolas',
-                              'Courier New',
-                              'HYZhongHei',
-                              'Noto Color Emoji',
-                              'monospace',
-                            ],
-                          ),
-                          autofocus: true,
-                        ),
+                  ? TerminalView(
+                      session.terminal,
+                      theme: _terminalTheme,
+                      backgroundOpacity: 0.98,
+                      padding: const EdgeInsets.all(16),
+                      textStyle: const TerminalStyle(
+                        fontSize: 14,
+                        fontFamily: 'monospace',
+                        fontFamilyFallback: [
+                          'Ubuntu Mono',
+                          'DejaVu Sans Mono',
+                          'Liberation Mono',
+                          'Noto Mono',
+                          'Consolas',
+                          'Courier New',
+                          'HYZhongHei',
+                          'Noto Color Emoji',
+                          'monospace',
+                        ],
                       ),
+                      autofocus: true,
                     )
                   : _TerminalPlaceholder(
                       onConnect: () {

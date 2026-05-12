@@ -13,8 +13,6 @@ import '../models/team_config.dart';
 import '../repositories/session_repository.dart';
 import '../theme/app_theme.dart';
 import '../utils/app_keys.dart';
-import '../utils/logger.dart';
-import '../utils/perf.dart';
 import '../widgets/dropdown/custom_dropdown.dart';
 import '../widgets/dropdown/flashskyai_dropdown_decoration.dart';
 
@@ -50,64 +48,54 @@ class _ContextSidebarState extends State<ContextSidebar> {
     final teamCubit = context.watch<TeamCubit>();
     final selected = teamCubit.state.selectedTeam;
 
-    return PipelinePerf(
-      label: 'context sidebar',
-      child: Container(
-        key: AppKeys.contextSidebar,
-        width: double.infinity,
-        color: colors.sidebarBackground,
-        padding: const EdgeInsets.all(13),
-        child: selected == null
-            ? const Center(child: CircularProgressIndicator())
-            : Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  _SkillTile(
-                    onTap: () {
-                      FramePerf.mark('nav skills');
-                      context.go('/skills');
-                    },
-                  ),
-                  const SizedBox(height: 14),
-                  _TeamSelector(
-                    teams: teamCubit.state.teams,
-                    selected: selected,
-                    onSelect: teamCubit.selectTeam,
-                    onAddTeam: () => teamCubit.addTeam(),
-                  ),
-                  const SizedBox(height: 14),
-                  _TeamConfigTile(
-                    onTap: () {
-                      FramePerf.mark('nav team config');
-                      context.go('/team-config');
-                    },
-                  ),
-                  const SizedBox(height: 14),
-                  _SidebarSectionTitle(
-                    title: l10n.projects,
-                    actionLabel: '+',
-                    onAction: widget.onNewProject,
-                  ),
-                  Expanded(
-                    child: _showSessions
-                        ? const _ProjectList()
-                        : const SizedBox.shrink(),
-                  ),
-                  const Divider(height: 1),
-                  const SizedBox(height: 8),
-                  _SettingsTile(
-                    onTap: () {
-                      final sw = Stopwatch()..start();
-                      FramePerf.mark('nav settings layout');
-                      context.go('/config/layout');
-                      appLogger.d(
-                        '[perf] context.go /config/layout: ${sw.elapsedMilliseconds}ms',
-                      );
-                    },
-                  ),
-                ],
-              ),
-      ),
+    return Container(
+      key: AppKeys.contextSidebar,
+      width: double.infinity,
+      color: colors.sidebarBackground,
+      padding: const EdgeInsets.all(13),
+      child: selected == null
+          ? const Center(child: CircularProgressIndicator())
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _SkillTile(
+                  onTap: () {
+                    context.go('/skills');
+                  },
+                ),
+                const SizedBox(height: 14),
+                _TeamSelector(
+                  teams: teamCubit.state.teams,
+                  selected: selected,
+                  onSelect: teamCubit.selectTeam,
+                  onAddTeam: () => teamCubit.addTeam(),
+                ),
+                const SizedBox(height: 14),
+                _TeamConfigTile(
+                  onTap: () {
+                    context.go('/team-config');
+                  },
+                ),
+                const SizedBox(height: 14),
+                _SidebarSectionTitle(
+                  title: l10n.projects,
+                  actionLabel: '+',
+                  onAction: widget.onNewProject,
+                ),
+                Expanded(
+                  child: _showSessions
+                      ? const _ProjectList()
+                      : const SizedBox.shrink(),
+                ),
+                const Divider(height: 1),
+                const SizedBox(height: 8),
+                _SettingsTile(
+                  onTap: () {
+                    context.go('/config/layout');
+                  },
+                ),
+              ],
+            ),
     );
   }
 }
@@ -511,7 +499,6 @@ class _SessionTileEntryState extends State<_SessionTileEntry> {
         selected: selected,
         contentLeftInset: _kSidebarTreeTextInset,
         onTap: () {
-          FramePerf.mark('nav session ${session.sessionId}');
           final teamCubit = context.read<TeamCubit>();
           final chatCubit = context.read<ChatCubit>();
 

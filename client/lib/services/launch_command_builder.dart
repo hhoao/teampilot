@@ -9,6 +9,8 @@ typedef ProcessStarter =
       List<String> arguments, {
       String? workingDirectory,
       bool runInShell,
+      Map<String, String>? environment,
+      bool includeParentEnvironment,
     });
 
 class LaunchCommandBuilder {
@@ -33,6 +35,11 @@ class LaunchCommandBuilder {
       member.name.trim(),
     ];
 
+    final loop = team.loop;
+    if (loop != null) {
+      args.addAll(['--loop', loop ? 'true' : 'false']);
+    }
+
     if (member.provider.trim().isNotEmpty) {
       args.addAll(['--provider', member.provider.trim()]);
     }
@@ -41,6 +48,9 @@ class LaunchCommandBuilder {
     }
     if (member.agent.trim().isNotEmpty) {
       args.addAll(['--agent', member.agent.trim()]);
+    }
+    if (member.dangerouslySkipPermissions) {
+      args.add('--dangerously-skip-permissions');
     }
     if (team.extraArgs.trim().isNotEmpty) {
       args.addAll(splitArgs(team.extraArgs.trim()));
@@ -116,53 +126,66 @@ class LaunchCommandBuilder {
     required TeamMemberConfig member,
     String? sessionTeam,
     String? workingDirectory,
+    Map<String, String>? extraEnvironment,
     ProcessStarter starter = Process.start,
   }) async {
     final wd = workingDirectory ?? '';
     final args = buildArguments(team, member, sessionTeam: sessionTeam, workingDirectory: wd);
+    final env = extraEnvironment;
 
     if (Platform.isLinux) {
       if (await _tryStartTerminal(starter, 'x-terminal-emulator', [
         '-e',
         executable,
         ...args,
-      ], wd)) {
+      ], wd, env)) {
         return;
       }
       if (await _tryStartTerminal(starter, 'gnome-terminal', [
         '--',
         executable,
         ...args,
-      ], wd)) {
+      ], wd, env)) {
         return;
       }
       if (await _tryStartTerminal(starter, 'konsole', [
         '-e',
         executable,
         ...args,
-      ], wd)) {
+      ], wd, env)) {
         return;
       }
       if (await _tryStartTerminal(starter, 'xterm', [
         '-e',
         executable,
         ...args,
-      ], wd)) {
+      ], wd, env)) {
         return;
       }
     } else if (Platform.isMacOS) {
+      // `open -a Terminal` does not propagate parent env to the spawned shell.
+      // Inline `export` so flashskyai sees the values we want.
+      final exports = env == null || env.isEmpty
+          ? ''
+          : '${env.entries.map((e) => 'export ${e.key}=${_shellQuote(e.value)}').join('; ')}; ';
       final script =
-          'cd ${_shellQuote(wd)} && '
+          '${exports}cd ${_shellQuote(wd)} && '
           '${_shellQuote(executable)} ${args.map(_shellQuote).join(' ')}';
       if (await _tryStartTerminal(starter, 'open', [
         '-a',
         'Terminal',
         script,
-      ], wd)) {
+      ], wd, env)) {
         return;
       }
     } else if (Platform.isWindows) {
-      final command = [executable, ...args].map(_windowsQuote).join(' ');
+      // `cmd /c start ... cmd /k` doesn't reliably forward parent env. Prefix
+      // explicit `set` commands so flashskyai sees them in the new console.
+      final sets = env == null || env.isEmpty
+          ? ''
+          : '${env.entries.map((e) => 'set ${e.key}=${e.value}').join(' && ')} && ';
+      final command =
+          '$sets${[executable, ...args].map(_windowsQuote).join(' ')}';
       if (await _tryStartTerminal(starter, 'cmd', [
         '/c',
         'start',
@@ -170,7 +193,7 @@ class LaunchCommandBuilder {
         'cmd',
         '/k',
         command,
-      ], wd)) {
+      ], wd, env)) {
         return;
       }
     }
@@ -180,6 +203,8 @@ class LaunchCommandBuilder {
       args,
       workingDirectory: wd,
       runInShell: true,
+      environment: env,
+      includeParentEnvironment: true,
     );
   }
 
@@ -188,6 +213,7 @@ class LaunchCommandBuilder {
     String terminal,
     List<String> args,
     String workingDirectory,
+    Map<String, String>? environment,
   ) async {
     try {
       await starter(
@@ -195,6 +221,8 @@ class LaunchCommandBuilder {
         args,
         workingDirectory: workingDirectory,
         runInShell: true,
+        environment: environment,
+        includeParentEnvironment: true,
       );
       return true;
     } on IOException {

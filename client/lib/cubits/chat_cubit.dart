@@ -115,15 +115,24 @@ class ChatCubit extends Cubit<ChatState> {
     TerminalSessionFactory terminalSessionFactory = TerminalSession.new,
     PostFrameScheduler? postFrameScheduler,
     TempTeamCleaner? tempTeamCleaner,
+    String? Function()? llmConfigPathOverride,
   }) : _terminalSessionFactory = terminalSessionFactory,
        _postFrameScheduler = postFrameScheduler ?? _defaultPostFrameScheduler,
        _tempTeamCleaner = tempTeamCleaner,
+       _llmConfigPathOverride = llmConfigPathOverride,
        super(const ChatState());
 
   final List<_InternalTab> _internalTabs = [];
   final TerminalSessionFactory _terminalSessionFactory;
   final PostFrameScheduler _postFrameScheduler;
   final TempTeamCleaner? _tempTeamCleaner;
+  final String? Function()? _llmConfigPathOverride;
+
+  Map<String, String>? _spawnEnvironment() {
+    final override = _llmConfigPathOverride?.call();
+    if (override == null || override.isEmpty) return null;
+    return {'LLM_CONFIG_PATH': override};
+  }
   var _sessionCounter = 0;
 
   int _nextCounter() => _sessionCounter++;
@@ -190,7 +199,6 @@ class ChatCubit extends Cubit<ChatState> {
     SessionRepository? repo,
     String emptyDisplayTitleFallback = 'New Chat',
   }) {
-    final sw = Stopwatch()..start();
     final existingIdx = _internalTabs.indexWhere(
       (t) => t.info.id == session.sessionId,
     );
@@ -232,17 +240,15 @@ class ChatCubit extends Cubit<ChatState> {
         selectedMemberId: internalTab.selectedMemberId,
       ),
     );
-    appLogger.d('[perf] openSessionTab emit: ${sw.elapsedMilliseconds}ms');
     _postFrameScheduler(() {
       try {
-        final sw2 = Stopwatch()..start();
         ts.connect(
           workingDirectory: session.cwd,
           team: team,
           member: member,
           sessionTeam: sessionTeamName,
+          extraEnvironment: _spawnEnvironment(),
         );
-        appLogger.d('[perf] connect: ${sw2.elapsedMilliseconds}ms');
         _updateTabRunning(info.id);
       } on Object catch (e) {
         ts.terminal.write('\r\n[Failed to resume session: $e]\r\n');
@@ -273,7 +279,6 @@ class ChatCubit extends Cubit<ChatState> {
   }
 
   void openMemberTab(TeamConfig team, TeamMemberConfig member) {
-    final sw = Stopwatch()..start();
     final tab = _ensureActiveSessionTab(team, emitChange: true);
     tab.selectedMemberId = member.id;
     final shell = tab.memberShells.putIfAbsent(
@@ -287,21 +292,19 @@ class ChatCubit extends Cubit<ChatState> {
         selectedMemberId: member.id,
       ),
     );
-    appLogger.d('[perf] openMemberTab emit: ${sw.elapsedMilliseconds}ms');
     if (shell.isRunning) {
       _updateTabRunning(tab.info.id);
       return;
     }
     _postFrameScheduler(() {
       try {
-        final sw2 = Stopwatch()..start();
         shell.connect(
           workingDirectory: Directory.current.path,
           team: team,
           member: member,
           sessionTeam: tab.sessionTeamName,
+          extraEnvironment: _spawnEnvironment(),
         );
-        appLogger.d('[perf] connect: ${sw2.elapsedMilliseconds}ms');
         _updateTabRunning(tab.info.id);
       } on Object catch (e) {
         shell.terminal.write('\r\n[Failed to start session: $e]\r\n');

@@ -284,9 +284,46 @@ class _TabChip extends StatefulWidget {
 class _TabChipState extends State<_TabChip> {
   var _hovered = false;
 
+  void _handleTabMenuSelection(String value) {
+    if (value == 'close') {
+      widget.onClose();
+    } else if (value == 'closeOthers') {
+      widget.onCloseOthers?.call();
+    } else if (value == 'closeRight') {
+      widget.onCloseRight?.call();
+    }
+  }
+
+  List<PopupMenuEntry<String>> _tabMenuEntries(BuildContext menuContext) {
+    final l10n = menuContext.l10n;
+    return [
+      PopupMenuItem(value: 'close', child: Text(l10n.closeTab)),
+      PopupMenuItem(value: 'closeOthers', child: Text(l10n.closeOtherTabs)),
+      PopupMenuItem(value: 'closeRight', child: Text(l10n.closeRightTabs)),
+    ];
+  }
+
+  Future<void> _showTabContextMenu(Offset globalPosition) async {
+    if (!mounted) return;
+    final overlayObject =
+        Overlay.maybeOf(context)?.context.findRenderObject();
+    if (overlayObject is! RenderBox) return;
+
+    final anchor = overlayObject.globalToLocal(globalPosition);
+    final selected = await showMenu<String>(
+      context: context,
+      position: RelativeRect.fromRect(
+        Rect.fromPoints(anchor, anchor),
+        Offset.zero & overlayObject.size,
+      ),
+      items: _tabMenuEntries(context),
+    );
+    if (!mounted || selected == null) return;
+    _handleTabMenuSelection(selected);
+  }
+
   @override
   Widget build(BuildContext context) {
-    final l10n = context.l10n;
     return Padding(
       padding: const EdgeInsets.only(right: 2),
       child: Tooltip(
@@ -297,11 +334,10 @@ class _TabChipState extends State<_TabChip> {
           child: Material(
             color: widget.active ? widget.activeBg : Colors.transparent,
             borderRadius: const BorderRadius.vertical(top: Radius.circular(6)),
-            child: InkWell(
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(6),
-              ),
-              onTap: widget.onTap,
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onSecondaryTapUp: (details) =>
+                  _showTabContextMenu(details.globalPosition),
               child: Container(
                 width: 200,
                 padding: const EdgeInsets.only(left: 12, top: 6, right: 12),
@@ -332,14 +368,23 @@ class _TabChipState extends State<_TabChip> {
                   mainAxisSize: MainAxisSize.max,
                   children: [
                     Expanded(
-                      child: Text(
-                        widget.title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: widget.textColor,
+                      child: InkWell(
+                        borderRadius: const BorderRadius.vertical(
+                          top: Radius.circular(6),
+                        ),
+                        onTap: widget.onTap,
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            widget.title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: widget.textColor,
+                            ),
+                          ),
                         ),
                       ),
                     ),
@@ -353,30 +398,8 @@ class _TabChipState extends State<_TabChip> {
                           size: 12,
                           color: widget.textColor.withValues(alpha: 0.6),
                         ),
-                        onSelected: (value) {
-                          switch (value) {
-                            case 'close':
-                              widget.onClose.call();
-                            case 'closeOthers':
-                              widget.onCloseOthers?.call();
-                            case 'closeRight':
-                              widget.onCloseRight?.call();
-                          }
-                        },
-                        itemBuilder: (context) => [
-                          PopupMenuItem(
-                            value: 'close',
-                            child: Text(l10n.closeTab),
-                          ),
-                          PopupMenuItem(
-                            value: 'closeOthers',
-                            child: Text(l10n.closeOtherTabs),
-                          ),
-                          PopupMenuItem(
-                            value: 'closeRight',
-                            child: Text(l10n.closeRightTabs),
-                          ),
-                        ],
+                        onSelected: _handleTabMenuSelection,
+                        itemBuilder: _tabMenuEntries,
                       ),
                       GestureDetector(
                         onTap: widget.onClose,

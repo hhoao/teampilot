@@ -56,6 +56,16 @@ class AppLocalizations {
   String get membersSubtitle => _strings['membersSubtitle']!;
   String get llmConfig => _strings['llmConfig']!;
   String get llmConfigSubtitle => _strings['llmConfigSubtitle']!;
+  String get llmConfigPathLabel => _strings['llmConfigPathLabel']!;
+  String get llmConfigPathHint => _strings['llmConfigPathHint']!;
+  String get llmConfigPathBrowse => _strings['llmConfigPathBrowse']!;
+  String get llmConfigPathSave => _strings['llmConfigPathSave']!;
+  String get llmConfigPathReset => _strings['llmConfigPathReset']!;
+  String get llmConfigPathBadgeDefault =>
+      _strings['llmConfigPathBadgeDefault']!;
+  String get llmConfigPathBadgeCustom => _strings['llmConfigPathBadgeCustom']!;
+  String get llmConfigPathPickerTitle =>
+      _strings['llmConfigPathPickerTitle']!;
   String get layout => _strings['layout']!;
   String get layoutSubtitle => _strings['layoutSubtitle']!;
   String get memberQuickList => _strings['memberQuickList']!;
@@ -65,6 +75,11 @@ class AppLocalizations {
   String get teamName => _strings['teamName']!;
   String get teamExtraArgs => _strings['teamExtraArgs']!;
   String get teamExtraArgsHint => _strings['teamExtraArgsHint']!;
+  String get teamLoop => _strings['teamLoop']!;
+  String get teamLoopSubtitle => _strings['teamLoopSubtitle']!;
+  String get teamLoopDefault => _strings['teamLoopDefault']!;
+  String get teamLoopTrue => _strings['teamLoopTrue']!;
+  String get teamLoopFalse => _strings['teamLoopFalse']!;
   String get memberLaunchOrder => _strings['memberLaunchOrder']!;
   String get save => _strings['save']!;
   String get editTeamSubtitle => _strings['editTeamSubtitle']!;
@@ -73,7 +88,16 @@ class AppLocalizations {
   String get provider => _strings['provider']!;
   String get model => _strings['model']!;
   String get agent => _strings['agent']!;
+  String get selectAgent => _strings['selectAgent']!;
+  String get agentBuiltInNone => _strings['agentBuiltInNone']!;
+  String get agentBuiltInCustom => _strings['agentBuiltInCustom']!;
+  String get agentBuiltInSubtitle => _strings['agentBuiltInSubtitle']!;
+  String get agentCustomIdHint => _strings['agentCustomIdHint']!;
   String get memberExtraArgs => _strings['memberExtraArgs']!;
+  String get memberDangerouslySkipPermissions =>
+      _strings['memberDangerouslySkipPermissions']!;
+  String get memberDangerouslySkipPermissionsHint =>
+      _strings['memberDangerouslySkipPermissionsHint']!;
   String get prompt => _strings['prompt']!;
   String get selectModel => _strings['selectModel']!;
   String get editMemberSubtitle => _strings['editMemberSubtitle']!;
@@ -346,6 +370,23 @@ class _AppLocalizationsDelegate
     'membersSubtitle': {'en': 'team agents', 'zh': '团队代理'},
     'llmConfig': {'en': 'Provider', 'zh': '服务商'},
     'llmConfigSubtitle': {'en': 'providers and models', 'zh': '提供商和模型'},
+    'llmConfigPathLabel': {
+      'en': 'LLM config file',
+      'zh': 'LLM 配置文件',
+    },
+    'llmConfigPathHint': {
+      'en': 'Leave empty to use the default path',
+      'zh': '留空则使用默认路径',
+    },
+    'llmConfigPathBrowse': {'en': 'Browse...', 'zh': '浏览...'},
+    'llmConfigPathSave': {'en': 'Apply', 'zh': '应用'},
+    'llmConfigPathReset': {'en': 'Use default', 'zh': '使用默认'},
+    'llmConfigPathBadgeDefault': {'en': 'default', 'zh': '默认'},
+    'llmConfigPathBadgeCustom': {'en': 'custom', 'zh': '自定义'},
+    'llmConfigPathPickerTitle': {
+      'en': 'Select llm_config.json',
+      'zh': '选择 llm_config.json',
+    },
     'layout': {'en': 'Layout', 'zh': '通用'},
     'layoutSubtitle': {'en': 'global workbench', 'zh': '全局工作台'},
     'memberQuickList': {'en': 'MEMBER QUICK LIST', 'zh': '成员快速列表'},
@@ -357,6 +398,27 @@ class _AppLocalizationsDelegate
     'teamExtraArgsHint': {
       'en': '--permission-mode acceptEdits',
       'zh': '--permission-mode acceptEdits',
+    },
+    'teamLoop': {
+      'en': 'Phase loop',
+      'zh': '阶段循环',
+    },
+    'teamLoopSubtitle': {
+      'en':
+          'Team mode: true auto-advances phases; false requires your confirmation.',
+      'zh': '团队模式：true 自动推进阶段；false 需你确认后再继续。',
+    },
+    'teamLoopDefault': {
+      'en': 'Default',
+      'zh': '默认',
+    },
+    'teamLoopTrue': {
+      'en': 'true — auto-advance',
+      'zh': 'true — 自动推进',
+    },
+    'teamLoopFalse': {
+      'en': 'false — confirm each phase',
+      'zh': 'false — 每阶段确认',
     },
     'memberLaunchOrder': {'en': 'Member launch order', 'zh': '成员启动顺序'},
     'save': {'en': 'Save', 'zh': '保存'},
@@ -370,9 +432,37 @@ class _AppLocalizationsDelegate
     'provider': {'en': 'Provider', 'zh': '提供商'},
     'model': {'en': 'Model', 'zh': '模型'},
     'agent': {'en': 'Agent', 'zh': '代理'},
+    'selectAgent': {
+      'en': 'Select an agent',
+      'zh': '选择 Agent',
+    },
+    'agentBuiltInNone': {
+      'en': 'Default',
+      'zh': '默认',
+    },
+    'agentBuiltInCustom': {
+      'en': 'Custom…',
+      'zh': '自定义…',
+    },
+    'agentBuiltInSubtitle': {
+      'en': 'Preset built-in agents.',
+      'zh': '内置预设 Agent。',
+    },
+    'agentCustomIdHint': {
+      'en': 'Custom agent id',
+      'zh': '自定义 Agent 标识',
+    },
     'memberExtraArgs': {
       'en': 'Member extra CLI arguments',
       'zh': '成员额外 CLI 参数',
+    },
+    'memberDangerouslySkipPermissions': {
+      'en': 'Skip all permission checks',
+      'zh': '跳过所有权限检查',
+    },
+    'memberDangerouslySkipPermissionsHint': {
+      'en': 'Only for isolated / no-network sandboxes. Extremely risky otherwise.',
+      'zh': '仅限隔离或无网络沙箱使用，否则风险极高。',
     },
     'prompt': {'en': 'Prompt', 'zh': '提示词'},
     'selectModel': {'en': 'Select a model', 'zh': '选择一个模型'},

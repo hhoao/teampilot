@@ -59,14 +59,25 @@ class TeamCubit extends Cubit<TeamState> {
   TeamCubit({
     required TeamRepository repository,
     TeamLauncher? launcher,
+    String? Function()? llmConfigPathOverride,
   })  : _repository = repository,
+        _llmConfigPathOverride = llmConfigPathOverride,
         _launcher = launcher ??
-            ((team, member) =>
-                LaunchCommandBuilder.launch(team, member: member)),
+            ((team, member) => LaunchCommandBuilder.launch(team,
+                member: member,
+                extraEnvironment:
+                    _envFromOverride(llmConfigPathOverride?.call()))),
         super(const TeamState());
 
   final TeamRepository _repository;
   final TeamLauncher _launcher;
+  // ignore: unused_field
+  final String? Function()? _llmConfigPathOverride;
+
+  static Map<String, String>? _envFromOverride(String? override) {
+    if (override == null || override.isEmpty) return null;
+    return {'LLM_CONFIG_PATH': override};
+  }
 
   String previewFor(TeamMemberConfig member) {
     final team = state.selectedTeam;

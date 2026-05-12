@@ -20,6 +20,7 @@ class TerminalSession {
   Pty? _pty;
   var _running = false;
   var _starting = false;
+  Map<String, String>? _extraEnvironment;
 
   bool get isRunning => _running || _starting;
 
@@ -29,10 +30,12 @@ class TerminalSession {
     TeamConfig? team,
     TeamMemberConfig? member,
     String? sessionTeam,
+    Map<String, String>? extraEnvironment,
   }) {
     if (_running || _starting) {
       disconnect();
     }
+    _extraEnvironment = extraEnvironment;
 
     final args = <String>[];
     if (workingDirectory.isNotEmpty) {
@@ -44,6 +47,10 @@ class TerminalSession {
     if (team != null && member != null) {
       final teamFlag = sessionTeam ?? team.name.trim();
       args.addAll(['--team', teamFlag, '--member', member.name.trim()]);
+      final loop = team.loop;
+      if (loop != null) {
+        args.addAll(['--loop', loop ? 'true' : 'false']);
+      }
       if (member.provider.trim().isNotEmpty) {
         args.addAll(['--provider', member.provider.trim()]);
       }
@@ -52,6 +59,9 @@ class TerminalSession {
       }
       if (member.agent.trim().isNotEmpty) {
         args.addAll(['--agent', member.agent.trim()]);
+      }
+      if (member.dangerouslySkipPermissions) {
+        args.add('--dangerously-skip-permissions');
       }
       if (team.extraArgs.trim().isNotEmpty) {
         args.addAll(LaunchCommandBuilder.splitArgs(team.extraArgs.trim()));
@@ -97,6 +107,7 @@ class TerminalSession {
         workingDirectory: cwd,
         columns: cols,
         rows: rows,
+        environment: _extraEnvironment,
       );
 
       _pty!.output.listen((data) {
@@ -132,10 +143,8 @@ class TerminalSession {
   }
 
   void _writeOutput(Uint8List data, {required String label}) {
-    final sw = Stopwatch()..start();
     final text = utf8.decode(data, allowMalformed: true);
     terminal.write(text);
-    sw.stop();
   }
 
   void disconnect() {

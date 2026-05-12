@@ -7,6 +7,7 @@ void main() {
       id: 'team-1',
       name: 'hello',
       extraArgs: '--permission-mode acceptEdits',
+      loop: true,
       members: [
         TeamMemberConfig(
           id: 'member-1',
@@ -15,6 +16,7 @@ void main() {
           model: 'sonnet',
           agent: 'builder',
           extraArgs: '--continue',
+          dangerouslySkipPermissions: true,
         ),
         TeamMemberConfig(
           id: 'member-2',
@@ -28,6 +30,41 @@ void main() {
     final decoded = TeamConfig.fromJson(team.toJson());
 
     expect(decoded, team);
+  });
+
+  test('decodeLoop accepts bool and string', () {
+    expect(TeamConfig.decodeLoop(null), isNull);
+    expect(TeamConfig.decodeLoop(true), isTrue);
+    expect(TeamConfig.decodeLoop(false), isFalse);
+    expect(TeamConfig.decodeLoop('true'), isTrue);
+    expect(TeamConfig.decodeLoop('FALSE'), isFalse);
+    expect(TeamConfig.decodeLoop('maybe'), isNull);
+  });
+
+  test('decodeDangerouslySkipPermissions accepts bool and string', () {
+    expect(
+      TeamMemberConfig.decodeDangerouslySkipPermissions(null),
+      isFalse,
+    );
+    expect(
+      TeamMemberConfig.decodeDangerouslySkipPermissions(true),
+      isTrue,
+    );
+    expect(
+      TeamMemberConfig.decodeDangerouslySkipPermissions('TRUE'),
+      isTrue,
+    );
+    expect(
+      TeamMemberConfig.decodeDangerouslySkipPermissions(false),
+      isFalse,
+    );
+  });
+
+  test('toJson omits loop when null', () {
+    const team = TeamConfig(id: 't', name: 'n');
+    expect(team.toJson().containsKey('loop'), isFalse);
+    const withLoop = TeamConfig(id: 't', name: 'n', loop: false);
+    expect(withLoop.toJson()['loop'], isFalse);
   });
 
   test('does not migrate legacy team model fields', () {
@@ -85,5 +122,18 @@ void main() {
     expect(changedMember.model, 'gpt-5.4');
     expect(changedTeam.extraArgs, '--continue');
     expect(changedTeam.members.single, changedMember);
+  });
+
+  test('copyWith updateLoop clears or sets loop', () {
+    const team = TeamConfig(id: 't', name: 'n', loop: true);
+    expect(team.copyWith(name: 'x').loop, isTrue);
+    expect(
+      team.copyWith(loop: null, updateLoop: true).loop,
+      isNull,
+    );
+    expect(
+      team.copyWith(loop: false, updateLoop: true).loop,
+      isFalse,
+    );
   });
 }

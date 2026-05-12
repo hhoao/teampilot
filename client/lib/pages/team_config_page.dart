@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../constants/flashskyai_built_in_agents.dart';
 import '../cubits/llm_config_cubit.dart';
 import '../cubits/team_cubit.dart';
 import '../l10n/app_localizations.dart';
@@ -10,6 +11,38 @@ import '../widgets/dropdown/custom_dropdown.dart';
 import '../widgets/dropdown/flashskyai_dropdown_decoration.dart';
 
 enum _TeamPageSection { team, members }
+
+String _teamLoopChoiceLabel(AppLocalizations l10n, String? key) {
+  switch (key) {
+    case 'true':
+      return l10n.teamLoopTrue;
+    case 'false':
+      return l10n.teamLoopFalse;
+    case '__default__':
+    default:
+      return l10n.teamLoopDefault;
+  }
+}
+
+String _memberAgentDropdownItemLabel(
+  BuildContext context,
+  AppLocalizations l10n,
+  String value,
+) {
+  if (value == FlashskyBuiltInAgents.noneDropdownValue) {
+    return l10n.agentBuiltInNone;
+  }
+  if (value == FlashskyBuiltInAgents.customDropdownValue) {
+    return l10n.agentBuiltInCustom;
+  }
+  final ent = FlashskyBuiltInAgents.tryParseBuiltinId(value);
+  if (ent != null) {
+    final zh = Localizations.localeOf(context).languageCode == 'zh';
+    final hint = zh ? ent.modelHintZh : ent.modelHintEn;
+    return '${ent.id} · $hint';
+  }
+  return value;
+}
 
 class TeamConfigPage extends StatefulWidget {
   const TeamConfigPage({super.key});
@@ -555,6 +588,8 @@ class _TeamInfoSectionState extends State<_TeamInfoSection> {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textBase = isDark ? Colors.white : const Color(0xFF111827);
     return SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -574,6 +609,77 @@ class _TeamInfoSectionState extends State<_TeamInfoSection> {
                   controller: _nameCtl,
                   onChanged: (v) => widget.cubit.updateSelected(
                     widget.team.copyWith(name: v),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                _FieldLabel(text: l10n.teamLoop),
+                const SizedBox(height: 6),
+                DropdownFlutter<String>(
+                  key: ValueKey(
+                    'team-loop-${widget.team.id}-${widget.team.loop ?? 'nil'}',
+                  ),
+                  items: const ['__default__', 'true', 'false'],
+                  initialItem: widget.team.loop == null
+                      ? '__default__'
+                      : (widget.team.loop! ? 'true' : 'false'),
+                  hintText: l10n.teamLoopDefault,
+                  excludeSelected: false,
+                  decoration:
+                      FlashskyDropdownDecorations.denseField(context),
+                  closedHeaderPadding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 12,
+                  ),
+                  expandedHeaderPadding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 12,
+                  ),
+                  listItemPadding: const EdgeInsets.symmetric(
+                    vertical: 10,
+                    horizontal: 12,
+                  ),
+                  overlayHeight: 200,
+                  onChanged: (value) {
+                    final key = value ?? '__default__';
+                    final bool? next =
+                        key == '__default__' ? null : key == 'true';
+                    widget.cubit.updateSelected(
+                      widget.team.copyWith(
+                        loop: next,
+                        updateLoop: true,
+                      ),
+                    );
+                  },
+                  headerBuilder: (context, value, _) => Text(
+                    _teamLoopChoiceLabel(l10n, value),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: FlashskyDropdownDecorations.denseField(context)
+                        .headerStyle,
+                  ),
+                  listItemBuilder: (context, value, isSelected, _) {
+                    return Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            _teamLoopChoiceLabel(l10n, value),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: FlashskyDropdownDecorations.denseField(context)
+                                .listItemStyle,
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  l10n.teamLoopSubtitle,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: textBase.withValues(alpha: 0.58),
+                    height: 1.35,
                   ),
                 ),
                 const SizedBox(height: 14),
@@ -751,6 +857,8 @@ class _MemberConfigFormState extends State<_MemberConfigForm> {
     final l10n = context.l10n;
     final m = widget.member;
     final llmState = context.watch<LlmConfigCubit>().state;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textBase = isDark ? Colors.white : const Color(0xFF111827);
 
     final providerNames = llmState.config.providers.keys.toList()..sort();
     final prov = m.provider;
@@ -883,10 +991,106 @@ class _MemberConfigFormState extends State<_MemberConfigForm> {
         ),
         const SizedBox(height: 12),
         _FieldLabel(text: l10n.agent),
-        const SizedBox(height: 6),
-        TextField(
-          controller: _agentCtl,
-          onChanged: (v) => _update(m.copyWith(agent: v)),
+        const SizedBox(height: 4),
+        Text(
+          l10n.agentBuiltInSubtitle,
+          style: TextStyle(
+            fontSize: 12,
+            height: 1.35,
+            color: textBase.withValues(alpha: 0.58),
+          ),
+        ),
+        const SizedBox(height: 8),
+        DropdownFlutter<String>(
+          key: ValueKey('member-agent-dd-${widget.member.id}-${m.agent}'),
+          items: FlashskyBuiltInAgents.dropdownValues(),
+          initialItem: FlashskyBuiltInAgents.activeDropdownValue(m.agent),
+          hintText: l10n.selectAgent,
+          excludeSelected: false,
+          decoration: dropdownDeco,
+          closedHeaderPadding: const EdgeInsets.symmetric(
+            horizontal: 12,
+            vertical: 12,
+          ),
+          expandedHeaderPadding: const EdgeInsets.symmetric(
+            horizontal: 14,
+            vertical: 12,
+          ),
+          listItemPadding: const EdgeInsets.symmetric(
+            vertical: 10,
+            horizontal: 12,
+          ),
+          overlayHeight: 280,
+          onChanged: (value) {
+            final v = value ?? FlashskyBuiltInAgents.noneDropdownValue;
+            if (v == FlashskyBuiltInAgents.noneDropdownValue) {
+              _agentCtl.clear();
+              _update(m.copyWith(agent: ''));
+            } else if (v == FlashskyBuiltInAgents.customDropdownValue) {
+              final current = m.agent.trim();
+              final next = FlashskyBuiltInAgents.tryParseBuiltinId(current) ==
+                      null
+                  ? current
+                  : '';
+              _agentCtl.text = next;
+              _update(m.copyWith(agent: next));
+            } else {
+              _agentCtl.text = v;
+              _update(m.copyWith(agent: v));
+            }
+          },
+          headerBuilder: (context, value, _) => Text(
+            _memberAgentDropdownItemLabel(context, l10n, value),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: dropdownDeco.headerStyle,
+          ),
+          listItemBuilder: (context, value, isSelected, _) {
+            return Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    _memberAgentDropdownItemLabel(context, l10n, value),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: dropdownDeco.listItemStyle,
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
+        if (FlashskyBuiltInAgents.activeDropdownValue(m.agent) ==
+            FlashskyBuiltInAgents.customDropdownValue) ...[
+          const SizedBox(height: 8),
+          TextField(
+            controller: _agentCtl,
+            decoration: InputDecoration(hintText: l10n.agentCustomIdHint),
+            onChanged: (v) => _update(m.copyWith(agent: v)),
+          ),
+        ],
+        const SizedBox(height: 12),
+        SwitchListTile.adaptive(
+          contentPadding: EdgeInsets.zero,
+          title: Text(
+            l10n.memberDangerouslySkipPermissions,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: textBase,
+            ),
+          ),
+          subtitle: Text(
+            l10n.memberDangerouslySkipPermissionsHint,
+            style: TextStyle(
+              fontSize: 12,
+              height: 1.35,
+              color: textBase.withValues(alpha: 0.62),
+            ),
+          ),
+          value: m.dangerouslySkipPermissions,
+          onChanged: (v) =>
+              _update(m.copyWith(dangerouslySkipPermissions: v)),
         ),
         const SizedBox(height: 12),
         _FieldLabel(text: l10n.memberExtraArgs),

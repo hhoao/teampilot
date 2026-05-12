@@ -1,3 +1,4 @@
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -20,7 +21,164 @@ class LlmConfigWorkspace extends StatelessWidget {
     return Column(
       key: AppKeys.llmConfigWorkspace,
       crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [Expanded(child: _ProvidersTabContent(controller: controller))],
+      children: [
+        _ConfigPathBar(controller: controller),
+        Expanded(child: _ProvidersTabContent(controller: controller)),
+      ],
+    );
+  }
+}
+
+class _ConfigPathBar extends StatefulWidget {
+  const _ConfigPathBar({required this.controller});
+
+  final LlmConfigCubit controller;
+
+  @override
+  State<_ConfigPathBar> createState() => _ConfigPathBarState();
+}
+
+class _ConfigPathBarState extends State<_ConfigPathBar> {
+  late final TextEditingController _textController;
+  String _lastSyncedOverride = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _textController =
+        TextEditingController(text: widget.controller.state.configPathOverride);
+    _lastSyncedOverride = widget.controller.state.configPathOverride;
+  }
+
+  @override
+  void dispose() {
+    _textController.dispose();
+    super.dispose();
+  }
+
+  void _syncFromState(LlmConfigState state) {
+    if (state.configPathOverride != _lastSyncedOverride) {
+      _lastSyncedOverride = state.configPathOverride;
+      _textController.value = TextEditingValue(
+        text: state.configPathOverride,
+        selection: TextSelection.collapsed(offset: state.configPathOverride.length),
+      );
+    }
+  }
+
+  Future<void> _pickFile(AppLocalizations l10n) async {
+    final result = await FilePicker.platform.pickFiles(
+      dialogTitle: l10n.llmConfigPathPickerTitle,
+      type: FileType.custom,
+      allowedExtensions: const ['json'],
+    );
+    final picked = result?.files.single.path;
+    if (picked == null) return;
+    _textController.text = picked;
+    await widget.controller.setConfigPath(picked);
+  }
+
+  Future<void> _apply() async {
+    await widget.controller.setConfigPath(_textController.text);
+  }
+
+  Future<void> _reset() async {
+    _textController.clear();
+    await widget.controller.setConfigPath(null);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final state = widget.controller.state;
+    _syncFromState(state);
+
+    final colors = AppColors.of(context);
+    final theme = Theme.of(context);
+    final badgeText = state.isUsingCustomPath
+        ? l10n.llmConfigPathBadgeCustom
+        : l10n.llmConfigPathBadgeDefault;
+    final badgeColor = state.isUsingCustomPath
+        ? theme.colorScheme.primary
+        : theme.colorScheme.outline;
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+      decoration: BoxDecoration(
+        color: colors.workspaceBackground,
+        border: Border(
+          bottom: BorderSide(color: theme.dividerColor.withValues(alpha: 0.4)),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Text(l10n.llmConfigPathLabel,
+                  style: theme.textTheme.labelMedium
+                      ?.copyWith(fontWeight: FontWeight.w600)),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: badgeColor.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(4),
+                  border: Border.all(color: badgeColor.withValues(alpha: 0.4)),
+                ),
+                child: Text(
+                  badgeText,
+                  style: theme.textTheme.labelSmall?.copyWith(color: badgeColor),
+                ),
+              ),
+              const Spacer(),
+              SelectableText(
+                state.effectiveConfigPath,
+                style: theme.textTheme.bodySmall
+                    ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                maxLines: 1,
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _textController,
+                  decoration: InputDecoration(
+                    isDense: true,
+                    hintText: l10n.llmConfigPathHint,
+                    border: const OutlineInputBorder(),
+                    contentPadding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                  ),
+                  onSubmitted: (_) => _apply(),
+                ),
+              ),
+              const SizedBox(width: 6),
+              OutlinedButton.icon(
+                onPressed: () => _pickFile(l10n),
+                icon: const Icon(Icons.folder_open_outlined, size: 16),
+                label: Text(l10n.llmConfigPathBrowse),
+              ),
+              const SizedBox(width: 6),
+              FilledButton(
+                onPressed: state.isLoading ? null : _apply,
+                child: Text(l10n.llmConfigPathSave),
+              ),
+              const SizedBox(width: 6),
+              TextButton(
+                onPressed: state.isLoading || !state.isUsingCustomPath
+                    ? null
+                    : _reset,
+                child: Text(l10n.llmConfigPathReset),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }

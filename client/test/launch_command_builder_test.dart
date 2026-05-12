@@ -53,6 +53,55 @@ void main() {
     ]);
   });
 
+  test('adds --loop after --member when team.loop is set', () {
+    const team = TeamConfig(
+      id: '1',
+      name: 'agent',
+      loop: false,
+    );
+
+    expect(LaunchCommandBuilder.buildArguments(team, member), [
+      '--team',
+      'agent',
+      '--member',
+      'planner',
+      '--loop',
+      'false',
+      '--provider',
+      'anthropic',
+      '--model',
+      'sonnet',
+      '--agent',
+      'builder',
+    ]);
+  });
+
+  test('adds --dangerously-skip-permissions when member requests it', () {
+    const team = TeamConfig(id: '1', name: 'agent');
+    const risky = TeamMemberConfig(
+      id: 'member-1',
+      name: 'planner',
+      provider: 'anthropic',
+      model: 'sonnet',
+      agent: 'builder',
+      dangerouslySkipPermissions: true,
+    );
+
+    expect(LaunchCommandBuilder.buildArguments(team, risky), [
+      '--team',
+      'agent',
+      '--member',
+      'planner',
+      '--provider',
+      'anthropic',
+      '--model',
+      'sonnet',
+      '--agent',
+      'builder',
+      '--dangerously-skip-permissions',
+    ]);
+  });
+
   test('merges team and member extra arguments', () {
     const team = TeamConfig(
       id: '1',

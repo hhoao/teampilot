@@ -4,7 +4,6 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
-import 'package:path/path.dart' as p;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:window_manager/window_manager.dart';
 
@@ -15,16 +14,16 @@ import 'cubits/llm_config_cubit.dart';
 import 'cubits/skill_cubit.dart';
 import 'cubits/team_cubit.dart';
 import 'l10n/app_localizations.dart';
+import 'repositories/app_settings_repository.dart';
 import 'repositories/layout_repository.dart';
-import 'repositories/llm_config_repository.dart';
 import 'repositories/session_repository.dart';
 import 'repositories/skill_repository.dart';
 import 'repositories/team_repository.dart';
 import 'router/app_router.dart';
 import 'services/app_storage.dart';
+import 'services/flashskyai_cli_locator.dart';
 import 'services/temp_team_cleaner.dart';
 import 'theme/app_theme.dart';
-import 'utils/perf.dart';
 import 'widgets/ui_warmup.dart';
 
 class _CleanupWindowListener extends WindowListener {
@@ -39,7 +38,6 @@ class _CleanupWindowListener extends WindowListener {
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  FramePerf.install();
 
   await windowManager.ensureInitialized();
   final windowRect = await windowManager.getBounds();
@@ -73,21 +71,32 @@ void main() async {
   final teamRepo = TeamRepository();
   await teamRepo.importFromCli();
 
-  final teamCubit = TeamCubit(repository: teamRepo);
-  final chatCubit = ChatCubit(tempTeamCleaner: tempTeamCleaner);
-  final configCubit = ConfigCubit();
-  final configPath = p.absolute(
-    p.join(
-      Directory.current.path,
-      '..',
-      'flashshkyai',
-      'llm',
-      'llm_config.json',
-    ),
-  );
+  final appSettings = SharedPrefsAppSettingsRepository(preferences);
+  final homeDirectory =
+      Platform.environment['HOME'] ?? Platform.environment['USERPROFILE'];
+  final cliExecutablePath = await FlashskyaiCliLocator.locate();
+
   final llmConfigCubit = LlmConfigCubit(
-    repository: LlmConfigRepository(File(configPath)),
+    appSettings: appSettings,
+    currentDirectory: Directory.current.path,
+    homeDirectory: homeDirectory,
+    cliExecutablePath: cliExecutablePath,
   );
+
+  String? llmConfigPathOverrideForLaunch() {
+    final s = llmConfigCubit.state;
+    return s.isUsingCustomPath ? s.effectiveConfigPath : null;
+  }
+
+  final teamCubit = TeamCubit(
+    repository: teamRepo,
+    llmConfigPathOverride: llmConfigPathOverrideForLaunch,
+  );
+  final chatCubit = ChatCubit(
+    tempTeamCleaner: tempTeamCleaner,
+    llmConfigPathOverride: llmConfigPathOverrideForLaunch,
+  );
+  final configCubit = ConfigCubit();
   final layoutCubit = LayoutCubit(repository: LayoutRepository(preferences));
   final skillCubit = SkillCubit(SkillRepository());
 

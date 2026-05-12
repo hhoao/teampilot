@@ -11,7 +11,17 @@ class TeamMemberConfig {
     this.extraArgs = '',
     this.prompt = '',
     this.joinedAt = 0,
+    this.dangerouslySkipPermissions = false,
   });
+
+  static bool decodeDangerouslySkipPermissions(Object? raw) {
+    if (raw == null) return false;
+    if (raw is bool) return raw;
+    if (raw is String) {
+      return raw.trim().toLowerCase() == 'true';
+    }
+    return false;
+  }
 
   factory TeamMemberConfig.fromJson(Map<String, Object?> json) {
     final name = json['name'] as String? ?? '';
@@ -24,6 +34,9 @@ class TeamMemberConfig {
       extraArgs: json['extraArgs'] as String? ?? '',
       prompt: json['prompt'] as String? ?? '',
       joinedAt: (json['joinedAt'] as num?)?.toInt() ?? 0,
+      dangerouslySkipPermissions: decodeDangerouslySkipPermissions(
+        json['dangerouslySkipPermissions'],
+      ),
     );
   }
 
@@ -36,6 +49,9 @@ class TeamMemberConfig {
   final String prompt;
   final int joinedAt;
 
+  /// When true, launch passes `--dangerously-skip-permissions` (CLI flag).
+  final bool dangerouslySkipPermissions;
+
   bool get isValid => name.trim().isNotEmpty;
 
   TeamMemberConfig copyWith({
@@ -47,6 +63,7 @@ class TeamMemberConfig {
     String? extraArgs,
     String? prompt,
     int? joinedAt,
+    bool? dangerouslySkipPermissions,
   }) {
     return TeamMemberConfig(
       id: id ?? this.id,
@@ -57,6 +74,8 @@ class TeamMemberConfig {
       extraArgs: extraArgs ?? this.extraArgs,
       prompt: prompt ?? this.prompt,
       joinedAt: joinedAt ?? this.joinedAt,
+      dangerouslySkipPermissions:
+          dangerouslySkipPermissions ?? this.dangerouslySkipPermissions,
     );
   }
 
@@ -70,6 +89,7 @@ class TeamMemberConfig {
       'extraArgs': extraArgs,
       'prompt': prompt,
       'joinedAt': joinedAt,
+      if (dangerouslySkipPermissions) 'dangerouslySkipPermissions': true,
     };
   }
 
@@ -85,7 +105,8 @@ class TeamMemberConfig {
             agent == other.agent &&
             extraArgs == other.extraArgs &&
             prompt == other.prompt &&
-            joinedAt == other.joinedAt;
+            joinedAt == other.joinedAt &&
+            dangerouslySkipPermissions == other.dangerouslySkipPermissions;
   }
 
   @override
@@ -98,6 +119,7 @@ class TeamMemberConfig {
         extraArgs,
         prompt,
         joinedAt,
+        dangerouslySkipPermissions,
       );
 }
 
@@ -109,7 +131,20 @@ class TeamConfig {
     this.extraArgs = '',
     this.members = const [],
     this.createdAt = 0,
+    this.loop,
   });
+
+  /// `--loop` for `--team` mode: `true` / `false`; otherwise returns null.
+  static bool? decodeLoop(Object? raw) {
+    if (raw == null) return null;
+    if (raw is bool) return raw;
+    if (raw is String) {
+      final s = raw.trim().toLowerCase();
+      if (s == 'true') return true;
+      if (s == 'false') return false;
+    }
+    return null;
+  }
 
   factory TeamConfig.fromJson(Map<String, Object?> json) {
     final rawMembers = json['members'];
@@ -130,6 +165,7 @@ class TeamConfig {
       extraArgs: json['extraArgs'] as String? ?? '',
       members: members,
       createdAt: (json['createdAt'] as num?)?.toInt() ?? 0,
+      loop: decodeLoop(json['loop']),
     );
   }
 
@@ -139,6 +175,9 @@ class TeamConfig {
   final List<TeamMemberConfig> members;
   final int createdAt;
 
+  /// When non-null, launch passes `--loop true` or `--loop false` (team mode).
+  final bool? loop;
+
   bool get isValid => name.trim().isNotEmpty;
 
   TeamConfig copyWith({
@@ -147,6 +186,8 @@ class TeamConfig {
     String? extraArgs,
     List<TeamMemberConfig>? members,
     int? createdAt,
+    bool? loop,
+    bool updateLoop = false,
   }) {
     return TeamConfig(
       id: id ?? this.id,
@@ -154,6 +195,7 @@ class TeamConfig {
       extraArgs: extraArgs ?? this.extraArgs,
       members: members ?? this.members,
       createdAt: createdAt ?? this.createdAt,
+      loop: updateLoop ? loop : this.loop,
     );
   }
 
@@ -164,6 +206,7 @@ class TeamConfig {
       'extraArgs': extraArgs,
       'members': members.map((member) => member.toJson()).toList(),
       'createdAt': createdAt,
+      if (loop != null) 'loop': loop!,
     };
   }
 
@@ -176,7 +219,8 @@ class TeamConfig {
             name == other.name &&
             extraArgs == other.extraArgs &&
             listEquals(members, other.members) &&
-            createdAt == other.createdAt;
+            createdAt == other.createdAt &&
+            loop == other.loop;
   }
 
   @override
@@ -186,5 +230,6 @@ class TeamConfig {
         extraArgs,
         Object.hashAll(members),
         createdAt,
+        loop,
       );
 }
