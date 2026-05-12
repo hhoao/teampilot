@@ -1,5 +1,6 @@
 display_name: TeamPilot
 package_name: teampilot
+installed_size: 100000
 description: FlashSky AI TeamPilot client
 maintainer:
   name: hhoa
