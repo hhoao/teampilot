@@ -33,7 +33,7 @@ void main() {
       appSettings: SharedPrefsAppSettingsRepository(prefs),
       currentDirectory: tmp.path,
       homeDirectory: '/home/test',
-      cliExecutablePath: '/opt/flashskyai/dist/flashskyai',
+      executableResolver: () => '/opt/flashskyai/dist/flashskyai',
       repositoryFactory: (path) => LlmConfigRepository(File(path)),
     );
 

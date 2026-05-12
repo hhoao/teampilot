@@ -87,13 +87,13 @@ class LlmConfigCubit extends Cubit<LlmConfigState> {
     required AppSettingsRepository appSettings,
     required String currentDirectory,
     required String? homeDirectory,
-    String? cliExecutablePath,
+    String Function()? executableResolver,
     LlmConfigRepositoryFactory? repositoryFactory,
     LlmConfig initialConfig = const LlmConfig(),
   })  : _appSettings = appSettings,
         _currentDirectory = currentDirectory,
         _homeDirectory = homeDirectory,
-        _cliExecutablePath = cliExecutablePath,
+        _executableResolver = executableResolver ?? (() => ''),
         _repositoryFactory =
             repositoryFactory ?? ((path) => LlmConfigRepository(File(path))),
         super(LlmConfigState(
@@ -102,7 +102,7 @@ class LlmConfigCubit extends Cubit<LlmConfigState> {
   final AppSettingsRepository _appSettings;
   final String _currentDirectory;
   final String? _homeDirectory;
-  final String? _cliExecutablePath;
+  final String Function() _executableResolver;
   final LlmConfigRepositoryFactory _repositoryFactory;
   LlmConfigRepository? _repository;
 
@@ -120,7 +120,7 @@ class LlmConfigCubit extends Cubit<LlmConfigState> {
       userOverride: override,
       currentDirectory: _currentDirectory,
       homeDirectory: _homeDirectory,
-      cliExecutablePath: _cliExecutablePath,
+      cliExecutablePath: _executableResolver(),
     );
     _repository = _repositoryFactory(resolved.path);
 
