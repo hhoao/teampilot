@@ -1,4 +1,5 @@
 display_name: TeamPilot
+package_name: teampilot
 description: FlashSky AI TeamPilot client
 maintainer:
   name: hhoa
