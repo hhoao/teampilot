@@ -13,6 +13,7 @@ import '../utils/app_keys.dart';
 import '../widgets/settings/workspace_settings_toggle_strip.dart';
 import '../widgets/settings/workspace_settings_widgets.dart';
 import 'llm_config_workspace.dart';
+import 'session_config_workspace.dart';
 
 class ConfigWorkspace extends StatelessWidget {
   const ConfigWorkspace({this.section, super.key});
@@ -89,6 +90,8 @@ class ConfigWorkspace extends StatelessWidget {
                                 const LayoutConfigWorkspace(),
                               ConfigSection.llm =>
                                 const LlmConfigWorkspace(),
+                              ConfigSection.session =>
+                                const SessionConfigWorkspace(),
                             },
                           ),
                         ),
@@ -229,18 +232,6 @@ class _LayoutControls extends StatelessWidget {
                   key: AppKeys.fileTreeVisibilitySwitch,
                   value: preferences.fileTreeVisible,
                   onChanged: (value) => _setVisibility(fileTreeVisible: value),
-                ),
-                showDividerBelow: true,
-              ),
-              SettingsGroupHeader(title: l10n.shellSession),
-              SettingsLabeledRow(
-                title: l10n.autoLaunchAllMembersTitle,
-                subtitle: l10n.autoLaunchAllMembersDescription,
-                trailing: Switch(
-                  key: AppKeys.autoLaunchAllMembersOnConnectSwitch,
-                  value: preferences.autoLaunchAllMembersOnConnect,
-                  onChanged: (value) =>
-                      controller.setAutoLaunchAllMembersOnConnect(value),
                 ),
                 showDividerBelow: true,
               ),
@@ -421,6 +412,14 @@ class _ConfigNavPanel extends StatelessWidget {
             compact: compact,
             selected: section == ConfigSection.layout,
             onTap: () => onSelectSection(ConfigSection.layout),
+          ),
+          _ConfigNavItem(
+            key: AppKeys.configSessionSectionButton,
+            title: l10n.session,
+            icon: Icons.terminal_outlined,
+            compact: compact,
+            selected: section == ConfigSection.session,
+            onTap: () => onSelectSection(ConfigSection.session),
           ),
         ],
       ),

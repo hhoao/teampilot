@@ -72,6 +72,12 @@ final appRouter = GoRouter(
           ),
         ),
         GoRoute(
+          path: '/config/session',
+          pageBuilder: (context, state) => const NoTransitionPage(
+            child: ConfigWorkspace(section: ConfigSection.session),
+          ),
+        ),
+        GoRoute(
           path: '/team-config',
           pageBuilder: (context, state) => const NoTransitionPage(
             child: TeamConfigPage(),
