@@ -18,6 +18,15 @@ class TeamConfigPage extends StatefulWidget {
 
 class _TeamConfigPageState extends State<TeamConfigPage> {
   _TeamPageSection _section = _TeamPageSection.team;
+  String? _selectedMemberId;
+
+  String? _effectiveMemberId(TeamConfig team) {
+    if (_section != _TeamPageSection.members) return null;
+    if (team.members.isEmpty) return null;
+    final sid = _selectedMemberId;
+    if (sid != null && team.members.any((m) => m.id == sid)) return sid;
+    return team.members.first.id;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -29,6 +38,8 @@ class _TeamConfigPageState extends State<TeamConfigPage> {
     if (team == null) {
       return const Center(child: CircularProgressIndicator());
     }
+
+    final memberId = _effectiveMemberId(team);
 
     return Container(
       color: colors.workspaceBackground,
@@ -53,9 +64,22 @@ class _TeamConfigPageState extends State<TeamConfigPage> {
                     SizedBox(
                       width: navWidth,
                       child: _NavPanel(
+                        team: team,
                         section: _section,
                         compact: compact,
+                        selectedMemberId: memberId,
                         onSelect: (s) => setState(() => _section = s),
+                        onSelectMember: (id) =>
+                            setState(() => _selectedMemberId = id),
+                        onAddMember: () async {
+                          await teamCubit.addMember();
+                          final t = teamCubit.state.selectedTeam;
+                          if (t != null && t.members.isNotEmpty) {
+                            setState(
+                              () => _selectedMemberId = t.members.last.id,
+                            );
+                          }
+                        },
                         l10n: l10n,
                       ),
                     ),
@@ -72,10 +96,12 @@ class _TeamConfigPageState extends State<TeamConfigPage> {
                                 team: team,
                                 cubit: teamCubit,
                               ),
-                              _TeamPageSection.members => _MembersSection(
-                                team: team,
-                                cubit: teamCubit,
-                              ),
+                              _TeamPageSection.members =>
+                                _MemberDetailSection(
+                                  team: team,
+                                  cubit: teamCubit,
+                                  selectedMemberId: memberId,
+                                ),
                             },
                           ),
                         ),
@@ -143,15 +169,23 @@ class _TitleBar extends StatelessWidget {
 
 class _NavPanel extends StatelessWidget {
   const _NavPanel({
+    required this.team,
     required this.section,
     required this.compact,
+    required this.selectedMemberId,
     required this.onSelect,
+    required this.onSelectMember,
+    required this.onAddMember,
     required this.l10n,
   });
 
+  final TeamConfig team;
   final _TeamPageSection section;
   final bool compact;
+  final String? selectedMemberId;
   final ValueChanged<_TeamPageSection> onSelect;
+  final ValueChanged<String> onSelectMember;
+  final VoidCallback onAddMember;
   final AppLocalizations l10n;
 
   @override
@@ -179,7 +213,155 @@ class _NavPanel extends StatelessWidget {
             selected: section == _TeamPageSection.members,
             onTap: () => onSelect(_TeamPageSection.members),
           ),
+          if (section == _TeamPageSection.members) ...[
+            const SizedBox(height: 4),
+            Expanded(
+              child: ListView(
+                padding: EdgeInsets.only(left: compact ? 10 : 14, right: 2),
+                children: [
+                  for (final m in team.members)
+                    _MemberNavSubItem(
+                      member: m,
+                      compact: compact,
+                      selected: m.id == selectedMemberId,
+                      onTap: () => onSelectMember(m.id),
+                    ),
+                  _MemberNavAddTile(
+                    compact: compact,
+                    l10n: l10n,
+                    onTap: onAddMember,
+                  ),
+                ],
+              ),
+            ),
+          ],
         ],
+      ),
+    );
+  }
+}
+
+class _MemberNavSubItem extends StatelessWidget {
+  const _MemberNavSubItem({
+    required this.member,
+    required this.compact,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final TeamMemberConfig member;
+  final bool compact;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
+    final l10n = context.l10n;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textBase = isDark ? Colors.white : const Color(0xFF111827);
+    final muted = textBase.withValues(alpha: 0.64);
+    final label =
+        member.name.trim().isEmpty ? l10n.memberName : member.name.trim();
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Material(
+        color: selected ? colors.selectedBackground : Colors.transparent,
+        borderRadius: BorderRadius.circular(10),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(10),
+          onTap: onTap,
+          child: SizedBox(
+            height: compact ? 40 : 44,
+            child: Padding(
+              padding: EdgeInsets.symmetric(horizontal: compact ? 10 : 14),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.person_outline,
+                    size: compact ? 18 : 19,
+                    color: selected ? textBase : muted,
+                  ),
+                  SizedBox(width: compact ? 8 : 10),
+                  Expanded(
+                    child: Text(
+                      label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: compact ? 13 : 14,
+                        fontWeight:
+                            selected ? FontWeight.w700 : FontWeight.w600,
+                        color: selected ? textBase : muted,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _MemberNavAddTile extends StatelessWidget {
+  const _MemberNavAddTile({
+    required this.compact,
+    required this.l10n,
+    required this.onTap,
+  });
+
+  final bool compact;
+  final AppLocalizations l10n;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textBase = isDark ? Colors.white : const Color(0xFF111827);
+    final muted = textBase.withValues(alpha: 0.72);
+    return Padding(
+      padding: const EdgeInsets.only(top: 2, bottom: 6),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(10),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(10),
+          onTap: onTap,
+          child: DottedBorderContainer(
+            color: colors.border,
+            radius: 10,
+            child: SizedBox(
+              height: compact ? 40 : 44,
+              child: Padding(
+                padding: EdgeInsets.symmetric(horizontal: compact ? 10 : 14),
+                child: Row(
+                  children: [
+                    Icon(Icons.add, size: compact ? 18 : 19, color: muted),
+                    SizedBox(width: compact ? 8 : 10),
+                    Expanded(
+                      child: Text(
+                        compact
+                            ? l10n.add
+                            : '${l10n.add} ${l10n.memberName}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: compact ? 13 : 14,
+                          fontWeight: FontWeight.w600,
+                          color: muted,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -411,17 +593,47 @@ class _FieldLabel extends StatelessWidget {
   }
 }
 
-class _MembersSection extends StatelessWidget {
-  const _MembersSection({required this.team, required this.cubit});
+class _MemberDetailSection extends StatelessWidget {
+  const _MemberDetailSection({
+    required this.team,
+    required this.cubit,
+    required this.selectedMemberId,
+  });
 
   final TeamConfig team;
   final TeamCubit cubit;
+  final String? selectedMemberId;
+
+  TeamMemberConfig? _memberOrNull() {
+    final id = selectedMemberId;
+    if (id == null || team.members.isEmpty) return null;
+    for (final m in team.members) {
+      if (m.id == id) return m;
+    }
+    return null;
+  }
 
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textBase = isDark ? Colors.white : const Color(0xFF111827);
+    final member = _memberOrNull();
+    if (member == null) {
+      return Center(
+        child: Text(
+          l10n.openMember,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 14,
+            color: textBase.withValues(alpha: 0.55),
+          ),
+        ),
+      );
+    }
+
+    final canDelete = team.members.length > 1;
+
     return SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -429,206 +641,184 @@ class _MembersSection extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.only(bottom: 14, left: 4),
             child: Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        l10n.members,
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w800,
-                          color: textBase,
-                        ),
-                      ),
-                    ],
+                  child: Text(
+                    member.name.trim().isEmpty ? l10n.memberName : member.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w800,
+                      color: textBase,
+                    ),
                   ),
+                ),
+                IconButton(
+                  tooltip: l10n.delete,
+                  onPressed: canDelete
+                      ? () => cubit.deleteMember(member.id)
+                      : null,
+                  icon: const Icon(Icons.delete_outline, size: 20),
                 ),
               ],
             ),
           ),
-          for (final member in team.members)
-            _MemberCard(
+          _Card(
+            child: _MemberConfigForm(
+              key: ValueKey(member.id),
               member: member,
-              canDelete: team.members.length > 1,
-              onEdit: () => _openEditor(context, member),
-              onDelete: () => cubit.deleteMember(member.id),
+              cubit: cubit,
             ),
-          _AddMemberCard(onTap: () => _openEditor(context, null)),
+          ),
         ],
       ),
     );
   }
-
-  Future<void> _openEditor(
-    BuildContext context,
-    TeamMemberConfig? existing,
-  ) async {
-    final result = await showDialog<TeamMemberConfig>(
-      context: context,
-      builder: (_) => _MemberEditorDialog(member: existing),
-    );
-    if (result == null) return;
-    if (existing == null) {
-      await cubit.addMember();
-      final added = cubit.state.selectedTeam?.members.last;
-      if (added != null) {
-        await cubit.updateMember(added.id, result.copyWith(id: added.id));
-      }
-    } else {
-      await cubit.updateMember(existing.id, result);
-    }
-  }
 }
 
-class _MemberCard extends StatelessWidget {
-  const _MemberCard({
+class _MemberConfigForm extends StatefulWidget {
+  const _MemberConfigForm({
+    super.key,
     required this.member,
-    required this.canDelete,
-    required this.onEdit,
-    required this.onDelete,
+    required this.cubit,
   });
 
   final TeamMemberConfig member;
-  final bool canDelete;
-  final VoidCallback onEdit;
-  final VoidCallback onDelete;
+  final TeamCubit cubit;
 
   @override
-  Widget build(BuildContext context) {
-    final colors = AppColors.of(context);
-    final l10n = context.l10n;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textBase = isDark ? Colors.white : const Color(0xFF111827);
-    final muted = textBase.withValues(alpha: 0.66);
-
-    final details = <String>[
-      if (member.provider.trim().isNotEmpty) member.provider.trim(),
-      if (member.model.trim().isNotEmpty) member.model.trim(),
-      if (member.agent.trim().isNotEmpty) member.agent.trim(),
-    ].join(' · ');
-
-    return _Card(
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              color: colors.typeBadgeAccountBg,
-              border: Border.all(color: colors.typeBadgeAccountBorder),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(
-              Icons.person_outline,
-              size: 20,
-              color: colors.typeBadgeAccountText,
-            ),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  member.name.isEmpty ? l10n.memberName : member.name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    color: textBase,
-                  ),
-                ),
-                if (details.isNotEmpty) ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    details,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(fontSize: 12, color: muted),
-                  ),
-                ],
-              ],
-            ),
-          ),
-          IconButton(
-            tooltip: l10n.edit,
-            onPressed: onEdit,
-            icon: const Icon(Icons.edit_outlined, size: 18),
-          ),
-          IconButton(
-            tooltip: l10n.delete,
-            onPressed: canDelete ? onDelete : null,
-            icon: const Icon(Icons.delete_outline, size: 18),
-          ),
-        ],
-      ),
-    );
-  }
+  State<_MemberConfigForm> createState() => _MemberConfigFormState();
 }
 
-class _AddMemberCard extends StatelessWidget {
-  const _AddMemberCard({required this.onTap});
+class _MemberConfigFormState extends State<_MemberConfigForm> {
+  late TextEditingController _nameCtl;
+  late TextEditingController _agentCtl;
+  late TextEditingController _argsCtl;
+  late TextEditingController _promptCtl;
 
-  final VoidCallback onTap;
+  @override
+  void initState() {
+    super.initState();
+    _syncControllers(widget.member);
+  }
+
+  void _syncControllers(TeamMemberConfig m) {
+    _nameCtl = TextEditingController(text: m.name);
+    _agentCtl = TextEditingController(text: m.agent);
+    _argsCtl = TextEditingController(text: m.extraArgs);
+    _promptCtl = TextEditingController(text: m.prompt);
+  }
+
+  @override
+  void dispose() {
+    _nameCtl.dispose();
+    _agentCtl.dispose();
+    _argsCtl.dispose();
+    _promptCtl.dispose();
+    super.dispose();
+  }
+
+  void _update(TeamMemberConfig next) {
+    widget.cubit.updateMember(widget.member.id, next);
+  }
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppColors.of(context);
     final l10n = context.l10n;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textBase = isDark ? Colors.white : const Color(0xFF111827);
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 14),
-      child: Material(
-        color: Colors.transparent,
-        borderRadius: BorderRadius.circular(12),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(12),
-          onTap: onTap,
-          child: DottedBorderContainer(
-            color: colors.border,
-            radius: 12,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 18),
-              child: Row(
-                children: [
-                  Container(
-                    width: 36,
-                    height: 36,
-                    decoration: BoxDecoration(
-                      color: colors.surfaceVariant,
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: colors.border),
-                    ),
-                    child: Icon(
-                      Icons.add,
-                      size: 20,
-                      color: textBase.withValues(alpha: 0.78),
-                    ),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Text(
-                      '${l10n.add} ${l10n.memberName}',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        color: textBase.withValues(alpha: 0.85),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
+    final m = widget.member;
+    final llmState = context.watch<LlmConfigCubit>().state;
+
+    final providerNames = llmState.config.providers.keys.toList()..sort();
+    final prov = m.provider;
+    if (prov.trim().isNotEmpty && !providerNames.contains(prov)) {
+      providerNames.add(prov);
+    }
+
+    final modelNames =
+        llmState.config.models.values
+            .where((model) => prov.isEmpty || model.provider == prov)
+            .map((model) => model.name)
+            .toList()
+          ..sort();
+    final model = m.model;
+    if (model.trim().isNotEmpty && !modelNames.contains(model)) {
+      modelNames.add(model);
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _CardHeader(
+          title: l10n.configure,
+          subtitle: l10n.editMemberSubtitle,
         ),
-      ),
+        const SizedBox(height: 18),
+        _FieldLabel(text: l10n.memberName),
+        const SizedBox(height: 6),
+        TextField(
+          controller: _nameCtl,
+          onChanged: (v) => _update(m.copyWith(name: v)),
+        ),
+        const SizedBox(height: 12),
+        _FieldLabel(text: l10n.provider),
+        const SizedBox(height: 6),
+        DropdownButtonFormField<String>(
+          initialValue: prov.isEmpty ? null : prov,
+          isExpanded: true,
+          hint: Text(l10n.selectProvider),
+          items: [
+            for (final name in providerNames)
+              DropdownMenuItem(value: name, child: Text(name)),
+          ],
+          onChanged: (value) {
+            final newProv = value ?? '';
+            var newModel = m.model;
+            final stillValid = llmState.config.models.values.any(
+              (md) => md.name == newModel && md.provider == newProv,
+            );
+            if (!stillValid) newModel = '';
+            _update(m.copyWith(provider: newProv, model: newModel));
+          },
+        ),
+        const SizedBox(height: 12),
+        _FieldLabel(text: l10n.model),
+        const SizedBox(height: 6),
+        DropdownButtonFormField<String>(
+          initialValue: model.isEmpty ? null : model,
+          isExpanded: true,
+          hint: Text(l10n.selectModel),
+          items: [
+            for (final name in modelNames)
+              DropdownMenuItem(value: name, child: Text(name)),
+          ],
+          onChanged: (value) => _update(m.copyWith(model: value ?? '')),
+        ),
+        const SizedBox(height: 12),
+        _FieldLabel(text: l10n.agent),
+        const SizedBox(height: 6),
+        TextField(
+          controller: _agentCtl,
+          onChanged: (v) => _update(m.copyWith(agent: v)),
+        ),
+        const SizedBox(height: 12),
+        _FieldLabel(text: l10n.memberExtraArgs),
+        const SizedBox(height: 6),
+        TextField(
+          controller: _argsCtl,
+          onChanged: (v) => _update(m.copyWith(extraArgs: v)),
+        ),
+        const SizedBox(height: 12),
+        _FieldLabel(text: l10n.prompt),
+        const SizedBox(height: 6),
+        TextField(
+          controller: _promptCtl,
+          minLines: 3,
+          maxLines: 6,
+          onChanged: (v) => _update(m.copyWith(prompt: v)),
+        ),
+      ],
     );
   }
 }
@@ -691,168 +881,4 @@ class _DashedBorderPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _DashedBorderPainter oldDelegate) =>
       oldDelegate.color != color || oldDelegate.radius != radius;
-}
-
-class _MemberEditorDialog extends StatefulWidget {
-  const _MemberEditorDialog({required this.member});
-
-  final TeamMemberConfig? member;
-
-  @override
-  State<_MemberEditorDialog> createState() => _MemberEditorDialogState();
-}
-
-class _MemberEditorDialogState extends State<_MemberEditorDialog> {
-  late TextEditingController _nameCtl;
-  late TextEditingController _agentCtl;
-  late TextEditingController _argsCtl;
-  late TextEditingController _promptCtl;
-  String _provider = '';
-  String _model = '';
-
-  @override
-  void initState() {
-    super.initState();
-    final m = widget.member;
-    _nameCtl = TextEditingController(text: m?.name ?? '');
-    _agentCtl = TextEditingController(text: m?.agent ?? '');
-    _argsCtl = TextEditingController(text: m?.extraArgs ?? '');
-    _promptCtl = TextEditingController(text: m?.prompt ?? '');
-    _provider = m?.provider ?? '';
-    _model = m?.model ?? '';
-  }
-
-  @override
-  void dispose() {
-    _nameCtl.dispose();
-    _agentCtl.dispose();
-    _argsCtl.dispose();
-    _promptCtl.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = AppColors.of(context);
-    final l10n = context.l10n;
-    final isEditing = widget.member != null;
-    final llmState = context.watch<LlmConfigCubit>().state;
-
-    final providerNames = llmState.config.providers.keys.toList()..sort();
-    if (_provider.isNotEmpty && !providerNames.contains(_provider)) {
-      providerNames.add(_provider);
-    }
-
-    final modelNames =
-        llmState.config.models.values
-            .where((m) => _provider.isEmpty || m.provider == _provider)
-            .map((m) => m.name)
-            .toList()
-          ..sort();
-    if (_model.isNotEmpty && !modelNames.contains(_model)) {
-      modelNames.add(_model);
-    }
-
-    return Dialog(
-      backgroundColor: colors.cardBackground,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 520),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(24, 22, 24, 18),
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _CardHeader(
-                  title: isEditing ? l10n.edit : l10n.add,
-                  subtitle: l10n.editMemberSubtitle,
-                ),
-                const SizedBox(height: 18),
-                _FieldLabel(text: l10n.memberName),
-                const SizedBox(height: 6),
-                TextField(controller: _nameCtl),
-                const SizedBox(height: 12),
-                _FieldLabel(text: l10n.provider),
-                const SizedBox(height: 6),
-                DropdownButtonFormField<String>(
-                  initialValue: _provider.isEmpty ? null : _provider,
-                  isExpanded: true,
-                  hint: Text(l10n.selectProvider),
-                  items: [
-                    for (final name in providerNames)
-                      DropdownMenuItem(value: name, child: Text(name)),
-                  ],
-                  onChanged: (value) {
-                    setState(() {
-                      _provider = value ?? '';
-                      final stillValid = llmState.config.models.values.any(
-                        (m) => m.name == _model && m.provider == _provider,
-                      );
-                      if (!stillValid) _model = '';
-                    });
-                  },
-                ),
-                const SizedBox(height: 12),
-                _FieldLabel(text: l10n.model),
-                const SizedBox(height: 6),
-                DropdownButtonFormField<String>(
-                  initialValue: _model.isEmpty ? null : _model,
-                  isExpanded: true,
-                  hint: Text(l10n.selectModel),
-                  items: [
-                    for (final name in modelNames)
-                      DropdownMenuItem(value: name, child: Text(name)),
-                  ],
-                  onChanged: (value) => setState(() => _model = value ?? ''),
-                ),
-                const SizedBox(height: 12),
-                _FieldLabel(text: l10n.agent),
-                const SizedBox(height: 6),
-                TextField(controller: _agentCtl),
-                const SizedBox(height: 12),
-                _FieldLabel(text: l10n.memberExtraArgs),
-                const SizedBox(height: 6),
-                TextField(controller: _argsCtl),
-                const SizedBox(height: 12),
-                _FieldLabel(text: l10n.prompt),
-                const SizedBox(height: 6),
-                TextField(controller: _promptCtl, minLines: 3, maxLines: 6),
-                const SizedBox(height: 22),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    OutlinedButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      child: Text(l10n.cancel),
-                    ),
-                    const SizedBox(width: 8),
-                    FilledButton(
-                      onPressed: () {
-                        final base =
-                            widget.member ??
-                            const TeamMemberConfig(id: '', name: '');
-                        Navigator.of(context).pop(
-                          base.copyWith(
-                            name: _nameCtl.text,
-                            provider: _provider,
-                            model: _model,
-                            agent: _agentCtl.text,
-                            extraArgs: _argsCtl.text,
-                            prompt: _promptCtl.text,
-                          ),
-                        );
-                      },
-                      child: Text(isEditing ? l10n.save : l10n.add),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
 }

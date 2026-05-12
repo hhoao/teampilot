@@ -55,8 +55,13 @@ class _SkillManagementPageState extends State<SkillManagementPage> {
                     final compact = constraints.maxWidth < 820;
                     final navWidth = compact ? 220.0 : 280.0;
                     final padding = compact
-                        ? const EdgeInsets.fromLTRB(20, 24, 20, 20)
-                        : const EdgeInsets.fromLTRB(36, 32, 44, 28);
+                        ? const EdgeInsets.fromLTRB(16, 20, 16, 16)
+                        : const EdgeInsets.fromLTRB(24, 28, 28, 24);
+                    final bodyPaneWidth =
+                        constraints.maxWidth - navWidth - 1;
+                    final skillsBodyMaxWidth =
+                        (bodyPaneWidth - padding.horizontal)
+                            .clamp(480.0, 3200.0);
                     return Row(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
@@ -74,10 +79,10 @@ class _SkillManagementPageState extends State<SkillManagementPage> {
                           child: Padding(
                             padding: padding,
                             child: Align(
-                              alignment: Alignment.topCenter,
+                              alignment: Alignment.topLeft,
                               child: ConstrainedBox(
-                                constraints: const BoxConstraints(
-                                  maxWidth: 1120,
+                                constraints: BoxConstraints(
+                                  maxWidth: skillsBodyMaxWidth,
                                 ),
                                 child: switch (_section) {
                                   SkillSection.installed => _InstalledSection(
