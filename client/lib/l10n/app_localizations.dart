@@ -92,8 +92,7 @@ class AppLocalizations {
   String get tabbedTools => _strings['tabbedTools']!;
   String get regionVisibility => _strings['regionVisibility']!;
   String get appRail => _strings['appRail']!;
-  String get toolPlacementDescription =>
-      _strings['toolPlacementDescription']!;
+  String get toolPlacementDescription => _strings['toolPlacementDescription']!;
   String get membersAndFileTreeDescription =>
       _strings['membersAndFileTreeDescription']!;
   String get visibilityTeamSessionsHint =>
@@ -121,8 +120,10 @@ class AppLocalizations {
   String modelsUsingProvider(int count) =>
       '${_strings['modelsUsingProvider']!} $count';
   String providerListCaption(int modelCount, bool proxyEnabled) {
-    final countPart =
-        _strings['providerListModelCount']!.replaceFirst('{n}', '$modelCount');
+    final countPart = _strings['providerListModelCount']!.replaceFirst(
+      '{n}',
+      '$modelCount',
+    );
     final proxyPart = proxyEnabled
         ? _strings['proxyOnShort']!
         : _strings['proxyOffShort']!;
@@ -256,8 +257,7 @@ class AppLocalizations {
   String get skillsSkillsShPoweredBy => _strings['skillsSkillsShPoweredBy']!;
   String get skillsSkillsShSearch => _strings['skillsSkillsShSearch']!;
   String get skillsDiscoveryEmpty => _strings['skillsDiscoveryEmpty']!;
-  String get skillsDiscoveryEmptyHint =>
-      _strings['skillsDiscoveryEmptyHint']!;
+  String get skillsDiscoveryEmptyHint => _strings['skillsDiscoveryEmptyHint']!;
   String get skillsAdd => _strings['skillsAdd']!;
   String get skillsRemove => _strings['skillsRemove']!;
   String get skillsEnabled => _strings['skillsEnabled']!;
@@ -310,7 +310,8 @@ class _AppLocalizationsDelegate
     'copyFolderPath': {'en': 'Copy Folder Path', 'zh': '复制文件夹路径'},
     'deleteProject': {'en': 'Delete Project', 'zh': '删除项目'},
     'deleteProjectConfirm': {
-      'en': 'Delete project "{name}" and all its sessions? This cannot be undone.',
+      'en':
+          'Delete project "{name}" and all its sessions? This cannot be undone.',
       'zh': '删除项目 "{name}" 及其所有会话？此操作不可撤销。',
     },
     'noSessions': {'en': 'No sessions yet', 'zh': '暂无会话'},
@@ -318,10 +319,7 @@ class _AppLocalizationsDelegate
     'teamSessions': {'en': 'Team Sessions', 'zh': '团队会话'},
     'renameConversation': {'en': 'Rename conversation', 'zh': '重命名对话'},
     'deleteConversation': {'en': 'Delete conversation', 'zh': '删除对话'},
-    'renameConversationTitle': {
-      'en': 'Rename Conversation',
-      'zh': '重命名对话',
-    },
+    'renameConversationTitle': {'en': 'Rename Conversation', 'zh': '重命名对话'},
     'deleteConversationConfirm': {
       'en': 'Delete conversation "{name}"? This cannot be undone.',
       'zh': '删除对话 "{name}"？此操作不可撤销。',
@@ -340,9 +338,9 @@ class _AppLocalizationsDelegate
     'teamSettings': {'en': 'Team Settings', 'zh': '团队设置'},
     'teamSettingsSubtitle': {'en': 'workspace teams', 'zh': '工作区团队'},
     'membersSubtitle': {'en': 'team agents', 'zh': '团队代理'},
-    'llmConfig': {'en': 'LLM Config', 'zh': 'LLM 配置'},
+    'llmConfig': {'en': 'Provider', 'zh': '服务商'},
     'llmConfigSubtitle': {'en': 'providers and models', 'zh': '提供商和模型'},
-    'layout': {'en': 'Layout', 'zh': '布局'},
+    'layout': {'en': 'Layout', 'zh': '通用'},
     'layoutSubtitle': {'en': 'global workbench', 'zh': '全局工作台'},
     'memberQuickList': {'en': 'MEMBER QUICK LIST', 'zh': '成员快速列表'},
     'providers': {'en': 'PROVIDERS', 'zh': '提供商'},
@@ -533,31 +531,19 @@ class _AppLocalizationsDelegate
 
     // Skills
     'skillsTitle': {'en': 'Skills', 'zh': 'Skills'},
-    'skillsSubtitle': {
-      'en': 'Manage installable skills',
-      'zh': '管理可安装的 Skill',
-    },
+    'skillsSubtitle': {'en': 'Manage installable skills', 'zh': '管理可安装的 Skill'},
     'skillsSidebarLabel': {'en': 'Skills', 'zh': 'Skills'},
     'skillsNavInstalled': {'en': 'Installed', 'zh': '已安装'},
     'skillsNavDiscovery': {'en': 'Discovery', 'zh': '发现'},
     'skillsNavRepos': {'en': 'Repos', 'zh': '仓库'},
     'skillsNavBackups': {'en': 'Backups', 'zh': '备份'},
-    'skillsInstalledCount': {
-      'en': '{count} installed',
-      'zh': '已安装 {count}',
-    },
+    'skillsInstalledCount': {'en': '{count} installed', 'zh': '已安装 {count}'},
     'skillsCheckUpdates': {'en': 'Check updates', 'zh': '检查更新'},
     'skillsCheckingUpdates': {'en': 'Checking…', 'zh': '检查中…'},
-    'skillsUpdateAll': {
-      'en': 'Update all ({count})',
-      'zh': '全部更新 ({count})',
-    },
+    'skillsUpdateAll': {'en': 'Update all ({count})', 'zh': '全部更新 ({count})'},
     'skillsImportFromDisk': {'en': 'Import from disk', 'zh': '从磁盘导入'},
     'skillsInstallFromZip': {'en': 'Install from ZIP', 'zh': '从 ZIP 安装'},
-    'skillsNoInstalled': {
-      'en': 'No skills installed yet',
-      'zh': '还没有安装 Skill',
-    },
+    'skillsNoInstalled': {'en': 'No skills installed yet', 'zh': '还没有安装 Skill'},
     'skillsNoInstalledHint': {
       'en': 'Open Discovery to install your first skill.',
       'zh': '打开发现页安装你的第一个 Skill。',
@@ -606,14 +592,8 @@ class _AppLocalizationsDelegate
       'en': '{name} already installed. Overwrite?',
       'zh': '{name} 已安装。是否覆盖？',
     },
-    'skillsInstallSuccess': {
-      'en': 'Installed {name}',
-      'zh': '已安装 {name}',
-    },
-    'skillsUninstallSuccess': {
-      'en': 'Uninstalled {name}',
-      'zh': '已卸载 {name}',
-    },
+    'skillsInstallSuccess': {'en': 'Installed {name}', 'zh': '已安装 {name}'},
+    'skillsUninstallSuccess': {'en': 'Uninstalled {name}', 'zh': '已卸载 {name}'},
     'skillsUpdateSuccess': {'en': 'Updated {name}', 'zh': '已更新 {name}'},
     'skillsNoUpdates': {
       'en': 'All skills are up to date',
@@ -641,10 +621,7 @@ class _AppLocalizationsDelegate
       'zh': '由 skills.sh 提供',
     },
     'skillsSkillsShSearch': {'en': 'Search', 'zh': '搜索'},
-    'skillsDiscoveryEmpty': {
-      'en': 'No skills discovered',
-      'zh': '未发现可用 Skill',
-    },
+    'skillsDiscoveryEmpty': {'en': 'No skills discovered', 'zh': '未发现可用 Skill'},
     'skillsDiscoveryEmptyHint': {
       'en': 'Add a repo or try skills.sh to find skills.',
       'zh': '添加仓库或试用 skills.sh 来发现 Skill。',

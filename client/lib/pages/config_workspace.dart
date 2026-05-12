@@ -8,7 +8,9 @@ import '../cubits/team_cubit.dart';
 import '../l10n/app_localizations.dart';
 import '../models/layout_preferences.dart';
 import '../theme/app_theme.dart';
+import '../theme/app_workspace_settings_theme.dart';
 import '../utils/app_keys.dart';
+import '../widgets/settings/workspace_settings_widgets.dart';
 import '../utils/perf.dart';
 import 'llm_config_workspace.dart';
 
@@ -50,8 +52,13 @@ class ConfigWorkspace extends StatelessWidget {
                 final compact = constraints.maxWidth < 820;
                 final navWidth = compact ? 220.0 : 314.0;
                 final contentPadding = compact
-                    ? const EdgeInsets.fromLTRB(20, 24, 20, 20)
-                    : const EdgeInsets.fromLTRB(36, 36, 44, 28);
+                    ? const EdgeInsets.fromLTRB(16, 20, 16, 16)
+                    : const EdgeInsets.fromLTRB(24, 28, 28, 24);
+                final bodyPaneWidth =
+                    constraints.maxWidth - navWidth - 1;
+                final configBodyMaxWidth =
+                    (bodyPaneWidth - contentPadding.horizontal)
+                        .clamp(480.0, 3200.0);
                 return Row(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
@@ -77,10 +84,10 @@ class ConfigWorkspace extends StatelessWidget {
                           builder: (_) => Padding(
                             padding: contentPadding,
                             child: Align(
-                              alignment: Alignment.topCenter,
+                              alignment: Alignment.topLeft,
                               child: ConstrainedBox(
-                                constraints: const BoxConstraints(
-                                  maxWidth: 1120,
+                                constraints: BoxConstraints(
+                                  maxWidth: configBodyMaxWidth,
                                 ),
                                 child: switch (configCubit.state.section) {
                                   ConfigSection.layout =>
@@ -142,19 +149,9 @@ class _LayoutControls extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textBase = isDark ? Colors.white : const Color(0xFF111827);
-    final titleStyle = TextStyle(
-      fontSize: 14,
-      fontWeight: FontWeight.w700,
-      color: textBase,
-      height: 1.2,
-    );
-    final subtitleStyle = TextStyle(
-      fontSize: 13,
-      height: 1.35,
-      color: textBase.withValues(alpha: 0.55),
-    );
+    final tokens = AppWorkspaceSettingsTokens.of(context);
+    final segmentStyle = workspaceSettingsEmphasizedSegmentButtonStyle(context);
+    final iconSize = tokens.segmentedIconSize;
     var themeMode = preferences.themeMode;
     if (themeMode != 'light' && themeMode != 'dark' && themeMode != 'system') {
       themeMode = 'system';
@@ -164,19 +161,16 @@ class _LayoutControls extends StatelessWidget {
         ? preferences.locale
         : systemLang;
     final langValue = effectiveLang.startsWith('zh') ? 'zh' : 'en';
-    final segmentStyle = _layoutSettingsSegmentStyle(context);
 
     return Expanded(
       child: SingleChildScrollView(
-        child: _LayoutSettingsCard(
+        child: SettingsSurfaceCard(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              _SettingRow(
+              SettingsLabeledRow(
                 title: l10n.toolPlacement,
                 subtitle: l10n.toolPlacementDescription,
-                titleStyle: titleStyle,
-                subtitleStyle: subtitleStyle,
                 trailing: SegmentedButton<ToolPanelPlacement>(
                   style: segmentStyle,
                   showSelectedIcon: false,
@@ -184,12 +178,15 @@ class _LayoutControls extends StatelessWidget {
                     ButtonSegment<ToolPanelPlacement>(
                       value: ToolPanelPlacement.right,
                       label: Text(l10n.right),
-                      icon: const Icon(Icons.vertical_split_outlined, size: 18),
+                      icon: Icon(
+                        Icons.vertical_split_outlined,
+                        size: iconSize,
+                      ),
                     ),
                     ButtonSegment<ToolPanelPlacement>(
                       value: ToolPanelPlacement.bottom,
                       label: Text(l10n.bottom),
-                      icon: const Icon(Icons.splitscreen_outlined, size: 18),
+                      icon: Icon(Icons.splitscreen_outlined, size: iconSize),
                     ),
                   ],
                   selected: {preferences.toolPlacement},
@@ -198,11 +195,9 @@ class _LayoutControls extends StatelessWidget {
                 ),
                 showDividerBelow: true,
               ),
-              _SettingRow(
+              SettingsLabeledRow(
                 title: l10n.membersAndFileTree,
                 subtitle: l10n.membersAndFileTreeDescription,
-                titleStyle: titleStyle,
-                subtitleStyle: subtitleStyle,
                 trailing: SegmentedButton<ToolsArrangement>(
                   style: segmentStyle,
                   showSelectedIcon: false,
@@ -210,12 +205,12 @@ class _LayoutControls extends StatelessWidget {
                     ButtonSegment<ToolsArrangement>(
                       value: ToolsArrangement.stacked,
                       label: Text(l10n.stacked),
-                      icon: const Icon(Icons.view_agenda_outlined, size: 18),
+                      icon: Icon(Icons.view_agenda_outlined, size: iconSize),
                     ),
                     ButtonSegment<ToolsArrangement>(
                       value: ToolsArrangement.tabs,
                       label: Text(l10n.tabs),
-                      icon: const Icon(Icons.tab_outlined, size: 18),
+                      icon: Icon(Icons.tab_outlined, size: iconSize),
                     ),
                   ],
                   selected: {preferences.toolsArrangement},
@@ -224,12 +219,10 @@ class _LayoutControls extends StatelessWidget {
                 ),
                 showDividerBelow: true,
               ),
-              _SettingsGroupHeader(title: l10n.regionVisibility),
-              _SettingRow(
+              SettingsGroupHeader(title: l10n.regionVisibility),
+              SettingsLabeledRow(
                 title: l10n.teamSessions,
                 subtitle: l10n.visibilityTeamSessionsHint,
-                titleStyle: titleStyle,
-                subtitleStyle: subtitleStyle,
                 trailing: Switch(
                   key: AppKeys.contextSidebarVisibilitySwitch,
                   value: preferences.contextSidebarVisible,
@@ -238,11 +231,9 @@ class _LayoutControls extends StatelessWidget {
                 ),
                 showDividerBelow: true,
               ),
-              _SettingRow(
+              SettingsLabeledRow(
                 title: l10n.members,
                 subtitle: l10n.visibilityMembersHint,
-                titleStyle: titleStyle,
-                subtitleStyle: subtitleStyle,
                 trailing: Switch(
                   key: AppKeys.membersVisibilitySwitch,
                   value: preferences.membersVisible,
@@ -250,11 +241,9 @@ class _LayoutControls extends StatelessWidget {
                 ),
                 showDividerBelow: true,
               ),
-              _SettingRow(
+              SettingsLabeledRow(
                 title: l10n.fileTree,
                 subtitle: l10n.visibilityFileTreeHint,
-                titleStyle: titleStyle,
-                subtitleStyle: subtitleStyle,
                 trailing: Switch(
                   key: AppKeys.fileTreeVisibilitySwitch,
                   value: preferences.fileTreeVisible,
@@ -262,12 +251,10 @@ class _LayoutControls extends StatelessWidget {
                 ),
                 showDividerBelow: true,
               ),
-              _SettingsGroupHeader(title: l10n.appearance),
-              _SettingRow(
+              SettingsGroupHeader(title: l10n.appearance),
+              SettingsLabeledRow(
                 title: l10n.themeModeTitle,
                 subtitle: l10n.themeModeDescription,
-                titleStyle: titleStyle,
-                subtitleStyle: subtitleStyle,
                 trailing: SegmentedButton<String>(
                   style: segmentStyle,
                   showSelectedIcon: false,
@@ -275,19 +262,22 @@ class _LayoutControls extends StatelessWidget {
                     ButtonSegment<String>(
                       value: 'light',
                       tooltip: l10n.themeLight,
-                      icon: const Icon(Icons.light_mode_outlined, size: 18),
+                      icon: Icon(Icons.light_mode_outlined, size: iconSize),
                       label: Text(l10n.themeLight),
                     ),
                     ButtonSegment<String>(
                       value: 'dark',
                       tooltip: l10n.themeDark,
-                      icon: const Icon(Icons.dark_mode_outlined, size: 18),
+                      icon: Icon(Icons.dark_mode_outlined, size: iconSize),
                       label: Text(l10n.themeDark),
                     ),
                     ButtonSegment<String>(
                       value: 'system',
                       tooltip: l10n.themeSystem,
-                      icon: const Icon(Icons.desktop_windows_outlined, size: 18),
+                      icon: Icon(
+                        Icons.desktop_windows_outlined,
+                        size: iconSize,
+                      ),
                       label: Text(l10n.themeSystem),
                     ),
                   ],
@@ -297,15 +287,26 @@ class _LayoutControls extends StatelessWidget {
                 ),
                 showDividerBelow: true,
               ),
-              _SettingRow(
+              SettingsLabeledRow(
                 title: l10n.language,
                 subtitle: l10n.languageDescription,
-                titleStyle: titleStyle,
-                subtitleStyle: subtitleStyle,
-                trailing: _LayoutLanguageDropdown(
+                trailing: SettingsCompactDropdown<String>(
                   value: langValue,
-                  l10n: l10n,
-                  onChanged: controller.setLocale,
+                  items: [
+                    DropdownMenuItem(
+                      key: AppKeys.languageEnButton,
+                      value: 'en',
+                      child: Text(l10n.languageEnglish),
+                    ),
+                    DropdownMenuItem(
+                      key: AppKeys.languageZhButton,
+                      value: 'zh',
+                      child: Text(l10n.languageChinese),
+                    ),
+                  ],
+                  onChanged: (v) {
+                    if (v != null) controller.setLocale(v);
+                  },
                 ),
                 showDividerBelow: false,
               ),
@@ -330,200 +331,6 @@ class _LayoutControls extends StatelessWidget {
     );
   }
 }
-
-ButtonStyle _layoutSettingsSegmentStyle(BuildContext context) {
-  final colors = AppColors.of(context);
-  final isDark = Theme.of(context).brightness == Brightness.dark;
-  final textBase = isDark ? Colors.white : const Color(0xFF111827);
-  return ButtonStyle(
-    visualDensity: VisualDensity.compact,
-    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-    padding: WidgetStateProperty.all(
-      const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-    ),
-    foregroundColor: WidgetStateProperty.resolveWith((states) {
-      if (states.contains(WidgetState.selected)) return Colors.white;
-      return textBase.withValues(alpha: 0.72);
-    }),
-    iconColor: WidgetStateProperty.resolveWith((states) {
-      if (states.contains(WidgetState.selected)) return Colors.white;
-      return textBase.withValues(alpha: 0.72);
-    }),
-    backgroundColor: WidgetStateProperty.resolveWith((states) {
-      if (states.contains(WidgetState.selected)) return colors.accentBlue;
-      return colors.inputFill;
-    }),
-    side: WidgetStateProperty.all(BorderSide(color: colors.border)),
-    shape: WidgetStateProperty.all(
-      RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-    ),
-  );
-}
-
-class _LayoutSettingsCard extends StatelessWidget {
-  const _LayoutSettingsCard({required this.child});
-
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = AppColors.of(context);
-    return Container(
-      decoration: BoxDecoration(
-        color: colors.rightPanelBackground,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: colors.subtleBorder),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: child,
-    );
-  }
-}
-
-class _SettingsGroupHeader extends StatelessWidget {
-  const _SettingsGroupHeader({required this.title});
-
-  final String title;
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textBase = isDark ? Colors.white : const Color(0xFF111827);
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 18, 20, 8),
-      child: Text(
-        title,
-        style: TextStyle(
-          fontSize: 12.5,
-          fontWeight: FontWeight.w800,
-          letterSpacing: 0.2,
-          color: textBase.withValues(alpha: 0.72),
-        ),
-      ),
-    );
-  }
-}
-
-class _SettingRow extends StatelessWidget {
-  const _SettingRow({
-    required this.title,
-    required this.subtitle,
-    required this.titleStyle,
-    required this.subtitleStyle,
-    required this.trailing,
-    required this.showDividerBelow,
-  });
-
-  final String title;
-  final String subtitle;
-  final TextStyle titleStyle;
-  final TextStyle subtitleStyle;
-  final Widget trailing;
-  final bool showDividerBelow;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = AppColors.of(context);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(20, 14, 20, 14),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(title, style: titleStyle),
-                    const SizedBox(height: 4),
-                    Text(subtitle, style: subtitleStyle),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 20),
-              Flexible(
-                fit: FlexFit.loose,
-                child: Align(
-                  alignment: Alignment.centerRight,
-                  child: trailing,
-                ),
-              ),
-            ],
-          ),
-        ),
-        if (showDividerBelow)
-          Divider(height: 1, thickness: 1, color: colors.subtleBorder),
-      ],
-    );
-  }
-}
-
-class _LayoutLanguageDropdown extends StatelessWidget {
-  const _LayoutLanguageDropdown({
-    required this.value,
-    required this.l10n,
-    required this.onChanged,
-  });
-
-  final String value;
-  final AppLocalizations l10n;
-  final ValueChanged<String> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = AppColors.of(context);
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textBase = isDark ? Colors.white : const Color(0xFF111827);
-    return ConstrainedBox(
-      constraints: const BoxConstraints(minWidth: 140),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 4),
-        decoration: BoxDecoration(
-          color: colors.inputFill,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: colors.border),
-        ),
-        child: DropdownButtonHideUnderline(
-          child: DropdownButton<String>(
-            value: value,
-            isDense: true,
-            borderRadius: BorderRadius.circular(10),
-            icon: Icon(
-              Icons.expand_more_rounded,
-              color: textBase.withValues(alpha: 0.55),
-              size: 22,
-            ),
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              color: textBase,
-            ),
-            dropdownColor: colors.rightPanelBackground,
-            items: [
-              DropdownMenuItem(
-                key: AppKeys.languageEnButton,
-                value: 'en',
-                child: Text(l10n.languageEnglish),
-              ),
-              DropdownMenuItem(
-                key: AppKeys.languageZhButton,
-                value: 'zh',
-                child: Text(l10n.languageChinese),
-              ),
-            ],
-            onChanged: (v) {
-              if (v != null) onChanged(v);
-            },
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-
 
 class _SettingsTitleBar extends StatelessWidget {
   const _SettingsTitleBar({required this.title, required this.subtitle});
@@ -582,24 +389,14 @@ class _WorkspaceHeading extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textBase = isDark ? Colors.white : const Color(0xFF111827);
+    final tokens = AppWorkspaceSettingsTokens.of(context);
+    final onSurface = Theme.of(context).colorScheme.onSurface;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(
-          title,
-          style: TextStyle(
-            fontSize: 15,
-            fontWeight: FontWeight.w800,
-            color: textBase,
-          ),
-        ),
-        const SizedBox(height: 6),
-        Text(
-          subtitle,
-          style: TextStyle(color: textBase.withValues(alpha: 0.64)),
-        ),
+        Text(title, style: tokens.workspaceHeadingTitleStyle(onSurface)),
+        SizedBox(height: tokens.workspaceHeadingTitleSubtitleGap),
+        Text(subtitle, style: tokens.workspaceHeadingSubtitleStyle(onSurface)),
       ],
     );
   }

@@ -52,13 +52,13 @@ class _ProvidersTabContentState extends State<_ProvidersTabContent> {
         _modelsProviderName == selectedProvider.name;
 
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+      padding: const EdgeInsets.symmetric(vertical: 2),
       child: ResizableSplitView(
-        initialLeftFraction: 0.38,
+        initialLeftFraction: 0.34,
         minLeftWidth: 220,
         maxLeftWidth: 560,
         left: Padding(
-          padding: const EdgeInsets.fromLTRB(2, 0, 10, 0),
+          padding: const EdgeInsets.only(right: 8),
           child: _ProviderListPanel(
             config: config,
             selectedName: selectedName,
@@ -71,7 +71,7 @@ class _ProvidersTabContentState extends State<_ProvidersTabContent> {
           ),
         ),
         right: Padding(
-          padding: const EdgeInsets.fromLTRB(6, 0, 2, 0),
+          padding: const EdgeInsets.only(left: 4),
           child: showModels
               ? _ProviderModelsView(
                   config: config,

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'app_workspace_settings_theme.dart';
+
 class AppColors extends ThemeExtension<AppColors> {
   const AppColors({
     required this.background,
@@ -367,6 +369,6 @@ ThemeData _buildTheme(Brightness brightness, AppColors colors) {
       ),
     ),
     useMaterial3: true,
-    extensions: [colors],
+    extensions: [colors, const AppWorkspaceSettingsTokens()],
   );
 }
