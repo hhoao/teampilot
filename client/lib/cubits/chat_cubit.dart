@@ -11,7 +11,7 @@ import '../services/temp_team_cleaner.dart';
 import '../services/terminal_session.dart';
 import '../utils/logger.dart';
 
-typedef TerminalSessionFactory = TerminalSession Function();
+typedef TerminalSessionFactory = TerminalSession Function({required String executable});
 typedef PostFrameScheduler = void Function(VoidCallback callback);
 
 class ChatTabInfo extends Equatable {
@@ -112,6 +112,7 @@ class ChatState extends Equatable {
 
 class ChatCubit extends Cubit<ChatState> {
   ChatCubit({
+    required String Function() executableResolver,
     TerminalSessionFactory terminalSessionFactory = TerminalSession.new,
     PostFrameScheduler? postFrameScheduler,
     TempTeamCleaner? tempTeamCleaner,
@@ -122,6 +123,7 @@ class ChatCubit extends Cubit<ChatState> {
        _tempTeamCleaner = tempTeamCleaner,
        _llmConfigPathOverride = llmConfigPathOverride,
        _autoLaunchAllMembersOnConnect = autoLaunchAllMembersOnConnect,
+       _executableResolver = executableResolver,
        super(const ChatState());
 
   final List<_InternalTab> _internalTabs = [];
@@ -130,6 +132,10 @@ class ChatCubit extends Cubit<ChatState> {
   final TempTeamCleaner? _tempTeamCleaner;
   final String? Function()? _llmConfigPathOverride;
   final bool Function()? _autoLaunchAllMembersOnConnect;
+  final String Function() _executableResolver;
+
+  TerminalSession _newSession() =>
+      _terminalSessionFactory(executable: _executableResolver());
 
   Map<String, String>? _spawnEnvironment() {
     final override = _llmConfigPathOverride?.call();
@@ -211,7 +217,7 @@ class ChatCubit extends Cubit<ChatState> {
       );
       return;
     }
-    final ts = _terminalSessionFactory();
+    final ts = _newSession();
     final info = ChatTabInfo(
       id: session.sessionId,
       title: session.resolveDisplayTitle(emptyDisplayTitleFallback),
@@ -280,7 +286,7 @@ class ChatCubit extends Cubit<ChatState> {
     tab.selectedMemberId = member.id;
     final shell = tab.memberShells.putIfAbsent(
       member.id,
-      _terminalSessionFactory,
+      _newSession,
     );
     emit(
       state.copyWith(
@@ -430,10 +436,10 @@ class ChatCubit extends Cubit<ChatState> {
     if (tab.selectedMemberId.isNotEmpty) {
       return tab.memberShells.putIfAbsent(
         tab.selectedMemberId,
-        _terminalSessionFactory,
+        _newSession,
       );
     }
-    return tab.resumeSession ??= _terminalSessionFactory();
+    return tab.resumeSession ??= _newSession();
   }
 
   void connectSession(TeamConfig team) {
