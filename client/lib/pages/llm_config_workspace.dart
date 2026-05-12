@@ -51,37 +51,49 @@ class _ProvidersTabContentState extends State<_ProvidersTabContent> {
         selectedProvider != null &&
         _modelsProviderName == selectedProvider.name;
 
-    return ResizableSplitView(
-      left: _ProviderListPanel(
-        config: config,
-        selectedName: selectedName,
-        onSelect: (name) {
-          _controller.selectProvider(name);
-          setState(() => _modelsProviderName = null);
-        },
-        onAdd: () => _addProvider(context),
-        onDelete: (name) => _deleteProvider(context, name),
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: ResizableSplitView(
+        initialLeftFraction: 0.38,
+        minLeftWidth: 220,
+        maxLeftWidth: 560,
+        left: Padding(
+          padding: const EdgeInsets.fromLTRB(2, 0, 10, 0),
+          child: _ProviderListPanel(
+            config: config,
+            selectedName: selectedName,
+            onSelect: (name) {
+              _controller.selectProvider(name);
+              setState(() => _modelsProviderName = null);
+            },
+            onAdd: () => _addProvider(context),
+            onDelete: (name) => _deleteProvider(context, name),
+          ),
+        ),
+        right: Padding(
+          padding: const EdgeInsets.fromLTRB(6, 0, 2, 0),
+          child: showModels
+              ? _ProviderModelsView(
+                  config: config,
+                  provider: selectedProvider,
+                  controller: _controller,
+                  onBack: () => setState(() => _modelsProviderName = null),
+                )
+              : _ProviderDetailPanel(
+                  config: config,
+                  provider: selectedProvider,
+                  controller: _controller,
+                  onSave: (name, provider) {
+                    _controller.updateProvider(name, provider);
+                  },
+                  onDelete: (name) {
+                    _deleteProvider(context, name);
+                  },
+                  onShowModels: (name) =>
+                      setState(() => _modelsProviderName = name),
+                ),
+        ),
       ),
-      right: showModels
-          ? _ProviderModelsView(
-              config: config,
-              provider: selectedProvider,
-              controller: _controller,
-              onBack: () => setState(() => _modelsProviderName = null),
-            )
-          : _ProviderDetailPanel(
-              config: config,
-              provider: selectedProvider,
-              controller: _controller,
-              onSave: (name, provider) {
-                _controller.updateProvider(name, provider);
-              },
-              onDelete: (name) {
-                _deleteProvider(context, name);
-              },
-              onShowModels: (name) =>
-                  setState(() => _modelsProviderName = name),
-            ),
     );
   }
 
@@ -193,6 +205,7 @@ class _ProviderListPanelState extends State<_ProviderListPanel> {
 
     return Container(
       key: AppKeys.llmProviderList,
+      width: double.infinity,
       decoration: BoxDecoration(
         color: colors.cardBackground,
         borderRadius: BorderRadius.circular(10),
@@ -324,32 +337,36 @@ class _ProviderListRow extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      Text(
+                        provider.name,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          color: textBase,
+                          height: 1.2,
+                        ),
+                      ),
+                      const SizedBox(height: 5),
                       Row(
                         children: [
-                          Flexible(
+                          _TypeBadge(type: provider.type),
+                          const SizedBox(width: 8),
+                          Expanded(
                             child: Text(
-                              provider.name,
+                              l10n.providerListCaption(
+                                modelCount,
+                                provider.proxy,
+                              ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
-                                fontWeight: FontWeight.w700,
-                                color: textBase,
+                                color: textBase.withValues(alpha: 0.48),
+                                fontSize: 11,
                               ),
                             ),
                           ),
-                          const SizedBox(width: 4),
-                          _TypeBadge(type: provider.type),
                         ],
-                      ),
-                      const SizedBox(height: 3),
-                      Text(
-                        '$modelCount models / proxy ${provider.proxy ? "on" : "off"}',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: textBase.withValues(alpha: 0.48),
-                          fontSize: 11,
-                        ),
                       ),
                     ],
                   ),
@@ -432,7 +449,7 @@ class _ProviderDetailPanel extends StatefulWidget {
 
 class _ProviderDetailPanelState extends State<_ProviderDetailPanel> {
   late String _type;
-  late String _providerType;
+  late final TextEditingController _providerTypeController;
   late final TextEditingController _baseUrlController;
   late String _apiKey;
   late bool _proxy;
@@ -446,6 +463,7 @@ class _ProviderDetailPanelState extends State<_ProviderDetailPanel> {
   @override
   void initState() {
     super.initState();
+    _providerTypeController = TextEditingController();
     _baseUrlController = TextEditingController();
     _proxyUrlController = TextEditingController();
     _apiKeyController = TextEditingController();
@@ -463,6 +481,7 @@ class _ProviderDetailPanelState extends State<_ProviderDetailPanel> {
 
   @override
   void dispose() {
+    _providerTypeController.dispose();
     _baseUrlController.dispose();
     _proxyUrlController.dispose();
     _apiKeyController.dispose();
@@ -480,7 +499,7 @@ class _ProviderDetailPanelState extends State<_ProviderDetailPanel> {
     }
     _providerName = provider.name;
     _type = provider.type;
-    _providerType = provider.providerType;
+    _providerTypeController.text = provider.providerType;
     _baseUrlController.text = provider.baseUrl;
     _apiKey = provider.apiKey;
     _proxy = provider.proxy;
@@ -563,7 +582,10 @@ class _ProviderDetailPanelState extends State<_ProviderDetailPanel> {
                       ),
                       const SizedBox(height: 3),
                       Text(
-                        '${provider.type.toUpperCase()} provider, used by ${providerModels.length} models',
+                        l10n.providerDetailSubtitle(
+                          _type == 'api' ? l10n.api : l10n.account,
+                          providerModels.length,
+                        ),
                         style: TextStyle(
                           color: textBase.withValues(alpha: 0.48),
                           fontSize: 11,
@@ -613,6 +635,7 @@ class _ProviderDetailPanelState extends State<_ProviderDetailPanel> {
                             width: fieldWidth,
                             child: DropdownButtonFormField<String>(
                               initialValue: _type,
+                              isExpanded: true,
                               decoration: InputDecoration(labelText: l10n.type),
                               items: [
                                 DropdownMenuItem(
@@ -631,49 +654,25 @@ class _ProviderDetailPanelState extends State<_ProviderDetailPanel> {
                         ],
                       ),
                       if (_type == 'api') ...[
-                        const SizedBox(height: 10),
-                        Wrap(
-                          spacing: 14,
-                          runSpacing: 10,
-                          children: [
-                            _SizedField(
-                              width: fieldWidth,
-                              child: TextField(
-                                key: AppKeys.providerTypeField,
-                                decoration: InputDecoration(
-                                  labelText: l10n.providerType,
-                                  hintText: l10n.providerTypeHint,
-                                ),
-                                controller:
-                                    TextEditingController(text: _providerType)
-                                      ..selection = TextSelection.collapsed(
-                                        offset: _providerType.length,
-                                      ),
-                                onChanged: (value) => _providerType = value,
-                              ),
-                            ),
-                            _SizedField(
-                              width: fieldWidth,
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    l10n.proxy,
-                                    style: const TextStyle(fontSize: 12),
-                                  ),
-                                  Switch(
-                                    key: AppKeys.providerProxyToggle,
-                                    value: _proxy,
-                                    onChanged: (value) =>
-                                        setState(() => _proxy = value),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
+                        const SizedBox(height: 14),
+                        TextField(
+                          key: AppKeys.providerTypeField,
+                          controller: _providerTypeController,
+                          decoration: InputDecoration(
+                            labelText: l10n.providerType,
+                            hintText: l10n.providerTypeHint,
+                          ),
+                        ),
+                        SwitchListTile(
+                          key: AppKeys.providerProxyToggle,
+                          contentPadding: EdgeInsets.zero,
+                          title: Text(l10n.proxy),
+                          value: _proxy,
+                          onChanged: (value) =>
+                              setState(() => _proxy = value),
                         ),
                         if (_proxy) ...[
-                          const SizedBox(height: 10),
+                          const SizedBox(height: 4),
                           TextField(
                             key: AppKeys.proxyUrlField,
                             controller: _proxyUrlController,
@@ -682,13 +681,13 @@ class _ProviderDetailPanelState extends State<_ProviderDetailPanel> {
                             ),
                           ),
                         ],
-                        const SizedBox(height: 10),
+                        const SizedBox(height: 14),
                         TextField(
                           key: AppKeys.baseUrlField,
                           controller: _baseUrlController,
                           decoration: InputDecoration(labelText: l10n.baseUrl),
                         ),
-                        const SizedBox(height: 10),
+                        const SizedBox(height: 14),
                         Row(
                           children: [
                             Expanded(
@@ -865,7 +864,7 @@ class _ProviderDetailPanelState extends State<_ProviderDetailPanel> {
       provider.name,
       provider.copyWith(
         type: _type,
-        providerType: _type == 'api' ? _providerType : '',
+        providerType: _type == 'api' ? _providerTypeController.text : '',
         baseUrl: _type == 'api' ? _baseUrlController.text : '',
         apiKey: _type == 'api' ? _apiKey : '',
         proxy: _proxy,
@@ -941,6 +940,9 @@ class _ProviderModelsTable extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textBase = isDark ? Colors.white : const Color(0xFF111827);
+    final muted = textBase.withValues(alpha: 0.55);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -948,21 +950,32 @@ class _ProviderModelsTable extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.only(top: 4),
             child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 Expanded(
-                  flex: 3,
-                  child: Text(
-                    model.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                Expanded(
-                  flex: 3,
-                  child: Text(
-                    model.model,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        model.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                      if (model.model.isNotEmpty &&
+                          model.model != model.name) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          model.model,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: muted,
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                 ),
                 SizedBox(

@@ -19,6 +19,32 @@ class ChatWorkbench extends StatefulWidget {
 }
 
 class _ChatWorkbenchState extends State<ChatWorkbench> {
+  static const _terminalTheme = TerminalTheme(
+    cursor: Color(0xFFAEAFAD),
+    selection: Color(0x40AEAFAD),
+    foreground: Color(0xFFE0E0E0),
+    background: Color(0xFF0A0C10),
+    black: Color(0xFF1A1A1A),
+    red: Color(0xFFE0556A),
+    green: Color(0xFF5CCF8A),
+    yellow: Color(0xFFE5C565),
+    blue: Color(0xFF5BA4E6),
+    magenta: Color(0xFFC88CE6),
+    cyan: Color(0xFF56C5D0),
+    white: Color(0xFFE5E5E5),
+    brightBlack: Color(0xFF5A5A5A),
+    brightRed: Color(0xFFFF7B8A),
+    brightGreen: Color(0xFF7DE8A8),
+    brightYellow: Color(0xFFFFE080),
+    brightBlue: Color(0xFF80C0FF),
+    brightMagenta: Color(0xFFE0A8FF),
+    brightCyan: Color(0xFF80E0E8),
+    brightWhite: Color(0xFFFFFFFF),
+    searchHitBackground: Color(0xFFFFFF2B),
+    searchHitBackgroundCurrent: Color(0xFF31FF26),
+    searchHitForeground: Color(0xFF000000),
+  );
+
   TerminalSession? _session;
   var _ensuredLocalSession = false;
 
@@ -105,8 +131,24 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
                         label: 'terminal view',
                         builder: (_) => TerminalView(
                           session.terminal,
-                          backgroundOpacity: 0.92,
-                          padding: const EdgeInsets.all(6),
+                          theme: _terminalTheme,
+                          backgroundOpacity: 0.98,
+                          padding: const EdgeInsets.all(16),
+                          textStyle: const TerminalStyle(
+                            fontSize: 14,
+                            fontFamily: 'monospace',
+                            fontFamilyFallback: [
+                              'Ubuntu Mono',
+                              'DejaVu Sans Mono',
+                              'Liberation Mono',
+                              'Noto Mono',
+                              'Consolas',
+                              'Courier New',
+                              'HYZhongHei',
+                              'Noto Color Emoji',
+                              'monospace',
+                            ],
+                          ),
                           autofocus: true,
                         ),
                       ),

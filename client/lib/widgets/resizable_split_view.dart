@@ -6,6 +6,7 @@ class ResizableSplitView extends StatefulWidget {
     required this.left,
     required this.right,
     this.initialLeftWidth = 180,
+    this.initialLeftFraction,
     this.minLeftWidth = 120,
     this.maxLeftWidth = 500,
     this.dividerWidth = 6,
@@ -15,6 +16,11 @@ class ResizableSplitView extends StatefulWidget {
   final Widget left;
   final Widget right;
   final double initialLeftWidth;
+
+  /// When set (0–1), the first layout uses this fraction of total width for the
+  /// left pane instead of [initialLeftWidth]. Result is still clamped by
+  /// [minLeftWidth] / [maxLeftWidth].
+  final double? initialLeftFraction;
   final double minLeftWidth;
   final double maxLeftWidth;
   final double dividerWidth;
@@ -30,7 +36,11 @@ class _ResizableSplitViewState extends State<ResizableSplitView> {
 
   double _leftWidth(double availableWidth) {
     if (!_initialized) {
-      _fraction = (widget.initialLeftWidth / availableWidth).clamp(0.0, 1.0);
+      if (widget.initialLeftFraction != null) {
+        _fraction = widget.initialLeftFraction!.clamp(0.0, 1.0);
+      } else {
+        _fraction = (widget.initialLeftWidth / availableWidth).clamp(0.0, 1.0);
+      }
       _initialized = true;
     }
     return (availableWidth * _fraction!).clamp(
@@ -54,7 +64,7 @@ class _ResizableSplitViewState extends State<ResizableSplitView> {
         final currentLeftWidth = _leftWidth(availableWidth);
 
         return Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             SizedBox(width: currentLeftWidth, child: widget.left),
             GestureDetector(

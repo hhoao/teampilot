@@ -92,6 +92,17 @@ class AppLocalizations {
   String get tabbedTools => _strings['tabbedTools']!;
   String get regionVisibility => _strings['regionVisibility']!;
   String get appRail => _strings['appRail']!;
+  String get toolPlacementDescription =>
+      _strings['toolPlacementDescription']!;
+  String get membersAndFileTreeDescription =>
+      _strings['membersAndFileTreeDescription']!;
+  String get visibilityTeamSessionsHint =>
+      _strings['visibilityTeamSessionsHint']!;
+  String get visibilityMembersHint => _strings['visibilityMembersHint']!;
+  String get visibilityFileTreeHint => _strings['visibilityFileTreeHint']!;
+  String get themeModeTitle => _strings['themeModeTitle']!;
+  String get themeModeDescription => _strings['themeModeDescription']!;
+  String get languageDescription => _strings['languageDescription']!;
 
   String get llmConfigPageSubtitle => _strings['llmConfigPageSubtitle']!;
   String get providersTab => _strings['providersTab']!;
@@ -109,6 +120,19 @@ class AppLocalizations {
   String get filterProviders => _strings['filterProviders']!;
   String modelsUsingProvider(int count) =>
       '${_strings['modelsUsingProvider']!} $count';
+  String providerListCaption(int modelCount, bool proxyEnabled) {
+    final countPart =
+        _strings['providerListModelCount']!.replaceFirst('{n}', '$modelCount');
+    final proxyPart = proxyEnabled
+        ? _strings['proxyOnShort']!
+        : _strings['proxyOffShort']!;
+    return '$countPart · $proxyPart';
+  }
+
+  String providerDetailSubtitle(String typeLabel, int count) =>
+      _strings['providerDetailSubtitle']!
+          .replaceFirst('{type}', typeLabel)
+          .replaceFirst('{count}', '$count');
   String get type => _strings['type']!;
   String get providerType => _strings['providerType']!;
   String get providerTypeHint => _strings['providerTypeHint']!;
@@ -379,6 +403,35 @@ class _AppLocalizationsDelegate
     'tabbedTools': {'en': 'Tabbed Tools', 'zh': '标签工具栏'},
     'regionVisibility': {'en': 'Region Visibility', 'zh': '区域可见性'},
     'appRail': {'en': 'App rail', 'zh': '应用导航栏'},
+    'toolPlacementDescription': {
+      'en': 'Dock tool panels on the right or along the bottom edge.',
+      'zh': '将工具面板固定在右侧或沿底部边缘排列。',
+    },
+    'membersAndFileTreeDescription': {
+      'en': 'Show members and file tree stacked or as tabs.',
+      'zh': '将成员列表与文件树堆叠显示，或以标签页切换。',
+    },
+    'visibilityTeamSessionsHint': {
+      'en': 'Show the team sessions list in the left sidebar.',
+      'zh': '在左侧边栏显示团队会话列表。',
+    },
+    'visibilityMembersHint': {
+      'en': 'Show the member list next to tools or terminals.',
+      'zh': '在工具或终端旁显示成员列表。',
+    },
+    'visibilityFileTreeHint': {
+      'en': 'Show the project file tree for quick navigation.',
+      'zh': '显示项目文件树以便快速浏览。',
+    },
+    'themeModeTitle': {'en': 'Theme mode', 'zh': '主题模式'},
+    'themeModeDescription': {
+      'en': 'Light, dark, or match the operating system appearance.',
+      'zh': '浅色、深色，或与系统外观一致。',
+    },
+    'languageDescription': {
+      'en': 'Language used for menus, buttons, and labels.',
+      'zh': '菜单、按钮与标签所使用的语言。',
+    },
 
     'llmConfigPageSubtitle': {
       'en': 'Manage LLM providers and models.',
@@ -402,6 +455,13 @@ class _AppLocalizationsDelegate
     'modelsUsingProvider': {
       'en': 'Models using this provider:',
       'zh': '使用此提供商的模型：',
+    },
+    'providerListModelCount': {'en': '{n} models', 'zh': '{n} 个模型'},
+    'proxyOnShort': {'en': 'Proxy on', 'zh': '代理开'},
+    'proxyOffShort': {'en': 'Proxy off', 'zh': '代理关'},
+    'providerDetailSubtitle': {
+      'en': '{type} provider · {count} models',
+      'zh': '{type} 提供商 · {count} 个模型',
     },
     'type': {'en': 'Type', 'zh': '类型'},
     'providerType': {'en': 'Provider type', 'zh': '提供商类型'},

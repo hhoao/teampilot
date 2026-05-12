@@ -110,19 +110,8 @@ class TerminalSession {
   void _writeOutput(Uint8List data, {required String label}) {
     final sw = Stopwatch()..start();
     final text = utf8.decode(data, allowMalformed: true);
-    final decodeMs = sw.elapsedMilliseconds;
     terminal.write(text);
     sw.stop();
-    if (sw.elapsedMilliseconds > 16 || data.length > 8192) {
-      // ignore: avoid_print
-      print(
-        '[perf] terminal.write $label '
-        'bytes=${data.length} '
-        'chars=${text.length} '
-        'decode=${decodeMs}ms '
-        'total=${sw.elapsedMilliseconds}ms',
-      );
-    }
   }
 
   void disconnect() {
