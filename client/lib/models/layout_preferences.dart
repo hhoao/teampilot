@@ -19,7 +19,6 @@ class LayoutPreferences {
     this.membersSplit = 0.42,
     this.themeMode = 'system',
     this.locale = '',
-    this.autoLaunchAllMembersOnConnect = false,
   });
 
   factory LayoutPreferences.fromJson(Map<String, Object?> json) {
@@ -53,8 +52,6 @@ class LayoutPreferences {
       ).clamp(0.25, 0.75),
       themeMode: json['themeMode'] as String? ?? 'system',
       locale: json['locale'] as String? ?? '',
-      autoLaunchAllMembersOnConnect:
-          json['autoLaunchAllMembersOnConnect'] as bool? ?? false,
     ).withAtLeastOneToolVisible();
   }
 
@@ -82,10 +79,6 @@ class LayoutPreferences {
   final String themeMode;
   final String locale;
 
-  /// When true, connecting or restarting the shell session starts every valid
-  /// team member instead of only the selected one.
-  final bool autoLaunchAllMembersOnConnect;
-
   LayoutPreferences copyWith({
     LayoutPreset? preset,
     ToolPanelPlacement? toolPlacement,
@@ -100,7 +93,6 @@ class LayoutPreferences {
     double? membersSplit,
     String? themeMode,
     String? locale,
-    bool? autoLaunchAllMembersOnConnect,
   }) {
     return LayoutPreferences(
       preset: preset ?? this.preset,
@@ -126,8 +118,6 @@ class LayoutPreferences {
       membersSplit: (membersSplit ?? this.membersSplit).clamp(0.25, 0.75),
       themeMode: themeMode ?? this.themeMode,
       locale: locale ?? this.locale,
-      autoLaunchAllMembersOnConnect: autoLaunchAllMembersOnConnect ??
-          this.autoLaunchAllMembersOnConnect,
     ).withAtLeastOneToolVisible();
   }
 
@@ -149,7 +139,6 @@ class LayoutPreferences {
       membersSplit: membersSplit,
       themeMode: themeMode,
       locale: locale,
-      autoLaunchAllMembersOnConnect: autoLaunchAllMembersOnConnect,
     );
   }
 
@@ -168,7 +157,6 @@ class LayoutPreferences {
       'membersSplit': membersSplit,
       'themeMode': themeMode,
       'locale': locale,
-      'autoLaunchAllMembersOnConnect': autoLaunchAllMembersOnConnect,
     };
   }
 }
