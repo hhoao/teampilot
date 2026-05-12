@@ -1,11 +1,8 @@
 display_name: TeamPilot
 description: FlashSky AI TeamPilot client
-maintainer:
-  name: hhoa
-  email: m45937494@gmail.com
+maintainer: hhoa <m45937494@gmail.com>
 section: utility
 priority: optional
-essential: false
 homepage: https://github.com/hhoao/flashskyai-ui
 icon: assets/icons/icon.png
 depends:

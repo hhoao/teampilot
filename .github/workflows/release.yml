@@ -65,10 +65,10 @@ jobs:
           channel: stable
           cache: true
 
-      - name: Install fastforge + create-dmg
+      - name: Install fastforge + appdmg
         run: |
           dart pub global activate fastforge
-          brew install create-dmg
+          npm install -g appdmg
 
       - name: Resolve Flutter packages
         run: flutter pub get
@@ -98,11 +98,15 @@ jobs:
       - name: Activate fastforge
         run: dart pub global activate fastforge
 
+      - name: Add pub-cache to PATH (Windows)
+        shell: pwsh
+        run: |
+          Add-Content $env:GITHUB_PATH "$env:LOCALAPPDATA\Pub\Cache\bin"
+
       - name: Resolve Flutter packages
         run: flutter pub get
 
       - name: Package
-        shell: bash
         run: fastforge package --platform windows --targets msix,zip
 
       - uses: actions/upload-artifact@v4
