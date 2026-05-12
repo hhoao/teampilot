@@ -105,6 +105,16 @@ class AppLocalizations {
   String get teamLeadNotice => _strings['teamLeadNotice']!;
 
   String get layoutPageSubtitle => _strings['layoutPageSubtitle']!;
+  String get session => _strings['session']!;
+  String get sessionPageSubtitle => _strings['sessionPageSubtitle']!;
+  String get cliExecutablePathLabel => _strings['cliExecutablePathLabel']!;
+  String get cliExecutablePathDescription =>
+      _strings['cliExecutablePathDescription']!;
+  String get cliExecutablePathBrowse => _strings['cliExecutablePathBrowse']!;
+  String get cliExecutablePathReset => _strings['cliExecutablePathReset']!;
+  String get cliExecutablePathUsing => _strings['cliExecutablePathUsing']!;
+  String get cliExecutablePathUsingFallback =>
+      _strings['cliExecutablePathUsingFallback']!;
   String get toolPlacement => _strings['toolPlacement']!;
   String get right => _strings['right']!;
   String get bottom => _strings['bottom']!;
@@ -386,6 +396,27 @@ class _AppLocalizationsDelegate
       'zh': '选择 llm_config.json',
     },
     'layout': {'en': 'Layout', 'zh': '通用'},
+    'session': {'en': 'Session', 'zh': '会话'},
+    'sessionPageSubtitle': {
+      'en': 'Configure how shell sessions are launched.',
+      'zh': '配置 Shell 会话的启动方式。',
+    },
+    'cliExecutablePathLabel': {
+      'en': 'flashskyai CLI path',
+      'zh': 'flashskyai CLI 路径',
+    },
+    'cliExecutablePathDescription': {
+      'en':
+          'Absolute path to the flashskyai executable. Leave empty to use the one on PATH.',
+      'zh': 'flashskyai 可执行文件的绝对路径。留空则使用 PATH 中查找到的版本。',
+    },
+    'cliExecutablePathBrowse': {'en': 'Browse…', 'zh': '浏览…'},
+    'cliExecutablePathReset': {'en': 'Reset', 'zh': '重置'},
+    'cliExecutablePathUsing': {'en': 'Using: ', 'zh': '当前生效：'},
+    'cliExecutablePathUsingFallback': {
+      'en': 'Using PATH lookup',
+      'zh': '使用 PATH 中查找的版本',
+    },
     'layoutSubtitle': {'en': 'global workbench', 'zh': '全局工作台'},
     'memberQuickList': {'en': 'MEMBER QUICK LIST', 'zh': '成员快速列表'},
     'providers': {'en': 'PROVIDERS', 'zh': '提供商'},

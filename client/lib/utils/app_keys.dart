@@ -37,6 +37,13 @@ class AppKeys {
   );
   static const configLayoutSectionButton = Key('config-layout-section-button');
   static const configLlmSectionButton = Key('config-llm-section-button');
+  static const configSessionSectionButton =
+      Key('config-session-section-button');
+  static const cliExecutablePathField = Key('cli-executable-path-field');
+  static const cliExecutablePathBrowseButton =
+      Key('cli-executable-path-browse-button');
+  static const cliExecutablePathResetButton =
+      Key('cli-executable-path-reset-button');
   static const teamConfigWorkspace = Key('team-config-workspace');
   static const memberConfigWorkspace = Key('member-config-workspace');
   static const llmConfigWorkspace = Key('llm-config-workspace');
