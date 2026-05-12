@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:xterm/xterm.dart';
 
+import '../cubits/session_preferences_cubit.dart';
 import '../cubits/team_cubit.dart';
 import '../models/team_config.dart';
 
@@ -121,6 +122,8 @@ class _SettingsWarmup extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final executable =
+        context.watch<SessionPreferencesCubit>().resolveExecutable();
     return Material(
       child: Row(
         children: [
@@ -181,7 +184,7 @@ class _SettingsWarmup extends StatelessWidget {
                   return _WarmupLaunchRow(
                     index: index,
                     name: member.name,
-                    command: 'flashskyai --member ${member.name}',
+                    command: '$executable --member ${member.name}',
                   );
                 },
               ),
