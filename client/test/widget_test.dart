@@ -592,7 +592,7 @@ void main() {
         return captured!;
       },
       postFrameScheduler: (c) => c(),
-      cliSessionDescriptorExists: (_) => true,
+      cliSessionDescriptorExists: (_, __) => true,
     );
     await cubit.loadProjectData(repo);
     final rel = cubit.state.sessions.single;
@@ -631,7 +631,7 @@ void main() {
           return captured!;
         },
         postFrameScheduler: (c) => c(),
-        cliSessionDescriptorExists: (_) => false,
+        cliSessionDescriptorExists: (_, __) => false,
       );
       await cubit.loadProjectData(repo);
       final rel = cubit.state.sessions.single;

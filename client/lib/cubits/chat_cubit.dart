@@ -16,7 +16,10 @@ import '../utils/logger.dart';
 
 typedef TerminalSessionFactory = TerminalSession Function({required String executable});
 typedef PostFrameScheduler = void Function(VoidCallback callback);
-typedef CliSessionDescriptorExists = bool Function(String sessionId);
+typedef CliSessionDescriptorExists = bool Function(
+  String sessionId,
+  String primaryPath,
+);
 
 class ChatTabInfo extends Equatable {
   const ChatTabInfo({
@@ -133,8 +136,9 @@ class ChatCubit extends Cubit<ChatState> {
        _tempTeamCleaner = tempTeamCleaner,
        _llmConfigPathOverride = llmConfigPathOverride,
        _autoLaunchAllMembersOnConnect = autoLaunchAllMembersOnConnect,
-       _cliSessionDescriptorExists =
-           cliSessionDescriptorExists ?? AppStorage.cliSessionDescriptorExists,
+       _cliSessionDescriptorExists = cliSessionDescriptorExists ??
+           ((String sid, String path) =>
+               AppStorage.cliSessionDescriptorExists(sid, path)),
        _executableResolver = executableResolver,
        super(const ChatState());
 
@@ -274,7 +278,10 @@ class ChatCubit extends Cubit<ChatState> {
       ),
     );
     final launched = session.launchState == AppSessionLaunchState.started;
-    final cliHasSession = _cliSessionDescriptorExists(session.sessionId);
+    final cliHasSession = _cliSessionDescriptorExists(
+      session.sessionId,
+      session.primaryPath,
+    );
     final useResume = launched && cliHasSession;
     _postFrameScheduler(() {
       try {
