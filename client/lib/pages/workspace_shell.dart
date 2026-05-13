@@ -283,6 +283,10 @@ class _TabChip extends StatefulWidget {
 
 class _TabChipState extends State<_TabChip> {
   var _hovered = false;
+  /// Keeps overflow actions (and [PopupMenuButton]) mounted while the menu is
+  /// open; otherwise moving the pointer onto the overlay triggers
+  /// [MouseRegion.onExit] and removes the button before [onSelected] runs.
+  var _overflowMenuOpen = false;
 
   void _handleTabMenuSelection(String value) {
     if (value == 'close') {
@@ -400,7 +404,7 @@ class _TabChipState extends State<_TabChip> {
                         ),
                       ),
                     ),
-                    if (_hovered) ...[
+                    if (_hovered || _overflowMenuOpen) ...[
                       const SizedBox(width: 4),
                       PopupMenuButton<String>(
                         tooltip: '',
@@ -410,7 +414,14 @@ class _TabChipState extends State<_TabChip> {
                           size: 12,
                           color: widget.textColor.withValues(alpha: 0.6),
                         ),
-                        onSelected: _handleTabMenuSelection,
+                        onOpened: () =>
+                            setState(() => _overflowMenuOpen = true),
+                        onCanceled: () =>
+                            setState(() => _overflowMenuOpen = false),
+                        onSelected: (value) {
+                          setState(() => _overflowMenuOpen = false);
+                          _handleTabMenuSelection(value);
+                        },
                         itemBuilder: _tabMenuEntries,
                       ),
                       GestureDetector(
