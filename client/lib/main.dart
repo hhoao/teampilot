@@ -29,13 +29,47 @@ import 'theme/app_theme.dart';
 import 'widgets/ui_warmup.dart';
 
 class _CleanupWindowListener extends WindowListener {
-  _CleanupWindowListener(this.cleaner);
-  final TempTeamCleaner cleaner;
+  _CleanupWindowListener(this.chatCubit);
+  final ChatCubit chatCubit;
 
   @override
   void onWindowClose() {
-    cleaner.cleanup().then((_) => windowManager.destroy());
+    unawaited(_shutdownAndDestroy());
   }
+
+  Future<void> _shutdownAndDestroy() async {
+    try {
+      await chatCubit.close();
+    } finally {
+      await windowManager.destroy();
+    }
+  }
+}
+
+/// [BlocProvider.value] does not call [ChatCubit.close]; dispose here covers
+/// hot restart and other cases where the widget tree tears down.
+class _AppShutdownScope extends StatefulWidget {
+  const _AppShutdownScope({
+    required this.chatCubit,
+    required this.child,
+  });
+
+  final ChatCubit chatCubit;
+  final Widget child;
+
+  @override
+  State<_AppShutdownScope> createState() => _AppShutdownScopeState();
+}
+
+class _AppShutdownScopeState extends State<_AppShutdownScope> {
+  @override
+  void dispose() {
+    unawaited(widget.chatCubit.close());
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
 }
 
 void main() async {
@@ -66,7 +100,6 @@ void main() async {
 
   // Intercept window close so cleanup runs before the process exits.
   await windowManager.setPreventClose(true);
-  windowManager.addListener(_CleanupWindowListener(tempTeamCleaner));
 
   final sessionRepo = SessionRepository();
 
@@ -117,20 +150,25 @@ void main() async {
   chatCubit.loadProjectData(sessionRepo);
   unawaited(skillCubit.loadAll());
 
+  windowManager.addListener(_CleanupWindowListener(chatCubit));
+
   runApp(
-    RepositoryProvider<SessionRepository>.value(
-      value: sessionRepo,
-      child: MultiBlocProvider(
-        providers: [
-          BlocProvider.value(value: teamCubit),
-          BlocProvider.value(value: chatCubit),
-          BlocProvider.value(value: configCubit),
-          BlocProvider.value(value: llmConfigCubit),
-          BlocProvider.value(value: layoutCubit),
-          BlocProvider.value(value: sessionPreferencesCubit),
-          BlocProvider.value(value: skillCubit),
-        ],
-        child: const FlashskyAiClientApp(),
+    _AppShutdownScope(
+      chatCubit: chatCubit,
+      child: RepositoryProvider<SessionRepository>.value(
+        value: sessionRepo,
+        child: MultiBlocProvider(
+          providers: [
+            BlocProvider.value(value: teamCubit),
+            BlocProvider.value(value: chatCubit),
+            BlocProvider.value(value: configCubit),
+            BlocProvider.value(value: llmConfigCubit),
+            BlocProvider.value(value: layoutCubit),
+            BlocProvider.value(value: sessionPreferencesCubit),
+            BlocProvider.value(value: skillCubit),
+          ],
+          child: const FlashskyAiClientApp(),
+        ),
       ),
     ),
   );

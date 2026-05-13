@@ -372,10 +372,12 @@ class ChatCubit extends Cubit<ChatState> {
       _updateTabRunning(tab.info.id);
       return;
     }
+    final launch = _workingDirectoryAndAddDirsForTab(tab);
     _postFrameScheduler(() {
       try {
         shell.connect(
-          workingDirectory: Directory.current.path,
+          workingDirectory: launch.$1,
+          additionalDirectories: launch.$2,
           team: team,
           member: member,
           sessionTeam: tab.sessionTeamName,
@@ -685,6 +687,28 @@ class ChatCubit extends Cubit<ChatState> {
     );
   }
 
+  /// [openSessionTab] / sidebar session tabs use the persisted [AppSession]
+  /// id as [ChatTabInfo.id]; local-only tabs use `local-<teamId>`.
+  (String, List<String>) _workingDirectoryAndAddDirsForTab(_InternalTab tab) {
+    final tabId = tab.info.id;
+    if (tabId.startsWith('local-')) {
+      return (Directory.current.path, const <String>[]);
+    }
+    for (final s in state.sessions) {
+      if (s.sessionId != tabId) continue;
+      final wd = s.primaryPath.trim();
+      final addl = s.additionalPaths
+          .map((e) => e.trim())
+          .where((e) => e.isNotEmpty)
+          .toList();
+      if (wd.isNotEmpty) {
+        return (wd, addl);
+      }
+      return (Directory.current.path, addl);
+    }
+    return (Directory.current.path, const <String>[]);
+  }
+
   _InternalTab _ensureActiveSessionTab(
     TeamConfig team, {
     required bool emitChange,
@@ -741,6 +765,7 @@ class ChatCubit extends Cubit<ChatState> {
 
   @override
   Future<void> close() async {
+    if (isClosed) return;
     for (final tab in _internalTabs) {
       for (final session in tab.sessions) {
         session.dispose();
