@@ -322,6 +322,23 @@ class _TabChipState extends State<_TabChip> {
     _handleTabMenuSelection(selected);
   }
 
+  /// Whole-tab hover from [MouseRegion]. Avoids [InkWell] + nested
+  /// [PopupMenuButton] ink fighting (hover patch only behind title text).
+  Color _tabMaterialColor(BuildContext context) {
+    final colors = AppColors.of(context);
+    final hoverTint =
+        Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.10);
+    if (widget.active) {
+      return _hovered
+          ? Color.alphaBlend(hoverTint, widget.activeBg)
+          : widget.activeBg;
+    }
+    if (_hovered) {
+      return Color.alphaBlend(hoverTint, colors.topbarBackground);
+    }
+    return Colors.transparent;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -332,10 +349,11 @@ class _TabChipState extends State<_TabChip> {
           onEnter: (_) => setState(() => _hovered = true),
           onExit: (_) => setState(() => _hovered = false),
           child: Material(
-            color: widget.active ? widget.activeBg : Colors.transparent,
+            color: _tabMaterialColor(context),
             borderRadius: const BorderRadius.vertical(top: Radius.circular(6)),
             child: GestureDetector(
               behavior: HitTestBehavior.opaque,
+              onTap: widget.onTap,
               onSecondaryTapUp: (details) =>
                   _showTabContextMenu(details.globalPosition),
               child: Container(
@@ -368,22 +386,16 @@ class _TabChipState extends State<_TabChip> {
                   mainAxisSize: MainAxisSize.max,
                   children: [
                     Expanded(
-                      child: InkWell(
-                        borderRadius: const BorderRadius.vertical(
-                          top: Radius.circular(6),
-                        ),
-                        onTap: widget.onTap,
-                        child: Align(
-                          alignment: Alignment.centerLeft,
-                          child: Text(
-                            widget.title,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                              color: widget.textColor,
-                            ),
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          widget.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: widget.textColor,
                           ),
                         ),
                       ),

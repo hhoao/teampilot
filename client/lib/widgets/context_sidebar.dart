@@ -533,6 +533,7 @@ class _SessionTileEntryState extends State<_SessionTileEntry> {
         key: AppKeys.sessionTile(session.sessionId),
         title: session.resolveDisplayTitle(l10n.defaultNewChatSessionTitle),
         selected: selected,
+        rowHovered: _hovered || _menuOpen,
         contentLeftInset: _kSidebarTreeTextInset,
         onTap: () {
           final teamCubit = context.read<TeamCubit>();
@@ -964,6 +965,7 @@ class _SidebarTile extends StatelessWidget {
     required this.title,
     this.subtitle = '',
     required this.selected,
+    this.rowHovered = false,
     this.onTap,
     this.trailing,
     this.contentLeftInset = 0,
@@ -973,10 +975,28 @@ class _SidebarTile extends StatelessWidget {
   final String title;
   final String subtitle;
   final bool selected;
+  /// From parent [MouseRegion] (and menu-open), not [InkWell] — avoids ink
+  /// fighting with [PopupMenuButton] (hover patch only behind title).
+  final bool rowHovered;
   final VoidCallback? onTap;
   final Widget? trailing;
   /// Extra left padding so row text lines up with folder names (file tree).
   final double contentLeftInset;
+
+  Color _materialFillColor(BuildContext context) {
+    final colors = AppColors.of(context);
+    final hoverTint =
+        Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.10);
+    if (selected) {
+      return rowHovered
+          ? Color.alphaBlend(hoverTint, colors.selectedBackground)
+          : colors.selectedBackground;
+    }
+    if (rowHovered) {
+      return Color.alphaBlend(hoverTint, colors.sidebarBackground);
+    }
+    return Colors.transparent;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -986,31 +1006,31 @@ class _SidebarTile extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 2),
       child: Material(
-        color: selected ? colors.selectedBackground : Colors.transparent,
+        color: _materialFillColor(context),
         borderRadius: BorderRadius.circular(8),
-        child: Container(
-          padding: EdgeInsets.fromLTRB(
-            contentLeftInset,
-            6,
-            8,
-            6,
-          ),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(8),
-            border: selected
-                ? Border.all(color: colors.selectedBorder)
-                : null,
-          ),
-          // Do not use [CrossAxisAlignment.stretch] here: [_SidebarTile] is used
-          // inside [ListView] items, which get an unbounded max height on the main
-          // axis; stretch would force children to infinite height and assert.
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Expanded(
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(8),
-                  onTap: onTap,
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: onTap,
+          child: Container(
+            padding: EdgeInsets.fromLTRB(
+              contentLeftInset,
+              6,
+              8,
+              6,
+            ),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(8),
+              border: selected
+                  ? Border.all(color: colors.selectedBorder)
+                  : null,
+            ),
+            // Do not use [CrossAxisAlignment.stretch] here: [_SidebarTile] is used
+            // inside [ListView] items, which get an unbounded max height on the main
+            // axis; stretch would force children to infinite height and assert.
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Expanded(
                   child: Align(
                     alignment: Alignment.centerLeft,
                     child: ConstrainedBox(
@@ -1043,9 +1063,9 @@ class _SidebarTile extends StatelessWidget {
                     ),
                   ),
                 ),
-              ),
-              if (trailing != null) trailing!,
-            ],
+                if (trailing != null) trailing!,
+              ],
+            ),
           ),
         ),
       ),
