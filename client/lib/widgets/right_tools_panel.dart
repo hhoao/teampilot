@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -58,15 +59,15 @@ class RightToolsPanel extends StatelessWidget {
           onSelected: (id) {
             final member =
                 team.members.firstWhere((m) => m.id == id);
-            context.read<ChatCubit>().openMemberTab(team, member);
+            unawaited(context.read<ChatCubit>().openMemberTab(team, member));
           },
           onOpen: (id) {
             final member =
                 team.members.firstWhere((m) => m.id == id);
-            context.read<ChatCubit>().openMemberTab(team, member);
+            unawaited(context.read<ChatCubit>().openMemberTab(team, member));
           },
           onLaunchAll: () {
-            context.read<ChatCubit>().launchAllMembers(team);
+            unawaited(context.read<ChatCubit>().launchAllMembers(team));
           },
           isMemberRunning: (id) =>
               context.read<ChatCubit>().isMemberRunning(id),

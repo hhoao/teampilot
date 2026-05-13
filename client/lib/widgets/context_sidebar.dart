@@ -558,6 +558,52 @@ class _SessionTileEntryState extends State<_SessionTileEntry> {
   /// the [PopupMenuButton] before a menu item can be selected.
   var _menuOpen = false;
 
+  Future<void> _showSessionContextMenu(Offset globalPosition) async {
+    if (!mounted) return;
+    final overlayObject =
+        Overlay.maybeOf(context)?.context.findRenderObject();
+    if (overlayObject is! RenderBox) return;
+
+    final l10n = context.l10n;
+    final session = widget.session;
+    final anchor = overlayObject.globalToLocal(globalPosition);
+    setState(() => _menuOpen = true);
+    final selected = await showMenu<String>(
+      context: context,
+      position: RelativeRect.fromRect(
+        Rect.fromPoints(anchor, anchor),
+        Offset.zero & overlayObject.size,
+      ),
+      items: _sessionOverflowMenuEntries(l10n),
+    );
+    if (!mounted) return;
+    setState(() => _menuOpen = false);
+    if (selected == null) return;
+    switch (selected) {
+      case 'rename':
+        _showRenameDialog(context, session, l10n);
+        break;
+      case 'delete':
+        _showDeleteDialog(context, session, l10n);
+        break;
+    }
+  }
+
+  List<PopupMenuEntry<String>> _sessionOverflowMenuEntries(
+    AppLocalizations l10n,
+  ) {
+    return [
+      PopupMenuItem(
+        value: 'rename',
+        child: Text(l10n.renameConversation),
+      ),
+      PopupMenuItem(
+        value: 'delete',
+        child: Text(l10n.deleteConversation),
+      ),
+    ];
+  }
+
   @override
   Widget build(BuildContext context) {
     final session = widget.session;
@@ -576,6 +622,8 @@ class _SessionTileEntryState extends State<_SessionTileEntry> {
         rowHovered: _hovered || _menuOpen,
         contentLeftInset: _kSidebarTreeTextInset,
         onTap: () => _navigateToSessionInChat(context, session),
+        onSecondaryTapUp: (details) =>
+            _showSessionContextMenu(details.globalPosition),
         trailing: SizedBox(
             width: 24,
             height: 24,
@@ -598,16 +646,8 @@ class _SessionTileEntryState extends State<_SessionTileEntry> {
                           break;
                       }
                     },
-                    itemBuilder: (context) => [
-                      PopupMenuItem(
-                        value: 'rename',
-                        child: Text(l10n.renameConversation),
-                      ),
-                      PopupMenuItem(
-                        value: 'delete',
-                        child: Text(l10n.deleteConversation),
-                      ),
-                    ],
+                    itemBuilder: (context) =>
+                        _sessionOverflowMenuEntries(l10n),
                   )
                 : null,
           ),
@@ -977,6 +1017,7 @@ class _SidebarTile extends StatelessWidget {
     required this.selected,
     this.rowHovered = false,
     this.onTap,
+    this.onSecondaryTapUp,
     this.trailing,
     this.contentLeftInset = 0,
     super.key,
@@ -989,6 +1030,7 @@ class _SidebarTile extends StatelessWidget {
   /// fighting with [PopupMenuButton] (hover patch only behind title).
   final bool rowHovered;
   final VoidCallback? onTap;
+  final GestureTapUpCallback? onSecondaryTapUp;
   final Widget? trailing;
   /// Extra left padding so row text lines up with folder names (file tree).
   final double contentLeftInset;
@@ -1021,6 +1063,7 @@ class _SidebarTile extends StatelessWidget {
         child: GestureDetector(
           behavior: HitTestBehavior.opaque,
           onTap: onTap,
+          onSecondaryTapUp: onSecondaryTapUp,
           child: Container(
             padding: EdgeInsets.fromLTRB(
               contentLeftInset,

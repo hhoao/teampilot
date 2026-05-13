@@ -227,6 +227,8 @@ void main() {
       postFrameScheduler: (callback) => callback(),
     );
     await pumpDesktopApp(tester, teamCubit, chatCubit: chatCubit);
+    await tester.pump();
+    await pumpPhaseTransitions(tester);
 
     expect(find.byKey(AppKeys.contextSidebar), findsOneWidget);
     expect(find.byKey(AppKeys.chatWorkspace), findsOneWidget);
@@ -243,6 +245,10 @@ void main() {
     expect(chatCubit.state.tabs.length, 1);
     final teamId = teamCubit.state.selectedTeam!.id;
     expect(chatCubit.state.tabs.single.id, 'local-$teamId');
+    expect(
+      chatCubit.state.tabs.single.subtitle,
+      'local session',
+    );
 
     await tester.tap(find.byKey(AppKeys.memberRow('team-lead')));
     await tester.pump();
@@ -423,7 +429,7 @@ void main() {
     expect(cubit.state.selectedMemberId, 'dev');
   });
 
-  test('chat cubit opens member shells inside one session tab', () {
+  test('chat cubit opens member shells inside one session tab', () async {
     final cubit = ChatCubit(
       executableResolver: _testExecutable,
       terminalSessionFactory: FakeTerminalSession.new,
@@ -438,8 +444,8 @@ void main() {
       ],
     );
 
-    cubit.openMemberTab(team, team.members[0]);
-    cubit.openMemberTab(team, team.members[1]);
+    await cubit.openMemberTab(team, team.members[0]);
+    await cubit.openMemberTab(team, team.members[1]);
 
     expect(cubit.state.tabs.length, 1);
     expect(cubit.state.tabs.single.id, 'local-test-team');
@@ -450,7 +456,7 @@ void main() {
 
   test(
     'chat cubit connectSession starts all members when auto-launch enabled',
-    () {
+    () async {
       final cubit = ChatCubit(
         executableResolver: _testExecutable,
         terminalSessionFactory: FakeTerminalSession.new,
@@ -467,7 +473,7 @@ void main() {
       );
 
       cubit.syncTeam(team);
-      cubit.connectSession(team);
+      await cubit.connectSession(team);
 
       expect(cubit.state.tabs.length, 1);
       expect(cubit.isMemberRunning('lead'), isTrue);
@@ -478,7 +484,7 @@ void main() {
 
   test(
     'chat cubit connectSession starts only selected member by default',
-    () {
+    () async {
       final cubit = ChatCubit(
         executableResolver: _testExecutable,
         terminalSessionFactory: FakeTerminalSession.new,
@@ -494,7 +500,7 @@ void main() {
       );
 
       cubit.syncTeam(team);
-      cubit.connectSession(team);
+      await cubit.connectSession(team);
 
       expect(cubit.state.tabs.length, 1);
       expect(cubit.isMemberRunning('lead'), isTrue);
@@ -505,7 +511,7 @@ void main() {
 
   test(
     'chat cubit keeps persisted session tabs separate from member selection',
-    () {
+    () async {
       final cubit = ChatCubit(
         executableResolver: _testExecutable,
         terminalSessionFactory: FakeTerminalSession.new,
@@ -530,8 +536,8 @@ void main() {
       );
 
       cubit.openSessionTab(session);
-      cubit.openMemberTab(team, team.members[0]);
-      cubit.openMemberTab(team, team.members[1]);
+      await cubit.openMemberTab(team, team.members[0]);
+      await cubit.openMemberTab(team, team.members[1]);
 
       expect(cubit.state.tabs.length, 1);
       expect(cubit.state.tabs.single.id, 'session-1');

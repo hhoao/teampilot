@@ -134,6 +134,7 @@ void main() async {
   );
   final layoutCubit = LayoutCubit(repository: LayoutRepository(preferences));
   final chatCubit = ChatCubit(
+    sessionRepository: sessionRepo,
     tempTeamCleaner: tempTeamCleaner,
     llmConfigPathOverride: llmConfigPathOverrideForLaunch,
     autoLaunchAllMembersOnConnect: () =>

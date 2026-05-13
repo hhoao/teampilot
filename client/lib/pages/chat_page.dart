@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -56,9 +58,9 @@ class ChatPage extends StatelessWidget {
                   'FlashskyAI requires a member named team-lead.');
               return;
             }
-            context
-                .read<ChatCubit>()
-                .openMemberTab(team, lead.first);
+            unawaited(
+              context.read<ChatCubit>().openMemberTab(team, lead.first),
+            );
           },
           icon: const Icon(Icons.person_outline),
         ),
@@ -66,7 +68,7 @@ class ChatPage extends StatelessWidget {
           key: AppKeys.openTeamButton,
           tooltip: 'Open Team',
           onPressed: () {
-            context.read<ChatCubit>().launchAllMembers(team);
+            unawaited(context.read<ChatCubit>().launchAllMembers(team));
           },
           icon: const Icon(Icons.groups_outlined),
         ),

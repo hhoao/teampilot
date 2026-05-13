@@ -50,15 +50,25 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
     searchHitForeground: Color(0xFF000000),
   );
 
-  TerminalSession? _session;
-  var _ensuredLocalSession = false;
-  StreamSubscription<ChatState>? _chatSub;
   var _handledRouteSession = false;
+  var _defaultPersistedTabRequested = false;
+  var _priorTabCount = 0;
+  StreamSubscription<ChatState>? _chatSub;
+
+  Future<void> _bootstrapDefaultPersistedTab() async {
+    if (!mounted) return;
+    final team = context.read<TeamCubit>().state.selectedTeam;
+    final chat = context.read<ChatCubit>();
+    if (team == null) return;
+    await chat.ensureSessionTab(team);
+    if (mounted) setState(() {});
+  }
 
   @override
   void initState() {
     super.initState();
     final chatCubit = context.read<ChatCubit>();
+    _priorTabCount = chatCubit.state.tabs.length;
     _chatSub = chatCubit.stream.listen(_onChatState);
     _consumeRouteSession(chatCubit.state);
   }
@@ -71,9 +81,16 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
 
   void _onChatState(ChatState state) {
     if (!mounted) return;
-    setState(() {
-      _session = context.read<ChatCubit>().currentSession;
-    });
+    final previousTabCount = _priorTabCount;
+    final tabCount = state.tabs.length;
+    if (widget.sessionId == null &&
+        previousTabCount > 0 &&
+        tabCount == 0 &&
+        _defaultPersistedTabRequested) {
+      _defaultPersistedTabRequested = false;
+    }
+    _priorTabCount = tabCount;
+    setState(() {});
     _consumeRouteSession(state);
   }
 
@@ -135,16 +152,22 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
       return const Center(child: CircularProgressIndicator());
     }
 
-    if (!_ensuredLocalSession && chatCubit.state.tabs.isEmpty) {
-      _ensuredLocalSession = true;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        context.read<ChatCubit>().ensureSessionTab(team);
-      });
+    if (widget.sessionId != null) {
+      if (chatCubit.state.tabs.isEmpty) {
+        return const Center(child: CircularProgressIndicator());
+      }
+    } else if (chatCubit.state.tabs.isEmpty) {
+      if (!_defaultPersistedTabRequested) {
+        _defaultPersistedTabRequested = true;
+        unawaited(_bootstrapDefaultPersistedTab());
+      }
+      return const Center(child: CircularProgressIndicator());
     }
 
-    _session ??= chatCubit.ensureSession(team);
-    final session = _session!;
+    final session = chatCubit.ensureSession(team) ?? chatCubit.currentSession;
+    if (session == null) {
+      return const Center(child: CircularProgressIndicator());
+    }
 
     return Container(
       key: AppKeys.chatWorkspace,
@@ -156,18 +179,22 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
             session: session,
             memberName: chatCubit.selectedMemberName(team),
             onConnect: () {
-              chatCubit.connectSession(team);
-              setState(() {});
+              unawaited(() async {
+                await chatCubit.connectSession(team);
+                if (mounted) setState(() {});
+              }());
             },
             onDisconnect: () {
               chatCubit.disconnectSession();
               setState(() {});
             },
             onRestart: () {
-              chatCubit.restartSession(team);
-              setState(() {
-                _session = chatCubit.currentSession;
-              });
+              unawaited(() async {
+                await chatCubit.restartSession(team);
+                if (mounted) {
+                  setState(() {});
+                }
+              }());
             },
           ),
           Expanded(
@@ -198,8 +225,10 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
                     )
                   : _TerminalPlaceholder(
                       onConnect: () {
-                        chatCubit.connectSession(team);
-                        setState(() {});
+                        unawaited(() async {
+                          await chatCubit.connectSession(team);
+                          if (mounted) setState(() {});
+                        }());
                       },
                     ),
             ),
