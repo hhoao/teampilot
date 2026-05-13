@@ -14,12 +14,11 @@ import '../services/temp_team_cleaner.dart';
 import '../services/terminal_session.dart';
 import '../utils/logger.dart';
 
-typedef TerminalSessionFactory = TerminalSession Function({required String executable});
+typedef TerminalSessionFactory =
+    TerminalSession Function({required String executable});
 typedef PostFrameScheduler = void Function(VoidCallback callback);
-typedef CliSessionDescriptorExists = bool Function(
-  String sessionId,
-  String primaryPath,
-);
+typedef CliSessionDescriptorExists =
+    bool Function(String sessionId, String primaryPath);
 
 class ChatTabInfo extends Equatable {
   const ChatTabInfo({
@@ -147,7 +146,8 @@ class ChatCubit extends Cubit<ChatState> {
        _tempTeamCleaner = tempTeamCleaner,
        _llmConfigPathOverride = llmConfigPathOverride,
        _autoLaunchAllMembersOnConnect = autoLaunchAllMembersOnConnect,
-       _cliSessionDescriptorExists = cliSessionDescriptorExists ??
+       _cliSessionDescriptorExists =
+           cliSessionDescriptorExists ??
            ((String sid, String path) =>
                AppStorage.cliSessionDescriptorExists(sid, path)),
        _sessionRepository = sessionRepository,
@@ -200,9 +200,11 @@ class ChatCubit extends Cubit<ChatState> {
     // — the registry write is async and best-effort.
     final cleaner = _tempTeamCleaner;
     if (cleaner != null) {
-      unawaited(cleaner.record(name).catchError((Object e) {
-        appLogger.w('TempTeamCleaner.record failed for $name: $e');
-      }));
+      unawaited(
+        cleaner.record(name).catchError((Object e) {
+          appLogger.w('TempTeamCleaner.record failed for $name: $e');
+        }),
+      );
     }
     return name;
   }
@@ -215,10 +217,9 @@ class ChatCubit extends Cubit<ChatState> {
     required bool scopeSessionsToSelectedTeam,
     String? selectedTeamId,
   }) {
-    final normalized =
-        (selectedTeamId != null && selectedTeamId.isNotEmpty)
-            ? selectedTeamId
-            : null;
+    final normalized = (selectedTeamId != null && selectedTeamId.isNotEmpty)
+        ? selectedTeamId
+        : null;
     if (_scopeSessionsToSelectedTeam == scopeSessionsToSelectedTeam &&
         _selectedTeamId == normalized) {
       return;
@@ -393,32 +394,50 @@ class ChatCubit extends Cubit<ChatState> {
                             launchTeam: cliTeamDirName,
                           )
                           .then((_) {
-                        if (isClosed) return;
-                        final sessions = state.sessions.map((s) {
-                          if (s.sessionId != session.sessionId) return s;
-                          final lt = cliTeamDirName.trim();
-                          return s.copyWith(
-                            launchState: AppSessionLaunchState.started,
-                            launchTeam:
-                                lt.isNotEmpty ? lt : s.launchTeam,
-                            updatedAt:
-                                DateTime.now().millisecondsSinceEpoch,
-                          );
-                        }).toList();
-                        _emitWithDerivedSessionsAndProjects(
-                          state.copyWith(sessions: sessions),
-                        );
-                      }),
+                            if (isClosed) return;
+                            final sessions = state.sessions.map((s) {
+                              if (s.sessionId != session.sessionId) return s;
+                              final lt = cliTeamDirName.trim();
+                              return s.copyWith(
+                                launchState: AppSessionLaunchState.started,
+                                launchTeam: lt.isNotEmpty ? lt : s.launchTeam,
+                                updatedAt:
+                                    DateTime.now().millisecondsSinceEpoch,
+                              );
+                            }).toList();
+                            _emitWithDerivedSessionsAndProjects(
+                              state.copyWith(sessions: sessions),
+                            );
+                          }),
                     );
                   },
           );
           _updateTabRunning(info.id);
+          if (_autoLaunchAllMembersOnConnect?.call() == true &&
+              team != null &&
+              member != null) {
+            _launchRemainingMembersForTab(team, member.id, internalTab);
+          }
         } on Object catch (e) {
           ts.terminal.write('\r\n[Failed to resume session: $e]\r\n');
         }
       });
     } else {
       _updateTabRunning(info.id);
+    }
+  }
+
+  void _launchRemainingMembersForTab(
+    TeamConfig team,
+    String keepSelectedMemberId,
+    _InternalTab tab,
+  ) {
+    for (final candidate in team.members.where((m) => m.isValid)) {
+      if (candidate.id == keepSelectedMemberId) continue;
+      _openMemberTabAttachAndConnect(team, candidate, tab);
+    }
+    if (team.members.any((m) => m.id == keepSelectedMemberId)) {
+      selectMember(keepSelectedMemberId);
     }
   }
 
@@ -461,7 +480,10 @@ class ChatCubit extends Cubit<ChatState> {
           memberForInitialShell: member,
         );
       } on Object catch (e, st) {
-        appLogger.e('openMemberTab: default session failed: $e', stackTrace: st);
+        appLogger.e(
+          'openMemberTab: default session failed: $e',
+          stackTrace: st,
+        );
       }
       return;
     }
@@ -475,10 +497,7 @@ class ChatCubit extends Cubit<ChatState> {
     _InternalTab tab,
   ) {
     tab.selectedMemberId = member.id;
-    final shell = tab.memberShells.putIfAbsent(
-      member.id,
-      _newSession,
-    );
+    final shell = tab.memberShells.putIfAbsent(member.id, _newSession);
     emit(
       state.copyWith(
         tabs: _visibleTabs(),
@@ -493,6 +512,10 @@ class ChatCubit extends Cubit<ChatState> {
     final launch = _workingDirectoryAndAddDirsForTab(tab);
     _postFrameScheduler(() {
       try {
+        if (shell.isRunning) {
+          _updateTabRunning(tab.info.id);
+          return;
+        }
         shell.connect(
           workingDirectory: launch.$1,
           additionalDirectories: launch.$2,
@@ -607,7 +630,10 @@ class ChatCubit extends Cubit<ChatState> {
     return shell?.isRunning ?? false;
   }
 
-  Future<void> launchAllMembers(TeamConfig team, {SessionRepository? repo}) async {
+  Future<void> launchAllMembers(
+    TeamConfig team, {
+    SessionRepository? repo,
+  }) async {
     final r = repo ?? _sessionRepository;
     final validMembers = team.members.where((m) => m.isValid).toList();
     if (validMembers.isEmpty) return;
@@ -623,7 +649,10 @@ class ChatCubit extends Cubit<ChatState> {
           await openMemberTab(team, validMembers[i], repo: r);
         }
       } on Object catch (e, st) {
-        appLogger.e('launchAllMembers: default session failed: $e', stackTrace: st);
+        appLogger.e(
+          'launchAllMembers: default session failed: $e',
+          stackTrace: st,
+        );
       }
       return;
     }
@@ -649,15 +678,15 @@ class ChatCubit extends Cubit<ChatState> {
       tab.selectedMemberId = _defaultMemberId(team);
     }
     if (tab.selectedMemberId.isNotEmpty) {
-      return tab.memberShells.putIfAbsent(
-        tab.selectedMemberId,
-        _newSession,
-      );
+      return tab.memberShells.putIfAbsent(tab.selectedMemberId, _newSession);
     }
     return tab.resumeSession ??= _newSession();
   }
 
-  Future<void> connectSession(TeamConfig team, {SessionRepository? repo}) async {
+  Future<void> connectSession(
+    TeamConfig team, {
+    SessionRepository? repo,
+  }) async {
     final r = repo ?? _sessionRepository;
     if (_internalTabs.isEmpty && r == null) {
       _appendLocalTab(team, emitChange: true);
@@ -702,7 +731,10 @@ class ChatCubit extends Cubit<ChatState> {
     _updateTabRunning(tab.info.id);
   }
 
-  Future<void> restartSession(TeamConfig team, {SessionRepository? repo}) async {
+  Future<void> restartSession(
+    TeamConfig team, {
+    SessionRepository? repo,
+  }) async {
     final r = repo ?? _sessionRepository;
     if (_autoLaunchAllMembersOnConnect?.call() == true) {
       final keepId = state.selectedMemberId.isNotEmpty

@@ -5,9 +5,51 @@ import 'package:flashskyai_client/models/app_project.dart';
 import 'package:flashskyai_client/models/app_session.dart';
 import 'package:flashskyai_client/models/team_config.dart';
 import 'package:flashskyai_client/repositories/session_repository.dart';
+import 'package:flashskyai_client/services/terminal_session.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 String _executable() => 'flashskyai';
+
+class _FakeTerminalSession extends TerminalSession {
+  _FakeTerminalSession({required super.executable});
+
+  var _running = false;
+  final connectedMembers = <String>[];
+  final connectedSessionTeams = <String?>[];
+
+  @override
+  bool get isRunning => _running;
+
+  @override
+  void connect({
+    required String workingDirectory,
+    List<String> additionalDirectories = const [],
+    String? fixedSessionId,
+    String? resumeSessionId,
+    TeamConfig? team,
+    TeamMemberConfig? member,
+    String? sessionTeam,
+    Map<String, String>? extraEnvironment,
+    void Function()? onProcessStarted,
+  }) {
+    if (member != null) {
+      connectedMembers.add(member.id);
+    }
+    connectedSessionTeams.add(sessionTeam);
+    _running = true;
+    onProcessStarted?.call();
+  }
+
+  @override
+  void disconnect() {
+    _running = false;
+  }
+
+  @override
+  void dispose() {
+    _running = false;
+  }
+}
 
 void main() {
   group('ChatCubit team session scope', () {
@@ -107,10 +149,10 @@ void main() {
         cubit.state.visibleSessions.map((e) => e.sessionId).toList()..sort(),
         ['s1', 's3'],
       );
-      expect(
-        cubit.state.visibleProjects.map((e) => e.projectId).toSet(),
-        {'p-a', 'p-b'},
-      );
+      expect(cubit.state.visibleProjects.map((e) => e.projectId).toSet(), {
+        'p-a',
+        'p-b',
+      });
     });
 
     test('scope on with no selected team yields empty visible lists', () {
@@ -223,14 +265,96 @@ void main() {
       const team = TeamConfig(
         id: 'team-a',
         name: 'A',
-        members: [
-          TeamMemberConfig(id: 'm-lead', name: 'team-lead'),
-        ],
+        members: [TeamMemberConfig(id: 'm-lead', name: 'team-lead')],
       );
       expect(cubit.state.selectedMemberId, '');
       await cubit.connectSession(team);
       expect(cubit.state.tabs.length, 1);
       expect(cubit.state.selectedMemberId, 'm-lead');
     });
+
+    test('openSessionTab starts all members when auto-launch enabled', () {
+      final fakeSessions = <_FakeTerminalSession>[];
+      const session = AppSession(
+        sessionId: 'session-1',
+        projectId: 'project-1',
+        primaryPath: '/tmp',
+        createdAt: 1,
+      );
+      const team = TeamConfig(
+        id: 'team-a',
+        name: 'A',
+        members: [
+          TeamMemberConfig(id: 'm-lead', name: 'team-lead'),
+          TeamMemberConfig(id: 'm-dev', name: 'developer'),
+        ],
+      );
+      final cubit = ChatCubit(
+        executableResolver: () => 'true',
+        terminalSessionFactory: ({required String executable}) {
+          final fake = _FakeTerminalSession(executable: executable);
+          fakeSessions.add(fake);
+          return fake;
+        },
+        postFrameScheduler: (c) => c(),
+        autoLaunchAllMembersOnConnect: () => true,
+      );
+      addTearDown(cubit.close);
+
+      cubit.openSessionTab(session, team: team, member: team.members.first);
+
+      expect(cubit.state.tabs.length, 1);
+      expect(cubit.isMemberRunning('m-lead'), isTrue);
+      expect(cubit.isMemberRunning('m-dev'), isTrue);
+      expect(cubit.state.selectedMemberId, 'm-lead');
+      expect(fakeSessions, hasLength(2));
+      expect(
+        fakeSessions.map((session) => session.connectedSessionTeams.single),
+        everyElement(fakeSessions.first.connectedSessionTeams.single),
+      );
+      expect(fakeSessions.first.connectedSessionTeams.single, isNotEmpty);
+    });
+
+    test(
+      'connectSession auto-launch does not reconnect queued member shells',
+      () async {
+        final scheduled = <void Function()>[];
+        final fakeSessions = <_FakeTerminalSession>[];
+        final cubit = ChatCubit(
+          executableResolver: () => 'true',
+          sessionRepository: repo,
+          terminalSessionFactory: ({required String executable}) {
+            final fake = _FakeTerminalSession(executable: executable);
+            fakeSessions.add(fake);
+            return fake;
+          },
+          postFrameScheduler: scheduled.add,
+          autoLaunchAllMembersOnConnect: () => true,
+        );
+        addTearDown(cubit.close);
+        const team = TeamConfig(
+          id: 'team-a',
+          name: 'A',
+          members: [
+            TeamMemberConfig(id: 'm-lead', name: 'team-lead'),
+            TeamMemberConfig(id: 'm-dev', name: 'developer'),
+          ],
+        );
+
+        await cubit.connectSession(team);
+        while (scheduled.isNotEmpty) {
+          final callback = scheduled.removeAt(0);
+          callback();
+        }
+
+        final connectedMembers = fakeSessions
+            .expand((session) => session.connectedMembers)
+            .toList();
+        expect(connectedMembers.where((id) => id == 'm-lead'), hasLength(1));
+        expect(connectedMembers.where((id) => id == 'm-dev'), hasLength(1));
+        expect(cubit.isMemberRunning('m-lead'), isTrue);
+        expect(cubit.isMemberRunning('m-dev'), isTrue);
+      },
+    );
   });
 }

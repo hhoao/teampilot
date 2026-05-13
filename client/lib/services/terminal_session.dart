@@ -7,9 +7,76 @@ import 'package:xterm/xterm.dart';
 import 'launch_command_builder.dart';
 import '../models/team_config.dart';
 
+abstract class TerminalPtyHandle {
+  Stream<Uint8List> get output;
+  Future<int> get exitCode;
+
+  void write(Uint8List data);
+  void resize(int rows, int columns);
+  void kill();
+}
+
+typedef TerminalPtyStarter =
+    TerminalPtyHandle Function(
+      String executable, {
+      required List<String> arguments,
+      required String workingDirectory,
+      required int columns,
+      required int rows,
+      Map<String, String>? environment,
+    });
+
+class _FlutterPtyHandle implements TerminalPtyHandle {
+  _FlutterPtyHandle(this._pty);
+
+  final Pty _pty;
+
+  @override
+  Stream<Uint8List> get output => _pty.output;
+
+  @override
+  Future<int> get exitCode => _pty.exitCode;
+
+  @override
+  void kill() {
+    _pty.kill();
+  }
+
+  @override
+  void resize(int rows, int columns) {
+    _pty.resize(rows, columns);
+  }
+
+  @override
+  void write(Uint8List data) {
+    _pty.write(data);
+  }
+}
+
+TerminalPtyHandle _startFlutterPty(
+  String executable, {
+  required List<String> arguments,
+  required String workingDirectory,
+  required int columns,
+  required int rows,
+  Map<String, String>? environment,
+}) {
+  return _FlutterPtyHandle(
+    Pty.start(
+      executable,
+      arguments: arguments,
+      workingDirectory: workingDirectory,
+      columns: columns,
+      rows: rows,
+      environment: environment,
+    ),
+  );
+}
+
 class TerminalSession {
-  TerminalSession({required this.executable})
-    : terminal = Terminal(
+  TerminalSession({required this.executable, TerminalPtyStarter? ptyStarter})
+    : _ptyStarter = ptyStarter ?? _startFlutterPty,
+      terminal = Terminal(
         maxLines: 10000,
         platform: defaultTargetPlatform == TargetPlatform.macOS
             ? TerminalTargetPlatform.macos
@@ -17,8 +84,9 @@ class TerminalSession {
       );
 
   final String executable;
+  final TerminalPtyStarter _ptyStarter;
   final Terminal terminal;
-  Pty? _pty;
+  TerminalPtyHandle? _pty;
   var _running = false;
   var _starting = false;
   Map<String, String>? _extraEnvironment;
@@ -59,7 +127,9 @@ class TerminalSession {
     } else {
       args.addAll(
         LaunchCommandBuilder.buildSessionPrefixArgs(
-          workingDirectory: workingDirectory.isNotEmpty ? workingDirectory : null,
+          workingDirectory: workingDirectory.isNotEmpty
+              ? workingDirectory
+              : null,
           additionalDirectories: additionalDirectories,
           fixedSessionId: fixedSessionId,
           resumeSessionId: resumeSessionId,
@@ -78,16 +148,12 @@ class TerminalSession {
     terminal.onResize = (int width, int height, int pw, int ph) {
       if (_pty == null) {
         if (!_starting || width <= 0 || height <= 0) return;
-        _spawnPty(
-          args: args,
-          cwd: workingDirectory,
-          cols: width,
-          rows: height,
-        );
-      } else if (_running) {
+        _spawnPty(args: args, cwd: workingDirectory, cols: width, rows: height);
+      } else if (_running && width > 0 && height > 0) {
         _pty!.resize(height, width);
       }
     };
+    _spawnPty(args: args, cwd: workingDirectory, cols: 80, rows: 24);
   }
 
   void _spawnPty({
@@ -97,7 +163,7 @@ class TerminalSession {
     required int rows,
   }) {
     try {
-      _pty = Pty.start(
+      _pty = _ptyStarter(
         executable,
         arguments: args,
         workingDirectory: cwd,
