@@ -9,12 +9,14 @@ import '../models/app_project.dart';
 import '../models/app_session.dart';
 import '../models/team_config.dart';
 import '../repositories/session_repository.dart';
+import '../services/app_storage.dart';
 import '../services/temp_team_cleaner.dart';
 import '../services/terminal_session.dart';
 import '../utils/logger.dart';
 
 typedef TerminalSessionFactory = TerminalSession Function({required String executable});
 typedef PostFrameScheduler = void Function(VoidCallback callback);
+typedef CliSessionDescriptorExists = bool Function(String sessionId);
 
 class ChatTabInfo extends Equatable {
   const ChatTabInfo({
@@ -125,11 +127,14 @@ class ChatCubit extends Cubit<ChatState> {
     TempTeamCleaner? tempTeamCleaner,
     String? Function()? llmConfigPathOverride,
     bool Function()? autoLaunchAllMembersOnConnect,
+    CliSessionDescriptorExists? cliSessionDescriptorExists,
   }) : _terminalSessionFactory = terminalSessionFactory,
        _postFrameScheduler = postFrameScheduler ?? _defaultPostFrameScheduler,
        _tempTeamCleaner = tempTeamCleaner,
        _llmConfigPathOverride = llmConfigPathOverride,
        _autoLaunchAllMembersOnConnect = autoLaunchAllMembersOnConnect,
+       _cliSessionDescriptorExists =
+           cliSessionDescriptorExists ?? AppStorage.cliSessionDescriptorExists,
        _executableResolver = executableResolver,
        super(const ChatState());
 
@@ -139,6 +144,7 @@ class ChatCubit extends Cubit<ChatState> {
   final TempTeamCleaner? _tempTeamCleaner;
   final String? Function()? _llmConfigPathOverride;
   final bool Function()? _autoLaunchAllMembersOnConnect;
+  final CliSessionDescriptorExists _cliSessionDescriptorExists;
   final String Function() _executableResolver;
 
   TerminalSession _newSession() =>
@@ -267,7 +273,9 @@ class ChatCubit extends Cubit<ChatState> {
         selectedMemberId: internalTab.selectedMemberId,
       ),
     );
-    final useResume = session.launchState == AppSessionLaunchState.started;
+    final launched = session.launchState == AppSessionLaunchState.started;
+    final cliHasSession = _cliSessionDescriptorExists(session.sessionId);
+    final useResume = launched && cliHasSession;
     _postFrameScheduler(() {
       try {
         ts.connect(

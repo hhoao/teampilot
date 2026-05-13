@@ -592,6 +592,7 @@ void main() {
         return captured!;
       },
       postFrameScheduler: (c) => c(),
+      cliSessionDescriptorExists: (_) => true,
     );
     await cubit.loadProjectData(repo);
     final rel = cubit.state.sessions.single;
@@ -611,6 +612,46 @@ void main() {
     expect(captured!.lastResumeSessionIds.last, session.sessionId);
     expect(captured!.lastFixedSessionIds.last, isNull);
   });
+
+  test(
+    'openSessionTab started session without CLI descriptor uses session-id',
+    () async {
+      final tmp = await Directory.systemTemp.createTemp('open_sess_');
+      addTearDown(() => tmp.deleteSync(recursive: true));
+      final repo = SessionRepository(rootDir: tmp.path);
+      final project = await repo.createProject('/wd');
+      final session = await repo.createSession(project.projectId);
+      await repo.markSessionLaunched(session.sessionId, sessionTeam: 'cli-t');
+
+      FakeTerminalSession? captured;
+      final cubit = ChatCubit(
+        executableResolver: _testExecutable,
+        terminalSessionFactory: ({required String executable}) {
+          captured = FakeTerminalSession(executable: executable);
+          return captured!;
+        },
+        postFrameScheduler: (c) => c(),
+        cliSessionDescriptorExists: (_) => false,
+      );
+      await cubit.loadProjectData(repo);
+      final rel = cubit.state.sessions.single;
+      final team = TeamConfig(
+        id: 'tid',
+        name: 'TName',
+        members: const [
+          TeamMemberConfig(id: 'lid', name: 'team-lead'),
+        ],
+      );
+      cubit.openSessionTab(
+        rel,
+        team: team,
+        member: team.members.first,
+        repo: repo,
+      );
+      expect(captured!.lastResumeSessionIds.last, isNull);
+      expect(captured!.lastFixedSessionIds.last, session.sessionId);
+    },
+  );
 
   test('openSessionTab passes session additionalDirectories to connect', () async {
     final tmp = await Directory.systemTemp.createTemp('open_sess_');
