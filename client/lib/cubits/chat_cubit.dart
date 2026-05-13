@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:equatable/equatable.dart';
@@ -163,6 +164,15 @@ class ChatCubit extends Cubit<ChatState> {
 
   String _allocSessionTeamName(String baseName) {
     final name = _cliTeamName(baseName, _nextCounter());
+    // Register this temp team name so [TempTeamCleaner.cleanup] can remove
+    // the CLI dir later (on next app startup or on app close). Fire-and-forget
+    // — the registry write is async and best-effort.
+    final cleaner = _tempTeamCleaner;
+    if (cleaner != null) {
+      unawaited(cleaner.record(name).catchError((Object e) {
+        appLogger.w('TempTeamCleaner.record failed for $name: $e');
+      }));
+    }
     return name;
   }
 

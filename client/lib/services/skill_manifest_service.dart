@@ -20,7 +20,7 @@ class SkillManifestService {
 
   final String? _rootDir;
 
-  String get _root => _rootDir ?? AppStorage.flashskyaiDir;
+  String get _root => _rootDir ?? AppStorage.basePath;
   String get skillsDir => p.join(_root, 'skills');
   String get backupsDir => p.join(_root, 'skill-backups');
   String get _manifestPath => p.join(skillsDir, 'manifest.json');
@@ -81,10 +81,13 @@ class SkillManifestService {
   /// Returns pruned backups (so caller can delete their on-disk payloads).
   Future<List<SkillBackup>> pruneBackups({int keep = 20}) async {
     final m = await _read();
-    final list = ((m['backups'] as List<dynamic>?) ?? <dynamic>[])
-        .map((e) => SkillBackup.fromJson((e as Map).cast<String, Object?>()))
-        .toList()
-      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    final list =
+        ((m['backups'] as List<dynamic>?) ?? <dynamic>[])
+            .map(
+              (e) => SkillBackup.fromJson((e as Map).cast<String, Object?>()),
+            )
+            .toList()
+          ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
     if (list.length <= keep) return const [];
     final dropped = list.sublist(keep);
     final kept = list.take(keep).toList();

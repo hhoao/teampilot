@@ -7,6 +7,7 @@ import '../cubits/team_cubit.dart';
 import '../l10n/app_localizations.dart';
 import '../models/team_config.dart';
 import '../theme/app_theme.dart';
+import '../utils/app_keys.dart';
 import '../widgets/dropdown/custom_dropdown.dart';
 import '../widgets/dropdown/flashskyai_dropdown_decoration.dart';
 
@@ -693,6 +694,74 @@ class _TeamInfoSectionState extends State<_TeamInfoSection> {
                   ),
                 ),
               ],
+            ),
+          ),
+          _DangerZone(team: widget.team, cubit: widget.cubit),
+        ],
+      ),
+    );
+  }
+}
+
+class _DangerZone extends StatelessWidget {
+  const _DangerZone({required this.team, required this.cubit});
+
+  final TeamConfig team;
+  final TeamCubit cubit;
+
+  Future<void> _confirmDelete(BuildContext context) async {
+    final l10n = context.l10n;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.deleteTeam),
+        content: Text(l10n.deleteTeamConfirm(team.name)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text(l10n.cancel),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(ctx).colorScheme.error,
+            ),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text(l10n.delete),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) {
+      await cubit.deleteSelected();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final errorColor = Theme.of(context).colorScheme.error;
+    return _Card(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _CardHeader(
+            title: l10n.dangerZone,
+            subtitle: l10n.deleteTeamSubtitle,
+          ),
+          const SizedBox(height: 14),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: OutlinedButton.icon(
+              key: AppKeys.deleteButton,
+              onPressed: () => _confirmDelete(context),
+              icon: Icon(Icons.delete_outline, size: 18, color: errorColor),
+              label: Text(
+                l10n.deleteTeam,
+                style: TextStyle(color: errorColor),
+              ),
+              style: OutlinedButton.styleFrom(
+                side: BorderSide(color: errorColor.withValues(alpha: 0.4)),
+              ),
             ),
           ),
         ],

@@ -4,6 +4,7 @@ import 'package:flashskyai_client/cubits/chat_cubit.dart';
 import 'package:flashskyai_client/cubits/config_cubit.dart';
 import 'package:flashskyai_client/cubits/layout_cubit.dart';
 import 'package:flashskyai_client/cubits/llm_config_cubit.dart';
+import 'package:flashskyai_client/cubits/session_preferences_cubit.dart';
 import 'package:flashskyai_client/cubits/team_cubit.dart';
 import 'package:flashskyai_client/main.dart';
 import 'package:flashskyai_client/models/layout_preferences.dart';
@@ -12,6 +13,7 @@ import 'package:flashskyai_client/models/session.dart';
 import 'package:flashskyai_client/models/team_config.dart';
 import 'package:flashskyai_client/repositories/app_settings_repository.dart';
 import 'package:flashskyai_client/repositories/layout_repository.dart';
+import 'package:flashskyai_client/repositories/session_preferences_repository.dart';
 import 'package:flashskyai_client/repositories/team_repository.dart';
 import 'package:flashskyai_client/services/terminal_session.dart';
 import 'package:flashskyai_client/theme/app_theme.dart';
@@ -21,8 +23,11 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+String _testExecutable() => 'flashskyai';
+
 Widget buildTestApp({
   required TeamCubit teamCubit,
+  required SessionPreferencesCubit sessionPreferencesCubit,
   ChatCubit? chatCubit,
   LayoutCubit? layoutCubit,
   LlmConfigCubit? llmConfigCubit,
@@ -30,10 +35,12 @@ Widget buildTestApp({
   return MultiBlocProvider(
     providers: [
       BlocProvider.value(value: teamCubit),
-      BlocProvider.value(value: chatCubit ?? ChatCubit()),
+      BlocProvider.value(
+          value: chatCubit ?? ChatCubit(executableResolver: _testExecutable)),
       BlocProvider(create: (_) => ConfigCubit()),
       BlocProvider.value(value: llmConfigCubit ?? testLlmConfigCubit()),
       BlocProvider.value(value: layoutCubit ?? LayoutCubit()),
+      BlocProvider.value(value: sessionPreferencesCubit),
     ],
     child: const FlashskyAiClientApp(),
   );
@@ -45,14 +52,18 @@ Future<void> pumpDesktopApp(
   ChatCubit? chatCubit,
   LayoutCubit? layoutCubit,
   LlmConfigCubit? llmConfigCubit,
+  SessionPreferencesCubit? sessionPreferencesCubit,
 }) async {
   tester.view.physicalSize = const Size(1200, 700);
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.resetPhysicalSize);
   addTearDown(tester.view.resetDevicePixelRatio);
+  final sessionCubit =
+      sessionPreferencesCubit ?? await testSessionPreferencesCubit();
   await tester.pumpWidget(
     buildTestApp(
       teamCubit: teamCubit,
+      sessionPreferencesCubit: sessionCubit,
       chatCubit: chatCubit,
       layoutCubit: layoutCubit,
       llmConfigCubit: llmConfigCubit,
@@ -70,11 +81,20 @@ LlmConfigCubit testLlmConfigCubit({LlmConfig initialConfig = const LlmConfig()})
   );
 }
 
+Future<SessionPreferencesCubit> testSessionPreferencesCubit() async {
+  SharedPreferences.setMockInitialValues({});
+  final prefs = await SharedPreferences.getInstance();
+  return SessionPreferencesCubit(
+    repository: SessionPreferencesRepository(prefs),
+  );
+}
+
 Future<TeamCubit> createTeamCubit({TeamLauncher? launcher}) async {
   final tmp = await Directory.systemTemp.createTemp('teams_widget_');
   final repository = TeamRepository(rootDir: tmp.path);
   final cubit = TeamCubit(
     repository: repository,
+    executableResolver: _testExecutable,
     launcher: launcher ?? (_, __) async {},
   );
   await cubit.load();
@@ -82,6 +102,9 @@ Future<TeamCubit> createTeamCubit({TeamLauncher? launcher}) async {
 }
 
 class FakeTerminalSession extends TerminalSession {
+  FakeTerminalSession({String executable = 'flashskyai'})
+      : super(executable: executable);
+
   var _running = false;
   final connectedMembers = <String>[];
   final resumedSessions = <String>[];
@@ -114,6 +137,7 @@ class FakeTerminalSession extends TerminalSession {
 class TestChatCubit extends ChatCubit {
   TestChatCubit()
     : super(
+        executableResolver: _testExecutable,
         terminalSessionFactory: FakeTerminalSession.new,
         postFrameScheduler: (callback) => callback(),
       );
@@ -131,6 +155,7 @@ void main() {
   testWidgets('renders chat workbench shell on initial route', (tester) async {
     final teamCubit = await createTeamCubit();
     final chatCubit = ChatCubit(
+      executableResolver: _testExecutable,
       terminalSessionFactory: FakeTerminalSession.new,
       postFrameScheduler: (callback) => callback(),
     );
@@ -248,6 +273,7 @@ void main() {
     final repository = TeamRepository(rootDir: tmp.path);
     final cubit = TeamCubit(
       repository: repository,
+      executableResolver: _testExecutable,
     );
     await cubit.load();
 
@@ -275,9 +301,6 @@ void main() {
 
     await cubit.setThemeMode('dark');
     expect(cubit.state.preferences.themeMode, 'dark');
-
-    await cubit.setAutoLaunchAllMembersOnConnect(true);
-    expect(cubit.state.preferences.autoLaunchAllMembersOnConnect, isTrue);
   });
 
   test('config cubit navigates sections', () {
@@ -292,7 +315,7 @@ void main() {
   });
 
   test('chat cubit manages tabs and selection', () {
-    final cubit = ChatCubit();
+    final cubit = ChatCubit(executableResolver: _testExecutable);
     expect(cubit.state.tabs, isEmpty);
     expect(cubit.state.selectedMemberId, isEmpty);
 
@@ -314,6 +337,7 @@ void main() {
 
   test('chat cubit opens member shells inside one session tab', () {
     final cubit = ChatCubit(
+      executableResolver: _testExecutable,
       terminalSessionFactory: FakeTerminalSession.new,
       postFrameScheduler: (callback) => callback(),
     );
@@ -340,6 +364,7 @@ void main() {
     'chat cubit connectSession starts all members when auto-launch enabled',
     () {
       final cubit = ChatCubit(
+        executableResolver: _testExecutable,
         terminalSessionFactory: FakeTerminalSession.new,
         postFrameScheduler: (callback) => callback(),
         autoLaunchAllMembersOnConnect: () => true,
@@ -367,6 +392,7 @@ void main() {
     'chat cubit connectSession starts only selected member by default',
     () {
       final cubit = ChatCubit(
+        executableResolver: _testExecutable,
         terminalSessionFactory: FakeTerminalSession.new,
         postFrameScheduler: (callback) => callback(),
       );
@@ -393,6 +419,7 @@ void main() {
     'chat cubit keeps persisted session tabs separate from member selection',
     () {
       final cubit = ChatCubit(
+        executableResolver: _testExecutable,
         terminalSessionFactory: FakeTerminalSession.new,
         postFrameScheduler: (callback) => callback(),
       );

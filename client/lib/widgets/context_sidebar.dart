@@ -481,6 +481,10 @@ class _SessionTileEntry extends StatefulWidget {
 
 class _SessionTileEntryState extends State<_SessionTileEntry> {
   var _hovered = false;
+  /// Keeps the overflow menu mounted while the popup is open; otherwise moving
+  /// the pointer onto the overlay triggers [MouseRegion.onExit] and removes
+  /// the [PopupMenuButton] before a menu item can be selected.
+  var _menuOpen = false;
 
   @override
   Widget build(BuildContext context) {
@@ -532,18 +536,23 @@ class _SessionTileEntryState extends State<_SessionTileEntry> {
         trailing: SizedBox(
             width: 24,
             height: 24,
-            child: _hovered
+            child: _hovered || _menuOpen
                 ? PopupMenuButton<String>(
                     tooltip: '',
                     padding: EdgeInsets.zero,
                     iconSize: 16,
                     icon: const Icon(Icons.more_horiz, size: 16),
+                    onOpened: () => setState(() => _menuOpen = true),
+                    onCanceled: () => setState(() => _menuOpen = false),
                     onSelected: (value) {
+                      setState(() => _menuOpen = false);
                       switch (value) {
                         case 'rename':
                           _showRenameDialog(context, session, l10n);
+                          break;
                         case 'delete':
                           _showDeleteDialog(context, session, l10n);
+                          break;
                       }
                     },
                     itemBuilder: (context) => [
@@ -941,52 +950,64 @@ class _SidebarTile extends StatelessWidget {
       child: Material(
         color: selected ? colors.selectedBackground : Colors.transparent,
         borderRadius: BorderRadius.circular(8),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(8),
-          onTap: onTap,
-          child: Container(
-            padding: EdgeInsets.fromLTRB(
-              contentLeftInset,
-              6,
-              8,
-              6,
-            ),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(8),
-              border: selected
-                  ? Border.all(color: colors.selectedBorder)
-                  : null,
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.bodyMedium,
-                      ),
-                      if (subtitle.isNotEmpty) ...[
-                        const SizedBox(height: 4),
-                        Text(
-                          subtitle,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: textBase.withValues(alpha: 0.52),
-                            fontSize: 11,
+        child: Container(
+          padding: EdgeInsets.fromLTRB(
+            contentLeftInset,
+            6,
+            8,
+            6,
+          ),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(8),
+            border: selected
+                ? Border.all(color: colors.selectedBorder)
+                : null,
+          ),
+          // Do not use [CrossAxisAlignment.stretch] here: [_SidebarTile] is used
+          // inside [ListView] items, which get an unbounded max height on the main
+          // axis; stretch would force children to infinite height and assert.
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Expanded(
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(8),
+                  onTap: onTap,
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(minHeight: 32),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context).textTheme.bodyMedium,
                           ),
-                        ),
-                      ],
-                    ],
+                          if (subtitle.isNotEmpty) ...[
+                            const SizedBox(height: 4),
+                            Text(
+                              subtitle,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: textBase.withValues(alpha: 0.52),
+                                fontSize: 11,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
                   ),
                 ),
-                if (trailing != null) trailing!,
-              ],
-            ),
+              ),
+              if (trailing != null) trailing!,
+            ],
           ),
         ),
       ),

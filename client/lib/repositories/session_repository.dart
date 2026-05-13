@@ -10,11 +10,9 @@ import '../services/app_storage.dart';
 class SessionRepository {
   const SessionRepository();
 
-  String get _baseDir => AppStorage.flashskyaiDir;
+  String get _historyPath => AppStorage.cliHistoryPath;
 
-  String get _historyPath => p.join(_baseDir, 'history.jsonl');
-
-  String get _sessionsDir => p.join(_baseDir, 'sessions');
+  String get _sessionsDir => AppStorage.cliSessionsDir;
 
   Future<List<FlashskySession>> loadSessions() async {
     final sessions = <FlashskySession>{};

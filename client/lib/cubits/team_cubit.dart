@@ -168,6 +168,7 @@ class TeamCubit extends Cubit<TeamState> {
   Future<void> deleteSelected() async {
     final selected = state.selectedTeam;
     if (selected == null) return;
+    await _repository.deleteTeam(selected.name);
     var teams =
         state.teams.where((team) => team.id != selected.id).toList();
     if (teams.isEmpty) teams = [_defaultTeam()];

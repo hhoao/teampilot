@@ -123,7 +123,7 @@ class _SettingsWarmup extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final executable =
-        context.watch<SessionPreferencesCubit>().resolveExecutable();
+        context.read<SessionPreferencesCubit>().resolveExecutable();
     return Material(
       child: Row(
         children: [

@@ -53,6 +53,11 @@ class AppLocalizations {
   String get teamConfig => _strings['teamConfig']!;
   String get teamSettings => _strings['teamSettings']!;
   String get teamSettingsSubtitle => _strings['teamSettingsSubtitle']!;
+  String get deleteTeam => _strings['deleteTeam']!;
+  String get deleteTeamSubtitle => _strings['deleteTeamSubtitle']!;
+  String deleteTeamConfirm(String name) =>
+      _strings['deleteTeamConfirm']!.replaceFirst('{name}', name);
+  String get dangerZone => _strings['dangerZone']!;
   String get membersSubtitle => _strings['membersSubtitle']!;
   String get llmConfig => _strings['llmConfig']!;
   String get llmConfigSubtitle => _strings['llmConfigSubtitle']!;
@@ -423,6 +428,17 @@ class _AppLocalizationsDelegate
     'shellChatWorkbench': {'en': 'Shell chat workbench', 'zh': 'Shell 聊天工作台'},
 
     'teamName': {'en': 'Team name', 'zh': '团队名称'},
+    'deleteTeam': {'en': 'Delete team', 'zh': '删除团队'},
+    'deleteTeamSubtitle': {
+      'en':
+          'Removes this team from the UI and the shared flashskyai data directory. This cannot be undone.',
+      'zh': '从 UI 和共享的 flashskyai 数据目录中移除该团队。此操作不可撤销。',
+    },
+    'deleteTeamConfirm': {
+      'en': 'Delete team "{name}"? This cannot be undone.',
+      'zh': '删除团队 "{name}"？此操作不可撤销。',
+    },
+    'dangerZone': {'en': 'Danger zone', 'zh': '危险操作'},
     'teamExtraArgs': {'en': 'Team extra CLI arguments', 'zh': '团队额外 CLI 参数'},
     'teamExtraArgsHint': {
       'en': '--permission-mode acceptEdits',

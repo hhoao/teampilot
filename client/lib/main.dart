@@ -11,11 +11,13 @@ import 'cubits/chat_cubit.dart';
 import 'cubits/config_cubit.dart';
 import 'cubits/layout_cubit.dart';
 import 'cubits/llm_config_cubit.dart';
+import 'cubits/session_preferences_cubit.dart';
 import 'cubits/skill_cubit.dart';
 import 'cubits/team_cubit.dart';
 import 'l10n/app_localizations.dart';
 import 'repositories/app_settings_repository.dart';
 import 'repositories/layout_repository.dart';
+import 'repositories/session_preferences_repository.dart';
 import 'repositories/session_repository.dart';
 import 'repositories/skill_repository.dart';
 import 'repositories/team_repository.dart';
@@ -69,18 +71,22 @@ void main() async {
   final sessionRepo = const SessionRepository();
 
   final teamRepo = TeamRepository();
-  await teamRepo.importFromCli();
 
   final appSettings = SharedPrefsAppSettingsRepository(preferences);
   final homeDirectory =
       Platform.environment['HOME'] ?? Platform.environment['USERPROFILE'];
-  final cliExecutablePath = await FlashskyaiCliLocator.locate();
+  final cliLocated = await FlashskyaiCliLocator.locate();
+
+  final sessionPreferencesCubit = SessionPreferencesCubit(
+    repository: SessionPreferencesRepository(preferences),
+    locatedExecutable: cliLocated,
+  );
 
   final llmConfigCubit = LlmConfigCubit(
     appSettings: appSettings,
     currentDirectory: Directory.current.path,
     homeDirectory: homeDirectory,
-    cliExecutablePath: cliExecutablePath,
+    executableResolver: () => sessionPreferencesCubit.resolveExecutable(),
   );
 
   String? llmConfigPathOverrideForLaunch() {
@@ -90,6 +96,7 @@ void main() async {
 
   final teamCubit = TeamCubit(
     repository: teamRepo,
+    executableResolver: () => sessionPreferencesCubit.resolveExecutable(),
     llmConfigPathOverride: llmConfigPathOverrideForLaunch,
   );
   final layoutCubit = LayoutCubit(repository: LayoutRepository(preferences));
@@ -97,13 +104,15 @@ void main() async {
     tempTeamCleaner: tempTeamCleaner,
     llmConfigPathOverride: llmConfigPathOverrideForLaunch,
     autoLaunchAllMembersOnConnect: () =>
-        layoutCubit.state.preferences.autoLaunchAllMembersOnConnect,
+        sessionPreferencesCubit.state.preferences.autoLaunchAllMembersOnConnect,
+    executableResolver: () => sessionPreferencesCubit.resolveExecutable(),
   );
   final configCubit = ConfigCubit();
   final skillCubit = SkillCubit(SkillRepository());
 
   await teamCubit.load();
   await layoutCubit.load();
+  await sessionPreferencesCubit.load();
   await llmConfigCubit.load();
   chatCubit.loadSessions(sessionRepo);
   unawaited(skillCubit.loadAll());
@@ -116,6 +125,7 @@ void main() async {
         BlocProvider.value(value: configCubit),
         BlocProvider.value(value: llmConfigCubit),
         BlocProvider.value(value: layoutCubit),
+        BlocProvider.value(value: sessionPreferencesCubit),
         BlocProvider.value(value: skillCubit),
       ],
       child: const FlashskyAiClientApp(),

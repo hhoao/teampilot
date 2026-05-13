@@ -12,25 +12,17 @@ import 'app_storage.dart';
 /// up the next time the UI starts.
 class TempTeamCleaner {
   TempTeamCleaner({String? registryPath, String? cliTeamsDir})
-      : _registryPathOverride = registryPath,
-        _cliTeamsDirOverride = cliTeamsDir;
+    : _registryPathOverride = registryPath,
+      _cliTeamsDirOverride = cliTeamsDir;
 
   final String? _registryPathOverride;
   final String? _cliTeamsDirOverride;
 
   String get registryPath =>
       _registryPathOverride ??
-      p.join(AppStorage.flashskyaiDir, 'ui-temp-teams.json');
+      p.join(AppStorage.basePath, 'ui-temp-teams.json');
 
-  String get cliTeamsDir =>
-      _cliTeamsDirOverride ??
-      p.join(
-        Platform.environment['HOME'] ??
-            Platform.environment['USERPROFILE'] ??
-            '.',
-        '.flashskyai',
-        'teams',
-      );
+  String get cliTeamsDir => _cliTeamsDirOverride ?? AppStorage.cliTeamsDir;
 
   /// Records [name] as a UI-created temp team. Persists immediately so it
   /// survives a crash.
@@ -63,7 +55,11 @@ class TempTeamCleaner {
     // Only remove successful names from the registry. Failed ones stay so
     // they will be retried on the next run.
     final remaining = names
-        .where((n) => failed.contains(n) || Directory(p.join(cliTeamsDir, n)).existsSync())
+        .where(
+          (n) =>
+              failed.contains(n) ||
+              Directory(p.join(cliTeamsDir, n)).existsSync(),
+        )
         .toSet();
     if (remaining.isEmpty) {
       await _clearRegistry();

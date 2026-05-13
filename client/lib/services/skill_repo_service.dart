@@ -10,7 +10,11 @@ class SkillRepoService {
 
   static const _defaultRepos = [
     SkillRepo(owner: 'anthropics', name: 'skills', branch: 'main'),
-    SkillRepo(owner: 'ComposioHQ', name: 'awesome-claude-skills', branch: 'master'),
+    SkillRepo(
+      owner: 'ComposioHQ',
+      name: 'awesome-claude-skills',
+      branch: 'master',
+    ),
     SkillRepo(owner: 'cexll', name: 'myclaude', branch: 'master'),
     SkillRepo(owner: 'JimLiu', name: 'baoyu-skills', branch: 'main'),
   ];
@@ -70,11 +74,12 @@ class SkillRepoService {
   }
 
   Future<Map<String, Object?>> _readManifest() async {
-    final file = File('${AppStorage.flashskyaiDir}/skills.json');
+    final file = File('${AppStorage.basePath}/skills.json');
     if (!file.existsSync()) return {};
     try {
       final content = await file.readAsString();
-      return (json.decode(content) as Map<String, dynamic>).cast<String, Object?>();
+      return (json.decode(content) as Map<String, dynamic>)
+          .cast<String, Object?>();
     } on FormatException catch (e) {
       appLogger.w('[SkillRepoService] Corrupt skills.json, resetting: $e');
       return {};
@@ -85,9 +90,9 @@ class SkillRepoService {
   }
 
   Future<void> _writeManifest(Map<String, Object?> data) async {
-    final dir = Directory(AppStorage.flashskyaiDir);
+    final dir = Directory(AppStorage.basePath);
     if (!dir.existsSync()) dir.createSync(recursive: true);
-    final file = File('${AppStorage.flashskyaiDir}/skills.json');
+    final file = File('${AppStorage.basePath}/skills.json');
     await file.writeAsString(const JsonEncoder.withIndent('  ').convert(data));
   }
 }
