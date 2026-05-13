@@ -122,18 +122,53 @@ void main() {
     expect(list.single.sessionId, good.sessionId);
   });
 
-  test('markSessionLaunched writes sessionTeam and started together', () async {
+  test('markSessionLaunched writes launchTeam and started without changing empty sessionTeam', () async {
     final tmp = await Directory.systemTemp.createTemp('fs_session_repo_');
     addTearDown(() => tmp.deleteSync(recursive: true));
 
     final repo = SessionRepository(rootDir: tmp.path);
     final project = await repo.createProject('/w');
     final session = await repo.createSession(project.projectId);
-    await repo.markSessionLaunched(session.sessionId, sessionTeam: 'my-cli-team');
+    await repo.markSessionLaunched(session.sessionId, launchTeam: 'my-cli-team');
 
     final disk = (await repo.loadSessions()).single;
     expect(disk.launchState, AppSessionLaunchState.started);
-    expect(disk.sessionTeam, 'my-cli-team');
+    expect(disk.launchTeam, 'my-cli-team');
+    expect(disk.sessionTeam, '');
+  });
+
+  test('createSession persists sessionTeam when provided', () async {
+    final tmp = await Directory.systemTemp.createTemp('fs_session_repo_');
+    addTearDown(() => tmp.deleteSync(recursive: true));
+
+    final repo = SessionRepository(rootDir: tmp.path);
+    final project = await repo.createProject('/w');
+    final session = await repo.createSession(
+      project.projectId,
+      sessionTeam: 'team-config-id-1',
+    );
+    expect(session.sessionTeam, 'team-config-id-1');
+    final disk = (await repo.loadSessions()).single;
+    expect(disk.sessionTeam, 'team-config-id-1');
+    expect(disk.launchTeam, '');
+  });
+
+  test('markSessionLaunched keeps sessionTeam and sets launchTeam', () async {
+    final tmp = await Directory.systemTemp.createTemp('fs_session_repo_');
+    addTearDown(() => tmp.deleteSync(recursive: true));
+
+    final repo = SessionRepository(rootDir: tmp.path);
+    final project = await repo.createProject('/w');
+    final session = await repo.createSession(
+      project.projectId,
+      sessionTeam: 'ui-team-id',
+    );
+    await repo.markSessionLaunched(session.sessionId, launchTeam: 'cli-dir');
+
+    final disk = (await repo.loadSessions()).single;
+    expect(disk.sessionTeam, 'ui-team-id');
+    expect(disk.launchTeam, 'cli-dir');
+    expect(disk.launchState, AppSessionLaunchState.started);
   });
 
   test('parallel updateSessionTeam and markSessionStarted do not drop fields', () async {

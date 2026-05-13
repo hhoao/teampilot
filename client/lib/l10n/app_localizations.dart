@@ -144,6 +144,10 @@ class AppLocalizations {
       _strings['autoLaunchAllMembersTitle']!;
   String get autoLaunchAllMembersDescription =>
       _strings['autoLaunchAllMembersDescription']!;
+  String get scopeSessionsToSelectedTeamTitle =>
+      _strings['scopeSessionsToSelectedTeamTitle']!;
+  String get scopeSessionsToSelectedTeamDescription =>
+      _strings['scopeSessionsToSelectedTeamDescription']!;
   String get themeModeTitle => _strings['themeModeTitle']!;
   String get themeModeDescription => _strings['themeModeDescription']!;
   String get languageDescription => _strings['languageDescription']!;
@@ -551,6 +555,16 @@ class _AppLocalizationsDelegate
       'en':
           'When enabled, Connect and Restart launch every valid member shell; otherwise only the selected member starts.',
       'zh': '开启后，点击连接或重启会为每个有效成员启动终端；关闭则仅启动当前选中的成员。',
+    },
+    'scopeSessionsToSelectedTeamTitle': {
+      'en': 'Scope sessions to selected team',
+      'zh': '按所选团队筛选会话',
+    },
+    'scopeSessionsToSelectedTeamDescription': {
+      'en':
+          'When enabled, the sidebar shows only sessions assigned to the current team. New sessions are always tagged with the selected team so they appear here if you turn this on later.',
+      'zh':
+          '开启后，侧边栏仅显示归属当前团队的会话。新建会话仍会写入当前所选团队，之后开启本选项即可看到它们。',
     },
     'themeModeTitle': {'en': 'Theme mode', 'zh': '主题模式'},
     'themeModeDescription': {

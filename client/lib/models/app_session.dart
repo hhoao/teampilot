@@ -14,6 +14,7 @@ class AppSession {
     this.additionalPaths = const [],
     this.display = '',
     this.sessionTeam = '',
+    this.launchTeam = '',
     this.launchState = AppSessionLaunchState.created,
     required this.createdAt,
     this.updatedAt = 0,
@@ -36,6 +37,7 @@ class AppSession {
       additionalPaths: paths,
       display: json['display'] as String? ?? '',
       sessionTeam: json['sessionTeam'] as String? ?? '',
+      launchTeam: json['launchTeam'] as String? ?? '',
       launchState: launch,
       createdAt: json['createdAt'] as int? ?? 0,
       updatedAt: json['updatedAt'] as int? ?? 0,
@@ -47,13 +49,24 @@ class AppSession {
   final String primaryPath;
   final List<String> additionalPaths;
   final String display;
+  /// Stable UI team id ([TeamConfig.id]) for filtering; not the CLI temp dir name.
   final String sessionTeam;
+  /// CLI `--session-team` directory name under `~/.flashskyai/teams/`.
+  final String launchTeam;
   final AppSessionLaunchState launchState;
   final int createdAt;
   final int updatedAt;
 
   String resolveDisplayTitle(String whenDisplayEmpty) =>
       display.isNotEmpty ? display : whenDisplayEmpty;
+
+  /// CLI team directory for resume: [launchTeam] when set, otherwise [sessionTeam]
+  /// (legacy sessions stored the CLI name in [sessionTeam]).
+  String get effectiveCliTeamDirectory {
+    final lt = launchTeam.trim();
+    if (lt.isNotEmpty) return lt;
+    return sessionTeam.trim();
+  }
 
   AppSession copyWith({
     String? sessionId,
@@ -62,6 +75,7 @@ class AppSession {
     List<String>? additionalPaths,
     String? display,
     String? sessionTeam,
+    String? launchTeam,
     AppSessionLaunchState? launchState,
     int? createdAt,
     int? updatedAt,
@@ -73,6 +87,7 @@ class AppSession {
       additionalPaths: additionalPaths ?? this.additionalPaths,
       display: display ?? this.display,
       sessionTeam: sessionTeam ?? this.sessionTeam,
+      launchTeam: launchTeam ?? this.launchTeam,
       launchState: launchState ?? this.launchState,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -88,6 +103,7 @@ class AppSession {
       'additionalPaths': additionalPaths,
       'display': display,
       'sessionTeam': sessionTeam,
+      if (launchTeam.isNotEmpty) 'launchTeam': launchTeam,
       'launchState': launchState.name,
       'createdAt': createdAt,
       'updatedAt': updatedAt,
@@ -105,6 +121,7 @@ class AppSession {
             listEquals(additionalPaths, other.additionalPaths) &&
             display == other.display &&
             sessionTeam == other.sessionTeam &&
+            launchTeam == other.launchTeam &&
             launchState == other.launchState &&
             createdAt == other.createdAt &&
             updatedAt == other.updatedAt;
@@ -118,6 +135,7 @@ class AppSession {
         Object.hashAll(additionalPaths),
         display,
         sessionTeam,
+        launchTeam,
         launchState,
         createdAt,
         updatedAt,

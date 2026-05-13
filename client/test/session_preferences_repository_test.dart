@@ -18,6 +18,7 @@ void main() {
 
     expect(loaded.cliExecutablePath, '');
     expect(loaded.autoLaunchAllMembersOnConnect, false);
+    expect(loaded.scopeSessionsToSelectedTeam, false);
   });
 
   test('round-trips through SharedPreferences', () async {
@@ -27,12 +28,14 @@ void main() {
     await repo.save(const SessionPreferences(
       cliExecutablePath: '/usr/local/bin/flashskyai',
       autoLaunchAllMembersOnConnect: true,
+      scopeSessionsToSelectedTeam: true,
     ));
 
     final loaded = await repo.load();
 
     expect(loaded.cliExecutablePath, '/usr/local/bin/flashskyai');
     expect(loaded.autoLaunchAllMembersOnConnect, true);
+    expect(loaded.scopeSessionsToSelectedTeam, true);
   });
 
   test('falls back to defaults on malformed JSON', () async {
@@ -46,6 +49,7 @@ void main() {
 
     expect(loaded.cliExecutablePath, '');
     expect(loaded.autoLaunchAllMembersOnConnect, false);
+    expect(loaded.scopeSessionsToSelectedTeam, false);
   });
 
   test('stores JSON under the documented key', () async {

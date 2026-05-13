@@ -168,10 +168,10 @@ class _ProjectList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final projects = context.select<ChatCubit, List<AppProject>>(
-      (cubit) => cubit.state.projects,
+      (cubit) => cubit.state.visibleProjects,
     );
     final sessions = context.select<ChatCubit, List<AppSession>>(
-      (cubit) => cubit.state.sessions,
+      (cubit) => cubit.state.visibleSessions,
     );
     final l10n = context.l10n;
 
@@ -290,8 +290,12 @@ class _ProjectGroupState extends State<_ProjectGroup> {
     String projectId,
   ) async {
     final repo = SessionRepository();
-    final session =
-        await context.read<ChatCubit>().createSession(projectId, repo);
+    final teamId = context.read<TeamCubit>().state.selectedTeam?.id ?? '';
+    final session = await context.read<ChatCubit>().createSession(
+          projectId,
+          repo,
+          sessionTeamId: teamId,
+        );
     if (!context.mounted) return;
     _navigateToSessionInChat(context, session);
   }

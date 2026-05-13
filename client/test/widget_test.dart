@@ -196,7 +196,7 @@ class TestChatCubit extends ChatCubit {
     List<AppProject> projects = const [],
     List<AppSession> sessions = const [],
   }) {
-    emit(state.copyWith(projects: projects, sessions: sessions));
+    ingestProjectSessionSnapshot(projects: projects, sessions: sessions);
   }
 }
 
@@ -588,7 +588,7 @@ void main() {
     final repo = SessionRepository(rootDir: tmp.path);
     final project = await repo.createProject('/wd');
     final session = await repo.createSession(project.projectId);
-    await repo.markSessionLaunched(session.sessionId, sessionTeam: 'cli-t');
+    await repo.markSessionLaunched(session.sessionId, launchTeam: 'cli-t');
 
     FakeTerminalSession? captured;
     final cubit = ChatCubit(
@@ -627,7 +627,7 @@ void main() {
       final repo = SessionRepository(rootDir: tmp.path);
       final project = await repo.createProject('/wd');
       final session = await repo.createSession(project.projectId);
-      await repo.markSessionLaunched(session.sessionId, sessionTeam: 'cli-t');
+      await repo.markSessionLaunched(session.sessionId, launchTeam: 'cli-t');
 
       FakeTerminalSession? captured;
       final cubit = ChatCubit(

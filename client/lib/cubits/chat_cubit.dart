@@ -74,6 +74,8 @@ class ChatState extends Equatable {
     this.activeTabIndex = 0,
     this.projects = const [],
     this.sessions = const [],
+    this.visibleProjects = const [],
+    this.visibleSessions = const [],
     this.activeSessionId,
     this.selectedMemberId = '',
     this.stateVersion = 0,
@@ -83,6 +85,8 @@ class ChatState extends Equatable {
   final int activeTabIndex;
   final List<AppProject> projects;
   final List<AppSession> sessions;
+  final List<AppProject> visibleProjects;
+  final List<AppSession> visibleSessions;
   final String? activeSessionId;
   final String selectedMemberId;
   final int stateVersion;
@@ -92,6 +96,8 @@ class ChatState extends Equatable {
     int? activeTabIndex,
     List<AppProject>? projects,
     List<AppSession>? sessions,
+    List<AppProject>? visibleProjects,
+    List<AppSession>? visibleSessions,
     String? activeSessionId,
     String? selectedMemberId,
     bool clearActiveSessionId = false,
@@ -102,6 +108,8 @@ class ChatState extends Equatable {
       activeTabIndex: activeTabIndex ?? this.activeTabIndex,
       projects: projects ?? this.projects,
       sessions: sessions ?? this.sessions,
+      visibleProjects: visibleProjects ?? this.visibleProjects,
+      visibleSessions: visibleSessions ?? this.visibleSessions,
       activeSessionId: clearActiveSessionId
           ? null
           : (activeSessionId ?? this.activeSessionId),
@@ -116,6 +124,8 @@ class ChatState extends Equatable {
     activeTabIndex,
     projects,
     sessions,
+    visibleProjects,
+    visibleSessions,
     activeSessionId,
     selectedMemberId,
     stateVersion,
@@ -145,6 +155,8 @@ class ChatCubit extends Cubit<ChatState> {
        super(const ChatState());
 
   final List<_InternalTab> _internalTabs = [];
+  var _scopeSessionsToSelectedTeam = false;
+  String? _selectedTeamId;
   final TerminalSessionFactory _terminalSessionFactory;
   final PostFrameScheduler _postFrameScheduler;
   final TempTeamCleaner? _tempTeamCleaner;
@@ -199,6 +211,52 @@ class ChatCubit extends Cubit<ChatState> {
     WidgetsBinding.instance.addPostFrameCallback((_) => callback());
   }
 
+  void setTeamSessionScope({
+    required bool scopeSessionsToSelectedTeam,
+    String? selectedTeamId,
+  }) {
+    final normalized =
+        (selectedTeamId != null && selectedTeamId.isNotEmpty)
+            ? selectedTeamId
+            : null;
+    if (_scopeSessionsToSelectedTeam == scopeSessionsToSelectedTeam &&
+        _selectedTeamId == normalized) {
+      return;
+    }
+    _scopeSessionsToSelectedTeam = scopeSessionsToSelectedTeam;
+    _selectedTeamId = normalized;
+    _refreshVisibleLists();
+  }
+
+  List<AppSession> _computeVisibleSessions(List<AppSession> all) {
+    if (!_scopeSessionsToSelectedTeam) return all;
+    final tid = _selectedTeamId;
+    if (tid == null || tid.isEmpty) return [];
+    return all.where((s) => s.sessionTeam == tid).toList();
+  }
+
+  List<AppProject> _computeVisibleProjects(
+    List<AppProject> all,
+    List<AppSession> visibleSessions,
+  ) {
+    if (!_scopeSessionsToSelectedTeam) return all;
+    return all
+        .where((p) => visibleSessions.any((s) => s.projectId == p.projectId))
+        .toList();
+  }
+
+  void _emitWithDerivedSessionsAndProjects(ChatState next) {
+    final visS = _computeVisibleSessions(next.sessions);
+    final visP = _computeVisibleProjects(next.projects, visS);
+    emit(next.copyWith(visibleSessions: visS, visibleProjects: visP));
+  }
+
+  void _refreshVisibleLists() {
+    final visS = _computeVisibleSessions(state.sessions);
+    final visP = _computeVisibleProjects(state.projects, visS);
+    emit(state.copyWith(visibleSessions: visS, visibleProjects: visP));
+  }
+
   _InternalTab? get _activeTab {
     if (_internalTabs.isEmpty) return null;
     final index = state.activeTabIndex.clamp(0, _internalTabs.length - 1);
@@ -215,24 +273,41 @@ class ChatCubit extends Cubit<ChatState> {
   Future<void> loadProjectData(SessionRepository repo) async {
     final projects = await repo.loadProjects();
     final sessions = await repo.loadSessions();
-    emit(state.copyWith(projects: projects, sessions: sessions));
+    _emitWithDerivedSessionsAndProjects(
+      state.copyWith(projects: projects, sessions: sessions),
+    );
+  }
+
+  /// Updates persisted-index mirrors in state and recomputes team-scoped sidebar lists.
+  void ingestProjectSessionSnapshot({
+    required List<AppProject> projects,
+    required List<AppSession> sessions,
+  }) {
+    _emitWithDerivedSessionsAndProjects(
+      state.copyWith(projects: projects, sessions: sessions),
+    );
   }
 
   Future<AppSession> createSession(
     String projectId,
-    SessionRepository repo,
-  ) async {
-    final session = await repo.createSession(projectId);
+    SessionRepository repo, {
+    String sessionTeamId = '',
+  }) async {
+    final session = await repo.createSession(
+      projectId,
+      sessionTeam: sessionTeamId,
+    );
     await loadProjectData(repo);
     return session;
   }
 
   Future<void> createProjectWithFirstSession(
     String primaryPath,
-    SessionRepository repo,
-  ) async {
+    SessionRepository repo, {
+    String sessionTeamId = '',
+  }) async {
     final project = await repo.createProject(primaryPath);
-    await repo.createSession(project.projectId);
+    await repo.createSession(project.projectId, sessionTeam: sessionTeamId);
     await loadProjectData(repo);
   }
 
@@ -265,10 +340,21 @@ class ChatCubit extends Cubit<ChatState> {
       title: session.resolveDisplayTitle(emptyDisplayTitleFallback),
       subtitle: session.primaryPath,
     );
-    final sessionTeamName = _assignSessionTeam(team);
+    final launched = session.launchState == AppSessionLaunchState.started;
+    final cliHasSession = _cliSessionDescriptorExists(
+      session.sessionId,
+      session.primaryPath,
+    );
+    final useResume = launched && cliHasSession;
+    final cliTeamDirName = useResume
+        ? () {
+            final d = session.effectiveCliTeamDirectory.trim();
+            return d.isNotEmpty ? d : _assignSessionTeam(team);
+          }()
+        : _assignSessionTeam(team);
     final internalTab = _InternalTab(
       info: info,
-      sessionTeamName: sessionTeamName,
+      sessionTeamName: cliTeamDirName,
     );
     if (team != null && member != null) {
       internalTab.memberShells[member.id] = ts;
@@ -285,12 +371,6 @@ class ChatCubit extends Cubit<ChatState> {
         selectedMemberId: internalTab.selectedMemberId,
       ),
     );
-    final launched = session.launchState == AppSessionLaunchState.started;
-    final cliHasSession = _cliSessionDescriptorExists(
-      session.sessionId,
-      session.primaryPath,
-    );
-    final useResume = launched && cliHasSession;
     if (connectImmediately) {
       _postFrameScheduler(() {
         try {
@@ -301,7 +381,7 @@ class ChatCubit extends Cubit<ChatState> {
             resumeSessionId: useResume ? session.sessionId : null,
             team: team,
             member: member,
-            sessionTeam: sessionTeamName,
+            sessionTeam: cliTeamDirName,
             extraEnvironment: _spawnEnvironment(),
             onProcessStarted: repo == null
                 ? null
@@ -310,22 +390,24 @@ class ChatCubit extends Cubit<ChatState> {
                       repo
                           .markSessionLaunched(
                             session.sessionId,
-                            sessionTeam: sessionTeamName,
+                            launchTeam: cliTeamDirName,
                           )
                           .then((_) {
                         if (isClosed) return;
                         final sessions = state.sessions.map((s) {
                           if (s.sessionId != session.sessionId) return s;
+                          final lt = cliTeamDirName.trim();
                           return s.copyWith(
                             launchState: AppSessionLaunchState.started,
-                            sessionTeam: sessionTeamName.trim().isNotEmpty
-                                ? sessionTeamName.trim()
-                                : s.sessionTeam,
+                            launchTeam:
+                                lt.isNotEmpty ? lt : s.launchTeam,
                             updatedAt:
                                 DateTime.now().millisecondsSinceEpoch,
                           );
                         }).toList();
-                        emit(state.copyWith(sessions: sessions));
+                        _emitWithDerivedSessionsAndProjects(
+                          state.copyWith(sessions: sessions),
+                        );
                       }),
                     );
                   },
@@ -402,7 +484,10 @@ class ChatCubit extends Cubit<ChatState> {
     if (_internalTabs.isNotEmpty) return;
     final cwd = Directory.current.path.trim();
     final project = await repo.createProject(cwd);
-    final session = await repo.createSession(project.projectId);
+    final session = await repo.createSession(
+      project.projectId,
+      sessionTeam: team.id,
+    );
     await loadProjectData(repo);
     if (isClosed) return;
     openSessionTab(
@@ -709,7 +794,9 @@ class ChatCubit extends Cubit<ChatState> {
         tab.info = tab.info.copyWith(title: newName);
       }
     }
-    emit(state.copyWith(sessions: sessions, tabs: tabs));
+    _emitWithDerivedSessionsAndProjects(
+      state.copyWith(sessions: sessions, tabs: tabs),
+    );
   }
 
   Future<void> deleteSession(SessionRepository repo, String sessionId) async {
@@ -731,7 +818,7 @@ class ChatCubit extends Cubit<ChatState> {
           ? idx
           : _internalTabs.length - 1;
       final nextTab = _internalTabs[newIdx];
-      emit(
+      _emitWithDerivedSessionsAndProjects(
         state.copyWith(
           sessions: sessions,
           tabs: tabs,
@@ -741,7 +828,7 @@ class ChatCubit extends Cubit<ChatState> {
         ),
       );
     } else if (_internalTabs.isEmpty) {
-      emit(
+      _emitWithDerivedSessionsAndProjects(
         state.copyWith(
           sessions: sessions,
           tabs: [],
@@ -750,7 +837,9 @@ class ChatCubit extends Cubit<ChatState> {
         ),
       );
     } else {
-      emit(state.copyWith(sessions: sessions, tabs: tabs));
+      _emitWithDerivedSessionsAndProjects(
+        state.copyWith(sessions: sessions, tabs: tabs),
+      );
     }
 
     await repo.deleteSession(sessionId);
@@ -865,8 +954,8 @@ class ChatCubit extends Cubit<ChatState> {
     final fallbackName = team?.name.trim().isNotEmpty == true
         ? team!.name
         : 'session';
-    // Persisted with launchState in [SessionRepository.markSessionLaunched] when the
-    // process starts ([openSessionTab] onProcessStarted).
+    // Persisted as [AppSession.launchTeam] via [SessionRepository.markSessionLaunched]
+    // when the process starts ([openSessionTab] onProcessStarted).
     return _allocSessionTeamName(fallbackName);
   }
 

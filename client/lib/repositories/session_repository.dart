@@ -216,6 +216,7 @@ class SessionRepository {
       additionalPaths: List<String>.from(project.additionalPaths),
       display: '',
       sessionTeam: sessionTeam,
+      launchTeam: '',
       launchState: AppSessionLaunchState.created,
       createdAt: now,
       updatedAt: now,
@@ -254,24 +255,24 @@ class SessionRepository {
     await _atomicWriteFile(file, jsonEncode(session.toJson()));
   }
 
-  /// Single read/write after the PTY process is up: persists [sessionTeam] (when
-  /// non-empty) and [AppSessionLaunchState.started] together to avoid lost updates
-  /// vs separate [updateSessionTeam] + [markSessionStarted] races.
+  /// Single read/write after the PTY process is up: persists [launchTeam] (when
+  /// non-empty) and [AppSessionLaunchState.started] together without overwriting
+  /// [AppSession.sessionTeam] (stable UI team id).
   Future<void> markSessionLaunched(
     String sessionId, {
-    required String sessionTeam,
+    required String launchTeam,
   }) {
     return _withSessionFile(sessionId, () async {
       final existing = await _readSession(sessionId);
       if (existing == null) return;
       final now = DateTime.now().millisecondsSinceEpoch;
-      final trimmedTeam = sessionTeam.trim();
+      final trimmed = launchTeam.trim();
       var next = existing.copyWith(
         launchState: AppSessionLaunchState.started,
         updatedAt: now,
       );
-      if (trimmedTeam.isNotEmpty) {
-        next = next.copyWith(sessionTeam: trimmedTeam, updatedAt: now);
+      if (trimmed.isNotEmpty) {
+        next = next.copyWith(launchTeam: trimmed, updatedAt: now);
       }
       if (next == existing) return;
       await _writeSession(next);
@@ -304,6 +305,7 @@ class SessionRepository {
     });
   }
 
+  /// Persists stable UI team id ([AppSession.sessionTeam], [TeamConfig.id]).
   Future<void> updateSessionTeam(String sessionId, String sessionTeam) {
     return _withSessionFile(sessionId, () async {
       final existing = await _readSession(sessionId);
@@ -332,6 +334,7 @@ class SessionRepository {
             await _writeSession(
               fresh.copyWith(
                 sessionTeam: '',
+                launchTeam: '',
                 updatedAt: DateTime.now().millisecondsSinceEpoch,
               ),
             );

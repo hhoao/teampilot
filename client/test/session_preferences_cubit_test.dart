@@ -60,6 +60,18 @@ void main() {
     expect(cubit.state.preferences.autoLaunchAllMembersOnConnect, true);
   });
 
+  test('setScopeSessionsToSelectedTeam persists the flag', () async {
+    final cubit = await makeCubit(located: null);
+    await cubit.load();
+    await cubit.setScopeSessionsToSelectedTeam(true);
+
+    expect(cubit.state.preferences.scopeSessionsToSelectedTeam, true);
+
+    final cubit2 = await makeCubit(located: null);
+    await cubit2.load();
+    expect(cubit2.state.preferences.scopeSessionsToSelectedTeam, true);
+  });
+
   test('setCliExecutablePath trims whitespace and treats blank as cleared',
       () async {
     final cubit = await makeCubit(located: '/located');

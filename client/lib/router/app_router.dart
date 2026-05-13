@@ -6,6 +6,8 @@ import 'package:go_router/go_router.dart';
 import '../cubits/chat_cubit.dart';
 import '../cubits/config_cubit.dart';
 import '../cubits/layout_cubit.dart';
+import '../cubits/session_preferences_cubit.dart';
+import '../cubits/team_cubit.dart';
 import '../pages/chat_page.dart';
 import '../pages/config_workspace.dart';
 import '../pages/skill_management_page.dart';
@@ -21,6 +23,16 @@ final appRouter = GoRouter(
       builder: (context, state, child) {
         final layoutCubit = context.watch<LayoutCubit>();
         final preferences = layoutCubit.state.preferences;
+        final scopeOn = context
+            .watch<SessionPreferencesCubit>()
+            .state
+            .preferences
+            .scopeSessionsToSelectedTeam;
+        final selectedTeam = context.watch<TeamCubit>().state.selectedTeam;
+        context.read<ChatCubit>().setTeamSessionScope(
+          scopeSessionsToSelectedTeam: scopeOn,
+          selectedTeamId: selectedTeam?.id,
+        );
         return Scaffold(
           body: SafeArea(
             child: preferences.contextSidebarVisible
@@ -97,9 +109,11 @@ final appRouter = GoRouter(
 Future<void> _createProject(BuildContext context) async {
   final dir = await FilePicker.platform.getDirectoryPath();
   if (dir != null && context.mounted) {
+    final teamId = context.read<TeamCubit>().state.selectedTeam?.id ?? '';
     await context.read<ChatCubit>().createProjectWithFirstSession(
       dir,
       SessionRepository(),
+      sessionTeamId: teamId,
     );
   }
 }

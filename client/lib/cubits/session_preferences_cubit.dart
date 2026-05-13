@@ -59,6 +59,12 @@ class SessionPreferencesCubit extends Cubit<SessionPreferencesState> {
     );
   }
 
+  Future<void> setScopeSessionsToSelectedTeam(bool value) {
+    return _save(
+      state.preferences.copyWith(scopeSessionsToSelectedTeam: value),
+    );
+  }
+
   /// Returns the actual executable string to invoke:
   ///   1. user-configured path (if non-empty after trim)
   ///   2. path discovered at startup (if non-null and non-empty)

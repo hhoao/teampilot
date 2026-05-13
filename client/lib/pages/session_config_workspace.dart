@@ -180,6 +180,17 @@ class _SessionControlsState extends State<_SessionControls> {
                   onChanged: (value) =>
                       widget.cubit.setAutoLaunchAllMembersOnConnect(value),
                 ),
+                showDividerBelow: true,
+              ),
+              SettingsLabeledRow(
+                title: l10n.scopeSessionsToSelectedTeamTitle,
+                subtitle: l10n.scopeSessionsToSelectedTeamDescription,
+                trailing: Switch(
+                  key: AppKeys.scopeSessionsToSelectedTeamSwitch,
+                  value: state.preferences.scopeSessionsToSelectedTeam,
+                  onChanged: (value) =>
+                      widget.cubit.setScopeSessionsToSelectedTeam(value),
+                ),
                 showDividerBelow: false,
               ),
             ],
