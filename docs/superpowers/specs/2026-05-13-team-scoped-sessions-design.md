@@ -10,8 +10,9 @@
 
 - 新增会话设置 `scopeSessionsToSelectedTeam` 控制该模式。
 - 该设置默认值为 `false`，保证旧版本数据和现有使用方式兼容。
-- 开启后，新建 session 会写入当前选中的 `TeamConfig.id`。
-- 左侧边栏只列出 `AppSession.sessionTeam` 与当前 team id 匹配的 session。
+- 新建 session 默认写入当前选中的 `TeamConfig.id`，作为稳定的 team 归属。
+- 开关开启后，左侧边栏只列出 `AppSession.sessionTeam` 与当前 team id 匹配的
+  session。
 - 项目只有在当前 team 下存在可见 session 时才显示。
 - 切换 team 时，可见项目/会话列表会立即按新的 team 重新过滤，但不会修改
   已保存的全局 session 数据。
@@ -54,8 +55,9 @@
 - 为当前 workspace 创建默认的持久化 chat tab
 - 新建项目时创建第一个 session
 
-即使 team 作用域模式关闭，也可以继续给新 session 写入当前 team id。这样
-用户之后开启该模式时，已有的新会话能立即出现在预期的 team 下。
+team id 写入不受 `scopeSessionsToSelectedTeam` 开关影响。开关只控制左侧边栏
+是否过滤显示；这样用户之后开启该模式时，已有的新会话能立即出现在预期的
+team 下。
 
 ## 错误处理
 
