@@ -1,6 +1,10 @@
+import 'dart:io';
+
 import 'package:flashskyai_client/cubits/chat_cubit.dart';
 import 'package:flashskyai_client/models/app_project.dart';
 import 'package:flashskyai_client/models/app_session.dart';
+import 'package:flashskyai_client/models/team_config.dart';
+import 'package:flashskyai_client/repositories/session_repository.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 String _executable() => 'flashskyai';
@@ -189,6 +193,44 @@ void main() {
         selectedTeamId: 'beta',
       );
       expect(cubit.state.visibleSessions.length, 2);
+    });
+  });
+
+  group('connectSession', () {
+    late Directory tmp;
+    late SessionRepository repo;
+    late ChatCubit cubit;
+
+    setUp(() async {
+      TestWidgetsFlutterBinding.ensureInitialized();
+      tmp = await Directory.systemTemp.createTemp('chat_conn_');
+      repo = SessionRepository(rootDir: tmp.path);
+      cubit = ChatCubit(
+        executableResolver: () => 'true',
+        sessionRepository: repo,
+        postFrameScheduler: (c) => c(),
+      );
+    });
+
+    tearDown(() async {
+      await cubit.close();
+      if (tmp.existsSync()) {
+        await tmp.delete(recursive: true);
+      }
+    });
+
+    test('materializes tab when selectedMemberId is empty', () async {
+      const team = TeamConfig(
+        id: 'team-a',
+        name: 'A',
+        members: [
+          TeamMemberConfig(id: 'm-lead', name: 'team-lead'),
+        ],
+      );
+      expect(cubit.state.selectedMemberId, '');
+      await cubit.connectSession(team);
+      expect(cubit.state.tabs.length, 1);
+      expect(cubit.state.selectedMemberId, 'm-lead');
     });
   });
 }

@@ -225,6 +225,7 @@ void main() {
       executableResolver: _testExecutable,
       terminalSessionFactory: FakeTerminalSession.new,
       postFrameScheduler: (callback) => callback(),
+      sessionRepository: _widgetTestSessionRepo,
     );
     await pumpDesktopApp(tester, teamCubit, chatCubit: chatCubit);
     await tester.pump();
@@ -242,19 +243,20 @@ void main() {
       findsOneWidget,
     );
     expect(find.text('team-lead'), findsWidgets);
-    expect(chatCubit.state.tabs.length, 1);
-    final teamId = teamCubit.state.selectedTeam!.id;
-    expect(chatCubit.state.tabs.single.id, 'local-$teamId');
-    expect(
-      chatCubit.state.tabs.single.subtitle,
-      'local session',
-    );
+    expect(chatCubit.state.tabs.length, 0);
+    expect(find.text('Terminal not connected'), findsOneWidget);
 
-    await tester.tap(find.byKey(AppKeys.memberRow('team-lead')));
+    await tester.tap(find.widgetWithText(FilledButton, 'Connect'));
     await tester.pump();
-
+    for (var i = 0; i < 40; i++) {
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 50)),
+      );
+      await tester.pump();
+      if (chatCubit.state.tabs.isNotEmpty) break;
+    }
     expect(chatCubit.state.tabs.length, 1);
-    expect(chatCubit.state.tabs.single.id, 'local-$teamId');
+    expect(chatCubit.state.tabs.single.id.startsWith('local-'), isFalse);
     expect(chatCubit.isMemberRunning('team-lead'), isTrue);
   });
 

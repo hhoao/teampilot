@@ -54,24 +54,12 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
   );
 
   var _handledRouteSession = false;
-  var _defaultPersistedTabRequested = false;
-  var _priorTabCount = 0;
   StreamSubscription<ChatState>? _chatSub;
-
-  Future<void> _bootstrapDefaultPersistedTab() async {
-    if (!mounted) return;
-    final team = context.read<TeamCubit>().state.selectedTeam;
-    final chat = context.read<ChatCubit>();
-    if (team == null) return;
-    await chat.ensureSessionTab(team);
-    if (mounted) setState(() {});
-  }
 
   @override
   void initState() {
     super.initState();
     final chatCubit = context.read<ChatCubit>();
-    _priorTabCount = chatCubit.state.tabs.length;
     _chatSub = chatCubit.stream.listen(_onChatState);
     _consumeRouteSession(chatCubit.state);
   }
@@ -169,15 +157,6 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
 
   void _onChatState(ChatState state) {
     if (!mounted) return;
-    final previousTabCount = _priorTabCount;
-    final tabCount = state.tabs.length;
-    if (widget.sessionId == null &&
-        previousTabCount > 0 &&
-        tabCount == 0 &&
-        _defaultPersistedTabRequested) {
-      _defaultPersistedTabRequested = false;
-    }
-    _priorTabCount = tabCount;
     setState(() {});
     _consumeRouteSession(state);
   }
@@ -245,11 +224,32 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
         return const Center(child: CircularProgressIndicator());
       }
     } else if (chatCubit.state.tabs.isEmpty) {
-      if (!_defaultPersistedTabRequested) {
-        _defaultPersistedTabRequested = true;
-        unawaited(_bootstrapDefaultPersistedTab());
+      void onConnect() {
+        unawaited(() async {
+          await chatCubit.connectSession(team);
+          if (mounted) setState(() {});
+        }());
       }
-      return const Center(child: CircularProgressIndicator());
+
+      return Container(
+        key: AppKeys.chatWorkspace,
+        color: colors.workspaceBackground,
+        child: Column(
+          children: [
+            _NoSessionToolbar(
+              colors: colors,
+              memberName: chatCubit.selectedMemberName(team),
+              onConnect: onConnect,
+            ),
+            Expanded(
+              child: Container(
+                color: const Color(0xFF0A0C10),
+                child: _TerminalPlaceholder(onConnect: onConnect),
+              ),
+            ),
+          ],
+        ),
+      );
     }
 
     final session = chatCubit.ensureSession(team) ?? chatCubit.currentSession;
@@ -338,6 +338,68 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
                         }());
                       },
                     ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _NoSessionToolbar extends StatelessWidget {
+  const _NoSessionToolbar({
+    required this.colors,
+    required this.memberName,
+    required this.onConnect,
+  });
+
+  final AppColors colors;
+  final String memberName;
+  final VoidCallback onConnect;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 34,
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      decoration: BoxDecoration(
+        color: colors.surfaceVariant,
+        border: Border(bottom: BorderSide(color: colors.subtleBorder)),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            Icons.terminal,
+            size: 14,
+            color: colors.emptyMessageText,
+          ),
+          const SizedBox(width: 6),
+          Text(
+            'disconnected',
+            style: TextStyle(
+              fontSize: 11,
+              color: Colors.white.withValues(alpha: 0.68),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Text(
+            '→ $memberName',
+            style: TextStyle(
+              fontSize: 11,
+              color: Colors.white.withValues(alpha: 0.4),
+            ),
+          ),
+          const Spacer(),
+          SizedBox(
+            height: 22,
+            child: TextButton.icon(
+              onPressed: onConnect,
+              icon: const Icon(Icons.play_arrow, size: 14),
+              label: const Text('Connect', style: TextStyle(fontSize: 11)),
+              style: TextButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                minimumSize: const Size(0, 22),
+              ),
             ),
           ),
         ],

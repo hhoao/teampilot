@@ -422,59 +422,6 @@ class ChatCubit extends Cubit<ChatState> {
     }
   }
 
-  /// When [SessionRepository] is available, materializes a persisted project
-  /// (primary path = [Directory.current]) and session instead of a `local-*` tab.
-  Future<void> ensureSessionTab(TeamConfig team, [SessionRepository? repo]) async {
-    final r = repo ?? _sessionRepository;
-    if (_internalTabs.isNotEmpty) {
-      final tab = _activeTab!;
-      emit(
-        state.copyWith(
-          tabs: _visibleTabs(),
-          activeSessionId: tab.info.id,
-          selectedMemberId: tab.selectedMemberId,
-        ),
-      );
-      return;
-    }
-    if (r != null) {
-      final lead =
-          team.members.where((m) => m.name == 'team-lead').toList();
-      if (lead.isEmpty) return;
-      try {
-        await _materializeDefaultWorkspaceSession(
-          team,
-          r,
-          connectImmediately: false,
-          memberForInitialShell: lead.first,
-        );
-      } on Object catch (e, st) {
-        appLogger.e('ensureSessionTab: default session failed: $e', stackTrace: st);
-        return;
-      }
-      if (isClosed) return;
-      final tab = _activeTab;
-      if (tab == null) return;
-      emit(
-        state.copyWith(
-          tabs: _visibleTabs(),
-          activeSessionId: tab.info.id,
-          selectedMemberId: tab.selectedMemberId,
-        ),
-      );
-      return;
-    }
-    _appendLocalTab(team, emitChange: true);
-    final tab = _activeTab!;
-    emit(
-      state.copyWith(
-        tabs: _visibleTabs(),
-        activeSessionId: tab.info.id,
-        selectedMemberId: tab.selectedMemberId,
-      ),
-    );
-  }
-
   Future<void> _materializeDefaultWorkspaceSession(
     TeamConfig team,
     SessionRepository repo, {
@@ -732,8 +679,11 @@ class ChatCubit extends Cubit<ChatState> {
       return;
     }
 
-    final memberId = state.selectedMemberId;
+    var memberId = state.selectedMemberId;
     if (memberId.isEmpty) {
+      memberId = _defaultMemberId(team);
+    }
+    if (memberId.isEmpty || team.members.isEmpty) {
       final session = ensureSession(team);
       session?.terminal.write('\r\n[No member selected]\r\n');
       return;
