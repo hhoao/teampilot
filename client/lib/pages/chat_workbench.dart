@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:xterm/xterm.dart';
 
@@ -24,6 +25,8 @@ class ChatWorkbench extends StatefulWidget {
 }
 
 class _ChatWorkbenchState extends State<ChatWorkbench> {
+  final _terminalController = TerminalController();
+
   static const _terminalTheme = TerminalTheme(
     cursor: Color(0xFFAEAFAD),
     selection: Color(0x40AEAFAD),
@@ -75,8 +78,93 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
 
   @override
   void dispose() {
+    _terminalController.dispose();
     _chatSub?.cancel();
     super.dispose();
+  }
+
+  Future<void> _showTerminalContextMenu({
+    required BuildContext menuContext,
+    required Offset globalPosition,
+    required Terminal terminal,
+    required bool sessionRunning,
+    required VoidCallback onDisconnect,
+    required Future<void> Function() onRestart,
+  }) async {
+    final mloc = MaterialLocalizations.of(menuContext);
+    final hasSelection = _terminalController.selection != null;
+    final entries = <PopupMenuEntry<String>>[
+      PopupMenuItem(value: 'paste', child: Text(mloc.pasteButtonLabel)),
+      PopupMenuItem(
+        value: 'copy',
+        enabled: hasSelection,
+        child: Text(mloc.copyButtonLabel),
+      ),
+      PopupMenuItem(value: 'selectAll', child: Text(mloc.selectAllButtonLabel)),
+      const PopupMenuItem(
+        value: 'clearSelection',
+        child: Text('Clear selection'),
+      ),
+    ];
+    if (sessionRunning) {
+      entries.add(const PopupMenuDivider());
+      entries.add(
+        const PopupMenuItem(value: 'disconnect', child: Text('Disconnect')),
+      );
+      entries.add(
+        const PopupMenuItem(value: 'restart', child: Text('Restart session')),
+      );
+    }
+
+    final overlayObject =
+        Overlay.maybeOf(menuContext)?.context.findRenderObject();
+    if (overlayObject is! RenderBox) return;
+
+    final anchor = overlayObject.globalToLocal(globalPosition);
+    final selected = await showMenu<String>(
+      context: menuContext,
+      position: RelativeRect.fromRect(
+        Rect.fromPoints(anchor, anchor),
+        Offset.zero & overlayObject.size,
+      ),
+      items: entries,
+    );
+    if (!menuContext.mounted) return;
+    switch (selected) {
+      case 'paste':
+        final data = await Clipboard.getData(Clipboard.kTextPlain);
+        final text = data?.text;
+        if (text != null && text.isNotEmpty) {
+          terminal.paste(text);
+          _terminalController.clearSelection();
+        }
+      case 'copy':
+        final sel = _terminalController.selection;
+        if (sel != null) {
+          final text = terminal.buffer.getText(sel);
+          await Clipboard.setData(ClipboardData(text: text));
+        }
+      case 'selectAll':
+        _terminalController.setSelection(
+          terminal.buffer.createAnchor(
+            0,
+            terminal.buffer.height - terminal.viewHeight,
+          ),
+          terminal.buffer.createAnchor(
+            terminal.viewWidth,
+            terminal.buffer.height - 1,
+          ),
+          mode: SelectionMode.line,
+        );
+      case 'clearSelection':
+        _terminalController.clearSelection();
+      case 'disconnect':
+        onDisconnect();
+      case 'restart':
+        await onRestart();
+      default:
+        break;
+    }
   }
 
   void _onChatState(ChatState state) {
@@ -203,6 +291,7 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
               child: session.isRunning
                   ? TerminalView(
                       session.terminal,
+                      controller: _terminalController,
                       theme: _terminalTheme,
                       backgroundOpacity: 0.98,
                       padding: const EdgeInsets.all(16),
@@ -222,6 +311,24 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
                         ],
                       ),
                       autofocus: true,
+                      onSecondaryTapUp: (details, _) {
+                        unawaited(
+                          _showTerminalContextMenu(
+                            menuContext: context,
+                            globalPosition: details.globalPosition,
+                            terminal: session.terminal,
+                            sessionRunning: session.isRunning,
+                            onDisconnect: () {
+                              chatCubit.disconnectSession();
+                              setState(() {});
+                            },
+                            onRestart: () async {
+                              await chatCubit.restartSession(team);
+                              if (mounted) setState(() {});
+                            },
+                          ),
+                        );
+                      },
                     )
                   : _TerminalPlaceholder(
                       onConnect: () {
