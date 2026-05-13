@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:xterm/xterm.dart';
@@ -5,6 +7,9 @@ import 'package:xterm/xterm.dart';
 import '../cubits/chat_cubit.dart';
 import '../cubits/team_cubit.dart';
 import '../l10n/app_localizations.dart';
+import '../models/app_session.dart';
+import '../models/team_config.dart';
+import '../repositories/session_repository.dart';
 import '../services/terminal_session.dart';
 import '../theme/app_theme.dart';
 import '../utils/app_keys.dart';
@@ -47,37 +52,76 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
 
   TerminalSession? _session;
   var _ensuredLocalSession = false;
+  StreamSubscription<ChatState>? _chatSub;
+  var _handledRouteSession = false;
 
   @override
   void initState() {
     super.initState();
-    // If sessionId is provided, open it
-    if (widget.sessionId != null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        final chatCubit = context.read<ChatCubit>();
-        final l10n = AppLocalizations.of(context);
-        final sessions = chatCubit.state.sessions;
-        final session = sessions.firstWhere(
-          (s) => s.sessionId == widget.sessionId,
-          orElse: () => sessions.first,
-        );
-        if (sessions.isNotEmpty) {
-          chatCubit.openSessionTab(
-            session,
-            emptyDisplayTitleFallback: l10n.defaultNewChatSessionTitle,
-          );
-        }
-      });
-    }
-    context.read<ChatCubit>().stream.listen(_onCubitChanged);
+    final chatCubit = context.read<ChatCubit>();
+    _chatSub = chatCubit.stream.listen(_onChatState);
+    _consumeRouteSession(chatCubit.state);
   }
 
-  void _onCubitChanged(ChatState state) {
+  @override
+  void dispose() {
+    _chatSub?.cancel();
+    super.dispose();
+  }
+
+  void _onChatState(ChatState state) {
     if (!mounted) return;
     setState(() {
       _session = context.read<ChatCubit>().currentSession;
     });
+    _consumeRouteSession(state);
+  }
+
+  void _consumeRouteSession(ChatState state) {
+    final routeId = widget.sessionId;
+    if (routeId == null || _handledRouteSession || !mounted) return;
+
+    AppSession? session;
+    for (final s in state.sessions) {
+      if (s.sessionId == routeId) {
+        session = s;
+        break;
+      }
+    }
+    if (session == null) return;
+
+    _handledRouteSession = true;
+    final chatCubit = context.read<ChatCubit>();
+    final teamCubit = context.read<TeamCubit>();
+    final team = teamCubit.state.selectedTeam;
+    final l10n = AppLocalizations.of(context);
+    final repo = context.read<SessionRepository>();
+
+    chatCubit.selectSession(session.sessionId);
+
+    final lead = team != null
+        ? team.members.where((m) => m.name == 'team-lead').toList()
+        : <TeamMemberConfig>[];
+    if (team != null && lead.isNotEmpty) {
+      chatCubit.openSessionTab(
+        session,
+        team: team,
+        member: lead.first,
+        repo: repo,
+        emptyDisplayTitleFallback: l10n.defaultNewChatSessionTitle,
+      );
+    } else {
+      chatCubit.openSessionTab(
+        session,
+        repo: repo,
+        emptyDisplayTitleFallback: l10n.defaultNewChatSessionTitle,
+      );
+      if (team != null) {
+        chatCubit.addSystemMessage(
+          'FlashskyAI requires a member named team-lead.',
+        );
+      }
+    }
   }
 
   @override

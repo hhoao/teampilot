@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flashskyai_client/l10n/app_localizations.dart';
 import 'package:flashskyai_client/cubits/chat_cubit.dart';
 import 'package:flashskyai_client/cubits/config_cubit.dart';
 import 'package:flashskyai_client/cubits/layout_cubit.dart';
@@ -9,11 +10,13 @@ import 'package:flashskyai_client/cubits/team_cubit.dart';
 import 'package:flashskyai_client/main.dart';
 import 'package:flashskyai_client/models/layout_preferences.dart';
 import 'package:flashskyai_client/models/llm_config.dart';
-import 'package:flashskyai_client/models/session.dart';
+import 'package:flashskyai_client/models/app_project.dart';
+import 'package:flashskyai_client/models/app_session.dart';
 import 'package:flashskyai_client/models/team_config.dart';
 import 'package:flashskyai_client/repositories/app_settings_repository.dart';
 import 'package:flashskyai_client/repositories/layout_repository.dart';
 import 'package:flashskyai_client/repositories/session_preferences_repository.dart';
+import 'package:flashskyai_client/repositories/session_repository.dart';
 import 'package:flashskyai_client/repositories/team_repository.dart';
 import 'package:flashskyai_client/services/terminal_session.dart';
 import 'package:flashskyai_client/theme/app_theme.dart';
@@ -25,6 +28,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 String _testExecutable() => 'flashskyai';
 
+late Directory _widgetTestSessionRepoDir;
+late SessionRepository _widgetTestSessionRepo;
+
 Widget buildTestApp({
   required TeamCubit teamCubit,
   required SessionPreferencesCubit sessionPreferencesCubit,
@@ -32,18 +38,29 @@ Widget buildTestApp({
   LayoutCubit? layoutCubit,
   LlmConfigCubit? llmConfigCubit,
 }) {
-  return MultiBlocProvider(
-    providers: [
-      BlocProvider.value(value: teamCubit),
-      BlocProvider.value(
-          value: chatCubit ?? ChatCubit(executableResolver: _testExecutable)),
-      BlocProvider(create: (_) => ConfigCubit()),
-      BlocProvider.value(value: llmConfigCubit ?? testLlmConfigCubit()),
-      BlocProvider.value(value: layoutCubit ?? LayoutCubit()),
-      BlocProvider.value(value: sessionPreferencesCubit),
-    ],
-    child: const FlashskyAiClientApp(),
+  return RepositoryProvider<SessionRepository>.value(
+    value: _widgetTestSessionRepo,
+    child: MultiBlocProvider(
+      providers: [
+        BlocProvider.value(value: teamCubit),
+        BlocProvider.value(
+            value: chatCubit ?? ChatCubit(executableResolver: _testExecutable)),
+        BlocProvider(create: (_) => ConfigCubit()),
+        BlocProvider.value(value: llmConfigCubit ?? testLlmConfigCubit()),
+        BlocProvider.value(value: layoutCubit ?? LayoutCubit()),
+        BlocProvider.value(value: sessionPreferencesCubit),
+      ],
+      child: const FlashskyAiClientApp(),
+    ),
   );
+}
+
+/// Drives a few frames without [pumpAndSettle], which can time out when the
+/// tree keeps scheduling work (e.g. router + split layout + terminal).
+Future<void> pumpPhaseTransitions(WidgetTester tester) async {
+  for (var i = 0; i < 12; i++) {
+    await tester.pump(const Duration(milliseconds: 50));
+  }
 }
 
 Future<void> pumpDesktopApp(
@@ -58,8 +75,8 @@ Future<void> pumpDesktopApp(
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.resetPhysicalSize);
   addTearDown(tester.view.resetDevicePixelRatio);
-  final sessionCubit =
-      sessionPreferencesCubit ?? await testSessionPreferencesCubit();
+  final sessionCubit = sessionPreferencesCubit ??
+      (await tester.runAsync(testSessionPreferencesCubit))!;
   await tester.pumpWidget(
     buildTestApp(
       teamCubit: teamCubit,
@@ -69,7 +86,10 @@ Future<void> pumpDesktopApp(
       llmConfigCubit: llmConfigCubit,
     ),
   );
-  await tester.pumpAndSettle();
+  // Avoid pumpAndSettle: router + split-view can schedule frames indefinitely in tests.
+  await tester.pump();
+  await tester.pump(const Duration(milliseconds: 100));
+  await tester.pump(const Duration(milliseconds: 100));
 }
 
 LlmConfigCubit testLlmConfigCubit({LlmConfig initialConfig = const LlmConfig()}) {
@@ -91,7 +111,9 @@ Future<SessionPreferencesCubit> testSessionPreferencesCubit() async {
 
 Future<TeamCubit> createTeamCubit({TeamLauncher? launcher}) async {
   final tmp = await Directory.systemTemp.createTemp('teams_widget_');
-  final repository = TeamRepository(rootDir: tmp.path);
+  final cliTmp = await Directory.systemTemp.createTemp('teams_widget_cli_');
+  final repository =
+      TeamRepository(rootDir: tmp.path, cliTeamsDir: cliTmp.path);
   final cubit = TeamCubit(
     repository: repository,
     executableResolver: _testExecutable,
@@ -101,6 +123,17 @@ Future<TeamCubit> createTeamCubit({TeamLauncher? launcher}) async {
   return cubit;
 }
 
+/// [testWidgets] uses a fake-async zone; futures from real disk I/O (temp dirs,
+/// team JSON) must be created inside [WidgetTester.runAsync] or they never complete.
+Future<TeamCubit> createTeamCubitInTest(
+  WidgetTester tester, {
+  TeamLauncher? launcher,
+}) async {
+  final cubit = await tester.runAsync(() => createTeamCubit(launcher: launcher));
+  expect(cubit, isNotNull);
+  return cubit!;
+}
+
 class FakeTerminalSession extends TerminalSession {
   FakeTerminalSession({String executable = 'flashskyai'})
       : super(executable: executable);
@@ -108,19 +141,36 @@ class FakeTerminalSession extends TerminalSession {
   var _running = false;
   final connectedMembers = <String>[];
   final resumedSessions = <String>[];
+  final lastFixedSessionIds = <String?>[];
+  final lastResumeSessionIds = <String?>[];
+  final lastAdditionalDirectoriesLists = <List<String>>[];
 
   @override
   bool get isRunning => _running;
 
   @override
-  void connect({required String workingDirectory, String? resumeSessionId, TeamConfig? team, TeamMemberConfig? member, String? sessionTeam, Map<String, String>? extraEnvironment}) {
+  void connect({
+    required String workingDirectory,
+    List<String> additionalDirectories = const [],
+    String? fixedSessionId,
+    String? resumeSessionId,
+    TeamConfig? team,
+    TeamMemberConfig? member,
+    String? sessionTeam,
+    Map<String, String>? extraEnvironment,
+    void Function()? onProcessStarted,
+  }) {
+    lastFixedSessionIds.add(fixedSessionId);
+    lastResumeSessionIds.add(resumeSessionId);
+    lastAdditionalDirectoriesLists.add(List<String>.from(additionalDirectories));
     _running = true;
-    if (resumeSessionId != null) {
+    if (resumeSessionId != null && resumeSessionId.isNotEmpty) {
       resumedSessions.add(resumeSessionId);
     }
     if (member != null) {
       connectedMembers.add(member.id);
     }
+    onProcessStarted?.call();
   }
 
   @override
@@ -142,18 +192,35 @@ class TestChatCubit extends ChatCubit {
         postFrameScheduler: (callback) => callback(),
       );
 
-  void seedSessions(List<FlashskySession> sessions) {
-    emit(state.copyWith(sessions: sessions));
+  void seedChatData({
+    List<AppProject> projects = const [],
+    List<AppSession> sessions = const [],
+  }) {
+    emit(state.copyWith(projects: projects, sessions: sessions));
   }
 }
 
 void main() {
+  setUpAll(() async {
+    _widgetTestSessionRepoDir =
+        await Directory.systemTemp.createTemp('widget_sess_repo_');
+    _widgetTestSessionRepo =
+        SessionRepository(rootDir: _widgetTestSessionRepoDir.path);
+  });
+  tearDownAll(() {
+    try {
+      if (_widgetTestSessionRepoDir.existsSync()) {
+        _widgetTestSessionRepoDir.deleteSync(recursive: true);
+      }
+    } on Object catch (_) {}
+  });
+
   setUp(() {
     SharedPreferences.setMockInitialValues({});
   });
 
   testWidgets('renders chat workbench shell on initial route', (tester) async {
-    final teamCubit = await createTeamCubit();
+    final teamCubit = await createTeamCubitInTest(tester);
     final chatCubit = ChatCubit(
       executableResolver: _testExecutable,
       terminalSessionFactory: FakeTerminalSession.new,
@@ -167,27 +234,32 @@ void main() {
     expect(find.byKey(AppKeys.membersPanel), findsOneWidget);
     expect(find.byKey(AppKeys.fileTreePanel), findsOneWidget);
     expect(find.text('Default Team'), findsWidgets);
-    expect(find.text('Team Sessions'), findsOneWidget);
+    final sidebarCtx = tester.element(find.byKey(AppKeys.contextSidebar));
+    expect(
+      find.text(AppLocalizations.of(sidebarCtx).projects),
+      findsOneWidget,
+    );
     expect(find.text('team-lead'), findsWidgets);
     expect(chatCubit.state.tabs.length, 1);
-    expect(chatCubit.state.tabs.single.id, 'local-default');
+    final teamId = teamCubit.state.selectedTeam!.id;
+    expect(chatCubit.state.tabs.single.id, 'local-$teamId');
 
     await tester.tap(find.byKey(AppKeys.memberRow('team-lead')));
     await tester.pump();
 
     expect(chatCubit.state.tabs.length, 1);
-    expect(chatCubit.state.tabs.single.id, 'local-default');
+    expect(chatCubit.state.tabs.single.id, 'local-$teamId');
     expect(chatCubit.isMemberRunning('team-lead'), isTrue);
   });
 
   testWidgets('renders settings shell with title bar and icon navigation', (
     tester,
   ) async {
-    final teamCubit = await createTeamCubit();
+    final teamCubit = await createTeamCubitInTest(tester);
     await pumpDesktopApp(tester, teamCubit);
 
     await tester.tap(find.byKey(AppKeys.sidebarSettingsButton));
-    await tester.pumpAndSettle();
+    await pumpPhaseTransitions(tester);
 
     expect(
       find.text('Manage FlashskyAI team and model settings.'),
@@ -198,11 +270,11 @@ void main() {
   });
 
   testWidgets('settings pages use the global component theme', (tester) async {
-    final teamCubit = await createTeamCubit();
+    final teamCubit = await createTeamCubitInTest(tester);
     await pumpDesktopApp(tester, teamCubit);
 
     await tester.tap(find.byKey(AppKeys.sidebarSettingsButton));
-    await tester.pumpAndSettle();
+    await pumpPhaseTransitions(tester);
 
     final settingsTheme = Theme.of(
       tester.element(find.byKey(AppKeys.configWorkspace)),
@@ -218,7 +290,7 @@ void main() {
     expect(filledButtonColor, appColors.accentBlue);
 
     await tester.tap(find.byKey(AppKeys.configLlmSectionButton));
-    await tester.pumpAndSettle();
+    await pumpPhaseTransitions(tester);
 
     final providerList = tester.widget<Container>(
       find.byKey(AppKeys.llmProviderList),
@@ -230,16 +302,30 @@ void main() {
   testWidgets('opening a sidebar session starts team-lead member shell', (
     tester,
   ) async {
-    final teamCubit = await createTeamCubit();
+    final teamCubit = await createTeamCubitInTest(tester);
     final chatCubit = TestChatCubit();
-    chatCubit.seedSessions(const [
-      FlashskySession(
-        sessionId: 'session-1',
-        cwd: '/work/current',
-        kind: 'interactive',
-        display: 'Session One',
-      ),
-    ]);
+    const projectId = 'proj-test-1';
+    chatCubit.seedChatData(
+      projects: const [
+        AppProject(
+          projectId: projectId,
+          primaryPath: '/work/current',
+          createdAt: 1,
+          updatedAt: 1,
+          sessionIds: ['session-1'],
+        ),
+      ],
+      sessions: const [
+        AppSession(
+          sessionId: 'session-1',
+          projectId: projectId,
+          primaryPath: '/work/current',
+          display: 'Session One',
+          createdAt: 1,
+          updatedAt: 1,
+        ),
+      ],
+    );
 
     await pumpDesktopApp(tester, teamCubit, chatCubit: chatCubit);
 
@@ -270,7 +356,9 @@ void main() {
 
   test('team cubit manages teams', () async {
     final tmp = await Directory.systemTemp.createTemp('teams_cubit_');
-    final repository = TeamRepository(rootDir: tmp.path);
+    final cliTmp = await Directory.systemTemp.createTemp('teams_cubit_cli_');
+    final repository =
+        TeamRepository(rootDir: tmp.path, cliTeamsDir: cliTmp.path);
     final cubit = TeamCubit(
       repository: repository,
       executableResolver: _testExecutable,
@@ -423,11 +511,14 @@ void main() {
         terminalSessionFactory: FakeTerminalSession.new,
         postFrameScheduler: (callback) => callback(),
       );
-      const session = FlashskySession(
+      const projectId = 'proj-test-2';
+      const session = AppSession(
         sessionId: 'session-1',
-        cwd: '/tmp',
-        kind: 'interactive',
+        projectId: projectId,
+        primaryPath: '/tmp',
         display: 'Session One',
+        createdAt: 1,
+        updatedAt: 1,
       );
       final team = TeamConfig(
         id: 'test-team',
@@ -450,6 +541,109 @@ void main() {
       expect(cubit.isMemberRunning('dev'), isTrue);
     },
   );
+
+  test('openSessionTab first launch uses session-id not resume', () async {
+    final tmp = await Directory.systemTemp.createTemp('open_sess_');
+    addTearDown(() => tmp.deleteSync(recursive: true));
+    final repo = SessionRepository(rootDir: tmp.path);
+    final project = await repo.createProject('/wd');
+    final session = await repo.createSession(project.projectId);
+    FakeTerminalSession? captured;
+    final cubit = ChatCubit(
+      executableResolver: _testExecutable,
+      terminalSessionFactory: ({required String executable}) {
+        captured = FakeTerminalSession(executable: executable);
+        return captured!;
+      },
+      postFrameScheduler: (c) => c(),
+    );
+    await cubit.loadProjectData(repo);
+    final team = TeamConfig(
+      id: 'tid',
+      name: 'TName',
+      members: const [
+        TeamMemberConfig(id: 'lid', name: 'team-lead'),
+      ],
+    );
+    cubit.openSessionTab(
+      session,
+      team: team,
+      member: team.members.first,
+      repo: repo,
+    );
+    expect(captured, isNotNull);
+    expect(captured!.lastResumeSessionIds.last, isNull);
+    expect(captured!.lastFixedSessionIds.last, session.sessionId);
+  });
+
+  test('openSessionTab started session uses resume not session-id', () async {
+    final tmp = await Directory.systemTemp.createTemp('open_sess_');
+    addTearDown(() => tmp.deleteSync(recursive: true));
+    final repo = SessionRepository(rootDir: tmp.path);
+    final project = await repo.createProject('/wd');
+    final session = await repo.createSession(project.projectId);
+    await repo.markSessionLaunched(session.sessionId, sessionTeam: 'cli-t');
+
+    FakeTerminalSession? captured;
+    final cubit = ChatCubit(
+      executableResolver: _testExecutable,
+      terminalSessionFactory: ({required String executable}) {
+        captured = FakeTerminalSession(executable: executable);
+        return captured!;
+      },
+      postFrameScheduler: (c) => c(),
+    );
+    await cubit.loadProjectData(repo);
+    final rel = cubit.state.sessions.single;
+    final team = TeamConfig(
+      id: 'tid',
+      name: 'TName',
+      members: const [
+        TeamMemberConfig(id: 'lid', name: 'team-lead'),
+      ],
+    );
+    cubit.openSessionTab(
+      rel,
+      team: team,
+      member: team.members.first,
+      repo: repo,
+    );
+    expect(captured!.lastResumeSessionIds.last, session.sessionId);
+    expect(captured!.lastFixedSessionIds.last, isNull);
+  });
+
+  test('openSessionTab passes session additionalDirectories to connect', () async {
+    final tmp = await Directory.systemTemp.createTemp('open_sess_');
+    addTearDown(() => tmp.deleteSync(recursive: true));
+    final repo = SessionRepository(rootDir: tmp.path);
+    final project = await repo.createProject('/root', additionalPaths: const ['/extra']);
+    final session = await repo.createSession(project.projectId);
+    FakeTerminalSession? captured;
+    final cubit = ChatCubit(
+      executableResolver: _testExecutable,
+      terminalSessionFactory: ({required String executable}) {
+        captured = FakeTerminalSession(executable: executable);
+        return captured!;
+      },
+      postFrameScheduler: (c) => c(),
+    );
+    await cubit.loadProjectData(repo);
+    final rel = cubit.state.sessions.single;
+    final team = TeamConfig(
+      id: 'tid',
+      name: 'TName',
+      members: const [
+        TeamMemberConfig(id: 'lid', name: 'team-lead'),
+      ],
+    );
+    cubit.openSessionTab(
+      rel,
+      team: team,
+      member: team.members.first,
+      repo: repo,
+    );
+    expect(captured!.lastAdditionalDirectoriesLists.last, ['/extra']);
+  });
 
   test('llm config cubit manages providers and models', () {
     final cubit = testLlmConfigCubit(

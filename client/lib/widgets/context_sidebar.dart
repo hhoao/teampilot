@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -8,7 +9,8 @@ import 'package:go_router/go_router.dart';
 import '../cubits/chat_cubit.dart';
 import '../cubits/team_cubit.dart';
 import '../l10n/app_localizations.dart';
-import '../models/session.dart';
+import '../models/app_project.dart';
+import '../models/app_session.dart';
 import '../models/team_config.dart';
 import '../repositories/session_repository.dart';
 import '../theme/app_theme.dart';
@@ -100,23 +102,46 @@ class _ContextSidebarState extends State<ContextSidebar> {
   }
 }
 
+/// Most recently touched session time for a project (for ordering).
+int _projectRecency(AppProject project, List<AppSession> allSessions) {
+  var max = project.updatedAt;
+  for (final s in allSessions) {
+    if (s.projectId != project.projectId) continue;
+    final t = s.updatedAt != 0 ? s.updatedAt : s.createdAt;
+    if (t > max) max = t;
+  }
+  return max;
+}
+
+List<AppSession> _sessionsForProject(AppProject project, List<AppSession> all) {
+  final byId = {for (final s in all) s.sessionId: s};
+  final ordered = <AppSession>[];
+  for (final id in project.sessionIds) {
+    final s = byId[id];
+    if (s != null) ordered.add(s);
+  }
+  for (final s in all) {
+    if (s.projectId != project.projectId) continue;
+    if (ordered.any((x) => x.sessionId == s.sessionId)) continue;
+    ordered.add(s);
+  }
+  return ordered;
+}
+
 class _ProjectList extends StatelessWidget {
   const _ProjectList();
 
   @override
   Widget build(BuildContext context) {
-    final sessions = context.select<ChatCubit, List<FlashskySession>>(
+    final projects = context.select<ChatCubit, List<AppProject>>(
+      (cubit) => cubit.state.projects,
+    );
+    final sessions = context.select<ChatCubit, List<AppSession>>(
       (cubit) => cubit.state.sessions,
     );
     final l10n = context.l10n;
 
-    // Group sessions by cwd
-    final groups = <String, List<FlashskySession>>{};
-    for (final s in sessions) {
-      groups.putIfAbsent(s.cwd, () => []).add(s);
-    }
-
-    if (groups.isEmpty) {
+    if (projects.isEmpty) {
       return Padding(
         padding: const EdgeInsets.only(top: 16),
         child: Text(
@@ -133,29 +158,21 @@ class _ProjectList extends StatelessWidget {
       );
     }
 
-    // Sort groups by the most recent session in each group
-    final sortedEntries = groups.entries.toList()
-      ..sort((a, b) {
-        final aMax = a.value
-            .map((s) => s.startedAt)
-            .reduce((x, y) => x > y ? x : y);
-        final bMax = b.value
-            .map((s) => s.startedAt)
-            .reduce((x, y) => x > y ? x : y);
-        return bMax.compareTo(aMax);
-      });
+    final sorted = List<AppProject>.from(projects)
+      ..sort((a, b) => _projectRecency(b, sessions).compareTo(_projectRecency(a, sessions)));
 
     return ListView.builder(
-      itemCount: sortedEntries.length,
+      itemCount: sorted.length,
       itemBuilder: (context, index) {
-        final entry = sortedEntries[index];
+        final project = sorted[index];
+        final list = _sessionsForProject(project, sessions);
         return Padding(
           padding: EdgeInsets.only(
-            bottom: index == sortedEntries.length - 1 ? 0 : 10,
+            bottom: index == sorted.length - 1 ? 0 : 10,
           ),
           child: _ProjectGroup(
-            cwd: entry.key,
-            sessions: entry.value,
+            project: project,
+            sessions: list,
           ),
         );
       },
@@ -164,43 +181,52 @@ class _ProjectList extends StatelessWidget {
 }
 
 class _ProjectGroup extends StatefulWidget {
-  const _ProjectGroup({required this.cwd, required this.sessions});
+  const _ProjectGroup({required this.project, required this.sessions});
 
-  final String cwd;
-  final List<FlashskySession> sessions;
+  final AppProject project;
+  final List<AppSession> sessions;
 
   @override
   State<_ProjectGroup> createState() => _ProjectGroupState();
 }
 
 class _ProjectGroupState extends State<_ProjectGroup> {
-  var _expanded = false;
+  late bool _expanded;
+
+  @override
+  void initState() {
+    super.initState();
+    _expanded = widget.sessions.isNotEmpty;
+  }
 
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final dirName = widget.cwd.isNotEmpty
-        ? widget.cwd.split(Platform.pathSeparator).last
-        : l10n.unknownFolder;
+    final p = widget.project;
+    final displayName = p.effectiveDisplay.isNotEmpty
+        ? p.effectiveDisplay
+        : (p.primaryPath.isNotEmpty
+            ? p.primaryPath.split(Platform.pathSeparator).last
+            : l10n.unknownFolder);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _ProjectHeader(
-          name: dirName,
-          path: widget.cwd,
+          name: displayName,
+          path: p.primaryPath,
           sessionCount: widget.sessions.length,
           expanded: _expanded,
           onToggle: () => setState(() => _expanded = !_expanded),
-          onNewSession: () => _createSession(context, widget.cwd),
-          onOpenFolder: widget.cwd.isNotEmpty
-              ? () => _openFolder(widget.cwd)
+          onNewSession: () => _createSession(context, p.projectId),
+          onOpenFolder: p.primaryPath.isNotEmpty
+              ? () => _openFolder(p.primaryPath)
               : null,
-          onCopyPath: widget.cwd.isNotEmpty
-              ? () => _copyPath(widget.cwd)
+          onCopyPath: p.primaryPath.isNotEmpty
+              ? () => _copyPath(p.primaryPath)
               : null,
-          onDelete: widget.cwd.isNotEmpty
-              ? () => _confirmDeleteProject(context, widget.cwd, dirName)
+          onDelete: p.projectId.isNotEmpty
+              ? () => _confirmDeleteProject(context, p, displayName)
               : null,
         ),
         if (_expanded)
@@ -221,8 +247,13 @@ class _ProjectGroupState extends State<_ProjectGroup> {
     );
   }
 
-  void _createSession(BuildContext context, String cwd) {
-    context.read<ChatCubit>().createSession(cwd, const SessionRepository());
+  void _createSession(BuildContext context, String projectId) {
+    unawaited(
+      context.read<ChatCubit>().createSession(
+            projectId,
+            SessionRepository(),
+          ),
+    );
   }
 
   void _openFolder(String path) {
@@ -247,7 +278,7 @@ class _ProjectGroupState extends State<_ProjectGroup> {
 
   void _confirmDeleteProject(
     BuildContext context,
-    String cwd,
+    AppProject project,
     String name,
   ) {
     final l10n = context.l10n;
@@ -266,11 +297,12 @@ class _ProjectGroupState extends State<_ProjectGroup> {
               backgroundColor: Theme.of(context).colorScheme.error,
             ),
             onPressed: () {
-              final cubit = context.read<ChatCubit>();
-              final repo = const SessionRepository();
-              for (final s in widget.sessions) {
-                cubit.deleteSession(repo, s.sessionId);
-              }
+              unawaited(
+                context.read<ChatCubit>().deleteProject(
+                      SessionRepository(),
+                      project.projectId,
+                    ),
+              );
               Navigator.of(ctx).pop();
             },
             child: Text(l10n.delete),
@@ -473,7 +505,7 @@ class _ProjectHeaderState extends State<_ProjectHeader> {
 class _SessionTileEntry extends StatefulWidget {
   const _SessionTileEntry({required this.session});
 
-  final FlashskySession session;
+  final AppSession session;
 
   @override
   State<_SessionTileEntry> createState() => _SessionTileEntryState();
@@ -517,13 +549,13 @@ class _SessionTileEntryState extends State<_SessionTileEntry> {
               session,
               team: matchingTeam,
               member: lead.first,
-              repo: const SessionRepository(),
+              repo: context.read<SessionRepository>(),
               emptyDisplayTitleFallback: l10n.defaultNewChatSessionTitle,
             );
           } else {
             chatCubit.openSessionTab(
               session,
-              repo: const SessionRepository(),
+              repo: context.read<SessionRepository>(),
               emptyDisplayTitleFallback: l10n.defaultNewChatSessionTitle,
             );
             chatCubit.addSystemMessage(
@@ -574,7 +606,7 @@ class _SessionTileEntryState extends State<_SessionTileEntry> {
 
   void _showRenameDialog(
     BuildContext context,
-    FlashskySession session,
+    AppSession session,
     AppLocalizations l10n,
   ) {
     final controller = TextEditingController(
@@ -592,10 +624,12 @@ class _SessionTileEntryState extends State<_SessionTileEntry> {
           ),
           onSubmitted: (value) {
             if (value.trim().isNotEmpty) {
-              context.read<ChatCubit>().renameSession(
-                const SessionRepository(),
-                session.sessionId,
-                value.trim(),
+              unawaited(
+                context.read<ChatCubit>().renameSession(
+                  SessionRepository(),
+                  session.sessionId,
+                  value.trim(),
+                ),
               );
             }
             Navigator.of(ctx).pop();
@@ -610,10 +644,12 @@ class _SessionTileEntryState extends State<_SessionTileEntry> {
             onPressed: () {
               final value = controller.text.trim();
               if (value.isNotEmpty) {
-                context.read<ChatCubit>().renameSession(
-                  const SessionRepository(),
-                  session.sessionId,
-                  value,
+                unawaited(
+                  context.read<ChatCubit>().renameSession(
+                    SessionRepository(),
+                    session.sessionId,
+                    value,
+                  ),
                 );
               }
               Navigator.of(ctx).pop();
@@ -627,7 +663,7 @@ class _SessionTileEntryState extends State<_SessionTileEntry> {
 
   void _showDeleteDialog(
     BuildContext context,
-    FlashskySession session,
+    AppSession session,
     AppLocalizations l10n,
   ) {
     final name = session.resolveDisplayTitle(l10n.defaultNewChatSessionTitle);
@@ -646,9 +682,11 @@ class _SessionTileEntryState extends State<_SessionTileEntry> {
               backgroundColor: Theme.of(context).colorScheme.error,
             ),
             onPressed: () {
-              context.read<ChatCubit>().deleteSession(
-                const SessionRepository(),
-                session.sessionId,
+              unawaited(
+                context.read<ChatCubit>().deleteSession(
+                  SessionRepository(),
+                  session.sessionId,
+                ),
               );
               Navigator.of(ctx).pop();
             },

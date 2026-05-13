@@ -22,54 +22,49 @@ class TerminalSession {
   var _running = false;
   var _starting = false;
   Map<String, String>? _extraEnvironment;
+  VoidCallback? _onProcessStarted;
 
   bool get isRunning => _running || _starting;
 
   void connect({
     required String workingDirectory,
+    List<String> additionalDirectories = const [],
+    String? fixedSessionId,
     String? resumeSessionId,
     TeamConfig? team,
     TeamMemberConfig? member,
     String? sessionTeam,
     Map<String, String>? extraEnvironment,
+    VoidCallback? onProcessStarted,
   }) {
     if (_running || _starting) {
       disconnect();
     }
     _extraEnvironment = extraEnvironment;
+    _onProcessStarted = onProcessStarted;
 
     final args = <String>[];
-    if (workingDirectory.isNotEmpty) {
-      args.addAll(['--dir', workingDirectory]);
-    }
-    if (resumeSessionId != null) {
-      args.addAll(['--resume', resumeSessionId]);
-    }
     if (team != null && member != null) {
-      final teamFlag = sessionTeam ?? team.name.trim();
-      args.addAll(['--team', teamFlag, '--member', member.name.trim()]);
-      final loop = team.loop;
-      if (loop != null) {
-        args.addAll(['--loop', loop ? 'true' : 'false']);
-      }
-      if (member.provider.trim().isNotEmpty) {
-        args.addAll(['--provider', member.provider.trim()]);
-      }
-      if (member.model.trim().isNotEmpty) {
-        args.addAll(['--model', member.model.trim()]);
-      }
-      if (member.agent.trim().isNotEmpty) {
-        args.addAll(['--agent', member.agent.trim()]);
-      }
-      if (member.dangerouslySkipPermissions) {
-        args.add('--dangerously-skip-permissions');
-      }
-      if (team.extraArgs.trim().isNotEmpty) {
-        args.addAll(LaunchCommandBuilder.splitArgs(team.extraArgs.trim()));
-      }
-      if (member.extraArgs.trim().isNotEmpty) {
-        args.addAll(LaunchCommandBuilder.splitArgs(member.extraArgs.trim()));
-      }
+      args.addAll(
+        LaunchCommandBuilder.buildArguments(
+          team,
+          member,
+          sessionTeam: sessionTeam,
+          workingDirectory: workingDirectory,
+          additionalDirectories: additionalDirectories,
+          fixedSessionId: fixedSessionId,
+          resumeSessionId: resumeSessionId,
+        ),
+      );
+    } else {
+      args.addAll(
+        LaunchCommandBuilder.buildSessionPrefixArgs(
+          workingDirectory: workingDirectory.isNotEmpty ? workingDirectory : null,
+          additionalDirectories: additionalDirectories,
+          fixedSessionId: fixedSessionId,
+          resumeSessionId: resumeSessionId,
+        ),
+      );
     }
 
     _starting = true;
@@ -125,6 +120,8 @@ class TerminalSession {
 
       _running = true;
       _starting = false;
+      _onProcessStarted?.call();
+      _onProcessStarted = null;
     } on Object catch (error) {
       terminal.write('\r\n[Failed to start flashskyai: $error]\r\n');
       _running = false;
@@ -151,6 +148,7 @@ class TerminalSession {
   void disconnect() {
     _running = false;
     _starting = false;
+    _onProcessStarted = null;
     terminal.onOutput = null;
     terminal.onResize = null;
     _pty?.kill();

@@ -68,7 +68,7 @@ void main() async {
   await windowManager.setPreventClose(true);
   windowManager.addListener(_CleanupWindowListener(tempTeamCleaner));
 
-  final sessionRepo = const SessionRepository();
+  final sessionRepo = SessionRepository();
 
   final teamRepo = TeamRepository();
 
@@ -114,21 +114,24 @@ void main() async {
   await layoutCubit.load();
   await sessionPreferencesCubit.load();
   await llmConfigCubit.load();
-  chatCubit.loadSessions(sessionRepo);
+  chatCubit.loadProjectData(sessionRepo);
   unawaited(skillCubit.loadAll());
 
   runApp(
-    MultiBlocProvider(
-      providers: [
-        BlocProvider.value(value: teamCubit),
-        BlocProvider.value(value: chatCubit),
-        BlocProvider.value(value: configCubit),
-        BlocProvider.value(value: llmConfigCubit),
-        BlocProvider.value(value: layoutCubit),
-        BlocProvider.value(value: sessionPreferencesCubit),
-        BlocProvider.value(value: skillCubit),
-      ],
-      child: const FlashskyAiClientApp(),
+    RepositoryProvider<SessionRepository>.value(
+      value: sessionRepo,
+      child: MultiBlocProvider(
+        providers: [
+          BlocProvider.value(value: teamCubit),
+          BlocProvider.value(value: chatCubit),
+          BlocProvider.value(value: configCubit),
+          BlocProvider.value(value: llmConfigCubit),
+          BlocProvider.value(value: layoutCubit),
+          BlocProvider.value(value: sessionPreferencesCubit),
+          BlocProvider.value(value: skillCubit),
+        ],
+        child: const FlashskyAiClientApp(),
+      ),
     ),
   );
 }

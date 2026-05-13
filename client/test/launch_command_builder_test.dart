@@ -159,4 +159,53 @@ void main() {
       '/opt/custom/flashskyai --team agent --member planner',
     );
   });
+
+  group('buildSessionPrefixArgs', () {
+    test('--resume wins over fixed session id', () {
+      expect(
+        LaunchCommandBuilder.buildSessionPrefixArgs(
+          workingDirectory: '/w',
+          additionalDirectories: const ['/a'],
+          fixedSessionId: '11111111-1111-1111-1111-111111111111',
+          resumeSessionId: '22222222-2222-2222-2222-222222222222',
+        ),
+        [
+          '--resume',
+          '22222222-2222-2222-2222-222222222222',
+          '--dir',
+          '/w',
+          '--add-dir',
+          '/a',
+        ],
+      );
+    });
+
+    test('first launch uses --session-id only', () {
+      expect(
+        LaunchCommandBuilder.buildSessionPrefixArgs(
+          workingDirectory: '/w',
+          additionalDirectories: const ['/extra'],
+          fixedSessionId: '33333333-3333-3333-3333-333333333333',
+          resumeSessionId: null,
+        ),
+        [
+          '--session-id',
+          '33333333-3333-3333-3333-333333333333',
+          '--dir',
+          '/w',
+          '--add-dir',
+          '/extra',
+        ],
+      );
+    });
+
+    test('resume-only omits session-id', () {
+      expect(
+        LaunchCommandBuilder.buildSessionPrefixArgs(
+          resumeSessionId: '44444444-4444-4444-4444-444444444444',
+        ),
+        ['--resume', '44444444-4444-4444-4444-444444444444'],
+      );
+    });
+  });
 }

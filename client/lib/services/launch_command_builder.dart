@@ -16,17 +16,54 @@ typedef ProcessStarter =
 class LaunchCommandBuilder {
   const LaunchCommandBuilder._();
 
+  /// CLI flags for `--resume` / `--session-id`, `--dir`, and repeated `--add-dir`.
+  /// When [resumeSessionId] is non-empty, `--resume` wins over [fixedSessionId].
+  static List<String> buildSessionPrefixArgs({
+    String? workingDirectory,
+    List<String> additionalDirectories = const [],
+    String? fixedSessionId,
+    String? resumeSessionId,
+  }) {
+    final args = <String>[];
+    final resume = resumeSessionId?.trim() ?? '';
+    final fixed = fixedSessionId?.trim() ?? '';
+    if (resume.isNotEmpty) {
+      args.addAll(['--resume', resume]);
+    } else if (fixed.isNotEmpty) {
+      args.addAll(['--session-id', fixed]);
+    }
+    final wd = workingDirectory ?? '';
+    if (wd.isNotEmpty) {
+      args.addAll(['--dir', wd]);
+    }
+    for (final path in additionalDirectories) {
+      final t = path.trim();
+      if (t.isNotEmpty) {
+        args.addAll(['--add-dir', t]);
+      }
+    }
+    return args;
+  }
+
   static List<String> buildArguments(
     TeamConfig team,
     TeamMemberConfig member, {
     String? sessionTeam,
     String? workingDirectory,
+    List<String> additionalDirectories = const [],
+    String? fixedSessionId,
+    String? resumeSessionId,
   }) {
     final teamFlag = sessionTeam ?? team.name.trim();
     final wd = workingDirectory ?? '';
 
     final args = <String>[
-      if (wd.isNotEmpty) ...['--dir', wd],
+      ...buildSessionPrefixArgs(
+        workingDirectory: wd.isNotEmpty ? wd : null,
+        additionalDirectories: additionalDirectories,
+        fixedSessionId: fixedSessionId,
+        resumeSessionId: resumeSessionId,
+      ),
       '--team',
       teamFlag,
       '--member',
@@ -65,10 +102,21 @@ class LaunchCommandBuilder {
     TeamMemberConfig member, {
     String? sessionTeam,
     required String executable,
+    List<String> additionalDirectories = const [],
+    String? fixedSessionId,
+    String? resumeSessionId,
   }) {
     return [
       executable,
-      ...buildArguments(team, member, sessionTeam: sessionTeam, workingDirectory: ''),
+      ...buildArguments(
+        team,
+        member,
+        sessionTeam: sessionTeam,
+        workingDirectory: '',
+        additionalDirectories: additionalDirectories,
+        fixedSessionId: fixedSessionId,
+        resumeSessionId: resumeSessionId,
+      ),
     ].map(_quoteForPreview).join(' ');
   }
 
@@ -126,11 +174,22 @@ class LaunchCommandBuilder {
     required String executable,
     String? sessionTeam,
     String? workingDirectory,
+    List<String> additionalDirectories = const [],
+    String? fixedSessionId,
+    String? resumeSessionId,
     Map<String, String>? extraEnvironment,
     ProcessStarter starter = Process.start,
   }) async {
     final wd = workingDirectory ?? '';
-    final args = buildArguments(team, member, sessionTeam: sessionTeam, workingDirectory: wd);
+    final args = buildArguments(
+      team,
+      member,
+      sessionTeam: sessionTeam,
+      workingDirectory: wd,
+      additionalDirectories: additionalDirectories,
+      fixedSessionId: fixedSessionId,
+      resumeSessionId: resumeSessionId,
+    );
     final env = extraEnvironment;
 
     if (Platform.isLinux) {

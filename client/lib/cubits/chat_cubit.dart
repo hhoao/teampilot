@@ -5,7 +5,8 @@ import 'package:equatable/equatable.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../models/session.dart';
+import '../models/app_project.dart';
+import '../models/app_session.dart';
 import '../models/team_config.dart';
 import '../repositories/session_repository.dart';
 import '../services/temp_team_cleaner.dart';
@@ -66,6 +67,7 @@ class ChatState extends Equatable {
   const ChatState({
     this.tabs = const [],
     this.activeTabIndex = 0,
+    this.projects = const [],
     this.sessions = const [],
     this.activeSessionId,
     this.selectedMemberId = '',
@@ -74,7 +76,8 @@ class ChatState extends Equatable {
 
   final List<ChatTabInfo> tabs;
   final int activeTabIndex;
-  final List<FlashskySession> sessions;
+  final List<AppProject> projects;
+  final List<AppSession> sessions;
   final String? activeSessionId;
   final String selectedMemberId;
   final int stateVersion;
@@ -82,7 +85,8 @@ class ChatState extends Equatable {
   ChatState copyWith({
     List<ChatTabInfo>? tabs,
     int? activeTabIndex,
-    List<FlashskySession>? sessions,
+    List<AppProject>? projects,
+    List<AppSession>? sessions,
     String? activeSessionId,
     String? selectedMemberId,
     bool clearActiveSessionId = false,
@@ -91,6 +95,7 @@ class ChatState extends Equatable {
     return ChatState(
       tabs: tabs ?? this.tabs,
       activeTabIndex: activeTabIndex ?? this.activeTabIndex,
+      projects: projects ?? this.projects,
       sessions: sessions ?? this.sessions,
       activeSessionId: clearActiveSessionId
           ? null
@@ -104,6 +109,7 @@ class ChatState extends Equatable {
   List<Object?> get props => [
     tabs,
     activeTabIndex,
+    projects,
     sessions,
     activeSessionId,
     selectedMemberId,
@@ -193,20 +199,28 @@ class ChatCubit extends Cubit<ChatState> {
     return memberShell ?? tab.resumeSession;
   }
 
-  Future<void> loadSessions(SessionRepository repo) async {
+  Future<void> loadProjectData(SessionRepository repo) async {
+    final projects = await repo.loadProjects();
     final sessions = await repo.loadSessions();
-    emit(state.copyWith(sessions: sessions));
+    emit(state.copyWith(projects: projects, sessions: sessions));
   }
 
-  Future<void> createSession(String cwd, SessionRepository repo) async {
-    final session = await repo.createSession(cwd);
-    final sessions = [...state.sessions, session]
-      ..sort((a, b) => b.startedAt.compareTo(a.startedAt));
-    emit(state.copyWith(sessions: sessions));
+  Future<void> createSession(String projectId, SessionRepository repo) async {
+    await repo.createSession(projectId);
+    await loadProjectData(repo);
+  }
+
+  Future<void> createProjectWithFirstSession(
+    String primaryPath,
+    SessionRepository repo,
+  ) async {
+    final project = await repo.createProject(primaryPath);
+    await repo.createSession(project.projectId);
+    await loadProjectData(repo);
   }
 
   void openSessionTab(
-    FlashskySession session, {
+    AppSession session, {
     TeamConfig? team,
     TeamMemberConfig? member,
     SessionRepository? repo,
@@ -231,9 +245,9 @@ class ChatCubit extends Cubit<ChatState> {
     final info = ChatTabInfo(
       id: session.sessionId,
       title: session.resolveDisplayTitle(emptyDisplayTitleFallback),
-      subtitle: session.cwd,
+      subtitle: session.primaryPath,
     );
-    final sessionTeamName = _assignSessionTeam(session.sessionId, team, repo);
+    final sessionTeamName = _assignSessionTeam(team);
     final internalTab = _InternalTab(
       info: info,
       sessionTeamName: sessionTeamName,
@@ -253,14 +267,44 @@ class ChatCubit extends Cubit<ChatState> {
         selectedMemberId: internalTab.selectedMemberId,
       ),
     );
+    final useResume = session.launchState == AppSessionLaunchState.started;
     _postFrameScheduler(() {
       try {
         ts.connect(
-          workingDirectory: session.cwd,
+          workingDirectory: session.primaryPath,
+          additionalDirectories: session.additionalPaths,
+          fixedSessionId: useResume ? null : session.sessionId,
+          resumeSessionId: useResume ? session.sessionId : null,
           team: team,
           member: member,
           sessionTeam: sessionTeamName,
           extraEnvironment: _spawnEnvironment(),
+          onProcessStarted: repo == null
+              ? null
+              : () {
+                  unawaited(
+                    repo
+                        .markSessionLaunched(
+                          session.sessionId,
+                          sessionTeam: sessionTeamName,
+                        )
+                        .then((_) {
+                      if (isClosed) return;
+                      final sessions = state.sessions.map((s) {
+                        if (s.sessionId != session.sessionId) return s;
+                        return s.copyWith(
+                          launchState: AppSessionLaunchState.started,
+                          sessionTeam: sessionTeamName.trim().isNotEmpty
+                              ? sessionTeamName.trim()
+                              : s.sessionTeam,
+                          updatedAt:
+                              DateTime.now().millisecondsSinceEpoch,
+                        );
+                      }).toList();
+                      emit(state.copyWith(sessions: sessions));
+                    }),
+                  );
+                },
         );
         _updateTabRunning(info.id);
       } on Object catch (e) {
@@ -533,7 +577,7 @@ class ChatCubit extends Cubit<ChatState> {
     emit(state.copyWith(sessions: sessions, tabs: tabs));
   }
 
-  void deleteSession(SessionRepository repo, String sessionId) {
+  Future<void> deleteSession(SessionRepository repo, String sessionId) async {
     final wasActive = state.activeSessionId == sessionId;
     final sessions = state.sessions
         .where((s) => s.sessionId != sessionId)
@@ -574,7 +618,24 @@ class ChatCubit extends Cubit<ChatState> {
       emit(state.copyWith(sessions: sessions, tabs: tabs));
     }
 
-    repo.deleteSession(sessionId);
+    await repo.deleteSession(sessionId);
+    await loadProjectData(repo);
+  }
+
+  Future<void> deleteProject(SessionRepository repo, String projectId) async {
+    AppProject? project;
+    for (final p in state.projects) {
+      if (p.projectId == projectId) {
+        project = p;
+        break;
+      }
+    }
+    if (project == null) return;
+    for (final sid in project.sessionIds.toList()) {
+      await deleteSession(repo, sid);
+    }
+    await repo.deleteProject(projectId);
+    await loadProjectData(repo);
   }
 
   void selectSession(String sessionId) {
@@ -640,19 +701,13 @@ class ChatCubit extends Cubit<ChatState> {
     );
   }
 
-  String _assignSessionTeam(
-    String sessionId,
-    TeamConfig? team,
-    SessionRepository? repo,
-  ) {
+  String _assignSessionTeam(TeamConfig? team) {
     final fallbackName = team?.name.trim().isNotEmpty == true
         ? team!.name
         : 'session';
-    final name = _allocSessionTeamName(fallbackName);
-    if (repo != null) {
-      repo.updateSessionTeam(sessionId, name);
-    }
-    return name;
+    // Persisted with launchState in [SessionRepository.markSessionLaunched] when the
+    // process starts ([openSessionTab] onProcessStarted).
+    return _allocSessionTeamName(fallbackName);
   }
 
   String _defaultMemberId(TeamConfig team) {

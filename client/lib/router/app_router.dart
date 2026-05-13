@@ -97,9 +97,9 @@ final appRouter = GoRouter(
 Future<void> _createProject(BuildContext context) async {
   final dir = await FilePicker.platform.getDirectoryPath();
   if (dir != null && context.mounted) {
-    context.read<ChatCubit>().createSession(
+    await context.read<ChatCubit>().createProjectWithFirstSession(
       dir,
-      const SessionRepository(),
+      SessionRepository(),
     );
   }
 }
