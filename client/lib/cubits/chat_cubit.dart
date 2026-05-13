@@ -215,9 +215,13 @@ class ChatCubit extends Cubit<ChatState> {
     emit(state.copyWith(projects: projects, sessions: sessions));
   }
 
-  Future<void> createSession(String projectId, SessionRepository repo) async {
-    await repo.createSession(projectId);
+  Future<AppSession> createSession(
+    String projectId,
+    SessionRepository repo,
+  ) async {
+    final session = await repo.createSession(projectId);
     await loadProjectData(repo);
+    return session;
   }
 
   Future<void> createProjectWithFirstSession(

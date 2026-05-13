@@ -21,6 +21,40 @@ import '../widgets/dropdown/flashskyai_dropdown_decoration.dart';
 /// Matches [_ProjectHeader] label start: `padding.left` + chevron + gap + folder + gap.
 const double _kSidebarTreeTextInset = 12 + 16 + 6 + 16 + 6;
 
+void _navigateToSessionInChat(BuildContext context, AppSession session) {
+  final l10n = context.l10n;
+  final teamCubit = context.read<TeamCubit>();
+  final chatCubit = context.read<ChatCubit>();
+
+  chatCubit.selectSession(session.sessionId);
+
+  final matchingTeam = teamCubit.state.selectedTeam;
+  if (matchingTeam == null) return;
+
+  final lead = matchingTeam.members.where((m) => m.name == 'team-lead');
+  final repo = context.read<SessionRepository>();
+  if (lead.isNotEmpty) {
+    chatCubit.openSessionTab(
+      session,
+      team: matchingTeam,
+      member: lead.first,
+      repo: repo,
+      emptyDisplayTitleFallback: l10n.defaultNewChatSessionTitle,
+    );
+  } else {
+    chatCubit.openSessionTab(
+      session,
+      repo: repo,
+      emptyDisplayTitleFallback: l10n.defaultNewChatSessionTitle,
+    );
+    chatCubit.addSystemMessage(
+      'FlashskyAI requires a member named team-lead.',
+    );
+  }
+
+  context.go('/chat');
+}
+
 class ContextSidebar extends StatefulWidget {
   const ContextSidebar({this.onNewProject, super.key});
 
@@ -248,12 +282,18 @@ class _ProjectGroupState extends State<_ProjectGroup> {
   }
 
   void _createSession(BuildContext context, String projectId) {
-    unawaited(
-      context.read<ChatCubit>().createSession(
-            projectId,
-            SessionRepository(),
-          ),
-    );
+    unawaited(_createSessionAndOpenChat(context, projectId));
+  }
+
+  Future<void> _createSessionAndOpenChat(
+    BuildContext context,
+    String projectId,
+  ) async {
+    final repo = SessionRepository();
+    final session =
+        await context.read<ChatCubit>().createSession(projectId, repo);
+    if (!context.mounted) return;
+    _navigateToSessionInChat(context, session);
   }
 
   void _openFolder(String path) {
@@ -535,37 +575,7 @@ class _SessionTileEntryState extends State<_SessionTileEntry> {
         selected: selected,
         rowHovered: _hovered || _menuOpen,
         contentLeftInset: _kSidebarTreeTextInset,
-        onTap: () {
-          final teamCubit = context.read<TeamCubit>();
-          final chatCubit = context.read<ChatCubit>();
-
-          chatCubit.selectSession(session.sessionId);
-
-          final matchingTeam = teamCubit.state.selectedTeam;
-          if (matchingTeam == null) return;
-
-          final lead = matchingTeam.members.where((m) => m.name == 'team-lead');
-          if (lead.isNotEmpty) {
-            chatCubit.openSessionTab(
-              session,
-              team: matchingTeam,
-              member: lead.first,
-              repo: context.read<SessionRepository>(),
-              emptyDisplayTitleFallback: l10n.defaultNewChatSessionTitle,
-            );
-          } else {
-            chatCubit.openSessionTab(
-              session,
-              repo: context.read<SessionRepository>(),
-              emptyDisplayTitleFallback: l10n.defaultNewChatSessionTitle,
-            );
-            chatCubit.addSystemMessage(
-              'FlashskyAI requires a member named team-lead.',
-            );
-          }
-
-          context.go('/chat');
-        },
+        onTap: () => _navigateToSessionInChat(context, session),
         trailing: SizedBox(
             width: 24,
             height: 24,
