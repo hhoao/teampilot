@@ -18,6 +18,8 @@ const _subThemes = FlexSubThemesData(
   outlinedButtonRadius: 999,
   elevatedButtonRadius: 999,
   inputDecoratorRadius: 8,
+  /// 全局使用 [OutlineInputBorder]，避免 FCS 默认的 underline（仅上圆角 + 底边指示线）。
+  inputDecoratorBorderType: FlexInputBorderType.outline,
   inputDecoratorIsFilled: true,
   popupMenuRadius: 10,
   popupMenuElevation: 14,
