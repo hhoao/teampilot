@@ -1,13 +1,15 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:logger/logger.dart';
+
 typedef ProcessRunner =
     Future<ProcessResult> Function(
-  String executable,
-  List<String> arguments, {
-  Encoding? stdoutEncoding,
-  Encoding? stderrEncoding,
-});
+      String executable,
+      List<String> arguments, {
+      Encoding? stdoutEncoding,
+      Encoding? stderrEncoding,
+    });
 
 Future<ProcessResult> _flashskyDefaultProcessRun(
   String executable,
@@ -42,12 +44,14 @@ class FlashskyaiCliLocator {
         return _locateInWsl(runner);
       }
       return null;
-    } on ProcessException {
+    } on ProcessException catch (error, stackTrace) {
+      Logger().w('Failed to locate flashskyai: $error', stackTrace: stackTrace);
       if (Platform.isWindows) {
         return _locateInWsl(runner);
       }
       return null;
-    } on Object {
+    } on Object catch (error, stackTrace) {
+      Logger().w('Failed to locate flashskyai: $error', stackTrace: stackTrace);
       return null;
     }
   }
@@ -60,19 +64,25 @@ class FlashskyaiCliLocator {
       // Use `-ilc` (interactive login): many `~/.bashrc` templates return early
       // when `$-` lacks `i`, so plain `-lc` never applies PATH exports from bashrc.
       //
-      // Decode as UTF-8: `wsl.exe` emits UTF-8 while Windows "system" encoding
-      // may be a legacy code page, which can corrupt or empty decoded stdout.
+      // Use Latin-1 for subprocess pipes: `wsl.exe` output is usually UTF-8, but
+      // some builds mix encodings or emit non-UTF-8 bytes; strict UTF-8 decoding
+      // throws [FormatException] before we can parse. Latin-1 maps every byte to
+      // a code point without failure; ASCII paths stay identical to UTF-8.
       final result = await runner(
         'wsl.exe',
         ['bash', '-ilc', 'command -v flashskyai'],
-        stdoutEncoding: utf8,
-        stderrEncoding: utf8,
+        stdoutEncoding: latin1,
+        stderrEncoding: latin1,
       );
       if (result.exitCode != 0) return null;
       final located = _wslStdoutExecutablePath(result.stdout);
       if (located == null) return null;
       return 'wsl.exe $located';
-    } on Object {
+    } on Object catch (error, stackTrace) {
+      Logger().w(
+        'Failed to locate flashskyai in WSL: $error',
+        stackTrace: stackTrace,
+      );
       return null;
     }
   }

@@ -24,8 +24,8 @@ void main() {
         if (executable == 'where') {
           return ProcessResult(1, 1, '', '');
         }
-        expect(stdoutEncoding, utf8);
-        expect(stderrEncoding, utf8);
+        expect(stdoutEncoding, latin1);
+        expect(stderrEncoding, latin1);
         return ProcessResult(2, 0, '/usr/local/bin/flashskyai\n', '');
       },
     );

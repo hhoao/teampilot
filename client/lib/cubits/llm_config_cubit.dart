@@ -7,6 +7,7 @@ import '../models/llm_config.dart';
 import '../repositories/app_settings_repository.dart';
 import '../repositories/llm_config_repository.dart';
 import '../services/llm_config_path_resolver.dart';
+import '../services/wsl_posix_path_for_windows_io.dart';
 import '../utils/logger.dart';
 
 class LlmConfigState extends Equatable {
@@ -122,7 +123,9 @@ class LlmConfigCubit extends Cubit<LlmConfigState> {
       homeDirectory: _homeDirectory,
       cliExecutablePath: _executableResolver(),
     );
-    _repository = _repositoryFactory(resolved.path);
+    final pathForIo =
+        await windowsFilePathForPossibleWslPosixPath(resolved.path);
+    _repository = _repositoryFactory(pathForIo);
 
     final config = await _repository!.load();
     emit(state.copyWith(
@@ -131,11 +134,11 @@ class LlmConfigCubit extends Cubit<LlmConfigState> {
       isLoading: false,
       statusMessage: 'Loaded LLM config.',
       configPathOverride: override ?? '',
-      effectiveConfigPath: resolved.path,
+      effectiveConfigPath: pathForIo,
       pathSource: resolved.source,
     ));
     appLogger.i(
-        'LlmConfigCubit loaded ${config.providers.length} providers, ${config.models.length} models from ${resolved.path} (${resolved.source.name})');
+        'LlmConfigCubit loaded ${config.providers.length} providers, ${config.models.length} models from $pathForIo (${resolved.source.name})');
   }
 
   /// Persist a new override and reload from the new path. Pass null or empty
