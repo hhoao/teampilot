@@ -68,6 +68,8 @@ CI uses [fastforge](https://pub.dev/packages/fastforge) to produce installers un
 
 Pushing a **Git tag** matching `v*` runs [Release Desktop Packages](.github/workflows/release.yml), builds all three platforms, and publishes a **GitHub Release**. You can also run the workflow manually (**workflow_dispatch**) and optionally set `ref`.
 
+Changes under `client/` also trigger [Client Windows (EXE)](.github/workflows/client-windows.yml) on pull requests and pushes to `main`, producing a Windows EXE installer as a downloadable **Artifact**.
+
 Local packaging example:
 
 ```bash
@@ -77,12 +79,23 @@ flutter pub get
 fastforge package --platform linux --targets deb,appimage
 ```
 
-Windows EXE packaging uses fastforge's Inno Setup maker:
+Windows EXE packaging uses fastforge's Inno Setup maker. Install **Inno Setup 6** locally (same as `choco install innosetup` in CI), then:
 
 ```powershell
 cd client
+flutter pub get
+dart run tool/sync_bundled_google_fonts.dart
 fastforge package --platform windows --targets exe
 ```
+
+For a runnable app without an installer wizard:
+
+```powershell
+cd client
+flutter build windows --release
+```
+
+The binary is at `client/build/windows/x64/runner/Release/TeamPilot.exe`.
 
 For extra OS-specific tooling (GTK on Linux, `appdmg` on macOS, etc.), follow the install steps in the CI workflow.
 

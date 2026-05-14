@@ -1,0 +1,63 @@
+name: Client Windows (EXE)
+
+on:
+  pull_request:
+    paths:
+      - "client/**"
+      - ".github/workflows/client-windows.yml"
+  push:
+    branches: [main]
+    paths:
+      - "client/**"
+      - ".github/workflows/client-windows.yml"
+
+concurrency:
+  group: client-windows-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: client
+
+jobs:
+  package-windows-exe:
+    name: fastforge Windows EXE (Inno Setup)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Activate fastforge
+        run: dart pub global activate fastforge
+
+      - name: Install Inno Setup
+        shell: pwsh
+        run: |
+          choco install innosetup --no-progress -y
+          Add-Content $env:GITHUB_PATH "C:\Program Files (x86)\Inno Setup 6"
+
+      - name: Add pub-cache to PATH (Windows)
+        shell: pwsh
+        run: |
+          Add-Content $env:GITHUB_PATH "$env:LOCALAPPDATA\Pub\Cache\bin"
+
+      - name: Resolve Flutter packages
+        run: flutter pub get
+
+      - name: Sync bundled Google Fonts (Noto Sans SC)
+        run: dart run tool/sync_bundled_google_fonts.dart
+
+      - name: Package (EXE installer only)
+        run: fastforge package --platform windows --targets exe
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-exe-installer
+          path: client/dist/**/*.exe
+          if-no-files-found: error

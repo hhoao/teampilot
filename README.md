@@ -21,7 +21,7 @@
 |------|------|
 | [Flutter](https://docs.flutter.dev/get-started/install) | **stable** 渠道；本仓库 `client` 使用 SDK `^3.8.1` |
 | `flashskyai` | 需已安装并在 **PATH** 中可执行（应用启动时会解析其路径） |
-| 目标平台 | **Linux**、**macOS**、**Windows**（桌面） |
+| 目标平台 | **Linux**、**macOS**、**Windows WSL**（桌面） |
 
 ## 仓库结构
 
@@ -64,9 +64,11 @@ CI 使用 [fastforge](https://pub.dev/packages/fastforge) 在 `client/dist/` 产
 
 - **Linux**：`.deb`、`.AppImage`
 - **macOS**：`.dmg`
-- **Windows**：`.msix`、`.zip`
+- **Windows**：`.msix`、**`.exe`（Inno Setup 安装包）**、`.zip`
 
 推送符合 `v*` 格式的 **Git tag** 会触发 [Release Desktop Packages](.github/workflows/release.yml)，构建三平台产物并创建 **GitHub Release**。也可在 Actions 中 **手动运行（workflow_dispatch）**，可选指定 `ref`。
+
+对 `client/` 的变更会在 [Client Windows (EXE)](.github/workflows/client-windows.yml) 中自动打 Windows EXE 安装包（PR / `main` 推送），产物以 **Artifact** 形式供下载。
 
 本地打包示例：
 
@@ -76,6 +78,24 @@ cd client
 flutter pub get
 fastforge package --platform linux --targets deb,appimage
 ```
+
+Windows 安装包（`.exe`）依赖本机已安装 **Inno Setup 6**（与 CI 中 `choco install innosetup` 一致），然后执行：
+
+```powershell
+cd client
+flutter pub get
+dart run tool/sync_bundled_google_fonts.dart
+fastforge package --platform windows --targets exe
+```
+
+若仅需可运行的程序、不要安装向导，可直接：
+
+```powershell
+cd client
+flutter build windows --release
+```
+
+可执行文件位于 `client/build/windows/x64/runner/Release/TeamPilot.exe`。
 
 各平台额外依赖（如 Linux 的 GTK、macOS 的 `appdmg` 等）以 CI 工作流中的安装步骤为准。
 
