@@ -12,7 +12,6 @@ import '../models/app_session.dart';
 import '../models/team_config.dart';
 import '../repositories/session_repository.dart';
 import '../services/terminal_session.dart';
-import '../theme/app_theme.dart';
 import '../utils/app_keys.dart';
 
 class ChatWorkbench extends StatefulWidget {
@@ -211,7 +210,7 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppColors.of(context);
+    final cs = Theme.of(context).colorScheme;
     final teamCubit = context.watch<TeamCubit>();
     final chatCubit = context.read<ChatCubit>();
     final team = teamCubit.state.selectedTeam;
@@ -234,11 +233,11 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
 
       return Container(
         key: AppKeys.chatWorkspace,
-        color: colors.workspaceBackground,
+        color: cs.surface,
         child: Column(
           children: [
             _NoSessionToolbar(
-              colors: colors,
+              colorScheme: cs,
               memberName: chatCubit.selectedMemberName(team),
               onConnect: onConnect,
             ),
@@ -260,11 +259,11 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
 
     return Container(
       key: AppKeys.chatWorkspace,
-      color: colors.workspaceBackground,
+      color: cs.surface,
       child: Column(
         children: [
           _TerminalToolbar(
-            colors: colors,
+            colorScheme: cs,
             session: session,
             memberName: chatCubit.selectedMemberName(team),
             onConnect: () {
@@ -335,12 +334,12 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
 
 class _NoSessionToolbar extends StatelessWidget {
   const _NoSessionToolbar({
-    required this.colors,
+    required this.colorScheme,
     required this.memberName,
     required this.onConnect,
   });
 
-  final AppColors colors;
+  final ColorScheme colorScheme;
   final String memberName;
   final VoidCallback onConnect;
 
@@ -350,12 +349,20 @@ class _NoSessionToolbar extends StatelessWidget {
       height: 34,
       padding: const EdgeInsets.symmetric(horizontal: 10),
       decoration: BoxDecoration(
-        color: colors.surfaceVariant,
-        border: Border(bottom: BorderSide(color: colors.subtleBorder)),
+        color: colorScheme.surfaceContainerHigh,
+        border: Border(
+          bottom: BorderSide(
+            color: colorScheme.outlineVariant.withValues(alpha: 0.5),
+          ),
+        ),
       ),
       child: Row(
         children: [
-          Icon(Icons.terminal, size: 14, color: colors.emptyMessageText),
+          Icon(
+            Icons.terminal,
+            size: 14,
+            color: colorScheme.onSurfaceVariant,
+          ),
           const SizedBox(width: 6),
           Text(
             'disconnected',
@@ -393,7 +400,7 @@ class _NoSessionToolbar extends StatelessWidget {
 
 class _TerminalToolbar extends StatelessWidget {
   const _TerminalToolbar({
-    required this.colors,
+    required this.colorScheme,
     required this.session,
     required this.memberName,
     required this.onConnect,
@@ -401,7 +408,7 @@ class _TerminalToolbar extends StatelessWidget {
     required this.onRestart,
   });
 
-  final AppColors colors;
+  final ColorScheme colorScheme;
   final TerminalSession session;
   final String memberName;
   final VoidCallback onConnect;
@@ -414,8 +421,12 @@ class _TerminalToolbar extends StatelessWidget {
       height: 34,
       padding: const EdgeInsets.symmetric(horizontal: 10),
       decoration: BoxDecoration(
-        color: colors.surfaceVariant,
-        border: Border(bottom: BorderSide(color: colors.subtleBorder)),
+        color: colorScheme.surfaceContainerHigh,
+        border: Border(
+          bottom: BorderSide(
+            color: colorScheme.outlineVariant.withValues(alpha: 0.5),
+          ),
+        ),
       ),
       child: Row(
         children: [
@@ -423,8 +434,8 @@ class _TerminalToolbar extends StatelessWidget {
             Icons.terminal,
             size: 14,
             color: session.isRunning
-                ? colors.accentGreen
-                : colors.emptyMessageText,
+                ? colorScheme.secondary
+                : colorScheme.onSurfaceVariant,
           ),
           const SizedBox(width: 6),
           Text(

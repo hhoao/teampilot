@@ -9,7 +9,6 @@ import 'package:url_launcher/url_launcher.dart';
 import '../cubits/skill_cubit.dart';
 import '../l10n/app_localizations.dart';
 import '../models/skill.dart';
-import '../theme/app_theme.dart';
 import '../widgets/dropdown/custom_dropdown.dart';
 import '../widgets/dropdown/flashskyai_dropdown_decoration.dart';
 
@@ -27,7 +26,7 @@ class _SkillManagementPageState extends State<SkillManagementPage> {
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppColors.of(context);
+    final cs = Theme.of(context).colorScheme;
     final l10n = context.l10n;
     return BlocConsumer<SkillCubit, SkillState>(
       listenWhen: (a, b) =>
@@ -43,7 +42,7 @@ class _SkillManagementPageState extends State<SkillManagementPage> {
       },
       builder: (context, state) {
         return Container(
-          color: colors.workspaceBackground,
+          color: cs.surface,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -76,7 +75,7 @@ class _SkillManagementPageState extends State<SkillManagementPage> {
                             onSelect: (s) => setState(() => _section = s),
                           ),
                         ),
-                        Container(width: 1, color: colors.subtleBorder),
+                        Container(width: 1, color: cs.outlineVariant.withValues(alpha: 0.5)),
                         Expanded(
                           child: Padding(
                             padding: padding,
@@ -134,14 +133,14 @@ class _TitleBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppColors.of(context);
+    final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textBase = isDark ? Colors.white : const Color(0xFF111827);
     return Container(
       padding: const EdgeInsets.fromLTRB(40, 42, 40, 28),
       decoration: BoxDecoration(
-        color: colors.workspaceBackground,
-        border: Border(bottom: BorderSide(color: colors.subtleBorder)),
+        color: cs.surface,
+        border: Border(bottom: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.5))),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -190,9 +189,9 @@ class _NavPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppColors.of(context);
+    final cs = Theme.of(context).colorScheme;
     return Container(
-      color: colors.workspaceBackground,
+      color: cs.surface,
       padding: compact
           ? const EdgeInsets.fromLTRB(14, 22, 12, 20)
           : const EdgeInsets.fromLTRB(24, 28, 18, 24),
@@ -250,14 +249,14 @@ class _NavItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppColors.of(context);
+    final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textBase = isDark ? Colors.white : const Color(0xFF111827);
     final muted = textBase.withValues(alpha: 0.64);
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Material(
-        color: selected ? colors.selectedBackground : Colors.transparent,
+        color: selected ? cs.primaryContainer : Colors.transparent,
         borderRadius: BorderRadius.circular(12),
         child: InkWell(
           borderRadius: BorderRadius.circular(12),
@@ -304,14 +303,14 @@ class _Card extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppColors.of(context);
+    final cs = Theme.of(context).colorScheme;
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
       padding: padding ?? const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: colors.cardBackground,
+        color: cs.surfaceContainer,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: colors.border),
+        border: Border.all(color: cs.outlineVariant),
       ),
       child: child,
     );
@@ -548,7 +547,7 @@ class _InstalledSkillRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppColors.of(context);
+    final cs = Theme.of(context).colorScheme;
     final l10n = context.l10n;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textBase = isDark ? Colors.white : const Color(0xFF111827);
@@ -563,9 +562,9 @@ class _InstalledSkillRow extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
-          color: colors.surfaceVariant,
+          color: cs.surfaceContainerHigh,
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: colors.border),
+          border: Border.all(color: cs.outlineVariant),
         ),
         child: Row(
           children: [
@@ -1350,9 +1349,9 @@ class _SourceToggle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppColors.of(context);
+    final cs = Theme.of(context).colorScheme;
     return Material(
-      color: selected ? colors.selectedBackground : Colors.transparent,
+      color: selected ? cs.primaryContainer : Colors.transparent,
       borderRadius: BorderRadius.circular(8),
       child: InkWell(
         borderRadius: BorderRadius.circular(8),
@@ -1362,7 +1361,7 @@ class _SourceToggle extends StatelessWidget {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(8),
             border: Border.all(
-              color: selected ? colors.selectedBorder : colors.unselectedBorder,
+              color: selected ? cs.primaryContainer : cs.outlineVariant,
             ),
           ),
           child: Text(
@@ -1399,16 +1398,16 @@ class _SkillCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppColors.of(context);
+    final cs = Theme.of(context).colorScheme;
     final l10n = context.l10n;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textBase = isDark ? Colors.white : const Color(0xFF111827);
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: colors.cardBackground,
+        color: cs.surfaceContainer,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: colors.border),
+        border: Border.all(color: cs.outlineVariant),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1610,7 +1609,7 @@ class _RepoRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppColors.of(context);
+    final cs = Theme.of(context).colorScheme;
     final l10n = context.l10n;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textBase = isDark ? Colors.white : const Color(0xFF111827);
@@ -1620,9 +1619,9 @@ class _RepoRow extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
-          color: colors.surfaceVariant,
+          color: cs.surfaceContainerHigh,
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: colors.border),
+          border: Border.all(color: cs.outlineVariant),
         ),
         child: Row(
           children: [
@@ -1715,7 +1714,7 @@ class _BackupRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppColors.of(context);
+    final cs = Theme.of(context).colorScheme;
     final l10n = context.l10n;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textBase = isDark ? Colors.white : const Color(0xFF111827);
@@ -1750,7 +1749,7 @@ class _BackupRow extends StatelessWidget {
                         vertical: 2,
                       ),
                       decoration: BoxDecoration(
-                        color: colors.surfaceVariant,
+                        color: cs.surfaceContainerHigh,
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: Text(

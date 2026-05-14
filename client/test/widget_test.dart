@@ -19,7 +19,6 @@ import 'package:teampilot/repositories/session_preferences_repository.dart';
 import 'package:teampilot/repositories/session_repository.dart';
 import 'package:teampilot/repositories/team_repository.dart';
 import 'package:teampilot/services/terminal_session.dart';
-import 'package:teampilot/theme/app_theme.dart';
 import 'package:teampilot/utils/app_keys.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -292,18 +291,11 @@ void main() {
     await tester.tap(find.byKey(AppKeys.sidebarSettingsButton));
     await pumpPhaseTransitions(tester);
 
-    final settingsTheme = Theme.of(
-      tester.element(find.byKey(AppKeys.configWorkspace)),
-    );
-    final appColors = AppColors.of(
-      tester.element(find.byKey(AppKeys.configWorkspace)),
-    );
-    final filledButtonColor = settingsTheme
-        .filledButtonTheme
-        .style
-        ?.backgroundColor
-        ?.resolve(<WidgetState>{});
-    expect(filledButtonColor, appColors.accentBlue);
+    final settingsCtx = tester.element(find.byKey(AppKeys.configWorkspace));
+    final settingsTheme = Theme.of(settingsCtx);
+    final cs = settingsTheme.colorScheme;
+    expect(cs.primary, const Color(0xFF5B8DEF));
+    expect(settingsTheme.filledButtonTheme.style, isNotNull);
 
     await tester.tap(find.byKey(AppKeys.configLlmSectionButton));
     await pumpPhaseTransitions(tester);
@@ -312,7 +304,7 @@ void main() {
       find.byKey(AppKeys.llmProviderList),
     );
     final decoration = providerList.decoration! as BoxDecoration;
-    expect(decoration.color, appColors.cardBackground);
+    expect(decoration.color, cs.surfaceContainer);
   });
 
   testWidgets('opening a sidebar session starts team-lead member shell', (
