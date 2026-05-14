@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import '../l10n/app_localizations.dart';
 import '../utils/app_keys.dart';
 import '../models/layout_preferences.dart';
-import '../theme/app_theme.dart';
 import '../widgets/resizable_split_view.dart';
 
 enum AppSection { chat, runs, config }
@@ -53,7 +52,7 @@ class WorkspaceShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppColors.of(context);
+    final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textBase = isDark ? Colors.white : const Color(0xFF111827);
     final textScale = MediaQuery.textScalerOf(context).scale(1.0);
@@ -65,8 +64,12 @@ class WorkspaceShell extends StatelessWidget {
             height: 82.0 * textScale,
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             decoration: BoxDecoration(
-              color: colors.topbarBackground,
-              border: Border(bottom: BorderSide(color: colors.subtleBorder)),
+              color: cs.surfaceContainer,
+              border: Border(
+                bottom: BorderSide(
+                  color: cs.outlineVariant.withValues(alpha: 0.5),
+                ),
+              ),
             ),
             child: Row(
               children: [
@@ -214,15 +217,19 @@ class _TabRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppColors.of(context);
+    final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textBase = isDark ? Colors.white : const Color(0xFF111827);
     return Container(
       height: 42,
       padding: const EdgeInsets.symmetric(horizontal: 6),
       decoration: BoxDecoration(
-        color: colors.topbarBackground,
-        border: Border(bottom: BorderSide(color: colors.subtleBorder)),
+        color: cs.surfaceContainer,
+        border: Border(
+          bottom: BorderSide(
+            color: cs.outlineVariant.withValues(alpha: 0.5),
+          ),
+        ),
       ),
       child: Row(
         children: [
@@ -240,8 +247,8 @@ class _TabRow extends StatelessWidget {
                       onCloseOthers: () => onTabCloseOthers?.call(i),
                       onCloseRight: () => onTabCloseRight?.call(i),
                       textColor: textBase,
-                      activeBg: colors.railButtonSelectedBg,
-                      borderColor: colors.subtleBorder,
+                      activeBg: cs.primaryContainer,
+                      borderColor: cs.outlineVariant.withValues(alpha: 0.5),
                     ),
                 ],
               ),
@@ -329,7 +336,7 @@ class _TabChipState extends State<_TabChip> {
   /// Whole-tab hover from [MouseRegion]. Avoids [InkWell] + nested
   /// [PopupMenuButton] ink fighting (hover patch only behind title text).
   Color _tabMaterialColor(BuildContext context) {
-    final colors = AppColors.of(context);
+    final cs = Theme.of(context).colorScheme;
     final hoverTint =
         Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.10);
     if (widget.active) {
@@ -338,7 +345,7 @@ class _TabChipState extends State<_TabChip> {
           : widget.activeBg;
     }
     if (_hovered) {
-      return Color.alphaBlend(hoverTint, colors.topbarBackground);
+      return Color.alphaBlend(hoverTint, cs.surfaceContainer);
     }
     return Colors.transparent;
   }
@@ -451,13 +458,17 @@ class _ActionsBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppColors.of(context);
+    final cs = Theme.of(context).colorScheme;
     return Container(
       height: 34,
       padding: const EdgeInsets.symmetric(horizontal: 10),
       decoration: BoxDecoration(
-        color: colors.topbarBackground,
-        border: Border(bottom: BorderSide(color: colors.subtleBorder)),
+        color: cs.surfaceContainer,
+        border: Border(
+          bottom: BorderSide(
+            color: cs.outlineVariant.withValues(alpha: 0.5),
+          ),
+        ),
       ),
       child: Row(
         children: [

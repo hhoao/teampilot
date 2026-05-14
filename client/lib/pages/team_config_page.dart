@@ -6,7 +6,6 @@ import '../cubits/llm_config_cubit.dart';
 import '../cubits/team_cubit.dart';
 import '../l10n/app_localizations.dart';
 import '../models/team_config.dart';
-import '../theme/app_theme.dart';
 import '../utils/app_keys.dart';
 import '../widgets/dropdown/custom_dropdown.dart';
 import '../widgets/dropdown/flashskyai_dropdown_decoration.dart';
@@ -66,7 +65,7 @@ class _TeamConfigPageState extends State<TeamConfigPage> {
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppColors.of(context);
+    final cs = Theme.of(context).colorScheme;
     final l10n = context.l10n;
     final teamCubit = context.watch<TeamCubit>();
     final team = teamCubit.state.selectedTeam;
@@ -78,7 +77,7 @@ class _TeamConfigPageState extends State<TeamConfigPage> {
     final memberId = _effectiveMemberId(team);
 
     return Container(
-      color: colors.workspaceBackground,
+      color: cs.surface,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -125,7 +124,7 @@ class _TeamConfigPageState extends State<TeamConfigPage> {
                         l10n: l10n,
                       ),
                     ),
-                    Container(width: 1, color: colors.subtleBorder),
+                    Container(width: 1, color: cs.outlineVariant.withValues(alpha: 0.5)),
                     Expanded(
                       child: Padding(
                         padding: contentPadding,
@@ -169,14 +168,14 @@ class _TitleBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppColors.of(context);
+    final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textBase = isDark ? Colors.white : const Color(0xFF111827);
     return Container(
       padding: const EdgeInsets.fromLTRB(40, 42, 40, 28),
       decoration: BoxDecoration(
-        color: colors.workspaceBackground,
-        border: Border(bottom: BorderSide(color: colors.subtleBorder)),
+        color: cs.surface,
+        border: Border(bottom: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.5))),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -233,9 +232,9 @@ class _NavPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppColors.of(context);
+    final cs = Theme.of(context).colorScheme;
     return Container(
-      color: colors.workspaceBackground,
+      color: cs.surface,
       padding: compact
           ? const EdgeInsets.fromLTRB(14, 22, 12, 20)
           : const EdgeInsets.fromLTRB(24, 28, 18, 24),
@@ -302,7 +301,7 @@ class _MemberNavSubItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppColors.of(context);
+    final cs = Theme.of(context).colorScheme;
     final l10n = context.l10n;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textBase = isDark ? Colors.white : const Color(0xFF111827);
@@ -313,7 +312,7 @@ class _MemberNavSubItem extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 6),
       child: Material(
-        color: selected ? colors.selectedBackground : Colors.transparent,
+        color: selected ? cs.primaryContainer : Colors.transparent,
         borderRadius: BorderRadius.circular(10),
         child: InkWell(
           borderRadius: BorderRadius.circular(10),
@@ -367,7 +366,7 @@ class _MemberNavAddTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppColors.of(context);
+    final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textBase = isDark ? Colors.white : const Color(0xFF111827);
     final muted = textBase.withValues(alpha: 0.72);
@@ -380,7 +379,7 @@ class _MemberNavAddTile extends StatelessWidget {
           borderRadius: BorderRadius.circular(10),
           onTap: onTap,
           child: DottedBorderContainer(
-            color: colors.border,
+            color: cs.outlineVariant,
             radius: 10,
             child: SizedBox(
               height: compact ? 40 : 44,
@@ -432,14 +431,14 @@ class _NavItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppColors.of(context);
+    final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textBase = isDark ? Colors.white : const Color(0xFF111827);
     final muted = textBase.withValues(alpha: 0.64);
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Material(
-        color: selected ? colors.selectedBackground : Colors.transparent,
+        color: selected ? cs.primaryContainer : Colors.transparent,
         borderRadius: BorderRadius.circular(12),
         child: InkWell(
           borderRadius: BorderRadius.circular(12),
@@ -496,14 +495,14 @@ class _Card extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppColors.of(context);
+    final cs = Theme.of(context).colorScheme;
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
       padding: padding ?? const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: colors.cardBackground,
+        color: cs.surfaceContainer,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: colors.border),
+        border: Border.all(color: cs.outlineVariant),
       ),
       child: child,
     );

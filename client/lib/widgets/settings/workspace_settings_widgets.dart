@@ -1,9 +1,15 @@
 import 'package:flutter/material.dart';
 
-import '../../theme/app_theme.dart';
-import '../../theme/app_workspace_settings_theme.dart';
 import '../dropdown/custom_dropdown.dart';
 import '../dropdown/flashskyai_dropdown_decoration.dart';
+
+const _settingCardBorderRadius = 14.0;
+const _settingRowPadding = EdgeInsets.fromLTRB(20, 16, 20, 16);
+const _settingGroupHeaderPadding = EdgeInsets.fromLTRB(20, 20, 20, 8);
+const _titleSubtitleGap = 4.0;
+const _labelTrailingGap = 24.0;
+
+const _dropdownMinWidth = 140.0;
 
 /// Rounded settings panel (card) using global colors and spacing tokens.
 class SettingsSurfaceCard extends StatelessWidget {
@@ -13,13 +19,14 @@ class SettingsSurfaceCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppColors.of(context);
-    final tokens = AppWorkspaceSettingsTokens.of(context);
+    final cs = Theme.of(context).colorScheme;
     return Container(
       decoration: BoxDecoration(
-        color: colors.rightPanelBackground,
-        borderRadius: BorderRadius.circular(tokens.settingCardBorderRadius),
-        border: Border.all(color: colors.subtleBorder),
+        color: cs.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(_settingCardBorderRadius),
+        border: Border.all(
+          color: cs.outlineVariant.withValues(alpha: 0.5),
+        ),
       ),
       clipBehavior: Clip.antiAlias,
       child: child,
@@ -35,11 +42,17 @@ class SettingsGroupHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final tokens = AppWorkspaceSettingsTokens.of(context);
-    final onSurface = Theme.of(context).colorScheme.onSurface;
+    final tt = Theme.of(context).textTheme;
+    final cs = Theme.of(context).colorScheme;
     return Padding(
-      padding: tokens.settingGroupHeaderPadding,
-      child: Text(title, style: tokens.groupHeaderStyle(onSurface)),
+      padding: _settingGroupHeaderPadding,
+      child: Text(
+        title,
+        style: tt.labelSmall?.copyWith(
+          color: cs.onSurfaceVariant,
+          letterSpacing: 0.2,
+        ),
+      ),
     );
   }
 }
@@ -61,14 +74,14 @@ class SettingsLabeledRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppColors.of(context);
-    final tokens = AppWorkspaceSettingsTokens.of(context);
-    final onSurface = Theme.of(context).colorScheme.onSurface;
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+    final onSurface = cs.onSurface;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Padding(
-          padding: tokens.settingRowPadding,
+          padding: _settingRowPadding,
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
@@ -76,13 +89,28 @@ class SettingsLabeledRow extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(title, style: tokens.rowTitleStyle(onSurface)),
-                    SizedBox(height: tokens.titleSubtitleGap),
-                    Text(subtitle, style: tokens.rowSubtitleStyle(onSurface)),
+                    Text(
+                      title,
+                      style: tt.titleSmall?.copyWith(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        height: 1.25,
+                        color: onSurface,
+                      ),
+                    ),
+                    SizedBox(height: _titleSubtitleGap),
+                    Text(
+                      subtitle,
+                      style: tt.bodySmall?.copyWith(
+                        color: cs.onSurfaceVariant,
+                        fontWeight: FontWeight.w500,
+                        height: 1.35,
+                      ),
+                    ),
                   ],
                 ),
               ),
-              SizedBox(width: tokens.labelTrailingGap),
+              SizedBox(width: _labelTrailingGap),
               Flexible(
                 fit: FlexFit.loose,
                 child: Align(
@@ -94,7 +122,11 @@ class SettingsLabeledRow extends StatelessWidget {
           ),
         ),
         if (showDividerBelow)
-          Divider(height: 1, thickness: 1, color: colors.subtleBorder),
+          Divider(
+            height: 1,
+            thickness: 1,
+            color: cs.outlineVariant.withValues(alpha: 0.5),
+          ),
       ],
     );
   }
@@ -117,7 +149,6 @@ class SettingsCompactDropdown<T extends Object> extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final tokens = AppWorkspaceSettingsTokens.of(context);
     final decoration = FlashskyDropdownDecorations.settingsCompact(context);
     final values = entries.map((e) => e.$1).toList();
     final headerStyle = decoration.headerStyle!;
@@ -127,15 +158,15 @@ class SettingsCompactDropdown<T extends Object> extends StatelessWidget {
         entries.firstWhere((e) => e.$1 == item, orElse: () => (item, '$item')).$2;
 
     return ConstrainedBox(
-      constraints: BoxConstraints(minWidth: tokens.dropdownMinWidth),
+      constraints: const BoxConstraints(minWidth: _dropdownMinWidth),
       child: DropdownFlutter<T>(
         items: values,
         initialItem: value,
         excludeSelected: false,
         onChanged: onChanged,
         decoration: decoration,
-        closedHeaderPadding: EdgeInsets.symmetric(
-          horizontal: 8 + tokens.dropdownHorizontalPadding,
+        closedHeaderPadding: const EdgeInsets.symmetric(
+          horizontal: 8 + 4,
           vertical: 8,
         ),
         expandedHeaderPadding: const EdgeInsets.symmetric(

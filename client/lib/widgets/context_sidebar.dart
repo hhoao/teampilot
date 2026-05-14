@@ -13,7 +13,6 @@ import '../models/app_project.dart';
 import '../models/app_session.dart';
 import '../models/team_config.dart';
 import '../repositories/session_repository.dart';
-import '../theme/app_theme.dart';
 import '../utils/app_keys.dart';
 import '../widgets/dropdown/custom_dropdown.dart';
 import '../widgets/dropdown/flashskyai_dropdown_decoration.dart';
@@ -77,7 +76,7 @@ class _ContextSidebarState extends State<ContextSidebar> {
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppColors.of(context);
+    final cs = Theme.of(context).colorScheme;
     final l10n = context.l10n;
     final teamCubit = context.watch<TeamCubit>();
     final selected = teamCubit.state.selectedTeam;
@@ -85,7 +84,7 @@ class _ContextSidebarState extends State<ContextSidebar> {
     return Container(
       key: AppKeys.contextSidebar,
       width: double.infinity,
-      color: colors.sidebarBackground,
+      color: cs.surfaceContainer,
       padding: const EdgeInsets.all(13),
       child: selected == null
           ? const Center(child: CircularProgressIndicator())
@@ -389,7 +388,7 @@ class _ProjectHeaderState extends State<_ProjectHeader> {
     final l10n = context.l10n;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textBase = isDark ? Colors.white : const Color(0xFF111827);
-    final colors = AppColors.of(context);
+    final cs = Theme.of(context).colorScheme;
     final showActions = _hovered || _menuOpen;
 
     return Padding(
@@ -460,7 +459,7 @@ class _ProjectHeaderState extends State<_ProjectHeader> {
                         child: Icon(
                           Icons.add,
                           size: 16,
-                          color: colors.linkText,
+                          color: cs.primary,
                         ),
                       ),
                     ),
@@ -855,7 +854,7 @@ class _TeamSelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppColors.of(context);
+    final cs = Theme.of(context).colorScheme;
     final l10n = context.l10n;
     final decoration = FlashskyDropdownDecorations.sidebarTeam(context);
 
@@ -923,10 +922,10 @@ class _TeamSelector extends StatelessWidget {
                   height: 32,
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(6),
-                    border: Border.all(color: colors.teamSelectorBorder),
-                    color: colors.teamSelectorBackground,
+                    border: Border.all(color: cs.outlineVariant),
+                    color: cs.surfaceContainer,
                   ),
-                  child: Icon(Icons.add, size: 18, color: colors.linkText),
+                  child: Icon(Icons.add, size: 18, color: cs.primary),
                 ),
               ),
             ),
@@ -950,7 +949,7 @@ class _SidebarSectionTitle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppColors.of(context);
+    final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textBase = isDark ? Colors.white : const Color(0xFF111827);
     return Padding(
@@ -983,7 +982,7 @@ class _SidebarSectionTitle extends StatelessWidget {
                   child: Text(
                     actionLabel,
                     style: TextStyle(
-                      color: colors.linkText,
+                      color: cs.primary,
                       fontWeight: FontWeight.w700,
                       fontSize: 14,
                     ),
@@ -1025,24 +1024,24 @@ class _SidebarTile extends StatelessWidget {
   final double contentLeftInset;
 
   Color _materialFillColor(BuildContext context) {
-    final colors = AppColors.of(context);
+    final cs = Theme.of(context).colorScheme;
     final hoverTint = Theme.of(
       context,
     ).colorScheme.onSurface.withValues(alpha: 0.10);
     if (selected) {
       return rowHovered
-          ? Color.alphaBlend(hoverTint, colors.selectedBackground)
-          : colors.selectedBackground;
+          ? Color.alphaBlend(hoverTint, cs.primaryContainer)
+          : cs.primaryContainer;
     }
     if (rowHovered) {
-      return Color.alphaBlend(hoverTint, colors.sidebarBackground);
+      return Color.alphaBlend(hoverTint, cs.surfaceContainer);
     }
     return Colors.transparent;
   }
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppColors.of(context);
+    final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textBase = isDark ? Colors.white : const Color(0xFF111827);
     return Padding(
@@ -1059,7 +1058,7 @@ class _SidebarTile extends StatelessWidget {
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(8),
               border: selected
-                  ? Border.all(color: colors.selectedBorder)
+                  ? Border.all(color: cs.primaryContainer)
                   : null,
             ),
             // Do not use [CrossAxisAlignment.stretch] here: [_SidebarTile] is used

@@ -6,7 +6,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../l10n/app_localizations.dart';
 import '../models/llm_config.dart';
 import '../cubits/llm_config_cubit.dart';
-import '../theme/app_theme.dart';
 import '../utils/app_keys.dart';
 import '../widgets/dropdown/custom_dropdown.dart';
 import '../widgets/dropdown/flashskyai_dropdown_decoration.dart';
@@ -96,7 +95,7 @@ class _ConfigPathBarState extends State<_ConfigPathBar> {
     final state = widget.controller.state;
     _syncFromState(state);
 
-    final colors = AppColors.of(context);
+    final cs = Theme.of(context).colorScheme;
     final theme = Theme.of(context);
     final badgeText = state.isUsingCustomPath
         ? l10n.llmConfigPathBadgeCustom
@@ -108,7 +107,7 @@ class _ConfigPathBarState extends State<_ConfigPathBar> {
     return Container(
       padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
       decoration: BoxDecoration(
-        color: colors.workspaceBackground,
+        color: cs.surface,
         border: Border(
           bottom: BorderSide(color: theme.dividerColor.withValues(alpha: 0.4)),
         ),
@@ -372,7 +371,7 @@ class _ProviderListPanelState extends State<_ProviderListPanel> {
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppColors.of(context);
+    final cs = Theme.of(context).colorScheme;
     final l10n = context.l10n;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textBase = isDark ? Colors.white : const Color(0xFF111827);
@@ -388,9 +387,9 @@ class _ProviderListPanelState extends State<_ProviderListPanel> {
       key: AppKeys.llmProviderList,
       width: double.infinity,
       decoration: BoxDecoration(
-        color: colors.cardBackground,
+        color: cs.surfaceContainer,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: colors.border),
+        border: Border.all(color: cs.outlineVariant),
       ),
       child: Column(
         children: [
@@ -398,7 +397,7 @@ class _ProviderListPanelState extends State<_ProviderListPanel> {
             height: 48,
             padding: const EdgeInsets.symmetric(horizontal: 14),
             decoration: BoxDecoration(
-              border: Border(bottom: BorderSide(color: colors.tabBarDivider)),
+              border: Border(bottom: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.5))),
             ),
             child: Row(
               children: [
@@ -416,7 +415,7 @@ class _ProviderListPanelState extends State<_ProviderListPanel> {
                   child: Text(
                     '+ ${l10n.add}',
                     style: TextStyle(
-                      color: colors.linkText,
+                      color: cs.primary,
                       fontSize: 11,
                       fontWeight: FontWeight.w700,
                     ),
@@ -439,7 +438,7 @@ class _ProviderListPanelState extends State<_ProviderListPanel> {
                 ),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(7),
-                  borderSide: BorderSide(color: colors.border),
+                  borderSide: BorderSide(color: cs.outlineVariant),
                 ),
               ),
               onChanged: (value) => setState(() => _searchQuery = value),
@@ -489,14 +488,14 @@ class _ProviderListRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppColors.of(context);
+    final cs = Theme.of(context).colorScheme;
     final l10n = context.l10n;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textBase = isDark ? Colors.white : const Color(0xFF111827);
     return Material(
       color: isSelected
-          ? colors.selectedBackground
-          : colors.unselectedBackground,
+          ? cs.primaryContainer
+          : cs.surfaceContainerHigh,
       borderRadius: BorderRadius.circular(10),
       child: InkWell(
         borderRadius: BorderRadius.circular(10),
@@ -507,8 +506,8 @@ class _ProviderListRow extends StatelessWidget {
             borderRadius: BorderRadius.circular(10),
             border: Border.all(
               color: isSelected
-                  ? colors.selectedBorder
-                  : colors.unselectedBorder,
+                  ? cs.primaryContainer
+                  : cs.outlineVariant,
             ),
           ),
           child: Row(
@@ -581,16 +580,16 @@ class _TypeBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppColors.of(context);
+    final cs = Theme.of(context).colorScheme;
     final isAccount = type == 'account';
     return DecoratedBox(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(99),
-        color: isAccount ? colors.typeBadgeAccountBg : colors.typeBadgeApiBg,
+        color: isAccount ? cs.secondaryContainer : cs.primaryContainer,
         border: Border.all(
           color: isAccount
-              ? colors.typeBadgeAccountBorder
-              : colors.typeBadgeApiBorder,
+              ? cs.secondaryContainer
+              : cs.primaryContainer,
         ),
       ),
       child: Padding(
@@ -609,8 +608,8 @@ class _TypeBadge extends StatelessWidget {
             height: 1.0,
             letterSpacing: 0.2,
             color: isAccount
-                ? colors.typeBadgeAccountText
-                : colors.typeBadgeApiText,
+                ? cs.onSecondaryContainer
+                : cs.onPrimaryContainer,
           ),
         ),
       ),
@@ -1134,27 +1133,26 @@ class _ProviderDetailPanelState extends State<_ProviderDetailPanel> {
   }
 }
 
-/// Provider detail pane: colors and typography aligned with [AppColors] and app [ThemeData].
+/// Provider detail pane: typography and [ColorScheme] from app [ThemeData].
 class _ProviderDetailLook {
-  const _ProviderDetailLook._(this.theme, this.colors);
+  const _ProviderDetailLook._(this.theme);
 
   factory _ProviderDetailLook.of(BuildContext context) {
-    return _ProviderDetailLook._(Theme.of(context), AppColors.of(context));
+    return _ProviderDetailLook._(Theme.of(context));
   }
 
   final ThemeData theme;
-  final AppColors colors;
 
   ColorScheme get colorScheme => theme.colorScheme;
   TextTheme get textTheme => theme.textTheme;
 
-  Color get panelBg => colors.cardBackground;
+  Color get panelBg => colorScheme.surfaceContainer;
 
-  Color get borderColor => colors.border;
+  Color get borderColor => colorScheme.outlineVariant;
 
-  Color get insetPanelBg => colors.statBoxBg;
+  Color get insetPanelBg => colorScheme.surfaceContainerHigh;
 
-  Color get insetPanelBorder => colors.statBoxBorder;
+  Color get insetPanelBorder => colorScheme.outlineVariant;
 
   TextStyle get panelTitleStyle =>
       (textTheme.titleLarge ??
@@ -1170,7 +1168,7 @@ class _ProviderDetailLook {
       (textTheme.bodySmall ??
               textTheme.labelMedium ??
               const TextStyle(fontSize: 12))
-          .copyWith(color: colors.emptyMessageText, height: 1.35);
+          .copyWith(color: colorScheme.onSurfaceVariant, height: 1.35);
 
   TextStyle get rowLabelStyle =>
       (textTheme.bodyLarge ??
@@ -1228,9 +1226,9 @@ class _InlineReadOnlyValue extends StatelessWidget {
       height: 40,
       padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
-        color: look.colors.readOnlyFieldBg,
+        color: look.colorScheme.surfaceContainerHigh,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: look.colors.readOnlyFieldBorder),
+        border: Border.all(color: look.colorScheme.outlineVariant),
       ),
       alignment: Alignment.centerLeft,
       child: Text(
@@ -1239,7 +1237,7 @@ class _InlineReadOnlyValue extends StatelessWidget {
         overflow: TextOverflow.ellipsis,
         style: (look.textTheme.bodyMedium ?? const TextStyle(fontSize: 14))
             .copyWith(
-              color: look.colors.readOnlyFieldText,
+              color: look.colorScheme.onSurfaceVariant,
               fontWeight: FontWeight.w500,
             ),
       ),
@@ -1388,7 +1386,7 @@ class _ProviderModelsView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppColors.of(context);
+    final cs = Theme.of(context).colorScheme;
     final l10n = context.l10n;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textBase = isDark ? Colors.white : const Color(0xFF111827);
@@ -1398,16 +1396,16 @@ class _ProviderModelsView extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: colors.cardBackground,
+        color: cs.surfaceContainer,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: colors.border),
+        border: Border.all(color: cs.outlineVariant),
       ),
       child: Column(
         children: [
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              border: Border(bottom: BorderSide(color: colors.tabBarDivider)),
+              border: Border(bottom: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.5))),
             ),
             child: Row(
               children: [
@@ -1445,7 +1443,7 @@ class _ProviderModelsView extends StatelessWidget {
                   child: Text(
                     '+ ${l10n.add}',
                     style: TextStyle(
-                      color: colors.linkText,
+                      color: cs.primary,
                       fontSize: 11,
                       fontWeight: FontWeight.w700,
                     ),
@@ -1459,7 +1457,7 @@ class _ProviderModelsView extends StatelessWidget {
                 ? Center(
                     child: Text(
                       l10n.noModelsConfigured,
-                      style: TextStyle(color: colors.emptyMessageText),
+                      style: TextStyle(color: cs.onSurfaceVariant),
                     ),
                   )
                 : ListView.separated(
@@ -1473,7 +1471,7 @@ class _ProviderModelsView extends StatelessWidget {
                         decoration: BoxDecoration(
                           color: textBase.withValues(alpha: 0.03),
                           borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: colors.border),
+                          border: Border.all(color: cs.outlineVariant),
                         ),
                         child: Row(
                           children: [

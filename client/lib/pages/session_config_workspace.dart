@@ -4,7 +4,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../cubits/session_preferences_cubit.dart';
 import '../l10n/app_localizations.dart';
-import '../theme/app_workspace_settings_theme.dart';
 import '../utils/app_keys.dart';
 import '../widgets/settings/workspace_settings_widgets.dart';
 
@@ -37,14 +36,23 @@ class _SessionHeading extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final tokens = AppWorkspaceSettingsTokens.of(context);
-    final onSurface = Theme.of(context).colorScheme.onSurface;
+    final tt = Theme.of(context).textTheme;
+    final cs = Theme.of(context).colorScheme;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(title, style: tokens.workspaceHeadingTitleStyle(onSurface)),
-        SizedBox(height: tokens.workspaceHeadingTitleSubtitleGap),
-        Text(subtitle, style: tokens.workspaceHeadingSubtitleStyle(onSurface)),
+        Text(
+          title,
+          style: tt.titleMedium?.copyWith(fontWeight: FontWeight.w800),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          subtitle,
+          style: tt.bodyMedium?.copyWith(
+            color: cs.onSurfaceVariant,
+            height: 1.25,
+          ),
+        ),
       ],
     );
   }
