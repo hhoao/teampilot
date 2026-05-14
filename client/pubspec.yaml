@@ -38,6 +38,7 @@ dependencies:
   crypto: ^3.0.7
   archive: ^4.0.9
   toggle_switch: ^2.3.0
+  google_fonts: ^8.1.0
 
 dev_dependencies:
   flutter_test:
@@ -50,6 +51,8 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    - google_fonts/
 
 flutter_launcher_icons:
   android: false

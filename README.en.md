@@ -20,7 +20,7 @@ A **Flutter** desktop client for **TeamPilot**: multi-session chat, team and ski
 | Item | Notes |
 |------|--------|
 | [Flutter](https://docs.flutter.dev/get-started/install) | **stable** channel; the `client` package targets SDK `^3.8.1` |
-| `flashskyai` | Must be installed and on your **PATH** (the app resolves its path at startup) |
+| `flashskyai` | Must be installed and on your **PATH** (the app resolves its path at startup). On Windows, TeamPilot can also use `flashskyai` installed inside the default WSL distribution. |
 | Platforms | **Linux**, **macOS**, **Windows** (desktop) |
 
 ## Repository layout
@@ -64,7 +64,7 @@ CI uses [fastforge](https://pub.dev/packages/fastforge) to produce installers un
 
 - **Linux**: `.deb`, `.AppImage`
 - **macOS**: `.dmg`
-- **Windows**: `.msix`, `.zip`
+- **Windows**: `.msix`, `.exe`, `.zip`
 
 Pushing a **Git tag** matching `v*` runs [Release Desktop Packages](.github/workflows/release.yml), builds all three platforms, and publishes a **GitHub Release**. You can also run the workflow manually (**workflow_dispatch**) and optionally set `ref`.
 
@@ -75,6 +75,13 @@ dart pub global activate fastforge
 cd client
 flutter pub get
 fastforge package --platform linux --targets deb,appimage
+```
+
+Windows EXE packaging uses fastforge's Inno Setup maker:
+
+```powershell
+cd client
+fastforge package --platform windows --targets exe
 ```
 
 For extra OS-specific tooling (GTK on Linux, `appdmg` on macOS, etc.), follow the install steps in the CI workflow.

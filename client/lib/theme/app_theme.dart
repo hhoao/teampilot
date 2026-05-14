@@ -1,6 +1,19 @@
+import 'dart:io' show Platform;
+
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import 'app_workspace_settings_theme.dart';
+
+/// In `flutter test`, HTTP is stubbed so [google_fonts] cannot download files.
+/// Use Material [TextTheme] there; real app loads Noto Sans SC at runtime.
+bool _googleFontsNetworkAllowed() {
+  try {
+    return !Platform.environment.containsKey('FLUTTER_TEST');
+  } catch (_) {
+    return true;
+  }
+}
 
 class AppColors extends ThemeExtension<AppColors> {
   const AppColors({
@@ -265,6 +278,40 @@ ThemeData buildLightTheme() {
 ThemeData _buildTheme(Brightness brightness, AppColors colors) {
   final isDark = brightness == Brightness.dark;
   final textBase = isDark ? Colors.white : const Color(0xFF111827);
+  final colorScheme = ColorScheme(
+    brightness: brightness,
+    primary: const Color(0xFF5B8DEF),
+    onPrimary: Colors.white,
+    secondary: const Color(0xFF38CFA2),
+    onSecondary: isDark ? Colors.black : Colors.white,
+    error: const Color(0xFFFF7A7A),
+    onError: isDark ? Colors.black : Colors.white,
+    surface: colors.surface,
+    onSurface: isDark ? Colors.white : const Color(0xFF111827),
+  );
+  final typographySeed = ThemeData(
+    brightness: brightness,
+    colorScheme: colorScheme,
+    useMaterial3: true,
+  );
+  final useRuntimeGoogleFonts = _googleFontsNetworkAllowed();
+  final TextTheme textTheme;
+  final TextTheme primaryTextTheme;
+  final String? appUiFontFamily;
+  final List<String>? appUiFontFallback;
+  if (useRuntimeGoogleFonts) {
+    textTheme = GoogleFonts.notoSansScTextTheme(typographySeed.textTheme);
+    primaryTextTheme =
+        GoogleFonts.notoSansScTextTheme(typographySeed.primaryTextTheme);
+    final appUiFont = GoogleFonts.notoSansSc();
+    appUiFontFamily = appUiFont.fontFamily;
+    appUiFontFallback = appUiFont.fontFamilyFallback;
+  } else {
+    textTheme = typographySeed.textTheme;
+    primaryTextTheme = typographySeed.primaryTextTheme;
+    appUiFontFamily = null;
+    appUiFontFallback = null;
+  }
   final pillShape = RoundedRectangleBorder(
     borderRadius: BorderRadius.circular(999),
   );
@@ -273,19 +320,11 @@ ThemeData _buildTheme(Brightness brightness, AppColors colors) {
   );
   return ThemeData(
     brightness: brightness,
-    fontFamily: 'sans-serif',
-    fontFamilyFallback: const ['sans-serif'],
-    colorScheme: ColorScheme(
-      brightness: brightness,
-      primary: const Color(0xFF5B8DEF),
-      onPrimary: Colors.white,
-      secondary: const Color(0xFF38CFA2),
-      onSecondary: isDark ? Colors.black : Colors.white,
-      error: const Color(0xFFFF7A7A),
-      onError: isDark ? Colors.black : Colors.white,
-      surface: colors.surface,
-      onSurface: isDark ? Colors.white : const Color(0xFF111827),
-    ),
+    fontFamily: appUiFontFamily,
+    fontFamilyFallback: appUiFontFallback,
+    colorScheme: colorScheme,
+    textTheme: textTheme,
+    primaryTextTheme: primaryTextTheme,
     scaffoldBackgroundColor: isDark
         ? const Color(0xFF090807)
         : const Color(0xFFF8F9FA),
@@ -364,12 +403,19 @@ ThemeData _buildTheme(Brightness brightness, AppColors colors) {
         borderRadius: BorderRadius.circular(10),
         side: BorderSide(color: colors.subtleBorder),
       ),
-      textStyle: TextStyle(
-        fontSize: 14,
-        fontWeight: FontWeight.w500,
-        height: 1.25,
-        color: textBase,
-      ),
+      textStyle: useRuntimeGoogleFonts
+          ? GoogleFonts.notoSansSc(
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+              height: 1.25,
+              color: textBase,
+            )
+          : TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+              height: 1.25,
+              color: textBase,
+            ),
       iconColor: textBase.withValues(alpha: 0.72),
       menuPadding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
     ),

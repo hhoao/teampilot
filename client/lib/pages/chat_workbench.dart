@@ -104,8 +104,9 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
       );
     }
 
-    final overlayObject =
-        Overlay.maybeOf(menuContext)?.context.findRenderObject();
+    final overlayObject = Overlay.maybeOf(
+      menuContext,
+    )?.context.findRenderObject();
     if (overlayObject is! RenderBox) return;
 
     final anchor = overlayObject.globalToLocal(globalPosition);
@@ -295,21 +296,7 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
                       theme: _terminalTheme,
                       backgroundOpacity: 0.98,
                       padding: const EdgeInsets.all(16),
-                      textStyle: const TerminalStyle(
-                        fontSize: 14,
-                        fontFamily: 'monospace',
-                        fontFamilyFallback: [
-                          'Ubuntu Mono',
-                          'DejaVu Sans Mono',
-                          'Liberation Mono',
-                          'Noto Mono',
-                          'Consolas',
-                          'Courier New',
-                          'HYZhongHei',
-                          'Noto Color Emoji',
-                          'monospace',
-                        ],
-                      ),
+                      textStyle: const TerminalStyle(fontSize: 14),
                       autofocus: true,
                       onSecondaryTapUp: (details, _) {
                         unawaited(
@@ -368,11 +355,7 @@ class _NoSessionToolbar extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Icon(
-            Icons.terminal,
-            size: 14,
-            color: colors.emptyMessageText,
-          ),
+          Icon(Icons.terminal, size: 14, color: colors.emptyMessageText),
           const SizedBox(width: 6),
           Text(
             'disconnected',

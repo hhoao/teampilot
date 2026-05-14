@@ -94,11 +94,12 @@ class _TeamConfigPageState extends State<TeamConfigPage> {
                 final contentPadding = compact
                     ? const EdgeInsets.fromLTRB(16, 20, 16, 16)
                     : const EdgeInsets.fromLTRB(24, 28, 28, 24);
-                final bodyPaneWidth =
-                    constraints.maxWidth - navWidth - 1;
+                final bodyPaneWidth = constraints.maxWidth - navWidth - 1;
                 final teamBodyMaxWidth =
-                    (bodyPaneWidth - contentPadding.horizontal)
-                        .clamp(480.0, 3200.0);
+                    (bodyPaneWidth - contentPadding.horizontal).clamp(
+                      480.0,
+                      3200.0,
+                    );
                 return Row(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
@@ -139,12 +140,11 @@ class _TeamConfigPageState extends State<TeamConfigPage> {
                                 team: team,
                                 cubit: teamCubit,
                               ),
-                              _TeamPageSection.members =>
-                                _MemberDetailSection(
-                                  team: team,
-                                  cubit: teamCubit,
-                                  selectedMemberId: memberId,
-                                ),
+                              _TeamPageSection.members => _MemberDetailSection(
+                                team: team,
+                                cubit: teamCubit,
+                                selectedMemberId: memberId,
+                              ),
                             },
                           ),
                         ),
@@ -307,8 +307,9 @@ class _MemberNavSubItem extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textBase = isDark ? Colors.white : const Color(0xFF111827);
     final muted = textBase.withValues(alpha: 0.64);
-    final label =
-        member.name.trim().isEmpty ? l10n.memberName : member.name.trim();
+    final label = member.name.trim().isEmpty
+        ? l10n.memberName
+        : member.name.trim();
     return Padding(
       padding: const EdgeInsets.only(bottom: 6),
       child: Material(
@@ -336,8 +337,9 @@ class _MemberNavSubItem extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         fontSize: compact ? 13 : 14,
-                        fontWeight:
-                            selected ? FontWeight.w700 : FontWeight.w600,
+                        fontWeight: selected
+                            ? FontWeight.w700
+                            : FontWeight.w600,
                         color: selected ? textBase : muted,
                       ),
                     ),
@@ -390,9 +392,7 @@ class _MemberNavAddTile extends StatelessWidget {
                     SizedBox(width: compact ? 8 : 10),
                     Expanded(
                       child: Text(
-                        compact
-                            ? l10n.add
-                            : '${l10n.add} ${l10n.memberName}',
+                        compact ? l10n.add : '${l10n.add} ${l10n.memberName}',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
@@ -625,8 +625,7 @@ class _TeamInfoSectionState extends State<_TeamInfoSection> {
                       : (widget.team.loop! ? 'true' : 'false'),
                   hintText: l10n.teamLoopDefault,
                   excludeSelected: false,
-                  decoration:
-                      FlashskyDropdownDecorations.denseField(context),
+                  decoration: FlashskyDropdownDecorations.denseField(context),
                   closedHeaderPadding: const EdgeInsets.symmetric(
                     horizontal: 12,
                     vertical: 12,
@@ -642,21 +641,20 @@ class _TeamInfoSectionState extends State<_TeamInfoSection> {
                   overlayHeight: 200,
                   onChanged: (value) {
                     final key = value ?? '__default__';
-                    final bool? next =
-                        key == '__default__' ? null : key == 'true';
+                    final bool? next = key == '__default__'
+                        ? null
+                        : key == 'true';
                     widget.cubit.updateSelected(
-                      widget.team.copyWith(
-                        loop: next,
-                        updateLoop: true,
-                      ),
+                      widget.team.copyWith(loop: next, updateLoop: true),
                     );
                   },
                   headerBuilder: (context, value, _) => Text(
                     _teamLoopChoiceLabel(l10n, value),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: FlashskyDropdownDecorations.denseField(context)
-                        .headerStyle,
+                    style: FlashskyDropdownDecorations.denseField(
+                      context,
+                    ).headerStyle,
                   ),
                   listItemBuilder: (context, value, isSelected, _) {
                     return Row(
@@ -666,8 +664,9 @@ class _TeamInfoSectionState extends State<_TeamInfoSection> {
                             _teamLoopChoiceLabel(l10n, value),
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
-                            style: FlashskyDropdownDecorations.denseField(context)
-                                .listItemStyle,
+                            style: FlashskyDropdownDecorations.denseField(
+                              context,
+                            ).listItemStyle,
                           ),
                         ),
                       ],
@@ -755,10 +754,7 @@ class _DangerZone extends StatelessWidget {
               key: AppKeys.deleteButton,
               onPressed: () => _confirmDelete(context),
               icon: Icon(Icons.delete_outline, size: 18, color: errorColor),
-              label: Text(
-                l10n.deleteTeam,
-                style: TextStyle(color: errorColor),
-              ),
+              label: Text(l10n.deleteTeam, style: TextStyle(color: errorColor)),
               style: OutlinedButton.styleFrom(
                 side: BorderSide(color: errorColor.withValues(alpha: 0.4)),
               ),
@@ -951,10 +947,7 @@ class _MemberConfigFormState extends State<_MemberConfigForm> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _CardHeader(
-          title: l10n.configure,
-          subtitle: l10n.editMemberSubtitle,
-        ),
+        _CardHeader(title: l10n.configure, subtitle: l10n.editMemberSubtitle),
         const SizedBox(height: 18),
         _FieldLabel(text: l10n.memberName),
         const SizedBox(height: 6),
@@ -1097,8 +1090,8 @@ class _MemberConfigFormState extends State<_MemberConfigForm> {
               _update(m.copyWith(agent: ''));
             } else if (v == FlashskyBuiltInAgents.customDropdownValue) {
               final current = m.agent.trim();
-              final next = FlashskyBuiltInAgents.tryParseBuiltinId(current) ==
-                      null
+              final next =
+                  FlashskyBuiltInAgents.tryParseBuiltinId(current) == null
                   ? current
                   : '';
               _agentCtl.text = next;
@@ -1158,8 +1151,7 @@ class _MemberConfigFormState extends State<_MemberConfigForm> {
             ),
           ),
           value: m.dangerouslySkipPermissions,
-          onChanged: (v) =>
-              _update(m.copyWith(dangerouslySkipPermissions: v)),
+          onChanged: (v) => _update(m.copyWith(dangerouslySkipPermissions: v)),
         ),
         const SizedBox(height: 12),
         _FieldLabel(text: l10n.memberExtraArgs),

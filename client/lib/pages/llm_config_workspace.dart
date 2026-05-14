@@ -45,8 +45,9 @@ class _ConfigPathBarState extends State<_ConfigPathBar> {
   @override
   void initState() {
     super.initState();
-    _textController =
-        TextEditingController(text: widget.controller.state.configPathOverride);
+    _textController = TextEditingController(
+      text: widget.controller.state.configPathOverride,
+    );
     _lastSyncedOverride = widget.controller.state.configPathOverride;
   }
 
@@ -61,7 +62,9 @@ class _ConfigPathBarState extends State<_ConfigPathBar> {
       _lastSyncedOverride = state.configPathOverride;
       _textController.value = TextEditingValue(
         text: state.configPathOverride,
-        selection: TextSelection.collapsed(offset: state.configPathOverride.length),
+        selection: TextSelection.collapsed(
+          offset: state.configPathOverride.length,
+        ),
       );
     }
   }
@@ -117,8 +120,9 @@ class _ConfigPathBarState extends State<_ConfigPathBar> {
             children: [
               Text(
                 l10n.llmConfigPathLabel,
-                style: theme.textTheme.labelMedium
-                    ?.copyWith(fontWeight: FontWeight.w600),
+                style: theme.textTheme.labelMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
               ),
               const SizedBox(width: 8),
               Container(
@@ -130,7 +134,9 @@ class _ConfigPathBarState extends State<_ConfigPathBar> {
                 ),
                 child: Text(
                   badgeText,
-                  style: theme.textTheme.labelSmall?.copyWith(color: badgeColor),
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: badgeColor,
+                  ),
                 ),
               ),
               Expanded(
@@ -140,8 +146,9 @@ class _ConfigPathBarState extends State<_ConfigPathBar> {
                   child: SelectionArea(
                     child: Text(
                       state.effectiveConfigPath,
-                      style: theme.textTheme.bodySmall
-                          ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       textAlign: TextAlign.end,
@@ -162,8 +169,10 @@ class _ConfigPathBarState extends State<_ConfigPathBar> {
                     isDense: true,
                     hintText: l10n.llmConfigPathHint,
                     border: const OutlineInputBorder(),
-                    contentPadding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 8,
+                    ),
                   ),
                   onSubmitted: (_) => _apply(),
                 ),
@@ -747,9 +756,7 @@ class _ProviderDetailPanelState extends State<_ProviderDetailPanel> {
           Container(
             padding: const EdgeInsets.fromLTRB(16, 14, 10, 14),
             decoration: BoxDecoration(
-              border: Border(
-                bottom: BorderSide(color: theme.dividerColor),
-              ),
+              border: Border(bottom: BorderSide(color: theme.dividerColor)),
             ),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -806,12 +813,13 @@ class _ProviderDetailPanelState extends State<_ProviderDetailPanel> {
           ),
           Expanded(
             child: SingleChildScrollView(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: LayoutBuilder(
                 builder: (context, constraints) {
-                  final trailingW =
-                      (constraints.maxWidth * 0.44).clamp(168.0, 280.0);
+                  final trailingW = (constraints.maxWidth * 0.44).clamp(
+                    168.0,
+                    280.0,
+                  );
 
                   String typeLabel(String v) =>
                       v == 'api' ? l10n.api : l10n.account;
@@ -835,31 +843,29 @@ class _ProviderDetailPanelState extends State<_ProviderDetailPanel> {
                             builder: (context) {
                               final deco =
                                   FlashskyDropdownDecorations.denseField(
-                                context,
-                              );
+                                    context,
+                                  );
                               return DropdownFlutter<String>(
                                 items: const ['api', 'account'],
                                 initialItem: _type,
                                 excludeSelected: false,
                                 decoration: deco,
-                                closedHeaderPadding:
-                                    const EdgeInsets.symmetric(
+                                closedHeaderPadding: const EdgeInsets.symmetric(
                                   horizontal: 10,
                                   vertical: 10,
                                 ),
                                 expandedHeaderPadding:
                                     const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 10,
-                                ),
+                                      horizontal: 12,
+                                      vertical: 10,
+                                    ),
                                 listItemPadding: const EdgeInsets.symmetric(
                                   vertical: 8,
                                   horizontal: 10,
                                 ),
                                 overlayHeight: 160,
-                                onChanged: (value) => setState(
-                                  () => _type = value ?? 'api',
-                                ),
+                                onChanged: (value) =>
+                                    setState(() => _type = value ?? 'api'),
                                 headerBuilder: (context, value, _) => Text(
                                   typeLabel(value),
                                   maxLines: 1,
@@ -913,9 +919,7 @@ class _ProviderDetailPanelState extends State<_ProviderDetailPanel> {
                             child: TextField(
                               key: AppKeys.proxyUrlField,
                               controller: _proxyUrlController,
-                              decoration: const InputDecoration(
-                                isDense: true,
-                              ),
+                              decoration: const InputDecoration(isDense: true),
                             ),
                           ),
                         ],
@@ -924,9 +928,7 @@ class _ProviderDetailPanelState extends State<_ProviderDetailPanel> {
                           child: TextField(
                             key: AppKeys.baseUrlField,
                             controller: _baseUrlController,
-                            decoration: const InputDecoration(
-                              isDense: true,
-                            ),
+                            decoration: const InputDecoration(isDense: true),
                           ),
                         ),
                         _SettingFieldBlock(
@@ -938,8 +940,8 @@ class _ProviderDetailPanelState extends State<_ProviderDetailPanel> {
                                 child: TextField(
                                   key: AppKeys.apiKeyField,
                                   controller: _apiKeyController,
-                                  obscureText: !_apiKeyRevealed &&
-                                      _apiKey.isNotEmpty,
+                                  obscureText:
+                                      !_apiKeyRevealed && _apiKey.isNotEmpty,
                                   decoration: InputDecoration(
                                     isDense: true,
                                     suffixIcon: _apiKey.isNotEmpty
@@ -958,11 +960,11 @@ class _ProviderDetailPanelState extends State<_ProviderDetailPanel> {
                                                   !_apiKeyRevealed;
                                               if (_apiKeyRevealed &&
                                                   !_apiKeyReplaced) {
-                                                _apiKeyController.text =
-                                                    widget.controller
-                                                        .revealApiKey(
-                                                  provider.name,
-                                                );
+                                                _apiKeyController.text = widget
+                                                    .controller
+                                                    .revealApiKey(
+                                                      provider.name,
+                                                    );
                                               } else if (!_apiKeyRevealed) {
                                                 _apiKeyController.text =
                                                     LlmConfig.maskedSecret;
@@ -1154,47 +1156,45 @@ class _ProviderDetailLook {
 
   Color get insetPanelBorder => colors.statBoxBorder;
 
-  TextStyle get panelTitleStyle => (textTheme.titleLarge ??
-          textTheme.titleMedium ??
-          const TextStyle(fontSize: 20))
-      .copyWith(
-        fontWeight: FontWeight.w800,
-        letterSpacing: -0.2,
-        color: colorScheme.onSurface,
-      );
+  TextStyle get panelTitleStyle =>
+      (textTheme.titleLarge ??
+              textTheme.titleMedium ??
+              const TextStyle(fontSize: 20))
+          .copyWith(
+            fontWeight: FontWeight.w800,
+            letterSpacing: -0.2,
+            color: colorScheme.onSurface,
+          );
 
-  TextStyle get mutedBodyStyle => (textTheme.bodySmall ??
-          textTheme.labelMedium ??
-          const TextStyle(fontSize: 12))
-      .copyWith(
-        color: colors.emptyMessageText,
-        height: 1.35,
-      );
+  TextStyle get mutedBodyStyle =>
+      (textTheme.bodySmall ??
+              textTheme.labelMedium ??
+              const TextStyle(fontSize: 12))
+          .copyWith(color: colors.emptyMessageText, height: 1.35);
 
-  TextStyle get rowLabelStyle => (textTheme.bodyLarge ??
-          textTheme.bodyMedium ??
-          const TextStyle(fontSize: 14))
-      .copyWith(
-        fontWeight: FontWeight.w600,
-        height: 1.2,
-        color: colorScheme.onSurface,
-      );
+  TextStyle get rowLabelStyle =>
+      (textTheme.bodyLarge ??
+              textTheme.bodyMedium ??
+              const TextStyle(fontSize: 14))
+          .copyWith(
+            fontWeight: FontWeight.w600,
+            height: 1.2,
+            color: colorScheme.onSurface,
+          );
 
-  TextStyle get sectionTitleStyle => (textTheme.titleMedium ??
-          textTheme.titleLarge ??
-          const TextStyle(fontSize: 16))
-      .copyWith(
-        fontWeight: FontWeight.w800,
-        letterSpacing: -0.2,
-        color: colorScheme.onSurface,
-      );
+  TextStyle get sectionTitleStyle =>
+      (textTheme.titleMedium ??
+              textTheme.titleLarge ??
+              const TextStyle(fontSize: 16))
+          .copyWith(
+            fontWeight: FontWeight.w800,
+            letterSpacing: -0.2,
+            color: colorScheme.onSurface,
+          );
 }
 
 class _SettingRow extends StatelessWidget {
-  const _SettingRow({
-    required this.title,
-    required this.trailing,
-  });
+  const _SettingRow({required this.title, required this.trailing});
 
   final String title;
   final Widget trailing;
@@ -1207,12 +1207,7 @@ class _SettingRow extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Expanded(
-            child: Text(
-              title,
-              style: look.rowLabelStyle,
-            ),
-          ),
+          Expanded(child: Text(title, style: look.rowLabelStyle)),
           const SizedBox(width: 16),
           trailing,
         ],
@@ -1244,19 +1239,16 @@ class _InlineReadOnlyValue extends StatelessWidget {
         overflow: TextOverflow.ellipsis,
         style: (look.textTheme.bodyMedium ?? const TextStyle(fontSize: 14))
             .copyWith(
-          color: look.colors.readOnlyFieldText,
-          fontWeight: FontWeight.w500,
-        ),
+              color: look.colors.readOnlyFieldText,
+              fontWeight: FontWeight.w500,
+            ),
       ),
     );
   }
 }
 
 class _SettingFieldBlock extends StatelessWidget {
-  const _SettingFieldBlock({
-    required this.title,
-    required this.child,
-  });
+  const _SettingFieldBlock({required this.title, required this.child});
 
   final String title;
   final Widget child;
@@ -1269,10 +1261,7 @@ class _SettingFieldBlock extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(
-            title,
-            style: look.rowLabelStyle,
-          ),
+          Text(title, style: look.rowLabelStyle),
           const SizedBox(height: 8),
           child,
         ],
@@ -1329,10 +1318,7 @@ class _ProviderModelsTable extends StatelessWidget {
                           model.model,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: muted,
-                          ),
+                          style: TextStyle(fontSize: 11, color: muted),
                         ),
                       ],
                     ],
@@ -1667,8 +1653,9 @@ class _ModelEditDialogState extends State<_ModelEditDialog> {
     final l10n = context.l10n;
     final providerNames = widget.providers.keys.toList()..sort();
     final deco = FlashskyDropdownDecorations.denseField(context);
-    final initialProvider =
-        widget.providers.containsKey(_provider) ? _provider : null;
+    final initialProvider = widget.providers.containsKey(_provider)
+        ? _provider
+        : null;
 
     return AlertDialog(
       title: Text(widget.title),
@@ -1690,7 +1677,8 @@ class _ModelEditDialogState extends State<_ModelEditDialog> {
               children: [
                 Text(
                   l10n.provider,
-                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                  style:
+                      Theme.of(context).textTheme.labelLarge?.copyWith(
                         fontWeight: FontWeight.w600,
                       ) ??
                       const TextStyle(
@@ -1719,8 +1707,7 @@ class _ModelEditDialogState extends State<_ModelEditDialog> {
                     horizontal: 12,
                   ),
                   overlayHeight: 260,
-                  onChanged: (value) =>
-                      setState(() => _provider = value ?? ''),
+                  onChanged: (value) => setState(() => _provider = value ?? ''),
                   headerBuilder: (context, value, _) => Text(
                     value,
                     maxLines: 1,

@@ -1,7 +1,10 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:teampilot/services/terminal_session.dart';
+import 'package:teampilot/models/team_config.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 class _FakePtyHandle implements TerminalPtyHandle {
@@ -91,5 +94,212 @@ void main() {
     session.terminal.onResize?.call(120, 32, 0, 0);
 
     expect(handle.resizeCalls, [(32, 120)]);
+  });
+
+  test('pty output is written to the terminal buffer', () async {
+    final handle = _FakePtyHandle();
+    final session = TerminalSession(
+      executable: 'flashskyai',
+      ptyStarter:
+          (
+            executable, {
+            required arguments,
+            required workingDirectory,
+            required columns,
+            required rows,
+            environment,
+          }) {
+            return handle;
+          },
+    );
+    addTearDown(() async {
+      session.dispose();
+      await handle.outputController.close();
+    });
+
+    session.connect(workingDirectory: '/tmp');
+    handle.outputController.add(Uint8List.fromList(utf8.encode('hello\r\n')));
+    await Future<void>.delayed(Duration.zero);
+
+    expect(session.terminal.buffer.getText(), contains('hello'));
+  });
+
+  test(
+    'wsl sessions do not pass UNC working directory to Windows pty',
+    () async {
+      if (!Platform.isWindows) return;
+      String? capturedExecutable;
+      String? capturedWorkingDirectory;
+      List<String>? capturedArguments;
+      final handle = _FakePtyHandle();
+      final session = TerminalSession(
+        executable:
+            r'\\wsl.localhost\Ubuntu\home\hhoa\flashskyai\dist\flashskyai',
+        ptyStarter:
+            (
+              executable, {
+              required arguments,
+              required workingDirectory,
+              required columns,
+              required rows,
+              environment,
+            }) {
+              capturedExecutable = executable;
+              capturedArguments = List<String>.from(arguments);
+              capturedWorkingDirectory = workingDirectory;
+              return handle;
+            },
+      );
+      addTearDown(() async {
+        session.dispose();
+        await handle.outputController.close();
+      });
+
+      session.connect(
+        workingDirectory: r'\\wsl.localhost\Ubuntu\home\hhoa\project',
+      );
+
+      if (capturedExecutable == 'wsl.exe') {
+        expect(capturedWorkingDirectory, isNot(startsWith(r'\\wsl')));
+        expect(
+          capturedArguments,
+          contains('/home/hhoa/flashskyai/dist/flashskyai'),
+        );
+        expect(capturedArguments, contains('/home/hhoa/project'));
+      }
+    },
+  );
+
+  test('single-slash wsl executable converts Windows project dir', () async {
+    if (!Platform.isWindows) return;
+    String? capturedExecutable;
+    List<String>? capturedArguments;
+    final handle = _FakePtyHandle();
+    final session = TerminalSession(
+      executable:
+          r'\wsl.localhost\Ubuntu\home\hhoa\flashskai-ubuntu-wsl\dist\flashskyai',
+      ptyStarter:
+          (
+            executable, {
+            required arguments,
+            required workingDirectory,
+            required columns,
+            required rows,
+            environment,
+          }) {
+            capturedExecutable = executable;
+            capturedArguments = List<String>.from(arguments);
+            return handle;
+          },
+    );
+    addTearDown(() async {
+      session.dispose();
+      await handle.outputController.close();
+    });
+
+    session.connect(workingDirectory: r'C:\Users\haung\git\teampilot\client');
+
+    if (capturedExecutable == 'wsl.exe') {
+      expect(
+        capturedArguments,
+        contains('/home/hhoa/flashskai-ubuntu-wsl/dist/flashskyai'),
+      );
+      expect(
+        capturedArguments,
+        contains('/mnt/c/Users/haung/git/teampilot/client'),
+      );
+    }
+  });
+
+  test('wsl launch matches the manually verified command shape', () async {
+    if (!Platform.isWindows) return;
+    String? capturedExecutable;
+    List<String>? capturedArguments;
+    final handle = _FakePtyHandle();
+    final session = TerminalSession(
+      executable:
+          r'\wsl.localhost\Ubuntu\home\hhoa\flashskai-ubuntu-wsl\dist\flashskyai',
+      ptyStarter:
+          (
+            executable, {
+            required arguments,
+            required workingDirectory,
+            required columns,
+            required rows,
+            environment,
+          }) {
+            capturedExecutable = executable;
+            capturedArguments = List<String>.from(arguments);
+            return handle;
+          },
+    );
+    addTearDown(() async {
+      session.dispose();
+      await handle.outputController.close();
+    });
+
+    const team = TeamConfig(id: 'team', name: 'default-team-0');
+    const member = TeamMemberConfig(id: 'member', name: 'team-lead');
+    session.connect(
+      workingDirectory: r'C:\Users\haung\git\teampilot\client',
+      team: team,
+      member: member,
+    );
+
+    if (capturedExecutable == 'wsl.exe') {
+      expect(capturedArguments, [
+        '/home/hhoa/flashskai-ubuntu-wsl/dist/flashskyai',
+        '--dir',
+        '/mnt/c/Users/haung/git/teampilot/client',
+        '--team',
+        'default-team-0',
+        '--member',
+        'team-lead',
+      ]);
+    }
+  });
+
+  test('windows pty launch receives full environment for wsl.exe', () async {
+    if (!Platform.isWindows) return;
+    Map<String, String>? capturedEnvironment;
+    final handle = _FakePtyHandle();
+    final session = TerminalSession(
+      executable:
+          r'\wsl.localhost\Ubuntu\home\hhoa\flashskai-ubuntu-wsl\dist\flashskyai',
+      ptyStarter:
+          (
+            executable, {
+            required arguments,
+            required workingDirectory,
+            required columns,
+            required rows,
+            environment,
+          }) {
+            capturedEnvironment = environment == null
+                ? null
+                : Map<String, String>.from(environment);
+            return handle;
+          },
+    );
+    addTearDown(() async {
+      session.dispose();
+      await handle.outputController.close();
+    });
+
+    session.connect(
+      workingDirectory: r'C:\Users\haung\git\teampilot\client',
+      extraEnvironment: const {'LLM_CONFIG_PATH': r'C:\config.json'},
+    );
+
+    expect(capturedEnvironment, isNotNull);
+    expect(
+      capturedEnvironment,
+      containsPair('LLM_CONFIG_PATH', '/mnt/c/config.json'),
+    );
+    expect(capturedEnvironment!.keys, contains(anyOf('Path', 'PATH')));
+    expect(
+      capturedEnvironment!.keys,
+      contains(anyOf('SystemRoot', 'windir', 'WINDIR')),
+    );
   });
 }

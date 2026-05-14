@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import '../models/team_config.dart';
+import 'cli_invocation.dart';
 
 typedef ProcessStarter =
     Future<Process> Function(
@@ -23,6 +24,7 @@ class LaunchCommandBuilder {
     List<String> additionalDirectories = const [],
     String? fixedSessionId,
     String? resumeSessionId,
+    bool useWslPaths = false,
   }) {
     final args = <String>[];
     final resume = resumeSessionId?.trim() ?? '';
@@ -34,12 +36,15 @@ class LaunchCommandBuilder {
     }
     final wd = workingDirectory ?? '';
     if (wd.isNotEmpty) {
-      args.addAll(['--dir', wd]);
+      args.addAll(['--dir', normalizePathForCli(wd, useWslPaths: useWslPaths)]);
     }
     for (final path in additionalDirectories) {
       final t = path.trim();
       if (t.isNotEmpty) {
-        args.addAll(['--add-dir', t]);
+        args.addAll([
+          '--add-dir',
+          normalizePathForCli(t, useWslPaths: useWslPaths),
+        ]);
       }
     }
     return args;
@@ -53,6 +58,7 @@ class LaunchCommandBuilder {
     List<String> additionalDirectories = const [],
     String? fixedSessionId,
     String? resumeSessionId,
+    bool useWslPaths = false,
   }) {
     final teamFlag = sessionTeam ?? team.name.trim();
     final wd = workingDirectory ?? '';
@@ -63,6 +69,7 @@ class LaunchCommandBuilder {
         additionalDirectories: additionalDirectories,
         fixedSessionId: fixedSessionId,
         resumeSessionId: resumeSessionId,
+        useWslPaths: useWslPaths,
       ),
       '--team',
       teamFlag,
@@ -106,8 +113,10 @@ class LaunchCommandBuilder {
     String? fixedSessionId,
     String? resumeSessionId,
   }) {
+    final invocation = CliInvocation.fromExecutable(executable);
     return [
-      executable,
+      invocation.executable,
+      ...invocation.prefixArgs,
       ...buildArguments(
         team,
         member,
@@ -116,6 +125,7 @@ class LaunchCommandBuilder {
         additionalDirectories: additionalDirectories,
         fixedSessionId: fixedSessionId,
         resumeSessionId: resumeSessionId,
+        useWslPaths: invocation.usesWsl,
       ),
     ].map(_quoteForPreview).join(' ');
   }
@@ -181,6 +191,11 @@ class LaunchCommandBuilder {
     ProcessStarter starter = Process.start,
   }) async {
     final wd = workingDirectory ?? '';
+    final invocation = CliInvocation.fromExecutable(executable);
+    final processWorkingDirectory = workingDirectoryForProcess(
+      wd,
+      useWslPaths: invocation.usesWsl,
+    );
     final args = buildArguments(
       team,
       member,
@@ -189,36 +204,48 @@ class LaunchCommandBuilder {
       additionalDirectories: additionalDirectories,
       fixedSessionId: fixedSessionId,
       resumeSessionId: resumeSessionId,
+      useWslPaths: invocation.usesWsl,
     );
-    final env = extraEnvironment;
+    final env = invocation.usesWsl
+        ? normalizeEnvironmentForCli(extraEnvironment, useWslPaths: true)
+        : extraEnvironment;
+    final launchArgs = invocation.withArgs(args, environment: env);
 
     if (Platform.isLinux) {
-      if (await _tryStartTerminal(starter, 'x-terminal-emulator', [
-        '-e',
-        executable,
-        ...args,
-      ], wd, env)) {
+      if (await _tryStartTerminal(
+        starter,
+        'x-terminal-emulator',
+        ['-e', invocation.executable, ...launchArgs],
+        processWorkingDirectory,
+        env,
+      )) {
         return;
       }
-      if (await _tryStartTerminal(starter, 'gnome-terminal', [
-        '--',
-        executable,
-        ...args,
-      ], wd, env)) {
+      if (await _tryStartTerminal(
+        starter,
+        'gnome-terminal',
+        ['--', invocation.executable, ...launchArgs],
+        processWorkingDirectory,
+        env,
+      )) {
         return;
       }
-      if (await _tryStartTerminal(starter, 'konsole', [
-        '-e',
-        executable,
-        ...args,
-      ], wd, env)) {
+      if (await _tryStartTerminal(
+        starter,
+        'konsole',
+        ['-e', invocation.executable, ...launchArgs],
+        processWorkingDirectory,
+        env,
+      )) {
         return;
       }
-      if (await _tryStartTerminal(starter, 'xterm', [
-        '-e',
-        executable,
-        ...args,
-      ], wd, env)) {
+      if (await _tryStartTerminal(
+        starter,
+        'xterm',
+        ['-e', invocation.executable, ...launchArgs],
+        processWorkingDirectory,
+        env,
+      )) {
         return;
       }
     } else if (Platform.isMacOS) {
@@ -229,12 +256,14 @@ class LaunchCommandBuilder {
           : '${env.entries.map((e) => 'export ${e.key}=${_shellQuote(e.value)}').join('; ')}; ';
       final script =
           '${exports}cd ${_shellQuote(wd)} && '
-          '${_shellQuote(executable)} ${args.map(_shellQuote).join(' ')}';
-      if (await _tryStartTerminal(starter, 'open', [
-        '-a',
-        'Terminal',
-        script,
-      ], wd, env)) {
+          '${_shellQuote(invocation.executable)} ${launchArgs.map(_shellQuote).join(' ')}';
+      if (await _tryStartTerminal(
+        starter,
+        'open',
+        ['-a', 'Terminal', script],
+        processWorkingDirectory,
+        env,
+      )) {
         return;
       }
     } else if (Platform.isWindows) {
@@ -244,23 +273,22 @@ class LaunchCommandBuilder {
           ? ''
           : '${env.entries.map((e) => 'set ${e.key}=${e.value}').join(' && ')} && ';
       final command =
-          '$sets${[executable, ...args].map(_windowsQuote).join(' ')}';
-      if (await _tryStartTerminal(starter, 'cmd', [
-        '/c',
-        'start',
-        'FlashskyAI',
+          '$sets${[invocation.executable, ...launchArgs].map(_windowsQuote).join(' ')}';
+      if (await _tryStartTerminal(
+        starter,
         'cmd',
-        '/k',
-        command,
-      ], wd, env)) {
+        ['/c', 'start', 'FlashskyAI', 'cmd', '/k', command],
+        processWorkingDirectory,
+        env,
+      )) {
         return;
       }
     }
 
     await starter(
-      executable,
-      args,
-      workingDirectory: wd,
+      invocation.executable,
+      launchArgs,
+      workingDirectory: processWorkingDirectory,
       runInShell: true,
       environment: env,
       includeParentEnvironment: true,
@@ -308,5 +336,55 @@ class LaunchCommandBuilder {
       return value;
     }
     return '"${value.replaceAll('"', r'\"')}"';
+  }
+
+  static String normalizePathForCli(String path, {required bool useWslPaths}) {
+    if (!useWslPaths) return path;
+    return windowsPathToWsl(path) ?? path;
+  }
+
+  static String? windowsPathToWsl(String path) {
+    final trimmed = path.trim();
+    final uncMatch = RegExp(
+      r'^\\+(?:wsl\.localhost|wsl\$)\\[^\\]+\\(.+)$',
+      caseSensitive: false,
+    ).firstMatch(trimmed.replaceAll('/', r'\'));
+    if (uncMatch != null) {
+      return '/${uncMatch.group(1)!.replaceAll(r'\', '/')}';
+    }
+
+    final match = RegExp(r'^([a-zA-Z]):[\\/]*(.*)$').firstMatch(trimmed);
+    if (match == null) return null;
+    final drive = match.group(1)!.toLowerCase();
+    final rest = match.group(2)!.replaceAll('\\', '/');
+    return rest.isEmpty ? '/mnt/$drive' : '/mnt/$drive/$rest';
+  }
+
+  static String workingDirectoryForProcess(
+    String workingDirectory, {
+    required bool useWslPaths,
+  }) {
+    if (!useWslPaths) return workingDirectory;
+    if (!Platform.isWindows) return workingDirectory;
+    final trimmed = workingDirectory.trim();
+    if (trimmed.isNotEmpty &&
+        windowsPathToWsl(trimmed) == null &&
+        !trimmed.startsWith(r'\\')) {
+      return trimmed;
+    }
+    return Platform.environment['USERPROFILE'] ??
+        Platform.environment['SystemRoot'] ??
+        Directory.current.path;
+  }
+
+  static Map<String, String>? normalizeEnvironmentForCli(
+    Map<String, String>? environment, {
+    required bool useWslPaths,
+  }) {
+    if (environment == null || !useWslPaths) return environment;
+    return {
+      for (final entry in environment.entries)
+        entry.key: normalizePathForCli(entry.value, useWslPaths: true),
+    };
   }
 }

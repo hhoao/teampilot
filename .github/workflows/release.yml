@@ -51,6 +51,9 @@ jobs:
       - name: Resolve Flutter packages
         run: flutter pub get
 
+      - name: Sync bundled Google Fonts (Noto Sans SC)
+        run: dart run tool/sync_bundled_google_fonts.dart
+
       - name: Package
         run: fastforge package --platform linux --targets deb,appimage
 
@@ -81,6 +84,9 @@ jobs:
       - name: Resolve Flutter packages
         run: flutter pub get
 
+      - name: Sync bundled Google Fonts (Noto Sans SC)
+        run: dart run tool/sync_bundled_google_fonts.dart
+
       - name: Package
         run: fastforge package --platform macos --targets dmg
 
@@ -91,7 +97,7 @@ jobs:
           if-no-files-found: error
 
   build-windows:
-    name: Build Windows (MSIX + ZIP)
+    name: Build Windows (MSIX + EXE + ZIP)
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -106,6 +112,12 @@ jobs:
       - name: Activate fastforge
         run: dart pub global activate fastforge
 
+      - name: Install Inno Setup
+        shell: pwsh
+        run: |
+          choco install innosetup --no-progress -y
+          Add-Content $env:GITHUB_PATH "C:\Program Files (x86)\Inno Setup 6"
+
       - name: Add pub-cache to PATH (Windows)
         shell: pwsh
         run: |
@@ -114,8 +126,11 @@ jobs:
       - name: Resolve Flutter packages
         run: flutter pub get
 
+      - name: Sync bundled Google Fonts (Noto Sans SC)
+        run: dart run tool/sync_bundled_google_fonts.dart
+
       - name: Package
-        run: fastforge package --platform windows --targets msix,zip
+        run: fastforge package --platform windows --targets msix,exe,zip
 
       - uses: actions/upload-artifact@v4
         with:
@@ -144,7 +159,7 @@ jobs:
           find artifacts -type f \
             \( -name "*.deb" -o -name "*.AppImage" \
                -o -name "*.dmg" \
-               -o -name "*.msix" -o -name "*.zip" \) \
+               -o -name "*.msix" -o -name "*.exe" -o -name "*.zip" \) \
             -exec cp {} release-files/ \;
           ls -la release-files
 
