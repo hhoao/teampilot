@@ -14,6 +14,12 @@ import '../widgets/dropdown/custom_dropdown.dart';
 import '../widgets/dropdown/flashskyai_dropdown_decoration.dart';
 import '../widgets/resizable_split_view.dart';
 
+// LLM 配置页统一留白（8dp 网格）。
+const double _kLlmInsetH = 16;
+const double _kLlmInsetHSm = 12;
+const double _kLlmSectionGap = 12;
+const double _kLlmFieldGap = 8;
+
 class LlmConfigWorkspace extends StatelessWidget {
   const LlmConfigWorkspace({super.key});
 
@@ -108,7 +114,12 @@ class _ConfigPathBarState extends State<_ConfigPathBar> {
         : theme.colorScheme.outline;
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+      padding: const EdgeInsets.fromLTRB(
+        _kLlmInsetHSm,
+        _kLlmFieldGap + 2,
+        _kLlmInsetHSm,
+        _kLlmFieldGap + 2,
+      ),
       decoration: BoxDecoration(
         color: cs.surface,
         border: Border(
@@ -229,13 +240,13 @@ class _ProvidersTabContentState extends State<_ProvidersTabContent> {
         _modelsProviderName == selectedProvider.name;
 
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2),
+      padding: const EdgeInsets.symmetric(vertical: 4),
       child: ResizableSplitView(
         initialLeftFraction: 0.34,
         minLeftWidth: 220,
         maxLeftWidth: 560,
         left: Padding(
-          padding: const EdgeInsets.only(right: 8),
+          padding: const EdgeInsets.only(right: 6),
           child: _ProviderListPanel(
             config: config,
             selectedName: selectedName,
@@ -248,7 +259,7 @@ class _ProvidersTabContentState extends State<_ProvidersTabContent> {
           ),
         ),
         right: Padding(
-          padding: const EdgeInsets.only(left: 4),
+          padding: const EdgeInsets.only(left: 6),
           child: showModels
               ? _ProviderModelsView(
                   config: config,
@@ -374,13 +385,20 @@ class _ProviderListPanelState extends State<_ProviderListPanel> {
     final l10n = context.l10n;
     final isDark = theme.brightness == Brightness.dark;
     final textBase = isDark ? Colors.white : const Color(0xFF111827);
-    final providers = widget.config.providers.values
+    final rawList = widget.config.providers.values
         .where(
           (p) =>
               _searchQuery.isEmpty ||
               p.name.toLowerCase().contains(_searchQuery.toLowerCase()),
         )
-        .toList();
+        .toList()
+      ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+    // 防御：若底层 Map 因异常出现同名多条，避免 ListView 子 Element 复用错乱。
+    final providers = <LlmProviderConfig>[];
+    final seenNames = <String>{};
+    for (final p in rawList) {
+      if (seenNames.add(p.name)) providers.add(p);
+    }
 
     return Container(
       key: AppKeys.llmProviderList,
@@ -393,11 +411,12 @@ class _ProviderListPanelState extends State<_ProviderListPanel> {
       child: Column(
         children: [
           Container(
-            height: 48,
-            padding: const EdgeInsets.symmetric(horizontal: 14),
+            height: 44,
+            padding: const EdgeInsets.only(left: 12, right: 8),
             decoration: BoxDecoration(
               border: Border(bottom: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.5))),
             ),
+            alignment: Alignment.centerLeft,
             child: Row(
               children: [
                 Expanded(
@@ -406,13 +425,23 @@ class _ProviderListPanelState extends State<_ProviderListPanel> {
                     style: tx.panelHeaderColored(textBase),
                   ),
                 ),
-                InkWell(
-                  onTap: widget.onAdd,
-                  child: Text(
-                    '+ ${l10n.add}',
-                    style: tx.smallColored(
-                      cs.primary,
-                      fontWeight: FontWeight.w500,
+                Padding(
+                  padding: const EdgeInsets.only(left: 8),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(6),
+                    onTap: widget.onAdd,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 6,
+                      ),
+                      child: Text(
+                        '+ ${l10n.add}',
+                        style: tx.smallColored(
+                          cs.primary,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
                     ),
                   ),
                 ),
@@ -420,7 +449,7 @@ class _ProviderListPanelState extends State<_ProviderListPanel> {
             ),
           ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
+            padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
             child: AppOutlineTextField(
               key: AppKeys.llmProviderSearch,
               controller: _searchController,
@@ -430,7 +459,7 @@ class _ProviderListPanelState extends State<_ProviderListPanel> {
           ),
           Expanded(
             child: ListView.separated(
-              padding: const EdgeInsets.fromLTRB(12, 4, 12, 14),
+              padding: const EdgeInsets.fromLTRB(12, 6, 12, 12),
               itemCount: providers.length,
               separatorBuilder: (_, __) => const SizedBox(height: 8),
               itemBuilder: (context, index) {
@@ -440,6 +469,7 @@ class _ProviderListPanelState extends State<_ProviderListPanel> {
                     .where((m) => m.provider == provider.name)
                     .length;
                 return _ProviderListRow(
+                  key: ObjectKey(provider),
                   provider: provider,
                   isSelected: isSelected,
                   modelCount: modelCount,
@@ -457,6 +487,7 @@ class _ProviderListPanelState extends State<_ProviderListPanel> {
 
 class _ProviderListRow extends StatelessWidget {
   const _ProviderListRow({
+    super.key,
     required this.provider,
     required this.isSelected,
     required this.modelCount,
@@ -487,7 +518,7 @@ class _ProviderListRow extends StatelessWidget {
         borderRadius: BorderRadius.circular(10),
         onTap: onTap,
         child: Container(
-          padding: const EdgeInsets.fromLTRB(14, 13, 6, 13),
+          padding: const EdgeInsets.fromLTRB(12, 14, 8, 14),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(10),
             border: Border.all(
@@ -509,17 +540,25 @@ class _ProviderListRow extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: tx.bodyStrongColored(textBase),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 6),
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        _TypeBadge(type: provider.type),
+                        _TypeBadge(
+                          key: ValueKey<String>(
+                            'list-badge-${provider.name}-${provider.type}',
+                          ),
+                          type: provider.type,
+                        ),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
                             l10n.providerListCaption(
                               modelCount,
                               provider.proxy,
+                            ),
+                            key: ValueKey<String>(
+                              'list-cap-${provider.name}-$modelCount-${provider.proxy}',
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -534,6 +573,7 @@ class _ProviderListRow extends StatelessWidget {
                 ),
               ),
               PopupMenuButton<String>(
+                key: ValueKey<String>('prov-menu-${provider.name}'),
                 icon: const Icon(Icons.more_horiz, size: 18),
                 padding: const EdgeInsets.all(4),
                 constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
@@ -553,7 +593,7 @@ class _ProviderListRow extends StatelessWidget {
 }
 
 class _TypeBadge extends StatelessWidget {
-  const _TypeBadge({required this.type});
+  const _TypeBadge({super.key, required this.type});
 
   final String type;
 
@@ -655,7 +695,7 @@ class _ProviderDetailPanelState extends State<_ProviderDetailPanel> {
       _persistDebounce?.cancel();
       _persistDebounce = null;
       if (prev != null && _providerName == prev.name) {
-        widget.onSave(prev.name, _draftFromFields());
+        widget.onSave(prev.name, _draftFromFieldsFor(prev));
       }
     }
     if (widget.provider?.name != _providerName) {
@@ -669,7 +709,7 @@ class _ProviderDetailPanelState extends State<_ProviderDetailPanel> {
     _persistDebounce = null;
     final p = widget.provider;
     if (p != null && _providerName == p.name) {
-      widget.onSave(p.name, _draftFromFields());
+      widget.onSave(p.name, _draftFromFieldsFor(p));
     }
     _providerTypeController.dispose();
     _baseUrlController.dispose();
@@ -701,12 +741,12 @@ class _ProviderDetailPanelState extends State<_ProviderDetailPanel> {
   void _persistProvider() {
     final provider = widget.provider;
     if (provider == null) return;
-    widget.onSave(provider.name, _draftFromFields());
+    widget.onSave(provider.name, _draftFromFieldsFor(provider));
   }
 
-  LlmProviderConfig _draftFromFields() {
-    final provider = widget.provider!;
-    return provider.copyWith(
+  /// 用当前表单控件状态，生成以 [base] 为起点的配置（切换 Provider 时 [base] 须为旧项，不能再用 [widget.provider]）。
+  LlmProviderConfig _draftFromFieldsFor(LlmProviderConfig base) {
+    return base.copyWith(
       type: _type,
       providerType: _type == 'api' ? _providerTypeController.text : '',
       baseUrl: _type == 'api' ? _baseUrlController.text : '',
@@ -789,7 +829,10 @@ class _ProviderDetailPanelState extends State<_ProviderDetailPanel> {
       child: Column(
         children: [
           Container(
-            padding: const EdgeInsets.fromLTRB(16, 14, 10, 14),
+            padding: const EdgeInsets.symmetric(
+              horizontal: _kLlmInsetH,
+              vertical: 12,
+            ),
             decoration: BoxDecoration(
               border: Border(bottom: BorderSide(color: theme.dividerColor)),
             ),
@@ -814,8 +857,13 @@ class _ProviderDetailPanelState extends State<_ProviderDetailPanel> {
                               ),
                             ),
                           ),
-                          const SizedBox(width: 8),
-                          _TypeBadge(type: provider.type),
+                          const SizedBox(width: _kLlmFieldGap),
+                          _TypeBadge(
+                            key: ValueKey<String>(
+                              'hdr-${provider.name}-${provider.type}',
+                            ),
+                            type: provider.type,
+                          ),
                         ],
                       ),
                       const SizedBox(height: 6),
@@ -834,7 +882,7 @@ class _ProviderDetailPanelState extends State<_ProviderDetailPanel> {
                   icon: const Icon(Icons.model_training_outlined, size: 17),
                   label: Text(l10n.models),
                 ),
-                const SizedBox(width: 4),
+                const SizedBox(width: _kLlmFieldGap),
                 IconButton(
                   tooltip: l10n.deleteProviderTooltip,
                   style: IconButton.styleFrom(
@@ -848,12 +896,17 @@ class _ProviderDetailPanelState extends State<_ProviderDetailPanel> {
           ),
           Expanded(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              padding: const EdgeInsets.fromLTRB(
+                _kLlmInsetH,
+                _kLlmSectionGap,
+                _kLlmInsetH,
+                _kLlmInsetH,
+              ),
               child: LayoutBuilder(
                 builder: (context, constraints) {
-                  final trailingW = (constraints.maxWidth * 0.44).clamp(
-                    168.0,
-                    280.0,
+                  final trailingW = (constraints.maxWidth * 0.42).clamp(
+                    200.0,
+                    320.0,
                   );
 
                   String typeLabel(String v) =>
@@ -869,7 +922,14 @@ class _ProviderDetailPanelState extends State<_ProviderDetailPanel> {
                           child: _InlineReadOnlyValue(value: provider.name),
                         ),
                       ),
-                      const Divider(height: 1),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 6),
+                        child: Divider(
+                          height: 1,
+                          thickness: 1,
+                          color: theme.dividerColor.withValues(alpha: 0.35),
+                        ),
+                      ),
                       _SettingRow(
                         title: l10n.type,
                         trailing: SizedBox(
@@ -881,6 +941,9 @@ class _ProviderDetailPanelState extends State<_ProviderDetailPanel> {
                                     context,
                                   );
                               return DropdownFlutter<String>(
+                                key: ValueKey<String>(
+                                  'provider-type-${provider.name}',
+                                ),
                                 items: const ['api', 'account'],
                                 initialItem: _type,
                                 excludeSelected: false,
@@ -939,7 +1002,14 @@ class _ProviderDetailPanelState extends State<_ProviderDetailPanel> {
                             onSubmitted: (_) => _flushPersistDebounce(),
                           ),
                         ),
-                        const Divider(height: 1),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 6),
+                          child: Divider(
+                            height: 1,
+                            thickness: 1,
+                            color: theme.dividerColor.withValues(alpha: 0.35),
+                          ),
+                        ),
                         _SettingRow(
                           title: l10n.proxy,
                           trailing: Switch(
@@ -1020,7 +1090,7 @@ class _ProviderDetailPanelState extends State<_ProviderDetailPanel> {
                                   onSubmitted: (_) => _flushPersistDebounce(),
                                 ),
                               ),
-                              const SizedBox(width: 4),
+                              const SizedBox(width: 8),
                               IconButton(
                                 key: AppKeys.replaceApiKeyButton,
                                 tooltip: l10n.replaceKey,
@@ -1040,7 +1110,7 @@ class _ProviderDetailPanelState extends State<_ProviderDetailPanel> {
                         ),
                       ],
                       if (_type == 'account') ...[
-                        const SizedBox(height: 8),
+                        const SizedBox(height: _kLlmSectionGap),
                         ...List.generate(_accountControllers.length, (index) {
                           return Padding(
                             padding: const EdgeInsets.only(bottom: 8),
@@ -1092,14 +1162,21 @@ class _ProviderDetailPanelState extends State<_ProviderDetailPanel> {
                           ),
                         ),
                       ],
-                      const SizedBox(height: 12),
+                      const SizedBox(height: _kLlmSectionGap),
                       if (providerModels.isNotEmpty) ...[
-                        const Divider(height: 28),
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: Divider(
+                            height: 1,
+                            thickness: 1,
+                            color: theme.dividerColor.withValues(alpha: 0.35),
+                          ),
+                        ),
                         Text(
                           l10n.modelsUsingProviderTitle,
                           style: look.sectionTitleStyle,
                         ),
-                        const SizedBox(height: 12),
+                        const SizedBox(height: _kLlmFieldGap),
                         DecoratedBox(
                           decoration: BoxDecoration(
                             color: look.insetPanelBg,
@@ -1107,7 +1184,7 @@ class _ProviderDetailPanelState extends State<_ProviderDetailPanel> {
                             border: Border.all(color: look.insetPanelBorder),
                           ),
                           child: Padding(
-                            padding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
+                            padding: const EdgeInsets.all(_kLlmInsetHSm),
                             child: _ProviderModelsTable(
                               key: AppKeys.providerModelsTable,
                               models: providerModels,
@@ -1123,7 +1200,10 @@ class _ProviderDetailPanelState extends State<_ProviderDetailPanel> {
                         ),
                       ] else ...[
                         Container(
-                          padding: const EdgeInsets.all(14),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: _kLlmInsetH,
+                            vertical: 14,
+                          ),
                           decoration: BoxDecoration(
                             color: look.insetPanelBg,
                             borderRadius: BorderRadius.circular(10),
@@ -1248,14 +1328,32 @@ class _SettingRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final look = _ProviderDetailLook.of(context);
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Expanded(child: Text(title, style: look.rowLabelStyle)),
-          const SizedBox(width: 16),
-          trailing,
-        ],
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: LayoutBuilder(
+        builder: (context, c) {
+          final labelW = (c.maxWidth * 0.30).clamp(104.0, 152.0);
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              SizedBox(
+                width: labelW,
+                child: Text(
+                  title,
+                  style: look.rowLabelStyle,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Align(
+                  alignment: Alignment.centerRight,
+                  child: trailing,
+                ),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -1298,12 +1396,12 @@ class _SettingFieldBlock extends StatelessWidget {
   Widget build(BuildContext context) {
     final look = _ProviderDetailLook.of(context);
     return Padding(
-      padding: const EdgeInsets.only(left: 4, right: 4, bottom: 4),
+      padding: const EdgeInsets.only(top: 10, bottom: 6),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(title, style: look.rowLabelStyle),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           child,
         ],
       ),
@@ -1340,7 +1438,7 @@ class _ProviderModelsTable extends StatelessWidget {
       children: [
         for (final model in models)
           Padding(
-            padding: const EdgeInsets.only(top: 4),
+            padding: const EdgeInsets.symmetric(vertical: 4),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
@@ -1450,7 +1548,7 @@ class _ProviderModelsView extends StatelessWidget {
       child: Column(
         children: [
           Container(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.fromLTRB(4, 6, 8, 6),
             decoration: BoxDecoration(
               border: Border(bottom: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.5))),
             ),
@@ -1460,8 +1558,10 @@ class _ProviderModelsView extends StatelessWidget {
                   tooltip: l10n.back,
                   icon: const Icon(Icons.arrow_back, size: 18),
                   onPressed: onBack,
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 4),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -1470,7 +1570,7 @@ class _ProviderModelsView extends StatelessWidget {
                         '${l10n.models} — ${provider.name}',
                         style: tx.panelHeaderColored(textBase),
                       ),
-                      const SizedBox(height: 3),
+                      const SizedBox(height: 4),
                       Text(
                         '${providerModels.length} ${l10n.models.toLowerCase()}',
                         style: tx.smallColored(
@@ -1480,13 +1580,23 @@ class _ProviderModelsView extends StatelessWidget {
                     ],
                   ),
                 ),
-                InkWell(
-                  onTap: () => _addModel(context, provider.name),
-                  child: Text(
-                    '+ ${l10n.add}',
-                    style: tx.smallColored(
-                      cs.primary,
-                      fontWeight: FontWeight.w500,
+                Padding(
+                  padding: const EdgeInsets.only(left: 8),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(6),
+                    onTap: () => _addModel(context, provider.name),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 6,
+                      ),
+                      child: Text(
+                        '+ ${l10n.add}',
+                        style: tx.smallColored(
+                          cs.primary,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
                     ),
                   ),
                 ),
@@ -1496,19 +1606,25 @@ class _ProviderModelsView extends StatelessWidget {
           Expanded(
             child: providerModels.isEmpty
                 ? Center(
-                    child: Text(
-                      l10n.noModelsConfigured,
-                      style: tx.mutedBody,
+                    child: Padding(
+                      padding: const EdgeInsets.all(_kLlmInsetH),
+                      child: Text(
+                        l10n.noModelsConfigured,
+                        style: tx.mutedBody,
+                      ),
                     ),
                   )
                 : ListView.separated(
-                    padding: const EdgeInsets.all(12),
+                    padding: const EdgeInsets.fromLTRB(12, 8, 12, 16),
                     itemCount: providerModels.length,
                     separatorBuilder: (_, __) => const SizedBox(height: 8),
                     itemBuilder: (context, index) {
                       final model = providerModels[index];
                       return Container(
-                        padding: const EdgeInsets.all(12),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 10,
+                        ),
                         decoration: BoxDecoration(
                           color: textBase.withValues(alpha: 0.03),
                           borderRadius: BorderRadius.circular(8),
@@ -1869,7 +1985,7 @@ class _CompactIconButton extends StatelessWidget {
         borderRadius: BorderRadius.circular(4),
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.all(6),
+          padding: const EdgeInsets.all(8),
           child: Icon(icon, size: 16),
         ),
       ),
