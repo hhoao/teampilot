@@ -1,0 +1,3 @@
+[submodule "client/packages/xterm"]
+	path = client/packages/xterm
+	url = https://github.com/hhoao/xterm.dart.git

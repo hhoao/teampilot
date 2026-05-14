@@ -16,7 +16,8 @@ dependencies:
     sdk: flutter
   cupertino_icons: ^1.0.8
   shared_preferences: ^2.5.3
-  xterm: ^4.0.0
+  xterm:
+    path: packages/xterm
   flutter_pty: ^0.4.2
 
   flutter_bloc: ^9.1.0
