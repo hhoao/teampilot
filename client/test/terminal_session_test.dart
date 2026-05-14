@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:typed_data';
 
-import 'package:flashskyai_client/services/terminal_session.dart';
+import 'package:teampilot/services/terminal_session.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 class _FakePtyHandle implements TerminalPtyHandle {
