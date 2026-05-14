@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
@@ -7,6 +9,7 @@ import '../l10n/app_localizations.dart';
 import '../models/llm_config.dart';
 import '../cubits/llm_config_cubit.dart';
 import '../utils/app_keys.dart';
+import '../widgets/app_outline_text_field.dart';
 import '../widgets/dropdown/custom_dropdown.dart';
 import '../widgets/dropdown/flashskyai_dropdown_decoration.dart';
 import '../widgets/resizable_split_view.dart';
@@ -119,9 +122,7 @@ class _ConfigPathBarState extends State<_ConfigPathBar> {
             children: [
               Text(
                 l10n.llmConfigPathLabel,
-                style: theme.textTheme.labelMedium?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
+                style: _LlmWorkspaceText(theme).bodyStrong,
               ),
               const SizedBox(width: 8),
               Container(
@@ -162,16 +163,12 @@ class _ConfigPathBarState extends State<_ConfigPathBar> {
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Expanded(
-                child: TextField(
+                child: AppOutlineTextField(
                   controller: _textController,
-                  decoration: InputDecoration(
-                    isDense: true,
-                    hintText: l10n.llmConfigPathHint,
-                    border: const OutlineInputBorder(),
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 8,
-                    ),
+                  hintText: l10n.llmConfigPathHint,
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 8,
                   ),
                   onSubmitted: (_) => _apply(),
                 ),
@@ -284,11 +281,11 @@ class _ProvidersTabContentState extends State<_ProvidersTabContent> {
       context: context,
       builder: (context) => AlertDialog(
         title: Text(l10n.addProvider),
-        content: TextField(
+        content: AppOutlineTextField(
           key: AppKeys.providerNameDialogField,
           controller: nameController,
           autofocus: true,
-          decoration: InputDecoration(labelText: l10n.providerName),
+          labelText: l10n.providerName,
         ),
         actions: [
           TextButton(
@@ -371,9 +368,11 @@ class _ProviderListPanelState extends State<_ProviderListPanel> {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final tx = _LlmWorkspaceText(theme);
     final l10n = context.l10n;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isDark = theme.brightness == Brightness.dark;
     final textBase = isDark ? Colors.white : const Color(0xFF111827);
     final providers = widget.config.providers.values
         .where(
@@ -404,20 +403,16 @@ class _ProviderListPanelState extends State<_ProviderListPanel> {
                 Expanded(
                   child: Text(
                     l10n.providerList,
-                    style: TextStyle(
-                      fontWeight: FontWeight.w800,
-                      color: textBase,
-                    ),
+                    style: tx.panelHeaderColored(textBase),
                   ),
                 ),
                 InkWell(
                   onTap: widget.onAdd,
                   child: Text(
                     '+ ${l10n.add}',
-                    style: TextStyle(
-                      color: cs.primary,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
+                    style: tx.smallColored(
+                      cs.primary,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
                 ),
@@ -426,21 +421,10 @@ class _ProviderListPanelState extends State<_ProviderListPanel> {
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
-            child: TextField(
+            child: AppOutlineTextField(
               key: AppKeys.llmProviderSearch,
               controller: _searchController,
-              decoration: InputDecoration(
-                hintText: l10n.filterProviders,
-                isDense: true,
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 10,
-                ),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(7),
-                  borderSide: BorderSide(color: cs.outlineVariant),
-                ),
-              ),
+              hintText: l10n.filterProviders,
               onChanged: (value) => setState(() => _searchQuery = value),
             ),
           ),
@@ -488,9 +472,11 @@ class _ProviderListRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final tx = _LlmWorkspaceText(theme);
     final l10n = context.l10n;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isDark = theme.brightness == Brightness.dark;
     final textBase = isDark ? Colors.white : const Color(0xFF111827);
     return Material(
       color: isSelected
@@ -521,12 +507,7 @@ class _ProviderListRow extends StatelessWidget {
                       provider.name,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontWeight: FontWeight.w700,
-                        color: textBase,
-                        height: 1.25,
-                        fontSize: 13,
-                      ),
+                      style: tx.bodyStrongColored(textBase),
                     ),
                     const SizedBox(height: 8),
                     Row(
@@ -542,10 +523,8 @@ class _ProviderListRow extends StatelessWidget {
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              color: textBase.withValues(alpha: 0.48),
-                              fontSize: 11,
-                              height: 1.35,
+                            style: tx.smallColored(
+                              textBase.withValues(alpha: 0.48),
                             ),
                           ),
                         ),
@@ -580,8 +559,11 @@ class _TypeBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final tx = _LlmWorkspaceText(theme);
     final isAccount = type == 'account';
+    final smallFontSize = tx.small.fontSize ?? 11;
     return DecoratedBox(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(99),
@@ -596,17 +578,16 @@ class _TypeBadge extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
         child: Text(
           type,
-          strutStyle: const StrutStyle(
-            fontSize: 11,
+          strutStyle: StrutStyle(
+            fontSize: smallFontSize,
             height: 1.0,
             forceStrutHeight: true,
             leading: 0,
           ),
-          style: TextStyle(
-            fontSize: 11,
-            fontWeight: FontWeight.w600,
+          style: tx.small.copyWith(
             height: 1.0,
             letterSpacing: 0.2,
+            fontWeight: FontWeight.w600,
             color: isAccount
                 ? cs.onSecondaryContainer
                 : cs.onPrimaryContainer,
@@ -652,6 +633,7 @@ class _ProviderDetailPanelState extends State<_ProviderDetailPanel> {
   bool _apiKeyRevealed = false;
   bool _apiKeyReplaced = false;
   String? _providerName;
+  Timer? _persistDebounce;
 
   @override
   void initState() {
@@ -667,6 +649,15 @@ class _ProviderDetailPanelState extends State<_ProviderDetailPanel> {
   @override
   void didUpdateWidget(covariant _ProviderDetailPanel oldWidget) {
     super.didUpdateWidget(oldWidget);
+    final prev = oldWidget.provider;
+    final next = widget.provider;
+    if (prev?.name != next?.name) {
+      _persistDebounce?.cancel();
+      _persistDebounce = null;
+      if (prev != null && _providerName == prev.name) {
+        widget.onSave(prev.name, _draftFromFields());
+      }
+    }
     if (widget.provider?.name != _providerName) {
       _syncFromProvider();
     }
@@ -674,6 +665,12 @@ class _ProviderDetailPanelState extends State<_ProviderDetailPanel> {
 
   @override
   void dispose() {
+    _persistDebounce?.cancel();
+    _persistDebounce = null;
+    final p = widget.provider;
+    if (p != null && _providerName == p.name) {
+      widget.onSave(p.name, _draftFromFields());
+    }
     _providerTypeController.dispose();
     _baseUrlController.dispose();
     _proxyUrlController.dispose();
@@ -684,7 +681,46 @@ class _ProviderDetailPanelState extends State<_ProviderDetailPanel> {
     super.dispose();
   }
 
+  static const _persistDebounceDuration = Duration(milliseconds: 450);
+
+  void _persistDebounced() {
+    _persistDebounce?.cancel();
+    _persistDebounce = Timer(_persistDebounceDuration, () {
+      if (!mounted) return;
+      _persistProvider();
+    });
+  }
+
+  /// 取消防抖并立即写入（例如提交键盘、切换 Provider 前）。
+  void _flushPersistDebounce() {
+    _persistDebounce?.cancel();
+    _persistDebounce = null;
+    _persistProvider();
+  }
+
+  void _persistProvider() {
+    final provider = widget.provider;
+    if (provider == null) return;
+    widget.onSave(provider.name, _draftFromFields());
+  }
+
+  LlmProviderConfig _draftFromFields() {
+    final provider = widget.provider!;
+    return provider.copyWith(
+      type: _type,
+      providerType: _type == 'api' ? _providerTypeController.text : '',
+      baseUrl: _type == 'api' ? _baseUrlController.text : '',
+      apiKey: _type == 'api' ? _apiKey : '',
+      proxy: _proxy,
+      proxyUrl: _proxy ? _proxyUrlController.text : '',
+      accounts: _type == 'account'
+          ? _accountControllers.map((c) => c.text).toList()
+          : const [],
+    );
+  }
+
   void _syncFromProvider() {
+    _persistDebounce?.cancel();
     final provider = widget.provider;
     if (provider == null) {
       _providerName = null;
@@ -863,8 +899,10 @@ class _ProviderDetailPanelState extends State<_ProviderDetailPanel> {
                                   horizontal: 10,
                                 ),
                                 overlayHeight: 160,
-                                onChanged: (value) =>
-                                    setState(() => _type = value ?? 'api'),
+                                onChanged: (value) {
+                                  setState(() => _type = value ?? 'api');
+                                  _persistProvider();
+                                },
                                 headerBuilder: (context, value, _) => Text(
                                   typeLabel(value),
                                   maxLines: 1,
@@ -893,13 +931,12 @@ class _ProviderDetailPanelState extends State<_ProviderDetailPanel> {
                       if (_type == 'api') ...[
                         _SettingFieldBlock(
                           title: l10n.providerType,
-                          child: TextField(
+                          child: AppOutlineTextField(
                             key: AppKeys.providerTypeField,
                             controller: _providerTypeController,
-                            decoration: InputDecoration(
-                              hintText: l10n.providerTypeHint,
-                              isDense: true,
-                            ),
+                            hintText: l10n.providerTypeHint,
+                            onChanged: (_) => _persistDebounced(),
+                            onSubmitted: (_) => _flushPersistDebounce(),
                           ),
                         ),
                         const Divider(height: 1),
@@ -908,26 +945,30 @@ class _ProviderDetailPanelState extends State<_ProviderDetailPanel> {
                           trailing: Switch(
                             key: AppKeys.providerProxyToggle,
                             value: _proxy,
-                            onChanged: (value) =>
-                                setState(() => _proxy = value),
+                            onChanged: (value) {
+                              setState(() => _proxy = value);
+                              _persistProvider();
+                            },
                           ),
                         ),
                         if (_proxy) ...[
                           _SettingFieldBlock(
                             title: l10n.proxyUrl,
-                            child: TextField(
+                            child: AppOutlineTextField(
                               key: AppKeys.proxyUrlField,
                               controller: _proxyUrlController,
-                              decoration: const InputDecoration(isDense: true),
+                              onChanged: (_) => _persistDebounced(),
+                              onSubmitted: (_) => _flushPersistDebounce(),
                             ),
                           ),
                         ],
                         _SettingFieldBlock(
                           title: l10n.baseUrl,
-                          child: TextField(
+                          child: AppOutlineTextField(
                             key: AppKeys.baseUrlField,
                             controller: _baseUrlController,
-                            decoration: const InputDecoration(isDense: true),
+                            onChanged: (_) => _persistDebounced(),
+                            onSubmitted: (_) => _flushPersistDebounce(),
                           ),
                         ),
                         _SettingFieldBlock(
@@ -936,48 +977,47 @@ class _ProviderDetailPanelState extends State<_ProviderDetailPanel> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Expanded(
-                                child: TextField(
+                                child: AppOutlineTextField(
                                   key: AppKeys.apiKeyField,
                                   controller: _apiKeyController,
                                   obscureText:
                                       !_apiKeyRevealed && _apiKey.isNotEmpty,
-                                  decoration: InputDecoration(
-                                    isDense: true,
-                                    suffixIcon: _apiKey.isNotEmpty
-                                        ? IconButton(
-                                            key: AppKeys.revealApiKeyButton,
-                                            icon: Icon(
-                                              _apiKeyRevealed
-                                                  ? Icons.visibility_off
-                                                  : Icons.visibility,
-                                            ),
-                                            tooltip: _apiKeyRevealed
-                                                ? l10n.hide
-                                                : l10n.reveal,
-                                            onPressed: () => setState(() {
-                                              _apiKeyRevealed =
-                                                  !_apiKeyRevealed;
-                                              if (_apiKeyRevealed &&
-                                                  !_apiKeyReplaced) {
-                                                _apiKeyController.text = widget
-                                                    .controller
-                                                    .revealApiKey(
-                                                      provider.name,
-                                                    );
-                                              } else if (!_apiKeyRevealed) {
-                                                _apiKeyController.text =
-                                                    LlmConfig.maskedSecret;
-                                              }
-                                            }),
-                                          )
-                                        : null,
-                                  ),
+                                  suffixIcon: _apiKey.isNotEmpty
+                                      ? IconButton(
+                                          key: AppKeys.revealApiKeyButton,
+                                          icon: Icon(
+                                            _apiKeyRevealed
+                                                ? Icons.visibility_off
+                                                : Icons.visibility,
+                                          ),
+                                          tooltip: _apiKeyRevealed
+                                              ? l10n.hide
+                                              : l10n.reveal,
+                                          onPressed: () => setState(() {
+                                            _apiKeyRevealed =
+                                                !_apiKeyRevealed;
+                                            if (_apiKeyRevealed &&
+                                                !_apiKeyReplaced) {
+                                              _apiKeyController.text = widget
+                                                  .controller
+                                                  .revealApiKey(
+                                                    provider.name,
+                                                  );
+                                            } else if (!_apiKeyRevealed) {
+                                              _apiKeyController.text =
+                                                  LlmConfig.maskedSecret;
+                                            }
+                                          }),
+                                        )
+                                      : null,
                                   onChanged: (value) {
                                     if (value != LlmConfig.maskedSecret) {
                                       _apiKey = value;
                                       _apiKeyReplaced = true;
                                     }
+                                    _persistDebounced();
                                   },
+                                  onSubmitted: (_) => _flushPersistDebounce(),
                                 ),
                               ),
                               const SizedBox(width: 4),
@@ -985,10 +1025,13 @@ class _ProviderDetailPanelState extends State<_ProviderDetailPanel> {
                                 key: AppKeys.replaceApiKeyButton,
                                 tooltip: l10n.replaceKey,
                                 onPressed: () {
-                                  _apiKeyController.clear();
-                                  _apiKey = '';
-                                  _apiKeyRevealed = true;
-                                  _apiKeyReplaced = true;
+                                  setState(() {
+                                    _apiKeyController.clear();
+                                    _apiKey = '';
+                                    _apiKeyRevealed = true;
+                                    _apiKeyReplaced = true;
+                                  });
+                                  _persistProvider();
                                 },
                                 icon: const Icon(Icons.key_outlined),
                               ),
@@ -1005,25 +1048,28 @@ class _ProviderDetailPanelState extends State<_ProviderDetailPanel> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Expanded(
-                                  child: TextField(
+                                  child: AppOutlineTextField(
                                     key: index == 0
                                         ? AppKeys.accountPathField
                                         : null,
                                     controller: _accountControllers[index],
-                                    decoration: InputDecoration(
-                                      hintText: l10n.accountCredentialPath,
-                                      isDense: true,
-                                    ),
+                                    hintText: l10n.accountCredentialPath,
+                                    onChanged: (_) => _persistDebounced(),
+                                    onSubmitted: (_) =>
+                                        _flushPersistDebounce(),
                                   ),
                                 ),
                                 IconButton(
                                   key: AppKeys.deleteAccountPathButton,
                                   icon: const Icon(Icons.remove_circle_outline),
                                   tooltip: l10n.removePath,
-                                  onPressed: () => setState(() {
-                                    _accountControllers[index].dispose();
-                                    _accountControllers.removeAt(index);
-                                  }),
+                                  onPressed: () {
+                                    setState(() {
+                                      _accountControllers[index].dispose();
+                                      _accountControllers.removeAt(index);
+                                    });
+                                    _persistProvider();
+                                  },
                                 ),
                               ],
                             ),
@@ -1033,33 +1079,20 @@ class _ProviderDetailPanelState extends State<_ProviderDetailPanel> {
                           alignment: Alignment.centerLeft,
                           child: OutlinedButton.icon(
                             key: AppKeys.addAccountPathButton,
-                            onPressed: () => setState(
-                              () => _accountControllers.add(
-                                TextEditingController(),
-                              ),
-                            ),
+                            onPressed: () {
+                              setState(
+                                () => _accountControllers.add(
+                                  TextEditingController(),
+                                ),
+                              );
+                              _persistDebounced();
+                            },
                             icon: const Icon(Icons.add),
                             label: Text(l10n.addAccountPath),
                           ),
                         ),
                       ],
-                      const SizedBox(height: 16),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          OutlinedButton(
-                            onPressed: _syncFromProvider,
-                            child: Text(l10n.cancel),
-                          ),
-                          const SizedBox(width: 10),
-                          FilledButton.icon(
-                            onPressed: _save,
-                            icon: const Icon(Icons.save_outlined, size: 18),
-                            label: Text(l10n.save),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 20),
+                      const SizedBox(height: 12),
                       if (providerModels.isNotEmpty) ...[
                         const Divider(height: 28),
                         Text(
@@ -1113,24 +1146,58 @@ class _ProviderDetailPanelState extends State<_ProviderDetailPanel> {
     );
   }
 
-  void _save() {
-    final provider = widget.provider;
-    if (provider == null) return;
-    widget.onSave(
-      provider.name,
-      provider.copyWith(
-        type: _type,
-        providerType: _type == 'api' ? _providerTypeController.text : '',
-        baseUrl: _type == 'api' ? _baseUrlController.text : '',
-        apiKey: _type == 'api' ? _apiKey : '',
-        proxy: _proxy,
-        proxyUrl: _proxy ? _proxyUrlController.text : '',
-        accounts: _type == 'account'
-            ? _accountControllers.map((c) => c.text).toList()
-            : const [],
-      ),
+}
+
+/// 本页排版：沿用 [ThemeData.textTheme]，仅「小 / 中 / 面板标题」三档字号来源；
+/// 字重只在 regular、[FontWeight.w500]、[FontWeight.w600] 之间选（不出现 w700/w800）。
+class _LlmWorkspaceText {
+  const _LlmWorkspaceText(this.theme);
+
+  final ThemeData theme;
+
+  TextTheme get _t => theme.textTheme;
+
+  TextStyle get _smallBase => _t.labelSmall ?? const TextStyle();
+
+  /// 小：徽章、次要说明、紧凑链接。
+  TextStyle get small => _smallBase.copyWith(height: 1.35);
+
+  TextStyle smallColored(Color color, {FontWeight? fontWeight}) =>
+      small.copyWith(color: color, fontWeight: fontWeight);
+
+  /// 中：正文、只读值。
+  TextStyle get body {
+    final base = _t.bodyMedium ?? const TextStyle(fontSize: 14);
+    return base.copyWith(height: 1.35);
+  }
+
+  TextStyle bodyColored(Color color) => body.copyWith(color: color);
+
+  /// 中强调：行标题、列表主名称。
+  TextStyle get bodyStrong =>
+      body.copyWith(fontWeight: FontWeight.w600, height: 1.25);
+
+  TextStyle bodyStrongColored(Color color) =>
+      bodyStrong.copyWith(color: color);
+
+  /// 面板顶栏标题（不做更大字号档位）。
+  TextStyle get panelHeader {
+    final base = _t.titleSmall ?? _t.titleMedium ?? const TextStyle();
+    return base.copyWith(
+      fontWeight: FontWeight.w600,
+      letterSpacing: -0.15,
+      height: 1.25,
     );
   }
+
+  TextStyle panelHeaderColored(Color color) =>
+      panelHeader.copyWith(color: color);
+
+  TextStyle get mutedBody =>
+      body.copyWith(color: theme.colorScheme.onSurfaceVariant);
+
+  TextStyle get mutedSmall =>
+      small.copyWith(color: theme.colorScheme.onSurfaceVariant);
 }
 
 /// Provider detail pane: typography and [ColorScheme] from app [ThemeData].
@@ -1142,6 +1209,8 @@ class _ProviderDetailLook {
   }
 
   final ThemeData theme;
+
+  _LlmWorkspaceText get _tx => _LlmWorkspaceText(theme);
 
   ColorScheme get colorScheme => theme.colorScheme;
   TextTheme get textTheme => theme.textTheme;
@@ -1155,40 +1224,18 @@ class _ProviderDetailLook {
   Color get insetPanelBorder => colorScheme.outlineVariant;
 
   TextStyle get panelTitleStyle =>
-      (textTheme.titleLarge ??
-              textTheme.titleMedium ??
-              const TextStyle(fontSize: 20))
-          .copyWith(
-            fontWeight: FontWeight.w800,
-            letterSpacing: -0.2,
-            color: colorScheme.onSurface,
-          );
+      _tx.panelHeaderColored(colorScheme.onSurface);
 
-  TextStyle get mutedBodyStyle =>
-      (textTheme.bodySmall ??
-              textTheme.labelMedium ??
-              const TextStyle(fontSize: 12))
-          .copyWith(color: colorScheme.onSurfaceVariant, height: 1.35);
+  TextStyle get mutedBodyStyle => _tx.mutedSmall;
 
   TextStyle get rowLabelStyle =>
-      (textTheme.bodyLarge ??
-              textTheme.bodyMedium ??
-              const TextStyle(fontSize: 14))
-          .copyWith(
-            fontWeight: FontWeight.w600,
-            height: 1.2,
-            color: colorScheme.onSurface,
-          );
+      _tx.bodyStrongColored(colorScheme.onSurface).copyWith(height: 1.2);
 
   TextStyle get sectionTitleStyle =>
-      (textTheme.titleMedium ??
-              textTheme.titleLarge ??
-              const TextStyle(fontSize: 16))
-          .copyWith(
-            fontWeight: FontWeight.w800,
-            letterSpacing: -0.2,
-            color: colorScheme.onSurface,
-          );
+      _tx.panelHeaderColored(colorScheme.onSurface);
+
+  /// 只读字段内文字：中档 + 弱化色。
+  TextStyle get valueBoxStyle => _tx.mutedBody;
 }
 
 class _SettingRow extends StatelessWidget {
@@ -1235,11 +1282,7 @@ class _InlineReadOnlyValue extends StatelessWidget {
         value,
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
-        style: (look.textTheme.bodyMedium ?? const TextStyle(fontSize: 14))
-            .copyWith(
-              color: look.colorScheme.onSurfaceVariant,
-              fontWeight: FontWeight.w500,
-            ),
+        style: look.valueBoxStyle,
       ),
     );
   }
@@ -1286,8 +1329,10 @@ class _ProviderModelsTable extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final tx = _LlmWorkspaceText(theme);
     final l10n = context.l10n;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isDark = theme.brightness == Brightness.dark;
     final textBase = isDark ? Colors.white : const Color(0xFF111827);
     final muted = textBase.withValues(alpha: 0.55);
     return Column(
@@ -1307,7 +1352,7 @@ class _ProviderModelsTable extends StatelessWidget {
                         model.name,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontWeight: FontWeight.w600),
+                        style: tx.bodyStrongColored(textBase),
                       ),
                       if (model.model.isNotEmpty &&
                           model.model != model.name) ...[
@@ -1316,7 +1361,7 @@ class _ProviderModelsTable extends StatelessWidget {
                           model.model,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: TextStyle(fontSize: 11, color: muted),
+                          style: tx.smallColored(muted),
                         ),
                       ],
                     ],
@@ -1386,9 +1431,11 @@ class _ProviderModelsView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final tx = _LlmWorkspaceText(theme);
     final l10n = context.l10n;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isDark = theme.brightness == Brightness.dark;
     final textBase = isDark ? Colors.white : const Color(0xFF111827);
     final providerModels = config.models.values
         .where((m) => m.provider == provider.name)
@@ -1421,18 +1468,13 @@ class _ProviderModelsView extends StatelessWidget {
                     children: [
                       Text(
                         '${l10n.models} — ${provider.name}',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w800,
-                          fontSize: 14,
-                          color: textBase,
-                        ),
+                        style: tx.panelHeaderColored(textBase),
                       ),
                       const SizedBox(height: 3),
                       Text(
                         '${providerModels.length} ${l10n.models.toLowerCase()}',
-                        style: TextStyle(
-                          color: textBase.withValues(alpha: 0.48),
-                          fontSize: 11,
+                        style: tx.smallColored(
+                          textBase.withValues(alpha: 0.48),
                         ),
                       ),
                     ],
@@ -1442,10 +1484,9 @@ class _ProviderModelsView extends StatelessWidget {
                   onTap: () => _addModel(context, provider.name),
                   child: Text(
                     '+ ${l10n.add}',
-                    style: TextStyle(
-                      color: cs.primary,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
+                    style: tx.smallColored(
+                      cs.primary,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
                 ),
@@ -1457,7 +1498,7 @@ class _ProviderModelsView extends StatelessWidget {
                 ? Center(
                     child: Text(
                       l10n.noModelsConfigured,
-                      style: TextStyle(color: cs.onSurfaceVariant),
+                      style: tx.mutedBody,
                     ),
                   )
                 : ListView.separated(
@@ -1482,17 +1523,13 @@ class _ProviderModelsView extends StatelessWidget {
                                 children: [
                                   Text(
                                     model.name,
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.w700,
-                                      color: textBase,
-                                    ),
+                                    style: tx.bodyStrongColored(textBase),
                                   ),
                                   const SizedBox(height: 2),
                                   Text(
                                     model.model,
-                                    style: TextStyle(
-                                      color: textBase.withValues(alpha: 0.54),
-                                      fontSize: 12,
+                                    style: tx.smallColored(
+                                      textBase.withValues(alpha: 0.54),
                                     ),
                                   ),
                                 ],
@@ -1586,10 +1623,13 @@ Future<void> _showValidationDialog(BuildContext context, LlmConfig config) {
                 shrinkWrap: true,
                 itemCount: messages.length,
                 separatorBuilder: (_, __) => const SizedBox(height: 8),
-                itemBuilder: (context, index) => Text(
-                  '${index + 1}. ${messages[index]}',
-                  style: const TextStyle(height: 1.35),
-                ),
+                itemBuilder: (context, index) {
+                  final body = Theme.of(context).textTheme.bodyMedium;
+                  return Text(
+                    '${index + 1}. ${messages[index]}',
+                    style: (body ?? const TextStyle()).copyWith(height: 1.35),
+                  );
+                },
               ),
       ),
       actions: [
@@ -1662,11 +1702,11 @@ class _ModelEditDialogState extends State<_ModelEditDialog> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            TextField(
+            AppOutlineTextField(
               key: AppKeys.modelNameDialogField,
               controller: _nameController,
               autofocus: true,
-              decoration: InputDecoration(labelText: l10n.modelName),
+              labelText: l10n.modelName,
             ),
             const SizedBox(height: 14),
             Column(
@@ -1675,14 +1715,7 @@ class _ModelEditDialogState extends State<_ModelEditDialog> {
               children: [
                 Text(
                   l10n.provider,
-                  style:
-                      Theme.of(context).textTheme.labelLarge?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ) ??
-                      const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                      ),
+                  style: _LlmWorkspaceText(Theme.of(context)).bodyStrong,
                 ),
                 const SizedBox(height: 8),
                 DropdownFlutter<String>(
@@ -1730,10 +1763,10 @@ class _ModelEditDialogState extends State<_ModelEditDialog> {
               ],
             ),
             const SizedBox(height: 14),
-            TextField(
+            AppOutlineTextField(
               key: AppKeys.modelModelIdField,
               controller: _modelController,
-              decoration: InputDecoration(labelText: l10n.modelId),
+              labelText: l10n.modelId,
             ),
             const SizedBox(height: 14),
             SwitchListTile(
@@ -1788,7 +1821,9 @@ class _WorkspaceHeading extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final theme = Theme.of(context);
+    final tx = _LlmWorkspaceText(theme);
+    final isDark = theme.brightness == Brightness.dark;
     final textBase = isDark ? Colors.white : const Color(0xFF111827);
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1799,16 +1834,12 @@ class _WorkspaceHeading extends StatelessWidget {
             children: [
               Text(
                 title,
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w800,
-                  color: textBase,
-                ),
+                style: tx.panelHeaderColored(textBase),
               ),
               const SizedBox(height: 6),
               Text(
                 subtitle,
-                style: TextStyle(color: textBase.withValues(alpha: 0.64)),
+                style: tx.bodyColored(textBase.withValues(alpha: 0.64)),
               ),
             ],
           ),
