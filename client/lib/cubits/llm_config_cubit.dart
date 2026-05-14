@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:equatable/equatable.dart';
@@ -151,25 +152,57 @@ class LlmConfigCubit extends Cubit<LlmConfigState> {
   }
 
   Future<void> save() async {
-    await _repository?.save(state.config, previous: state.savedConfig);
+    final previous = state.savedConfig;
+    final current = state.config;
+    await _repository?.save(current, previous: previous);
+    if (isClosed) return;
     emit(state.copyWith(
-        savedConfig: state.config, statusMessage: 'Saved LLM config.'));
+        savedConfig: current, statusMessage: 'Saved LLM config.'));
+  }
+
+  /// Writes [newConfig] to disk then emits once (avoids an intermediate
+  /// in-memory-only state and a second emit from [save]).
+  Future<void> _persistConfigChange({
+    required LlmConfig newConfig,
+    required String statusMessage,
+    String? selectedProviderName,
+    bool updateSelectedProvider = false,
+  }) async {
+    final previous = state.savedConfig;
+    await _repository?.save(newConfig, previous: previous);
+    if (isClosed) return;
+    final nextSelection = updateSelectedProvider
+        ? selectedProviderName
+        : state.selectedProviderName;
+    emit(LlmConfigState(
+      config: newConfig,
+      savedConfig: newConfig,
+      isLoading: state.isLoading,
+      statusMessage: statusMessage,
+      selectedProviderName: nextSelection,
+      configPathOverride: state.configPathOverride,
+      effectiveConfigPath: state.effectiveConfigPath,
+      pathSource: state.pathSource,
+    ));
   }
 
   void addProvider(LlmProviderConfig provider) {
-    final config = state.config.copyWith(
+    final newConfig = state.config.copyWith(
         providers: {...state.config.providers, provider.name: provider});
-    emit(state.copyWith(
-        config: config, statusMessage: 'Added provider ${provider.name}.'));
+    unawaited(_persistConfigChange(
+      newConfig: newConfig,
+      statusMessage: 'Added provider ${provider.name}.',
+    ));
   }
 
   void updateProvider(String name, LlmProviderConfig provider) {
     final updated =
         Map<String, LlmProviderConfig>.from(state.config.providers);
     updated[name] = provider;
-    emit(state.copyWith(
-        config: state.config.copyWith(providers: updated),
-        statusMessage: 'Updated provider $name.'));
+    unawaited(_persistConfigChange(
+      newConfig: state.config.copyWith(providers: updated),
+      statusMessage: 'Updated provider $name.',
+    ));
   }
 
   void deleteProvider(String name) {
@@ -179,35 +212,40 @@ class LlmConfigCubit extends Cubit<LlmConfigState> {
     final newSelected = state.selectedProviderName == name
         ? updated.keys.firstOrNull
         : state.selectedProviderName;
-    emit(state.copyWith(
-        config: state.config.copyWith(providers: updated),
-        selectedProviderName: newSelected,
-        statusMessage: 'Deleted provider $name.'));
+    unawaited(_persistConfigChange(
+      newConfig: state.config.copyWith(providers: updated),
+      statusMessage: 'Deleted provider $name.',
+      selectedProviderName: newSelected,
+      updateSelectedProvider: true,
+    ));
   }
 
   void addModel(LlmModelConfig model) {
-    emit(state.copyWith(
-        config: state.config.copyWith(
-            models: {...state.config.models, model.id: model}),
-        statusMessage: 'Added model ${model.name}.'));
+    unawaited(_persistConfigChange(
+      newConfig: state.config.copyWith(
+          models: {...state.config.models, model.id: model}),
+      statusMessage: 'Added model ${model.name}.',
+    ));
   }
 
   void updateModel(String id, LlmModelConfig model) {
     final updated =
         Map<String, LlmModelConfig>.from(state.config.models);
     updated[id] = model;
-    emit(state.copyWith(
-        config: state.config.copyWith(models: updated),
-        statusMessage: 'Updated model ${model.name}.'));
+    unawaited(_persistConfigChange(
+      newConfig: state.config.copyWith(models: updated),
+      statusMessage: 'Updated model ${model.name}.',
+    ));
   }
 
   void deleteModel(String id) {
     final updated =
         Map<String, LlmModelConfig>.from(state.config.models);
     updated.remove(id);
-    emit(state.copyWith(
-        config: state.config.copyWith(models: updated),
-        statusMessage: 'Deleted model $id.'));
+    unawaited(_persistConfigChange(
+      newConfig: state.config.copyWith(models: updated),
+      statusMessage: 'Deleted model $id.',
+    ));
   }
 
   String revealApiKey(String providerName) {
