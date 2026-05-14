@@ -1,8 +1,8 @@
 import 'dart:io';
 import 'dart:typed_data';
 
-import 'package:flashskyai_client/services/skill_install_service.dart';
-import 'package:flashskyai_client/services/skill_manifest_service.dart';
+import 'package:teampilot/services/skill_install_service.dart';
+import 'package:teampilot/services/skill_manifest_service.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 

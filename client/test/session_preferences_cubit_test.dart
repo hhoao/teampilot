@@ -1,5 +1,5 @@
-import 'package:flashskyai_client/cubits/session_preferences_cubit.dart';
-import 'package:flashskyai_client/repositories/session_preferences_repository.dart';
+import 'package:teampilot/cubits/session_preferences_cubit.dart';
+import 'package:teampilot/repositories/session_preferences_repository.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -24,21 +24,25 @@ void main() {
     expect(cubit.resolveExecutable(), '/opt/custom/flashskyai');
   });
 
-  test('resolveExecutable falls back to located path when user path empty',
-      () async {
-    final cubit = await makeCubit(located: '/usr/local/bin/flashskyai');
-    await cubit.load();
+  test(
+    'resolveExecutable falls back to located path when user path empty',
+    () async {
+      final cubit = await makeCubit(located: '/usr/local/bin/flashskyai');
+      await cubit.load();
 
-    expect(cubit.resolveExecutable(), '/usr/local/bin/flashskyai');
-  });
+      expect(cubit.resolveExecutable(), '/usr/local/bin/flashskyai');
+    },
+  );
 
-  test('resolveExecutable falls back to bare flashskyai when nothing known',
-      () async {
-    final cubit = await makeCubit(located: null);
-    await cubit.load();
+  test(
+    'resolveExecutable falls back to bare flashskyai when nothing known',
+    () async {
+      final cubit = await makeCubit(located: null);
+      await cubit.load();
 
-    expect(cubit.resolveExecutable(), 'flashskyai');
-  });
+      expect(cubit.resolveExecutable(), 'flashskyai');
+    },
+  );
 
   test('setCliExecutablePath persists and emits new state', () async {
     final cubit = await makeCubit(located: null);
@@ -72,13 +76,15 @@ void main() {
     expect(cubit2.state.preferences.scopeSessionsToSelectedTeam, true);
   });
 
-  test('setCliExecutablePath trims whitespace and treats blank as cleared',
-      () async {
-    final cubit = await makeCubit(located: '/located');
-    await cubit.load();
-    await cubit.setCliExecutablePath('   ');
+  test(
+    'setCliExecutablePath trims whitespace and treats blank as cleared',
+    () async {
+      final cubit = await makeCubit(located: '/located');
+      await cubit.load();
+      await cubit.setCliExecutablePath('   ');
 
-    expect(cubit.state.preferences.cliExecutablePath, '');
-    expect(cubit.resolveExecutable(), '/located');
-  });
+      expect(cubit.state.preferences.cliExecutablePath, '');
+      expect(cubit.resolveExecutable(), '/located');
+    },
+  );
 }

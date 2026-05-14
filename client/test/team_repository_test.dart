@@ -1,8 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:flashskyai_client/models/team_config.dart';
-import 'package:flashskyai_client/repositories/team_repository.dart';
+import 'package:teampilot/models/team_config.dart';
+import 'package:teampilot/repositories/team_repository.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 

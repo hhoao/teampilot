@@ -1,4 +1,4 @@
-import 'package:flashskyai_client/models/team_config.dart';
+import 'package:teampilot/models/team_config.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

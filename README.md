@@ -1,6 +1,8 @@
-# FlashskyAI UI
+# TeamPilot
 
-基于 **Flutter** 的 **FlashskyAI Teams** 桌面客户端：多会话聊天、团队与技能管理、内嵌终端，以及与会话相关的布局与 LLM 配置。应用通过本机上的 **`flashskyai` CLI** 与后端能力对接。
+[English](README.en.md)
+
+基于 **Flutter** 的 **TeamPilot** 桌面客户端：多会话聊天、团队与技能管理、内嵌终端，以及与会话相关的布局与 LLM 配置。应用通过本机上的 **`flashskyai` CLI** 与后端能力对接。
 
 ![应用预览](assets/image.png)
 
@@ -24,7 +26,7 @@
 ## 仓库结构
 
 ```
-flashskyai-ui/
+teampilot/
 ├── client/          # Flutter 应用（主要代码与各平台 Runner）
 ├── docs/            # 设计说明与计划文档
 ├── assets/          # 仓库级资源（如 README 用图）
@@ -79,9 +81,4 @@ fastforge package --platform linux --targets deb,appimage
 
 ## 许可证
 
-见仓库根目录 [LICENSE](LICENSE)（若文件尚未填写，请补充所选许可证全文）。
-
-## 相关链接
-
-- Flutter 文档：<https://docs.flutter.dev/>
-- 本项目客户端包名：`flashskyai_client`（见 `client/pubspec.yaml`）
+[MIT License](LICENSE)。

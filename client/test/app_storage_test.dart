@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:flashskyai_client/services/app_storage.dart';
+import 'package:teampilot/services/app_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 

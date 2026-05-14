@@ -326,7 +326,7 @@ class _AppLocalizationsDelegate
   static const _supportedLocales = [Locale('en'), Locale('zh')];
 
   static const _strings = <String, Map<String, String>>{
-    'appTitle': {'en': 'FlashskyAI Teams', 'zh': 'FlashskyAI 团队'},
+    'appTitle': {'en': 'TeamPilot', 'zh': 'TeamPilot'},
     'appRailChat': {'en': 'Chat', 'zh': '聊天'},
     'appRailRuns': {'en': 'Runs', 'zh': '运行'},
     'appRailConfig': {'en': 'Config', 'zh': '配置'},
@@ -563,8 +563,7 @@ class _AppLocalizationsDelegate
     'scopeSessionsToSelectedTeamDescription': {
       'en':
           'When enabled, the sidebar shows only sessions assigned to the current team. New sessions are always tagged with the selected team so they appear here if you turn this on later.',
-      'zh':
-          '开启后，侧边栏仅显示归属当前团队的会话。新建会话仍会写入当前所选团队，之后开启本选项即可看到它们。',
+      'zh': '开启后，侧边栏仅显示归属当前团队的会话。新建会话仍会写入当前所选团队，之后开启本选项即可看到它们。',
     },
     'themeModeTitle': {'en': 'Theme mode', 'zh': '主题模式'},
     'themeModeDescription': {

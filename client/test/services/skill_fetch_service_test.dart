@@ -1,4 +1,4 @@
-import 'package:flashskyai_client/services/skill_fetch_service.dart';
+import 'package:teampilot/services/skill_fetch_service.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

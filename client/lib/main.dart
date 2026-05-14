@@ -49,10 +49,7 @@ class _CleanupWindowListener extends WindowListener {
 /// [BlocProvider.value] does not call [ChatCubit.close]; dispose here covers
 /// hot restart and other cases where the widget tree tears down.
 class _AppShutdownScope extends StatefulWidget {
-  const _AppShutdownScope({
-    required this.chatCubit,
-    required this.child,
-  });
+  const _AppShutdownScope({required this.chatCubit, required this.child});
 
   final ChatCubit chatCubit;
   final Widget child;
@@ -84,7 +81,7 @@ void main() async {
     ),
     minimumSize: const Size(800, 500),
     center: false,
-    title: 'FlashskyAI Teams',
+    title: 'TeamPilot',
   );
   windowManager.waitUntilReadyToShow(windowOptions, () async {
     await windowManager.show();
@@ -192,7 +189,7 @@ class FlashskyAiClientApp extends StatelessWidget {
 
     return MaterialApp.router(
       debugShowCheckedModeBanner: false,
-      title: 'FlashskyAI Teams',
+      title: 'TeamPilot',
       theme: buildLightTheme(),
       darkTheme: buildDarkTheme(),
       themeMode: themeModeFromPrefs(prefs.themeMode),

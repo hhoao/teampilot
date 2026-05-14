@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:flashskyai_client/services/temp_team_cleaner.dart';
+import 'package:teampilot/services/temp_team_cleaner.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 

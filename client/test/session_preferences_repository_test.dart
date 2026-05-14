@@ -1,7 +1,7 @@
 import 'dart:convert';
 
-import 'package:flashskyai_client/models/session_preferences.dart';
-import 'package:flashskyai_client/repositories/session_preferences_repository.dart';
+import 'package:teampilot/models/session_preferences.dart';
+import 'package:teampilot/repositories/session_preferences_repository.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 

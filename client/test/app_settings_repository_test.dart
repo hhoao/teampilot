@@ -1,4 +1,4 @@
-import 'package:flashskyai_client/repositories/app_settings_repository.dart';
+import 'package:teampilot/repositories/app_settings_repository.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 

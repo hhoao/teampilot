@@ -1,10 +1,10 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:flashskyai_client/cubits/llm_config_cubit.dart';
-import 'package:flashskyai_client/repositories/app_settings_repository.dart';
-import 'package:flashskyai_client/repositories/llm_config_repository.dart';
-import 'package:flashskyai_client/services/llm_config_path_resolver.dart';
+import 'package:teampilot/cubits/llm_config_cubit.dart';
+import 'package:teampilot/repositories/app_settings_repository.dart';
+import 'package:teampilot/repositories/llm_config_repository.dart';
+import 'package:teampilot/services/llm_config_path_resolver.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 

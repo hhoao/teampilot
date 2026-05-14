@@ -1,4 +1,4 @@
-import 'package:flashskyai_client/constants/flashskyai_built_in_agents.dart';
+import 'package:teampilot/constants/flashskyai_built_in_agents.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

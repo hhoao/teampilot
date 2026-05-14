@@ -50,7 +50,7 @@ client/
 ### `.deb`
 
 ```bash
-sudo dpkg -i dist/1.0.0+1/flashskyai_client-1.0.0+1-linux.deb
+sudo dpkg -i dist/1.0.0+1/teampilot-1.0.0+1-linux.deb
 # 启动后查看 dock：应显示 "TeamPilot" 名称和应用图标
 ```
 
@@ -59,8 +59,8 @@ sudo dpkg -i dist/1.0.0+1/flashskyai_client-1.0.0+1-linux.deb
 ### AppImage
 
 ```bash
-chmod +x dist/1.0.0+1/flashskyai_client-1.0.0+1-linux.AppImage
-./dist/1.0.0+1/flashskyai_client-1.0.0+1-linux.AppImage
+chmod +x dist/1.0.0+1/teampilot-1.0.0+1-linux.AppImage
+./dist/1.0.0+1/teampilot-1.0.0+1-linux.AppImage
 ```
 
 若希望 AppImage 也注册到桌面环境（dock 显示名称/图标），推荐安装

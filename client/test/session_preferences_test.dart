@@ -1,4 +1,4 @@
-import 'package:flashskyai_client/models/session_preferences.dart';
+import 'package:teampilot/models/session_preferences.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

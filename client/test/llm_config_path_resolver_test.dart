@@ -1,4 +1,4 @@
-import 'package:flashskyai_client/services/llm_config_path_resolver.dart';
+import 'package:teampilot/services/llm_config_path_resolver.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

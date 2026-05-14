@@ -1,7 +1,7 @@
 import 'dart:io';
 
-import 'package:flashskyai_client/models/skill.dart';
-import 'package:flashskyai_client/services/skill_manifest_service.dart';
+import 'package:teampilot/models/skill.dart';
+import 'package:teampilot/services/skill_manifest_service.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

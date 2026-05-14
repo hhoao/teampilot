@@ -1,5 +1,5 @@
-import 'package:flashskyai_client/services/launch_command_builder.dart';
-import 'package:flashskyai_client/models/team_config.dart';
+import 'package:teampilot/services/launch_command_builder.dart';
+import 'package:teampilot/models/team_config.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -12,32 +12,33 @@ void main() {
   );
 
   test('builds required flashskyai arguments for a member', () {
-    const team = TeamConfig(
-      id: '1',
-      name: 'agent',
-    );
+    const team = TeamConfig(id: '1', name: 'agent');
 
-    expect(LaunchCommandBuilder.buildArguments(team, member, workingDirectory: '/home/hhoa/git/agent'), [
-      '--dir',
-      '/home/hhoa/git/agent',
-      '--team',
-      'agent',
-      '--member',
-      'planner',
-      '--provider',
-      'anthropic',
-      '--model',
-      'sonnet',
-      '--agent',
-      'builder',
-    ]);
+    expect(
+      LaunchCommandBuilder.buildArguments(
+        team,
+        member,
+        workingDirectory: '/home/hhoa/git/agent',
+      ),
+      [
+        '--dir',
+        '/home/hhoa/git/agent',
+        '--team',
+        'agent',
+        '--member',
+        'planner',
+        '--provider',
+        'anthropic',
+        '--model',
+        'sonnet',
+        '--agent',
+        'builder',
+      ],
+    );
   });
 
   test('omits --dir when workingDirectory is empty', () {
-    const team = TeamConfig(
-      id: '1',
-      name: 'agent',
-    );
+    const team = TeamConfig(id: '1', name: 'agent');
 
     expect(LaunchCommandBuilder.buildArguments(team, member), [
       '--team',
@@ -54,11 +55,7 @@ void main() {
   });
 
   test('adds --loop after --member when team.loop is set', () {
-    const team = TeamConfig(
-      id: '1',
-      name: 'agent',
-      loop: false,
-    );
+    const team = TeamConfig(id: '1', name: 'agent', loop: false);
 
     expect(LaunchCommandBuilder.buildArguments(team, member), [
       '--team',
@@ -114,34 +111,34 @@ void main() {
       extraArgs: '--continue --system-prompt "be careful"',
     );
 
-    expect(LaunchCommandBuilder.buildArguments(team, reviewer, workingDirectory: '/home/hhoa/git/agent'), [
-      '--dir',
-      '/home/hhoa/git/agent',
-      '--team',
-      'agent',
-      '--member',
-      'reviewer',
-      '--permission-mode',
-      'acceptEdits',
-      '--continue',
-      '--system-prompt',
-      'be careful',
-    ]);
+    expect(
+      LaunchCommandBuilder.buildArguments(
+        team,
+        reviewer,
+        workingDirectory: '/home/hhoa/git/agent',
+      ),
+      [
+        '--dir',
+        '/home/hhoa/git/agent',
+        '--team',
+        'agent',
+        '--member',
+        'reviewer',
+        '--permission-mode',
+        'acceptEdits',
+        '--continue',
+        '--system-prompt',
+        'be careful',
+      ],
+    );
   });
 
   test('quotes command preview for display', () {
-    const team = TeamConfig(
-      id: '1',
-      name: 'hello team',
-    );
+    const team = TeamConfig(id: '1', name: 'hello team');
     const reviewer = TeamMemberConfig(id: 'member-2', name: 'code reviewer');
 
     expect(
-      LaunchCommandBuilder.preview(
-        team,
-        reviewer,
-        executable: 'flashskyai',
-      ),
+      LaunchCommandBuilder.preview(team, reviewer, executable: 'flashskyai'),
       "flashskyai --team 'hello team' --member 'code reviewer'",
     );
   });
