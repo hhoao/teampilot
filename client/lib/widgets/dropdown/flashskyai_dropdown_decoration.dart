@@ -1,30 +1,33 @@
 import 'package:flutter/material.dart';
 
-import '../../theme/app_theme.dart';
-import '../../theme/app_workspace_settings_theme.dart';
 import 'custom_dropdown.dart';
+
+const _dropdownBorderRadius = 10.0;
+const _dropdownIconOpacity = 0.55;
+const _dropdownLabelFontSize = 13.0;
 
 /// Themed [CustomDropdownDecoration] presets for FlashskyAI surfaces.
 abstract final class FlashskyDropdownDecorations {
   static CustomDropdownDecoration settingsCompact(BuildContext context) {
-    final colors = AppColors.of(context);
-    final tokens = AppWorkspaceSettingsTokens.of(context);
-    final onSurface = Theme.of(context).colorScheme.onSurface;
+    final cs = Theme.of(context).colorScheme;
+    final onSurface = cs.onSurface;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final highlight = isDark
         ? Colors.white.withValues(alpha: 0.06)
         : Colors.black.withValues(alpha: 0.04);
     final selectedBg = isDark
-        ? colors.accentBlue.withValues(alpha: 0.2)
-        : colors.selectedBackground;
+        ? cs.primary.withValues(alpha: 0.2)
+        : cs.primaryContainer;
 
     return CustomDropdownDecoration(
-      closedFillColor: colors.inputFill,
-      expandedFillColor: colors.rightPanelBackground,
-      closedBorder: Border.all(color: colors.border),
-      closedBorderRadius: BorderRadius.circular(tokens.dropdownBorderRadius),
-      expandedBorder: Border.all(color: colors.subtleBorder),
-      expandedBorderRadius: BorderRadius.circular(tokens.dropdownBorderRadius),
+      closedFillColor: cs.surfaceContainerHigh,
+      expandedFillColor: cs.surfaceContainerLow,
+      closedBorder: Border.all(color: cs.outlineVariant),
+      closedBorderRadius: BorderRadius.circular(_dropdownBorderRadius),
+      expandedBorder: Border.all(
+        color: cs.outlineVariant.withValues(alpha: 0.5),
+      ),
+      expandedBorderRadius: BorderRadius.circular(_dropdownBorderRadius),
       expandedShadow: [
         BoxShadow(
           color: Colors.black.withValues(alpha: isDark ? 0.42 : 0.1),
@@ -33,28 +36,28 @@ abstract final class FlashskyDropdownDecorations {
         ),
       ],
       headerStyle: TextStyle(
-        fontSize: tokens.dropdownLabelFontSize,
+        fontSize: _dropdownLabelFontSize,
         fontWeight: FontWeight.w600,
         color: onSurface,
       ),
       hintStyle: TextStyle(
-        fontSize: tokens.dropdownLabelFontSize,
+        fontSize: _dropdownLabelFontSize,
         color: onSurface.withValues(alpha: 0.45),
       ),
       listItemStyle: TextStyle(
-        fontSize: tokens.dropdownLabelFontSize,
+        fontSize: _dropdownLabelFontSize,
         fontWeight: FontWeight.w500,
         color: onSurface,
       ),
       closedSuffixIcon: Icon(
         Icons.expand_more_rounded,
         size: 22,
-        color: onSurface.withValues(alpha: tokens.dropdownIconOpacity),
+        color: onSurface.withValues(alpha: _dropdownIconOpacity),
       ),
       expandedSuffixIcon: Icon(
         Icons.expand_less_rounded,
         size: 22,
-        color: onSurface.withValues(alpha: tokens.dropdownIconOpacity),
+        color: onSurface.withValues(alpha: _dropdownIconOpacity),
       ),
       listItemDecoration: ListItemDecoration(
         highlightColor: highlight,
@@ -65,22 +68,24 @@ abstract final class FlashskyDropdownDecorations {
   }
 
   static CustomDropdownDecoration sidebarTeam(BuildContext context) {
-    final colors = AppColors.of(context);
-    final onSurface = Theme.of(context).colorScheme.onSurface;
+    final cs = Theme.of(context).colorScheme;
+    final onSurface = cs.onSurface;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final highlight = isDark
         ? Colors.white.withValues(alpha: 0.06)
         : Colors.black.withValues(alpha: 0.04);
     final selectedBg = isDark
-        ? colors.accentBlue.withValues(alpha: 0.22)
-        : colors.selectedBackground;
+        ? cs.primary.withValues(alpha: 0.22)
+        : cs.primaryContainer;
 
     return CustomDropdownDecoration(
-      closedFillColor: colors.teamSelectorBackground,
-      expandedFillColor: colors.cardBackground,
-      closedBorder: Border.all(color: colors.teamSelectorBorder),
+      closedFillColor: cs.surfaceContainer,
+      expandedFillColor: cs.surfaceContainer,
+      closedBorder: Border.all(color: cs.outlineVariant),
       closedBorderRadius: BorderRadius.circular(8),
-      expandedBorder: Border.all(color: colors.subtleBorder),
+      expandedBorder: Border.all(
+        color: cs.outlineVariant.withValues(alpha: 0.5),
+      ),
       expandedBorderRadius: BorderRadius.circular(8),
       expandedShadow: [
         BoxShadow(
@@ -126,22 +131,24 @@ abstract final class FlashskyDropdownDecorations {
     BuildContext context, {
     double borderRadius = 8,
   }) {
-    final colors = AppColors.of(context);
-    final onSurface = Theme.of(context).colorScheme.onSurface;
+    final cs = Theme.of(context).colorScheme;
+    final onSurface = cs.onSurface;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final highlight = isDark
         ? Colors.white.withValues(alpha: 0.06)
         : Colors.black.withValues(alpha: 0.04);
     final selectedBg = isDark
-        ? colors.accentBlue.withValues(alpha: 0.2)
-        : colors.selectedBackground;
+        ? cs.primary.withValues(alpha: 0.2)
+        : cs.primaryContainer;
 
     return CustomDropdownDecoration(
-      closedFillColor: colors.inputFill,
-      expandedFillColor: colors.cardBackground,
-      closedBorder: Border.all(color: colors.border),
+      closedFillColor: cs.surfaceContainerHigh,
+      expandedFillColor: cs.surfaceContainer,
+      closedBorder: Border.all(color: cs.outlineVariant),
       closedBorderRadius: BorderRadius.circular(borderRadius),
-      expandedBorder: Border.all(color: colors.subtleBorder),
+      expandedBorder: Border.all(
+        color: cs.outlineVariant.withValues(alpha: 0.5),
+      ),
       expandedBorderRadius: BorderRadius.circular(borderRadius),
       expandedShadow: [
         BoxShadow(

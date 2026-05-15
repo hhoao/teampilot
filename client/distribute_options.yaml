@@ -24,6 +24,10 @@ releases:
         package:
           platform: windows
           target: msix
+      - name: windows-exe
+        package:
+          platform: windows
+          target: exe
       - name: windows-zip
         package:
           platform: windows

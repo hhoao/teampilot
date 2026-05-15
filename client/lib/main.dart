@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:window_manager/window_manager.dart';
 
@@ -71,6 +72,8 @@ class _AppShutdownScopeState extends State<_AppShutdownScope> {
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // Noto Sans SC is listed under google_fonts/ assets (sync before build).
+  GoogleFonts.config.allowRuntimeFetching = false;
 
   await windowManager.ensureInitialized();
   final windowRect = await windowManager.getBounds();
@@ -91,6 +94,8 @@ void main() async {
   await AppStorage.init();
 
   final preferences = await SharedPreferences.getInstance();
+  final cliLocated = await FlashskyaiCliLocator.locate();
+  await AppStorage.useWslCliDataDirIfNeeded(cliLocated);
 
   final tempTeamCleaner = TempTeamCleaner();
   await tempTeamCleaner.cleanup();
@@ -105,7 +110,6 @@ void main() async {
   final appSettings = SharedPrefsAppSettingsRepository(preferences);
   final homeDirectory =
       Platform.environment['HOME'] ?? Platform.environment['USERPROFILE'];
-  final cliLocated = await FlashskyaiCliLocator.locate();
 
   final sessionPreferencesCubit = SessionPreferencesCubit(
     repository: SessionPreferencesRepository(preferences),
@@ -187,11 +191,13 @@ class FlashskyAiClientApp extends StatelessWidget {
       _ => ThemeMode.system,
     };
 
+    final colorPreset = normalizeThemeColorPreset(prefs.themeColorPreset);
+
     return MaterialApp.router(
       debugShowCheckedModeBanner: false,
       title: 'TeamPilot',
-      theme: buildLightTheme(),
-      darkTheme: buildDarkTheme(),
+      theme: buildLightTheme(colorPreset),
+      darkTheme: buildDarkTheme(colorPreset),
       themeMode: themeModeFromPrefs(prefs.themeMode),
       localizationsDelegates: const [
         AppLocalizations.delegate,

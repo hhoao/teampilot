@@ -40,14 +40,12 @@ final appRouter = GoRouter(
                     initialLeftWidth: preferences.sidebarWidth,
                     minLeftWidth: 180,
                     maxLeftWidth: 420,
-                    dividerWidth: 6,
                     onWidthChanged: (width) {
                       context.read<LayoutCubit>().setSidebarWidth(width);
                     },
                     left: RepaintBoundary(
                       child: ContextSidebar(
-                        onNewProject: () =>
-                            _createProject(context),
+                        onNewProject: () => _createProject(context),
                       ),
                     ),
                     right: child,
@@ -70,7 +68,10 @@ final appRouter = GoRouter(
             ),
           ],
         ),
-        GoRoute(path: '/config', redirect: (context, state) => '/config/layout'),
+        GoRoute(
+          path: '/config',
+          redirect: (context, state) => '/config/layout',
+        ),
         GoRoute(
           path: '/config/layout',
           pageBuilder: (context, state) => const NoTransitionPage(
@@ -91,15 +92,13 @@ final appRouter = GoRouter(
         ),
         GoRoute(
           path: '/team-config',
-          pageBuilder: (context, state) => const NoTransitionPage(
-            child: TeamConfigPage(),
-          ),
+          pageBuilder: (context, state) =>
+              const NoTransitionPage(child: TeamConfigPage()),
         ),
         GoRoute(
           path: '/skills',
-          pageBuilder: (context, state) => const NoTransitionPage(
-            child: SkillManagementPage(),
-          ),
+          pageBuilder: (context, state) =>
+              const NoTransitionPage(child: SkillManagementPage()),
         ),
       ],
     ),

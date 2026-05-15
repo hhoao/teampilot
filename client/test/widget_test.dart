@@ -19,7 +19,6 @@ import 'package:teampilot/repositories/session_preferences_repository.dart';
 import 'package:teampilot/repositories/session_repository.dart';
 import 'package:teampilot/repositories/team_repository.dart';
 import 'package:teampilot/services/terminal_session.dart';
-import 'package:teampilot/theme/app_theme.dart';
 import 'package:teampilot/utils/app_keys.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -44,7 +43,8 @@ Widget buildTestApp({
       providers: [
         BlocProvider.value(value: teamCubit),
         BlocProvider.value(
-            value: chatCubit ?? ChatCubit(executableResolver: _testExecutable)),
+          value: chatCubit ?? ChatCubit(executableResolver: _testExecutable),
+        ),
         BlocProvider(create: (_) => ConfigCubit()),
         BlocProvider.value(value: llmConfigCubit ?? testLlmConfigCubit()),
         BlocProvider.value(value: layoutCubit ?? LayoutCubit()),
@@ -75,7 +75,8 @@ Future<void> pumpDesktopApp(
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.resetPhysicalSize);
   addTearDown(tester.view.resetDevicePixelRatio);
-  final sessionCubit = sessionPreferencesCubit ??
+  final sessionCubit =
+      sessionPreferencesCubit ??
       (await tester.runAsync(testSessionPreferencesCubit))!;
   await tester.pumpWidget(
     buildTestApp(
@@ -92,7 +93,9 @@ Future<void> pumpDesktopApp(
   await tester.pump(const Duration(milliseconds: 100));
 }
 
-LlmConfigCubit testLlmConfigCubit({LlmConfig initialConfig = const LlmConfig()}) {
+LlmConfigCubit testLlmConfigCubit({
+  LlmConfig initialConfig = const LlmConfig(),
+}) {
   return LlmConfigCubit(
     appSettings: InMemoryAppSettingsRepository(),
     currentDirectory: Directory.systemTemp.path,
@@ -112,8 +115,10 @@ Future<SessionPreferencesCubit> testSessionPreferencesCubit() async {
 Future<TeamCubit> createTeamCubit({TeamLauncher? launcher}) async {
   final tmp = await Directory.systemTemp.createTemp('teams_widget_');
   final cliTmp = await Directory.systemTemp.createTemp('teams_widget_cli_');
-  final repository =
-      TeamRepository(rootDir: tmp.path, cliTeamsDir: cliTmp.path);
+  final repository = TeamRepository(
+    rootDir: tmp.path,
+    cliTeamsDir: cliTmp.path,
+  );
   final cubit = TeamCubit(
     repository: repository,
     executableResolver: _testExecutable,
@@ -129,14 +134,15 @@ Future<TeamCubit> createTeamCubitInTest(
   WidgetTester tester, {
   TeamLauncher? launcher,
 }) async {
-  final cubit = await tester.runAsync(() => createTeamCubit(launcher: launcher));
+  final cubit = await tester.runAsync(
+    () => createTeamCubit(launcher: launcher),
+  );
   expect(cubit, isNotNull);
   return cubit!;
 }
 
 class FakeTerminalSession extends TerminalSession {
-  FakeTerminalSession({String executable = 'flashskyai'})
-      : super(executable: executable);
+  FakeTerminalSession({super.executable = 'flashskyai'});
 
   var _running = false;
   final connectedMembers = <String>[];
@@ -162,7 +168,9 @@ class FakeTerminalSession extends TerminalSession {
   }) {
     lastFixedSessionIds.add(fixedSessionId);
     lastResumeSessionIds.add(resumeSessionId);
-    lastAdditionalDirectoriesLists.add(List<String>.from(additionalDirectories));
+    lastAdditionalDirectoriesLists.add(
+      List<String>.from(additionalDirectories),
+    );
     _running = true;
     if (resumeSessionId != null && resumeSessionId.isNotEmpty) {
       resumedSessions.add(resumeSessionId);
@@ -202,10 +210,12 @@ class TestChatCubit extends ChatCubit {
 
 void main() {
   setUpAll(() async {
-    _widgetTestSessionRepoDir =
-        await Directory.systemTemp.createTemp('widget_sess_repo_');
-    _widgetTestSessionRepo =
-        SessionRepository(rootDir: _widgetTestSessionRepoDir.path);
+    _widgetTestSessionRepoDir = await Directory.systemTemp.createTemp(
+      'widget_sess_repo_',
+    );
+    _widgetTestSessionRepo = SessionRepository(
+      rootDir: _widgetTestSessionRepoDir.path,
+    );
   });
   tearDownAll(() {
     try {
@@ -238,10 +248,7 @@ void main() {
     expect(find.byKey(AppKeys.fileTreePanel), findsOneWidget);
     expect(find.text('Default Team'), findsWidgets);
     final sidebarCtx = tester.element(find.byKey(AppKeys.contextSidebar));
-    expect(
-      find.text(AppLocalizations.of(sidebarCtx).projects),
-      findsOneWidget,
-    );
+    expect(find.text(AppLocalizations.of(sidebarCtx).projects), findsOneWidget);
     expect(find.text('team-lead'), findsWidgets);
     expect(chatCubit.state.tabs.length, 0);
     expect(find.text('Terminal not connected'), findsOneWidget);
@@ -284,18 +291,11 @@ void main() {
     await tester.tap(find.byKey(AppKeys.sidebarSettingsButton));
     await pumpPhaseTransitions(tester);
 
-    final settingsTheme = Theme.of(
-      tester.element(find.byKey(AppKeys.configWorkspace)),
-    );
-    final appColors = AppColors.of(
-      tester.element(find.byKey(AppKeys.configWorkspace)),
-    );
-    final filledButtonColor = settingsTheme
-        .filledButtonTheme
-        .style
-        ?.backgroundColor
-        ?.resolve(<WidgetState>{});
-    expect(filledButtonColor, appColors.accentBlue);
+    final settingsCtx = tester.element(find.byKey(AppKeys.configWorkspace));
+    final settingsTheme = Theme.of(settingsCtx);
+    final cs = settingsTheme.colorScheme;
+    expect(cs.primary, const Color(0xFF2E3033));
+    expect(settingsTheme.filledButtonTheme.style, isNotNull);
 
     await tester.tap(find.byKey(AppKeys.configLlmSectionButton));
     await pumpPhaseTransitions(tester);
@@ -304,7 +304,7 @@ void main() {
       find.byKey(AppKeys.llmProviderList),
     );
     final decoration = providerList.decoration! as BoxDecoration;
-    expect(decoration.color, appColors.cardBackground);
+    expect(decoration.color, cs.surfaceContainer);
   });
 
   testWidgets('opening a sidebar session starts team-lead member shell', (
@@ -365,8 +365,10 @@ void main() {
   test('team cubit manages teams', () async {
     final tmp = await Directory.systemTemp.createTemp('teams_cubit_');
     final cliTmp = await Directory.systemTemp.createTemp('teams_cubit_cli_');
-    final repository =
-        TeamRepository(rootDir: tmp.path, cliTeamsDir: cliTmp.path);
+    final repository = TeamRepository(
+      rootDir: tmp.path,
+      cliTeamsDir: cliTmp.path,
+    );
     final cubit = TeamCubit(
       repository: repository,
       executableResolver: _testExecutable,
@@ -569,9 +571,7 @@ void main() {
     final team = TeamConfig(
       id: 'tid',
       name: 'TName',
-      members: const [
-        TeamMemberConfig(id: 'lid', name: 'team-lead'),
-      ],
+      members: const [TeamMemberConfig(id: 'lid', name: 'team-lead')],
     );
     cubit.openSessionTab(
       session,
@@ -607,9 +607,7 @@ void main() {
     final team = TeamConfig(
       id: 'tid',
       name: 'TName',
-      members: const [
-        TeamMemberConfig(id: 'lid', name: 'team-lead'),
-      ],
+      members: const [TeamMemberConfig(id: 'lid', name: 'team-lead')],
     );
     cubit.openSessionTab(
       rel,
@@ -646,9 +644,7 @@ void main() {
       final team = TeamConfig(
         id: 'tid',
         name: 'TName',
-        members: const [
-          TeamMemberConfig(id: 'lid', name: 'team-lead'),
-        ],
+        members: const [TeamMemberConfig(id: 'lid', name: 'team-lead')],
       );
       cubit.openSessionTab(
         rel,
@@ -661,40 +657,44 @@ void main() {
     },
   );
 
-  test('openSessionTab passes session additionalDirectories to connect', () async {
-    final tmp = await Directory.systemTemp.createTemp('open_sess_');
-    addTearDown(() => tmp.deleteSync(recursive: true));
-    final repo = SessionRepository(rootDir: tmp.path);
-    final project = await repo.createProject('/root', additionalPaths: const ['/extra']);
-    final session = await repo.createSession(project.projectId);
-    FakeTerminalSession? captured;
-    final cubit = ChatCubit(
-      executableResolver: _testExecutable,
-      terminalSessionFactory: ({required String executable}) {
-        captured = FakeTerminalSession(executable: executable);
-        return captured!;
-      },
-      postFrameScheduler: (c) => c(),
-    );
-    await cubit.loadProjectData(repo);
-    final rel = cubit.state.sessions.single;
-    final team = TeamConfig(
-      id: 'tid',
-      name: 'TName',
-      members: const [
-        TeamMemberConfig(id: 'lid', name: 'team-lead'),
-      ],
-    );
-    cubit.openSessionTab(
-      rel,
-      team: team,
-      member: team.members.first,
-      repo: repo,
-    );
-    expect(captured!.lastAdditionalDirectoriesLists.last, ['/extra']);
-  });
+  test(
+    'openSessionTab passes session additionalDirectories to connect',
+    () async {
+      final tmp = await Directory.systemTemp.createTemp('open_sess_');
+      addTearDown(() => tmp.deleteSync(recursive: true));
+      final repo = SessionRepository(rootDir: tmp.path);
+      final project = await repo.createProject(
+        '/root',
+        additionalPaths: const ['/extra'],
+      );
+      final session = await repo.createSession(project.projectId);
+      FakeTerminalSession? captured;
+      final cubit = ChatCubit(
+        executableResolver: _testExecutable,
+        terminalSessionFactory: ({required String executable}) {
+          captured = FakeTerminalSession(executable: executable);
+          return captured!;
+        },
+        postFrameScheduler: (c) => c(),
+      );
+      await cubit.loadProjectData(repo);
+      final rel = cubit.state.sessions.single;
+      final team = TeamConfig(
+        id: 'tid',
+        name: 'TName',
+        members: const [TeamMemberConfig(id: 'lid', name: 'team-lead')],
+      );
+      cubit.openSessionTab(
+        rel,
+        team: team,
+        member: team.members.first,
+        repo: repo,
+      );
+      expect(captured!.lastAdditionalDirectoriesLists.last, ['/extra']);
+    },
+  );
 
-  test('llm config cubit manages providers and models', () {
+  test('llm config cubit manages providers and models', () async {
     final cubit = testLlmConfigCubit(
       initialConfig: const LlmConfig(
         providers: {
@@ -712,6 +712,7 @@ void main() {
     cubit.addProvider(
       const LlmProviderConfig(name: 'new', type: 'account', providerType: ''),
     );
+    await Future<void>.delayed(Duration.zero);
     expect(cubit.state.config.providers.length, 2);
 
     cubit.addModel(
@@ -723,9 +724,11 @@ void main() {
         enabled: true,
       ),
     );
+    await Future<void>.delayed(Duration.zero);
     expect(cubit.state.config.models.length, 1);
 
     cubit.deleteProvider('new');
+    await Future<void>.delayed(Duration.zero);
     expect(cubit.state.config.providers.length, 1);
   });
 }

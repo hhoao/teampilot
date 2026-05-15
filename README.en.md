@@ -20,7 +20,7 @@ A **Flutter** desktop client for **TeamPilot**: multi-session chat, team and ski
 | Item | Notes |
 |------|--------|
 | [Flutter](https://docs.flutter.dev/get-started/install) | **stable** channel; the `client` package targets SDK `^3.8.1` |
-| `flashskyai` | Must be installed and on your **PATH** (the app resolves its path at startup) |
+| `flashskyai` | Must be installed and on your **PATH** (the app resolves its path at startup). On Windows, TeamPilot can also use `flashskyai` installed inside the default WSL distribution. |
 | Platforms | **Linux**, **macOS**, **Windows** (desktop) |
 
 ## Repository layout
@@ -64,9 +64,11 @@ CI uses [fastforge](https://pub.dev/packages/fastforge) to produce installers un
 
 - **Linux**: `.deb`, `.AppImage`
 - **macOS**: `.dmg`
-- **Windows**: `.msix`, `.zip`
+- **Windows**: `.msix`, `.exe`, `.zip`
 
 Pushing a **Git tag** matching `v*` runs [Release Desktop Packages](.github/workflows/release.yml), builds all three platforms, and publishes a **GitHub Release**. You can also run the workflow manually (**workflow_dispatch**) and optionally set `ref`.
+
+Changes under `client/` also trigger [Client Windows (EXE)](.github/workflows/client-windows.yml) on pull requests and pushes to `main`, producing a Windows EXE installer as a downloadable **Artifact**.
 
 Local packaging example:
 
@@ -76,6 +78,24 @@ cd client
 flutter pub get
 fastforge package --platform linux --targets deb,appimage
 ```
+
+Windows EXE packaging uses fastforge's Inno Setup maker. Install **Inno Setup 6** locally (same as `choco install innosetup` in CI), then:
+
+```powershell
+cd client
+flutter pub get
+dart run tool/sync_bundled_google_fonts.dart
+fastforge package --platform windows --targets exe
+```
+
+For a runnable app without an installer wizard:
+
+```powershell
+cd client
+flutter build windows --release
+```
+
+The binary is at `client/build/windows/x64/runner/Release/TeamPilot.exe`.
 
 For extra OS-specific tooling (GTK on Linux, `appdmg` on macOS, etc.), follow the install steps in the CI workflow.
 

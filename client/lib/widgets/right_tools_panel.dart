@@ -11,7 +11,6 @@ import '../cubits/team_cubit.dart';
 import '../l10n/app_localizations.dart';
 import '../models/layout_preferences.dart';
 import '../models/team_config.dart';
-import '../theme/app_theme.dart';
 import '../utils/app_keys.dart';
 import 'file_tree_node.dart';
 
@@ -39,7 +38,7 @@ class RightToolsPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppColors.of(context);
+    final cs = Theme.of(context).colorScheme;
     final teamCubit = context.watch<TeamCubit>();
     final chatCubit = context.watch<ChatCubit>();
     final team = teamCubit.state.selectedTeam;
@@ -80,7 +79,7 @@ class RightToolsPanel extends StatelessWidget {
     ];
     return Container(
       key: panelKey,
-      color: colors.rightPanelBackground,
+      color: cs.surfaceContainerLow,
       child: preferences.toolsArrangement == ToolsArrangement.tabs
           ? _TabbedToolsPanel(panels: panels, preferences: preferences)
           : _StackedToolsPanel(panels: panels, preferences: preferences),
@@ -97,7 +96,7 @@ class _StackedToolsPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppColors.of(context);
+    final cs = Theme.of(context).colorScheme;
     if (panels.length == 1) return panels.single;
     return Column(
       children: [
@@ -105,7 +104,7 @@ class _StackedToolsPanel extends StatelessWidget {
           flex: (preferences.membersSplit * 100).round(),
           child: panels.first,
         ),
-        Divider(height: 1, color: colors.subtleBorder),
+        Divider(height: 1, color: cs.outlineVariant.withValues(alpha: 0.5)),
         Expanded(
           flex: ((1 - preferences.membersSplit) * 100).round(),
           child: panels.last,
@@ -160,7 +159,7 @@ class _MembersPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppColors.of(context);
+    final cs = Theme.of(context).colorScheme;
     final l10n = context.l10n;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textBase = isDark ? Colors.white : const Color(0xFF111827);
@@ -209,8 +208,8 @@ class _MembersPanel extends StatelessWidget {
                   margin: const EdgeInsets.only(bottom: 8),
                   child: Material(
                     color: selected
-                        ? colors.selectedMemberBg
-                        : colors.unselectedMemberBg,
+                        ? cs.secondaryContainer
+                        : cs.surfaceContainerHigh,
                     borderRadius: BorderRadius.circular(8),
                     child: ListTile(
                       dense: true,
@@ -229,7 +228,7 @@ class _MembersPanel extends StatelessWidget {
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           color: running
-                              ? colors.accentGreen
+                              ? cs.secondary
                               : const Color(0xFFEF4444),
                         ),
                       ),

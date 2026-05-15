@@ -9,7 +9,7 @@ class ResizableSplitView extends StatefulWidget {
     this.initialLeftFraction,
     this.minLeftWidth = 120,
     this.maxLeftWidth = 500,
-    this.dividerWidth = 6,
+    this.dividerWidth = 2,
     this.onWidthChanged,
   });
 
@@ -70,10 +70,14 @@ class _ResizableSplitViewState extends State<ResizableSplitView> {
             GestureDetector(
               behavior: HitTestBehavior.opaque,
               onHorizontalDragUpdate: (details) {
-                final maxWidth = widget.maxLeftWidth
-                    .clamp(0.0, availableWidth - widget.dividerWidth);
-                final newWidth = (currentLeftWidth + details.delta.dx)
-                    .clamp(widget.minLeftWidth, maxWidth);
+                final maxWidth = widget.maxLeftWidth.clamp(
+                  0.0,
+                  availableWidth - widget.dividerWidth,
+                );
+                final newWidth = (currentLeftWidth + details.delta.dx).clamp(
+                  widget.minLeftWidth,
+                  maxWidth,
+                );
                 setState(() {
                   _fraction = _fractionFromWidth(availableWidth, newWidth);
                 });

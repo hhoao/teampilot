@@ -7,6 +7,7 @@ class AppStorage {
   AppStorage._();
 
   static String? _basePath;
+  static String? _cliDataRootOverride;
 
   static String get basePath => _basePath ?? '.';
 
@@ -14,9 +15,12 @@ class AppStorage {
   /// `flashskyai` CLI: sessions, history, and the canonical team configs all
   /// live under here.
   static String get flashskyaiDataDir => p.join(
-    Platform.environment['HOME'] ?? Platform.environment['USERPROFILE'] ?? '',
-    '.flashskyai',
-  );
+        _cliDataRootOverride ??
+            Platform.environment['HOME'] ??
+            Platform.environment['USERPROFILE'] ??
+            '',
+        '.flashskyai',
+      );
 
   /// CLI's `teams/` directory. UI imports from here on startup.
   static String get cliTeamsDir => p.join(flashskyaiDataDir, 'teams');
@@ -107,5 +111,31 @@ class AppStorage {
   static Future<void> init() async {
     final dir = await getApplicationSupportDirectory();
     _basePath = dir.path;
+  }
+
+  static Future<void> useWslCliDataDirIfNeeded(String? cliExecutable) async {
+    if (!Platform.isWindows) return;
+    final trimmed = cliExecutable?.trim().toLowerCase() ?? '';
+    if (!trimmed.startsWith('wsl ') && !trimmed.startsWith('wsl.exe ')) {
+      return;
+    }
+    try {
+      final result = await Process.run('wsl.exe', [
+        'wslpath',
+        '-w',
+        r'~/.flashskyai',
+      ]);
+      if (result.exitCode != 0 || result.stdout is! String) return;
+      final path = (result.stdout as String)
+          .split(RegExp(r'\r?\n'))
+          .map((l) => l.trim())
+          .firstWhere((l) => l.isNotEmpty, orElse: () => '');
+      if (path.isEmpty) return;
+      _cliDataRootOverride = path.endsWith(r'\.flashskyai')
+          ? path.substring(0, path.length - r'\.flashskyai'.length)
+          : path;
+    } on Object {
+      // Keep the native Windows data directory if WSL is unavailable here.
+    }
   }
 }

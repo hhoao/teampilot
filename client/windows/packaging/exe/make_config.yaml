@@ -1,0 +1,9 @@
+app_id: 5B599538-42B1-4826-A479-AF079F21A65D
+publisher: hhoa
+publisher_url: https://github.com/hhoao/flashskyai-ui
+display_name: TeamPilot
+create_desktop_icon: true
+setup_icon_file: windows\runner\resources\app_icon.ico
+locales:
+  - en
+  - zh

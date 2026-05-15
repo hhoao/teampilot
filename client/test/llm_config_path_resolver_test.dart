@@ -1,5 +1,6 @@
-import 'package:teampilot/services/llm_config_path_resolver.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:path/path.dart' as p;
+import 'package:teampilot/services/llm_config_path_resolver.dart';
 
 void main() {
   group('resolveLlmConfigPath', () {
@@ -11,7 +12,7 @@ void main() {
           homeDirectory: '/home/test',
           cliExecutablePath: '/opt/flashskyai/dist/flashskyai',
         );
-        expect(r.path, '/etc/flashskyai/llm_config.json');
+        expect(r.path, p.normalize('/etc/flashskyai/llm_config.json'));
         expect(r.source, LlmConfigPathSource.userOverride);
       });
 
@@ -22,7 +23,7 @@ void main() {
           homeDirectory: '/home/test',
           cliExecutablePath: null,
         );
-        expect(r.path, '/home/test/llm/llm_config.json');
+        expect(r.path, p.normalize(p.join('/home/test', 'llm/llm_config.json')));
         expect(r.source, LlmConfigPathSource.userOverride);
       });
 
@@ -33,7 +34,7 @@ void main() {
           homeDirectory: '/home/test',
           cliExecutablePath: null,
         );
-        expect(r.path, '/cwd/cfg/llm.json');
+        expect(r.path, p.normalize(p.absolute(p.join('/cwd', 'cfg/llm.json'))));
         expect(r.source, LlmConfigPathSource.userOverride);
       });
 
@@ -44,7 +45,18 @@ void main() {
           homeDirectory: '/home/test',
           cliExecutablePath: '/opt/flashskyai/dist/flashskyai',
         );
-        expect(r.path, '/opt/flashskyai/llm/llm_config.json');
+        final cli = '/opt/flashskyai/dist/flashskyai';
+        expect(
+          r.path,
+          p.normalize(
+            p.join(
+              p.dirname(p.absolute(cli)),
+              '..',
+              'llm',
+              'llm_config.json',
+            ),
+          ),
+        );
         expect(r.source, LlmConfigPathSource.defaultPath);
       });
     });
@@ -57,7 +69,18 @@ void main() {
           homeDirectory: '/home/test',
           cliExecutablePath: '/opt/flashskyai/dist/flashskyai',
         );
-        expect(r.path, '/opt/flashskyai/llm/llm_config.json');
+        final cli = '/opt/flashskyai/dist/flashskyai';
+        expect(
+          r.path,
+          p.normalize(
+            p.join(
+              p.dirname(p.absolute(cli)),
+              '..',
+              'llm',
+              'llm_config.json',
+            ),
+          ),
+        );
         expect(r.source, LlmConfigPathSource.defaultPath);
       });
 
@@ -73,15 +96,51 @@ void main() {
       });
 
       test('matches the user real-world setup (CLI under DingDing/dist)', () {
+        const cli =
+            '/home/hhoa/Downloads/DingDing/flashshkyai/dist/flashskyai';
         final r = resolveLlmConfigPath(
           userOverride: null,
           currentDirectory: '/anywhere',
           homeDirectory: '/home/hhoa',
-          cliExecutablePath:
-              '/home/hhoa/Downloads/DingDing/flashshkyai/dist/flashskyai',
+          cliExecutablePath: cli,
         );
-        expect(r.path,
-            '/home/hhoa/Downloads/DingDing/flashshkyai/llm/llm_config.json');
+        expect(
+          r.path,
+          p.normalize(
+            p.join(
+              p.dirname(p.absolute(cli)),
+              '..',
+              'llm',
+              'llm_config.json',
+            ),
+          ),
+        );
+        expect(r.source, LlmConfigPathSource.defaultPath);
+      });
+
+      test('WSL launch string uses Linux sidecar layout (POSIX path)', () {
+        final r = resolveLlmConfigPath(
+          userOverride: null,
+          currentDirectory: r'C:\proj',
+          homeDirectory: r'C:\Users\x',
+          cliExecutablePath:
+              r'wsl.exe /home/hhoa/flashskai-ubuntu-wsl/dist/flashskyai',
+        );
+        expect(
+          r.path,
+          '/home/hhoa/flashskai-ubuntu-wsl/llm/llm_config.json',
+        );
+        expect(r.source, LlmConfigPathSource.defaultPath);
+      });
+
+      test('wsl without .exe prefix', () {
+        final r = resolveLlmConfigPath(
+          userOverride: null,
+          currentDirectory: '/cwd',
+          homeDirectory: '/home/test',
+          cliExecutablePath: 'wsl /opt/foo/dist/flashskyai',
+        );
+        expect(r.path, '/opt/foo/llm/llm_config.json');
         expect(r.source, LlmConfigPathSource.defaultPath);
       });
     });

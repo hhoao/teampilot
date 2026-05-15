@@ -104,10 +104,6 @@ class _WarmupStage extends StatelessWidget {
           terminal,
           backgroundOpacity: 0.92,
           padding: const EdgeInsets.all(6),
-          textStyle: const TerminalStyle(
-            fontFamily: 'monospace',
-            fontFamilyFallback: ['monospace'],
-          ),
         ),
         _ => const SizedBox.shrink(),
       },
@@ -122,8 +118,9 @@ class _SettingsWarmup extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final executable =
-        context.read<SessionPreferencesCubit>().resolveExecutable();
+    final executable = context
+        .read<SessionPreferencesCubit>()
+        .resolveExecutable();
     return Material(
       child: Row(
         children: [
@@ -290,12 +287,7 @@ class _WarmupLaunchRow extends StatelessWidget {
           const SizedBox(width: 8),
           Expanded(
             flex: 2,
-            child: Text(
-              command,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
-            ),
+            child: Text(command, maxLines: 1, overflow: TextOverflow.ellipsis),
           ),
         ],
       ),

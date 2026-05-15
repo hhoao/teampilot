@@ -1,5 +1,7 @@
 import 'package:path/path.dart' as p;
 
+import 'cli_invocation.dart';
+
 enum LlmConfigPathSource { userOverride, defaultPath }
 
 class ResolvedLlmConfigPath {
@@ -45,8 +47,25 @@ ResolvedLlmConfigPath resolveLlmConfigPath({
 String? _cliInstallCandidate(String? cliExecutablePath) {
   if (cliExecutablePath == null || cliExecutablePath.isEmpty) return null;
   // CLI lives at <install>/dist/flashskyai; config sits at <install>/llm/...
-  final cliDir = p.dirname(p.absolute(cliExecutablePath));
+  final trimmed = cliExecutablePath.trim();
+  final linuxExe = _linuxExecutablePathForInstallLayout(trimmed);
+  if (linuxExe != null) {
+    final posix = p.Context(style: p.Style.posix);
+    final cliDir = posix.dirname(linuxExe);
+    return posix.normalize(posix.join(cliDir, '..', 'llm', 'llm_config.json'));
+  }
+  final cliDir = p.dirname(p.absolute(trimmed));
   return p.normalize(p.join(cliDir, '..', 'llm', 'llm_config.json'));
+}
+
+/// When [executable] is a Windows launch line `wsl.exe /path/to/flashskyai`,
+/// returns `/path/to/flashskyai` for layout rules. Otherwise null.
+String? _linuxExecutablePathForInstallLayout(String executable) {
+  final parts = CliInvocation.splitCommand(executable);
+  if (parts.length < 2) return null;
+  final name = parts.first.split(RegExp(r'[\\/]')).last.toLowerCase();
+  if (name != 'wsl' && name != 'wsl.exe') return null;
+  return parts[1];
 }
 
 String _expandHome(String input, String? home) {

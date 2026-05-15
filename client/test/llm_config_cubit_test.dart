@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:path/path.dart' as p;
 import 'package:teampilot/cubits/llm_config_cubit.dart';
 import 'package:teampilot/repositories/app_settings_repository.dart';
 import 'package:teampilot/repositories/llm_config_repository.dart';
@@ -41,8 +42,8 @@ void main() {
 
     expect(cubit.state.pathSource, LlmConfigPathSource.defaultPath);
     expect(cubit.state.configPathOverride, '');
-    expect(cubit.state.effectiveConfigPath,
-        '/opt/flashskyai/llm/llm_config.json');
+    final ep = cubit.state.effectiveConfigPath.replaceAll(r'\', '/');
+    expect(ep, endsWith('opt/flashskyai/llm/llm_config.json'));
   });
 
   test('load returns empty effective path when CLI is unknown', () async {
@@ -76,7 +77,10 @@ void main() {
     await cubit.load();
 
     expect(cubit.state.pathSource, LlmConfigPathSource.userOverride);
-    expect(cubit.state.effectiveConfigPath, file.path);
+    expect(
+      p.normalize(cubit.state.effectiveConfigPath),
+      p.normalize(file.path),
+    );
     expect(cubit.state.config.providers.keys, contains('foo'));
   });
 
@@ -105,7 +109,10 @@ void main() {
 
     await cubit.setConfigPath(fileB.path);
     expect(cubit.state.config.providers.keys, ['b']);
-    expect(cubit.state.effectiveConfigPath, fileB.path);
+    expect(
+      p.normalize(cubit.state.effectiveConfigPath),
+      p.normalize(fileB.path),
+    );
 
     // verify it persisted
     final reloaded = SharedPrefsAppSettingsRepository(prefs);

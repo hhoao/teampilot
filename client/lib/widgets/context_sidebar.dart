@@ -13,7 +13,6 @@ import '../models/app_project.dart';
 import '../models/app_session.dart';
 import '../models/team_config.dart';
 import '../repositories/session_repository.dart';
-import '../theme/app_theme.dart';
 import '../utils/app_keys.dart';
 import '../widgets/dropdown/custom_dropdown.dart';
 import '../widgets/dropdown/flashskyai_dropdown_decoration.dart';
@@ -47,9 +46,7 @@ void _navigateToSessionInChat(BuildContext context, AppSession session) {
       repo: repo,
       emptyDisplayTitleFallback: l10n.defaultNewChatSessionTitle,
     );
-    chatCubit.addSystemMessage(
-      'FlashskyAI requires a member named team-lead.',
-    );
+    chatCubit.addSystemMessage('FlashskyAI requires a member named team-lead.');
   }
 
   context.go('/chat');
@@ -79,7 +76,7 @@ class _ContextSidebarState extends State<ContextSidebar> {
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppColors.of(context);
+    final cs = Theme.of(context).colorScheme;
     final l10n = context.l10n;
     final teamCubit = context.watch<TeamCubit>();
     final selected = teamCubit.state.selectedTeam;
@@ -87,7 +84,7 @@ class _ContextSidebarState extends State<ContextSidebar> {
     return Container(
       key: AppKeys.contextSidebar,
       width: double.infinity,
-      color: colors.sidebarBackground,
+      color: cs.surfaceContainer,
       padding: const EdgeInsets.all(13),
       child: selected == null
           ? const Center(child: CircularProgressIndicator())
@@ -181,11 +178,9 @@ class _ProjectList extends StatelessWidget {
         child: Text(
           l10n.noSessions,
           style: TextStyle(
-            color: Theme.of(context)
-                .textTheme
-                .bodySmall
-                ?.color
-                ?.withValues(alpha: 0.5),
+            color: Theme.of(
+              context,
+            ).textTheme.bodySmall?.color?.withValues(alpha: 0.5),
             fontSize: 12,
           ),
         ),
@@ -193,7 +188,12 @@ class _ProjectList extends StatelessWidget {
     }
 
     final sorted = List<AppProject>.from(projects)
-      ..sort((a, b) => _projectRecency(b, sessions).compareTo(_projectRecency(a, sessions)));
+      ..sort(
+        (a, b) => _projectRecency(
+          b,
+          sessions,
+        ).compareTo(_projectRecency(a, sessions)),
+      );
 
     return ListView.builder(
       itemCount: sorted.length,
@@ -201,13 +201,8 @@ class _ProjectList extends StatelessWidget {
         final project = sorted[index];
         final list = _sessionsForProject(project, sessions);
         return Padding(
-          padding: EdgeInsets.only(
-            bottom: index == sorted.length - 1 ? 0 : 10,
-          ),
-          child: _ProjectGroup(
-            project: project,
-            sessions: list,
-          ),
+          padding: EdgeInsets.only(bottom: index == sorted.length - 1 ? 0 : 10),
+          child: _ProjectGroup(project: project, sessions: list),
         );
       },
     );
@@ -240,8 +235,8 @@ class _ProjectGroupState extends State<_ProjectGroup> {
     final displayName = p.effectiveDisplay.isNotEmpty
         ? p.effectiveDisplay
         : (p.primaryPath.isNotEmpty
-            ? p.primaryPath.split(Platform.pathSeparator).last
-            : l10n.unknownFolder);
+              ? p.primaryPath.split(Platform.pathSeparator).last
+              : l10n.unknownFolder);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -292,10 +287,10 @@ class _ProjectGroupState extends State<_ProjectGroup> {
     final repo = SessionRepository();
     final teamId = context.read<TeamCubit>().state.selectedTeam?.id ?? '';
     final session = await context.read<ChatCubit>().createSession(
-          projectId,
-          repo,
-          sessionTeamId: teamId,
-        );
+      projectId,
+      repo,
+      sessionTeamId: teamId,
+    );
     if (!context.mounted) return;
     _navigateToSessionInChat(context, session);
   }
@@ -343,9 +338,9 @@ class _ProjectGroupState extends State<_ProjectGroup> {
             onPressed: () {
               unawaited(
                 context.read<ChatCubit>().deleteProject(
-                      SessionRepository(),
-                      project.projectId,
-                    ),
+                  SessionRepository(),
+                  project.projectId,
+                ),
               );
               Navigator.of(ctx).pop();
             },
@@ -393,7 +388,7 @@ class _ProjectHeaderState extends State<_ProjectHeader> {
     final l10n = context.l10n;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textBase = isDark ? Colors.white : const Color(0xFF111827);
-    final colors = AppColors.of(context);
+    final cs = Theme.of(context).colorScheme;
     final showActions = _hovered || _menuOpen;
 
     return Padding(
@@ -405,9 +400,7 @@ class _ProjectHeaderState extends State<_ProjectHeader> {
           color: Colors.transparent,
           borderRadius: BorderRadius.circular(8),
           child: Ink(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(8),
-            ),
+            decoration: BoxDecoration(borderRadius: BorderRadius.circular(8)),
             child: Row(
               children: [
                 Expanded(
@@ -455,94 +448,106 @@ class _ProjectHeaderState extends State<_ProjectHeader> {
                     ),
                   ),
                 ),
-              if (showActions) ...[
-                InkWell(
-                  borderRadius: BorderRadius.circular(4),
-                  onTap: widget.onNewSession,
-                  child: Tooltip(
-                    message: l10n.newSessionTooltip,
-                    child: Padding(
-                      padding: const EdgeInsets.all(6),
-                      child: Icon(
-                        Icons.add,
-                        size: 16,
-                        color: colors.linkText,
+                // Keep action controls in the layout when hidden: [PopupMenuButton]
+                // uses a tall minimum touch target, so toggling visibility used to
+                // change the row height on hover.
+                Visibility(
+                  visible: showActions,
+                  maintainSize: true,
+                  maintainState: true,
+                  maintainAnimation: true,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      InkWell(
+                        borderRadius: BorderRadius.circular(4),
+                        onTap: widget.onNewSession,
+                        child: Tooltip(
+                          message: l10n.newSessionTooltip,
+                          child: Padding(
+                            padding: const EdgeInsets.all(6),
+                            child: Icon(Icons.add, size: 16, color: cs.primary),
+                          ),
+                        ),
                       ),
-                    ),
-                  ),
-                ),
-                if (widget.onOpenFolder != null ||
-                    widget.onCopyPath != null ||
-                    widget.onDelete != null)
-                  PopupMenuButton<String>(
-                    tooltip: '',
-                    padding: EdgeInsets.zero,
-                    icon: Icon(
-                      Icons.more_horiz,
-                      size: 16,
-                      color: textBase.withValues(alpha: 0.5),
-                    ),
-                    onOpened: () => setState(() => _menuOpen = true),
-                    onCanceled: () => setState(() => _menuOpen = false),
-                    onSelected: (value) {
-                      setState(() => _menuOpen = false);
-                      switch (value) {
-                        case 'openFolder':
-                          widget.onOpenFolder?.call();
-                          break;
-                        case 'copyPath':
-                          widget.onCopyPath?.call();
-                          break;
-                        case 'delete':
-                          widget.onDelete?.call();
-                          break;
-                      }
-                    },
-                    itemBuilder: (context) => [
-                      if (widget.onOpenFolder != null)
-                        PopupMenuItem(
-                          value: 'openFolder',
-                          child: Row(
-                            children: [
-                              const Icon(Icons.folder_open, size: 18),
-                              const SizedBox(width: 8),
-                              Text(l10n.openFolder),
-                            ],
+                      if (widget.onOpenFolder != null ||
+                          widget.onCopyPath != null ||
+                          widget.onDelete != null)
+                        PopupMenuButton<String>(
+                          tooltip: '',
+                          padding: EdgeInsets.zero,
+                          icon: Icon(
+                            Icons.more_horiz,
+                            size: 16,
+                            color: textBase.withValues(alpha: 0.5),
                           ),
-                        ),
-                      if (widget.onCopyPath != null)
-                        PopupMenuItem(
-                          value: 'copyPath',
-                          child: Row(
-                            children: [
-                              const Icon(Icons.copy, size: 18),
-                              const SizedBox(width: 8),
-                              Text(l10n.copyFolderPath),
-                            ],
-                          ),
-                        ),
-                      if (widget.onDelete != null)
-                        PopupMenuItem(
-                          value: 'delete',
-                          child: Row(
-                            children: [
-                              Icon(Icons.delete_outline,
-                                  size: 18,
-                                  color:
-                                      Theme.of(context).colorScheme.error),
-                              const SizedBox(width: 8),
-                              Text(l10n.deleteProject),
-                            ],
-                          ),
+                          onOpened: () => setState(() => _menuOpen = true),
+                          onCanceled: () => setState(() => _menuOpen = false),
+                          onSelected: (value) {
+                            setState(() => _menuOpen = false);
+                            switch (value) {
+                              case 'openFolder':
+                                widget.onOpenFolder?.call();
+                                break;
+                              case 'copyPath':
+                                widget.onCopyPath?.call();
+                                break;
+                              case 'delete':
+                                widget.onDelete?.call();
+                                break;
+                            }
+                          },
+                          itemBuilder: (context) => [
+                            if (widget.onOpenFolder != null)
+                              PopupMenuItem(
+                                value: 'openFolder',
+                                child: Row(
+                                  children: [
+                                    const Icon(Icons.folder_open, size: 18),
+                                    const SizedBox(width: 8),
+                                    Text(l10n.openFolder),
+                                  ],
+                                ),
+                              ),
+                            if (widget.onCopyPath != null)
+                              PopupMenuItem(
+                                value: 'copyPath',
+                                child: Row(
+                                  children: [
+                                    const Icon(Icons.copy, size: 18),
+                                    const SizedBox(width: 8),
+                                    Text(l10n.copyFolderPath),
+                                  ],
+                                ),
+                              ),
+                            if (widget.onDelete != null)
+                              PopupMenuItem(
+                                value: 'delete',
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      Icons.delete_outline,
+                                      size: 18,
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.error,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Text(l10n.deleteProject),
+                                  ],
+                                ),
+                              ),
+                          ],
                         ),
                     ],
                   ),
+                ),
               ],
-            ],
+            ),
           ),
         ),
       ),
-    ));
+    );
   }
 }
 
@@ -557,6 +562,7 @@ class _SessionTileEntry extends StatefulWidget {
 
 class _SessionTileEntryState extends State<_SessionTileEntry> {
   var _hovered = false;
+
   /// Keeps the overflow menu mounted while the popup is open; otherwise moving
   /// the pointer onto the overlay triggers [MouseRegion.onExit] and removes
   /// the [PopupMenuButton] before a menu item can be selected.
@@ -564,8 +570,7 @@ class _SessionTileEntryState extends State<_SessionTileEntry> {
 
   Future<void> _showSessionContextMenu(Offset globalPosition) async {
     if (!mounted) return;
-    final overlayObject =
-        Overlay.maybeOf(context)?.context.findRenderObject();
+    final overlayObject = Overlay.maybeOf(context)?.context.findRenderObject();
     if (overlayObject is! RenderBox) return;
 
     final l10n = context.l10n;
@@ -597,14 +602,8 @@ class _SessionTileEntryState extends State<_SessionTileEntry> {
     AppLocalizations l10n,
   ) {
     return [
-      PopupMenuItem(
-        value: 'rename',
-        child: Text(l10n.renameConversation),
-      ),
-      PopupMenuItem(
-        value: 'delete',
-        child: Text(l10n.deleteConversation),
-      ),
+      PopupMenuItem(value: 'rename', child: Text(l10n.renameConversation)),
+      PopupMenuItem(value: 'delete', child: Text(l10n.deleteConversation)),
     ];
   }
 
@@ -629,32 +628,31 @@ class _SessionTileEntryState extends State<_SessionTileEntry> {
         onSecondaryTapUp: (details) =>
             _showSessionContextMenu(details.globalPosition),
         trailing: SizedBox(
-            width: 24,
-            height: 24,
-            child: _hovered || _menuOpen
-                ? PopupMenuButton<String>(
-                    tooltip: '',
-                    padding: EdgeInsets.zero,
-                    iconSize: 16,
-                    icon: const Icon(Icons.more_horiz, size: 16),
-                    onOpened: () => setState(() => _menuOpen = true),
-                    onCanceled: () => setState(() => _menuOpen = false),
-                    onSelected: (value) {
-                      setState(() => _menuOpen = false);
-                      switch (value) {
-                        case 'rename':
-                          _showRenameDialog(context, session, l10n);
-                          break;
-                        case 'delete':
-                          _showDeleteDialog(context, session, l10n);
-                          break;
-                      }
-                    },
-                    itemBuilder: (context) =>
-                        _sessionOverflowMenuEntries(l10n),
-                  )
-                : null,
-          ),
+          width: 24,
+          height: 24,
+          child: _hovered || _menuOpen
+              ? PopupMenuButton<String>(
+                  tooltip: '',
+                  padding: EdgeInsets.zero,
+                  iconSize: 16,
+                  icon: const Icon(Icons.more_horiz, size: 16),
+                  onOpened: () => setState(() => _menuOpen = true),
+                  onCanceled: () => setState(() => _menuOpen = false),
+                  onSelected: (value) {
+                    setState(() => _menuOpen = false);
+                    switch (value) {
+                      case 'rename':
+                        _showRenameDialog(context, session, l10n);
+                        break;
+                      case 'delete':
+                        _showDeleteDialog(context, session, l10n);
+                        break;
+                    }
+                  },
+                  itemBuilder: (context) => _sessionOverflowMenuEntries(l10n),
+                )
+              : null,
+        ),
       ),
     );
   }
@@ -674,9 +672,7 @@ class _SessionTileEntryState extends State<_SessionTileEntry> {
         content: TextField(
           controller: controller,
           autofocus: true,
-          decoration: InputDecoration(
-            labelText: l10n.conversationName,
-          ),
+          decoration: InputDecoration(labelText: l10n.conversationName),
           onSubmitted: (value) {
             if (value.trim().isNotEmpty) {
               unawaited(
@@ -868,7 +864,7 @@ class _TeamSelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppColors.of(context);
+    final cs = Theme.of(context).colorScheme;
     final l10n = context.l10n;
     final decoration = FlashskyDropdownDecorations.sidebarTeam(context);
 
@@ -936,14 +932,10 @@ class _TeamSelector extends StatelessWidget {
                   height: 32,
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(6),
-                    border: Border.all(color: colors.teamSelectorBorder),
-                    color: colors.teamSelectorBackground,
+                    border: Border.all(color: cs.outlineVariant),
+                    color: cs.surfaceContainer,
                   ),
-                  child: Icon(
-                    Icons.add,
-                    size: 18,
-                    color: colors.linkText,
-                  ),
+                  child: Icon(Icons.add, size: 18, color: cs.onSurface),
                 ),
               ),
             ),
@@ -967,7 +959,7 @@ class _SidebarSectionTitle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppColors.of(context);
+    final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textBase = isDark ? Colors.white : const Color(0xFF111827);
     return Padding(
@@ -1000,7 +992,7 @@ class _SidebarSectionTitle extends StatelessWidget {
                   child: Text(
                     actionLabel,
                     style: TextStyle(
-                      color: colors.linkText,
+                      color: cs.primary,
                       fontWeight: FontWeight.w700,
                       fontSize: 14,
                     ),
@@ -1017,8 +1009,8 @@ class _SidebarSectionTitle extends StatelessWidget {
 class _SidebarTile extends StatelessWidget {
   const _SidebarTile({
     required this.title,
-    this.subtitle = '',
     required this.selected,
+    this.subtitle = '',
     this.rowHovered = false,
     this.onTap,
     this.onSecondaryTapUp,
@@ -1030,33 +1022,36 @@ class _SidebarTile extends StatelessWidget {
   final String title;
   final String subtitle;
   final bool selected;
+
   /// From parent [MouseRegion] (and menu-open), not [InkWell] — avoids ink
   /// fighting with [PopupMenuButton] (hover patch only behind title).
   final bool rowHovered;
   final VoidCallback? onTap;
   final GestureTapUpCallback? onSecondaryTapUp;
   final Widget? trailing;
+
   /// Extra left padding so row text lines up with folder names (file tree).
   final double contentLeftInset;
 
   Color _materialFillColor(BuildContext context) {
-    final colors = AppColors.of(context);
-    final hoverTint =
-        Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.10);
+    final cs = Theme.of(context).colorScheme;
+    final hoverTint = Theme.of(
+      context,
+    ).colorScheme.onSurface.withValues(alpha: 0.10);
     if (selected) {
       return rowHovered
-          ? Color.alphaBlend(hoverTint, colors.selectedBackground)
-          : colors.selectedBackground;
+          ? Color.alphaBlend(hoverTint, cs.primaryContainer)
+          : cs.primaryContainer;
     }
     if (rowHovered) {
-      return Color.alphaBlend(hoverTint, colors.sidebarBackground);
+      return Color.alphaBlend(hoverTint, cs.surfaceContainer);
     }
     return Colors.transparent;
   }
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppColors.of(context);
+    final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textBase = isDark ? Colors.white : const Color(0xFF111827);
     return Padding(
@@ -1069,17 +1064,10 @@ class _SidebarTile extends StatelessWidget {
           onTap: onTap,
           onSecondaryTapUp: onSecondaryTapUp,
           child: Container(
-            padding: EdgeInsets.fromLTRB(
-              contentLeftInset,
-              6,
-              8,
-              6,
-            ),
+            padding: EdgeInsets.fromLTRB(contentLeftInset, 6, 8, 6),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(8),
-              border: selected
-                  ? Border.all(color: colors.selectedBorder)
-                  : null,
+              border: selected ? Border.all(color: cs.primaryContainer) : null,
             ),
             // Do not use [CrossAxisAlignment.stretch] here: [_SidebarTile] is used
             // inside [ListView] items, which get an unbounded max height on the main

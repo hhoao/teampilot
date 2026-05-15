@@ -150,6 +150,27 @@ class AppLocalizations {
       _strings['scopeSessionsToSelectedTeamDescription']!;
   String get themeModeTitle => _strings['themeModeTitle']!;
   String get themeModeDescription => _strings['themeModeDescription']!;
+  String get themeColorPresetTitle => _strings['themeColorPresetTitle']!;
+  String get themeColorPresetDescription =>
+      _strings['themeColorPresetDescription']!;
+
+  /// Display name for a [LayoutPreferences.themeColorPreset] id.
+  String themeColorPresetName(String id) {
+    switch (id) {
+      case 'ocean':
+        return _strings['themePresetOcean']!;
+      case 'violet':
+        return _strings['themePresetViolet']!;
+      case 'amber':
+        return _strings['themePresetAmber']!;
+      case 'forest':
+        return _strings['themePresetForest']!;
+      case 'graphite':
+      default:
+        return _strings['themePresetGraphite']!;
+    }
+  }
+
   String get languageDescription => _strings['languageDescription']!;
 
   String get llmConfigPageSubtitle => _strings['llmConfigPageSubtitle']!;
@@ -570,6 +591,16 @@ class _AppLocalizationsDelegate
       'en': 'Light, dark, or match the operating system appearance.',
       'zh': '浅色、深色，或与系统外观一致。',
     },
+    'themeColorPresetTitle': {'en': 'Theme colors', 'zh': '主题色'},
+    'themeColorPresetDescription': {
+      'en': 'Primary and accent colors for buttons, toggles, and highlights.',
+      'zh': '用于按钮、开关与高亮的主色与强调色。',
+    },
+    'themePresetGraphite': {'en': 'Graphite', 'zh': '石墨'},
+    'themePresetOcean': {'en': 'Ocean', 'zh': '海洋'},
+    'themePresetViolet': {'en': 'Violet', 'zh': '紫罗兰'},
+    'themePresetAmber': {'en': 'Amber', 'zh': '琥珀'},
+    'themePresetForest': {'en': 'Forest', 'zh': '森林'},
     'languageDescription': {
       'en': 'Language used for menus, buttons, and labels.',
       'zh': '菜单、按钮与标签所使用的语言。',

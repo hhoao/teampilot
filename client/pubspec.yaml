@@ -16,7 +16,8 @@ dependencies:
     sdk: flutter
   cupertino_icons: ^1.0.8
   shared_preferences: ^2.5.3
-  xterm: ^4.0.0
+  xterm:
+    path: packages/xterm
   flutter_pty: ^0.4.2
 
   flutter_bloc: ^9.1.0
@@ -38,6 +39,8 @@ dependencies:
   crypto: ^3.0.7
   archive: ^4.0.9
   toggle_switch: ^2.3.0
+  google_fonts: ^8.1.0
+  flex_color_scheme: ^8.4.0
 
 dev_dependencies:
   flutter_test:
@@ -50,6 +53,8 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    - google_fonts/
 
 flutter_launcher_icons:
   android: false

@@ -8,7 +8,6 @@ import '../cubits/team_cubit.dart';
 import '../l10n/app_localizations.dart';
 import '../models/layout_preferences.dart';
 import '../theme/app_theme.dart';
-import '../theme/app_workspace_settings_theme.dart';
 import '../utils/app_keys.dart';
 import '../widgets/settings/workspace_settings_toggle_strip.dart';
 import '../widgets/settings/workspace_settings_widgets.dart';
@@ -22,7 +21,7 @@ class ConfigWorkspace extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppColors.of(context);
+    final cs = Theme.of(context).colorScheme;
     final l10n = context.l10n;
     final configCubit = context.watch<ConfigCubit>();
     final teamCubit = context.watch<TeamCubit>();
@@ -39,7 +38,7 @@ class ConfigWorkspace extends StatelessWidget {
     }
     return Container(
       key: AppKeys.configWorkspace,
-      color: colors.workspaceBackground,
+      color: cs.surface,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -75,7 +74,10 @@ class ConfigWorkspace extends StatelessWidget {
                         l10n: l10n,
                       ),
                     ),
-                    Container(width: 1, color: colors.subtleBorder),
+                    Container(
+                      width: 1,
+                      color: cs.outlineVariant.withValues(alpha: 0.5),
+                    ),
                     Expanded(
                       child: Padding(
                         padding: contentPadding,
@@ -263,6 +265,17 @@ class _LayoutControls extends StatelessWidget {
                 showDividerBelow: true,
               ),
               SettingsLabeledRow(
+                title: l10n.themeColorPresetTitle,
+                subtitle: l10n.themeColorPresetDescription,
+                trailing: _ThemeColorPresetPicker(
+                  selected: normalizeThemeColorPreset(
+                    preferences.themeColorPreset,
+                  ),
+                  onSelect: controller.setThemeColorPreset,
+                ),
+                showDividerBelow: true,
+              ),
+              SettingsLabeledRow(
                 title: l10n.language,
                 subtitle: l10n.languageDescription,
                 trailing: SettingsCompactDropdown<String>(
@@ -303,6 +316,112 @@ class _LayoutControls extends StatelessWidget {
   }
 }
 
+class _ThemeColorPresetPicker extends StatelessWidget {
+  const _ThemeColorPresetPicker({
+    required this.selected,
+    required this.onSelect,
+  });
+
+  final String selected;
+  final ValueChanged<String> onSelect;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    return Align(
+      alignment: Alignment.centerRight,
+      child: Wrap(
+        alignment: WrapAlignment.end,
+        spacing: 8,
+        runSpacing: 8,
+        children: [
+          for (final id in kThemeColorPresetIds)
+            _ThemeColorPresetChip(
+              id: id,
+              label: l10n.themeColorPresetName(id),
+              selected: id == selected,
+              onTap: () => onSelect(id),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ThemeColorPresetChip extends StatelessWidget {
+  const _ThemeColorPresetChip({
+    required this.id,
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String id;
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textBase = isDark ? Colors.white : const Color(0xFF111827);
+    final primary = themePresetSwatchPrimary(id);
+    final secondary = themePresetSwatchSecondary(id);
+    return Material(
+      color: cs.surfaceContainerHigh,
+      borderRadius: BorderRadius.circular(999),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(999),
+        onTap: onTap,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(
+              color: selected ? cs.primary : cs.outlineVariant,
+              width: selected ? 2 : 1,
+            ),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 10,
+                  height: 10,
+                  decoration: BoxDecoration(
+                    color: primary,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                const SizedBox(width: 4),
+                Container(
+                  width: 10,
+                  height: 10,
+                  decoration: BoxDecoration(
+                    color: secondary,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
+                    color: textBase.withValues(alpha: selected ? 1 : 0.78),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _SettingsTitleBar extends StatelessWidget {
   const _SettingsTitleBar({required this.title, required this.subtitle});
 
@@ -311,14 +430,18 @@ class _SettingsTitleBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppColors.of(context);
+    final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textBase = isDark ? Colors.white : const Color(0xFF111827);
     return Container(
       padding: const EdgeInsets.fromLTRB(40, 42, 40, 28),
       decoration: BoxDecoration(
-        color: colors.workspaceBackground,
-        border: Border(bottom: BorderSide(color: colors.subtleBorder)),
+        color: cs.surface,
+        border: Border(
+          bottom: BorderSide(
+            color: cs.outlineVariant.withValues(alpha: 0.5),
+          ),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -360,14 +483,26 @@ class _WorkspaceHeading extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final tokens = AppWorkspaceSettingsTokens.of(context);
-    final onSurface = Theme.of(context).colorScheme.onSurface;
+    final tt = Theme.of(context).textTheme;
+    final cs = Theme.of(context).colorScheme;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(title, style: tokens.workspaceHeadingTitleStyle(onSurface)),
-        SizedBox(height: tokens.workspaceHeadingTitleSubtitleGap),
-        Text(subtitle, style: tokens.workspaceHeadingSubtitleStyle(onSurface)),
+        Text(
+          title,
+          style: tt.titleMedium?.copyWith(
+            fontWeight: FontWeight.w800,
+            color: cs.onSurface,
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          subtitle,
+          style: tt.bodyMedium?.copyWith(
+            color: cs.onSurfaceVariant,
+            height: 1.25,
+          ),
+        ),
       ],
     );
   }
@@ -388,9 +523,9 @@ class _ConfigNavPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppColors.of(context);
+    final cs = Theme.of(context).colorScheme;
     return Container(
-      color: colors.workspaceBackground,
+      color: cs.surface,
       padding: compact
           ? const EdgeInsets.fromLTRB(14, 22, 12, 20)
           : const EdgeInsets.fromLTRB(24, 28, 18, 24),
@@ -445,11 +580,11 @@ class _ConfigNavItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppColors.of(context);
+    final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textBase = isDark ? Colors.white : const Color(0xFF111827);
     final muted = textBase.withValues(alpha: 0.64);
-    final selectedColor = colors.selectedBackground;
+    final selectedColor = cs.primaryContainer;
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Material(

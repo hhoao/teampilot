@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:toggle_switch/toggle_switch.dart';
 
-import '../../theme/app_theme.dart';
-import '../../theme/app_workspace_settings_theme.dart';
+const _segmentedIconSize = 18.0;
+const _toggleStripFontSize = 13.0;
 
 /// One option in [WorkspaceSettingsToggleStrip].
 class WorkspaceToggleSegment<T extends Object> {
@@ -32,8 +32,7 @@ class WorkspaceSettingsToggleStrip<T extends Object> extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppColors.of(context);
-    final tokens = AppWorkspaceSettingsTokens.of(context);
+    final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textBase = isDark ? Colors.white : const Color(0xFF111827);
     final inactiveFg = textBase.withValues(alpha: 0.72);
@@ -57,14 +56,14 @@ class WorkspaceSettingsToggleStrip<T extends Object> extends StatelessWidget {
         minHeight: 38,
         minWidth: minW,
         customWidths: customWidths,
-        fontSize: tokens.rowTitleFontSize,
-        iconSize: tokens.segmentedIconSize,
+        fontSize: _toggleStripFontSize,
+        iconSize: _segmentedIconSize,
         activeFgColor: Colors.white,
         inactiveFgColor: inactiveFg,
-        inactiveBgColor: colors.inputFill,
+        inactiveBgColor: cs.surfaceContainerHigh,
         dividerColor: Colors.transparent,
         dividerMargin: 0,
-        activeBgColors: List.generate(n, (_) => <Color>[colors.accentBlue]),
+        activeBgColors: List.generate(n, (_) => <Color>[cs.primary]),
         animate: true,
         animationDuration: 220,
         curve: Curves.easeOutCubic,

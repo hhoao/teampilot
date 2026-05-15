@@ -1,8 +1,8 @@
 class SessionPreferences {
   const SessionPreferences({
     this.cliExecutablePath = '',
-    this.autoLaunchAllMembersOnConnect = false,
-    this.scopeSessionsToSelectedTeam = false,
+    this.autoLaunchAllMembersOnConnect = true,
+    this.scopeSessionsToSelectedTeam = true,
   });
 
   factory SessionPreferences.fromJson(Map<String, Object?> json) {
