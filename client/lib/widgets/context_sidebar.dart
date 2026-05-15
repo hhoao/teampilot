@@ -448,90 +448,104 @@ class _ProjectHeaderState extends State<_ProjectHeader> {
                     ),
                   ),
                 ),
-                if (showActions) ...[
-                  InkWell(
-                    borderRadius: BorderRadius.circular(4),
-                    onTap: widget.onNewSession,
-                    child: Tooltip(
-                      message: l10n.newSessionTooltip,
-                      child: Padding(
-                        padding: const EdgeInsets.all(6),
-                        child: Icon(
-                          Icons.add,
-                          size: 16,
-                          color: cs.primary,
+                // Keep action controls in the layout when hidden: [PopupMenuButton]
+                // uses a tall minimum touch target, so toggling visibility used to
+                // change the row height on hover.
+                Visibility(
+                  visible: showActions,
+                  maintainSize: true,
+                  maintainState: true,
+                  maintainAnimation: true,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      InkWell(
+                        borderRadius: BorderRadius.circular(4),
+                        onTap: widget.onNewSession,
+                        child: Tooltip(
+                          message: l10n.newSessionTooltip,
+                          child: Padding(
+                            padding: const EdgeInsets.all(6),
+                            child: Icon(
+                              Icons.add,
+                              size: 16,
+                              color: cs.primary,
+                            ),
+                          ),
                         ),
                       ),
-                    ),
-                  ),
-                  if (widget.onOpenFolder != null ||
-                      widget.onCopyPath != null ||
-                      widget.onDelete != null)
-                    PopupMenuButton<String>(
-                      tooltip: '',
-                      padding: EdgeInsets.zero,
-                      icon: Icon(
-                        Icons.more_horiz,
-                        size: 16,
-                        color: textBase.withValues(alpha: 0.5),
-                      ),
-                      onOpened: () => setState(() => _menuOpen = true),
-                      onCanceled: () => setState(() => _menuOpen = false),
-                      onSelected: (value) {
-                        setState(() => _menuOpen = false);
-                        switch (value) {
-                          case 'openFolder':
-                            widget.onOpenFolder?.call();
-                            break;
-                          case 'copyPath':
-                            widget.onCopyPath?.call();
-                            break;
-                          case 'delete':
-                            widget.onDelete?.call();
-                            break;
-                        }
-                      },
-                      itemBuilder: (context) => [
-                        if (widget.onOpenFolder != null)
-                          PopupMenuItem(
-                            value: 'openFolder',
-                            child: Row(
-                              children: [
-                                const Icon(Icons.folder_open, size: 18),
-                                const SizedBox(width: 8),
-                                Text(l10n.openFolder),
-                              ],
-                            ),
+                      if (widget.onOpenFolder != null ||
+                          widget.onCopyPath != null ||
+                          widget.onDelete != null)
+                        PopupMenuButton<String>(
+                          tooltip: '',
+                          padding: EdgeInsets.zero,
+                          icon: Icon(
+                            Icons.more_horiz,
+                            size: 16,
+                            color: textBase.withValues(alpha: 0.5),
                           ),
-                        if (widget.onCopyPath != null)
-                          PopupMenuItem(
-                            value: 'copyPath',
-                            child: Row(
-                              children: [
-                                const Icon(Icons.copy, size: 18),
-                                const SizedBox(width: 8),
-                                Text(l10n.copyFolderPath),
-                              ],
-                            ),
-                          ),
-                        if (widget.onDelete != null)
-                          PopupMenuItem(
-                            value: 'delete',
-                            child: Row(
-                              children: [
-                                Icon(
-                                  Icons.delete_outline,
-                                  size: 18,
-                                  color: Theme.of(context).colorScheme.error,
+                          onOpened: () => setState(() => _menuOpen = true),
+                          onCanceled: () => setState(() => _menuOpen = false),
+                          onSelected: (value) {
+                            setState(() => _menuOpen = false);
+                            switch (value) {
+                              case 'openFolder':
+                                widget.onOpenFolder?.call();
+                                break;
+                              case 'copyPath':
+                                widget.onCopyPath?.call();
+                                break;
+                              case 'delete':
+                                widget.onDelete?.call();
+                                break;
+                            }
+                          },
+                          itemBuilder: (context) => [
+                            if (widget.onOpenFolder != null)
+                              PopupMenuItem(
+                                value: 'openFolder',
+                                child: Row(
+                                  children: [
+                                    const Icon(Icons.folder_open, size: 18),
+                                    const SizedBox(width: 8),
+                                    Text(l10n.openFolder),
+                                  ],
                                 ),
-                                const SizedBox(width: 8),
-                                Text(l10n.deleteProject),
-                              ],
-                            ),
-                          ),
-                      ],
-                    ),
-                ],
+                              ),
+                            if (widget.onCopyPath != null)
+                              PopupMenuItem(
+                                value: 'copyPath',
+                                child: Row(
+                                  children: [
+                                    const Icon(Icons.copy, size: 18),
+                                    const SizedBox(width: 8),
+                                    Text(l10n.copyFolderPath),
+                                  ],
+                                ),
+                              ),
+                            if (widget.onDelete != null)
+                              PopupMenuItem(
+                                value: 'delete',
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      Icons.delete_outline,
+                                      size: 18,
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.error,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Text(l10n.deleteProject),
+                                  ],
+                                ),
+                              ),
+                          ],
+                        ),
+                    ],
+                  ),
+                ),
               ],
             ),
           ),
