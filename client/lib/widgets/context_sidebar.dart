@@ -466,11 +466,7 @@ class _ProjectHeaderState extends State<_ProjectHeader> {
                           message: l10n.newSessionTooltip,
                           child: Padding(
                             padding: const EdgeInsets.all(6),
-                            child: Icon(
-                              Icons.add,
-                              size: 16,
-                              color: cs.primary,
-                            ),
+                            child: Icon(Icons.add, size: 16, color: cs.primary),
                           ),
                         ),
                       ),
@@ -939,7 +935,7 @@ class _TeamSelector extends StatelessWidget {
                     border: Border.all(color: cs.outlineVariant),
                     color: cs.surfaceContainer,
                   ),
-                  child: Icon(Icons.add, size: 18, color: cs.primary),
+                  child: Icon(Icons.add, size: 18, color: cs.onSurface),
                 ),
               ),
             ),
@@ -1071,9 +1067,7 @@ class _SidebarTile extends StatelessWidget {
             padding: EdgeInsets.fromLTRB(contentLeftInset, 6, 8, 6),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(8),
-              border: selected
-                  ? Border.all(color: cs.primaryContainer)
-                  : null,
+              border: selected ? Border.all(color: cs.primaryContainer) : null,
             ),
             // Do not use [CrossAxisAlignment.stretch] here: [_SidebarTile] is used
             // inside [ListView] items, which get an unbounded max height on the main
