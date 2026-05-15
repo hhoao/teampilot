@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -6,6 +7,7 @@ import 'package:flutter_pty/flutter_pty.dart';
 import 'package:logger/logger.dart';
 import 'package:xterm/xterm.dart';
 
+import 'cli_executable_validator.dart';
 import 'cli_invocation.dart';
 import 'launch_command_builder.dart';
 import '../models/team_config.dart';
@@ -94,11 +96,17 @@ class TerminalSession {
   TerminalPtyHandle? _pty;
   var _running = false;
   var _starting = false;
+  var _startFailed = false;
   Map<String, String>? _extraEnvironment;
   Map<String, String>? _ptyEnvironment;
   VoidCallback? _onProcessStarted;
+  VoidCallback? _onProcessFailed;
+  StreamSubscription<Uint8List>? _outputSubscription;
+  Timer? _startConfirmationTimer;
+  Timer? _spawnWatchdogTimer;
+  var _spawnRequested = false;
 
-  bool get isRunning => _running || _starting;
+  bool get isRunning => (_running || _starting) && !_startFailed;
 
   void connect({
     required String workingDirectory,
@@ -110,6 +118,7 @@ class TerminalSession {
     String? sessionTeam,
     Map<String, String>? extraEnvironment,
     VoidCallback? onProcessStarted,
+    VoidCallback? onProcessFailed,
   }) {
     if (_running || _starting) {
       disconnect();
@@ -125,6 +134,8 @@ class TerminalSession {
     );
     _ptyEnvironment = buildPtyEnvironment(_extraEnvironment);
     _onProcessStarted = onProcessStarted;
+    _onProcessFailed = onProcessFailed;
+    _startFailed = false;
 
     final args = <String>[];
     if (team != null && member != null) {
@@ -168,7 +179,9 @@ class TerminalSession {
 
     terminal.onResize = (int width, int height, int pw, int ph) {
       if (_pty == null) {
-        if (!_starting || width <= 0 || height <= 0) return;
+        if (!_starting || _spawnRequested || width <= 0 || height <= 0) {
+          return;
+        }
         _spawnPty(
           executable: invocation.executable,
           args: launchArgs,
@@ -196,6 +209,35 @@ class TerminalSession {
     required int cols,
     required int rows,
   }) {
+    if (_spawnRequested || _pty != null) return;
+    _spawnRequested = true;
+
+    final validationError = CliExecutableValidator.validateLaunch(
+      executable: executable,
+      workingDirectory: cwd,
+    );
+    if (validationError != null) {
+      _spawnRequested = false;
+      _handleStartFailure(validationError);
+      return;
+    }
+
+    _startPtyProcess(
+      executable: executable,
+      args: args,
+      cwd: cwd,
+      cols: cols,
+      rows: rows,
+    );
+  }
+
+  void _startPtyProcess({
+    required String executable,
+    required List<String> args,
+    required String cwd,
+    required int cols,
+    required int rows,
+  }) {
     try {
       _pty = _ptyStarter(
         executable,
@@ -205,30 +247,102 @@ class TerminalSession {
         rows: rows,
         environment: _ptyEnvironment,
       );
+      _running = true;
+      _starting = true;
 
-      _pty!.output.listen((data) {
+      _outputSubscription = _pty!.output.listen((data) {
         _writeOutput(data, label: 'connect');
+        if (_looksLikeExecFailure(utf8.decode(data, allowMalformed: true))) {
+          _handleStartFailure(_execFailureMessage(executable));
+        }
       });
 
-      _pty!.exitCode.then((_) {
+      // Do not timeout [exitCode] for long-running shells — it only completes
+      // when the process exits. A timeout here falsely disconnects healthy sessions.
+      _pty!.exitCode.then((code) {
+        if (_running && code != 0) {
+          _handleStartFailure(_execFailureMessage(executable));
+          return;
+        }
         if (_running) {
           terminal.write('\r\n[process exited]\r\n');
         }
-        _running = false;
-        _starting = false;
+        _teardownPtyState();
       });
 
-      _running = true;
-      _starting = false;
-      _onProcessStarted?.call();
-      _onProcessStarted = null;
+      _spawnWatchdogTimer = Timer(const Duration(seconds: 8), () {
+        if (_startFailed || !_starting) return;
+        _handleStartFailure(
+          '${_execFailureMessage(executable)}\r\n'
+          '  (PTY did not become ready)',
+        );
+      });
+
+      _startConfirmationTimer = Timer(
+        const Duration(milliseconds: 450),
+        _confirmProcessStarted,
+      );
     } on Object catch (error, stackTrace) {
       Logger().e('Failed to start flashskyai: $error', stackTrace: stackTrace);
-      terminal.write('\r\n[Failed to start flashskyai: $error]\r\n');
-      _running = false;
-      _starting = false;
-      _pty = null;
+      _handleStartFailure('[Failed to start flashskyai: $error]');
     }
+  }
+
+  void _confirmProcessStarted() {
+    if (!_running || _startFailed || _pty == null) return;
+    _starting = false;
+    _spawnWatchdogTimer?.cancel();
+    _spawnWatchdogTimer = null;
+    final callback = _onProcessStarted;
+    _onProcessStarted = null;
+    callback?.call();
+  }
+
+  void _handleStartFailure(String message) {
+    if (_startFailed) return;
+    _startFailed = true;
+    _spawnWatchdogTimer?.cancel();
+    _spawnWatchdogTimer = null;
+    _startConfirmationTimer?.cancel();
+    _startConfirmationTimer = null;
+    _outputSubscription?.cancel();
+    _outputSubscription = null;
+    _onProcessStarted = null;
+    _pty?.kill();
+    _pty = null;
+    _running = false;
+    _starting = false;
+    terminal.write('\r\n$message\r\n');
+    _onProcessFailed?.call();
+    _onProcessFailed = null;
+  }
+
+  void _teardownPtyState() {
+    _spawnWatchdogTimer?.cancel();
+    _spawnWatchdogTimer = null;
+    _startConfirmationTimer?.cancel();
+    _startConfirmationTimer = null;
+    _outputSubscription?.cancel();
+    _outputSubscription = null;
+    _running = false;
+    _starting = false;
+    _onProcessStarted = null;
+  }
+
+  static bool _looksLikeExecFailure(String text) {
+    return text.contains('execvp:') ||
+        text.contains('No such file or directory') ||
+        text.contains('没有那个文件或目录');
+  }
+
+  static String _execFailureMessage(String executable) {
+    return CliExecutableValidator.validateLaunch(
+          executable: executable,
+          workingDirectory: '',
+        ) ??
+        '[无法启动 flashskyai: 未找到可执行文件 "$executable"。\n'
+            '  请在「设置 → 会话」中配置 flashskyai CLI 的绝对路径，'
+            '或确保其已在 PATH 中（从文件管理器启动 AppImage 时 PATH 可能很短）。]';
   }
 
   void write(String text) {
@@ -247,9 +361,10 @@ class TerminalSession {
   }
 
   void disconnect() {
-    _running = false;
-    _starting = false;
-    _onProcessStarted = null;
+    _startFailed = false;
+    _spawnRequested = false;
+    _teardownPtyState();
+    _onProcessFailed = null;
     _ptyEnvironment = null;
     terminal.onOutput = null;
     terminal.onResize = null;

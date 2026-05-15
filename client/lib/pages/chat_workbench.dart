@@ -54,13 +54,35 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
 
   var _handledRouteSession = false;
   StreamSubscription<ChatState>? _chatSub;
+  int _lastWorkbenchStateVersion = -1;
+  String? _lastActiveSessionId;
+  String _lastSelectedMemberId = '';
+  int _lastActiveTabIndex = -1;
+  int _lastTabCount = -1;
 
   @override
   void initState() {
     super.initState();
     final chatCubit = context.read<ChatCubit>();
     _chatSub = chatCubit.stream.listen(_onChatState);
+    _syncWorkbenchTracking(chatCubit.state);
     _consumeRouteSession(chatCubit.state);
+  }
+
+  void _syncWorkbenchTracking(ChatState state) {
+    _lastWorkbenchStateVersion = state.stateVersion;
+    _lastActiveSessionId = state.activeSessionId;
+    _lastSelectedMemberId = state.selectedMemberId;
+    _lastActiveTabIndex = state.activeTabIndex;
+    _lastTabCount = state.tabs.length;
+  }
+
+  bool _workbenchNeedsRebuild(ChatState state) {
+    return state.stateVersion != _lastWorkbenchStateVersion ||
+        state.activeSessionId != _lastActiveSessionId ||
+        state.selectedMemberId != _lastSelectedMemberId ||
+        state.activeTabIndex != _lastActiveTabIndex ||
+        state.tabs.length != _lastTabCount;
   }
 
   @override
@@ -157,7 +179,10 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
 
   void _onChatState(ChatState state) {
     if (!mounted) return;
-    setState(() {});
+    if (_workbenchNeedsRebuild(state)) {
+      _syncWorkbenchTracking(state);
+      setState(() {});
+    }
     _consumeRouteSession(state);
   }
 
@@ -358,11 +383,7 @@ class _NoSessionToolbar extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Icon(
-            Icons.terminal,
-            size: 14,
-            color: colorScheme.onSurfaceVariant,
-          ),
+          Icon(Icons.terminal, size: 14, color: colorScheme.onSurfaceVariant),
           const SizedBox(width: 6),
           Text(
             'disconnected',

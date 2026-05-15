@@ -9,7 +9,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 class _FakePtyHandle implements TerminalPtyHandle {
   final outputController = StreamController<Uint8List>();
-  final exitCompleter = Completer<int>();
+  Completer<int> exitCompleter = Completer<int>();
   var killed = false;
   final resizeCalls = <(int, int)>[];
   final writes = <Uint8List>[];
@@ -40,6 +40,102 @@ class _FakePtyHandle implements TerminalPtyHandle {
 }
 
 void main() {
+  test('missing absolute executable fails fast without starting pty', () {
+    var started = false;
+    final session = TerminalSession(
+      executable: '/tmp/teampilot-missing-flashskyai-executable',
+      ptyStarter:
+          (
+            executable, {
+            required arguments,
+            required workingDirectory,
+            required columns,
+            required rows,
+            environment,
+          }) {
+            started = true;
+            return _FakePtyHandle();
+          },
+    );
+    addTearDown(session.dispose);
+
+    session.connect(workingDirectory: Directory.current.path);
+
+    expect(started, isFalse);
+    expect(session.isRunning, isFalse);
+    expect(
+      session.terminal.buffer.getText(),
+      contains('not found'),
+    );
+  });
+
+  test('stays running while exitCode has not completed', () async {
+    final handle = _FakePtyHandle();
+    final exitNever = Completer<int>();
+    handle.exitCompleter = exitNever;
+
+    final session = TerminalSession(
+      executable: 'flashskyai',
+      ptyStarter:
+          (
+            executable, {
+            required arguments,
+            required workingDirectory,
+            required columns,
+            required rows,
+            environment,
+          }) {
+            return handle;
+          },
+    );
+    addTearDown(() async {
+      session.dispose();
+      await handle.outputController.close();
+    });
+
+    session.connect(workingDirectory: '/tmp');
+    await Future<void>.delayed(const Duration(milliseconds: 500));
+    expect(session.isRunning, isTrue);
+
+    await Future<void>.delayed(const Duration(seconds: 2));
+    expect(session.isRunning, isTrue);
+  });
+
+  test('early pty exit reports failure and stops running', () async {
+    final handle = _FakePtyHandle();
+    var failed = false;
+    final session = TerminalSession(
+      executable: 'flashskyai',
+      ptyStarter:
+          (
+            executable, {
+            required arguments,
+            required workingDirectory,
+            required columns,
+            required rows,
+            environment,
+          }) {
+            return handle;
+          },
+    );
+    addTearDown(() async {
+      session.dispose();
+      await handle.outputController.close();
+    });
+
+    session.connect(
+      workingDirectory: Directory.current.path,
+      onProcessFailed: () => failed = true,
+    );
+    handle.outputController.add(
+      Uint8List.fromList(utf8.encode('execvp: No such file or directory\r\n')),
+    );
+    await Future<void>.delayed(Duration.zero);
+
+    expect(failed, isTrue);
+    expect(session.isRunning, isFalse);
+  });
+
   test('connect starts pty immediately before terminal resize', () async {
     final starts = <({int columns, int rows})>[];
     final handle = _FakePtyHandle();

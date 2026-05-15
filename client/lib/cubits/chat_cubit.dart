@@ -384,6 +384,7 @@ class ChatCubit extends Cubit<ChatState> {
             member: member,
             sessionTeam: cliTeamDirName,
             extraEnvironment: _spawnEnvironment(),
+            onProcessFailed: () => _updateTabRunning(info.id),
             onProcessStarted: repo == null
                 ? null
                 : () {
@@ -396,7 +397,9 @@ class ChatCubit extends Cubit<ChatState> {
                           .then((_) {
                             if (isClosed) return;
                             final sessions = state.sessions.map((s) {
-                              if (s.sessionId != session.sessionId) return s;
+                              if (s.sessionId != session.sessionId) {
+                                return s;
+                              }
                               final lt = cliTeamDirName.trim();
                               return s.copyWith(
                                 launchState: AppSessionLaunchState.started,
@@ -420,6 +423,7 @@ class ChatCubit extends Cubit<ChatState> {
           }
         } on Object catch (e) {
           ts.terminal.write('\r\n[Failed to resume session: $e]\r\n');
+          _updateTabRunning(info.id);
         }
       });
     } else {
@@ -434,7 +438,7 @@ class ChatCubit extends Cubit<ChatState> {
   ) {
     for (final candidate in team.members.where((m) => m.isValid)) {
       if (candidate.id == keepSelectedMemberId) continue;
-      _openMemberTabAttachAndConnect(team, candidate, tab);
+      _scheduleMemberConnect(team, candidate, tab);
     }
     if (team.members.any((m) => m.id == keepSelectedMemberId)) {
       selectMember(keepSelectedMemberId);
@@ -488,10 +492,10 @@ class ChatCubit extends Cubit<ChatState> {
       return;
     }
     final tab = _ensureActiveSessionTab(team, emitChange: true);
-    _openMemberTabAttachAndConnect(team, member, tab);
+    _scheduleMemberConnect(team, member, tab);
   }
 
-  void _openMemberTabAttachAndConnect(
+  void _scheduleMemberConnect(
     TeamConfig team,
     TeamMemberConfig member,
     _InternalTab tab,
@@ -523,10 +527,13 @@ class ChatCubit extends Cubit<ChatState> {
           member: member,
           sessionTeam: tab.sessionTeamName,
           extraEnvironment: _spawnEnvironment(),
+          onProcessStarted: () => _updateTabRunning(tab.info.id),
+          onProcessFailed: () => _updateTabRunning(tab.info.id),
         );
         _updateTabRunning(tab.info.id);
       } on Object catch (e) {
         shell.terminal.write('\r\n[Failed to start session: $e]\r\n');
+        _updateTabRunning(tab.info.id);
       }
     });
   }
@@ -645,9 +652,6 @@ class ChatCubit extends Cubit<ChatState> {
           connectImmediately: true,
           memberForInitialShell: validMembers.first,
         );
-        for (var i = 1; i < validMembers.length; i++) {
-          await openMemberTab(team, validMembers[i], repo: r);
-        }
       } on Object catch (e, st) {
         appLogger.e(
           'launchAllMembers: default session failed: $e',
@@ -656,8 +660,9 @@ class ChatCubit extends Cubit<ChatState> {
       }
       return;
     }
+    final tab = _ensureActiveSessionTab(team, emitChange: true);
     for (final member in validMembers) {
-      await openMemberTab(team, member, repo: r);
+      _scheduleMemberConnect(team, member, tab);
     }
   }
 

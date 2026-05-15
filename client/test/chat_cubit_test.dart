@@ -31,6 +31,7 @@ class _FakeTerminalSession extends TerminalSession {
     String? sessionTeam,
     Map<String, String>? extraEnvironment,
     void Function()? onProcessStarted,
+    void Function()? onProcessFailed,
   }) {
     if (member != null) {
       connectedMembers.add(member.id);
@@ -251,6 +252,8 @@ void main() {
         executableResolver: () => 'true',
         sessionRepository: repo,
         postFrameScheduler: (c) => c(),
+        terminalSessionFactory: ({required String executable}) =>
+            _FakeTerminalSession(executable: executable),
       );
     });
 
@@ -273,7 +276,7 @@ void main() {
       expect(cubit.state.selectedMemberId, 'm-lead');
     });
 
-    test('openSessionTab starts all members when auto-launch enabled', () {
+    test('openSessionTab starts all members when auto-launch enabled', () async {
       final fakeSessions = <_FakeTerminalSession>[];
       const session = AppSession(
         sessionId: 'session-1',
@@ -302,6 +305,7 @@ void main() {
       addTearDown(cubit.close);
 
       cubit.openSessionTab(session, team: team, member: team.members.first);
+      await pumpEventQueue();
 
       expect(cubit.state.tabs.length, 1);
       expect(cubit.isMemberRunning('m-lead'), isTrue);
@@ -345,6 +349,7 @@ void main() {
         while (scheduled.isNotEmpty) {
           final callback = scheduled.removeAt(0);
           callback();
+          await pumpEventQueue();
         }
 
         final connectedMembers = fakeSessions
