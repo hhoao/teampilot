@@ -1,7 +1,6 @@
 // ignore_for_file: avoid_print
 //
-// Downloads Noto Sans SC static TTFs expected by `google_fonts` ^8.1.0 for
-// asset bundling (see pubspec `google_fonts/`). Run from `client/`:
+// Downloads UI + terminal fonts. Run from `client/`:
 //
 //   dart run tool/sync_bundled_google_fonts.dart
 //
@@ -45,8 +44,50 @@ const _notoSansScBundled = <({
   ),
 ];
 
+/// JetBrainsMono Nerd Font Mono (ligatures) — terminal + shell icons.
+const _jetbrainsMonoNerdBundled = <({
+  String sha256Hex,
+  int byteLength,
+  String assetFileName,
+  String downloadUrl,
+})>[
+  (
+    sha256Hex: 'f01031f40e48dc29e1112e6b0b0450a2c6cd097f3f35cfff05c55cb311f8034c',
+    byteLength: 2470116,
+    assetFileName: 'JetBrainsMonoNerdFontMono-Regular.ttf',
+    downloadUrl:
+        'https://raw.githubusercontent.com/ryanoasis/nerd-fonts/master/patched-fonts/JetBrainsMono/Ligatures/Regular/JetBrainsMonoNerdFontMono-Regular.ttf',
+  ),
+  (
+    sha256Hex: '5bdd4a873f3cd32f882d2c55545089123926e27707d5880fc9eaf84eb01b6686',
+    byteLength: 2473884,
+    assetFileName: 'JetBrainsMonoNerdFontMono-Bold.ttf',
+    downloadUrl:
+        'https://raw.githubusercontent.com/ryanoasis/nerd-fonts/master/patched-fonts/JetBrainsMono/Ligatures/Bold/JetBrainsMonoNerdFontMono-Bold.ttf',
+  ),
+];
+
+/// Optional terminal fallback ([google_fonts] Ubuntu Sans Mono descriptors).
+const _ubuntuSansMonoBundled = <({
+  String sha256Hex,
+  int byteLength,
+  String assetFileName,
+})>[
+  (
+    sha256Hex: '44ae840b720f3e95bb69bd2449082c72d90272356c78fdbb5721b3ff5a6a97cc',
+    byteLength: 111100,
+    assetFileName: 'UbuntuSansMono-Regular.ttf',
+  ),
+  (
+    sha256Hex: '5224a9bb27672470392ad5693ffe40f876408fc46ff7eea839c0b9e8ab9f144e',
+    byteLength: 110672,
+    assetFileName: 'UbuntuSansMono-Bold.ttf',
+  ),
+];
+
 Future<void> main(List<String> args) async {
   final force = args.contains('--force');
+
   final clientRoot = Directory.current;
   if (!File('${clientRoot.path}/pubspec.yaml').existsSync()) {
     stderr.writeln(
@@ -56,43 +97,121 @@ Future<void> main(List<String> args) async {
     return;
   }
 
-  final outDir = Directory('${clientRoot.path}/google_fonts');
-  await outDir.create(recursive: true);
+  print('Sync bundled fonts into ${clientRoot.path}\n');
 
+  final googleFontsDir = Directory('${clientRoot.path}/google_fonts');
+  final terminalFontsDir = Directory('${clientRoot.path}/assets/fonts/terminal');
+  await googleFontsDir.create(recursive: true);
+  await terminalFontsDir.create(recursive: true);
+
+  print('== UI — Noto Sans SC ==');
   for (final spec in _notoSansScBundled) {
-    final outFile = File('${outDir.path}/${spec.assetFileName}');
-    if (!force &&
-        await outFile.exists() &&
-        await _matchesSpec(outFile, spec.sha256Hex, spec.byteLength)) {
-      print('OK (cached) ${spec.assetFileName}');
-      continue;
-    }
-
-    final uri = Uri.parse(
-      'https://fonts.gstatic.com/s/a/${spec.sha256Hex}.ttf',
-    );
-    print('Downloading ${spec.assetFileName} …');
-    final response = await http.get(uri);
-    if (response.statusCode != HttpStatus.ok) {
-      throw StateError('HTTP ${response.statusCode} for $uri');
-    }
-    final bytes = response.bodyBytes;
-    if (bytes.length != spec.byteLength) {
-      throw StateError(
-        'Wrong length for ${spec.assetFileName}: '
-        'expected ${spec.byteLength}, got ${bytes.length}',
-      );
-    }
-    final hash = sha256.convert(bytes).toString();
-    if (hash != spec.sha256Hex) {
-      throw StateError(
-        'Wrong SHA-256 for ${spec.assetFileName}: '
-        'expected ${spec.sha256Hex}, got $hash',
-      );
-    }
-    await outFile.writeAsBytes(bytes, flush: true);
-    print('Wrote ${outFile.path}');
+    await _syncGstaticFont(googleFontsDir, spec, force);
   }
+
+  print('\n== Terminal — JetBrainsMono Nerd Font Mono ==');
+  for (final spec in _jetbrainsMonoNerdBundled) {
+    await _syncUrlFont(terminalFontsDir, spec, force);
+  }
+
+  print('\n== Terminal (fallback) — Ubuntu Sans Mono ==');
+  for (final spec in _ubuntuSansMonoBundled) {
+    await _syncGstaticFont(terminalFontsDir, spec, force);
+  }
+
+  print('\nDone.');
+}
+
+Future<void> _syncGstaticFont(
+  Directory outDir,
+  ({
+    String sha256Hex,
+    int byteLength,
+    String assetFileName,
+  }) spec,
+  bool force,
+) async {
+  final uri = Uri.parse('https://fonts.gstatic.com/s/a/${spec.sha256Hex}.ttf');
+  await _syncFontFile(
+    outDir: outDir,
+    assetFileName: spec.assetFileName,
+    downloadUrl: uri,
+    sha256Hex: spec.sha256Hex,
+    byteLength: spec.byteLength,
+    force: force,
+  );
+}
+
+Future<void> _syncUrlFont(
+  Directory outDir,
+  ({
+    String sha256Hex,
+    int byteLength,
+    String assetFileName,
+    String downloadUrl,
+  }) spec,
+  bool force,
+) async {
+  await _syncFontFile(
+    outDir: outDir,
+    assetFileName: spec.assetFileName,
+    downloadUrl: Uri.parse(spec.downloadUrl),
+    sha256Hex: spec.sha256Hex,
+    byteLength: spec.byteLength,
+    force: force,
+  );
+}
+
+Future<void> _syncFontFile({
+  required Directory outDir,
+  required String assetFileName,
+  required Uri downloadUrl,
+  required String sha256Hex,
+  required int byteLength,
+  required bool force,
+}) async {
+  final outFile = File('${outDir.path}/$assetFileName');
+  if (!force &&
+      await outFile.exists() &&
+      await _matchesSpec(outFile, sha256Hex, byteLength)) {
+    print('   OK (cached) $assetFileName');
+    return;
+  }
+
+  print('   Downloading $assetFileName …');
+  final response = await http.get(downloadUrl);
+  if (response.statusCode != HttpStatus.ok) {
+    throw StateError('HTTP ${response.statusCode} for $downloadUrl');
+  }
+  await _writeVerifiedBytes(
+    outFile: outFile,
+    bytes: response.bodyBytes,
+    assetFileName: assetFileName,
+    sha256Hex: sha256Hex,
+    byteLength: byteLength,
+  );
+}
+
+Future<void> _writeVerifiedBytes({
+  required File outFile,
+  required List<int> bytes,
+  required String assetFileName,
+  required String sha256Hex,
+  required int byteLength,
+}) async {
+  if (bytes.length != byteLength) {
+    throw StateError(
+      'Wrong length for $assetFileName: expected $byteLength, got ${bytes.length}',
+    );
+  }
+  final hash = sha256.convert(bytes).toString();
+  if (hash != sha256Hex) {
+    throw StateError(
+      'Wrong SHA-256 for $assetFileName: expected $sha256Hex, got $hash',
+    );
+  }
+  await outFile.writeAsBytes(bytes, flush: true);
+  print('   Wrote ${outFile.path}');
 }
 
 Future<bool> _matchesSpec(

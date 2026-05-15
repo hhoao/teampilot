@@ -23,6 +23,7 @@ import 'repositories/skill_repository.dart';
 import 'repositories/team_repository.dart';
 import 'router/app_router.dart';
 import 'services/app_storage.dart';
+import 'services/terminal_fonts.dart';
 import 'services/flashskyai_cli_locator.dart';
 import 'services/team_skill_linker_service.dart';
 import 'services/temp_team_cleaner.dart';
@@ -72,8 +73,9 @@ class _AppShutdownScopeState extends State<_AppShutdownScope> {
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  // Noto Sans SC is listed under google_fonts/ assets (sync before build).
+  // Run `dart run tool/sync_bundled_google_fonts.dart` before build.
   GoogleFonts.config.allowRuntimeFetching = false;
+  await loadBundledTerminalFonts();
 
   await windowManager.ensureInitialized();
   final windowRect = await windowManager.getBounds();

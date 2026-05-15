@@ -45,8 +45,9 @@ app.*.map.json
 /android/app/release
 dist
 
-# Bundled UI fonts (downloaded before build — see tool/sync_bundled_google_fonts.dart)
+# Bundled fonts (downloaded before build — see tool/sync_bundled_google_fonts.dart)
 google_fonts/*.ttf
 google_fonts/*.otf
+assets/fonts/terminal/*.ttf
 
 packages/

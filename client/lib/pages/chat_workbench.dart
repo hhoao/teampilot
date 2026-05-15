@@ -11,8 +11,22 @@ import '../l10n/l10n_extensions.dart';
 import '../models/app_session.dart';
 import '../models/team_config.dart';
 import '../repositories/session_repository.dart';
+import '../services/terminal_fonts.dart';
 import '../services/terminal_session.dart';
 import '../utils/app_keys.dart';
+
+const _terminalTextStyle = TerminalStyle(
+  fontSize: 13,
+  fontFamily: kTerminalFontFamily,
+  height: 1.2,
+  // Match VTE: ANSI bold uses brighter colors, not a heavier font file.
+  useBoldFontWeight: false,
+  fontFamilyFallback: [
+    kUbuntuSansMonoFontFamily,
+    'Noto Sans Mono CJK SC',
+    'monospace',
+  ],
+);
 
 class ChatWorkbench extends StatefulWidget {
   const ChatWorkbench({this.sessionId, super.key});
@@ -26,27 +40,28 @@ class ChatWorkbench extends StatefulWidget {
 class _ChatWorkbenchState extends State<ChatWorkbench> {
   final _terminalController = TerminalController();
 
+  /// Slightly muted vs pure #E0E0E0 — Nerd Mono strokes are heavy on dark UI.
   static const _terminalTheme = TerminalTheme(
-    cursor: Color(0xFFAEAFAD),
-    selection: Color(0x40AEAFAD),
-    foreground: Color(0xFFE0E0E0),
+    cursor: Color(0xFF9AA0A8),
+    selection: Color(0x409AA0A8),
+    foreground: Color(0xFFC8CCD4),
     background: Color(0xFF0A0C10),
     black: Color(0xFF1A1A1A),
-    red: Color(0xFFE0556A),
-    green: Color(0xFF5CCF8A),
-    yellow: Color(0xFFE5C565),
-    blue: Color(0xFF5BA4E6),
-    magenta: Color(0xFFC88CE6),
-    cyan: Color(0xFF56C5D0),
-    white: Color(0xFFE5E5E5),
+    red: Color(0xFFD04A62),
+    green: Color(0xFF52C07E),
+    yellow: Color(0xFFD4B85A),
+    blue: Color(0xFF5298D8),
+    magenta: Color(0xFFB87CD8),
+    cyan: Color(0xFF4EB8C4),
+    white: Color(0xFFD0D4DC),
     brightBlack: Color(0xFF5A5A5A),
-    brightRed: Color(0xFFFF7B8A),
-    brightGreen: Color(0xFF7DE8A8),
-    brightYellow: Color(0xFFFFE080),
-    brightBlue: Color(0xFF80C0FF),
-    brightMagenta: Color(0xFFE0A8FF),
-    brightCyan: Color(0xFF80E0E8),
-    brightWhite: Color(0xFFFFFFFF),
+    brightRed: Color(0xFFE86A7E),
+    brightGreen: Color(0xFF6CD898),
+    brightYellow: Color(0xFFE8CC70),
+    brightBlue: Color(0xFF72B0E8),
+    brightMagenta: Color(0xFFD098F0),
+    brightCyan: Color(0xFF72D0DC),
+    brightWhite: Color(0xFFE4E6EC),
     searchHitBackground: Color(0xFFFFFF2B),
     searchHitBackgroundCurrent: Color(0xFF31FF26),
     searchHitForeground: Color(0xFF000000),
@@ -320,7 +335,7 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
                       theme: _terminalTheme,
                       backgroundOpacity: 0.98,
                       padding: const EdgeInsets.all(16),
-                      textStyle: const TerminalStyle(fontSize: 14),
+                      textStyle: _terminalTextStyle,
                       autofocus: true,
                       onSecondaryTapUp: (details, _) {
                         unawaited(
