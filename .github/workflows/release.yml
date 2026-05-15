@@ -132,9 +132,27 @@ jobs:
       - name: Sync bundled Google Fonts (Noto Sans SC)
         run: dart run tool/sync_bundled_google_fonts.dart
 
-      # zip → exe → msix：单次 flutter build，且避免 msix 流程后影响同目录下的 zip/exe 产物收集
-      - name: Package
-        run: fastforge package --platform windows --targets zip,exe,msix
+      # 分两段：先 zip+msix（共享一次 flutter build），再单独打 exe。
+      # 同一进程里 msix 会改动 build/windows/.../Release，易导致 Inno 暂存目录异常且无最终 setup.exe。
+      - name: Package Windows (ZIP + MSIX)
+        run: fastforge package --platform windows --targets zip,msix
+
+      - name: Package Windows (EXE installer)
+        run: fastforge package --platform windows --targets exe --skip-clean
+
+      - name: Verify Windows release files
+        shell: pwsh
+        run: |
+          $m = Select-String -Path pubspec.yaml -Pattern '^version:\s*(.+)$' | ForEach-Object { $_.Matches[0].Groups[1].Value.Trim() }
+          if (-not $m) { throw "Could not read version from pubspec.yaml" }
+          $d = Join-Path "dist" $m
+          if (-not (Test-Path $d)) { throw "Missing directory: $d" }
+          $zip = @(Get-ChildItem -Path $d -Filter "*-windows.zip" -File -ErrorAction SilentlyContinue)
+          $msix = @(Get-ChildItem -Path $d -Filter "*.msix" -File -ErrorAction SilentlyContinue)
+          $setup = @(Get-ChildItem -Path $d -Filter "*setup.exe" -File -ErrorAction SilentlyContinue)
+          if ($zip.Count -lt 1) { throw "Missing *-windows.zip under $d" }
+          if ($msix.Count -lt 1) { throw "Missing *.msix under $d" }
+          if ($setup.Count -lt 1) { throw "Missing *setup.exe (Inno installer) under $d" }
 
       - name: List packaged Windows files (debug)
         shell: pwsh
@@ -177,13 +195,27 @@ jobs:
           out = pathlib.Path("release-files")
           out.mkdir(parents=True, exist_ok=True)
           suffixes = (".deb", ".appimage", ".dmg", ".msix", ".exe", ".zip")
+          # flutter_app_packager 临时目录：…/teampilot-*-windows-setup_exe/TeamPilot.exe 等，不是发布物
+          staging_suffixes = ("_exe", "_msix", "_zip", "_deb", "_dmg", "_appimage")
+
+          def is_inside_packaging_staging(path: pathlib.Path) -> bool:
+              return any(
+                  part.endswith(staging_suffixes) for part in path.parts[:-1]
+              )
+
           all_files = []
           for root, _dirs, files in os.walk(artifacts):
               for name in files:
                   p = pathlib.Path(root) / name
+                  if is_inside_packaging_staging(p):
+                      continue
                   low = name.lower()
-                  if any(low.endswith(s) for s in suffixes):
-                      all_files.append(p)
+                  if not any(low.endswith(s) for s in suffixes):
+                      continue
+                  # 只收录 Inno 安装包（*-setup.exe），排除 Runner 内的 TeamPilot.exe 等
+                  if low.endswith(".exe") and "-setup" not in low:
+                      continue
+                  all_files.append(p)
           print("Matched artifact files:")
           for p in sorted(all_files, key=lambda x: str(x)):
               print(" ", p)
