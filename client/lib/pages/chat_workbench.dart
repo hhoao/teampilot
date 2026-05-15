@@ -18,7 +18,7 @@ import '../utils/app_keys.dart';
 const _terminalTextStyle = TerminalStyle(
   fontSize: 13,
   fontFamily: kTerminalFontFamily,
-  height: 1.2,
+  height: 1.3,
   // Match VTE: ANSI bold uses brighter colors, not a heavier font file.
   useBoldFontWeight: false,
   fontFamilyFallback: [
