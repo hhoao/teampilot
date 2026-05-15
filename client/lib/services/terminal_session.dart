@@ -101,7 +101,7 @@ class TerminalSession {
   Map<String, String>? _ptyEnvironment;
   VoidCallback? _onProcessStarted;
   VoidCallback? _onProcessFailed;
-  StreamSubscription<Uint8List>? _outputSubscription;
+  StreamSubscription<String>? _outputSubscription;
   Timer? _startConfirmationTimer;
   Timer? _spawnWatchdogTimer;
   Timer? _ptyGeometryTimer;
@@ -365,9 +365,12 @@ class TerminalSession {
       _running = true;
       _starting = true;
 
-      _outputSubscription = _pty!.output.listen((data) {
-        _writeOutput(data, label: 'connect');
-        if (_looksLikeExecFailure(utf8.decode(data, allowMalformed: true))) {
+      _outputSubscription = _pty!.output
+          .map<List<int>>((data) => data)
+          .transform(const Utf8Decoder(allowMalformed: true))
+          .listen((text) {
+        _writeOutput(text);
+        if (_looksLikeExecFailure(text)) {
           _handleStartFailure(_execFailureMessage(executable));
         }
       });
@@ -470,8 +473,7 @@ class TerminalSession {
     write('$text\r');
   }
 
-  void _writeOutput(Uint8List data, {required String label}) {
-    final text = utf8.decode(data, allowMalformed: true);
+  void _writeOutput(String text) {
     terminal.write(text);
     _schedulePtyViewportSync();
   }

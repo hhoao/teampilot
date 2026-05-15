@@ -266,6 +266,43 @@ void main() {
     expect(session.terminal.buffer.getText(), contains('hello'));
   });
 
+  test('decodes pty output across utf8 chunk boundaries', () async {
+    final handle = _FakePtyHandle();
+    final session = TerminalSession(
+      executable: 'flashskyai',
+      ptyStarter:
+          (
+            executable, {
+            required arguments,
+            required workingDirectory,
+            required columns,
+            required rows,
+            environment,
+          }) {
+            return handle;
+          },
+    );
+    addTearDown(() async {
+      session.dispose();
+      await handle.outputController.close();
+    });
+
+    session.connect(workingDirectory: '/tmp');
+    session.terminal.onResize?.call(80, 24, 0, 0);
+    await Future<void>.delayed(const Duration(milliseconds: 300));
+
+    final bytes = utf8.encode('╰────任务已经完成了────╯\r\n');
+    final split = bytes.indexOf(0xe4) + 1;
+    handle.outputController
+      ..add(Uint8List.fromList(bytes.take(split).toList()))
+      ..add(Uint8List.fromList(bytes.skip(split).toList()));
+    await Future<void>.delayed(Duration.zero);
+
+    final text = session.terminal.buffer.getText();
+    expect(text, contains('任务已经完成了'));
+    expect(text, isNot(contains('\uFFFD')));
+  });
+
   test('pty output schedules viewport sync resize', () async {
     final handle = _FakePtyHandle();
     final session = TerminalSession(
