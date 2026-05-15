@@ -104,7 +104,22 @@ class TerminalSession {
   StreamSubscription<Uint8List>? _outputSubscription;
   Timer? _startConfirmationTimer;
   Timer? _spawnWatchdogTimer;
+  Timer? _ptyGeometryTimer;
+  Timer? _ptyGeometrySettleTimer;
   var _spawnRequested = false;
+  var _terminalListenerAttached = false;
+  var _hasPendingLayoutGeometry = false;
+  int _pendingViewportCols = 0;
+  int _pendingViewportRows = 0;
+  int _lastSyncedCols = 0;
+  int _lastSyncedRows = 0;
+  String? _launchExecutable;
+  List<String>? _launchArgs;
+  String? _launchCwd;
+
+  static const _layoutGeometryDebounceMs = 150;
+  static const _outputGeometryDebounceMs = 80;
+  static const _geometrySettleDelayMs = 120;
 
   bool get isRunning => (_running || _starting) && !_startFailed;
 
@@ -169,7 +184,18 @@ class TerminalSession {
       environment: _extraEnvironment,
     );
 
+    final validationError = CliExecutableValidator.validateLaunch(
+      executable: invocation.executable,
+      workingDirectory: ptyWorkingDirectory,
+    );
+    if (validationError != null) {
+      _handleStartFailure(validationError);
+      return;
+    }
+
     _starting = true;
+
+    _attachTerminalViewportListener();
 
     terminal.onOutput = (String data) {
       if (_running && _pty != null) {
@@ -177,28 +203,117 @@ class TerminalSession {
       }
     };
 
+    _launchExecutable = invocation.executable;
+    _launchArgs = launchArgs;
+    _launchCwd = ptyWorkingDirectory;
+
     terminal.onResize = (int width, int height, int pw, int ph) {
-      if (_pty == null) {
-        if (!_starting || _spawnRequested || width <= 0 || height <= 0) {
-          return;
-        }
-        _spawnPty(
-          executable: invocation.executable,
-          args: launchArgs,
-          cwd: ptyWorkingDirectory,
-          cols: width,
-          rows: height,
-        );
-      } else if (_running && width > 0 && height > 0) {
-        _pty!.resize(height, width);
-      }
+      if (width <= 0 || height <= 0) return;
+      // Debounce rapid layout changes (e.g. maximize) so the CLI only redraws
+      // once at the final geometry instead of at intermediate sizes.
+      _schedulePtyGeometry(cols: width, rows: height, fromLayout: true);
     };
-    _spawnPty(
-      executable: invocation.executable,
-      args: launchArgs,
-      cwd: ptyWorkingDirectory,
-      cols: 80,
-      rows: 24,
+  }
+
+  void _attachTerminalViewportListener() {
+    if (_terminalListenerAttached) return;
+    terminal.addListener(_schedulePtyViewportSync);
+    _terminalListenerAttached = true;
+  }
+
+  void _detachTerminalViewportListener() {
+    if (!_terminalListenerAttached) return;
+    terminal.removeListener(_schedulePtyViewportSync);
+    _terminalListenerAttached = false;
+    _cancelPtyGeometryTimers();
+  }
+
+  void _cancelPtyGeometryTimers() {
+    _ptyGeometryTimer?.cancel();
+    _ptyGeometryTimer = null;
+    _ptyGeometrySettleTimer?.cancel();
+    _ptyGeometrySettleTimer = null;
+  }
+
+  /// Re-sync PTY rows/cols after emulator output so full-screen TUIs redraw
+  /// against the same geometry the UI is painting.
+  void _schedulePtyViewportSync() {
+    _schedulePtyGeometry(fromLayout: false);
+  }
+
+  void _schedulePtyGeometry({
+    int? cols,
+    int? rows,
+    bool fromLayout = false,
+  }) {
+    if (cols != null && rows != null) {
+      _pendingViewportCols = cols;
+      _pendingViewportRows = rows;
+      _hasPendingLayoutGeometry = true;
+    }
+    if (_pty == null && (!_starting || _spawnRequested)) {
+      if (cols == null) return;
+    } else if (_pty != null && !_running) {
+      return;
+    }
+
+    _ptyGeometryTimer?.cancel();
+    final debounceMs = fromLayout || cols != null
+        ? _layoutGeometryDebounceMs
+        : _outputGeometryDebounceMs;
+    _ptyGeometryTimer = Timer(Duration(milliseconds: debounceMs), () {
+      _ptyGeometryTimer = null;
+      _applyPtyGeometry();
+    });
+  }
+
+  void _applyPtyGeometry() {
+    final cols = _hasPendingLayoutGeometry
+        ? _pendingViewportCols
+        : terminal.viewWidth;
+    final rows = _hasPendingLayoutGeometry
+        ? _pendingViewportRows
+        : terminal.viewHeight;
+    _hasPendingLayoutGeometry = false;
+
+    if (cols <= 0 || rows <= 0) return;
+
+    if (_pty == null) {
+      if (!_starting || _spawnRequested) return;
+      final executable = _launchExecutable;
+      final args = _launchArgs;
+      final cwd = _launchCwd;
+      if (executable == null || args == null || cwd == null) return;
+      _spawnPty(
+        executable: executable,
+        args: args,
+        cwd: cwd,
+        cols: cols,
+        rows: rows,
+      );
+      return;
+    }
+
+    if (!_running) return;
+    _lastSyncedCols = cols;
+    _lastSyncedRows = rows;
+    _pty!.resize(rows, cols);
+    _schedulePtyGeometrySettle();
+  }
+
+  /// After layout/output settles, nudge the PTY once more so TUIs fully redraw
+  /// (clears ghost columns after maximize).
+  void _schedulePtyGeometrySettle() {
+    if (!_running || _pty == null) return;
+    if (_lastSyncedCols <= 0 || _lastSyncedRows <= 0) return;
+    _ptyGeometrySettleTimer?.cancel();
+    _ptyGeometrySettleTimer = Timer(
+      const Duration(milliseconds: _geometrySettleDelayMs),
+      () {
+        _ptyGeometrySettleTimer = null;
+        if (!_running || _pty == null) return;
+        _pty!.resize(_lastSyncedRows, _lastSyncedCols);
+      },
     );
   }
 
@@ -358,11 +473,17 @@ class TerminalSession {
   void _writeOutput(Uint8List data, {required String label}) {
     final text = utf8.decode(data, allowMalformed: true);
     terminal.write(text);
+    _schedulePtyViewportSync();
   }
 
   void disconnect() {
     _startFailed = false;
     _spawnRequested = false;
+    _cancelPtyGeometryTimers();
+    _launchExecutable = null;
+    _launchArgs = null;
+    _launchCwd = null;
+    _detachTerminalViewportListener();
     _teardownPtyState();
     _onProcessFailed = null;
     _ptyEnvironment = null;
