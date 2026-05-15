@@ -41,8 +41,11 @@ Work inside `client`:
 ```bash
 cd client
 flutter pub get
+dart run tool/sync_bundled_google_fonts.dart   # first-time dev / after cleaning cache
 flutter run -d linux    # or macos / windows
 ```
+
+Runtime font fetching is disabled; Simplified Chinese UI needs Noto Sans SC under `client/google_fonts/` (~50MB, gitignored—download with the script above).
 
 Code generation (after changing models that use `json_serializable`):
 

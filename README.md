@@ -41,8 +41,11 @@ teampilot/
 ```bash
 cd client
 flutter pub get
+dart run tool/sync_bundled_google_fonts.dart   # 首次开发 / 清缓存后需执行
 flutter run -d linux    # 或 macos / windows
 ```
+
+应用禁用了 `google_fonts` 运行时拉取，简体中文界面依赖 `client/google_fonts/` 下的 Noto Sans SC（约 50MB，已由 `.gitignore` 排除，需用上述脚本下载）。
 
 代码生成（若修改了带 `json_serializable` 的模型）：
 
