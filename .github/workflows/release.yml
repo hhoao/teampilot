@@ -132,13 +132,21 @@ jobs:
       - name: Sync bundled Google Fonts (Noto Sans SC)
         run: dart run tool/sync_bundled_google_fonts.dart
 
+      # zip → exe → msix：单次 flutter build，且避免 msix 流程后影响同目录下的 zip/exe 产物收集
       - name: Package
-        run: fastforge package --platform windows --targets msix,exe,zip
+        run: fastforge package --platform windows --targets zip,exe,msix
+
+      - name: List packaged Windows files (debug)
+        shell: pwsh
+        run: Get-ChildItem -Recurse -File dist | ForEach-Object { "$($_.FullName) $($_.Length)" }
 
       - uses: actions/upload-artifact@v4
         with:
           name: windows-packages
-          path: client/dist/**/*
+          path: |
+            client/dist/**/*.msix
+            client/dist/**/*.exe
+            client/dist/**/*.zip
           if-no-files-found: error
 
   release:
@@ -163,12 +171,38 @@ jobs:
       - name: Flatten artifacts
         run: |
           mkdir -p release-files
-          find artifacts -type f \
-            \( -name "*.deb" -o -name "*.AppImage" \
-               -o -name "*.dmg" \
-               -o -name "*.msix" -o -name "*.exe" -o -name "*.zip" \) \
-            -exec cp {} release-files/ \;
-          ls -la release-files
+          python3 << 'PY'
+          import os, shutil, pathlib, sys
+          artifacts = pathlib.Path("artifacts")
+          out = pathlib.Path("release-files")
+          out.mkdir(parents=True, exist_ok=True)
+          suffixes = (".deb", ".appimage", ".dmg", ".msix", ".exe", ".zip")
+          all_files = []
+          for root, _dirs, files in os.walk(artifacts):
+              for name in files:
+                  p = pathlib.Path(root) / name
+                  low = name.lower()
+                  if any(low.endswith(s) for s in suffixes):
+                      all_files.append(p)
+          print("Matched artifact files:")
+          for p in sorted(all_files, key=lambda x: str(x)):
+              print(" ", p)
+          if len(all_files) != 6:
+              print(f"ERROR: expected exactly 6 release binaries under artifacts/, found {len(all_files)}", file=sys.stderr)
+              sys.exit(1)
+          for p in all_files:
+              dest = out / p.name
+              if dest.exists() and dest.resolve() != p.resolve():
+                  print("WARN: duplicate basename, overwriting:", p.name, "<-", p)
+              shutil.copy2(p, dest)
+          copied = sorted(out.iterdir())
+          print("release-files:")
+          for f in copied:
+              print(f"  {f.name}  {f.stat().st_size}")
+          if len(copied) != 6:
+              print("ERROR: expected exactly 6 files in release-files/", file=sys.stderr)
+              sys.exit(1)
+          PY
 
       - name: Generate release notes (Conventional Commits)
         id: git-cliff

@@ -56,6 +56,10 @@ jobs:
       - name: Package (EXE installer only)
         run: fastforge package --platform windows --targets exe
 
+      - name: List dist (debug)
+        shell: pwsh
+        run: Get-ChildItem -Recurse -File dist | ForEach-Object { "$($_.FullName) $($_.Length)" }
+
       - uses: actions/upload-artifact@v4
         with:
           name: windows-exe-installer
