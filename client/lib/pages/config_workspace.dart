@@ -50,15 +50,16 @@ class ConfigWorkspace extends StatelessWidget {
             child: LayoutBuilder(
               builder: (context, constraints) {
                 final compact = constraints.maxWidth < 820;
-                final navWidth = compact ? 220.0 : 314.0;
+                final navWidth = 220.0;
                 final contentPadding = compact
                     ? const EdgeInsets.fromLTRB(16, 20, 16, 16)
                     : const EdgeInsets.fromLTRB(24, 28, 28, 24);
-                final bodyPaneWidth =
-                    constraints.maxWidth - navWidth - 1;
+                final bodyPaneWidth = constraints.maxWidth - navWidth - 1;
                 final configBodyMaxWidth =
-                    (bodyPaneWidth - contentPadding.horizontal)
-                        .clamp(480.0, 3200.0);
+                    (bodyPaneWidth - contentPadding.horizontal).clamp(
+                      480.0,
+                      3200.0,
+                    );
                 return Row(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
@@ -66,7 +67,6 @@ class ConfigWorkspace extends StatelessWidget {
                       width: navWidth,
                       child: _ConfigNavPanel(
                         section: configCubit.state.section,
-                        compact: compact,
                         onSelectSection: (s) {
                           context.read<ConfigCubit>().selectSection(s);
                           context.go('/config/${s.name}');
@@ -90,8 +90,7 @@ class ConfigWorkspace extends StatelessWidget {
                             child: switch (configCubit.state.section) {
                               ConfigSection.layout =>
                                 const LayoutConfigWorkspace(),
-                              ConfigSection.llm =>
-                                const LlmConfigWorkspace(),
+                              ConfigSection.llm => const LlmConfigWorkspace(),
                               ConfigSection.session =>
                                 const SessionConfigWorkspace(),
                             },
@@ -109,10 +108,6 @@ class ConfigWorkspace extends StatelessWidget {
     );
   }
 }
-
-
-
-
 
 class LayoutConfigWorkspace extends StatelessWidget {
   const LayoutConfigWorkspace({super.key});
@@ -438,9 +433,7 @@ class _SettingsTitleBar extends StatelessWidget {
       decoration: BoxDecoration(
         color: cs.surface,
         border: Border(
-          bottom: BorderSide(
-            color: cs.outlineVariant.withValues(alpha: 0.5),
-          ),
+          bottom: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.5)),
         ),
       ),
       child: Column(
@@ -511,13 +504,11 @@ class _WorkspaceHeading extends StatelessWidget {
 class _ConfigNavPanel extends StatelessWidget {
   const _ConfigNavPanel({
     required this.section,
-    required this.compact,
     required this.onSelectSection,
     required this.l10n,
   });
 
   final ConfigSection section;
-  final bool compact;
   final ValueChanged<ConfigSection> onSelectSection;
   final AppLocalizations l10n;
 
@@ -526,9 +517,7 @@ class _ConfigNavPanel extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     return Container(
       color: cs.surface,
-      padding: compact
-          ? const EdgeInsets.fromLTRB(14, 22, 12, 20)
-          : const EdgeInsets.fromLTRB(24, 28, 18, 24),
+      padding: const EdgeInsets.fromLTRB(24, 28, 18, 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -536,7 +525,6 @@ class _ConfigNavPanel extends StatelessWidget {
             key: AppKeys.configLlmSectionButton,
             title: l10n.llmConfig,
             icon: Icons.memory_outlined,
-            compact: compact,
             selected: section == ConfigSection.llm,
             onTap: () => onSelectSection(ConfigSection.llm),
           ),
@@ -544,7 +532,6 @@ class _ConfigNavPanel extends StatelessWidget {
             key: AppKeys.configLayoutSectionButton,
             title: l10n.layout,
             icon: Icons.dashboard_customize_outlined,
-            compact: compact,
             selected: section == ConfigSection.layout,
             onTap: () => onSelectSection(ConfigSection.layout),
           ),
@@ -552,7 +539,6 @@ class _ConfigNavPanel extends StatelessWidget {
             key: AppKeys.configSessionSectionButton,
             title: l10n.session,
             icon: Icons.terminal_outlined,
-            compact: compact,
             selected: section == ConfigSection.session,
             onTap: () => onSelectSection(ConfigSection.session),
           ),
@@ -567,14 +553,12 @@ class _ConfigNavItem extends StatelessWidget {
     super.key,
     required this.title,
     required this.icon,
-    required this.compact,
     required this.selected,
     required this.onTap,
   });
 
   final String title;
   final IconData icon;
-  final bool compact;
   final bool selected;
   final VoidCallback onTap;
 
@@ -594,29 +578,18 @@ class _ConfigNavItem extends StatelessWidget {
           borderRadius: BorderRadius.circular(12),
           onTap: onTap,
           child: SizedBox(
-            height: 54,
+            height: 48,
             child: Padding(
-              padding: EdgeInsets.symmetric(horizontal: compact ? 14 : 18),
+              padding: EdgeInsets.symmetric(horizontal: 18),
               child: Row(
                 children: [
-                  Icon(
-                    icon,
-                    color: selected ? textBase : muted,
-                    size: compact ? 21 : 23,
-                  ),
-                  SizedBox(width: compact ? 12 : 16),
+                  Icon(icon, color: selected ? textBase : muted, size: 18),
+                  SizedBox(width: 16),
                   Expanded(
                     child: Text(
                       title,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: compact ? 14 : 15,
-                        fontWeight: selected
-                            ? FontWeight.w700
-                            : FontWeight.w600,
-                        color: selected ? textBase : muted,
-                      ),
                     ),
                   ),
                 ],

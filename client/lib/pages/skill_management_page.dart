@@ -46,23 +46,21 @@ class _SkillManagementPageState extends State<SkillManagementPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              _TitleBar(
-                title: l10n.skillsTitle,
-                subtitle: l10n.skillsSubtitle,
-              ),
+              _TitleBar(title: l10n.skillsTitle, subtitle: l10n.skillsSubtitle),
               Expanded(
                 child: LayoutBuilder(
                   builder: (context, constraints) {
                     final compact = constraints.maxWidth < 820;
-                    final navWidth = compact ? 220.0 : 280.0;
+                    final navWidth = 220.0;
                     final padding = compact
                         ? const EdgeInsets.fromLTRB(16, 20, 16, 16)
                         : const EdgeInsets.fromLTRB(24, 28, 28, 24);
-                    final bodyPaneWidth =
-                        constraints.maxWidth - navWidth - 1;
+                    final bodyPaneWidth = constraints.maxWidth - navWidth - 1;
                     final skillsBodyMaxWidth =
-                        (bodyPaneWidth - padding.horizontal)
-                            .clamp(480.0, 3200.0);
+                        (bodyPaneWidth - padding.horizontal).clamp(
+                          480.0,
+                          3200.0,
+                        );
                     return Row(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
@@ -70,12 +68,14 @@ class _SkillManagementPageState extends State<SkillManagementPage> {
                           width: navWidth,
                           child: _NavPanel(
                             section: _section,
-                            compact: compact,
                             l10n: l10n,
                             onSelect: (s) => setState(() => _section = s),
                           ),
                         ),
-                        Container(width: 1, color: cs.outlineVariant.withValues(alpha: 0.5)),
+                        Container(
+                          width: 1,
+                          color: cs.outlineVariant.withValues(alpha: 0.5),
+                        ),
                         Expanded(
                           child: Padding(
                             padding: padding,
@@ -140,7 +140,9 @@ class _TitleBar extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(40, 42, 40, 28),
       decoration: BoxDecoration(
         color: cs.surface,
-        border: Border(bottom: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.5))),
+        border: Border(
+          bottom: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.5)),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -177,13 +179,11 @@ class _TitleBar extends StatelessWidget {
 class _NavPanel extends StatelessWidget {
   const _NavPanel({
     required this.section,
-    required this.compact,
     required this.l10n,
     required this.onSelect,
   });
 
   final SkillSection section;
-  final bool compact;
   final AppLocalizations l10n;
   final ValueChanged<SkillSection> onSelect;
 
@@ -192,37 +192,31 @@ class _NavPanel extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     return Container(
       color: cs.surface,
-      padding: compact
-          ? const EdgeInsets.fromLTRB(14, 22, 12, 20)
-          : const EdgeInsets.fromLTRB(24, 28, 18, 24),
+      padding: const EdgeInsets.fromLTRB(24, 28, 18, 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           _NavItem(
             title: l10n.skillsNavInstalled,
             icon: Icons.inventory_2_outlined,
-            compact: compact,
             selected: section == SkillSection.installed,
             onTap: () => onSelect(SkillSection.installed),
           ),
           _NavItem(
             title: l10n.skillsNavDiscovery,
             icon: Icons.travel_explore_outlined,
-            compact: compact,
             selected: section == SkillSection.discovery,
             onTap: () => onSelect(SkillSection.discovery),
           ),
           _NavItem(
             title: l10n.skillsNavRepos,
             icon: Icons.source_outlined,
-            compact: compact,
             selected: section == SkillSection.repos,
             onTap: () => onSelect(SkillSection.repos),
           ),
           _NavItem(
             title: l10n.skillsNavBackups,
             icon: Icons.history,
-            compact: compact,
             selected: section == SkillSection.backups,
             onTap: () => onSelect(SkillSection.backups),
           ),
@@ -236,14 +230,12 @@ class _NavItem extends StatelessWidget {
   const _NavItem({
     required this.title,
     required this.icon,
-    required this.compact,
     required this.selected,
     required this.onTap,
   });
 
   final String title;
   final IconData icon;
-  final bool compact;
   final bool selected;
   final VoidCallback onTap;
 
@@ -262,28 +254,18 @@ class _NavItem extends StatelessWidget {
           borderRadius: BorderRadius.circular(12),
           onTap: onTap,
           child: SizedBox(
-            height: 54,
+            height: 48,
             child: Padding(
-              padding: EdgeInsets.symmetric(horizontal: compact ? 14 : 18),
+              padding: const EdgeInsets.symmetric(horizontal: 18),
               child: Row(
                 children: [
-                  Icon(
-                    icon,
-                    color: selected ? textBase : muted,
-                    size: compact ? 21 : 23,
-                  ),
-                  SizedBox(width: compact ? 12 : 16),
+                  Icon(icon, color: selected ? textBase : muted, size: 21),
+                  SizedBox(width: 16),
                   Expanded(
                     child: Text(
                       title,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: compact ? 14 : 15,
-                        fontWeight:
-                            selected ? FontWeight.w700 : FontWeight.w600,
-                        color: selected ? textBase : muted,
-                      ),
                     ),
                   ),
                 ],
@@ -443,7 +425,9 @@ class _InstalledSection extends StatelessWidget {
                         FilledButton.tonalIcon(
                           onPressed: cubit.updateAll,
                           icon: const Icon(Icons.upgrade, size: 16),
-                          label: Text(l10n.skillsUpdateAll(state.updates.length)),
+                          label: Text(
+                            l10n.skillsUpdateAll(state.updates.length),
+                          ),
                         ),
                       OutlinedButton.icon(
                         onPressed: () => _onImportFromDisk(context),
@@ -463,7 +447,9 @@ class _InstalledSection extends StatelessWidget {
                             ? const SizedBox(
                                 width: 14,
                                 height: 14,
-                                child: CircularProgressIndicator(strokeWidth: 2),
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
                               )
                             : const Icon(Icons.refresh, size: 16),
                         label: Text(
@@ -662,9 +648,7 @@ class _InstalledSkillRow extends StatelessWidget {
               ),
             IconButton(
               tooltip: l10n.skillsCardUninstall,
-              onPressed: busy
-                  ? null
-                  : () => _onUninstall(context, skill),
+              onPressed: busy ? null : () => _onUninstall(context, skill),
               icon: Icon(
                 Icons.delete_outline,
                 size: 18,
@@ -867,7 +851,10 @@ class _DiscoverySectionState extends State<_DiscoverySection> {
   SkillState? _lastState;
 
   Set<String> _installedKeys(SkillState s) => s.installed
-      .map((sk) => '${sk.directory.toLowerCase()}:${(sk.repoOwner ?? '').toLowerCase()}:${(sk.repoName ?? '').toLowerCase()}')
+      .map(
+        (sk) =>
+            '${sk.directory.toLowerCase()}:${(sk.repoOwner ?? '').toLowerCase()}:${(sk.repoName ?? '').toLowerCase()}',
+      )
       .toSet();
 
   @override
@@ -930,7 +917,10 @@ class _DiscoverySectionState extends State<_DiscoverySection> {
     final state = widget.state;
     final cubit = context.read<SkillCubit>();
     final installedKeys = state.installed
-        .map((s) => '${s.directory.toLowerCase()}:${(s.repoOwner ?? '').toLowerCase()}:${(s.repoName ?? '').toLowerCase()}')
+        .map(
+          (s) =>
+              '${s.directory.toLowerCase()}:${(s.repoOwner ?? '').toLowerCase()}:${(s.repoName ?? '').toLowerCase()}',
+        )
         .toSet();
 
     return Column(
@@ -996,11 +986,9 @@ class _DiscoverySectionState extends State<_DiscoverySection> {
     final l10n = context.l10n;
     final repoOptions = <String>{
       for (final d in state.discoverable) '${d.repoOwner}/${d.repoName}',
-    }.toList()
-      ..sort();
+    }.toList()..sort();
     final repoItems = <String>['all', ...repoOptions];
-    final effectiveRepo =
-        repoItems.contains(_filterRepo) ? _filterRepo : 'all';
+    final effectiveRepo = repoItems.contains(_filterRepo) ? _filterRepo : 'all';
     if (effectiveRepo != _filterRepo) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
@@ -1010,8 +998,7 @@ class _DiscoverySectionState extends State<_DiscoverySection> {
     }
     final deco = FlashskyDropdownDecorations.denseField(context);
 
-    String repoLabel(String v) =>
-        v == 'all' ? l10n.skillsFilterRepoAll : v;
+    String repoLabel(String v) => v == 'all' ? l10n.skillsFilterRepoAll : v;
 
     String statusLabel(String v) {
       switch (v) {
@@ -1201,37 +1188,35 @@ class _DiscoverySectionState extends State<_DiscoverySection> {
           return PagedGridView<int, DiscoverableSkill>(
             state: pagingState,
             fetchNextPage: _pagingController.fetchNextPage,
-            gridDelegate:
-                const SliverGridDelegateWithMaxCrossAxisExtent(
-          maxCrossAxisExtent: 380,
-          crossAxisSpacing: 12,
-          mainAxisSpacing: 12,
-          mainAxisExtent: 168,
-        ),
-        padding: const EdgeInsets.only(top: 2),
-        builderDelegate: PagedChildBuilderDelegate<DiscoverableSkill>(
-          firstPageProgressIndicatorBuilder: (_) =>
-              const SizedBox.shrink(),
-          newPageProgressIndicatorBuilder: (_) => const Padding(
-            padding: EdgeInsets.symmetric(vertical: 24),
-            child: Center(child: CircularProgressIndicator()),
-          ),
-          noItemsFoundIndicatorBuilder: (_) => const SizedBox.shrink(),
-          itemBuilder: (context, d, index) {
-            final installKey =
-                '${d.directory.split('/').last.toLowerCase()}:${d.repoOwner.toLowerCase()}:${d.repoName.toLowerCase()}';
-            return _SkillCard(
-              name: d.name,
-              description: d.description,
-              source: '${d.repoOwner}/${d.repoName}',
-              readmeUrl: d.readmeUrl,
-              installed: installedKeys.contains(installKey),
-              busy: state.busyIds.contains(d.key),
-              onInstall: () =>
-                  context.read<SkillCubit>().installFromDiscovery(d),
-            );
-          },
-        ),
+            gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+              maxCrossAxisExtent: 380,
+              crossAxisSpacing: 12,
+              mainAxisSpacing: 12,
+              mainAxisExtent: 168,
+            ),
+            padding: const EdgeInsets.only(top: 2),
+            builderDelegate: PagedChildBuilderDelegate<DiscoverableSkill>(
+              firstPageProgressIndicatorBuilder: (_) => const SizedBox.shrink(),
+              newPageProgressIndicatorBuilder: (_) => const Padding(
+                padding: EdgeInsets.symmetric(vertical: 24),
+                child: Center(child: CircularProgressIndicator()),
+              ),
+              noItemsFoundIndicatorBuilder: (_) => const SizedBox.shrink(),
+              itemBuilder: (context, d, index) {
+                final installKey =
+                    '${d.directory.split('/').last.toLowerCase()}:${d.repoOwner.toLowerCase()}:${d.repoName.toLowerCase()}';
+                return _SkillCard(
+                  name: d.name,
+                  description: d.description,
+                  source: '${d.repoOwner}/${d.repoName}',
+                  readmeUrl: d.readmeUrl,
+                  installed: installedKeys.contains(installKey),
+                  busy: state.busyIds.contains(d.key),
+                  onInstall: () =>
+                      context.read<SkillCubit>().installFromDiscovery(d),
+                );
+              },
+            ),
           );
         },
       ),
@@ -1547,8 +1532,7 @@ class _ReposSectionState extends State<_ReposSection> {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      for (final r in widget.state.repos)
-                        _RepoRow(repo: r),
+                      for (final r in widget.state.repos) _RepoRow(repo: r),
                     ],
                   ),
               ],
@@ -1581,11 +1565,9 @@ class _ReposSectionState extends State<_ReposSection> {
                       var branch = _branchCtl.text.trim();
                       if (owner.isEmpty || name.isEmpty) return;
                       if (branch.isEmpty) branch = 'main';
-                      await cubit.addRepo(SkillRepo(
-                        owner: owner,
-                        name: name,
-                        branch: branch,
-                      ));
+                      await cubit.addRepo(
+                        SkillRepo(owner: owner, name: name, branch: branch),
+                      );
                       _ownerCtl.clear();
                       _nameCtl.clear();
                       _branchCtl.text = 'main';
@@ -1700,9 +1682,7 @@ class _BackupsSection extends StatelessWidget {
     return SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          for (final b in state.backups) _BackupRow(backup: b),
-        ],
+        children: [for (final b in state.backups) _BackupRow(backup: b)],
       ),
     );
   }

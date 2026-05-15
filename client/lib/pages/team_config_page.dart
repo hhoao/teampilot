@@ -89,7 +89,7 @@ class _TeamConfigPageState extends State<TeamConfigPage> {
             child: LayoutBuilder(
               builder: (context, constraints) {
                 final compact = constraints.maxWidth < 820;
-                final navWidth = compact ? 220.0 : 280.0;
+                final navWidth = 220.0;
                 final contentPadding = compact
                     ? const EdgeInsets.fromLTRB(16, 20, 16, 16)
                     : const EdgeInsets.fromLTRB(24, 28, 28, 24);
@@ -107,7 +107,6 @@ class _TeamConfigPageState extends State<TeamConfigPage> {
                       child: _NavPanel(
                         team: team,
                         section: _section,
-                        compact: compact,
                         selectedMemberId: memberId,
                         onSelect: (s) => setState(() => _section = s),
                         onSelectMember: (id) =>
@@ -124,7 +123,10 @@ class _TeamConfigPageState extends State<TeamConfigPage> {
                         l10n: l10n,
                       ),
                     ),
-                    Container(width: 1, color: cs.outlineVariant.withValues(alpha: 0.5)),
+                    Container(
+                      width: 1,
+                      color: cs.outlineVariant.withValues(alpha: 0.5),
+                    ),
                     Expanded(
                       child: Padding(
                         padding: contentPadding,
@@ -175,7 +177,9 @@ class _TitleBar extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(40, 42, 40, 28),
       decoration: BoxDecoration(
         color: cs.surface,
-        border: Border(bottom: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.5))),
+        border: Border(
+          bottom: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.5)),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -213,7 +217,6 @@ class _NavPanel extends StatelessWidget {
   const _NavPanel({
     required this.team,
     required this.section,
-    required this.compact,
     required this.selectedMemberId,
     required this.onSelect,
     required this.onSelectMember,
@@ -223,7 +226,6 @@ class _NavPanel extends StatelessWidget {
 
   final TeamConfig team;
   final _TeamPageSection section;
-  final bool compact;
   final String? selectedMemberId;
   final ValueChanged<_TeamPageSection> onSelect;
   final ValueChanged<String> onSelectMember;
@@ -235,23 +237,19 @@ class _NavPanel extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     return Container(
       color: cs.surface,
-      padding: compact
-          ? const EdgeInsets.fromLTRB(14, 22, 12, 20)
-          : const EdgeInsets.fromLTRB(24, 28, 18, 24),
+      padding: const EdgeInsets.fromLTRB(24, 28, 18, 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           _NavItem(
             title: l10n.teamSettings,
             icon: Icons.groups_outlined,
-            compact: compact,
             selected: section == _TeamPageSection.team,
             onTap: () => onSelect(_TeamPageSection.team),
           ),
           _NavItem(
             title: l10n.members,
             icon: Icons.person_outline,
-            compact: compact,
             selected: section == _TeamPageSection.members,
             trailingIcon: section == _TeamPageSection.members
                 ? Icons.expand_less
@@ -262,20 +260,15 @@ class _NavPanel extends StatelessWidget {
             const SizedBox(height: 4),
             Expanded(
               child: ListView(
-                padding: EdgeInsets.only(left: compact ? 10 : 14, right: 2),
+                padding: const EdgeInsets.only(left: 14, right: 2),
                 children: [
                   for (final m in team.members)
                     _MemberNavSubItem(
                       member: m,
-                      compact: compact,
                       selected: m.id == selectedMemberId,
                       onTap: () => onSelectMember(m.id),
                     ),
-                  _MemberNavAddTile(
-                    compact: compact,
-                    l10n: l10n,
-                    onTap: onAddMember,
-                  ),
+                  _MemberNavAddTile(l10n: l10n, onTap: onAddMember),
                 ],
               ),
             ),
@@ -289,13 +282,11 @@ class _NavPanel extends StatelessWidget {
 class _MemberNavSubItem extends StatelessWidget {
   const _MemberNavSubItem({
     required this.member,
-    required this.compact,
     required this.selected,
     required this.onTap,
   });
 
   final TeamMemberConfig member;
-  final bool compact;
   final bool selected;
   final VoidCallback onTap;
 
@@ -318,24 +309,24 @@ class _MemberNavSubItem extends StatelessWidget {
           borderRadius: BorderRadius.circular(10),
           onTap: onTap,
           child: SizedBox(
-            height: compact ? 40 : 44,
+            height: 44,
             child: Padding(
-              padding: EdgeInsets.symmetric(horizontal: compact ? 10 : 14),
+              padding: const EdgeInsets.symmetric(horizontal: 14),
               child: Row(
                 children: [
                   Icon(
                     Icons.person_outline,
-                    size: compact ? 18 : 19,
+                    size: 19,
                     color: selected ? textBase : muted,
                   ),
-                  SizedBox(width: compact ? 8 : 10),
+                  SizedBox(width: 10),
                   Expanded(
                     child: Text(
                       label,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        fontSize: compact ? 13 : 14,
+                        fontSize: 14,
                         fontWeight: selected
                             ? FontWeight.w700
                             : FontWeight.w600,
@@ -354,13 +345,8 @@ class _MemberNavSubItem extends StatelessWidget {
 }
 
 class _MemberNavAddTile extends StatelessWidget {
-  const _MemberNavAddTile({
-    required this.compact,
-    required this.l10n,
-    required this.onTap,
-  });
+  const _MemberNavAddTile({required this.l10n, required this.onTap});
 
-  final bool compact;
   final AppLocalizations l10n;
   final VoidCallback onTap;
 
@@ -382,23 +368,18 @@ class _MemberNavAddTile extends StatelessWidget {
             color: cs.outlineVariant,
             radius: 10,
             child: SizedBox(
-              height: compact ? 40 : 44,
+              height: 44,
               child: Padding(
-                padding: EdgeInsets.symmetric(horizontal: compact ? 10 : 14),
+                padding: const EdgeInsets.symmetric(horizontal: 14),
                 child: Row(
                   children: [
-                    Icon(Icons.add, size: compact ? 18 : 19, color: muted),
-                    SizedBox(width: compact ? 8 : 10),
+                    Icon(Icons.add, size: 19, color: muted),
+                    SizedBox(width: 10),
                     Expanded(
                       child: Text(
-                        compact ? l10n.add : '${l10n.add} ${l10n.memberName}',
+                        '${l10n.add} ${l10n.memberName}',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: compact ? 13 : 14,
-                          fontWeight: FontWeight.w600,
-                          color: muted,
-                        ),
                       ),
                     ),
                   ],
@@ -416,7 +397,6 @@ class _NavItem extends StatelessWidget {
   const _NavItem({
     required this.title,
     required this.icon,
-    required this.compact,
     required this.selected,
     required this.onTap,
     this.trailingIcon,
@@ -424,7 +404,6 @@ class _NavItem extends StatelessWidget {
 
   final String title;
   final IconData icon;
-  final bool compact;
   final bool selected;
   final VoidCallback onTap;
   final IconData? trailingIcon;
@@ -446,27 +425,16 @@ class _NavItem extends StatelessWidget {
           child: SizedBox(
             height: 54,
             child: Padding(
-              padding: EdgeInsets.symmetric(horizontal: compact ? 14 : 18),
+              padding: const EdgeInsets.symmetric(horizontal: 18),
               child: Row(
                 children: [
-                  Icon(
-                    icon,
-                    color: selected ? textBase : muted,
-                    size: compact ? 21 : 23,
-                  ),
-                  SizedBox(width: compact ? 12 : 16),
+                  Icon(icon, color: selected ? textBase : muted, size: 21),
+                  SizedBox(width: 16),
                   Expanded(
                     child: Text(
                       title,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: compact ? 14 : 15,
-                        fontWeight: selected
-                            ? FontWeight.w700
-                            : FontWeight.w600,
-                        color: selected ? textBase : muted,
-                      ),
                     ),
                   ),
                   if (trailingIcon != null) ...[
@@ -474,7 +442,7 @@ class _NavItem extends StatelessWidget {
                     Icon(
                       trailingIcon,
                       color: selected ? textBase : muted,
-                      size: compact ? 22 : 24,
+                      size: 24,
                     ),
                   ],
                 ],
