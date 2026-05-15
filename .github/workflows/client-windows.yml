@@ -42,6 +42,16 @@ jobs:
           choco install innosetup --no-progress -y
           Add-Content $env:GITHUB_PATH "C:\Program Files (x86)\Inno Setup 6"
 
+      - name: Install Inno Chinese (Simplified) language file
+        shell: pwsh
+        run: |
+          $langDir = Join-Path ${env:ProgramFiles(x86)} "Inno Setup 6\Languages"
+          New-Item -ItemType Directory -Force -Path $langDir | Out-Null
+          $url = "https://raw.githubusercontent.com/jrsoftware/issrc/main/Files/Languages/Unofficial/ChineseSimplified.isl"
+          $out = Join-Path $langDir "ChineseSimplified.isl"
+          Invoke-WebRequest -Uri $url -OutFile $out -UseBasicParsing
+          if (-not (Test-Path -LiteralPath $out)) { throw "Failed to download ChineseSimplified.isl" }
+
       - name: Add pub-cache to PATH (Windows)
         shell: pwsh
         run: |

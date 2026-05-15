@@ -121,6 +121,17 @@ jobs:
           choco install innosetup --no-progress -y
           Add-Content $env:GITHUB_PATH "C:\Program Files (x86)\Inno Setup 6"
 
+      - name: Install Inno Chinese (Simplified) language file
+        shell: pwsh
+        run: |
+          # choco innosetup 不含 ChineseSimplified.isl；从 jrsoftware/issrc 官方仓库取 Unofficial 译稿（与 ISCC 的 Languages\ 路径一致）
+          $langDir = Join-Path ${env:ProgramFiles(x86)} "Inno Setup 6\Languages"
+          New-Item -ItemType Directory -Force -Path $langDir | Out-Null
+          $url = "https://raw.githubusercontent.com/jrsoftware/issrc/main/Files/Languages/Unofficial/ChineseSimplified.isl"
+          $out = Join-Path $langDir "ChineseSimplified.isl"
+          Invoke-WebRequest -Uri $url -OutFile $out -UseBasicParsing
+          if (-not (Test-Path -LiteralPath $out)) { throw "Failed to download ChineseSimplified.isl" }
+
       - name: Add pub-cache to PATH (Windows)
         shell: pwsh
         run: |
@@ -132,13 +143,11 @@ jobs:
       - name: Sync bundled Google Fonts (Noto Sans SC)
         run: dart run tool/sync_bundled_google_fonts.dart
 
-      # 分两段：先 zip+msix（共享一次 flutter build），再单独打 exe。
-      # 同一进程里 msix 会改动 build/windows/.../Release，易导致 Inno 暂存目录异常且无最终 setup.exe。
       - name: Package Windows (ZIP + MSIX)
         run: fastforge package --platform windows --targets zip,msix
 
       - name: Package Windows (EXE installer)
-        run: fastforge package --platform windows --targets exe --skip-clean
+        run: fastforge package --platform windows --targets exe
 
       - name: Verify Windows release files
         shell: pwsh
@@ -146,13 +155,31 @@ jobs:
           $m = Select-String -Path pubspec.yaml -Pattern '^version:\s*(.+)$' | ForEach-Object { $_.Matches[0].Groups[1].Value.Trim() }
           if (-not $m) { throw "Could not read version from pubspec.yaml" }
           $d = Join-Path "dist" $m
-          if (-not (Test-Path $d)) { throw "Missing directory: $d" }
-          $zip = @(Get-ChildItem -Path $d -Filter "*-windows.zip" -File -ErrorAction SilentlyContinue)
-          $msix = @(Get-ChildItem -Path $d -Filter "*.msix" -File -ErrorAction SilentlyContinue)
-          $setup = @(Get-ChildItem -Path $d -Filter "*setup.exe" -File -ErrorAction SilentlyContinue)
+          if (-not (Test-Path -LiteralPath $d)) { throw "Missing directory: $d" }
+          $zip = @(Get-ChildItem -LiteralPath $d -File | Where-Object { $_.Name -like '*-windows.zip' })
+          $msix = @(Get-ChildItem -LiteralPath $d -File | Where-Object { $_.Name -like '*.msix' })
+          # Inno 安装包：同级目录下的 *setup.exe；排除 *setup_exe\ 暂存目录里的 TeamPilot.exe
+          $setup = @(Get-ChildItem -LiteralPath $d -File | Where-Object { $_.Name -like '*setup.exe' })
+          if ($setup.Count -lt 1) {
+            $setup = @(Get-ChildItem -Path "dist" -Recurse -File | Where-Object {
+              $_.Name -like '*setup.exe' -and $_.FullName -notmatch 'setup_exe[/\\]'
+            })
+          }
           if ($zip.Count -lt 1) { throw "Missing *-windows.zip under $d" }
           if ($msix.Count -lt 1) { throw "Missing *.msix under $d" }
-          if ($setup.Count -lt 1) { throw "Missing *setup.exe (Inno installer) under $d" }
+          if ($setup.Count -lt 1) {
+            Write-Host "Contents of $d :"
+            Get-ChildItem -LiteralPath $d -Force | ForEach-Object { Write-Host "  $($_.Name)" }
+            throw "Missing *setup.exe (Inno installer). Expected under $d or dist (excluding *setup_exe staging)."
+          }
+
+      - name: Upload dist snapshot (job failed)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-dist-snapshot
+          path: client/dist
+          if-no-files-found: ignore
 
       - name: List packaged Windows files (debug)
         shell: pwsh
