@@ -26,9 +26,17 @@ Future<ProcessResult> _flashskyDefaultProcessRun(
 }
 
 /// Resolves the absolute path of the `flashskyai` CLI executable on PATH.
-/// Returns null when not installed or the lookup fails.
+///
+/// GUI launches (e.g. AppImage from a file manager) often inherit a minimal PATH
+/// that omits entries from `~/.bashrc` / `~/.zshrc`. When the fast [`which`]
+/// lookup misses, Unix builds fall back to an interactive login shell so the
+/// same PATH a terminal would see is used.
+///
+/// Returns null when not installed or every lookup fails.
 class FlashskyaiCliLocator {
   const FlashskyaiCliLocator._();
+
+  static const _loginShellLookupCommand = 'command -v flashskyai';
 
   static Future<String?> locate({
     ProcessRunner runner = _flashskyDefaultProcessRun,
@@ -40,37 +48,62 @@ class FlashskyaiCliLocator {
         final located = _firstStdoutLine(result.stdout);
         if (located != null) return located;
       }
-      if (Platform.isWindows) {
-        return _locateInWsl(runner);
-      }
-      return null;
+      return _locateWithShellFallback(runner);
     } on ProcessException catch (error, stackTrace) {
       Logger().w('Failed to locate flashskyai: $error', stackTrace: stackTrace);
-      if (Platform.isWindows) {
-        return _locateInWsl(runner);
-      }
-      return null;
+      return _locateWithShellFallback(runner);
     } on Object catch (error, stackTrace) {
       Logger().w('Failed to locate flashskyai: $error', stackTrace: stackTrace);
       return null;
     }
   }
 
+  static Future<String?> _locateWithShellFallback(ProcessRunner runner) async {
+    if (Platform.isWindows) {
+      return _locateInWsl(runner);
+    }
+    if (Platform.isLinux || Platform.isMacOS) {
+      return _locateInLoginShell(runner);
+    }
+    return null;
+  }
+
+  /// Resolves `flashskyai` using the user's login shell profile (bashrc/zshrc).
+  static Future<String?> _locateInLoginShell(ProcessRunner runner) async {
+    for (final shell in const ['bash', 'zsh']) {
+      final located = await _tryLoginShellLookup(runner, shell);
+      if (located != null) return located;
+    }
+    return null;
+  }
+
+  static Future<String?> _tryLoginShellLookup(
+    ProcessRunner runner,
+    String shell,
+  ) async {
+    try {
+      final result = await runner(
+        shell,
+        ['-ilc', _loginShellLookupCommand],
+        stdoutEncoding: latin1,
+        stderrEncoding: latin1,
+      );
+      if (result.exitCode != 0) return null;
+      return _firstStdoutLine(result.stdout);
+    } on Object catch (error, stackTrace) {
+      Logger().w(
+        'Failed to locate flashskyai via $shell login shell: $error',
+        stackTrace: stackTrace,
+      );
+      return null;
+    }
+  }
+
   static Future<String?> _locateInWsl(ProcessRunner runner) async {
     try {
-      // Use bash (not sh/dash): Ubuntu WSL's ~/.profile only sources ~/.bashrc
-      // when BASH_VERSION is set, so dash login shells miss PATH from ~/.bashrc.
-      //
-      // Use `-ilc` (interactive login): many `~/.bashrc` templates return early
-      // when `$-` lacks `i`, so plain `-lc` never applies PATH exports from bashrc.
-      //
-      // Use Latin-1 for subprocess pipes: `wsl.exe` output is usually UTF-8, but
-      // some builds mix encodings or emit non-UTF-8 bytes; strict UTF-8 decoding
-      // throws [FormatException] before we can parse. Latin-1 maps every byte to
-      // a code point without failure; ASCII paths stay identical to UTF-8.
       final result = await runner(
         'wsl.exe',
-        ['bash', '-ilc', 'command -v flashskyai'],
+        ['bash', '-ilc', _loginShellLookupCommand],
         stdoutEncoding: latin1,
         stderrEncoding: latin1,
       );

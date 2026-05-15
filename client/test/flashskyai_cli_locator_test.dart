@@ -15,6 +15,78 @@ void main() {
     expect(located, '/opt/bin/flashskyai');
   });
 
+  test('locate falls back to bash login shell when which misses on Unix', () async {
+    if (Platform.isWindows) return;
+    final calls = <String>[];
+    final located = await FlashskyaiCliLocator.locate(
+      runner: (executable, arguments, {stdoutEncoding, stderrEncoding}) async {
+        calls.add('$executable ${arguments.join(' ')}');
+        if (executable == 'which') {
+          return ProcessResult(1, 1, '', '');
+        }
+        if (executable == 'bash') {
+          expect(arguments, ['-ilc', 'command -v flashskyai']);
+          expect(stdoutEncoding, latin1);
+          return ProcessResult(
+            2,
+            0,
+            '/home/user/Downloads/flashskyai/dist/flashskyai\n',
+            '',
+          );
+        }
+        fail('unexpected runner call: $executable');
+      },
+    );
+
+    expect(calls, ['which flashskyai', 'bash -ilc command -v flashskyai']);
+    expect(
+      located,
+      '/home/user/Downloads/flashskyai/dist/flashskyai',
+    );
+  });
+
+  test('locate tries zsh when bash login shell misses on Unix', () async {
+    if (Platform.isWindows) return;
+    final calls = <String>[];
+    final located = await FlashskyaiCliLocator.locate(
+      runner: (executable, arguments, {stdoutEncoding, stderrEncoding}) async {
+        calls.add('$executable ${arguments.join(' ')}');
+        if (executable == 'which') {
+          return ProcessResult(1, 1, '', '');
+        }
+        if (executable == 'bash') {
+          return ProcessResult(2, 1, '', '');
+        }
+        if (executable == 'zsh') {
+          expect(arguments, ['-ilc', 'command -v flashskyai']);
+          return ProcessResult(3, 0, '/opt/bin/flashskyai\n', '');
+        }
+        fail('unexpected runner call: $executable');
+      },
+    );
+
+    expect(calls, [
+      'which flashskyai',
+      'bash -ilc command -v flashskyai',
+      'zsh -ilc command -v flashskyai',
+    ]);
+    expect(located, '/opt/bin/flashskyai');
+  });
+
+  test('locate does not use login shell when which succeeds on Unix', () async {
+    if (Platform.isWindows) return;
+    final calls = <String>[];
+    final located = await FlashskyaiCliLocator.locate(
+      runner: (executable, arguments, {stdoutEncoding, stderrEncoding}) async {
+        calls.add('$executable ${arguments.join(' ')}');
+        return ProcessResult(1, 0, '/usr/bin/flashskyai\n', '');
+      },
+    );
+
+    expect(calls, ['which flashskyai']);
+    expect(located, '/usr/bin/flashskyai');
+  });
+
   test('locate falls back to WSL on Windows', () async {
     if (!Platform.isWindows) return;
     final calls = <String>[];
