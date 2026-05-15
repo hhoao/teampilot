@@ -312,6 +312,7 @@ void main() {
     tester,
   ) async {
     final teamCubit = await createTeamCubitInTest(tester);
+    final teamId = teamCubit.state.selectedTeam!.id;
     final chatCubit = TestChatCubit();
     const projectId = 'proj-test-1';
     chatCubit.seedChatData(
@@ -324,12 +325,13 @@ void main() {
           sessionIds: ['session-1'],
         ),
       ],
-      sessions: const [
+      sessions: [
         AppSession(
           sessionId: 'session-1',
           projectId: projectId,
           primaryPath: '/work/current',
           display: 'Session One',
+          sessionTeam: teamId,
           createdAt: 1,
           updatedAt: 1,
         ),

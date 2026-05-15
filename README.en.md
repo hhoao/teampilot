@@ -58,7 +58,10 @@ dart run build_runner build --delete-conflicting-outputs
 
 ```bash
 cd client
-flutter test
+flutter test --exclude-tags integration
+# Linux PTY integration tests (after build):
+# flutter build linux --debug
+# LD_LIBRARY_PATH=build/linux/x64/debug/bundle/lib flutter test --tags integration
 ```
 
 ## Packaging & releases (maintainers)
@@ -71,7 +74,7 @@ CI uses [fastforge](https://pub.dev/packages/fastforge) to produce installers un
 
 Pushing a **Git tag** matching `v*` runs [Release Desktop Packages](.github/workflows/release.yml), builds all three platforms, and publishes a **GitHub Release**. You can also run the workflow manually (**workflow_dispatch**) and optionally set `ref`.
 
-Changes under `client/` also trigger [Client Windows (EXE)](.github/workflows/client-windows.yml) on pull requests and pushes to `main`, producing a Windows EXE installer as a downloadable **Artifact**.
+Changes under `client/` also trigger [Client Build Verify](.github/workflows/client-verify.yml) on pull requests and pushes to `main`, running static analysis, `flutter test` (including Linux PTY integration tests after build), and `flutter build` on Linux, Windows, and macOS, plus a Linux `.deb` packaging smoke test.
 
 Local packaging example:
 

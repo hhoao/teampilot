@@ -1,10 +1,25 @@
 @Tags(['integration'])
 library;
 
+import 'dart:ffi';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_pty/flutter_pty.dart';
+
+/// True when `libflutter_pty` is on the loader path (e.g. after `flutter build linux`).
+final _nativePtyAvailable = () {
+  if (!Platform.isLinux) return false;
+  try {
+    DynamicLibrary.open('libflutter_pty.so');
+    return true;
+  } catch (_) {
+    return false;
+  }
+}();
+
+const _skipWithoutNativePty =
+    'Requires libflutter_pty.so (run `flutter build linux` and set LD_LIBRARY_PATH to build/linux/x64/debug/bundle/lib)';
 
 /// Exercises real [Pty.start] the same way TeamPilot does when flashskyai is missing.
 void main() {
@@ -24,7 +39,7 @@ void main() {
 
     pty.kill();
     expect(exitCode, isNonZero);
-  }, skip: !Platform.isLinux);
+  }, skip: _nativePtyAvailable ? false : _skipWithoutNativePty);
 
   test('parallel failed Pty spawns are known to hang on Linux', () async {
     // Documents flutter_pty behaviour: do not spawn many failing PTYs at once.
@@ -48,5 +63,5 @@ void main() {
 
     final codes = await Future.wait(exits);
     expect(codes, everyElement(isNonZero));
-  }, skip: !Platform.isLinux);
+  }, skip: _nativePtyAvailable ? false : _skipWithoutNativePty);
 }

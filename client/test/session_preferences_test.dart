@@ -3,11 +3,11 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('SessionPreferences', () {
-    test('defaults are empty path and auto-launch off', () {
+    test('defaults are empty path with session scoping on', () {
       const prefs = SessionPreferences();
       expect(prefs.cliExecutablePath, '');
-      expect(prefs.autoLaunchAllMembersOnConnect, false);
-      expect(prefs.scopeSessionsToSelectedTeam, false);
+      expect(prefs.autoLaunchAllMembersOnConnect, true);
+      expect(prefs.scopeSessionsToSelectedTeam, true);
     });
 
     test('toJson/fromJson round-trips', () {
@@ -25,16 +25,16 @@ void main() {
     test('fromJson falls back to defaults when keys are missing', () {
       final restored = SessionPreferences.fromJson(const <String, Object?>{});
       expect(restored.cliExecutablePath, '');
-      expect(restored.autoLaunchAllMembersOnConnect, false);
-      expect(restored.scopeSessionsToSelectedTeam, false);
+      expect(restored.autoLaunchAllMembersOnConnect, true);
+      expect(restored.scopeSessionsToSelectedTeam, true);
     });
 
     test('copyWith updates only specified fields', () {
       const prefs = SessionPreferences();
       final next = prefs.copyWith(cliExecutablePath: '/a/b');
       expect(next.cliExecutablePath, '/a/b');
-      expect(next.autoLaunchAllMembersOnConnect, false);
-      expect(next.scopeSessionsToSelectedTeam, false);
+      expect(next.autoLaunchAllMembersOnConnect, true);
+      expect(next.scopeSessionsToSelectedTeam, true);
       final next2 = prefs.copyWith(scopeSessionsToSelectedTeam: true);
       expect(next2.scopeSessionsToSelectedTeam, true);
       expect(next2.cliExecutablePath, '');

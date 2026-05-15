@@ -1,0 +1,86 @@
+name: Client Build Verify
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "client/**"
+      - ".github/workflows/client-verify.yml"
+  pull_request:
+    paths:
+      - "client/**"
+      - ".github/workflows/client-verify.yml"
+
+concurrency:
+  group: client-verify-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: client
+
+jobs:
+  verify:
+    name: ${{ matrix.label }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-22.04
+            label: Linux
+            platform: linux
+            install_linux_deps: true
+            package_deb: true
+          - os: windows-latest
+            label: Windows
+            platform: windows
+            install_linux_deps: false
+            package_deb: false
+          - os: macos-latest
+            label: macOS
+            platform: macos
+            install_linux_deps: false
+            package_deb: false
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Linux build dependencies
+        if: matrix.install_linux_deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            clang cmake git ninja-build pkg-config \
+            libgtk-3-dev liblzma-dev libstdc++-12-dev libsecret-1-dev \
+            dpkg fakeroot file
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Activate fastforge
+        if: matrix.package_deb
+        run: dart pub global activate fastforge
+
+      - name: Add pub-cache to PATH
+        if: matrix.package_deb
+        run: echo "$HOME/.pub-cache/bin" >> "$GITHUB_PATH"
+
+      - name: Resolve Flutter packages
+        run: flutter pub get
+
+      - name: Sync bundled Google Fonts (Noto Sans SC)
+        run: dart run tool/sync_bundled_google_fonts.dart
+
+      - name: Analyze (errors only)
+        run: flutter analyze --no-fatal-infos --no-fatal-warnings
+
+      - name: Unit and widget tests
+        run: flutter test --exclude-tags integration
+
+      - name: Build (${{ matrix.platform }})
+        run: flutter build ${{ matrix.platform }} --debug

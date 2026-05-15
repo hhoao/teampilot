@@ -58,7 +58,10 @@ dart run build_runner build --delete-conflicting-outputs
 
 ```bash
 cd client
-flutter test
+flutter test --exclude-tags integration
+# Linux PTY 集成测试需先构建并设置库路径：
+# flutter build linux --debug
+# LD_LIBRARY_PATH=build/linux/x64/debug/bundle/lib flutter test --tags integration
 ```
 
 ## 打包发布（维护者）
@@ -71,7 +74,7 @@ CI 使用 [fastforge](https://pub.dev/packages/fastforge) 在 `client/dist/` 产
 
 推送符合 `v*` 格式的 **Git tag** 会触发 [Release Desktop Packages](.github/workflows/release.yml)，构建三平台产物并创建 **GitHub Release**。也可在 Actions 中 **手动运行（workflow_dispatch）**，可选指定 `ref`。
 
-对 `client/` 的变更会在 [Client Windows (EXE)](.github/workflows/client-windows.yml) 中自动打 Windows EXE 安装包（PR / `main` 推送），产物以 **Artifact** 形式供下载。
+对 `client/` 的变更会在 [Client Build Verify](.github/workflows/client-verify.yml) 中于 **Linux / Windows / macOS** 三端并行执行：静态分析、`flutter test`（含 Linux 上构建后的 PTY 集成测试）、`flutter build`，并在 Linux 上额外打 `.deb` 打包冒烟测试（PR / 推送到 `main`）。
 
 本地打包示例：
 

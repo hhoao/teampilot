@@ -17,8 +17,8 @@ void main() {
     final loaded = await repo.load();
 
     expect(loaded.cliExecutablePath, '');
-    expect(loaded.autoLaunchAllMembersOnConnect, false);
-    expect(loaded.scopeSessionsToSelectedTeam, false);
+    expect(loaded.autoLaunchAllMembersOnConnect, true);
+    expect(loaded.scopeSessionsToSelectedTeam, true);
   });
 
   test('round-trips through SharedPreferences', () async {
@@ -48,8 +48,8 @@ void main() {
     final loaded = await repo.load();
 
     expect(loaded.cliExecutablePath, '');
-    expect(loaded.autoLaunchAllMembersOnConnect, false);
-    expect(loaded.scopeSessionsToSelectedTeam, false);
+    expect(loaded.autoLaunchAllMembersOnConnect, true);
+    expect(loaded.scopeSessionsToSelectedTeam, true);
   });
 
   test('stores JSON under the documented key', () async {
