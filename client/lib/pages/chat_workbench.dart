@@ -21,11 +21,7 @@ const _terminalTextStyle = TerminalStyle(
   height: 1.3,
   // Match VTE: ANSI bold uses brighter colors, not a heavier font file.
   useBoldFontWeight: false,
-  fontFamilyFallback: [
-    kUbuntuSansMonoFontFamily,
-    'Noto Sans Mono CJK SC',
-    'monospace',
-  ],
+  fontFamilyFallback: [kUbuntuSansMonoFontFamily, 'monospace'],
 );
 
 class ChatWorkbench extends StatefulWidget {
