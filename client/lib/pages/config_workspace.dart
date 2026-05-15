@@ -7,6 +7,7 @@ import '../cubits/layout_cubit.dart';
 import '../cubits/team_cubit.dart';
 import '../l10n/app_localizations.dart';
 import '../models/layout_preferences.dart';
+import '../theme/app_theme.dart';
 import '../utils/app_keys.dart';
 import '../widgets/settings/workspace_settings_toggle_strip.dart';
 import '../widgets/settings/workspace_settings_widgets.dart';
@@ -264,6 +265,17 @@ class _LayoutControls extends StatelessWidget {
                 showDividerBelow: true,
               ),
               SettingsLabeledRow(
+                title: l10n.themeColorPresetTitle,
+                subtitle: l10n.themeColorPresetDescription,
+                trailing: _ThemeColorPresetPicker(
+                  selected: normalizeThemeColorPreset(
+                    preferences.themeColorPreset,
+                  ),
+                  onSelect: controller.setThemeColorPreset,
+                ),
+                showDividerBelow: true,
+              ),
+              SettingsLabeledRow(
                 title: l10n.language,
                 subtitle: l10n.languageDescription,
                 trailing: SettingsCompactDropdown<String>(
@@ -300,6 +312,112 @@ class _LayoutControls extends StatelessWidget {
           contextSidebarVisible ?? preferences.contextSidebarVisible,
       membersVisible: membersVisible ?? preferences.membersVisible,
       fileTreeVisible: fileTreeVisible ?? preferences.fileTreeVisible,
+    );
+  }
+}
+
+class _ThemeColorPresetPicker extends StatelessWidget {
+  const _ThemeColorPresetPicker({
+    required this.selected,
+    required this.onSelect,
+  });
+
+  final String selected;
+  final ValueChanged<String> onSelect;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    return Align(
+      alignment: Alignment.centerRight,
+      child: Wrap(
+        alignment: WrapAlignment.end,
+        spacing: 8,
+        runSpacing: 8,
+        children: [
+          for (final id in kThemeColorPresetIds)
+            _ThemeColorPresetChip(
+              id: id,
+              label: l10n.themeColorPresetName(id),
+              selected: id == selected,
+              onTap: () => onSelect(id),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ThemeColorPresetChip extends StatelessWidget {
+  const _ThemeColorPresetChip({
+    required this.id,
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String id;
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textBase = isDark ? Colors.white : const Color(0xFF111827);
+    final primary = themePresetSwatchPrimary(id);
+    final secondary = themePresetSwatchSecondary(id);
+    return Material(
+      color: cs.surfaceContainerHigh,
+      borderRadius: BorderRadius.circular(999),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(999),
+        onTap: onTap,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(
+              color: selected ? cs.primary : cs.outlineVariant,
+              width: selected ? 2 : 1,
+            ),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 10,
+                  height: 10,
+                  decoration: BoxDecoration(
+                    color: primary,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                const SizedBox(width: 4),
+                Container(
+                  width: 10,
+                  height: 10,
+                  decoration: BoxDecoration(
+                    color: secondary,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
+                    color: textBase.withValues(alpha: selected ? 1 : 0.78),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

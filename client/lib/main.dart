@@ -191,11 +191,13 @@ class FlashskyAiClientApp extends StatelessWidget {
       _ => ThemeMode.system,
     };
 
+    final colorPreset = normalizeThemeColorPreset(prefs.themeColorPreset);
+
     return MaterialApp.router(
       debugShowCheckedModeBanner: false,
       title: 'TeamPilot',
-      theme: buildLightTheme(),
-      darkTheme: buildDarkTheme(),
+      theme: buildLightTheme(colorPreset),
+      darkTheme: buildDarkTheme(colorPreset),
       themeMode: themeModeFromPrefs(prefs.themeMode),
       localizationsDelegates: const [
         AppLocalizations.delegate,

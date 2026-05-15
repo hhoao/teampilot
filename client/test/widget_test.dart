@@ -294,7 +294,7 @@ void main() {
     final settingsCtx = tester.element(find.byKey(AppKeys.configWorkspace));
     final settingsTheme = Theme.of(settingsCtx);
     final cs = settingsTheme.colorScheme;
-    expect(cs.primary, const Color(0xFF5B8DEF));
+    expect(cs.primary, const Color(0xFF2E3033));
     expect(settingsTheme.filledButtonTheme.style, isNotNull);
 
     await tester.tap(find.byKey(AppKeys.configLlmSectionButton));
@@ -694,7 +694,7 @@ void main() {
     },
   );
 
-  test('llm config cubit manages providers and models', () {
+  test('llm config cubit manages providers and models', () async {
     final cubit = testLlmConfigCubit(
       initialConfig: const LlmConfig(
         providers: {
@@ -712,6 +712,7 @@ void main() {
     cubit.addProvider(
       const LlmProviderConfig(name: 'new', type: 'account', providerType: ''),
     );
+    await Future<void>.delayed(Duration.zero);
     expect(cubit.state.config.providers.length, 2);
 
     cubit.addModel(
@@ -723,9 +724,11 @@ void main() {
         enabled: true,
       ),
     );
+    await Future<void>.delayed(Duration.zero);
     expect(cubit.state.config.models.length, 1);
 
     cubit.deleteProvider('new');
+    await Future<void>.delayed(Duration.zero);
     expect(cubit.state.config.providers.length, 1);
   });
 }

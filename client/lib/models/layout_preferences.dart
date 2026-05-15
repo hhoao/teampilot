@@ -1,3 +1,5 @@
+import '../theme/app_theme.dart';
+
 enum LayoutPreset { workbench, chatFocus, inspector }
 
 enum ToolPanelPlacement { right, bottom }
@@ -18,6 +20,7 @@ class LayoutPreferences {
     this.sidebarWidth = defaultSidebarWidth,
     this.membersSplit = 0.42,
     this.themeMode = 'system',
+    this.themeColorPreset = 'graphite',
     this.locale = '',
   });
 
@@ -51,6 +54,9 @@ class LayoutPreferences {
         fallback: 0.42,
       ).clamp(0.25, 0.75),
       themeMode: json['themeMode'] as String? ?? 'system',
+      themeColorPreset: normalizeThemeColorPreset(
+        json['themeColorPreset'] as String?,
+      ),
       locale: json['locale'] as String? ?? '',
     ).withAtLeastOneToolVisible();
   }
@@ -77,6 +83,7 @@ class LayoutPreferences {
   final double sidebarWidth;
   final double membersSplit;
   final String themeMode;
+  final String themeColorPreset;
   final String locale;
 
   LayoutPreferences copyWith({
@@ -92,6 +99,7 @@ class LayoutPreferences {
     double? sidebarWidth,
     double? membersSplit,
     String? themeMode,
+    String? themeColorPreset,
     String? locale,
   }) {
     return LayoutPreferences(
@@ -117,6 +125,7 @@ class LayoutPreferences {
       ),
       membersSplit: (membersSplit ?? this.membersSplit).clamp(0.25, 0.75),
       themeMode: themeMode ?? this.themeMode,
+      themeColorPreset: themeColorPreset ?? this.themeColorPreset,
       locale: locale ?? this.locale,
     ).withAtLeastOneToolVisible();
   }
@@ -138,6 +147,7 @@ class LayoutPreferences {
       sidebarWidth: sidebarWidth,
       membersSplit: membersSplit,
       themeMode: themeMode,
+      themeColorPreset: themeColorPreset,
       locale: locale,
     );
   }
@@ -156,6 +166,7 @@ class LayoutPreferences {
       'sidebarWidth': sidebarWidth,
       'membersSplit': membersSplit,
       'themeMode': themeMode,
+      'themeColorPreset': themeColorPreset,
       'locale': locale,
     };
   }

@@ -4,13 +4,79 @@ import 'package:flex_color_scheme/flex_color_scheme.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-const _primary = Color(0xFF5B8DEF);
-const _secondary = Color(0xFF38CFA2);
-const _error = Color(0xFFFF7A7A);
+/// Persisted preset ids (order = settings UI order).
+const List<String> kThemeColorPresetIds = [
+  'graphite',
+  'ocean',
+  'violet',
+  'amber',
+  'forest',
+];
 
-/// Logo 渐变独立于 ThemeMode，作为顶层 const 暴露。
-const logoGradientStart = _primary;
-const logoGradientEnd = _secondary;
+const String kDefaultThemeColorPreset = 'graphite';
+
+String normalizeThemeColorPreset(String? raw) {
+  if (raw != null && kThemeColorPresetIds.contains(raw)) return raw;
+  return kDefaultThemeColorPreset;
+}
+
+typedef _Palette = ({Color primary, Color secondary, Color error});
+
+const _palettes = <String, _Palette>{
+  'graphite': (
+    primary: Color(0xFF2E3033),
+    secondary: Color(0xFF38CFA2),
+    error: Color(0xFFFF7A7A),
+  ),
+  'ocean': (
+    primary: Color(0xFF6A90B8),
+    secondary: Color(0xFF72A8A8),
+    error: Color(0xFFD87A7A),
+  ),
+  'violet': (
+    primary: Color(0xFF9B8FC9),
+    secondary: Color(0xFFB5A3D4),
+    error: Color(0xFFD87A7A),
+  ),
+  'amber': (
+    primary: Color(0xFFD4A06A),
+    secondary: Color(0xFFE4C080),
+    error: Color(0xFFD8897A),
+  ),
+  'forest': (
+    primary: Color(0xFF7FA892),
+    secondary: Color(0xFF9CB89E),
+    error: Color(0xFFD88A8A),
+  ),
+};
+
+_Palette _palette(String presetId) =>
+    _palettes[normalizeThemeColorPreset(presetId)]!;
+
+/// Seeds the Material [ColorScheme]. Flex Color Scheme also blends
+/// [primary]/[secondary] into surfaces per [surfaceMode] and [blendLevel]
+/// (not only buttons).
+FlexSchemeColor _flexSchemeColors(String presetId) {
+  final p = _palette(presetId);
+  return FlexSchemeColor(
+    primary: p.primary,
+    secondary: p.secondary,
+    error: p.error,
+    primaryContainer: p.primary,
+    secondaryContainer: p.secondary,
+  );
+}
+
+/// Primary accent for branding (e.g. logo gradient) for the given preset.
+Color logoGradientStartFor(String presetId) => _palette(presetId).primary;
+
+/// Secondary accent for branding for the given preset.
+Color logoGradientEndFor(String presetId) => _palette(presetId).secondary;
+
+Color themePresetSwatchPrimary(String presetId) => _palette(presetId).primary;
+
+Color themePresetSwatchSecondary(String presetId) =>
+    _palette(presetId).secondary;
 
 const _subThemes = FlexSubThemesData(
   defaultRadius: 10,
@@ -18,6 +84,7 @@ const _subThemes = FlexSubThemesData(
   outlinedButtonRadius: 999,
   elevatedButtonRadius: 999,
   inputDecoratorRadius: 8,
+
   /// 全局使用 [OutlineInputBorder]，避免 FCS 默认的 underline（仅上圆角 + 底边指示线）。
   inputDecoratorBorderType: FlexInputBorderType.outline,
   inputDecoratorIsFilled: true,
@@ -38,33 +105,28 @@ bool _googleFontsNetworkAllowed() {
   }
 }
 
-ThemeData buildLightTheme() => _applyTypography(
+ThemeData buildLightTheme([String? themeColorPreset]) => _applyTypography(
   FlexThemeData.light(
-    colors: const FlexSchemeColor(
-      primary: _primary,
-      secondary: _secondary,
-      error: _error,
-      primaryContainer: _primary,
-      secondaryContainer: _secondary,
-    ),
+    colors: _flexSchemeColors(normalizeThemeColorPreset(themeColorPreset)),
     surfaceMode: FlexSurfaceMode.levelSurfacesLowScaffold,
-    blendLevel: 7,
+
+    /// Higher blend: scaffold / cards pick up more of the seed colors so
+    /// presets change the whole UI, not only primary-filled controls.
+    blendLevel: 12,
     subThemesData: _subThemes,
     useMaterial3: true,
   ),
 );
 
-ThemeData buildDarkTheme() => _applyTypography(
+ThemeData buildDarkTheme([String? themeColorPreset]) => _applyTypography(
   FlexThemeData.dark(
-    colors: const FlexSchemeColor(
-      primary: _primary,
-      secondary: _secondary,
-      error: _error,
-      primaryContainer: _primary,
-      secondaryContainer: _secondary,
-    ),
+    colors: _flexSchemeColors(normalizeThemeColorPreset(themeColorPreset)),
     surfaceMode: FlexSurfaceMode.levelSurfacesLowScaffold,
-    blendLevel: 10,
+    blendLevel: 40,
+
+    /// When true, base layer stays near #000 so only upper surfaces show
+    /// strong tint. Set false for a fully tinted dark scaffold (tradeoff:
+    /// less OLED “true black”).
     darkIsTrueBlack: true,
     subThemesData: _subThemes,
     useMaterial3: true,
@@ -82,8 +144,9 @@ ThemeData _applyTypography(ThemeData flexTheme) {
     useMaterial3: true,
   );
   final textTheme = GoogleFonts.notoSansScTextTheme(typographySeed.textTheme);
-  final primaryTextTheme =
-      GoogleFonts.notoSansScTextTheme(typographySeed.primaryTextTheme);
+  final primaryTextTheme = GoogleFonts.notoSansScTextTheme(
+    typographySeed.primaryTextTheme,
+  );
   final appUiFont = GoogleFonts.notoSansSc();
   return flexTheme.copyWith(
     textTheme: textTheme.apply(
