@@ -25,6 +25,7 @@ import 'repositories/team_repository.dart';
 import 'router/app_router.dart';
 import 'services/app_storage.dart';
 import 'services/flashskyai_cli_locator.dart';
+import 'services/team_skill_linker_service.dart';
 import 'services/temp_team_cleaner.dart';
 import 'theme/app_theme.dart';
 import 'widgets/ui_warmup.dart';
@@ -128,10 +129,17 @@ void main() async {
     return s.isUsingCustomPath ? s.effectiveConfigPath : null;
   }
 
+  final skillRepo = SkillRepository();
   final teamCubit = TeamCubit(
     repository: teamRepo,
     executableResolver: () => sessionPreferencesCubit.resolveExecutable(),
     llmConfigPathOverride: llmConfigPathOverrideForLaunch,
+    skillLinker: TeamSkillLinkerService(),
+    installedSkillsLoader: () => skillRepo.loadInstalled(),
+  );
+  final skillCubit = SkillCubit(
+    skillRepo,
+    onSkillUninstalled: teamCubit.removeSkillFromAllTeams,
   );
   final layoutCubit = LayoutCubit(repository: LayoutRepository(preferences));
   final chatCubit = ChatCubit(
@@ -143,14 +151,14 @@ void main() async {
     executableResolver: () => sessionPreferencesCubit.resolveExecutable(),
   );
   final configCubit = ConfigCubit();
-  final skillCubit = SkillCubit(SkillRepository());
 
   await teamCubit.load();
   await layoutCubit.load();
   await sessionPreferencesCubit.load();
   await llmConfigCubit.load();
   chatCubit.loadProjectData(sessionRepo);
-  unawaited(skillCubit.loadAll());
+  await skillCubit.loadAll();
+  await teamCubit.syncSelectedTeamSkills(installed: skillCubit.state.installed);
 
   windowManager.addListener(_CleanupWindowListener(chatCubit));
 

@@ -130,9 +130,18 @@ class TeamConfig {
     required this.name,
     this.extraArgs = '',
     this.members = const [],
+    this.skillIds = const [],
     this.createdAt = 0,
     this.loop,
   });
+
+  static List<String> decodeSkillIds(Object? raw) {
+    if (raw is! List) return const [];
+    return raw
+        .map((e) => e?.toString().trim() ?? '')
+        .where((s) => s.isNotEmpty)
+        .toList(growable: false);
+  }
 
   /// `--loop` for `--team` mode: `true` / `false`; otherwise returns null.
   static bool? decodeLoop(Object? raw) {
@@ -164,6 +173,7 @@ class TeamConfig {
       name: name,
       extraArgs: json['extraArgs'] as String? ?? '',
       members: members,
+      skillIds: decodeSkillIds(json['skillIds']),
       createdAt: (json['createdAt'] as num?)?.toInt() ?? 0,
       loop: decodeLoop(json['loop']),
     );
@@ -173,6 +183,9 @@ class TeamConfig {
   final String name;
   final String extraArgs;
   final List<TeamMemberConfig> members;
+
+  /// Manifest [Skill.id] values enabled for this team.
+  final List<String> skillIds;
   final int createdAt;
 
   /// When non-null, launch passes `--loop true` or `--loop false` (team mode).
@@ -185,6 +198,7 @@ class TeamConfig {
     String? name,
     String? extraArgs,
     List<TeamMemberConfig>? members,
+    List<String>? skillIds,
     int? createdAt,
     bool? loop,
     bool updateLoop = false,
@@ -194,6 +208,7 @@ class TeamConfig {
       name: name ?? this.name,
       extraArgs: extraArgs ?? this.extraArgs,
       members: members ?? this.members,
+      skillIds: skillIds ?? this.skillIds,
       createdAt: createdAt ?? this.createdAt,
       loop: updateLoop ? loop : this.loop,
     );
@@ -205,6 +220,7 @@ class TeamConfig {
       'name': name,
       'extraArgs': extraArgs,
       'members': members.map((member) => member.toJson()).toList(),
+      if (skillIds.isNotEmpty) 'skillIds': skillIds,
       'createdAt': createdAt,
       if (loop != null) 'loop': loop!,
     };
@@ -219,6 +235,7 @@ class TeamConfig {
             name == other.name &&
             extraArgs == other.extraArgs &&
             listEquals(members, other.members) &&
+            listEquals(skillIds, other.skillIds) &&
             createdAt == other.createdAt &&
             loop == other.loop;
   }
@@ -229,6 +246,7 @@ class TeamConfig {
         name,
         extraArgs,
         Object.hashAll(members),
+        Object.hashAll(skillIds),
         createdAt,
         loop,
       );

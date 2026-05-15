@@ -59,6 +59,12 @@ class AppLocalizations {
       _strings['deleteTeamConfirm']!.replaceFirst('{name}', name);
   String get dangerZone => _strings['dangerZone']!;
   String get membersSubtitle => _strings['membersSubtitle']!;
+  String get teamSkillsNav => _strings['teamSkillsNav']!;
+  String teamSkillsAssignedCount(int assigned, int total) =>
+      _strings['teamSkillsAssignedCount']!
+          .replaceFirst('{assigned}', '$assigned')
+          .replaceFirst('{total}', '$total');
+  String get teamSkillsManage => _strings['teamSkillsManage']!;
   String get llmConfig => _strings['llmConfig']!;
   String get llmConfigSubtitle => _strings['llmConfigSubtitle']!;
   String get llmConfigPathLabel => _strings['llmConfigPathLabel']!;
@@ -409,6 +415,12 @@ class _AppLocalizationsDelegate
     'teamSettings': {'en': 'Team Settings', 'zh': '团队设置'},
     'teamSettingsSubtitle': {'en': 'workspace teams', 'zh': '工作区团队'},
     'membersSubtitle': {'en': 'team agents', 'zh': '团队代理'},
+    'teamSkillsNav': {'en': 'Skills', 'zh': 'Skills'},
+    'teamSkillsAssignedCount': {
+      'en': '{assigned} of {total} enabled',
+      'zh': '已启用 {assigned}/{total}',
+    },
+    'teamSkillsManage': {'en': 'All skills', 'zh': '全部 Skills'},
     'llmConfig': {'en': 'Provider', 'zh': '服务商'},
     'llmConfigSubtitle': {'en': 'providers and models', 'zh': '提供商和模型'},
     'llmConfigPathLabel': {'en': 'LLM config file', 'zh': 'LLM 配置文件'},

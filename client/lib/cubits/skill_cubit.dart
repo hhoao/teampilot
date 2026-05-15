@@ -114,10 +114,15 @@ class SkillState extends Equatable {
   ];
 }
 
+typedef SkillUninstalledHandler = Future<void> Function(String skillId);
+
 class SkillCubit extends Cubit<SkillState> {
-  SkillCubit(this._repo) : super(const SkillState());
+  SkillCubit(this._repo, {SkillUninstalledHandler? onSkillUninstalled})
+      : _onSkillUninstalled = onSkillUninstalled,
+        super(const SkillState());
 
   final SkillRepository _repo;
+  final SkillUninstalledHandler? _onSkillUninstalled;
 
   Future<void> loadAll() async {
     emit(state.copyWith(status: SkillLoadStatus.loading, clearError: true));
@@ -263,6 +268,7 @@ class SkillCubit extends Cubit<SkillState> {
       final installed = await _repo.loadInstalled();
       final backups = await _repo.loadBackups();
       emit(state.copyWith(installed: installed, backups: backups));
+      await _onSkillUninstalled?.call(s.id);
     } catch (e) {
       emit(state.copyWith(errorMessage: '$e'));
     }

@@ -1,9 +1,12 @@
 import 'package:equatable/equatable.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../models/skill.dart';
 import '../models/team_config.dart';
 import '../repositories/team_repository.dart';
 import '../services/launch_command_builder.dart';
+import '../services/team_skill_linker_service.dart';
 import '../utils/logger.dart';
 
 class TeamState extends Equatable {
@@ -13,6 +16,7 @@ class TeamState extends Equatable {
     this.statusMessage = '',
     this.isLoading = true,
     this.isLaunching = false,
+    this.isSyncingSkills = false,
   });
 
   final List<TeamConfig> teams;
@@ -20,6 +24,7 @@ class TeamState extends Equatable {
   final String statusMessage;
   final bool isLoading;
   final bool isLaunching;
+  final bool isSyncingSkills;
 
   TeamConfig? get selectedTeam {
     for (final team in teams) {
@@ -34,6 +39,7 @@ class TeamState extends Equatable {
     String? statusMessage,
     bool? isLoading,
     bool? isLaunching,
+    bool? isSyncingSkills,
     bool clearSelectedTeamId = false,
   }) {
     return TeamState(
@@ -43,17 +49,25 @@ class TeamState extends Equatable {
       statusMessage: statusMessage ?? this.statusMessage,
       isLoading: isLoading ?? this.isLoading,
       isLaunching: isLaunching ?? this.isLaunching,
+      isSyncingSkills: isSyncingSkills ?? this.isSyncingSkills,
     );
   }
 
   @override
-  List<Object?> get props =>
-      [teams, selectedTeamId, statusMessage, isLoading, isLaunching];
+  List<Object?> get props => [
+        teams,
+        selectedTeamId,
+        statusMessage,
+        isLoading,
+        isLaunching,
+        isSyncingSkills,
+      ];
 }
 
 typedef TeamLauncher = Future<void> Function(
     TeamConfig team, TeamMemberConfig member);
 typedef StringProvider = String Function();
+typedef InstalledSkillsLoader = Future<List<Skill>> Function();
 
 class TeamCubit extends Cubit<TeamState> {
   TeamCubit({
@@ -61,9 +75,13 @@ class TeamCubit extends Cubit<TeamState> {
     required String Function() executableResolver,
     TeamLauncher? launcher,
     String? Function()? llmConfigPathOverride,
+    TeamSkillLinkerService? skillLinker,
+    InstalledSkillsLoader? installedSkillsLoader,
   })  : _repository = repository,
         _executableResolver = executableResolver,
         _llmConfigPathOverride = llmConfigPathOverride,
+        _skillLinker = skillLinker ?? TeamSkillLinkerService(),
+        _installedSkillsLoader = installedSkillsLoader,
         _launcher = launcher ??
             ((team, member) => LaunchCommandBuilder.launch(team,
                 member: member,
@@ -77,6 +95,8 @@ class TeamCubit extends Cubit<TeamState> {
   final String Function() _executableResolver;
   // ignore: unused_field
   final String? Function()? _llmConfigPathOverride;
+  final TeamSkillLinkerService _skillLinker;
+  final InstalledSkillsLoader? _installedSkillsLoader;
 
   static Map<String, String>? _envFromOverride(String? override) {
     if (override == null || override.isEmpty) return null;
@@ -121,11 +141,105 @@ class TeamCubit extends Cubit<TeamState> {
     appLogger.i('TeamCubit loaded ${teams.length} teams');
   }
 
-  void selectTeam(String id) {
-    if (state.teams.any((team) => team.id == id)) {
-      final team = state.teams.firstWhere((t) => t.id == id);
-      emit(state.copyWith(
-          selectedTeamId: id, statusMessage: 'Selected ${team.name}.'));
+  Future<void> selectTeam(String id) async {
+    if (!state.teams.any((team) => team.id == id)) return;
+    final team = state.teams.firstWhere((t) => t.id == id);
+    emit(state.copyWith(
+        selectedTeamId: id, statusMessage: 'Selected ${team.name}.'));
+    await _syncSkillsForSelected();
+  }
+
+  Future<void> syncSelectedTeamSkills({List<Skill>? installed}) async {
+    await _syncSkillsForSelected(installed: installed);
+  }
+
+  Future<void> removeSkillFromAllTeams(String skillId) async {
+    final selected = state.selectedTeam;
+    final syncNeeded =
+        selected != null && selected.skillIds.contains(skillId);
+    var changed = false;
+    final teams = [
+      for (final team in state.teams)
+        if (team.skillIds.contains(skillId))
+          () {
+            changed = true;
+            return team.copyWith(
+              skillIds: team.skillIds
+                  .where((id) => id != skillId)
+                  .toList(growable: false),
+            );
+          }()
+        else
+          team,
+    ];
+    if (!changed) return;
+    emit(state.copyWith(teams: teams));
+    await _repository.saveTeams(teams);
+    if (syncNeeded) {
+      await _syncSkillsForSelected();
+    }
+  }
+
+  Future<void> _syncSkillsForSelected({List<Skill>? installed}) async {
+    final team = state.selectedTeam;
+    if (team == null) return;
+
+    emit(state.copyWith(isSyncingSkills: true));
+    try {
+      final List<Skill> catalog;
+      if (installed != null) {
+        catalog = installed;
+      } else {
+        catalog = await (_installedSkillsLoader?.call() ??
+            Future.value(const <Skill>[]));
+      }
+      final enabled = catalog.where((s) => s.enabled).toList(growable: false);
+
+      var result = await _skillLinker.syncForTeam(
+        skillIds: team.skillIds,
+        installed: enabled,
+      );
+
+      if (result.skippedMissingIds.isNotEmpty) {
+        final prunedIds = team.skillIds
+            .where((id) => !result.skippedMissingIds.contains(id))
+            .toList(growable: false);
+        if (prunedIds.length != team.skillIds.length) {
+          final prunedTeam = team.copyWith(skillIds: prunedIds);
+          final teams = [
+            for (final t in state.teams)
+              if (t.id == team.id) prunedTeam else t,
+          ];
+          emit(state.copyWith(teams: teams));
+          await _repository.saveTeams(teams);
+          result = await _skillLinker.syncForTeam(
+            skillIds: prunedIds,
+            installed: enabled,
+          );
+        }
+      }
+
+      var status = state.statusMessage;
+      if (result.linked.isNotEmpty) {
+        status =
+            'Linked ${result.linked.length} skill(s) for ${team.name}.';
+      } else if (team.skillIds.isEmpty) {
+        status = 'Cleared CLI skills for ${team.name}.';
+      }
+      if (result.skippedMissingIds.isNotEmpty) {
+        status =
+            '$status Removed ${result.skippedMissingIds.length} missing skill(s).';
+      }
+      if (result.errors.isNotEmpty) {
+        status = result.errors.first;
+        appLogger.w('[team-skills] sync errors: ${result.errors}');
+      }
+      emit(state.copyWith(statusMessage: status));
+    } catch (e) {
+      appLogger.e('[team-skills] sync failed: $e');
+      emit(state.copyWith(statusMessage: 'Skill sync failed: $e'));
+    } finally {
+      emit(state.copyWith(isSyncingSkills: false));
     }
   }
 
@@ -143,11 +257,13 @@ class TeamCubit extends Cubit<TeamState> {
         selectedTeamId: team.id,
         statusMessage: 'Added ${team.name}.'));
     await _repository.saveTeams(teams);
+    await _syncSkillsForSelected();
   }
 
   Future<void> updateSelected(TeamConfig updated) async {
     final selected = state.selectedTeam;
     if (selected == null) return;
+    final skillsChanged = !listEquals(selected.skillIds, updated.skillIds);
     final normalized = updated.members.isEmpty
         ? updated.copyWith(members: [_defaultMember()])
         : updated;
@@ -163,6 +279,9 @@ class TeamCubit extends Cubit<TeamState> {
           : 'Name is required.',
     ));
     await _repository.saveTeams(teams);
+    if (skillsChanged) {
+      await _syncSkillsForSelected();
+    }
   }
 
   Future<void> deleteSelected() async {
@@ -177,6 +296,7 @@ class TeamCubit extends Cubit<TeamState> {
         selectedTeamId: teams.first.id,
         statusMessage: 'Deleted ${selected.name}.'));
     await _repository.saveTeams(teams);
+    await _syncSkillsForSelected();
   }
 
   Future<void> addMember() async {

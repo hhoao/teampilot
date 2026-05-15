@@ -100,7 +100,7 @@ class _ContextSidebarState extends State<ContextSidebar> {
                 _TeamSelector(
                   teams: teamCubit.state.teams,
                   selected: selected,
-                  onSelect: teamCubit.selectTeam,
+                  onSelect: (id) => unawaited(teamCubit.selectTeam(id)),
                   onAddTeam: () => teamCubit.addTeam(),
                 ),
                 const SizedBox(height: 14),

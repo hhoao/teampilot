@@ -124,6 +124,30 @@ void main() {
     expect(changedTeam.members.single, changedMember);
   });
 
+  test('round trips skillIds', () {
+    const team = TeamConfig(
+      id: 'team-1',
+      name: 'hello',
+      skillIds: ['local:foo', 'anthropics/skills:bar'],
+    );
+    final decoded = TeamConfig.fromJson(team.toJson());
+    expect(decoded.skillIds, team.skillIds);
+    expect(team.toJson()['skillIds'], team.skillIds);
+  });
+
+  test('decodeSkillIds ignores invalid entries', () {
+    expect(
+      TeamConfig.decodeSkillIds(['a', '', null, '  ', 'b']),
+      ['a', 'b'],
+    );
+    expect(TeamConfig.decodeSkillIds(null), isEmpty);
+  });
+
+  test('toJson omits skillIds when empty', () {
+    const team = TeamConfig(id: 't', name: 'n');
+    expect(team.toJson().containsKey('skillIds'), isFalse);
+  });
+
   test('copyWith updateLoop clears or sets loop', () {
     const team = TeamConfig(id: 't', name: 'n', loop: true);
     expect(team.copyWith(name: 'x').loop, isTrue);

@@ -1,16 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../constants/flashskyai_built_in_agents.dart';
 import '../cubits/llm_config_cubit.dart';
+import '../cubits/skill_cubit.dart';
 import '../cubits/team_cubit.dart';
 import '../l10n/app_localizations.dart';
+import '../models/skill.dart';
 import '../models/team_config.dart';
 import '../utils/app_keys.dart';
 import '../widgets/dropdown/custom_dropdown.dart';
 import '../widgets/dropdown/flashskyai_dropdown_decoration.dart';
 
-enum _TeamPageSection { team, members }
+enum _TeamPageSection { team, skills, members }
 
 String _teamLoopChoiceLabel(AppLocalizations l10n, String? key) {
   switch (key) {
@@ -141,6 +145,10 @@ class _TeamConfigPageState extends State<TeamConfigPage> {
                                 team: team,
                                 cubit: teamCubit,
                               ),
+                              _TeamPageSection.skills => _TeamSkillsSection(
+                                team: team,
+                                cubit: teamCubit,
+                              ),
                               _TeamPageSection.members => _MemberDetailSection(
                                 team: team,
                                 cubit: teamCubit,
@@ -246,6 +254,12 @@ class _NavPanel extends StatelessWidget {
             icon: Icons.groups_outlined,
             selected: section == _TeamPageSection.team,
             onTap: () => onSelect(_TeamPageSection.team),
+          ),
+          _NavItem(
+            title: l10n.teamSkillsNav,
+            icon: Icons.extension_outlined,
+            selected: section == _TeamPageSection.skills,
+            onTap: () => onSelect(_TeamPageSection.skills),
           ),
           _NavItem(
             title: l10n.members,
@@ -478,16 +492,17 @@ class _Card extends StatelessWidget {
 }
 
 class _CardHeader extends StatelessWidget {
-  const _CardHeader({required this.title, this.subtitle});
+  const _CardHeader({required this.title, this.subtitle, this.trailing});
 
   final String title;
   final String? subtitle;
+  final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textBase = isDark ? Colors.white : const Color(0xFF111827);
-    return Column(
+    final titleWidget = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
@@ -510,6 +525,241 @@ class _CardHeader extends StatelessWidget {
         ],
       ],
     );
+    if (trailing == null) return titleWidget;
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(child: titleWidget),
+        trailing!,
+      ],
+    );
+  }
+}
+
+class _TeamSkillsSection extends StatelessWidget {
+  const _TeamSkillsSection({required this.team, required this.cubit});
+
+  final TeamConfig team;
+  final TeamCubit cubit;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textBase = isDark ? Colors.white : const Color(0xFF111827);
+    final skillState = context.watch<SkillCubit>().state;
+    final syncing = context.watch<TeamCubit>().state.isSyncingSkills;
+    final enabled =
+        skillState.installed.where((s) => s.enabled).toList(growable: false);
+    final assignedCount =
+        enabled.where((s) => team.skillIds.contains(s.id)).length;
+
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _Card(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _CardHeader(
+                  title: l10n.teamSkillsAssignedCount(assignedCount, enabled.length),
+                  trailing: OutlinedButton.icon(
+                    onPressed: () => context.go('/skills'),
+                    icon: const Icon(Icons.extension_outlined, size: 16),
+                    label: Text(l10n.teamSkillsManage),
+                  ),
+                ),
+                if (syncing) ...[
+                  const SizedBox(height: 12),
+                  const LinearProgressIndicator(),
+                ],
+                const SizedBox(height: 14),
+                if (enabled.isEmpty)
+                  _TeamSkillsEmptyBlock(
+                    textBase: textBase,
+                    onGoSkills: () => context.go('/skills'),
+                  )
+                else
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      for (final skill in enabled)
+                        _TeamSkillRow(
+                          skill: skill,
+                          assigned: team.skillIds.contains(skill.id),
+                          onAssignedChanged: (assigned) {
+                            final ids = List<String>.from(team.skillIds);
+                            if (assigned) {
+                              if (!ids.contains(skill.id)) ids.add(skill.id);
+                            } else {
+                              ids.remove(skill.id);
+                            }
+                            cubit.updateSelected(team.copyWith(skillIds: ids));
+                          },
+                        ),
+                    ],
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TeamSkillsEmptyBlock extends StatelessWidget {
+  const _TeamSkillsEmptyBlock({
+    required this.textBase,
+    required this.onGoSkills,
+  });
+
+  final Color textBase;
+  final VoidCallback onGoSkills;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 24),
+      child: Column(
+        children: [
+          Icon(
+            Icons.inventory_2_outlined,
+            size: 36,
+            color: textBase.withValues(alpha: 0.35),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            l10n.skillsNoInstalled,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              color: textBase,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            l10n.skillsNoInstalledHint,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 12,
+              color: textBase.withValues(alpha: 0.55),
+            ),
+          ),
+          const SizedBox(height: 14),
+          OutlinedButton.icon(
+            onPressed: onGoSkills,
+            icon: const Icon(Icons.extension_outlined, size: 16),
+            label: Text(l10n.teamSkillsManage),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TeamSkillRow extends StatelessWidget {
+  const _TeamSkillRow({
+    required this.skill,
+    required this.assigned,
+    required this.onAssignedChanged,
+  });
+
+  final Skill skill;
+  final bool assigned;
+  final ValueChanged<bool> onAssignedChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final l10n = context.l10n;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textBase = isDark ? Colors.white : const Color(0xFF111827);
+    final sourceLabel = skill.repoOwner != null && skill.repoName != null
+        ? '${skill.repoOwner}/${skill.repoName}'
+        : l10n.skillsLocal;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: cs.surfaceContainerHigh,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: cs.outlineVariant),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          skill.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: textBase,
+                          ),
+                        ),
+                      ),
+                      if (skill.readmeUrl != null) ...[
+                        const SizedBox(width: 4),
+                        InkWell(
+                          onTap: () => _openSkillUrl(skill.readmeUrl!),
+                          child: Icon(
+                            Icons.open_in_new,
+                            size: 14,
+                            color: textBase.withValues(alpha: 0.5),
+                          ),
+                        ),
+                      ],
+                      const SizedBox(width: 8),
+                      Text(
+                        sourceLabel,
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: textBase.withValues(alpha: 0.5),
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (skill.description.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      skill.description,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: textBase.withValues(alpha: 0.6),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            const SizedBox(width: 12),
+            Switch(value: assigned, onChanged: onAssignedChanged),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+Future<void> _openSkillUrl(String url) async {
+  final uri = Uri.tryParse(url);
+  if (uri == null) return;
+  if (await canLaunchUrl(uri)) {
+    await launchUrl(uri, mode: LaunchMode.externalApplication);
   }
 }
 
