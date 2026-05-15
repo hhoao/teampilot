@@ -20,33 +20,47 @@ String normalizeThemeColorPreset(String? raw) {
   return kDefaultThemeColorPreset;
 }
 
-typedef _Palette = ({Color primary, Color secondary, Color error});
+typedef _Palette = ({
+  Color primary,
+  Color secondary,
+  Color error,
+  /// When set, used for logo gradient only; [primary] is the interactive seed
+  /// for [ColorScheme] (outlines, links, filled buttons).
+  Color? logoPrimary,
+});
 
 const _palettes = <String, _Palette>{
   'graphite': (
-    primary: Color(0xFF2E3033),
+    /// Mid cool gray so controls contrast on near-black dark surfaces; the
+    /// near-black [#2E3033] is reserved for [logoPrimary] only.
+    primary: Color(0xFF8B939E),
     secondary: Color(0xFF38CFA2),
     error: Color(0xFFFF7A7A),
+    logoPrimary: Color(0xFF2E3033),
   ),
   'ocean': (
     primary: Color(0xFF6A90B8),
     secondary: Color(0xFF72A8A8),
     error: Color(0xFFD87A7A),
+    logoPrimary: null,
   ),
   'violet': (
     primary: Color(0xFF9B8FC9),
     secondary: Color(0xFFB5A3D4),
     error: Color(0xFFD87A7A),
+    logoPrimary: null,
   ),
   'amber': (
     primary: Color(0xFFD4A06A),
     secondary: Color(0xFFE4C080),
     error: Color(0xFFD8897A),
+    logoPrimary: null,
   ),
   'forest': (
     primary: Color(0xFF7FA892),
     secondary: Color(0xFF9CB89E),
     error: Color(0xFFD88A8A),
+    logoPrimary: null,
   ),
 };
 
@@ -68,7 +82,10 @@ FlexSchemeColor _flexSchemeColors(String presetId) {
 }
 
 /// Primary accent for branding (e.g. logo gradient) for the given preset.
-Color logoGradientStartFor(String presetId) => _palette(presetId).primary;
+Color logoGradientStartFor(String presetId) {
+  final p = _palette(presetId);
+  return p.logoPrimary ?? p.primary;
+}
 
 /// Secondary accent for branding for the given preset.
 Color logoGradientEndFor(String presetId) => _palette(presetId).secondary;

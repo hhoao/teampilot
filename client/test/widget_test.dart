@@ -294,7 +294,7 @@ void main() {
     final settingsCtx = tester.element(find.byKey(AppKeys.configWorkspace));
     final settingsTheme = Theme.of(settingsCtx);
     final cs = settingsTheme.colorScheme;
-    expect(cs.primary, const Color(0xFF2E3033));
+    expect(cs.primary, const Color(0xFF8B939E));
     expect(settingsTheme.filledButtonTheme.style, isNotNull);
 
     await tester.tap(find.byKey(AppKeys.configLlmSectionButton));
