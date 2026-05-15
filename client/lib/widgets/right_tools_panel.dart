@@ -8,7 +8,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../cubits/chat_cubit.dart';
 import '../cubits/file_tree_cubit.dart';
 import '../cubits/team_cubit.dart';
-import '../l10n/app_localizations.dart';
+import '../l10n/l10n_extensions.dart';
 import '../models/layout_preferences.dart';
 import '../models/team_config.dart';
 import '../utils/app_keys.dart';

@@ -1,845 +1,1712 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:intl/intl.dart' as intl;
 
-class AppLocalizations {
-  const AppLocalizations(this._strings);
+import 'app_localizations_en.dart';
+import 'app_localizations_zh.dart';
 
-  final Map<String, String> _strings;
+// ignore_for_file: type=lint
 
-  String get appTitle => _strings['appTitle']!;
-  String get appRailChat => _strings['appRailChat']!;
-  String get appRailRuns => _strings['appRailRuns']!;
-  String get appRailConfig => _strings['appRailConfig']!;
+/// Callers can lookup localized strings with an instance of AppLocalizations
+/// returned by `AppLocalizations.of(context)`.
+///
+/// Applications need to include `AppLocalizations.delegate()` in their app's
+/// `localizationDelegates` list, and the locales they support in the app's
+/// `supportedLocales` list. For example:
+///
+/// ```dart
+/// import 'l10n/app_localizations.dart';
+///
+/// return MaterialApp(
+///   localizationsDelegates: AppLocalizations.localizationsDelegates,
+///   supportedLocales: AppLocalizations.supportedLocales,
+///   home: MyApplicationHome(),
+/// );
+/// ```
+///
+/// ## Update pubspec.yaml
+///
+/// Please make sure to update your pubspec.yaml to include the following
+/// packages:
+///
+/// ```yaml
+/// dependencies:
+///   # Internationalization support.
+///   flutter_localizations:
+///     sdk: flutter
+///   intl: any # Use the pinned version from flutter_localizations
+///
+///   # Rest of dependencies
+/// ```
+///
+/// ## iOS Applications
+///
+/// iOS applications define key application metadata, including supported
+/// locales, in an Info.plist file that is built into the application bundle.
+/// To configure the locales supported by your app, you’ll need to edit this
+/// file.
+///
+/// First, open your project’s ios/Runner.xcworkspace Xcode workspace file.
+/// Then, in the Project Navigator, open the Info.plist file under the Runner
+/// project’s Runner folder.
+///
+/// Next, select the Information Property List item, select Add Item from the
+/// Editor menu, then select Localizations from the pop-up menu.
+///
+/// Select and expand the newly-created Localizations item then, for each
+/// locale your application supports, add a new item and select the locale
+/// you wish to add from the pop-up menu in the Value field. This list should
+/// be consistent with the languages listed in the AppLocalizations.supportedLocales
+/// property.
+abstract class AppLocalizations {
+  AppLocalizations(String locale)
+    : localeName = intl.Intl.canonicalizedLocale(locale.toString());
 
-  String get chatTo => _strings['chatTo']!;
-  String get copyPrompt => _strings['copyPrompt']!;
-  String get sendPrompt => _strings['sendPrompt']!;
-  String get chatHintText => _strings['chatHintText']!;
-  String get emptyTimeline => _strings['emptyTimeline']!;
+  final String localeName;
 
-  String get members => _strings['members']!;
-  String get fileTree => _strings['fileTree']!;
-  String get openTeam => _strings['openTeam']!;
-  String get openMember => _strings['openMember']!;
-  String get filterFiles => _strings['filterFiles']!;
-  String get copy => _strings['copy']!;
-
-  String get selectTeam => _strings['selectTeam']!;
-  String get addTeamTooltip => _strings['addTeamTooltip']!;
-  String get projects => _strings['projects']!;
-  String get newProject => _strings['newProject']!;
-  String get newSessionTooltip => _strings['newSessionTooltip']!;
-  String get defaultNewChatSessionTitle =>
-      _strings['defaultNewChatSessionTitle']!;
-  String get openFolder => _strings['openFolder']!;
-  String get copyFolderPath => _strings['copyFolderPath']!;
-  String get deleteProject => _strings['deleteProject']!;
-  String deleteProjectConfirm(String name) =>
-      _strings['deleteProjectConfirm']!.replaceFirst('{name}', name);
-  String get noSessions => _strings['noSessions']!;
-  String get unknownFolder => _strings['unknownFolder']!;
-  String get teamSessions => _strings['teamSessions']!;
-  String get renameConversation => _strings['renameConversation']!;
-  String get deleteConversation => _strings['deleteConversation']!;
-  String get closeTab => _strings['closeTab']!;
-  String get closeOtherTabs => _strings['closeOtherTabs']!;
-  String get closeRightTabs => _strings['closeRightTabs']!;
-  String get renameConversationTitle => _strings['renameConversationTitle']!;
-  String deleteConversationConfirm(String name) =>
-      _strings['deleteConversationConfirm']!.replaceFirst('{name}', name);
-  String get conversationName => _strings['conversationName']!;
-  String get settings => _strings['settings']!;
-  String get settingsPageSubtitle => _strings['settingsPageSubtitle']!;
-  String get configure => _strings['configure']!;
-  String get teamConfig => _strings['teamConfig']!;
-  String get teamSettings => _strings['teamSettings']!;
-  String get teamSettingsSubtitle => _strings['teamSettingsSubtitle']!;
-  String get deleteTeam => _strings['deleteTeam']!;
-  String get deleteTeamSubtitle => _strings['deleteTeamSubtitle']!;
-  String deleteTeamConfirm(String name) =>
-      _strings['deleteTeamConfirm']!.replaceFirst('{name}', name);
-  String get dangerZone => _strings['dangerZone']!;
-  String get membersSubtitle => _strings['membersSubtitle']!;
-  String get teamSkillsNav => _strings['teamSkillsNav']!;
-  String teamSkillsAssignedCount(int assigned, int total) =>
-      _strings['teamSkillsAssignedCount']!
-          .replaceFirst('{assigned}', '$assigned')
-          .replaceFirst('{total}', '$total');
-  String get teamSkillsManage => _strings['teamSkillsManage']!;
-  String get llmConfig => _strings['llmConfig']!;
-  String get llmConfigSubtitle => _strings['llmConfigSubtitle']!;
-  String get llmConfigPathLabel => _strings['llmConfigPathLabel']!;
-  String get llmConfigPathHint => _strings['llmConfigPathHint']!;
-  String get llmConfigPathBrowse => _strings['llmConfigPathBrowse']!;
-  String get llmConfigPathSave => _strings['llmConfigPathSave']!;
-  String get llmConfigPathReset => _strings['llmConfigPathReset']!;
-  String get llmConfigPathBadgeDefault =>
-      _strings['llmConfigPathBadgeDefault']!;
-  String get llmConfigPathBadgeCustom => _strings['llmConfigPathBadgeCustom']!;
-  String get llmConfigPathPickerTitle => _strings['llmConfigPathPickerTitle']!;
-  String get layout => _strings['layout']!;
-  String get layoutSubtitle => _strings['layoutSubtitle']!;
-  String get memberQuickList => _strings['memberQuickList']!;
-  String get providers => _strings['providers']!;
-  String get shellChatWorkbench => _strings['shellChatWorkbench']!;
-
-  String get teamName => _strings['teamName']!;
-  String get teamExtraArgs => _strings['teamExtraArgs']!;
-  String get teamExtraArgsHint => _strings['teamExtraArgsHint']!;
-  String get teamLoop => _strings['teamLoop']!;
-  String get teamLoopSubtitle => _strings['teamLoopSubtitle']!;
-  String get teamLoopDefault => _strings['teamLoopDefault']!;
-  String get teamLoopTrue => _strings['teamLoopTrue']!;
-  String get teamLoopFalse => _strings['teamLoopFalse']!;
-  String get memberLaunchOrder => _strings['memberLaunchOrder']!;
-  String get save => _strings['save']!;
-  String get editTeamSubtitle => _strings['editTeamSubtitle']!;
-
-  String get memberName => _strings['memberName']!;
-  String get provider => _strings['provider']!;
-  String get model => _strings['model']!;
-  String get agent => _strings['agent']!;
-  String get selectAgent => _strings['selectAgent']!;
-  String get agentBuiltInNone => _strings['agentBuiltInNone']!;
-  String get agentBuiltInCustom => _strings['agentBuiltInCustom']!;
-  String get agentBuiltInSubtitle => _strings['agentBuiltInSubtitle']!;
-  String get agentCustomIdHint => _strings['agentCustomIdHint']!;
-  String get memberExtraArgs => _strings['memberExtraArgs']!;
-  String get memberDangerouslySkipPermissions =>
-      _strings['memberDangerouslySkipPermissions']!;
-  String get memberDangerouslySkipPermissionsHint =>
-      _strings['memberDangerouslySkipPermissionsHint']!;
-  String get prompt => _strings['prompt']!;
-  String get selectModel => _strings['selectModel']!;
-  String get editMemberSubtitle => _strings['editMemberSubtitle']!;
-  String get saveMember => _strings['saveMember']!;
-  String get teamLeadNameRequired => _strings['teamLeadNameRequired']!;
-  String get teamLeadNotice => _strings['teamLeadNotice']!;
-
-  String get layoutPageSubtitle => _strings['layoutPageSubtitle']!;
-  String get session => _strings['session']!;
-  String get sessionPageSubtitle => _strings['sessionPageSubtitle']!;
-  String get cliExecutablePathLabel => _strings['cliExecutablePathLabel']!;
-  String get cliExecutablePathDescription =>
-      _strings['cliExecutablePathDescription']!;
-  String get cliExecutablePathBrowse => _strings['cliExecutablePathBrowse']!;
-  String get cliExecutablePathReset => _strings['cliExecutablePathReset']!;
-  String get cliExecutablePathUsing => _strings['cliExecutablePathUsing']!;
-  String get cliExecutablePathUsingFallback =>
-      _strings['cliExecutablePathUsingFallback']!;
-  String get toolPlacement => _strings['toolPlacement']!;
-  String get right => _strings['right']!;
-  String get bottom => _strings['bottom']!;
-  String get rightTools => _strings['rightTools']!;
-  String get bottomTray => _strings['bottomTray']!;
-  String get membersAndFileTree => _strings['membersAndFileTree']!;
-  String get stacked => _strings['stacked']!;
-  String get tabs => _strings['tabs']!;
-  String get stackedTools => _strings['stackedTools']!;
-  String get tabbedTools => _strings['tabbedTools']!;
-  String get regionVisibility => _strings['regionVisibility']!;
-  String get appRail => _strings['appRail']!;
-  String get toolPlacementDescription => _strings['toolPlacementDescription']!;
-  String get membersAndFileTreeDescription =>
-      _strings['membersAndFileTreeDescription']!;
-  String get visibilityTeamSessionsHint =>
-      _strings['visibilityTeamSessionsHint']!;
-  String get visibilityMembersHint => _strings['visibilityMembersHint']!;
-  String get visibilityFileTreeHint => _strings['visibilityFileTreeHint']!;
-  String get shellSession => _strings['shellSession']!;
-  String get autoLaunchAllMembersTitle =>
-      _strings['autoLaunchAllMembersTitle']!;
-  String get autoLaunchAllMembersDescription =>
-      _strings['autoLaunchAllMembersDescription']!;
-  String get scopeSessionsToSelectedTeamTitle =>
-      _strings['scopeSessionsToSelectedTeamTitle']!;
-  String get scopeSessionsToSelectedTeamDescription =>
-      _strings['scopeSessionsToSelectedTeamDescription']!;
-  String get themeModeTitle => _strings['themeModeTitle']!;
-  String get themeModeDescription => _strings['themeModeDescription']!;
-  String get themeColorPresetTitle => _strings['themeColorPresetTitle']!;
-  String get themeColorPresetDescription =>
-      _strings['themeColorPresetDescription']!;
-
-  /// Display name for a [LayoutPreferences.themeColorPreset] id.
-  String themeColorPresetName(String id) {
-    switch (id) {
-      case 'ocean':
-        return _strings['themePresetOcean']!;
-      case 'violet':
-        return _strings['themePresetViolet']!;
-      case 'amber':
-        return _strings['themePresetAmber']!;
-      case 'forest':
-        return _strings['themePresetForest']!;
-      case 'graphite':
-      default:
-        return _strings['themePresetGraphite']!;
-    }
+  static AppLocalizations of(BuildContext context) {
+    return Localizations.of<AppLocalizations>(context, AppLocalizations)!;
   }
 
-  String get languageDescription => _strings['languageDescription']!;
+  static const LocalizationsDelegate<AppLocalizations> delegate =
+      _AppLocalizationsDelegate();
 
-  String get llmConfigPageSubtitle => _strings['llmConfigPageSubtitle']!;
-  String get providersTab => _strings['providersTab']!;
-  String get modelsTab => _strings['modelsTab']!;
-  String get rawJsonTab => _strings['rawJsonTab']!;
-  String get addProvider => _strings['addProvider']!;
-  String get providerName => _strings['providerName']!;
-  String get cancel => _strings['cancel']!;
-  String get add => _strings['add']!;
-  String get delete => _strings['delete']!;
-  String get deleteProvider => _strings['deleteProvider']!;
-  String deleteProviderConfirm(String name) =>
-      _strings['deleteProviderConfirm']!.replaceFirst('{name}', name);
-  String get providerList => _strings['providerList']!;
-  String get filterProviders => _strings['filterProviders']!;
-  String modelsUsingProvider(int count) =>
-      '${_strings['modelsUsingProvider']!} $count';
-  String providerListCaption(int modelCount, bool proxyEnabled) {
-    final countPart = _strings['providerListModelCount']!.replaceFirst(
-      '{n}',
-      '$modelCount',
-    );
-    final proxyPart = proxyEnabled
-        ? _strings['proxyOnShort']!
-        : _strings['proxyOffShort']!;
-    return '$countPart · $proxyPart';
-  }
+  /// A list of this localizations delegate along with the default localizations
+  /// delegates.
+  ///
+  /// Returns a list of localizations delegates containing this delegate along with
+  /// GlobalMaterialLocalizations.delegate, GlobalCupertinoLocalizations.delegate,
+  /// and GlobalWidgetsLocalizations.delegate.
+  ///
+  /// Additional delegates can be added by appending to this list in
+  /// MaterialApp. This list does not have to be used at all if a custom list
+  /// of delegates is preferred or required.
+  static const List<LocalizationsDelegate<dynamic>> localizationsDelegates =
+      <LocalizationsDelegate<dynamic>>[
+        delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+      ];
 
-  String providerDetailSubtitle(String typeLabel, int count) =>
-      _strings['providerDetailSubtitle']!
-          .replaceFirst('{type}', typeLabel)
-          .replaceFirst('{count}', '$count');
-  String get type => _strings['type']!;
-  String get providerType => _strings['providerType']!;
-  String get providerTypeHint => _strings['providerTypeHint']!;
-  String get proxy => _strings['proxy']!;
-  String get proxyUrl => _strings['proxyUrl']!;
-  String get baseUrl => _strings['baseUrl']!;
-  String get apiKey => _strings['apiKey']!;
-  String get reveal => _strings['reveal']!;
-  String get hide => _strings['hide']!;
-  String get replaceKey => _strings['replaceKey']!;
-  String get deleteProviderTooltip => _strings['deleteProviderTooltip']!;
-  String get noModelsUsingProvider => _strings['noModelsUsingProvider']!;
-  String get modelsUsingProviderTitle => _strings['modelsUsingProviderTitle']!;
-  String get selectProvider => _strings['selectProvider']!;
-  String get accountCredentialPath => _strings['accountCredentialPath']!;
-  String get removePath => _strings['removePath']!;
-  String get addAccountPath => _strings['addAccountPath']!;
-  String get api => _strings['api']!;
-  String get account => _strings['account']!;
+  /// A list of this localizations delegate's supported locales.
+  static const List<Locale> supportedLocales = <Locale>[
+    Locale('en'),
+    Locale('zh'),
+  ];
 
-  String get models => _strings['models']!;
-  String get addModel => _strings['addModel']!;
-  String get modelName => _strings['modelName']!;
-  String get modelId => _strings['modelId']!;
-  String get enabled => _strings['enabled']!;
-  String get edit => _strings['edit']!;
-  String editModelTitle(String name) =>
-      _strings['editModelTitle']!.replaceFirst('{name}', name);
-  String get name => _strings['name']!;
-  String get actualModel => _strings['actualModel']!;
-  String get noModelsConfigured => _strings['noModelsConfigured']!;
-  String get missingProvider => _strings['missingProvider']!;
+  /// No description provided for @appTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'TeamPilot'**
+  String get appTitle;
 
-  String get summary => _strings['summary']!;
-  String get statProviders => _strings['statProviders']!;
-  String get statModels => _strings['statModels']!;
-  String get statMissingRefs => _strings['statMissingRefs']!;
-  String get statEmptyKeys => _strings['statEmptyKeys']!;
-  String get validation => _strings['validation']!;
-  String get allChecksPassed => _strings['allChecksPassed']!;
-  String get validate => _strings['validate']!;
-  String get back => _strings['back']!;
-  String get jsonPreview => _strings['jsonPreview']!;
+  /// No description provided for @appRailChat.
+  ///
+  /// In en, this message translates to:
+  /// **'Chat'**
+  String get appRailChat;
 
-  String get runsPlaceholder => _strings['runsPlaceholder']!;
+  /// No description provided for @appRailRuns.
+  ///
+  /// In en, this message translates to:
+  /// **'Runs'**
+  String get appRailRuns;
 
-  String get appearance => _strings['appearance']!;
-  String get theme => _strings['theme']!;
-  String get themeSystem => _strings['themeSystem']!;
-  String get themeDark => _strings['themeDark']!;
-  String get themeLight => _strings['themeLight']!;
-  String get language => _strings['language']!;
-  String get languageEnglish => _strings['languageEnglish']!;
-  String get languageChinese => _strings['languageChinese']!;
+  /// No description provided for @appRailConfig.
+  ///
+  /// In en, this message translates to:
+  /// **'Config'**
+  String get appRailConfig;
 
-  // Skills
-  String get skillsTitle => _strings['skillsTitle']!;
-  String get skillsSubtitle => _strings['skillsSubtitle']!;
-  String get skillsSidebarLabel => _strings['skillsSidebarLabel']!;
-  String get skillsNavInstalled => _strings['skillsNavInstalled']!;
-  String get skillsNavDiscovery => _strings['skillsNavDiscovery']!;
-  String get skillsNavRepos => _strings['skillsNavRepos']!;
-  String get skillsNavBackups => _strings['skillsNavBackups']!;
-  String skillsInstalledCount(int count) =>
-      _strings['skillsInstalledCount']!.replaceFirst('{count}', '$count');
-  String get skillsCheckUpdates => _strings['skillsCheckUpdates']!;
-  String get skillsCheckingUpdates => _strings['skillsCheckingUpdates']!;
-  String skillsUpdateAll(int count) =>
-      _strings['skillsUpdateAll']!.replaceFirst('{count}', '$count');
-  String get skillsImportFromDisk => _strings['skillsImportFromDisk']!;
-  String get skillsInstallFromZip => _strings['skillsInstallFromZip']!;
-  String get skillsNoInstalled => _strings['skillsNoInstalled']!;
-  String get skillsNoInstalledHint => _strings['skillsNoInstalledHint']!;
-  String get skillsGoDiscovery => _strings['skillsGoDiscovery']!;
-  String get skillsSourceRepos => _strings['skillsSourceRepos']!;
-  String get skillsSourceSkillsSh => _strings['skillsSourceSkillsSh']!;
-  String get skillsSearchPlaceholder => _strings['skillsSearchPlaceholder']!;
-  String get skillsSkillsShPlaceholder =>
-      _strings['skillsSkillsShPlaceholder']!;
-  String get skillsFilterRepoAll => _strings['skillsFilterRepoAll']!;
-  String get skillsFilterAll => _strings['skillsFilterAll']!;
-  String get skillsFilterInstalled => _strings['skillsFilterInstalled']!;
-  String get skillsFilterUninstalled => _strings['skillsFilterUninstalled']!;
-  String get skillsCardInstall => _strings['skillsCardInstall']!;
-  String get skillsCardInstalled => _strings['skillsCardInstalled']!;
-  String get skillsCardUpdate => _strings['skillsCardUpdate']!;
-  String get skillsCardUninstall => _strings['skillsCardUninstall']!;
-  String get skillsUpdateAvailable => _strings['skillsUpdateAvailable']!;
-  String get skillsLocal => _strings['skillsLocal']!;
-  String get skillsReposEmpty => _strings['skillsReposEmpty']!;
-  String get skillsRepoAdd => _strings['skillsRepoAdd']!;
-  String get skillsRepoOwner => _strings['skillsRepoOwner']!;
-  String get skillsRepoName => _strings['skillsRepoName']!;
-  String get skillsRepoBranch => _strings['skillsRepoBranch']!;
-  String get skillsRepoRemove => _strings['skillsRepoRemove']!;
-  String skillsRepoRemoveConfirm(String name) =>
-      _strings['skillsRepoRemoveConfirm']!.replaceFirst('{name}', name);
-  String get skillsBackupsEmpty => _strings['skillsBackupsEmpty']!;
-  String get skillsBackupRestore => _strings['skillsBackupRestore']!;
-  String get skillsBackupDelete => _strings['skillsBackupDelete']!;
-  String skillsBackupDeleteConfirm(String name) =>
-      _strings['skillsBackupDeleteConfirm']!.replaceFirst('{name}', name);
-  String get skillsBackupCreatedAt => _strings['skillsBackupCreatedAt']!;
-  String skillsUninstallConfirm(String name) =>
-      _strings['skillsUninstallConfirm']!.replaceFirst('{name}', name);
-  String skillsOverwriteConfirm(String name) =>
-      _strings['skillsOverwriteConfirm']!.replaceFirst('{name}', name);
-  String skillsInstallSuccess(String name) =>
-      _strings['skillsInstallSuccess']!.replaceFirst('{name}', name);
-  String skillsUninstallSuccess(String name) =>
-      _strings['skillsUninstallSuccess']!.replaceFirst('{name}', name);
-  String skillsUpdateSuccess(String name) =>
-      _strings['skillsUpdateSuccess']!.replaceFirst('{name}', name);
-  String get skillsNoUpdates => _strings['skillsNoUpdates']!;
-  String get skillsImportTitle => _strings['skillsImportTitle']!;
-  String get skillsImportNothing => _strings['skillsImportNothing']!;
-  String skillsImportSelected(int count) =>
-      _strings['skillsImportSelected']!.replaceFirst('{count}', '$count');
-  String get skillsZipNoSkills => _strings['skillsZipNoSkills']!;
-  String get skillsSkillsShLoadMore => _strings['skillsSkillsShLoadMore']!;
-  String get skillsSkillsShPoweredBy => _strings['skillsSkillsShPoweredBy']!;
-  String get skillsSkillsShSearch => _strings['skillsSkillsShSearch']!;
-  String get skillsDiscoveryEmpty => _strings['skillsDiscoveryEmpty']!;
-  String get skillsDiscoveryEmptyHint => _strings['skillsDiscoveryEmptyHint']!;
-  String get skillsAdd => _strings['skillsAdd']!;
-  String get skillsRemove => _strings['skillsRemove']!;
-  String get skillsEnabled => _strings['skillsEnabled']!;
-  String skillsInstalls(int count) =>
-      _strings['skillsInstalls']!.replaceFirst('{count}', '$count');
+  /// No description provided for @copy.
+  ///
+  /// In en, this message translates to:
+  /// **'copy'**
+  String get copy;
 
-  static AppLocalizations of(BuildContext context) =>
-      Localizations.of<AppLocalizations>(context, AppLocalizations)!;
+  /// No description provided for @settings.
+  ///
+  /// In en, this message translates to:
+  /// **'Settings'**
+  String get settings;
 
-  static const delegate = _AppLocalizationsDelegate();
+  /// No description provided for @settingsPageSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage FlashskyAI team and model settings.'**
+  String get settingsPageSubtitle;
+
+  /// No description provided for @layout.
+  ///
+  /// In en, this message translates to:
+  /// **'Layout'**
+  String get layout;
+
+  /// No description provided for @layoutSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'global workbench'**
+  String get layoutSubtitle;
+
+  /// No description provided for @save.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get save;
+
+  /// No description provided for @layoutPageSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Structure controls are global and apply across teams.'**
+  String get layoutPageSubtitle;
+
+  /// No description provided for @toolPlacement.
+  ///
+  /// In en, this message translates to:
+  /// **'Tool Placement'**
+  String get toolPlacement;
+
+  /// No description provided for @right.
+  ///
+  /// In en, this message translates to:
+  /// **'Right'**
+  String get right;
+
+  /// No description provided for @bottom.
+  ///
+  /// In en, this message translates to:
+  /// **'Bottom'**
+  String get bottom;
+
+  /// No description provided for @rightTools.
+  ///
+  /// In en, this message translates to:
+  /// **'Right Tools'**
+  String get rightTools;
+
+  /// No description provided for @bottomTray.
+  ///
+  /// In en, this message translates to:
+  /// **'Bottom Tray'**
+  String get bottomTray;
+
+  /// No description provided for @stacked.
+  ///
+  /// In en, this message translates to:
+  /// **'Stacked'**
+  String get stacked;
+
+  /// No description provided for @tabs.
+  ///
+  /// In en, this message translates to:
+  /// **'Tabs'**
+  String get tabs;
+
+  /// No description provided for @stackedTools.
+  ///
+  /// In en, this message translates to:
+  /// **'Stacked Tools'**
+  String get stackedTools;
+
+  /// No description provided for @tabbedTools.
+  ///
+  /// In en, this message translates to:
+  /// **'Tabbed Tools'**
+  String get tabbedTools;
+
+  /// No description provided for @regionVisibility.
+  ///
+  /// In en, this message translates to:
+  /// **'Region Visibility'**
+  String get regionVisibility;
+
+  /// No description provided for @appRail.
+  ///
+  /// In en, this message translates to:
+  /// **'App rail'**
+  String get appRail;
+
+  /// No description provided for @toolPlacementDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Dock tool panels on the right or along the bottom edge.'**
+  String get toolPlacementDescription;
+
+  /// No description provided for @visibilityTeamSessionsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Show the team sessions list in the left sidebar.'**
+  String get visibilityTeamSessionsHint;
+
+  /// No description provided for @visibilityMembersHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Show the member list next to tools or terminals.'**
+  String get visibilityMembersHint;
+
+  /// No description provided for @visibilityFileTreeHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Show the project file tree for quick navigation.'**
+  String get visibilityFileTreeHint;
+
+  /// No description provided for @themeModeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Theme mode'**
+  String get themeModeTitle;
+
+  /// No description provided for @themeModeDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Light, dark, or match the operating system appearance.'**
+  String get themeModeDescription;
+
+  /// No description provided for @themeColorPresetTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Theme colors'**
+  String get themeColorPresetTitle;
+
+  /// No description provided for @themeColorPresetDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Primary and accent colors for buttons, toggles, and highlights.'**
+  String get themeColorPresetDescription;
+
+  /// No description provided for @themePresetGraphite.
+  ///
+  /// In en, this message translates to:
+  /// **'Graphite'**
+  String get themePresetGraphite;
+
+  /// No description provided for @themePresetOcean.
+  ///
+  /// In en, this message translates to:
+  /// **'Ocean'**
+  String get themePresetOcean;
+
+  /// No description provided for @themePresetViolet.
+  ///
+  /// In en, this message translates to:
+  /// **'Violet'**
+  String get themePresetViolet;
+
+  /// No description provided for @themePresetAmber.
+  ///
+  /// In en, this message translates to:
+  /// **'Amber'**
+  String get themePresetAmber;
+
+  /// No description provided for @themePresetForest.
+  ///
+  /// In en, this message translates to:
+  /// **'Forest'**
+  String get themePresetForest;
+
+  /// No description provided for @languageDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Language used for menus, buttons, and labels.'**
+  String get languageDescription;
+
+  /// No description provided for @cancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get cancel;
+
+  /// No description provided for @add.
+  ///
+  /// In en, this message translates to:
+  /// **'Add'**
+  String get add;
+
+  /// No description provided for @delete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get delete;
+
+  /// No description provided for @appearance.
+  ///
+  /// In en, this message translates to:
+  /// **'Appearance'**
+  String get appearance;
+
+  /// No description provided for @theme.
+  ///
+  /// In en, this message translates to:
+  /// **'Theme'**
+  String get theme;
+
+  /// No description provided for @themeSystem.
+  ///
+  /// In en, this message translates to:
+  /// **'System'**
+  String get themeSystem;
+
+  /// No description provided for @themeDark.
+  ///
+  /// In en, this message translates to:
+  /// **'Dark'**
+  String get themeDark;
+
+  /// No description provided for @themeLight.
+  ///
+  /// In en, this message translates to:
+  /// **'Light'**
+  String get themeLight;
+
+  /// No description provided for @language.
+  ///
+  /// In en, this message translates to:
+  /// **'Language'**
+  String get language;
+
+  /// No description provided for @languageEnglish.
+  ///
+  /// In en, this message translates to:
+  /// **'English'**
+  String get languageEnglish;
+
+  /// No description provided for @languageChinese.
+  ///
+  /// In en, this message translates to:
+  /// **'中文'**
+  String get languageChinese;
+
+  /// No description provided for @chatTo.
+  ///
+  /// In en, this message translates to:
+  /// **'To:'**
+  String get chatTo;
+
+  /// No description provided for @copyPrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy prompt'**
+  String get copyPrompt;
+
+  /// No description provided for @sendPrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Send prompt'**
+  String get sendPrompt;
+
+  /// No description provided for @chatHintText.
+  ///
+  /// In en, this message translates to:
+  /// **'Write a prompt for team-lead...'**
+  String get chatHintText;
+
+  /// No description provided for @emptyTimeline.
+  ///
+  /// In en, this message translates to:
+  /// **'Local shell-mode conversation notes will appear here.'**
+  String get emptyTimeline;
+
+  /// No description provided for @fileTree.
+  ///
+  /// In en, this message translates to:
+  /// **'File Tree'**
+  String get fileTree;
+
+  /// No description provided for @openTeam.
+  ///
+  /// In en, this message translates to:
+  /// **'Open Team'**
+  String get openTeam;
+
+  /// No description provided for @openMember.
+  ///
+  /// In en, this message translates to:
+  /// **'Open member'**
+  String get openMember;
+
+  /// No description provided for @filterFiles.
+  ///
+  /// In en, this message translates to:
+  /// **'Filter files'**
+  String get filterFiles;
+
+  /// No description provided for @selectTeam.
+  ///
+  /// In en, this message translates to:
+  /// **'Select team'**
+  String get selectTeam;
+
+  /// No description provided for @addTeamTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Add team'**
+  String get addTeamTooltip;
+
+  /// No description provided for @projects.
+  ///
+  /// In en, this message translates to:
+  /// **'Projects'**
+  String get projects;
+
+  /// No description provided for @newProject.
+  ///
+  /// In en, this message translates to:
+  /// **'New Project'**
+  String get newProject;
+
+  /// No description provided for @newSessionTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'New session'**
+  String get newSessionTooltip;
+
+  /// No description provided for @defaultNewChatSessionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'New Chat'**
+  String get defaultNewChatSessionTitle;
+
+  /// No description provided for @openFolder.
+  ///
+  /// In en, this message translates to:
+  /// **'Open Folder'**
+  String get openFolder;
+
+  /// No description provided for @copyFolderPath.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy Folder Path'**
+  String get copyFolderPath;
+
+  /// No description provided for @deleteProject.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete Project'**
+  String get deleteProject;
+
+  /// No description provided for @deleteProjectConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete project \"{name}\" and all its sessions? This cannot be undone.'**
+  String deleteProjectConfirm(String name);
+
+  /// No description provided for @noSessions.
+  ///
+  /// In en, this message translates to:
+  /// **'No sessions yet'**
+  String get noSessions;
+
+  /// No description provided for @unknownFolder.
+  ///
+  /// In en, this message translates to:
+  /// **'Unknown'**
+  String get unknownFolder;
+
+  /// No description provided for @renameConversation.
+  ///
+  /// In en, this message translates to:
+  /// **'Rename conversation'**
+  String get renameConversation;
+
+  /// No description provided for @deleteConversation.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete conversation'**
+  String get deleteConversation;
+
+  /// No description provided for @renameConversationTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Rename Conversation'**
+  String get renameConversationTitle;
+
+  /// No description provided for @deleteConversationConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete conversation \"{name}\"? This cannot be undone.'**
+  String deleteConversationConfirm(String name);
+
+  /// No description provided for @conversationName.
+  ///
+  /// In en, this message translates to:
+  /// **'Conversation name'**
+  String get conversationName;
+
+  /// No description provided for @closeTab.
+  ///
+  /// In en, this message translates to:
+  /// **'Close'**
+  String get closeTab;
+
+  /// No description provided for @closeOtherTabs.
+  ///
+  /// In en, this message translates to:
+  /// **'Close Others'**
+  String get closeOtherTabs;
+
+  /// No description provided for @closeRightTabs.
+  ///
+  /// In en, this message translates to:
+  /// **'Close to the Right'**
+  String get closeRightTabs;
+
+  /// No description provided for @session.
+  ///
+  /// In en, this message translates to:
+  /// **'Session'**
+  String get session;
+
+  /// No description provided for @sessionPageSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Configure how shell sessions are launched.'**
+  String get sessionPageSubtitle;
+
+  /// No description provided for @cliExecutablePathLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'flashskyai CLI path'**
+  String get cliExecutablePathLabel;
+
+  /// No description provided for @cliExecutablePathDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Absolute path to the flashskyai executable. Leave empty to use the one on PATH.'**
+  String get cliExecutablePathDescription;
+
+  /// No description provided for @cliExecutablePathBrowse.
+  ///
+  /// In en, this message translates to:
+  /// **'Browse…'**
+  String get cliExecutablePathBrowse;
+
+  /// No description provided for @cliExecutablePathReset.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset'**
+  String get cliExecutablePathReset;
+
+  /// No description provided for @cliExecutablePathUsing.
+  ///
+  /// In en, this message translates to:
+  /// **'Using: '**
+  String get cliExecutablePathUsing;
+
+  /// No description provided for @cliExecutablePathUsingFallback.
+  ///
+  /// In en, this message translates to:
+  /// **'Using PATH lookup'**
+  String get cliExecutablePathUsingFallback;
+
+  /// No description provided for @shellChatWorkbench.
+  ///
+  /// In en, this message translates to:
+  /// **'Shell chat workbench'**
+  String get shellChatWorkbench;
+
+  /// No description provided for @shellSession.
+  ///
+  /// In en, this message translates to:
+  /// **'Shell session'**
+  String get shellSession;
+
+  /// No description provided for @autoLaunchAllMembersTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Start all members on connect'**
+  String get autoLaunchAllMembersTitle;
+
+  /// No description provided for @autoLaunchAllMembersDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'When enabled, Connect and Restart launch every valid member shell; otherwise only the selected member starts.'**
+  String get autoLaunchAllMembersDescription;
+
+  /// No description provided for @scopeSessionsToSelectedTeamTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Scope sessions to selected team'**
+  String get scopeSessionsToSelectedTeamTitle;
+
+  /// No description provided for @scopeSessionsToSelectedTeamDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'When enabled, the sidebar shows only sessions assigned to the current team. New sessions are always tagged with the selected team so they appear here if you turn this on later.'**
+  String get scopeSessionsToSelectedTeamDescription;
+
+  /// No description provided for @runsPlaceholder.
+  ///
+  /// In en, this message translates to:
+  /// **'Run history will appear here.'**
+  String get runsPlaceholder;
+
+  /// No description provided for @llmConfig.
+  ///
+  /// In en, this message translates to:
+  /// **'Provider'**
+  String get llmConfig;
+
+  /// No description provided for @llmConfigSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'providers and models'**
+  String get llmConfigSubtitle;
+
+  /// No description provided for @llmConfigPathLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'LLM config file'**
+  String get llmConfigPathLabel;
+
+  /// No description provided for @llmConfigPathHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave empty to use the default path'**
+  String get llmConfigPathHint;
+
+  /// No description provided for @llmConfigPathBrowse.
+  ///
+  /// In en, this message translates to:
+  /// **'Browse...'**
+  String get llmConfigPathBrowse;
+
+  /// No description provided for @llmConfigPathSave.
+  ///
+  /// In en, this message translates to:
+  /// **'Apply'**
+  String get llmConfigPathSave;
+
+  /// No description provided for @llmConfigPathReset.
+  ///
+  /// In en, this message translates to:
+  /// **'Use default'**
+  String get llmConfigPathReset;
+
+  /// No description provided for @llmConfigPathBadgeDefault.
+  ///
+  /// In en, this message translates to:
+  /// **'default'**
+  String get llmConfigPathBadgeDefault;
+
+  /// No description provided for @llmConfigPathBadgeCustom.
+  ///
+  /// In en, this message translates to:
+  /// **'custom'**
+  String get llmConfigPathBadgeCustom;
+
+  /// No description provided for @llmConfigPathPickerTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Select llm_config.json'**
+  String get llmConfigPathPickerTitle;
+
+  /// No description provided for @providers.
+  ///
+  /// In en, this message translates to:
+  /// **'PROVIDERS'**
+  String get providers;
+
+  /// No description provided for @llmConfigPageSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage LLM providers and models.'**
+  String get llmConfigPageSubtitle;
+
+  /// No description provided for @providersTab.
+  ///
+  /// In en, this message translates to:
+  /// **'Providers'**
+  String get providersTab;
+
+  /// No description provided for @modelsTab.
+  ///
+  /// In en, this message translates to:
+  /// **'Models'**
+  String get modelsTab;
+
+  /// No description provided for @rawJsonTab.
+  ///
+  /// In en, this message translates to:
+  /// **'Raw JSON'**
+  String get rawJsonTab;
+
+  /// No description provided for @addProvider.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Provider'**
+  String get addProvider;
+
+  /// No description provided for @providerName.
+  ///
+  /// In en, this message translates to:
+  /// **'Provider name'**
+  String get providerName;
+
+  /// No description provided for @deleteProvider.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete Provider'**
+  String get deleteProvider;
+
+  /// No description provided for @deleteProviderConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete provider {name}?'**
+  String deleteProviderConfirm(String name);
+
+  /// No description provided for @providerList.
+  ///
+  /// In en, this message translates to:
+  /// **'Provider List'**
+  String get providerList;
+
+  /// No description provided for @filterProviders.
+  ///
+  /// In en, this message translates to:
+  /// **'Filter providers...'**
+  String get filterProviders;
+
+  /// No description provided for @modelsUsingProvider.
+  ///
+  /// In en, this message translates to:
+  /// **'Models using this provider: {count}'**
+  String modelsUsingProvider(int count);
+
+  /// No description provided for @providerListModelCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} models'**
+  String providerListModelCount(int count);
+
+  /// No description provided for @proxyOnShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Proxy on'**
+  String get proxyOnShort;
+
+  /// No description provided for @proxyOffShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Proxy off'**
+  String get proxyOffShort;
+
+  /// No description provided for @providerDetailSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'{type} provider · {count} models'**
+  String providerDetailSubtitle(int count, String type);
+
+  /// No description provided for @type.
+  ///
+  /// In en, this message translates to:
+  /// **'Type'**
+  String get type;
+
+  /// No description provided for @providerType.
+  ///
+  /// In en, this message translates to:
+  /// **'Provider type'**
+  String get providerType;
+
+  /// No description provided for @providerTypeHint.
+  ///
+  /// In en, this message translates to:
+  /// **'openai, claude, or custom'**
+  String get providerTypeHint;
+
+  /// No description provided for @proxy.
+  ///
+  /// In en, this message translates to:
+  /// **'Proxy'**
+  String get proxy;
+
+  /// No description provided for @proxyUrl.
+  ///
+  /// In en, this message translates to:
+  /// **'Proxy URL'**
+  String get proxyUrl;
+
+  /// No description provided for @baseUrl.
+  ///
+  /// In en, this message translates to:
+  /// **'Base URL'**
+  String get baseUrl;
+
+  /// No description provided for @apiKey.
+  ///
+  /// In en, this message translates to:
+  /// **'API Key'**
+  String get apiKey;
+
+  /// No description provided for @reveal.
+  ///
+  /// In en, this message translates to:
+  /// **'Reveal'**
+  String get reveal;
+
+  /// No description provided for @hide.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide'**
+  String get hide;
+
+  /// No description provided for @replaceKey.
+  ///
+  /// In en, this message translates to:
+  /// **'Replace key'**
+  String get replaceKey;
+
+  /// No description provided for @deleteProviderTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete provider'**
+  String get deleteProviderTooltip;
+
+  /// No description provided for @noModelsUsingProvider.
+  ///
+  /// In en, this message translates to:
+  /// **'No models are using this provider.'**
+  String get noModelsUsingProvider;
+
+  /// No description provided for @modelsUsingProviderTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Models using this provider'**
+  String get modelsUsingProviderTitle;
+
+  /// No description provided for @selectProvider.
+  ///
+  /// In en, this message translates to:
+  /// **'Select a provider from the list'**
+  String get selectProvider;
+
+  /// No description provided for @accountCredentialPath.
+  ///
+  /// In en, this message translates to:
+  /// **'Account credential path'**
+  String get accountCredentialPath;
+
+  /// No description provided for @removePath.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove path'**
+  String get removePath;
+
+  /// No description provided for @addAccountPath.
+  ///
+  /// In en, this message translates to:
+  /// **'Add account path'**
+  String get addAccountPath;
+
+  /// No description provided for @api.
+  ///
+  /// In en, this message translates to:
+  /// **'api'**
+  String get api;
+
+  /// No description provided for @account.
+  ///
+  /// In en, this message translates to:
+  /// **'account'**
+  String get account;
+
+  /// No description provided for @models.
+  ///
+  /// In en, this message translates to:
+  /// **'Models'**
+  String get models;
+
+  /// No description provided for @addModel.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Model'**
+  String get addModel;
+
+  /// No description provided for @modelName.
+  ///
+  /// In en, this message translates to:
+  /// **'Model alias/name'**
+  String get modelName;
+
+  /// No description provided for @modelId.
+  ///
+  /// In en, this message translates to:
+  /// **'Model ID'**
+  String get modelId;
+
+  /// No description provided for @enabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Enabled'**
+  String get enabled;
+
+  /// No description provided for @edit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit'**
+  String get edit;
+
+  /// No description provided for @editModelTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit {name}'**
+  String editModelTitle(String name);
+
+  /// No description provided for @name.
+  ///
+  /// In en, this message translates to:
+  /// **'Name'**
+  String get name;
+
+  /// No description provided for @actualModel.
+  ///
+  /// In en, this message translates to:
+  /// **'Actual Model'**
+  String get actualModel;
+
+  /// No description provided for @noModelsConfigured.
+  ///
+  /// In en, this message translates to:
+  /// **'No models configured'**
+  String get noModelsConfigured;
+
+  /// No description provided for @missingProvider.
+  ///
+  /// In en, this message translates to:
+  /// **'Missing provider:'**
+  String get missingProvider;
+
+  /// No description provided for @summary.
+  ///
+  /// In en, this message translates to:
+  /// **'Summary'**
+  String get summary;
+
+  /// No description provided for @statProviders.
+  ///
+  /// In en, this message translates to:
+  /// **'providers'**
+  String get statProviders;
+
+  /// No description provided for @statModels.
+  ///
+  /// In en, this message translates to:
+  /// **'models'**
+  String get statModels;
+
+  /// No description provided for @statMissingRefs.
+  ///
+  /// In en, this message translates to:
+  /// **'missing refs'**
+  String get statMissingRefs;
+
+  /// No description provided for @statEmptyKeys.
+  ///
+  /// In en, this message translates to:
+  /// **'empty keys'**
+  String get statEmptyKeys;
+
+  /// No description provided for @validation.
+  ///
+  /// In en, this message translates to:
+  /// **'Validation'**
+  String get validation;
+
+  /// No description provided for @allChecksPassed.
+  ///
+  /// In en, this message translates to:
+  /// **'All checks passed.'**
+  String get allChecksPassed;
+
+  /// No description provided for @validate.
+  ///
+  /// In en, this message translates to:
+  /// **'Validate'**
+  String get validate;
+
+  /// No description provided for @back.
+  ///
+  /// In en, this message translates to:
+  /// **'Back'**
+  String get back;
+
+  /// No description provided for @jsonPreview.
+  ///
+  /// In en, this message translates to:
+  /// **'JSON Preview'**
+  String get jsonPreview;
+
+  /// No description provided for @skillsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Skills'**
+  String get skillsTitle;
+
+  /// No description provided for @skillsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage installable skills'**
+  String get skillsSubtitle;
+
+  /// No description provided for @skillsSidebarLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Skills'**
+  String get skillsSidebarLabel;
+
+  /// No description provided for @skillsNavInstalled.
+  ///
+  /// In en, this message translates to:
+  /// **'Installed'**
+  String get skillsNavInstalled;
+
+  /// No description provided for @skillsNavDiscovery.
+  ///
+  /// In en, this message translates to:
+  /// **'Discovery'**
+  String get skillsNavDiscovery;
+
+  /// No description provided for @skillsNavRepos.
+  ///
+  /// In en, this message translates to:
+  /// **'Repos'**
+  String get skillsNavRepos;
+
+  /// No description provided for @skillsNavBackups.
+  ///
+  /// In en, this message translates to:
+  /// **'Backups'**
+  String get skillsNavBackups;
+
+  /// No description provided for @skillsInstalledCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} installed'**
+  String skillsInstalledCount(int count);
+
+  /// No description provided for @skillsCheckUpdates.
+  ///
+  /// In en, this message translates to:
+  /// **'Check updates'**
+  String get skillsCheckUpdates;
+
+  /// No description provided for @skillsCheckingUpdates.
+  ///
+  /// In en, this message translates to:
+  /// **'Checking…'**
+  String get skillsCheckingUpdates;
+
+  /// No description provided for @skillsUpdateAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Update all ({count})'**
+  String skillsUpdateAll(int count);
+
+  /// No description provided for @skillsImportFromDisk.
+  ///
+  /// In en, this message translates to:
+  /// **'Import from disk'**
+  String get skillsImportFromDisk;
+
+  /// No description provided for @skillsInstallFromZip.
+  ///
+  /// In en, this message translates to:
+  /// **'Install from ZIP'**
+  String get skillsInstallFromZip;
+
+  /// No description provided for @skillsNoInstalled.
+  ///
+  /// In en, this message translates to:
+  /// **'No skills installed yet'**
+  String get skillsNoInstalled;
+
+  /// No description provided for @skillsNoInstalledHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Open Discovery to install your first skill.'**
+  String get skillsNoInstalledHint;
+
+  /// No description provided for @skillsGoDiscovery.
+  ///
+  /// In en, this message translates to:
+  /// **'Go to Discovery'**
+  String get skillsGoDiscovery;
+
+  /// No description provided for @skillsSourceRepos.
+  ///
+  /// In en, this message translates to:
+  /// **'Repos'**
+  String get skillsSourceRepos;
+
+  /// No description provided for @skillsSourceSkillsSh.
+  ///
+  /// In en, this message translates to:
+  /// **'skills.sh'**
+  String get skillsSourceSkillsSh;
+
+  /// No description provided for @skillsSearchPlaceholder.
+  ///
+  /// In en, this message translates to:
+  /// **'Search skills…'**
+  String get skillsSearchPlaceholder;
+
+  /// No description provided for @skillsSkillsShPlaceholder.
+  ///
+  /// In en, this message translates to:
+  /// **'Search skills.sh (≥ 2 chars)…'**
+  String get skillsSkillsShPlaceholder;
+
+  /// No description provided for @skillsFilterRepoAll.
+  ///
+  /// In en, this message translates to:
+  /// **'All repos'**
+  String get skillsFilterRepoAll;
+
+  /// No description provided for @skillsFilterAll.
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get skillsFilterAll;
+
+  /// No description provided for @skillsFilterInstalled.
+  ///
+  /// In en, this message translates to:
+  /// **'Installed'**
+  String get skillsFilterInstalled;
+
+  /// No description provided for @skillsFilterUninstalled.
+  ///
+  /// In en, this message translates to:
+  /// **'Not installed'**
+  String get skillsFilterUninstalled;
+
+  /// No description provided for @skillsCardInstall.
+  ///
+  /// In en, this message translates to:
+  /// **'Install'**
+  String get skillsCardInstall;
+
+  /// No description provided for @skillsCardInstalled.
+  ///
+  /// In en, this message translates to:
+  /// **'Installed'**
+  String get skillsCardInstalled;
+
+  /// No description provided for @skillsCardUpdate.
+  ///
+  /// In en, this message translates to:
+  /// **'Update'**
+  String get skillsCardUpdate;
+
+  /// No description provided for @skillsCardUninstall.
+  ///
+  /// In en, this message translates to:
+  /// **'Uninstall'**
+  String get skillsCardUninstall;
+
+  /// No description provided for @skillsUpdateAvailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Update available'**
+  String get skillsUpdateAvailable;
+
+  /// No description provided for @skillsLocal.
+  ///
+  /// In en, this message translates to:
+  /// **'local'**
+  String get skillsLocal;
+
+  /// No description provided for @skillsReposEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No repos yet'**
+  String get skillsReposEmpty;
+
+  /// No description provided for @skillsRepoAdd.
+  ///
+  /// In en, this message translates to:
+  /// **'Add repo'**
+  String get skillsRepoAdd;
+
+  /// No description provided for @skillsRepoOwner.
+  ///
+  /// In en, this message translates to:
+  /// **'Owner'**
+  String get skillsRepoOwner;
+
+  /// No description provided for @skillsRepoName.
+  ///
+  /// In en, this message translates to:
+  /// **'Name'**
+  String get skillsRepoName;
+
+  /// No description provided for @skillsRepoBranch.
+  ///
+  /// In en, this message translates to:
+  /// **'Branch'**
+  String get skillsRepoBranch;
+
+  /// No description provided for @skillsRepoRemove.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove'**
+  String get skillsRepoRemove;
+
+  /// No description provided for @skillsRepoRemoveConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove repo {name}?'**
+  String skillsRepoRemoveConfirm(String name);
+
+  /// No description provided for @skillsBackupsEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No backups yet'**
+  String get skillsBackupsEmpty;
+
+  /// No description provided for @skillsBackupRestore.
+  ///
+  /// In en, this message translates to:
+  /// **'Restore'**
+  String get skillsBackupRestore;
+
+  /// No description provided for @skillsBackupDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get skillsBackupDelete;
+
+  /// No description provided for @skillsBackupDeleteConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete backup {name}? This cannot be undone.'**
+  String skillsBackupDeleteConfirm(String name);
+
+  /// No description provided for @skillsBackupCreatedAt.
+  ///
+  /// In en, this message translates to:
+  /// **'Created at'**
+  String get skillsBackupCreatedAt;
+
+  /// No description provided for @skillsUninstallConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Uninstall {name}? Files will be moved to backups.'**
+  String skillsUninstallConfirm(String name);
+
+  /// No description provided for @skillsOverwriteConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} already installed. Overwrite?'**
+  String skillsOverwriteConfirm(String name);
+
+  /// No description provided for @skillsInstallSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Installed {name}'**
+  String skillsInstallSuccess(String name);
+
+  /// No description provided for @skillsUninstallSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Uninstalled {name}'**
+  String skillsUninstallSuccess(String name);
+
+  /// No description provided for @skillsUpdateSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Updated {name}'**
+  String skillsUpdateSuccess(String name);
+
+  /// No description provided for @skillsNoUpdates.
+  ///
+  /// In en, this message translates to:
+  /// **'All skills are up to date'**
+  String get skillsNoUpdates;
+
+  /// No description provided for @skillsImportTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Import unmanaged skills'**
+  String get skillsImportTitle;
+
+  /// No description provided for @skillsImportNothing.
+  ///
+  /// In en, this message translates to:
+  /// **'No unmanaged skills found.'**
+  String get skillsImportNothing;
+
+  /// No description provided for @skillsImportSelected.
+  ///
+  /// In en, this message translates to:
+  /// **'Import {count} selected'**
+  String skillsImportSelected(int count);
+
+  /// No description provided for @skillsZipNoSkills.
+  ///
+  /// In en, this message translates to:
+  /// **'No SKILL.md found in the archive.'**
+  String get skillsZipNoSkills;
+
+  /// No description provided for @skillsSkillsShLoadMore.
+  ///
+  /// In en, this message translates to:
+  /// **'Load more'**
+  String get skillsSkillsShLoadMore;
+
+  /// No description provided for @skillsSkillsShPoweredBy.
+  ///
+  /// In en, this message translates to:
+  /// **'Powered by skills.sh'**
+  String get skillsSkillsShPoweredBy;
+
+  /// No description provided for @skillsSkillsShSearch.
+  ///
+  /// In en, this message translates to:
+  /// **'Search'**
+  String get skillsSkillsShSearch;
+
+  /// No description provided for @skillsDiscoveryEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No skills discovered'**
+  String get skillsDiscoveryEmpty;
+
+  /// No description provided for @skillsDiscoveryEmptyHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a repo or try skills.sh to find skills.'**
+  String get skillsDiscoveryEmptyHint;
+
+  /// No description provided for @skillsAdd.
+  ///
+  /// In en, this message translates to:
+  /// **'Add'**
+  String get skillsAdd;
+
+  /// No description provided for @skillsRemove.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove'**
+  String get skillsRemove;
+
+  /// No description provided for @skillsEnabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Enabled'**
+  String get skillsEnabled;
+
+  /// No description provided for @skillsInstalls.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} installs'**
+  String skillsInstalls(int count);
+
+  /// No description provided for @members.
+  ///
+  /// In en, this message translates to:
+  /// **'Members'**
+  String get members;
+
+  /// No description provided for @teamSessions.
+  ///
+  /// In en, this message translates to:
+  /// **'Team Sessions'**
+  String get teamSessions;
+
+  /// No description provided for @configure.
+  ///
+  /// In en, this message translates to:
+  /// **'Configure'**
+  String get configure;
+
+  /// No description provided for @teamConfig.
+  ///
+  /// In en, this message translates to:
+  /// **'Team Config'**
+  String get teamConfig;
+
+  /// No description provided for @teamSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Team Settings'**
+  String get teamSettings;
+
+  /// No description provided for @teamSettingsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'workspace teams'**
+  String get teamSettingsSubtitle;
+
+  /// No description provided for @membersSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'team agents'**
+  String get membersSubtitle;
+
+  /// No description provided for @teamSkillsNav.
+  ///
+  /// In en, this message translates to:
+  /// **'Skills'**
+  String get teamSkillsNav;
+
+  /// No description provided for @teamSkillsAssignedCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{assigned} of {total} enabled'**
+  String teamSkillsAssignedCount(int assigned, int total);
+
+  /// No description provided for @teamSkillsManage.
+  ///
+  /// In en, this message translates to:
+  /// **'All skills'**
+  String get teamSkillsManage;
+
+  /// No description provided for @memberQuickList.
+  ///
+  /// In en, this message translates to:
+  /// **'MEMBER QUICK LIST'**
+  String get memberQuickList;
+
+  /// No description provided for @teamName.
+  ///
+  /// In en, this message translates to:
+  /// **'Team name'**
+  String get teamName;
+
+  /// No description provided for @deleteTeam.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete team'**
+  String get deleteTeam;
+
+  /// No description provided for @deleteTeamSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Removes this team from the UI and the shared flashskyai data directory. This cannot be undone.'**
+  String get deleteTeamSubtitle;
+
+  /// No description provided for @deleteTeamConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete team \"{name}\"? This cannot be undone.'**
+  String deleteTeamConfirm(String name);
+
+  /// No description provided for @dangerZone.
+  ///
+  /// In en, this message translates to:
+  /// **'Danger zone'**
+  String get dangerZone;
+
+  /// No description provided for @teamExtraArgs.
+  ///
+  /// In en, this message translates to:
+  /// **'Team extra CLI arguments'**
+  String get teamExtraArgs;
+
+  /// No description provided for @teamExtraArgsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'--permission-mode acceptEdits'**
+  String get teamExtraArgsHint;
+
+  /// No description provided for @teamLoop.
+  ///
+  /// In en, this message translates to:
+  /// **'Phase loop'**
+  String get teamLoop;
+
+  /// No description provided for @teamLoopSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Team mode: true auto-advances phases; false requires your confirmation.'**
+  String get teamLoopSubtitle;
+
+  /// No description provided for @teamLoopDefault.
+  ///
+  /// In en, this message translates to:
+  /// **'Default'**
+  String get teamLoopDefault;
+
+  /// No description provided for @teamLoopTrue.
+  ///
+  /// In en, this message translates to:
+  /// **'true — auto-advance'**
+  String get teamLoopTrue;
+
+  /// No description provided for @teamLoopFalse.
+  ///
+  /// In en, this message translates to:
+  /// **'false — confirm each phase'**
+  String get teamLoopFalse;
+
+  /// No description provided for @memberLaunchOrder.
+  ///
+  /// In en, this message translates to:
+  /// **'Member launch order'**
+  String get memberLaunchOrder;
+
+  /// No description provided for @saveMember.
+  ///
+  /// In en, this message translates to:
+  /// **'Save Member'**
+  String get saveMember;
+
+  /// No description provided for @editTeamSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit team identity, working directory, and launch order.'**
+  String get editTeamSubtitle;
+
+  /// No description provided for @memberName.
+  ///
+  /// In en, this message translates to:
+  /// **'Member name'**
+  String get memberName;
+
+  /// No description provided for @provider.
+  ///
+  /// In en, this message translates to:
+  /// **'Provider'**
+  String get provider;
+
+  /// No description provided for @model.
+  ///
+  /// In en, this message translates to:
+  /// **'Model'**
+  String get model;
+
+  /// No description provided for @agent.
+  ///
+  /// In en, this message translates to:
+  /// **'Agent'**
+  String get agent;
+
+  /// No description provided for @selectAgent.
+  ///
+  /// In en, this message translates to:
+  /// **'Select an agent'**
+  String get selectAgent;
+
+  /// No description provided for @agentBuiltInNone.
+  ///
+  /// In en, this message translates to:
+  /// **'Default'**
+  String get agentBuiltInNone;
+
+  /// No description provided for @agentBuiltInCustom.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom…'**
+  String get agentBuiltInCustom;
+
+  /// No description provided for @agentBuiltInSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Preset built-in agents.'**
+  String get agentBuiltInSubtitle;
+
+  /// No description provided for @agentCustomIdHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom agent id'**
+  String get agentCustomIdHint;
+
+  /// No description provided for @memberExtraArgs.
+  ///
+  /// In en, this message translates to:
+  /// **'Member extra CLI arguments'**
+  String get memberExtraArgs;
+
+  /// No description provided for @memberDangerouslySkipPermissions.
+  ///
+  /// In en, this message translates to:
+  /// **'Skip all permission checks'**
+  String get memberDangerouslySkipPermissions;
+
+  /// No description provided for @memberDangerouslySkipPermissionsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Only for isolated / no-network sandboxes. Extremely risky otherwise.'**
+  String get memberDangerouslySkipPermissionsHint;
+
+  /// No description provided for @prompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Prompt'**
+  String get prompt;
+
+  /// No description provided for @selectModel.
+  ///
+  /// In en, this message translates to:
+  /// **'Select a model'**
+  String get selectModel;
+
+  /// No description provided for @editMemberSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit provider, model, agent, and command arguments.'**
+  String get editMemberSubtitle;
+
+  /// No description provided for @teamLeadNameRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'FlashskyAI team delegation expects this member to be named exactly team-lead.'**
+  String get teamLeadNameRequired;
+
+  /// No description provided for @teamLeadNotice.
+  ///
+  /// In en, this message translates to:
+  /// **'FlashskyAI team delegation expects this member to be named exactly team-lead.'**
+  String get teamLeadNotice;
+
+  /// No description provided for @membersAndFileTree.
+  ///
+  /// In en, this message translates to:
+  /// **'Members and File Tree'**
+  String get membersAndFileTree;
+
+  /// No description provided for @membersAndFileTreeDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Show members and file tree stacked or as tabs.'**
+  String get membersAndFileTreeDescription;
 }
 
 class _AppLocalizationsDelegate
     extends LocalizationsDelegate<AppLocalizations> {
   const _AppLocalizationsDelegate();
 
-  static const _supportedLocales = [Locale('en'), Locale('zh')];
-
-  static const _strings = <String, Map<String, String>>{
-    'appTitle': {'en': 'TeamPilot', 'zh': 'TeamPilot'},
-    'appRailChat': {'en': 'Chat', 'zh': '聊天'},
-    'appRailRuns': {'en': 'Runs', 'zh': '运行'},
-    'appRailConfig': {'en': 'Config', 'zh': '配置'},
-
-    'chatTo': {'en': 'To:', 'zh': '发送至：'},
-    'copyPrompt': {'en': 'Copy prompt', 'zh': '复制提示'},
-    'sendPrompt': {'en': 'Send prompt', 'zh': '发送提示'},
-    'chatHintText': {
-      'en': 'Write a prompt for team-lead...',
-      'zh': '为 team-lead 编写提示...',
-    },
-    'emptyTimeline': {
-      'en': 'Local shell-mode conversation notes will appear here.',
-      'zh': '本地 shell 模式对话记录将显示在此处。',
-    },
-
-    'members': {'en': 'Members', 'zh': '成员'},
-    'fileTree': {'en': 'File Tree', 'zh': '文件树'},
-    'openTeam': {'en': 'Open Team', 'zh': '打开团队'},
-    'openMember': {'en': 'Open member', 'zh': '打开成员'},
-    'filterFiles': {'en': 'Filter files', 'zh': '筛选文件'},
-    'copy': {'en': 'copy', 'zh': '复制'},
-
-    'selectTeam': {'en': 'Select team', 'zh': '选择团队'},
-    'addTeamTooltip': {'en': 'Add team', 'zh': '添加团队'},
-    'projects': {'en': 'Projects', 'zh': '项目'},
-    'newProject': {'en': 'New Project', 'zh': '新建项目'},
-    'newSessionTooltip': {'en': 'New session', 'zh': '新建会话'},
-    'defaultNewChatSessionTitle': {'en': 'New Chat', 'zh': '新对话'},
-    'openFolder': {'en': 'Open Folder', 'zh': '打开文件夹'},
-    'copyFolderPath': {'en': 'Copy Folder Path', 'zh': '复制文件夹路径'},
-    'deleteProject': {'en': 'Delete Project', 'zh': '删除项目'},
-    'deleteProjectConfirm': {
-      'en':
-          'Delete project "{name}" and all its sessions? This cannot be undone.',
-      'zh': '删除项目 "{name}" 及其所有会话？此操作不可撤销。',
-    },
-    'noSessions': {'en': 'No sessions yet', 'zh': '暂无会话'},
-    'unknownFolder': {'en': 'Unknown', 'zh': '未知'},
-    'teamSessions': {'en': 'Team Sessions', 'zh': '团队会话'},
-    'renameConversation': {'en': 'Rename conversation', 'zh': '重命名对话'},
-    'deleteConversation': {'en': 'Delete conversation', 'zh': '删除对话'},
-    'renameConversationTitle': {'en': 'Rename Conversation', 'zh': '重命名对话'},
-    'deleteConversationConfirm': {
-      'en': 'Delete conversation "{name}"? This cannot be undone.',
-      'zh': '删除对话 "{name}"？此操作不可撤销。',
-    },
-    'conversationName': {'en': 'Conversation name', 'zh': '对话名称'},
-    'closeTab': {'en': 'Close', 'zh': '关闭'},
-    'closeOtherTabs': {'en': 'Close Others', 'zh': '关闭其他标签'},
-    'closeRightTabs': {'en': 'Close to the Right', 'zh': '关闭右侧标签'},
-    'settings': {'en': 'Settings', 'zh': '设置'},
-    'settingsPageSubtitle': {
-      'en': 'Manage FlashskyAI team and model settings.',
-      'zh': '管理 FlashskyAI 团队和模型设置。',
-    },
-    'configure': {'en': 'Configure', 'zh': '配置'},
-    'teamConfig': {'en': 'Team Config', 'zh': '团队配置'},
-    'teamSettings': {'en': 'Team Settings', 'zh': '团队设置'},
-    'teamSettingsSubtitle': {'en': 'workspace teams', 'zh': '工作区团队'},
-    'membersSubtitle': {'en': 'team agents', 'zh': '团队代理'},
-    'teamSkillsNav': {'en': 'Skills', 'zh': 'Skills'},
-    'teamSkillsAssignedCount': {
-      'en': '{assigned} of {total} enabled',
-      'zh': '已启用 {assigned}/{total}',
-    },
-    'teamSkillsManage': {'en': 'All skills', 'zh': '全部 Skills'},
-    'llmConfig': {'en': 'Provider', 'zh': '服务商'},
-    'llmConfigSubtitle': {'en': 'providers and models', 'zh': '提供商和模型'},
-    'llmConfigPathLabel': {'en': 'LLM config file', 'zh': 'LLM 配置文件'},
-    'llmConfigPathHint': {
-      'en': 'Leave empty to use the default path',
-      'zh': '留空则使用默认路径',
-    },
-    'llmConfigPathBrowse': {'en': 'Browse...', 'zh': '选择文件'},
-    'llmConfigPathSave': {'en': 'Apply', 'zh': '更新'},
-    'llmConfigPathReset': {'en': 'Use default', 'zh': '默认'},
-    'llmConfigPathBadgeDefault': {'en': 'default', 'zh': '默认'},
-    'llmConfigPathBadgeCustom': {'en': 'custom', 'zh': '自定义'},
-    'llmConfigPathPickerTitle': {
-      'en': 'Select llm_config.json',
-      'zh': '选择 llm_config.json',
-    },
-    'layout': {'en': 'Layout', 'zh': '通用'},
-    'session': {'en': 'Session', 'zh': '会话'},
-    'sessionPageSubtitle': {
-      'en': 'Configure how shell sessions are launched.',
-      'zh': '配置 Shell 会话的启动方式。',
-    },
-    'cliExecutablePathLabel': {
-      'en': 'flashskyai CLI path',
-      'zh': 'flashskyai CLI 路径',
-    },
-    'cliExecutablePathDescription': {
-      'en':
-          'Absolute path to the flashskyai executable. Leave empty to use the one on PATH.',
-      'zh': 'flashskyai 可执行文件的绝对路径。留空则使用 PATH 中查找到的版本。',
-    },
-    'cliExecutablePathBrowse': {'en': 'Browse…', 'zh': '浏览…'},
-    'cliExecutablePathReset': {'en': 'Reset', 'zh': '重置'},
-    'cliExecutablePathUsing': {'en': 'Using: ', 'zh': '当前生效：'},
-    'cliExecutablePathUsingFallback': {
-      'en': 'Using PATH lookup',
-      'zh': '使用 PATH 中查找的版本',
-    },
-    'layoutSubtitle': {'en': 'global workbench', 'zh': '全局工作台'},
-    'memberQuickList': {'en': 'MEMBER QUICK LIST', 'zh': '成员快速列表'},
-    'providers': {'en': 'PROVIDERS', 'zh': '提供商'},
-    'shellChatWorkbench': {'en': 'Shell chat workbench', 'zh': 'Shell 聊天工作台'},
-
-    'teamName': {'en': 'Team name', 'zh': '团队名称'},
-    'deleteTeam': {'en': 'Delete team', 'zh': '删除团队'},
-    'deleteTeamSubtitle': {
-      'en':
-          'Removes this team from the UI and the shared flashskyai data directory. This cannot be undone.',
-      'zh': '从 UI 和共享的 flashskyai 数据目录中移除该团队。此操作不可撤销。',
-    },
-    'deleteTeamConfirm': {
-      'en': 'Delete team "{name}"? This cannot be undone.',
-      'zh': '删除团队 "{name}"？此操作不可撤销。',
-    },
-    'dangerZone': {'en': 'Danger zone', 'zh': '危险操作'},
-    'teamExtraArgs': {'en': 'Team extra CLI arguments', 'zh': '团队额外 CLI 参数'},
-    'teamExtraArgsHint': {
-      'en': '--permission-mode acceptEdits',
-      'zh': '--permission-mode acceptEdits',
-    },
-    'teamLoop': {'en': 'Phase loop', 'zh': '阶段循环'},
-    'teamLoopSubtitle': {
-      'en':
-          'Team mode: true auto-advances phases; false requires your confirmation.',
-      'zh': '团队模式：true 自动推进阶段；false 需你确认后再继续。',
-    },
-    'teamLoopDefault': {'en': 'Default', 'zh': '默认'},
-    'teamLoopTrue': {'en': 'true — auto-advance', 'zh': 'true — 自动推进'},
-    'teamLoopFalse': {
-      'en': 'false — confirm each phase',
-      'zh': 'false — 每阶段确认',
-    },
-    'memberLaunchOrder': {'en': 'Member launch order', 'zh': '成员启动顺序'},
-    'save': {'en': 'Save', 'zh': '保存'},
-    'saveMember': {'en': 'Save Member', 'zh': '保存成员'},
-    'editTeamSubtitle': {
-      'en': 'Edit team identity, working directory, and launch order.',
-      'zh': '编辑团队标识、工作目录和启动顺序。',
-    },
-
-    'memberName': {'en': 'Member name', 'zh': '成员名称'},
-    'provider': {'en': 'Provider', 'zh': '提供商'},
-    'model': {'en': 'Model', 'zh': '模型'},
-    'agent': {'en': 'Agent', 'zh': '代理'},
-    'selectAgent': {'en': 'Select an agent', 'zh': '选择 Agent'},
-    'agentBuiltInNone': {'en': 'Default', 'zh': '默认'},
-    'agentBuiltInCustom': {'en': 'Custom…', 'zh': '自定义…'},
-    'agentBuiltInSubtitle': {
-      'en': 'Preset built-in agents.',
-      'zh': '内置预设 Agent。',
-    },
-    'agentCustomIdHint': {'en': 'Custom agent id', 'zh': '自定义 Agent 标识'},
-    'memberExtraArgs': {
-      'en': 'Member extra CLI arguments',
-      'zh': '成员额外 CLI 参数',
-    },
-    'memberDangerouslySkipPermissions': {
-      'en': 'Skip all permission checks',
-      'zh': '跳过所有权限检查',
-    },
-    'memberDangerouslySkipPermissionsHint': {
-      'en':
-          'Only for isolated / no-network sandboxes. Extremely risky otherwise.',
-      'zh': '仅限隔离或无网络沙箱使用，否则风险极高。',
-    },
-    'prompt': {'en': 'Prompt', 'zh': '提示词'},
-    'selectModel': {'en': 'Select a model', 'zh': '选择一个模型'},
-    'editMemberSubtitle': {
-      'en': 'Edit provider, model, agent, and command arguments.',
-      'zh': '编辑提供商、模型、代理和命令参数。',
-    },
-    'teamLeadNameRequired': {
-      'en':
-          'FlashskyAI team delegation expects this member to be named exactly team-lead.',
-      'zh': 'FlashskyAI 团队委托要求此成员名称必须为 team-lead。',
-    },
-    'teamLeadNotice': {
-      'en':
-          'FlashskyAI team delegation expects this member to be named exactly team-lead.',
-      'zh': 'FlashskyAI 团队委托要求此成员名称必须为 team-lead。',
-    },
-
-    'layoutPageSubtitle': {
-      'en': 'Structure controls are global and apply across teams.',
-      'zh': '结构控件为全局设置，适用于所有团队。',
-    },
-    'toolPlacement': {'en': 'Tool Placement', 'zh': '工具栏位置'},
-    'right': {'en': 'Right', 'zh': '右侧'},
-    'bottom': {'en': 'Bottom', 'zh': '底部'},
-    'rightTools': {'en': 'Right Tools', 'zh': '右侧工具栏'},
-    'bottomTray': {'en': 'Bottom Tray', 'zh': '底部托盘'},
-    'membersAndFileTree': {'en': 'Members and File Tree', 'zh': '成员和文件树'},
-    'stacked': {'en': 'Stacked', 'zh': '堆叠'},
-    'tabs': {'en': 'Tabs', 'zh': '标签页'},
-    'stackedTools': {'en': 'Stacked Tools', 'zh': '堆叠工具栏'},
-    'tabbedTools': {'en': 'Tabbed Tools', 'zh': '标签工具栏'},
-    'regionVisibility': {'en': 'Region Visibility', 'zh': '区域可见性'},
-    'appRail': {'en': 'App rail', 'zh': '应用导航栏'},
-    'toolPlacementDescription': {
-      'en': 'Dock tool panels on the right or along the bottom edge.',
-      'zh': '将工具面板固定在右侧或沿底部边缘排列。',
-    },
-    'membersAndFileTreeDescription': {
-      'en': 'Show members and file tree stacked or as tabs.',
-      'zh': '将成员列表与文件树堆叠显示，或以标签页切换。',
-    },
-    'visibilityTeamSessionsHint': {
-      'en': 'Show the team sessions list in the left sidebar.',
-      'zh': '在左侧边栏显示团队会话列表。',
-    },
-    'visibilityMembersHint': {
-      'en': 'Show the member list next to tools or terminals.',
-      'zh': '在工具或终端旁显示成员列表。',
-    },
-    'visibilityFileTreeHint': {
-      'en': 'Show the project file tree for quick navigation.',
-      'zh': '显示项目文件树以便快速浏览。',
-    },
-    'shellSession': {'en': 'Shell session', 'zh': 'Shell 会话'},
-    'autoLaunchAllMembersTitle': {
-      'en': 'Start all members on connect',
-      'zh': '连接时启动全部成员',
-    },
-    'autoLaunchAllMembersDescription': {
-      'en':
-          'When enabled, Connect and Restart launch every valid member shell; otherwise only the selected member starts.',
-      'zh': '开启后，点击连接或重启会为每个有效成员启动终端；关闭则仅启动当前选中的成员。',
-    },
-    'scopeSessionsToSelectedTeamTitle': {
-      'en': 'Scope sessions to selected team',
-      'zh': '按所选团队筛选会话',
-    },
-    'scopeSessionsToSelectedTeamDescription': {
-      'en':
-          'When enabled, the sidebar shows only sessions assigned to the current team. New sessions are always tagged with the selected team so they appear here if you turn this on later.',
-      'zh': '开启后，侧边栏仅显示归属当前团队的会话。新建会话仍会写入当前所选团队，之后开启本选项即可看到它们。',
-    },
-    'themeModeTitle': {'en': 'Theme mode', 'zh': '主题模式'},
-    'themeModeDescription': {
-      'en': 'Light, dark, or match the operating system appearance.',
-      'zh': '浅色、深色，或与系统外观一致。',
-    },
-    'themeColorPresetTitle': {'en': 'Theme colors', 'zh': '主题色'},
-    'themeColorPresetDescription': {
-      'en': 'Primary and accent colors for buttons, toggles, and highlights.',
-      'zh': '用于按钮、开关与高亮的主色与强调色。',
-    },
-    'themePresetGraphite': {'en': 'Graphite', 'zh': '石墨'},
-    'themePresetOcean': {'en': 'Ocean', 'zh': '海洋'},
-    'themePresetViolet': {'en': 'Violet', 'zh': '紫罗兰'},
-    'themePresetAmber': {'en': 'Amber', 'zh': '琥珀'},
-    'themePresetForest': {'en': 'Forest', 'zh': '森林'},
-    'languageDescription': {
-      'en': 'Language used for menus, buttons, and labels.',
-      'zh': '菜单、按钮与标签所使用的语言。',
-    },
-
-    'llmConfigPageSubtitle': {
-      'en': 'Manage LLM providers and models.',
-      'zh': '管理 LLM 提供商和模型。',
-    },
-    'providersTab': {'en': 'Providers', 'zh': '提供商'},
-    'modelsTab': {'en': 'Models', 'zh': '模型'},
-    'rawJsonTab': {'en': 'Raw JSON', 'zh': '原始 JSON'},
-    'addProvider': {'en': 'Add Provider', 'zh': '添加提供商'},
-    'providerName': {'en': 'Provider name', 'zh': '提供商名称'},
-    'cancel': {'en': 'Cancel', 'zh': '取消'},
-    'add': {'en': 'Add', 'zh': '添加'},
-    'delete': {'en': 'Delete', 'zh': '删除'},
-    'deleteProvider': {'en': 'Delete Provider', 'zh': '删除提供商'},
-    'deleteProviderConfirm': {
-      'en': 'Delete provider {name}?',
-      'zh': '删除提供商 {name}？',
-    },
-    'providerList': {'en': 'Provider List', 'zh': '提供商列表'},
-    'filterProviders': {'en': 'Filter providers...', 'zh': '筛选提供商...'},
-    'modelsUsingProvider': {
-      'en': 'Models using this provider:',
-      'zh': '使用此提供商的模型：',
-    },
-    'providerListModelCount': {'en': '{n} models', 'zh': '{n} 个模型'},
-    'proxyOnShort': {'en': 'Proxy on', 'zh': '代理开'},
-    'proxyOffShort': {'en': 'Proxy off', 'zh': '代理关'},
-    'providerDetailSubtitle': {
-      'en': '{type} provider · {count} models',
-      'zh': '{type} 提供商 · {count} 个模型',
-    },
-    'type': {'en': 'Type', 'zh': '类型'},
-    'providerType': {'en': 'Provider type', 'zh': '提供商类型'},
-    'providerTypeHint': {
-      'en': 'openai, claude, or custom',
-      'zh': 'openai, claude 或自定义',
-    },
-    'proxy': {'en': 'Proxy', 'zh': '代理'},
-    'proxyUrl': {'en': 'Proxy URL', 'zh': '代理 URL'},
-    'baseUrl': {'en': 'Base URL', 'zh': '基础 URL'},
-    'apiKey': {'en': 'API Key', 'zh': 'API 密钥'},
-    'reveal': {'en': 'Reveal', 'zh': '显示'},
-    'hide': {'en': 'Hide', 'zh': '隐藏'},
-    'replaceKey': {'en': 'Replace key', 'zh': '替换密钥'},
-    'deleteProviderTooltip': {'en': 'Delete provider', 'zh': '删除提供商'},
-    'noModelsUsingProvider': {
-      'en': 'No models are using this provider.',
-      'zh': '没有模型使用此提供商。',
-    },
-    'modelsUsingProviderTitle': {
-      'en': 'Models using this provider',
-      'zh': '使用此提供商的模型',
-    },
-    'selectProvider': {
-      'en': 'Select a provider from the list',
-      'zh': '从列表中选择一个提供商',
-    },
-    'accountCredentialPath': {'en': 'Account credential path', 'zh': '账户凭证路径'},
-    'removePath': {'en': 'Remove path', 'zh': '移除路径'},
-    'addAccountPath': {'en': 'Add account path', 'zh': '添加账户路径'},
-    'api': {'en': 'api', 'zh': 'api'},
-    'account': {'en': 'account', 'zh': 'account'},
-
-    'models': {'en': 'Models', 'zh': '模型'},
-    'addModel': {'en': 'Add Model', 'zh': '添加模型'},
-    'modelName': {'en': 'Model alias/name', 'zh': '模型别名/名称'},
-    'modelId': {'en': 'Model ID', 'zh': '模型 ID'},
-    'enabled': {'en': 'Enabled', 'zh': '启用'},
-    'edit': {'en': 'Edit', 'zh': '编辑'},
-    'editModelTitle': {'en': 'Edit {name}', 'zh': '编辑 {name}'},
-    'name': {'en': 'Name', 'zh': '名称'},
-    'actualModel': {'en': 'Actual Model', 'zh': '实际模型'},
-    'noModelsConfigured': {'en': 'No models configured', 'zh': '未配置模型'},
-    'missingProvider': {'en': 'Missing provider:', 'zh': '缺少提供商：'},
-
-    'summary': {'en': 'Summary', 'zh': '摘要'},
-    'statProviders': {'en': 'providers', 'zh': '个提供商'},
-    'statModels': {'en': 'models', 'zh': '个模型'},
-    'statMissingRefs': {'en': 'missing refs', 'zh': '缺失引用'},
-    'statEmptyKeys': {'en': 'empty keys', 'zh': '空密钥'},
-    'validation': {'en': 'Validation', 'zh': '验证'},
-    'allChecksPassed': {'en': 'All checks passed.', 'zh': '所有检查通过。'},
-    'validate': {'en': 'Validate', 'zh': '校验'},
-    'back': {'en': 'Back', 'zh': '返回'},
-    'jsonPreview': {'en': 'JSON Preview', 'zh': 'JSON 预览'},
-
-    'runsPlaceholder': {
-      'en': 'Run history will appear here.',
-      'zh': '运行历史将显示在此处。',
-    },
-    'appearance': {'en': 'Appearance', 'zh': '外观'},
-    'theme': {'en': 'Theme', 'zh': '主题'},
-    'themeSystem': {'en': 'System', 'zh': '跟随系统'},
-    'themeDark': {'en': 'Dark', 'zh': '深色'},
-    'themeLight': {'en': 'Light', 'zh': '浅色'},
-    'language': {'en': 'Language', 'zh': '语言'},
-    'languageEnglish': {'en': 'English', 'zh': 'English'},
-    'languageChinese': {'en': '中文', 'zh': '中文'},
-
-    // Skills
-    'skillsTitle': {'en': 'Skills', 'zh': 'Skills'},
-    'skillsSubtitle': {'en': 'Manage installable skills', 'zh': '管理可安装的 Skill'},
-    'skillsSidebarLabel': {'en': 'Skills', 'zh': 'Skills'},
-    'skillsNavInstalled': {'en': 'Installed', 'zh': '已安装'},
-    'skillsNavDiscovery': {'en': 'Discovery', 'zh': '发现'},
-    'skillsNavRepos': {'en': 'Repos', 'zh': '仓库'},
-    'skillsNavBackups': {'en': 'Backups', 'zh': '备份'},
-    'skillsInstalledCount': {'en': '{count} installed', 'zh': '已安装 {count}'},
-    'skillsCheckUpdates': {'en': 'Check updates', 'zh': '检查更新'},
-    'skillsCheckingUpdates': {'en': 'Checking…', 'zh': '检查中…'},
-    'skillsUpdateAll': {'en': 'Update all ({count})', 'zh': '全部更新 ({count})'},
-    'skillsImportFromDisk': {'en': 'Import from disk', 'zh': '从磁盘导入'},
-    'skillsInstallFromZip': {'en': 'Install from ZIP', 'zh': '从 ZIP 安装'},
-    'skillsNoInstalled': {'en': 'No skills installed yet', 'zh': '还没有安装 Skill'},
-    'skillsNoInstalledHint': {
-      'en': 'Open Discovery to install your first skill.',
-      'zh': '打开发现页安装你的第一个 Skill。',
-    },
-    'skillsGoDiscovery': {'en': 'Go to Discovery', 'zh': '前往发现'},
-    'skillsSourceRepos': {'en': 'Repos', 'zh': '仓库'},
-    'skillsSourceSkillsSh': {'en': 'skills.sh', 'zh': 'skills.sh'},
-    'skillsSearchPlaceholder': {'en': 'Search skills…', 'zh': '搜索 Skill…'},
-    'skillsSkillsShPlaceholder': {
-      'en': 'Search skills.sh (≥ 2 chars)…',
-      'zh': '搜索 skills.sh (≥2 字)…',
-    },
-    'skillsFilterRepoAll': {'en': 'All repos', 'zh': '所有仓库'},
-    'skillsFilterAll': {'en': 'All', 'zh': '全部'},
-    'skillsFilterInstalled': {'en': 'Installed', 'zh': '已安装'},
-    'skillsFilterUninstalled': {'en': 'Not installed', 'zh': '未安装'},
-    'skillsCardInstall': {'en': 'Install', 'zh': '安装'},
-    'skillsCardInstalled': {'en': 'Installed', 'zh': '已安装'},
-    'skillsCardUpdate': {'en': 'Update', 'zh': '更新'},
-    'skillsCardUninstall': {'en': 'Uninstall', 'zh': '卸载'},
-    'skillsUpdateAvailable': {'en': 'Update available', 'zh': '有新版本'},
-    'skillsLocal': {'en': 'local', 'zh': '本地'},
-    'skillsReposEmpty': {'en': 'No repos yet', 'zh': '暂无仓库'},
-    'skillsRepoAdd': {'en': 'Add repo', 'zh': '添加仓库'},
-    'skillsRepoOwner': {'en': 'Owner', 'zh': 'Owner'},
-    'skillsRepoName': {'en': 'Name', 'zh': '名称'},
-    'skillsRepoBranch': {'en': 'Branch', 'zh': '分支'},
-    'skillsRepoRemove': {'en': 'Remove', 'zh': '移除'},
-    'skillsRepoRemoveConfirm': {
-      'en': 'Remove repo {name}?',
-      'zh': '确认移除仓库 {name}？',
-    },
-    'skillsBackupsEmpty': {'en': 'No backups yet', 'zh': '暂无备份'},
-    'skillsBackupRestore': {'en': 'Restore', 'zh': '恢复'},
-    'skillsBackupDelete': {'en': 'Delete', 'zh': '删除'},
-    'skillsBackupDeleteConfirm': {
-      'en': 'Delete backup {name}? This cannot be undone.',
-      'zh': '删除备份 {name}？此操作不可撤销。',
-    },
-    'skillsBackupCreatedAt': {'en': 'Created at', 'zh': '创建时间'},
-    'skillsUninstallConfirm': {
-      'en': 'Uninstall {name}? Files will be moved to backups.',
-      'zh': '卸载 {name}？文件会移入备份目录。',
-    },
-    'skillsOverwriteConfirm': {
-      'en': '{name} already installed. Overwrite?',
-      'zh': '{name} 已安装。是否覆盖？',
-    },
-    'skillsInstallSuccess': {'en': 'Installed {name}', 'zh': '已安装 {name}'},
-    'skillsUninstallSuccess': {'en': 'Uninstalled {name}', 'zh': '已卸载 {name}'},
-    'skillsUpdateSuccess': {'en': 'Updated {name}', 'zh': '已更新 {name}'},
-    'skillsNoUpdates': {
-      'en': 'All skills are up to date',
-      'zh': '所有 Skill 均为最新',
-    },
-    'skillsImportTitle': {
-      'en': 'Import unmanaged skills',
-      'zh': '导入未管理的 Skill',
-    },
-    'skillsImportNothing': {
-      'en': 'No unmanaged skills found.',
-      'zh': '未发现未管理的 Skill。',
-    },
-    'skillsImportSelected': {
-      'en': 'Import {count} selected',
-      'zh': '导入选中 {count} 个',
-    },
-    'skillsZipNoSkills': {
-      'en': 'No SKILL.md found in the archive.',
-      'zh': '压缩包中未发现 SKILL.md。',
-    },
-    'skillsSkillsShLoadMore': {'en': 'Load more', 'zh': '加载更多'},
-    'skillsSkillsShPoweredBy': {
-      'en': 'Powered by skills.sh',
-      'zh': '由 skills.sh 提供',
-    },
-    'skillsSkillsShSearch': {'en': 'Search', 'zh': '搜索'},
-    'skillsDiscoveryEmpty': {'en': 'No skills discovered', 'zh': '未发现可用 Skill'},
-    'skillsDiscoveryEmptyHint': {
-      'en': 'Add a repo or try skills.sh to find skills.',
-      'zh': '添加仓库或试用 skills.sh 来发现 Skill。',
-    },
-    'skillsAdd': {'en': 'Add', 'zh': '添加'},
-    'skillsRemove': {'en': 'Remove', 'zh': '移除'},
-    'skillsEnabled': {'en': 'Enabled', 'zh': '启用'},
-    'skillsInstalls': {'en': '{count} installs', 'zh': '{count} 次安装'},
-  };
-
-  @override
-  bool isSupported(Locale locale) =>
-      _supportedLocales.any((l) => l.languageCode == locale.languageCode);
-
   @override
   Future<AppLocalizations> load(Locale locale) {
-    final langCode =
-        _supportedLocales.any((l) => l.languageCode == locale.languageCode)
-        ? locale.languageCode
-        : 'en';
-    final strings = <String, String>{};
-    for (final entry in _strings.entries) {
-      strings[entry.key] = entry.value[langCode] ?? entry.value['en'] ?? '';
-    }
-    return Future.value(AppLocalizations(strings));
+    return SynchronousFuture<AppLocalizations>(lookupAppLocalizations(locale));
   }
 
   @override
-  bool shouldReload(covariant _AppLocalizationsDelegate old) => false;
+  bool isSupported(Locale locale) =>
+      <String>['en', 'zh'].contains(locale.languageCode);
+
+  @override
+  bool shouldReload(_AppLocalizationsDelegate old) => false;
 }
 
-extension BuildContextL10n on BuildContext {
-  AppLocalizations get l10n => AppLocalizations.of(this);
+AppLocalizations lookupAppLocalizations(Locale locale) {
+  // Lookup logic when only language code is specified.
+  switch (locale.languageCode) {
+    case 'en':
+      return AppLocalizationsEn();
+    case 'zh':
+      return AppLocalizationsZh();
+  }
+
+  throw FlutterError(
+    'AppLocalizations.delegate failed to load unsupported locale "$locale". This is likely '
+    'an issue with the localizations generation tool. Please file an issue '
+    'on GitHub with a reproducible sample app and the gen-l10n configuration '
+    'that was used.',
+  );
 }

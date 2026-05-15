@@ -5,7 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../cubits/config_cubit.dart';
 import '../cubits/layout_cubit.dart';
 import '../cubits/team_cubit.dart';
-import '../l10n/app_localizations.dart';
+import '../l10n/l10n_extensions.dart';
 import '../models/layout_preferences.dart';
 import '../theme/app_theme.dart';
 import '../utils/app_keys.dart';

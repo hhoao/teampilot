@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../cubits/session_preferences_cubit.dart';
-import '../l10n/app_localizations.dart';
+import '../l10n/l10n_extensions.dart';
 import '../utils/app_keys.dart';
 import '../widgets/settings/workspace_settings_widgets.dart';
 

@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../l10n/app_localizations.dart';
+import '../l10n/l10n_extensions.dart';
 import '../models/llm_config.dart';
 import '../cubits/llm_config_cubit.dart';
 import '../utils/app_keys.dart';
@@ -869,8 +869,8 @@ class _ProviderDetailPanelState extends State<_ProviderDetailPanel> {
                       const SizedBox(height: 6),
                       Text(
                         l10n.providerDetailSubtitle(
-                          _type == 'api' ? l10n.api : l10n.account,
                           providerModels.length,
+                          _type == 'api' ? l10n.api : l10n.account,
                         ),
                         style: look.mutedBodyStyle,
                       ),

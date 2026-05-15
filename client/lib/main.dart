@@ -3,7 +3,6 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:window_manager/window_manager.dart';
@@ -15,7 +14,7 @@ import 'cubits/llm_config_cubit.dart';
 import 'cubits/session_preferences_cubit.dart';
 import 'cubits/skill_cubit.dart';
 import 'cubits/team_cubit.dart';
-import 'l10n/app_localizations.dart';
+import 'l10n/l10n_extensions.dart';
 import 'repositories/app_settings_repository.dart';
 import 'repositories/layout_repository.dart';
 import 'repositories/session_preferences_repository.dart';
@@ -207,13 +206,8 @@ class FlashskyAiClientApp extends StatelessWidget {
       theme: buildLightTheme(colorPreset),
       darkTheme: buildDarkTheme(colorPreset),
       themeMode: themeModeFromPrefs(prefs.themeMode),
-      localizationsDelegates: const [
-        AppLocalizations.delegate,
-        GlobalMaterialLocalizations.delegate,
-        GlobalWidgetsLocalizations.delegate,
-        GlobalCupertinoLocalizations.delegate,
-      ],
-      supportedLocales: const [Locale('en'), Locale('zh')],
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
       locale: savedLocale.isNotEmpty ? Locale(savedLocale) : null,
       builder: (context, child) =>
           UiWarmup(child: child ?? const SizedBox.shrink()),

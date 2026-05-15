@@ -1,0 +1,412 @@
+{
+  "@@locale": "en",
+  "appTitle": "TeamPilot",
+  "appRailChat": "Chat",
+  "appRailRuns": "Runs",
+  "appRailConfig": "Config",
+  "copy": "copy",
+  "settings": "Settings",
+  "settingsPageSubtitle": "Manage FlashskyAI team and model settings.",
+  "layout": "Layout",
+  "layoutSubtitle": "global workbench",
+  "save": "Save",
+  "layoutPageSubtitle": "Structure controls are global and apply across teams.",
+  "toolPlacement": "Tool Placement",
+  "right": "Right",
+  "bottom": "Bottom",
+  "rightTools": "Right Tools",
+  "bottomTray": "Bottom Tray",
+  "stacked": "Stacked",
+  "tabs": "Tabs",
+  "stackedTools": "Stacked Tools",
+  "tabbedTools": "Tabbed Tools",
+  "regionVisibility": "Region Visibility",
+  "appRail": "App rail",
+  "toolPlacementDescription": "Dock tool panels on the right or along the bottom edge.",
+  "visibilityTeamSessionsHint": "Show the team sessions list in the left sidebar.",
+  "visibilityMembersHint": "Show the member list next to tools or terminals.",
+  "visibilityFileTreeHint": "Show the project file tree for quick navigation.",
+  "themeModeTitle": "Theme mode",
+  "themeModeDescription": "Light, dark, or match the operating system appearance.",
+  "themeColorPresetTitle": "Theme colors",
+  "themeColorPresetDescription": "Primary and accent colors for buttons, toggles, and highlights.",
+  "themePresetGraphite": "Graphite",
+  "themePresetOcean": "Ocean",
+  "themePresetViolet": "Violet",
+  "themePresetAmber": "Amber",
+  "themePresetForest": "Forest",
+  "languageDescription": "Language used for menus, buttons, and labels.",
+  "cancel": "Cancel",
+  "add": "Add",
+  "delete": "Delete",
+  "appearance": "Appearance",
+  "theme": "Theme",
+  "themeSystem": "System",
+  "themeDark": "Dark",
+  "themeLight": "Light",
+  "language": "Language",
+  "languageEnglish": "English",
+  "languageChinese": "中文",
+  "chatTo": "To:",
+  "copyPrompt": "Copy prompt",
+  "sendPrompt": "Send prompt",
+  "chatHintText": "Write a prompt for team-lead...",
+  "emptyTimeline": "Local shell-mode conversation notes will appear here.",
+  "fileTree": "File Tree",
+  "openTeam": "Open Team",
+  "openMember": "Open member",
+  "filterFiles": "Filter files",
+  "selectTeam": "Select team",
+  "addTeamTooltip": "Add team",
+  "projects": "Projects",
+  "newProject": "New Project",
+  "newSessionTooltip": "New session",
+  "defaultNewChatSessionTitle": "New Chat",
+  "openFolder": "Open Folder",
+  "copyFolderPath": "Copy Folder Path",
+  "deleteProject": "Delete Project",
+  "deleteProjectConfirm": "Delete project \"{name}\" and all its sessions? This cannot be undone.",
+  "@deleteProjectConfirm": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "noSessions": "No sessions yet",
+  "unknownFolder": "Unknown",
+  "renameConversation": "Rename conversation",
+  "deleteConversation": "Delete conversation",
+  "renameConversationTitle": "Rename Conversation",
+  "deleteConversationConfirm": "Delete conversation \"{name}\"? This cannot be undone.",
+  "@deleteConversationConfirm": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "conversationName": "Conversation name",
+  "closeTab": "Close",
+  "closeOtherTabs": "Close Others",
+  "closeRightTabs": "Close to the Right",
+  "session": "Session",
+  "sessionPageSubtitle": "Configure how shell sessions are launched.",
+  "cliExecutablePathLabel": "flashskyai CLI path",
+  "cliExecutablePathDescription": "Absolute path to the flashskyai executable. Leave empty to use the one on PATH.",
+  "cliExecutablePathBrowse": "Browse…",
+  "cliExecutablePathReset": "Reset",
+  "cliExecutablePathUsing": "Using: ",
+  "cliExecutablePathUsingFallback": "Using PATH lookup",
+  "shellChatWorkbench": "Shell chat workbench",
+  "shellSession": "Shell session",
+  "autoLaunchAllMembersTitle": "Start all members on connect",
+  "autoLaunchAllMembersDescription": "When enabled, Connect and Restart launch every valid member shell; otherwise only the selected member starts.",
+  "scopeSessionsToSelectedTeamTitle": "Scope sessions to selected team",
+  "scopeSessionsToSelectedTeamDescription": "When enabled, the sidebar shows only sessions assigned to the current team. New sessions are always tagged with the selected team so they appear here if you turn this on later.",
+  "runsPlaceholder": "Run history will appear here.",
+  "llmConfig": "Provider",
+  "llmConfigSubtitle": "providers and models",
+  "llmConfigPathLabel": "LLM config file",
+  "llmConfigPathHint": "Leave empty to use the default path",
+  "llmConfigPathBrowse": "Browse...",
+  "llmConfigPathSave": "Apply",
+  "llmConfigPathReset": "Use default",
+  "llmConfigPathBadgeDefault": "default",
+  "llmConfigPathBadgeCustom": "custom",
+  "llmConfigPathPickerTitle": "Select llm_config.json",
+  "providers": "PROVIDERS",
+  "llmConfigPageSubtitle": "Manage LLM providers and models.",
+  "providersTab": "Providers",
+  "modelsTab": "Models",
+  "rawJsonTab": "Raw JSON",
+  "addProvider": "Add Provider",
+  "providerName": "Provider name",
+  "deleteProvider": "Delete Provider",
+  "deleteProviderConfirm": "Delete provider {name}?",
+  "@deleteProviderConfirm": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "providerList": "Provider List",
+  "filterProviders": "Filter providers...",
+  "modelsUsingProvider": "Models using this provider: {count}",
+  "@modelsUsingProvider": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "providerListModelCount": "{count} models",
+  "@providerListModelCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "proxyOnShort": "Proxy on",
+  "proxyOffShort": "Proxy off",
+  "providerDetailSubtitle": "{type} provider · {count} models",
+  "@providerDetailSubtitle": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "type": {
+        "type": "String"
+      }
+    }
+  },
+  "type": "Type",
+  "providerType": "Provider type",
+  "providerTypeHint": "openai, claude, or custom",
+  "proxy": "Proxy",
+  "proxyUrl": "Proxy URL",
+  "baseUrl": "Base URL",
+  "apiKey": "API Key",
+  "reveal": "Reveal",
+  "hide": "Hide",
+  "replaceKey": "Replace key",
+  "deleteProviderTooltip": "Delete provider",
+  "noModelsUsingProvider": "No models are using this provider.",
+  "modelsUsingProviderTitle": "Models using this provider",
+  "selectProvider": "Select a provider from the list",
+  "accountCredentialPath": "Account credential path",
+  "removePath": "Remove path",
+  "addAccountPath": "Add account path",
+  "api": "api",
+  "account": "account",
+  "models": "Models",
+  "addModel": "Add Model",
+  "modelName": "Model alias/name",
+  "modelId": "Model ID",
+  "enabled": "Enabled",
+  "edit": "Edit",
+  "editModelTitle": "Edit {name}",
+  "@editModelTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "name": "Name",
+  "actualModel": "Actual Model",
+  "noModelsConfigured": "No models configured",
+  "missingProvider": "Missing provider:",
+  "summary": "Summary",
+  "statProviders": "providers",
+  "statModels": "models",
+  "statMissingRefs": "missing refs",
+  "statEmptyKeys": "empty keys",
+  "validation": "Validation",
+  "allChecksPassed": "All checks passed.",
+  "validate": "Validate",
+  "back": "Back",
+  "jsonPreview": "JSON Preview",
+  "skillsTitle": "Skills",
+  "skillsSubtitle": "Manage installable skills",
+  "skillsSidebarLabel": "Skills",
+  "skillsNavInstalled": "Installed",
+  "skillsNavDiscovery": "Discovery",
+  "skillsNavRepos": "Repos",
+  "skillsNavBackups": "Backups",
+  "skillsInstalledCount": "{count} installed",
+  "@skillsInstalledCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "skillsCheckUpdates": "Check updates",
+  "skillsCheckingUpdates": "Checking…",
+  "skillsUpdateAll": "Update all ({count})",
+  "@skillsUpdateAll": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "skillsImportFromDisk": "Import from disk",
+  "skillsInstallFromZip": "Install from ZIP",
+  "skillsNoInstalled": "No skills installed yet",
+  "skillsNoInstalledHint": "Open Discovery to install your first skill.",
+  "skillsGoDiscovery": "Go to Discovery",
+  "skillsSourceRepos": "Repos",
+  "skillsSourceSkillsSh": "skills.sh",
+  "skillsSearchPlaceholder": "Search skills…",
+  "skillsSkillsShPlaceholder": "Search skills.sh (≥ 2 chars)…",
+  "skillsFilterRepoAll": "All repos",
+  "skillsFilterAll": "All",
+  "skillsFilterInstalled": "Installed",
+  "skillsFilterUninstalled": "Not installed",
+  "skillsCardInstall": "Install",
+  "skillsCardInstalled": "Installed",
+  "skillsCardUpdate": "Update",
+  "skillsCardUninstall": "Uninstall",
+  "skillsUpdateAvailable": "Update available",
+  "skillsLocal": "local",
+  "skillsReposEmpty": "No repos yet",
+  "skillsRepoAdd": "Add repo",
+  "skillsRepoOwner": "Owner",
+  "skillsRepoName": "Name",
+  "skillsRepoBranch": "Branch",
+  "skillsRepoRemove": "Remove",
+  "skillsRepoRemoveConfirm": "Remove repo {name}?",
+  "@skillsRepoRemoveConfirm": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "skillsBackupsEmpty": "No backups yet",
+  "skillsBackupRestore": "Restore",
+  "skillsBackupDelete": "Delete",
+  "skillsBackupDeleteConfirm": "Delete backup {name}? This cannot be undone.",
+  "@skillsBackupDeleteConfirm": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "skillsBackupCreatedAt": "Created at",
+  "skillsUninstallConfirm": "Uninstall {name}? Files will be moved to backups.",
+  "@skillsUninstallConfirm": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "skillsOverwriteConfirm": "{name} already installed. Overwrite?",
+  "@skillsOverwriteConfirm": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "skillsInstallSuccess": "Installed {name}",
+  "@skillsInstallSuccess": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "skillsUninstallSuccess": "Uninstalled {name}",
+  "@skillsUninstallSuccess": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "skillsUpdateSuccess": "Updated {name}",
+  "@skillsUpdateSuccess": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "skillsNoUpdates": "All skills are up to date",
+  "skillsImportTitle": "Import unmanaged skills",
+  "skillsImportNothing": "No unmanaged skills found.",
+  "skillsImportSelected": "Import {count} selected",
+  "@skillsImportSelected": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "skillsZipNoSkills": "No SKILL.md found in the archive.",
+  "skillsSkillsShLoadMore": "Load more",
+  "skillsSkillsShPoweredBy": "Powered by skills.sh",
+  "skillsSkillsShSearch": "Search",
+  "skillsDiscoveryEmpty": "No skills discovered",
+  "skillsDiscoveryEmptyHint": "Add a repo or try skills.sh to find skills.",
+  "skillsAdd": "Add",
+  "skillsRemove": "Remove",
+  "skillsEnabled": "Enabled",
+  "skillsInstalls": "{count} installs",
+  "@skillsInstalls": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "members": "Members",
+  "teamSessions": "Team Sessions",
+  "configure": "Configure",
+  "teamConfig": "Team Config",
+  "teamSettings": "Team Settings",
+  "teamSettingsSubtitle": "workspace teams",
+  "membersSubtitle": "team agents",
+  "teamSkillsNav": "Skills",
+  "teamSkillsAssignedCount": "{assigned} of {total} enabled",
+  "@teamSkillsAssignedCount": {
+    "placeholders": {
+      "assigned": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "teamSkillsManage": "All skills",
+  "memberQuickList": "MEMBER QUICK LIST",
+  "teamName": "Team name",
+  "deleteTeam": "Delete team",
+  "deleteTeamSubtitle": "Removes this team from the UI and the shared flashskyai data directory. This cannot be undone.",
+  "deleteTeamConfirm": "Delete team \"{name}\"? This cannot be undone.",
+  "@deleteTeamConfirm": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "dangerZone": "Danger zone",
+  "teamExtraArgs": "Team extra CLI arguments",
+  "teamExtraArgsHint": "--permission-mode acceptEdits",
+  "teamLoop": "Phase loop",
+  "teamLoopSubtitle": "Team mode: true auto-advances phases; false requires your confirmation.",
+  "teamLoopDefault": "Default",
+  "teamLoopTrue": "true — auto-advance",
+  "teamLoopFalse": "false — confirm each phase",
+  "memberLaunchOrder": "Member launch order",
+  "saveMember": "Save Member",
+  "editTeamSubtitle": "Edit team identity, working directory, and launch order.",
+  "memberName": "Member name",
+  "provider": "Provider",
+  "model": "Model",
+  "agent": "Agent",
+  "selectAgent": "Select an agent",
+  "agentBuiltInNone": "Default",
+  "agentBuiltInCustom": "Custom…",
+  "agentBuiltInSubtitle": "Preset built-in agents.",
+  "agentCustomIdHint": "Custom agent id",
+  "memberExtraArgs": "Member extra CLI arguments",
+  "memberDangerouslySkipPermissions": "Skip all permission checks",
+  "memberDangerouslySkipPermissionsHint": "Only for isolated / no-network sandboxes. Extremely risky otherwise.",
+  "prompt": "Prompt",
+  "selectModel": "Select a model",
+  "editMemberSubtitle": "Edit provider, model, agent, and command arguments.",
+  "teamLeadNameRequired": "FlashskyAI team delegation expects this member to be named exactly team-lead.",
+  "teamLeadNotice": "FlashskyAI team delegation expects this member to be named exactly team-lead.",
+  "membersAndFileTree": "Members and File Tree",
+  "membersAndFileTreeDescription": "Show members and file tree stacked or as tabs."
+}

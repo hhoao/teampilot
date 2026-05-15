@@ -52,6 +52,7 @@ dev_dependencies:
   rename_app: ^1.6.6
 
 flutter:
+  generate: true
   uses-material-design: true
   assets:
     - google_fonts/

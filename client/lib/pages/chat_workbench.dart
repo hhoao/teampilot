@@ -7,7 +7,7 @@ import 'package:xterm/xterm.dart';
 
 import '../cubits/chat_cubit.dart';
 import '../cubits/team_cubit.dart';
-import '../l10n/app_localizations.dart';
+import '../l10n/l10n_extensions.dart';
 import '../models/app_session.dart';
 import '../models/team_config.dart';
 import '../repositories/session_repository.dart';
