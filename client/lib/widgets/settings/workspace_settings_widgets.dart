@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../dropdown/custom_dropdown.dart';
+import '../dropdown/flashsky_dropdown_field.dart';
 import '../dropdown/flashskyai_dropdown_decoration.dart';
 
 const _settingCardBorderRadius = 14.0;
@@ -24,9 +24,7 @@ class SettingsSurfaceCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: cs.surfaceContainerLow,
         borderRadius: BorderRadius.circular(_settingCardBorderRadius),
-        border: Border.all(
-          color: cs.outlineVariant.withValues(alpha: 0.5),
-        ),
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.5)),
       ),
       clipBehavior: Clip.antiAlias,
       child: child,
@@ -53,6 +51,80 @@ class SettingsGroupHeader extends StatelessWidget {
           letterSpacing: 0.2,
         ),
       ),
+    );
+  }
+}
+
+/// Title + subtitle on top; [body] stretches full width on the row below.
+///
+/// Use when controls need more horizontal space than a side-by-side
+/// [SettingsLabeledRow] allows.
+class SettingsLabeledStackedRow extends StatelessWidget {
+  const SettingsLabeledStackedRow({
+    super.key,
+    required this.title,
+    required this.subtitle,
+    required this.body,
+    this.helper,
+    this.showDividerBelow = true,
+    this.afterTitleBodyGap = 12.0,
+  });
+
+  final String title;
+  final String subtitle;
+  final Widget body;
+
+  /// Muted caption below [body], inside the same padded block as the labels.
+  final Widget? helper;
+  final bool showDividerBelow;
+
+  /// Vertical gap between subtitle and [body].
+  final double afterTitleBodyGap;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+    final onSurface = cs.onSurface;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: _settingRowPadding,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                title,
+                style: tt.titleSmall?.copyWith(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  height: 1.25,
+                  color: onSurface,
+                ),
+              ),
+              SizedBox(height: _titleSubtitleGap),
+              Text(
+                subtitle,
+                style: tt.bodySmall?.copyWith(
+                  color: cs.onSurfaceVariant,
+                  fontWeight: FontWeight.w500,
+                  height: 1.35,
+                ),
+              ),
+              SizedBox(height: afterTitleBodyGap),
+              body,
+              if (helper != null) ...[const SizedBox(height: 10), helper!],
+            ],
+          ),
+        ),
+        if (showDividerBelow)
+          Divider(
+            height: 1,
+            thickness: 1,
+            color: cs.outlineVariant.withValues(alpha: 0.5),
+          ),
+      ],
     );
   }
 }
@@ -113,10 +185,7 @@ class SettingsLabeledRow extends StatelessWidget {
               SizedBox(width: _labelTrailingGap),
               Flexible(
                 fit: FlexFit.loose,
-                child: Align(
-                  alignment: Alignment.centerRight,
-                  child: trailing,
-                ),
+                child: Align(alignment: Alignment.centerRight, child: trailing),
               ),
             ],
           ),
@@ -151,52 +220,22 @@ class SettingsCompactDropdown<T extends Object> extends StatelessWidget {
   Widget build(BuildContext context) {
     final decoration = FlashskyDropdownDecorations.settingsCompact(context);
     final values = entries.map((e) => e.$1).toList();
-    final headerStyle = decoration.headerStyle!;
-    final listStyle = decoration.listItemStyle!;
 
-    String labelOf(T item) =>
-        entries.firstWhere((e) => e.$1 == item, orElse: () => (item, '$item')).$2;
+    String labelOf(T item) => entries
+        .firstWhere((e) => e.$1 == item, orElse: () => (item, '$item'))
+        .$2;
 
     return ConstrainedBox(
       constraints: const BoxConstraints(minWidth: _dropdownMinWidth),
-      child: DropdownFlutter<T>(
+      child: FlashskyDropdownField<T>(
         items: values,
         initialItem: value,
-        excludeSelected: false,
         onChanged: onChanged,
         decoration: decoration,
-        closedHeaderPadding: const EdgeInsets.symmetric(
-          horizontal: 8 + 4,
-          vertical: 8,
-        ),
-        expandedHeaderPadding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 12,
-        ),
-        listItemPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
-        overlayHeight: 220,
-        headerBuilder: (context, item, _) => Text(
-          labelOf(item),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: headerStyle,
-        ),
-        listItemBuilder: (context, item, isSelected, _) {
-          final key = itemKeys?[item];
-          return Row(
-            children: [
-              Expanded(
-                child: Text(
-                  labelOf(item),
-                  key: key,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: listStyle,
-                ),
-              ),
-            ],
-          );
-        },
+        listItemKey: itemKeys == null
+            ? null
+            : (item) => itemKeys![item],
+        itemLabel: labelOf,
       ),
     );
   }

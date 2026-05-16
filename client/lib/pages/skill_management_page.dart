@@ -9,8 +9,8 @@ import 'package:url_launcher/url_launcher.dart';
 import '../cubits/skill_cubit.dart';
 import '../l10n/l10n_extensions.dart';
 import '../models/skill.dart';
-import '../widgets/dropdown/custom_dropdown.dart';
-import '../widgets/dropdown/flashskyai_dropdown_decoration.dart';
+import '../widgets/app_outline_text_field.dart';
+import '../widgets/dropdown/flashsky_dropdown_field.dart';
 
 enum SkillSection { installed, discovery, repos, backups }
 
@@ -996,8 +996,6 @@ class _DiscoverySectionState extends State<_DiscoverySection> {
         _pagingController.refresh();
       });
     }
-    final deco = FlashskyDropdownDecorations.denseField(context);
-
     String repoLabel(String v) => v == 'all' ? l10n.skillsFilterRepoAll : v;
 
     String statusLabel(String v) {
@@ -1018,12 +1016,10 @@ class _DiscoverySectionState extends State<_DiscoverySection> {
       children: [
         SizedBox(
           width: 260,
-          child: TextField(
-            decoration: InputDecoration(
-              prefixIcon: const Icon(Icons.search, size: 18),
-              hintText: l10n.skillsSearchPlaceholder,
-              isDense: true,
-            ),
+          child: AppOutlineTextField(
+            prefixIcon: const Icon(Icons.search, size: 18),
+            hintText: l10n.skillsSearchPlaceholder,
+            contentPadding: const EdgeInsets.symmetric(vertical: 4),
             onChanged: (v) {
               setState(() => _searchQuery = v);
               _pagingController.refresh();
@@ -1032,93 +1028,27 @@ class _DiscoverySectionState extends State<_DiscoverySection> {
         ),
         SizedBox(
           width: 200,
-          child: DropdownFlutter<String>(
+          child: FlashskyDropdownField<String>(
             items: repoItems,
             initialItem: effectiveRepo,
-            excludeSelected: false,
-            decoration: deco,
-            closedHeaderPadding: const EdgeInsets.symmetric(
-              horizontal: 10,
-              vertical: 10,
-            ),
-            expandedHeaderPadding: const EdgeInsets.symmetric(
-              horizontal: 12,
-              vertical: 10,
-            ),
-            listItemPadding: const EdgeInsets.symmetric(
-              vertical: 8,
-              horizontal: 10,
-            ),
             overlayHeight: 240,
+            itemLabel: repoLabel,
             onChanged: (v) {
               setState(() => _filterRepo = v ?? 'all');
               _pagingController.refresh();
-            },
-            headerBuilder: (context, value, _) => Text(
-              repoLabel(value),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: deco.headerStyle,
-            ),
-            listItemBuilder: (context, value, _, __) {
-              return Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      repoLabel(value),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: deco.listItemStyle,
-                    ),
-                  ),
-                ],
-              );
             },
           ),
         ),
         SizedBox(
           width: 160,
-          child: DropdownFlutter<String>(
+          child: FlashskyDropdownField<String>(
             items: const ['all', 'installed', 'uninstalled'],
             initialItem: _filterStatus,
-            excludeSelected: false,
-            decoration: deco,
-            closedHeaderPadding: const EdgeInsets.symmetric(
-              horizontal: 10,
-              vertical: 10,
-            ),
-            expandedHeaderPadding: const EdgeInsets.symmetric(
-              horizontal: 12,
-              vertical: 10,
-            ),
-            listItemPadding: const EdgeInsets.symmetric(
-              vertical: 8,
-              horizontal: 10,
-            ),
             overlayHeight: 200,
+            itemLabel: statusLabel,
             onChanged: (v) {
               setState(() => _filterStatus = v ?? 'all');
               _pagingController.refresh();
-            },
-            headerBuilder: (context, value, _) => Text(
-              statusLabel(value),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: deco.headerStyle,
-            ),
-            listItemBuilder: (context, value, _, __) {
-              return Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      statusLabel(value),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: deco.listItemStyle,
-                    ),
-                  ),
-                ],
-              );
             },
           ),
         ),
@@ -1134,13 +1064,11 @@ class _DiscoverySectionState extends State<_DiscoverySection> {
     return Row(
       children: [
         Expanded(
-          child: TextField(
+          child: AppOutlineTextField(
             controller: _skillsShCtl,
-            decoration: InputDecoration(
-              prefixIcon: const Icon(Icons.search, size: 18),
-              hintText: l10n.skillsSkillsShPlaceholder,
-              isDense: true,
-            ),
+            prefixIcon: const Icon(Icons.search, size: 18),
+            hintText: l10n.skillsSkillsShPlaceholder,
+            contentPadding: const EdgeInsets.symmetric(vertical: 4),
             onSubmitted: (v) {
               if (v.trim().length >= 2) cubit.searchSkillsSh(v.trim());
             },
@@ -1546,15 +1474,15 @@ class _ReposSectionState extends State<_ReposSection> {
                 const SizedBox(height: 12),
                 _FieldLabel(text: l10n.skillsRepoOwner),
                 const SizedBox(height: 4),
-                TextField(controller: _ownerCtl),
+                AppOutlineTextField(controller: _ownerCtl),
                 const SizedBox(height: 10),
                 _FieldLabel(text: l10n.skillsRepoName),
                 const SizedBox(height: 4),
-                TextField(controller: _nameCtl),
+                AppOutlineTextField(controller: _nameCtl),
                 const SizedBox(height: 10),
                 _FieldLabel(text: l10n.skillsRepoBranch),
                 const SizedBox(height: 4),
-                TextField(controller: _branchCtl),
+                AppOutlineTextField(controller: _branchCtl),
                 const SizedBox(height: 14),
                 Align(
                   alignment: Alignment.centerRight,

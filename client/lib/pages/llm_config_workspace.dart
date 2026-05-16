@@ -1,16 +1,15 @@
 import 'dart:async';
 
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
-
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 
 import '../l10n/l10n_extensions.dart';
 import '../models/llm_config.dart';
 import '../cubits/llm_config_cubit.dart';
 import '../utils/app_keys.dart';
 import '../widgets/app_outline_text_field.dart';
-import '../widgets/dropdown/custom_dropdown.dart';
+import '../widgets/dropdown/flashsky_dropdown_field.dart';
 import '../widgets/dropdown/flashskyai_dropdown_decoration.dart';
 import '../widgets/resizable_split_view.dart';
 
@@ -30,88 +29,34 @@ class LlmConfigWorkspace extends StatelessWidget {
       key: AppKeys.llmConfigWorkspace,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _ConfigPathBar(controller: controller),
+        _LlmConfigFileHintBar(controller: controller),
         Expanded(child: _ProvidersTabContent(controller: controller)),
       ],
     );
   }
 }
 
-class _ConfigPathBar extends StatefulWidget {
-  const _ConfigPathBar({required this.controller});
+class _LlmConfigFileHintBar extends StatelessWidget {
+  const _LlmConfigFileHintBar({required this.controller});
 
   final LlmConfigCubit controller;
 
   @override
-  State<_ConfigPathBar> createState() => _ConfigPathBarState();
-}
-
-class _ConfigPathBarState extends State<_ConfigPathBar> {
-  late final TextEditingController _textController;
-  String _lastSyncedOverride = '';
-
-  @override
-  void initState() {
-    super.initState();
-    _textController = TextEditingController(
-      text: widget.controller.state.configPathOverride,
-    );
-    _lastSyncedOverride = widget.controller.state.configPathOverride;
-  }
-
-  @override
-  void dispose() {
-    _textController.dispose();
-    super.dispose();
-  }
-
-  void _syncFromState(LlmConfigState state) {
-    if (state.configPathOverride != _lastSyncedOverride) {
-      _lastSyncedOverride = state.configPathOverride;
-      _textController.value = TextEditingValue(
-        text: state.configPathOverride,
-        selection: TextSelection.collapsed(
-          offset: state.configPathOverride.length,
-        ),
-      );
-    }
-  }
-
-  Future<void> _pickFile(AppLocalizations l10n) async {
-    final result = await FilePicker.platform.pickFiles(
-      dialogTitle: l10n.llmConfigPathPickerTitle,
-      type: FileType.custom,
-      allowedExtensions: const ['json'],
-    );
-    final picked = result?.files.single.path;
-    if (picked == null) return;
-    _textController.text = picked;
-    await widget.controller.setConfigPath(picked);
-  }
-
-  Future<void> _apply() async {
-    await widget.controller.setConfigPath(_textController.text);
-  }
-
-  Future<void> _reset() async {
-    _textController.clear();
-    await widget.controller.setConfigPath(null);
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
-    final state = widget.controller.state;
-    _syncFromState(state);
-
+    final state = controller.state;
+    final l10n = context.l10n;
     final cs = Theme.of(context).colorScheme;
     final theme = Theme.of(context);
+
     final badgeText = state.isUsingCustomPath
         ? l10n.llmConfigPathBadgeCustom
         : l10n.llmConfigPathBadgeDefault;
-    final badgeColor = state.isUsingCustomPath
-        ? theme.colorScheme.primary
-        : theme.colorScheme.outline;
+    final badgeColor = state.isUsingCustomPath ? cs.primary : cs.outline;
+
+    final resolved = state.effectiveConfigPath.trim();
+    final hintBody = resolved.isEmpty
+        ? l10n.llmConfigEffectivePathUnresolved
+        : '${l10n.llmConfigCurrentEffectivePathPrefix} $resolved';
 
     return Container(
       padding: const EdgeInsets.fromLTRB(
@@ -126,83 +71,52 @@ class _ConfigPathBarState extends State<_ConfigPathBar> {
           bottom: BorderSide(color: theme.dividerColor.withValues(alpha: 0.4)),
         ),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Row(
-            children: [
-              Text(
-                l10n.llmConfigPathLabel,
-                style: _LlmWorkspaceText(theme).bodyStrong,
-              ),
-              const SizedBox(width: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: badgeColor.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(4),
-                  border: Border.all(color: badgeColor.withValues(alpha: 0.4)),
-                ),
-                child: Text(
-                  badgeText,
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    color: badgeColor,
-                  ),
-                ),
-              ),
-              Expanded(
-                child: Tooltip(
-                  message: state.effectiveConfigPath,
-                  waitDuration: const Duration(milliseconds: 400),
-                  child: SelectionArea(
-                    child: Text(
-                      state.effectiveConfigPath,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      textAlign: TextAlign.end,
-                    ),
-                  ),
-                ),
-              ),
-            ],
+          Text(
+            l10n.llmConfigPathLabel,
+            style: _LlmWorkspaceText(theme).bodyStrong,
           ),
-          const SizedBox(height: 6),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Expanded(
-                child: AppOutlineTextField(
-                  controller: _textController,
-                  hintText: l10n.llmConfigPathHint,
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 8,
+          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            decoration: BoxDecoration(
+              color: badgeColor.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(4),
+              border: Border.all(color: badgeColor.withValues(alpha: 0.4)),
+            ),
+            child: Text(
+              badgeText,
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: badgeColor,
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Tooltip(
+              message: hintBody,
+              waitDuration: const Duration(milliseconds: 400),
+              child: SelectionArea(
+                child: Text(
+                  hintBody,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                    height: 1.35,
                   ),
-                  onSubmitted: (_) => _apply(),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
-              const SizedBox(width: 6),
-              OutlinedButton.icon(
-                onPressed: () => _pickFile(l10n),
-                icon: const Icon(Icons.folder_open_outlined, size: 16),
-                label: Text(l10n.llmConfigPathBrowse),
-              ),
-              const SizedBox(width: 6),
-              FilledButton(
-                onPressed: state.isLoading ? null : _apply,
-                child: Text(l10n.llmConfigPathSave),
-              ),
-              const SizedBox(width: 6),
-              TextButton(
-                onPressed: state.isLoading || !state.isUsingCustomPath
-                    ? null
-                    : _reset,
-                child: Text(l10n.llmConfigPathReset),
-              ),
-            ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          OutlinedButton.icon(
+            key: AppKeys.llmConfigOpenSessionSettingsButton,
+            icon: const Icon(Icons.terminal_outlined, size: 17),
+            label: Text(l10n.llmConfigOpenSessionSettings),
+            onPressed: () => context.go('/config/session'),
           ),
         ],
       ),
@@ -934,59 +848,17 @@ class _ProviderDetailPanelState extends State<_ProviderDetailPanel> {
                         title: l10n.type,
                         trailing: SizedBox(
                           width: trailingW,
-                          child: Builder(
-                            builder: (context) {
-                              final deco =
-                                  FlashskyDropdownDecorations.denseField(
-                                    context,
-                                  );
-                              return DropdownFlutter<String>(
-                                key: ValueKey<String>(
-                                  'provider-type-${provider.name}',
-                                ),
-                                items: const ['api', 'account'],
-                                initialItem: _type,
-                                excludeSelected: false,
-                                decoration: deco,
-                                closedHeaderPadding: const EdgeInsets.symmetric(
-                                  horizontal: 10,
-                                  vertical: 10,
-                                ),
-                                expandedHeaderPadding:
-                                    const EdgeInsets.symmetric(
-                                      horizontal: 12,
-                                      vertical: 10,
-                                    ),
-                                listItemPadding: const EdgeInsets.symmetric(
-                                  vertical: 8,
-                                  horizontal: 10,
-                                ),
-                                overlayHeight: 160,
-                                onChanged: (value) {
-                                  setState(() => _type = value ?? 'api');
-                                  _persistProvider();
-                                },
-                                headerBuilder: (context, value, _) => Text(
-                                  typeLabel(value),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: deco.headerStyle,
-                                ),
-                                listItemBuilder: (context, value, _, __) {
-                                  return Row(
-                                    children: [
-                                      Expanded(
-                                        child: Text(
-                                          typeLabel(value),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: deco.listItemStyle,
-                                        ),
-                                      ),
-                                    ],
-                                  );
-                                },
-                              );
+                          child: FlashskyDropdownField<String>(
+                            key: ValueKey<String>(
+                              'provider-type-${provider.name}',
+                            ),
+                            items: const ['api', 'account'],
+                            initialItem: _type,
+                            overlayHeight: 160,
+                            itemLabel: typeLabel,
+                            onChanged: (value) {
+                              setState(() => _type = value ?? 'api');
+                              _persistProvider();
                             },
                           ),
                         ),
@@ -1834,47 +1706,14 @@ class _ModelEditDialogState extends State<_ModelEditDialog> {
                   style: _LlmWorkspaceText(Theme.of(context)).bodyStrong,
                 ),
                 const SizedBox(height: 8),
-                DropdownFlutter<String>(
+                FlashskyDropdownField<String>(
                   key: AppKeys.modelProviderField,
                   items: providerNames,
                   initialItem: initialProvider,
                   hintText: l10n.provider,
-                  excludeSelected: false,
                   decoration: deco,
-                  closedHeaderPadding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 12,
-                  ),
-                  expandedHeaderPadding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 12,
-                  ),
-                  listItemPadding: const EdgeInsets.symmetric(
-                    vertical: 10,
-                    horizontal: 12,
-                  ),
-                  overlayHeight: 260,
                   onChanged: (value) => setState(() => _provider = value ?? ''),
-                  headerBuilder: (context, value, _) => Text(
-                    value,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: deco.headerStyle,
-                  ),
-                  listItemBuilder: (context, value, _, __) {
-                    return Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            value,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: deco.listItemStyle,
-                          ),
-                        ),
-                      ],
-                    );
-                  },
+                  itemLabel: (value) => value,
                 ),
               ],
             ),

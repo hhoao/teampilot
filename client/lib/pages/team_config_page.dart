@@ -11,7 +11,8 @@ import '../l10n/l10n_extensions.dart';
 import '../models/skill.dart';
 import '../models/team_config.dart';
 import '../utils/app_keys.dart';
-import '../widgets/dropdown/custom_dropdown.dart';
+import '../widgets/app_outline_text_field.dart';
+import '../widgets/dropdown/flashsky_dropdown_field.dart';
 import '../widgets/dropdown/flashskyai_dropdown_decoration.dart';
 
 enum _TeamPageSection { team, skills, members }
@@ -549,10 +550,12 @@ class _TeamSkillsSection extends StatelessWidget {
     final textBase = isDark ? Colors.white : const Color(0xFF111827);
     final skillState = context.watch<SkillCubit>().state;
     final syncing = context.watch<TeamCubit>().state.isSyncingSkills;
-    final enabled =
-        skillState.installed.where((s) => s.enabled).toList(growable: false);
-    final assignedCount =
-        enabled.where((s) => team.skillIds.contains(s.id)).length;
+    final enabled = skillState.installed
+        .where((s) => s.enabled)
+        .toList(growable: false);
+    final assignedCount = enabled
+        .where((s) => team.skillIds.contains(s.id))
+        .length;
 
     return SingleChildScrollView(
       child: Column(
@@ -563,7 +566,10 @@ class _TeamSkillsSection extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 _CardHeader(
-                  title: l10n.teamSkillsAssignedCount(assignedCount, enabled.length),
+                  title: l10n.teamSkillsAssignedCount(
+                    assignedCount,
+                    enabled.length,
+                  ),
                   trailing: OutlinedButton.icon(
                     onPressed: () => context.go('/skills'),
                     icon: const Icon(Icons.extension_outlined, size: 16),
@@ -823,7 +829,7 @@ class _TeamInfoSectionState extends State<_TeamInfoSection> {
                 const SizedBox(height: 18),
                 _FieldLabel(text: l10n.teamName),
                 const SizedBox(height: 6),
-                TextField(
+                AppOutlineTextField(
                   controller: _nameCtl,
                   onChanged: (v) => widget.cubit.updateSelected(
                     widget.team.copyWith(name: v),
@@ -832,7 +838,7 @@ class _TeamInfoSectionState extends State<_TeamInfoSection> {
                 const SizedBox(height: 14),
                 _FieldLabel(text: l10n.teamLoop),
                 const SizedBox(height: 6),
-                DropdownFlutter<String>(
+                FlashskyDropdownField<String>(
                   key: ValueKey(
                     'team-loop-${widget.team.id}-${widget.team.loop ?? 'nil'}',
                   ),
@@ -841,21 +847,10 @@ class _TeamInfoSectionState extends State<_TeamInfoSection> {
                       ? '__default__'
                       : (widget.team.loop! ? 'true' : 'false'),
                   hintText: l10n.teamLoopDefault,
-                  excludeSelected: false,
                   decoration: FlashskyDropdownDecorations.denseField(context),
-                  closedHeaderPadding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 12,
-                  ),
-                  expandedHeaderPadding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 12,
-                  ),
-                  listItemPadding: const EdgeInsets.symmetric(
-                    vertical: 10,
-                    horizontal: 12,
-                  ),
                   overlayHeight: 200,
+                  listItemMaxLines: 2,
+                  itemLabel: (k) => _teamLoopChoiceLabel(l10n, k),
                   onChanged: (value) {
                     final key = value ?? '__default__';
                     final bool? next = key == '__default__'
@@ -863,30 +858,6 @@ class _TeamInfoSectionState extends State<_TeamInfoSection> {
                         : key == 'true';
                     widget.cubit.updateSelected(
                       widget.team.copyWith(loop: next, updateLoop: true),
-                    );
-                  },
-                  headerBuilder: (context, value, _) => Text(
-                    _teamLoopChoiceLabel(l10n, value),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: FlashskyDropdownDecorations.denseField(
-                      context,
-                    ).headerStyle,
-                  ),
-                  listItemBuilder: (context, value, isSelected, _) {
-                    return Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            _teamLoopChoiceLabel(l10n, value),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: FlashskyDropdownDecorations.denseField(
-                              context,
-                            ).listItemStyle,
-                          ),
-                        ),
-                      ],
                     );
                   },
                 ),
@@ -902,9 +873,9 @@ class _TeamInfoSectionState extends State<_TeamInfoSection> {
                 const SizedBox(height: 14),
                 _FieldLabel(text: l10n.teamExtraArgs),
                 const SizedBox(height: 6),
-                TextField(
+                AppOutlineTextField(
                   controller: _argsCtl,
-                  decoration: InputDecoration(hintText: l10n.teamExtraArgsHint),
+                  hintText: l10n.teamExtraArgsHint,
                   onChanged: (v) => widget.cubit.updateSelected(
                     widget.team.copyWith(extraArgs: v),
                   ),
@@ -1168,32 +1139,18 @@ class _MemberConfigFormState extends State<_MemberConfigForm> {
         const SizedBox(height: 18),
         _FieldLabel(text: l10n.memberName),
         const SizedBox(height: 6),
-        TextField(
+        AppOutlineTextField(
           controller: _nameCtl,
           onChanged: (v) => _update(m.copyWith(name: v)),
         ),
         const SizedBox(height: 12),
         _FieldLabel(text: l10n.provider),
         const SizedBox(height: 6),
-        DropdownFlutter<String>(
+        FlashskyDropdownField<String>(
           items: providerNames,
           initialItem: prov.isEmpty ? null : prov,
           hintText: l10n.selectProvider,
-          excludeSelected: false,
           decoration: dropdownDeco,
-          closedHeaderPadding: const EdgeInsets.symmetric(
-            horizontal: 12,
-            vertical: 12,
-          ),
-          expandedHeaderPadding: const EdgeInsets.symmetric(
-            horizontal: 14,
-            vertical: 12,
-          ),
-          listItemPadding: const EdgeInsets.symmetric(
-            vertical: 10,
-            horizontal: 12,
-          ),
-          overlayHeight: 260,
           onChanged: (value) {
             final newProv = value ?? '';
             var newModel = m.model;
@@ -1203,70 +1160,18 @@ class _MemberConfigFormState extends State<_MemberConfigForm> {
             if (!stillValid) newModel = '';
             _update(m.copyWith(provider: newProv, model: newModel));
           },
-          headerBuilder: (context, value, _) => Text(
-            value,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: dropdownDeco.headerStyle,
-          ),
-          listItemBuilder: (context, value, isSelected, _) {
-            return Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    value,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: dropdownDeco.listItemStyle,
-                  ),
-                ),
-              ],
-            );
-          },
+          itemLabel: (value) => value,
         ),
         const SizedBox(height: 12),
         _FieldLabel(text: l10n.model),
         const SizedBox(height: 6),
-        DropdownFlutter<String>(
+        FlashskyDropdownField<String>(
           items: modelNames,
           initialItem: model.isEmpty ? null : model,
           hintText: l10n.selectModel,
-          excludeSelected: false,
           decoration: dropdownDeco,
-          closedHeaderPadding: const EdgeInsets.symmetric(
-            horizontal: 12,
-            vertical: 12,
-          ),
-          expandedHeaderPadding: const EdgeInsets.symmetric(
-            horizontal: 14,
-            vertical: 12,
-          ),
-          listItemPadding: const EdgeInsets.symmetric(
-            vertical: 10,
-            horizontal: 12,
-          ),
-          overlayHeight: 260,
           onChanged: (value) => _update(m.copyWith(model: value ?? '')),
-          headerBuilder: (context, value, _) => Text(
-            value,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: dropdownDeco.headerStyle,
-          ),
-          listItemBuilder: (context, value, isSelected, _) {
-            return Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    value,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: dropdownDeco.listItemStyle,
-                  ),
-                ),
-              ],
-            );
-          },
+          itemLabel: (value) => value,
         ),
         const SizedBox(height: 12),
         _FieldLabel(text: l10n.agent),
@@ -1280,26 +1185,16 @@ class _MemberConfigFormState extends State<_MemberConfigForm> {
           ),
         ),
         const SizedBox(height: 8),
-        DropdownFlutter<String>(
+        FlashskyDropdownField<String>(
           key: ValueKey('member-agent-dd-${widget.member.id}-${m.agent}'),
           items: FlashskyBuiltInAgents.dropdownValues(),
           initialItem: FlashskyBuiltInAgents.activeDropdownValue(m.agent),
           hintText: l10n.selectAgent,
-          excludeSelected: false,
           decoration: dropdownDeco,
-          closedHeaderPadding: const EdgeInsets.symmetric(
-            horizontal: 12,
-            vertical: 12,
-          ),
-          expandedHeaderPadding: const EdgeInsets.symmetric(
-            horizontal: 14,
-            vertical: 12,
-          ),
-          listItemPadding: const EdgeInsets.symmetric(
-            vertical: 10,
-            horizontal: 12,
-          ),
-          overlayHeight: 280,
+          headerMaxLines: 2,
+          listItemMaxLines: 2,
+          itemLabel: (value) =>
+              _memberAgentDropdownItemLabel(context, l10n, value),
           onChanged: (value) {
             final v = value ?? FlashskyBuiltInAgents.noneDropdownValue;
             if (v == FlashskyBuiltInAgents.noneDropdownValue) {
@@ -1318,33 +1213,13 @@ class _MemberConfigFormState extends State<_MemberConfigForm> {
               _update(m.copyWith(agent: v));
             }
           },
-          headerBuilder: (context, value, _) => Text(
-            _memberAgentDropdownItemLabel(context, l10n, value),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: dropdownDeco.headerStyle,
-          ),
-          listItemBuilder: (context, value, isSelected, _) {
-            return Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    _memberAgentDropdownItemLabel(context, l10n, value),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: dropdownDeco.listItemStyle,
-                  ),
-                ),
-              ],
-            );
-          },
         ),
         if (FlashskyBuiltInAgents.activeDropdownValue(m.agent) ==
             FlashskyBuiltInAgents.customDropdownValue) ...[
           const SizedBox(height: 8),
-          TextField(
+          AppOutlineTextField(
             controller: _agentCtl,
-            decoration: InputDecoration(hintText: l10n.agentCustomIdHint),
+            hintText: l10n.agentCustomIdHint,
             onChanged: (v) => _update(m.copyWith(agent: v)),
           ),
         ],
@@ -1373,14 +1248,14 @@ class _MemberConfigFormState extends State<_MemberConfigForm> {
         const SizedBox(height: 12),
         _FieldLabel(text: l10n.memberExtraArgs),
         const SizedBox(height: 6),
-        TextField(
+        AppOutlineTextField(
           controller: _argsCtl,
           onChanged: (v) => _update(m.copyWith(extraArgs: v)),
         ),
         const SizedBox(height: 12),
         _FieldLabel(text: l10n.prompt),
         const SizedBox(height: 6),
-        TextField(
+        AppOutlineTextField(
           controller: _promptCtl,
           minLines: 3,
           maxLines: 6,

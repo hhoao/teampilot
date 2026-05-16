@@ -244,7 +244,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get session => '会话';
 
   @override
-  String get sessionPageSubtitle => '配置 Shell 会话的启动方式。';
+  String get sessionPageSubtitle => '配置 Shell 会话启动方式与 LLM 配置文件路径。';
 
   @override
   String get cliExecutablePathLabel => 'flashskyai CLI 路径';
@@ -255,6 +255,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get cliExecutablePathBrowse => '浏览…';
+
+  @override
+  String get cliExecutablePathApply => '更新';
 
   @override
   String get cliExecutablePathReset => '重置';
@@ -317,6 +320,19 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get llmConfigPathPickerTitle => '选择 llm_config.json';
+
+  @override
+  String get llmConfigPathSessionCardDescription =>
+      'LLM 配置文件（llm_config.json）的绝对路径。留空则使用 CLI 安装目录旁的默认路径。';
+
+  @override
+  String get llmConfigCurrentEffectivePathPrefix => '当前文件：';
+
+  @override
+  String get llmConfigEffectivePathUnresolved => '尚未解析出路径（请指定 CLI 或自定义路径）';
+
+  @override
+  String get llmConfigOpenSessionSettings => '会话设置…';
 
   @override
   String get providers => '提供商';

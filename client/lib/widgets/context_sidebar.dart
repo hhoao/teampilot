@@ -14,7 +14,8 @@ import '../models/app_session.dart';
 import '../models/team_config.dart';
 import '../repositories/session_repository.dart';
 import '../utils/app_keys.dart';
-import '../widgets/dropdown/custom_dropdown.dart';
+import '../widgets/app_outline_text_field.dart';
+import '../widgets/dropdown/flashsky_dropdown_field.dart';
 import '../widgets/dropdown/flashskyai_dropdown_decoration.dart';
 
 /// Matches [_ProjectHeader] label start: `padding.left` + chevron + gap + folder + gap.
@@ -669,10 +670,10 @@ class _SessionTileEntryState extends State<_SessionTileEntry> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text(l10n.renameConversationTitle),
-        content: TextField(
+        content: AppOutlineTextField(
           controller: controller,
           autofocus: true,
-          decoration: InputDecoration(labelText: l10n.conversationName),
+          labelText: l10n.conversationName,
           onSubmitted: (value) {
             if (value.trim().isNotEmpty) {
               unawaited(
@@ -871,49 +872,16 @@ class _TeamSelector extends StatelessWidget {
     return Row(
       children: [
         Expanded(
-          child: DropdownFlutter<TeamConfig>(
+          child: FlashskyDropdownField<TeamConfig>(
             items: teams,
             initialItem: selected,
-            excludeSelected: false,
             hintText: l10n.selectTeam,
             decoration: decoration,
-            closedHeaderPadding: const EdgeInsets.symmetric(
-              horizontal: 10,
-              vertical: 8,
-            ),
-            expandedHeaderPadding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 12,
-            ),
-            listItemPadding: const EdgeInsets.symmetric(
-              vertical: 10,
-              horizontal: 12,
-            ),
-            overlayHeight: 280,
+            itemLabel: (team) => team.name,
             onChanged: (team) {
               if (team != null && team.id != selected.id) {
                 onSelect(team.id);
               }
-            },
-            headerBuilder: (context, team, _) => Text(
-              team.name,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: decoration.headerStyle,
-            ),
-            listItemBuilder: (context, team, isSelected, _) {
-              return Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      team.name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: decoration.listItemStyle,
-                    ),
-                  ),
-                ],
-              );
             },
           ),
         ),

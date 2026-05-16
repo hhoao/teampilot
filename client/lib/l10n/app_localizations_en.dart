@@ -255,7 +255,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get sessionPageSubtitle =>
-      'Configure how shell sessions are launched.';
+      'Configure shell session launch and the LLM config file path.';
 
   @override
   String get cliExecutablePathLabel => 'flashskyai CLI path';
@@ -266,6 +266,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get cliExecutablePathBrowse => 'Browse…';
+
+  @override
+  String get cliExecutablePathApply => 'Apply';
 
   @override
   String get cliExecutablePathReset => 'Reset';
@@ -329,6 +332,20 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get llmConfigPathPickerTitle => 'Select llm_config.json';
+
+  @override
+  String get llmConfigPathSessionCardDescription =>
+      'Absolute path to the LLM config file (llm_config.json). Leave empty to use the default path next to the CLI install.';
+
+  @override
+  String get llmConfigCurrentEffectivePathPrefix => 'Active file:';
+
+  @override
+  String get llmConfigEffectivePathUnresolved =>
+      'Could not resolve a path yet (set the CLI location or enter a path).';
+
+  @override
+  String get llmConfigOpenSessionSettings => 'Session settings…';
 
   @override
   String get providers => 'PROVIDERS';

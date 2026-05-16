@@ -21,10 +21,12 @@ class AppKeys {
   );
   static const membersVisibilitySwitch = Key('members-visibility-switch');
   static const fileTreeVisibilitySwitch = Key('file-tree-visibility-switch');
-  static const autoLaunchAllMembersOnConnectSwitch =
-      Key('auto-launch-all-members-on-connect-switch');
-  static const scopeSessionsToSelectedTeamSwitch =
-      Key('scope-sessions-to-selected-team-switch');
+  static const autoLaunchAllMembersOnConnectSwitch = Key(
+    'auto-launch-all-members-on-connect-switch',
+  );
+  static const scopeSessionsToSelectedTeamSwitch = Key(
+    'scope-sessions-to-selected-team-switch',
+  );
   static const toolPlacementRightButton = Key('tool-placement-right-button');
   static const toolPlacementBottomButton = Key('tool-placement-bottom-button');
   static const toolsArrangementStackedButton = Key(
@@ -39,13 +41,28 @@ class AppKeys {
   );
   static const configLayoutSectionButton = Key('config-layout-section-button');
   static const configLlmSectionButton = Key('config-llm-section-button');
-  static const configSessionSectionButton =
-      Key('config-session-section-button');
+  static const configSessionSectionButton = Key(
+    'config-session-section-button',
+  );
   static const cliExecutablePathField = Key('cli-executable-path-field');
-  static const cliExecutablePathBrowseButton =
-      Key('cli-executable-path-browse-button');
-  static const cliExecutablePathResetButton =
-      Key('cli-executable-path-reset-button');
+  static const cliExecutablePathBrowseButton = Key(
+    'cli-executable-path-browse-button',
+  );
+  static const cliExecutablePathResetButton = Key(
+    'cli-executable-path-reset-button',
+  );
+  static const llmConfigPathOverrideField = Key(
+    'llm-config-path-override-field',
+  );
+  static const llmConfigPathOverrideBrowseButton = Key(
+    'llm-config-path-override-browse-button',
+  );
+  static const llmConfigPathOverrideResetButton = Key(
+    'llm-config-path-override-reset-button',
+  );
+  static const llmConfigOpenSessionSettingsButton = Key(
+    'llm-config-open-session-settings-button',
+  );
   static const teamConfigWorkspace = Key('team-config-workspace');
   static const memberConfigWorkspace = Key('member-config-workspace');
   static const llmConfigWorkspace = Key('llm-config-workspace');
@@ -114,14 +131,10 @@ class AppKeys {
   static const providerModelsTable = Key('provider-models-table');
   static const llmModelsTable = Key('llm-models-table');
 
-  static Key deleteProviderButton(String name) =>
-      Key('delete-provider-$name');
-  static Key editProviderButton(String name) =>
-      Key('edit-provider-$name');
-  static Key deleteModelButton(String id) =>
-      Key('delete-model-$id');
-  static Key editModelButton(String id) =>
-      Key('edit-model-$id');
+  static Key deleteProviderButton(String name) => Key('delete-provider-$name');
+  static Key editProviderButton(String name) => Key('edit-provider-$name');
+  static Key deleteModelButton(String id) => Key('delete-model-$id');
+  static Key editModelButton(String id) => Key('edit-model-$id');
 
   static const themeSystemButton = Key('theme-system-button');
   static const themeDarkButton = Key('theme-dark-button');

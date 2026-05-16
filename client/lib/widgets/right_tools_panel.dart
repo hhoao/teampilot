@@ -12,6 +12,7 @@ import '../l10n/l10n_extensions.dart';
 import '../models/layout_preferences.dart';
 import '../models/team_config.dart';
 import '../utils/app_keys.dart';
+import 'app_outline_text_field.dart';
 import 'file_tree_node.dart';
 
 class RightToolsPanel extends StatelessWidget {
@@ -56,13 +57,11 @@ class RightToolsPanel extends StatelessWidget {
           members: members,
           selectedMemberId: chatCubit.state.selectedMemberId,
           onSelected: (id) {
-            final member =
-                team.members.firstWhere((m) => m.id == id);
+            final member = team.members.firstWhere((m) => m.id == id);
             unawaited(context.read<ChatCubit>().openMemberTab(team, member));
           },
           onOpen: (id) {
-            final member =
-                team.members.firstWhere((m) => m.id == id);
+            final member = team.members.firstWhere((m) => m.id == id);
             unawaited(context.read<ChatCubit>().openMemberTab(team, member));
           },
           onLaunchAll: () {
@@ -72,10 +71,7 @@ class RightToolsPanel extends StatelessWidget {
               context.read<ChatCubit>().isMemberRunning(id),
         ),
       if (preferences.fileTreeVisible)
-        _FileTreePanel(
-          team: team,
-          cwd: _sessionCwd(chatCubit),
-        ),
+        _FileTreePanel(team: team, cwd: _sessionCwd(chatCubit)),
     ];
     return Container(
       key: panelKey,
@@ -88,8 +84,7 @@ class RightToolsPanel extends StatelessWidget {
 }
 
 class _StackedToolsPanel extends StatelessWidget {
-  const _StackedToolsPanel(
-      {required this.panels, required this.preferences});
+  const _StackedToolsPanel({required this.panels, required this.preferences});
 
   final List<Widget> panels;
   final LayoutPreferences preferences;
@@ -115,8 +110,7 @@ class _StackedToolsPanel extends StatelessWidget {
 }
 
 class _TabbedToolsPanel extends StatelessWidget {
-  const _TabbedToolsPanel(
-      {required this.panels, required this.preferences});
+  const _TabbedToolsPanel({required this.panels, required this.preferences});
 
   final List<Widget> panels;
   final LayoutPreferences preferences;
@@ -187,11 +181,12 @@ class _MembersPanel extends StatelessWidget {
                 child: IconButton(
                   tooltip: l10n.openTeam,
                   onPressed: onLaunchAll,
-                  icon: const Icon(Icons.keyboard_double_arrow_right,
-                      size: 18),
+                  icon: const Icon(Icons.keyboard_double_arrow_right, size: 18),
                   padding: EdgeInsets.zero,
-                  constraints:
-                      const BoxConstraints(minWidth: 28, minHeight: 22),
+                  constraints: const BoxConstraints(
+                    minWidth: 28,
+                    minHeight: 22,
+                  ),
                 ),
               ),
             ],
@@ -214,12 +209,14 @@ class _MembersPanel extends StatelessWidget {
                     child: ListTile(
                       dense: true,
                       shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8)),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
                       title: Text(member.name),
                       subtitle: Text(
-                        [member.provider, member.model]
-                            .where((v) => v.isNotEmpty)
-                            .join(' / '),
+                        [
+                          member.provider,
+                          member.model,
+                        ].where((v) => v.isNotEmpty).join(' / '),
                       ),
                       trailing: Container(
                         key: AppKeys.memberOpenButton(member.id),
@@ -294,7 +291,8 @@ class _FileTreePanelState extends State<_FileTreePanel> {
       value: _cubit,
       child: BlocBuilder<FileTreeCubit, FileTreeState>(
         builder: (context, state) {
-          final rootExists = state.rootPath.isNotEmpty &&
+          final rootExists =
+              state.rootPath.isNotEmpty &&
               Directory(state.rootPath).existsSync();
           return Container(
             key: AppKeys.fileTreePanel,
@@ -330,8 +328,10 @@ class _FileTreePanelState extends State<_FileTreePanel> {
                           size: 16,
                         ),
                         padding: EdgeInsets.zero,
-                        constraints:
-                            const BoxConstraints(minWidth: 28, minHeight: 22),
+                        constraints: const BoxConstraints(
+                          minWidth: 28,
+                          minHeight: 22,
+                        ),
                       ),
                     ),
                     SizedBox(
@@ -342,13 +342,16 @@ class _FileTreePanelState extends State<_FileTreePanel> {
                         onPressed: () {
                           if (state.rootPath.isNotEmpty) {
                             Clipboard.setData(
-                                ClipboardData(text: state.rootPath));
+                              ClipboardData(text: state.rootPath),
+                            );
                           }
                         },
                         icon: const Icon(Icons.copy, size: 14),
                         padding: EdgeInsets.zero,
-                        constraints:
-                            const BoxConstraints(minWidth: 28, minHeight: 22),
+                        constraints: const BoxConstraints(
+                          minWidth: 28,
+                          minHeight: 22,
+                        ),
                       ),
                     ),
                   ],
@@ -358,23 +361,20 @@ class _FileTreePanelState extends State<_FileTreePanel> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      TextField(
+                      AppOutlineTextField(
                         controller: _filterController,
-                        decoration: InputDecoration(
-                          isDense: true,
-                          hintText: l10n.filterFiles,
-                          prefixIcon:
-                              const Icon(Icons.search, size: 18),
-                          suffixIcon: _filterController.text.isNotEmpty
-                              ? IconButton(
-                                  icon: const Icon(Icons.clear, size: 16),
-                                  onPressed: () {
-                                    _filterController.clear();
-                                    _cubit.setFilter('');
-                                  },
-                                )
-                              : null,
-                        ),
+                        hintText: l10n.filterFiles,
+                        prefixIcon: const Icon(Icons.search, size: 18),
+                        suffixIcon: _filterController.text.isNotEmpty
+                            ? IconButton(
+                                icon: const Icon(Icons.clear, size: 16),
+                                onPressed: () {
+                                  _filterController.clear();
+                                  _cubit.setFilter('');
+                                },
+                              )
+                            : null,
+                        contentPadding: const EdgeInsets.symmetric(vertical: 4),
                         onChanged: (v) {
                           _cubit.setFilter(v);
                           setState(() {});
@@ -405,8 +405,9 @@ class _FileTreePanelState extends State<_FileTreePanel> {
                         child: rootExists
                             ? ListView(
                                 children: [
-                                  for (final entry
-                                      in _cubit.entriesFor(state.rootPath))
+                                  for (final entry in _cubit.entriesFor(
+                                    state.rootPath,
+                                  ))
                                     FileTreeNode(
                                       path: entry.path,
                                       entity: entry,
@@ -414,15 +415,12 @@ class _FileTreePanelState extends State<_FileTreePanel> {
                                       cubit: _cubit,
                                       textColor: textBase,
                                     ),
-                                  if (_cubit
-                                      .entriesFor(state.rootPath)
-                                      .isEmpty)
+                                  if (_cubit.entriesFor(state.rootPath).isEmpty)
                                     Text(
                                       '(empty)',
                                       style: TextStyle(
                                         fontSize: 12,
-                                        color: textBase
-                                            .withValues(alpha: 0.35),
+                                        color: textBase.withValues(alpha: 0.35),
                                       ),
                                     ),
                                 ],
@@ -440,4 +438,3 @@ class _FileTreePanelState extends State<_FileTreePanel> {
     );
   }
 }
-

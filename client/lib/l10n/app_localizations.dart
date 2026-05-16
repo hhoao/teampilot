@@ -563,7 +563,7 @@ abstract class AppLocalizations {
   /// No description provided for @sessionPageSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Configure how shell sessions are launched.'**
+  /// **'Configure shell session launch and the LLM config file path.'**
   String get sessionPageSubtitle;
 
   /// No description provided for @cliExecutablePathLabel.
@@ -583,6 +583,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Browse…'**
   String get cliExecutablePathBrowse;
+
+  /// No description provided for @cliExecutablePathApply.
+  ///
+  /// In en, this message translates to:
+  /// **'Apply'**
+  String get cliExecutablePathApply;
 
   /// No description provided for @cliExecutablePathReset.
   ///
@@ -703,6 +709,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Select llm_config.json'**
   String get llmConfigPathPickerTitle;
+
+  /// No description provided for @llmConfigPathSessionCardDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Absolute path to the LLM config file (llm_config.json). Leave empty to use the default path next to the CLI install.'**
+  String get llmConfigPathSessionCardDescription;
+
+  /// No description provided for @llmConfigCurrentEffectivePathPrefix.
+  ///
+  /// In en, this message translates to:
+  /// **'Active file:'**
+  String get llmConfigCurrentEffectivePathPrefix;
+
+  /// No description provided for @llmConfigEffectivePathUnresolved.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not resolve a path yet (set the CLI location or enter a path).'**
+  String get llmConfigEffectivePathUnresolved;
+
+  /// No description provided for @llmConfigOpenSessionSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Session settings…'**
+  String get llmConfigOpenSessionSettings;
 
   /// No description provided for @providers.
   ///

@@ -24,6 +24,7 @@ typedef _Palette = ({
   Color primary,
   Color secondary,
   Color error,
+
   /// When set, used for logo gradient only; [primary] is the interactive seed
   /// for [ColorScheme] (outlines, links, filled buttons).
   Color? logoPrimary,

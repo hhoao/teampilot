@@ -98,9 +98,29 @@ class _SearchFieldState<T> extends State<_SearchField<T>> {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 8),
-      child: TextField(
+      child: AppOutlineTextField(
         focusNode: focusNode,
+        controller: searchCtrl,
+        hintText: widget.searchHintText,
         style: widget.decoration?.textStyle,
+        hintStyle: widget.decoration?.hintStyle,
+        prefixIcon:
+            widget.decoration?.prefixIcon ??
+            const Icon(Icons.search, size: 22),
+        suffixIcon:
+            widget.decoration?.suffixIcon?.call(onClear) ??
+            GestureDetector(
+              onTap: onClear,
+              child: const Icon(Icons.close, size: 20),
+            ),
+        fillColor:
+            widget.decoration?.fillColor ??
+            SearchFieldDecoration._defaultFillColor,
+        contentPadding:
+            widget.decoration?.contentPadding ?? const EdgeInsets.all(8),
+        constraints:
+            widget.decoration?.constraints ??
+            const BoxConstraints.tightFor(height: 40),
         onChanged: (val) async {
           if (val.isEmpty) {
             isFieldEmpty = true;
@@ -130,56 +150,6 @@ class _SearchFieldState<T> extends State<_SearchField<T>> {
             widget.onSearchedItems(widget.items);
           }
         },
-        controller: searchCtrl,
-        decoration: InputDecoration(
-          filled: true,
-          fillColor:
-              widget.decoration?.fillColor ??
-              SearchFieldDecoration._defaultFillColor,
-          constraints:
-              widget.decoration?.constraints ??
-              const BoxConstraints.tightFor(height: 40),
-          contentPadding:
-              widget.decoration?.contentPadding ?? const EdgeInsets.all(8),
-          hintText: widget.searchHintText,
-          hintStyle: widget.decoration?.hintStyle,
-          prefixIcon:
-              widget.decoration?.prefixIcon ??
-              const Icon(Icons.search, size: 22),
-          suffixIcon:
-              widget.decoration?.suffixIcon?.call(onClear) ??
-              GestureDetector(
-                onTap: onClear,
-                child: const Icon(Icons.close, size: 20),
-              ),
-          border:
-              widget.decoration?.border ??
-              OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: BorderSide(
-                  color: Colors.grey.withOpacity(.25),
-                  width: 1,
-                ),
-              ),
-          enabledBorder:
-              widget.decoration?.border ??
-              OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: BorderSide(
-                  color: Colors.grey.withOpacity(.25),
-                  width: 1,
-                ),
-              ),
-          focusedBorder:
-              widget.decoration?.focusedBorder ??
-              OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: BorderSide(
-                  color: Colors.grey.withOpacity(.25),
-                  width: 1,
-                ),
-              ),
-        ),
       ),
     );
   }

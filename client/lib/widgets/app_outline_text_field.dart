@@ -6,7 +6,9 @@ class AppOutlineTextField extends StatelessWidget {
   const AppOutlineTextField({
     super.key,
     this.controller,
+    this.focusNode,
     this.hintText,
+    this.hintMaxLines,
     this.labelText,
     this.prefixIcon,
     this.suffixIcon,
@@ -19,12 +21,22 @@ class AppOutlineTextField extends StatelessWidget {
     this.minLines,
     this.onChanged,
     this.onSubmitted,
+    this.style,
+    this.hintStyle,
+    this.fillColor,
     this.contentPadding,
+    this.constraints,
     this.borderRadius = 8,
   });
 
   final TextEditingController? controller;
+  final FocusNode? focusNode;
+
+  /// Shown inside the field when [controller] text is empty.
   final String? hintText;
+  final int? hintMaxLines;
+
+  /// Shrink-wrapped floating label inside the outline.
   final String? labelText;
   final Widget? prefixIcon;
   final Widget? suffixIcon;
@@ -37,7 +49,21 @@ class AppOutlineTextField extends StatelessWidget {
   final int? minLines;
   final ValueChanged<String>? onChanged;
   final ValueChanged<String>? onSubmitted;
+
+  /// Overrides [DefaultTextTheme.bodyMedium]-based input style when set.
+  final TextStyle? style;
+
+  /// Overrides theme-derived hint styling when set.
+  final TextStyle? hintStyle;
+
+  /// Overrides [AppOutlineInputDecoration] fill; defaults to theme surface tone.
+  final Color? fillColor;
+
+  /// Inner padding inside the bordered area.
   final EdgeInsetsGeometry? contentPadding;
+
+  /// Optional min/max size for tight layouts (e.g. dropdown search bar height).
+  final BoxConstraints? constraints;
   final double borderRadius;
 
   @override
@@ -45,6 +71,7 @@ class AppOutlineTextField extends StatelessWidget {
     return TextField(
       key: key,
       controller: controller,
+      focusNode: focusNode,
       obscureText: obscureText,
       autofocus: autofocus,
       readOnly: readOnly,
@@ -53,16 +80,20 @@ class AppOutlineTextField extends StatelessWidget {
       minLines: minLines,
       onChanged: onChanged,
       onSubmitted: onSubmitted,
-      style: Theme.of(context).textTheme.bodyMedium,
+      style: style ?? Theme.of(context).textTheme.bodyMedium,
       decoration: AppOutlineInputDecoration.dense(
         context,
         hintText: hintText,
+        hintMaxLines: hintMaxLines,
         labelText: labelText,
         prefixIcon: prefixIcon,
         suffixIcon: suffixIcon,
         errorText: errorText,
+        fillColor: fillColor,
         contentPadding: contentPadding,
+        constraints: constraints,
         borderRadius: borderRadius,
+        hintStyleOverride: hintStyle,
       ),
     );
   }
@@ -75,11 +106,15 @@ class AppOutlineInputDecoration {
   static InputDecoration dense(
     BuildContext context, {
     String? hintText,
+    int? hintMaxLines,
     String? labelText,
     Widget? prefixIcon,
     Widget? suffixIcon,
     String? errorText,
+    Color? fillColor,
     EdgeInsetsGeometry? contentPadding,
+    BoxConstraints? constraints,
+    TextStyle? hintStyleOverride,
     double borderRadius = 8,
   }) {
     final theme = Theme.of(context);
@@ -96,11 +131,25 @@ class AppOutlineInputDecoration {
     final hintColor = cs.onSurfaceVariant.withValues(alpha: 0.72);
     final labelColor = cs.onSurfaceVariant.withValues(alpha: 0.9);
 
+    final hintStyleComputed =
+        hintStyleOverride ??
+        theme.inputDecorationTheme.hintStyle?.copyWith(color: hintColor) ??
+        (theme.textTheme.labelSmall ??
+                theme.textTheme.bodySmall ??
+                theme.textTheme.bodyMedium!)
+            .copyWith(
+              color: hintColor,
+              height: 1.35,
+              fontWeight: FontWeight.w500,
+            );
+
     return InputDecoration(
       filled: true,
-      fillColor: cs.surfaceContainerHigh,
+      fillColor: fillColor ?? cs.surfaceContainerHigh,
+      constraints: constraints,
       isDense: true,
       hintText: hintText,
+      hintMaxLines: hintMaxLines,
       labelText: labelText,
       prefixIcon: prefixIcon,
       suffixIcon: suffixIcon,
@@ -108,9 +157,10 @@ class AppOutlineInputDecoration {
       floatingLabelBehavior: labelText != null
           ? FloatingLabelBehavior.auto
           : FloatingLabelBehavior.never,
-      contentPadding: contentPadding ??
+      contentPadding:
+          contentPadding ??
           const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      hintStyle: theme.textTheme.bodyMedium?.copyWith(color: hintColor),
+      hintStyle: hintStyleComputed,
       labelStyle: theme.textTheme.bodyMedium?.copyWith(color: labelColor),
       floatingLabelStyle: theme.textTheme.labelLarge?.copyWith(
         color: cs.primary,

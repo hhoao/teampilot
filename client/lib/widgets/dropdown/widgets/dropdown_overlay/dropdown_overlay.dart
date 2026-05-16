@@ -4,7 +4,7 @@ const _defaultOverlayIconUp = Icon(Icons.keyboard_arrow_up_rounded, size: 20);
 
 const _defaultHeaderPadding = EdgeInsets.all(16.0);
 const _overlayOuterPadding = EdgeInsetsDirectional.only(
-  bottom: 12,
+  bottom: 10,
   start: 12,
   end: 12,
 );

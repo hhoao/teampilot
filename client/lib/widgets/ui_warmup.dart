@@ -8,6 +8,7 @@ import 'package:xterm/xterm.dart';
 import '../cubits/session_preferences_cubit.dart';
 import '../cubits/team_cubit.dart';
 import '../models/team_config.dart';
+import 'app_outline_text_field.dart';
 
 class UiWarmup extends StatefulWidget {
   const UiWarmup({required this.child, super.key});
@@ -146,7 +147,7 @@ class _SettingsWarmup extends StatelessWidget {
                 itemCount: team.members.length.clamp(0, 4) + 1,
                 itemBuilder: (context, index) {
                   if (index == 0) {
-                    return const Column(
+                    return Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         _WarmupHeading(),
@@ -160,13 +161,11 @@ class _SettingsWarmup extends StatelessWidget {
                           ],
                         ),
                         SizedBox(height: 14),
-                        TextField(
+                        AppOutlineTextField(
                           minLines: 2,
                           maxLines: 3,
-                          decoration: InputDecoration(
-                            labelText: 'Extra arguments',
-                            prefixIcon: Icon(Icons.terminal_outlined),
-                          ),
+                          labelText: 'Extra arguments',
+                          prefixIcon: Icon(Icons.terminal_outlined),
                         ),
                         SizedBox(height: 18),
                         Text(
@@ -218,11 +217,9 @@ class _WarmupSizedField extends StatelessWidget {
   Widget build(BuildContext context) {
     return SizedBox(
       width: 360,
-      child: TextField(
-        decoration: InputDecoration(
-          labelText: label,
-          prefixIcon: const Icon(Icons.badge_outlined),
-        ),
+      child: AppOutlineTextField(
+        labelText: label,
+        prefixIcon: const Icon(Icons.badge_outlined),
       ),
     );
   }
