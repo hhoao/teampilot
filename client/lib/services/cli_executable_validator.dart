@@ -16,9 +16,6 @@ class CliExecutableValidator {
       return null;
     }
 
-    final pathError = _validateExecutablePath(invocation.executable);
-    if (pathError != null) return pathError;
-
     final cwd = workingDirectory.trim();
     if (cwd.isNotEmpty && !Directory(cwd).existsSync()) {
       return _formatMessage(
@@ -28,6 +25,9 @@ class CliExecutableValidator {
             'Choose another project folder or create the directory before connecting.',
       );
     }
+
+    final pathError = _validateExecutablePath(invocation.executable);
+    if (pathError != null) return pathError;
 
     return null;
   }

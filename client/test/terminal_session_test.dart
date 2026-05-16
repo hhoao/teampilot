@@ -39,6 +39,16 @@ class _FakePtyHandle implements TerminalPtyHandle {
   }
 }
 
+/// Passes [CliExecutableValidator] on the current platform. Tests use a fake
+/// PTY, but [TerminalSession.connect] still runs pre-flight validation first.
+String get _ptyTestExecutable {
+  if (Platform.isWindows) {
+    final root = Platform.environment['SystemRoot'] ?? r'C:\Windows';
+    return '$root\\System32\\cmd.exe';
+  }
+  return '/bin/true';
+}
+
 void main() {
   test('missing absolute executable fails fast without starting pty', () {
     var started = false;
@@ -75,7 +85,7 @@ void main() {
     handle.exitCompleter = exitNever;
 
     final session = TerminalSession(
-      executable: 'flashskyai',
+      executable: _ptyTestExecutable,
       ptyStarter:
           (
             executable, {
@@ -93,7 +103,7 @@ void main() {
       await handle.outputController.close();
     });
 
-    session.connect(workingDirectory: '/tmp');
+    session.connect(workingDirectory: Directory.systemTemp.path);
     session.terminal.onResize?.call(80, 24, 0, 0);
     await Future<void>.delayed(const Duration(milliseconds: 300));
     expect(session.isRunning, isTrue);
@@ -106,7 +116,7 @@ void main() {
     final handle = _FakePtyHandle();
     var failed = false;
     final session = TerminalSession(
-      executable: 'flashskyai',
+      executable: _ptyTestExecutable,
       ptyStarter:
           (
             executable, {
@@ -143,7 +153,7 @@ void main() {
     final starts = <({int columns, int rows})>[];
     final handle = _FakePtyHandle();
     final session = TerminalSession(
-      executable: 'flashskyai',
+      executable: _ptyTestExecutable,
       ptyStarter:
           (
             executable, {
@@ -162,7 +172,7 @@ void main() {
       await handle.outputController.close();
     });
 
-    session.connect(workingDirectory: '/tmp');
+    session.connect(workingDirectory: Directory.systemTemp.path);
     session.terminal.onResize?.call(80, 24, 0, 0);
     await Future<void>.delayed(const Duration(milliseconds: 300));
 
@@ -174,7 +184,7 @@ void main() {
     final starts = <({int columns, int rows})>[];
     final handle = _FakePtyHandle();
     final session = TerminalSession(
-      executable: 'flashskyai',
+      executable: _ptyTestExecutable,
       ptyStarter:
           (
             executable, {
@@ -193,7 +203,7 @@ void main() {
       await handle.outputController.close();
     });
 
-    session.connect(workingDirectory: '/tmp');
+    session.connect(workingDirectory: Directory.systemTemp.path);
     session.terminal.onResize?.call(80, 24, 0, 0);
     session.terminal.onResize?.call(100, 30, 0, 0);
     session.terminal.onResize?.call(120, 32, 0, 0);
@@ -205,7 +215,7 @@ void main() {
   test('terminal resize resizes an already-started pty', () async {
     final handle = _FakePtyHandle();
     final session = TerminalSession(
-      executable: 'flashskyai',
+      executable: _ptyTestExecutable,
       ptyStarter:
           (
             executable, {
@@ -223,7 +233,7 @@ void main() {
       await handle.outputController.close();
     });
 
-    session.connect(workingDirectory: '/tmp');
+    session.connect(workingDirectory: Directory.systemTemp.path);
     session.terminal.onResize?.call(80, 24, 0, 0);
     await Future<void>.delayed(const Duration(milliseconds: 300));
     handle.resizeCalls.clear();
@@ -239,7 +249,7 @@ void main() {
   test('pty output is written to the terminal buffer', () async {
     final handle = _FakePtyHandle();
     final session = TerminalSession(
-      executable: 'flashskyai',
+      executable: _ptyTestExecutable,
       ptyStarter:
           (
             executable, {
@@ -257,7 +267,7 @@ void main() {
       await handle.outputController.close();
     });
 
-    session.connect(workingDirectory: '/tmp');
+    session.connect(workingDirectory: Directory.systemTemp.path);
     session.terminal.onResize?.call(80, 24, 0, 0);
     await Future<void>.delayed(const Duration(milliseconds: 300));
     handle.outputController.add(Uint8List.fromList(utf8.encode('hello\r\n')));
@@ -269,7 +279,7 @@ void main() {
   test('decodes pty output across utf8 chunk boundaries', () async {
     final handle = _FakePtyHandle();
     final session = TerminalSession(
-      executable: 'flashskyai',
+      executable: _ptyTestExecutable,
       ptyStarter:
           (
             executable, {
@@ -287,7 +297,7 @@ void main() {
       await handle.outputController.close();
     });
 
-    session.connect(workingDirectory: '/tmp');
+    session.connect(workingDirectory: Directory.systemTemp.path);
     session.terminal.onResize?.call(80, 24, 0, 0);
     await Future<void>.delayed(const Duration(milliseconds: 300));
 
@@ -306,7 +316,7 @@ void main() {
   test('pty output schedules viewport sync resize', () async {
     final handle = _FakePtyHandle();
     final session = TerminalSession(
-      executable: 'flashskyai',
+      executable: _ptyTestExecutable,
       ptyStarter:
           (
             executable, {
@@ -324,7 +334,7 @@ void main() {
       await handle.outputController.close();
     });
 
-    session.connect(workingDirectory: '/tmp');
+    session.connect(workingDirectory: Directory.systemTemp.path);
     session.terminal.resize(100, 40);
     await Future<void>.delayed(const Duration(milliseconds: 300));
     handle.resizeCalls.clear();
