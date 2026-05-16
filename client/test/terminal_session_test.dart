@@ -46,7 +46,11 @@ String get _ptyTestExecutable {
     final root = Platform.environment['SystemRoot'] ?? r'C:\Windows';
     return '$root\\System32\\cmd.exe';
   }
-  return '/bin/true';
+  // macOS runners often lack /bin/true; Linux has it at /bin/true.
+  for (final candidate in ['/usr/bin/true', '/bin/true', '/bin/sh']) {
+    if (File(candidate).existsSync()) return candidate;
+  }
+  return Platform.resolvedExecutable;
 }
 
 void main() {

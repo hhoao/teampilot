@@ -35,7 +35,11 @@ class AppStorage {
   static String cliProjectBucketForPrimaryPath(String primaryPath) {
     var s = primaryPath.trim().replaceAll('\\', '/');
     if (s.isEmpty) return '';
-    s = p.normalize(s);
+    // CLI buckets use POSIX paths; avoid Windows normalize turning "/home/..."
+    // into "\home\..." which would not match replaceAll('/', '-').
+    if (!s.startsWith('/')) {
+      s = p.normalize(s).replaceAll('\\', '/');
+    }
     if (s == '.' || s == '/') return '';
     return s.replaceAll('/', '-');
   }
