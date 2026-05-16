@@ -49,5 +49,3 @@ dist
 google_fonts/*.ttf
 google_fonts/*.otf
 assets/fonts/terminal/*.ttf
-
-packages/
