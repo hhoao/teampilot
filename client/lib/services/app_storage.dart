@@ -3,6 +3,8 @@ import 'dart:io';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
+import 'launch_command_builder.dart';
+
 class AppStorage {
   AppStorage._();
 
@@ -31,13 +33,16 @@ class AppStorage {
   static String get cliProjectsDir => p.join(flashskyaiDataDir, 'projects');
 
   /// Bucket folder name the CLI uses under `projects/` for a workspace path
-  /// (e.g. `/home/hhoa/agent` → `-home-hhoa-agent`).
+  /// (e.g. `/home/hhoa/agent` → `-home-hhoa-agent`,
+  /// `D:\repo` → `-mnt-d-repo`).
   static String cliProjectBucketForPrimaryPath(String primaryPath) {
     var s = primaryPath.trim().replaceAll('\\', '/');
     if (s.isEmpty) return '';
-    // CLI buckets use POSIX paths; avoid Windows normalize turning "/home/..."
-    // into "\home\..." which would not match replaceAll('/', '-').
-    if (!s.startsWith('/')) {
+    // Match CLI layout: POSIX paths as-is; drive letters as /mnt/<drive>/...
+    final wslStyle = LaunchCommandBuilder.windowsPathToWsl(s);
+    if (wslStyle != null) {
+      s = wslStyle;
+    } else if (!s.startsWith('/')) {
       s = p.normalize(s).replaceAll('\\', '/');
     }
     if (s == '.' || s == '/') return '';

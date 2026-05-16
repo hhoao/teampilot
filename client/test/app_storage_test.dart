@@ -10,7 +10,39 @@ void main() {
       AppStorage.cliProjectBucketForPrimaryPath('/home/hhoa/agent'),
       '-home-hhoa-agent',
     );
+    expect(
+      AppStorage.cliProjectBucketForPrimaryPath(
+        r'D:\a\teampilot\teampilot\client',
+      ),
+      '-mnt-d-a-teampilot-teampilot-client',
+    );
+    expect(
+      AppStorage.cliProjectBucketForPrimaryPath(r'C:\Users\hhoa\agent'),
+      '-mnt-c-Users-hhoa-agent',
+    );
     expect(AppStorage.cliProjectBucketForPrimaryPath(''), '');
+  });
+
+  test('cliSessionDescriptorExists resolves Windows drive bucket slugs', () async {
+    final tmp = await Directory.systemTemp.createTemp('fsai_cli_root_');
+    addTearDown(() => tmp.deleteSync(recursive: true));
+    const uuid = 'dddddddd-dddd-dddd-dddd-dddddddddddd';
+    final bucket = p.join(
+      tmp.path,
+      'projects',
+      '-mnt-d-a-teampilot-teampilot-client',
+    );
+    await Directory(bucket).create(recursive: true);
+    await File(p.join(bucket, '$uuid.jsonl')).writeAsString('');
+
+    expect(
+      AppStorage.cliSessionDescriptorExists(
+        uuid,
+        r'D:\a\teampilot\teampilot\client',
+        dataRoot: tmp.path,
+      ),
+      isTrue,
+    );
   });
 
   test('cliSessionDescriptorExists finds jsonl under projects bucket', () async {
