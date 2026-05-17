@@ -80,11 +80,7 @@ class LlmProviderConfigPage extends StatelessWidget {
     return WorkspaceSectionPage(
       pageKey: AppKeys.llmProviderDetail,
       child: provider == null
-          ? Center(
-              child: Text(
-                '${context.l10n.missingProvider} $providerName',
-              ),
-            )
+          ? Center(child: Text('${context.l10n.missingProvider} $providerName'))
           : _ProviderDetailPanel(
               config: config,
               provider: provider,
@@ -118,11 +114,7 @@ class LlmProviderModelsPage extends StatelessWidget {
     return WorkspaceSectionPage(
       pageKey: AppKeys.llmProviderModels,
       child: provider == null
-          ? Center(
-              child: Text(
-                '${context.l10n.missingProvider} $providerName',
-              ),
-            )
+          ? Center(child: Text('${context.l10n.missingProvider} $providerName'))
           : _ProviderModelsView(
               config: config,
               provider: provider,
@@ -315,7 +307,9 @@ class _ProvidersTabContentState extends State<_ProvidersTabContent> {
                     _controller.updateProvider(name, provider);
                   },
                   onDelete: (name) {
-                    unawaited(_confirmDeleteProvider(context, _controller, name));
+                    unawaited(
+                      _confirmDeleteProvider(context, _controller, name),
+                    );
                   },
                   onShowModels: (name) {
                     if (useAndroidHubNavigation(context)) {
@@ -1021,6 +1015,37 @@ class _ProviderDetailPanelState extends State<_ProviderDetailPanel> {
                           ),
                         ),
                       ),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 6),
+                        child: Divider(
+                          height: 1,
+                          thickness: 1,
+                          color: theme.dividerColor.withValues(alpha: 0.35),
+                        ),
+                      ),
+                      _SettingRow(
+                        title: l10n.proxy,
+                        trailing: Switch(
+                          key: AppKeys.providerProxyToggle,
+                          value: _proxy,
+                          onChanged: (value) {
+                            setState(() => _proxy = value);
+                            _persistProvider();
+                          },
+                        ),
+                      ),
+
+                      if (_proxy) ...[
+                        _SettingFieldBlock(
+                          title: l10n.proxyUrl,
+                          child: AppOutlineTextField(
+                            key: AppKeys.proxyUrlField,
+                            controller: _proxyUrlController,
+                            onChanged: (_) => _persistDebounced(),
+                            onSubmitted: (_) => _flushPersistDebounce(),
+                          ),
+                        ),
+                      ],
                       if (_type == 'api') ...[
                         _SettingFieldBlock(
                           title: l10n.providerType,
@@ -1032,36 +1057,6 @@ class _ProviderDetailPanelState extends State<_ProviderDetailPanel> {
                             onSubmitted: (_) => _flushPersistDebounce(),
                           ),
                         ),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 6),
-                          child: Divider(
-                            height: 1,
-                            thickness: 1,
-                            color: theme.dividerColor.withValues(alpha: 0.35),
-                          ),
-                        ),
-                        _SettingRow(
-                          title: l10n.proxy,
-                          trailing: Switch(
-                            key: AppKeys.providerProxyToggle,
-                            value: _proxy,
-                            onChanged: (value) {
-                              setState(() => _proxy = value);
-                              _persistProvider();
-                            },
-                          ),
-                        ),
-                        if (_proxy) ...[
-                          _SettingFieldBlock(
-                            title: l10n.proxyUrl,
-                            child: AppOutlineTextField(
-                              key: AppKeys.proxyUrlField,
-                              controller: _proxyUrlController,
-                              onChanged: (_) => _persistDebounced(),
-                              onSubmitted: (_) => _flushPersistDebounce(),
-                            ),
-                          ),
-                        ],
                         _SettingFieldBlock(
                           title: l10n.baseUrl,
                           child: AppOutlineTextField(
