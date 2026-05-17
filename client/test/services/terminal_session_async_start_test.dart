@@ -1,0 +1,100 @@
+import 'dart:async';
+import 'dart:typed_data';
+
+import 'package:flutter_test/flutter_test.dart';
+import 'package:teampilot/services/terminal_session.dart';
+import 'package:teampilot/services/terminal_transport.dart';
+
+class _FakeTransport implements TerminalTransport {
+  final outputController = StreamController<Uint8List>();
+  final doneCompleter = Completer<int>();
+  var closed = false;
+
+  @override
+  Future<int> get done => doneCompleter.future;
+
+  @override
+  Stream<Uint8List> get output => outputController.stream;
+
+  @override
+  void close() {
+    closed = true;
+    if (!doneCompleter.isCompleted) {
+      doneCompleter.complete(0);
+    }
+  }
+
+  @override
+  void resize(int rows, int columns) {}
+
+  @override
+  void write(Uint8List data) {}
+}
+
+void main() {
+  test(
+    'remote sessions skip local executable and working directory validation',
+    () async {
+      final transport = _FakeTransport();
+      var started = false;
+      final session = TerminalSession(
+        executable: 'flashskyai',
+        validateLaunch: false,
+        transportStarter:
+            (
+              executable, {
+              required arguments,
+              required workingDirectory,
+              required columns,
+              required rows,
+              environment,
+            }) {
+              started = true;
+              return Future.value(transport);
+            },
+      );
+      addTearDown(session.dispose);
+
+      session.connect(workingDirectory: '/remote/path/that/is/not/local');
+      session.terminal.resize(80, 24, 0, 0);
+      await Future<void>.delayed(const Duration(milliseconds: 220));
+
+      expect(started, isTrue);
+      expect(session.isRunning, isTrue);
+    },
+  );
+
+  test(
+    'disconnect during async transport start closes late transport',
+    () async {
+      final transport = _FakeTransport();
+      final starter = Completer<TerminalTransport>();
+      final session = TerminalSession(
+        executable: '/bin/echo',
+        transportStarter:
+            (
+              executable, {
+              required arguments,
+              required workingDirectory,
+              required columns,
+              required rows,
+              environment,
+            }) {
+              return starter.future;
+            },
+      );
+      addTearDown(session.dispose);
+
+      session.connect(workingDirectory: '/tmp');
+      session.terminal.resize(80, 24, 0, 0);
+      await Future<void>.delayed(const Duration(milliseconds: 220));
+
+      session.disconnect();
+      starter.complete(transport);
+      await Future<void>.delayed(Duration.zero);
+
+      expect(transport.closed, isTrue);
+      expect(session.isRunning, isFalse);
+    },
+  );
+}

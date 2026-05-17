@@ -13,7 +13,9 @@ import '../widgets/settings/workspace_settings_widgets.dart';
 const _kSessionPathPersistDebounce = Duration(milliseconds: 400);
 
 class SessionConfigWorkspace extends StatelessWidget {
-  const SessionConfigWorkspace({super.key});
+  const SessionConfigWorkspace({this.showHeading = true, super.key});
+
+  final bool showHeading;
 
   @override
   Widget build(BuildContext context) {
@@ -22,11 +24,13 @@ class SessionConfigWorkspace extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _SessionHeading(
-          title: l10n.session,
-          subtitle: l10n.sessionPageSubtitle,
-        ),
-        const SizedBox(height: 16),
+        if (showHeading) ...[
+          _SessionHeading(
+            title: l10n.session,
+            subtitle: l10n.sessionPageSubtitle,
+          ),
+          const SizedBox(height: 16),
+        ],
         _SessionControls(cubit: cubit),
       ],
     );
@@ -74,9 +78,13 @@ class _SessionControls extends StatefulWidget {
 
 class _SessionControlsState extends State<_SessionControls> {
   late final TextEditingController _pathController;
+  late final TextEditingController _sshCwdController;
   late final FocusNode _cliPathFocus;
+  late final FocusNode _sshCwdFocus;
   late final Debouncer _cliPathPersistDebouncer;
+  late final Debouncer _sshCwdPersistDebouncer;
   String _lastSyncedPath = '';
+  String _lastSyncedSshCwd = '';
 
   @override
   void initState() {
@@ -86,28 +94,50 @@ class _SessionControlsState extends State<_SessionControls> {
       duration: _kSessionPathPersistDebounce,
     );
     _cliPathFocus = FocusNode()..addListener(_onCliPathFocusChanged);
+    _sshCwdPersistDebouncer = Debouncer(
+      tag: 'session_ssh_default_working_directory',
+      duration: _kSessionPathPersistDebounce,
+    );
+    _sshCwdFocus = FocusNode()..addListener(_onSshCwdFocusChanged);
     _pathController = TextEditingController(
       text: widget.cubit.state.preferences.cliExecutablePath,
     );
+    _sshCwdController = TextEditingController(
+      text: widget.cubit.state.preferences.defaultSshWorkingDirectory,
+    );
     _lastSyncedPath = widget.cubit.state.preferences.cliExecutablePath;
+    _lastSyncedSshCwd =
+        widget.cubit.state.preferences.defaultSshWorkingDirectory;
   }
 
   @override
   void dispose() {
     _cliPathPersistDebouncer.dispose();
+    _sshCwdPersistDebouncer.dispose();
     _cliPathFocus.removeListener(_onCliPathFocusChanged);
+    _sshCwdFocus.removeListener(_onSshCwdFocusChanged);
     _cliPathFocus.dispose();
+    _sshCwdFocus.dispose();
     _pathController.dispose();
+    _sshCwdController.dispose();
     super.dispose();
   }
 
-  void _syncFromState(String stored) {
+  void _syncFromState(String stored, String sshCwd) {
     if (stored != _lastSyncedPath) {
       _cliPathPersistDebouncer.cancel();
       _lastSyncedPath = stored;
       _pathController.value = TextEditingValue(
         text: stored,
         selection: TextSelection.collapsed(offset: stored.length),
+      );
+    }
+    if (sshCwd != _lastSyncedSshCwd) {
+      _sshCwdPersistDebouncer.cancel();
+      _lastSyncedSshCwd = sshCwd;
+      _sshCwdController.value = TextEditingValue(
+        text: sshCwd,
+        selection: TextSelection.collapsed(offset: sshCwd.length),
       );
     }
   }
@@ -132,9 +162,24 @@ class _SessionControlsState extends State<_SessionControls> {
     await cubit.setCliExecutablePath(_pathController.text);
   }
 
+  Future<void> _persistSshCwdFromField() async {
+    if (!mounted) return;
+    final cubit = widget.cubit;
+    final trimmed = _sshCwdController.text.trim();
+    final stored = cubit.state.preferences.defaultSshWorkingDirectory.trim();
+    if (trimmed == stored) return;
+    await cubit.setDefaultSshWorkingDirectory(_sshCwdController.text);
+  }
+
   void _onCliPathFocusChanged() {
     if (!_cliPathFocus.hasFocus) {
       _flushCliExecutablePathPersist();
+    }
+  }
+
+  void _onSshCwdFocusChanged() {
+    if (!_sshCwdFocus.hasFocus) {
+      _flushSshCwdPersist();
     }
   }
 
@@ -146,9 +191,22 @@ class _SessionControlsState extends State<_SessionControls> {
     });
   }
 
+  void _scheduleDebouncedSshCwdPersist() {
+    _sshCwdPersistDebouncer(() {
+      if (mounted) {
+        _persistSshCwdFromField();
+      }
+    });
+  }
+
   void _flushCliExecutablePathPersist() {
     _cliPathPersistDebouncer.cancel();
     _persistCliExecutablePathFromField();
+  }
+
+  void _flushSshCwdPersist() {
+    _sshCwdPersistDebouncer.cancel();
+    _persistSshCwdFromField();
   }
 
   Future<void> _reset() async {
@@ -157,11 +215,20 @@ class _SessionControlsState extends State<_SessionControls> {
     await widget.cubit.setCliExecutablePath('');
   }
 
+  Future<void> _resetSshCwd() async {
+    _sshCwdPersistDebouncer.cancel();
+    _sshCwdController.clear();
+    await widget.cubit.setDefaultSshWorkingDirectory('');
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final state = widget.cubit.state;
-    _syncFromState(state.preferences.cliExecutablePath);
+    _syncFromState(
+      state.preferences.cliExecutablePath,
+      state.preferences.defaultSshWorkingDirectory,
+    );
     final effective = widget.cubit.resolveExecutable();
     final isFallback = state.preferences.cliExecutablePath.trim().isEmpty;
     final cliFieldEmpty = _pathController.text.trim().isEmpty;
@@ -206,6 +273,43 @@ class _SessionControlsState extends State<_SessionControls> {
                       child: Text(l10n.cliExecutablePathReset),
                     ),
                   ],
+                ),
+                showDividerBelow: true,
+              ),
+              SettingsLabeledStackedRow(
+                title: 'SSH 默认工作目录',
+                subtitle: 'SSH 启动没有项目路径时使用的远端工作目录；留空则不切换目录。',
+                body: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Expanded(
+                      child: AppOutlineTextField(
+                        controller: _sshCwdController,
+                        focusNode: _sshCwdFocus,
+                        hintText: '~/work/project',
+                        hintMaxLines: 2,
+                        onChanged: (_) => _scheduleDebouncedSshCwdPersist(),
+                        onSubmitted: (_) => _flushSshCwdPersist(),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    TextButton(
+                      onPressed:
+                          state.preferences.defaultSshWorkingDirectory.isEmpty
+                          ? null
+                          : _resetSshCwd,
+                      child: Text(l10n.cliExecutablePathReset),
+                    ),
+                  ],
+                ),
+                showDividerBelow: true,
+              ),
+              SettingsLabeledRow(
+                title: 'SSH 使用 bash 登录环境',
+                subtitle: '通过 bash -lc 启动远端 flashskyai，以便读取远端 shell 配置中的 PATH。',
+                trailing: Switch(
+                  value: state.preferences.sshUseLoginShell,
+                  onChanged: (value) => widget.cubit.setSshUseLoginShell(value),
                 ),
                 showDividerBelow: true,
               ),

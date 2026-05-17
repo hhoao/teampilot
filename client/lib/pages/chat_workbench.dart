@@ -25,9 +25,10 @@ const _terminalTextStyle = TerminalStyle(
 );
 
 class ChatWorkbench extends StatefulWidget {
-  const ChatWorkbench({this.sessionId, super.key});
+  const ChatWorkbench({this.sessionId, this.onOpenRightTools, super.key});
 
   final String? sessionId;
+  final VoidCallback? onOpenRightTools;
 
   @override
   State<ChatWorkbench> createState() => _ChatWorkbenchState();
@@ -302,6 +303,7 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
             colorScheme: cs,
             session: session,
             memberName: chatCubit.selectedMemberName(team),
+            onOpenRightTools: widget.onOpenRightTools,
             onConnect: () {
               unawaited(() async {
                 await chatCubit.connectSession(team);
@@ -435,6 +437,7 @@ class _TerminalToolbar extends StatelessWidget {
     required this.colorScheme,
     required this.session,
     required this.memberName,
+    this.onOpenRightTools,
     required this.onConnect,
     required this.onDisconnect,
     required this.onRestart,
@@ -443,6 +446,7 @@ class _TerminalToolbar extends StatelessWidget {
   final ColorScheme colorScheme;
   final TerminalSession session;
   final String memberName;
+  final VoidCallback? onOpenRightTools;
   final VoidCallback onConnect;
   final VoidCallback onDisconnect;
   final VoidCallback onRestart;
@@ -486,6 +490,20 @@ class _TerminalToolbar extends StatelessWidget {
             ),
           ),
           const Spacer(),
+          if (onOpenRightTools != null) ...[
+            SizedBox(
+              height: 22,
+              child: IconButton(
+                key: AppKeys.openRightToolsButton,
+                tooltip: context.l10n.openRightTools,
+                onPressed: onOpenRightTools,
+                icon: const Icon(Icons.view_sidebar_outlined, size: 14),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 28, minHeight: 22),
+              ),
+            ),
+            const SizedBox(width: 4),
+          ],
           if (session.isRunning) ...[
             SizedBox(
               height: 22,

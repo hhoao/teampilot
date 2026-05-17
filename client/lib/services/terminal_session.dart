@@ -10,19 +10,12 @@ import 'package:xterm/xterm.dart';
 import 'cli_executable_validator.dart';
 import 'cli_invocation.dart';
 import 'launch_command_builder.dart';
+import 'local_pty_transport.dart';
+import 'terminal_transport.dart';
 import '../models/team_config.dart';
 
-abstract class TerminalPtyHandle {
-  Stream<Uint8List> get output;
-  Future<int> get exitCode;
-
-  void write(Uint8List data);
-  void resize(int rows, int columns);
-  void kill();
-}
-
-typedef TerminalPtyStarter =
-    TerminalPtyHandle Function(
+typedef TransportStarter =
+    Future<TerminalTransport> Function(
       String executable, {
       required List<String> arguments,
       required String workingDirectory,
@@ -31,69 +24,29 @@ typedef TerminalPtyStarter =
       Map<String, String>? environment,
     });
 
-class _FlutterPtyHandle implements TerminalPtyHandle {
-  _FlutterPtyHandle(this._pty);
-
-  final Pty _pty;
-
-  @override
-  Stream<Uint8List> get output => _pty.output;
-
-  @override
-  Future<int> get exitCode => _pty.exitCode;
-
-  @override
-  void kill() {
-    _pty.kill();
-  }
-
-  @override
-  void resize(int rows, int columns) {
-    _pty.resize(rows, columns);
-  }
-
-  @override
-  void write(Uint8List data) {
-    _pty.write(data);
-  }
-}
-
-TerminalPtyHandle _startFlutterPty(
-  String executable, {
-  required List<String> arguments,
-  required String workingDirectory,
-  required int columns,
-  required int rows,
-  Map<String, String>? environment,
-}) {
-  return _FlutterPtyHandle(
-    Pty.start(
-      executable,
-      arguments: arguments,
-      workingDirectory: workingDirectory,
-      columns: columns,
-      rows: rows,
-      environment: environment,
-    ),
-  );
-}
-
 class TerminalSession {
-  TerminalSession({required this.executable, TerminalPtyStarter? ptyStarter})
-    : _ptyStarter = ptyStarter ?? _startFlutterPty,
-      terminal = Terminal(
-        maxLines: 10000,
-        platform: switch (defaultTargetPlatform) {
-          TargetPlatform.macOS => TerminalTargetPlatform.macos,
-          TargetPlatform.windows => TerminalTargetPlatform.windows,
-          _ => TerminalTargetPlatform.linux,
-        },
-      );
+  TerminalSession({
+    required this.executable,
+    this.validateLaunch = true,
+    this.parseExecutable = true,
+    TransportStarter? transportStarter,
+    @Deprecated('Use transportStarter instead') dynamic ptyStarter,
+  }) : _transportStarter = transportStarter ?? _defaultTransportStarter,
+       terminal = Terminal(
+         maxLines: 10000,
+         platform: switch (defaultTargetPlatform) {
+           TargetPlatform.macOS => TerminalTargetPlatform.macos,
+           TargetPlatform.windows => TerminalTargetPlatform.windows,
+           _ => TerminalTargetPlatform.linux,
+         },
+       );
 
   final String executable;
-  final TerminalPtyStarter _ptyStarter;
+  final bool validateLaunch;
+  final bool parseExecutable;
+  final TransportStarter _transportStarter;
   final Terminal terminal;
-  TerminalPtyHandle? _pty;
+  TerminalTransport? _transport;
   var _running = false;
   var _starting = false;
   var _startFailed = false;
@@ -107,6 +60,7 @@ class TerminalSession {
   Timer? _ptyGeometryTimer;
   Timer? _ptyGeometrySettleTimer;
   var _spawnRequested = false;
+  var _transportStartGeneration = 0;
   var _terminalListenerAttached = false;
   var _hasPendingLayoutGeometry = false;
   int _pendingViewportCols = 0;
@@ -138,7 +92,9 @@ class TerminalSession {
     if (_running || _starting) {
       disconnect();
     }
-    final invocation = CliInvocation.fromExecutable(executable);
+    final invocation = parseExecutable
+        ? CliInvocation.fromExecutable(executable)
+        : CliInvocation(executable: executable);
     final ptyWorkingDirectory = LaunchCommandBuilder.workingDirectoryForProcess(
       workingDirectory,
       useWslPaths: invocation.usesWsl,
@@ -184,13 +140,15 @@ class TerminalSession {
       environment: _extraEnvironment,
     );
 
-    final validationError = CliExecutableValidator.validateLaunch(
-      executable: invocation.executable,
-      workingDirectory: ptyWorkingDirectory,
-    );
-    if (validationError != null) {
-      _handleStartFailure(validationError);
-      return;
+    if (validateLaunch) {
+      final validationError = CliExecutableValidator.validateLaunch(
+        executable: invocation.executable,
+        workingDirectory: ptyWorkingDirectory,
+      );
+      if (validationError != null) {
+        _handleStartFailure(validationError);
+        return;
+      }
     }
 
     _starting = true;
@@ -198,8 +156,8 @@ class TerminalSession {
     _attachTerminalViewportListener();
 
     terminal.onOutput = (String data) {
-      if (_running && _pty != null) {
-        _pty!.write(Uint8List.fromList(utf8.encode(data)));
+      if (_running && _transport != null) {
+        _transport!.write(Uint8List.fromList(utf8.encode(data)));
       }
     };
 
@@ -209,8 +167,6 @@ class TerminalSession {
 
     terminal.onResize = (int width, int height, int pw, int ph) {
       if (width <= 0 || height <= 0) return;
-      // Debounce rapid layout changes (e.g. maximize) so the CLI only redraws
-      // once at the final geometry instead of at intermediate sizes.
       _schedulePtyGeometry(cols: width, rows: height, fromLayout: true);
     };
   }
@@ -235,25 +191,19 @@ class TerminalSession {
     _ptyGeometrySettleTimer = null;
   }
 
-  /// Re-sync PTY rows/cols after emulator output so full-screen TUIs redraw
-  /// against the same geometry the UI is painting.
   void _schedulePtyViewportSync() {
     _schedulePtyGeometry(fromLayout: false);
   }
 
-  void _schedulePtyGeometry({
-    int? cols,
-    int? rows,
-    bool fromLayout = false,
-  }) {
+  void _schedulePtyGeometry({int? cols, int? rows, bool fromLayout = false}) {
     if (cols != null && rows != null) {
       _pendingViewportCols = cols;
       _pendingViewportRows = rows;
       _hasPendingLayoutGeometry = true;
     }
-    if (_pty == null && (!_starting || _spawnRequested)) {
+    if (_transport == null && (!_starting || _spawnRequested)) {
       if (cols == null) return;
-    } else if (_pty != null && !_running) {
+    } else if (_transport != null && !_running) {
       return;
     }
 
@@ -278,13 +228,13 @@ class TerminalSession {
 
     if (cols <= 0 || rows <= 0) return;
 
-    if (_pty == null) {
+    if (_transport == null) {
       if (!_starting || _spawnRequested) return;
       final executable = _launchExecutable;
       final args = _launchArgs;
       final cwd = _launchCwd;
       if (executable == null || args == null || cwd == null) return;
-      _spawnPty(
+      _spawnTransport(
         executable: executable,
         args: args,
         cwd: cwd,
@@ -297,47 +247,47 @@ class TerminalSession {
     if (!_running) return;
     _lastSyncedCols = cols;
     _lastSyncedRows = rows;
-    _pty!.resize(rows, cols);
+    _transport!.resize(rows, cols);
     _schedulePtyGeometrySettle();
   }
 
-  /// After layout/output settles, nudge the PTY once more so TUIs fully redraw
-  /// (clears ghost columns after maximize).
   void _schedulePtyGeometrySettle() {
-    if (!_running || _pty == null) return;
+    if (!_running || _transport == null) return;
     if (_lastSyncedCols <= 0 || _lastSyncedRows <= 0) return;
     _ptyGeometrySettleTimer?.cancel();
     _ptyGeometrySettleTimer = Timer(
       const Duration(milliseconds: _geometrySettleDelayMs),
       () {
         _ptyGeometrySettleTimer = null;
-        if (!_running || _pty == null) return;
-        _pty!.resize(_lastSyncedRows, _lastSyncedCols);
+        if (!_running || _transport == null) return;
+        _transport!.resize(_lastSyncedRows, _lastSyncedCols);
       },
     );
   }
 
-  void _spawnPty({
+  void _spawnTransport({
     required String executable,
     required List<String> args,
     required String cwd,
     required int cols,
     required int rows,
   }) {
-    if (_spawnRequested || _pty != null) return;
+    if (_spawnRequested || _transport != null) return;
     _spawnRequested = true;
 
-    final validationError = CliExecutableValidator.validateLaunch(
-      executable: executable,
-      workingDirectory: cwd,
-    );
-    if (validationError != null) {
-      _spawnRequested = false;
-      _handleStartFailure(validationError);
-      return;
+    if (validateLaunch) {
+      final validationError = CliExecutableValidator.validateLaunch(
+        executable: executable,
+        workingDirectory: cwd,
+      );
+      if (validationError != null) {
+        _spawnRequested = false;
+        _handleStartFailure(validationError);
+        return;
+      }
     }
 
-    _startPtyProcess(
+    _startTransport(
       executable: executable,
       args: args,
       cwd: cwd,
@@ -346,15 +296,16 @@ class TerminalSession {
     );
   }
 
-  void _startPtyProcess({
+  Future<void> _startTransport({
     required String executable,
     required List<String> args,
     required String cwd,
     required int cols,
     required int rows,
-  }) {
+  }) async {
+    final startGeneration = ++_transportStartGeneration;
     try {
-      _pty = _ptyStarter(
+      final transport = await _transportStarter(
         executable,
         arguments: args,
         workingDirectory: cwd,
@@ -362,24 +313,31 @@ class TerminalSession {
         rows: rows,
         environment: _ptyEnvironment,
       );
+      if (startGeneration != _transportStartGeneration || !_starting) {
+        transport.close();
+        return;
+      }
+      _transport = transport;
       _running = true;
       _starting = true;
 
-      _outputSubscription = _pty!.output
+      _outputSubscription = transport.output
           .map<List<int>>((data) => data)
           .transform(const Utf8Decoder(allowMalformed: true))
           .listen((text) {
-        _writeOutput(text);
-        if (_looksLikeExecFailure(text)) {
-          _handleStartFailure(_execFailureMessage(executable));
-        }
-      });
+            _writeOutput(text);
+            if (_looksLikeExecFailure(text)) {
+              _handleStartFailure(_launchFailureMessage(executable));
+            }
+          });
 
-      // Do not timeout [exitCode] for long-running shells — it only completes
-      // when the process exits. A timeout here falsely disconnects healthy sessions.
-      _pty!.exitCode.then((code) {
+      transport.done.then((code) {
+        if (startGeneration != _transportStartGeneration ||
+            _transport != transport) {
+          return;
+        }
         if (_running && code != 0) {
-          _handleStartFailure(_execFailureMessage(executable));
+          _handleStartFailure(_launchFailureMessage(executable));
           return;
         }
         if (_running) {
@@ -401,13 +359,16 @@ class TerminalSession {
         _confirmProcessStarted,
       );
     } on Object catch (error, stackTrace) {
+      if (startGeneration != _transportStartGeneration || !_starting) {
+        return;
+      }
       Logger().e('Failed to start flashskyai: $error', stackTrace: stackTrace);
       _handleStartFailure('[Failed to start flashskyai: $error]');
     }
   }
 
   void _confirmProcessStarted() {
-    if (!_running || _startFailed || _pty == null) return;
+    if (!_running || _startFailed || _transport == null) return;
     _starting = false;
     _spawnWatchdogTimer?.cancel();
     _spawnWatchdogTimer = null;
@@ -426,8 +387,8 @@ class TerminalSession {
     _outputSubscription?.cancel();
     _outputSubscription = null;
     _onProcessStarted = null;
-    _pty?.kill();
-    _pty = null;
+    _transport?.close();
+    _transport = null;
     _running = false;
     _starting = false;
     terminal.write('\r\n$message\r\n');
@@ -453,6 +414,14 @@ class TerminalSession {
         text.contains('没有那个文件或目录');
   }
 
+  String _launchFailureMessage(String executable) {
+    if (!validateLaunch) {
+      return '[无法启动远端 flashskyai: "$executable"。\n'
+          '  请检查 SSH Profile 中的远端路径、PATH、工作目录和执行权限。]';
+    }
+    return _execFailureMessage(executable);
+  }
+
   static String _execFailureMessage(String executable) {
     return CliExecutableValidator.validateLaunch(
           executable: executable,
@@ -464,8 +433,8 @@ class TerminalSession {
   }
 
   void write(String text) {
-    if (_running && _pty != null) {
-      _pty!.write(Uint8List.fromList(utf8.encode(text)));
+    if (_running && _transport != null) {
+      _transport!.write(Uint8List.fromList(utf8.encode(text)));
     }
   }
 
@@ -479,6 +448,7 @@ class TerminalSession {
   }
 
   void disconnect() {
+    _transportStartGeneration++;
     _startFailed = false;
     _spawnRequested = false;
     _cancelPtyGeometryTimers();
@@ -491,8 +461,8 @@ class TerminalSession {
     _ptyEnvironment = null;
     terminal.onOutput = null;
     terminal.onResize = null;
-    _pty?.kill();
-    _pty = null;
+    _transport?.close();
+    _transport = null;
   }
 
   void dispose() {
@@ -514,5 +484,24 @@ class TerminalSession {
       merged.addAll(environment);
     }
     return merged;
+  }
+
+  static Future<TerminalTransport> _defaultTransportStarter(
+    String executable, {
+    required List<String> arguments,
+    required String workingDirectory,
+    required int columns,
+    required int rows,
+    Map<String, String>? environment,
+  }) async {
+    final pty = Pty.start(
+      executable,
+      arguments: arguments,
+      workingDirectory: workingDirectory,
+      columns: columns,
+      rows: rows,
+      environment: environment,
+    );
+    return LocalPtyTransport(pty);
   }
 }

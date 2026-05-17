@@ -11,20 +11,28 @@ const kUbuntuSansMonoFontFamily = 'Ubuntu Sans Mono';
 /// JetBrainsMono NFM is the default face. Ubuntu Sans Mono is preloaded for
 /// fallback / future switching (change [kTerminalFontFamily] + Regular asset).
 Future<void> loadBundledTerminalFonts() async {
-  final jetbrains = FontLoader(kTerminalFontFamily)
-    ..addFont(
-      rootBundle.load(
-        'assets/fonts/terminal/JetBrainsMonoNerdFontMono-Regular.ttf',
-      ),
-    );
-  await jetbrains.load();
+  try {
+    final jetbrains = FontLoader(kTerminalFontFamily)
+      ..addFont(
+        rootBundle.load(
+          'assets/fonts/terminal/JetBrainsMonoNerdFontMono-Regular.ttf',
+        ),
+      );
+    await jetbrains.load();
+  } on Object {
+    // Font not available; terminal will use system monospace fallback.
+  }
 
-  final ubuntu = FontLoader(kUbuntuSansMonoFontFamily)
-    ..addFont(
-      rootBundle.load('assets/fonts/terminal/UbuntuSansMono-Regular.ttf'),
-    )
-    ..addFont(
-      rootBundle.load('assets/fonts/terminal/UbuntuSansMono-Bold.ttf'),
-    );
-  await ubuntu.load();
+  try {
+    final ubuntu = FontLoader(kUbuntuSansMonoFontFamily)
+      ..addFont(
+        rootBundle.load('assets/fonts/terminal/UbuntuSansMono-Regular.ttf'),
+      )
+      ..addFont(
+        rootBundle.load('assets/fonts/terminal/UbuntuSansMono-Bold.ttf'),
+      );
+    await ubuntu.load();
+  } on Object {
+    // Font not available; terminal will use system monospace fallback.
+  }
 }

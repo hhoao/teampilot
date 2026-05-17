@@ -670,7 +670,7 @@ void main() {
         '/root',
         additionalPaths: const ['/extra'],
       );
-      final session = await repo.createSession(project.projectId);
+      await repo.createSession(project.projectId);
       FakeTerminalSession? captured;
       final cubit = ChatCubit(
         executableResolver: _testExecutable,

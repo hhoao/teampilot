@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -11,8 +13,11 @@ import '../cubits/team_cubit.dart';
 import '../pages/chat_page.dart';
 import '../pages/config_workspace.dart';
 import '../pages/skill_management_page.dart';
+import '../pages/startup_gate.dart';
+import '../pages/ssh_profiles_page.dart';
 import '../pages/team_config_page.dart';
 import '../repositories/session_repository.dart';
+import 'android_shell_chrome.dart';
 import '../widgets/context_sidebar.dart';
 import '../widgets/resizable_split_view.dart';
 
@@ -33,26 +38,56 @@ final appRouter = GoRouter(
           scopeSessionsToSelectedTeam: scopeOn,
           selectedTeamId: selectedTeam?.id,
         );
-        return Scaffold(
-          body: SafeArea(
-            child: preferences.contextSidebarVisible
-                ? ResizableSplitView(
-                    initialLeftWidth: preferences.sidebarWidth,
-                    minLeftWidth: 180,
-                    maxLeftWidth: 420,
-                    onWidthChanged: (width) {
-                      context.read<LayoutCubit>().setSidebarWidth(width);
-                    },
-                    left: RepaintBoundary(
-                      child: ContextSidebar(
-                        onNewProject: () => _createProject(context),
-                      ),
-                    ),
-                    right: child,
-                  )
-                : child,
-          ),
+
+        final sidebar = RepaintBoundary(
+          child: ContextSidebar(onNewProject: () => _createProject(context)),
         );
+
+        final body = Platform.isAndroid
+            ? child
+            : preferences.contextSidebarVisible
+            ? ResizableSplitView(
+                initialLeftWidth: preferences.sidebarWidth,
+                minLeftWidth: 180,
+                maxLeftWidth: 420,
+                onWidthChanged: (width) {
+                  context.read<LayoutCubit>().setSidebarWidth(width);
+                },
+                left: sidebar,
+                right: child,
+              )
+            : child;
+
+        if (Platform.isAndroid) {
+          final path = state.uri.path;
+          final hubDetail = AndroidShellChrome.isHubDetailPath(path);
+          return StartupGate(
+            child: Scaffold(
+              appBar: AppBar(
+                title: Text(AndroidShellChrome.title(context, path)),
+                leading: hubDetail
+                    ? IconButton(
+                        icon: const Icon(Icons.arrow_back),
+                        onPressed: () => AndroidShellChrome.pop(context, path),
+                      )
+                    : null,
+                actions: [
+                  IconButton(
+                    tooltip: 'SSH Profiles',
+                    icon: const Icon(Icons.dns),
+                    onPressed: () => context.go('/ssh-profiles'),
+                  ),
+                ],
+              ),
+              drawer: hubDetail
+                  ? null
+                  : Drawer(child: SafeArea(child: sidebar)),
+              body: body,
+            ),
+          );
+        }
+
+        return Scaffold(body: SafeArea(child: StartupGate(child: body)));
       },
       routes: [
         GoRoute(
@@ -70,7 +105,13 @@ final appRouter = GoRouter(
         ),
         GoRoute(
           path: '/config',
-          redirect: (context, state) => '/config/layout',
+          redirect: (context, state) {
+            if (Platform.isAndroid) return null;
+            return '/config/layout';
+          },
+          pageBuilder: (context, state) => const NoTransitionPage(
+            child: ConfigSettingsHubPage(),
+          ),
         ),
         GoRoute(
           path: '/config/layout',
@@ -92,13 +133,73 @@ final appRouter = GoRouter(
         ),
         GoRoute(
           path: '/team-config',
-          pageBuilder: (context, state) =>
-              const NoTransitionPage(child: TeamConfigPage()),
+          redirect: (context, state) {
+            if (Platform.isAndroid) return null;
+            return '/team-config/team';
+          },
+          pageBuilder: (context, state) => const NoTransitionPage(
+            child: TeamConfigHubPage(),
+          ),
+        ),
+        GoRoute(
+          path: '/team-config/team',
+          pageBuilder: (context, state) => const NoTransitionPage(
+            child: TeamConfigPage(section: TeamConfigSection.team),
+          ),
+        ),
+        GoRoute(
+          path: '/team-config/skills',
+          pageBuilder: (context, state) => const NoTransitionPage(
+            child: TeamConfigPage(section: TeamConfigSection.skills),
+          ),
+        ),
+        GoRoute(
+          path: '/team-config/members/:memberId',
+          pageBuilder: (context, state) => NoTransitionPage(
+            child: TeamConfigPage(
+              section: TeamConfigSection.members,
+              memberId: state.pathParameters['memberId'],
+            ),
+          ),
         ),
         GoRoute(
           path: '/skills',
+          redirect: (context, state) {
+            if (Platform.isAndroid) return null;
+            return '/skills/installed';
+          },
+          pageBuilder: (context, state) => const NoTransitionPage(
+            child: SkillManagementHubPage(),
+          ),
+        ),
+        GoRoute(
+          path: '/skills/installed',
+          pageBuilder: (context, state) => const NoTransitionPage(
+            child: SkillManagementPage(section: SkillSection.installed),
+          ),
+        ),
+        GoRoute(
+          path: '/skills/discovery',
+          pageBuilder: (context, state) => const NoTransitionPage(
+            child: SkillManagementPage(section: SkillSection.discovery),
+          ),
+        ),
+        GoRoute(
+          path: '/skills/repos',
+          pageBuilder: (context, state) => const NoTransitionPage(
+            child: SkillManagementPage(section: SkillSection.repos),
+          ),
+        ),
+        GoRoute(
+          path: '/skills/backups',
+          pageBuilder: (context, state) => const NoTransitionPage(
+            child: SkillManagementPage(section: SkillSection.backups),
+          ),
+        ),
+        GoRoute(
+          path: '/ssh-profiles',
           pageBuilder: (context, state) =>
-              const NoTransitionPage(child: SkillManagementPage()),
+              const NoTransitionPage(child: SshProfilesPage()),
         ),
       ],
     ),
@@ -106,13 +207,69 @@ final appRouter = GoRouter(
 );
 
 Future<void> _createProject(BuildContext context) async {
-  final dir = await FilePicker.platform.getDirectoryPath();
-  if (dir != null && context.mounted) {
+  String? path;
+  if (Platform.isAndroid) {
+    if (!context.mounted) return;
+    path = await _promptRemoteProjectPath(context);
+  } else {
+    path = await FilePicker.platform.getDirectoryPath();
+  }
+  if (path != null && path.trim().isNotEmpty && context.mounted) {
     final teamId = context.read<TeamCubit>().state.selectedTeam?.id ?? '';
     await context.read<ChatCubit>().createProjectWithFirstSession(
-      dir,
+      path.trim(),
       SessionRepository(),
       sessionTeamId: teamId,
     );
   }
+}
+
+Future<String?> _promptRemoteProjectPath(BuildContext context) {
+  final controller = TextEditingController(text: '~/');
+  final formKey = GlobalKey<FormState>();
+  return showDialog<String>(
+    context: context,
+    builder: (dialogContext) {
+      return AlertDialog(
+        title: const Text('Remote Project Path'),
+        content: Form(
+          key: formKey,
+          child: TextFormField(
+            controller: controller,
+            autofocus: true,
+            decoration: const InputDecoration(
+              labelText: 'Path on SSH host',
+              hintText: '~/work/project',
+            ),
+            textInputAction: TextInputAction.done,
+            validator: (value) {
+              if (value == null || value.trim().isEmpty) {
+                return 'Required';
+              }
+              return null;
+            },
+            onFieldSubmitted: (_) {
+              if (formKey.currentState?.validate() != true) return;
+              Navigator.of(dialogContext).pop(controller.text.trim());
+            },
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () {
+              if (formKey.currentState?.validate() != true) return;
+              Navigator.of(dialogContext).pop(controller.text.trim());
+            },
+            child: const Text('Create'),
+          ),
+        ],
+      );
+    },
+  ).whenComplete(() {
+    controller.dispose();
+  });
 }

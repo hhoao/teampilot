@@ -19,11 +19,13 @@ class RightToolsPanel extends StatelessWidget {
   const RightToolsPanel({
     this.preferences = const LayoutPreferences(),
     this.panelKey = AppKeys.rightToolsPanel,
+    this.dismissDrawerOnAction = false,
     super.key,
   });
 
   final LayoutPreferences preferences;
   final Key panelKey;
+  final bool dismissDrawerOnAction;
 
   static String _sessionCwd(ChatCubit chatCubit) {
     final tabs = chatCubit.state.tabs;
@@ -51,6 +53,12 @@ class RightToolsPanel extends StatelessWidget {
         if (b.name == 'team-lead') return 1;
         return 0;
       });
+    void maybeDismissDrawer() {
+      if (dismissDrawerOnAction) {
+        Navigator.of(context).maybePop();
+      }
+    }
+
     final panels = <Widget>[
       if (preferences.membersVisible)
         _MembersPanel(
@@ -59,13 +67,16 @@ class RightToolsPanel extends StatelessWidget {
           onSelected: (id) {
             final member = team.members.firstWhere((m) => m.id == id);
             unawaited(context.read<ChatCubit>().openMemberTab(team, member));
+            maybeDismissDrawer();
           },
           onOpen: (id) {
             final member = team.members.firstWhere((m) => m.id == id);
             unawaited(context.read<ChatCubit>().openMemberTab(team, member));
+            maybeDismissDrawer();
           },
           onLaunchAll: () {
             unawaited(context.read<ChatCubit>().launchAllMembers(team));
+            maybeDismissDrawer();
           },
           isMemberRunning: (id) =>
               context.read<ChatCubit>().isMemberRunning(id),

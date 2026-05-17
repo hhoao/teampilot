@@ -31,9 +31,9 @@ class SessionPreferencesCubit extends Cubit<SessionPreferencesState> {
   SessionPreferencesCubit({
     required SessionPreferencesRepository repository,
     String? locatedExecutable,
-  })  : _repository = repository,
-        _locatedExecutable = locatedExecutable,
-        super(const SessionPreferencesState());
+  }) : _repository = repository,
+       _locatedExecutable = locatedExecutable,
+       super(const SessionPreferencesState());
 
   final SessionPreferencesRepository _repository;
   final String? _locatedExecutable;
@@ -51,6 +51,16 @@ class SessionPreferencesCubit extends Cubit<SessionPreferencesState> {
 
   Future<void> setCliExecutablePath(String value) {
     return _save(state.preferences.copyWith(cliExecutablePath: value.trim()));
+  }
+
+  Future<void> setDefaultSshWorkingDirectory(String value) {
+    return _save(
+      state.preferences.copyWith(defaultSshWorkingDirectory: value.trim()),
+    );
+  }
+
+  Future<void> setSshUseLoginShell(bool value) {
+    return _save(state.preferences.copyWith(sshUseLoginShell: value));
   }
 
   Future<void> setAutoLaunchAllMembersOnConnect(bool value) {

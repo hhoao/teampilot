@@ -77,6 +77,29 @@ void main() {
   });
 
   test(
+    'setDefaultSshWorkingDirectory persists the remote default cwd',
+    () async {
+      final cubit = await makeCubit(located: null);
+      await cubit.load();
+      await cubit.setDefaultSshWorkingDirectory(' ~/work ');
+
+      expect(cubit.state.preferences.defaultSshWorkingDirectory, '~/work');
+
+      final cubit2 = await makeCubit(located: null);
+      await cubit2.load();
+      expect(cubit2.state.preferences.defaultSshWorkingDirectory, '~/work');
+    },
+  );
+
+  test('setSshUseLoginShell persists the shell launch flag', () async {
+    final cubit = await makeCubit(located: null);
+    await cubit.load();
+    await cubit.setSshUseLoginShell(true);
+
+    expect(cubit.state.preferences.sshUseLoginShell, true);
+  });
+
+  test(
     'setCliExecutablePath trims whitespace and treats blank as cleared',
     () async {
       final cubit = await makeCubit(located: '/located');

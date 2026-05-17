@@ -10,6 +10,7 @@ class AppKeys {
   static const workspaceTopbar = Key('workspace-topbar');
   static const chatWorkspace = Key('chat-workspace');
   static const configWorkspace = Key('config-workspace');
+  static const configSettingsHub = Key('config-settings-hub');
   static const rightToolsPanel = Key('right-tools-panel');
   static const bottomToolsPanel = Key('bottom-tools-panel');
   static const rightToolsDivider = Key('right-tools-divider');
@@ -63,7 +64,10 @@ class AppKeys {
   static const llmConfigOpenSessionSettingsButton = Key(
     'llm-config-open-session-settings-button',
   );
+  static const teamConfigHub = Key('team-config-hub');
   static const teamConfigWorkspace = Key('team-config-workspace');
+  static const skillsHub = Key('skills-hub');
+  static const skillsWorkspace = Key('skills-workspace');
   static const memberConfigWorkspace = Key('member-config-workspace');
   static const llmConfigWorkspace = Key('llm-config-workspace');
   static const llmProvidersTab = Key('llm-providers-tab');
@@ -84,6 +88,7 @@ class AppKeys {
   static const copyPromptButton = Key('copy-prompt-button');
   static const openTeamLeadButton = Key('open-team-lead-button');
   static const openTeamButton = Key('open-team-button');
+  static const openRightToolsButton = Key('open-right-tools-button');
 
   static const teamNameField = Key('team-name-field');
   static const extraArgsField = Key('extra-args-field');

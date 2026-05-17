@@ -188,6 +188,12 @@ abstract class AppLocalizations {
   /// **'Right Tools'**
   String get rightTools;
 
+  /// No description provided for @openRightTools.
+  ///
+  /// In en, this message translates to:
+  /// **'Tools'**
+  String get openRightTools;
+
   /// No description provided for @bottomTray.
   ///
   /// In en, this message translates to:

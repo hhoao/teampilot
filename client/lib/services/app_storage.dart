@@ -16,13 +16,22 @@ class AppStorage {
   /// Root of the CLI-owned data directory (`~/.flashskyai`). Shared with the
   /// `flashskyai` CLI: sessions, history, and the canonical team configs all
   /// live under here.
-  static String get flashskyaiDataDir => p.join(
-        _cliDataRootOverride ??
-            Platform.environment['HOME'] ??
-            Platform.environment['USERPROFILE'] ??
-            '',
-        '.flashskyai',
-      );
+  ///
+  /// On Android there is no local CLI — data lives on the remote SSH host.
+  /// All CLI paths are sandboxed under the app's data directory so writes
+  /// never hit the read-only root filesystem.
+  static String get flashskyaiDataDir {
+    if (Platform.isAndroid) {
+      return p.join(basePath, '.flashskyai');
+    }
+    return p.join(
+      _cliDataRootOverride ??
+          Platform.environment['HOME'] ??
+          Platform.environment['USERPROFILE'] ??
+          '',
+      '.flashskyai',
+    );
+  }
 
   /// CLI's `teams/` directory. UI imports from here on startup.
   static String get cliTeamsDir => p.join(flashskyaiDataDir, 'teams');

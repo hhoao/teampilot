@@ -56,6 +56,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get rightTools => 'Right Tools';
 
   @override
+  String get openRightTools => 'Tools';
+
+  @override
   String get bottomTray => 'Bottom Tray';
 
   @override

@@ -7,99 +7,154 @@ import '../cubits/layout_cubit.dart';
 import '../cubits/team_cubit.dart';
 import '../l10n/l10n_extensions.dart';
 import '../models/layout_preferences.dart';
+import '../services/platform_utils.dart';
 import '../theme/app_theme.dart';
 import '../utils/app_keys.dart';
+import '../widgets/settings/workspace_hub_shell.dart';
 import '../widgets/settings/workspace_settings_toggle_strip.dart';
 import '../widgets/settings/workspace_settings_widgets.dart';
 import 'llm_config_workspace.dart';
 import 'session_config_workspace.dart';
 
-class ConfigWorkspace extends StatelessWidget {
-  const ConfigWorkspace({this.section, super.key});
-
-  final ConfigSection? section;
+/// Android settings landing: title + section list (each section is a full page).
+class ConfigSettingsHubPage extends StatelessWidget {
+  const ConfigSettingsHubPage({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
     final l10n = context.l10n;
-    final configCubit = context.watch<ConfigCubit>();
-    final teamCubit = context.watch<TeamCubit>();
-    final team = teamCubit.state.selectedTeam;
+    if (context.watch<TeamCubit>().state.selectedTeam == null) {
+      return const Center(child: CircularProgressIndicator());
+    }
 
-    if (section != null && configCubit.state.section != section) {
+    return WorkspaceHubPage(
+      pageKey: AppKeys.configSettingsHub,
+      title: l10n.settings,
+      subtitle: l10n.settingsPageSubtitle,
+      entries: [
+        WorkspaceHubEntry(
+          key: AppKeys.configLlmSectionButton,
+          title: l10n.llmConfig,
+          icon: Icons.memory_outlined,
+          onTap: () {
+            context.read<ConfigCubit>().selectSection(ConfigSection.llm);
+            context.push('/config/llm');
+          },
+        ),
+        WorkspaceHubEntry(
+          key: AppKeys.configLayoutSectionButton,
+          title: l10n.layout,
+          icon: Icons.dashboard_customize_outlined,
+          onTap: () {
+            context.read<ConfigCubit>().selectSection(ConfigSection.layout);
+            context.push('/config/layout');
+          },
+        ),
+        WorkspaceHubEntry(
+          key: AppKeys.configSessionSectionButton,
+          title: l10n.session,
+          icon: Icons.terminal_outlined,
+          onTap: () {
+            context.read<ConfigCubit>().selectSection(ConfigSection.session);
+            context.push('/config/session');
+          },
+        ),
+      ],
+    );
+  }
+}
+
+class ConfigWorkspace extends StatelessWidget {
+  const ConfigWorkspace({required this.section, super.key});
+
+  final ConfigSection section;
+
+  @override
+  Widget build(BuildContext context) {
+    final configCubit = context.watch<ConfigCubit>();
+    final team = context.watch<TeamCubit>().state.selectedTeam;
+
+    if (configCubit.state.section != section) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        configCubit.selectSection(section!);
+        configCubit.selectSection(section);
       });
     }
 
     if (team == null) {
       return const Center(child: CircularProgressIndicator());
     }
+
+    if (useAndroidHubNavigation(context)) {
+      return _AndroidConfigSectionPage(section: section);
+    }
+
+    return _DesktopConfigWorkspace(
+      section: configCubit.state.section,
+      onSelectSection: (selected) {
+        context.read<ConfigCubit>().selectSection(selected);
+        context.go('/config/${selected.name}');
+      },
+    );
+  }
+}
+
+class _AndroidConfigSectionPage extends StatelessWidget {
+  const _AndroidConfigSectionPage({required this.section});
+
+  final ConfigSection section;
+
+  @override
+  Widget build(BuildContext context) {
+    const showHeading = false;
+
+    return WorkspaceSectionPage(
+      pageKey: AppKeys.configWorkspace,
+      child: switch (section) {
+        ConfigSection.layout =>
+          LayoutConfigWorkspace(showHeading: showHeading),
+        ConfigSection.llm => const LlmConfigWorkspace(),
+        ConfigSection.session =>
+          SessionConfigWorkspace(showHeading: showHeading),
+      },
+    );
+  }
+}
+
+class _DesktopConfigWorkspace extends StatelessWidget {
+  const _DesktopConfigWorkspace({
+    required this.section,
+    required this.onSelectSection,
+  });
+
+  final ConfigSection section;
+  final ValueChanged<ConfigSection> onSelectSection;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final l10n = context.l10n;
+
     return Container(
       key: AppKeys.configWorkspace,
       color: cs.surface,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _SettingsTitleBar(
+          WorkspaceHubTitleBar(
             title: l10n.settings,
             subtitle: l10n.settingsPageSubtitle,
           ),
           Expanded(
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final compact = constraints.maxWidth < 820;
-                final navWidth = 220.0;
-                final contentPadding = compact
-                    ? const EdgeInsets.fromLTRB(16, 20, 16, 16)
-                    : const EdgeInsets.fromLTRB(24, 28, 28, 24);
-                final bodyPaneWidth = constraints.maxWidth - navWidth - 1;
-                final configBodyMaxWidth =
-                    (bodyPaneWidth - contentPadding.horizontal).clamp(
-                      480.0,
-                      3200.0,
-                    );
-                return Row(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    SizedBox(
-                      width: navWidth,
-                      child: _ConfigNavPanel(
-                        section: configCubit.state.section,
-                        onSelectSection: (s) {
-                          context.read<ConfigCubit>().selectSection(s);
-                          context.go('/config/${s.name}');
-                        },
-                        l10n: l10n,
-                      ),
-                    ),
-                    Container(
-                      width: 1,
-                      color: cs.outlineVariant.withValues(alpha: 0.5),
-                    ),
-                    Expanded(
-                      child: Padding(
-                        padding: contentPadding,
-                        child: Align(
-                          alignment: Alignment.topLeft,
-                          child: ConstrainedBox(
-                            constraints: BoxConstraints(
-                              maxWidth: configBodyMaxWidth,
-                            ),
-                            child: switch (configCubit.state.section) {
-                              ConfigSection.layout =>
-                                const LayoutConfigWorkspace(),
-                              ConfigSection.llm => const LlmConfigWorkspace(),
-                              ConfigSection.session =>
-                                const SessionConfigWorkspace(),
-                            },
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                );
+            child: WorkspaceSplitShell(
+              nav: _ConfigNavPanel(
+                section: section,
+                onSelectSection: onSelectSection,
+                l10n: l10n,
+              ),
+              body: switch (section) {
+                ConfigSection.layout => const LayoutConfigWorkspace(),
+                ConfigSection.llm => const LlmConfigWorkspace(),
+                ConfigSection.session => const SessionConfigWorkspace(),
               },
             ),
           ),
@@ -110,7 +165,9 @@ class ConfigWorkspace extends StatelessWidget {
 }
 
 class LayoutConfigWorkspace extends StatelessWidget {
-  const LayoutConfigWorkspace({super.key});
+  const LayoutConfigWorkspace({this.showHeading = true, super.key});
+
+  final bool showHeading;
 
   @override
   Widget build(BuildContext context) {
@@ -119,11 +176,13 @@ class LayoutConfigWorkspace extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _WorkspaceHeading(
-          title: l10n.layout,
-          subtitle: l10n.layoutPageSubtitle,
-        ),
-        const SizedBox(height: 16),
+        if (showHeading) ...[
+          WorkspaceSectionHeading(
+            title: l10n.layout,
+            subtitle: l10n.layoutPageSubtitle,
+          ),
+          const SizedBox(height: 16),
+        ],
         _LayoutControls(
           preferences: layoutController.state.preferences,
           controller: layoutController,
@@ -417,90 +476,6 @@ class _ThemeColorPresetChip extends StatelessWidget {
   }
 }
 
-class _SettingsTitleBar extends StatelessWidget {
-  const _SettingsTitleBar({required this.title, required this.subtitle});
-
-  final String title;
-  final String subtitle;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textBase = isDark ? Colors.white : const Color(0xFF111827);
-    return Container(
-      padding: const EdgeInsets.fromLTRB(40, 42, 40, 28),
-      decoration: BoxDecoration(
-        color: cs.surface,
-        border: Border(
-          bottom: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.5)),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            title,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: textBase,
-              fontSize: 22,
-              fontWeight: FontWeight.w800,
-              height: 1.05,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            subtitle,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: textBase.withValues(alpha: 0.66),
-              fontSize: 14,
-              height: 1.25,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _WorkspaceHeading extends StatelessWidget {
-  const _WorkspaceHeading({required this.title, required this.subtitle});
-
-  final String title;
-  final String subtitle;
-
-  @override
-  Widget build(BuildContext context) {
-    final tt = Theme.of(context).textTheme;
-    final cs = Theme.of(context).colorScheme;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Text(
-          title,
-          style: tt.titleMedium?.copyWith(
-            fontWeight: FontWeight.w800,
-            color: cs.onSurface,
-          ),
-        ),
-        const SizedBox(height: 6),
-        Text(
-          subtitle,
-          style: tt.bodyMedium?.copyWith(
-            color: cs.onSurfaceVariant,
-            height: 1.25,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
 class _ConfigNavPanel extends StatelessWidget {
   const _ConfigNavPanel({
     required this.section,
@@ -514,90 +489,31 @@ class _ConfigNavPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Container(
-      color: cs.surface,
-      padding: const EdgeInsets.fromLTRB(24, 28, 18, 24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _ConfigNavItem(
-            key: AppKeys.configLlmSectionButton,
-            title: l10n.llmConfig,
-            icon: Icons.memory_outlined,
-            selected: section == ConfigSection.llm,
-            onTap: () => onSelectSection(ConfigSection.llm),
-          ),
-          _ConfigNavItem(
-            key: AppKeys.configLayoutSectionButton,
-            title: l10n.layout,
-            icon: Icons.dashboard_customize_outlined,
-            selected: section == ConfigSection.layout,
-            onTap: () => onSelectSection(ConfigSection.layout),
-          ),
-          _ConfigNavItem(
-            key: AppKeys.configSessionSectionButton,
-            title: l10n.session,
-            icon: Icons.terminal_outlined,
-            selected: section == ConfigSection.session,
-            onTap: () => onSelectSection(ConfigSection.session),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ConfigNavItem extends StatelessWidget {
-  const _ConfigNavItem({
-    super.key,
-    required this.title,
-    required this.icon,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final String title;
-  final IconData icon;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textBase = isDark ? Colors.white : const Color(0xFF111827);
-    final muted = textBase.withValues(alpha: 0.64);
-    final selectedColor = cs.primaryContainer;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Material(
-        color: selected ? selectedColor : Colors.transparent,
-        borderRadius: BorderRadius.circular(12),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(12),
-          onTap: onTap,
-          child: SizedBox(
-            height: 48,
-            child: Padding(
-              padding: EdgeInsets.symmetric(horizontal: 18),
-              child: Row(
-                children: [
-                  Icon(icon, color: selected ? textBase : muted, size: 18),
-                  SizedBox(width: 16),
-                  Expanded(
-                    child: Text(
-                      title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
+    return WorkspaceHubNavList(
+      sidebarStyle: true,
+      entries: [
+        WorkspaceHubEntry(
+          key: AppKeys.configLlmSectionButton,
+          title: l10n.llmConfig,
+          icon: Icons.memory_outlined,
+          selected: section == ConfigSection.llm,
+          onTap: () => onSelectSection(ConfigSection.llm),
         ),
-      ),
+        WorkspaceHubEntry(
+          key: AppKeys.configLayoutSectionButton,
+          title: l10n.layout,
+          icon: Icons.dashboard_customize_outlined,
+          selected: section == ConfigSection.layout,
+          onTap: () => onSelectSection(ConfigSection.layout),
+        ),
+        WorkspaceHubEntry(
+          key: AppKeys.configSessionSectionButton,
+          title: l10n.session,
+          icon: Icons.terminal_outlined,
+          selected: section == ConfigSection.session,
+          onTap: () => onSelectSection(ConfigSection.session),
+        ),
+      ],
     );
   }
 }

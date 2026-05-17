@@ -78,6 +78,15 @@ class TeamSkillLinkerService {
     final errors = <String>[];
     final linked = <String>[];
 
+    // Android has no local CLI — symlinks would serve no purpose and may
+    // fail on filesystems that don't support them (e.g. sdcardfs).
+    if (Platform.isAndroid) {
+      return TeamSkillSyncResult(
+        linked: toLink.map((s) => s.directory).toList(),
+        skippedMissingIds: skipped,
+      );
+    }
+
     try {
       await _clearCliSkillsDir();
     } catch (e) {

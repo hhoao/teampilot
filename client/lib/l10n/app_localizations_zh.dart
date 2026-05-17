@@ -54,6 +54,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get rightTools => '右侧工具栏';
 
   @override
+  String get openRightTools => '工具';
+
+  @override
   String get bottomTray => '底部托盘';
 
   @override

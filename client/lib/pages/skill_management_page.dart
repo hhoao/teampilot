@@ -3,26 +3,65 @@ import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import 'package:infinite_scroll_pagination/infinite_scroll_pagination.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../cubits/skill_cubit.dart';
 import '../l10n/l10n_extensions.dart';
 import '../models/skill.dart';
+import '../services/platform_utils.dart';
+import '../utils/app_keys.dart';
 import '../widgets/app_outline_text_field.dart';
 import '../widgets/dropdown/flashsky_dropdown_field.dart';
+import '../widgets/settings/workspace_hub_shell.dart';
 
 enum SkillSection { installed, discovery, repos, backups }
 
-class SkillManagementPage extends StatefulWidget {
-  const SkillManagementPage({super.key});
+extension SkillSectionRoute on SkillSection {
+  String routeSegment() => name;
 
-  @override
-  State<SkillManagementPage> createState() => _SkillManagementPageState();
+  String title(AppLocalizations l10n) => switch (this) {
+        SkillSection.installed => l10n.skillsNavInstalled,
+        SkillSection.discovery => l10n.skillsNavDiscovery,
+        SkillSection.repos => l10n.skillsNavRepos,
+        SkillSection.backups => l10n.skillsNavBackups,
+      };
 }
 
-class _SkillManagementPageState extends State<SkillManagementPage> {
-  SkillSection _section = SkillSection.installed;
+class SkillManagementHubPage extends StatelessWidget {
+  const SkillManagementHubPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    return WorkspaceHubPage(
+      pageKey: AppKeys.skillsHub,
+      title: l10n.skillsTitle,
+      subtitle: l10n.skillsSubtitle,
+      entries: [
+        for (final section in SkillSection.values)
+          WorkspaceHubEntry(
+            title: section.title(l10n),
+            icon: _skillSectionIcon(section),
+            onTap: () => context.push('/skills/${section.routeSegment()}'),
+          ),
+      ],
+    );
+  }
+}
+
+IconData _skillSectionIcon(SkillSection section) => switch (section) {
+      SkillSection.installed => Icons.inventory_2_outlined,
+      SkillSection.discovery => Icons.travel_explore_outlined,
+      SkillSection.repos => Icons.source_outlined,
+      SkillSection.backups => Icons.history,
+    };
+
+class SkillManagementPage extends StatelessWidget {
+  const SkillManagementPage({required this.section, super.key});
+
+  final SkillSection section;
 
   @override
   Widget build(BuildContext context) {
@@ -41,77 +80,43 @@ class _SkillManagementPageState extends State<SkillManagementPage> {
         context.read<SkillCubit>().clearError();
       },
       builder: (context, state) {
+        final body = switch (section) {
+          SkillSection.installed => _InstalledSection(
+            state: state,
+            onGoDiscovery: () => _goSection(context, SkillSection.discovery),
+          ),
+          SkillSection.discovery => _DiscoverySection(
+            state: state,
+            onGoRepos: () => _goSection(context, SkillSection.repos),
+          ),
+          SkillSection.repos => _ReposSection(state: state),
+          SkillSection.backups => _BackupsSection(state: state),
+        };
+
+        if (useAndroidHubNavigation(context)) {
+          return WorkspaceSectionPage(
+            pageKey: AppKeys.skillsWorkspace,
+            child: body,
+          );
+        }
+
         return Container(
           color: cs.surface,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              _TitleBar(title: l10n.skillsTitle, subtitle: l10n.skillsSubtitle),
+              WorkspaceHubTitleBar(
+                title: l10n.skillsTitle,
+                subtitle: l10n.skillsSubtitle,
+              ),
               Expanded(
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    final compact = constraints.maxWidth < 820;
-                    final navWidth = 220.0;
-                    final padding = compact
-                        ? const EdgeInsets.fromLTRB(16, 20, 16, 16)
-                        : const EdgeInsets.fromLTRB(24, 28, 28, 24);
-                    final bodyPaneWidth = constraints.maxWidth - navWidth - 1;
-                    final skillsBodyMaxWidth =
-                        (bodyPaneWidth - padding.horizontal).clamp(
-                          480.0,
-                          3200.0,
-                        );
-                    return Row(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        SizedBox(
-                          width: navWidth,
-                          child: _NavPanel(
-                            section: _section,
-                            l10n: l10n,
-                            onSelect: (s) => setState(() => _section = s),
-                          ),
-                        ),
-                        Container(
-                          width: 1,
-                          color: cs.outlineVariant.withValues(alpha: 0.5),
-                        ),
-                        Expanded(
-                          child: Padding(
-                            padding: padding,
-                            child: Align(
-                              alignment: Alignment.topLeft,
-                              child: ConstrainedBox(
-                                constraints: BoxConstraints(
-                                  maxWidth: skillsBodyMaxWidth,
-                                ),
-                                child: switch (_section) {
-                                  SkillSection.installed => _InstalledSection(
-                                    state: state,
-                                    onGoDiscovery: () => setState(
-                                      () => _section = SkillSection.discovery,
-                                    ),
-                                  ),
-                                  SkillSection.discovery => _DiscoverySection(
-                                    state: state,
-                                    onGoRepos: () => setState(
-                                      () => _section = SkillSection.repos,
-                                    ),
-                                  ),
-                                  SkillSection.repos => _ReposSection(
-                                    state: state,
-                                  ),
-                                  SkillSection.backups => _BackupsSection(
-                                    state: state,
-                                  ),
-                                },
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    );
-                  },
+                child: WorkspaceSplitShell(
+                  nav: _SkillsNavPanel(
+                    section: section,
+                    l10n: l10n,
+                    onSelect: (s) => _goSection(context, s),
+                  ),
+                  body: body,
                 ),
               ),
             ],
@@ -120,64 +125,18 @@ class _SkillManagementPageState extends State<SkillManagementPage> {
       },
     );
   }
-}
 
-// ============================================================================
-// Shared chrome (titlebar / nav)
-// ============================================================================
-
-class _TitleBar extends StatelessWidget {
-  const _TitleBar({required this.title, required this.subtitle});
-  final String title;
-  final String subtitle;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textBase = isDark ? Colors.white : const Color(0xFF111827);
-    return Container(
-      padding: const EdgeInsets.fromLTRB(40, 42, 40, 28),
-      decoration: BoxDecoration(
-        color: cs.surface,
-        border: Border(
-          bottom: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.5)),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            title,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: textBase,
-              fontSize: 22,
-              fontWeight: FontWeight.w800,
-              height: 1.05,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            subtitle,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: textBase.withValues(alpha: 0.66),
-              fontSize: 14,
-              height: 1.25,
-            ),
-          ),
-        ],
-      ),
-    );
+  void _goSection(BuildContext context, SkillSection target) {
+    if (useAndroidHubNavigation(context)) {
+      context.push('/skills/${target.routeSegment()}');
+    } else {
+      context.go('/skills/${target.routeSegment()}');
+    }
   }
 }
 
-class _NavPanel extends StatelessWidget {
-  const _NavPanel({
+class _SkillsNavPanel extends StatelessWidget {
+  const _SkillsNavPanel({
     required this.section,
     required this.l10n,
     required this.onSelect,
@@ -189,91 +148,17 @@ class _NavPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Container(
-      color: cs.surface,
-      padding: const EdgeInsets.fromLTRB(24, 28, 18, 24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _NavItem(
-            title: l10n.skillsNavInstalled,
-            icon: Icons.inventory_2_outlined,
-            selected: section == SkillSection.installed,
-            onTap: () => onSelect(SkillSection.installed),
+    return WorkspaceHubNavList(
+      sidebarStyle: true,
+      entries: [
+        for (final value in SkillSection.values)
+          WorkspaceHubEntry(
+            title: value.title(l10n),
+            icon: _skillSectionIcon(value),
+            selected: section == value,
+            onTap: () => onSelect(value),
           ),
-          _NavItem(
-            title: l10n.skillsNavDiscovery,
-            icon: Icons.travel_explore_outlined,
-            selected: section == SkillSection.discovery,
-            onTap: () => onSelect(SkillSection.discovery),
-          ),
-          _NavItem(
-            title: l10n.skillsNavRepos,
-            icon: Icons.source_outlined,
-            selected: section == SkillSection.repos,
-            onTap: () => onSelect(SkillSection.repos),
-          ),
-          _NavItem(
-            title: l10n.skillsNavBackups,
-            icon: Icons.history,
-            selected: section == SkillSection.backups,
-            onTap: () => onSelect(SkillSection.backups),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _NavItem extends StatelessWidget {
-  const _NavItem({
-    required this.title,
-    required this.icon,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final String title;
-  final IconData icon;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textBase = isDark ? Colors.white : const Color(0xFF111827);
-    final muted = textBase.withValues(alpha: 0.64);
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Material(
-        color: selected ? cs.primaryContainer : Colors.transparent,
-        borderRadius: BorderRadius.circular(12),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(12),
-          onTap: onTap,
-          child: SizedBox(
-            height: 48,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 18),
-              child: Row(
-                children: [
-                  Icon(icon, color: selected ? textBase : muted, size: 21),
-                  SizedBox(width: 16),
-                  Expanded(
-                    child: Text(
-                      title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
+      ],
     );
   }
 }

@@ -6,6 +6,8 @@ void main() {
     test('defaults are empty path with session scoping on', () {
       const prefs = SessionPreferences();
       expect(prefs.cliExecutablePath, '');
+      expect(prefs.defaultSshWorkingDirectory, '');
+      expect(prefs.sshUseLoginShell, false);
       expect(prefs.autoLaunchAllMembersOnConnect, true);
       expect(prefs.scopeSessionsToSelectedTeam, true);
     });
@@ -13,11 +15,15 @@ void main() {
     test('toJson/fromJson round-trips', () {
       const prefs = SessionPreferences(
         cliExecutablePath: '/opt/bin/flashskyai',
+        defaultSshWorkingDirectory: '~/work',
+        sshUseLoginShell: true,
         autoLaunchAllMembersOnConnect: true,
         scopeSessionsToSelectedTeam: true,
       );
       final restored = SessionPreferences.fromJson(prefs.toJson());
       expect(restored.cliExecutablePath, '/opt/bin/flashskyai');
+      expect(restored.defaultSshWorkingDirectory, '~/work');
+      expect(restored.sshUseLoginShell, true);
       expect(restored.autoLaunchAllMembersOnConnect, true);
       expect(restored.scopeSessionsToSelectedTeam, true);
     });
@@ -25,6 +31,8 @@ void main() {
     test('fromJson falls back to defaults when keys are missing', () {
       final restored = SessionPreferences.fromJson(const <String, Object?>{});
       expect(restored.cliExecutablePath, '');
+      expect(restored.defaultSshWorkingDirectory, '');
+      expect(restored.sshUseLoginShell, false);
       expect(restored.autoLaunchAllMembersOnConnect, true);
       expect(restored.scopeSessionsToSelectedTeam, true);
     });
@@ -33,6 +41,8 @@ void main() {
       const prefs = SessionPreferences();
       final next = prefs.copyWith(cliExecutablePath: '/a/b');
       expect(next.cliExecutablePath, '/a/b');
+      expect(next.defaultSshWorkingDirectory, '');
+      expect(next.sshUseLoginShell, false);
       expect(next.autoLaunchAllMembersOnConnect, true);
       expect(next.scopeSessionsToSelectedTeam, true);
       final next2 = prefs.copyWith(scopeSessionsToSelectedTeam: true);

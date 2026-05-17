@@ -1,0 +1,4 @@
+enum ConnectionMode {
+  localPty,
+  ssh,
+}

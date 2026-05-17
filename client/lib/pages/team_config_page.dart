@@ -10,12 +10,22 @@ import '../cubits/team_cubit.dart';
 import '../l10n/l10n_extensions.dart';
 import '../models/skill.dart';
 import '../models/team_config.dart';
+import '../services/platform_utils.dart';
 import '../utils/app_keys.dart';
 import '../widgets/app_outline_text_field.dart';
 import '../widgets/dropdown/flashsky_dropdown_field.dart';
 import '../widgets/dropdown/flashskyai_dropdown_decoration.dart';
+import '../widgets/settings/workspace_hub_shell.dart';
 
-enum _TeamPageSection { team, skills, members }
+enum TeamConfigSection { team, skills, members }
+
+extension TeamConfigSectionRoute on TeamConfigSection {
+  String routeSegment() => switch (this) {
+        TeamConfigSection.team => 'team',
+        TeamConfigSection.skills => 'skills',
+        TeamConfigSection.members => 'members',
+      };
+}
 
 String _teamLoopChoiceLabel(AppLocalizations l10n, String? key) {
   switch (key) {
@@ -49,28 +59,12 @@ String _memberAgentDropdownItemLabel(
   return value;
 }
 
-class TeamConfigPage extends StatefulWidget {
-  const TeamConfigPage({super.key});
-
-  @override
-  State<TeamConfigPage> createState() => _TeamConfigPageState();
-}
-
-class _TeamConfigPageState extends State<TeamConfigPage> {
-  _TeamPageSection _section = _TeamPageSection.team;
-  String? _selectedMemberId;
-
-  String? _effectiveMemberId(TeamConfig team) {
-    if (_section != _TeamPageSection.members) return null;
-    if (team.members.isEmpty) return null;
-    final sid = _selectedMemberId;
-    if (sid != null && team.members.any((m) => m.id == sid)) return sid;
-    return team.members.first.id;
-  }
+/// Android hub: team settings sections as a list (each opens a full page).
+class TeamConfigHubPage extends StatelessWidget {
+  const TeamConfigHubPage({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
     final l10n = context.l10n;
     final teamCubit = context.watch<TeamCubit>();
     final team = teamCubit.state.selectedTeam;
@@ -79,141 +73,132 @@ class _TeamConfigPageState extends State<TeamConfigPage> {
       return const Center(child: CircularProgressIndicator());
     }
 
-    final memberId = _effectiveMemberId(team);
-
-    return Container(
-      color: cs.surface,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _TitleBar(
-            title: l10n.teamConfig,
-            subtitle: l10n.teamSettingsSubtitle,
-          ),
-          Expanded(
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final compact = constraints.maxWidth < 820;
-                final navWidth = 220.0;
-                final contentPadding = compact
-                    ? const EdgeInsets.fromLTRB(16, 20, 16, 16)
-                    : const EdgeInsets.fromLTRB(24, 28, 28, 24);
-                final bodyPaneWidth = constraints.maxWidth - navWidth - 1;
-                final teamBodyMaxWidth =
-                    (bodyPaneWidth - contentPadding.horizontal).clamp(
-                      480.0,
-                      3200.0,
-                    );
-                return Row(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    SizedBox(
-                      width: navWidth,
-                      child: _NavPanel(
-                        team: team,
-                        section: _section,
-                        selectedMemberId: memberId,
-                        onSelect: (s) => setState(() => _section = s),
-                        onSelectMember: (id) =>
-                            setState(() => _selectedMemberId = id),
-                        onAddMember: () async {
-                          await teamCubit.addMember();
-                          final t = teamCubit.state.selectedTeam;
-                          if (t != null && t.members.isNotEmpty) {
-                            setState(
-                              () => _selectedMemberId = t.members.last.id,
-                            );
-                          }
-                        },
-                        l10n: l10n,
-                      ),
-                    ),
-                    Container(
-                      width: 1,
-                      color: cs.outlineVariant.withValues(alpha: 0.5),
-                    ),
-                    Expanded(
-                      child: Padding(
-                        padding: contentPadding,
-                        child: Align(
-                          alignment: Alignment.topLeft,
-                          child: ConstrainedBox(
-                            constraints: BoxConstraints(
-                              maxWidth: teamBodyMaxWidth,
-                            ),
-                            child: switch (_section) {
-                              _TeamPageSection.team => _TeamInfoSection(
-                                team: team,
-                                cubit: teamCubit,
-                              ),
-                              _TeamPageSection.skills => _TeamSkillsSection(
-                                team: team,
-                                cubit: teamCubit,
-                              ),
-                              _TeamPageSection.members => _MemberDetailSection(
-                                team: team,
-                                cubit: teamCubit,
-                                selectedMemberId: memberId,
-                              ),
-                            },
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                );
-              },
-            ),
-          ),
-        ],
+    final entries = <WorkspaceHubEntry>[
+      WorkspaceHubEntry(
+        title: l10n.teamSettings,
+        icon: Icons.groups_outlined,
+        onTap: () => context.push('/team-config/team'),
       ),
+      WorkspaceHubEntry(
+        title: l10n.teamSkillsNav,
+        icon: Icons.extension_outlined,
+        onTap: () => context.push('/team-config/skills'),
+      ),
+      for (final member in team.members)
+        WorkspaceHubEntry(
+          title: member.name.trim().isEmpty ? l10n.memberName : member.name,
+          icon: Icons.person_outline,
+          onTap: () => context.push('/team-config/members/${member.id}'),
+        ),
+      WorkspaceHubEntry(
+        title: '${l10n.add} ${l10n.memberName}',
+        icon: Icons.person_add_outlined,
+        onTap: () async {
+          await teamCubit.addMember();
+          final updated = teamCubit.state.selectedTeam;
+          if (!context.mounted || updated == null || updated.members.isEmpty) {
+            return;
+          }
+          context.push(
+            '/team-config/members/${updated.members.last.id}',
+          );
+        },
+      ),
+    ];
+
+    return WorkspaceHubPage(
+      pageKey: AppKeys.teamConfigHub,
+      title: l10n.teamConfig,
+      subtitle: l10n.teamSettingsSubtitle,
+      entries: entries,
     );
   }
 }
 
-class _TitleBar extends StatelessWidget {
-  const _TitleBar({required this.title, required this.subtitle});
+class TeamConfigPage extends StatelessWidget {
+  const TeamConfigPage({
+    required this.section,
+    this.memberId,
+    super.key,
+  });
 
-  final String title;
-  final String subtitle;
+  final TeamConfigSection section;
+  final String? memberId;
+
+  String? _effectiveMemberId(TeamConfig team) {
+    if (section != TeamConfigSection.members) return null;
+    if (team.members.isEmpty) return null;
+    final sid = memberId;
+    if (sid != null && team.members.any((m) => m.id == sid)) return sid;
+    return team.members.first.id;
+  }
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textBase = isDark ? Colors.white : const Color(0xFF111827);
-    return Container(
-      padding: const EdgeInsets.fromLTRB(40, 42, 40, 28),
-      decoration: BoxDecoration(
-        color: cs.surface,
-        border: Border(
-          bottom: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.5)),
-        ),
+    final l10n = context.l10n;
+    final teamCubit = context.watch<TeamCubit>();
+    final team = teamCubit.state.selectedTeam;
+
+    if (team == null) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    final resolvedMemberId = _effectiveMemberId(team);
+    final body = switch (section) {
+      TeamConfigSection.team => _TeamInfoSection(team: team, cubit: teamCubit),
+      TeamConfigSection.skills =>
+        _TeamSkillsSection(team: team, cubit: teamCubit),
+      TeamConfigSection.members => _MemberDetailSection(
+        team: team,
+        cubit: teamCubit,
+        selectedMemberId: resolvedMemberId,
       ),
+    };
+
+    if (useAndroidHubNavigation(context)) {
+      return WorkspaceSectionPage(
+        pageKey: AppKeys.teamConfigWorkspace,
+        child: body,
+      );
+    }
+
+    return Container(
+      color: Theme.of(context).colorScheme.surface,
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(
-            title,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: textBase,
-              fontSize: 22,
-              fontWeight: FontWeight.w800,
-              height: 1.05,
-            ),
+          WorkspaceHubTitleBar(
+            title: l10n.teamConfig,
+            subtitle: l10n.teamSettingsSubtitle,
           ),
-          const SizedBox(height: 8),
-          Text(
-            subtitle,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: textBase.withValues(alpha: 0.66),
-              fontSize: 14,
-              height: 1.25,
+          Expanded(
+            child: WorkspaceSplitShell(
+              nav: _NavPanel(
+                team: team,
+                section: section,
+                selectedMemberId: resolvedMemberId,
+                onSelect: (s) {
+                  if (s == TeamConfigSection.members) {
+                    final id = _effectiveMemberId(team);
+                    if (id != null) {
+                      context.go('/team-config/members/$id');
+                    }
+                    return;
+                  }
+                  context.go('/team-config/${s.routeSegment()}');
+                },
+                onSelectMember: (id) =>
+                    context.go('/team-config/members/$id'),
+                onAddMember: () async {
+                  await teamCubit.addMember();
+                  final t = teamCubit.state.selectedTeam;
+                  if (t != null && t.members.isNotEmpty && context.mounted) {
+                    context.go('/team-config/members/${t.members.last.id}');
+                  }
+                },
+                l10n: l10n,
+              ),
+              body: body,
             ),
           ),
         ],
@@ -234,9 +219,9 @@ class _NavPanel extends StatelessWidget {
   });
 
   final TeamConfig team;
-  final _TeamPageSection section;
+  final TeamConfigSection section;
   final String? selectedMemberId;
-  final ValueChanged<_TeamPageSection> onSelect;
+  final ValueChanged<TeamConfigSection> onSelect;
   final ValueChanged<String> onSelectMember;
   final VoidCallback onAddMember;
   final AppLocalizations l10n;
@@ -253,25 +238,25 @@ class _NavPanel extends StatelessWidget {
           _NavItem(
             title: l10n.teamSettings,
             icon: Icons.groups_outlined,
-            selected: section == _TeamPageSection.team,
-            onTap: () => onSelect(_TeamPageSection.team),
+            selected: section == TeamConfigSection.team,
+            onTap: () => onSelect(TeamConfigSection.team),
           ),
           _NavItem(
             title: l10n.teamSkillsNav,
             icon: Icons.extension_outlined,
-            selected: section == _TeamPageSection.skills,
-            onTap: () => onSelect(_TeamPageSection.skills),
+            selected: section == TeamConfigSection.skills,
+            onTap: () => onSelect(TeamConfigSection.skills),
           ),
           _NavItem(
             title: l10n.members,
             icon: Icons.person_outline,
-            selected: section == _TeamPageSection.members,
-            trailingIcon: section == _TeamPageSection.members
+            selected: section == TeamConfigSection.members,
+            trailingIcon: section == TeamConfigSection.members
                 ? Icons.expand_less
                 : Icons.expand_more,
-            onTap: () => onSelect(_TeamPageSection.members),
+            onTap: () => onSelect(TeamConfigSection.members),
           ),
-          if (section == _TeamPageSection.members) ...[
+          if (section == TeamConfigSection.members) ...[
             const SizedBox(height: 4),
             Expanded(
               child: ListView(
@@ -471,6 +456,7 @@ class _NavItem extends StatelessWidget {
 }
 
 class _Card extends StatelessWidget {
+  // ignore: unused_element_parameter
   const _Card({required this.child, this.padding});
 
   final Widget child;

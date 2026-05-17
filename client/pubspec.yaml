@@ -16,9 +16,12 @@ dependencies:
     sdk: flutter
   cupertino_icons: ^1.0.8
   shared_preferences: ^2.5.3
+  flutter_secure_storage: ^9.2.4
   xterm:
     path: packages/xterm
   flutter_pty: ^0.4.2
+  dartssh2:
+    path: packages/dartssh2
 
   flutter_bloc: ^9.1.0
   bloc_concurrency: ^0.3.0
@@ -59,7 +62,7 @@ flutter:
     - assets/fonts/terminal/
 
 flutter_launcher_icons:
-  android: false
+  android: true
   ios: false
   image_path: assets/icons/icon.png
   min_sdk_android: 21

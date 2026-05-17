@@ -13,6 +13,7 @@ import 'cubits/layout_cubit.dart';
 import 'cubits/llm_config_cubit.dart';
 import 'cubits/session_preferences_cubit.dart';
 import 'cubits/skill_cubit.dart';
+import 'cubits/ssh_profile_cubit.dart';
 import 'cubits/team_cubit.dart';
 import 'l10n/l10n_extensions.dart';
 import 'repositories/app_settings_repository.dart';
@@ -20,6 +21,9 @@ import 'repositories/layout_repository.dart';
 import 'repositories/session_preferences_repository.dart';
 import 'repositories/session_repository.dart';
 import 'repositories/skill_repository.dart';
+import 'repositories/ssh_credential_store.dart';
+import 'repositories/ssh_known_host_repository.dart';
+import 'repositories/ssh_profile_repository.dart';
 import 'repositories/team_repository.dart';
 import 'router/app_router.dart';
 import 'services/app_storage.dart';
@@ -27,6 +31,7 @@ import 'services/terminal_fonts.dart';
 import 'services/flashskyai_cli_locator.dart';
 import 'services/team_skill_linker_service.dart';
 import 'services/temp_team_cleaner.dart';
+import 'services/terminal_transport_factory.dart';
 import 'theme/app_theme.dart';
 import 'widgets/ui_warmup.dart';
 
@@ -73,25 +78,26 @@ class _AppShutdownScopeState extends State<_AppShutdownScope> {
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  // Run `dart run tool/sync_bundled_google_fonts.dart` before build.
   GoogleFonts.config.allowRuntimeFetching = false;
   await loadBundledTerminalFonts();
 
-  await windowManager.ensureInitialized();
-  final windowRect = await windowManager.getBounds();
-  WindowOptions windowOptions = WindowOptions(
-    size: Size(
-      (windowRect.width > 400) ? windowRect.width : 1200,
-      (windowRect.height > 300) ? windowRect.height : 700,
-    ),
-    minimumSize: const Size(800, 500),
-    center: false,
-    title: 'TeamPilot',
-  );
-  windowManager.waitUntilReadyToShow(windowOptions, () async {
-    await windowManager.show();
-    await windowManager.focus();
-  });
+  if (!Platform.isAndroid) {
+    await windowManager.ensureInitialized();
+    final windowRect = await windowManager.getBounds();
+    WindowOptions windowOptions = WindowOptions(
+      size: Size(
+        (windowRect.width > 400) ? windowRect.width : 1200,
+        (windowRect.height > 300) ? windowRect.height : 700,
+      ),
+      minimumSize: const Size(800, 500),
+      center: false,
+      title: 'TeamPilot',
+    );
+    windowManager.waitUntilReadyToShow(windowOptions, () async {
+      await windowManager.show();
+      await windowManager.focus();
+    });
+  }
 
   await AppStorage.init();
 
@@ -102,13 +108,12 @@ void main() async {
   final tempTeamCleaner = TempTeamCleaner();
   await tempTeamCleaner.cleanup();
 
-  // Intercept window close so cleanup runs before the process exits.
-  await windowManager.setPreventClose(true);
+  if (!Platform.isAndroid) {
+    await windowManager.setPreventClose(true);
+  }
 
   final sessionRepo = SessionRepository();
-
   final teamRepo = TeamRepository();
-
   final appSettings = SharedPrefsAppSettingsRepository(preferences);
   final homeDirectory =
       Platform.environment['HOME'] ?? Platform.environment['USERPROFILE'];
@@ -143,6 +148,24 @@ void main() async {
     onSkillUninstalled: teamCubit.removeSkillFromAllTeams,
   );
   final layoutCubit = LayoutCubit(repository: LayoutRepository(preferences));
+
+  // SSH infrastructure (Android + future desktop)
+  final sshProfileRepo = SshProfileRepository();
+  final sshCredentialStore = const SecureSshCredentialStore(
+    FlutterSecureKeyValueStore(),
+  );
+  final sshKnownHostRepo = SharedPrefsSshKnownHostRepository(preferences);
+  final sshProfileCubit = SshProfileCubit(
+    profileRepository: sshProfileRepo,
+    credentialStore: sshCredentialStore,
+  );
+
+  final transportFactory = TerminalTransportFactory(
+    sshProfileRepository: sshProfileRepo,
+    sshCredentialStore: sshCredentialStore,
+    sshKnownHostRepository: sshKnownHostRepo,
+  );
+
   final chatCubit = ChatCubit(
     sessionRepository: sessionRepo,
     tempTeamCleaner: tempTeamCleaner,
@@ -150,6 +173,12 @@ void main() async {
     autoLaunchAllMembersOnConnect: () =>
         sessionPreferencesCubit.state.preferences.autoLaunchAllMembersOnConnect,
     executableResolver: () => sessionPreferencesCubit.resolveExecutable(),
+    transportFactory: transportFactory,
+    sshProfileResolver: () => sshProfileCubit.state.selectedProfile,
+    sshDefaultWorkingDirectoryResolver: () =>
+        sessionPreferencesCubit.state.preferences.defaultSshWorkingDirectory,
+    sshUseLoginShellResolver: () =>
+        sessionPreferencesCubit.state.preferences.sshUseLoginShell,
   );
   final configCubit = ConfigCubit();
 
@@ -160,14 +189,29 @@ void main() async {
   chatCubit.loadProjectData(sessionRepo);
   await skillCubit.loadAll();
   await teamCubit.syncSelectedTeamSkills(installed: skillCubit.state.installed);
+  await sshProfileCubit.load();
 
-  windowManager.addListener(_CleanupWindowListener(chatCubit));
+  if (!Platform.isAndroid) {
+    windowManager.addListener(_CleanupWindowListener(chatCubit));
+  }
 
   runApp(
     _AppShutdownScope(
       chatCubit: chatCubit,
-      child: RepositoryProvider<SessionRepository>.value(
-        value: sessionRepo,
+      child: MultiRepositoryProvider(
+        providers: [
+          RepositoryProvider<SessionRepository>.value(value: sessionRepo),
+          RepositoryProvider<SshProfileRepository>.value(value: sshProfileRepo),
+          RepositoryProvider<SshCredentialStore>.value(
+            value: sshCredentialStore,
+          ),
+          RepositoryProvider<SshKnownHostRepository>.value(
+            value: sshKnownHostRepo,
+          ),
+          RepositoryProvider<TerminalTransportFactory>.value(
+            value: transportFactory,
+          ),
+        ],
         child: MultiBlocProvider(
           providers: [
             BlocProvider.value(value: teamCubit),
@@ -177,6 +221,7 @@ void main() async {
             BlocProvider.value(value: layoutCubit),
             BlocProvider.value(value: sessionPreferencesCubit),
             BlocProvider.value(value: skillCubit),
+            BlocProvider.value(value: sshProfileCubit),
           ],
           child: const FlashskyAiClientApp(),
         ),

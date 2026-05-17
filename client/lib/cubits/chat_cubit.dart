@@ -7,11 +7,14 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../models/app_project.dart';
 import '../models/app_session.dart';
+import '../models/launch_target.dart';
+import '../models/ssh_profile.dart';
 import '../models/team_config.dart';
 import '../repositories/session_repository.dart';
 import '../services/app_storage.dart';
 import '../services/temp_team_cleaner.dart';
 import '../services/terminal_session.dart';
+import '../services/terminal_transport_factory.dart';
 import '../utils/logger.dart';
 
 typedef TerminalSessionFactory =
@@ -19,6 +22,7 @@ typedef TerminalSessionFactory =
 typedef PostFrameScheduler = void Function(VoidCallback callback);
 typedef CliSessionDescriptorExists =
     bool Function(String sessionId, String primaryPath);
+typedef SshActiveProfileResolver = SshProfile? Function();
 
 class ChatTabInfo extends Equatable {
   const ChatTabInfo({
@@ -141,6 +145,10 @@ class ChatCubit extends Cubit<ChatState> {
     bool Function()? autoLaunchAllMembersOnConnect,
     CliSessionDescriptorExists? cliSessionDescriptorExists,
     SessionRepository? sessionRepository,
+    TerminalTransportFactory? transportFactory,
+    SshActiveProfileResolver? sshProfileResolver,
+    String Function()? sshDefaultWorkingDirectoryResolver,
+    bool Function()? sshUseLoginShellResolver,
   }) : _terminalSessionFactory = terminalSessionFactory,
        _postFrameScheduler = postFrameScheduler ?? _defaultPostFrameScheduler,
        _tempTeamCleaner = tempTeamCleaner,
@@ -152,6 +160,10 @@ class ChatCubit extends Cubit<ChatState> {
                AppStorage.cliSessionDescriptorExists(sid, path)),
        _sessionRepository = sessionRepository,
        _executableResolver = executableResolver,
+       _transportFactory = transportFactory,
+       _sshProfileResolver = sshProfileResolver,
+       _sshDefaultWorkingDirectoryResolver = sshDefaultWorkingDirectoryResolver,
+       _sshUseLoginShellResolver = sshUseLoginShellResolver,
        super(const ChatState());
 
   final List<_InternalTab> _internalTabs = [];
@@ -165,9 +177,59 @@ class ChatCubit extends Cubit<ChatState> {
   final CliSessionDescriptorExists _cliSessionDescriptorExists;
   final SessionRepository? _sessionRepository;
   final String Function() _executableResolver;
+  final TerminalTransportFactory? _transportFactory;
+  final SshActiveProfileResolver? _sshProfileResolver;
+  final String Function()? _sshDefaultWorkingDirectoryResolver;
+  final bool Function()? _sshUseLoginShellResolver;
 
-  TerminalSession _newSession() =>
-      _terminalSessionFactory(executable: _executableResolver());
+  bool get _useSsh =>
+      Platform.isAndroid &&
+      _transportFactory != null &&
+      _sshProfileResolver != null &&
+      _sshProfileResolver() != null;
+
+  TerminalSession _newSession() {
+    if (_useSsh) {
+      final profile = _sshProfileResolver?.call();
+      if (profile == null) {
+        return _terminalSessionFactory(executable: _executableResolver());
+      }
+      return TerminalSession(
+        executable: _executableResolver(),
+        validateLaunch: false,
+        parseExecutable: false,
+        transportStarter:
+            (
+              String executable, {
+              required List<String> arguments,
+              required String workingDirectory,
+              required int columns,
+              required int rows,
+              Map<String, String>? environment,
+            }) async {
+              final remoteEnvironment = <String, String>{
+                if (environment != null) ...environment,
+              };
+              final remoteWorkingDirectory = workingDirectory.isNotEmpty
+                  ? workingDirectory
+                  : (_sshDefaultWorkingDirectoryResolver?.call() ?? '');
+              return _transportFactory!.startTransport(
+                LaunchTarget.ssh(
+                  sshProfileId: profile.id,
+                  remoteExecutable: executable,
+                  remoteWorkingDirectory: remoteWorkingDirectory,
+                  remoteEnvironment: remoteEnvironment,
+                  useLoginShell: _sshUseLoginShellResolver?.call() ?? false,
+                ),
+                arguments: arguments,
+                columns: columns,
+                rows: rows,
+              );
+            },
+      );
+    }
+    return _terminalSessionFactory(executable: _executableResolver());
+  }
 
   Map<String, String>? _spawnEnvironment() {
     final override = _llmConfigPathOverride?.call();

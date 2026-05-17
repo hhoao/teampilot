@@ -315,7 +315,7 @@ class _DropdownOverlayState<T> extends State<_DropdownOverlay<T>> {
                     [
                       BoxShadow(
                         blurRadius: 24.0,
-                        color: Colors.black.withOpacity(.08),
+                        color: Colors.black.withValues(alpha: .08),
                         offset: _defaultOverlayShadowOffset,
                       ),
                     ],

@@ -125,7 +125,11 @@ class _ContextSidebarState extends State<ContextSidebar> {
                 const SizedBox(height: 8),
                 _SettingsTile(
                   onTap: () {
-                    context.go('/config/layout');
+                    if (Platform.isAndroid) {
+                      context.go('/config');
+                    } else {
+                      context.go('/config/layout');
+                    }
                   },
                 ),
               ],
@@ -975,9 +979,11 @@ class _SidebarSectionTitle extends StatelessWidget {
 }
 
 class _SidebarTile extends StatelessWidget {
+  // ignore: unused_element_parameter
   const _SidebarTile({
     required this.title,
     required this.selected,
+    // ignore: unused_element_parameter
     this.subtitle = '',
     this.rowHovered = false,
     this.onTap,

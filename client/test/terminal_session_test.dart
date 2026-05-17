@@ -4,13 +4,14 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:teampilot/services/terminal_session.dart';
+import 'package:teampilot/services/terminal_transport.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-class _FakePtyHandle implements TerminalPtyHandle {
+class _FakeTransport implements TerminalTransport {
   final outputController = StreamController<Uint8List>();
-  Completer<int> exitCompleter = Completer<int>();
-  var killed = false;
+  Completer<int> doneCompleter = Completer<int>();
+  var closed = false;
   final resizeCalls = <(int, int)>[];
   final writes = <Uint8List>[];
 
@@ -18,13 +19,13 @@ class _FakePtyHandle implements TerminalPtyHandle {
   Stream<Uint8List> get output => outputController.stream;
 
   @override
-  Future<int> get exitCode => exitCompleter.future;
+  Future<int> get done => doneCompleter.future;
 
   @override
-  void kill() {
-    killed = true;
-    if (!exitCompleter.isCompleted) {
-      exitCompleter.complete(0);
+  void close() {
+    closed = true;
+    if (!doneCompleter.isCompleted) {
+      doneCompleter.complete(0);
     }
   }
 
@@ -58,7 +59,7 @@ void main() {
     var started = false;
     final session = TerminalSession(
       executable: '/tmp/teampilot-missing-flashskyai-executable',
-      ptyStarter:
+      transportStarter:
           (
             executable, {
             required arguments,
@@ -68,7 +69,7 @@ void main() {
             environment,
           }) {
             started = true;
-            return _FakePtyHandle();
+            return Future.value(_FakeTransport());
           },
     );
     addTearDown(session.dispose);
@@ -84,13 +85,13 @@ void main() {
   });
 
   test('stays running while exitCode has not completed', () async {
-    final handle = _FakePtyHandle();
+    final handle = _FakeTransport();
     final exitNever = Completer<int>();
-    handle.exitCompleter = exitNever;
+    handle.doneCompleter = exitNever;
 
     final session = TerminalSession(
       executable: _ptyTestExecutable,
-      ptyStarter:
+      transportStarter:
           (
             executable, {
             required arguments,
@@ -99,7 +100,7 @@ void main() {
             required rows,
             environment,
           }) {
-            return handle;
+            return Future.value(handle);
           },
     );
     addTearDown(() async {
@@ -117,11 +118,11 @@ void main() {
   });
 
   test('early pty exit reports failure and stops running', () async {
-    final handle = _FakePtyHandle();
+    final handle = _FakeTransport();
     var failed = false;
     final session = TerminalSession(
       executable: _ptyTestExecutable,
-      ptyStarter:
+      transportStarter:
           (
             executable, {
             required arguments,
@@ -130,7 +131,7 @@ void main() {
             required rows,
             environment,
           }) {
-            return handle;
+            return Future.value(handle);
           },
     );
     addTearDown(() async {
@@ -155,10 +156,10 @@ void main() {
 
   test('connect starts pty on first terminal resize', () async {
     final starts = <({int columns, int rows})>[];
-    final handle = _FakePtyHandle();
+    final handle = _FakeTransport();
     final session = TerminalSession(
       executable: _ptyTestExecutable,
-      ptyStarter:
+      transportStarter:
           (
             executable, {
             required arguments,
@@ -168,7 +169,7 @@ void main() {
             environment,
           }) {
             starts.add((columns: columns, rows: rows));
-            return handle;
+            return Future.value(handle);
           },
     );
     addTearDown(() async {
@@ -186,10 +187,10 @@ void main() {
 
   test('rapid layout resizes debounce to final geometry', () async {
     final starts = <({int columns, int rows})>[];
-    final handle = _FakePtyHandle();
+    final handle = _FakeTransport();
     final session = TerminalSession(
       executable: _ptyTestExecutable,
-      ptyStarter:
+      transportStarter:
           (
             executable, {
             required arguments,
@@ -199,7 +200,7 @@ void main() {
             environment,
           }) {
             starts.add((columns: columns, rows: rows));
-            return handle;
+            return Future.value(handle);
           },
     );
     addTearDown(() async {
@@ -217,10 +218,10 @@ void main() {
   });
 
   test('terminal resize resizes an already-started pty', () async {
-    final handle = _FakePtyHandle();
+    final handle = _FakeTransport();
     final session = TerminalSession(
       executable: _ptyTestExecutable,
-      ptyStarter:
+      transportStarter:
           (
             executable, {
             required arguments,
@@ -229,7 +230,7 @@ void main() {
             required rows,
             environment,
           }) {
-            return handle;
+            return Future.value(handle);
           },
     );
     addTearDown(() async {
@@ -251,10 +252,10 @@ void main() {
   });
 
   test('pty output is written to the terminal buffer', () async {
-    final handle = _FakePtyHandle();
+    final handle = _FakeTransport();
     final session = TerminalSession(
       executable: _ptyTestExecutable,
-      ptyStarter:
+      transportStarter:
           (
             executable, {
             required arguments,
@@ -263,7 +264,7 @@ void main() {
             required rows,
             environment,
           }) {
-            return handle;
+            return Future.value(handle);
           },
     );
     addTearDown(() async {
@@ -281,10 +282,10 @@ void main() {
   });
 
   test('decodes pty output across utf8 chunk boundaries', () async {
-    final handle = _FakePtyHandle();
+    final handle = _FakeTransport();
     final session = TerminalSession(
       executable: _ptyTestExecutable,
-      ptyStarter:
+      transportStarter:
           (
             executable, {
             required arguments,
@@ -293,7 +294,7 @@ void main() {
             required rows,
             environment,
           }) {
-            return handle;
+            return Future.value(handle);
           },
     );
     addTearDown(() async {
@@ -318,10 +319,10 @@ void main() {
   });
 
   test('pty output schedules viewport sync resize', () async {
-    final handle = _FakePtyHandle();
+    final handle = _FakeTransport();
     final session = TerminalSession(
       executable: _ptyTestExecutable,
-      ptyStarter:
+      transportStarter:
           (
             executable, {
             required arguments,
@@ -330,7 +331,7 @@ void main() {
             required rows,
             environment,
           }) {
-            return handle;
+            return Future.value(handle);
           },
     );
     addTearDown(() async {
@@ -357,11 +358,11 @@ void main() {
       String? capturedExecutable;
       String? capturedWorkingDirectory;
       List<String>? capturedArguments;
-      final handle = _FakePtyHandle();
+      final handle = _FakeTransport();
       final session = TerminalSession(
         executable:
             r'\\wsl.localhost\Ubuntu\home\hhoa\flashskyai\dist\flashskyai',
-        ptyStarter:
+        transportStarter:
             (
               executable, {
               required arguments,
@@ -373,7 +374,7 @@ void main() {
               capturedExecutable = executable;
               capturedArguments = List<String>.from(arguments);
               capturedWorkingDirectory = workingDirectory;
-              return handle;
+              return Future.value(handle);
             },
       );
       addTearDown(() async {
@@ -402,11 +403,11 @@ void main() {
     if (!Platform.isWindows) return;
     String? capturedExecutable;
     List<String>? capturedArguments;
-    final handle = _FakePtyHandle();
+    final handle = _FakeTransport();
     final session = TerminalSession(
       executable:
           r'\wsl.localhost\Ubuntu\home\hhoa\flashskai-ubuntu-wsl\dist\flashskyai',
-      ptyStarter:
+      transportStarter:
           (
             executable, {
             required arguments,
@@ -417,7 +418,7 @@ void main() {
           }) {
             capturedExecutable = executable;
             capturedArguments = List<String>.from(arguments);
-            return handle;
+            return Future.value(handle);
           },
     );
     addTearDown(() async {
@@ -445,11 +446,11 @@ void main() {
     if (!Platform.isWindows) return;
     String? capturedExecutable;
     List<String>? capturedArguments;
-    final handle = _FakePtyHandle();
+    final handle = _FakeTransport();
     final session = TerminalSession(
       executable:
           r'\wsl.localhost\Ubuntu\home\hhoa\flashskai-ubuntu-wsl\dist\flashskyai',
-      ptyStarter:
+      transportStarter:
           (
             executable, {
             required arguments,
@@ -460,7 +461,7 @@ void main() {
           }) {
             capturedExecutable = executable;
             capturedArguments = List<String>.from(arguments);
-            return handle;
+            return Future.value(handle);
           },
     );
     addTearDown(() async {
@@ -494,11 +495,11 @@ void main() {
   test('windows pty launch receives full environment for wsl.exe', () async {
     if (!Platform.isWindows) return;
     Map<String, String>? capturedEnvironment;
-    final handle = _FakePtyHandle();
+    final handle = _FakeTransport();
     final session = TerminalSession(
       executable:
           r'\wsl.localhost\Ubuntu\home\hhoa\flashskai-ubuntu-wsl\dist\flashskyai',
-      ptyStarter:
+      transportStarter:
           (
             executable, {
             required arguments,
@@ -510,7 +511,7 @@ void main() {
             capturedEnvironment = environment == null
                 ? null
                 : Map<String, String>.from(environment);
-            return handle;
+            return Future.value(handle);
           },
     );
     addTearDown(() async {
