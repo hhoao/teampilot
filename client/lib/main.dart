@@ -223,15 +223,15 @@ void main() async {
             BlocProvider.value(value: skillCubit),
             BlocProvider.value(value: sshProfileCubit),
           ],
-          child: const FlashskyAiClientApp(),
+          child: const TeamPilotApp(),
         ),
       ),
     ),
   );
 }
 
-class FlashskyAiClientApp extends StatelessWidget {
-  const FlashskyAiClientApp({super.key});
+class TeamPilotApp extends StatelessWidget {
+  const TeamPilotApp({super.key});
 
   @override
   Widget build(BuildContext context) {

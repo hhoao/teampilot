@@ -50,7 +50,7 @@ Widget buildTestApp({
         BlocProvider.value(value: layoutCubit ?? LayoutCubit()),
         BlocProvider.value(value: sessionPreferencesCubit),
       ],
-      child: const FlashskyAiClientApp(),
+      child: const TeamPilotApp(),
     ),
   );
 }

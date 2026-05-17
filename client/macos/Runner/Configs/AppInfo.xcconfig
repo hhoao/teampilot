@@ -8,7 +8,7 @@
 PRODUCT_NAME = TeamPilot
 
 // The application's bundle identifier
-PRODUCT_BUNDLE_IDENTIFIER = com.example.flashskyaiClient
+PRODUCT_BUNDLE_IDENTIFIER = com.hhoa.teampilot
 
 // The copyright displayed in application information
 PRODUCT_COPYRIGHT = Copyright © 2026 com.example. All rights reserved.
