@@ -5,6 +5,8 @@ import 'package:path/path.dart' as p;
 
 import '../models/team_config.dart';
 import '../services/app_storage.dart';
+import '../services/flashskyai_storage_roots.dart';
+import '../services/remote_file_store.dart';
 
 /// Persists [TeamConfig] objects across two locations and merges them on read.
 ///
@@ -19,22 +21,63 @@ import '../services/app_storage.dart';
 /// On save, the full schema is written to the UI dir and the CLI subset is
 /// read-modify-written back to the CLI dir so the CLI's own extras (agentId,
 /// sessionId, cwd, isActive, leadAgentId, ...) are preserved.
+class _TeamPaths {
+  const _TeamPaths({
+    required this.teamsUiDir,
+    required this.cliTeamsDir,
+    this.remote,
+  });
+
+  final String teamsUiDir;
+  final String cliTeamsDir;
+  final RemoteFileStore? remote;
+
+  bool get cliIsRemote => remote != null;
+}
+
 class TeamRepository {
-  TeamRepository({String? rootDir, String? cliTeamsDir})
-      : _rootDirOverride = rootDir,
-        _cliTeamsDirOverride = cliTeamsDir;
+  TeamRepository({
+    String? rootDir,
+    String? cliTeamsDir,
+    FlashskyaiStorageRoots? storageRoots,
+  })  : _rootDirOverride = rootDir,
+        _cliTeamsDirOverride = cliTeamsDir,
+        _storageRoots = storageRoots;
 
   final String? _rootDirOverride;
   final String? _cliTeamsDirOverride;
+  final FlashskyaiStorageRoots? _storageRoots;
 
   String get rootDir => _rootDirOverride ?? AppStorage.teamsDir;
 
   /// The `~/.flashskyai/teams` directory managed by the CLI.
   String get cliTeamsDir => _cliTeamsDirOverride ?? AppStorage.cliTeamsDir;
 
+  Future<_TeamPaths> _paths() async {
+    if (_storageRoots != null) {
+      final snap = await _storageRoots.resolve();
+      if (snap.storageIsRemote && snap.remoteFileStore != null) {
+        return _TeamPaths(
+          teamsUiDir: snap.teamsUiDir,
+          cliTeamsDir: snap.cliTeamsDir,
+          remote: snap.remoteFileStore,
+        );
+      }
+    }
+    return _TeamPaths(
+      teamsUiDir: _rootDirOverride ?? AppStorage.teamsDir,
+      cliTeamsDir: _cliTeamsDirOverride ?? AppStorage.cliTeamsDir,
+    );
+  }
+
   Future<List<TeamConfig>> loadTeams() async {
-    final uiTeams = await _readUiDir();
-    final cliTeams = await _readCliDir();
+    final paths = await _paths();
+    final uiTeams = paths.cliIsRemote
+        ? await _readUiDirRemote(paths)
+        : await _readUiDir(paths.teamsUiDir);
+    final cliTeams = paths.cliIsRemote
+        ? await _readCliDirRemote(paths)
+        : await _readCliDir(paths.cliTeamsDir);
 
     final uiByName = {for (final t in uiTeams) t.name: t};
     final cliByName = {for (final t in cliTeams) t.name: t};
@@ -70,11 +113,139 @@ class TeamRepository {
         team.createdAt > 0 ? team : team.copyWith(createdAt: now),
       );
     }
-    await _writeUiDir(stamped);
-    await _syncToCliDir(stamped);
+    final paths = await _paths();
+    if (paths.cliIsRemote) {
+      await _writeUiDirRemote(paths, stamped);
+      await _syncToCliDirRemote(paths, stamped);
+    } else {
+      await _writeUiDir(stamped, paths.teamsUiDir);
+      await _syncToCliDir(stamped, paths.cliTeamsDir);
+    }
   }
 
-  Future<List<TeamConfig>> _readUiDir() async {
+  Future<List<TeamConfig>> _readUiDirRemote(_TeamPaths paths) async {
+    final store = paths.remote!;
+    final posix = p.Context(style: p.Style.posix);
+    final teams = <TeamConfig>[];
+    try {
+      final entries = await store.listDirectoryEntries(paths.teamsUiDir);
+      for (final entry in entries) {
+        if (entry.isDirectory || !entry.name.endsWith('.json')) continue;
+        final content = await store.readFile(
+          posix.join(paths.teamsUiDir, entry.name),
+        );
+        if (content == null || content.isEmpty) continue;
+        try {
+          final decoded = jsonDecode(content);
+          if (decoded is! Map) continue;
+          teams.add(TeamConfig.fromJson(Map<String, Object?>.from(decoded)));
+        } on FormatException {
+          continue;
+        }
+      }
+    } on Object {
+      return const [];
+    }
+    return teams;
+  }
+
+  Future<void> _writeUiDirRemote(
+    _TeamPaths paths,
+    List<TeamConfig> teams,
+  ) async {
+    final store = paths.remote!;
+    final posix = p.Context(style: p.Style.posix);
+    await store.ensureDirectory(paths.teamsUiDir);
+    final keepFiles = <String>{};
+    for (final team in teams) {
+      final filename = '${team.name}.json';
+      keepFiles.add(filename);
+      await store.writeFile(
+        posix.join(paths.teamsUiDir, filename),
+        const JsonEncoder.withIndent('  ').convert(team.toJson()),
+      );
+    }
+    try {
+      final entries = await store.listDirectoryEntries(paths.teamsUiDir);
+      for (final entry in entries) {
+        if (entry.isDirectory) continue;
+        if (!entry.name.endsWith('.json')) continue;
+        if (keepFiles.contains(entry.name)) continue;
+        await store.deleteFile(posix.join(paths.teamsUiDir, entry.name));
+      }
+    } on Object {
+      // best effort
+    }
+  }
+
+  Future<List<TeamConfig>> _readCliDirRemote(_TeamPaths paths) async {
+    final store = paths.remote!;
+    final posix = p.Context(style: p.Style.posix);
+    final teams = <TeamConfig>[];
+    try {
+      final entries = await store.listDirectoryEntries(paths.cliTeamsDir);
+      for (final entry in entries) {
+        if (!entry.isDirectory) continue;
+        final content = await store.readFile(
+          posix.join(paths.cliTeamsDir, entry.name, 'config.json'),
+        );
+        if (content == null || content.isEmpty) continue;
+        try {
+          final decoded = jsonDecode(content);
+          if (decoded is! Map) continue;
+          final team = _cliJsonToTeam(Map<String, Object?>.from(decoded));
+          if (team != null) teams.add(team);
+        } on FormatException {
+          continue;
+        }
+      }
+    } on Object {
+      return const [];
+    }
+    return teams;
+  }
+
+  Future<void> _syncToCliDirRemote(
+    _TeamPaths paths,
+    List<TeamConfig> teams,
+  ) async {
+    final store = paths.remote!;
+    final posix = p.Context(style: p.Style.posix);
+    for (final team in teams) {
+      final configPath = posix.join(paths.cliTeamsDir, team.name, 'config.json');
+      await store.ensureDirectory(posix.join(paths.cliTeamsDir, team.name));
+
+      Map<String, Object?> existing = {};
+      final raw = await store.readFile(configPath);
+      if (raw != null && raw.isNotEmpty) {
+        try {
+          final decoded = jsonDecode(raw);
+          if (decoded is Map) {
+            existing = Map<String, Object?>.from(decoded);
+          }
+        } on FormatException {
+          existing = {};
+        }
+      }
+
+      existing['name'] = team.name;
+      existing['createdAt'] = team.createdAt;
+      if (team.loop != null) {
+        existing['loop'] = team.loop;
+      } else {
+        existing.remove('loop');
+      }
+      existing['members'] =
+          _mergeMembersForCli(team.members, existing['members']);
+
+      await store.writeFile(
+        configPath,
+        const JsonEncoder.withIndent('  ').convert(existing),
+      );
+    }
+  }
+
+  Future<List<TeamConfig>> _readUiDir(String rootDir) async {
     final dir = Directory(rootDir);
     if (!await dir.exists()) return const [];
     final teams = <TeamConfig>[];
@@ -95,7 +266,7 @@ class TeamRepository {
     return teams;
   }
 
-  Future<List<TeamConfig>> _readCliDir() async {
+  Future<List<TeamConfig>> _readCliDir(String cliTeamsDir) async {
     final dir = Directory(cliTeamsDir);
     if (!await dir.exists()) return const [];
     final teams = <TeamConfig>[];
@@ -193,7 +364,7 @@ class TeamRepository {
     );
   }
 
-  Future<void> _writeUiDir(List<TeamConfig> teams) async {
+  Future<void> _writeUiDir(List<TeamConfig> teams, String rootDir) async {
     final root = Directory(rootDir);
     await root.create(recursive: true);
 
@@ -227,7 +398,7 @@ class TeamRepository {
   /// CLI-side deletion is driven by the explicit [deleteTeam] entry point so
   /// that incremental edits don't accidentally clobber CLI-only entries
   /// (e.g. temp session teams the UI hasn't seen yet).
-  Future<void> _syncToCliDir(List<TeamConfig> teams) async {
+  Future<void> _syncToCliDir(List<TeamConfig> teams, String cliTeamsDir) async {
     for (final team in teams) {
       final teamDir = Directory(p.join(cliTeamsDir, team.name));
       await teamDir.create(recursive: true);
@@ -273,7 +444,20 @@ class TeamRepository {
     final trimmed = name.trim();
     if (trimmed.isEmpty) return;
 
-    final uiFile = File(p.join(rootDir, '$trimmed.json'));
+    final paths = await _paths();
+    if (paths.cliIsRemote) {
+      final store = paths.remote!;
+      final posix = p.Context(style: p.Style.posix);
+      await store.deleteFile(posix.join(paths.teamsUiDir, '$trimmed.json'));
+      final cliDir = posix.join(paths.cliTeamsDir, trimmed);
+      final configPath = posix.join(cliDir, 'config.json');
+      if (await store.fileExists(configPath)) {
+        await store.removeRecursive(cliDir);
+      }
+      return;
+    }
+
+    final uiFile = File(p.join(paths.teamsUiDir, '$trimmed.json'));
     if (await uiFile.exists()) {
       try {
         await uiFile.delete();
@@ -282,7 +466,7 @@ class TeamRepository {
       }
     }
 
-    final cliDir = Directory(p.join(cliTeamsDir, trimmed));
+    final cliDir = Directory(p.join(paths.cliTeamsDir, trimmed));
     if (await cliDir.exists()) {
       final configFile = File(p.join(cliDir.path, 'config.json'));
       if (await configFile.exists()) {

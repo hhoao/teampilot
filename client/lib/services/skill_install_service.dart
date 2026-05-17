@@ -9,6 +9,7 @@ import 'package:path/path.dart' as p;
 
 import '../models/skill.dart';
 import '../utils/logger.dart';
+import 'remote_file_store.dart';
 import 'skill_fetch_service.dart';
 import 'skill_manifest_service.dart';
 
@@ -39,7 +40,48 @@ class SkillInstallService {
     return 'local:$basename';
   }
 
-  String _skillPath(String basename) => p.join(manifest.skillsDir, basename);
+  Future<void> _installFiles({
+    required String basename,
+    required Map<String, Uint8List> files,
+    required bool overwrite,
+  }) async {
+    final remote = await manifest.remoteFileStore();
+    final skillsDir = await manifest.resolveSkillsDir();
+    if (remote != null) {
+      final posix = p.Context(style: p.Style.posix);
+      final base = posix.join(skillsDir, basename);
+      if (!overwrite && await remote.fileExists(posix.join(base, 'SKILL.md'))) {
+        throw SkillInstallException('A skill already exists at $base');
+      }
+      await remote.removeRecursive(base);
+      await remote.ensureDirectory(base);
+      for (final entry in files.entries) {
+        final target = posix.join(base, entry.key);
+        final parent = posix.dirname(target);
+        if (parent.isNotEmpty && parent != '.' && parent != '/') {
+          await remote.ensureDirectory(parent);
+        }
+        await remote.writeBytes(target, entry.value);
+      }
+      return;
+    }
+
+    final dir = Directory(p.join(skillsDir, basename));
+    if (dir.existsSync()) {
+      if (!overwrite) {
+        throw SkillInstallException(
+          'A skill already exists at ${dir.path}',
+        );
+      }
+      await dir.delete(recursive: true);
+    }
+    dir.createSync(recursive: true);
+    for (final entry in files.entries) {
+      final target = File(p.join(dir.path, entry.key));
+      target.parent.createSync(recursive: true);
+      await target.writeAsBytes(entry.value, flush: true);
+    }
+  }
 
   String _hashSkillMd(Map<String, Uint8List> files) {
     final bytes = files['SKILL.md'];
@@ -60,22 +102,11 @@ class SkillInstallService {
     required String description,
     bool overwrite = false,
   }) async {
-    final dir = Directory(_skillPath(basename));
-    if (dir.existsSync()) {
-      if (!overwrite) {
-        throw SkillInstallException(
-          'A skill already exists at ${dir.path}',
-        );
-      }
-      await dir.delete(recursive: true);
-    }
-    dir.createSync(recursive: true);
-
-    for (final entry in files.entries) {
-      final target = File(p.join(dir.path, entry.key));
-      target.parent.createSync(recursive: true);
-      await target.writeAsBytes(entry.value, flush: true);
-    }
+    await _installFiles(
+      basename: basename,
+      files: files,
+      overwrite: overwrite,
+    );
 
     final hash = _hashSkillMd(files);
     final now = DateTime.now().millisecondsSinceEpoch;
@@ -173,22 +204,39 @@ class SkillInstallService {
   }
 
   Future<SkillBackup> uninstall(Skill skill) async {
-    final src = Directory(_skillPath(skill.directory));
-    if (!src.existsSync()) {
-      await manifest.removeSkill(skill.id);
-      throw SkillInstallException(
-        'Skill directory ${src.path} missing on disk',
-      );
-    }
-    final backupsDir = Directory(manifest.backupsDir);
-    if (!backupsDir.existsSync()) backupsDir.createSync(recursive: true);
+    final remote = await manifest.remoteFileStore();
+    final skillsDir = await manifest.resolveSkillsDir();
+    final backupsDirPath = await manifest.resolveBackupsDir();
     final ts = DateTime.now().millisecondsSinceEpoch ~/ 1000;
     final backupId = '${skill.directory}-$ts';
-    final target = Directory(p.join(backupsDir.path, backupId));
-    await _moveDir(src, target);
+    final targetPath = p.join(backupsDirPath, backupId);
+
+    if (remote != null) {
+      final posix = p.Context(style: p.Style.posix);
+      final src = posix.join(skillsDir, skill.directory);
+      if (!await remote.fileExists(posix.join(src, 'SKILL.md'))) {
+        await manifest.removeSkill(skill.id);
+        throw SkillInstallException('Skill directory $src missing on disk');
+      }
+      await remote.ensureDirectory(backupsDirPath);
+      await remote.removeRecursive(targetPath);
+      await remote.movePath(src, targetPath);
+    } else {
+      final src = Directory(p.join(skillsDir, skill.directory));
+      if (!src.existsSync()) {
+        await manifest.removeSkill(skill.id);
+        throw SkillInstallException(
+          'Skill directory ${src.path} missing on disk',
+        );
+      }
+      final backupsDir = Directory(backupsDirPath);
+      if (!backupsDir.existsSync()) backupsDir.createSync(recursive: true);
+      final target = Directory(targetPath);
+      await _moveDir(src, target);
+    }
     final backup = SkillBackup(
       backupId: backupId,
-      backupPath: target.path,
+      backupPath: targetPath,
       createdAt: DateTime.now().millisecondsSinceEpoch,
       skill: skill,
     );
@@ -197,8 +245,12 @@ class SkillInstallService {
     final dropped = await manifest.pruneBackups(keep: backupRetention);
     for (final d in dropped) {
       try {
-        final dir = Directory(d.backupPath);
-        if (dir.existsSync()) await dir.delete(recursive: true);
+        if (remote != null) {
+          await remote.removeRecursive(d.backupPath);
+        } else {
+          final dir = Directory(d.backupPath);
+          if (dir.existsSync()) await dir.delete(recursive: true);
+        }
       } catch (e) {
         appLogger.w(
           '[skills] failed to delete pruned backup ${d.backupPath}: $e',
@@ -209,15 +261,34 @@ class SkillInstallService {
   }
 
   Future<Skill> restoreBackup(SkillBackup backup) async {
-    final src = Directory(backup.backupPath);
-    if (!src.existsSync()) {
-      throw SkillInstallException('Backup payload missing at ${src.path}');
+    final remote = await manifest.remoteFileStore();
+    final skillsDir = await manifest.resolveSkillsDir();
+    final targetPath = p.join(skillsDir, backup.skill.directory);
+
+    if (remote != null) {
+      final posix = p.Context(style: p.Style.posix);
+      if (!await remote.fileExists(
+        posix.join(backup.backupPath, 'SKILL.md'),
+      )) {
+        throw SkillInstallException(
+          'Backup payload missing at ${backup.backupPath}',
+        );
+      }
+      if (await remote.fileExists(posix.join(targetPath, 'SKILL.md'))) {
+        throw SkillInstallException('Target $targetPath already exists');
+      }
+      await remote.movePath(backup.backupPath, targetPath);
+    } else {
+      final src = Directory(backup.backupPath);
+      if (!src.existsSync()) {
+        throw SkillInstallException('Backup payload missing at ${src.path}');
+      }
+      final target = Directory(targetPath);
+      if (target.existsSync()) {
+        throw SkillInstallException('Target ${target.path} already exists');
+      }
+      await _moveDir(src, target);
     }
-    final target = Directory(_skillPath(backup.skill.directory));
-    if (target.existsSync()) {
-      throw SkillInstallException('Target ${target.path} already exists');
-    }
-    await _moveDir(src, target);
     final restored = backup.skill.copyWith(
       updatedAt: DateTime.now().millisecondsSinceEpoch,
     );
@@ -227,8 +298,13 @@ class SkillInstallService {
   }
 
   Future<void> deleteBackup(SkillBackup backup) async {
-    final dir = Directory(backup.backupPath);
-    if (dir.existsSync()) await dir.delete(recursive: true);
+    final remote = await manifest.remoteFileStore();
+    if (remote != null) {
+      await remote.removeRecursive(backup.backupPath);
+    } else {
+      final dir = Directory(backup.backupPath);
+      if (dir.existsSync()) await dir.delete(recursive: true);
+    }
     await manifest.removeBackup(backup.backupId);
   }
 

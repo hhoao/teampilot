@@ -29,6 +29,12 @@ import 'router/app_router.dart';
 import 'models/connection_mode.dart';
 import 'services/app_storage.dart';
 import 'services/connection_mode_service.dart';
+import 'services/flashskyai_storage_roots.dart';
+import 'services/remote_cli_session_checker.dart';
+import 'services/remote_flashskyai_data_dir_resolver.dart';
+import 'services/skill_repo_service.dart';
+import 'services/skill_install_service.dart';
+import 'services/skill_manifest_service.dart';
 import 'services/terminal_fonts.dart';
 import 'services/flashskyai_cli_locator.dart';
 import 'services/remote_flashskyai_cli_locator.dart';
@@ -111,15 +117,9 @@ void main() async {
       : await FlashskyaiCliLocator.locate();
   await AppStorage.useWslCliDataDirIfNeeded(cliLocated);
 
-  final tempTeamCleaner = TempTeamCleaner();
-  await tempTeamCleaner.cleanup();
-
   if (!Platform.isAndroid) {
     await windowManager.setPreventClose(true);
   }
-
-  final sessionRepo = SessionRepository();
-  final teamRepo = TeamRepository();
   final appSettings = SharedPrefsAppSettingsRepository(preferences);
   final homeDirectory =
       Platform.environment['HOME'] ?? Platform.environment['USERPROFILE'];
@@ -144,6 +144,10 @@ void main() async {
   );
 
   late final LlmConfigCubit llmConfigCubit;
+  late final TeamCubit teamCubit;
+  late final SkillCubit skillCubit;
+  late final SessionRepository sessionRepo;
+  late final ChatCubit chatCubit;
 
   final sshProfileCubit = SshProfileCubit(
     profileRepository: sshProfileRepo,
@@ -155,13 +159,42 @@ void main() async {
         Platform.isAndroid &&
         sessionPreferencesCubit.state.preferences.connectionMode ==
             ConnectionMode.ssh,
-    onActiveProfileChanged: () => llmConfigCubit.load(),
+    onActiveProfileChanged: () async {
+      await llmConfigCubit.load();
+      await teamCubit.load();
+      await skillCubit.loadAll();
+      await teamCubit.syncSelectedTeamSkills(
+        installed: skillCubit.state.installed,
+      );
+      await chatCubit.loadProjectData(sessionRepo);
+    },
   );
 
   final connectionModeService = ConnectionModeService(
     readPreferredMode: () =>
         sessionPreferencesCubit.state.preferences.connectionMode,
     hasSshProfiles: () => sshProfileCubit.state.hasProfiles,
+  );
+
+  final storageRoots = FlashskyaiStorageRoots(
+    isSshMode: () => connectionModeService.isSshMode,
+    sshProfileResolver: () => sshProfileCubit.state.selectedProfile,
+    sshClientFactory: sshClientFactory,
+    remoteDataDirResolver: RemoteFlashskyaiDataDirResolver(
+      clientFactory: sshClientFactory,
+    ),
+  );
+
+  sessionRepo = SessionRepository(storageRoots: storageRoots);
+  final remoteCliSessionChecker = RemoteCliSessionChecker(storageRoots);
+  final tempTeamCleaner = TempTeamCleaner(storageRoots: storageRoots);
+
+  final teamRepo = TeamRepository(storageRoots: storageRoots);
+  final skillManifest = SkillManifestService(storageRoots: storageRoots);
+  final skillRepo = SkillRepository(
+    manifest: skillManifest,
+    install: SkillInstallService(manifest: skillManifest),
+    repos: SkillRepoService(storageRoots: storageRoots),
   );
 
   llmConfigCubit = LlmConfigCubit(
@@ -184,15 +217,14 @@ void main() async {
     return s.isUsingCustomPath ? path : null;
   }
 
-  final skillRepo = SkillRepository();
-  final teamCubit = TeamCubit(
+  teamCubit = TeamCubit(
     repository: teamRepo,
     executableResolver: () => sessionPreferencesCubit.resolveExecutable(),
     llmConfigPathOverride: llmConfigPathOverrideForLaunch,
-    skillLinker: TeamSkillLinkerService(),
+    skillLinker: TeamSkillLinkerService(storageRoots: storageRoots),
     installedSkillsLoader: () => skillRepo.loadInstalled(),
   );
-  final skillCubit = SkillCubit(
+  skillCubit = SkillCubit(
     skillRepo,
     onSkillUninstalled: teamCubit.removeSkillFromAllTeams,
   );
@@ -205,9 +237,10 @@ void main() async {
     sshClientFactory: sshClientFactory,
   );
 
-  final chatCubit = ChatCubit(
+  chatCubit = ChatCubit(
     sessionRepository: sessionRepo,
     tempTeamCleaner: tempTeamCleaner,
+    cliSessionDescriptorExists: remoteCliSessionChecker.exists,
     llmConfigPathOverride: llmConfigPathOverrideForLaunch,
     autoLaunchAllMembersOnConnect: () =>
         sessionPreferencesCubit.state.preferences.autoLaunchAllMembersOnConnect,
@@ -230,6 +263,7 @@ void main() async {
   await skillCubit.loadAll();
   await teamCubit.syncSelectedTeamSkills(installed: skillCubit.state.installed);
   await sshProfileCubit.load();
+  await tempTeamCleaner.cleanup();
 
   if (!Platform.isAndroid) {
     windowManager.addListener(_CleanupWindowListener(chatCubit));

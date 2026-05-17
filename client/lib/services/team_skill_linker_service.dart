@@ -5,6 +5,7 @@ import 'package:path/path.dart' as p;
 import '../models/skill.dart';
 import '../utils/logger.dart';
 import 'app_storage.dart';
+import 'flashskyai_storage_roots.dart';
 
 class TeamSkillSyncResult {
   const TeamSkillSyncResult({
@@ -25,13 +26,16 @@ class TeamSkillLinkerService {
     String? appSkillsRoot,
     String? cliSkillsDir,
     bool? useWslSymlinks,
+    FlashskyaiStorageRoots? storageRoots,
   })  : _appSkillsRoot = appSkillsRoot,
         _cliSkillsDirOverride = cliSkillsDir,
-        _useWslSymlinks = useWslSymlinks;
+        _useWslSymlinks = useWslSymlinks,
+        _storageRoots = storageRoots;
 
   final String? _appSkillsRoot;
   final String? _cliSkillsDirOverride;
   final bool? _useWslSymlinks;
+  final FlashskyaiStorageRoots? _storageRoots;
 
   String get appSkillsDir =>
       _appSkillsRoot ?? p.join(AppStorage.basePath, 'skills');
@@ -65,10 +69,64 @@ class TeamSkillLinkerService {
       toLink.add(skill);
     }
 
+    final roots = await _storageRoots?.resolve();
+    if (roots != null &&
+        roots.storageIsRemote &&
+        roots.remoteFileStore != null) {
+      return _syncRemoteSymlinks(roots, toLink, skipped);
+    }
+
     if (_shouldUseWsl) {
       return _syncViaWsl(toLink, skipped);
     }
     return _syncNative(toLink, skipped);
+  }
+
+  /// Links remote teampilot/skills → ~/.flashskyai/skills (same as desktop).
+  Future<TeamSkillSyncResult> _syncRemoteSymlinks(
+    StorageRootsSnapshot roots,
+    List<Skill> toLink,
+    List<String> skipped,
+  ) async {
+    final store = roots.remoteFileStore!;
+    final posix = p.Context(style: p.Style.posix);
+    final errors = <String>[];
+    final linked = <String>[];
+
+    try {
+      await store.ensureDirectory(roots.cliSkillsDir);
+      final entries = await store.listDirectoryEntries(roots.cliSkillsDir);
+      for (final entry in entries) {
+        await store.removeRecursive(posix.join(roots.cliSkillsDir, entry.name));
+      }
+    } catch (e) {
+      return TeamSkillSyncResult(
+        skippedMissingIds: skipped,
+        errors: ['Failed to clear remote CLI skills dir: $e'],
+      );
+    }
+
+    for (final skill in toLink) {
+      final source = posix.join(roots.skillsRoot, skill.directory);
+      final target = posix.join(roots.cliSkillsDir, skill.directory);
+      try {
+        if (!await store.fileExists(posix.join(source, 'SKILL.md'))) {
+          errors.add('${skill.name}: source missing at $source');
+          continue;
+        }
+        await store.createSymlink(target: source, linkPath: target);
+        linked.add(skill.directory);
+      } catch (e) {
+        errors.add('${skill.name}: $e');
+        appLogger.w('[team-skills] remote link failed for ${skill.id}: $e');
+      }
+    }
+
+    return TeamSkillSyncResult(
+      linked: linked,
+      skippedMissingIds: skipped,
+      errors: errors,
+    );
   }
 
   Future<TeamSkillSyncResult> _syncNative(
@@ -78,7 +136,7 @@ class TeamSkillLinkerService {
     final errors = <String>[];
     final linked = <String>[];
 
-    // Android has no local CLI — symlinks would serve no purpose and may
+    // Android local-PTY has no CLI — symlinks would serve no purpose and may
     // fail on filesystems that don't support them (e.g. sdcardfs).
     if (Platform.isAndroid) {
       return TeamSkillSyncResult(

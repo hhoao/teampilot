@@ -1,10 +1,19 @@
 import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:dartssh2/dartssh2.dart';
+import 'package:path/path.dart' as p;
 
 import 'ssh_client_factory.dart';
 import '../models/ssh_profile.dart';
+
+class RemoteDirEntry {
+  const RemoteDirEntry({required this.name, required this.isDirectory});
+
+  final String name;
+  final bool isDirectory;
+}
 
 class RemoteFileStore {
   RemoteFileStore({
@@ -83,10 +92,123 @@ class RemoteFileStore {
   }
 
   Future<List<String>> listDirectory(String path) async {
+    final entries = await listDirectoryEntries(path);
+    return entries.map((e) => e.name).toList();
+  }
+
+  Future<List<RemoteDirEntry>> listDirectoryEntries(String path) async {
     final sftp = await _ensureConnected();
     final resolved = await expandHome(path);
     final names = await sftp.listdir(resolved);
-    return names.map((n) => n.filename).toList();
+    return [
+      for (final n in names)
+        if (n.filename != '.' && n.filename != '..')
+          RemoteDirEntry(
+            name: n.filename,
+            isDirectory: n.attr.isDirectory,
+          ),
+    ];
+  }
+
+  Future<void> writeBytes(String path, Uint8List bytes) async {
+    final sftp = await _ensureConnected();
+    final resolved = await expandHome(path);
+    final file = await sftp.open(
+      resolved,
+      mode: SftpFileOpenMode.write |
+          SftpFileOpenMode.create |
+          SftpFileOpenMode.truncate,
+    );
+    await file.writeBytes(bytes);
+    await file.close();
+  }
+
+  Future<void> ensureDirectory(String absolutePosixPath) async {
+    final client = await _clientFactory.clientFor(_profile);
+    final result = await client.runWithResult(
+      'mkdir -p -- ${shellSingleQuote(absolutePosixPath)}',
+      stderr: false,
+    );
+    if (result.exitCode != 0) {
+      throw StateError(
+        'mkdir failed (${result.exitCode}): ${utf8.decode(result.stderr, allowMalformed: true)}',
+      );
+    }
+  }
+
+  Future<void> removeRecursive(String absolutePosixPath) async {
+    final client = await _clientFactory.clientFor(_profile);
+    await client.runWithResult(
+      'rm -rf -- ${shellSingleQuote(absolutePosixPath)}',
+      stderr: false,
+    );
+  }
+
+  Future<void> createSymlink({
+    required String target,
+    required String linkPath,
+  }) async {
+    final client = await _clientFactory.clientFor(_profile);
+    final parent = p.Context(style: p.Style.posix).dirname(linkPath);
+    if (parent.isNotEmpty && parent != '.') {
+      await ensureDirectory(parent);
+    }
+    await removeRecursive(linkPath);
+    final result = await client.runWithResult(
+      'ln -sf -- ${shellSingleQuote(target)} ${shellSingleQuote(linkPath)}',
+      stderr: false,
+    );
+    if (result.exitCode != 0) {
+      throw StateError(
+        'ln failed (${result.exitCode}): ${utf8.decode(result.stderr, allowMalformed: true)}',
+      );
+    }
+  }
+
+  static String shellSingleQuote(String value) {
+    return "'${value.replaceAll("'", "'\\''")}'";
+  }
+
+  /// Uploads a local directory tree to [remoteRoot] on the SSH host.
+  Future<void> uploadLocalDirectory({
+    required Directory localRoot,
+    required String remoteRoot,
+  }) async {
+    if (!localRoot.existsSync()) {
+      throw StateError('local directory missing: ${localRoot.path}');
+    }
+    final posix = p.Context(style: p.Style.posix);
+    await ensureDirectory(remoteRoot);
+    await for (final entity in localRoot.list(recursive: true, followLinks: false)) {
+      final rel = p.relative(entity.path, from: localRoot.path);
+      final remotePath = rel == '.'
+          ? remoteRoot
+          : posix.join(remoteRoot, rel.replaceAll(r'\', '/'));
+      if (entity is Directory) {
+        await ensureDirectory(remotePath);
+      } else if (entity is File) {
+        await writeBytes(remotePath, await entity.readAsBytes());
+      }
+    }
+  }
+
+  Future<void> movePath(String from, String to) async {
+    final posix = p.Context(style: p.Style.posix);
+    final parent = posix.dirname(to);
+    if (parent.isNotEmpty && parent != '.' && parent != '/') {
+      await ensureDirectory(parent);
+    }
+    await removeRecursive(to);
+    final client = await _clientFactory.clientFor(_profile);
+    final result = await client.runWithResult(
+      'mv -- ${shellSingleQuote(from)} ${shellSingleQuote(to)}',
+      stderr: false,
+    );
+    if (result.exitCode != 0) {
+      throw StateError(
+        'mv failed (${result.exitCode}): ${utf8.decode(result.stderr, allowMalformed: true)}',
+      );
+    }
   }
 
   Future<void> createDirectory(String path) async {

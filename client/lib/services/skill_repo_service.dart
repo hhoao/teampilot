@@ -1,12 +1,19 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:path/path.dart' as p;
+
 import '../models/skill.dart';
 import '../utils/logger.dart';
 import 'app_storage.dart';
+import 'flashskyai_storage_roots.dart';
+import 'remote_file_store.dart';
 
 class SkillRepoService {
-  const SkillRepoService();
+  SkillRepoService({FlashskyaiStorageRoots? storageRoots})
+      : _storageRoots = storageRoots;
+
+  final FlashskyaiStorageRoots? _storageRoots;
 
   static const _defaultRepos = [
     SkillRepo(owner: 'anthropics', name: 'skills', branch: 'main'),
@@ -18,6 +25,13 @@ class SkillRepoService {
     SkillRepo(owner: 'cexll', name: 'myclaude', branch: 'master'),
     SkillRepo(owner: 'JimLiu', name: 'baoyu-skills', branch: 'main'),
   ];
+
+  Future<String> _configPath() async {
+    if (_storageRoots != null) {
+      return (await _storageRoots!.resolve()).skillReposConfigPath;
+    }
+    return AppStorage.skillReposConfigPath;
+  }
 
   Future<List<SkillRepo>> loadRepos() async {
     final cache = await _readManifest();
@@ -73,8 +87,28 @@ class SkillRepoService {
     await _writeManifest(cache);
   }
 
+  Future<RemoteFileStore?> _remote() async {
+    if (_storageRoots == null) return null;
+    final snap = await _storageRoots!.resolve();
+    return snap.storageIsRemote ? snap.remoteFileStore : null;
+  }
+
   Future<Map<String, Object?>> _readManifest() async {
-    final file = File('${AppStorage.basePath}/skills.json');
+    final path = await _configPath();
+    final remote = await _remote();
+    if (remote != null) {
+      final text = await remote.readFile(path);
+      if (text == null || text.isEmpty) return {};
+      try {
+        return (json.decode(text) as Map<String, dynamic>)
+            .cast<String, Object?>();
+      } on FormatException catch (e) {
+        appLogger.w('[SkillRepoService] Corrupt skills.json, resetting: $e');
+        return {};
+      }
+    }
+
+    final file = File(path);
     if (!file.existsSync()) return {};
     try {
       final content = await file.readAsString();
@@ -90,9 +124,20 @@ class SkillRepoService {
   }
 
   Future<void> _writeManifest(Map<String, Object?> data) async {
-    final dir = Directory(AppStorage.basePath);
-    if (!dir.existsSync()) dir.createSync(recursive: true);
-    final file = File('${AppStorage.basePath}/skills.json');
-    await file.writeAsString(const JsonEncoder.withIndent('  ').convert(data));
+    final path = await _configPath();
+    final text = const JsonEncoder.withIndent('  ').convert(data);
+    final remote = await _remote();
+    if (remote != null) {
+      final posix = p.Context(style: p.Style.posix);
+      final parent = posix.dirname(path);
+      if (parent.isNotEmpty && parent != '.') {
+        await remote.ensureDirectory(parent);
+      }
+      await remote.writeFile(path, text);
+      return;
+    }
+    final file = File(path);
+    await file.parent.create(recursive: true);
+    await file.writeAsString(text);
   }
 }

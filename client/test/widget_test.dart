@@ -554,7 +554,7 @@ void main() {
         ],
       );
 
-      cubit.openSessionTab(session);
+      await cubit.openSessionTab(session);
       await cubit.openMemberTab(team, team.members[0]);
       await cubit.openMemberTab(team, team.members[1]);
 
@@ -588,7 +588,7 @@ void main() {
       name: 'TName',
       members: const [TeamMemberConfig(id: 'lid', name: 'team-lead')],
     );
-    cubit.openSessionTab(
+    await cubit.openSessionTab(
       session,
       team: team,
       member: team.members.first,
@@ -615,7 +615,7 @@ void main() {
         return captured!;
       },
       postFrameScheduler: (c) => c(),
-      cliSessionDescriptorExists: (_, __) => true,
+      cliSessionDescriptorExists: (_, __) async => true,
     );
     await cubit.loadProjectData(repo);
     final rel = cubit.state.sessions.single;
@@ -624,7 +624,7 @@ void main() {
       name: 'TName',
       members: const [TeamMemberConfig(id: 'lid', name: 'team-lead')],
     );
-    cubit.openSessionTab(
+    await cubit.openSessionTab(
       rel,
       team: team,
       member: team.members.first,
@@ -652,7 +652,7 @@ void main() {
           return captured!;
         },
         postFrameScheduler: (c) => c(),
-        cliSessionDescriptorExists: (_, __) => false,
+        cliSessionDescriptorExists: (_, __) async => false,
       );
       await cubit.loadProjectData(repo);
       final rel = cubit.state.sessions.single;
@@ -661,7 +661,7 @@ void main() {
         name: 'TName',
         members: const [TeamMemberConfig(id: 'lid', name: 'team-lead')],
       );
-      cubit.openSessionTab(
+      await cubit.openSessionTab(
         rel,
         team: team,
         member: team.members.first,
@@ -699,7 +699,7 @@ void main() {
         name: 'TName',
         members: const [TeamMemberConfig(id: 'lid', name: 'team-lead')],
       );
-      cubit.openSessionTab(
+      await cubit.openSessionTab(
         rel,
         team: team,
         member: team.members.first,

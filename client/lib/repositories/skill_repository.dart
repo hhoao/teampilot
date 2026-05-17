@@ -16,7 +16,7 @@ class SkillRepository {
     SkillsShService? skillsSh,
   }) : manifest = manifest ?? SkillManifestService(),
        fetch = fetch ?? SkillFetchService(),
-       repos = repos ?? const SkillRepoService(),
+       repos = repos ?? SkillRepoService(),
        skillsSh = skillsSh ?? SkillsShService(),
        install = install ??
            SkillInstallService(

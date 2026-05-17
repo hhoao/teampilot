@@ -120,11 +120,71 @@ class AppStorage {
   static String get cliHistoryPath =>
       p.join(flashskyaiDataDir, 'history.jsonl');
 
-  /// UI-owned local teams directory (under the Flutter sandbox).
+  /// UI-owned teams directory (`<appData>/teams` on device; on SSH hosts
+  /// [teamsUiDirForCliData] under `~/.flashskyai/teampilot/teams`).
   static String get teamsDir => p.join(basePath, 'teams');
+
+  /// Linux desktop / `path_provider` app-data id (e.g. `~/.local/share/com.hhoa.teampilot`).
+  static const teampilotAppDataDirName = 'com.hhoa.teampilot';
+
+  /// Default TeamPilot UI data root for a remote POSIX home (matches [basePath] on desktop).
+  static String defaultTeampilotAppDataDirForHome(String home) =>
+      p.join(home, '.local', 'share', teampilotAppDataDirName);
+
+  /// Legacy SSH layout nested under the CLI data dir (`~/.flashskyai/teampilot`).
+  static String teampilotDirForCliData(String cliDataDir) =>
+      p.join(cliDataDir, 'teampilot');
+
+  /// UI team JSON under a TeamPilot app-data root ([teamsDir] layout).
+  static String teamsUiDirForTeampilotRoot(String teampilotRoot) =>
+      p.join(teampilotRoot, 'teams');
+
+  static String skillsDirForTeampilotRoot(String teampilotRoot) =>
+      p.join(teampilotRoot, 'skills');
+
+  static String skillBackupsDirForTeampilotRoot(String teampilotRoot) =>
+      p.join(teampilotRoot, 'skill-backups');
+
+  static String appProjectsDirForTeampilotRoot(String teampilotRoot) =>
+      p.join(teampilotRoot, 'projects');
+
+  static String skillReposConfigPathForTeampilotRoot(String teampilotRoot) =>
+      p.join(teampilotRoot, 'skills.json');
+
+  static String tempTeamRegistryPathForTeampilotRoot(String teampilotRoot) =>
+      p.join(teampilotRoot, 'ui-temp-teams.json');
+
+  @Deprecated('Use teampilot app-data root helpers (teamsUiDirForTeampilotRoot)')
+  static String teamsUiDirForCliData(String cliDataDir) =>
+      teamsUiDirForTeampilotRoot(teampilotDirForCliData(cliDataDir));
+
+  @Deprecated('Use teampilot app-data root helpers')
+  static String skillsDirForCliData(String cliDataDir) =>
+      skillsDirForTeampilotRoot(teampilotDirForCliData(cliDataDir));
+
+  @Deprecated('Use teampilot app-data root helpers')
+  static String skillBackupsDirForCliData(String cliDataDir) =>
+      skillBackupsDirForTeampilotRoot(teampilotDirForCliData(cliDataDir));
+
+  @Deprecated('Use teampilot app-data root helpers')
+  static String appProjectsDirForCliData(String cliDataDir) =>
+      appProjectsDirForTeampilotRoot(teampilotDirForCliData(cliDataDir));
+
+  @Deprecated('Use teampilot app-data root helpers')
+  static String skillReposConfigPathForCliData(String cliDataDir) =>
+      skillReposConfigPathForTeampilotRoot(teampilotDirForCliData(cliDataDir));
+
+  @Deprecated('Use teampilot app-data root helpers')
+  static String tempTeamRegistryPathForCliData(String cliDataDir) =>
+      tempTeamRegistryPathForTeampilotRoot(teampilotDirForCliData(cliDataDir));
 
   /// App-owned project/session metadata (`projects.json` + `sessions/`).
   static String get appProjectsDir => p.join(basePath, 'projects');
+
+  static String get skillReposConfigPath => p.join(basePath, 'skills.json');
+
+  static String get tempTeamRegistryPath =>
+      p.join(basePath, 'ui-temp-teams.json');
 
   static Future<void> init() async {
     final dir = await getApplicationSupportDirectory();

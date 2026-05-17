@@ -2,8 +2,12 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../cubits/chat_cubit.dart';
 import '../cubits/llm_config_cubit.dart';
 import '../cubits/session_preferences_cubit.dart';
+import '../repositories/session_repository.dart';
+import '../cubits/skill_cubit.dart';
+import '../cubits/team_cubit.dart';
 import '../models/connection_mode.dart';
 import '../l10n/l10n_extensions.dart';
 import '../utils/app_keys.dart';
@@ -262,9 +266,20 @@ class _SessionControlsState extends State<_SessionControls> {
                   ],
                   selected: {state.preferences.connectionMode},
                   onSelectionChanged: (selected) async {
+                    final llmCubit = context.read<LlmConfigCubit>();
+                    final teamCubit = context.read<TeamCubit>();
+                    final skillCubit = context.read<SkillCubit>();
+                    final chatCubit = context.read<ChatCubit>();
+                    final sessionRepo = context.read<SessionRepository>();
                     await widget.cubit.setConnectionMode(selected.first);
                     if (!context.mounted) return;
-                    await context.read<LlmConfigCubit>().load();
+                    await llmCubit.load();
+                    await teamCubit.load();
+                    await skillCubit.loadAll();
+                    await teamCubit.syncSelectedTeamSkills(
+                      installed: skillCubit.state.installed,
+                    );
+                    await chatCubit.loadProjectData(sessionRepo);
                   },
                 ),
                 showDividerBelow: true,

@@ -4,28 +4,40 @@ import 'dart:io';
 import 'package:path/path.dart' as p;
 
 import 'app_storage.dart';
+import 'flashskyai_storage_roots.dart';
+import 'remote_file_store.dart';
 
 /// Tracks the temp team folders the UI causes the CLI to create under
 /// `~/.flashskyai/teams/<sessionTeamName>` and removes them on demand.
-///
-/// The registry is persisted to disk so a crashed run can still be cleaned
-/// up the next time the UI starts.
 class TempTeamCleaner {
-  TempTeamCleaner({String? registryPath, String? cliTeamsDir})
-    : _registryPathOverride = registryPath,
-      _cliTeamsDirOverride = cliTeamsDir;
+  TempTeamCleaner({
+    String? registryPath,
+    String? cliTeamsDir,
+    FlashskyaiStorageRoots? storageRoots,
+  })  : _registryPathOverride = registryPath,
+        _cliTeamsDirOverride = cliTeamsDir,
+        _storageRoots = storageRoots;
 
   final String? _registryPathOverride;
   final String? _cliTeamsDirOverride;
+  final FlashskyaiStorageRoots? _storageRoots;
 
-  String get registryPath =>
-      _registryPathOverride ??
-      p.join(AppStorage.basePath, 'ui-temp-teams.json');
+  Future<_CleanerPaths> _paths() async {
+    if (_storageRoots != null) {
+      final snap = await _storageRoots.resolve();
+      return _CleanerPaths(
+        registryPath: snap.tempTeamRegistryPath,
+        cliTeamsDir: snap.cliTeamsDir,
+        remote: snap.remoteFileStore,
+      );
+    }
+    return _CleanerPaths(
+      registryPath:
+          _registryPathOverride ?? AppStorage.tempTeamRegistryPath,
+      cliTeamsDir: _cliTeamsDirOverride ?? AppStorage.cliTeamsDir,
+    );
+  }
 
-  String get cliTeamsDir => _cliTeamsDirOverride ?? AppStorage.cliTeamsDir;
-
-  /// Records [name] as a UI-created temp team. Persists immediately so it
-  /// survives a crash.
   Future<void> record(String name) async {
     final trimmed = name.trim();
     if (trimmed.isEmpty) return;
@@ -34,16 +46,27 @@ class TempTeamCleaner {
     await _writeRegistry(names);
   }
 
-  /// Deletes every recorded temp team directory under [cliTeamsDir].
-  /// Names whose directories could not be deleted are kept in the registry
-  /// so the next [cleanup] will retry them.
   Future<void> cleanup() async {
+    final paths = await _paths();
     final names = await _loadRegistry();
     if (names.isEmpty) return;
 
     final failed = <String>{};
     for (final name in names) {
-      final dir = Directory(p.join(cliTeamsDir, name));
+      final teamDir = p.join(paths.cliTeamsDir, name);
+      if (paths.remote != null) {
+        final configPath = p.Context(style: p.Style.posix)
+            .join(teamDir, 'config.json');
+        if (!await paths.remote!.fileExists(configPath)) continue;
+        try {
+          await paths.remote!.removeRecursive(teamDir);
+        } on Object {
+          failed.add(name);
+        }
+        continue;
+      }
+
+      final dir = Directory(teamDir);
       if (!await dir.exists()) continue;
       try {
         await dir.delete(recursive: true);
@@ -52,15 +75,23 @@ class TempTeamCleaner {
       }
     }
 
-    // Only remove successful names from the registry. Failed ones stay so
-    // they will be retried on the next run.
-    final remaining = names
-        .where(
-          (n) =>
-              failed.contains(n) ||
-              Directory(p.join(cliTeamsDir, n)).existsSync(),
-        )
-        .toSet();
+    final remaining = <String>{};
+    for (final name in names) {
+      if (failed.contains(name)) {
+        remaining.add(name);
+        continue;
+      }
+      if (paths.remote != null) {
+        final configPath = p.Context(style: p.Style.posix)
+            .join(paths.cliTeamsDir, name, 'config.json');
+        if (await paths.remote!.fileExists(configPath)) {
+          remaining.add(name);
+        }
+      } else if (Directory(p.join(paths.cliTeamsDir, name)).existsSync()) {
+        remaining.add(name);
+      }
+    }
+
     if (remaining.isEmpty) {
       await _clearRegistry();
     } else {
@@ -69,7 +100,22 @@ class TempTeamCleaner {
   }
 
   Future<Set<String>> _loadRegistry() async {
-    final file = File(registryPath);
+    final paths = await _paths();
+    if (paths.remote != null) {
+      final raw = await paths.remote!.readFile(paths.registryPath);
+      if (raw == null || raw.trim().isEmpty) return <String>{};
+      try {
+        final decoded = jsonDecode(raw);
+        if (decoded is List) {
+          return decoded.whereType<String>().toSet();
+        }
+      } on FormatException {
+        return <String>{};
+      }
+      return <String>{};
+    }
+
+    final file = File(paths.registryPath);
     if (!await file.exists()) return <String>{};
     try {
       final raw = await file.readAsString();
@@ -87,13 +133,33 @@ class TempTeamCleaner {
   }
 
   Future<void> _writeRegistry(Set<String> names) async {
-    final file = File(registryPath);
+    final paths = await _paths();
+    final text = jsonEncode(names.toList());
+    if (paths.remote != null) {
+      final posix = p.Context(style: p.Style.posix);
+      final parent = posix.dirname(paths.registryPath);
+      if (parent.isNotEmpty && parent != '.') {
+        await paths.remote!.ensureDirectory(parent);
+      }
+      await paths.remote!.writeFile(paths.registryPath, text);
+      return;
+    }
+    final file = File(paths.registryPath);
     await file.parent.create(recursive: true);
-    await file.writeAsString(jsonEncode(names.toList()));
+    await file.writeAsString(text);
   }
 
   Future<void> _clearRegistry() async {
-    final file = File(registryPath);
+    final paths = await _paths();
+    if (paths.remote != null) {
+      try {
+        await paths.remote!.deleteFile(paths.registryPath);
+      } on Object {
+        // best effort
+      }
+      return;
+    }
+    final file = File(paths.registryPath);
     if (await file.exists()) {
       try {
         await file.delete();
@@ -102,4 +168,16 @@ class TempTeamCleaner {
       }
     }
   }
+}
+
+class _CleanerPaths {
+  const _CleanerPaths({
+    required this.registryPath,
+    required this.cliTeamsDir,
+    this.remote,
+  });
+
+  final String registryPath;
+  final String cliTeamsDir;
+  final RemoteFileStore? remote;
 }

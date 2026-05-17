@@ -6,6 +6,8 @@ import 'package:path/path.dart' as p;
 
 import '../models/skill.dart';
 import 'app_storage.dart';
+import 'flashskyai_storage_roots.dart';
+import 'remote_file_store.dart';
 
 class SkillManifestException implements Exception {
   SkillManifestException(this.message, [this.cause]);
@@ -15,15 +17,63 @@ class SkillManifestException implements Exception {
   String toString() => 'SkillManifestException: $message';
 }
 
+class _SkillPaths {
+  const _SkillPaths({
+    required this.skillsDir,
+    required this.backupsDir,
+    required this.manifestPath,
+    this.remote,
+  });
+
+  final String skillsDir;
+  final String backupsDir;
+  final String manifestPath;
+  final RemoteFileStore? remote;
+
+  bool get isRemote => remote != null;
+}
+
 class SkillManifestService {
-  SkillManifestService({String? rootDir}) : _rootDir = rootDir;
+  SkillManifestService({
+    String? rootDir,
+    FlashskyaiStorageRoots? storageRoots,
+  })  : _rootDir = rootDir,
+        _storageRoots = storageRoots;
 
   final String? _rootDir;
+  final FlashskyaiStorageRoots? _storageRoots;
 
-  String get _root => _rootDir ?? AppStorage.basePath;
-  String get skillsDir => p.join(_root, 'skills');
-  String get backupsDir => p.join(_root, 'skill-backups');
-  String get _manifestPath => p.join(skillsDir, 'manifest.json');
+  Future<_SkillPaths> _paths() async {
+    if (_storageRoots != null) {
+      final snap = await _storageRoots.resolve();
+      if (snap.storageIsRemote && snap.remoteFileStore != null) {
+        final posix = p.Context(style: p.Style.posix);
+        return _SkillPaths(
+          skillsDir: snap.skillsRoot,
+          backupsDir: snap.skillBackupsDir,
+          manifestPath: posix.join(snap.skillsRoot, 'manifest.json'),
+          remote: snap.remoteFileStore,
+        );
+      }
+    }
+    final root = _rootDir ?? AppStorage.basePath;
+    final skillsDir = p.join(root, 'skills');
+    return _SkillPaths(
+      skillsDir: skillsDir,
+      backupsDir: p.join(root, 'skill-backups'),
+      manifestPath: p.join(skillsDir, 'manifest.json'),
+    );
+  }
+
+  String get skillsDir {
+    final root = _rootDir ?? AppStorage.basePath;
+    return p.join(root, 'skills');
+  }
+
+  String get backupsDir {
+    final root = _rootDir ?? AppStorage.basePath;
+    return p.join(root, 'skill-backups');
+  }
 
   Future<List<Skill>> loadSkills() async {
     final m = await _read();
@@ -78,7 +128,6 @@ class SkillManifestService {
     await _write(m);
   }
 
-  /// Returns pruned backups (so caller can delete their on-disk payloads).
   Future<List<SkillBackup>> pruneBackups({int keep = 20}) async {
     final m = await _read();
     final list =
@@ -97,7 +146,24 @@ class SkillManifestService {
   }
 
   Future<Map<String, Object?>> _read() async {
-    final file = File(_manifestPath);
+    final paths = await _paths();
+    if (paths.isRemote) {
+      final text = await paths.remote!.readFile(paths.manifestPath);
+      if (text == null || text.isEmpty) {
+        return <String, Object?>{'version': 1, 'skills': [], 'backups': []};
+      }
+      try {
+        final parsed = json.decode(text);
+        if (parsed is! Map) {
+          throw SkillManifestException('manifest root is not an object');
+        }
+        return parsed.cast<String, Object?>();
+      } on FormatException catch (e) {
+        throw SkillManifestException('manifest.json is corrupt', e);
+      }
+    }
+
+    final file = File(paths.manifestPath);
     if (!file.existsSync()) {
       return <String, Object?>{'version': 1, 'skills': [], 'backups': []};
     }
@@ -114,11 +180,24 @@ class SkillManifestService {
   }
 
   Future<void> _write(Map<String, Object?> data) async {
-    final dir = Directory(skillsDir);
-    if (!dir.existsSync()) dir.createSync(recursive: true);
+    final paths = await _paths();
     data['version'] = data['version'] ?? 1;
-    final file = File(_manifestPath);
     final text = const JsonEncoder.withIndent('  ').convert(data);
+    if (paths.isRemote) {
+      final store = paths.remote!;
+      await store.ensureDirectory(paths.skillsDir);
+      await store.writeFile(paths.manifestPath, text);
+      return;
+    }
+    final dir = Directory(paths.skillsDir);
+    if (!dir.existsSync()) dir.createSync(recursive: true);
+    final file = File(paths.manifestPath);
     await file.writeAsString(text);
   }
+
+  Future<String> resolveSkillsDir() async => (await _paths()).skillsDir;
+
+  Future<String> resolveBackupsDir() async => (await _paths()).backupsDir;
+
+  Future<RemoteFileStore?> remoteFileStore() async => (await _paths()).remote;
 }

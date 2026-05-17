@@ -22,7 +22,7 @@ typedef TerminalSessionFactory =
     TerminalSession Function({required String executable});
 typedef PostFrameScheduler = void Function(VoidCallback callback);
 typedef CliSessionDescriptorExists =
-    bool Function(String sessionId, String primaryPath);
+    Future<bool> Function(String sessionId, String primaryPath);
 typedef SshActiveProfileResolver = SshProfile? Function();
 
 class ChatTabInfo extends Equatable {
@@ -158,7 +158,7 @@ class ChatCubit extends Cubit<ChatState> {
        _autoLaunchAllMembersOnConnect = autoLaunchAllMembersOnConnect,
        _cliSessionDescriptorExists =
            cliSessionDescriptorExists ??
-           ((String sid, String path) =>
+           ((String sid, String path) async =>
                AppStorage.cliSessionDescriptorExists(sid, path)),
        _sessionRepository = sessionRepository,
        _executableResolver = executableResolver,
@@ -381,14 +381,14 @@ class ChatCubit extends Cubit<ChatState> {
     await loadProjectData(repo);
   }
 
-  void openSessionTab(
+  Future<void> openSessionTab(
     AppSession session, {
     TeamConfig? team,
     TeamMemberConfig? member,
     SessionRepository? repo,
     String emptyDisplayTitleFallback = 'New Chat',
     bool connectImmediately = true,
-  }) {
+  }) async {
     final existingIdx = _internalTabs.indexWhere(
       (t) => t.info.id == session.sessionId,
     );
@@ -411,7 +411,7 @@ class ChatCubit extends Cubit<ChatState> {
       subtitle: session.primaryPath,
     );
     final launched = session.launchState == AppSessionLaunchState.started;
-    final cliHasSession = _cliSessionDescriptorExists(
+    final cliHasSession = await _cliSessionDescriptorExists(
       session.sessionId,
       session.primaryPath,
     );
@@ -529,7 +529,7 @@ class ChatCubit extends Cubit<ChatState> {
     );
     await loadProjectData(repo);
     if (isClosed) return;
-    openSessionTab(
+    await openSessionTab(
       session,
       team: team,
       member: memberForInitialShell,

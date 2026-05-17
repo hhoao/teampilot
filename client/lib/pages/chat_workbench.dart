@@ -224,18 +224,22 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
         ? team.members.where((m) => m.name == 'team-lead').toList()
         : <TeamMemberConfig>[];
     if (team != null && lead.isNotEmpty) {
-      chatCubit.openSessionTab(
-        session,
-        team: team,
-        member: lead.first,
-        repo: repo,
-        emptyDisplayTitleFallback: l10n.defaultNewChatSessionTitle,
+      unawaited(
+        chatCubit.openSessionTab(
+          session,
+          team: team,
+          member: lead.first,
+          repo: repo,
+          emptyDisplayTitleFallback: l10n.defaultNewChatSessionTitle,
+        ),
       );
     } else {
-      chatCubit.openSessionTab(
-        session,
-        repo: repo,
-        emptyDisplayTitleFallback: l10n.defaultNewChatSessionTitle,
+      unawaited(
+        chatCubit.openSessionTab(
+          session,
+          repo: repo,
+          emptyDisplayTitleFallback: l10n.defaultNewChatSessionTitle,
+        ),
       );
       if (team != null) {
         chatCubit.addSystemMessage(

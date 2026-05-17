@@ -8,6 +8,8 @@ import 'package:uuid/uuid.dart';
 import '../models/app_project.dart';
 import '../models/app_session.dart';
 import '../services/app_storage.dart';
+import '../services/flashskyai_storage_roots.dart';
+import 'session_repository_fs.dart';
 
 class _AsyncLock {
   Future<void> _tail = Future.value();
@@ -23,10 +25,12 @@ class _AsyncLock {
 }
 
 class SessionRepository {
-  SessionRepository({String? rootDir})
-      : _root = rootDir ?? AppStorage.appProjectsDir;
+  SessionRepository({String? rootDir, FlashskyaiStorageRoots? storageRoots})
+      : _rootOverride = rootDir,
+        _storageRoots = storageRoots;
 
-  final String _root;
+  final String? _rootOverride;
+  final FlashskyaiStorageRoots? _storageRoots;
   final Map<String, _AsyncLock> _sessionFileLocks = {};
 
   Future<T> _withSessionFile<T>(String sessionId, Future<T> Function() fn) {
@@ -34,24 +38,29 @@ class SessionRepository {
     return lock.synchronized(fn);
   }
 
-  String get _projectsFile => p.join(_root, 'projects.json');
-
-  String get _sessionsDir => p.join(_root, 'sessions');
-
-  Future<void> _atomicWriteFile(File target, String contents) async {
-    await target.parent.create(recursive: true);
-    final tmp = File('${target.path}.${DateTime.now().microsecondsSinceEpoch}.tmp');
-    await tmp.writeAsString(contents);
-    await tmp.rename(target.path);
+  Future<SessionRepositoryFs> _fs() async {
+    if (_storageRoots != null) {
+      final snap = await _storageRoots!.resolve();
+      return SessionRepositoryFs(
+        projectsFile: p.join(snap.appProjectsDir, 'projects.json'),
+        sessionsDir: p.join(snap.appProjectsDir, 'sessions'),
+        remote: snap.remoteFileStore,
+      );
+    }
+    final root = _rootOverride ?? AppStorage.appProjectsDir;
+    return SessionRepositoryFs(
+      projectsFile: p.join(root, 'projects.json'),
+      sessionsDir: p.join(root, 'sessions'),
+    );
   }
 
-  Future<AppProjectsIndex> _loadIndex() async {
-    final file = File(_projectsFile);
-    if (!await file.exists()) {
+  Future<AppProjectsIndex> _loadIndex(SessionRepositoryFs fs) async {
+    final raw = await fs.readText(fs.projectsFile);
+    if (raw == null || raw.isEmpty) {
       return const AppProjectsIndex();
     }
     try {
-      final json = jsonDecode(await file.readAsString());
+      final json = jsonDecode(raw);
       if (json is Map<String, Object?>) {
         return AppProjectsIndex.fromJson(json);
       }
@@ -61,37 +70,25 @@ class SessionRepository {
     return const AppProjectsIndex();
   }
 
-  Future<void> _saveIndex(AppProjectsIndex index) async {
-    final file = File(_projectsFile);
-    await _atomicWriteFile(file, jsonEncode(index.toJson()));
+  Future<void> _saveIndex(SessionRepositoryFs fs, AppProjectsIndex index) async {
+    await fs.writeText(fs.projectsFile, jsonEncode(index.toJson()));
   }
 
   Future<List<AppProject>> loadProjects() async {
-    final index = await _loadIndex();
+    final fs = await _fs();
+    final index = await _loadIndex(fs);
     return List<AppProject>.from(index.projects);
   }
 
   Future<List<AppSession>> loadSessions() async {
-    final dir = Directory(_sessionsDir);
-    if (!await dir.exists()) {
-      return [];
-    }
+    final fs = await _fs();
     final sessions = <AppSession>[];
-    try {
-      await for (final entity in dir.list()) {
-        if (entity is! File || !entity.path.endsWith('.json')) continue;
-        try {
-          final content = await entity.readAsString();
-          final json = jsonDecode(content);
-          if (json is Map<String, Object?>) {
-            sessions.add(AppSession.fromJson(json));
-          }
-        } on Object {
-          // skip
-        }
+    for (final json in await fs.listSessionJsonMaps()) {
+      try {
+        sessions.add(AppSession.fromJson(json));
+      } on Object {
+        continue;
       }
-    } on Object {
-      return sessions;
     }
     sessions.sort((a, b) {
       final au = a.updatedAt != 0 ? a.updatedAt : a.createdAt;
@@ -118,8 +115,9 @@ class SessionRepository {
     List<String> additionalPaths = const [],
     String display = '',
   }) async {
+    final fs = await _fs();
     final trimmed = primaryPath.trim();
-    final index = await _loadIndex();
+    final index = await _loadIndex(fs);
     final now = DateTime.now().millisecondsSinceEpoch;
     for (var i = 0; i < index.projects.length; i++) {
       final existing = index.projects[i];
@@ -151,7 +149,7 @@ class SessionRepository {
             j == i ? updated : index.projects[j],
         ],
       );
-      await _saveIndex(next);
+      await _saveIndex(fs, next);
       return updated;
     }
     final project = AppProject(
@@ -168,7 +166,7 @@ class SessionRepository {
       schemaVersion: index.schemaVersion,
       projects: [...index.projects, project],
     );
-    await _saveIndex(next);
+    await _saveIndex(fs, next);
     return project;
   }
 
@@ -177,7 +175,8 @@ class SessionRepository {
     String primaryPath,
     List<String> additionalPaths,
   ) async {
-    final index = await _loadIndex();
+    final fs = await _fs();
+    final index = await _loadIndex(fs);
     final now = DateTime.now().millisecondsSinceEpoch;
     final projects = index.projects.map((proj) {
       if (proj.projectId != projectId) return proj;
@@ -189,14 +188,18 @@ class SessionRepository {
         updatedAt: now,
       );
     }).toList();
-    await _saveIndex(AppProjectsIndex(schemaVersion: index.schemaVersion, projects: projects));
+    await _saveIndex(
+      fs,
+      AppProjectsIndex(schemaVersion: index.schemaVersion, projects: projects),
+    );
   }
 
   Future<AppSession> createSession(
     String projectId, {
     String sessionTeam = '',
   }) async {
-    final index = await _loadIndex();
+    final fs = await _fs();
+    final index = await _loadIndex(fs);
     AppProject? project;
     for (final p in index.projects) {
       if (p.projectId == projectId) {
@@ -221,9 +224,8 @@ class SessionRepository {
       createdAt: now,
       updatedAt: now,
     );
-    await Directory(_sessionsDir).create(recursive: true);
-    final file = File(p.join(_sessionsDir, '$sessionId.json'));
-    await _atomicWriteFile(file, jsonEncode(session.toJson()));
+    await fs.ensureSessionsDir();
+    await fs.writeText(fs.sessionFile(sessionId), jsonEncode(session.toJson()));
 
     final nextProjects = index.projects.map((p) {
       if (p.projectId != projectId) return p;
@@ -232,15 +234,18 @@ class SessionRepository {
         updatedAt: now,
       );
     }).toList();
-    await _saveIndex(AppProjectsIndex(schemaVersion: index.schemaVersion, projects: nextProjects));
+    await _saveIndex(
+      fs,
+      AppProjectsIndex(schemaVersion: index.schemaVersion, projects: nextProjects),
+    );
     return session;
   }
 
-  Future<AppSession?> _readSession(String sessionId) async {
-    final file = File(p.join(_sessionsDir, '$sessionId.json'));
-    if (!await file.exists()) return null;
+  Future<AppSession?> _readSession(SessionRepositoryFs fs, String sessionId) async {
+    final raw = await fs.readText(fs.sessionFile(sessionId));
+    if (raw == null || raw.isEmpty) return null;
     try {
-      final json = jsonDecode(await file.readAsString());
+      final json = jsonDecode(raw);
       if (json is Map<String, Object?>) {
         return AppSession.fromJson(json);
       }
@@ -250,9 +255,11 @@ class SessionRepository {
     return null;
   }
 
-  Future<void> _writeSession(AppSession session) async {
-    final file = File(p.join(_sessionsDir, '${session.sessionId}.json'));
-    await _atomicWriteFile(file, jsonEncode(session.toJson()));
+  Future<void> _writeSession(SessionRepositoryFs fs, AppSession session) async {
+    await fs.writeText(
+      fs.sessionFile(session.sessionId),
+      jsonEncode(session.toJson()),
+    );
   }
 
   /// Single read/write after the PTY process is up: persists [launchTeam] (when
@@ -263,7 +270,8 @@ class SessionRepository {
     required String launchTeam,
   }) {
     return _withSessionFile(sessionId, () async {
-      final existing = await _readSession(sessionId);
+      final fs = await _fs();
+      final existing = await _readSession(fs, sessionId);
       if (existing == null) return;
       final now = DateTime.now().millisecondsSinceEpoch;
       final trimmed = launchTeam.trim();
@@ -275,17 +283,19 @@ class SessionRepository {
         next = next.copyWith(launchTeam: trimmed, updatedAt: now);
       }
       if (next == existing) return;
-      await _writeSession(next);
+      await _writeSession(fs, next);
     });
   }
 
   Future<void> markSessionStarted(String sessionId) {
     return _withSessionFile(sessionId, () async {
-      final existing = await _readSession(sessionId);
+      final fs = await _fs();
+      final existing = await _readSession(fs, sessionId);
       if (existing == null) return;
       if (existing.launchState == AppSessionLaunchState.started) return;
       final now = DateTime.now().millisecondsSinceEpoch;
       await _writeSession(
+        fs,
         existing.copyWith(
           launchState: AppSessionLaunchState.started,
           updatedAt: now,
@@ -296,10 +306,12 @@ class SessionRepository {
 
   Future<void> renameSession(String sessionId, String newName) {
     return _withSessionFile(sessionId, () async {
-      final existing = await _readSession(sessionId);
+      final fs = await _fs();
+      final existing = await _readSession(fs, sessionId);
       if (existing == null) return;
       final now = DateTime.now().millisecondsSinceEpoch;
       await _writeSession(
+        fs,
         existing.copyWith(display: newName, updatedAt: now),
       );
     });
@@ -308,49 +320,45 @@ class SessionRepository {
   /// Persists stable UI team id ([AppSession.sessionTeam], [TeamConfig.id]).
   Future<void> updateSessionTeam(String sessionId, String sessionTeam) {
     return _withSessionFile(sessionId, () async {
-      final existing = await _readSession(sessionId);
+      final fs = await _fs();
+      final existing = await _readSession(fs, sessionId);
       if (existing == null) return;
       final now = DateTime.now().millisecondsSinceEpoch;
       await _writeSession(
+        fs,
         existing.copyWith(sessionTeam: sessionTeam, updatedAt: now),
       );
     });
   }
 
   Future<void> clearAllSessionTeams() async {
-    final dir = Directory(_sessionsDir);
-    if (!await dir.exists()) return;
-    try {
-      await for (final entity in dir.list()) {
-        if (entity is! File || !entity.path.endsWith('.json')) continue;
-        try {
-          final content = await entity.readAsString();
-          final json = jsonDecode(content);
-          if (json is! Map<String, Object?>) continue;
-          final session = AppSession.fromJson(json);
-          await _withSessionFile(session.sessionId, () async {
-            final fresh = await _readSession(session.sessionId);
-            if (fresh == null) return;
-            await _writeSession(
-              fresh.copyWith(
-                sessionTeam: '',
-                launchTeam: '',
-                updatedAt: DateTime.now().millisecondsSinceEpoch,
-              ),
-            );
-          });
-        } on Object {
-          // per file
-        }
+    final fs = await _fs();
+    for (final json in await fs.listSessionJsonMaps()) {
+      try {
+        final session = AppSession.fromJson(json);
+        await _withSessionFile(session.sessionId, () async {
+          final innerFs = await _fs();
+          final fresh = await _readSession(innerFs, session.sessionId);
+          if (fresh == null) return;
+          await _writeSession(
+            innerFs,
+            fresh.copyWith(
+              sessionTeam: '',
+              launchTeam: '',
+              updatedAt: DateTime.now().millisecondsSinceEpoch,
+            ),
+          );
+        });
+      } on Object {
+        continue;
       }
-    } on Object {
-      // directory
     }
   }
 
   Future<void> deleteSession(String sessionId) async {
     await _withSessionFile(sessionId, () async {
-      final index = await _loadIndex();
+      final fs = await _fs();
+      final index = await _loadIndex(fs);
       final now = DateTime.now().millisecondsSinceEpoch;
       final projects = index.projects.map((p) {
         if (!p.sessionIds.contains(sessionId)) return p;
@@ -359,21 +367,17 @@ class SessionRepository {
           updatedAt: now,
         );
       }).toList();
-      await _saveIndex(AppProjectsIndex(schemaVersion: index.schemaVersion, projects: projects));
-
-      final file = File(p.join(_sessionsDir, '$sessionId.json'));
-      if (await file.exists()) {
-        try {
-          await file.delete();
-        } on Object {
-          // best effort
-        }
-      }
+      await _saveIndex(
+        fs,
+        AppProjectsIndex(schemaVersion: index.schemaVersion, projects: projects),
+      );
+      await fs.deleteFile(fs.sessionFile(sessionId));
     });
   }
 
   Future<void> deleteProject(String projectId) async {
-    final index = await _loadIndex();
+    final fs = await _fs();
+    final index = await _loadIndex(fs);
     AppProject? project;
     for (final p in index.projects) {
       if (p.projectId == projectId) {
@@ -385,19 +389,16 @@ class SessionRepository {
 
     for (final sid in project.sessionIds) {
       await _withSessionFile(sid, () async {
-        final file = File(p.join(_sessionsDir, '$sid.json'));
-        if (await file.exists()) {
-          try {
-            await file.delete();
-          } on Object {
-            // best effort
-          }
-        }
+        final innerFs = await _fs();
+        await innerFs.deleteFile(innerFs.sessionFile(sid));
       });
     }
 
     final next = index.projects.where((p) => p.projectId != projectId).toList();
-    await _saveIndex(AppProjectsIndex(schemaVersion: index.schemaVersion, projects: next));
+    await _saveIndex(
+      fs,
+      AppProjectsIndex(schemaVersion: index.schemaVersion, projects: next),
+    );
   }
 }
 

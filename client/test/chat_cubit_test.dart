@@ -304,7 +304,11 @@ void main() {
       );
       addTearDown(cubit.close);
 
-      cubit.openSessionTab(session, team: team, member: team.members.first);
+      await cubit.openSessionTab(
+        session,
+        team: team,
+        member: team.members.first,
+      );
       await pumpEventQueue();
 
       expect(cubit.state.tabs.length, 1);

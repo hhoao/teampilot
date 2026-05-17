@@ -33,18 +33,22 @@ void _navigateToSessionInChat(BuildContext context, AppSession session) {
   final lead = matchingTeam.members.where((m) => m.name == 'team-lead');
   final repo = context.read<SessionRepository>();
   if (lead.isNotEmpty) {
-    chatCubit.openSessionTab(
-      session,
-      team: matchingTeam,
-      member: lead.first,
-      repo: repo,
-      emptyDisplayTitleFallback: l10n.defaultNewChatSessionTitle,
+    unawaited(
+      chatCubit.openSessionTab(
+        session,
+        team: matchingTeam,
+        member: lead.first,
+        repo: repo,
+        emptyDisplayTitleFallback: l10n.defaultNewChatSessionTitle,
+      ),
     );
   } else {
-    chatCubit.openSessionTab(
-      session,
-      repo: repo,
-      emptyDisplayTitleFallback: l10n.defaultNewChatSessionTitle,
+    unawaited(
+      chatCubit.openSessionTab(
+        session,
+        repo: repo,
+        emptyDisplayTitleFallback: l10n.defaultNewChatSessionTitle,
+      ),
     );
     chatCubit.addSystemMessage('FlashskyAI requires a member named team-lead.');
   }
