@@ -4,7 +4,7 @@ import 'dart:io';
 import 'package:path/path.dart' as p;
 import 'package:teampilot/cubits/llm_config_cubit.dart';
 import 'package:teampilot/repositories/app_settings_repository.dart';
-import 'package:teampilot/repositories/llm_config_repository.dart';
+import 'package:teampilot/repositories/llm_config_store.dart';
 import 'package:teampilot/services/llm_config_path_resolver.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -35,7 +35,7 @@ void main() {
       currentDirectory: tmp.path,
       homeDirectory: '/home/test',
       executableResolver: () => '/opt/flashskyai/dist/flashskyai',
-      repositoryFactory: (path) => LlmConfigRepository(File(path)),
+      storeFactory: (path) => LocalLlmConfigStore(path),
     );
 
     await cubit.load();

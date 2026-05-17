@@ -1,13 +1,16 @@
 import 'dart:async';
-import 'dart:io';
 
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../models/llm_config.dart';
+import '../models/ssh_profile.dart';
 import '../repositories/app_settings_repository.dart';
-import '../repositories/llm_config_repository.dart';
+import '../repositories/llm_config_store.dart';
 import '../services/llm_config_path_resolver.dart';
+import '../services/remote_file_store.dart';
+import '../services/remote_home_resolver.dart';
+import '../services/ssh_client_factory.dart';
 import '../services/wsl_posix_path_for_windows_io.dart';
 import '../utils/logger.dart';
 
@@ -21,6 +24,7 @@ class LlmConfigState extends Equatable {
     this.configPathOverride = '',
     this.effectiveConfigPath = '',
     this.pathSource = LlmConfigPathSource.defaultPath,
+    this.storageIsRemote = false,
   });
 
   final LlmConfig config;
@@ -32,10 +36,13 @@ class LlmConfigState extends Equatable {
   /// Raw user-entered override (may contain ~). Empty means "use default".
   final String configPathOverride;
 
-  /// Absolute, normalized path actually used by the repository.
+  /// Absolute, normalized path used by the active store (local or remote).
   final String effectiveConfigPath;
 
   final LlmConfigPathSource pathSource;
+
+  /// True when [effectiveConfigPath] is read/written over SSH (SFTP).
+  final bool storageIsRemote;
 
   bool get isUsingCustomPath => pathSource == LlmConfigPathSource.userOverride;
 
@@ -56,6 +63,7 @@ class LlmConfigState extends Equatable {
     String? configPathOverride,
     String? effectiveConfigPath,
     LlmConfigPathSource? pathSource,
+    bool? storageIsRemote,
   }) {
     return LlmConfigState(
       config: config ?? this.config,
@@ -66,6 +74,7 @@ class LlmConfigState extends Equatable {
       configPathOverride: configPathOverride ?? this.configPathOverride,
       effectiveConfigPath: effectiveConfigPath ?? this.effectiveConfigPath,
       pathSource: pathSource ?? this.pathSource,
+      storageIsRemote: storageIsRemote ?? this.storageIsRemote,
     );
   }
 
@@ -79,10 +88,11 @@ class LlmConfigState extends Equatable {
         configPathOverride,
         effectiveConfigPath,
         pathSource,
+        storageIsRemote,
       ];
 }
 
-typedef LlmConfigRepositoryFactory = LlmConfigRepository Function(String path);
+typedef LlmConfigStoreFactory = LlmConfigStore Function(String path);
 
 class LlmConfigCubit extends Cubit<LlmConfigState> {
   LlmConfigCubit({
@@ -90,23 +100,36 @@ class LlmConfigCubit extends Cubit<LlmConfigState> {
     required String currentDirectory,
     required String? homeDirectory,
     String Function()? executableResolver,
-    LlmConfigRepositoryFactory? repositoryFactory,
+    LlmConfigStoreFactory? storeFactory,
+    bool Function()? isSshMode,
+    SshProfile? Function()? sshProfileResolver,
+    SshClientFactory? sshClientFactory,
+    String Function()? sshWorkingDirectoryResolver,
+    RemoteHomeResolver? remoteHomeResolver,
     LlmConfig initialConfig = const LlmConfig(),
   })  : _appSettings = appSettings,
         _currentDirectory = currentDirectory,
         _homeDirectory = homeDirectory,
         _executableResolver = executableResolver ?? (() => ''),
-        _repositoryFactory =
-            repositoryFactory ?? ((path) => LlmConfigRepository(File(path))),
-        super(LlmConfigState(
-            config: initialConfig, savedConfig: initialConfig));
+        _localStoreFactory = storeFactory ?? ((path) => LocalLlmConfigStore(path)),
+        _isSshMode = isSshMode,
+        _sshProfileResolver = sshProfileResolver,
+        _sshClientFactory = sshClientFactory,
+        _sshWorkingDirectoryResolver = sshWorkingDirectoryResolver,
+        _remoteHomeResolver = remoteHomeResolver,
+        super(LlmConfigState(config: initialConfig, savedConfig: initialConfig));
 
   final AppSettingsRepository _appSettings;
   final String _currentDirectory;
   final String? _homeDirectory;
   final String Function() _executableResolver;
-  final LlmConfigRepositoryFactory _repositoryFactory;
-  LlmConfigRepository? _repository;
+  final LlmConfigStoreFactory _localStoreFactory;
+  final bool Function()? _isSshMode;
+  final SshProfile? Function()? _sshProfileResolver;
+  final SshClientFactory? _sshClientFactory;
+  final String Function()? _sshWorkingDirectoryResolver;
+  final RemoteHomeResolver? _remoteHomeResolver;
+  LlmConfigStore? _store;
 
   void selectProvider(String name) {
     if (state.selectedProviderName == name) return;
@@ -118,35 +141,76 @@ class LlmConfigCubit extends Cubit<LlmConfigState> {
     emit(state.copyWith(isLoading: true));
 
     final override = await _appSettings.loadLlmConfigPathOverride();
+    final sshActive = _isSshMode?.call() ?? false;
+    final profile = sshActive ? _sshProfileResolver?.call() : null;
+    final useRemote =
+        sshActive && profile != null && _sshClientFactory != null;
+
+    var homeDirectory = _homeDirectory;
+    var currentDirectory = _currentDirectory;
+    if (useRemote) {
+      final factory = _sshClientFactory;
+      final remoteHome = await (_remoteHomeResolver ??
+              RemoteHomeResolver(clientFactory: factory))
+          .resolve(profile);
+      if (remoteHome != null && remoteHome.isNotEmpty) {
+        homeDirectory = remoteHome;
+      }
+      final workdir = _sshWorkingDirectoryResolver?.call().trim() ?? '';
+      currentDirectory = workdir.isNotEmpty
+          ? workdir
+          : (homeDirectory?.trim().isNotEmpty == true ? homeDirectory! : '/');
+    }
+
     final resolved = resolveLlmConfigPath(
       userOverride: override,
-      currentDirectory: _currentDirectory,
-      homeDirectory: _homeDirectory,
+      currentDirectory: currentDirectory,
+      homeDirectory: homeDirectory,
       cliExecutablePath: _executableResolver(),
+      usePosixPaths: useRemote,
     );
-    final pathForIo =
-        await windowsFilePathForPossibleWslPosixPath(resolved.path);
-    _repository = _repositoryFactory(pathForIo);
 
-    final config = await _repository!.load();
+    final effectivePath = useRemote
+        ? resolved.path
+        : await windowsFilePathForPossibleWslPosixPath(resolved.path);
+
+    if (useRemote) {
+      final factory = _sshClientFactory;
+      _store = RemoteLlmConfigStore(
+        remotePath: effectivePath,
+        fileStore: RemoteFileStore(
+          profile: profile,
+          clientFactory: factory,
+        ),
+      );
+    } else {
+      _store = _localStoreFactory(effectivePath);
+    }
+
+    final config = await _store!.load();
     emit(state.copyWith(
       config: config,
       savedConfig: config,
       isLoading: false,
       statusMessage: 'Loaded LLM config.',
       configPathOverride: override ?? '',
-      effectiveConfigPath: pathForIo,
+      effectiveConfigPath: effectivePath,
       pathSource: resolved.source,
+      storageIsRemote: useRemote,
     ));
     appLogger.i(
-        'LlmConfigCubit loaded ${config.providers.length} providers, ${config.models.length} models from $pathForIo (${resolved.source.name})');
+      'LlmConfigCubit loaded ${config.providers.length} providers, '
+      '${config.models.length} models from $effectivePath '
+      '(${resolved.source.name}, remote=$useRemote)',
+    );
   }
 
   /// Persist a new override and reload from the new path. Pass null or empty
   /// to clear the override and revert to the default path.
   Future<void> setConfigPath(String? rawOverride) async {
     final normalized = rawOverride?.trim();
-    final toStore = (normalized == null || normalized.isEmpty) ? null : normalized;
+    final toStore =
+        (normalized == null || normalized.isEmpty) ? null : normalized;
     await _appSettings.saveLlmConfigPathOverride(toStore);
     await load();
   }
@@ -154,14 +218,14 @@ class LlmConfigCubit extends Cubit<LlmConfigState> {
   Future<void> save() async {
     final previous = state.savedConfig;
     final current = state.config;
-    await _repository?.save(current, previous: previous);
+    await _store?.save(current, previous: previous);
     if (isClosed) return;
     emit(state.copyWith(
-        savedConfig: current, statusMessage: 'Saved LLM config.'));
+      savedConfig: current,
+      statusMessage: 'Saved LLM config.',
+    ));
   }
 
-  /// Writes [newConfig] to disk then emits once (avoids an intermediate
-  /// in-memory-only state and a second emit from [save]).
   Future<void> _persistConfigChange({
     required LlmConfig newConfig,
     required String statusMessage,
@@ -169,7 +233,7 @@ class LlmConfigCubit extends Cubit<LlmConfigState> {
     bool updateSelectedProvider = false,
   }) async {
     final previous = state.savedConfig;
-    await _repository?.save(newConfig, previous: previous);
+    await _store?.save(newConfig, previous: previous);
     if (isClosed) return;
     final nextSelection = updateSelectedProvider
         ? selectedProviderName
@@ -183,12 +247,14 @@ class LlmConfigCubit extends Cubit<LlmConfigState> {
       configPathOverride: state.configPathOverride,
       effectiveConfigPath: state.effectiveConfigPath,
       pathSource: state.pathSource,
+      storageIsRemote: state.storageIsRemote,
     ));
   }
 
   void addProvider(LlmProviderConfig provider) {
     final newConfig = state.config.copyWith(
-        providers: {...state.config.providers, provider.name: provider});
+      providers: {...state.config.providers, provider.name: provider},
+    );
     unawaited(_persistConfigChange(
       newConfig: newConfig,
       statusMessage: 'Added provider ${provider.name}.',
@@ -196,8 +262,7 @@ class LlmConfigCubit extends Cubit<LlmConfigState> {
   }
 
   void updateProvider(String name, LlmProviderConfig provider) {
-    final updated =
-        Map<String, LlmProviderConfig>.from(state.config.providers);
+    final updated = Map<String, LlmProviderConfig>.from(state.config.providers);
     updated[name] = provider;
     unawaited(_persistConfigChange(
       newConfig: state.config.copyWith(providers: updated),
@@ -206,8 +271,7 @@ class LlmConfigCubit extends Cubit<LlmConfigState> {
   }
 
   void deleteProvider(String name) {
-    final updated =
-        Map<String, LlmProviderConfig>.from(state.config.providers);
+    final updated = Map<String, LlmProviderConfig>.from(state.config.providers);
     updated.remove(name);
     final newSelected = state.selectedProviderName == name
         ? updated.keys.firstOrNull
@@ -223,14 +287,14 @@ class LlmConfigCubit extends Cubit<LlmConfigState> {
   void addModel(LlmModelConfig model) {
     unawaited(_persistConfigChange(
       newConfig: state.config.copyWith(
-          models: {...state.config.models, model.id: model}),
+        models: {...state.config.models, model.id: model},
+      ),
       statusMessage: 'Added model ${model.name}.',
     ));
   }
 
   void updateModel(String id, LlmModelConfig model) {
-    final updated =
-        Map<String, LlmModelConfig>.from(state.config.models);
+    final updated = Map<String, LlmModelConfig>.from(state.config.models);
     updated[id] = model;
     unawaited(_persistConfigChange(
       newConfig: state.config.copyWith(models: updated),
@@ -239,8 +303,7 @@ class LlmConfigCubit extends Cubit<LlmConfigState> {
   }
 
   void deleteModel(String id) {
-    final updated =
-        Map<String, LlmModelConfig>.from(state.config.models);
+    final updated = Map<String, LlmModelConfig>.from(state.config.models);
     updated.remove(id);
     unawaited(_persistConfigChange(
       newConfig: state.config.copyWith(models: updated),

@@ -144,5 +144,31 @@ void main() {
         expect(r.source, LlmConfigPathSource.defaultPath);
       });
     });
+
+    group('POSIX paths (SSH remote)', () {
+      test('expands ~/ with POSIX context', () {
+        final r = resolveLlmConfigPath(
+          userOverride: '~/llm/llm_config.json',
+          currentDirectory: '/var/ssh-cwd',
+          homeDirectory: '/home/remote',
+          cliExecutablePath: '/opt/flashskyai/dist/flashskyai',
+          usePosixPaths: true,
+        );
+        expect(r.path, '/home/remote/llm/llm_config.json');
+        expect(r.source, LlmConfigPathSource.userOverride);
+      });
+
+      test('default path uses POSIX layout from remote CLI', () {
+        final r = resolveLlmConfigPath(
+          userOverride: null,
+          currentDirectory: '/var/ssh-cwd',
+          homeDirectory: '/home/remote',
+          cliExecutablePath: '/opt/flashskyai/dist/flashskyai',
+          usePosixPaths: true,
+        );
+        expect(r.path, '/opt/flashskyai/llm/llm_config.json');
+        expect(r.source, LlmConfigPathSource.defaultPath);
+      });
+    });
   });
 }

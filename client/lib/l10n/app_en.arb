@@ -126,6 +126,7 @@
   "llmConfigPathBadgeCustom": "custom",
   "llmConfigPathPickerTitle": "Select llm_config.json",
   "llmConfigPathSessionCardDescription": "Absolute path to the LLM config file (llm_config.json). Leave empty to use the default path next to the CLI install.",
+  "llmConfigPathSessionCardDescriptionSsh": "Absolute path to llm_config.json on the remote SSH host. Leave empty to use the default path next to the remote CLI install.",
   "llmConfigCurrentEffectivePathPrefix": "Active file:",
   "llmConfigEffectivePathUnresolved": "Could not resolve a path yet (set the CLI location or enter a path).",
   "llmConfigOpenSessionSettings": "Session settings…",

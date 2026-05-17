@@ -261,8 +261,10 @@ class _SessionControlsState extends State<_SessionControls> {
                     ),
                   ],
                   selected: {state.preferences.connectionMode},
-                  onSelectionChanged: (selected) {
-                    widget.cubit.setConnectionMode(selected.first);
+                  onSelectionChanged: (selected) async {
+                    await widget.cubit.setConnectionMode(selected.first);
+                    if (!context.mounted) return;
+                    await context.read<LlmConfigCubit>().load();
                   },
                 ),
                 showDividerBelow: true,
@@ -289,7 +291,7 @@ class _SessionControlsState extends State<_SessionControls> {
                     const SizedBox(width: 6),
                     OutlinedButton.icon(
                       key: AppKeys.cliExecutablePathBrowseButton,
-                      onPressed: _pickFile,
+                      onPressed: isSshMode ? null : _pickFile,
                       icon: const Icon(Icons.folder_open_outlined, size: 16),
                       label: Text(l10n.cliExecutablePathBrowse),
                     ),
@@ -422,6 +424,9 @@ class _LlmConfigPathSettingsRowState extends State<_LlmConfigPathSettingsRow> {
   }
 
   Future<void> _pickFile() async {
+    final state = context.read<LlmConfigCubit>().state;
+    if (state.storageIsRemote) return;
+
     final l10n = context.l10n;
     final cubit = context.read<LlmConfigCubit>();
     final result = await FilePicker.platform.pickFiles(
@@ -487,9 +492,13 @@ class _LlmConfigPathSettingsRowState extends State<_LlmConfigPathSettingsRow> {
         ? '${l10n.cliExecutablePathUsing}$llmEffectiveDisplay'
         : null;
 
+    final isRemote = state.storageIsRemote;
+
     return SettingsLabeledStackedRow(
       title: l10n.llmConfigPathLabel,
-      subtitle: l10n.llmConfigPathSessionCardDescription,
+      subtitle: isRemote
+          ? l10n.llmConfigPathSessionCardDescriptionSsh
+          : l10n.llmConfigPathSessionCardDescription,
       body: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
@@ -509,13 +518,15 @@ class _LlmConfigPathSettingsRowState extends State<_LlmConfigPathSettingsRow> {
                   : (_) => _flushLlmConfigPathPersist(),
             ),
           ),
-          const SizedBox(width: 6),
-          OutlinedButton.icon(
-            key: AppKeys.llmConfigPathOverrideBrowseButton,
-            onPressed: state.isLoading ? null : _pickFile,
-            icon: const Icon(Icons.folder_open_outlined, size: 16),
-            label: Text(l10n.cliExecutablePathBrowse),
-          ),
+          if (!isRemote) ...[
+            const SizedBox(width: 6),
+            OutlinedButton.icon(
+              key: AppKeys.llmConfigPathOverrideBrowseButton,
+              onPressed: state.isLoading ? null : _pickFile,
+              icon: const Icon(Icons.folder_open_outlined, size: 16),
+              label: Text(l10n.cliExecutablePathBrowse),
+            ),
+          ],
           const SizedBox(width: 6),
           TextButton(
             key: AppKeys.llmConfigPathOverrideResetButton,

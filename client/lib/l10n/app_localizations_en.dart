@@ -367,6 +367,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'Absolute path to the LLM config file (llm_config.json). Leave empty to use the default path next to the CLI install.';
 
   @override
+  String get llmConfigPathSessionCardDescriptionSsh =>
+      'Absolute path to llm_config.json on the remote SSH host. Leave empty to use the default path next to the remote CLI install.';
+
+  @override
   String get llmConfigCurrentEffectivePathPrefix => 'Active file:';
 
   @override

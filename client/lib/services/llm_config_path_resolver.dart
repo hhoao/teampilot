@@ -26,36 +26,45 @@ ResolvedLlmConfigPath resolveLlmConfigPath({
   required String currentDirectory,
   required String? homeDirectory,
   required String? cliExecutablePath,
+  bool usePosixPaths = false,
 }) {
+  final ctx = usePosixPaths ? p.Context(style: p.Style.posix) : p.context;
+
   final raw = userOverride?.trim() ?? '';
   if (raw.isNotEmpty) {
-    final expanded = _expandHome(raw, homeDirectory);
-    final absolute = p.isAbsolute(expanded)
+    final expanded = _expandHome(raw, homeDirectory, ctx);
+    final absolute = _isAbsolute(expanded, usePosixPaths)
         ? expanded
-        : p.absolute(p.join(currentDirectory, expanded));
+        : ctx.normalize(ctx.join(currentDirectory, expanded));
     return ResolvedLlmConfigPath(
-        p.normalize(absolute), LlmConfigPathSource.userOverride);
+      ctx.normalize(absolute),
+      LlmConfigPathSource.userOverride,
+    );
   }
 
-  final cliCandidate = _cliInstallCandidate(cliExecutablePath);
+  final cliCandidate = _cliInstallCandidate(cliExecutablePath, ctx);
   return ResolvedLlmConfigPath(
     cliCandidate ?? '',
     LlmConfigPathSource.defaultPath,
   );
 }
 
-String? _cliInstallCandidate(String? cliExecutablePath) {
+bool _isAbsolute(String path, bool posix) {
+  if (posix) return path.startsWith('/');
+  return p.isAbsolute(path);
+}
+
+String? _cliInstallCandidate(String? cliExecutablePath, p.Context ctx) {
   if (cliExecutablePath == null || cliExecutablePath.isEmpty) return null;
   // CLI lives at <install>/dist/flashskyai; config sits at <install>/llm/...
   final trimmed = cliExecutablePath.trim();
   final linuxExe = _linuxExecutablePathForInstallLayout(trimmed);
   if (linuxExe != null) {
-    final posix = p.Context(style: p.Style.posix);
-    final cliDir = posix.dirname(linuxExe);
-    return posix.normalize(posix.join(cliDir, '..', 'llm', 'llm_config.json'));
+    final cliDir = ctx.dirname(linuxExe);
+    return ctx.normalize(ctx.join(cliDir, '..', 'llm', 'llm_config.json'));
   }
-  final cliDir = p.dirname(p.absolute(trimmed));
-  return p.normalize(p.join(cliDir, '..', 'llm', 'llm_config.json'));
+  final cliDir = ctx.dirname(ctx.absolute(trimmed));
+  return ctx.normalize(ctx.join(cliDir, '..', 'llm', 'llm_config.json'));
 }
 
 /// When [executable] is a Windows launch line `wsl.exe /path/to/flashskyai`,
@@ -68,11 +77,11 @@ String? _linuxExecutablePathForInstallLayout(String executable) {
   return parts[1];
 }
 
-String _expandHome(String input, String? home) {
+String _expandHome(String input, String? home, p.Context ctx) {
   if (input != '~' && !input.startsWith('~/') && !input.startsWith(r'~\')) {
     return input;
   }
   if (home == null || home.isEmpty) return input;
   if (input == '~') return home;
-  return p.join(home, input.substring(2));
+  return ctx.join(home, input.substring(2));
 }

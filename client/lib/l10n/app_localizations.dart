@@ -770,6 +770,12 @@ abstract class AppLocalizations {
   /// **'Absolute path to the LLM config file (llm_config.json). Leave empty to use the default path next to the CLI install.'**
   String get llmConfigPathSessionCardDescription;
 
+  /// No description provided for @llmConfigPathSessionCardDescriptionSsh.
+  ///
+  /// In en, this message translates to:
+  /// **'Absolute path to llm_config.json on the remote SSH host. Leave empty to use the default path next to the remote CLI install.'**
+  String get llmConfigPathSessionCardDescriptionSsh;
+
   /// No description provided for @llmConfigCurrentEffectivePathPrefix.
   ///
   /// In en, this message translates to:

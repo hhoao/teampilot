@@ -129,16 +129,59 @@ void main() async {
     locatedExecutable: cliLocated,
   );
 
-  final llmConfigCubit = LlmConfigCubit(
+  // SSH infrastructure (Android + future desktop)
+  final sshProfileRepo = SshProfileRepository();
+  final sshCredentialStore = const SecureSshCredentialStore(
+    FlutterSecureKeyValueStore(),
+  );
+  final sshKnownHostRepo = SharedPrefsSshKnownHostRepository(preferences);
+  final sshClientFactory = SshClientFactory(
+    credentialStore: sshCredentialStore,
+    knownHostRepository: sshKnownHostRepo,
+  );
+  final remoteCliLocator = RemoteFlashskyaiCliLocator(
+    clientFactory: sshClientFactory,
+  );
+
+  late final LlmConfigCubit llmConfigCubit;
+
+  final sshProfileCubit = SshProfileCubit(
+    profileRepository: sshProfileRepo,
+    credentialStore: sshCredentialStore,
+    locateRemoteCliPath: remoteCliLocator.locate,
+    onRemoteCliLocated: sessionPreferencesCubit.setCliExecutablePath,
+    invalidateProfileConnection: sshClientFactory.disconnectProfile,
+    enableRemoteCliDiscovery: () =>
+        Platform.isAndroid &&
+        sessionPreferencesCubit.state.preferences.connectionMode ==
+            ConnectionMode.ssh,
+    onActiveProfileChanged: () => llmConfigCubit.load(),
+  );
+
+  final connectionModeService = ConnectionModeService(
+    readPreferredMode: () =>
+        sessionPreferencesCubit.state.preferences.connectionMode,
+    hasSshProfiles: () => sshProfileCubit.state.hasProfiles,
+  );
+
+  llmConfigCubit = LlmConfigCubit(
     appSettings: appSettings,
     currentDirectory: Directory.current.path,
     homeDirectory: homeDirectory,
     executableResolver: () => sessionPreferencesCubit.resolveExecutable(),
+    isSshMode: () => connectionModeService.isSshMode,
+    sshProfileResolver: () => sshProfileCubit.state.selectedProfile,
+    sshClientFactory: sshClientFactory,
+    sshWorkingDirectoryResolver: () =>
+        sessionPreferencesCubit.state.preferences.defaultSshWorkingDirectory,
   );
 
   String? llmConfigPathOverrideForLaunch() {
     final s = llmConfigCubit.state;
-    return s.isUsingCustomPath ? s.effectiveConfigPath : null;
+    final path = s.effectiveConfigPath.trim();
+    if (path.isEmpty) return null;
+    if (connectionModeService.isSshMode) return path;
+    return s.isUsingCustomPath ? path : null;
   }
 
   final skillRepo = SkillRepository();
@@ -154,37 +197,6 @@ void main() async {
     onSkillUninstalled: teamCubit.removeSkillFromAllTeams,
   );
   final layoutCubit = LayoutCubit(repository: LayoutRepository(preferences));
-
-  // SSH infrastructure (Android + future desktop)
-  final sshProfileRepo = SshProfileRepository();
-  final sshCredentialStore = const SecureSshCredentialStore(
-    FlutterSecureKeyValueStore(),
-  );
-  final sshKnownHostRepo = SharedPrefsSshKnownHostRepository(preferences);
-  final sshClientFactory = SshClientFactory(
-    credentialStore: sshCredentialStore,
-    knownHostRepository: sshKnownHostRepo,
-  );
-  final remoteCliLocator = RemoteFlashskyaiCliLocator(
-    clientFactory: sshClientFactory,
-  );
-  final sshProfileCubit = SshProfileCubit(
-    profileRepository: sshProfileRepo,
-    credentialStore: sshCredentialStore,
-    locateRemoteCliPath: remoteCliLocator.locate,
-    onRemoteCliLocated: sessionPreferencesCubit.setCliExecutablePath,
-    invalidateProfileConnection: sshClientFactory.disconnectProfile,
-    enableRemoteCliDiscovery: () =>
-        Platform.isAndroid &&
-        sessionPreferencesCubit.state.preferences.connectionMode ==
-            ConnectionMode.ssh,
-  );
-
-  final connectionModeService = ConnectionModeService(
-    readPreferredMode: () =>
-        sessionPreferencesCubit.state.preferences.connectionMode,
-    hasSshProfiles: () => sshProfileCubit.state.hasProfiles,
-  );
 
   final transportFactory = TerminalTransportFactory(
     sshProfileRepository: sshProfileRepo,

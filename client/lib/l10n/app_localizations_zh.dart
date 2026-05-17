@@ -355,6 +355,10 @@ class AppLocalizationsZh extends AppLocalizations {
       'LLM 配置文件（llm_config.json）的绝对路径。留空则使用 CLI 安装目录旁的默认路径。';
 
   @override
+  String get llmConfigPathSessionCardDescriptionSsh =>
+      'SSH 远端主机上 llm_config.json 的绝对路径。留空则使用远端 CLI 安装目录旁的默认路径。';
+
+  @override
   String get llmConfigCurrentEffectivePathPrefix => '当前文件：';
 
   @override
