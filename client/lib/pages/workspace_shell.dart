@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 
 import '../l10n/l10n_extensions.dart';
@@ -333,6 +335,19 @@ class _TabChipState extends State<_TabChip> {
     _handleTabMenuSelection(selected);
   }
 
+  void _showTabContextMenuAtChipCenter() {
+    final box = context.findRenderObject();
+    if (box is! RenderBox || !box.hasSize) return;
+    final center = box.localToGlobal(
+      Offset(box.size.width / 2, box.size.height / 2),
+    );
+    _showTabContextMenu(center);
+  }
+
+  /// Touch platforms have no hover; keep tab actions visible on Android.
+  bool get _showTabActions =>
+      _hovered || _overflowMenuOpen || Platform.isAndroid;
+
   /// Whole-tab hover from [MouseRegion]. Avoids [InkWell] + nested
   /// [PopupMenuButton] ink fighting (hover patch only behind title text).
   Color _tabMaterialColor(BuildContext context) {
@@ -367,6 +382,9 @@ class _TabChipState extends State<_TabChip> {
               onTap: widget.onTap,
               onSecondaryTapUp: (details) =>
                   _showTabContextMenu(details.globalPosition),
+              onLongPress: Platform.isAndroid
+                  ? _showTabContextMenuAtChipCenter
+                  : null,
               child: Container(
                 width: 200,
                 padding: const EdgeInsets.only(left: 12, top: 6, right: 12),
@@ -411,7 +429,7 @@ class _TabChipState extends State<_TabChip> {
                         ),
                       ),
                     ),
-                    if (_hovered || _overflowMenuOpen) ...[
+                    if (_showTabActions) ...[
                       const SizedBox(width: 4),
                       PopupMenuButton<String>(
                         tooltip: '',
