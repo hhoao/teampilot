@@ -412,7 +412,7 @@
   "selectAgent": "Select an agent",
   "agentBuiltInNone": "Default",
   "agentBuiltInCustom": "Custom…",
-  "agentBuiltInSubtitle": "Preset built-in agents.",
+  "agentBuiltInSubtitle": "Built-in presets and agents from ~/.flashskyai/agents.",
   "agentCustomIdHint": "Custom agent id",
   "memberExtraArgs": "Member extra CLI arguments",
   "memberDangerouslySkipPermissions": "Skip all permission checks",

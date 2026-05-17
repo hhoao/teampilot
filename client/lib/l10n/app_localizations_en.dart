@@ -872,7 +872,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get agentBuiltInCustom => 'Custom…';
 
   @override
-  String get agentBuiltInSubtitle => 'Preset built-in agents.';
+  String get agentBuiltInSubtitle =>
+      'Built-in presets and agents from ~/.flashskyai/agents.';
 
   @override
   String get agentCustomIdHint => 'Custom agent id';

@@ -266,7 +266,7 @@
   "selectAgent": "选择 Agent",
   "agentBuiltInNone": "默认",
   "agentBuiltInCustom": "自定义…",
-  "agentBuiltInSubtitle": "内置预设 Agent。",
+  "agentBuiltInSubtitle": "内置预设及 ~/.flashskyai/agents 下的用户 Agent。",
   "agentCustomIdHint": "自定义 Agent 标识",
   "memberExtraArgs": "成员额外 CLI 参数",
   "memberDangerouslySkipPermissions": "跳过所有权限检查",

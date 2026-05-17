@@ -854,7 +854,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get agentBuiltInCustom => '自定义…';
 
   @override
-  String get agentBuiltInSubtitle => '内置预设 Agent。';
+  String get agentBuiltInSubtitle => '内置预设及 ~/.flashskyai/agents 下的用户 Agent。';
 
   @override
   String get agentCustomIdHint => '自定义 Agent 标识';

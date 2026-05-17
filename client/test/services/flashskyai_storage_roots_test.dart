@@ -10,6 +10,7 @@ void main() {
     expect(snap.storageIsRemote, isFalse);
     expect(snap.teamsUiDir, AppStorage.teamsDir);
     expect(snap.cliTeamsDir, AppStorage.cliTeamsDir);
+    expect(snap.cliAgentsDir, AppStorage.cliAgentsDir);
     expect(snap.remoteFileStore, isNull);
   });
 
@@ -33,6 +34,7 @@ void main() {
       skillsRoot: AppStorage.skillsDirForTeampilotRoot(teampilotRoot),
       skillBackupsDir: AppStorage.skillBackupsDirForTeampilotRoot(teampilotRoot),
       cliSkillsDir: '$dataDir/skills',
+      cliAgentsDir: '$dataDir/agents',
       appProjectsDir: AppStorage.appProjectsDirForTeampilotRoot(teampilotRoot),
       skillReposConfigPath:
           AppStorage.skillReposConfigPathForTeampilotRoot(teampilotRoot),
@@ -45,6 +47,7 @@ void main() {
     expect(snap.cliTeamsDir, '/home/remote/.flashskyai/teams');
     expect(snap.skillsRoot, '$teampilotRoot/skills');
     expect(snap.cliSkillsDir, '/home/remote/.flashskyai/skills');
+    expect(snap.cliAgentsDir, '/home/remote/.flashskyai/agents');
     expect(snap.appProjectsDir, '$teampilotRoot/projects');
     expect(snap.skillReposConfigPath, '$teampilotRoot/skills.json');
     expect(

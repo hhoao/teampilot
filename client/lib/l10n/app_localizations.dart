@@ -1697,7 +1697,7 @@ abstract class AppLocalizations {
   /// No description provided for @agentBuiltInSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Preset built-in agents.'**
+  /// **'Built-in presets and agents from ~/.flashskyai/agents.'**
   String get agentBuiltInSubtitle;
 
   /// No description provided for @agentCustomIdHint.

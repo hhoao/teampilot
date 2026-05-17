@@ -3,13 +3,14 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import '../constants/flashskyai_built_in_agents.dart';
 import '../cubits/llm_config_cubit.dart';
 import '../cubits/skill_cubit.dart';
 import '../cubits/team_cubit.dart';
 import '../l10n/l10n_extensions.dart';
 import '../models/skill.dart';
 import '../models/team_config.dart';
+import '../services/flashskyai_agent_catalog_service.dart';
+import '../services/flashskyai_storage_roots.dart';
 import '../services/platform_utils.dart';
 import '../utils/app_keys.dart';
 import '../widgets/app_outline_text_field.dart';
@@ -42,19 +43,23 @@ String _teamLoopChoiceLabel(AppLocalizations l10n, String? key) {
 String _memberAgentDropdownItemLabel(
   BuildContext context,
   AppLocalizations l10n,
-  String value,
-) {
-  if (value == FlashskyBuiltInAgents.noneDropdownValue) {
+  String value, {
+  List<String> userAgentIds = const [],
+}) {
+  if (value == FlashskyaiAgentCatalog.noneDropdownValue) {
     return l10n.agentBuiltInNone;
   }
-  if (value == FlashskyBuiltInAgents.customDropdownValue) {
+  if (value == FlashskyaiAgentCatalog.customDropdownValue) {
     return l10n.agentBuiltInCustom;
   }
-  final ent = FlashskyBuiltInAgents.tryParseBuiltinId(value);
+  final ent = FlashskyaiAgentCatalog.tryParseBuiltinId(value);
   if (ent != null) {
     final zh = Localizations.localeOf(context).languageCode == 'zh';
     final hint = zh ? ent.modelHintZh : ent.modelHintEn;
     return '${ent.id} · $hint';
+  }
+  if (userAgentIds.contains(value)) {
+    return value;
   }
   return value;
 }
@@ -1056,11 +1061,22 @@ class _MemberConfigFormState extends State<_MemberConfigForm> {
   late TextEditingController _agentCtl;
   late TextEditingController _argsCtl;
   late TextEditingController _promptCtl;
+  List<String> _userAgentIds = const [];
 
   @override
   void initState() {
     super.initState();
     _syncControllers(widget.member);
+    _loadUserAgents();
+  }
+
+  Future<void> _loadUserAgents() async {
+    final storageRoots = context.read<FlashskyaiStorageRoots>();
+    final ids = await FlashskyaiAgentCatalogService(
+      storageRoots: storageRoots,
+    ).listUserAgentIds();
+    if (!mounted) return;
+    setState(() => _userAgentIds = ids);
   }
 
   void _syncControllers(TeamMemberConfig m) {
@@ -1164,26 +1180,39 @@ class _MemberConfigFormState extends State<_MemberConfigForm> {
         ),
         const SizedBox(height: 8),
         FlashskyDropdownField<String>(
-          key: ValueKey('member-agent-dd-${widget.member.id}-${m.agent}'),
-          items: FlashskyBuiltInAgents.dropdownValues(),
-          initialItem: FlashskyBuiltInAgents.activeDropdownValue(m.agent),
+          key: ValueKey(
+            'member-agent-dd-${widget.member.id}-${m.agent}-${_userAgentIds.join(",")}',
+          ),
+          items: FlashskyaiAgentCatalog.dropdownValues(
+            userAgentIds: _userAgentIds,
+          ),
+          initialItem: FlashskyaiAgentCatalog.activeDropdownValue(
+            m.agent,
+            userAgentIds: _userAgentIds,
+          ),
           hintText: l10n.selectAgent,
           decoration: dropdownDeco,
           headerMaxLines: 2,
           listItemMaxLines: 2,
-          itemLabel: (value) =>
-              _memberAgentDropdownItemLabel(context, l10n, value),
+          itemLabel: (value) => _memberAgentDropdownItemLabel(
+            context,
+            l10n,
+            value,
+            userAgentIds: _userAgentIds,
+          ),
           onChanged: (value) {
-            final v = value ?? FlashskyBuiltInAgents.noneDropdownValue;
-            if (v == FlashskyBuiltInAgents.noneDropdownValue) {
+            final v = value ?? FlashskyaiAgentCatalog.noneDropdownValue;
+            if (v == FlashskyaiAgentCatalog.noneDropdownValue) {
               _agentCtl.clear();
               _update(m.copyWith(agent: ''));
-            } else if (v == FlashskyBuiltInAgents.customDropdownValue) {
+            } else if (v == FlashskyaiAgentCatalog.customDropdownValue) {
               final current = m.agent.trim();
-              final next =
-                  FlashskyBuiltInAgents.tryParseBuiltinId(current) == null
-                  ? current
-                  : '';
+              final next = FlashskyaiAgentCatalog.isKnownAgentId(
+                current,
+                userAgentIds: _userAgentIds,
+              )
+                  ? ''
+                  : current;
               _agentCtl.text = next;
               _update(m.copyWith(agent: next));
             } else {
@@ -1192,8 +1221,11 @@ class _MemberConfigFormState extends State<_MemberConfigForm> {
             }
           },
         ),
-        if (FlashskyBuiltInAgents.activeDropdownValue(m.agent) ==
-            FlashskyBuiltInAgents.customDropdownValue) ...[
+        if (FlashskyaiAgentCatalog.activeDropdownValue(
+              m.agent,
+              userAgentIds: _userAgentIds,
+            ) ==
+            FlashskyaiAgentCatalog.customDropdownValue) ...[
           const SizedBox(height: 8),
           AppOutlineTextField(
             controller: _agentCtl,

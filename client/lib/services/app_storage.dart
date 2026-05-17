@@ -41,6 +41,9 @@ class AppStorage {
 
   static String get cliProjectsDir => p.join(flashskyaiDataDir, 'projects');
 
+  /// CLI user-defined agents (`agents/*.md`, e.g. `image-analyzer.md`).
+  static String get cliAgentsDir => p.join(flashskyaiDataDir, 'agents');
+
   /// Bucket folder name the CLI uses under `projects/` for a workspace path
   /// (e.g. `/home/hhoa/agent` → `-home-hhoa-agent`,
   /// `D:\repo` → `-mnt-d-repo`).

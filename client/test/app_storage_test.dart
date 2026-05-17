@@ -5,6 +5,17 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 
 void main() {
+  test('cliAgentsDir is under flashskyai data root', () {
+    expect(
+      AppStorage.cliAgentsDir,
+      endsWith('${Platform.pathSeparator}agents'),
+    );
+    expect(
+      AppStorage.cliAgentsDir,
+      startsWith(AppStorage.flashskyaiDataDir),
+    );
+  });
+
   test('cliProjectBucketForPrimaryPath matches CLI projects layout', () {
     expect(
       AppStorage.cliProjectBucketForPrimaryPath('/home/hhoa/agent'),

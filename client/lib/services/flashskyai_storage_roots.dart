@@ -23,6 +23,7 @@ class StorageRootsSnapshot {
     required this.skillsRoot,
     required this.skillBackupsDir,
     required this.cliSkillsDir,
+    required this.cliAgentsDir,
     required this.appProjectsDir,
     required this.skillReposConfigPath,
     required this.tempTeamRegistryPath,
@@ -39,6 +40,7 @@ class StorageRootsSnapshot {
       skillsRoot: p.join(AppStorage.basePath, 'skills'),
       skillBackupsDir: p.join(AppStorage.basePath, 'skill-backups'),
       cliSkillsDir: p.join(AppStorage.flashskyaiDataDir, 'skills'),
+      cliAgentsDir: AppStorage.cliAgentsDir,
       appProjectsDir: AppStorage.appProjectsDir,
       skillReposConfigPath: AppStorage.skillReposConfigPath,
       tempTeamRegistryPath: AppStorage.tempTeamRegistryPath,
@@ -55,6 +57,9 @@ class StorageRootsSnapshot {
   final String skillsRoot;
   final String skillBackupsDir;
   final String cliSkillsDir;
+
+  /// User agent markdown under the CLI data root (`agents/*.md`).
+  final String cliAgentsDir;
 
   /// `projects.json` + `sessions/` (app session index).
   final String appProjectsDir;
@@ -169,6 +174,7 @@ class FlashskyaiStorageRoots {
       skillsRoot: AppStorage.skillsDirForTeampilotRoot(teampilot),
       skillBackupsDir: AppStorage.skillBackupsDirForTeampilotRoot(teampilot),
       cliSkillsDir: posix.join(dataDir, 'skills'),
+      cliAgentsDir: posix.join(dataDir, 'agents'),
       appProjectsDir: AppStorage.appProjectsDirForTeampilotRoot(teampilot),
       skillReposConfigPath:
           AppStorage.skillReposConfigPathForTeampilotRoot(teampilot),

@@ -276,52 +276,55 @@ void main() {
       expect(cubit.state.selectedMemberId, 'm-lead');
     });
 
-    test('openSessionTab starts all members when auto-launch enabled', () async {
-      final fakeSessions = <_FakeTerminalSession>[];
-      const session = AppSession(
-        sessionId: 'session-1',
-        projectId: 'project-1',
-        primaryPath: '/tmp',
-        createdAt: 1,
-      );
-      const team = TeamConfig(
-        id: 'team-a',
-        name: 'A',
-        members: [
-          TeamMemberConfig(id: 'm-lead', name: 'team-lead'),
-          TeamMemberConfig(id: 'm-dev', name: 'developer'),
-        ],
-      );
-      final cubit = ChatCubit(
-        executableResolver: () => 'true',
-        terminalSessionFactory: ({required String executable}) {
-          final fake = _FakeTerminalSession(executable: executable);
-          fakeSessions.add(fake);
-          return fake;
-        },
-        postFrameScheduler: (c) => c(),
-        autoLaunchAllMembersOnConnect: () => true,
-      );
-      addTearDown(cubit.close);
+    test(
+      'openSessionTab starts all members when auto-launch enabled',
+      () async {
+        final fakeSessions = <_FakeTerminalSession>[];
+        const session = AppSession(
+          sessionId: 'session-1',
+          projectId: 'project-1',
+          primaryPath: '/tmp',
+          createdAt: 1,
+        );
+        const team = TeamConfig(
+          id: 'team-a',
+          name: 'A',
+          members: [
+            TeamMemberConfig(id: 'm-lead', name: 'team-lead'),
+            TeamMemberConfig(id: 'm-dev', name: 'developer'),
+          ],
+        );
+        final cubit = ChatCubit(
+          executableResolver: () => 'true',
+          terminalSessionFactory: ({required String executable}) {
+            final fake = _FakeTerminalSession(executable: executable);
+            fakeSessions.add(fake);
+            return fake;
+          },
+          postFrameScheduler: (c) => c(),
+          autoLaunchAllMembersOnConnect: () => true,
+        );
+        addTearDown(cubit.close);
 
-      await cubit.openSessionTab(
-        session,
-        team: team,
-        member: team.members.first,
-      );
-      await pumpEventQueue();
+        await cubit.openSessionTab(
+          session,
+          team: team,
+          member: team.members.first,
+        );
+        await pumpEventQueue();
 
-      expect(cubit.state.tabs.length, 1);
-      expect(cubit.isMemberRunning('m-lead'), isTrue);
-      expect(cubit.isMemberRunning('m-dev'), isTrue);
-      expect(cubit.state.selectedMemberId, 'm-lead');
-      expect(fakeSessions, hasLength(2));
-      expect(
-        fakeSessions.map((session) => session.connectedSessionTeams.single),
-        everyElement(fakeSessions.first.connectedSessionTeams.single),
-      );
-      expect(fakeSessions.first.connectedSessionTeams.single, isNotEmpty);
-    });
+        expect(cubit.state.tabs.length, 1);
+        expect(cubit.isMemberRunning('m-lead'), isTrue);
+        expect(cubit.isMemberRunning('m-dev'), isTrue);
+        expect(cubit.state.selectedMemberId, 'm-lead');
+        expect(fakeSessions, hasLength(2));
+        expect(
+          fakeSessions.map((session) => session.connectedSessionTeams.single),
+          everyElement(fakeSessions.first.connectedSessionTeams.single),
+        );
+        expect(fakeSessions.first.connectedSessionTeams.single, isNotEmpty);
+      },
+    );
 
     test(
       'connectSession auto-launch does not reconnect queued member shells',
