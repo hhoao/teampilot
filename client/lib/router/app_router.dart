@@ -242,58 +242,81 @@ Future<void> _createProject(BuildContext context) async {
     final teamId = context.read<TeamCubit>().state.selectedTeam?.id ?? '';
     await context.read<ChatCubit>().createProjectWithFirstSession(
       path.trim(),
-      SessionRepository(),
+      context.read<SessionRepository>(),
       sessionTeamId: teamId,
     );
   }
 }
 
 Future<String?> _promptRemoteProjectPath(BuildContext context) {
-  final controller = TextEditingController(text: '~/');
-  final formKey = GlobalKey<FormState>();
   return showDialog<String>(
     context: context,
-    builder: (dialogContext) {
-      return AlertDialog(
-        title: const Text('Remote Project Path'),
-        content: Form(
-          key: formKey,
-          child: TextFormField(
-            controller: controller,
-            autofocus: true,
-            decoration: const InputDecoration(
-              labelText: 'Path on SSH host',
-              hintText: '~/work/project',
-            ),
-            textInputAction: TextInputAction.done,
-            validator: (value) {
-              if (value == null || value.trim().isEmpty) {
-                return 'Required';
-              }
-              return null;
-            },
-            onFieldSubmitted: (_) {
-              if (formKey.currentState?.validate() != true) return;
-              Navigator.of(dialogContext).pop(controller.text.trim());
-            },
+    builder: (dialogContext) => const _RemoteProjectPathDialog(),
+  );
+}
+
+class _RemoteProjectPathDialog extends StatefulWidget {
+  const _RemoteProjectPathDialog();
+
+  @override
+  State<_RemoteProjectPathDialog> createState() =>
+      _RemoteProjectPathDialogState();
+}
+
+class _RemoteProjectPathDialogState extends State<_RemoteProjectPathDialog> {
+  final _formKey = GlobalKey<FormState>();
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: '~/');
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    if (_formKey.currentState?.validate() != true) return;
+    Navigator.of(context).pop(_controller.text.trim());
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Remote Project Path'),
+      content: Form(
+        key: _formKey,
+        child: TextFormField(
+          controller: _controller,
+          autofocus: true,
+          decoration: const InputDecoration(
+            labelText: 'Path on SSH host',
+            hintText: '~/work/project',
           ),
+          textInputAction: TextInputAction.done,
+          validator: (value) {
+            if (value == null || value.trim().isEmpty) {
+              return 'Required';
+            }
+            return null;
+          },
+          onFieldSubmitted: (_) => _submit(),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () {
-              if (formKey.currentState?.validate() != true) return;
-              Navigator.of(dialogContext).pop(controller.text.trim());
-            },
-            child: const Text('Create'),
-          ),
-        ],
-      );
-    },
-  ).whenComplete(() {
-    controller.dispose();
-  });
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: _submit,
+          child: const Text('Create'),
+        ),
+      ],
+    );
+  }
 }

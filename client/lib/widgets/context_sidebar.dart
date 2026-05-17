@@ -285,7 +285,7 @@ class _ProjectGroupState extends State<_ProjectGroup> {
     BuildContext context,
     String projectId,
   ) async {
-    final repo = SessionRepository();
+    final repo = context.read<SessionRepository>();
     final teamId = context.read<TeamCubit>().state.selectedTeam?.id ?? '';
     final session = await context.read<ChatCubit>().createSession(
       projectId,
@@ -322,6 +322,7 @@ class _ProjectGroupState extends State<_ProjectGroup> {
     String name,
   ) {
     final l10n = context.l10n;
+    final repo = context.read<SessionRepository>();
     showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -339,7 +340,7 @@ class _ProjectGroupState extends State<_ProjectGroup> {
             onPressed: () {
               unawaited(
                 context.read<ChatCubit>().deleteProject(
-                  SessionRepository(),
+                  repo,
                   project.projectId,
                 ),
               );
@@ -384,20 +385,118 @@ class _ProjectHeaderState extends State<_ProjectHeader> {
   var _hovered = false;
   var _menuOpen = false;
 
+  bool get _hasOverflowMenu =>
+      widget.onOpenFolder != null ||
+      widget.onCopyPath != null ||
+      widget.onDelete != null;
+
+  bool get _showActions =>
+      _hovered || _menuOpen || Platform.isAndroid;
+
+  List<PopupMenuEntry<String>> _projectMenuEntries(BuildContext context) {
+    final l10n = context.l10n;
+    return [
+      if (widget.onOpenFolder != null)
+        PopupMenuItem(
+          value: 'openFolder',
+          child: Row(
+            children: [
+              const Icon(Icons.folder_open, size: 18),
+              const SizedBox(width: 8),
+              Text(l10n.openFolder),
+            ],
+          ),
+        ),
+      if (widget.onCopyPath != null)
+        PopupMenuItem(
+          value: 'copyPath',
+          child: Row(
+            children: [
+              const Icon(Icons.copy, size: 18),
+              const SizedBox(width: 8),
+              Text(l10n.copyFolderPath),
+            ],
+          ),
+        ),
+      if (widget.onDelete != null)
+        PopupMenuItem(
+          value: 'delete',
+          child: Row(
+            children: [
+              Icon(
+                Icons.delete_outline,
+                size: 18,
+                color: Theme.of(context).colorScheme.error,
+              ),
+              const SizedBox(width: 8),
+              Text(l10n.deleteProject),
+            ],
+          ),
+        ),
+    ];
+  }
+
+  void _handleProjectMenuSelection(String value) {
+    switch (value) {
+      case 'openFolder':
+        widget.onOpenFolder?.call();
+        break;
+      case 'copyPath':
+        widget.onCopyPath?.call();
+        break;
+      case 'delete':
+        widget.onDelete?.call();
+        break;
+    }
+  }
+
+  Future<void> _showProjectContextMenu(Offset globalPosition) async {
+    if (!mounted || !_hasOverflowMenu) return;
+    final overlayObject = Overlay.maybeOf(context)?.context.findRenderObject();
+    if (overlayObject is! RenderBox) return;
+
+    final anchor = overlayObject.globalToLocal(globalPosition);
+    setState(() => _menuOpen = true);
+    final selected = await showMenu<String>(
+      context: context,
+      position: RelativeRect.fromRect(
+        Rect.fromPoints(anchor, anchor),
+        Offset.zero & overlayObject.size,
+      ),
+      items: _projectMenuEntries(context),
+    );
+    if (!mounted) return;
+    setState(() => _menuOpen = false);
+    if (selected == null) return;
+    _handleProjectMenuSelection(selected);
+  }
+
+  void _showProjectContextMenuAtCenter() {
+    final box = context.findRenderObject();
+    if (box is! RenderBox || !box.hasSize) return;
+    final center = box.localToGlobal(
+      Offset(box.size.width / 2, box.size.height / 2),
+    );
+    unawaited(_showProjectContextMenu(center));
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textBase = isDark ? Colors.white : const Color(0xFF111827);
     final cs = Theme.of(context).colorScheme;
-    final showActions = _hovered || _menuOpen;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 4, top: 4),
       child: MouseRegion(
         onEnter: (_) => setState(() => _hovered = true),
         onExit: (_) => setState(() => _hovered = false),
-        child: Material(
+        child: GestureDetector(
+          onLongPress: Platform.isAndroid && _hasOverflowMenu
+              ? _showProjectContextMenuAtCenter
+              : null,
+          child: Material(
           color: Colors.transparent,
           borderRadius: BorderRadius.circular(8),
           child: Ink(
@@ -453,7 +552,7 @@ class _ProjectHeaderState extends State<_ProjectHeader> {
                 // uses a tall minimum touch target, so toggling visibility used to
                 // change the row height on hover.
                 Visibility(
-                  visible: showActions,
+                  visible: _showActions,
                   maintainSize: true,
                   maintainState: true,
                   maintainAnimation: true,
@@ -471,9 +570,7 @@ class _ProjectHeaderState extends State<_ProjectHeader> {
                           ),
                         ),
                       ),
-                      if (widget.onOpenFolder != null ||
-                          widget.onCopyPath != null ||
-                          widget.onDelete != null)
+                      if (_hasOverflowMenu)
                         PopupMenuButton<String>(
                           tooltip: '',
                           padding: EdgeInsets.zero,
@@ -486,59 +583,9 @@ class _ProjectHeaderState extends State<_ProjectHeader> {
                           onCanceled: () => setState(() => _menuOpen = false),
                           onSelected: (value) {
                             setState(() => _menuOpen = false);
-                            switch (value) {
-                              case 'openFolder':
-                                widget.onOpenFolder?.call();
-                                break;
-                              case 'copyPath':
-                                widget.onCopyPath?.call();
-                                break;
-                              case 'delete':
-                                widget.onDelete?.call();
-                                break;
-                            }
+                            _handleProjectMenuSelection(value);
                           },
-                          itemBuilder: (context) => [
-                            if (widget.onOpenFolder != null)
-                              PopupMenuItem(
-                                value: 'openFolder',
-                                child: Row(
-                                  children: [
-                                    const Icon(Icons.folder_open, size: 18),
-                                    const SizedBox(width: 8),
-                                    Text(l10n.openFolder),
-                                  ],
-                                ),
-                              ),
-                            if (widget.onCopyPath != null)
-                              PopupMenuItem(
-                                value: 'copyPath',
-                                child: Row(
-                                  children: [
-                                    const Icon(Icons.copy, size: 18),
-                                    const SizedBox(width: 8),
-                                    Text(l10n.copyFolderPath),
-                                  ],
-                                ),
-                              ),
-                            if (widget.onDelete != null)
-                              PopupMenuItem(
-                                value: 'delete',
-                                child: Row(
-                                  children: [
-                                    Icon(
-                                      Icons.delete_outline,
-                                      size: 18,
-                                      color: Theme.of(
-                                        context,
-                                      ).colorScheme.error,
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Text(l10n.deleteProject),
-                                  ],
-                                ),
-                              ),
-                          ],
+                          itemBuilder: _projectMenuEntries,
                         ),
                     ],
                   ),
@@ -546,6 +593,7 @@ class _ProjectHeaderState extends State<_ProjectHeader> {
               ],
             ),
           ),
+        ),
         ),
       ),
     );
@@ -608,6 +656,18 @@ class _SessionTileEntryState extends State<_SessionTileEntry> {
     ];
   }
 
+  void _showSessionContextMenuAtCenter() {
+    final box = context.findRenderObject();
+    if (box is! RenderBox || !box.hasSize) return;
+    final center = box.localToGlobal(
+      Offset(box.size.width / 2, box.size.height / 2),
+    );
+    unawaited(_showSessionContextMenu(center));
+  }
+
+  bool get _showSessionActions =>
+      _hovered || _menuOpen || Platform.isAndroid;
+
   @override
   Widget build(BuildContext context) {
     final session = widget.session;
@@ -628,10 +688,13 @@ class _SessionTileEntryState extends State<_SessionTileEntry> {
         onTap: () => _navigateToSessionInChat(context, session),
         onSecondaryTapUp: (details) =>
             _showSessionContextMenu(details.globalPosition),
+        onLongPress: Platform.isAndroid
+            ? _showSessionContextMenuAtCenter
+            : null,
         trailing: SizedBox(
           width: 24,
           height: 24,
-          child: _hovered || _menuOpen
+          child: _showSessionActions
               ? PopupMenuButton<String>(
                   tooltip: '',
                   padding: EdgeInsets.zero,
@@ -663,6 +726,7 @@ class _SessionTileEntryState extends State<_SessionTileEntry> {
     AppSession session,
     AppLocalizations l10n,
   ) {
+    final repo = context.read<SessionRepository>();
     final controller = TextEditingController(
       text: session.resolveDisplayTitle(l10n.defaultNewChatSessionTitle),
     );
@@ -678,7 +742,7 @@ class _SessionTileEntryState extends State<_SessionTileEntry> {
             if (value.trim().isNotEmpty) {
               unawaited(
                 context.read<ChatCubit>().renameSession(
-                  SessionRepository(),
+                  repo,
                   session.sessionId,
                   value.trim(),
                 ),
@@ -698,7 +762,7 @@ class _SessionTileEntryState extends State<_SessionTileEntry> {
               if (value.isNotEmpty) {
                 unawaited(
                   context.read<ChatCubit>().renameSession(
-                    SessionRepository(),
+                    repo,
                     session.sessionId,
                     value,
                   ),
@@ -718,6 +782,7 @@ class _SessionTileEntryState extends State<_SessionTileEntry> {
     AppSession session,
     AppLocalizations l10n,
   ) {
+    final repo = context.read<SessionRepository>();
     final name = session.resolveDisplayTitle(l10n.defaultNewChatSessionTitle);
     showDialog<void>(
       context: context,
@@ -736,7 +801,7 @@ class _SessionTileEntryState extends State<_SessionTileEntry> {
             onPressed: () {
               unawaited(
                 context.read<ChatCubit>().deleteSession(
-                  SessionRepository(),
+                  repo,
                   session.sessionId,
                 ),
               );
@@ -984,6 +1049,7 @@ class _SidebarTile extends StatelessWidget {
     this.rowHovered = false,
     this.onTap,
     this.onSecondaryTapUp,
+    this.onLongPress,
     this.trailing,
     this.contentLeftInset = 0,
     super.key,
@@ -998,6 +1064,7 @@ class _SidebarTile extends StatelessWidget {
   final bool rowHovered;
   final VoidCallback? onTap;
   final GestureTapUpCallback? onSecondaryTapUp;
+  final VoidCallback? onLongPress;
   final Widget? trailing;
 
   /// Extra left padding so row text lines up with folder names (file tree).
@@ -1033,6 +1100,7 @@ class _SidebarTile extends StatelessWidget {
           behavior: HitTestBehavior.opaque,
           onTap: onTap,
           onSecondaryTapUp: onSecondaryTapUp,
+          onLongPress: onLongPress,
           child: Container(
             padding: EdgeInsets.fromLTRB(contentLeftInset, 6, 8, 6),
             decoration: BoxDecoration(
