@@ -1,3 +1,7 @@
 [submodule "client/packages/xterm"]
 	path = client/packages/xterm
 	url = https://github.com/hhoao/xterm.dart.git
+
+[submodule "client/packages/dartssh2"]
+	path = client/packages/dartssh2
+	url = https://github.com/hhoao/dartssh2.git
