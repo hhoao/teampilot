@@ -212,9 +212,10 @@ packages:
   dartssh2:
     dependency: "direct main"
     description:
-      path: "packages/dartssh2"
-      relative: true
-    source: path
+      name: dartssh2
+      sha256: c139babed0d6851449100010639115e1ed88decf0db7eb714ce13935c7eb590c
+      url: "https://pub.flutter-io.cn"
+    source: hosted
     version: "2.17.1"
   equatable:
     dependency: "direct main"

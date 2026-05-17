@@ -10,9 +10,8 @@ class SshProfileConnectionTester {
   final SshClientFactory _clientFactory;
 
   Future<void> test(SshProfile profile) async {
-    final client = await _clientFactory.createClient(profile);
     try {
-      await client.authenticated;
+      await _clientFactory.clientFor(profile);
     } catch (e, stackTrace) {
       Logger().e(
         'Error testing SSH profile connection',
@@ -20,8 +19,6 @@ class SshProfileConnectionTester {
         stackTrace: stackTrace,
       );
       rethrow;
-    } finally {
-      client.close();
     }
   }
 }

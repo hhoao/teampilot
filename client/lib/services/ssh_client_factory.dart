@@ -8,6 +8,24 @@ import '../models/ssh_profile.dart';
 import '../repositories/ssh_credential_store.dart';
 import '../repositories/ssh_known_host_repository.dart';
 
+typedef SshClientConnector =
+    Future<SSHClient> Function(
+      SshProfile profile, {
+      Duration timeout,
+    });
+
+class _PooledConnection {
+  _PooledConnection({
+    required this.client,
+    required this.hostIdentifier,
+    required this.ready,
+  });
+
+  final SSHClient client;
+  final String hostIdentifier;
+  final Future<void> ready;
+}
+
 class HostKeyPromptInfo {
   HostKeyPromptInfo({
     required this.profile,
@@ -32,15 +50,67 @@ class SshClientFactory {
     required SshKnownHostRepository knownHostRepository,
     Future<bool> Function(HostKeyPromptInfo)? onHostKeyPrompt,
     void Function(String storageKey, String fingerprintHex)? onHostKeyPersist,
+    SshClientConnector? connector,
   }) : _credentialStore = credentialStore,
        _hostKeyTrustPolicy = SshHostKeyTrustPolicy(
          knownHostRepository: knownHostRepository,
          onHostKeyPrompt: onHostKeyPrompt,
          onHostKeyPersist: onHostKeyPersist,
-       );
+       ),
+       _connector = connector;
 
   final SshCredentialStore _credentialStore;
   final SshHostKeyTrustPolicy _hostKeyTrustPolicy;
+  final SshClientConnector? _connector;
+  final Map<String, _PooledConnection> _pool = {};
+
+  /// Returns a shared, authenticated [SSHClient] for [profile].
+  ///
+  /// One pooled connection is kept per profile id until [disconnectProfile] or
+  /// [disconnectAll] is called, or the remote host identity changes.
+  Future<SSHClient> clientFor(
+    SshProfile profile, {
+    Duration timeout = const Duration(seconds: 10),
+  }) async {
+    final cached = _pool[profile.id];
+    if (cached != null) {
+      if (cached.client.isClosed) {
+        _pool.remove(profile.id);
+      } else if (cached.hostIdentifier == profile.hostIdentifier) {
+        await cached.ready;
+        return cached.client;
+      } else {
+        cached.client.close();
+        _pool.remove(profile.id);
+      }
+    }
+
+    final client = await (_connector ?? createClient)(profile, timeout: timeout);
+    final ready = client.authenticated;
+    _pool[profile.id] = _PooledConnection(
+      client: client,
+      hostIdentifier: profile.hostIdentifier,
+      ready: ready,
+    );
+    await ready;
+    return client;
+  }
+
+  void disconnectProfile(String profileId) {
+    final cached = _pool.remove(profileId);
+    if (cached != null && !cached.client.isClosed) {
+      cached.client.close();
+    }
+  }
+
+  void disconnectAll() {
+    for (final cached in _pool.values) {
+      if (!cached.client.isClosed) {
+        cached.client.close();
+      }
+    }
+    _pool.clear();
+  }
 
   static String fingerprintToHex(Uint8List fingerprint) {
     final buffer = StringBuffer();

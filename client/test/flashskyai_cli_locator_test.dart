@@ -25,7 +25,7 @@ void main() {
           return ProcessResult(1, 1, '', '');
         }
         if (executable == 'bash') {
-          expect(arguments, ['-ilc', 'command -v flashskyai']);
+          expect(arguments, ['-ilc', FlashskyaiCliLocator.lookupCommand]);
           expect(stdoutEncoding, latin1);
           return ProcessResult(
             2,
@@ -58,7 +58,7 @@ void main() {
           return ProcessResult(2, 1, '', '');
         }
         if (executable == 'zsh') {
-          expect(arguments, ['-ilc', 'command -v flashskyai']);
+          expect(arguments, ['-ilc', FlashskyaiCliLocator.lookupCommand]);
           return ProcessResult(3, 0, '/opt/bin/flashskyai\n', '');
         }
         fail('unexpected runner call: $executable');

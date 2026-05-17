@@ -26,6 +26,7 @@ class AndroidShellChrome {
     if (path == '/config/layout') return l10n.layout;
     if (path == '/config/llm') return l10n.llmConfig;
     if (path == '/config/session') return l10n.session;
+    if (path == '/config/ssh-profiles') return l10n.sshProfilesSettingsTitle;
 
     if (path == '/team-config') return l10n.teamConfig;
     if (path == '/team-config/team') return l10n.teamSettings;

@@ -51,4 +51,38 @@ void main() {
     expect(secondCubit.state.selectedProfileId, 'p2');
     expect(secondCubit.state.selectedProfile?.host, 'two.example.com');
   });
+
+  test('selectProfile discovers remote CLI path on Android mode', () async {
+    final temp = await Directory.systemTemp.createTemp(
+      'ssh_profile_cubit_remote_cli_',
+    );
+    addTearDown(() => temp.delete(recursive: true));
+
+    final repository = SshProfileRepository(rootDir: temp.path);
+    await repository.save(
+      const SshProfile(
+        id: 'p1',
+        name: 'one',
+        host: 'one.example.com',
+        username: 'alice',
+      ),
+    );
+
+    String? appliedPath;
+    final cubit = SshProfileCubit(
+      profileRepository: repository,
+      credentialStore: InMemorySshCredentialStore(),
+      locateRemoteCliPath: (_) async => '/remote/bin/flashskyai',
+      onRemoteCliLocated: (path) async {
+        appliedPath = path;
+      },
+      enableRemoteCliDiscovery: () => true,
+    );
+    addTearDown(cubit.close);
+
+    await cubit.load();
+    await cubit.selectProfile('p1');
+
+    expect(appliedPath, '/remote/bin/flashskyai');
+  });
 }

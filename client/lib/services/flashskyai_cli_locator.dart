@@ -36,7 +36,8 @@ Future<ProcessResult> _flashskyDefaultProcessRun(
 class FlashskyaiCliLocator {
   const FlashskyaiCliLocator._();
 
-  static const _loginShellLookupCommand = 'command -v flashskyai';
+  /// Shell command used to resolve `flashskyai` on PATH (local or remote).
+  static const lookupCommand = 'command -v flashskyai';
 
   static Future<String?> locate({
     ProcessRunner runner = _flashskyDefaultProcessRun,
@@ -45,7 +46,7 @@ class FlashskyaiCliLocator {
     try {
       final result = await runner(cmd, ['flashskyai']);
       if (result.exitCode == 0) {
-        final located = _firstStdoutLine(result.stdout);
+        final located = parseFirstStdoutLine(result.stdout);
         if (located != null) return located;
       }
       return _locateWithShellFallback(runner);
@@ -84,12 +85,12 @@ class FlashskyaiCliLocator {
     try {
       final result = await runner(
         shell,
-        ['-ilc', _loginShellLookupCommand],
+        ['-ilc', lookupCommand],
         stdoutEncoding: latin1,
         stderrEncoding: latin1,
       );
       if (result.exitCode != 0) return null;
-      return _firstStdoutLine(result.stdout);
+      return parseFirstStdoutLine(result.stdout);
     } on Object catch (error, stackTrace) {
       Logger().w(
         'Failed to locate flashskyai via $shell login shell: $error',
@@ -103,7 +104,7 @@ class FlashskyaiCliLocator {
     try {
       final result = await runner(
         'wsl.exe',
-        ['bash', '-ilc', _loginShellLookupCommand],
+        ['bash', '-ilc', lookupCommand],
         stdoutEncoding: latin1,
         stderrEncoding: latin1,
       );
@@ -120,7 +121,7 @@ class FlashskyaiCliLocator {
     }
   }
 
-  static String? _firstStdoutLine(Object? stdoutValue) {
+  static String? parseFirstStdoutLine(Object? stdoutValue) {
     final text = _stdoutAsString(stdoutValue);
     if (text == null) return null;
     final firstLine = text

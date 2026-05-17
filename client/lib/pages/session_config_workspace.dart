@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../cubits/llm_config_cubit.dart';
 import '../cubits/session_preferences_cubit.dart';
+import '../models/connection_mode.dart';
 import '../l10n/l10n_extensions.dart';
 import '../utils/app_keys.dart';
 import '../utils/debounce/debounce.dart';
@@ -229,6 +230,7 @@ class _SessionControlsState extends State<_SessionControls> {
       state.preferences.cliExecutablePath,
       state.preferences.defaultSshWorkingDirectory,
     );
+    final isSshMode = widget.cubit.isSshMode;
     final effective = widget.cubit.resolveExecutable();
     final isFallback = state.preferences.cliExecutablePath.trim().isEmpty;
     final cliFieldEmpty = _pathController.text.trim().isEmpty;
@@ -243,8 +245,33 @@ class _SessionControlsState extends State<_SessionControls> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               SettingsLabeledStackedRow(
+                title: l10n.connectionModeLabel,
+                subtitle: l10n.connectionModeDescription,
+                body: SegmentedButton<ConnectionMode>(
+                  segments: [
+                    ButtonSegment(
+                      value: ConnectionMode.localPty,
+                      label: Text(l10n.connectionModeLocal),
+                      icon: const Icon(Icons.computer_outlined),
+                    ),
+                    ButtonSegment(
+                      value: ConnectionMode.ssh,
+                      label: Text(l10n.connectionModeSsh),
+                      icon: const Icon(Icons.dns_outlined),
+                    ),
+                  ],
+                  selected: {state.preferences.connectionMode},
+                  onSelectionChanged: (selected) {
+                    widget.cubit.setConnectionMode(selected.first);
+                  },
+                ),
+                showDividerBelow: true,
+              ),
+              SettingsLabeledStackedRow(
                 title: l10n.cliExecutablePathLabel,
-                subtitle: l10n.cliExecutablePathDescription,
+                subtitle: isSshMode
+                    ? l10n.cliExecutablePathDescriptionSsh
+                    : l10n.cliExecutablePathDescription,
                 body: Row(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
@@ -276,43 +303,46 @@ class _SessionControlsState extends State<_SessionControls> {
                 ),
                 showDividerBelow: true,
               ),
-              SettingsLabeledStackedRow(
-                title: 'SSH 默认工作目录',
-                subtitle: 'SSH 启动没有项目路径时使用的远端工作目录；留空则不切换目录。',
-                body: Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Expanded(
-                      child: AppOutlineTextField(
-                        controller: _sshCwdController,
-                        focusNode: _sshCwdFocus,
-                        hintText: '~/work/project',
-                        hintMaxLines: 2,
-                        onChanged: (_) => _scheduleDebouncedSshCwdPersist(),
-                        onSubmitted: (_) => _flushSshCwdPersist(),
+              if (isSshMode) ...[
+                SettingsLabeledStackedRow(
+                  title: 'SSH 默认工作目录',
+                  subtitle: 'SSH 启动没有项目路径时使用的远端工作目录；留空则不切换目录。',
+                  body: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Expanded(
+                        child: AppOutlineTextField(
+                          controller: _sshCwdController,
+                          focusNode: _sshCwdFocus,
+                          hintText: '~/work/project',
+                          hintMaxLines: 2,
+                          onChanged: (_) => _scheduleDebouncedSshCwdPersist(),
+                          onSubmitted: (_) => _flushSshCwdPersist(),
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 6),
-                    TextButton(
-                      onPressed:
-                          state.preferences.defaultSshWorkingDirectory.isEmpty
-                          ? null
-                          : _resetSshCwd,
-                      child: Text(l10n.cliExecutablePathReset),
-                    ),
-                  ],
+                      const SizedBox(width: 6),
+                      TextButton(
+                        onPressed:
+                            state.preferences.defaultSshWorkingDirectory.isEmpty
+                            ? null
+                            : _resetSshCwd,
+                        child: Text(l10n.cliExecutablePathReset),
+                      ),
+                    ],
+                  ),
+                  showDividerBelow: true,
                 ),
-                showDividerBelow: true,
-              ),
-              SettingsLabeledRow(
-                title: 'SSH 使用 bash 登录环境',
-                subtitle: '通过 bash -lc 启动远端 flashskyai，以便读取远端 shell 配置中的 PATH。',
-                trailing: Switch(
-                  value: state.preferences.sshUseLoginShell,
-                  onChanged: (value) => widget.cubit.setSshUseLoginShell(value),
+                SettingsLabeledRow(
+                  title: 'SSH 使用 bash 登录环境',
+                  subtitle:
+                      '通过 bash -lc 启动远端 flashskyai，以便读取远端 shell 配置中的 PATH。',
+                  trailing: Switch(
+                    value: state.preferences.sshUseLoginShell,
+                    onChanged: (value) => widget.cubit.setSshUseLoginShell(value),
+                  ),
+                  showDividerBelow: true,
                 ),
-                showDividerBelow: true,
-              ),
+              ],
               const _LlmConfigPathSettingsRow(),
               SettingsLabeledRow(
                 title: l10n.autoLaunchAllMembersTitle,

@@ -22,7 +22,6 @@ dependencies:
   flutter_pty: ^0.4.2
   dartssh2:
     path: packages/dartssh2
-
   flutter_bloc: ^9.1.0
   bloc_concurrency: ^0.3.0
   equatable: ^2.0.5

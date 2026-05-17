@@ -45,6 +45,9 @@ class AppKeys {
   static const configSessionSectionButton = Key(
     'config-session-section-button',
   );
+  static const configSshProfilesSectionButton = Key(
+    'config-ssh-profiles-section-button',
+  );
   static const cliExecutablePathField = Key('cli-executable-path-field');
   static const cliExecutablePathBrowseButton = Key(
     'cli-executable-path-browse-button',

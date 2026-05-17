@@ -261,11 +261,37 @@ class AppLocalizationsEn extends AppLocalizations {
       'Configure shell session launch and the LLM config file path.';
 
   @override
+  String get connectionModeLabel => 'Runtime mode';
+
+  @override
+  String get connectionModeDescription =>
+      'Local runs flashskyai on this device. SSH runs it on the selected remote server.';
+
+  @override
+  String get connectionModeLocal => 'Local';
+
+  @override
+  String get connectionModeSsh => 'SSH';
+
+  @override
+  String get sshProfilesSettingsTitle => 'SSH servers';
+
+  @override
+  String get sshProfileSelectorTooltip => 'Switch SSH server';
+
+  @override
+  String get sshProfileSelectorManage => 'Manage SSH servers…';
+
+  @override
   String get cliExecutablePathLabel => 'flashskyai CLI path';
 
   @override
   String get cliExecutablePathDescription =>
       'Absolute path to the flashskyai executable. Leave empty to use the one on PATH.';
+
+  @override
+  String get cliExecutablePathDescriptionSsh =>
+      'Absolute path to flashskyai on the remote SSH host. Leave empty to auto-discover over SSH.';
 
   @override
   String get cliExecutablePathBrowse => 'Browse…';

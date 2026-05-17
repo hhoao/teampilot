@@ -14,18 +14,18 @@ class SessionPreferencesRepository {
   Future<SessionPreferences> load() async {
     final stored = _preferences.getString(storageKey);
     if (stored == null || stored.isEmpty) {
-      return const SessionPreferences();
+      return SessionPreferences();
     }
     try {
       final decoded = jsonDecode(stored);
       if (decoded is! Map) {
-        return const SessionPreferences();
+        return SessionPreferences();
       }
       return SessionPreferences.fromJson(Map<String, Object?>.from(decoded));
     } on FormatException {
-      return const SessionPreferences();
+      return SessionPreferences();
     } on TypeError {
-      return const SessionPreferences();
+      return SessionPreferences();
     }
   }
 

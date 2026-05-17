@@ -25,11 +25,13 @@ void main() {
     final prefs = await SharedPreferences.getInstance();
     final repo = SessionPreferencesRepository(prefs);
 
-    await repo.save(const SessionPreferences(
-      cliExecutablePath: '/usr/local/bin/flashskyai',
-      autoLaunchAllMembersOnConnect: true,
-      scopeSessionsToSelectedTeam: true,
-    ));
+    await repo.save(
+      SessionPreferences(
+        cliExecutablePath: '/usr/local/bin/flashskyai',
+        autoLaunchAllMembersOnConnect: true,
+        scopeSessionsToSelectedTeam: true,
+      ),
+    );
 
     final loaded = await repo.load();
 
@@ -56,7 +58,7 @@ void main() {
     final prefs = await SharedPreferences.getInstance();
     final repo = SessionPreferencesRepository(prefs);
 
-    await repo.save(const SessionPreferences(cliExecutablePath: '/x'));
+    await repo.save(SessionPreferences(cliExecutablePath: '/x'));
 
     final raw = prefs.getString('flashskyai.session_preferences.v1');
     expect(raw, isNotNull);

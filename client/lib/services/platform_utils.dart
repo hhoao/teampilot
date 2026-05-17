@@ -12,6 +12,7 @@ ConnectionMode defaultConnectionMode() {
   return ConnectionMode.localPty;
 }
 
+@Deprecated('Use ConnectionModeService.requiresSshProfileSetup')
 bool get requiresSshProfile => Platform.isAndroid;
 
 /// On narrow/mobile layouts the right tools panel is hidden from the split

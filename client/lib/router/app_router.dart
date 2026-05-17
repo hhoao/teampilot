@@ -16,6 +16,7 @@ import '../pages/skill_management_page.dart';
 import '../pages/startup_gate.dart';
 import '../pages/ssh_profiles_page.dart';
 import '../pages/team_config_page.dart';
+import '../widgets/android_ssh_profile_selector.dart';
 import '../repositories/session_repository.dart';
 import '../services/platform_utils.dart';
 import 'android_shell_chrome.dart';
@@ -72,12 +73,8 @@ final appRouter = GoRouter(
                         onPressed: () => AndroidShellChrome.pop(context, path),
                       )
                     : null,
-                actions: [
-                  IconButton(
-                    tooltip: 'SSH Profiles',
-                    icon: const Icon(Icons.dns),
-                    onPressed: () => context.go('/ssh-profiles'),
-                  ),
+                actions: const [
+                  AndroidSshProfileSelector(),
                 ],
               ),
               drawer: hubDetail
@@ -88,7 +85,9 @@ final appRouter = GoRouter(
           );
         }
 
-        return Scaffold(body: SafeArea(child: StartupGate(child: body)));
+        return Scaffold(
+          body: SafeArea(child: StartupGate(child: body)),
+        );
       },
       routes: [
         GoRoute(
@@ -110,9 +109,8 @@ final appRouter = GoRouter(
             if (Platform.isAndroid) return null;
             return '/config/layout';
           },
-          pageBuilder: (context, state) => const NoTransitionPage(
-            child: ConfigSettingsHubPage(),
-          ),
+          pageBuilder: (context, state) =>
+              const NoTransitionPage(child: ConfigSettingsHubPage()),
         ),
         GoRoute(
           path: '/config/layout',
@@ -133,14 +131,19 @@ final appRouter = GoRouter(
           ),
         ),
         GoRoute(
+          path: '/config/ssh-profiles',
+          pageBuilder: (context, state) => const NoTransitionPage(
+            child: SshProfilesPage(embedded: true),
+          ),
+        ),
+        GoRoute(
           path: '/team-config',
           redirect: (context, state) {
             if (Platform.isAndroid) return null;
             return '/team-config/team';
           },
-          pageBuilder: (context, state) => const NoTransitionPage(
-            child: TeamConfigHubPage(),
-          ),
+          pageBuilder: (context, state) =>
+              const NoTransitionPage(child: TeamConfigHubPage()),
         ),
         GoRoute(
           path: '/team-config/team',
@@ -169,9 +172,8 @@ final appRouter = GoRouter(
             if (Platform.isAndroid) return null;
             return '/skills/installed';
           },
-          pageBuilder: (context, state) => const NoTransitionPage(
-            child: SkillManagementHubPage(),
-          ),
+          pageBuilder: (context, state) =>
+              const NoTransitionPage(child: SkillManagementHubPage()),
         ),
         GoRoute(
           path: '/skills/installed',
@@ -199,8 +201,7 @@ final appRouter = GoRouter(
         ),
         GoRoute(
           path: '/ssh-profiles',
-          pageBuilder: (context, state) =>
-              const NoTransitionPage(child: SshProfilesPage()),
+          redirect: (context, state) => '/config/ssh-profiles',
         ),
       ],
     ),

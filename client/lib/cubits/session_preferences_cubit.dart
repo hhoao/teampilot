@@ -1,14 +1,15 @@
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../models/connection_mode.dart';
 import '../models/session_preferences.dart';
 import '../repositories/session_preferences_repository.dart';
 
 class SessionPreferencesState extends Equatable {
-  const SessionPreferencesState({
-    this.preferences = const SessionPreferences(),
+  SessionPreferencesState({
+    SessionPreferences? preferences,
     this.isLoading = true,
-  });
+  }) : preferences = preferences ?? SessionPreferences();
 
   final SessionPreferences preferences;
   final bool isLoading;
@@ -33,7 +34,7 @@ class SessionPreferencesCubit extends Cubit<SessionPreferencesState> {
     String? locatedExecutable,
   }) : _repository = repository,
        _locatedExecutable = locatedExecutable,
-       super(const SessionPreferencesState());
+       super(SessionPreferencesState());
 
   final SessionPreferencesRepository _repository;
   final String? _locatedExecutable;
@@ -48,6 +49,13 @@ class SessionPreferencesCubit extends Cubit<SessionPreferencesState> {
     emit(state.copyWith(preferences: preferences));
     await _repository.save(preferences);
   }
+
+  Future<void> setConnectionMode(ConnectionMode mode) {
+    return _save(state.preferences.copyWith(connectionMode: mode));
+  }
+
+  bool get isSshMode =>
+      state.preferences.connectionMode == ConnectionMode.ssh;
 
   Future<void> setCliExecutablePath(String value) {
     return _save(state.preferences.copyWith(cliExecutablePath: value.trim()));

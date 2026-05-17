@@ -26,9 +26,13 @@ import 'repositories/ssh_known_host_repository.dart';
 import 'repositories/ssh_profile_repository.dart';
 import 'repositories/team_repository.dart';
 import 'router/app_router.dart';
+import 'models/connection_mode.dart';
 import 'services/app_storage.dart';
+import 'services/connection_mode_service.dart';
 import 'services/terminal_fonts.dart';
 import 'services/flashskyai_cli_locator.dart';
+import 'services/remote_flashskyai_cli_locator.dart';
+import 'services/ssh_client_factory.dart';
 import 'services/team_skill_linker_service.dart';
 import 'services/temp_team_cleaner.dart';
 import 'services/terminal_transport_factory.dart';
@@ -102,7 +106,9 @@ void main() async {
   await AppStorage.init();
 
   final preferences = await SharedPreferences.getInstance();
-  final cliLocated = await FlashskyaiCliLocator.locate();
+  final cliLocated = Platform.isAndroid
+      ? null
+      : await FlashskyaiCliLocator.locate();
   await AppStorage.useWslCliDataDirIfNeeded(cliLocated);
 
   final tempTeamCleaner = TempTeamCleaner();
@@ -155,15 +161,36 @@ void main() async {
     FlutterSecureKeyValueStore(),
   );
   final sshKnownHostRepo = SharedPrefsSshKnownHostRepository(preferences);
+  final sshClientFactory = SshClientFactory(
+    credentialStore: sshCredentialStore,
+    knownHostRepository: sshKnownHostRepo,
+  );
+  final remoteCliLocator = RemoteFlashskyaiCliLocator(
+    clientFactory: sshClientFactory,
+  );
   final sshProfileCubit = SshProfileCubit(
     profileRepository: sshProfileRepo,
     credentialStore: sshCredentialStore,
+    locateRemoteCliPath: remoteCliLocator.locate,
+    onRemoteCliLocated: sessionPreferencesCubit.setCliExecutablePath,
+    invalidateProfileConnection: sshClientFactory.disconnectProfile,
+    enableRemoteCliDiscovery: () =>
+        Platform.isAndroid &&
+        sessionPreferencesCubit.state.preferences.connectionMode ==
+            ConnectionMode.ssh,
+  );
+
+  final connectionModeService = ConnectionModeService(
+    readPreferredMode: () =>
+        sessionPreferencesCubit.state.preferences.connectionMode,
+    hasSshProfiles: () => sshProfileCubit.state.hasProfiles,
   );
 
   final transportFactory = TerminalTransportFactory(
     sshProfileRepository: sshProfileRepo,
     sshCredentialStore: sshCredentialStore,
     sshKnownHostRepository: sshKnownHostRepo,
+    sshClientFactory: sshClientFactory,
   );
 
   final chatCubit = ChatCubit(
@@ -179,6 +206,7 @@ void main() async {
         sessionPreferencesCubit.state.preferences.defaultSshWorkingDirectory,
     sshUseLoginShellResolver: () =>
         sessionPreferencesCubit.state.preferences.sshUseLoginShell,
+    connectionModeResolver: () => connectionModeService.effectiveMode,
   );
   final configCubit = ConfigCubit();
 
@@ -210,6 +238,10 @@ void main() async {
           ),
           RepositoryProvider<TerminalTransportFactory>.value(
             value: transportFactory,
+          ),
+          RepositoryProvider<SshClientFactory>.value(value: sshClientFactory),
+          RepositoryProvider<ConnectionModeService>.value(
+            value: connectionModeService,
           ),
         ],
         child: MultiBlocProvider(

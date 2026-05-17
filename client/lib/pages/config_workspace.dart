@@ -59,6 +59,12 @@ class ConfigSettingsHubPage extends StatelessWidget {
             context.push('/config/session');
           },
         ),
+        WorkspaceHubEntry(
+          key: AppKeys.configSshProfilesSectionButton,
+          title: l10n.sshProfilesSettingsTitle,
+          icon: Icons.dns_outlined,
+          onTap: () => context.push('/config/ssh-profiles'),
+        ),
       ],
     );
   }

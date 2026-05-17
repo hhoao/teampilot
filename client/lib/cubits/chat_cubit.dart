@@ -6,6 +6,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../models/app_project.dart';
+import '../models/connection_mode.dart';
 import '../models/app_session.dart';
 import '../models/launch_target.dart';
 import '../models/ssh_profile.dart';
@@ -149,6 +150,7 @@ class ChatCubit extends Cubit<ChatState> {
     SshActiveProfileResolver? sshProfileResolver,
     String Function()? sshDefaultWorkingDirectoryResolver,
     bool Function()? sshUseLoginShellResolver,
+    ConnectionMode Function()? connectionModeResolver,
   }) : _terminalSessionFactory = terminalSessionFactory,
        _postFrameScheduler = postFrameScheduler ?? _defaultPostFrameScheduler,
        _tempTeamCleaner = tempTeamCleaner,
@@ -164,6 +166,7 @@ class ChatCubit extends Cubit<ChatState> {
        _sshProfileResolver = sshProfileResolver,
        _sshDefaultWorkingDirectoryResolver = sshDefaultWorkingDirectoryResolver,
        _sshUseLoginShellResolver = sshUseLoginShellResolver,
+       _connectionModeResolver = connectionModeResolver,
        super(const ChatState());
 
   final List<_InternalTab> _internalTabs = [];
@@ -181,9 +184,13 @@ class ChatCubit extends Cubit<ChatState> {
   final SshActiveProfileResolver? _sshProfileResolver;
   final String Function()? _sshDefaultWorkingDirectoryResolver;
   final bool Function()? _sshUseLoginShellResolver;
+  final ConnectionMode Function()? _connectionModeResolver;
+
+  ConnectionMode get _connectionMode =>
+      _connectionModeResolver?.call() ?? ConnectionMode.localPty;
 
   bool get _useSsh =>
-      Platform.isAndroid &&
+      _connectionMode == ConnectionMode.ssh &&
       _transportFactory != null &&
       _sshProfileResolver != null &&
       _sshProfileResolver() != null;

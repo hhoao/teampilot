@@ -572,6 +572,48 @@ abstract class AppLocalizations {
   /// **'Configure shell session launch and the LLM config file path.'**
   String get sessionPageSubtitle;
 
+  /// No description provided for @connectionModeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Runtime mode'**
+  String get connectionModeLabel;
+
+  /// No description provided for @connectionModeDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Local runs flashskyai on this device. SSH runs it on the selected remote server.'**
+  String get connectionModeDescription;
+
+  /// No description provided for @connectionModeLocal.
+  ///
+  /// In en, this message translates to:
+  /// **'Local'**
+  String get connectionModeLocal;
+
+  /// No description provided for @connectionModeSsh.
+  ///
+  /// In en, this message translates to:
+  /// **'SSH'**
+  String get connectionModeSsh;
+
+  /// No description provided for @sshProfilesSettingsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'SSH servers'**
+  String get sshProfilesSettingsTitle;
+
+  /// No description provided for @sshProfileSelectorTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Switch SSH server'**
+  String get sshProfileSelectorTooltip;
+
+  /// No description provided for @sshProfileSelectorManage.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage SSH servers…'**
+  String get sshProfileSelectorManage;
+
   /// No description provided for @cliExecutablePathLabel.
   ///
   /// In en, this message translates to:
@@ -583,6 +625,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Absolute path to the flashskyai executable. Leave empty to use the one on PATH.'**
   String get cliExecutablePathDescription;
+
+  /// No description provided for @cliExecutablePathDescriptionSsh.
+  ///
+  /// In en, this message translates to:
+  /// **'Absolute path to flashskyai on the remote SSH host. Leave empty to auto-discover over SSH.'**
+  String get cliExecutablePathDescriptionSsh;
 
   /// No description provided for @cliExecutablePathBrowse.
   ///

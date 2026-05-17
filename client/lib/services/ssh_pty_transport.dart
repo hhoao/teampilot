@@ -32,7 +32,7 @@ class SshPtyTransport implements TerminalTransport {
 
   @override
   void close() {
-    client.close();
+    session.close();
   }
 
   Stream<Uint8List> _mergeOutputStreams() {
@@ -77,7 +77,7 @@ class SshPtyTransport implements TerminalTransport {
     int columns = 80,
     int rows = 24,
   }) async {
-    final client = await clientFactory.createClient(profile);
+    final client = await clientFactory.clientFor(profile);
 
     try {
       final fullCommand = buildSessionCommand(
@@ -93,7 +93,7 @@ class SshPtyTransport implements TerminalTransport {
 
       return SshPtyTransport(client: client, session: session);
     } catch (e) {
-      client.close();
+      clientFactory.disconnectProfile(profile.id);
       rethrow;
     }
   }

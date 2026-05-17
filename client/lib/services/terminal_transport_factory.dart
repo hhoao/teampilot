@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter_pty/flutter_pty.dart';
 
 import '../models/connection_mode.dart';
@@ -92,9 +90,7 @@ class TerminalTransportFactory {
   }
 
   ConnectionMode resolveConnectionMode(ConnectionMode? preferred) {
-    if (preferred != null) return preferred;
-    if (Platform.isAndroid) return ConnectionMode.ssh;
-    return ConnectionMode.localPty;
+    return preferred ?? ConnectionMode.localPty;
   }
 
   Future<TerminalTransport> startTransport(

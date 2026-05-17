@@ -1,10 +1,11 @@
-import 'package:teampilot/models/session_preferences.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:teampilot/models/connection_mode.dart';
+import 'package:teampilot/models/session_preferences.dart';
 
 void main() {
   group('SessionPreferences', () {
     test('defaults are empty path with session scoping on', () {
-      const prefs = SessionPreferences();
+      final prefs = SessionPreferences();
       expect(prefs.cliExecutablePath, '');
       expect(prefs.defaultSshWorkingDirectory, '');
       expect(prefs.sshUseLoginShell, false);
@@ -13,7 +14,8 @@ void main() {
     });
 
     test('toJson/fromJson round-trips', () {
-      const prefs = SessionPreferences(
+      final prefs = SessionPreferences(
+        connectionMode: ConnectionMode.ssh,
         cliExecutablePath: '/opt/bin/flashskyai',
         defaultSshWorkingDirectory: '~/work',
         sshUseLoginShell: true,
@@ -21,6 +23,7 @@ void main() {
         scopeSessionsToSelectedTeam: true,
       );
       final restored = SessionPreferences.fromJson(prefs.toJson());
+      expect(restored.connectionMode, ConnectionMode.ssh);
       expect(restored.cliExecutablePath, '/opt/bin/flashskyai');
       expect(restored.defaultSshWorkingDirectory, '~/work');
       expect(restored.sshUseLoginShell, true);
@@ -38,7 +41,7 @@ void main() {
     });
 
     test('copyWith updates only specified fields', () {
-      const prefs = SessionPreferences();
+      final prefs = SessionPreferences();
       final next = prefs.copyWith(cliExecutablePath: '/a/b');
       expect(next.cliExecutablePath, '/a/b');
       expect(next.defaultSshWorkingDirectory, '');

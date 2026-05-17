@@ -1,9 +1,9 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../cubits/session_preferences_cubit.dart';
 import '../cubits/ssh_profile_cubit.dart';
+import '../services/connection_mode_service.dart';
 import '../repositories/ssh_credential_store.dart';
 import '../repositories/ssh_profile_repository.dart';
 import '../services/ssh_profile_connection_tester.dart';
@@ -17,7 +17,9 @@ class StartupGate extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (!Platform.isAndroid) return child;
+    context.watch<SessionPreferencesCubit>();
+    final mode = context.read<ConnectionModeService>();
+    if (!mode.isSshMode) return child;
 
     final sshState = context.watch<SshProfileCubit>().state;
 
@@ -25,7 +27,7 @@ class StartupGate extends StatelessWidget {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
-    if (!sshState.hasProfiles) {
+    if (mode.requiresSshProfileSetup) {
       return SshProfileSetupPage(
         profileRepository: context.read<SshProfileRepository>(),
         credentialStore: context.read<SshCredentialStore>(),

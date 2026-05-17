@@ -26,12 +26,12 @@ class RemoteFileStore {
         return _sftp!;
       } on Object {
         _sftp = null;
-        _client?.close();
         _client = null;
+        _clientFactory.disconnectProfile(_profile.id);
       }
     }
 
-    _client = await _clientFactory.createClient(_profile);
+    _client = await _clientFactory.clientFor(_profile);
     _sftp = await _client!.sftp();
     return _sftp!;
   }
@@ -112,7 +112,7 @@ class RemoteFileStore {
 
   Future<void> disconnect() async {
     _sftp = null;
-    _client?.close();
     _client = null;
+    _clientFactory.disconnectProfile(_profile.id);
   }
 }

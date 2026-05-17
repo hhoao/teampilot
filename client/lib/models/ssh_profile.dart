@@ -1,9 +1,6 @@
 import 'package:flutter/foundation.dart';
 
-enum SshAuthType {
-  password,
-  privateKey,
-}
+enum SshAuthType { password, privateKey }
 
 @immutable
 class SshProfile {
@@ -13,16 +10,16 @@ class SshProfile {
     required this.host,
     this.port = 22,
     required this.username,
-    this.authType = SshAuthType.privateKey,
+    this.authType = SshAuthType.password,
     this.createdAt = 0,
     this.updatedAt = 0,
   });
 
   factory SshProfile.fromJson(Map<String, Object?> json) {
-    final authRaw = json['authType'] as String? ?? 'privateKey';
+    final authRaw = json['authType'] as String? ?? 'password';
     final auth = SshAuthType.values.firstWhere(
       (e) => e.name == authRaw,
-      orElse: () => SshAuthType.privateKey,
+      orElse: () => SshAuthType.password,
     );
     return SshProfile(
       id: json['id'] as String? ?? '',
@@ -96,12 +93,5 @@ class SshProfile {
   }
 
   @override
-  int get hashCode => Object.hash(
-        id,
-        name,
-        host,
-        port,
-        username,
-        authType,
-      );
+  int get hashCode => Object.hash(id, name, host, port, username, authType);
 }

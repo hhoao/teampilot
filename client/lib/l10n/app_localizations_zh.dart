@@ -250,11 +250,37 @@ class AppLocalizationsZh extends AppLocalizations {
   String get sessionPageSubtitle => '配置 Shell 会话启动方式与 LLM 配置文件路径。';
 
   @override
+  String get connectionModeLabel => '运行模式';
+
+  @override
+  String get connectionModeDescription =>
+      '本机模式在当前设备运行 flashskyai；SSH 模式在选中的远程服务器上运行。';
+
+  @override
+  String get connectionModeLocal => '本机';
+
+  @override
+  String get connectionModeSsh => 'SSH';
+
+  @override
+  String get sshProfilesSettingsTitle => 'SSH 服务器';
+
+  @override
+  String get sshProfileSelectorTooltip => '切换 SSH 服务器';
+
+  @override
+  String get sshProfileSelectorManage => '管理 SSH 服务器…';
+
+  @override
   String get cliExecutablePathLabel => 'flashskyai CLI 路径';
 
   @override
   String get cliExecutablePathDescription =>
       'flashskyai 可执行文件的绝对路径。留空则使用 PATH 中查找到的版本。';
+
+  @override
+  String get cliExecutablePathDescriptionSsh =>
+      '远程 SSH 主机上 flashskyai 的绝对路径。留空则通过 SSH 自动探测。';
 
   @override
   String get cliExecutablePathBrowse => '浏览…';
