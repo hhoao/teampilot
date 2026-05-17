@@ -18,6 +18,9 @@ import '../widgets/settings/workspace_settings_widgets.dart';
 
 const _kSessionPathPersistDebounce = Duration(milliseconds: 400);
 
+/// Temporary: hide runtime mode until multi-mode UX is ready.
+const _kShowConnectionModeSetting = false;
+
 class SessionConfigWorkspace extends StatelessWidget {
   const SessionConfigWorkspace({this.showHeading = true, super.key});
 
@@ -249,47 +252,49 @@ class _SessionControlsState extends State<_SessionControls> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              SettingsLabeledStackedRow(
-                title: l10n.connectionModeLabel,
-                subtitle: l10n.connectionModeDescription,
-                body: SegmentedButton<ConnectionMode>(
-                  segments: [
-                    ButtonSegment(
-                      value: ConnectionMode.localPty,
-                      label: Text(l10n.connectionModeLocal),
-                      icon: const Icon(Icons.computer_outlined),
-                    ),
-                    ButtonSegment(
-                      value: ConnectionMode.ssh,
-                      label: Text(l10n.connectionModeSsh),
-                      icon: const Icon(Icons.dns_outlined),
-                    ),
-                  ],
-                  selected: {state.preferences.connectionMode},
-                  onSelectionChanged: (selected) async {
-                    final llmCubit = context.read<LlmConfigCubit>();
-                    final teamCubit = context.read<TeamCubit>();
-                    final skillCubit = context.read<SkillCubit>();
-                    final chatCubit = context.read<ChatCubit>();
-                    final sessionRepo = context.read<SessionRepository>();
-                    final storageRoots = context.read<FlashskyaiStorageRoots>();
-                    await widget.cubit.setConnectionMode(selected.first);
-                    if (!context.mounted) return;
-                    storageRoots.invalidate();
-                    await storageRoots.resolve();
-                    await Future.wait([
-                      llmCubit.load(),
-                      teamCubit.load(),
-                      skillCubit.loadAll(),
-                      chatCubit.loadProjectData(sessionRepo),
-                    ]);
-                    await teamCubit.syncSelectedTeamSkills(
-                      installed: skillCubit.state.installed,
-                    );
-                  },
+              if (_kShowConnectionModeSetting)
+                SettingsLabeledStackedRow(
+                  title: l10n.connectionModeLabel,
+                  subtitle: l10n.connectionModeDescription,
+                  body: SegmentedButton<ConnectionMode>(
+                    segments: [
+                      ButtonSegment(
+                        value: ConnectionMode.localPty,
+                        label: Text(l10n.connectionModeLocal),
+                        icon: const Icon(Icons.computer_outlined),
+                      ),
+                      ButtonSegment(
+                        value: ConnectionMode.ssh,
+                        label: Text(l10n.connectionModeSsh),
+                        icon: const Icon(Icons.dns_outlined),
+                      ),
+                    ],
+                    selected: {state.preferences.connectionMode},
+                    onSelectionChanged: (selected) async {
+                      final llmCubit = context.read<LlmConfigCubit>();
+                      final teamCubit = context.read<TeamCubit>();
+                      final skillCubit = context.read<SkillCubit>();
+                      final chatCubit = context.read<ChatCubit>();
+                      final sessionRepo = context.read<SessionRepository>();
+                      final storageRoots =
+                          context.read<FlashskyaiStorageRoots>();
+                      await widget.cubit.setConnectionMode(selected.first);
+                      if (!context.mounted) return;
+                      storageRoots.invalidate();
+                      await storageRoots.resolve();
+                      await Future.wait([
+                        llmCubit.load(),
+                        teamCubit.load(),
+                        skillCubit.loadAll(),
+                        chatCubit.loadProjectData(sessionRepo),
+                      ]);
+                      await teamCubit.syncSelectedTeamSkills(
+                        installed: skillCubit.state.installed,
+                      );
+                    },
+                  ),
+                  showDividerBelow: true,
                 ),
-                showDividerBelow: true,
-              ),
               SettingsLabeledStackedRow(
                 title: l10n.cliExecutablePathLabel,
                 subtitle: isSshMode
