@@ -17,6 +17,7 @@ import '../pages/startup_gate.dart';
 import '../pages/ssh_profiles_page.dart';
 import '../pages/team_config_page.dart';
 import '../repositories/session_repository.dart';
+import '../services/platform_utils.dart';
 import 'android_shell_chrome.dart';
 import '../widgets/context_sidebar.dart';
 import '../widgets/resizable_split_view.dart';
@@ -207,6 +208,7 @@ final appRouter = GoRouter(
 );
 
 Future<void> _createProject(BuildContext context) async {
+  closeAndroidDrawerIfOpen(context);
   String? path;
   if (Platform.isAndroid) {
     if (!context.mounted) return;

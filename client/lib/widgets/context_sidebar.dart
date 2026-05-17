@@ -4,8 +4,6 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:go_router/go_router.dart';
-
 import '../cubits/chat_cubit.dart';
 import '../cubits/team_cubit.dart';
 import '../l10n/l10n_extensions.dart';
@@ -13,6 +11,7 @@ import '../models/app_project.dart';
 import '../models/app_session.dart';
 import '../models/team_config.dart';
 import '../repositories/session_repository.dart';
+import '../services/platform_utils.dart';
 import '../utils/app_keys.dart';
 import '../widgets/app_outline_text_field.dart';
 import '../widgets/dropdown/flashsky_dropdown_field.dart';
@@ -50,7 +49,7 @@ void _navigateToSessionInChat(BuildContext context, AppSession session) {
     chatCubit.addSystemMessage('FlashskyAI requires a member named team-lead.');
   }
 
-  context.go('/chat');
+  goFromSidebar(context, '/chat');
 }
 
 class ContextSidebar extends StatefulWidget {
@@ -93,9 +92,7 @@ class _ContextSidebarState extends State<ContextSidebar> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 _SkillTile(
-                  onTap: () {
-                    context.go('/skills');
-                  },
+                  onTap: () => goFromSidebar(context, '/skills'),
                 ),
                 const SizedBox(height: 14),
                 _TeamSelector(
@@ -106,9 +103,7 @@ class _ContextSidebarState extends State<ContextSidebar> {
                 ),
                 const SizedBox(height: 14),
                 _TeamConfigTile(
-                  onTap: () {
-                    context.go('/team-config');
-                  },
+                  onTap: () => goFromSidebar(context, '/team-config'),
                 ),
                 const SizedBox(height: 14),
                 _SidebarSectionTitle(
@@ -124,13 +119,10 @@ class _ContextSidebarState extends State<ContextSidebar> {
                 const Divider(height: 1),
                 const SizedBox(height: 8),
                 _SettingsTile(
-                  onTap: () {
-                    if (Platform.isAndroid) {
-                      context.go('/config');
-                    } else {
-                      context.go('/config/layout');
-                    }
-                  },
+                  onTap: () => goFromSidebar(
+                    context,
+                    Platform.isAndroid ? '/config' : '/config/layout',
+                  ),
                 ),
               ],
             ),
