@@ -125,12 +125,17 @@ class TeamConfigPage extends StatelessWidget {
   final TeamConfigSection section;
   final String? memberId;
 
-  String? _effectiveMemberId(TeamConfig team) {
-    if (section != TeamConfigSection.members) return null;
+  /// Resolves a member id for routing; does not depend on [section].
+  String? _memberRouteId(TeamConfig team, {String? preferred}) {
     if (team.members.isEmpty) return null;
-    final sid = memberId;
+    final sid = preferred;
     if (sid != null && team.members.any((m) => m.id == sid)) return sid;
     return team.members.first.id;
+  }
+
+  String? _effectiveMemberId(TeamConfig team) {
+    if (section != TeamConfigSection.members) return null;
+    return _memberRouteId(team, preferred: memberId);
   }
 
   @override
@@ -179,7 +184,7 @@ class TeamConfigPage extends StatelessWidget {
                 selectedMemberId: resolvedMemberId,
                 onSelect: (s) {
                   if (s == TeamConfigSection.members) {
-                    final id = _effectiveMemberId(team);
+                    final id = _memberRouteId(team, preferred: memberId);
                     if (id != null) {
                       context.go('/team-config/members/$id');
                     }
@@ -251,28 +256,25 @@ class _NavPanel extends StatelessWidget {
             title: l10n.members,
             icon: Icons.person_outline,
             selected: section == TeamConfigSection.members,
-            trailingIcon: section == TeamConfigSection.members
-                ? Icons.expand_less
-                : Icons.expand_more,
             onTap: () => onSelect(TeamConfigSection.members),
           ),
-          if (section == TeamConfigSection.members) ...[
-            const SizedBox(height: 4),
-            Expanded(
-              child: ListView(
-                padding: const EdgeInsets.only(left: 14, right: 2),
-                children: [
-                  for (final m in team.members)
-                    _MemberNavSubItem(
-                      member: m,
-                      selected: m.id == selectedMemberId,
-                      onTap: () => onSelectMember(m.id),
-                    ),
-                  _MemberNavAddTile(l10n: l10n, onTap: onAddMember),
-                ],
-              ),
+          const SizedBox(height: 4),
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.only(left: 14, right: 2),
+              children: [
+                for (final m in team.members)
+                  _MemberNavSubItem(
+                    member: m,
+                    selected:
+                        section == TeamConfigSection.members &&
+                        m.id == selectedMemberId,
+                    onTap: () => onSelectMember(m.id),
+                  ),
+                _MemberNavAddTile(l10n: l10n, onTap: onAddMember),
+              ],
             ),
-          ],
+          ),
         ],
       ),
     );
@@ -399,14 +401,12 @@ class _NavItem extends StatelessWidget {
     required this.icon,
     required this.selected,
     required this.onTap,
-    this.trailingIcon,
   });
 
   final String title;
   final IconData icon;
   final bool selected;
   final VoidCallback onTap;
-  final IconData? trailingIcon;
 
   @override
   Widget build(BuildContext context) {
@@ -437,14 +437,6 @@ class _NavItem extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  if (trailingIcon != null) ...[
-                    const SizedBox(width: 6),
-                    Icon(
-                      trailingIcon,
-                      color: selected ? textBase : muted,
-                      size: 24,
-                    ),
-                  ],
                 ],
               ),
             ),

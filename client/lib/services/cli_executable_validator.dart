@@ -33,7 +33,8 @@ class CliExecutableValidator {
   }
 
   static String? _validateExecutablePath(String executable) {
-    final looksLikePath = executable.contains('/') ||
+    final looksLikePath =
+        executable.contains('/') ||
         (Platform.isWindows &&
             (executable.contains(r'\') || executable.contains(':')));
     if (!looksLikePath) {
