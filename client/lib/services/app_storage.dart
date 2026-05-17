@@ -154,7 +154,9 @@ class AppStorage {
   static String tempTeamRegistryPathForTeampilotRoot(String teampilotRoot) =>
       p.join(teampilotRoot, 'ui-temp-teams.json');
 
-  @Deprecated('Use teampilot app-data root helpers (teamsUiDirForTeampilotRoot)')
+  @Deprecated(
+    'Use teampilot app-data root helpers (teamsUiDirForTeampilotRoot)',
+  )
   static String teamsUiDirForCliData(String cliDataDir) =>
       teamsUiDirForTeampilotRoot(teampilotDirForCliData(cliDataDir));
 

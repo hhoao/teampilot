@@ -3,8 +3,7 @@ import 'package:path/path.dart' as p;
 import '../models/ssh_profile.dart';
 import 'app_storage.dart';
 import 'remote_file_store.dart';
-import 'remote_flashskyai_data_dir_resolver.dart';
-import 'remote_home_resolver.dart';
+import 'remote_ssh_storage_paths.dart';
 import 'remote_teampilot_app_data_resolver.dart';
 import 'ssh_client_factory.dart';
 
@@ -81,30 +80,40 @@ class FlashskyaiStorageRoots {
     bool Function()? isSshMode,
     SshProfile? Function()? sshProfileResolver,
     SshClientFactory? sshClientFactory,
-    RemoteFlashskyaiDataDirResolver? remoteDataDirResolver,
-    RemoteTeampilotAppDataResolver? remoteTeampilotAppDataResolver,
+    RemoteSshStoragePathResolver? remotePathResolver,
   })  : _isSshMode = isSshMode,
         _sshProfileResolver = sshProfileResolver,
         _sshClientFactory = sshClientFactory,
-        _remoteDataDirResolver = remoteDataDirResolver,
-        _remoteTeampilotAppDataResolver = remoteTeampilotAppDataResolver;
+        _remotePathResolver = remotePathResolver;
 
   final bool Function()? _isSshMode;
   final SshProfile? Function()? _sshProfileResolver;
   final SshClientFactory? _sshClientFactory;
-  final RemoteFlashskyaiDataDirResolver? _remoteDataDirResolver;
-  final RemoteTeampilotAppDataResolver? _remoteTeampilotAppDataResolver;
+  final RemoteSshStoragePathResolver? _remotePathResolver;
 
   StorageRootsSnapshot? _cache;
+  Future<StorageRootsSnapshot>? _inflight;
 
   /// Clears the resolved snapshot (call after SSH profile or connection mode changes).
-  void invalidate() => _cache = null;
+  void invalidate() {
+    _cache = null;
+    _inflight = null;
+  }
 
   Future<StorageRootsSnapshot> resolve({bool forceRefresh = false}) async {
     if (!forceRefresh && _cache != null) return _cache!;
-    final snap = await _resolveUncached();
-    _cache = snap;
-    return snap;
+    if (!forceRefresh && _inflight != null) return _inflight!;
+    final future = _resolveUncached();
+    _inflight = future;
+    try {
+      final snap = await future;
+      _cache = snap;
+      return snap;
+    } finally {
+      if (identical(_inflight, future)) {
+        _inflight = null;
+      }
+    }
   }
 
   Future<StorageRootsSnapshot> _resolveUncached() async {
@@ -117,43 +126,40 @@ class FlashskyaiStorageRoots {
       return StorageRootsSnapshot.local();
     }
 
-    final dataDir = await (_remoteDataDirResolver ??
-            RemoteFlashskyaiDataDirResolver(clientFactory: factory))
-        .resolve(profile);
-    if (dataDir == null || dataDir.isEmpty) {
+    final pathResolver = _remotePathResolver ??
+        RemoteSshStoragePathResolver(clientFactory: factory);
+    final paths = await pathResolver.resolve(profile);
+    if (paths == null) {
       return StorageRootsSnapshot.local();
     }
 
+    final dataDir = paths.cliDataDir;
     final posix = p.Context(style: p.Style.posix);
     final fileStore = RemoteFileStore(
       profile: profile,
       clientFactory: factory,
     );
 
-    final teampilotResolver = _remoteTeampilotAppDataResolver ??
-        RemoteTeampilotAppDataResolver(clientFactory: factory);
-    final teampilotFromShell = await teampilotResolver.resolve(profile);
-    late final String primaryTeampilot;
-    if (teampilotFromShell != null && teampilotFromShell.isNotEmpty) {
-      primaryTeampilot = teampilotFromShell;
-    } else {
-      final home =
-          await RemoteHomeResolver(clientFactory: factory).resolve(profile);
-      if (home == null || home.isEmpty) {
-        return StorageRootsSnapshot.local();
-      }
-      primaryTeampilot = AppStorage.defaultTeampilotAppDataDirForHome(home);
-    }
+    // Warm the shared SFTP channel before parallel stat probes.
+    await factory.sftpFor(profile);
+
+    final primaryTeampilot = paths.teampilotAppDir;
     final legacyTeampilot =
         RemoteTeampilotAppDataResolver.legacyTeampilotRootForCliData(dataDir);
-    final teampilot = await RemoteTeampilotAppDataResolver.pickTeampilotRoot(
-      primary: primaryTeampilot,
-      legacy: legacyTeampilot,
-      hasExistingData: (root) => RemoteTeampilotAppDataResolver.teampilotTreeHasData(
-        fileStore.fileExists,
-        root,
-      ),
-    );
+    var teampilot = primaryTeampilot;
+    if (primaryTeampilot != legacyTeampilot) {
+      final exists = await Future.wait([
+        RemoteTeampilotAppDataResolver.teampilotTreeHasData(
+          fileStore.fileExists,
+          primaryTeampilot,
+        ),
+        RemoteTeampilotAppDataResolver.teampilotTreeHasData(
+          fileStore.fileExists,
+          legacyTeampilot,
+        ),
+      ]);
+      if (!exists[0] && exists[1]) teampilot = legacyTeampilot;
+    }
 
     return StorageRootsSnapshot(
       storageIsRemote: true,

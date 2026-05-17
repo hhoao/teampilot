@@ -72,12 +72,23 @@ class TeamRepository {
 
   Future<List<TeamConfig>> loadTeams() async {
     final paths = await _paths();
-    final uiTeams = paths.cliIsRemote
-        ? await _readUiDirRemote(paths)
-        : await _readUiDir(paths.teamsUiDir);
-    final cliTeams = paths.cliIsRemote
-        ? await _readCliDirRemote(paths)
-        : await _readCliDir(paths.cliTeamsDir);
+    final List<TeamConfig> uiTeams;
+    final List<TeamConfig> cliTeams;
+    if (paths.cliIsRemote) {
+      final results = await Future.wait([
+        _readUiDirRemote(paths),
+        _readCliDirRemote(paths),
+      ]);
+      uiTeams = results[0];
+      cliTeams = results[1];
+    } else {
+      final results = await Future.wait([
+        _readUiDir(paths.teamsUiDir),
+        _readCliDir(paths.cliTeamsDir),
+      ]);
+      uiTeams = results[0];
+      cliTeams = results[1];
+    }
 
     final uiByName = {for (final t in uiTeams) t.name: t};
     final cliByName = {for (final t in cliTeams) t.name: t};

@@ -31,7 +31,7 @@ import 'services/app_storage.dart';
 import 'services/connection_mode_service.dart';
 import 'services/flashskyai_storage_roots.dart';
 import 'services/remote_cli_session_checker.dart';
-import 'services/remote_flashskyai_data_dir_resolver.dart';
+import 'services/remote_ssh_storage_paths.dart';
 import 'services/skill_repo_service.dart';
 import 'services/skill_install_service.dart';
 import 'services/skill_manifest_service.dart';
@@ -148,6 +148,7 @@ void main() async {
   late final SkillCubit skillCubit;
   late final SessionRepository sessionRepo;
   late final ChatCubit chatCubit;
+  late final FlashskyaiStorageRoots storageRoots;
 
   final sshProfileCubit = SshProfileCubit(
     profileRepository: sshProfileRepo,
@@ -160,13 +161,15 @@ void main() async {
         sessionPreferencesCubit.state.preferences.connectionMode ==
             ConnectionMode.ssh,
     onActiveProfileChanged: () async {
-      await llmConfigCubit.load();
-      await teamCubit.load();
-      await skillCubit.loadAll();
-      await teamCubit.syncSelectedTeamSkills(
-        installed: skillCubit.state.installed,
+      storageRoots.invalidate();
+      await _reloadRemoteBackedAppData(
+        storageRoots: storageRoots,
+        llmConfigCubit: llmConfigCubit,
+        teamCubit: teamCubit,
+        skillCubit: skillCubit,
+        chatCubit: chatCubit,
+        sessionRepo: sessionRepo,
       );
-      await chatCubit.loadProjectData(sessionRepo);
     },
   );
 
@@ -176,11 +179,11 @@ void main() async {
     hasSshProfiles: () => sshProfileCubit.state.hasProfiles,
   );
 
-  final storageRoots = FlashskyaiStorageRoots(
+  storageRoots = FlashskyaiStorageRoots(
     isSshMode: () => connectionModeService.isSshMode,
     sshProfileResolver: () => sshProfileCubit.state.selectedProfile,
     sshClientFactory: sshClientFactory,
-    remoteDataDirResolver: RemoteFlashskyaiDataDirResolver(
+    remotePathResolver: RemoteSshStoragePathResolver(
       clientFactory: sshClientFactory,
     ),
   );
@@ -255,15 +258,8 @@ void main() async {
   );
   final configCubit = ConfigCubit();
 
-  await teamCubit.load();
-  await layoutCubit.load();
   await sessionPreferencesCubit.load();
-  await llmConfigCubit.load();
-  chatCubit.loadProjectData(sessionRepo);
-  await skillCubit.loadAll();
-  await teamCubit.syncSelectedTeamSkills(installed: skillCubit.state.installed);
-  await sshProfileCubit.load();
-  await tempTeamCleaner.cleanup();
+  await layoutCubit.load();
 
   if (!Platform.isAndroid) {
     windowManager.addListener(_CleanupWindowListener(chatCubit));
@@ -289,6 +285,9 @@ void main() async {
           RepositoryProvider<ConnectionModeService>.value(
             value: connectionModeService,
           ),
+          RepositoryProvider<FlashskyaiStorageRoots>.value(
+            value: storageRoots,
+          ),
         ],
         child: MultiBlocProvider(
           providers: [
@@ -306,6 +305,67 @@ void main() async {
       ),
     ),
   );
+
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    unawaited(
+      _bootstrapAppData(
+        storageRoots: storageRoots,
+        tempTeamCleaner: tempTeamCleaner,
+        sshProfileCubit: sshProfileCubit,
+        llmConfigCubit: llmConfigCubit,
+        teamCubit: teamCubit,
+        skillCubit: skillCubit,
+        chatCubit: chatCubit,
+        sessionRepo: sessionRepo,
+      ),
+    );
+  });
+}
+
+Future<void> _reloadRemoteBackedAppData({
+  required FlashskyaiStorageRoots storageRoots,
+  required LlmConfigCubit llmConfigCubit,
+  required TeamCubit teamCubit,
+  required SkillCubit skillCubit,
+  required ChatCubit chatCubit,
+  required SessionRepository sessionRepo,
+}) async {
+  // One SSH connect + path resolve; shared SFTP for all readers below.
+  await storageRoots.resolve();
+  await Future.wait([
+    llmConfigCubit.load(),
+    teamCubit.load(),
+    skillCubit.loadAll(),
+    chatCubit.loadProjectData(sessionRepo),
+  ]);
+  await teamCubit.syncSelectedTeamSkills(
+    installed: skillCubit.state.installed,
+  );
+}
+
+Future<void> _bootstrapAppData({
+  required FlashskyaiStorageRoots storageRoots,
+  required TempTeamCleaner tempTeamCleaner,
+  required SshProfileCubit sshProfileCubit,
+  required LlmConfigCubit llmConfigCubit,
+  required TeamCubit teamCubit,
+  required SkillCubit skillCubit,
+  required ChatCubit chatCubit,
+  required SessionRepository sessionRepo,
+}) async {
+  await sshProfileCubit.load(notifyActiveProfileChanged: false);
+  storageRoots.invalidate();
+  await Future.wait([
+    tempTeamCleaner.cleanup(),
+    _reloadRemoteBackedAppData(
+      storageRoots: storageRoots,
+      llmConfigCubit: llmConfigCubit,
+      teamCubit: teamCubit,
+      skillCubit: skillCubit,
+      chatCubit: chatCubit,
+      sessionRepo: sessionRepo,
+    ),
+  ]);
 }
 
 class TeamPilotApp extends StatelessWidget {

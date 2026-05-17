@@ -25,25 +25,8 @@ class RemoteFileStore {
   final SshProfile _profile;
   final SshClientFactory _clientFactory;
 
-  SSHClient? _client;
-  SftpClient? _sftp;
-
-  Future<SftpClient> _ensureConnected() async {
-    if (_sftp != null) {
-      try {
-        await _sftp!.absolute('.');
-        return _sftp!;
-      } on Object {
-        _sftp = null;
-        _client = null;
-        _clientFactory.disconnectProfile(_profile.id);
-      }
-    }
-
-    _client = await _clientFactory.clientFor(_profile);
-    _sftp = await _client!.sftp();
-    return _sftp!;
-  }
+  Future<SftpClient> _ensureConnected() =>
+      _clientFactory.sftpFor(_profile);
 
   Future<String> expandHome(String path) async {
     if (!path.startsWith('~')) return path;
@@ -233,8 +216,6 @@ class RemoteFileStore {
   }
 
   Future<void> disconnect() async {
-    _sftp = null;
-    _client = null;
     _clientFactory.disconnectProfile(_profile.id);
   }
 }

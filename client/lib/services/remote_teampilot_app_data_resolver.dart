@@ -7,10 +7,8 @@ import '../models/ssh_profile.dart';
 import 'app_storage.dart';
 import 'ssh_client_factory.dart';
 
-typedef SshRunCapture = Future<SSHRunResult> Function(
-  SSHClient client,
-  String command,
-);
+typedef SshRunCapture =
+    Future<SSHRunResult> Function(SSHClient client, String command);
 
 /// Resolves the TeamPilot UI app-data directory on a remote SSH host.
 ///
@@ -22,8 +20,8 @@ class RemoteTeampilotAppDataResolver {
   RemoteTeampilotAppDataResolver({
     required SshClientFactory clientFactory,
     SshRunCapture? runCommand,
-  })  : _clientFactory = clientFactory,
-        _runCommand = runCommand;
+  }) : _clientFactory = clientFactory,
+       _runCommand = runCommand;
 
   final SshClientFactory _clientFactory;
   final SshRunCapture? _runCommand;
@@ -73,10 +71,8 @@ printf '%s' "${TEAMPILOT_APP_DATA_DIR:-${XDG_DATA_HOME:-$HOME/.local/share}/com.
       posix.join(root, 'skills', 'manifest.json'),
       posix.join(root, 'teams'),
     ];
-    for (final path in markers) {
-      if (await fileExists(path)) return true;
-    }
-    return false;
+    final found = await Future.wait(markers.map(fileExists));
+    return found.any((exists) => exists);
   }
 
   static Future<SSHRunResult> _defaultRun(SSHClient client, String command) {

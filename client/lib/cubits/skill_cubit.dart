@@ -127,9 +127,14 @@ class SkillCubit extends Cubit<SkillState> {
   Future<void> loadAll() async {
     emit(state.copyWith(status: SkillLoadStatus.loading, clearError: true));
     try {
-      final installed = await _repo.loadInstalled();
-      final repos = await _repo.loadRepos();
-      final backups = await _repo.loadBackups();
+      final results = await Future.wait([
+        _repo.loadInstalled(),
+        _repo.loadRepos(),
+        _repo.loadBackups(),
+      ]);
+      final installed = results[0] as List<Skill>;
+      final repos = results[1] as List<SkillRepo>;
+      final backups = results[2] as List<SkillBackup>;
       emit(state.copyWith(
         installed: installed,
         repos: repos,

@@ -11,7 +11,7 @@ import 'remote_file_store.dart';
 
 class SkillRepoService {
   SkillRepoService({FlashskyaiStorageRoots? storageRoots})
-      : _storageRoots = storageRoots;
+    : _storageRoots = storageRoots;
 
   final FlashskyaiStorageRoots? _storageRoots;
 

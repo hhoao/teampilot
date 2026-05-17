@@ -6,6 +6,7 @@ import '../cubits/chat_cubit.dart';
 import '../cubits/llm_config_cubit.dart';
 import '../cubits/session_preferences_cubit.dart';
 import '../repositories/session_repository.dart';
+import '../services/flashskyai_storage_roots.dart';
 import '../cubits/skill_cubit.dart';
 import '../cubits/team_cubit.dart';
 import '../models/connection_mode.dart';
@@ -271,15 +272,20 @@ class _SessionControlsState extends State<_SessionControls> {
                     final skillCubit = context.read<SkillCubit>();
                     final chatCubit = context.read<ChatCubit>();
                     final sessionRepo = context.read<SessionRepository>();
+                    final storageRoots = context.read<FlashskyaiStorageRoots>();
                     await widget.cubit.setConnectionMode(selected.first);
                     if (!context.mounted) return;
-                    await llmCubit.load();
-                    await teamCubit.load();
-                    await skillCubit.loadAll();
+                    storageRoots.invalidate();
+                    await storageRoots.resolve();
+                    await Future.wait([
+                      llmCubit.load(),
+                      teamCubit.load(),
+                      skillCubit.loadAll(),
+                      chatCubit.loadProjectData(sessionRepo),
+                    ]);
                     await teamCubit.syncSelectedTeamSkills(
                       installed: skillCubit.state.installed,
                     );
-                    await chatCubit.loadProjectData(sessionRepo);
                   },
                 ),
                 showDividerBelow: true,

@@ -63,6 +63,7 @@ class SshClientFactory {
   final SshHostKeyTrustPolicy _hostKeyTrustPolicy;
   final SshClientConnector? _connector;
   final Map<String, _PooledConnection> _pool = {};
+  final Map<String, SftpClient> _sftpByProfile = {};
 
   /// Returns a shared, authenticated [SSHClient] for [profile].
   ///
@@ -96,7 +97,26 @@ class SshClientFactory {
     return client;
   }
 
+  /// Shared SFTP session for [profile] (reused by all [RemoteFileStore] instances).
+  Future<SftpClient> sftpFor(SshProfile profile) async {
+    final cached = _sftpByProfile[profile.id];
+    if (cached != null) {
+      try {
+        await cached.absolute('.');
+        return cached;
+      } on Object {
+        _sftpByProfile.remove(profile.id);
+      }
+    }
+
+    final client = await clientFor(profile);
+    final sftp = await client.sftp();
+    _sftpByProfile[profile.id] = sftp;
+    return sftp;
+  }
+
   void disconnectProfile(String profileId) {
+    _sftpByProfile.remove(profileId);
     final cached = _pool.remove(profileId);
     if (cached != null && !cached.client.isClosed) {
       cached.client.close();
@@ -104,6 +124,7 @@ class SshClientFactory {
   }
 
   void disconnectAll() {
+    _sftpByProfile.clear();
     for (final cached in _pool.values) {
       if (!cached.client.isClosed) {
         cached.client.close();

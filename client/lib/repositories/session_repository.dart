@@ -26,8 +26,8 @@ class _AsyncLock {
 
 class SessionRepository {
   SessionRepository({String? rootDir, FlashskyaiStorageRoots? storageRoots})
-      : _rootOverride = rootDir,
-        _storageRoots = storageRoots;
+    : _rootOverride = rootDir,
+      _storageRoots = storageRoots;
 
   final String? _rootOverride;
   final FlashskyaiStorageRoots? _storageRoots;
@@ -70,7 +70,10 @@ class SessionRepository {
     return const AppProjectsIndex();
   }
 
-  Future<void> _saveIndex(SessionRepositoryFs fs, AppProjectsIndex index) async {
+  Future<void> _saveIndex(
+    SessionRepositoryFs fs,
+    AppProjectsIndex index,
+  ) async {
     await fs.writeText(fs.projectsFile, jsonEncode(index.toJson()));
   }
 
@@ -131,8 +134,9 @@ class SessionRepository {
         if (!mergedPaths.contains(p)) mergedPaths.add(p);
       }
       final trimmedDisplay = display.trim();
-      final displayOut =
-          trimmedDisplay.isNotEmpty ? trimmedDisplay : existing.display;
+      final displayOut = trimmedDisplay.isNotEmpty
+          ? trimmedDisplay
+          : existing.display;
       if (_pathsEqual(mergedPaths, existing.additionalPaths) &&
           displayOut == existing.display) {
         return existing;
@@ -236,12 +240,18 @@ class SessionRepository {
     }).toList();
     await _saveIndex(
       fs,
-      AppProjectsIndex(schemaVersion: index.schemaVersion, projects: nextProjects),
+      AppProjectsIndex(
+        schemaVersion: index.schemaVersion,
+        projects: nextProjects,
+      ),
     );
     return session;
   }
 
-  Future<AppSession?> _readSession(SessionRepositoryFs fs, String sessionId) async {
+  Future<AppSession?> _readSession(
+    SessionRepositoryFs fs,
+    String sessionId,
+  ) async {
     final raw = await fs.readText(fs.sessionFile(sessionId));
     if (raw == null || raw.isEmpty) return null;
     try {
@@ -369,7 +379,10 @@ class SessionRepository {
       }).toList();
       await _saveIndex(
         fs,
-        AppProjectsIndex(schemaVersion: index.schemaVersion, projects: projects),
+        AppProjectsIndex(
+          schemaVersion: index.schemaVersion,
+          projects: projects,
+        ),
       );
       await fs.deleteFile(fs.sessionFile(sessionId));
     });
@@ -401,4 +414,3 @@ class SessionRepository {
     );
   }
 }
-
