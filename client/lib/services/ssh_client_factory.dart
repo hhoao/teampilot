@@ -52,6 +52,7 @@ class SshClientFactory {
     void Function(String storageKey, String fingerprintHex)? onHostKeyPersist,
     SshClientConnector? connector,
   }) : _credentialStore = credentialStore,
+       _knownHostRepository = knownHostRepository,
        _hostKeyTrustPolicy = SshHostKeyTrustPolicy(
          knownHostRepository: knownHostRepository,
          onHostKeyPrompt: onHostKeyPrompt,
@@ -60,6 +61,7 @@ class SshClientFactory {
        _connector = connector;
 
   final SshCredentialStore _credentialStore;
+  final SshKnownHostRepository _knownHostRepository;
   final SshHostKeyTrustPolicy _hostKeyTrustPolicy;
   final SshClientConnector? _connector;
   final Map<String, _PooledConnection> _pool = {};
@@ -133,6 +135,36 @@ class SshClientFactory {
     _pool.clear();
   }
 
+  /// One-off connectivity check using form credentials without persisting the
+  /// profile or touching the shared connection pool.
+  Future<void> testConnection(
+    SshProfile profile, {
+    String? password,
+    String? privateKey,
+    String? privateKeyPassphrase,
+  }) async {
+    final store = _CredentialOverrideStore(
+      base: _credentialStore,
+      profileId: profile.id,
+      password: password,
+      privateKey: privateKey,
+      privateKeyPassphrase: privateKeyPassphrase,
+    );
+    final ephemeral = SshClientFactory(
+      credentialStore: store,
+      knownHostRepository: _knownHostRepository,
+      connector: _connector,
+    );
+    final client = await ephemeral.createClient(profile);
+    try {
+      await client.authenticated;
+    } finally {
+      if (!client.isClosed) {
+        client.close();
+      }
+    }
+  }
+
   static String fingerprintToHex(Uint8List fingerprint) {
     final buffer = StringBuffer();
     for (var i = 0; i < fingerprint.length; i++) {
@@ -192,6 +224,62 @@ class SshClientFactory {
         );
     }
   }
+}
+
+class _CredentialOverrideStore implements SshCredentialStore {
+  _CredentialOverrideStore({
+    required SshCredentialStore base,
+    required this.profileId,
+    this.password,
+    this.privateKey,
+    this.privateKeyPassphrase,
+  }) : _base = base;
+
+  final SshCredentialStore _base;
+  final String profileId;
+  final String? password;
+  final String? privateKey;
+  final String? privateKeyPassphrase;
+
+  bool _hasOverride(String? value) => value != null && value.isNotEmpty;
+
+  @override
+  Future<String?> loadPassword(String id) async {
+    if (id == profileId && _hasOverride(password)) return password;
+    return _base.loadPassword(id);
+  }
+
+  @override
+  Future<String?> loadPrivateKey(String id) async {
+    if (id == profileId && _hasOverride(privateKey)) return privateKey;
+    return _base.loadPrivateKey(id);
+  }
+
+  @override
+  Future<String?> loadPrivateKeyPassphrase(String id) async {
+    if (id == profileId && _hasOverride(privateKeyPassphrase)) {
+      return privateKeyPassphrase;
+    }
+    return _base.loadPrivateKeyPassphrase(id);
+  }
+
+  @override
+  Future<void> savePassword(String profileId, String password) =>
+      _base.savePassword(profileId, password);
+
+  @override
+  Future<void> savePrivateKey(String profileId, String privateKey) =>
+      _base.savePrivateKey(profileId, privateKey);
+
+  @override
+  Future<void> savePrivateKeyPassphrase(
+    String profileId,
+    String passphrase,
+  ) =>
+      _base.savePrivateKeyPassphrase(profileId, passphrase);
+
+  @override
+  Future<void> deleteAll(String profileId) => _base.deleteAll(profileId);
 }
 
 class SshHostKeyTrustPolicy {

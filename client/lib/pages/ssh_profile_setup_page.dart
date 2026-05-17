@@ -127,11 +127,28 @@ class _SshProfileSetupPageState extends State<SshProfileSetupPage> {
   Future<void> _testConnection() async {
     final tester = widget.connectionTester;
     if (tester == null) return;
+    if (_formKey.currentState?.validate() != true) return;
     setState(() => _testing = true);
     try {
-      final profile = await _saveProfile(notify: false);
-      if (profile == null) return;
-      await tester.test(profile);
+      final profile = _buildProfile();
+      final password = _authType == SshAuthType.password &&
+              _passwordController.text.isNotEmpty
+          ? _passwordController.text
+          : null;
+      final privateKey = _authType == SshAuthType.privateKey &&
+              _privateKeyController.text.isNotEmpty
+          ? _privateKeyController.text
+          : null;
+      final passphrase = _authType == SshAuthType.privateKey &&
+              _passphraseController.text.isNotEmpty
+          ? _passphraseController.text
+          : null;
+      await tester.test(
+        profile,
+        password: password,
+        privateKey: privateKey,
+        privateKeyPassphrase: passphrase,
+      );
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
@@ -256,7 +273,7 @@ class _SshProfileSetupPageState extends State<SshProfileSetupPage> {
                         height: 16,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
-                    : const Text('保存并测试连接'),
+                    : const Text('测试连接'),
               ),
               const SizedBox(height: 12),
             ],
