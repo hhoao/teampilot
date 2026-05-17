@@ -13,8 +13,15 @@ import '../widgets/app_outline_text_field.dart';
 import '../widgets/dropdown/flashsky_dropdown_field.dart';
 import '../widgets/dropdown/flashskyai_dropdown_decoration.dart';
 import '../widgets/resizable_split_view.dart';
+import '../widgets/settings/workspace_hub_shell.dart';
 
 // LLM 配置页统一留白（8dp 网格）。
+
+String llmProviderConfigRoute(String providerName) =>
+    '/config/llm/provider/${Uri.encodeComponent(providerName)}';
+
+String llmProviderModelsRoute(String providerName) =>
+    '${llmProviderConfigRoute(providerName)}/models';
 const double _kLlmInsetH = 16;
 const double _kLlmInsetHSm = 12;
 const double _kLlmSectionGap = 12;
@@ -26,6 +33,21 @@ class LlmConfigWorkspace extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final controller = context.watch<LlmConfigCubit>();
+    if (useAndroidHubNavigation(context)) {
+      return Column(
+        key: AppKeys.llmConfigWorkspace,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _LlmConfigFileHintBar(controller: controller),
+          Expanded(
+            child: _LlmProvidersListContent(
+              controller: controller,
+              hubStyle: true,
+            ),
+          ),
+        ],
+      );
+    }
     return Column(
       key: AppKeys.llmConfigWorkspace,
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -33,6 +55,111 @@ class LlmConfigWorkspace extends StatelessWidget {
         _LlmConfigFileHintBar(controller: controller),
         Expanded(child: _ProvidersTabContent(controller: controller)),
       ],
+    );
+  }
+}
+
+/// Android: full-screen provider configuration.
+class LlmProviderConfigPage extends StatelessWidget {
+  const LlmProviderConfigPage({required this.providerName, super.key});
+
+  final String providerName;
+
+  @override
+  Widget build(BuildContext context) {
+    final controller = context.watch<LlmConfigCubit>();
+    final config = controller.state.config;
+    final provider = config.providers[providerName];
+
+    if (controller.state.effectiveProviderName != providerName) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        controller.selectProvider(providerName);
+      });
+    }
+
+    return WorkspaceSectionPage(
+      pageKey: AppKeys.llmProviderDetail,
+      child: provider == null
+          ? Center(
+              child: Text(
+                '${context.l10n.missingProvider} $providerName',
+              ),
+            )
+          : _ProviderDetailPanel(
+              config: config,
+              provider: provider,
+              controller: controller,
+              onSave: controller.updateProvider,
+              onDelete: (name) async {
+                await _confirmDeleteProvider(context, controller, name);
+                if (context.mounted) {
+                  context.go('/config/llm');
+                }
+              },
+              onShowModels: (name) =>
+                  context.push(llmProviderModelsRoute(name)),
+            ),
+    );
+  }
+}
+
+/// Android: models for one provider.
+class LlmProviderModelsPage extends StatelessWidget {
+  const LlmProviderModelsPage({required this.providerName, super.key});
+
+  final String providerName;
+
+  @override
+  Widget build(BuildContext context) {
+    final controller = context.watch<LlmConfigCubit>();
+    final config = controller.state.config;
+    final provider = config.providers[providerName];
+
+    return WorkspaceSectionPage(
+      pageKey: AppKeys.llmProviderModels,
+      child: provider == null
+          ? Center(
+              child: Text(
+                '${context.l10n.missingProvider} $providerName',
+              ),
+            )
+          : _ProviderModelsView(
+              config: config,
+              provider: provider,
+              controller: controller,
+              onBack: () => context.pop(),
+            ),
+    );
+  }
+}
+
+class _LlmProvidersListContent extends StatelessWidget {
+  const _LlmProvidersListContent({
+    required this.controller,
+    this.hubStyle = false,
+    this.onSelected,
+  });
+
+  final LlmConfigCubit controller;
+  final bool hubStyle;
+  final VoidCallback? onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final config = controller.state.config;
+    return _ProviderListPanel(
+      config: config,
+      selectedName: hubStyle ? null : controller.state.effectiveProviderName,
+      hubStyle: hubStyle,
+      onSelect: (name) {
+        controller.selectProvider(name);
+        onSelected?.call();
+        if (hubStyle) {
+          context.push(llmProviderConfigRoute(name));
+        }
+      },
+      onAdd: () => _promptAddProvider(context, controller, hubStyle: hubStyle),
+      onDelete: (name) => _confirmDeleteProvider(context, controller, name),
     );
   }
 }
@@ -166,15 +293,9 @@ class _ProvidersTabContentState extends State<_ProvidersTabContent> {
         maxLeftWidth: 560,
         left: Padding(
           padding: const EdgeInsets.only(right: 6),
-          child: _ProviderListPanel(
-            config: config,
-            selectedName: selectedName,
-            onSelect: (name) {
-              _controller.selectProvider(name);
-              setState(() => _modelsProviderName = null);
-            },
-            onAdd: () => _addProvider(context),
-            onDelete: (name) => _deleteProvider(context, name),
+          child: _LlmProvidersListContent(
+            controller: _controller,
+            onSelected: () => setState(() => _modelsProviderName = null),
           ),
         ),
         right: Padding(
@@ -194,74 +315,90 @@ class _ProvidersTabContentState extends State<_ProvidersTabContent> {
                     _controller.updateProvider(name, provider);
                   },
                   onDelete: (name) {
-                    _deleteProvider(context, name);
+                    unawaited(_confirmDeleteProvider(context, _controller, name));
                   },
-                  onShowModels: (name) =>
-                      setState(() => _modelsProviderName = name),
+                  onShowModels: (name) {
+                    if (useAndroidHubNavigation(context)) {
+                      context.push(llmProviderModelsRoute(name));
+                    } else {
+                      setState(() => _modelsProviderName = name);
+                    }
+                  },
                 ),
         ),
       ),
     );
   }
+}
 
-  Future<void> _addProvider(BuildContext context) async {
-    final l10n = context.l10n;
-    final nameController = TextEditingController();
-    final name = await showDialog<String>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(l10n.addProvider),
-        content: AppOutlineTextField(
-          key: AppKeys.providerNameDialogField,
-          controller: nameController,
-          autofocus: true,
-          labelText: l10n.providerName,
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(l10n.cancel),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, nameController.text.trim()),
-            child: Text(l10n.add),
-          ),
-        ],
+Future<void> _promptAddProvider(
+  BuildContext context,
+  LlmConfigCubit controller, {
+  bool hubStyle = false,
+}) async {
+  final l10n = context.l10n;
+  final nameController = TextEditingController();
+  final name = await showDialog<String>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: Text(l10n.addProvider),
+      content: AppOutlineTextField(
+        key: AppKeys.providerNameDialogField,
+        controller: nameController,
+        autofocus: true,
+        labelText: l10n.providerName,
       ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text(l10n.cancel),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.pop(context, nameController.text.trim()),
+          child: Text(l10n.add),
+        ),
+      ],
+    ),
+  );
+  nameController.dispose();
+  if (name != null &&
+      name.isNotEmpty &&
+      !controller.state.config.providers.containsKey(name)) {
+    controller.addProvider(
+      LlmProviderConfig(name: name, type: 'api', providerType: 'openai'),
     );
-    nameController.dispose();
-    if (name != null &&
-        name.isNotEmpty &&
-        !_controller.state.config.providers.containsKey(name)) {
-      _controller.addProvider(
-        LlmProviderConfig(name: name, type: 'api', providerType: 'openai'),
-      );
-      _controller.selectProvider(name);
+    controller.selectProvider(name);
+    if (hubStyle && context.mounted) {
+      context.push(llmProviderConfigRoute(name));
     }
   }
+}
 
-  Future<void> _deleteProvider(BuildContext context, String name) async {
-    final l10n = context.l10n;
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(l10n.deleteProvider),
-        content: Text(l10n.deleteProviderConfirm(name)),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text(l10n.cancel),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: Text(l10n.delete),
-          ),
-        ],
-      ),
-    );
-    if (confirmed == true) {
-      _controller.deleteProvider(name);
-    }
+Future<void> _confirmDeleteProvider(
+  BuildContext context,
+  LlmConfigCubit controller,
+  String name,
+) async {
+  final l10n = context.l10n;
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: Text(l10n.deleteProvider),
+      content: Text(l10n.deleteProviderConfirm(name)),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context, false),
+          child: Text(l10n.cancel),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.pop(context, true),
+          child: Text(l10n.delete),
+        ),
+      ],
+    ),
+  );
+  if (confirmed == true) {
+    controller.deleteProvider(name);
   }
 }
 
@@ -274,6 +411,7 @@ class _ProviderListPanel extends StatefulWidget {
     required this.onSelect,
     required this.onAdd,
     required this.onDelete,
+    this.hubStyle = false,
   });
 
   final LlmConfig config;
@@ -281,6 +419,7 @@ class _ProviderListPanel extends StatefulWidget {
   final ValueChanged<String> onSelect;
   final VoidCallback onAdd;
   final ValueChanged<String> onDelete;
+  final bool hubStyle;
 
   @override
   State<_ProviderListPanel> createState() => _ProviderListPanelState();
@@ -325,11 +464,13 @@ class _ProviderListPanelState extends State<_ProviderListPanel> {
     return Container(
       key: AppKeys.llmProviderList,
       width: double.infinity,
-      decoration: BoxDecoration(
-        color: cs.surfaceContainer,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: cs.outlineVariant),
-      ),
+      decoration: widget.hubStyle
+          ? null
+          : BoxDecoration(
+              color: cs.surfaceContainer,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: cs.outlineVariant),
+            ),
       child: Column(
         children: [
           Container(
@@ -397,7 +538,8 @@ class _ProviderListPanelState extends State<_ProviderListPanel> {
                 return _ProviderListRow(
                   key: ObjectKey(provider),
                   provider: provider,
-                  isSelected: isSelected,
+                  isSelected: widget.hubStyle ? false : isSelected,
+                  hubStyle: widget.hubStyle,
                   modelCount: modelCount,
                   onTap: () => widget.onSelect(provider.name),
                   onDelete: () => widget.onDelete(provider.name),
@@ -419,6 +561,7 @@ class _ProviderListRow extends StatelessWidget {
     required this.modelCount,
     required this.onTap,
     required this.onDelete,
+    this.hubStyle = false,
   });
 
   final LlmProviderConfig provider;
@@ -426,6 +569,7 @@ class _ProviderListRow extends StatelessWidget {
   final int modelCount;
   final VoidCallback onTap;
   final VoidCallback onDelete;
+  final bool hubStyle;
 
   @override
   Widget build(BuildContext context) {
@@ -494,18 +638,28 @@ class _ProviderListRow extends StatelessWidget {
                   ],
                 ),
               ),
-              PopupMenuButton<String>(
-                key: ValueKey<String>('prov-menu-${provider.name}'),
-                icon: const Icon(Icons.more_horiz, size: 18),
-                padding: const EdgeInsets.all(4),
-                constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
-                itemBuilder: (context) => [
-                  PopupMenuItem(value: 'delete', child: Text(l10n.delete)),
-                ],
-                onSelected: (value) {
-                  if (value == 'delete') onDelete();
-                },
-              ),
+              if (hubStyle)
+                Icon(
+                  Icons.chevron_right,
+                  size: 22,
+                  color: textBase.withValues(alpha: 0.64),
+                )
+              else
+                PopupMenuButton<String>(
+                  key: ValueKey<String>('prov-menu-${provider.name}'),
+                  icon: const Icon(Icons.more_horiz, size: 18),
+                  padding: const EdgeInsets.all(4),
+                  constraints: const BoxConstraints(
+                    minWidth: 36,
+                    minHeight: 36,
+                  ),
+                  itemBuilder: (context) => [
+                    PopupMenuItem(value: 'delete', child: Text(l10n.delete)),
+                  ],
+                  onSelected: (value) {
+                    if (value == 'delete') onDelete();
+                  },
+                ),
             ],
           ),
         ),

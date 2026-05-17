@@ -18,6 +18,8 @@ import 'package:teampilot/repositories/layout_repository.dart';
 import 'package:teampilot/repositories/session_preferences_repository.dart';
 import 'package:teampilot/repositories/session_repository.dart';
 import 'package:teampilot/repositories/team_repository.dart';
+import 'package:teampilot/models/connection_mode.dart';
+import 'package:teampilot/services/connection_mode_service.dart';
 import 'package:teampilot/services/terminal_session.dart';
 import 'package:teampilot/utils/app_keys.dart';
 import 'package:flutter/material.dart';
@@ -37,8 +39,18 @@ Widget buildTestApp({
   LayoutCubit? layoutCubit,
   LlmConfigCubit? llmConfigCubit,
 }) {
-  return RepositoryProvider<SessionRepository>.value(
-    value: _widgetTestSessionRepo,
+  final connectionModeService = ConnectionModeService(
+    readPreferredMode: () => ConnectionMode.localPty,
+    hasSshProfiles: () => true,
+  );
+
+  return MultiRepositoryProvider(
+    providers: [
+      RepositoryProvider<SessionRepository>.value(value: _widgetTestSessionRepo),
+      RepositoryProvider<ConnectionModeService>.value(
+        value: connectionModeService,
+      ),
+    ],
     child: MultiBlocProvider(
       providers: [
         BlocProvider.value(value: teamCubit),

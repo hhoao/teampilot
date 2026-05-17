@@ -12,6 +12,7 @@ import '../cubits/session_preferences_cubit.dart';
 import '../cubits/team_cubit.dart';
 import '../pages/chat_page.dart';
 import '../pages/config_workspace.dart';
+import '../pages/llm_config_workspace.dart';
 import '../pages/skill_management_page.dart';
 import '../pages/startup_gate.dart';
 import '../pages/ssh_profiles_page.dart';
@@ -122,6 +123,26 @@ final appRouter = GoRouter(
           path: '/config/llm',
           pageBuilder: (context, state) => const NoTransitionPage(
             child: ConfigWorkspace(section: ConfigSection.llm),
+          ),
+        ),
+        GoRoute(
+          path: '/config/llm/provider/:providerName',
+          pageBuilder: (context, state) => NoTransitionPage(
+            child: LlmProviderConfigPage(
+              providerName: Uri.decodeComponent(
+                state.pathParameters['providerName']!,
+              ),
+            ),
+          ),
+        ),
+        GoRoute(
+          path: '/config/llm/provider/:providerName/models',
+          pageBuilder: (context, state) => NoTransitionPage(
+            child: LlmProviderModelsPage(
+              providerName: Uri.decodeComponent(
+                state.pathParameters['providerName']!,
+              ),
+            ),
           ),
         ),
         GoRoute(

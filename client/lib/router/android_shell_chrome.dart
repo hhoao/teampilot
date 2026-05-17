@@ -13,6 +13,7 @@ class AndroidShellChrome {
 
   static bool isHubDetailPath(String path) {
     if (_isConfigDetail(path)) return true;
+    if (_isLlmProviderDetail(path)) return true;
     if (_isTeamConfigDetail(path)) return true;
     if (_isSkillsDetail(path)) return true;
     return false;
@@ -25,6 +26,11 @@ class AndroidShellChrome {
     if (path == '/config') return l10n.settings;
     if (path == '/config/layout') return l10n.layout;
     if (path == '/config/llm') return l10n.llmConfig;
+    if (path.startsWith('/config/llm/provider/')) {
+      if (path.endsWith('/models')) return l10n.models;
+      final name = _llmProviderNameFromPath(path);
+      if (name != null) return name;
+    }
     if (path == '/config/session') return l10n.session;
     if (path == '/config/ssh-profiles') return l10n.sshProfilesSettingsTitle;
 
@@ -53,6 +59,14 @@ class AndroidShellChrome {
       context.pop();
       return;
     }
+    if (_isLlmProviderDetail(path)) {
+      if (path.endsWith('/models')) {
+        context.pop();
+        return;
+      }
+      context.go('/config/llm');
+      return;
+    }
     if (_isConfigDetail(path) || path == '/config') {
       context.go('/config');
       return;
@@ -68,6 +82,20 @@ class AndroidShellChrome {
 
   static bool _isConfigDetail(String path) =>
       path.startsWith('/config/') && path.length > '/config/'.length;
+
+  static bool _isLlmProviderDetail(String path) =>
+      path.startsWith('/config/llm/provider/');
+
+  static String? _llmProviderNameFromPath(String path) {
+    const prefix = '/config/llm/provider/';
+    if (!path.startsWith(prefix)) return null;
+    var segment = path.substring(prefix.length);
+    if (segment.endsWith('/models')) {
+      segment = segment.substring(0, segment.length - '/models'.length);
+    }
+    if (segment.isEmpty) return null;
+    return Uri.decodeComponent(segment);
+  }
 
   static bool _isTeamConfigDetail(String path) =>
       path.startsWith('/team-config/') &&

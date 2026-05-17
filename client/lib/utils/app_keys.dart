@@ -73,6 +73,8 @@ class AppKeys {
   static const skillsWorkspace = Key('skills-workspace');
   static const memberConfigWorkspace = Key('member-config-workspace');
   static const llmConfigWorkspace = Key('llm-config-workspace');
+  static const llmProviderDetail = Key('llm-provider-detail');
+  static const llmProviderModels = Key('llm-provider-models');
   static const llmProvidersTab = Key('llm-providers-tab');
   static const llmModelsTab = Key('llm-models-tab');
   static const llmRawJsonTab = Key('llm-raw-json-tab');
@@ -133,7 +135,6 @@ class AppKeys {
   static const accountPathField = Key('account-path-field');
   static const llmProviderSearch = Key('llm-provider-search');
   static const llmProviderList = Key('llm-provider-list');
-  static const llmProviderDetail = Key('llm-provider-detail');
   static const llmSidePanel = Key('llm-side-panel');
   static const llmSummaryStats = Key('llm-summary-stats');
   static const providerModelsTable = Key('provider-models-table');
