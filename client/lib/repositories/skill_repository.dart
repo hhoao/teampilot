@@ -18,7 +18,8 @@ class SkillRepository {
        fetch = fetch ?? SkillFetchService(),
        repos = repos ?? SkillRepoService(),
        skillsSh = skillsSh ?? SkillsShService(),
-       install = install ??
+       install =
+           install ??
            SkillInstallService(
              manifest: manifest ?? SkillManifestService(),
              fetch: fetch,
@@ -34,9 +35,7 @@ class SkillRepository {
   Future<List<SkillBackup>> loadBackups() => manifest.loadBackups();
   Future<List<SkillRepo>> loadRepos() => repos.loadRepos();
 
-  Future<List<DiscoverableSkill>> discover(
-    List<SkillRepo> enabledRepos,
-  ) async {
+  Future<List<DiscoverableSkill>> discover(List<SkillRepo> enabledRepos) async {
     final futures = enabledRepos.where((r) => r.enabled).map((r) async {
       try {
         return await fetch.listSkills(r);
@@ -54,8 +53,7 @@ class SkillRepository {
   Future<Skill> installFromDiscovery(
     DiscoverableSkill d, {
     bool overwrite = false,
-  }) =>
-      install.installFromDiscovery(d, overwrite: overwrite);
+  }) => install.installFromDiscovery(d, overwrite: overwrite);
 
   Future<List<Skill>> installFromZip(File zip, {bool overwrite = false}) =>
       install.installFromZip(zip, overwrite: overwrite);
@@ -73,13 +71,13 @@ class SkillRepository {
     String q, {
     int limit = 20,
     int offset = 0,
-  }) =>
-      skillsSh.search(q, limit: limit, offset: offset);
+  }) => skillsSh.search(q, limit: limit, offset: offset);
 
-  Future<void> toggleSkillEnabled(Skill s, bool enabled) => manifest.upsertSkill(
-    s.copyWith(
-      enabled: enabled,
-      updatedAt: DateTime.now().millisecondsSinceEpoch,
-    ),
-  );
+  Future<void> toggleSkillEnabled(Skill s, bool enabled) =>
+      manifest.upsertSkill(
+        s.copyWith(
+          enabled: enabled,
+          updatedAt: DateTime.now().millisecondsSinceEpoch,
+        ),
+      );
 }

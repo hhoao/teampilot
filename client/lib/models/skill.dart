@@ -27,8 +27,7 @@ class Skill {
   final String? contentHash;
   final int updatedAt;
 
-  String get source =>
-      repoOwner != null ? '$repoOwner/$repoName' : 'local';
+  String get source => repoOwner != null ? '$repoOwner/$repoName' : 'local';
 
   Skill copyWith({
     String? id,
@@ -121,13 +120,17 @@ class SkillRepo {
 
   String get fullName => '$owner/$name';
 
-  SkillRepo copyWith({String? owner, String? name, String? branch, bool? enabled}) =>
-      SkillRepo(
-        owner: owner ?? this.owner,
-        name: name ?? this.name,
-        branch: branch ?? this.branch,
-        enabled: enabled ?? this.enabled,
-      );
+  SkillRepo copyWith({
+    String? owner,
+    String? name,
+    String? branch,
+    bool? enabled,
+  }) => SkillRepo(
+    owner: owner ?? this.owner,
+    name: name ?? this.name,
+    branch: branch ?? this.branch,
+    enabled: enabled ?? this.enabled,
+  );
 
   Map<String, Object?> toJson() => {
     'owner': owner,
@@ -175,12 +178,13 @@ class SkillUpdateInfo {
     'remoteHash': remoteHash,
   };
 
-  factory SkillUpdateInfo.fromJson(Map<String, Object?> json) => SkillUpdateInfo(
-    id: json['id'] as String,
-    name: json['name'] as String,
-    currentHash: json['currentHash'] as String?,
-    remoteHash: json['remoteHash'] as String,
-  );
+  factory SkillUpdateInfo.fromJson(Map<String, Object?> json) =>
+      SkillUpdateInfo(
+        id: json['id'] as String,
+        name: json['name'] as String,
+        currentHash: json['currentHash'] as String?,
+        remoteHash: json['remoteHash'] as String,
+      );
 
   @override
   bool operator ==(Object other) =>
@@ -218,9 +222,7 @@ class SkillBackup {
     backupId: json['backupId'] as String,
     backupPath: json['backupPath'] as String,
     createdAt: json['createdAt'] as int,
-    skill: Skill.fromJson(
-      (json['skill'] as Map).cast<String, Object?>(),
-    ),
+    skill: Skill.fromJson((json['skill'] as Map).cast<String, Object?>()),
   );
 
   @override

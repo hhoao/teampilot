@@ -27,15 +27,8 @@ class WorkspaceDrawer extends StatelessWidget {
     }
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(appBarTitle),
-        actions: appBarActions,
-      ),
-      drawer: Drawer(
-        child: SafeArea(
-          child: drawerContent,
-        ),
-      ),
+      appBar: AppBar(title: Text(appBarTitle), actions: appBarActions),
+      drawer: Drawer(child: SafeArea(child: drawerContent)),
       body: child,
     );
   }

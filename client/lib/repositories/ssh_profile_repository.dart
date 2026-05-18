@@ -8,7 +8,7 @@ import '../services/app_storage.dart';
 
 class SshProfileRepository {
   SshProfileRepository({String? rootDir})
-      : _root = rootDir ?? p.join(AppStorage.basePath, 'ssh_profiles');
+    : _root = rootDir ?? p.join(AppStorage.basePath, 'ssh_profiles');
 
   final String _root;
 
@@ -40,7 +40,9 @@ class SshProfileRepository {
     }
     final jsonList = profiles.map((p) => p.toJson()).toList();
     final file = File(_profilesFile);
-    final tmp = File('${file.path}.${DateTime.now().microsecondsSinceEpoch}.tmp');
+    final tmp = File(
+      '${file.path}.${DateTime.now().microsecondsSinceEpoch}.tmp',
+    );
     await tmp.writeAsString(jsonEncode(jsonList));
     await tmp.rename(file.path);
   }
@@ -67,7 +69,9 @@ class SshProfileRepository {
       }
       return;
     }
-    final tmp = File('${file.path}.${DateTime.now().microsecondsSinceEpoch}.tmp');
+    final tmp = File(
+      '${file.path}.${DateTime.now().microsecondsSinceEpoch}.tmp',
+    );
     await tmp.writeAsString(profileId.trim());
     await tmp.rename(file.path);
   }

@@ -105,8 +105,7 @@ class _SearchFieldState<T> extends State<_SearchField<T>> {
         style: widget.decoration?.textStyle,
         hintStyle: widget.decoration?.hintStyle,
         prefixIcon:
-            widget.decoration?.prefixIcon ??
-            const Icon(Icons.search, size: 22),
+            widget.decoration?.prefixIcon ?? const Icon(Icons.search, size: 22),
         suffixIcon:
             widget.decoration?.suffixIcon?.call(onClear) ??
             GestureDetector(

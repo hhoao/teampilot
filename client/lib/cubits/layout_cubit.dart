@@ -27,8 +27,8 @@ class LayoutState extends Equatable {
 
 class LayoutCubit extends Cubit<LayoutState> {
   LayoutCubit({LayoutRepository? repository})
-      : _repository = repository,
-        super(const LayoutState());
+    : _repository = repository,
+      super(const LayoutState());
 
   final LayoutRepository? _repository;
 
@@ -58,12 +58,14 @@ class LayoutCubit extends Cubit<LayoutState> {
     required bool membersVisible,
     required bool fileTreeVisible,
   }) {
-    return _save(state.preferences.copyWith(
-      appRailVisible: appRailVisible,
-      contextSidebarVisible: contextSidebarVisible,
-      membersVisible: membersVisible,
-      fileTreeVisible: fileTreeVisible,
-    ));
+    return _save(
+      state.preferences.copyWith(
+        appRailVisible: appRailVisible,
+        contextSidebarVisible: contextSidebarVisible,
+        membersVisible: membersVisible,
+        fileTreeVisible: fileTreeVisible,
+      ),
+    );
   }
 
   Future<void> setRightToolsWidth(double width) =>
@@ -82,10 +84,10 @@ class LayoutCubit extends Cubit<LayoutState> {
       _save(state.preferences.copyWith(themeMode: mode));
 
   Future<void> setThemeColorPreset(String presetId) => _save(
-        state.preferences.copyWith(
-          themeColorPreset: normalizeThemeColorPreset(presetId),
-        ),
-      );
+    state.preferences.copyWith(
+      themeColorPreset: normalizeThemeColorPreset(presetId),
+    ),
+  );
 
   Future<void> setLocale(String locale) =>
       _save(state.preferences.copyWith(locale: locale));

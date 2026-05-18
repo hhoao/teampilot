@@ -117,10 +117,7 @@ class SkillFetchService {
     try {
       resp = await _client.get(url);
     } catch (e) {
-      throw SkillFetchException(
-        'Network error for ${repo.fullName}: $e',
-        e,
-      );
+      throw SkillFetchException('Network error for ${repo.fullName}: $e', e);
     }
     if (resp.statusCode != 200) {
       throw SkillFetchException(
@@ -165,17 +162,19 @@ class SkillFetchService {
       final basename = p.basename(dir);
       try {
         final fm = parseSkillFrontmatter(String.fromCharCodes(e.value));
-        result.add(DiscoverableSkill(
-          key: '${repo.owner}/${repo.name}:$basename',
-          name: fm.name,
-          description: fm.description,
-          directory: dir,
-          readmeUrl:
-              'https://github.com/${repo.owner}/${repo.name}/tree/${repo.branch}/$dir',
-          repoOwner: repo.owner,
-          repoName: repo.name,
-          repoBranch: repo.branch,
-        ));
+        result.add(
+          DiscoverableSkill(
+            key: '${repo.owner}/${repo.name}:$basename',
+            name: fm.name,
+            description: fm.description,
+            directory: dir,
+            readmeUrl:
+                'https://github.com/${repo.owner}/${repo.name}/tree/${repo.branch}/$dir',
+            repoOwner: repo.owner,
+            repoName: repo.name,
+            repoBranch: repo.branch,
+          ),
+        );
       } on SkillParseException {
         continue;
       }

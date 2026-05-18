@@ -86,10 +86,10 @@ class FlashskyaiStorageRoots {
     SshProfile? Function()? sshProfileResolver,
     SshClientFactory? sshClientFactory,
     RemoteSshStoragePathResolver? remotePathResolver,
-  })  : _isSshMode = isSshMode,
-        _sshProfileResolver = sshProfileResolver,
-        _sshClientFactory = sshClientFactory,
-        _remotePathResolver = remotePathResolver;
+  }) : _isSshMode = isSshMode,
+       _sshProfileResolver = sshProfileResolver,
+       _sshClientFactory = sshClientFactory,
+       _remotePathResolver = remotePathResolver;
 
   final bool Function()? _isSshMode;
   final SshProfile? Function()? _sshProfileResolver;
@@ -131,7 +131,8 @@ class FlashskyaiStorageRoots {
       return StorageRootsSnapshot.local();
     }
 
-    final pathResolver = _remotePathResolver ??
+    final pathResolver =
+        _remotePathResolver ??
         RemoteSshStoragePathResolver(clientFactory: factory);
     final paths = await pathResolver.resolve(profile);
     if (paths == null) {
@@ -140,10 +141,7 @@ class FlashskyaiStorageRoots {
 
     final dataDir = paths.cliDataDir;
     final posix = p.Context(style: p.Style.posix);
-    final fileStore = RemoteFileStore(
-      profile: profile,
-      clientFactory: factory,
-    );
+    final fileStore = RemoteFileStore(profile: profile, clientFactory: factory);
 
     // Warm the shared SFTP channel before parallel stat probes.
     await factory.sftpFor(profile);
@@ -176,10 +174,12 @@ class FlashskyaiStorageRoots {
       cliSkillsDir: posix.join(dataDir, 'skills'),
       cliAgentsDir: posix.join(dataDir, 'agents'),
       appProjectsDir: AppStorage.appProjectsDirForTeampilotRoot(teampilot),
-      skillReposConfigPath:
-          AppStorage.skillReposConfigPathForTeampilotRoot(teampilot),
-      tempTeamRegistryPath:
-          AppStorage.tempTeamRegistryPathForTeampilotRoot(teampilot),
+      skillReposConfigPath: AppStorage.skillReposConfigPathForTeampilotRoot(
+        teampilot,
+      ),
+      tempTeamRegistryPath: AppStorage.tempTeamRegistryPathForTeampilotRoot(
+        teampilot,
+      ),
       remoteFileStore: fileStore,
       remoteCliDataDir: dataDir,
     );

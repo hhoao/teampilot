@@ -57,20 +57,23 @@ class FileTreeNode extends StatelessWidget {
                     child: AnimatedRotation(
                       turns: isExpanded ? 0.25 : 0.0,
                       duration: const Duration(milliseconds: 150),
-                      child: Icon(Icons.chevron_right, size: 16,
-                          color: textColor.withValues(alpha: 0.55)),
+                      child: Icon(
+                        Icons.chevron_right,
+                        size: 16,
+                        color: textColor.withValues(alpha: 0.55),
+                      ),
                     ),
                   )
                 else
                   const SizedBox(width: 18),
                 Icon(
                   isDir
-                      ? (isExpanded
-                          ? Icons.folder_open
-                          : Icons.folder_outlined)
+                      ? (isExpanded ? Icons.folder_open : Icons.folder_outlined)
                       : _fileIcon(name),
                   size: 18,
-                  color: isDir ? const Color(0xFFE5B143) : textColor.withValues(alpha: 0.6),
+                  color: isDir
+                      ? const Color(0xFFE5B143)
+                      : textColor.withValues(alpha: 0.6),
                 ),
                 const SizedBox(width: 6),
                 Expanded(
@@ -88,8 +91,7 @@ class FileTreeNode extends StatelessWidget {
             ),
           ),
         ),
-        if (isDir && isExpanded)
-          _buildChildren(context),
+        if (isDir && isExpanded) _buildChildren(context),
       ],
     );
   }
@@ -163,10 +165,19 @@ class FileTreeNode extends StatelessWidget {
     } catch (_) {}
   }
 
-  void _showContextMenu(BuildContext context, Offset position, String targetPath) async {
+  void _showContextMenu(
+    BuildContext context,
+    Offset position,
+    String targetPath,
+  ) async {
     final value = await showMenu<String>(
       context: context,
-      position: RelativeRect.fromLTRB(position.dx, position.dy, position.dx + 1, position.dy + 1),
+      position: RelativeRect.fromLTRB(
+        position.dx,
+        position.dy,
+        position.dx + 1,
+        position.dy + 1,
+      ),
       items: [
         const PopupMenuItem(value: 'copy', child: Text('Copy path')),
         const PopupMenuItem(value: 'delete', child: Text('Delete')),

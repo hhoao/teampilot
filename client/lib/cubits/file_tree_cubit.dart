@@ -89,10 +89,7 @@ class FileTreeCubit extends Cubit<FileTreeState> {
     try {
       final dir = Directory(path);
       if (!dir.existsSync()) return;
-      final entries = dir
-          .listSync()
-          .where((e) => _matchesFilter(e))
-          .toList()
+      final entries = dir.listSync().where((e) => _matchesFilter(e)).toList()
         ..sort(_compareEntries);
       final cache = Map<String, List<FileSystemEntity>>.from(state.dirCache);
       cache[path] = entries;
@@ -121,9 +118,7 @@ class FileTreeCubit extends Cubit<FileTreeState> {
     final bIsDir = b is Directory;
     if (aIsDir && !bIsDir) return -1;
     if (!aIsDir && bIsDir) return 1;
-    return _entityName(a)
-        .toLowerCase()
-        .compareTo(_entityName(b).toLowerCase());
+    return _entityName(a).toLowerCase().compareTo(_entityName(b).toLowerCase());
   }
 
   static String _entityName(FileSystemEntity entity) {

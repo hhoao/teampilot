@@ -7,10 +7,8 @@ import '../models/ssh_profile.dart';
 import 'app_storage.dart';
 import 'ssh_client_factory.dart';
 
-typedef SshRunCapture = Future<SSHRunResult> Function(
-  SSHClient client,
-  String command,
-);
+typedef SshRunCapture =
+    Future<SSHRunResult> Function(SSHClient client, String command);
 
 /// Home, CLI data dir, and TeamPilot app-data dir on a remote SSH host.
 class RemoteSshStoragePaths {
@@ -30,8 +28,8 @@ class RemoteSshStoragePathResolver {
   RemoteSshStoragePathResolver({
     required SshClientFactory clientFactory,
     SshRunCapture? runCommand,
-  })  : _clientFactory = clientFactory,
-        _runCommand = runCommand;
+  }) : _clientFactory = clientFactory,
+       _runCommand = runCommand;
 
   final SshClientFactory _clientFactory;
   final SshRunCapture? _runCommand;
@@ -47,10 +45,7 @@ printf '%s\n' "$HOME_DIR" "$CLI_DIR" "$TP_DIR"
   Future<RemoteSshStoragePaths?> resolve(SshProfile profile) async {
     try {
       final client = await _clientFactory.clientFor(profile);
-      final result = await (_runCommand ?? _defaultRun)(
-        client,
-        resolveCommand,
-      );
+      final result = await (_runCommand ?? _defaultRun)(client, resolveCommand);
       if (result.exitCode != 0) return null;
       final lines = utf8
           .decode(result.stdout, allowMalformed: true)

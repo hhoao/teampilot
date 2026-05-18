@@ -6,7 +6,10 @@ abstract class SshKnownHostRepository {
   Future<Map<String, String>> loadAll();
   Future<String?> findFingerprint(String hostIdentifier, String keyType);
   Future<void> saveFingerprint(
-      String hostIdentifier, String keyType, String fingerprintHex);
+    String hostIdentifier,
+    String keyType,
+    String fingerprintHex,
+  );
   Future<void> removeFingerprint(String hostIdentifier, String keyType);
 }
 
@@ -41,23 +44,24 @@ class SharedPrefsSshKnownHostRepository implements SshKnownHostRepository {
   Future<Map<String, String>> loadAll() async => _decode();
 
   @override
-  Future<String?> findFingerprint(
-      String hostIdentifier, String keyType) async {
+  Future<String?> findFingerprint(String hostIdentifier, String keyType) async {
     final data = _decode();
     return data['$hostIdentifier::$keyType'];
   }
 
   @override
   Future<void> saveFingerprint(
-      String hostIdentifier, String keyType, String fingerprintHex) async {
+    String hostIdentifier,
+    String keyType,
+    String fingerprintHex,
+  ) async {
     final data = _decode();
     data['$hostIdentifier::$keyType'] = fingerprintHex;
     await _encode(data);
   }
 
   @override
-  Future<void> removeFingerprint(
-      String hostIdentifier, String keyType) async {
+  Future<void> removeFingerprint(String hostIdentifier, String keyType) async {
     final data = _decode();
     data.remove('$hostIdentifier::$keyType');
     await _encode(data);
@@ -71,20 +75,21 @@ class InMemorySshKnownHostRepository implements SshKnownHostRepository {
   Future<Map<String, String>> loadAll() async => Map.of(_entries);
 
   @override
-  Future<String?> findFingerprint(
-      String hostIdentifier, String keyType) async {
+  Future<String?> findFingerprint(String hostIdentifier, String keyType) async {
     return _entries['$hostIdentifier::$keyType'];
   }
 
   @override
   Future<void> saveFingerprint(
-      String hostIdentifier, String keyType, String fingerprintHex) async {
+    String hostIdentifier,
+    String keyType,
+    String fingerprintHex,
+  ) async {
     _entries['$hostIdentifier::$keyType'] = fingerprintHex;
   }
 
   @override
-  Future<void> removeFingerprint(
-      String hostIdentifier, String keyType) async {
+  Future<void> removeFingerprint(String hostIdentifier, String keyType) async {
     _entries.remove('$hostIdentifier::$keyType');
   }
 }

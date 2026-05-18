@@ -1,9 +1,6 @@
 import 'package:flutter/foundation.dart';
 
-enum AppSessionLaunchState {
-  created,
-  started,
-}
+enum AppSessionLaunchState { created, started }
 
 @immutable
 class AppSession {
@@ -49,8 +46,10 @@ class AppSession {
   final String primaryPath;
   final List<String> additionalPaths;
   final String display;
+
   /// Stable UI team id ([TeamConfig.id]) for filtering; not the CLI temp dir name.
   final String sessionTeam;
+
   /// CLI `--session-team` directory name under `~/.flashskyai/teams/`.
   final String launchTeam;
   final AppSessionLaunchState launchState;
@@ -129,15 +128,15 @@ class AppSession {
 
   @override
   int get hashCode => Object.hash(
-        sessionId,
-        projectId,
-        primaryPath,
-        Object.hashAll(additionalPaths),
-        display,
-        sessionTeam,
-        launchTeam,
-        launchState,
-        createdAt,
-        updatedAt,
-      );
+    sessionId,
+    projectId,
+    primaryPath,
+    Object.hashAll(additionalPaths),
+    display,
+    sessionTeam,
+    launchTeam,
+    launchState,
+    createdAt,
+    updatedAt,
+  );
 }

@@ -30,8 +30,8 @@ class RemoteLlmConfigStore implements LlmConfigStore {
   RemoteLlmConfigStore({
     required String remotePath,
     required RemoteFileStore fileStore,
-  })  : _remotePath = remotePath,
-        _fileStore = fileStore;
+  }) : _remotePath = remotePath,
+       _fileStore = fileStore;
 
   final String _remotePath;
   final RemoteFileStore _fileStore;
@@ -64,9 +64,9 @@ class RemoteLlmConfigStore implements LlmConfigStore {
     }
     await _fileStore.writeFile(
       _remotePath,
-      const JsonEncoder.withIndent('  ').convert(
-        config.toJson(previous: previous),
-      ),
+      const JsonEncoder.withIndent(
+        '  ',
+      ).convert(config.toJson(previous: previous)),
     );
   }
 }

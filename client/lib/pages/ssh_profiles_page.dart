@@ -100,14 +100,8 @@ class _SshProfilesBody extends StatelessWidget {
                 }
               },
               itemBuilder: (context) => const [
-                PopupMenuItem(
-                  value: _ProfileAction.edit,
-                  child: Text('编辑'),
-                ),
-                PopupMenuItem(
-                  value: _ProfileAction.delete,
-                  child: Text('删除'),
-                ),
+                PopupMenuItem(value: _ProfileAction.edit, child: Text('编辑')),
+                PopupMenuItem(value: _ProfileAction.delete, child: Text('删除')),
               ],
             ),
           );
@@ -145,7 +139,9 @@ Future<void> openSshProfileEditor(
         credentialStore: context.read<SshCredentialStore>(),
         initialProfile: profile,
         connectionTester: SshProfileConnectionTester(
-          clientFactory: context.read<TerminalTransportFactory>().sshClientFactory,
+          clientFactory: context
+              .read<TerminalTransportFactory>()
+              .sshClientFactory,
         ),
         onProfileSaved: () {
           context.read<SshProfileCubit>().load();

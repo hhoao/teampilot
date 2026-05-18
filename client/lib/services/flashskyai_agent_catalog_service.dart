@@ -56,17 +56,21 @@ abstract final class FlashskyaiAgentCatalog {
     return null;
   }
 
-  static bool isKnownAgentId(String id, {List<String> userAgentIds = const []}) {
+  static bool isKnownAgentId(
+    String id, {
+    List<String> userAgentIds = const [],
+  }) {
     if (tryParseBuiltinId(id) != null) return true;
     return userAgentIds.contains(id);
   }
 
-  static List<String> dropdownValues({List<String> userAgentIds = const []}) => [
-    noneDropdownValue,
-    ...builtIns.map((e) => e.id),
-    ...userAgentIds,
-    customDropdownValue,
-  ];
+  static List<String> dropdownValues({List<String> userAgentIds = const []}) =>
+      [
+        noneDropdownValue,
+        ...builtIns.map((e) => e.id),
+        ...userAgentIds,
+        customDropdownValue,
+      ];
 
   static String activeDropdownValue(
     String agent, {
@@ -83,7 +87,7 @@ abstract final class FlashskyaiAgentCatalog {
 /// Lists user-defined agent ids from [AppStorage.cliAgentsDir] (`*.md`).
 class FlashskyaiAgentCatalogService {
   FlashskyaiAgentCatalogService({FlashskyaiStorageRoots? storageRoots})
-      : _storageRoots = storageRoots;
+    : _storageRoots = storageRoots;
 
   final FlashskyaiStorageRoots? _storageRoots;
 

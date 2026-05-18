@@ -23,10 +23,7 @@ class TeamLaunchEnvironmentBuilder {
             appDataBasePath: appDataBasePath,
             storageRootsResolver: storageRootsResolver,
           );
-      return service.prepareTeamLaunch(
-        teamId: teamId,
-        cli: team.cli,
-      );
+      return service.prepareTeamLaunch(teamId: teamId, cli: team.cli);
     }
 
     final override = llmConfigPathOverride?.trim();

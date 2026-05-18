@@ -52,8 +52,7 @@ class RemoteFlashskyaiCommandBuilder {
       'if [ -f ~/.bashrc ]; then . ~/.bashrc || true; fi',
       command,
     ].join(' && ');
-    return r'TERM="${TERM:-xterm-256color}" bash -lc ' +
-        _quote(shellCommand);
+    return r'TERM="${TERM:-xterm-256color}" bash -lc ' + _quote(shellCommand);
   }
 
   static String _quote(String arg) {

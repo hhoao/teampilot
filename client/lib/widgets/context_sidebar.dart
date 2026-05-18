@@ -124,10 +124,7 @@ Future<void> _promptAddTeam(BuildContext context, TeamCubit teamCubit) async {
             onPressed: () {
               final name = nameController.text.trim();
               if (name.isEmpty) return;
-              Navigator.pop(
-                dialogContext,
-                (name: name, cli: selectedCli),
-              );
+              Navigator.pop(dialogContext, (name: name, cli: selectedCli));
             },
             child: Text(l10n.add),
           ),
@@ -179,9 +176,7 @@ class _ContextSidebarState extends State<ContextSidebar> {
           : Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                _SkillTile(
-                  onTap: () => goFromSidebar(context, '/skills'),
-                ),
+                _SkillTile(onTap: () => goFromSidebar(context, '/skills')),
                 const SizedBox(height: 14),
                 _TeamSelector(
                   teams: teamCubit.state.teams,
@@ -474,8 +469,7 @@ class _ProjectHeaderState extends State<_ProjectHeader> {
       widget.onCopyPath != null ||
       widget.onDelete != null;
 
-  bool get _showActions =>
-      _hovered || _menuOpen || Platform.isAndroid;
+  bool get _showActions => _hovered || _menuOpen || Platform.isAndroid;
 
   List<PopupMenuEntry<String>> _projectMenuEntries(BuildContext context) {
     final l10n = context.l10n;
@@ -581,103 +575,109 @@ class _ProjectHeaderState extends State<_ProjectHeader> {
               ? _showProjectContextMenuAtCenter
               : null,
           child: Material(
-          color: Colors.transparent,
-          borderRadius: BorderRadius.circular(8),
-          child: Ink(
-            decoration: BoxDecoration(borderRadius: BorderRadius.circular(8)),
-            child: Row(
-              children: [
-                Expanded(
-                  child: GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    onTap: widget.onToggle,
-                    child: Container(
-                      padding: const EdgeInsets.only(
-                        left: 12,
-                        right: 4,
-                        top: 8,
-                        bottom: 8,
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            widget.expanded
-                                ? Icons.expand_more
-                                : Icons.chevron_right,
-                            size: 16,
-                            color: textBase.withValues(alpha: 0.5),
-                          ),
-                          const SizedBox(width: 6),
-                          Icon(
-                            Icons.folder_outlined,
-                            size: 16,
-                            color: textBase.withValues(alpha: 0.7),
-                          ),
-                          const SizedBox(width: 6),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  widget.name,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: Theme.of(context).textTheme.bodyMedium,
-                                ),
-                              ],
+            color: Colors.transparent,
+            borderRadius: BorderRadius.circular(8),
+            child: Ink(
+              decoration: BoxDecoration(borderRadius: BorderRadius.circular(8)),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: widget.onToggle,
+                      child: Container(
+                        padding: const EdgeInsets.only(
+                          left: 12,
+                          right: 4,
+                          top: 8,
+                          bottom: 8,
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              widget.expanded
+                                  ? Icons.expand_more
+                                  : Icons.chevron_right,
+                              size: 16,
+                              color: textBase.withValues(alpha: 0.5),
                             ),
-                          ),
-                        ],
+                            const SizedBox(width: 6),
+                            Icon(
+                              Icons.folder_outlined,
+                              size: 16,
+                              color: textBase.withValues(alpha: 0.7),
+                            ),
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    widget.name,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: Theme.of(
+                                      context,
+                                    ).textTheme.bodyMedium,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
-                ),
-                // Keep action controls in the layout when hidden: [PopupMenuButton]
-                // uses a tall minimum touch target, so toggling visibility used to
-                // change the row height on hover.
-                Visibility(
-                  visible: _showActions,
-                  maintainSize: true,
-                  maintainState: true,
-                  maintainAnimation: true,
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      InkWell(
-                        borderRadius: BorderRadius.circular(4),
-                        onTap: widget.onNewSession,
-                        child: Tooltip(
-                          message: l10n.newSessionTooltip,
-                          child: Padding(
-                            padding: const EdgeInsets.all(6),
-                            child: Icon(Icons.add, size: 16, color: cs.primary),
+                  // Keep action controls in the layout when hidden: [PopupMenuButton]
+                  // uses a tall minimum touch target, so toggling visibility used to
+                  // change the row height on hover.
+                  Visibility(
+                    visible: _showActions,
+                    maintainSize: true,
+                    maintainState: true,
+                    maintainAnimation: true,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        InkWell(
+                          borderRadius: BorderRadius.circular(4),
+                          onTap: widget.onNewSession,
+                          child: Tooltip(
+                            message: l10n.newSessionTooltip,
+                            child: Padding(
+                              padding: const EdgeInsets.all(6),
+                              child: Icon(
+                                Icons.add,
+                                size: 16,
+                                color: cs.primary,
+                              ),
+                            ),
                           ),
                         ),
-                      ),
-                      if (_hasOverflowMenu)
-                        PopupMenuButton<String>(
-                          tooltip: '',
-                          padding: EdgeInsets.zero,
-                          icon: Icon(
-                            Icons.more_horiz,
-                            size: 16,
-                            color: textBase.withValues(alpha: 0.5),
+                        if (_hasOverflowMenu)
+                          PopupMenuButton<String>(
+                            tooltip: '',
+                            padding: EdgeInsets.zero,
+                            icon: Icon(
+                              Icons.more_horiz,
+                              size: 16,
+                              color: textBase.withValues(alpha: 0.5),
+                            ),
+                            onOpened: () => setState(() => _menuOpen = true),
+                            onCanceled: () => setState(() => _menuOpen = false),
+                            onSelected: (value) {
+                              setState(() => _menuOpen = false);
+                              _handleProjectMenuSelection(value);
+                            },
+                            itemBuilder: _projectMenuEntries,
                           ),
-                          onOpened: () => setState(() => _menuOpen = true),
-                          onCanceled: () => setState(() => _menuOpen = false),
-                          onSelected: (value) {
-                            setState(() => _menuOpen = false);
-                            _handleProjectMenuSelection(value);
-                          },
-                          itemBuilder: _projectMenuEntries,
-                        ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
-        ),
         ),
       ),
     );
@@ -749,8 +749,7 @@ class _SessionTileEntryState extends State<_SessionTileEntry> {
     unawaited(_showSessionContextMenu(center));
   }
 
-  bool get _showSessionActions =>
-      _hovered || _menuOpen || Platform.isAndroid;
+  bool get _showSessionActions => _hovered || _menuOpen || Platform.isAndroid;
 
   @override
   Widget build(BuildContext context) {

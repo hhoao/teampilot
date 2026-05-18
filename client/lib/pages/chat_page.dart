@@ -106,9 +106,7 @@ class ChatPage extends StatelessWidget {
             );
             return;
           }
-          unawaited(
-            context.read<ChatCubit>().openMemberTab(team, lead.first),
-          );
+          unawaited(context.read<ChatCubit>().openMemberTab(team, lead.first));
         },
         icon: const Icon(Icons.person_outline),
       ),

@@ -7,10 +7,8 @@ import '../models/ssh_profile.dart';
 import 'remote_home_resolver.dart';
 import 'ssh_client_factory.dart';
 
-typedef SshRunCapture = Future<SSHRunResult> Function(
-  SSHClient client,
-  String command,
-);
+typedef SshRunCapture =
+    Future<SSHRunResult> Function(SSHClient client, String command);
 
 /// Resolves the flashskyai CLI data directory on a remote SSH host.
 ///
@@ -21,10 +19,11 @@ class RemoteFlashskyaiDataDirResolver {
     required SshClientFactory clientFactory,
     RemoteHomeResolver? remoteHomeResolver,
     SshRunCapture? runCommand,
-  })  : _clientFactory = clientFactory,
-        _remoteHomeResolver =
-            remoteHomeResolver ?? RemoteHomeResolver(clientFactory: clientFactory),
-        _runCommand = runCommand;
+  }) : _clientFactory = clientFactory,
+       _remoteHomeResolver =
+           remoteHomeResolver ??
+           RemoteHomeResolver(clientFactory: clientFactory),
+       _runCommand = runCommand;
 
   final SshClientFactory _clientFactory;
   final RemoteHomeResolver _remoteHomeResolver;

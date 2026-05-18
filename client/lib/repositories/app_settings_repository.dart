@@ -63,7 +63,7 @@ class SharedPrefsAppSettingsRepository implements AppSettingsRepository {
 /// Test-friendly in-memory implementation.
 class InMemoryAppSettingsRepository implements AppSettingsRepository {
   InMemoryAppSettingsRepository({String? llmConfigPathOverride})
-      : _llmConfigPathOverride = llmConfigPathOverride;
+    : _llmConfigPathOverride = llmConfigPathOverride;
 
   String? _llmConfigPathOverride;
 
@@ -73,7 +73,8 @@ class InMemoryAppSettingsRepository implements AppSettingsRepository {
   @override
   Future<void> saveLlmConfigPathOverride(String? path) async {
     final trimmed = path?.trim();
-    _llmConfigPathOverride =
-        (trimmed == null || trimmed.isEmpty) ? null : trimmed;
+    _llmConfigPathOverride = (trimmed == null || trimmed.isEmpty)
+        ? null
+        : trimmed;
   }
 }

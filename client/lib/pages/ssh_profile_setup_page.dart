@@ -131,15 +131,18 @@ class _SshProfileSetupPageState extends State<SshProfileSetupPage> {
     setState(() => _testing = true);
     try {
       final profile = _buildProfile();
-      final password = _authType == SshAuthType.password &&
+      final password =
+          _authType == SshAuthType.password &&
               _passwordController.text.isNotEmpty
           ? _passwordController.text
           : null;
-      final privateKey = _authType == SshAuthType.privateKey &&
+      final privateKey =
+          _authType == SshAuthType.privateKey &&
               _privateKeyController.text.isNotEmpty
           ? _privateKeyController.text
           : null;
-      final passphrase = _authType == SshAuthType.privateKey &&
+      final passphrase =
+          _authType == SshAuthType.privateKey &&
               _passphraseController.text.isNotEmpty
           ? _passphraseController.text
           : null;

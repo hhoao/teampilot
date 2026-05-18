@@ -118,8 +118,8 @@ typedef SkillUninstalledHandler = Future<void> Function(String skillId);
 
 class SkillCubit extends Cubit<SkillState> {
   SkillCubit(this._repo, {SkillUninstalledHandler? onSkillUninstalled})
-      : _onSkillUninstalled = onSkillUninstalled,
-        super(const SkillState());
+    : _onSkillUninstalled = onSkillUninstalled,
+      super(const SkillState());
 
   final SkillRepository _repo;
   final SkillUninstalledHandler? _onSkillUninstalled;
@@ -135,19 +135,18 @@ class SkillCubit extends Cubit<SkillState> {
       final installed = results[0] as List<Skill>;
       final repos = results[1] as List<SkillRepo>;
       final backups = results[2] as List<SkillBackup>;
-      emit(state.copyWith(
-        installed: installed,
-        repos: repos,
-        backups: backups,
-        status: SkillLoadStatus.ready,
-      ));
+      emit(
+        state.copyWith(
+          installed: installed,
+          repos: repos,
+          backups: backups,
+          status: SkillLoadStatus.ready,
+        ),
+      );
       unawaited(refreshDiscoverable());
     } catch (e) {
       appLogger.e('[skills] loadAll failed: $e');
-      emit(state.copyWith(
-        status: SkillLoadStatus.error,
-        errorMessage: '$e',
-      ));
+      emit(state.copyWith(status: SkillLoadStatus.error, errorMessage: '$e'));
     }
   }
 
@@ -174,11 +173,13 @@ class SkillCubit extends Cubit<SkillState> {
         if (seen.add(key)) accumulated.add(d);
       }
       // Emit after every repo so the grid populates progressively.
-      emit(state.copyWith(
-        discoverable: List.of(accumulated),
-        discoveryLoading: true,
-        clearError: true,
-      ));
+      emit(
+        state.copyWith(
+          discoverable: List.of(accumulated),
+          discoveryLoading: true,
+          clearError: true,
+        ),
+      );
     }
     emit(state.copyWith(discoveryLoading: false));
   }
@@ -295,28 +296,24 @@ class SkillCubit extends Cubit<SkillState> {
       final updates = await _repo.checkUpdates(state.installed);
       emit(state.copyWith(updates: updates, updatesLoading: false));
     } catch (e) {
-      emit(state.copyWith(
-        updatesLoading: false,
-        errorMessage: '$e',
-      ));
+      emit(state.copyWith(updatesLoading: false, errorMessage: '$e'));
     }
   }
 
   Future<void> updateSkill(Skill s) async {
-    emit(state.copyWith(
-      busyIds: {...state.busyIds, s.id},
-      clearError: true,
-    ));
+    emit(state.copyWith(busyIds: {...state.busyIds, s.id}, clearError: true));
     try {
       await _repo.updateSkill(s);
       final installed = await _repo.loadInstalled();
       final backups = await _repo.loadBackups();
       final updates = state.updates.where((u) => u.id != s.id).toList();
-      emit(state.copyWith(
-        installed: installed,
-        backups: backups,
-        updates: updates,
-      ));
+      emit(
+        state.copyWith(
+          installed: installed,
+          backups: backups,
+          updates: updates,
+        ),
+      );
     } catch (e) {
       emit(state.copyWith(errorMessage: '$e'));
     } finally {
@@ -377,59 +374,67 @@ class SkillCubit extends Cubit<SkillState> {
 
   Future<void> searchSkillsSh(String query) async {
     if (query.trim().length < 2) return;
-    emit(state.copyWith(
-      skillsSh: state.skillsSh.copyWith(
-        loading: true,
-        query: query,
-        offset: 0,
-        entries: const [],
+    emit(
+      state.copyWith(
+        skillsSh: state.skillsSh.copyWith(
+          loading: true,
+          query: query,
+          offset: 0,
+          entries: const [],
+        ),
+        clearError: true,
       ),
-      clearError: true,
-    ));
+    );
     try {
       final res = await _repo.searchSkillsSh(query, offset: 0);
-      emit(state.copyWith(
-        skillsSh: SkillsShSearchState(
-          query: query,
-          entries: res.skills,
-          totalCount: res.totalCount,
-          offset: res.skills.length,
-          loading: false,
+      emit(
+        state.copyWith(
+          skillsSh: SkillsShSearchState(
+            query: query,
+            entries: res.skills,
+            totalCount: res.totalCount,
+            offset: res.skills.length,
+            loading: false,
+          ),
         ),
-      ));
+      );
     } catch (e) {
-      emit(state.copyWith(
-        skillsSh: state.skillsSh.copyWith(loading: false),
-        errorMessage: '$e',
-      ));
+      emit(
+        state.copyWith(
+          skillsSh: state.skillsSh.copyWith(loading: false),
+          errorMessage: '$e',
+        ),
+      );
     }
   }
 
   Future<void> loadMoreSkillsSh() async {
     if (state.skillsSh.loading) return;
     if (state.skillsSh.entries.length >= state.skillsSh.totalCount) return;
-    emit(state.copyWith(
-      skillsSh: state.skillsSh.copyWith(loading: true),
-    ));
+    emit(state.copyWith(skillsSh: state.skillsSh.copyWith(loading: true)));
     try {
       final res = await _repo.searchSkillsSh(
         state.skillsSh.query,
         offset: state.skillsSh.offset,
       );
       final merged = [...state.skillsSh.entries, ...res.skills];
-      emit(state.copyWith(
-        skillsSh: state.skillsSh.copyWith(
-          entries: merged,
-          offset: merged.length,
-          totalCount: res.totalCount,
-          loading: false,
+      emit(
+        state.copyWith(
+          skillsSh: state.skillsSh.copyWith(
+            entries: merged,
+            offset: merged.length,
+            totalCount: res.totalCount,
+            loading: false,
+          ),
         ),
-      ));
+      );
     } catch (e) {
-      emit(state.copyWith(
-        skillsSh: state.skillsSh.copyWith(loading: false),
-        errorMessage: '$e',
-      ));
+      emit(
+        state.copyWith(
+          skillsSh: state.skillsSh.copyWith(loading: false),
+          errorMessage: '$e',
+        ),
+      );
     }
   }
 

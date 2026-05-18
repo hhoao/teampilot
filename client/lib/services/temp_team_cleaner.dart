@@ -14,9 +14,9 @@ class TempTeamCleaner {
     String? registryPath,
     String? cliTeamsDir,
     FlashskyaiStorageRoots? storageRoots,
-  })  : _registryPathOverride = registryPath,
-        _cliTeamsDirOverride = cliTeamsDir,
-        _storageRoots = storageRoots;
+  }) : _registryPathOverride = registryPath,
+       _cliTeamsDirOverride = cliTeamsDir,
+       _storageRoots = storageRoots;
 
   final String? _registryPathOverride;
   final String? _cliTeamsDirOverride;
@@ -32,8 +32,7 @@ class TempTeamCleaner {
       );
     }
     return _CleanerPaths(
-      registryPath:
-          _registryPathOverride ?? AppStorage.tempTeamRegistryPath,
+      registryPath: _registryPathOverride ?? AppStorage.tempTeamRegistryPath,
       cliTeamsDir: _cliTeamsDirOverride ?? AppStorage.cliTeamsDir,
     );
   }
@@ -55,8 +54,9 @@ class TempTeamCleaner {
     for (final name in names) {
       final teamDir = p.join(paths.cliTeamsDir, name);
       if (paths.remote != null) {
-        final configPath = p.Context(style: p.Style.posix)
-            .join(teamDir, 'config.json');
+        final configPath = p.Context(
+          style: p.Style.posix,
+        ).join(teamDir, 'config.json');
         if (!await paths.remote!.fileExists(configPath)) continue;
         try {
           await paths.remote!.removeRecursive(teamDir);
@@ -82,8 +82,9 @@ class TempTeamCleaner {
         continue;
       }
       if (paths.remote != null) {
-        final configPath = p.Context(style: p.Style.posix)
-            .join(paths.cliTeamsDir, name, 'config.json');
+        final configPath = p.Context(
+          style: p.Style.posix,
+        ).join(paths.cliTeamsDir, name, 'config.json');
         if (await paths.remote!.fileExists(configPath)) {
           remaining.add(name);
         }

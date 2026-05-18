@@ -126,7 +126,9 @@ class _DropDownFieldState<T> extends State<_DropDownField<T>> {
         widget.fillColor ??
         (widget.enabled
             ? CustomDropdownDecoration._defaultFillColor
-            : CustomDropdownDecoration._defaultFillColor.withValues(alpha: 0.5));
+            : CustomDropdownDecoration._defaultFillColor.withValues(
+                alpha: 0.5,
+              ));
     final hover = scheme.onSurface.withValues(alpha: 0.07);
     final splash = scheme.onSurface.withValues(alpha: 0.10);
 

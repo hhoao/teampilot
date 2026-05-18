@@ -26,16 +26,10 @@ class SkillsShService {
     int limit = 20,
     int offset = 0,
   }) async {
-    final uri = Uri.parse(
-      'https://skills.sh/api/search',
-    ).replace(queryParameters: {
-      'q': query,
-      'limit': '$limit',
-      'offset': '$offset',
-    });
-    final resp = await _client
-        .get(uri)
-        .timeout(const Duration(seconds: 10));
+    final uri = Uri.parse('https://skills.sh/api/search').replace(
+      queryParameters: {'q': query, 'limit': '$limit', 'offset': '$offset'},
+    );
+    final resp = await _client.get(uri).timeout(const Duration(seconds: 10));
     if (resp.statusCode != 200) {
       throw SkillFetchException('skills.sh HTTP ${resp.statusCode}');
     }

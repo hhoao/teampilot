@@ -19,14 +19,13 @@ class RemoteFileStore {
   RemoteFileStore({
     required SshProfile profile,
     required SshClientFactory clientFactory,
-  })  : _profile = profile,
-        _clientFactory = clientFactory;
+  }) : _profile = profile,
+       _clientFactory = clientFactory;
 
   final SshProfile _profile;
   final SshClientFactory _clientFactory;
 
-  Future<SftpClient> _ensureConnected() =>
-      _clientFactory.sftpFor(_profile);
+  Future<SftpClient> _ensureConnected() => _clientFactory.sftpFor(_profile);
 
   Future<String> expandHome(String path) async {
     if (!path.startsWith('~')) return path;
@@ -66,7 +65,8 @@ class RemoteFileStore {
     final bytes = Uint8List.fromList(utf8.encode(contents));
     final file = await sftp.open(
       resolved,
-      mode: SftpFileOpenMode.write |
+      mode:
+          SftpFileOpenMode.write |
           SftpFileOpenMode.create |
           SftpFileOpenMode.truncate,
     );
@@ -86,10 +86,7 @@ class RemoteFileStore {
     return [
       for (final n in names)
         if (n.filename != '.' && n.filename != '..')
-          RemoteDirEntry(
-            name: n.filename,
-            isDirectory: n.attr.isDirectory,
-          ),
+          RemoteDirEntry(name: n.filename, isDirectory: n.attr.isDirectory),
     ];
   }
 
@@ -98,7 +95,8 @@ class RemoteFileStore {
     final resolved = await expandHome(path);
     final file = await sftp.open(
       resolved,
-      mode: SftpFileOpenMode.write |
+      mode:
+          SftpFileOpenMode.write |
           SftpFileOpenMode.create |
           SftpFileOpenMode.truncate,
     );
@@ -162,7 +160,10 @@ class RemoteFileStore {
     }
     final posix = p.Context(style: p.Style.posix);
     await ensureDirectory(remoteRoot);
-    await for (final entity in localRoot.list(recursive: true, followLinks: false)) {
+    await for (final entity in localRoot.list(
+      recursive: true,
+      followLinks: false,
+    )) {
       final rel = p.relative(entity.path, from: localRoot.path);
       final remotePath = rel == '.'
           ? remoteRoot

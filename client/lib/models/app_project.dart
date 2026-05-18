@@ -97,14 +97,14 @@ class AppProject {
 
   @override
   int get hashCode => Object.hash(
-        projectId,
-        primaryPath,
-        Object.hashAll(additionalPaths),
-        display,
-        createdAt,
-        updatedAt,
-        Object.hashAll(sessionIds),
-      );
+    projectId,
+    primaryPath,
+    Object.hashAll(additionalPaths),
+    display,
+    createdAt,
+    updatedAt,
+    Object.hashAll(sessionIds),
+  );
 }
 
 class AppProjectsIndex {

@@ -74,9 +74,7 @@ final appRouter = GoRouter(
                         onPressed: () => AndroidShellChrome.pop(context, path),
                       )
                     : null,
-                actions: const [
-                  AndroidSshProfileSelector(),
-                ],
+                actions: const [AndroidSshProfileSelector()],
               ),
               drawer: hubDetail
                   ? null
@@ -153,9 +151,8 @@ final appRouter = GoRouter(
         ),
         GoRoute(
           path: '/config/ssh-profiles',
-          pageBuilder: (context, state) => const NoTransitionPage(
-            child: SshProfilesPage(embedded: true),
-          ),
+          pageBuilder: (context, state) =>
+              const NoTransitionPage(child: SshProfilesPage(embedded: true)),
         ),
         GoRoute(
           path: '/team-config',
@@ -312,10 +309,7 @@ class _RemoteProjectPathDialogState extends State<_RemoteProjectPathDialog> {
           onPressed: () => Navigator.of(context).pop(),
           child: const Text('Cancel'),
         ),
-        FilledButton(
-          onPressed: _submit,
-          child: const Text('Create'),
-        ),
+        FilledButton(onPressed: _submit, child: const Text('Create')),
       ],
     );
   }

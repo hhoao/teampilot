@@ -40,9 +40,9 @@ class TeamRepository {
     String? rootDir,
     String? cliTeamsDir,
     FlashskyaiStorageRoots? storageRoots,
-  })  : _rootDirOverride = rootDir,
-        _cliTeamsDirOverride = cliTeamsDir,
-        _storageRoots = storageRoots;
+  }) : _rootDirOverride = rootDir,
+       _cliTeamsDirOverride = cliTeamsDir,
+       _storageRoots = storageRoots;
 
   final String? _rootDirOverride;
   final String? _cliTeamsDirOverride;
@@ -120,9 +120,7 @@ class TeamRepository {
     for (final team in teams) {
       final name = team.name.trim();
       if (name.isEmpty) continue;
-      stamped.add(
-        team.createdAt > 0 ? team : team.copyWith(createdAt: now),
-      );
+      stamped.add(team.createdAt > 0 ? team : team.copyWith(createdAt: now));
     }
     final paths = await _paths();
     if (paths.cliIsRemote) {
@@ -223,7 +221,11 @@ class TeamRepository {
     final store = paths.remote!;
     final posix = p.Context(style: p.Style.posix);
     for (final team in teams) {
-      final configPath = posix.join(paths.cliTeamsDir, team.name, 'config.json');
+      final configPath = posix.join(
+        paths.cliTeamsDir,
+        team.name,
+        'config.json',
+      );
       await store.ensureDirectory(posix.join(paths.cliTeamsDir, team.name));
 
       Map<String, Object?> existing = {};
@@ -246,8 +248,10 @@ class TeamRepository {
       } else {
         existing.remove('loop');
       }
-      existing['members'] =
-          _mergeMembersForCli(team.members, existing['members']);
+      existing['members'] = _mergeMembersForCli(
+        team.members,
+        existing['members'],
+      );
 
       await store.writeFile(
         configPath,
@@ -322,11 +326,13 @@ class TeamRepository {
     for (final cli in cliMembers) {
       final ui = uiByName[cli.name];
       if (ui != null) {
-        merged.add(ui.copyWith(
-          name: cli.name,
-          joinedAt: cli.joinedAt,
-          dangerouslySkipPermissions: cli.dangerouslySkipPermissions,
-        ));
+        merged.add(
+          ui.copyWith(
+            name: cli.name,
+            joinedAt: cli.joinedAt,
+            dangerouslySkipPermissions: cli.dangerouslySkipPermissions,
+          ),
+        );
       } else {
         merged.add(cli);
       }
@@ -370,8 +376,8 @@ class TeamRepository {
       joinedAt: (json['joinedAt'] as num?)?.toInt() ?? 0,
       dangerouslySkipPermissions:
           TeamMemberConfig.decodeDangerouslySkipPermissions(
-        json['dangerouslySkipPermissions'],
-      ),
+            json['dangerouslySkipPermissions'],
+          ),
     );
   }
 
@@ -437,8 +443,10 @@ class TeamRepository {
       } else {
         existing.remove('loop');
       }
-      existing['members'] =
-          _mergeMembersForCli(team.members, existing['members']);
+      existing['members'] = _mergeMembersForCli(
+        team.members,
+        existing['members'],
+      );
 
       await configFile.writeAsString(
         const JsonEncoder.withIndent('  ').convert(existing),
@@ -503,16 +511,18 @@ class TeamRepository {
         if (name.isNotEmpty) existingByName[name] = entry;
       }
     }
-    return uiMembers.map((member) {
-      final base = existingByName[member.name] ?? <String, Object?>{};
-      base['name'] = member.name;
-      base['joinedAt'] = member.joinedAt;
-      if (member.dangerouslySkipPermissions) {
-        base['dangerouslySkipPermissions'] = true;
-      } else {
-        base.remove('dangerouslySkipPermissions');
-      }
-      return base;
-    }).toList(growable: false);
+    return uiMembers
+        .map((member) {
+          final base = existingByName[member.name] ?? <String, Object?>{};
+          base['name'] = member.name;
+          base['joinedAt'] = member.joinedAt;
+          if (member.dangerouslySkipPermissions) {
+            base['dangerouslySkipPermissions'] = true;
+          } else {
+            base.remove('dangerouslySkipPermissions');
+          }
+          return base;
+        })
+        .toList(growable: false);
   }
 }

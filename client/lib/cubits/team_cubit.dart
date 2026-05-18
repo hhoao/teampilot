@@ -111,6 +111,7 @@ class TeamCubit extends Cubit<TeamState> {
     }
     return AppStorage.basePath;
   }
+
   final StorageRootsResolver? _storageRootsResolver;
   final TeamSkillLinkerService _skillLinker;
   final InstalledSkillsLoader? _installedSkillsLoader;

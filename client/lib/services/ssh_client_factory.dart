@@ -9,10 +9,7 @@ import '../repositories/ssh_credential_store.dart';
 import '../repositories/ssh_known_host_repository.dart';
 
 typedef SshClientConnector =
-    Future<SSHClient> Function(
-      SshProfile profile, {
-      Duration timeout,
-    });
+    Future<SSHClient> Function(SshProfile profile, {Duration timeout});
 
 class _PooledConnection {
   _PooledConnection({
@@ -88,7 +85,10 @@ class SshClientFactory {
       }
     }
 
-    final client = await (_connector ?? createClient)(profile, timeout: timeout);
+    final client = await (_connector ?? createClient)(
+      profile,
+      timeout: timeout,
+    );
     final ready = client.authenticated;
     _pool[profile.id] = _PooledConnection(
       client: client,
@@ -272,10 +272,7 @@ class _CredentialOverrideStore implements SshCredentialStore {
       _base.savePrivateKey(profileId, privateKey);
 
   @override
-  Future<void> savePrivateKeyPassphrase(
-    String profileId,
-    String passphrase,
-  ) =>
+  Future<void> savePrivateKeyPassphrase(String profileId, String passphrase) =>
       _base.savePrivateKeyPassphrase(profileId, passphrase);
 
   @override

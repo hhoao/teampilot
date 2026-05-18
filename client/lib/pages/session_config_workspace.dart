@@ -280,8 +280,8 @@ class _SessionControlsState extends State<_SessionControls> {
                       final skillCubit = context.read<SkillCubit>();
                       final chatCubit = context.read<ChatCubit>();
                       final sessionRepo = context.read<SessionRepository>();
-                      final storageRoots =
-                          context.read<FlashskyaiStorageRoots>();
+                      final storageRoots = context
+                          .read<FlashskyaiStorageRoots>();
                       await widget.cubit.setConnectionMode(selected.first);
                       if (!context.mounted) return;
                       storageRoots.invalidate();
@@ -370,7 +370,8 @@ class _SessionControlsState extends State<_SessionControls> {
                       '通过 bash -lc 启动远端 flashskyai，以便读取远端 shell 配置中的 PATH。',
                   trailing: Switch(
                     value: state.preferences.sshUseLoginShell,
-                    onChanged: (value) => widget.cubit.setSshUseLoginShell(value),
+                    onChanged: (value) =>
+                        widget.cubit.setSshUseLoginShell(value),
                   ),
                   showDividerBelow: true,
                 ),

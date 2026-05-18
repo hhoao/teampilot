@@ -45,7 +45,10 @@ class RemoteFlashskyaiCliLocator {
 
   /// Lookup strategy without opening SSH (used by unit tests).
   Future<String?> locateWithRunner(SshCommandRunner runCommand) async {
-    final direct = await _tryCommand(runCommand, FlashskyaiCliLocator.lookupCommand);
+    final direct = await _tryCommand(
+      runCommand,
+      FlashskyaiCliLocator.lookupCommand,
+    );
     if (direct != null) return direct;
 
     for (final shell in const ['bash', 'zsh']) {

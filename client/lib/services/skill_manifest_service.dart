@@ -34,11 +34,9 @@ class _SkillPaths {
 }
 
 class SkillManifestService {
-  SkillManifestService({
-    String? rootDir,
-    FlashskyaiStorageRoots? storageRoots,
-  })  : _rootDir = rootDir,
-        _storageRoots = storageRoots;
+  SkillManifestService({String? rootDir, FlashskyaiStorageRoots? storageRoots})
+    : _rootDir = rootDir,
+      _storageRoots = storageRoots;
 
   final String? _rootDir;
   final FlashskyaiStorageRoots? _storageRoots;

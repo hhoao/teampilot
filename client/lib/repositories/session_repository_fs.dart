@@ -43,7 +43,9 @@ class SessionRepositoryFs {
     }
     final file = File(path);
     await file.parent.create(recursive: true);
-    final tmp = File('${file.path}.${DateTime.now().microsecondsSinceEpoch}.tmp');
+    final tmp = File(
+      '${file.path}.${DateTime.now().microsecondsSinceEpoch}.tmp',
+    );
     await tmp.writeAsString(contents);
     await tmp.rename(file.path);
   }

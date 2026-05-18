@@ -98,8 +98,7 @@ class AndroidShellChrome {
   }
 
   static bool _isTeamConfigDetail(String path) =>
-      path.startsWith('/team-config/') &&
-      path.length > '/team-config/'.length;
+      path.startsWith('/team-config/') && path.length > '/team-config/'.length;
 
   static bool _isSkillsDetail(String path) =>
       path.startsWith('/skills/') && path.length > '/skills/'.length;

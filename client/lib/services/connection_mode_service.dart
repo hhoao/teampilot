@@ -6,8 +6,8 @@ class ConnectionModeService {
   const ConnectionModeService({
     required ConnectionMode Function() readPreferredMode,
     required bool Function() hasSshProfiles,
-  })  : _readPreferredMode = readPreferredMode,
-        _hasSshProfiles = hasSshProfiles;
+  }) : _readPreferredMode = readPreferredMode,
+       _hasSshProfiles = hasSshProfiles;
 
   final ConnectionMode Function() _readPreferredMode;
   final bool Function() _hasSshProfiles;

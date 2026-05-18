@@ -43,10 +43,8 @@ class ConfigProfileService {
   String teamToolDir(String teamId, String tool) =>
       p.join(teamProfileDir(teamId), tool);
 
-  String teamFlashskyaiMetadataFile(String teamId) => p.join(
-        teamToolDir(teamId, 'flashskyai'),
-        flashskyaiMetadataFileName,
-      );
+  String teamFlashskyaiMetadataFile(String teamId) =>
+      p.join(teamToolDir(teamId, 'flashskyai'), flashskyaiMetadataFileName);
 
   Future<void> ensureCommonProfiles() async {
     await _createDirectory(commonFlashskyaiDir);
@@ -98,15 +96,13 @@ class ConfigProfileService {
 
     return switch (cli) {
       TeamCli.flashskyai => {
-          'FLASHSKYAI_CONFIG_DIR': teamToolDir(trimmedTeamId, 'flashskyai'),
-          'LLM_CONFIG_PATH': commonFlashskyaiLlmConfigFile,
-        },
-      TeamCli.codex => {
-          'CODEX_HOME': teamToolDir(trimmedTeamId, 'codex'),
-        },
+        'FLASHSKYAI_CONFIG_DIR': teamToolDir(trimmedTeamId, 'flashskyai'),
+        'LLM_CONFIG_PATH': commonFlashskyaiLlmConfigFile,
+      },
+      TeamCli.codex => {'CODEX_HOME': teamToolDir(trimmedTeamId, 'codex')},
       TeamCli.claude => {
-          'CLAUDE_CONFIG_DIR': teamToolDir(trimmedTeamId, 'claude'),
-        },
+        'CLAUDE_CONFIG_DIR': teamToolDir(trimmedTeamId, 'claude'),
+      },
     };
   }
 

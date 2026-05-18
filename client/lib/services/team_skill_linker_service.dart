@@ -27,10 +27,10 @@ class TeamSkillLinkerService {
     String? cliSkillsDir,
     bool? useWslSymlinks,
     FlashskyaiStorageRoots? storageRoots,
-  })  : _appSkillsRoot = appSkillsRoot,
-        _cliSkillsDirOverride = cliSkillsDir,
-        _useWslSymlinks = useWslSymlinks,
-        _storageRoots = storageRoots;
+  }) : _appSkillsRoot = appSkillsRoot,
+       _cliSkillsDirOverride = cliSkillsDir,
+       _useWslSymlinks = useWslSymlinks,
+       _storageRoots = storageRoots;
 
   final String? _appSkillsRoot;
   final String? _cliSkillsDirOverride;
@@ -268,11 +268,7 @@ class TeamSkillLinkerService {
         source,
       ]);
       if (result.exitCode != 0) {
-        throw FileSystemException(
-          'junction failed',
-          target,
-          e.osError,
-        );
+        throw FileSystemException('junction failed', target, e.osError);
       }
     }
   }

@@ -78,7 +78,10 @@ class AndroidSshProfileSelector extends StatelessWidget {
     );
   }
 
-  PopupMenuItem<String> _profileMenuItem(SshProfile profile, String selectedId) {
+  PopupMenuItem<String> _profileMenuItem(
+    SshProfile profile,
+    String selectedId,
+  ) {
     final selected = profile.id == selectedId;
     return PopupMenuItem(
       value: profile.id,

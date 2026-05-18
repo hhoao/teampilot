@@ -57,7 +57,8 @@ class RemoteCliSessionChecker {
         if (!bucket.isDirectory) continue;
         final bucketPath = posix.join(projectsDir, bucket.name);
         if (await store.fileExists(
-            posix.join(bucketPath, '$sessionId.jsonl'))) {
+          posix.join(bucketPath, '$sessionId.jsonl'),
+        )) {
           return true;
         }
         try {

@@ -54,8 +54,7 @@ class SessionPreferencesCubit extends Cubit<SessionPreferencesState> {
     return _save(state.preferences.copyWith(connectionMode: mode));
   }
 
-  bool get isSshMode =>
-      state.preferences.connectionMode == ConnectionMode.ssh;
+  bool get isSshMode => state.preferences.connectionMode == ConnectionMode.ssh;
 
   Future<void> setCliExecutablePath(String value) {
     return _save(state.preferences.copyWith(cliExecutablePath: value.trim()));

@@ -54,14 +54,14 @@ class SshProfileCubit extends Cubit<SshProfileState> {
     void Function(String profileId)? invalidateProfileConnection,
     bool Function()? enableRemoteCliDiscovery,
     Future<void> Function()? onActiveProfileChanged,
-  })  : _profileRepository = profileRepository,
-        _credentialStore = credentialStore,
-        _locateRemoteCliPath = locateRemoteCliPath,
-        _onRemoteCliLocated = onRemoteCliLocated,
-        _invalidateProfileConnection = invalidateProfileConnection,
-        _enableRemoteCliDiscovery = enableRemoteCliDiscovery,
-        _onActiveProfileChanged = onActiveProfileChanged,
-        super(const SshProfileState());
+  }) : _profileRepository = profileRepository,
+       _credentialStore = credentialStore,
+       _locateRemoteCliPath = locateRemoteCliPath,
+       _onRemoteCliLocated = onRemoteCliLocated,
+       _invalidateProfileConnection = invalidateProfileConnection,
+       _enableRemoteCliDiscovery = enableRemoteCliDiscovery,
+       _onActiveProfileChanged = onActiveProfileChanged,
+       super(const SshProfileState());
 
   final SshProfileRepository _profileRepository;
   final SshCredentialStore _credentialStore;
@@ -74,7 +74,8 @@ class SshProfileCubit extends Cubit<SshProfileState> {
   Future<void> load({bool notifyActiveProfileChanged = true}) async {
     emit(state.copyWith(isLoading: true));
     final profiles = await _profileRepository.loadAll();
-    final persistedSelectedId = await _profileRepository.loadSelectedProfileId();
+    final persistedSelectedId = await _profileRepository
+        .loadSelectedProfileId();
     final selectedId = profiles.isNotEmpty
         ? (_selectExistingProfileId(
             profiles,
@@ -86,11 +87,13 @@ class SshProfileCubit extends Cubit<SshProfileState> {
     if (selectedId != persistedSelectedId) {
       await _profileRepository.saveSelectedProfileId(selectedId);
     }
-    emit(state.copyWith(
-      profiles: profiles,
-      selectedProfileId: selectedId,
-      isLoading: false,
-    ));
+    emit(
+      state.copyWith(
+        profiles: profiles,
+        selectedProfileId: selectedId,
+        isLoading: false,
+      ),
+    );
     final selected = state.selectedProfile;
     if (selected != null) {
       await _discoverRemoteCliPath(selected);
