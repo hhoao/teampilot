@@ -10,6 +10,19 @@ import 'package:flutter_test/flutter_test.dart';
 
 String _executable() => 'flashskyai';
 
+Future<void> _deleteTempDir(Directory dir) async {
+  for (var attempt = 0; attempt < 8; attempt++) {
+    try {
+      if (dir.existsSync()) {
+        await dir.delete(recursive: true);
+      }
+      return;
+    } on PathAccessException {
+      await Future<void>.delayed(Duration(milliseconds: 40 * (attempt + 1)));
+    }
+  }
+}
+
 class _FakeTerminalSession extends TerminalSession {
   _FakeTerminalSession({required super.executable});
 
@@ -259,9 +272,7 @@ void main() {
 
     tearDown(() async {
       await cubit.close();
-      if (tmp.existsSync()) {
-        await tmp.delete(recursive: true);
-      }
+      await _deleteTempDir(tmp);
     });
 
     test('materializes tab when selectedMemberId is empty', () async {

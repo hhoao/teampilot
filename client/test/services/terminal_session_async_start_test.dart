@@ -71,6 +71,7 @@ void main() {
       final starter = Completer<TerminalTransport>();
       final session = TerminalSession(
         executable: '/bin/echo',
+        validateLaunch: false,
         transportStarter:
             (
               executable, {

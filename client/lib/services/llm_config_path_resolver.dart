@@ -28,12 +28,18 @@ ResolvedLlmConfigPath resolveLlmConfigPath({
   required String? cliExecutablePath,
   bool usePosixPaths = false,
 }) {
-  final ctx = usePosixPaths ? p.Context(style: p.Style.posix) : p.context;
+  final ctx = _resolvePathContext(
+    usePosixPaths: usePosixPaths,
+    userOverride: userOverride,
+    currentDirectory: currentDirectory,
+    homeDirectory: homeDirectory,
+    cliExecutablePath: cliExecutablePath,
+  );
 
   final raw = userOverride?.trim() ?? '';
   if (raw.isNotEmpty) {
     final expanded = _expandHome(raw, homeDirectory, ctx);
-    final absolute = _isAbsolute(expanded, usePosixPaths)
+    final absolute = ctx.isAbsolute(expanded)
         ? expanded
         : ctx.normalize(ctx.join(currentDirectory, expanded));
     return ResolvedLlmConfigPath(
@@ -49,9 +55,33 @@ ResolvedLlmConfigPath resolveLlmConfigPath({
   );
 }
 
-bool _isAbsolute(String path, bool posix) {
-  if (posix) return path.startsWith('/');
-  return p.isAbsolute(path);
+p.Context _resolvePathContext({
+  required bool usePosixPaths,
+  required String? userOverride,
+  required String currentDirectory,
+  required String? homeDirectory,
+  required String? cliExecutablePath,
+}) {
+  if (usePosixPaths) return p.Context(style: p.Style.posix);
+  final cli = cliExecutablePath?.trim() ?? '';
+  if (_linuxExecutablePathForInstallLayout(cli) != null) {
+    return p.Context(style: p.Style.posix);
+  }
+  if (_isPosixStylePath(currentDirectory) ||
+      _isPosixStylePath(userOverride) ||
+      _isPosixStylePath(homeDirectory)) {
+    return p.Context(style: p.Style.posix);
+  }
+  return p.context;
+}
+
+bool _isPosixStylePath(String? path) {
+  if (path == null || path.isEmpty) return false;
+  final trimmed = path.trim();
+  if (trimmed == '~' || trimmed.startsWith('~/') || trimmed.startsWith(r'~\')) {
+    return true;
+  }
+  return trimmed.startsWith('/');
 }
 
 String? _cliInstallCandidate(String? cliExecutablePath, p.Context ctx) {

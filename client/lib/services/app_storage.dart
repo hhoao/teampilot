@@ -138,24 +138,34 @@ class AppStorage {
   static String teampilotDirForCliData(String cliDataDir) =>
       p.join(cliDataDir, 'teampilot');
 
+  static p.Context get _posixPathContext => p.Context(style: p.Style.posix);
+
+  /// Joins under [root], using POSIX separators when [root] is a remote path.
+  static String _pathUnderTeampilotRoot(String teampilotRoot, String segment) {
+    if (teampilotRoot.startsWith('/')) {
+      return _posixPathContext.join(teampilotRoot, segment);
+    }
+    return p.join(teampilotRoot, segment);
+  }
+
   /// UI team JSON under a TeamPilot app-data root ([teamsDir] layout).
   static String teamsUiDirForTeampilotRoot(String teampilotRoot) =>
-      p.join(teampilotRoot, 'teams');
+      _pathUnderTeampilotRoot(teampilotRoot, 'teams');
 
   static String skillsDirForTeampilotRoot(String teampilotRoot) =>
-      p.join(teampilotRoot, 'skills');
+      _pathUnderTeampilotRoot(teampilotRoot, 'skills');
 
   static String skillBackupsDirForTeampilotRoot(String teampilotRoot) =>
-      p.join(teampilotRoot, 'skill-backups');
+      _pathUnderTeampilotRoot(teampilotRoot, 'skill-backups');
 
   static String appProjectsDirForTeampilotRoot(String teampilotRoot) =>
-      p.join(teampilotRoot, 'projects');
+      _pathUnderTeampilotRoot(teampilotRoot, 'projects');
 
   static String skillReposConfigPathForTeampilotRoot(String teampilotRoot) =>
-      p.join(teampilotRoot, 'skills.json');
+      _pathUnderTeampilotRoot(teampilotRoot, 'skills.json');
 
   static String tempTeamRegistryPathForTeampilotRoot(String teampilotRoot) =>
-      p.join(teampilotRoot, 'ui-temp-teams.json');
+      _pathUnderTeampilotRoot(teampilotRoot, 'ui-temp-teams.json');
 
   @Deprecated(
     'Use teampilot app-data root helpers (teamsUiDirForTeampilotRoot)',
