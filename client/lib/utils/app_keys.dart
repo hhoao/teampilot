@@ -117,6 +117,7 @@ class AppKeys {
   static const addProviderButton = Key('add-provider-button');
   static const addModelButton = Key('add-model-button');
   static const providerNameDialogField = Key('provider-name-dialog-field');
+  static const providerNameField = Key('provider-name-field');
   static const modelNameDialogField = Key('model-name-dialog-field');
   static const providerEditForm = Key('provider-edit-form');
   static const modelEditForm = Key('model-edit-form');

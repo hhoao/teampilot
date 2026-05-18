@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import '../l10n/l10n_extensions.dart';
 import '../models/llm_config.dart';
 import '../cubits/llm_config_cubit.dart';
+import '../cubits/team_cubit.dart';
 import '../services/platform_utils.dart';
 import '../utils/app_keys.dart';
 import '../widgets/app_outline_text_field.dart';
@@ -22,6 +23,10 @@ String llmProviderConfigRoute(String providerName) =>
 
 String llmProviderModelsRoute(String providerName) =>
     '${llmProviderConfigRoute(providerName)}/models';
+
+void _notifyLlmProviderRenamed(BuildContext context, String from, String to) {
+  unawaited(context.read<TeamCubit>().renameLlmProviderReference(from, to));
+}
 const double _kLlmInsetH = 16;
 const double _kLlmInsetHSm = 12;
 const double _kLlmSectionGap = 12;
@@ -86,6 +91,12 @@ class LlmProviderConfigPage extends StatelessWidget {
               provider: provider,
               controller: controller,
               onSave: controller.updateProvider,
+              onRenamed: (from, to) {
+                _notifyLlmProviderRenamed(context, from, to);
+                if (context.mounted) {
+                  context.go(llmProviderConfigRoute(to));
+                }
+              },
               onDelete: (name) async {
                 await _confirmDeleteProvider(context, controller, name);
                 if (context.mounted) {
@@ -305,6 +316,14 @@ class _ProvidersTabContentState extends State<_ProvidersTabContent> {
                   controller: _controller,
                   onSave: (name, provider) {
                     _controller.updateProvider(name, provider);
+                  },
+                  onRenamed: (from, to) {
+                    _notifyLlmProviderRenamed(context, from, to);
+                    setState(() {
+                      if (_modelsProviderName == from) {
+                        _modelsProviderName = to;
+                      }
+                    });
                   },
                   onDelete: (name) {
                     unawaited(
@@ -714,12 +733,14 @@ class _ProviderDetailPanel extends StatefulWidget {
     required this.onSave,
     required this.onDelete,
     required this.onShowModels,
+    this.onRenamed,
   });
 
   final LlmConfig config;
   final LlmProviderConfig? provider;
   final LlmConfigCubit controller;
   final void Function(String name, LlmProviderConfig provider) onSave;
+  final void Function(String oldName, String newName)? onRenamed;
   final ValueChanged<String> onDelete;
   final ValueChanged<String> onShowModels;
 
@@ -729,6 +750,7 @@ class _ProviderDetailPanel extends StatefulWidget {
 
 class _ProviderDetailPanelState extends State<_ProviderDetailPanel> {
   late String _type;
+  late final TextEditingController _nameController;
   late final TextEditingController _providerTypeController;
   late final TextEditingController _baseUrlController;
   late String _apiKey;
@@ -744,6 +766,7 @@ class _ProviderDetailPanelState extends State<_ProviderDetailPanel> {
   @override
   void initState() {
     super.initState();
+    _nameController = TextEditingController();
     _providerTypeController = TextEditingController();
     _baseUrlController = TextEditingController();
     _proxyUrlController = TextEditingController();
@@ -757,15 +780,23 @@ class _ProviderDetailPanelState extends State<_ProviderDetailPanel> {
     super.didUpdateWidget(oldWidget);
     final prev = oldWidget.provider;
     final next = widget.provider;
-    if (prev?.name != next?.name) {
+    if (prev != next) {
       _persistDebounce?.cancel();
       _persistDebounce = null;
       if (prev != null && _providerName == prev.name) {
-        widget.onSave(prev.name, _draftFromFieldsFor(prev));
+        if (widget.config.providers.containsKey(prev.name)) {
+          _commitRenameIfNeeded();
+          final key = _providerKey;
+          final base = widget.config.providers[key];
+          if (base != null) {
+            widget.onSave(key, _draftFromFieldsFor(base));
+          }
+        } else {
+          _syncFromProvider();
+        }
+      } else if (next?.name != _providerName) {
+        _syncFromProvider();
       }
-    }
-    if (widget.provider?.name != _providerName) {
-      _syncFromProvider();
     }
   }
 
@@ -775,8 +806,10 @@ class _ProviderDetailPanelState extends State<_ProviderDetailPanel> {
     _persistDebounce = null;
     final p = widget.provider;
     if (p != null && _providerName == p.name) {
-      widget.onSave(p.name, _draftFromFieldsFor(p));
+      _commitRenameIfNeeded();
+      widget.onSave(_providerKey, _draftFromFieldsFor(p));
     }
+    _nameController.dispose();
     _providerTypeController.dispose();
     _baseUrlController.dispose();
     _proxyUrlController.dispose();
@@ -804,10 +837,33 @@ class _ProviderDetailPanelState extends State<_ProviderDetailPanel> {
     _persistProvider();
   }
 
+  String get _providerKey => _providerName ?? widget.provider?.name ?? '';
+
+  void _commitRenameIfNeeded() {
+    final provider = widget.provider;
+    if (provider == null) return;
+    final from = _providerKey;
+    final to = _nameController.text.trim();
+    if (to.isEmpty) {
+      _nameController.text = from;
+      return;
+    }
+    if (to == from) return;
+    if (widget.controller.renameProvider(from, to)) {
+      _providerName = to;
+      widget.onRenamed?.call(from, to);
+    } else {
+      _nameController.text = from;
+    }
+  }
+
   void _persistProvider() {
     final provider = widget.provider;
     if (provider == null) return;
-    widget.onSave(provider.name, _draftFromFieldsFor(provider));
+    final key = _providerKey;
+    final current = widget.controller.state.config.providers[key];
+    if (current == null) return;
+    widget.onSave(key, _draftFromFieldsFor(current));
   }
 
   /// 用当前表单控件状态，生成以 [base] 为起点的配置（切换 Provider 时 [base] 须为旧项，不能再用 [widget.provider]）。
@@ -833,6 +889,7 @@ class _ProviderDetailPanelState extends State<_ProviderDetailPanel> {
       return;
     }
     _providerName = provider.name;
+    _nameController.text = provider.name;
     _type = provider.type;
     _providerTypeController.text = provider.providerType;
     _baseUrlController.text = provider.baseUrl;
@@ -981,11 +1038,15 @@ class _ProviderDetailPanelState extends State<_ProviderDetailPanel> {
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      _SettingRow(
+                      _SettingFieldBlock(
                         title: l10n.providerName,
-                        trailing: SizedBox(
-                          width: trailingW,
-                          child: _InlineReadOnlyValue(value: provider.name),
+                        child: AppOutlineTextField(
+                          key: AppKeys.providerNameField,
+                          controller: _nameController,
+                          onSubmitted: (_) {
+                            _commitRenameIfNeeded();
+                            _flushPersistDebounce();
+                          },
                         ),
                       ),
                       Padding(
@@ -1370,33 +1431,6 @@ class _SettingRow extends StatelessWidget {
             ],
           );
         },
-      ),
-    );
-  }
-}
-
-class _InlineReadOnlyValue extends StatelessWidget {
-  const _InlineReadOnlyValue({required this.value});
-
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    final look = _ProviderDetailLook.of(context);
-    return Container(
-      height: 40,
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      decoration: BoxDecoration(
-        color: look.colorScheme.surfaceContainerHigh,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: look.colorScheme.outlineVariant),
-      ),
-      alignment: Alignment.centerLeft,
-      child: Text(
-        value,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: look.valueBoxStyle,
       ),
     );
   }

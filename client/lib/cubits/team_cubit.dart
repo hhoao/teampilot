@@ -319,6 +319,30 @@ class TeamCubit extends Cubit<TeamState> {
     ]));
   }
 
+  /// Updates [TeamMemberConfig.provider] on every team when an LLM provider is renamed.
+  Future<void> renameLlmProviderReference(String from, String to) async {
+    if (from == to) return;
+    var changed = false;
+    final teams = <TeamConfig>[];
+    for (final team in state.teams) {
+      var teamChanged = false;
+      final members = <TeamMemberConfig>[];
+      for (final m in team.members) {
+        if (m.provider == from) {
+          teamChanged = true;
+          changed = true;
+          members.add(m.copyWith(provider: to));
+        } else {
+          members.add(m);
+        }
+      }
+      teams.add(teamChanged ? team.copyWith(members: members) : team);
+    }
+    if (!changed) return;
+    emit(state.copyWith(teams: teams));
+    await _repository.saveTeams(teams);
+  }
+
   Future<void> deleteMember(String memberId) async {
     final team = state.selectedTeam;
     if (team == null) return;

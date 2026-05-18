@@ -270,6 +270,52 @@ class LlmConfigCubit extends Cubit<LlmConfigState> {
     ));
   }
 
+  /// Renames a provider key and updates models that reference it.
+  /// Returns false when [to] is empty, unchanged, or already taken.
+  bool renameProvider(String from, String to) {
+    final trimmed = to.trim();
+    if (trimmed.isEmpty) {
+      emit(state.copyWith(statusMessage: 'Provider name is required.'));
+      return false;
+    }
+    if (trimmed == from) return true;
+    if (!state.config.providers.containsKey(from)) {
+      emit(state.copyWith(statusMessage: 'Provider $from not found.'));
+      return false;
+    }
+    if (state.config.providers.containsKey(trimmed)) {
+      emit(
+        state.copyWith(statusMessage: 'Provider "$trimmed" already exists.'),
+      );
+      return false;
+    }
+
+    final old = state.config.providers[from]!;
+    final providers = Map<String, LlmProviderConfig>.from(state.config.providers)
+      ..remove(from)
+      ..[trimmed] = old.copyWith(name: trimmed);
+
+    final models = <String, LlmModelConfig>{};
+    for (final entry in state.config.models.entries) {
+      final model = entry.value;
+      models[entry.key] = model.provider == from
+          ? model.copyWith(provider: trimmed)
+          : model;
+    }
+
+    final newSelected =
+        state.selectedProviderName == from ? trimmed : state.selectedProviderName;
+    unawaited(
+      _persistConfigChange(
+        newConfig: state.config.copyWith(providers: providers, models: models),
+        statusMessage: 'Renamed provider $from to $trimmed.',
+        selectedProviderName: newSelected,
+        updateSelectedProvider: true,
+      ),
+    );
+    return true;
+  }
+
   void deleteProvider(String name) {
     final updated = Map<String, LlmProviderConfig>.from(state.config.providers);
     updated.remove(name);

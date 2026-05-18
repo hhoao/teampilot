@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:path/path.dart' as p;
 import 'package:teampilot/cubits/llm_config_cubit.dart';
+import 'package:teampilot/models/llm_config.dart';
 import 'package:teampilot/repositories/app_settings_repository.dart';
 import 'package:teampilot/repositories/llm_config_store.dart';
 import 'package:teampilot/services/llm_config_path_resolver.dart';
@@ -133,6 +134,62 @@ void main() {
     expect(cubit.state.pathSource, LlmConfigPathSource.defaultPath);
     expect(cubit.state.configPathOverride, '');
     expect(await SharedPrefsAppSettingsRepository(prefs).loadLlmConfigPathOverride(), isNull);
+  });
+
+  test('renameProvider moves key and updates model references', () async {
+    final prefs = await SharedPreferences.getInstance();
+    final cubit = LlmConfigCubit(
+      appSettings: SharedPrefsAppSettingsRepository(prefs),
+      currentDirectory: tmp.path,
+      homeDirectory: '/home/test',
+      initialConfig: LlmConfig(
+        providers: {
+          'old-name': const LlmProviderConfig(
+            name: 'old-name',
+            type: 'api',
+            providerType: 'openai',
+          ),
+        },
+        models: {
+          'm1': const LlmModelConfig(
+            id: 'm1',
+            name: 'gpt',
+            provider: 'old-name',
+            model: 'gpt-4',
+            enabled: true,
+          ),
+        },
+      ),
+    );
+    addTearDown(cubit.close);
+    cubit.selectProvider('old-name');
+
+    expect(cubit.renameProvider('old-name', 'new-name'), isTrue);
+    await pumpEventQueue();
+
+    expect(cubit.state.config.providers.containsKey('old-name'), isFalse);
+    expect(cubit.state.config.providers['new-name']?.name, 'new-name');
+    expect(cubit.state.config.models['m1']?.provider, 'new-name');
+    expect(cubit.state.selectedProviderName, 'new-name');
+  });
+
+  test('renameProvider rejects duplicate name', () async {
+    final prefs = await SharedPreferences.getInstance();
+    final cubit = LlmConfigCubit(
+      appSettings: SharedPrefsAppSettingsRepository(prefs),
+      currentDirectory: tmp.path,
+      homeDirectory: '/home/test',
+      initialConfig: const LlmConfig(
+        providers: {
+          'a': LlmProviderConfig(name: 'a', type: 'api'),
+          'b': LlmProviderConfig(name: 'b', type: 'api'),
+        },
+      ),
+    );
+    addTearDown(cubit.close);
+
+    expect(cubit.renameProvider('a', 'b'), isFalse);
+    expect(cubit.state.config.providers.containsKey('a'), isTrue);
   });
 
   test('setConfigPath with empty string reverts to default', () async {
