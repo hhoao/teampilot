@@ -32,3 +32,10 @@ releases:
         package:
           platform: windows
           target: zip
+
+      - name: android-apk
+        package:
+          platform: android
+          target: apk
+          build_args:
+            target-platform: android-arm,android-arm64

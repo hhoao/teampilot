@@ -1,4 +1,4 @@
-name: Release Desktop Packages
+name: Release Packages
 
 on:
   push:
@@ -194,9 +194,64 @@ jobs:
             client/dist/**/*.zip
           if-no-files-found: error
 
+  build-android:
+    name: Build Android (APK arm + arm64)
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.ref || github.ref }}
+          submodules: recursive
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Accept Android SDK licenses
+        run: yes | flutter doctor --android-licenses
+
+      - name: Resolve Flutter packages
+        run: flutter pub get
+
+      - name: Sync bundled Google Fonts (Noto Sans SC)
+        run: dart run tool/sync_bundled_google_fonts.dart
+
+      # fastforge 在 split-per-abi 时只会复制一个 APK 到 dist/，故直接用 flutter build 并分别归档
+      - name: Build Android (split APK per ABI)
+        run: |
+          flutter build apk --release \
+            --split-per-abi \
+            --target-platform android-arm,android-arm64
+          version=$(grep -E '^version:' pubspec.yaml | head -1 | sed 's/version:[[:space:]]*//')
+          dist_dir="dist/${version}"
+          mkdir -p "$dist_dir"
+          cp build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk \
+            "${dist_dir}/teampilot-${version}-armeabi-v7a.apk"
+          cp build/app/outputs/flutter-apk/app-arm64-v8a-release.apk \
+            "${dist_dir}/teampilot-${version}-arm64-v8a.apk"
+
+      - name: Verify Android release APKs
+        run: |
+          version=$(grep -E '^version:' pubspec.yaml | head -1 | sed 's/version:[[:space:]]*//')
+          dist_dir="dist/${version}"
+          test -f "${dist_dir}/teampilot-${version}-armeabi-v7a.apk"
+          test -f "${dist_dir}/teampilot-${version}-arm64-v8a.apk"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android-packages
+          path: client/dist/**/*.apk
+          if-no-files-found: error
+
   release:
     name: Publish GitHub Release
-    needs: [build-linux, build-macos, build-windows]
+    needs: [build-linux, build-macos, build-windows, build-android]
     if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
     permissions:
@@ -221,9 +276,10 @@ jobs:
           artifacts = pathlib.Path("artifacts")
           out = pathlib.Path("release-files")
           out.mkdir(parents=True, exist_ok=True)
-          suffixes = (".deb", ".appimage", ".dmg", ".msix", ".exe", ".zip")
+          suffixes = (".deb", ".appimage", ".dmg", ".msix", ".exe", ".zip", ".apk")
           # flutter_app_packager 临时目录：…/teampilot-*-windows-setup_exe/TeamPilot.exe 等，不是发布物
-          staging_suffixes = ("_exe", "_msix", "_zip", "_deb", "_dmg", "_appimage")
+          staging_suffixes = ("_exe", "_msix", "_zip", "_deb", "_dmg", "_appimage", "_apk")
+          expected_release_files = 8  # linux×2 + macos×1 + windows×3 + android×2
 
           def is_inside_packaging_staging(path: pathlib.Path) -> bool:
               return any(
@@ -246,8 +302,11 @@ jobs:
           print("Matched artifact files:")
           for p in sorted(all_files, key=lambda x: str(x)):
               print(" ", p)
-          if len(all_files) != 6:
-              print(f"ERROR: expected exactly 6 release binaries under artifacts/, found {len(all_files)}", file=sys.stderr)
+          if len(all_files) != expected_release_files:
+              print(
+                  f"ERROR: expected exactly {expected_release_files} release binaries under artifacts/, found {len(all_files)}",
+                  file=sys.stderr,
+              )
               sys.exit(1)
           for p in all_files:
               dest = out / p.name
@@ -258,8 +317,11 @@ jobs:
           print("release-files:")
           for f in copied:
               print(f"  {f.name}  {f.stat().st_size}")
-          if len(copied) != 6:
-              print("ERROR: expected exactly 6 files in release-files/", file=sys.stderr)
+          if len(copied) != expected_release_files:
+              print(
+                  f"ERROR: expected exactly {expected_release_files} files in release-files/",
+                  file=sys.stderr,
+              )
               sys.exit(1)
           PY
 
