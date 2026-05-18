@@ -28,20 +28,18 @@ ResolvedLlmConfigPath resolveLlmConfigPath({
   required String? cliExecutablePath,
   bool usePosixPaths = false,
 }) {
-  final ctx = _resolvePathContext(
+  final posixPaths = _usesPosixPaths(
     usePosixPaths: usePosixPaths,
-    userOverride: userOverride,
-    currentDirectory: currentDirectory,
-    homeDirectory: homeDirectory,
     cliExecutablePath: cliExecutablePath,
   );
+  final ctx = posixPaths ? p.Context(style: p.Style.posix) : p.context;
 
   final raw = userOverride?.trim() ?? '';
   if (raw.isNotEmpty) {
     final expanded = _expandHome(raw, homeDirectory, ctx);
-    final absolute = ctx.isAbsolute(expanded)
+    final absolute = _pathIsAbsolute(expanded, posixOnly: posixPaths)
         ? expanded
-        : ctx.normalize(ctx.join(currentDirectory, expanded));
+        : ctx.normalize(ctx.absolute(ctx.join(currentDirectory, expanded)));
     return ResolvedLlmConfigPath(
       ctx.normalize(absolute),
       LlmConfigPathSource.userOverride,
@@ -55,33 +53,18 @@ ResolvedLlmConfigPath resolveLlmConfigPath({
   );
 }
 
-p.Context _resolvePathContext({
+bool _usesPosixPaths({
   required bool usePosixPaths,
-  required String? userOverride,
-  required String currentDirectory,
-  required String? homeDirectory,
   required String? cliExecutablePath,
 }) {
-  if (usePosixPaths) return p.Context(style: p.Style.posix);
+  if (usePosixPaths) return true;
   final cli = cliExecutablePath?.trim() ?? '';
-  if (_linuxExecutablePathForInstallLayout(cli) != null) {
-    return p.Context(style: p.Style.posix);
-  }
-  if (_isPosixStylePath(currentDirectory) ||
-      _isPosixStylePath(userOverride) ||
-      _isPosixStylePath(homeDirectory)) {
-    return p.Context(style: p.Style.posix);
-  }
-  return p.context;
+  return _linuxExecutablePathForInstallLayout(cli) != null;
 }
 
-bool _isPosixStylePath(String? path) {
-  if (path == null || path.isEmpty) return false;
-  final trimmed = path.trim();
-  if (trimmed == '~' || trimmed.startsWith('~/') || trimmed.startsWith(r'~\')) {
-    return true;
-  }
-  return trimmed.startsWith('/');
+bool _pathIsAbsolute(String path, {required bool posixOnly}) {
+  if (posixOnly) return path.startsWith('/');
+  return p.isAbsolute(path);
 }
 
 String? _cliInstallCandidate(String? cliExecutablePath, p.Context ctx) {
