@@ -15,6 +15,7 @@ import '../utils/app_keys.dart';
 import '../widgets/app_outline_text_field.dart';
 import '../widgets/dropdown/flashsky_dropdown_field.dart';
 import '../widgets/settings/workspace_hub_shell.dart';
+import '../theme/workspace_surface_layers.dart';
 
 enum SkillSection { installed, discovery, repos, backups }
 
@@ -22,11 +23,11 @@ extension SkillSectionRoute on SkillSection {
   String routeSegment() => name;
 
   String title(AppLocalizations l10n) => switch (this) {
-        SkillSection.installed => l10n.skillsNavInstalled,
-        SkillSection.discovery => l10n.skillsNavDiscovery,
-        SkillSection.repos => l10n.skillsNavRepos,
-        SkillSection.backups => l10n.skillsNavBackups,
-      };
+    SkillSection.installed => l10n.skillsNavInstalled,
+    SkillSection.discovery => l10n.skillsNavDiscovery,
+    SkillSection.repos => l10n.skillsNavRepos,
+    SkillSection.backups => l10n.skillsNavBackups,
+  };
 }
 
 class SkillManagementHubPage extends StatelessWidget {
@@ -52,11 +53,11 @@ class SkillManagementHubPage extends StatelessWidget {
 }
 
 IconData _skillSectionIcon(SkillSection section) => switch (section) {
-      SkillSection.installed => Icons.inventory_2_outlined,
-      SkillSection.discovery => Icons.travel_explore_outlined,
-      SkillSection.repos => Icons.source_outlined,
-      SkillSection.backups => Icons.history,
-    };
+  SkillSection.installed => Icons.inventory_2_outlined,
+  SkillSection.discovery => Icons.travel_explore_outlined,
+  SkillSection.repos => Icons.source_outlined,
+  SkillSection.backups => Icons.history,
+};
 
 class SkillManagementPage extends StatelessWidget {
   const SkillManagementPage({required this.section, super.key});
@@ -101,7 +102,7 @@ class SkillManagementPage extends StatelessWidget {
         }
 
         return Container(
-          color: cs.surface,
+          color: cs.workspacePage,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -174,11 +175,7 @@ class _Card extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
       padding: padding ?? const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: cs.surfaceContainer,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: cs.outlineVariant),
-      ),
+      decoration: workspaceCardDecoration(cs, radius: 12),
       child: child,
     );
   }
@@ -432,11 +429,7 @@ class _InstalledSkillRow extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        decoration: BoxDecoration(
-          color: cs.surfaceContainerHigh,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: cs.outlineVariant),
-        ),
+        decoration: workspaceInsetDecoration(cs, radius: 10),
         child: Row(
           children: [
             Expanded(
@@ -1202,11 +1195,7 @@ class _SkillCard extends StatelessWidget {
     final textBase = isDark ? Colors.white : const Color(0xFF111827);
     return Container(
       padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: cs.surfaceContainer,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: cs.outlineVariant),
-      ),
+      decoration: workspaceCardDecoration(cs, radius: 10),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1413,11 +1402,7 @@ class _RepoRow extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        decoration: BoxDecoration(
-          color: cs.surfaceContainerHigh,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: cs.outlineVariant),
-        ),
+        decoration: workspaceInsetDecoration(cs, radius: 10),
         child: Row(
           children: [
             Expanded(
@@ -1542,7 +1527,7 @@ class _BackupRow extends StatelessWidget {
                         vertical: 2,
                       ),
                       decoration: BoxDecoration(
-                        color: cs.surfaceContainerHigh,
+                        color: cs.workspaceInset,
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: Text(

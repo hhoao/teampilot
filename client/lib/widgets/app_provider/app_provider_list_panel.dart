@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../cubits/app_provider_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/app_provider_config.dart';
+import '../../theme/workspace_surface_layers.dart';
 import '../../utils/app_keys.dart';
 import '../app_outline_text_field.dart';
 
@@ -55,13 +56,7 @@ class _AppProviderListPanelState extends State<AppProviderListPanel> {
 
     return Container(
       key: AppKeys.llmProviderList,
-      decoration: widget.hubStyle
-          ? null
-          : BoxDecoration(
-              color: cs.surfaceContainer,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: cs.outlineVariant),
-            ),
+      decoration: widget.hubStyle ? null : workspaceCardDecoration(cs),
       child: Column(
         children: [
           Padding(
@@ -110,20 +105,42 @@ class _AppProviderListPanelState extends State<AppProviderListPanel> {
                           : p.enabledTools
                                 .map((t) => _toolLabel(l10n, t))
                                 .join(' · ');
+                      final titleColor = selected
+                          ? cs.onPrimaryContainer
+                          : cs.onSurface;
+                      final subtitleColor = selected
+                          ? cs.onPrimaryContainer.withValues(alpha: 0.74)
+                          : cs.onSurfaceVariant;
                       return Material(
-                        color: selected ? cs.primaryContainer : cs.surface,
+                        color: selected
+                            ? cs.primaryContainer
+                            : widget.hubStyle
+                            ? cs.workspaceSubtleSurface
+                            : cs.workspaceInset,
                         borderRadius: BorderRadius.circular(8),
                         child: ListTile(
                           dense: true,
-                          title: Text(p.name),
+                          iconColor: titleColor,
+                          textColor: titleColor,
+                          title: Text(
+                            p.name,
+                            style: TextStyle(
+                              color: titleColor,
+                              fontWeight: selected
+                                  ? FontWeight.w600
+                                  : FontWeight.w500,
+                            ),
+                          ),
                           subtitle: Text(
                             subtitle,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
+                            style: TextStyle(color: subtitleColor),
                           ),
                           trailing: widget.hubStyle
-                              ? const Icon(Icons.chevron_right)
+                              ? Icon(Icons.chevron_right, color: titleColor)
                               : PopupMenuButton<String>(
+                                  iconColor: titleColor,
                                   itemBuilder: (_) => [
                                     PopupMenuItem(
                                       value: 'edit',

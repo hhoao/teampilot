@@ -10,6 +10,7 @@ import '../cubits/app_provider_cubit.dart';
 import '../cubits/llm_config_cubit.dart';
 import '../models/app_provider_config.dart';
 import '../services/platform_utils.dart';
+import '../theme/workspace_surface_layers.dart';
 import '../widgets/app_provider/app_provider_detail_panel.dart';
 import '../widgets/app_provider/app_provider_form_sheet.dart';
 import '../widgets/app_provider/app_provider_list_panel.dart';
@@ -169,11 +170,7 @@ class _LlmWorkspaceDetailCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     return Container(
-      decoration: BoxDecoration(
-        color: cs.surfaceContainer,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: cs.outlineVariant),
-      ),
+      decoration: workspaceCardDecoration(cs),
       clipBehavior: Clip.antiAlias,
       child: child,
     );
@@ -383,13 +380,7 @@ class _ProviderListPanelState extends State<_ProviderListPanel> {
     return Container(
       key: AppKeys.llmProviderList,
       width: double.infinity,
-      decoration: widget.hubStyle
-          ? null
-          : BoxDecoration(
-              color: cs.surfaceContainer,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: cs.outlineVariant),
-            ),
+      decoration: widget.hubStyle ? null : workspaceCardDecoration(cs),
       child: Column(
         children: [
           Container(
@@ -499,10 +490,16 @@ class _ProviderListRow extends StatelessWidget {
     final cs = theme.colorScheme;
     final tx = _LlmWorkspaceText(theme);
     final l10n = context.l10n;
-    final isDark = theme.brightness == Brightness.dark;
-    final textBase = isDark ? Colors.white : const Color(0xFF111827);
+    final textBase = isSelected ? cs.onPrimaryContainer : cs.onSurface;
+    final mutedText = isSelected
+        ? cs.onPrimaryContainer.withValues(alpha: 0.74)
+        : cs.onSurfaceVariant;
     return Material(
-      color: isSelected ? cs.primaryContainer : cs.surfaceContainerHigh,
+      color: isSelected
+          ? cs.primaryContainer
+          : hubStyle
+          ? cs.workspaceSubtleSurface
+          : cs.workspaceInset,
       borderRadius: BorderRadius.circular(10),
       child: InkWell(
         borderRadius: BorderRadius.circular(10),
@@ -512,7 +509,9 @@ class _ProviderListRow extends StatelessWidget {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(10),
             border: Border.all(
-              color: isSelected ? cs.primaryContainer : cs.outlineVariant,
+              color: isSelected
+                  ? cs.primary
+                  : cs.outlineVariant.withValues(alpha: 0.5),
             ),
           ),
           child: Row(
@@ -550,9 +549,7 @@ class _ProviderListRow extends StatelessWidget {
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: tx.smallColored(
-                              textBase.withValues(alpha: 0.48),
-                            ),
+                            style: tx.smallColored(mutedText),
                           ),
                         ),
                       ],
@@ -565,6 +562,7 @@ class _ProviderListRow extends StatelessWidget {
                 icon: Icon(
                   hubStyle ? Icons.more_vert : Icons.more_horiz,
                   size: 18,
+                  color: textBase,
                 ),
                 padding: const EdgeInsets.all(4),
                 constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
@@ -587,11 +585,7 @@ class _ProviderListRow extends StatelessWidget {
               if (hubStyle)
                 Padding(
                   padding: const EdgeInsets.only(left: 2),
-                  child: Icon(
-                    Icons.chevron_right,
-                    size: 22,
-                    color: textBase.withValues(alpha: 0.64),
-                  ),
+                  child: Icon(Icons.chevron_right, size: 22, color: mutedText),
                 ),
             ],
           ),
@@ -1233,11 +1227,11 @@ class _ProviderDetailLook {
   ColorScheme get colorScheme => theme.colorScheme;
   TextTheme get textTheme => theme.textTheme;
 
-  Color get panelBg => colorScheme.surfaceContainer;
+  Color get panelBg => colorScheme.workspaceCard;
 
   Color get borderColor => colorScheme.outlineVariant;
 
-  Color get insetPanelBg => colorScheme.surfaceContainerHigh;
+  Color get insetPanelBg => colorScheme.workspaceInset;
 
   Color get insetPanelBorder => colorScheme.outlineVariant;
 
@@ -1511,11 +1505,7 @@ class _ProviderModelsView extends StatelessWidget {
         .toList();
 
     return Container(
-      decoration: BoxDecoration(
-        color: cs.surfaceContainer,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: cs.outlineVariant),
-      ),
+      decoration: workspaceCardDecoration(cs),
       child: Column(
         children: [
           Container(

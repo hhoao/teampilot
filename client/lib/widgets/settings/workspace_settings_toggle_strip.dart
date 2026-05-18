@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:toggle_switch/toggle_switch.dart';
 
+import '../../theme/workspace_surface_layers.dart';
+
 const _segmentedIconSize = 18.0;
 const _toggleStripFontSize = 13.0;
 
@@ -85,7 +87,7 @@ class _WorkspaceSettingsToggleStripState<T extends Object>
         iconSize: _segmentedIconSize,
         activeFgColor: Colors.white,
         inactiveFgColor: inactiveFg,
-        inactiveBgColor: cs.surfaceContainerHigh,
+        inactiveBgColor: cs.workspaceInset,
         dividerColor: Colors.transparent,
         dividerMargin: 0,
         activeBgColors: List.generate(n, (_) => <Color>[cs.primary]),

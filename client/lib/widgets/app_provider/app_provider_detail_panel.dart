@@ -6,6 +6,7 @@ import '../../l10n/l10n_extensions.dart';
 import '../../models/app_provider_config.dart';
 import '../../models/llm_config.dart';
 import '../../services/tool_config_generator.dart';
+import '../../theme/workspace_surface_layers.dart';
 
 class AppProviderDetailPanel extends StatelessWidget {
   const AppProviderDetailPanel({
@@ -154,10 +155,7 @@ class _ProviderJsonPreviewState extends State<_ProviderJsonPreview> {
     final json = _json;
     return Container(
       padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: cs.surface,
-        borderRadius: BorderRadius.circular(8),
-      ),
+      decoration: workspaceCodeDecoration(cs),
       child: json == null
           ? const SizedBox(
               height: 120,

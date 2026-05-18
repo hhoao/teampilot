@@ -142,7 +142,7 @@ class _DesktopConfigWorkspace extends StatelessWidget {
 
     return Container(
       key: AppKeys.configWorkspace,
-      color: cs.surface,
+      color: cs.workspacePage,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -514,7 +514,7 @@ class _ThemeColorPresetChip extends StatelessWidget {
       onTap: onTap,
       child: DecoratedBox(
         decoration: BoxDecoration(
-          color: cs.surfaceContainerHigh,
+          color: cs.workspaceInset,
           borderRadius: BorderRadius.circular(999),
           border: Border.all(
             color: selected ? cs.primary : cs.outlineVariant,
@@ -577,18 +577,18 @@ class _ConfigNavPanel extends StatelessWidget {
       sidebarStyle: true,
       entries: [
         WorkspaceHubEntry(
-          key: AppKeys.configLlmSectionButton,
-          title: l10n.llmConfig,
-          icon: Icons.memory_outlined,
-          selected: section == ConfigSection.llm,
-          onTap: () => onSelectSection(ConfigSection.llm),
-        ),
-        WorkspaceHubEntry(
           key: AppKeys.configLayoutSectionButton,
           title: l10n.layout,
           icon: Icons.dashboard_customize_outlined,
           selected: section == ConfigSection.layout,
           onTap: () => onSelectSection(ConfigSection.layout),
+        ),
+        WorkspaceHubEntry(
+          key: AppKeys.configLlmSectionButton,
+          title: l10n.llmConfig,
+          icon: Icons.memory_outlined,
+          selected: section == ConfigSection.llm,
+          onTap: () => onSelectSection(ConfigSection.llm),
         ),
         WorkspaceHubEntry(
           key: AppKeys.configSessionSectionButton,

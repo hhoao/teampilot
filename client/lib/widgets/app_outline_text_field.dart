@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../theme/workspace_surface_layers.dart';
+
 /// 应用内统一的「填充 + 细描边」文本框，与 [FlashskyDropdownDecorations.denseField] 的
 /// surface / outline 层次对齐，避免裸 [TextField] 依赖默认 [InputDecorationTheme] 导致观感参差。
 class AppOutlineTextField extends StatelessWidget {
@@ -145,7 +147,7 @@ class AppOutlineInputDecoration {
 
     return InputDecoration(
       filled: true,
-      fillColor: fillColor ?? cs.surfaceContainerHigh,
+      fillColor: fillColor ?? cs.workspaceInset,
       constraints: constraints,
       isDense: true,
       hintText: hintText,

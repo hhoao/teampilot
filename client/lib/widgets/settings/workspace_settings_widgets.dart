@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 
 import '../dropdown/flashsky_dropdown_field.dart';
 import '../dropdown/flashskyai_dropdown_decoration.dart';
+import '../../theme/workspace_surface_layers.dart';
+
+export '../../theme/workspace_surface_layers.dart';
 
 const _settingCardBorderRadius = 14.0;
 const _settingRowPadding = EdgeInsets.fromLTRB(20, 16, 20, 16);
@@ -21,10 +24,10 @@ class SettingsSurfaceCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     return Container(
-      decoration: BoxDecoration(
-        color: cs.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(_settingCardBorderRadius),
-        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.5)),
+      decoration: workspaceCardDecoration(
+        cs,
+        radius: _settingCardBorderRadius,
+        borderAlpha: 0.5,
       ),
       clipBehavior: Clip.antiAlias,
       child: child,
@@ -232,9 +235,7 @@ class SettingsCompactDropdown<T extends Object> extends StatelessWidget {
         initialItem: value,
         onChanged: onChanged,
         decoration: decoration,
-        listItemKey: itemKeys == null
-            ? null
-            : (item) => itemKeys![item],
+        listItemKey: itemKeys == null ? null : (item) => itemKeys![item],
         itemLabel: labelOf,
       ),
     );

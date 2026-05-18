@@ -11,6 +11,7 @@ import '../cubits/team_cubit.dart';
 import '../l10n/l10n_extensions.dart';
 import '../models/layout_preferences.dart';
 import '../models/team_config.dart';
+import '../theme/workspace_surface_layers.dart';
 import '../utils/app_keys.dart';
 import 'app_outline_text_field.dart';
 import 'file_tree_node.dart';
@@ -86,7 +87,7 @@ class RightToolsPanel extends StatelessWidget {
     ];
     return Container(
       key: panelKey,
-      color: cs.surfaceContainerLow,
+      color: cs.workspaceSubtleSurface,
       child: preferences.toolsArrangement == ToolsArrangement.tabs
           ? _TabbedToolsPanel(panels: panels, preferences: preferences)
           : _StackedToolsPanel(panels: panels, preferences: preferences),
@@ -209,13 +210,17 @@ class _MembersPanel extends StatelessWidget {
                 final member = members[index];
                 final selected = member.id == selectedMemberId;
                 final running = isMemberRunning(member.id);
+                final titleColor = selected
+                    ? cs.onSecondaryContainer
+                    : cs.onSurface;
+                final subtitleColor = selected
+                    ? cs.onSecondaryContainer.withValues(alpha: 0.74)
+                    : cs.onSurfaceVariant;
                 return Container(
                   key: AppKeys.memberRow(member.id),
                   margin: const EdgeInsets.only(bottom: 8),
                   child: Material(
-                    color: selected
-                        ? cs.secondaryContainer
-                        : cs.surfaceContainerHigh,
+                    color: selected ? cs.secondaryContainer : cs.workspaceInset,
                     borderRadius: BorderRadius.circular(8),
                     child: ListTile(
                       dense: true,
@@ -223,11 +228,14 @@ class _MembersPanel extends StatelessWidget {
                         borderRadius: BorderRadius.circular(8),
                       ),
                       title: Text(member.name),
+                      textColor: titleColor,
+                      iconColor: titleColor,
                       subtitle: Text(
                         [
                           member.provider,
                           member.model,
                         ].where((v) => v.isNotEmpty).join(' / '),
+                        style: TextStyle(color: subtitleColor),
                       ),
                       trailing: Container(
                         key: AppKeys.memberOpenButton(member.id),

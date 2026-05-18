@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../theme/workspace_surface_layers.dart';
+
 /// One row in a hub list or desktop side nav.
 class WorkspaceHubEntry {
   const WorkspaceHubEntry({
@@ -42,7 +44,7 @@ class WorkspaceHubTitleBar extends StatelessWidget {
           ? const EdgeInsets.fromLTRB(20, 20, 20, 16)
           : const EdgeInsets.fromLTRB(40, 42, 40, 28),
       decoration: BoxDecoration(
-        color: cs.surface,
+        color: cs.workspacePage,
         border: Border(
           bottom: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.5)),
         ),
@@ -100,16 +102,20 @@ class WorkspaceHubNavItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textBase = isDark ? Colors.white : const Color(0xFF111827);
-    final muted = textBase.withValues(alpha: 0.64);
+    final selectedFg = cs.onPrimaryContainer;
+    final normalFg = cs.onSurface.withValues(alpha: hubStyle ? 0.92 : 0.88);
+    final muted = cs.onSurfaceVariant;
     final selectedColor = cs.primaryContainer;
     final trailing = trailingIcon ?? (hubStyle ? Icons.chevron_right : null);
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Material(
-        color: selected ? selectedColor : Colors.transparent,
+        color: selected
+            ? selectedColor
+            : hubStyle
+            ? cs.workspaceSubtleSurface
+            : Colors.transparent,
         borderRadius: BorderRadius.circular(12),
         child: InkWell(
           borderRadius: BorderRadius.circular(12),
@@ -120,7 +126,7 @@ class WorkspaceHubNavItem extends StatelessWidget {
               padding: EdgeInsets.symmetric(horizontal: hubStyle ? 16 : 18),
               child: Row(
                 children: [
-                  Icon(icon, color: selected ? textBase : muted, size: 18),
+                  Icon(icon, color: selected ? selectedFg : muted, size: 18),
                   const SizedBox(width: 16),
                   Expanded(
                     child: Text(
@@ -129,16 +135,19 @@ class WorkspaceHubNavItem extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         fontSize: hubStyle ? 15 : 14,
-                        fontWeight:
-                            hubStyle ? FontWeight.w600 : FontWeight.w500,
-                        color: selected
-                            ? textBase
-                            : textBase.withValues(alpha: hubStyle ? 0.92 : 0.88),
+                        fontWeight: hubStyle
+                            ? FontWeight.w600
+                            : FontWeight.w500,
+                        color: selected ? selectedFg : normalFg,
                       ),
                     ),
                   ),
                   if (trailing != null)
-                    Icon(trailing, size: hubStyle ? 22 : 18, color: muted),
+                    Icon(
+                      trailing,
+                      size: hubStyle ? 22 : 18,
+                      color: selected ? selectedFg : muted,
+                    ),
                 ],
               ),
             ),
@@ -185,7 +194,7 @@ class WorkspaceHubNavList extends StatelessWidget {
     }
 
     return Container(
-      color: cs.surface,
+      color: cs.workspacePage,
       padding: sidebarStyle
           ? const EdgeInsets.fromLTRB(24, 28, 18, 24)
           : EdgeInsets.zero,
@@ -217,15 +226,11 @@ class WorkspaceHubPage extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     return Container(
       key: pageKey,
-      color: cs.surface,
+      color: cs.workspacePage,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          WorkspaceHubTitleBar(
-            title: title,
-            subtitle: subtitle,
-            compact: true,
-          ),
+          WorkspaceHubTitleBar(title: title, subtitle: subtitle, compact: true),
           Expanded(
             child: WorkspaceHubNavList(entries: entries, hubStyle: true),
           ),
@@ -310,14 +315,12 @@ class WorkspaceSectionPage extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     return Container(
       key: pageKey,
-      color: cs.surface,
+      color: cs.workspacePage,
       child: Padding(
         padding: padding,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Expanded(child: child),
-          ],
+          children: [Expanded(child: child)],
         ),
       ),
     );

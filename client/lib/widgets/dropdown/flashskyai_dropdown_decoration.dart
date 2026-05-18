@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../theme/workspace_surface_layers.dart';
 import 'custom_dropdown.dart';
 
 const _dropdownBorderRadius = 10.0;
@@ -20,8 +21,8 @@ abstract final class FlashskyDropdownDecorations {
         : cs.primaryContainer;
 
     return CustomDropdownDecoration(
-      closedFillColor: cs.surfaceContainerHigh,
-      expandedFillColor: cs.surfaceContainerLow,
+      closedFillColor: cs.workspaceInset,
+      expandedFillColor: cs.workspaceCard,
       closedBorder: Border.all(color: cs.outlineVariant),
       closedBorderRadius: BorderRadius.circular(_dropdownBorderRadius),
       expandedBorder: Border.all(
@@ -79,8 +80,8 @@ abstract final class FlashskyDropdownDecorations {
         : cs.primaryContainer;
 
     return CustomDropdownDecoration(
-      closedFillColor: cs.surfaceContainer,
-      expandedFillColor: cs.surfaceContainer,
+      closedFillColor: cs.workspaceCard,
+      expandedFillColor: cs.workspaceCard,
       closedBorder: Border.all(color: cs.outlineVariant),
       closedBorderRadius: BorderRadius.circular(8),
       expandedBorder: Border.all(
@@ -142,8 +143,8 @@ abstract final class FlashskyDropdownDecorations {
         : cs.primaryContainer;
 
     return CustomDropdownDecoration(
-      closedFillColor: cs.surfaceContainerHigh,
-      expandedFillColor: cs.surfaceContainer,
+      closedFillColor: cs.workspaceInset,
+      expandedFillColor: cs.workspaceCard,
       closedBorder: Border.all(color: cs.outlineVariant),
       closedBorderRadius: BorderRadius.circular(borderRadius),
       expandedBorder: Border.all(

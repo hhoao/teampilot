@@ -19,6 +19,7 @@ import '../widgets/app_outline_text_field.dart';
 import '../widgets/dropdown/flashsky_dropdown_field.dart';
 import '../widgets/dropdown/flashskyai_dropdown_decoration.dart';
 import '../widgets/settings/workspace_hub_shell.dart';
+import '../theme/workspace_surface_layers.dart';
 
 enum TeamConfigSection { team, skills, members }
 
@@ -179,7 +180,7 @@ class TeamConfigPage extends StatelessWidget {
     }
 
     return Container(
-      color: Theme.of(context).colorScheme.surface,
+      color: Theme.of(context).colorScheme.workspacePage,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -245,7 +246,7 @@ class _NavPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     return Container(
-      color: cs.surface,
+      color: cs.workspacePage,
       padding: const EdgeInsets.fromLTRB(24, 28, 18, 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -470,11 +471,7 @@ class _Card extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
       padding: padding ?? const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: cs.surfaceContainer,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: cs.outlineVariant),
-      ),
+      decoration: workspaceCardDecoration(cs, radius: 12),
       child: child,
     );
   }
@@ -679,11 +676,7 @@ class _TeamSkillRow extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        decoration: BoxDecoration(
-          color: cs.surfaceContainerHigh,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: cs.outlineVariant),
-        ),
+        decoration: workspaceInsetDecoration(cs, radius: 10),
         child: Row(
           children: [
             Expanded(

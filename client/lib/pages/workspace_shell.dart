@@ -2,6 +2,8 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 
+import '../theme/workspace_surface_layers.dart';
+
 import '../l10n/l10n_extensions.dart';
 import '../utils/app_keys.dart';
 import '../models/layout_preferences.dart';
@@ -66,7 +68,7 @@ class WorkspaceShell extends StatelessWidget {
             height: 82.0 * textScale,
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             decoration: BoxDecoration(
-              color: cs.surfaceContainer,
+              color: cs.workspaceCard,
               border: Border(
                 bottom: BorderSide(
                   color: cs.outlineVariant.withValues(alpha: 0.5),
@@ -183,20 +185,20 @@ class _WorkspaceBody extends StatelessWidget {
         return ResizableSplitView(
           left: child,
           right: rightTools!,
-          initialLeftWidth: (constraints.maxWidth - rightWidth)
-              .clamp(150, constraints.maxWidth - 80),
+          initialLeftWidth: (constraints.maxWidth - rightWidth).clamp(
+            150,
+            constraints.maxWidth - 80,
+          ),
           minLeftWidth: 150,
           maxLeftWidth: (constraints.maxWidth - 80).clamp(150, double.infinity),
           onWidthChanged: (leftWidth) {
-            onRightToolsWidthChanged
-                ?.call(constraints.maxWidth - leftWidth);
+            onRightToolsWidthChanged?.call(constraints.maxWidth - leftWidth);
           },
         );
       },
     );
   }
 }
-
 
 class _TabRow extends StatelessWidget {
   const _TabRow({
@@ -226,11 +228,9 @@ class _TabRow extends StatelessWidget {
       height: 42,
       padding: const EdgeInsets.symmetric(horizontal: 6),
       decoration: BoxDecoration(
-        color: cs.surfaceContainer,
+        color: cs.workspaceCard,
         border: Border(
-          bottom: BorderSide(
-            color: cs.outlineVariant.withValues(alpha: 0.5),
-          ),
+          bottom: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.5)),
         ),
       ),
       child: Row(
@@ -292,6 +292,7 @@ class _TabChip extends StatefulWidget {
 
 class _TabChipState extends State<_TabChip> {
   var _hovered = false;
+
   /// Keeps overflow actions (and [PopupMenuButton]) mounted while the menu is
   /// open; otherwise moving the pointer onto the overlay triggers
   /// [MouseRegion.onExit] and removes the button before [onSelected] runs.
@@ -318,8 +319,7 @@ class _TabChipState extends State<_TabChip> {
 
   Future<void> _showTabContextMenu(Offset globalPosition) async {
     if (!mounted) return;
-    final overlayObject =
-        Overlay.maybeOf(context)?.context.findRenderObject();
+    final overlayObject = Overlay.maybeOf(context)?.context.findRenderObject();
     if (overlayObject is! RenderBox) return;
 
     final anchor = overlayObject.globalToLocal(globalPosition);
@@ -352,15 +352,16 @@ class _TabChipState extends State<_TabChip> {
   /// [PopupMenuButton] ink fighting (hover patch only behind title text).
   Color _tabMaterialColor(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final hoverTint =
-        Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.10);
+    final hoverTint = Theme.of(
+      context,
+    ).colorScheme.onSurface.withValues(alpha: 0.10);
     if (widget.active) {
       return _hovered
           ? Color.alphaBlend(hoverTint, widget.activeBg)
           : widget.activeBg;
     }
     if (_hovered) {
-      return Color.alphaBlend(hoverTint, cs.surfaceContainer);
+      return Color.alphaBlend(hoverTint, cs.workspaceCard);
     }
     return Colors.transparent;
   }
@@ -481,11 +482,9 @@ class _ActionsBar extends StatelessWidget {
       height: 34,
       padding: const EdgeInsets.symmetric(horizontal: 10),
       decoration: BoxDecoration(
-        color: cs.surfaceContainer,
+        color: cs.workspaceCard,
         border: Border(
-          bottom: BorderSide(
-            color: cs.outlineVariant.withValues(alpha: 0.5),
-          ),
+          bottom: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.5)),
         ),
       ),
       child: Row(
