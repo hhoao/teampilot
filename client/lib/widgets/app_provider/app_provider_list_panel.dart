@@ -103,10 +103,7 @@ class _AppProviderListPanelState extends State<AppProviderListPanel> {
                       final selected =
                           !widget.hubStyle && p.id == widget.selectedId;
                       final modelCount = p.enables(AppProviderTool.flashskyai)
-                          ? appCubit
-                                .flashskyaiLlmConfigFor(p)
-                                .models
-                                .length
+                          ? appCubit.flashskyaiLlmConfigFor(p).models.length
                           : 0;
                       final subtitle = p.enables(AppProviderTool.flashskyai)
                           ? l10n.providerListModelCount(modelCount)

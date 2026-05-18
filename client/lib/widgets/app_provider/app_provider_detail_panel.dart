@@ -155,7 +155,7 @@ class _ProviderJsonPreviewState extends State<_ProviderJsonPreview> {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: cs.surfaceContainerHighest,
+        color: cs.surface,
         borderRadius: BorderRadius.circular(8),
       ),
       child: json == null
@@ -181,7 +181,6 @@ class _InfoRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
-
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

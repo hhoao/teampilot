@@ -9,7 +9,6 @@ import '../models/llm_config.dart';
 import '../cubits/app_provider_cubit.dart';
 import '../cubits/llm_config_cubit.dart';
 import '../models/app_provider_config.dart';
-import '../services/app_storage.dart';
 import '../services/platform_utils.dart';
 import '../widgets/app_provider/app_provider_detail_panel.dart';
 import '../widgets/app_provider/app_provider_form_sheet.dart';
@@ -45,7 +44,6 @@ class LlmConfigWorkspace extends StatelessWidget {
         key: AppKeys.llmConfigWorkspace,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _LlmConfigFileHintBar(controller: controller),
           Expanded(
             child: _LlmProvidersListContent(
               controller: controller,
@@ -58,10 +56,7 @@ class LlmConfigWorkspace extends StatelessWidget {
     return Column(
       key: AppKeys.llmConfigWorkspace,
       crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        _LlmConfigFileHintBar(controller: controller),
-        Expanded(child: _ProvidersTabContent(controller: controller)),
-      ],
+      children: [Expanded(child: _ProvidersTabContent(controller: controller))],
     );
   }
 }
@@ -164,92 +159,23 @@ class _LlmProvidersListContent extends StatelessWidget {
   }
 }
 
-class _LlmConfigFileHintBar extends StatelessWidget {
-  const _LlmConfigFileHintBar({required this.controller});
+/// 右侧详情/模型面板外框，与左侧 [AppProviderListPanel] 列表卡片一致。
+class _LlmWorkspaceDetailCard extends StatelessWidget {
+  const _LlmWorkspaceDetailCard({required this.child});
 
-  final LlmConfigCubit controller;
+  final Widget child;
 
   @override
   Widget build(BuildContext context) {
-    final l10n = context.l10n;
     final cs = Theme.of(context).colorScheme;
-    final theme = Theme.of(context);
-
-    final catalogPath = AppStorage.providerConfigFile;
-    final commonLlmPath = AppStorage.commonFlashskyaiLlmConfigFile;
-    final badgeText = l10n.llmConfigPathBadgeDefault;
-    final badgeColor = cs.primary;
-    final hintBody =
-        '${l10n.appProviderCatalogHint}\n'
-        '${l10n.llmConfigCurrentEffectivePathPrefix} $catalogPath\n'
-        'LLM_CONFIG_PATH: $commonLlmPath';
-
     return Container(
-      padding: const EdgeInsets.fromLTRB(
-        _kLlmInsetHSm,
-        _kLlmFieldGap + 2,
-        _kLlmInsetHSm,
-        _kLlmFieldGap + 2,
-      ),
       decoration: BoxDecoration(
-        color: cs.surface,
-        border: Border(
-          bottom: BorderSide(color: theme.dividerColor.withValues(alpha: 0.4)),
-        ),
+        color: cs.surfaceContainer,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: cs.outlineVariant),
       ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Text(
-            l10n.appProviderCatalogLabel,
-            style: _LlmWorkspaceText(theme).bodyStrong,
-          ),
-          const SizedBox(width: 8),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-            decoration: BoxDecoration(
-              color: badgeColor.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(4),
-              border: Border.all(color: badgeColor.withValues(alpha: 0.4)),
-            ),
-            child: Text(
-              badgeText,
-              style: theme.textTheme.labelSmall?.copyWith(color: badgeColor),
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Tooltip(
-              message: hintBody,
-              waitDuration: const Duration(milliseconds: 400),
-              child: SelectionArea(
-                child: Text(
-                  hintBody,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                    height: 1.35,
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(width: 8),
-          OutlinedButton.icon(
-            key: AppKeys.llmConfigOpenSessionSettingsButton,
-            icon: const Icon(Icons.terminal_outlined, size: 17),
-            label: Text(l10n.llmConfigOpenSessionSettings),
-            onPressed: () {
-              if (useAndroidHubNavigation(context)) {
-                context.push('/config/session');
-              } else {
-                context.go('/config/session');
-              }
-            },
-          ),
-        ],
-      ),
+      clipBehavior: Clip.antiAlias,
+      child: child,
     );
   }
 }
@@ -296,26 +222,28 @@ class _ProvidersTabContentState extends State<_ProvidersTabContent> {
         ),
         right: Padding(
           padding: const EdgeInsets.only(left: 6),
-          child: selected == null
-              ? Center(child: Text(context.l10n.selectProvider))
-              : showModels
-              ? _AppProviderModelsPanel(
-                  provider: selected,
-                  onBack: () => setState(() => _modelsProviderId = null),
-                )
-              : AppProviderDetailPanel(
-                  provider: selected,
-                  onEdit: () => _promptEditAppProvider(context, selected),
-                  onDelete: () =>
-                      _confirmDeleteAppProvider(context, selected.id),
-                  onShowModels: () {
-                    if (useAndroidHubNavigation(context)) {
-                      context.push(llmProviderModelsRoute(selected.id));
-                    } else {
-                      setState(() => _modelsProviderId = selected.id);
-                    }
-                  },
-                ),
+          child: _LlmWorkspaceDetailCard(
+            child: selected == null
+                ? Center(child: Text(context.l10n.selectProvider))
+                : showModels
+                ? _AppProviderModelsPanel(
+                    provider: selected,
+                    onBack: () => setState(() => _modelsProviderId = null),
+                  )
+                : AppProviderDetailPanel(
+                    provider: selected,
+                    onEdit: () => _promptEditAppProvider(context, selected),
+                    onDelete: () =>
+                        _confirmDeleteAppProvider(context, selected.id),
+                    onShowModels: () {
+                      if (useAndroidHubNavigation(context)) {
+                        context.push(llmProviderModelsRoute(selected.id));
+                      } else {
+                        setState(() => _modelsProviderId = selected.id);
+                      }
+                    },
+                  ),
+          ),
         ),
       ),
     );
@@ -1619,13 +1547,6 @@ class _ProviderModelsView extends StatelessWidget {
                       Text(
                         '${l10n.models} — ${provider.name}',
                         style: tx.panelHeaderColored(textBase),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        '${providerModels.length} ${l10n.models.toLowerCase()}',
-                        style: tx.smallColored(
-                          textBase.withValues(alpha: 0.48),
-                        ),
                       ),
                     ],
                   ),
