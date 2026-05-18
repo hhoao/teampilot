@@ -854,6 +854,18 @@ abstract class AppLocalizations {
   /// **'Provider name'**
   String get providerName;
 
+  /// No description provided for @renameProviderName.
+  ///
+  /// In en, this message translates to:
+  /// **'Rename'**
+  String get renameProviderName;
+
+  /// No description provided for @renameProviderTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Rename provider'**
+  String get renameProviderTitle;
+
   /// No description provided for @deleteProvider.
   ///
   /// In en, this message translates to:

@@ -126,6 +126,8 @@
   "rawJsonTab": "原始 JSON",
   "addProvider": "添加提供商",
   "providerName": "提供商名称",
+  "renameProviderName": "修改名称",
+  "renameProviderTitle": "修改提供商名称",
   "deleteProvider": "删除提供商",
   "deleteProviderConfirm": "删除提供商 {name}？",
   "providerList": "提供商列表",

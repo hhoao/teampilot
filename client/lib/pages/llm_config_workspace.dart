@@ -91,12 +91,6 @@ class LlmProviderConfigPage extends StatelessWidget {
               provider: provider,
               controller: controller,
               onSave: controller.updateProvider,
-              onRenamed: (from, to) {
-                _notifyLlmProviderRenamed(context, from, to);
-                if (context.mounted) {
-                  context.go(llmProviderConfigRoute(to));
-                }
-              },
               onDelete: (name) async {
                 await _confirmDeleteProvider(context, controller, name);
                 if (context.mounted) {
@@ -141,11 +135,13 @@ class _LlmProvidersListContent extends StatelessWidget {
     required this.controller,
     this.hubStyle = false,
     this.onSelected,
+    this.onProviderRenamed,
   });
 
   final LlmConfigCubit controller;
   final bool hubStyle;
   final VoidCallback? onSelected;
+  final void Function(String from, String to)? onProviderRenamed;
 
   @override
   Widget build(BuildContext context) {
@@ -163,6 +159,13 @@ class _LlmProvidersListContent extends StatelessWidget {
       },
       onAdd: () => _promptAddProvider(context, controller, hubStyle: hubStyle),
       onDelete: (name) => _confirmDeleteProvider(context, controller, name),
+      onRename: (name) => _promptRenameProvider(
+        context,
+        controller,
+        name,
+        hubStyle: hubStyle,
+        onRenamed: onProviderRenamed,
+      ),
     );
   }
 }
@@ -299,6 +302,13 @@ class _ProvidersTabContentState extends State<_ProvidersTabContent> {
           child: _LlmProvidersListContent(
             controller: _controller,
             onSelected: () => setState(() => _modelsProviderName = null),
+            onProviderRenamed: (from, to) {
+              setState(() {
+                if (_modelsProviderName == from) {
+                  _modelsProviderName = to;
+                }
+              });
+            },
           ),
         ),
         right: Padding(
@@ -316,14 +326,6 @@ class _ProvidersTabContentState extends State<_ProvidersTabContent> {
                   controller: _controller,
                   onSave: (name, provider) {
                     _controller.updateProvider(name, provider);
-                  },
-                  onRenamed: (from, to) {
-                    _notifyLlmProviderRenamed(context, from, to);
-                    setState(() {
-                      if (_modelsProviderName == from) {
-                        _modelsProviderName = to;
-                      }
-                    });
                   },
                   onDelete: (name) {
                     unawaited(
@@ -387,6 +389,52 @@ Future<void> _promptAddProvider(
   }
 }
 
+Future<void> _promptRenameProvider(
+  BuildContext context,
+  LlmConfigCubit controller,
+  String currentName, {
+  bool hubStyle = false,
+  void Function(String from, String to)? onRenamed,
+}) async {
+  final l10n = context.l10n;
+  final nameController = TextEditingController(text: currentName);
+  final name = await showDialog<String>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: Text(l10n.renameProviderTitle),
+      content: AppOutlineTextField(
+        key: AppKeys.providerRenameDialogField,
+        controller: nameController,
+        autofocus: true,
+        labelText: l10n.providerName,
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text(l10n.cancel),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.pop(context, nameController.text.trim()),
+          child: Text(l10n.save),
+        ),
+      ],
+    ),
+  );
+  nameController.dispose();
+  if (name == null || !context.mounted) return;
+  final trimmed = name.trim();
+  if (trimmed.isEmpty || trimmed == currentName) return;
+  if (!controller.renameProvider(currentName, trimmed)) return;
+  _notifyLlmProviderRenamed(context, currentName, trimmed);
+  onRenamed?.call(currentName, trimmed);
+  if (!context.mounted) return;
+  if (hubStyle &&
+      GoRouterState.of(context).uri.path ==
+          llmProviderConfigRoute(currentName)) {
+    context.go(llmProviderConfigRoute(trimmed));
+  }
+}
+
 Future<void> _confirmDeleteProvider(
   BuildContext context,
   LlmConfigCubit controller,
@@ -424,6 +472,7 @@ class _ProviderListPanel extends StatefulWidget {
     required this.onSelect,
     required this.onAdd,
     required this.onDelete,
+    required this.onRename,
     this.hubStyle = false,
   });
 
@@ -432,6 +481,7 @@ class _ProviderListPanel extends StatefulWidget {
   final ValueChanged<String> onSelect;
   final VoidCallback onAdd;
   final ValueChanged<String> onDelete;
+  final ValueChanged<String> onRename;
   final bool hubStyle;
 
   @override
@@ -555,6 +605,7 @@ class _ProviderListPanelState extends State<_ProviderListPanel> {
                   hubStyle: widget.hubStyle,
                   modelCount: modelCount,
                   onTap: () => widget.onSelect(provider.name),
+                  onRename: () => widget.onRename(provider.name),
                   onDelete: () => widget.onDelete(provider.name),
                 );
               },
@@ -573,6 +624,7 @@ class _ProviderListRow extends StatelessWidget {
     required this.isSelected,
     required this.modelCount,
     required this.onTap,
+    required this.onRename,
     required this.onDelete,
     this.hubStyle = false,
   });
@@ -581,6 +633,7 @@ class _ProviderListRow extends StatelessWidget {
   final bool isSelected;
   final int modelCount;
   final VoidCallback onTap;
+  final VoidCallback onRename;
   final VoidCallback onDelete;
   final bool hubStyle;
 
@@ -651,27 +704,41 @@ class _ProviderListRow extends StatelessWidget {
                   ],
                 ),
               ),
-              if (hubStyle)
-                Icon(
-                  Icons.chevron_right,
-                  size: 22,
-                  color: textBase.withValues(alpha: 0.64),
-                )
-              else
-                PopupMenuButton<String>(
-                  key: ValueKey<String>('prov-menu-${provider.name}'),
-                  icon: const Icon(Icons.more_horiz, size: 18),
-                  padding: const EdgeInsets.all(4),
-                  constraints: const BoxConstraints(
-                    minWidth: 36,
-                    minHeight: 36,
+              PopupMenuButton<String>(
+                key: ValueKey<String>('prov-menu-${provider.name}'),
+                icon: Icon(
+                  hubStyle ? Icons.more_vert : Icons.more_horiz,
+                  size: 18,
+                ),
+                padding: const EdgeInsets.all(4),
+                constraints: const BoxConstraints(
+                  minWidth: 36,
+                  minHeight: 36,
+                ),
+                itemBuilder: (context) => [
+                  PopupMenuItem(
+                    value: 'rename',
+                    child: Text(l10n.renameProviderName),
                   ),
-                  itemBuilder: (context) => [
-                    PopupMenuItem(value: 'delete', child: Text(l10n.delete)),
-                  ],
-                  onSelected: (value) {
-                    if (value == 'delete') onDelete();
-                  },
+                  PopupMenuItem(value: 'delete', child: Text(l10n.delete)),
+                ],
+                onSelected: (value) {
+                  switch (value) {
+                    case 'rename':
+                      onRename();
+                    case 'delete':
+                      onDelete();
+                  }
+                },
+              ),
+              if (hubStyle)
+                Padding(
+                  padding: const EdgeInsets.only(left: 2),
+                  child: Icon(
+                    Icons.chevron_right,
+                    size: 22,
+                    color: textBase.withValues(alpha: 0.64),
+                  ),
                 ),
             ],
           ),
@@ -733,14 +800,12 @@ class _ProviderDetailPanel extends StatefulWidget {
     required this.onSave,
     required this.onDelete,
     required this.onShowModels,
-    this.onRenamed,
   });
 
   final LlmConfig config;
   final LlmProviderConfig? provider;
   final LlmConfigCubit controller;
   final void Function(String name, LlmProviderConfig provider) onSave;
-  final void Function(String oldName, String newName)? onRenamed;
   final ValueChanged<String> onDelete;
   final ValueChanged<String> onShowModels;
 
@@ -750,7 +815,6 @@ class _ProviderDetailPanel extends StatefulWidget {
 
 class _ProviderDetailPanelState extends State<_ProviderDetailPanel> {
   late String _type;
-  late final TextEditingController _nameController;
   late final TextEditingController _providerTypeController;
   late final TextEditingController _baseUrlController;
   late String _apiKey;
@@ -760,13 +824,11 @@ class _ProviderDetailPanelState extends State<_ProviderDetailPanel> {
   late List<TextEditingController> _accountControllers;
   bool _apiKeyRevealed = false;
   bool _apiKeyReplaced = false;
-  String? _providerName;
   Timer? _persistDebounce;
 
   @override
   void initState() {
     super.initState();
-    _nameController = TextEditingController();
     _providerTypeController = TextEditingController();
     _baseUrlController = TextEditingController();
     _proxyUrlController = TextEditingController();
@@ -783,18 +845,10 @@ class _ProviderDetailPanelState extends State<_ProviderDetailPanel> {
     if (prev != next) {
       _persistDebounce?.cancel();
       _persistDebounce = null;
-      if (prev != null && _providerName == prev.name) {
-        if (widget.config.providers.containsKey(prev.name)) {
-          _commitRenameIfNeeded();
-          final key = _providerKey;
-          final base = widget.config.providers[key];
-          if (base != null) {
-            widget.onSave(key, _draftFromFieldsFor(base));
-          }
-        } else {
-          _syncFromProvider();
-        }
-      } else if (next?.name != _providerName) {
+      if (prev != null) {
+        widget.onSave(prev.name, _draftFromFieldsFor(prev));
+      }
+      if (next != null) {
         _syncFromProvider();
       }
     }
@@ -805,11 +859,9 @@ class _ProviderDetailPanelState extends State<_ProviderDetailPanel> {
     _persistDebounce?.cancel();
     _persistDebounce = null;
     final p = widget.provider;
-    if (p != null && _providerName == p.name) {
-      _commitRenameIfNeeded();
-      widget.onSave(_providerKey, _draftFromFieldsFor(p));
+    if (p != null) {
+      widget.onSave(p.name, _draftFromFieldsFor(p));
     }
-    _nameController.dispose();
     _providerTypeController.dispose();
     _baseUrlController.dispose();
     _proxyUrlController.dispose();
@@ -837,33 +889,10 @@ class _ProviderDetailPanelState extends State<_ProviderDetailPanel> {
     _persistProvider();
   }
 
-  String get _providerKey => _providerName ?? widget.provider?.name ?? '';
-
-  void _commitRenameIfNeeded() {
-    final provider = widget.provider;
-    if (provider == null) return;
-    final from = _providerKey;
-    final to = _nameController.text.trim();
-    if (to.isEmpty) {
-      _nameController.text = from;
-      return;
-    }
-    if (to == from) return;
-    if (widget.controller.renameProvider(from, to)) {
-      _providerName = to;
-      widget.onRenamed?.call(from, to);
-    } else {
-      _nameController.text = from;
-    }
-  }
-
   void _persistProvider() {
     final provider = widget.provider;
     if (provider == null) return;
-    final key = _providerKey;
-    final current = widget.controller.state.config.providers[key];
-    if (current == null) return;
-    widget.onSave(key, _draftFromFieldsFor(current));
+    widget.onSave(provider.name, _draftFromFieldsFor(provider));
   }
 
   /// 用当前表单控件状态，生成以 [base] 为起点的配置（切换 Provider 时 [base] 须为旧项，不能再用 [widget.provider]）。
@@ -884,12 +913,7 @@ class _ProviderDetailPanelState extends State<_ProviderDetailPanel> {
   void _syncFromProvider() {
     _persistDebounce?.cancel();
     final provider = widget.provider;
-    if (provider == null) {
-      _providerName = null;
-      return;
-    }
-    _providerName = provider.name;
-    _nameController.text = provider.name;
+    if (provider == null) return;
     _type = provider.type;
     _providerTypeController.text = provider.providerType;
     _baseUrlController.text = provider.baseUrl;
@@ -1038,25 +1062,6 @@ class _ProviderDetailPanelState extends State<_ProviderDetailPanel> {
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      _SettingFieldBlock(
-                        title: l10n.providerName,
-                        child: AppOutlineTextField(
-                          key: AppKeys.providerNameField,
-                          controller: _nameController,
-                          onSubmitted: (_) {
-                            _commitRenameIfNeeded();
-                            _flushPersistDebounce();
-                          },
-                        ),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 6),
-                        child: Divider(
-                          height: 1,
-                          thickness: 1,
-                          color: theme.dividerColor.withValues(alpha: 0.35),
-                        ),
-                      ),
                       _SettingRow(
                         title: l10n.type,
                         trailing: SizedBox(

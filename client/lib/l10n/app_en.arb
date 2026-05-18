@@ -147,6 +147,8 @@
   "rawJsonTab": "Raw JSON",
   "addProvider": "Add Provider",
   "providerName": "Provider name",
+  "renameProviderName": "Rename",
+  "renameProviderTitle": "Rename provider",
   "deleteProvider": "Delete Provider",
   "deleteProviderConfirm": "Delete provider {name}?",
   "@deleteProviderConfirm": {

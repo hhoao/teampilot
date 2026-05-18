@@ -413,6 +413,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get providerName => 'Provider name';
 
   @override
+  String get renameProviderName => 'Rename';
+
+  @override
+  String get renameProviderTitle => 'Rename provider';
+
+  @override
   String get deleteProvider => 'Delete Provider';
 
   @override

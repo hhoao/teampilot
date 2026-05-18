@@ -400,6 +400,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get providerName => '提供商名称';
 
   @override
+  String get renameProviderName => '修改名称';
+
+  @override
+  String get renameProviderTitle => '修改提供商名称';
+
+  @override
   String get deleteProvider => '删除提供商';
 
   @override
