@@ -67,9 +67,6 @@ class TerminalSession {
   int _pendingViewportRows = 0;
   int _lastSyncedCols = 0;
   int _lastSyncedRows = 0;
-  String? _launchExecutable;
-  List<String>? _launchArgs;
-  String? _launchCwd;
 
   static const _layoutGeometryDebounceMs = 150;
   static const _outputGeometryDebounceMs = 80;
@@ -161,14 +158,20 @@ class TerminalSession {
       }
     };
 
-    _launchExecutable = invocation.executable;
-    _launchArgs = launchArgs;
-    _launchCwd = ptyWorkingDirectory;
-
     terminal.onResize = (int width, int height, int pw, int ph) {
       if (width <= 0 || height <= 0) return;
       _schedulePtyGeometry(cols: width, rows: height, fromLayout: true);
     };
+
+    // Spawn immediately with this connect()'s args so concurrent member shells
+    // (each with its own TerminalSession) are not racing on shared launch fields.
+    _spawnTransport(
+      executable: invocation.executable,
+      args: launchArgs,
+      cwd: ptyWorkingDirectory,
+      cols: terminal.viewWidth,
+      rows: terminal.viewHeight,
+    );
   }
 
   void _attachTerminalViewportListener() {
@@ -201,11 +204,12 @@ class TerminalSession {
       _pendingViewportRows = rows;
       _hasPendingLayoutGeometry = true;
     }
-    if (_transport == null && (!_starting || _spawnRequested)) {
-      if (cols == null) return;
-    } else if (_transport != null && !_running) {
+    if (_transport == null) {
+      if (!_starting || cols == null) return;
+      // Layout while transport is starting; applied when attach completes.
       return;
     }
+    if (!_running) return;
 
     _ptyGeometryTimer?.cancel();
     final debounceMs = fromLayout || cols != null
@@ -228,21 +232,7 @@ class TerminalSession {
 
     if (cols <= 0 || rows <= 0) return;
 
-    if (_transport == null) {
-      if (!_starting || _spawnRequested) return;
-      final executable = _launchExecutable;
-      final args = _launchArgs;
-      final cwd = _launchCwd;
-      if (executable == null || args == null || cwd == null) return;
-      _spawnTransport(
-        executable: executable,
-        args: args,
-        cwd: cwd,
-        cols: cols,
-        rows: rows,
-      );
-      return;
-    }
+    if (_transport == null) return;
 
     if (!_running) return;
     _lastSyncedCols = cols;
@@ -320,6 +310,15 @@ class TerminalSession {
       _transport = transport;
       _running = true;
       _starting = true;
+
+      if (_hasPendingLayoutGeometry &&
+          _pendingViewportCols > 0 &&
+          _pendingViewportRows > 0) {
+        _lastSyncedCols = _pendingViewportCols;
+        _lastSyncedRows = _pendingViewportRows;
+        transport.resize(_pendingViewportRows, _pendingViewportCols);
+        _hasPendingLayoutGeometry = false;
+      }
 
       _outputSubscription = transport.output
           .map<List<int>>((data) => data)
@@ -452,9 +451,7 @@ class TerminalSession {
     _startFailed = false;
     _spawnRequested = false;
     _cancelPtyGeometryTimers();
-    _launchExecutable = null;
-    _launchArgs = null;
-    _launchCwd = null;
+    _hasPendingLayoutGeometry = false;
     _detachTerminalViewportListener();
     _teardownPtyState();
     _onProcessFailed = null;

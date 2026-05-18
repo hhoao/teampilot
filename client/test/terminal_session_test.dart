@@ -154,6 +154,95 @@ void main() {
     expect(session.isRunning, isFalse);
   });
 
+  test('independent sessions spawn concurrently with distinct member args', () async {
+    const team = TeamConfig(id: 'team', name: 'default-team-0');
+    const lead = TeamMemberConfig(id: 'lead', name: 'team-lead');
+    const dev = TeamMemberConfig(id: 'dev', name: 'developer');
+    final startedArgs = <List<String>>[];
+
+    TerminalSession sessionFor(TeamMemberConfig member) {
+      return TerminalSession(
+        executable: _ptyTestExecutable,
+        transportStarter:
+            (
+              executable, {
+              required arguments,
+              required workingDirectory,
+              required columns,
+              required rows,
+              environment,
+            }) {
+              startedArgs.add(List<String>.from(arguments));
+              return Future.value(_FakeTransport());
+            },
+      );
+    }
+
+    final leadSession = sessionFor(lead);
+    final devSession = sessionFor(dev);
+    addTearDown(() async {
+      leadSession.dispose();
+      devSession.dispose();
+    });
+
+    leadSession.connect(
+      workingDirectory: Directory.systemTemp.path,
+      team: team,
+      member: lead,
+    );
+    devSession.connect(
+      workingDirectory: Directory.systemTemp.path,
+      team: team,
+      member: dev,
+    );
+    await Future<void>.delayed(const Duration(milliseconds: 500));
+
+    expect(startedArgs, hasLength(2));
+    expect(
+      startedArgs.any((args) => args.contains('--member') && args.contains('team-lead')),
+      isTrue,
+    );
+    expect(
+      startedArgs.any((args) => args.contains('--member') && args.contains('developer')),
+      isTrue,
+    );
+    expect(leadSession.isRunning, isTrue);
+    expect(devSession.isRunning, isTrue);
+  });
+
+  test(
+    'connect spawns pty with default viewport without TerminalView resize',
+    () async {
+      final starts = <({int columns, int rows})>[];
+      final handle = _FakeTransport();
+      final session = TerminalSession(
+        executable: _ptyTestExecutable,
+        transportStarter:
+            (
+              executable, {
+              required arguments,
+              required workingDirectory,
+              required columns,
+              required rows,
+              environment,
+            }) {
+              starts.add((columns: columns, rows: rows));
+              return Future.value(handle);
+            },
+      );
+      addTearDown(() async {
+        session.dispose();
+        await handle.outputController.close();
+      });
+
+      session.connect(workingDirectory: Directory.systemTemp.path);
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+
+      expect(starts, [(columns: 80, rows: 24)]);
+      expect(session.isRunning, isTrue);
+    },
+  );
+
   test('connect starts pty on first terminal resize', () async {
     final starts = <({int columns, int rows})>[];
     final handle = _FakeTransport();
@@ -214,7 +303,9 @@ void main() {
     session.terminal.onResize?.call(120, 32, 0, 0);
     await Future<void>.delayed(const Duration(milliseconds: 300));
 
-    expect(starts, [(columns: 120, rows: 32)]);
+    expect(starts, [(columns: 80, rows: 24)]);
+    expect(handle.resizeCalls, isNotEmpty);
+    expect(handle.resizeCalls.last, (32, 120));
   });
 
   test('terminal resize resizes an already-started pty', () async {
