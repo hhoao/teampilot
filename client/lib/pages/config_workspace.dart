@@ -116,11 +116,11 @@ class _AndroidConfigSectionPage extends StatelessWidget {
     return WorkspaceSectionPage(
       pageKey: AppKeys.configWorkspace,
       child: switch (section) {
-        ConfigSection.layout =>
-          LayoutConfigWorkspace(showHeading: showHeading),
+        ConfigSection.layout => LayoutConfigWorkspace(showHeading: showHeading),
         ConfigSection.llm => const LlmConfigWorkspace(),
-        ConfigSection.session =>
-          SessionConfigWorkspace(showHeading: showHeading),
+        ConfigSection.session => SessionConfigWorkspace(
+          showHeading: showHeading,
+        ),
       },
     );
   }
@@ -178,7 +178,6 @@ class LayoutConfigWorkspace extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final layoutController = context.watch<LayoutCubit>();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -189,189 +188,266 @@ class LayoutConfigWorkspace extends StatelessWidget {
           ),
           const SizedBox(height: 16),
         ],
-        _LayoutControls(
-          preferences: layoutController.state.preferences,
-          controller: layoutController,
-        ),
+        const Expanded(child: _LayoutSettingsScroll()),
       ],
     );
   }
 }
 
-class _LayoutControls extends StatelessWidget {
-  const _LayoutControls({required this.preferences, required this.controller});
-
-  final LayoutPreferences preferences;
-  final LayoutCubit controller;
+class _LayoutSettingsScroll extends StatelessWidget {
+  const _LayoutSettingsScroll();
 
   @override
   Widget build(BuildContext context) {
-    final l10n = context.l10n;
-    var themeMode = preferences.themeMode;
-    if (themeMode != 'light' && themeMode != 'dark' && themeMode != 'system') {
-      themeMode = 'system';
-    }
-    final systemLang = Localizations.localeOf(context).languageCode;
-    final effectiveLang = preferences.locale.isNotEmpty
-        ? preferences.locale
-        : systemLang;
-    final langValue = effectiveLang.startsWith('zh') ? 'zh' : 'en';
-
-    return Expanded(
-      child: SingleChildScrollView(
-        child: SettingsSurfaceCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              SettingsLabeledRow(
-                title: l10n.toolPlacement,
-                subtitle: l10n.toolPlacementDescription,
-                trailing: WorkspaceSettingsToggleStrip<ToolPanelPlacement>(
-                  segments: [
-                    WorkspaceToggleSegment<ToolPanelPlacement>(
-                      value: ToolPanelPlacement.right,
-                      label: l10n.right,
-                      icon: Icons.vertical_split_outlined,
-                    ),
-                    WorkspaceToggleSegment<ToolPanelPlacement>(
-                      value: ToolPanelPlacement.bottom,
-                      label: l10n.bottom,
-                      icon: Icons.splitscreen_outlined,
-                    ),
-                  ],
-                  selected: preferences.toolPlacement,
-                  onChanged: controller.setToolPlacement,
-                ),
-                showDividerBelow: true,
-              ),
-              SettingsLabeledRow(
-                title: l10n.membersAndFileTree,
-                subtitle: l10n.membersAndFileTreeDescription,
-                trailing: WorkspaceSettingsToggleStrip<ToolsArrangement>(
-                  segments: [
-                    WorkspaceToggleSegment<ToolsArrangement>(
-                      value: ToolsArrangement.stacked,
-                      label: l10n.stacked,
-                      icon: Icons.view_agenda_outlined,
-                    ),
-                    WorkspaceToggleSegment<ToolsArrangement>(
-                      value: ToolsArrangement.tabs,
-                      label: l10n.tabs,
-                      icon: Icons.tab_outlined,
-                    ),
-                  ],
-                  selected: preferences.toolsArrangement,
-                  onChanged: controller.setToolsArrangement,
-                ),
-                showDividerBelow: true,
-              ),
-              SettingsGroupHeader(title: l10n.regionVisibility),
-              SettingsLabeledRow(
-                title: l10n.teamSessions,
-                subtitle: l10n.visibilityTeamSessionsHint,
-                trailing: Switch(
-                  key: AppKeys.contextSidebarVisibilitySwitch,
-                  value: preferences.contextSidebarVisible,
-                  onChanged: (value) =>
-                      _setVisibility(contextSidebarVisible: value),
-                ),
-                showDividerBelow: true,
-              ),
-              SettingsLabeledRow(
-                title: l10n.members,
-                subtitle: l10n.visibilityMembersHint,
-                trailing: Switch(
-                  key: AppKeys.membersVisibilitySwitch,
-                  value: preferences.membersVisible,
-                  onChanged: (value) => _setVisibility(membersVisible: value),
-                ),
-                showDividerBelow: true,
-              ),
-              SettingsLabeledRow(
-                title: l10n.fileTree,
-                subtitle: l10n.visibilityFileTreeHint,
-                trailing: Switch(
-                  key: AppKeys.fileTreeVisibilitySwitch,
-                  value: preferences.fileTreeVisible,
-                  onChanged: (value) => _setVisibility(fileTreeVisible: value),
-                ),
-                showDividerBelow: true,
-              ),
-              SettingsGroupHeader(title: l10n.appearance),
-              SettingsLabeledRow(
-                title: l10n.themeModeTitle,
-                subtitle: l10n.themeModeDescription,
-                trailing: WorkspaceSettingsToggleStrip<String>(
-                  segments: [
-                    WorkspaceToggleSegment<String>(
-                      value: 'light',
-                      label: l10n.themeLight,
-                      icon: Icons.light_mode_outlined,
-                    ),
-                    WorkspaceToggleSegment<String>(
-                      value: 'dark',
-                      label: l10n.themeDark,
-                      icon: Icons.dark_mode_outlined,
-                    ),
-                    WorkspaceToggleSegment<String>(
-                      value: 'system',
-                      label: l10n.themeSystem,
-                      icon: Icons.desktop_windows_outlined,
-                    ),
-                  ],
-                  selected: themeMode,
-                  onChanged: controller.setThemeMode,
-                ),
-                showDividerBelow: true,
-              ),
-              SettingsLabeledRow(
-                title: l10n.themeColorPresetTitle,
-                subtitle: l10n.themeColorPresetDescription,
-                trailing: _ThemeColorPresetPicker(
-                  selected: normalizeThemeColorPreset(
-                    preferences.themeColorPreset,
-                  ),
-                  onSelect: controller.setThemeColorPreset,
-                ),
-                showDividerBelow: true,
-              ),
-              SettingsLabeledRow(
-                title: l10n.language,
-                subtitle: l10n.languageDescription,
-                trailing: SettingsCompactDropdown<String>(
-                  value: langValue,
-                  entries: [
-                    ('en', l10n.languageEnglish),
-                    ('zh', l10n.languageChinese),
-                  ],
-                  itemKeys: const {
-                    'en': AppKeys.languageEnButton,
-                    'zh': AppKeys.languageZhButton,
-                  },
-                  onChanged: (v) {
-                    if (v != null) controller.setLocale(v);
-                  },
-                ),
-                showDividerBelow: false,
-              ),
-            ],
-          ),
+    // return SizedBox(width: 360, height: 640);
+    return SingleChildScrollView(
+      child: SettingsSurfaceCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: const [
+            _ToolLayoutSettingsSection(),
+            _RegionVisibilitySettingsSection(),
+            _AppearanceSettingsSection(),
+          ],
         ),
       ),
     );
   }
+}
 
-  void _setVisibility({
-    bool? contextSidebarVisible,
-    bool? membersVisible,
-    bool? fileTreeVisible,
-  }) {
-    controller.setRegionVisibility(
-      appRailVisible: true,
-      contextSidebarVisible:
-          contextSidebarVisible ?? preferences.contextSidebarVisible,
-      membersVisible: membersVisible ?? preferences.membersVisible,
-      fileTreeVisible: fileTreeVisible ?? preferences.fileTreeVisible,
+class _ToolLayoutSettingsSection extends StatelessWidget {
+  const _ToolLayoutSettingsSection();
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final controller = context.read<LayoutCubit>();
+
+    return BlocSelector<
+      LayoutCubit,
+      LayoutState,
+      (ToolPanelPlacement, ToolsArrangement)
+    >(
+      selector: (state) =>
+          (state.preferences.toolPlacement, state.preferences.toolsArrangement),
+      builder: (context, prefs) {
+        final (toolPlacement, toolsArrangement) = prefs;
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            SettingsLabeledRow(
+              title: l10n.toolPlacement,
+              subtitle: l10n.toolPlacementDescription,
+              trailing: WorkspaceSettingsToggleStrip<ToolPanelPlacement>(
+                segments: [
+                  WorkspaceToggleSegment<ToolPanelPlacement>(
+                    value: ToolPanelPlacement.right,
+                    label: l10n.right,
+                    icon: Icons.vertical_split_outlined,
+                  ),
+                  WorkspaceToggleSegment<ToolPanelPlacement>(
+                    value: ToolPanelPlacement.bottom,
+                    label: l10n.bottom,
+                    icon: Icons.splitscreen_outlined,
+                  ),
+                ],
+                selected: toolPlacement,
+                onChanged: controller.setToolPlacement,
+              ),
+              showDividerBelow: true,
+            ),
+            SettingsLabeledRow(
+              title: l10n.membersAndFileTree,
+              subtitle: l10n.membersAndFileTreeDescription,
+              trailing: WorkspaceSettingsToggleStrip<ToolsArrangement>(
+                segments: [
+                  WorkspaceToggleSegment<ToolsArrangement>(
+                    value: ToolsArrangement.stacked,
+                    label: l10n.stacked,
+                    icon: Icons.view_agenda_outlined,
+                  ),
+                  WorkspaceToggleSegment<ToolsArrangement>(
+                    value: ToolsArrangement.tabs,
+                    label: l10n.tabs,
+                    icon: Icons.tab_outlined,
+                  ),
+                ],
+                selected: toolsArrangement,
+                onChanged: controller.setToolsArrangement,
+              ),
+              showDividerBelow: true,
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _RegionVisibilitySettingsSection extends StatelessWidget {
+  const _RegionVisibilitySettingsSection();
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final controller = context.read<LayoutCubit>();
+
+    return BlocSelector<LayoutCubit, LayoutState, (bool, bool, bool)>(
+      selector: (state) => (
+        state.preferences.contextSidebarVisible,
+        state.preferences.membersVisible,
+        state.preferences.fileTreeVisible,
+      ),
+      builder: (context, visibility) {
+        final (contextSidebarVisible, membersVisible, fileTreeVisible) =
+            visibility;
+
+        void setVisibility({
+          bool? contextSidebarVisible,
+          bool? membersVisible,
+          bool? fileTreeVisible,
+        }) {
+          controller.setRegionVisibility(
+            appRailVisible: true,
+            contextSidebarVisible: contextSidebarVisible ?? visibility.$1,
+            membersVisible: membersVisible ?? visibility.$2,
+            fileTreeVisible: fileTreeVisible ?? visibility.$3,
+          );
+        }
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            SettingsGroupHeader(title: l10n.regionVisibility),
+            SettingsLabeledRow(
+              title: l10n.teamSessions,
+              subtitle: l10n.visibilityTeamSessionsHint,
+              trailing: Switch(
+                key: AppKeys.contextSidebarVisibilitySwitch,
+                value: contextSidebarVisible,
+                onChanged: (value) =>
+                    setVisibility(contextSidebarVisible: value),
+              ),
+              showDividerBelow: true,
+            ),
+            SettingsLabeledRow(
+              title: l10n.members,
+              subtitle: l10n.visibilityMembersHint,
+              trailing: Switch(
+                key: AppKeys.membersVisibilitySwitch,
+                value: membersVisible,
+                onChanged: (value) => setVisibility(membersVisible: value),
+              ),
+              showDividerBelow: true,
+            ),
+            SettingsLabeledRow(
+              title: l10n.fileTree,
+              subtitle: l10n.visibilityFileTreeHint,
+              trailing: Switch(
+                key: AppKeys.fileTreeVisibilitySwitch,
+                value: fileTreeVisible,
+                onChanged: (value) => setVisibility(fileTreeVisible: value),
+              ),
+              showDividerBelow: true,
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _AppearanceSettingsSection extends StatelessWidget {
+  const _AppearanceSettingsSection();
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final controller = context.read<LayoutCubit>();
+
+    return BlocSelector<LayoutCubit, LayoutState, (String, String, String)>(
+      selector: (state) {
+        var themeMode = state.preferences.themeMode;
+        if (themeMode != 'light' &&
+            themeMode != 'dark' &&
+            themeMode != 'system') {
+          themeMode = 'system';
+        }
+        final systemLang =
+            WidgetsBinding.instance.platformDispatcher.locale.languageCode;
+        final effectiveLang = state.preferences.locale.isNotEmpty
+            ? state.preferences.locale
+            : systemLang;
+        final langValue = effectiveLang.startsWith('zh') ? 'zh' : 'en';
+        return (
+          themeMode,
+          normalizeThemeColorPreset(state.preferences.themeColorPreset),
+          langValue,
+        );
+      },
+      builder: (context, appearance) {
+        final (themeMode, colorPreset, langValue) = appearance;
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            SettingsGroupHeader(title: l10n.appearance),
+            SettingsLabeledRow(
+              title: l10n.themeModeTitle,
+              subtitle: l10n.themeModeDescription,
+              trailing: WorkspaceSettingsToggleStrip<String>(
+                segments: [
+                  WorkspaceToggleSegment<String>(
+                    value: 'light',
+                    label: l10n.themeLight,
+                    icon: Icons.light_mode_outlined,
+                  ),
+                  WorkspaceToggleSegment<String>(
+                    value: 'dark',
+                    label: l10n.themeDark,
+                    icon: Icons.dark_mode_outlined,
+                  ),
+                  WorkspaceToggleSegment<String>(
+                    value: 'system',
+                    label: l10n.themeSystem,
+                    icon: Icons.desktop_windows_outlined,
+                  ),
+                ],
+                selected: themeMode,
+                onChanged: controller.setThemeMode,
+              ),
+              showDividerBelow: true,
+            ),
+            SettingsLabeledRow(
+              title: l10n.themeColorPresetTitle,
+              subtitle: l10n.themeColorPresetDescription,
+              trailing: _ThemeColorPresetPicker(
+                selected: colorPreset,
+                onSelect: controller.setThemeColorPreset,
+              ),
+              showDividerBelow: true,
+            ),
+            SettingsLabeledRow(
+              title: l10n.language,
+              subtitle: l10n.languageDescription,
+              trailing: SettingsCompactDropdown<String>(
+                value: langValue,
+                entries: [
+                  ('en', l10n.languageEnglish),
+                  ('zh', l10n.languageChinese),
+                ],
+                itemKeys: const {
+                  'en': AppKeys.languageEnButton,
+                  'zh': AppKeys.languageZhButton,
+                },
+                onChanged: (v) {
+                  if (v != null) controller.setLocale(v);
+                },
+              ),
+              showDividerBelow: false,
+            ),
+          ],
+        );
+      },
     );
   }
 }
@@ -390,19 +466,24 @@ class _ThemeColorPresetPicker extends StatelessWidget {
     final l10n = context.l10n;
     return Align(
       alignment: Alignment.centerRight,
-      child: Wrap(
-        alignment: WrapAlignment.end,
-        spacing: 8,
-        runSpacing: 8,
-        children: [
-          for (final id in kThemeColorPresetIds)
-            _ThemeColorPresetChip(
-              id: id,
-              label: l10n.themeColorPresetName(id),
-              selected: id == selected,
-              onTap: () => onSelect(id),
-            ),
-        ],
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        reverse: true,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (final id in kThemeColorPresetIds)
+              Padding(
+                padding: const EdgeInsets.only(left: 8),
+                child: _ThemeColorPresetChip(
+                  id: id,
+                  label: l10n.themeColorPresetName(id),
+                  selected: id == selected,
+                  onTap: () => onSelect(id),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -428,53 +509,50 @@ class _ThemeColorPresetChip extends StatelessWidget {
     final textBase = isDark ? Colors.white : const Color(0xFF111827);
     final primary = themePresetSwatchPrimary(id);
     final secondary = themePresetSwatchSecondary(id);
-    return Material(
-      color: cs.surfaceContainerHigh,
+    return InkWell(
       borderRadius: BorderRadius.circular(999),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(999),
-        onTap: onTap,
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(999),
-            border: Border.all(
-              color: selected ? cs.primary : cs.outlineVariant,
-              width: selected ? 2 : 1,
-            ),
+      onTap: onTap,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: cs.surfaceContainerHigh,
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(
+            color: selected ? cs.primary : cs.outlineVariant,
+            width: selected ? 2 : 1,
           ),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 10,
-                  height: 10,
-                  decoration: BoxDecoration(
-                    color: primary,
-                    shape: BoxShape.circle,
-                  ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 10,
+                height: 10,
+                decoration: BoxDecoration(
+                  color: primary,
+                  shape: BoxShape.circle,
                 ),
-                const SizedBox(width: 4),
-                Container(
-                  width: 10,
-                  height: 10,
-                  decoration: BoxDecoration(
-                    color: secondary,
-                    shape: BoxShape.circle,
-                  ),
+              ),
+              const SizedBox(width: 4),
+              Container(
+                width: 10,
+                height: 10,
+                decoration: BoxDecoration(
+                  color: secondary,
+                  shape: BoxShape.circle,
                 ),
-                const SizedBox(width: 8),
-                Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
-                    color: textBase.withValues(alpha: selected ? 1 : 0.78),
-                  ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
+                  color: textBase.withValues(alpha: selected ? 1 : 0.78),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),

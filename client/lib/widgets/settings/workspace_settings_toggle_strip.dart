@@ -18,7 +18,7 @@ class WorkspaceToggleSegment<T extends Object> {
 }
 
 /// Pill-shaped segmented control (uses [toggle_switch]) for settings rows.
-class WorkspaceSettingsToggleStrip<T extends Object> extends StatelessWidget {
+class WorkspaceSettingsToggleStrip<T extends Object> extends StatefulWidget {
   const WorkspaceSettingsToggleStrip({
     super.key,
     required this.segments,
@@ -31,14 +31,40 @@ class WorkspaceSettingsToggleStrip<T extends Object> extends StatelessWidget {
   final ValueChanged<T> onChanged;
 
   @override
+  State<WorkspaceSettingsToggleStrip<T>> createState() =>
+      _WorkspaceSettingsToggleStripState<T>();
+}
+
+class _WorkspaceSettingsToggleStripState<T extends Object>
+    extends State<WorkspaceSettingsToggleStrip<T>> {
+  late int _index;
+
+  @override
+  void initState() {
+    super.initState();
+    _index = _indexFor(widget.selected);
+  }
+
+  @override
+  void didUpdateWidget(covariant WorkspaceSettingsToggleStrip<T> oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.selected != widget.selected) {
+      _index = _indexFor(widget.selected);
+    }
+  }
+
+  int _indexFor(T value) {
+    final idx = widget.segments.indexWhere((s) => s.value == value);
+    return idx >= 0 ? idx : 0;
+  }
+
+  @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textBase = isDark ? Colors.white : const Color(0xFF111827);
     final inactiveFg = textBase.withValues(alpha: 0.72);
-    final idx = segments.indexWhere((s) => s.value == selected);
-    final initialIndex = idx >= 0 ? idx : 0;
-    final n = segments.length;
+    final n = widget.segments.length;
     final minW = n == 2 ? 112.0 : 100.0;
     final customWidths = n == 3 ? <double>[102, 102, 132] : null;
 
@@ -46,11 +72,10 @@ class WorkspaceSettingsToggleStrip<T extends Object> extends StatelessWidget {
       fit: BoxFit.scaleDown,
       alignment: Alignment.centerRight,
       child: ToggleSwitch(
-        key: ValueKey<T>(selected),
         totalSwitches: n,
-        initialLabelIndex: initialIndex,
-        labels: segments.map((e) => e.label).toList(),
-        icons: segments.map((e) => e.icon).toList(),
+        initialLabelIndex: _index,
+        labels: widget.segments.map((e) => e.label).toList(),
+        icons: widget.segments.map((e) => e.icon).toList(),
         cornerRadius: 30,
         radiusStyle: true,
         minHeight: 38,
@@ -64,14 +89,13 @@ class WorkspaceSettingsToggleStrip<T extends Object> extends StatelessWidget {
         dividerColor: Colors.transparent,
         dividerMargin: 0,
         activeBgColors: List.generate(n, (_) => <Color>[cs.primary]),
-        animate: true,
-        animationDuration: 220,
-        curve: Curves.easeOutCubic,
+        animate: false,
         onToggle: (index) {
-          if (index == null || index < 0 || index >= segments.length) {
+          if (index == null || index < 0 || index >= widget.segments.length) {
             return;
           }
-          onChanged(segments[index].value);
+          setState(() => _index = index);
+          widget.onChanged(widget.segments[index].value);
         },
       ),
     );

@@ -391,39 +391,57 @@ class TeamPilotApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final layoutState = context.watch<LayoutCubit>().state;
-    final prefs = layoutState.preferences;
-    final savedLocale = prefs.locale;
-
-    ThemeMode themeModeFromPrefs(String mode) => switch (mode) {
-      'light' => ThemeMode.light,
-      'dark' => ThemeMode.dark,
-      _ => ThemeMode.system,
-    };
-
-    final colorPreset = normalizeThemeColorPreset(prefs.themeColorPreset);
-
-    return MaterialApp.router(
-      debugShowCheckedModeBanner: false,
-      title: 'TeamPilot',
-      theme: buildLightTheme(colorPreset),
-      darkTheme: buildDarkTheme(colorPreset),
-      themeMode: themeModeFromPrefs(prefs.themeMode),
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
-      supportedLocales: AppLocalizations.supportedLocales,
-      locale: savedLocale.isNotEmpty ? Locale(savedLocale) : null,
-      builder: (context, child) =>
-          UiWarmup(child: child ?? const SizedBox.shrink()),
-      localeResolutionCallback: (locale, supportedLocales) {
-        if (savedLocale.isNotEmpty) return Locale(savedLocale);
-        for (final supportedLocale in supportedLocales) {
-          if (supportedLocale.languageCode == locale?.languageCode) {
-            return supportedLocale;
-          }
+    return BlocSelector<
+      LayoutCubit,
+      LayoutState,
+      (String themeMode, String colorPreset, String locale)
+    >(
+      selector: (state) {
+        final prefs = state.preferences;
+        var themeMode = prefs.themeMode;
+        if (themeMode != 'light' &&
+            themeMode != 'dark' &&
+            themeMode != 'system') {
+          themeMode = 'system';
         }
-        return const Locale('en');
+        return (
+          themeMode,
+          normalizeThemeColorPreset(prefs.themeColorPreset),
+          prefs.locale,
+        );
       },
-      routerConfig: appRouter,
+      builder: (context, themePrefs) {
+        final (themeMode, colorPreset, savedLocale) = themePrefs;
+
+        ThemeMode themeModeFromPrefs(String mode) => switch (mode) {
+          'light' => ThemeMode.light,
+          'dark' => ThemeMode.dark,
+          _ => ThemeMode.system,
+        };
+
+        return MaterialApp.router(
+          debugShowCheckedModeBanner: false,
+          title: 'TeamPilot',
+          theme: buildLightTheme(colorPreset),
+          darkTheme: buildDarkTheme(colorPreset),
+          themeMode: themeModeFromPrefs(themeMode),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          locale: savedLocale.isNotEmpty ? Locale(savedLocale) : null,
+          builder: (context, child) =>
+              UiWarmup(child: child ?? const SizedBox.shrink()),
+          localeResolutionCallback: (locale, supportedLocales) {
+            if (savedLocale.isNotEmpty) return Locale(savedLocale);
+            for (final supportedLocale in supportedLocales) {
+              if (supportedLocale.languageCode == locale?.languageCode) {
+                return supportedLocale;
+              }
+            }
+            return const Locale('en');
+          },
+          routerConfig: appRouter,
+        );
+      },
     );
   }
 }
