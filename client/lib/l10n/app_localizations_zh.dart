@@ -186,6 +186,17 @@ class AppLocalizationsZh extends AppLocalizations {
   String get addTeamTooltip => '添加团队';
 
   @override
+  String get addTeamTitle => '添加团队';
+
+  @override
+  String get teamNameRequired => '团队名称不能为空。';
+
+  @override
+  String teamNameAlreadyExists(String name) {
+    return '已存在名为「$name」的团队。';
+  }
+
+  @override
   String get projects => '项目';
 
   @override

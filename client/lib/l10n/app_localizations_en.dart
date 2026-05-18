@@ -196,6 +196,17 @@ class AppLocalizationsEn extends AppLocalizations {
   String get addTeamTooltip => 'Add team';
 
   @override
+  String get addTeamTitle => 'Add team';
+
+  @override
+  String get teamNameRequired => 'Team name is required.';
+
+  @override
+  String teamNameAlreadyExists(String name) {
+    return 'A team named \"$name\" already exists.';
+  }
+
+  @override
   String get projects => 'Projects';
 
   @override

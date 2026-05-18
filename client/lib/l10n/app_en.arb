@@ -59,6 +59,16 @@
   "filterFiles": "Filter files",
   "selectTeam": "Select team",
   "addTeamTooltip": "Add team",
+  "addTeamTitle": "Add team",
+  "teamNameRequired": "Team name is required.",
+  "teamNameAlreadyExists": "A team named \"{name}\" already exists.",
+  "@teamNameAlreadyExists": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "projects": "Projects",
   "newProject": "New Project",
   "newSessionTooltip": "New session",

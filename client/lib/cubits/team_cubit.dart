@@ -243,21 +243,67 @@ class TeamCubit extends Cubit<TeamState> {
     }
   }
 
-  Future<void> addTeam() async {
-    final name = _uniqueTeamName('New Team');
-    final memberName = 'team-lead';
+  Future<bool> addTeam(String name) async {
+    final trimmed = name.trim();
+    if (trimmed.isEmpty) {
+      emit(state.copyWith(statusMessage: 'Team name is required.'));
+      return false;
+    }
+    if (state.teams.any((t) => t.name == trimmed)) {
+      emit(
+        state.copyWith(statusMessage: 'Team "$trimmed" already exists.'),
+      );
+      return false;
+    }
+    const memberName = 'team-lead';
     final team = TeamConfig(
-      id: name,
-      name: name,
+      id: trimmed,
+      name: trimmed,
       members: [TeamMemberConfig(id: memberName, name: memberName)],
     );
     final teams = [...state.teams, team];
     emit(state.copyWith(
-        teams: teams,
-        selectedTeamId: team.id,
-        statusMessage: 'Added ${team.name}.'));
+      teams: teams,
+      selectedTeamId: team.id,
+      statusMessage: 'Added ${team.name}.',
+    ));
     await _repository.saveTeams(teams);
     await _syncSkillsForSelected();
+    return true;
+  }
+
+  /// Renames the selected team and removes persisted files keyed by the old name.
+  Future<bool> renameSelectedTeamName(String newName) async {
+    final selected = state.selectedTeam;
+    if (selected == null) return false;
+    final trimmed = newName.trim();
+    if (trimmed.isEmpty) {
+      emit(state.copyWith(statusMessage: 'Team name is required.'));
+      return false;
+    }
+    if (trimmed == selected.name) return true;
+    if (state.teams.any((t) => t.name == trimmed && t.id != selected.id)) {
+      emit(
+        state.copyWith(statusMessage: 'Team "$trimmed" already exists.'),
+      );
+      return false;
+    }
+    final oldName = selected.name;
+    final updated = selected.copyWith(name: trimmed);
+    final teams = [
+      for (final team in state.teams)
+        if (team.id == selected.id) updated else team,
+    ];
+    emit(state.copyWith(
+      teams: teams,
+      selectedTeamId: selected.id,
+      statusMessage: 'Renamed team to $trimmed.',
+    ));
+    await _repository.saveTeams(teams);
+    if (oldName != trimmed) {
+      await _repository.deleteTeam(oldName);
+    }
+    return true;
   }
 
   Future<void> updateSelected(TeamConfig updated) async {
@@ -429,16 +475,6 @@ class TeamCubit extends Cubit<TeamState> {
 
   TeamMemberConfig _defaultMember() =>
       const TeamMemberConfig(id: 'team-lead', name: 'team-lead');
-
-  String _uniqueTeamName(String base) {
-    final existing = state.teams.map((t) => t.name).toSet();
-    if (!existing.contains(base)) return base;
-    var i = 2;
-    while (existing.contains('$base $i')) {
-      i++;
-    }
-    return '$base $i';
-  }
 
   String _uniqueMemberName(TeamConfig team, String base) {
     final existing = team.members.map((m) => m.name).toSet();

@@ -127,4 +127,44 @@ void main() {
 
     await dir.delete(recursive: true);
   });
+
+  test('addTeam requires non-empty unique name', () async {
+    final dir = await Directory.systemTemp.createTemp('team-cubit-');
+    final repo = _repo(dir);
+    final cubit = TeamCubit(
+      repository: repo,
+      executableResolver: () => 'flashskyai',
+    );
+    await cubit.load();
+
+    expect(await cubit.addTeam(''), isFalse);
+    expect(await cubit.addTeam('Alpha'), isTrue);
+    expect(cubit.state.selectedTeam?.name, 'Alpha');
+    expect(await cubit.addTeam('Alpha'), isFalse);
+
+    await dir.delete(recursive: true);
+  });
+
+  test('renameSelectedTeamName updates storage and removes old files', () async {
+    final dir = await Directory.systemTemp.createTemp('team-cubit-');
+    final repo = _repo(dir);
+    final cubit = TeamCubit(
+      repository: repo,
+      executableResolver: () => 'flashskyai',
+    );
+    const team = TeamConfig(
+      id: 'Old',
+      name: 'Old',
+      members: [TeamMemberConfig(id: 'team-lead', name: 'team-lead')],
+    );
+    await repo.saveTeams([team]);
+    await cubit.load();
+
+    expect(await cubit.renameSelectedTeamName('New'), isTrue);
+    expect(cubit.state.selectedTeam?.name, 'New');
+    expect(File(p.join(dir.path, 'teams', 'New.json')).existsSync(), isTrue);
+    expect(File(p.join(dir.path, 'teams', 'Old.json')).existsSync(), isFalse);
+
+    await dir.delete(recursive: true);
+  });
 }

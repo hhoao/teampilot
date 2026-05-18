@@ -56,6 +56,36 @@ void _navigateToSessionInChat(BuildContext context, AppSession session) {
   goFromSidebar(context, '/chat');
 }
 
+Future<void> _promptAddTeam(BuildContext context, TeamCubit teamCubit) async {
+  final l10n = context.l10n;
+  final nameController = TextEditingController();
+  final name = await showDialog<String>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: Text(l10n.addTeamTitle),
+      content: AppOutlineTextField(
+        key: AppKeys.teamNameDialogField,
+        controller: nameController,
+        autofocus: true,
+        labelText: l10n.teamName,
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text(l10n.cancel),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.pop(context, nameController.text.trim()),
+          child: Text(l10n.add),
+        ),
+      ],
+    ),
+  );
+  nameController.dispose();
+  if (name == null || name.isEmpty || !context.mounted) return;
+  await teamCubit.addTeam(name);
+}
+
 class ContextSidebar extends StatefulWidget {
   const ContextSidebar({this.onNewProject, super.key});
 
@@ -103,7 +133,7 @@ class _ContextSidebarState extends State<ContextSidebar> {
                   teams: teamCubit.state.teams,
                   selected: selected,
                   onSelect: (id) => unawaited(teamCubit.selectTeam(id)),
-                  onAddTeam: () => teamCubit.addTeam(),
+                  onAddTeam: () => _promptAddTeam(context, teamCubit),
                 ),
                 const SizedBox(height: 14),
                 _TeamConfigTile(

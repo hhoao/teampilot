@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -782,14 +784,27 @@ class _TeamInfoSectionState extends State<_TeamInfoSection> {
       _trackedTeamId = widget.team.id;
       _nameCtl.text = widget.team.name;
       _argsCtl.text = widget.team.extraArgs;
+    } else if (widget.team.name != _nameCtl.text) {
+      _nameCtl.text = widget.team.name;
     }
   }
 
   @override
   void dispose() {
+    unawaited(_commitName());
     _nameCtl.dispose();
     _argsCtl.dispose();
     super.dispose();
+  }
+
+  Future<void> _commitName() async {
+    final trimmed = _nameCtl.text.trim();
+    if (trimmed == widget.team.name) return;
+    final ok = await widget.cubit.renameSelectedTeamName(trimmed);
+    if (!mounted) return;
+    if (!ok) {
+      _nameCtl.text = widget.team.name;
+    }
   }
 
   @override
@@ -813,10 +828,9 @@ class _TeamInfoSectionState extends State<_TeamInfoSection> {
                 _FieldLabel(text: l10n.teamName),
                 const SizedBox(height: 6),
                 AppOutlineTextField(
+                  key: AppKeys.teamNameField,
                   controller: _nameCtl,
-                  onChanged: (v) => widget.cubit.updateSelected(
-                    widget.team.copyWith(name: v),
-                  ),
+                  onSubmitted: (_) => unawaited(_commitName()),
                 ),
                 const SizedBox(height: 14),
                 _FieldLabel(text: l10n.teamLoop),

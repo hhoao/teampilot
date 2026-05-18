@@ -452,6 +452,24 @@ abstract class AppLocalizations {
   /// **'Add team'**
   String get addTeamTooltip;
 
+  /// No description provided for @addTeamTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Add team'**
+  String get addTeamTitle;
+
+  /// No description provided for @teamNameRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Team name is required.'**
+  String get teamNameRequired;
+
+  /// No description provided for @teamNameAlreadyExists.
+  ///
+  /// In en, this message translates to:
+  /// **'A team named \"{name}\" already exists.'**
+  String teamNameAlreadyExists(String name);
+
   /// No description provided for @projects.
   ///
   /// In en, this message translates to:

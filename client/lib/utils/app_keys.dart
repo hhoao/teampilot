@@ -96,6 +96,7 @@ class AppKeys {
   static const openRightToolsButton = Key('open-right-tools-button');
 
   static const teamNameField = Key('team-name-field');
+  static const teamNameDialogField = Key('team-name-dialog-field');
   static const extraArgsField = Key('extra-args-field');
   static const saveButton = Key('save-team-button');
   static const launchButton = Key('launch-team-button');
