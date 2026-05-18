@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
@@ -11,7 +12,28 @@ class AppStorage {
   static String? _basePath;
   static String? _cliDataRootOverride;
 
-  static String get basePath => _basePath ?? '.';
+  static bool get isInitialized => _basePath != null && _basePath!.isNotEmpty;
+
+  static String get basePath {
+    final path = _basePath;
+    if (path == null || path.isEmpty) {
+      throw StateError(
+        'AppStorage.init() must be called before using application data paths.',
+      );
+    }
+    return path;
+  }
+
+  @visibleForTesting
+  static void setBasePathForTesting(String path) {
+    _basePath = path;
+  }
+
+  @visibleForTesting
+  static void resetForTesting() {
+    _basePath = null;
+    _cliDataRootOverride = null;
+  }
 
   /// Root of the CLI-owned data directory (`~/.flashskyai`). Shared with the
   /// `flashskyai` CLI: sessions, history, and the canonical team configs all

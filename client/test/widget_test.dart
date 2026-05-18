@@ -19,6 +19,7 @@ import 'package:teampilot/repositories/session_preferences_repository.dart';
 import 'package:teampilot/repositories/session_repository.dart';
 import 'package:teampilot/repositories/team_repository.dart';
 import 'package:teampilot/models/connection_mode.dart';
+import 'package:teampilot/services/config_profile_service.dart';
 import 'package:teampilot/services/connection_mode_service.dart';
 import 'package:teampilot/services/terminal_session.dart';
 import 'package:teampilot/utils/app_keys.dart';
@@ -127,6 +128,7 @@ Future<SessionPreferencesCubit> testSessionPreferencesCubit() async {
 Future<TeamCubit> createTeamCubit({TeamLauncher? launcher}) async {
   final tmp = await Directory.systemTemp.createTemp('teams_widget_');
   final cliTmp = await Directory.systemTemp.createTemp('teams_widget_cli_');
+  final appData = await Directory.systemTemp.createTemp('teams_widget_app_');
   final repository = TeamRepository(
     rootDir: tmp.path,
     cliTeamsDir: cliTmp.path,
@@ -135,6 +137,8 @@ Future<TeamCubit> createTeamCubit({TeamLauncher? launcher}) async {
     repository: repository,
     executableResolver: _testExecutable,
     launcher: launcher ?? (_, __) async {},
+    appDataBasePath: appData.path,
+    configProfileService: ConfigProfileService(basePath: appData.path),
   );
   await cubit.load();
   return cubit;
@@ -380,6 +384,7 @@ void main() {
   test('team cubit manages teams', () async {
     final tmp = await Directory.systemTemp.createTemp('teams_cubit_');
     final cliTmp = await Directory.systemTemp.createTemp('teams_cubit_cli_');
+    final appData = await Directory.systemTemp.createTemp('teams_cubit_app_');
     final repository = TeamRepository(
       rootDir: tmp.path,
       cliTeamsDir: cliTmp.path,
@@ -387,6 +392,8 @@ void main() {
     final cubit = TeamCubit(
       repository: repository,
       executableResolver: _testExecutable,
+      appDataBasePath: appData.path,
+      configProfileService: ConfigProfileService(basePath: appData.path),
     );
     await cubit.load();
 

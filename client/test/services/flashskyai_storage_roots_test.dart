@@ -1,9 +1,25 @@
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/app_storage.dart';
 import 'package:teampilot/services/flashskyai_storage_roots.dart';
 import 'package:teampilot/services/remote_teampilot_app_data_resolver.dart';
 
 void main() {
+  late Directory appDataRoot;
+
+  setUp(() async {
+    appDataRoot = await Directory.systemTemp.createTemp('teampilot_app_data_');
+    AppStorage.setBasePathForTesting(appDataRoot.path);
+  });
+
+  tearDown(() async {
+    AppStorage.resetForTesting();
+    if (await appDataRoot.exists()) {
+      await appDataRoot.delete(recursive: true);
+    }
+  });
+
   test('resolve returns local paths when not in SSH mode', () async {
     final roots = FlashskyaiStorageRoots(isSshMode: () => false);
     final snap = await roots.resolve();

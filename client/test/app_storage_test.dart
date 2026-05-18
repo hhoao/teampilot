@@ -5,7 +5,27 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 
 void main() {
-  test('cliAgentsDir is under flashskyai data root', () {
+  test('basePath throws before init', () {
+    AppStorage.resetForTesting();
+    expect(() => AppStorage.basePath, throwsA(isA<StateError>()));
+  });
+
+  group('initialized paths', () {
+    late Directory appDataRoot;
+
+    setUp(() async {
+      appDataRoot = await Directory.systemTemp.createTemp('app_storage_test_');
+      AppStorage.setBasePathForTesting(appDataRoot.path);
+    });
+
+    tearDown(() async {
+      AppStorage.resetForTesting();
+      if (await appDataRoot.exists()) {
+        await appDataRoot.delete(recursive: true);
+      }
+    });
+
+    test('cliAgentsDir is under flashskyai data root', () {
     expect(
       AppStorage.cliAgentsDir,
       endsWith('${Platform.pathSeparator}agents'),
@@ -14,9 +34,9 @@ void main() {
       AppStorage.cliAgentsDir,
       startsWith(AppStorage.flashskyaiDataDir),
     );
-  });
+    });
 
-  test('cliProjectBucketForPrimaryPath matches CLI projects layout', () {
+    test('cliProjectBucketForPrimaryPath matches CLI projects layout', () {
     expect(
       AppStorage.cliProjectBucketForPrimaryPath('/home/hhoa/agent'),
       '-home-hhoa-agent',
@@ -32,6 +52,7 @@ void main() {
       '-mnt-c-Users-hhoa-agent',
     );
     expect(AppStorage.cliProjectBucketForPrimaryPath(''), '');
+    });
   });
 
   test('cliSessionDescriptorExists resolves Windows drive bucket slugs', () async {

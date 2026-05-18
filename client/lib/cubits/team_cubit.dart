@@ -87,9 +87,9 @@ class TeamCubit extends Cubit<TeamState> {
   }) : _repository = repository,
        _executableResolver = executableResolver,
        _llmConfigPathOverride = llmConfigPathOverride,
-       _appDataBasePath = appDataBasePath.isNotEmpty
+       _appDataBasePathOverride = appDataBasePath.isNotEmpty
            ? appDataBasePath
-           : AppStorage.basePath,
+           : null,
        _configProfileService = configProfileService,
        _storageRootsResolver = storageRootsResolver,
        _skillLinker = skillLinker ?? TeamSkillLinkerService(),
@@ -101,15 +101,23 @@ class TeamCubit extends Cubit<TeamState> {
   final TeamLauncher? _launcher;
   final String Function() _executableResolver;
   final String? Function()? _llmConfigPathOverride;
-  final String _appDataBasePath;
+  final String? _appDataBasePathOverride;
   final ConfigProfileService? _configProfileService;
+
+  String get _resolvedAppDataBasePath {
+    final override = _appDataBasePathOverride;
+    if (override != null && override.isNotEmpty) {
+      return override;
+    }
+    return AppStorage.basePath;
+  }
   final StorageRootsResolver? _storageRootsResolver;
   final TeamSkillLinkerService _skillLinker;
   final InstalledSkillsLoader? _installedSkillsLoader;
 
   Future<Map<String, String>?> _buildLaunchEnvironment(TeamConfig team) {
     return TeamLaunchEnvironmentBuilder.build(
-      appDataBasePath: _appDataBasePath,
+      appDataBasePath: _resolvedAppDataBasePath,
       team: team,
       llmConfigPathOverride: _llmConfigPathOverride?.call(),
       configProfileService: _configProfileService,
@@ -122,7 +130,7 @@ class TeamCubit extends Cubit<TeamState> {
     if (injected != null) return injected;
     final resolver = _storageRootsResolver;
     if (resolver == null) {
-      return ConfigProfileService(basePath: _appDataBasePath);
+      return ConfigProfileService(basePath: _resolvedAppDataBasePath);
     }
     final roots = await resolver();
     final remote = roots.remoteFileStore;

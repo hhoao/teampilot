@@ -6,6 +6,7 @@ import 'package:teampilot/cubits/team_cubit.dart';
 import 'package:teampilot/models/skill.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/repositories/team_repository.dart';
+import 'package:teampilot/services/app_storage.dart';
 import 'package:teampilot/services/config_profile_service.dart';
 import 'package:teampilot/services/team_skill_linker_service.dart';
 
@@ -39,6 +40,20 @@ TeamRepository _repo(Directory dir) => TeamRepository(
 );
 
 void main() {
+  late Directory appDataRoot;
+
+  setUp(() async {
+    appDataRoot = await Directory.systemTemp.createTemp('teampilot_app_data_');
+    AppStorage.setBasePathForTesting(appDataRoot.path);
+  });
+
+  tearDown(() async {
+    AppStorage.resetForTesting();
+    if (await appDataRoot.exists()) {
+      await appDataRoot.delete(recursive: true);
+    }
+  });
+
   test('selectTeam syncs skills for selected team', () async {
     final dir = await Directory.systemTemp.createTemp('team-cubit-');
     final repo = _repo(dir);
