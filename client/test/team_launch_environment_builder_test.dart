@@ -99,6 +99,7 @@ void main() {
   test('claude team launch passes members to roster generation', () async {
     final env = await TeamLaunchEnvironmentBuilder.build(
       appDataBasePath: base.path,
+      workingDirectory: '/workspace/team-a',
       team: const TeamConfig(
         id: 'team-a',
         name: 'Team A',
@@ -133,6 +134,7 @@ void main() {
       'developer',
     ]);
     expect((members.last as Map<String, Object?>)['model'], 'sonnet');
+    expect((members.last as Map<String, Object?>)['cwd'], '/workspace/team-a');
   });
 
   test('empty team id keeps legacy llm override fallback', () async {

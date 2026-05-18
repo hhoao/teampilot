@@ -28,7 +28,9 @@ import 'repositories/ssh_profile_repository.dart';
 import 'repositories/team_repository.dart';
 import 'router/app_router.dart';
 import 'models/connection_mode.dart';
+import 'models/team_config.dart';
 import 'services/app_storage.dart';
+import 'services/cli_tool_locator.dart';
 import 'services/connection_mode_service.dart';
 import 'services/flashskyai_storage_roots.dart';
 import 'services/remote_cli_session_checker.dart';
@@ -114,9 +116,18 @@ void main() async {
   await AppStorage.init();
 
   final preferences = await SharedPreferences.getInstance();
-  final cliLocated = Platform.isAndroid
-      ? null
-      : await FlashskyaiCliLocator.locate();
+  final locatedExecutables = <TeamCli, String>{};
+  if (!Platform.isAndroid) {
+    final flashskyaiLocated = await FlashskyaiCliLocator.locate();
+    if (flashskyaiLocated != null && flashskyaiLocated.isNotEmpty) {
+      locatedExecutables[TeamCli.flashskyai] = flashskyaiLocated;
+    }
+    final claudeLocated = await const CliToolLocator('claude').locate();
+    if (claudeLocated != null && claudeLocated.isNotEmpty) {
+      locatedExecutables[TeamCli.claude] = claudeLocated;
+    }
+  }
+  final cliLocated = locatedExecutables[TeamCli.flashskyai];
   await AppStorage.useWslCliDataDirIfNeeded(cliLocated);
 
   if (!Platform.isAndroid) {
@@ -137,6 +148,7 @@ void main() async {
   final sessionPreferencesCubit = SessionPreferencesCubit(
     repository: SessionPreferencesRepository(preferences),
     locatedExecutable: cliLocated,
+    locatedExecutables: locatedExecutables,
   );
 
   // SSH infrastructure (Android + future desktop)
@@ -237,6 +249,7 @@ void main() async {
   teamCubit = TeamCubit(
     repository: teamRepo,
     executableResolver: () => sessionPreferencesCubit.resolveExecutable(),
+    cliExecutableResolver: sessionPreferencesCubit.resolveExecutable,
     llmConfigPathOverride: llmConfigPathOverrideForLaunch,
     storageRootsResolver: storageRoots.resolve,
     skillLinker: TeamSkillLinkerService(storageRoots: storageRoots),
@@ -264,6 +277,7 @@ void main() async {
     autoLaunchAllMembersOnConnect: () =>
         sessionPreferencesCubit.state.preferences.autoLaunchAllMembersOnConnect,
     executableResolver: () => sessionPreferencesCubit.resolveExecutable(),
+    cliExecutableResolver: sessionPreferencesCubit.resolveExecutable,
     transportFactory: transportFactory,
     sshProfileResolver: () => sshProfileCubit.state.selectedProfile,
     sshDefaultWorkingDirectoryResolver: () =>

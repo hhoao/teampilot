@@ -25,6 +25,7 @@ typedef PostFrameScheduler = void Function(VoidCallback callback);
 typedef CliSessionDescriptorExists =
     Future<bool> Function(String sessionId, String primaryPath);
 typedef SshActiveProfileResolver = SshProfile? Function();
+typedef CliExecutableResolver = String Function(TeamCli cli);
 
 class ChatTabInfo extends Equatable {
   const ChatTabInfo({
@@ -140,6 +141,7 @@ class ChatState extends Equatable {
 class ChatCubit extends Cubit<ChatState> {
   ChatCubit({
     required String Function() executableResolver,
+    CliExecutableResolver? cliExecutableResolver,
     TerminalSessionFactory terminalSessionFactory = TerminalSession.new,
     PostFrameScheduler? postFrameScheduler,
     TempTeamCleaner? tempTeamCleaner,
@@ -164,6 +166,7 @@ class ChatCubit extends Cubit<ChatState> {
                AppStorage.cliSessionDescriptorExists(sid, path)),
        _sessionRepository = sessionRepository,
        _executableResolver = executableResolver,
+       _cliExecutableResolver = cliExecutableResolver,
        _transportFactory = transportFactory,
        _sshProfileResolver = sshProfileResolver,
        _storageRootsResolver = storageRootsResolver,
@@ -183,6 +186,7 @@ class ChatCubit extends Cubit<ChatState> {
   final CliSessionDescriptorExists _cliSessionDescriptorExists;
   final SessionRepository? _sessionRepository;
   final String Function() _executableResolver;
+  final CliExecutableResolver? _cliExecutableResolver;
   final TerminalTransportFactory? _transportFactory;
   final SshActiveProfileResolver? _sshProfileResolver;
   final StorageRootsResolver? _storageRootsResolver;
@@ -199,14 +203,19 @@ class ChatCubit extends Cubit<ChatState> {
       _sshProfileResolver != null &&
       _sshProfileResolver() != null;
 
-  TerminalSession _newSession() {
+  String _resolveExecutableFor(TeamCli cli) {
+    return _cliExecutableResolver?.call(cli) ?? _executableResolver();
+  }
+
+  TerminalSession _newSession([TeamCli cli = TeamCli.flashskyai]) {
+    final executable = _resolveExecutableFor(cli);
     if (_useSsh) {
       final profile = _sshProfileResolver?.call();
       if (profile == null) {
-        return _terminalSessionFactory(executable: _executableResolver());
+        return _terminalSessionFactory(executable: executable);
       }
       return TerminalSession(
-        executable: _executableResolver(),
+        executable: executable,
         validateLaunch: false,
         parseExecutable: false,
         transportStarter:
@@ -239,14 +248,18 @@ class ChatCubit extends Cubit<ChatState> {
             },
       );
     }
-    return _terminalSessionFactory(executable: _executableResolver());
+    return _terminalSessionFactory(executable: executable);
   }
 
-  Future<Map<String, String>?> _spawnEnvironment(TeamConfig team) {
+  Future<Map<String, String>?> _spawnEnvironment(
+    TeamConfig team, {
+    String workingDirectory = '',
+  }) {
     return TeamLaunchEnvironmentBuilder.build(
       appDataBasePath: AppStorage.basePath,
       team: team,
       llmConfigPathOverride: _llmConfigPathOverride?.call(),
+      workingDirectory: workingDirectory,
       storageRootsResolver: _storageRootsResolver,
     );
   }
@@ -411,7 +424,7 @@ class ChatCubit extends Cubit<ChatState> {
       );
       return;
     }
-    final ts = _newSession();
+    final ts = _newSession(team?.cli ?? TeamCli.flashskyai);
     final info = ChatTabInfo(
       id: session.sessionId,
       title: session.resolveDisplayTitle(emptyDisplayTitleFallback),
@@ -452,7 +465,10 @@ class ChatCubit extends Cubit<ChatState> {
       _postFrameScheduler(() async {
         try {
           final env = team != null
-              ? await _spawnEnvironment(team)
+              ? await _spawnEnvironment(
+                  team,
+                  workingDirectory: session.primaryPath,
+                )
               : await TeamLaunchEnvironmentBuilder.build(
                   appDataBasePath: AppStorage.basePath,
                   team: const TeamConfig(id: '', name: ''),
@@ -493,6 +509,12 @@ class ChatCubit extends Cubit<ChatState> {
                             }).toList();
                             _emitWithDerivedSessionsAndProjects(
                               state.copyWith(sessions: sessions),
+                            );
+                          })
+                          .catchError((Object error, StackTrace stackTrace) {
+                            appLogger.w(
+                              'markSessionLaunched failed: $error',
+                              stackTrace: stackTrace,
                             );
                           }),
                     );
@@ -584,7 +606,10 @@ class ChatCubit extends Cubit<ChatState> {
     _InternalTab tab,
   ) {
     tab.selectedMemberId = member.id;
-    final shell = tab.memberShells.putIfAbsent(member.id, _newSession);
+    final shell = tab.memberShells.putIfAbsent(
+      member.id,
+      () => _newSession(team.cli),
+    );
     emit(
       state.copyWith(
         tabs: _visibleTabs(),
@@ -603,14 +628,16 @@ class ChatCubit extends Cubit<ChatState> {
           _updateTabRunning(tab.info.id);
           return;
         }
-        final env = await _spawnEnvironment(team);
         shell.connect(
           workingDirectory: launch.$1,
           additionalDirectories: launch.$2,
           team: team,
           member: member,
           sessionTeam: tab.sessionTeamName,
-          extraEnvironment: env,
+          extraEnvironment: await _spawnEnvironment(
+            team,
+            workingDirectory: launch.$1,
+          ),
           onProcessStarted: () => _updateTabRunning(tab.info.id),
           onProcessFailed: () => _updateTabRunning(tab.info.id),
         );
@@ -767,9 +794,12 @@ class ChatCubit extends Cubit<ChatState> {
       tab.selectedMemberId = _defaultMemberId(team);
     }
     if (tab.selectedMemberId.isNotEmpty) {
-      return tab.memberShells.putIfAbsent(tab.selectedMemberId, _newSession);
+      return tab.memberShells.putIfAbsent(
+        tab.selectedMemberId,
+        () => _newSession(team.cli),
+      );
     }
-    return tab.resumeSession ??= _newSession();
+    return tab.resumeSession ??= _newSession(team.cli);
   }
 
   Future<void> connectSession(

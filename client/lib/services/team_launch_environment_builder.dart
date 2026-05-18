@@ -12,6 +12,7 @@ class TeamLaunchEnvironmentBuilder {
     required String appDataBasePath,
     required TeamConfig team,
     String? llmConfigPathOverride,
+    String workingDirectory = '',
     ConfigProfileService? configProfileService,
     StorageRootsResolver? storageRootsResolver,
   }) async {
@@ -27,6 +28,7 @@ class TeamLaunchEnvironmentBuilder {
         teamId: teamId,
         cli: team.cli,
         members: team.members,
+        workingDirectory: workingDirectory,
       );
     }
 

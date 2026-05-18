@@ -5,11 +5,15 @@ class SessionPreferences {
   SessionPreferences({
     ConnectionMode? connectionMode,
     this.cliExecutablePath = '',
+    Map<String, String> cliExecutablePaths = const {},
     this.defaultSshWorkingDirectory = '',
     this.sshUseLoginShell = false,
     this.autoLaunchAllMembersOnConnect = true,
     this.scopeSessionsToSelectedTeam = true,
-  }) : connectionMode = connectionMode ?? defaultConnectionMode();
+  }) : connectionMode = connectionMode ?? defaultConnectionMode(),
+       cliExecutablePaths = Map.unmodifiable(
+         _normalizeCliExecutablePaths(cliExecutablePaths),
+       );
 
   factory SessionPreferences.fromJson(Map<String, Object?> json) {
     return SessionPreferences(
@@ -18,6 +22,9 @@ class SessionPreferences {
         fallback: defaultConnectionMode(),
       ),
       cliExecutablePath: json['cliExecutablePath'] as String? ?? '',
+      cliExecutablePaths: _cliExecutablePathsFromJson(
+        json['cliExecutablePaths'],
+      ),
       defaultSshWorkingDirectory:
           json['defaultSshWorkingDirectory'] as String? ?? '',
       sshUseLoginShell: json['sshUseLoginShell'] as bool? ?? false,
@@ -38,6 +45,12 @@ class SessionPreferences {
   /// In [ConnectionMode.ssh] this is the path on the remote host.
   final String cliExecutablePath;
 
+  /// Tool-specific CLI executable paths keyed by [TeamCli.value].
+  ///
+  /// The legacy [cliExecutablePath] remains the canonical flashskyai path for
+  /// backward compatibility; this map stores additional CLI tool overrides.
+  final Map<String, String> cliExecutablePaths;
+
   /// Default remote working directory used when an SSH launch has no project
   /// path yet. Empty means "do not cd before launching".
   final String defaultSshWorkingDirectory;
@@ -57,6 +70,7 @@ class SessionPreferences {
   SessionPreferences copyWith({
     ConnectionMode? connectionMode,
     String? cliExecutablePath,
+    Map<String, String>? cliExecutablePaths,
     String? defaultSshWorkingDirectory,
     bool? sshUseLoginShell,
     bool? autoLaunchAllMembersOnConnect,
@@ -65,6 +79,7 @@ class SessionPreferences {
     return SessionPreferences(
       connectionMode: connectionMode ?? this.connectionMode,
       cliExecutablePath: cliExecutablePath ?? this.cliExecutablePath,
+      cliExecutablePaths: cliExecutablePaths ?? this.cliExecutablePaths,
       defaultSshWorkingDirectory:
           defaultSshWorkingDirectory ?? this.defaultSshWorkingDirectory,
       sshUseLoginShell: sshUseLoginShell ?? this.sshUseLoginShell,
@@ -76,7 +91,7 @@ class SessionPreferences {
   }
 
   Map<String, Object?> toJson() {
-    return {
+    final json = <String, Object?>{
       'connectionMode': connectionMode.toJson(),
       'cliExecutablePath': cliExecutablePath,
       'defaultSshWorkingDirectory': defaultSshWorkingDirectory,
@@ -84,5 +99,32 @@ class SessionPreferences {
       'autoLaunchAllMembersOnConnect': autoLaunchAllMembersOnConnect,
       'scopeSessionsToSelectedTeam': scopeSessionsToSelectedTeam,
     };
+    if (cliExecutablePaths.isNotEmpty) {
+      json['cliExecutablePaths'] = cliExecutablePaths;
+    }
+    return json;
+  }
+
+  static Map<String, String> _cliExecutablePathsFromJson(Object? value) {
+    if (value is! Map) return const {};
+    return _normalizeCliExecutablePaths(
+      value.map(
+        (key, value) =>
+            MapEntry(key is String ? key : '', value is String ? value : ''),
+      ),
+    );
+  }
+
+  static Map<String, String> _normalizeCliExecutablePaths(
+    Map<String, String> paths,
+  ) {
+    final normalized = <String, String>{};
+    for (final entry in paths.entries) {
+      final key = entry.key.trim();
+      final value = entry.value.trim();
+      if (key.isEmpty || value.isEmpty) continue;
+      normalized[key] = value;
+    }
+    return normalized;
   }
 }

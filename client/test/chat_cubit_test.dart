@@ -295,6 +295,32 @@ void main() {
       expect(cubit.state.selectedMemberId, 'm-lead');
     });
 
+    test('uses team cli executable for member shell', () async {
+      final executables = <String>[];
+      final cubit = ChatCubit(
+        executableResolver: () => 'flashskyai',
+        cliExecutableResolver: (cli) =>
+            cli == TeamCli.claude ? '/opt/bin/claude' : 'flashskyai',
+        terminalSessionFactory: ({required String executable}) {
+          executables.add(executable);
+          return _FakeTerminalSession(executable: executable);
+        },
+        postFrameScheduler: postFrame.scheduler,
+      );
+      addTearDown(cubit.close);
+      const team = TeamConfig(
+        id: 'team-a',
+        name: 'A',
+        cli: TeamCli.claude,
+        members: [TeamMemberConfig(id: 'm-lead', name: 'team-lead')],
+      );
+
+      await cubit.connectSession(team);
+      await postFrame.flush();
+
+      expect(executables, contains('/opt/bin/claude'));
+    });
+
     test(
       'openSessionTab starts all members when auto-launch enabled',
       () async {

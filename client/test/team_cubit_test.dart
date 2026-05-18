@@ -224,6 +224,32 @@ void main() {
     await base.delete(recursive: true);
   });
 
+  test('previewFor resolves executable from team cli when available', () async {
+    final base = await Directory.systemTemp.createTemp('team_cli_preview_');
+    final cubit = TeamCubit(
+      repository: _repo(base),
+      executableResolver: () => 'flashskyai',
+      cliExecutableResolver: (cli) =>
+          cli == TeamCli.claude ? '/opt/bin/claude' : cli.value,
+      appDataBasePath: base.path,
+      configProfileService: ConfigProfileService(basePath: base.path),
+    );
+    const member = TeamMemberConfig(id: 'lead', name: 'lead');
+    const team = TeamConfig(
+      id: 'Claude Team',
+      name: 'Claude Team',
+      cli: TeamCli.claude,
+      members: [member],
+    );
+    await _repo(base).saveTeams([team]);
+    await cubit.load();
+
+    expect(cubit.previewFor(member), startsWith('/opt/bin/claude '));
+
+    await cubit.close();
+    await base.delete(recursive: true);
+  });
+
   test('load creates runtime profile directories for default team', () async {
     final base = await Directory.systemTemp.createTemp('team_profile_load_');
     final cubit = TeamCubit(

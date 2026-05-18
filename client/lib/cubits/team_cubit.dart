@@ -71,12 +71,14 @@ class TeamState extends Equatable {
 typedef TeamLauncher =
     Future<void> Function(TeamConfig team, TeamMemberConfig member);
 typedef StringProvider = String Function();
+typedef CliExecutableResolver = String Function(TeamCli cli);
 typedef InstalledSkillsLoader = Future<List<Skill>> Function();
 
 class TeamCubit extends Cubit<TeamState> {
   TeamCubit({
     required TeamRepository repository,
     required String Function() executableResolver,
+    CliExecutableResolver? cliExecutableResolver,
     TeamLauncher? launcher,
     String? Function()? llmConfigPathOverride,
     String appDataBasePath = '',
@@ -86,6 +88,7 @@ class TeamCubit extends Cubit<TeamState> {
     InstalledSkillsLoader? installedSkillsLoader,
   }) : _repository = repository,
        _executableResolver = executableResolver,
+       _cliExecutableResolver = cliExecutableResolver,
        _llmConfigPathOverride = llmConfigPathOverride,
        _appDataBasePathOverride = appDataBasePath.isNotEmpty
            ? appDataBasePath
@@ -100,6 +103,7 @@ class TeamCubit extends Cubit<TeamState> {
   final TeamRepository _repository;
   final TeamLauncher? _launcher;
   final String Function() _executableResolver;
+  final CliExecutableResolver? _cliExecutableResolver;
   final String? Function()? _llmConfigPathOverride;
   final String? _appDataBasePathOverride;
   final ConfigProfileService? _configProfileService;
@@ -159,10 +163,14 @@ class TeamCubit extends Cubit<TeamState> {
         (t, m) => LaunchCommandBuilder.launch(
           t,
           member: m,
-          executable: _executableResolver(),
+          executable: _resolveExecutableFor(t.cli),
           extraEnvironment: env,
         );
     await launch(team, member);
+  }
+
+  String _resolveExecutableFor(TeamCli cli) {
+    return _cliExecutableResolver?.call(cli) ?? _executableResolver();
   }
 
   String previewFor(TeamMemberConfig member) {
@@ -172,7 +180,7 @@ class TeamCubit extends Cubit<TeamState> {
         : LaunchCommandBuilder.preview(
             team,
             member,
-            executable: _executableResolver(),
+            executable: _resolveExecutableFor(team.cli),
           );
   }
 
@@ -182,7 +190,7 @@ class TeamCubit extends Cubit<TeamState> {
     return LaunchCommandBuilder.preview(
       team,
       team.members.first,
-      executable: _executableResolver(),
+      executable: _resolveExecutableFor(team.cli),
     );
   }
 
@@ -518,7 +526,7 @@ class TeamCubit extends Cubit<TeamState> {
         state.copyWith(
           isLaunching: false,
           statusMessage:
-              'Started ${member.name}: ${LaunchCommandBuilder.preview(team, member, executable: _executableResolver())}',
+              'Started ${member.name}: ${LaunchCommandBuilder.preview(team, member, executable: _resolveExecutableFor(team.cli))}',
         ),
       );
     } on Object catch (error) {
