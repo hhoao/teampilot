@@ -30,6 +30,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'support/post_frame_test_harness.dart';
+
 String _testExecutable() => 'flashskyai';
 
 late Directory _widgetTestSessionRepoDir;
@@ -230,12 +232,19 @@ class FakeTerminalSession extends TerminalSession {
 }
 
 class TestChatCubit extends ChatCubit {
-  TestChatCubit()
+  TestChatCubit._(this.postFrame)
     : super(
         executableResolver: _testExecutable,
         terminalSessionFactory: FakeTerminalSession.new,
-        postFrameScheduler: (callback) => callback(),
+        postFrameScheduler: postFrame.scheduler,
       );
+
+  factory TestChatCubit() {
+    final harness = PostFrameTestHarness();
+    return TestChatCubit._(harness);
+  }
+
+  final PostFrameTestHarness postFrame;
 
   void seedChatData({
     List<AppProject> projects = const [],
@@ -264,14 +273,20 @@ void main() {
 
   setUp(() {
     SharedPreferences.setMockInitialValues({});
+    setUpTestAppStorage();
+  });
+
+  tearDown(() {
+    tearDownTestAppStorage();
   });
 
   testWidgets('renders chat workbench shell on initial route', (tester) async {
     final teamCubit = await createTeamCubitInTest(tester);
+    final postFrame = PostFrameTestHarness();
     final chatCubit = ChatCubit(
       executableResolver: _testExecutable,
       terminalSessionFactory: FakeTerminalSession.new,
-      postFrameScheduler: (callback) => callback(),
+      postFrameScheduler: postFrame.scheduler,
       sessionRepository: _widgetTestSessionRepo,
     );
     await pumpDesktopApp(tester, teamCubit, chatCubit: chatCubit);
@@ -299,6 +314,8 @@ void main() {
       await tester.pump();
       if (chatCubit.state.tabs.isNotEmpty) break;
     }
+    await tester.runAsync(postFrame.flush);
+    await tester.pump();
     expect(chatCubit.state.tabs.length, 1);
     expect(chatCubit.state.tabs.single.id.startsWith('local-'), isFalse);
     expect(chatCubit.isMemberRunning('team-lead'), isTrue);
@@ -377,6 +394,8 @@ void main() {
     await pumpDesktopApp(tester, teamCubit, chatCubit: chatCubit);
 
     await tester.tap(find.byKey(AppKeys.sessionTile('session-1')));
+    await tester.pump();
+    await tester.runAsync(chatCubit.postFrame.flush);
     await tester.pump();
 
     expect(chatCubit.state.activeSessionId, 'session-1');
@@ -476,10 +495,11 @@ void main() {
   });
 
   test('chat cubit opens member shells inside one session tab', () async {
+    final postFrame = PostFrameTestHarness();
     final cubit = ChatCubit(
       executableResolver: _testExecutable,
       terminalSessionFactory: FakeTerminalSession.new,
-      postFrameScheduler: (callback) => callback(),
+      postFrameScheduler: postFrame.scheduler,
     );
     final team = TeamConfig(
       id: 'test-team',
@@ -492,6 +512,7 @@ void main() {
 
     await cubit.openMemberTab(team, team.members[0]);
     await cubit.openMemberTab(team, team.members[1]);
+    await postFrame.flush();
 
     expect(cubit.state.tabs.length, 1);
     expect(cubit.state.tabs.single.id, 'local-test-team');
@@ -503,10 +524,11 @@ void main() {
   test(
     'chat cubit connectSession starts all members when auto-launch enabled',
     () async {
+      final postFrame = PostFrameTestHarness();
       final cubit = ChatCubit(
         executableResolver: _testExecutable,
         terminalSessionFactory: FakeTerminalSession.new,
-        postFrameScheduler: (callback) => callback(),
+        postFrameScheduler: postFrame.scheduler,
         autoLaunchAllMembersOnConnect: () => true,
       );
       final team = TeamConfig(
@@ -520,6 +542,7 @@ void main() {
 
       cubit.syncTeam(team);
       await cubit.connectSession(team);
+      await postFrame.flush();
 
       expect(cubit.state.tabs.length, 1);
       expect(cubit.isMemberRunning('lead'), isTrue);
@@ -531,10 +554,11 @@ void main() {
   test(
     'chat cubit connectSession starts only selected member by default',
     () async {
+      final postFrame = PostFrameTestHarness();
       final cubit = ChatCubit(
         executableResolver: _testExecutable,
         terminalSessionFactory: FakeTerminalSession.new,
-        postFrameScheduler: (callback) => callback(),
+        postFrameScheduler: postFrame.scheduler,
       );
       final team = TeamConfig(
         id: 'test-team',
@@ -547,6 +571,7 @@ void main() {
 
       cubit.syncTeam(team);
       await cubit.connectSession(team);
+      await postFrame.flush();
 
       expect(cubit.state.tabs.length, 1);
       expect(cubit.isMemberRunning('lead'), isTrue);
@@ -558,10 +583,11 @@ void main() {
   test(
     'chat cubit keeps persisted session tabs separate from member selection',
     () async {
+      final postFrame = PostFrameTestHarness();
       final cubit = ChatCubit(
         executableResolver: _testExecutable,
         terminalSessionFactory: FakeTerminalSession.new,
-        postFrameScheduler: (callback) => callback(),
+        postFrameScheduler: postFrame.scheduler,
       );
       const projectId = 'proj-test-2';
       const session = AppSession(
@@ -584,6 +610,7 @@ void main() {
       await cubit.openSessionTab(session);
       await cubit.openMemberTab(team, team.members[0]);
       await cubit.openMemberTab(team, team.members[1]);
+      await postFrame.flush();
 
       expect(cubit.state.tabs.length, 1);
       expect(cubit.state.tabs.single.id, 'session-1');
@@ -601,13 +628,14 @@ void main() {
     final project = await repo.createProject('/wd');
     final session = await repo.createSession(project.projectId);
     FakeTerminalSession? captured;
+    final postFrame = PostFrameTestHarness();
     final cubit = ChatCubit(
       executableResolver: _testExecutable,
       terminalSessionFactory: ({required String executable}) {
         captured = FakeTerminalSession(executable: executable);
         return captured!;
       },
-      postFrameScheduler: (c) => c(),
+      postFrameScheduler: postFrame.scheduler,
     );
     await cubit.loadProjectData(repo);
     final team = TeamConfig(
@@ -621,6 +649,7 @@ void main() {
       member: team.members.first,
       repo: repo,
     );
+    await postFrame.flush();
     expect(captured, isNotNull);
     expect(captured!.lastResumeSessionIds.last, isNull);
     expect(captured!.lastFixedSessionIds.last, session.sessionId);
@@ -635,13 +664,14 @@ void main() {
     await repo.markSessionLaunched(session.sessionId, launchTeam: 'cli-t');
 
     FakeTerminalSession? captured;
+    final postFrame = PostFrameTestHarness();
     final cubit = ChatCubit(
       executableResolver: _testExecutable,
       terminalSessionFactory: ({required String executable}) {
         captured = FakeTerminalSession(executable: executable);
         return captured!;
       },
-      postFrameScheduler: (c) => c(),
+      postFrameScheduler: postFrame.scheduler,
       cliSessionDescriptorExists: (_, __) async => true,
     );
     await cubit.loadProjectData(repo);
@@ -657,6 +687,7 @@ void main() {
       member: team.members.first,
       repo: repo,
     );
+    await postFrame.flush();
     expect(captured!.lastResumeSessionIds.last, session.sessionId);
     expect(captured!.lastFixedSessionIds.last, isNull);
   });
@@ -672,13 +703,14 @@ void main() {
       await repo.markSessionLaunched(session.sessionId, launchTeam: 'cli-t');
 
       FakeTerminalSession? captured;
+      final postFrame = PostFrameTestHarness();
       final cubit = ChatCubit(
         executableResolver: _testExecutable,
         terminalSessionFactory: ({required String executable}) {
           captured = FakeTerminalSession(executable: executable);
           return captured!;
         },
-        postFrameScheduler: (c) => c(),
+        postFrameScheduler: postFrame.scheduler,
         cliSessionDescriptorExists: (_, __) async => false,
       );
       await cubit.loadProjectData(repo);
@@ -694,6 +726,7 @@ void main() {
         member: team.members.first,
         repo: repo,
       );
+      await postFrame.flush();
       expect(captured!.lastResumeSessionIds.last, isNull);
       expect(captured!.lastFixedSessionIds.last, session.sessionId);
     },
@@ -711,13 +744,14 @@ void main() {
       );
       await repo.createSession(project.projectId);
       FakeTerminalSession? captured;
+      final postFrame = PostFrameTestHarness();
       final cubit = ChatCubit(
         executableResolver: _testExecutable,
         terminalSessionFactory: ({required String executable}) {
           captured = FakeTerminalSession(executable: executable);
           return captured!;
         },
-        postFrameScheduler: (c) => c(),
+        postFrameScheduler: postFrame.scheduler,
       );
       await cubit.loadProjectData(repo);
       final rel = cubit.state.sessions.single;
@@ -732,6 +766,7 @@ void main() {
         member: team.members.first,
         repo: repo,
       );
+      await postFrame.flush();
       expect(captured!.lastAdditionalDirectoriesLists.last, ['/extra']);
     },
   );

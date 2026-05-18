@@ -8,6 +8,8 @@ import 'package:teampilot/repositories/session_repository.dart';
 import 'package:teampilot/services/terminal_session.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'support/post_frame_test_harness.dart';
+
 String _executable() => 'flashskyai';
 
 Future<void> _deleteTempDir(Directory dir) async {
@@ -66,6 +68,9 @@ class _FakeTerminalSession extends TerminalSession {
 }
 
 void main() {
+  setUp(setUpTestAppStorage);
+  tearDown(tearDownTestAppStorage);
+
   group('ChatCubit team session scope', () {
     late ChatCubit cubit;
 
@@ -256,15 +261,17 @@ void main() {
     late Directory tmp;
     late SessionRepository repo;
     late ChatCubit cubit;
+    late PostFrameTestHarness postFrame;
 
     setUp(() async {
       TestWidgetsFlutterBinding.ensureInitialized();
       tmp = await Directory.systemTemp.createTemp('chat_conn_');
       repo = SessionRepository(rootDir: tmp.path);
+      postFrame = PostFrameTestHarness();
       cubit = ChatCubit(
         executableResolver: () => 'true',
         sessionRepository: repo,
-        postFrameScheduler: (c) => c(),
+        postFrameScheduler: postFrame.scheduler,
         terminalSessionFactory: ({required String executable}) =>
             _FakeTerminalSession(executable: executable),
       );
@@ -283,6 +290,7 @@ void main() {
       );
       expect(cubit.state.selectedMemberId, '');
       await cubit.connectSession(team);
+      await postFrame.flush();
       expect(cubit.state.tabs.length, 1);
       expect(cubit.state.selectedMemberId, 'm-lead');
     });
@@ -305,6 +313,7 @@ void main() {
             TeamMemberConfig(id: 'm-dev', name: 'developer'),
           ],
         );
+        final postFrame = PostFrameTestHarness();
         final cubit = ChatCubit(
           executableResolver: () => 'true',
           terminalSessionFactory: ({required String executable}) {
@@ -312,7 +321,7 @@ void main() {
             fakeSessions.add(fake);
             return fake;
           },
-          postFrameScheduler: (c) => c(),
+          postFrameScheduler: postFrame.scheduler,
           autoLaunchAllMembersOnConnect: () => true,
         );
         addTearDown(cubit.close);
@@ -322,7 +331,7 @@ void main() {
           team: team,
           member: team.members.first,
         );
-        await pumpEventQueue();
+        await postFrame.flush();
 
         expect(cubit.state.tabs.length, 1);
         expect(cubit.isMemberRunning('m-lead'), isTrue);
@@ -364,11 +373,7 @@ void main() {
         );
 
         await cubit.connectSession(team);
-        while (scheduled.isNotEmpty) {
-          final callback = scheduled.removeAt(0);
-          callback();
-          await pumpEventQueue();
-        }
+        await drainPostFrameQueue(scheduled);
 
         final connectedMembers = fakeSessions
             .expand((session) => session.connectedMembers)
