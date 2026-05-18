@@ -9,7 +9,7 @@
 # still compiled and tested via app imports and `flutter test`/`flutter build`.
 analyzer:
   exclude:
-    - packages/xterm/**
+    - packages/**
 
 # The following line activates a set of recommended lints for Flutter apps,
 # packages, and plugins designed to encourage good coding practices.
