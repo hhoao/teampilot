@@ -57,10 +57,7 @@ void main() {
 
     final teamRoot = p.join(base.path, 'config-profiles', 'teams', 'team-a');
     expect(await Directory(p.join(teamRoot, 'codex')).exists(), isTrue);
-    expect(
-      await Directory(p.join(teamRoot, 'flashskyai')).exists(),
-      isFalse,
-    );
+    expect(await Directory(p.join(teamRoot, 'flashskyai')).exists(), isFalse);
   });
 
   test('does not overwrite existing team flashskyai metadata', () async {
@@ -82,36 +79,39 @@ void main() {
     expect(await metadata.readAsString(), '{"hasCompletedOnboarding":false}');
   });
 
-  test('prepareTeamLaunch for flashskyai returns flashskyai env only', () async {
-    final env = await service.prepareTeamLaunch(
-      teamId: 'team-a',
-      cli: TeamCli.flashskyai,
-    );
+  test(
+    'prepareTeamLaunch for flashskyai returns flashskyai env only',
+    () async {
+      final env = await service.prepareTeamLaunch(
+        teamId: 'team-a',
+        cli: TeamCli.flashskyai,
+      );
 
-    final commonFlashDir = p.join(
-      base.path,
-      'config-profiles',
-      'common',
-      'flashskyai',
-    );
-    final teamRoot = p.join(base.path, 'config-profiles', 'teams', 'team-a');
-
-    expect(await Directory(commonFlashDir).exists(), isTrue);
-    expect(await Directory(p.join(teamRoot, 'flashskyai')).exists(), isTrue);
-    expect(await Directory(p.join(teamRoot, 'codex')).exists(), isFalse);
-    expect(env.keys, ['FLASHSKYAI_CONFIG_DIR', 'LLM_CONFIG_PATH']);
-    expect(env['FLASHSKYAI_CONFIG_DIR'], p.join(teamRoot, 'flashskyai'));
-    expect(env['LLM_CONFIG_PATH'], p.join(commonFlashDir, 'llm_config.json'));
-
-    final metadata = File(
-      p.join(
-        teamRoot,
+      final commonFlashDir = p.join(
+        base.path,
+        'config-profiles',
+        'common',
         'flashskyai',
-        ConfigProfileService.flashskyaiMetadataFileName,
-      ),
-    );
-    expect(await metadata.exists(), isTrue);
-  });
+      );
+      final teamRoot = p.join(base.path, 'config-profiles', 'teams', 'team-a');
+
+      expect(await Directory(commonFlashDir).exists(), isTrue);
+      expect(await Directory(p.join(teamRoot, 'flashskyai')).exists(), isTrue);
+      expect(await Directory(p.join(teamRoot, 'codex')).exists(), isFalse);
+      expect(env.keys, ['FLASHSKYAI_CONFIG_DIR', 'LLM_CONFIG_PATH']);
+      expect(env['FLASHSKYAI_CONFIG_DIR'], p.join(teamRoot, 'flashskyai'));
+      expect(env['LLM_CONFIG_PATH'], p.join(commonFlashDir, 'llm_config.json'));
+
+      final metadata = File(
+        p.join(
+          teamRoot,
+          'flashskyai',
+          ConfigProfileService.flashskyaiMetadataFileName,
+        ),
+      );
+      expect(await metadata.exists(), isTrue);
+    },
+  );
 
   test('prepareTeamLaunch for codex returns CODEX_HOME only', () async {
     final env = await service.prepareTeamLaunch(
@@ -122,20 +122,194 @@ void main() {
     final teamRoot = p.join(base.path, 'config-profiles', 'teams', 'team-a');
     expect(env.keys, ['CODEX_HOME']);
     expect(env['CODEX_HOME'], p.join(teamRoot, 'codex'));
-    expect(
-      File(p.join(env['CODEX_HOME']!, 'auth.json')).existsSync(),
-      isFalse,
-    );
+    expect(File(p.join(env['CODEX_HOME']!, 'auth.json')).existsSync(), isFalse);
   });
 
-  test('prepareTeamLaunch for claude returns CLAUDE_CONFIG_DIR only', () async {
+  test('prepareTeamLaunch for claude returns env and writes roster', () async {
     final env = await service.prepareTeamLaunch(
+      teamId: 'Team A!',
+      cli: TeamCli.claude,
+      members: const [
+        TeamMemberConfig(
+          id: 'lead',
+          name: 'team-lead',
+          model: 'opus',
+          joinedAt: 100,
+        ),
+        TeamMemberConfig(
+          id: 'dev',
+          name: 'Developer One',
+          model: 'sonnet',
+          joinedAt: 200,
+        ),
+      ],
+      workingDirectory: '/workspace/project',
+    );
+
+    final teamRoot = p.join(base.path, 'config-profiles', 'teams', 'Team A!');
+    final claudeDir = p.join(teamRoot, 'claude');
+    expect(env.keys, [
+      'CLAUDE_CONFIG_DIR',
+      'CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS',
+    ]);
+    expect(env['CLAUDE_CONFIG_DIR'], claudeDir);
+    expect(env['CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS'], '1');
+
+    final roster = File(p.join(claudeDir, 'teams', 'team-a-', 'config.json'));
+    expect(await roster.exists(), isTrue);
+
+    final decoded =
+        jsonDecode(await roster.readAsString()) as Map<String, Object?>;
+    expect(decoded['name'], 'Team A!');
+    expect(decoded['createdAt'], isA<int>());
+    expect(decoded['leadAgentId'], 'team-lead@Team A!');
+
+    final members = decoded['members'] as List<Object?>;
+    expect(members, hasLength(2));
+    expect(members.first, {
+      'agentId': 'team-lead@Team A!',
+      'name': 'team-lead',
+      'joinedAt': 100,
+      'tmuxPaneId': '',
+      'cwd': '/workspace/project',
+      'subscriptions': <Object?>[],
+      'model': 'opus',
+      'agentType': 'team-lead',
+    });
+    expect(members.last, {
+      'agentId': 'Developer One@Team A!',
+      'name': 'Developer One',
+      'joinedAt': 200,
+      'tmuxPaneId': '',
+      'cwd': '/workspace/project',
+      'subscriptions': <Object?>[],
+      'model': 'sonnet',
+    });
+  });
+
+  test(
+    'prepareTeamLaunch for claude preserves existing roster fields',
+    () async {
+      final roster = File(
+        p.join(
+          base.path,
+          'config-profiles',
+          'teams',
+          'team-a',
+          'claude',
+          'teams',
+          'team-a',
+          'config.json',
+        ),
+      );
+      await roster.parent.create(recursive: true);
+      await roster.writeAsString(
+        jsonEncode({
+          'name': 'Old Name',
+          'createdAt': 1234,
+          'leadAgentId': 'old-lead',
+          'customTop': 'keep',
+          'members': [
+            {
+              'agentId': 'developer@team-a',
+              'name': 'developer',
+              'joinedAt': 5678,
+              'sessionId': 'session-1',
+              'isActive': true,
+              'cwd': '/old/cwd',
+              'subscriptions': ['team-lead@team-a'],
+              'customMember': 'also keep',
+            },
+          ],
+        }),
+      );
+
+      await service.prepareTeamLaunch(
+        teamId: 'team-a',
+        cli: TeamCli.claude,
+        members: const [
+          TeamMemberConfig(id: 'dev', name: 'developer', model: 'haiku'),
+        ],
+        workingDirectory: '/new/cwd',
+      );
+
+      final decoded =
+          jsonDecode(await roster.readAsString()) as Map<String, Object?>;
+      expect(decoded['name'], 'team-a');
+      expect(decoded['createdAt'], 1234);
+      expect(decoded['leadAgentId'], 'team-lead@team-a');
+      expect(decoded['customTop'], 'keep');
+
+      final members = decoded['members'] as List<Object?>;
+      expect(members, hasLength(1));
+      final member = members.single as Map<String, Object?>;
+      expect(member['agentId'], 'developer@team-a');
+      expect(member['name'], 'developer');
+      expect(member['joinedAt'], 5678);
+      expect(member['sessionId'], 'session-1');
+      expect(member['isActive'], true);
+      expect(member['cwd'], '/old/cwd');
+      expect(member['subscriptions'], <Object?>[]);
+      expect(member['customMember'], 'also keep');
+      expect(member['model'], 'haiku');
+      expect(member.containsKey('agentType'), isFalse);
+    },
+  );
+
+  test('prepareTeamLaunch for claude omits blank model', () async {
+    await service.prepareTeamLaunch(
       teamId: 'team-a',
       cli: TeamCli.claude,
+      members: const [TeamMemberConfig(id: 'dev', name: 'developer')],
     );
 
-    final teamRoot = p.join(base.path, 'config-profiles', 'teams', 'team-a');
-    expect(env.keys, ['CLAUDE_CONFIG_DIR']);
-    expect(env['CLAUDE_CONFIG_DIR'], p.join(teamRoot, 'claude'));
+    final roster = File(
+      p.join(
+        base.path,
+        'config-profiles',
+        'teams',
+        'team-a',
+        'claude',
+        'teams',
+        'team-a',
+        'config.json',
+      ),
+    );
+    final decoded =
+        jsonDecode(await roster.readAsString()) as Map<String, Object?>;
+    final members = decoded['members'] as List<Object?>;
+    final member = members.single as Map<String, Object?>;
+    expect(member.containsKey('model'), isFalse);
   });
+
+  test(
+    'prepareTeamLaunch for claude with no members writes empty roster',
+    () async {
+      final env = await service.prepareTeamLaunch(
+        teamId: 'team-a',
+        cli: TeamCli.claude,
+      );
+
+      final roster = File(
+        p.join(
+          base.path,
+          'config-profiles',
+          'teams',
+          'team-a',
+          'claude',
+          'teams',
+          'team-a',
+          'config.json',
+        ),
+      );
+      final decoded =
+          jsonDecode(await roster.readAsString()) as Map<String, Object?>;
+      expect(decoded['members'], isEmpty);
+      expect(decoded['leadAgentId'], 'team-lead@team-a');
+      expect(
+        env['CLAUDE_CONFIG_DIR'],
+        p.join(base.path, 'config-profiles', 'teams', 'team-a', 'claude'),
+      );
+    },
+  );
 }

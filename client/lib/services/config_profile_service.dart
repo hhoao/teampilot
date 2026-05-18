@@ -86,6 +86,8 @@ class ConfigProfileService {
   Future<TeamLaunchEnvironment> prepareTeamLaunch({
     required String teamId,
     TeamCli cli = TeamCli.flashskyai,
+    List<TeamMemberConfig> members = const [],
+    String workingDirectory = '',
   }) async {
     final trimmedTeamId = teamId.trim();
     if (trimmedTeamId.isEmpty) {
@@ -93,6 +95,13 @@ class ConfigProfileService {
     }
 
     await ensureTeamProfile(trimmedTeamId, cli: cli);
+    if (cli == TeamCli.claude) {
+      await _writeClaudeRoster(
+        teamId: trimmedTeamId,
+        members: members,
+        workingDirectory: workingDirectory,
+      );
+    }
 
     return switch (cli) {
       TeamCli.flashskyai => {
@@ -102,9 +111,111 @@ class ConfigProfileService {
       TeamCli.codex => {'CODEX_HOME': teamToolDir(trimmedTeamId, 'codex')},
       TeamCli.claude => {
         'CLAUDE_CONFIG_DIR': teamToolDir(trimmedTeamId, 'claude'),
+        'CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS': '1',
       },
     };
   }
+
+  Future<void> _writeClaudeRoster({
+    required String teamId,
+    required List<TeamMemberConfig> members,
+    required String workingDirectory,
+  }) async {
+    final claudeDir = teamToolDir(teamId, 'claude');
+    final roster = File(
+      p.join(claudeDir, 'teams', _safeClaudeTeamName(teamId), 'config.json'),
+    );
+
+    final existing = await _readJsonObject(roster);
+    final existingMembersByName = <String, Map<String, Object?>>{};
+    final rawExistingMembers = existing['members'];
+    if (rawExistingMembers is List) {
+      for (final rawMember in rawExistingMembers) {
+        if (rawMember is! Map) continue;
+        final memberJson = Map<String, Object?>.from(rawMember);
+        final name = memberJson['name']?.toString();
+        if (name != null && name.isNotEmpty) {
+          existingMembersByName[name] = memberJson;
+        }
+      }
+    }
+
+    final createdAt = existing['createdAt'];
+    final config = <String, Object?>{
+      ...existing,
+      'name': teamId,
+      'createdAt': createdAt is int
+          ? createdAt
+          : DateTime.now().millisecondsSinceEpoch,
+      'leadAgentId': 'team-lead@$teamId',
+      'members': [
+        for (final member in members.where((member) => member.isValid))
+          _claudeRosterMember(
+            teamId: teamId,
+            member: member,
+            existing: existingMembersByName[member.name],
+            workingDirectory: workingDirectory,
+          ),
+      ],
+    };
+
+    await roster.parent.create(recursive: true);
+    await roster.writeAsString(
+      const JsonEncoder.withIndent('  ').convert(config),
+    );
+  }
+
+  Map<String, Object?> _claudeRosterMember({
+    required String teamId,
+    required TeamMemberConfig member,
+    required Map<String, Object?>? existing,
+    required String workingDirectory,
+  }) {
+    final existingMember = existing ?? const <String, Object?>{};
+    final joinedAt = existingMember['joinedAt'];
+    final memberJson = <String, Object?>{
+      ...existingMember,
+      'agentId': '${member.name}@$teamId',
+      'name': member.name,
+      'joinedAt': joinedAt is int ? joinedAt : member.joinedAt,
+      'tmuxPaneId': '',
+      'cwd': existingMember.containsKey('cwd')
+          ? existingMember['cwd']
+          : workingDirectory,
+      'subscriptions': <Object?>[],
+      if (member.model.trim().isNotEmpty) 'model': member.model.trim(),
+    };
+
+    if (existingMember.containsKey('sessionId')) {
+      memberJson['sessionId'] = existingMember['sessionId'];
+    }
+    if (existingMember.containsKey('isActive')) {
+      memberJson['isActive'] = existingMember['isActive'];
+    }
+    if (member.name == 'team-lead') {
+      memberJson['agentType'] = 'team-lead';
+    } else {
+      memberJson.remove('agentType');
+    }
+
+    return memberJson;
+  }
+
+  static Future<Map<String, Object?>> _readJsonObject(File file) async {
+    if (!await file.exists()) return const <String, Object?>{};
+    try {
+      final decoded = jsonDecode(await file.readAsString());
+      if (decoded is Map) {
+        return Map<String, Object?>.from(decoded);
+      }
+    } on FormatException {
+      return const <String, Object?>{};
+    }
+    return const <String, Object?>{};
+  }
+
+  static String _safeClaudeTeamName(String teamId) =>
+      teamId.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '-');
 
   static Future<void> _createLocalDirectory(String path) =>
       Directory(path).create(recursive: true);

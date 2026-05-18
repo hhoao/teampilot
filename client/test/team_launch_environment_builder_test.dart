@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -85,11 +86,7 @@ void main() {
   test('codex team returns CODEX_HOME only', () async {
     final env = await TeamLaunchEnvironmentBuilder.build(
       appDataBasePath: base.path,
-      team: const TeamConfig(
-        id: 'team-a',
-        name: 'Team A',
-        cli: TeamCli.codex,
-      ),
+      team: const TeamConfig(id: 'team-a', name: 'Team A', cli: TeamCli.codex),
     );
 
     expect(env!.keys, ['CODEX_HOME']);
@@ -97,6 +94,45 @@ void main() {
       env['CODEX_HOME'],
       p.join(base.path, 'config-profiles', 'teams', 'team-a', 'codex'),
     );
+  });
+
+  test('claude team launch passes members to roster generation', () async {
+    final env = await TeamLaunchEnvironmentBuilder.build(
+      appDataBasePath: base.path,
+      team: const TeamConfig(
+        id: 'team-a',
+        name: 'Team A',
+        cli: TeamCli.claude,
+        members: [
+          TeamMemberConfig(id: 'lead', name: 'team-lead'),
+          TeamMemberConfig(id: 'dev', name: 'developer', model: 'sonnet'),
+        ],
+      ),
+    );
+
+    final claudeDir = p.join(
+      base.path,
+      'config-profiles',
+      'teams',
+      'team-a',
+      'claude',
+    );
+    expect(env!.keys, [
+      'CLAUDE_CONFIG_DIR',
+      'CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS',
+    ]);
+    expect(env['CLAUDE_CONFIG_DIR'], claudeDir);
+    expect(env['CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS'], '1');
+
+    final roster = File(p.join(claudeDir, 'teams', 'team-a', 'config.json'));
+    final decoded =
+        jsonDecode(await roster.readAsString()) as Map<String, Object?>;
+    final members = decoded['members'] as List<Object?>;
+    expect(members.map((member) => (member as Map<String, Object?>)['name']), [
+      'team-lead',
+      'developer',
+    ]);
+    expect((members.last as Map<String, Object?>)['model'], 'sonnet');
   });
 
   test('empty team id keeps legacy llm override fallback', () async {
