@@ -22,7 +22,8 @@ enum TeamCli {
   }
 
   /// Whether TeamPilot can launch a team terminal with this CLI today.
-  bool get isLaunchSupported => this == TeamCli.flashskyai;
+  bool get isLaunchSupported =>
+      this == TeamCli.flashskyai || this == TeamCli.claude;
 }
 
 @immutable

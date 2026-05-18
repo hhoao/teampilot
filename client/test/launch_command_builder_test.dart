@@ -157,6 +157,23 @@ void main() {
     );
   });
 
+  test('preview delegates argument construction for Claude teams', () {
+    const team = TeamConfig(id: '1', name: 'agent', cli: TeamCli.claude);
+    const planner = TeamMemberConfig(
+      id: 'm',
+      name: 'planner',
+      provider: 'anthropic',
+      model: 'sonnet',
+      agent: 'builder',
+    );
+
+    expect(
+      LaunchCommandBuilder.preview(team, planner, executable: 'claude'),
+      'claude --agent-teams --team-name agent --agent-name planner '
+      '--agent-id planner@agent --model sonnet',
+    );
+  });
+
   group('buildSessionPrefixArgs', () {
     test('--resume wins over fixed session id', () {
       expect(

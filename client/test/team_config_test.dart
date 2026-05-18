@@ -118,17 +118,19 @@ void main() {
   });
 
   test('round trips cli and defaults to flashskyai for legacy json', () {
-    const team = TeamConfig(
-      id: 'team-1',
-      name: 'hello',
-      cli: TeamCli.codex,
-    );
+    const team = TeamConfig(id: 'team-1', name: 'hello', cli: TeamCli.codex);
     final decoded = TeamConfig.fromJson(team.toJson());
     expect(decoded.cli, TeamCli.codex);
 
     final legacy = TeamConfig.fromJson({'id': 't', 'name': 'T'});
     expect(legacy.cli, TeamCli.flashskyai);
     expect(legacy.toJson().containsKey('cli'), isFalse);
+  });
+
+  test('launch support includes flashskyai and claude', () {
+    expect(TeamCli.flashskyai.isLaunchSupported, isTrue);
+    expect(TeamCli.claude.isLaunchSupported, isTrue);
+    expect(TeamCli.codex.isLaunchSupported, isFalse);
   });
 
   test('round trips skillIds', () {

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import '../models/team_config.dart';
+import 'cli_tool_adapter.dart';
 import 'cli_invocation.dart';
 
 typedef ProcessStarter =
@@ -60,48 +61,20 @@ class LaunchCommandBuilder {
     String? resumeSessionId,
     bool useWslPaths = false,
   }) {
-    final teamFlag = sessionTeam ?? team.name.trim();
-    final wd = workingDirectory ?? '';
-
-    final args = <String>[
-      ...buildSessionPrefixArgs(
-        workingDirectory: wd.isNotEmpty ? wd : null,
-        additionalDirectories: additionalDirectories,
-        fixedSessionId: fixedSessionId,
-        resumeSessionId: resumeSessionId,
-        useWslPaths: useWslPaths,
-      ),
-      '--team',
-      teamFlag,
-      '--member',
-      member.name.trim(),
-    ];
-
-    final loop = team.loop;
-    if (loop != null) {
-      args.addAll(['--loop', loop ? 'true' : 'false']);
-    }
-
-    if (member.provider.trim().isNotEmpty) {
-      args.addAll(['--provider', member.provider.trim()]);
-    }
-    if (member.model.trim().isNotEmpty) {
-      args.addAll(['--model', member.model.trim()]);
-    }
-    if (member.agent.trim().isNotEmpty) {
-      args.addAll(['--agent', member.agent.trim()]);
-    }
-    if (member.dangerouslySkipPermissions) {
-      args.add('--dangerously-skip-permissions');
-    }
-    if (team.extraArgs.trim().isNotEmpty) {
-      args.addAll(splitArgs(team.extraArgs.trim()));
-    }
-    if (member.extraArgs.trim().isNotEmpty) {
-      args.addAll(splitArgs(member.extraArgs.trim()));
-    }
-
-    return args;
+    return const CliToolAdapterRegistry()
+        .forCli(team.cli)
+        .buildArguments(
+          CliLaunchContext(
+            team: team,
+            member: member,
+            sessionTeam: sessionTeam,
+            workingDirectory: workingDirectory,
+            additionalDirectories: additionalDirectories,
+            fixedSessionId: fixedSessionId,
+            resumeSessionId: resumeSessionId,
+            useWslPaths: useWslPaths,
+          ),
+        );
   }
 
   static String preview(
