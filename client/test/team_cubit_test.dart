@@ -6,16 +6,17 @@ import 'package:teampilot/cubits/team_cubit.dart';
 import 'package:teampilot/models/skill.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/repositories/team_repository.dart';
+import 'package:teampilot/services/config_profile_service.dart';
 import 'package:teampilot/services/team_skill_linker_service.dart';
 
 Skill _skill(String id) => Skill(
-      id: id,
-      name: id,
-      description: 'd',
-      directory: id.contains(':') ? id.split(':').last : id,
-      installedAt: 1,
-      updatedAt: 1,
-    );
+  id: id,
+  name: id,
+  description: 'd',
+  directory: id.contains(':') ? id.split(':').last : id,
+  installedAt: 1,
+  updatedAt: 1,
+);
 
 class _RecordingLinker extends TeamSkillLinkerService {
   _RecordingLinker() : super(appSkillsRoot: '/tmp', cliSkillsDir: '/tmp/cli');
@@ -33,9 +34,9 @@ class _RecordingLinker extends TeamSkillLinkerService {
 }
 
 TeamRepository _repo(Directory dir) => TeamRepository(
-      rootDir: p.join(dir.path, 'teams'),
-      cliTeamsDir: p.join(dir.path, 'cli-teams'),
-    );
+  rootDir: p.join(dir.path, 'teams'),
+  cliTeamsDir: p.join(dir.path, 'cli-teams'),
+);
 
 void main() {
   test('selectTeam syncs skills for selected team', () async {
@@ -145,26 +146,91 @@ void main() {
     await dir.delete(recursive: true);
   });
 
-  test('renameSelectedTeamName updates storage and removes old files', () async {
-    final dir = await Directory.systemTemp.createTemp('team-cubit-');
-    final repo = _repo(dir);
+  test(
+    'renameSelectedTeamName updates storage and removes old files',
+    () async {
+      final dir = await Directory.systemTemp.createTemp('team-cubit-');
+      final repo = _repo(dir);
+      final cubit = TeamCubit(
+        repository: repo,
+        executableResolver: () => 'flashskyai',
+      );
+      const team = TeamConfig(
+        id: 'Old',
+        name: 'Old',
+        members: [TeamMemberConfig(id: 'team-lead', name: 'team-lead')],
+      );
+      await repo.saveTeams([team]);
+      await cubit.load();
+
+      expect(await cubit.renameSelectedTeamName('New'), isTrue);
+      expect(cubit.state.selectedTeam?.name, 'New');
+      expect(File(p.join(dir.path, 'teams', 'New.json')).existsSync(), isTrue);
+      expect(File(p.join(dir.path, 'teams', 'Old.json')).existsSync(), isFalse);
+
+      await dir.delete(recursive: true);
+    },
+  );
+
+  test('addTeam creates team runtime profile directories', () async {
+    final base = await Directory.systemTemp.createTemp('team_profile_');
     final cubit = TeamCubit(
-      repository: repo,
+      repository: _repo(base),
       executableResolver: () => 'flashskyai',
+      appDataBasePath: base.path,
+      configProfileService: ConfigProfileService(basePath: base.path),
     );
-    const team = TeamConfig(
-      id: 'Old',
-      name: 'Old',
-      members: [TeamMemberConfig(id: 'team-lead', name: 'team-lead')],
+
+    expect(await cubit.addTeam('alpha'), isTrue);
+
+    final teamRoot = p.join(base.path, 'config-profiles', 'teams', 'alpha');
+    expect(await Directory(p.join(teamRoot, 'flashskyai')).exists(), isTrue);
+    expect(await Directory(p.join(teamRoot, 'codex')).exists(), isFalse);
+    expect(await Directory(p.join(teamRoot, 'claude')).exists(), isFalse);
+    expect(cubit.state.teams.single.cli, TeamCli.flashskyai);
+
+    await cubit.close();
+    await base.delete(recursive: true);
+  });
+
+  test('addTeam rejects unsupported cli backends', () async {
+    final base = await Directory.systemTemp.createTemp('team_profile_cli_');
+    final cubit = TeamCubit(
+      repository: _repo(base),
+      executableResolver: () => 'flashskyai',
+      appDataBasePath: base.path,
+      configProfileService: ConfigProfileService(basePath: base.path),
     );
-    await repo.saveTeams([team]);
+
+    expect(await cubit.addTeam('beta', cli: TeamCli.codex), isFalse);
+    expect(cubit.state.teams, isEmpty);
+
+    await cubit.close();
+    await base.delete(recursive: true);
+  });
+
+  test('load creates runtime profile directories for default team', () async {
+    final base = await Directory.systemTemp.createTemp('team_profile_load_');
+    final cubit = TeamCubit(
+      repository: _repo(base),
+      executableResolver: () => 'flashskyai',
+      appDataBasePath: base.path,
+      configProfileService: ConfigProfileService(basePath: base.path),
+    );
+
     await cubit.load();
 
-    expect(await cubit.renameSelectedTeamName('New'), isTrue);
-    expect(cubit.state.selectedTeam?.name, 'New');
-    expect(File(p.join(dir.path, 'teams', 'New.json')).existsSync(), isTrue);
-    expect(File(p.join(dir.path, 'teams', 'Old.json')).existsSync(), isFalse);
+    final teamRoot = p.join(
+      base.path,
+      'config-profiles',
+      'teams',
+      'Default Team',
+    );
+    expect(await Directory(p.join(teamRoot, 'flashskyai')).exists(), isTrue);
+    expect(await Directory(p.join(teamRoot, 'codex')).exists(), isFalse);
+    expect(await Directory(p.join(teamRoot, 'claude')).exists(), isFalse);
 
-    await dir.delete(recursive: true);
+    await cubit.close();
+    await base.delete(recursive: true);
   });
 }

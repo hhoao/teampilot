@@ -21,6 +21,10 @@ class AppStorage {
   /// All CLI paths are sandboxed under the app's data directory so writes
   /// never hit the read-only root filesystem.
   static String get flashskyaiDataDir {
+    final fromEnv = Platform.environment['FLASHSKYAI_CONFIG_DIR']?.trim();
+    if (fromEnv != null && fromEnv.isNotEmpty) {
+      return fromEnv;
+    }
     if (Platform.isAndroid) {
       return p.join(basePath, '.flashskyai');
     }
@@ -200,6 +204,33 @@ class AppStorage {
 
   static String get tempTeamRegistryPath =>
       p.join(basePath, 'ui-temp-teams.json');
+
+  /// Application-level unified provider catalog (`providers/providers.json`).
+  static String get providerConfigDir => p.join(basePath, 'providers');
+
+  static String get providerConfigFile =>
+      p.join(providerConfigDir, 'providers.json');
+
+  /// Team runtime isolation and common FlashskyAI config profiles.
+  static String get configProfilesDir => p.join(basePath, 'config-profiles');
+
+  static String providerToolDir(String tool, String providerId) =>
+      p.join(providerConfigDir, tool.trim(), providerId.trim());
+
+  static String codexProviderDir(String providerId) =>
+      providerToolDir('codex', providerId);
+
+  static String claudeProviderDir(String providerId) =>
+      providerToolDir('claude', providerId);
+
+  static String commonProfileDirForTool(String tool) =>
+      p.join(configProfilesDir, 'common', tool.trim());
+
+  static String get commonFlashskyaiLlmConfigFile =>
+      p.join(commonProfileDirForTool('flashskyai'), 'llm_config.json');
+
+  static String teamProfileDir(String teamId) =>
+      p.join(configProfilesDir, 'teams', teamId.trim());
 
   static Future<void> init() async {
     final dir = await getApplicationSupportDirectory();

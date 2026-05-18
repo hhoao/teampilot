@@ -60,6 +60,10 @@
   "selectTeam": "Select team",
   "addTeamTooltip": "Add team",
   "addTeamTitle": "Add team",
+  "teamCliLabel": "CLI backend",
+  "teamCliSubtitle": "Chosen when the team is created and cannot be changed later.",
+  "teamCliComingSoon": "Coming soon",
+  "teamCliLockedSubtitle": "Set when this team was created.",
   "teamNameRequired": "Team name is required.",
   "teamNameAlreadyExists": "A team named \"{name}\" already exists.",
   "@teamNameAlreadyExists": {
@@ -435,5 +439,21 @@
   "teamLeadNameRequired": "FlashskyAI team delegation expects this member to be named exactly team-lead.",
   "teamLeadNotice": "FlashskyAI team delegation expects this member to be named exactly team-lead.",
   "membersAndFileTree": "Members and File Tree",
-  "membersAndFileTreeDescription": "Show members and file tree stacked or as tabs."
+  "membersAndFileTreeDescription": "Show members and file tree stacked or as tabs.",
+  "appProviderCatalogLabel": "App provider catalog",
+  "appProviderCatalogHint": "TeamPilot stores unified providers here; team launches generate per-tool configs.",
+  "appProviderPresetLabel": "Preset",
+  "appProviderAdvancedJson": "Advanced JSON editor",
+  "appProviderWebsite": "Website",
+  "appProviderEnabledTools": "Enabled tools",
+  "appProviderToolFlashskyai": "FlashskyAI",
+  "appProviderToolCodex": "Codex",
+  "appProviderToolClaude": "Claude Code",
+  "appProviderTeamToolSection": "Tool providers for this team",
+  "appProviderTeamToolSubtitle": "Select which unified provider each tool uses when this team starts.",
+  "appProviderTeamNone": "None",
+  "notes": "Notes",
+  "defaultModel": "Default model",
+  "editProvider": "Edit provider",
+  "invalidJson": "Invalid JSON. Fix the syntax and try again."
 }

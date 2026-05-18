@@ -6,9 +6,14 @@ import 'package:go_router/go_router.dart';
 
 import '../l10n/l10n_extensions.dart';
 import '../models/llm_config.dart';
+import '../cubits/app_provider_cubit.dart';
 import '../cubits/llm_config_cubit.dart';
-import '../cubits/team_cubit.dart';
+import '../models/app_provider_config.dart';
+import '../services/app_storage.dart';
 import '../services/platform_utils.dart';
+import '../widgets/app_provider/app_provider_detail_panel.dart';
+import '../widgets/app_provider/app_provider_form_sheet.dart';
+import '../widgets/app_provider/app_provider_list_panel.dart';
 import '../utils/app_keys.dart';
 import '../widgets/app_outline_text_field.dart';
 import '../widgets/dropdown/flashsky_dropdown_field.dart';
@@ -24,9 +29,6 @@ String llmProviderConfigRoute(String providerName) =>
 String llmProviderModelsRoute(String providerName) =>
     '${llmProviderConfigRoute(providerName)}/models';
 
-void _notifyLlmProviderRenamed(BuildContext context, String from, String to) {
-  unawaited(context.read<TeamCubit>().renameLlmProviderReference(from, to));
-}
 const double _kLlmInsetH = 16;
 const double _kLlmInsetHSm = 12;
 const double _kLlmSectionGap = 12;
@@ -72,13 +74,14 @@ class LlmProviderConfigPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final controller = context.watch<LlmConfigCubit>();
-    final config = controller.state.config;
-    final provider = config.providers[providerName];
+    final appCubit = context.watch<AppProviderCubit>();
+    final provider = appCubit.state.providers
+        .where((p) => p.id == providerName)
+        .firstOrNull;
 
-    if (controller.state.effectiveProviderName != providerName) {
+    if (appCubit.state.selectedId != providerName) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        controller.selectProvider(providerName);
+        appCubit.selectProvider(providerName);
       });
     }
 
@@ -86,19 +89,18 @@ class LlmProviderConfigPage extends StatelessWidget {
       pageKey: AppKeys.llmProviderDetail,
       child: provider == null
           ? Center(child: Text('${context.l10n.missingProvider} $providerName'))
-          : _ProviderDetailPanel(
-              config: config,
+          : AppProviderDetailPanel(
               provider: provider,
-              controller: controller,
-              onSave: controller.updateProvider,
-              onDelete: (name) async {
-                await _confirmDeleteProvider(context, controller, name);
+              onEdit: () =>
+                  _promptEditAppProvider(context, provider, hubStyle: true),
+              onDelete: () async {
+                await _confirmDeleteAppProvider(context, provider.id);
                 if (context.mounted) {
                   context.go('/config/llm');
                 }
               },
-              onShowModels: (name) =>
-                  context.push(llmProviderModelsRoute(name)),
+              onShowModels: () =>
+                  context.push(llmProviderModelsRoute(provider.id)),
             ),
     );
   }
@@ -112,18 +114,17 @@ class LlmProviderModelsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final controller = context.watch<LlmConfigCubit>();
-    final config = controller.state.config;
-    final provider = config.providers[providerName];
+    final appCubit = context.watch<AppProviderCubit>();
+    final provider = appCubit.state.providers
+        .where((p) => p.id == providerName)
+        .firstOrNull;
 
     return WorkspaceSectionPage(
       pageKey: AppKeys.llmProviderModels,
       child: provider == null
           ? Center(child: Text('${context.l10n.missingProvider} $providerName'))
-          : _ProviderModelsView(
-              config: config,
+          : _AppProviderModelsPanel(
               provider: provider,
-              controller: controller,
               onBack: () => context.pop(),
             ),
     );
@@ -135,37 +136,30 @@ class _LlmProvidersListContent extends StatelessWidget {
     required this.controller,
     this.hubStyle = false,
     this.onSelected,
-    this.onProviderRenamed,
   });
 
   final LlmConfigCubit controller;
   final bool hubStyle;
   final VoidCallback? onSelected;
-  final void Function(String from, String to)? onProviderRenamed;
 
   @override
   Widget build(BuildContext context) {
-    final config = controller.state.config;
-    return _ProviderListPanel(
-      config: config,
-      selectedName: hubStyle ? null : controller.state.effectiveProviderName,
+    final appCubit = context.watch<AppProviderCubit>();
+    final selectedId = appCubit.state.selectedId;
+    return AppProviderListPanel(
+      selectedId: hubStyle ? null : selectedId,
       hubStyle: hubStyle,
-      onSelect: (name) {
-        controller.selectProvider(name);
+      onSelect: (id) {
+        appCubit.selectProvider(id);
         onSelected?.call();
         if (hubStyle) {
-          context.push(llmProviderConfigRoute(name));
+          context.push(llmProviderConfigRoute(id));
         }
       },
-      onAdd: () => _promptAddProvider(context, controller, hubStyle: hubStyle),
-      onDelete: (name) => _confirmDeleteProvider(context, controller, name),
-      onRename: (name) => _promptRenameProvider(
-        context,
-        controller,
-        name,
-        hubStyle: hubStyle,
-        onRenamed: onProviderRenamed,
-      ),
+      onAdd: () => _promptAddAppProvider(context, hubStyle: hubStyle),
+      onEdit: (provider) =>
+          _promptEditAppProvider(context, provider, hubStyle: hubStyle),
+      onDelete: (id) => _confirmDeleteAppProvider(context, id),
     );
   }
 }
@@ -177,20 +171,18 @@ class _LlmConfigFileHintBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final state = controller.state;
     final l10n = context.l10n;
     final cs = Theme.of(context).colorScheme;
     final theme = Theme.of(context);
 
-    final badgeText = state.isUsingCustomPath
-        ? l10n.llmConfigPathBadgeCustom
-        : l10n.llmConfigPathBadgeDefault;
-    final badgeColor = state.isUsingCustomPath ? cs.primary : cs.outline;
-
-    final resolved = state.effectiveConfigPath.trim();
-    final hintBody = resolved.isEmpty
-        ? l10n.llmConfigEffectivePathUnresolved
-        : '${l10n.llmConfigCurrentEffectivePathPrefix} $resolved';
+    final catalogPath = AppStorage.providerConfigFile;
+    final commonLlmPath = AppStorage.commonFlashskyaiLlmConfigFile;
+    final badgeText = l10n.llmConfigPathBadgeDefault;
+    final badgeColor = cs.primary;
+    final hintBody =
+        '${l10n.appProviderCatalogHint}\n'
+        '${l10n.llmConfigCurrentEffectivePathPrefix} $catalogPath\n'
+        'LLM_CONFIG_PATH: $commonLlmPath';
 
     return Container(
       padding: const EdgeInsets.fromLTRB(
@@ -209,7 +201,7 @@ class _LlmConfigFileHintBar extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Text(
-            l10n.llmConfigPathLabel,
+            l10n.appProviderCatalogLabel,
             style: _LlmWorkspaceText(theme).bodyStrong,
           ),
           const SizedBox(width: 8),
@@ -274,22 +266,20 @@ class _ProvidersTabContent extends StatefulWidget {
 }
 
 class _ProvidersTabContentState extends State<_ProvidersTabContent> {
-  String? _modelsProviderName;
+  String? _modelsProviderId;
 
   LlmConfigCubit get _controller => widget.controller;
 
   @override
   Widget build(BuildContext context) {
-    final config = _controller.state.config;
-    final selectedName = _controller.state.effectiveProviderName;
-    final selectedProvider = selectedName != null
-        ? config.providers[selectedName]
-        : null;
+    final appState = context.watch<AppProviderCubit>().state;
+    final selected = appState.selectedProvider;
 
     final showModels =
-        _modelsProviderName != null &&
-        selectedProvider != null &&
-        _modelsProviderName == selectedProvider.name;
+        _modelsProviderId != null &&
+        selected != null &&
+        _modelsProviderId == selected.id &&
+        selected.enables(AppProviderTool.flashskyai);
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
@@ -301,42 +291,28 @@ class _ProvidersTabContentState extends State<_ProvidersTabContent> {
           padding: const EdgeInsets.only(right: 6),
           child: _LlmProvidersListContent(
             controller: _controller,
-            onSelected: () => setState(() => _modelsProviderName = null),
-            onProviderRenamed: (from, to) {
-              setState(() {
-                if (_modelsProviderName == from) {
-                  _modelsProviderName = to;
-                }
-              });
-            },
+            onSelected: () => setState(() => _modelsProviderId = null),
           ),
         ),
         right: Padding(
           padding: const EdgeInsets.only(left: 6),
-          child: showModels
-              ? _ProviderModelsView(
-                  config: config,
-                  provider: selectedProvider,
-                  controller: _controller,
-                  onBack: () => setState(() => _modelsProviderName = null),
+          child: selected == null
+              ? Center(child: Text(context.l10n.selectProvider))
+              : showModels
+              ? _AppProviderModelsPanel(
+                  provider: selected,
+                  onBack: () => setState(() => _modelsProviderId = null),
                 )
-              : _ProviderDetailPanel(
-                  config: config,
-                  provider: selectedProvider,
-                  controller: _controller,
-                  onSave: (name, provider) {
-                    _controller.updateProvider(name, provider);
-                  },
-                  onDelete: (name) {
-                    unawaited(
-                      _confirmDeleteProvider(context, _controller, name),
-                    );
-                  },
-                  onShowModels: (name) {
+              : AppProviderDetailPanel(
+                  provider: selected,
+                  onEdit: () => _promptEditAppProvider(context, selected),
+                  onDelete: () =>
+                      _confirmDeleteAppProvider(context, selected.id),
+                  onShowModels: () {
                     if (useAndroidHubNavigation(context)) {
-                      context.push(llmProviderModelsRoute(name));
+                      context.push(llmProviderModelsRoute(selected.id));
                     } else {
-                      setState(() => _modelsProviderName = name);
+                      setState(() => _modelsProviderId = selected.id);
                     }
                   },
                 ),
@@ -346,106 +322,57 @@ class _ProvidersTabContentState extends State<_ProvidersTabContent> {
   }
 }
 
-Future<void> _promptAddProvider(
-  BuildContext context,
-  LlmConfigCubit controller, {
+Future<void> _promptAddAppProvider(
+  BuildContext context, {
   bool hubStyle = false,
 }) async {
-  final l10n = context.l10n;
-  final nameController = TextEditingController();
-  final name = await showDialog<String>(
-    context: context,
-    builder: (context) => AlertDialog(
-      title: Text(l10n.addProvider),
-      content: AppOutlineTextField(
-        key: AppKeys.providerNameDialogField,
-        controller: nameController,
-        autofocus: true,
-        labelText: l10n.providerName,
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: Text(l10n.cancel),
-        ),
-        FilledButton(
-          onPressed: () => Navigator.pop(context, nameController.text.trim()),
-          child: Text(l10n.add),
-        ),
-      ],
-    ),
-  );
-  nameController.dispose();
-  if (name != null &&
-      name.isNotEmpty &&
-      !controller.state.config.providers.containsKey(name)) {
-    controller.addProvider(
-      LlmProviderConfig(name: name, type: 'api', providerType: 'openai'),
-    );
-    controller.selectProvider(name);
-    if (hubStyle && context.mounted) {
-      context.push(llmProviderConfigRoute(name));
-    }
-  }
-}
+  final appCubit = context.read<AppProviderCubit>();
+  final draft = await showAppProviderFormSheet(context);
+  if (draft == null || !context.mounted) return;
 
-Future<void> _promptRenameProvider(
-  BuildContext context,
-  LlmConfigCubit controller,
-  String currentName, {
-  bool hubStyle = false,
-  void Function(String from, String to)? onRenamed,
-}) async {
-  final l10n = context.l10n;
-  final nameController = TextEditingController(text: currentName);
-  final name = await showDialog<String>(
-    context: context,
-    builder: (context) => AlertDialog(
-      title: Text(l10n.renameProviderTitle),
-      content: AppOutlineTextField(
-        key: AppKeys.providerRenameDialogField,
-        controller: nameController,
-        autofocus: true,
-        labelText: l10n.providerName,
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: Text(l10n.cancel),
-        ),
-        FilledButton(
-          onPressed: () => Navigator.pop(context, nameController.text.trim()),
-          child: Text(l10n.save),
-        ),
-      ],
-    ),
-  );
-  nameController.dispose();
-  if (name == null || !context.mounted) return;
-  final trimmed = name.trim();
-  if (trimmed.isEmpty || trimmed == currentName) return;
-  if (!controller.renameProvider(currentName, trimmed)) return;
-  _notifyLlmProviderRenamed(context, currentName, trimmed);
-  onRenamed?.call(currentName, trimmed);
+  final existingIds = appCubit.state.providers.map((p) => p.id);
+  final baseId = draft.id.trim().isNotEmpty
+      ? draft.id.trim()
+      : AppProviderCubit.slugifyId(draft.name);
+  final id = AppProviderCubit.uniqueId(baseId, existingIds);
+  final provider = draft.copyWith(id: id, name: draft.name.trim());
+
+  await appCubit.upsertProvider(provider);
   if (!context.mounted) return;
-  if (hubStyle &&
-      GoRouterState.of(context).uri.path ==
-          llmProviderConfigRoute(currentName)) {
-    context.go(llmProviderConfigRoute(trimmed));
+  appCubit.selectProvider(id);
+  if (hubStyle) {
+    context.push(llmProviderConfigRoute(id));
   }
 }
 
-Future<void> _confirmDeleteProvider(
+Future<void> _promptEditAppProvider(
   BuildContext context,
-  LlmConfigCubit controller,
-  String name,
-) async {
+  AppProviderConfig existing, {
+  bool hubStyle = false,
+}) async {
+  final appCubit = context.read<AppProviderCubit>();
+  final updated = await showAppProviderFormSheet(context, existing: existing);
+  if (updated == null || !context.mounted) return;
+  await appCubit.upsertProvider(updated.copyWith(id: existing.id));
+  if (hubStyle && context.mounted) {
+    context.push(llmProviderConfigRoute(existing.id));
+  }
+}
+
+Future<void> _confirmDeleteAppProvider(BuildContext context, String id) async {
   final l10n = context.l10n;
+  final provider = context
+      .read<AppProviderCubit>()
+      .state
+      .providers
+      .where((p) => p.id == id)
+      .firstOrNull;
+  final label = provider?.name ?? id;
   final confirmed = await showDialog<bool>(
     context: context,
     builder: (context) => AlertDialog(
       title: Text(l10n.deleteProvider),
-      content: Text(l10n.deleteProviderConfirm(name)),
+      content: Text(l10n.deleteProviderConfirm(label)),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context, false),
@@ -458,8 +385,8 @@ Future<void> _confirmDeleteProvider(
       ],
     ),
   );
-  if (confirmed == true) {
-    controller.deleteProvider(name);
+  if (confirmed == true && context.mounted) {
+    await context.read<AppProviderCubit>().deleteProvider(id);
   }
 }
 
@@ -473,6 +400,7 @@ class _ProviderListPanel extends StatefulWidget {
     required this.onAdd,
     required this.onDelete,
     required this.onRename,
+    // ignore: unused_element_parameter
     this.hubStyle = false,
   });
 
@@ -711,10 +639,7 @@ class _ProviderListRow extends StatelessWidget {
                   size: 18,
                 ),
                 padding: const EdgeInsets.all(4),
-                constraints: const BoxConstraints(
-                  minWidth: 36,
-                  minHeight: 36,
-                ),
+                constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
                 itemBuilder: (context) => [
                   PopupMenuItem(
                     value: 'rename',
@@ -1567,20 +1492,83 @@ class _ProviderModelsTable extends StatelessWidget {
   }
 }
 
+// --- App provider models (FlashskyAI) ---
+
+class _AppProviderModelsPanel extends StatelessWidget {
+  const _AppProviderModelsPanel({required this.provider, required this.onBack});
+
+  final AppProviderConfig provider;
+  final VoidCallback onBack;
+
+  @override
+  Widget build(BuildContext context) {
+    final appCubit = context.watch<AppProviderCubit>();
+    final config = appCubit.flashskyaiLlmConfigFor(provider);
+    final llmProvider = config.providers[provider.id];
+    if (llmProvider == null) {
+      return Center(
+        child: Text('${context.l10n.missingProvider} ${provider.id}'),
+      );
+    }
+
+    Future<void> persist(Map<String, LlmModelConfig> models) {
+      return appCubit.updateFlashskyaiModels(provider.id, models);
+    }
+
+    return _ProviderModelsView(
+      key: ValueKey('app-models-${provider.id}-${config.models.length}'),
+      config: config,
+      provider: llmProvider,
+      onPersistModels: persist,
+      onBack: onBack,
+    );
+  }
+}
+
 // --- Provider models view ---
 
 class _ProviderModelsView extends StatelessWidget {
   const _ProviderModelsView({
     required this.config,
     required this.provider,
-    required this.controller,
+    this.controller,
+    this.onPersistModels,
     required this.onBack,
-  });
+    super.key,
+  }) : assert(
+         controller != null || onPersistModels != null,
+         'Provide controller or onPersistModels',
+       );
 
   final LlmConfig config;
   final LlmProviderConfig provider;
-  final LlmConfigCubit controller;
+  final LlmConfigCubit? controller;
+  final Future<void> Function(Map<String, LlmModelConfig> models)?
+  onPersistModels;
   final VoidCallback onBack;
+
+  Future<void> _saveAll(
+    BuildContext context,
+    Map<String, LlmModelConfig> models,
+  ) async {
+    if (onPersistModels != null) {
+      await onPersistModels!(models);
+      return;
+    }
+    final c = controller!;
+    for (final entry in models.entries) {
+      if (config.models.containsKey(entry.key)) {
+        c.updateModel(entry.key, entry.value);
+      } else {
+        c.addModel(entry.value);
+      }
+    }
+    for (final id in config.models.keys) {
+      if (!models.containsKey(id)) {
+        c.deleteModel(id);
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -1712,11 +1700,12 @@ class _ProviderModelsView extends StatelessWidget {
                             ),
                             Switch(
                               value: model.enabled,
-                              onChanged: (value) {
-                                controller.updateModel(
-                                  model.id,
-                                  model.copyWith(enabled: value),
+                              onChanged: (value) async {
+                                final next = Map<String, LlmModelConfig>.from(
+                                  config.models,
                                 );
+                                next[model.id] = model.copyWith(enabled: value);
+                                await _saveAll(context, next);
                               },
                             ),
                             IconButton(
@@ -1737,7 +1726,12 @@ class _ProviderModelsView extends StatelessWidget {
                                 minHeight: 36,
                               ),
                               icon: const Icon(Icons.delete_outline, size: 16),
-                              onPressed: () => controller.deleteModel(model.id),
+                              onPressed: () async {
+                                final next = Map<String, LlmModelConfig>.from(
+                                  config.models,
+                                )..remove(model.id);
+                                await _saveAll(context, next);
+                              },
                             ),
                           ],
                         ),
@@ -1761,7 +1755,10 @@ class _ProviderModelsView extends StatelessWidget {
       ),
     );
     if (result != null) {
-      controller.addModel(result);
+      if (!context.mounted) return;
+      final next = Map<String, LlmModelConfig>.from(config.models);
+      next[result.id] = result;
+      await _saveAll(context, next);
     }
   }
 
@@ -1776,7 +1773,10 @@ class _ProviderModelsView extends StatelessWidget {
       ),
     );
     if (result != null) {
-      controller.updateModel(model.id, result);
+      if (!context.mounted) return;
+      final next = Map<String, LlmModelConfig>.from(config.models);
+      next[model.id] = result;
+      await _saveAll(context, next);
     }
   }
 }

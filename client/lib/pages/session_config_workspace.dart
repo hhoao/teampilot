@@ -21,6 +21,10 @@ const _kSessionPathPersistDebounce = Duration(milliseconds: 400);
 /// Temporary: hide runtime mode until multi-mode UX is ready.
 const _kShowConnectionModeSetting = false;
 
+/// Team sessions use [AppStorage.commonFlashskyaiLlmConfigFile] from the
+/// app-level provider catalog; per-session LLM path override is legacy only.
+const _kShowLlmConfigPathSetting = false;
+
 class SessionConfigWorkspace extends StatelessWidget {
   const SessionConfigWorkspace({this.showHeading = true, super.key});
 
@@ -371,7 +375,7 @@ class _SessionControlsState extends State<_SessionControls> {
                   showDividerBelow: true,
                 ),
               ],
-              const _LlmConfigPathSettingsRow(),
+              if (_kShowLlmConfigPathSetting) const _LlmConfigPathSettingsRow(),
               SettingsLabeledRow(
                 title: l10n.autoLaunchAllMembersTitle,
                 subtitle: l10n.autoLaunchAllMembersDescription,

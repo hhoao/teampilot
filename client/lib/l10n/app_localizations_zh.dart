@@ -189,6 +189,18 @@ class AppLocalizationsZh extends AppLocalizations {
   String get addTeamTitle => '添加团队';
 
   @override
+  String get teamCliLabel => 'CLI 后端';
+
+  @override
+  String get teamCliSubtitle => '创建团队时选定，之后不可更改。';
+
+  @override
+  String get teamCliComingSoon => '即将支持';
+
+  @override
+  String get teamCliLockedSubtitle => '在创建团队时已选定。';
+
+  @override
   String get teamNameRequired => '团队名称不能为空。';
 
   @override
@@ -905,4 +917,52 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get membersAndFileTreeDescription => '将成员列表与文件树堆叠显示，或以标签页切换。';
+
+  @override
+  String get appProviderCatalogLabel => '应用级服务商目录';
+
+  @override
+  String get appProviderCatalogHint => 'TeamPilot 在此维护统一服务商；团队启动时会为各工具生成隔离配置。';
+
+  @override
+  String get appProviderPresetLabel => '预设';
+
+  @override
+  String get appProviderAdvancedJson => '高级 JSON 编辑';
+
+  @override
+  String get appProviderWebsite => '官网';
+
+  @override
+  String get appProviderEnabledTools => '启用的工具';
+
+  @override
+  String get appProviderToolFlashskyai => 'FlashskyAI';
+
+  @override
+  String get appProviderToolCodex => 'Codex';
+
+  @override
+  String get appProviderToolClaude => 'Claude Code';
+
+  @override
+  String get appProviderTeamToolSection => '团队工具服务商';
+
+  @override
+  String get appProviderTeamToolSubtitle => '选择本团队启动时，各工具使用的统一服务商。';
+
+  @override
+  String get appProviderTeamNone => '无';
+
+  @override
+  String get notes => '备注';
+
+  @override
+  String get defaultModel => '默认模型';
+
+  @override
+  String get editProvider => '编辑服务商';
+
+  @override
+  String get invalidJson => 'JSON 无效，请修正语法后重试。';
 }

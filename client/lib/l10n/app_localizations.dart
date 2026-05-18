@@ -458,6 +458,30 @@ abstract class AppLocalizations {
   /// **'Add team'**
   String get addTeamTitle;
 
+  /// No description provided for @teamCliLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'CLI backend'**
+  String get teamCliLabel;
+
+  /// No description provided for @teamCliSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Chosen when the team is created and cannot be changed later.'**
+  String get teamCliSubtitle;
+
+  /// No description provided for @teamCliComingSoon.
+  ///
+  /// In en, this message translates to:
+  /// **'Coming soon'**
+  String get teamCliComingSoon;
+
+  /// No description provided for @teamCliLockedSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Set when this team was created.'**
+  String get teamCliLockedSubtitle;
+
   /// No description provided for @teamNameRequired.
   ///
   /// In en, this message translates to:
@@ -1795,6 +1819,102 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Show members and file tree stacked or as tabs.'**
   String get membersAndFileTreeDescription;
+
+  /// No description provided for @appProviderCatalogLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'App provider catalog'**
+  String get appProviderCatalogLabel;
+
+  /// No description provided for @appProviderCatalogHint.
+  ///
+  /// In en, this message translates to:
+  /// **'TeamPilot stores unified providers here; team launches generate per-tool configs.'**
+  String get appProviderCatalogHint;
+
+  /// No description provided for @appProviderPresetLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Preset'**
+  String get appProviderPresetLabel;
+
+  /// No description provided for @appProviderAdvancedJson.
+  ///
+  /// In en, this message translates to:
+  /// **'Advanced JSON editor'**
+  String get appProviderAdvancedJson;
+
+  /// No description provided for @appProviderWebsite.
+  ///
+  /// In en, this message translates to:
+  /// **'Website'**
+  String get appProviderWebsite;
+
+  /// No description provided for @appProviderEnabledTools.
+  ///
+  /// In en, this message translates to:
+  /// **'Enabled tools'**
+  String get appProviderEnabledTools;
+
+  /// No description provided for @appProviderToolFlashskyai.
+  ///
+  /// In en, this message translates to:
+  /// **'FlashskyAI'**
+  String get appProviderToolFlashskyai;
+
+  /// No description provided for @appProviderToolCodex.
+  ///
+  /// In en, this message translates to:
+  /// **'Codex'**
+  String get appProviderToolCodex;
+
+  /// No description provided for @appProviderToolClaude.
+  ///
+  /// In en, this message translates to:
+  /// **'Claude Code'**
+  String get appProviderToolClaude;
+
+  /// No description provided for @appProviderTeamToolSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Tool providers for this team'**
+  String get appProviderTeamToolSection;
+
+  /// No description provided for @appProviderTeamToolSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Select which unified provider each tool uses when this team starts.'**
+  String get appProviderTeamToolSubtitle;
+
+  /// No description provided for @appProviderTeamNone.
+  ///
+  /// In en, this message translates to:
+  /// **'None'**
+  String get appProviderTeamNone;
+
+  /// No description provided for @notes.
+  ///
+  /// In en, this message translates to:
+  /// **'Notes'**
+  String get notes;
+
+  /// No description provided for @defaultModel.
+  ///
+  /// In en, this message translates to:
+  /// **'Default model'**
+  String get defaultModel;
+
+  /// No description provided for @editProvider.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit provider'**
+  String get editProvider;
+
+  /// No description provided for @invalidJson.
+  ///
+  /// In en, this message translates to:
+  /// **'Invalid JSON. Fix the syntax and try again.'**
+  String get invalidJson;
 }
 
 class _AppLocalizationsDelegate

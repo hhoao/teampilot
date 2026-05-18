@@ -1,5 +1,30 @@
 import 'package:flutter/foundation.dart';
 
+/// Backend CLI for a team session (`flashskyai`, `codex`, or `claude`).
+enum TeamCli {
+  flashskyai('flashskyai'),
+  codex('codex'),
+  claude('claude');
+
+  const TeamCli(this.value);
+
+  final String value;
+
+  static TeamCli decode(Object? raw) => tryParse(raw?.toString()) ?? flashskyai;
+
+  static TeamCli? tryParse(String? raw) {
+    final normalized = raw?.trim().toLowerCase();
+    if (normalized == null || normalized.isEmpty) return null;
+    for (final cli in TeamCli.values) {
+      if (cli.value == normalized) return cli;
+    }
+    return null;
+  }
+
+  /// Whether TeamPilot can launch a team terminal with this CLI today.
+  bool get isLaunchSupported => this == TeamCli.flashskyai;
+}
+
 @immutable
 class TeamMemberConfig {
   const TeamMemberConfig({
@@ -111,16 +136,16 @@ class TeamMemberConfig {
 
   @override
   int get hashCode => Object.hash(
-        id,
-        name,
-        provider,
-        model,
-        agent,
-        extraArgs,
-        prompt,
-        joinedAt,
-        dangerouslySkipPermissions,
-      );
+    id,
+    name,
+    provider,
+    model,
+    agent,
+    extraArgs,
+    prompt,
+    joinedAt,
+    dangerouslySkipPermissions,
+  );
 }
 
 @immutable
@@ -131,6 +156,8 @@ class TeamConfig {
     this.extraArgs = '',
     this.members = const [],
     this.skillIds = const [],
+    this.providerIdsByTool = const {},
+    this.cli = TeamCli.flashskyai,
     this.createdAt = 0,
     this.loop,
   });
@@ -159,12 +186,12 @@ class TeamConfig {
     final rawMembers = json['members'];
     final members = rawMembers is List
         ? rawMembers
-            .whereType<Map>()
-            .map(
-              (item) =>
-                  TeamMemberConfig.fromJson(Map<String, Object?>.from(item)),
-            )
-            .toList(growable: false)
+              .whereType<Map>()
+              .map(
+                (item) =>
+                    TeamMemberConfig.fromJson(Map<String, Object?>.from(item)),
+              )
+              .toList(growable: false)
         : const <TeamMemberConfig>[];
 
     final name = json['name'] as String? ?? '';
@@ -174,9 +201,22 @@ class TeamConfig {
       extraArgs: json['extraArgs'] as String? ?? '',
       members: members,
       skillIds: decodeSkillIds(json['skillIds']),
+      providerIdsByTool: _decodeProviderIdsByTool(json['providerIdsByTool']),
+      cli: TeamCli.decode(json['cli']),
       createdAt: (json['createdAt'] as num?)?.toInt() ?? 0,
       loop: decodeLoop(json['loop']),
     );
+  }
+
+  static Map<String, String> _decodeProviderIdsByTool(Object? raw) {
+    if (raw is! Map) return const {};
+    return {
+      for (final entry in raw.entries)
+        if (entry.key is String &&
+            entry.value != null &&
+            entry.value.toString().trim().isNotEmpty)
+          entry.key as String: entry.value.toString().trim(),
+    };
   }
 
   final String id;
@@ -186,6 +226,12 @@ class TeamConfig {
 
   /// Manifest [Skill.id] values enabled for this team.
   final List<String> skillIds;
+
+  /// App-level provider id per tool (`flashskyai`, `codex`, `claude`).
+  final Map<String, String> providerIdsByTool;
+
+  /// CLI backend for this team. Set at creation; not user-editable afterward.
+  final TeamCli cli;
   final int createdAt;
 
   /// When non-null, launch passes `--loop true` or `--loop false` (team mode).
@@ -199,6 +245,8 @@ class TeamConfig {
     String? extraArgs,
     List<TeamMemberConfig>? members,
     List<String>? skillIds,
+    Map<String, String>? providerIdsByTool,
+    TeamCli? cli,
     int? createdAt,
     bool? loop,
     bool updateLoop = false,
@@ -209,6 +257,8 @@ class TeamConfig {
       extraArgs: extraArgs ?? this.extraArgs,
       members: members ?? this.members,
       skillIds: skillIds ?? this.skillIds,
+      providerIdsByTool: providerIdsByTool ?? this.providerIdsByTool,
+      cli: cli ?? this.cli,
       createdAt: createdAt ?? this.createdAt,
       loop: updateLoop ? loop : this.loop,
     );
@@ -221,6 +271,8 @@ class TeamConfig {
       'extraArgs': extraArgs,
       'members': members.map((member) => member.toJson()).toList(),
       if (skillIds.isNotEmpty) 'skillIds': skillIds,
+      if (providerIdsByTool.isNotEmpty) 'providerIdsByTool': providerIdsByTool,
+      if (cli != TeamCli.flashskyai) 'cli': cli.value,
       'createdAt': createdAt,
       if (loop != null) 'loop': loop!,
     };
@@ -236,18 +288,22 @@ class TeamConfig {
             extraArgs == other.extraArgs &&
             listEquals(members, other.members) &&
             listEquals(skillIds, other.skillIds) &&
+            mapEquals(providerIdsByTool, other.providerIdsByTool) &&
+            cli == other.cli &&
             createdAt == other.createdAt &&
             loop == other.loop;
   }
 
   @override
   int get hashCode => Object.hash(
-        id,
-        name,
-        extraArgs,
-        Object.hashAll(members),
-        Object.hashAll(skillIds),
-        createdAt,
-        loop,
-      );
+    id,
+    name,
+    extraArgs,
+    Object.hashAll(members),
+    Object.hashAll(skillIds),
+    Object.hashAll(providerIdsByTool.entries),
+    cli,
+    createdAt,
+    loop,
+  );
 }

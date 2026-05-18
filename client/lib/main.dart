@@ -7,6 +7,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:window_manager/window_manager.dart';
 
+import 'cubits/app_provider_cubit.dart';
 import 'cubits/chat_cubit.dart';
 import 'cubits/config_cubit.dart';
 import 'cubits/layout_cubit.dart';
@@ -39,6 +40,7 @@ import 'services/terminal_fonts.dart';
 import 'services/flashskyai_cli_locator.dart';
 import 'services/remote_flashskyai_cli_locator.dart';
 import 'services/ssh_client_factory.dart';
+import 'services/provider_migration_service.dart';
 import 'services/team_skill_linker_service.dart';
 import 'services/temp_team_cleaner.dart';
 import 'services/terminal_transport_factory.dart';
@@ -124,6 +126,14 @@ void main() async {
   final homeDirectory =
       Platform.environment['HOME'] ?? Platform.environment['USERPROFILE'];
 
+  if (!Platform.isAndroid) {
+    await ProviderMigrationService(
+      homeDirectory: homeDirectory,
+      currentDirectory: Directory.current.path,
+      cliExecutablePath: cliLocated,
+    ).migrateIfNeeded();
+  }
+
   final sessionPreferencesCubit = SessionPreferencesCubit(
     repository: SessionPreferencesRepository(preferences),
     locatedExecutable: cliLocated,
@@ -144,6 +154,7 @@ void main() async {
   );
 
   late final LlmConfigCubit llmConfigCubit;
+  late final AppProviderCubit appProviderCubit;
   late final TeamCubit teamCubit;
   late final SkillCubit skillCubit;
   late final SessionRepository sessionRepo;
@@ -165,6 +176,7 @@ void main() async {
       await _reloadRemoteBackedAppData(
         storageRoots: storageRoots,
         llmConfigCubit: llmConfigCubit,
+        appProviderCubit: appProviderCubit,
         teamCubit: teamCubit,
         skillCubit: skillCubit,
         chatCubit: chatCubit,
@@ -200,6 +212,8 @@ void main() async {
     repos: SkillRepoService(storageRoots: storageRoots),
   );
 
+  appProviderCubit = AppProviderCubit();
+
   llmConfigCubit = LlmConfigCubit(
     appSettings: appSettings,
     currentDirectory: Directory.current.path,
@@ -224,6 +238,7 @@ void main() async {
     repository: teamRepo,
     executableResolver: () => sessionPreferencesCubit.resolveExecutable(),
     llmConfigPathOverride: llmConfigPathOverrideForLaunch,
+    storageRootsResolver: storageRoots.resolve,
     skillLinker: TeamSkillLinkerService(storageRoots: storageRoots),
     installedSkillsLoader: () => skillRepo.loadInstalled(),
   );
@@ -245,6 +260,7 @@ void main() async {
     tempTeamCleaner: tempTeamCleaner,
     cliSessionDescriptorExists: remoteCliSessionChecker.exists,
     llmConfigPathOverride: llmConfigPathOverrideForLaunch,
+    storageRootsResolver: storageRoots.resolve,
     autoLaunchAllMembersOnConnect: () =>
         sessionPreferencesCubit.state.preferences.autoLaunchAllMembersOnConnect,
     executableResolver: () => sessionPreferencesCubit.resolveExecutable(),
@@ -285,15 +301,14 @@ void main() async {
           RepositoryProvider<ConnectionModeService>.value(
             value: connectionModeService,
           ),
-          RepositoryProvider<FlashskyaiStorageRoots>.value(
-            value: storageRoots,
-          ),
+          RepositoryProvider<FlashskyaiStorageRoots>.value(value: storageRoots),
         ],
         child: MultiBlocProvider(
           providers: [
             BlocProvider.value(value: teamCubit),
             BlocProvider.value(value: chatCubit),
             BlocProvider.value(value: configCubit),
+            BlocProvider.value(value: appProviderCubit),
             BlocProvider.value(value: llmConfigCubit),
             BlocProvider.value(value: layoutCubit),
             BlocProvider.value(value: sessionPreferencesCubit),
@@ -313,6 +328,7 @@ void main() async {
         tempTeamCleaner: tempTeamCleaner,
         sshProfileCubit: sshProfileCubit,
         llmConfigCubit: llmConfigCubit,
+        appProviderCubit: appProviderCubit,
         teamCubit: teamCubit,
         skillCubit: skillCubit,
         chatCubit: chatCubit,
@@ -325,6 +341,7 @@ void main() async {
 Future<void> _reloadRemoteBackedAppData({
   required FlashskyaiStorageRoots storageRoots,
   required LlmConfigCubit llmConfigCubit,
+  required AppProviderCubit appProviderCubit,
   required TeamCubit teamCubit,
   required SkillCubit skillCubit,
   required ChatCubit chatCubit,
@@ -334,13 +351,12 @@ Future<void> _reloadRemoteBackedAppData({
   await storageRoots.resolve();
   await Future.wait([
     llmConfigCubit.load(),
+    appProviderCubit.load(),
     teamCubit.load(),
     skillCubit.loadAll(),
     chatCubit.loadProjectData(sessionRepo),
   ]);
-  await teamCubit.syncSelectedTeamSkills(
-    installed: skillCubit.state.installed,
-  );
+  await teamCubit.syncSelectedTeamSkills(installed: skillCubit.state.installed);
 }
 
 Future<void> _bootstrapAppData({
@@ -348,6 +364,7 @@ Future<void> _bootstrapAppData({
   required TempTeamCleaner tempTeamCleaner,
   required SshProfileCubit sshProfileCubit,
   required LlmConfigCubit llmConfigCubit,
+  required AppProviderCubit appProviderCubit,
   required TeamCubit teamCubit,
   required SkillCubit skillCubit,
   required ChatCubit chatCubit,
@@ -360,6 +377,7 @@ Future<void> _bootstrapAppData({
     _reloadRemoteBackedAppData(
       storageRoots: storageRoots,
       llmConfigCubit: llmConfigCubit,
+      appProviderCubit: appProviderCubit,
       teamCubit: teamCubit,
       skillCubit: skillCubit,
       chatCubit: chatCubit,

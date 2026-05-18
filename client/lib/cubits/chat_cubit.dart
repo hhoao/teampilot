@@ -13,6 +13,7 @@ import '../models/ssh_profile.dart';
 import '../models/team_config.dart';
 import '../repositories/session_repository.dart';
 import '../services/app_storage.dart';
+import '../services/team_launch_environment_builder.dart';
 import '../services/temp_team_cleaner.dart';
 import '../services/terminal_session.dart';
 import '../services/terminal_transport_factory.dart';
@@ -148,6 +149,7 @@ class ChatCubit extends Cubit<ChatState> {
     SessionRepository? sessionRepository,
     TerminalTransportFactory? transportFactory,
     SshActiveProfileResolver? sshProfileResolver,
+    StorageRootsResolver? storageRootsResolver,
     String Function()? sshDefaultWorkingDirectoryResolver,
     bool Function()? sshUseLoginShellResolver,
     ConnectionMode Function()? connectionModeResolver,
@@ -164,6 +166,7 @@ class ChatCubit extends Cubit<ChatState> {
        _executableResolver = executableResolver,
        _transportFactory = transportFactory,
        _sshProfileResolver = sshProfileResolver,
+       _storageRootsResolver = storageRootsResolver,
        _sshDefaultWorkingDirectoryResolver = sshDefaultWorkingDirectoryResolver,
        _sshUseLoginShellResolver = sshUseLoginShellResolver,
        _connectionModeResolver = connectionModeResolver,
@@ -182,6 +185,7 @@ class ChatCubit extends Cubit<ChatState> {
   final String Function() _executableResolver;
   final TerminalTransportFactory? _transportFactory;
   final SshActiveProfileResolver? _sshProfileResolver;
+  final StorageRootsResolver? _storageRootsResolver;
   final String Function()? _sshDefaultWorkingDirectoryResolver;
   final bool Function()? _sshUseLoginShellResolver;
   final ConnectionMode Function()? _connectionModeResolver;
@@ -238,10 +242,13 @@ class ChatCubit extends Cubit<ChatState> {
     return _terminalSessionFactory(executable: _executableResolver());
   }
 
-  Map<String, String>? _spawnEnvironment() {
-    final override = _llmConfigPathOverride?.call();
-    if (override == null || override.isEmpty) return null;
-    return {'LLM_CONFIG_PATH': override};
+  Future<Map<String, String>?> _spawnEnvironment(TeamConfig team) {
+    return TeamLaunchEnvironmentBuilder.build(
+      appDataBasePath: AppStorage.basePath,
+      team: team,
+      llmConfigPathOverride: _llmConfigPathOverride?.call(),
+      storageRootsResolver: _storageRootsResolver,
+    );
   }
 
   var _sessionCounter = 0;
@@ -442,8 +449,15 @@ class ChatCubit extends Cubit<ChatState> {
       ),
     );
     if (connectImmediately) {
-      _postFrameScheduler(() {
+      _postFrameScheduler(() async {
         try {
+          final env = team != null
+              ? await _spawnEnvironment(team)
+              : await TeamLaunchEnvironmentBuilder.build(
+                  appDataBasePath: AppStorage.basePath,
+                  team: const TeamConfig(id: '', name: ''),
+                  llmConfigPathOverride: _llmConfigPathOverride?.call(),
+                );
           ts.connect(
             workingDirectory: session.primaryPath,
             additionalDirectories: session.additionalPaths,
@@ -452,7 +466,7 @@ class ChatCubit extends Cubit<ChatState> {
             team: team,
             member: member,
             sessionTeam: cliTeamDirName,
-            extraEnvironment: _spawnEnvironment(),
+            extraEnvironment: env,
             onProcessFailed: () => _updateTabRunning(info.id),
             onProcessStarted: repo == null
                 ? null
@@ -583,19 +597,20 @@ class ChatCubit extends Cubit<ChatState> {
       return;
     }
     final launch = _workingDirectoryAndAddDirsForTab(tab);
-    _postFrameScheduler(() {
+    _postFrameScheduler(() async {
       try {
         if (shell.isRunning) {
           _updateTabRunning(tab.info.id);
           return;
         }
+        final env = await _spawnEnvironment(team);
         shell.connect(
           workingDirectory: launch.$1,
           additionalDirectories: launch.$2,
           team: team,
           member: member,
           sessionTeam: tab.sessionTeamName,
-          extraEnvironment: _spawnEnvironment(),
+          extraEnvironment: env,
           onProcessStarted: () => _updateTabRunning(tab.info.id),
           onProcessFailed: () => _updateTabRunning(tab.info.id),
         );

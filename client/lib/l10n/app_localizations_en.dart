@@ -199,6 +199,19 @@ class AppLocalizationsEn extends AppLocalizations {
   String get addTeamTitle => 'Add team';
 
   @override
+  String get teamCliLabel => 'CLI backend';
+
+  @override
+  String get teamCliSubtitle =>
+      'Chosen when the team is created and cannot be changed later.';
+
+  @override
+  String get teamCliComingSoon => 'Coming soon';
+
+  @override
+  String get teamCliLockedSubtitle => 'Set when this team was created.';
+
+  @override
   String get teamNameRequired => 'Team name is required.';
 
   @override
@@ -929,4 +942,54 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get membersAndFileTreeDescription =>
       'Show members and file tree stacked or as tabs.';
+
+  @override
+  String get appProviderCatalogLabel => 'App provider catalog';
+
+  @override
+  String get appProviderCatalogHint =>
+      'TeamPilot stores unified providers here; team launches generate per-tool configs.';
+
+  @override
+  String get appProviderPresetLabel => 'Preset';
+
+  @override
+  String get appProviderAdvancedJson => 'Advanced JSON editor';
+
+  @override
+  String get appProviderWebsite => 'Website';
+
+  @override
+  String get appProviderEnabledTools => 'Enabled tools';
+
+  @override
+  String get appProviderToolFlashskyai => 'FlashskyAI';
+
+  @override
+  String get appProviderToolCodex => 'Codex';
+
+  @override
+  String get appProviderToolClaude => 'Claude Code';
+
+  @override
+  String get appProviderTeamToolSection => 'Tool providers for this team';
+
+  @override
+  String get appProviderTeamToolSubtitle =>
+      'Select which unified provider each tool uses when this team starts.';
+
+  @override
+  String get appProviderTeamNone => 'None';
+
+  @override
+  String get notes => 'Notes';
+
+  @override
+  String get defaultModel => 'Default model';
+
+  @override
+  String get editProvider => 'Edit provider';
+
+  @override
+  String get invalidJson => 'Invalid JSON. Fix the syntax and try again.';
 }

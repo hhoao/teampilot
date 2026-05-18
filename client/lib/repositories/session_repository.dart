@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:path/path.dart' as p;
 import 'package:uuid/uuid.dart';
@@ -40,7 +39,7 @@ class SessionRepository {
 
   Future<SessionRepositoryFs> _fs() async {
     if (_storageRoots != null) {
-      final snap = await _storageRoots!.resolve();
+      final snap = await _storageRoots.resolve();
       return SessionRepositoryFs(
         projectsFile: p.join(snap.appProjectsDir, 'projects.json'),
         sessionsDir: p.join(snap.appProjectsDir, 'sessions'),

@@ -9,7 +9,6 @@ import 'package:path/path.dart' as p;
 
 import '../models/skill.dart';
 import '../utils/logger.dart';
-import 'remote_file_store.dart';
 import 'skill_fetch_service.dart';
 import 'skill_manifest_service.dart';
 
@@ -69,9 +68,7 @@ class SkillInstallService {
     final dir = Directory(p.join(skillsDir, basename));
     if (dir.existsSync()) {
       if (!overwrite) {
-        throw SkillInstallException(
-          'A skill already exists at ${dir.path}',
-        );
+        throw SkillInstallException('A skill already exists at ${dir.path}');
       }
       await dir.delete(recursive: true);
     }
@@ -102,11 +99,7 @@ class SkillInstallService {
     required String description,
     bool overwrite = false,
   }) async {
-    await _installFiles(
-      basename: basename,
-      files: files,
-      overwrite: overwrite,
-    );
+    await _installFiles(basename: basename, files: files, overwrite: overwrite);
 
     final hash = _hashSkillMd(files);
     final now = DateTime.now().millisecondsSinceEpoch;
@@ -267,9 +260,7 @@ class SkillInstallService {
 
     if (remote != null) {
       final posix = p.Context(style: p.Style.posix);
-      if (!await remote.fileExists(
-        posix.join(backup.backupPath, 'SKILL.md'),
-      )) {
+      if (!await remote.fileExists(posix.join(backup.backupPath, 'SKILL.md'))) {
         throw SkillInstallException(
           'Backup payload missing at ${backup.backupPath}',
         );
@@ -364,9 +355,7 @@ class SkillInstallService {
   Future<List<SkillUpdateInfo>> checkUpdates(List<Skill> installed) async {
     final updates = <SkillUpdateInfo>[];
     for (final s in installed) {
-      if (s.repoOwner == null ||
-          s.repoName == null ||
-          s.repoBranch == null) {
+      if (s.repoOwner == null || s.repoName == null || s.repoBranch == null) {
         continue;
       }
       try {
@@ -461,10 +450,7 @@ class SkillInstallService {
 
   Future<void> _copyDir(Directory src, Directory target) async {
     if (!target.existsSync()) target.createSync(recursive: true);
-    await for (final entity in src.list(
-      recursive: true,
-      followLinks: false,
-    )) {
+    await for (final entity in src.list(recursive: true, followLinks: false)) {
       final rel = p.relative(entity.path, from: src.path);
       final to = p.join(target.path, rel);
       if (entity is Directory) {

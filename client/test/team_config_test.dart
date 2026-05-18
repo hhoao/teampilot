@@ -32,6 +32,26 @@ void main() {
     expect(decoded, team);
   });
 
+  test(
+    'round trips providerIdsByTool and defaults to empty for legacy json',
+    () {
+      const team = TeamConfig(
+        id: 'team-1',
+        name: 'hello',
+        providerIdsByTool: {
+          'flashskyai': 'deepseek',
+          'codex': 'openai-official',
+        },
+      );
+
+      final decoded = TeamConfig.fromJson(team.toJson());
+      expect(decoded.providerIdsByTool, team.providerIdsByTool);
+
+      final legacy = TeamConfig.fromJson({'id': 't', 'name': 'T'});
+      expect(legacy.providerIdsByTool, isEmpty);
+    },
+  );
+
   test('decodeLoop accepts bool and string', () {
     expect(TeamConfig.decodeLoop(null), isNull);
     expect(TeamConfig.decodeLoop(true), isTrue);
@@ -42,22 +62,10 @@ void main() {
   });
 
   test('decodeDangerouslySkipPermissions accepts bool and string', () {
-    expect(
-      TeamMemberConfig.decodeDangerouslySkipPermissions(null),
-      isFalse,
-    );
-    expect(
-      TeamMemberConfig.decodeDangerouslySkipPermissions(true),
-      isTrue,
-    );
-    expect(
-      TeamMemberConfig.decodeDangerouslySkipPermissions('TRUE'),
-      isTrue,
-    );
-    expect(
-      TeamMemberConfig.decodeDangerouslySkipPermissions(false),
-      isFalse,
-    );
+    expect(TeamMemberConfig.decodeDangerouslySkipPermissions(null), isFalse);
+    expect(TeamMemberConfig.decodeDangerouslySkipPermissions(true), isTrue);
+    expect(TeamMemberConfig.decodeDangerouslySkipPermissions('TRUE'), isTrue);
+    expect(TeamMemberConfig.decodeDangerouslySkipPermissions(false), isFalse);
   });
 
   test('toJson omits loop when null', () {
@@ -81,20 +89,8 @@ void main() {
   });
 
   test('is invalid when name is blank', () {
-    expect(
-      const TeamConfig(
-        id: 'team-1',
-        name: '',
-      ).isValid,
-      isFalse,
-    );
-    expect(
-      const TeamConfig(
-        id: 'team-1',
-        name: 'hello',
-      ).isValid,
-      isTrue,
-    );
+    expect(const TeamConfig(id: 'team-1', name: '').isValid, isFalse);
+    expect(const TeamConfig(id: 'team-1', name: 'hello').isValid, isTrue);
   });
 
   test('member is invalid when name is blank', () {
@@ -109,10 +105,7 @@ void main() {
     const member = TeamMemberConfig(id: 'member-1', name: 'planner');
     final changedMember = member.copyWith(provider: 'openai', model: 'gpt-5.4');
 
-    const team = TeamConfig(
-      id: 'team-1',
-      name: 'hello',
-    );
+    const team = TeamConfig(id: 'team-1', name: 'hello');
     final changedTeam = team.copyWith(
       extraArgs: '--continue',
       members: [changedMember],
@@ -122,6 +115,20 @@ void main() {
     expect(changedMember.model, 'gpt-5.4');
     expect(changedTeam.extraArgs, '--continue');
     expect(changedTeam.members.single, changedMember);
+  });
+
+  test('round trips cli and defaults to flashskyai for legacy json', () {
+    const team = TeamConfig(
+      id: 'team-1',
+      name: 'hello',
+      cli: TeamCli.codex,
+    );
+    final decoded = TeamConfig.fromJson(team.toJson());
+    expect(decoded.cli, TeamCli.codex);
+
+    final legacy = TeamConfig.fromJson({'id': 't', 'name': 'T'});
+    expect(legacy.cli, TeamCli.flashskyai);
+    expect(legacy.toJson().containsKey('cli'), isFalse);
   });
 
   test('round trips skillIds', () {
@@ -136,10 +143,7 @@ void main() {
   });
 
   test('decodeSkillIds ignores invalid entries', () {
-    expect(
-      TeamConfig.decodeSkillIds(['a', '', null, '  ', 'b']),
-      ['a', 'b'],
-    );
+    expect(TeamConfig.decodeSkillIds(['a', '', null, '  ', 'b']), ['a', 'b']);
     expect(TeamConfig.decodeSkillIds(null), isEmpty);
   });
 
@@ -151,13 +155,7 @@ void main() {
   test('copyWith updateLoop clears or sets loop', () {
     const team = TeamConfig(id: 't', name: 'n', loop: true);
     expect(team.copyWith(name: 'x').loop, isTrue);
-    expect(
-      team.copyWith(loop: null, updateLoop: true).loop,
-      isNull,
-    );
-    expect(
-      team.copyWith(loop: false, updateLoop: true).loop,
-      isFalse,
-    );
+    expect(team.copyWith(loop: null, updateLoop: true).loop, isNull);
+    expect(team.copyWith(loop: false, updateLoop: true).loop, isFalse);
   });
 }

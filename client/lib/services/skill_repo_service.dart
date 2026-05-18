@@ -28,7 +28,7 @@ class SkillRepoService {
 
   Future<String> _configPath() async {
     if (_storageRoots != null) {
-      return (await _storageRoots!.resolve()).skillReposConfigPath;
+      return (await _storageRoots.resolve()).skillReposConfigPath;
     }
     return AppStorage.skillReposConfigPath;
   }
@@ -89,7 +89,7 @@ class SkillRepoService {
 
   Future<RemoteFileStore?> _remote() async {
     if (_storageRoots == null) return null;
-    final snap = await _storageRoots!.resolve();
+    final snap = await _storageRoots.resolve();
     return snap.storageIsRemote ? snap.remoteFileStore : null;
   }
 

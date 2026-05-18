@@ -24,10 +24,18 @@ enum TeamConfigSection { team, skills, members }
 
 extension TeamConfigSectionRoute on TeamConfigSection {
   String routeSegment() => switch (this) {
-        TeamConfigSection.team => 'team',
-        TeamConfigSection.skills => 'skills',
-        TeamConfigSection.members => 'members',
-      };
+    TeamConfigSection.team => 'team',
+    TeamConfigSection.skills => 'skills',
+    TeamConfigSection.members => 'members',
+  };
+}
+
+String _teamCliDisplayLabel(AppLocalizations l10n, TeamCli cli) {
+  return switch (cli) {
+    TeamCli.flashskyai => l10n.appProviderToolFlashskyai,
+    TeamCli.codex => l10n.appProviderToolCodex,
+    TeamCli.claude => l10n.appProviderToolClaude,
+  };
 }
 
 String _teamLoopChoiceLabel(AppLocalizations l10n, String? key) {
@@ -106,9 +114,7 @@ class TeamConfigHubPage extends StatelessWidget {
           if (!context.mounted || updated == null || updated.members.isEmpty) {
             return;
           }
-          context.push(
-            '/team-config/members/${updated.members.last.id}',
-          );
+          context.push('/team-config/members/${updated.members.last.id}');
         },
       ),
     ];
@@ -123,11 +129,7 @@ class TeamConfigHubPage extends StatelessWidget {
 }
 
 class TeamConfigPage extends StatelessWidget {
-  const TeamConfigPage({
-    required this.section,
-    this.memberId,
-    super.key,
-  });
+  const TeamConfigPage({required this.section, this.memberId, super.key});
 
   final TeamConfigSection section;
   final String? memberId;
@@ -158,8 +160,10 @@ class TeamConfigPage extends StatelessWidget {
     final resolvedMemberId = _effectiveMemberId(team);
     final body = switch (section) {
       TeamConfigSection.team => _TeamInfoSection(team: team, cubit: teamCubit),
-      TeamConfigSection.skills =>
-        _TeamSkillsSection(team: team, cubit: teamCubit),
+      TeamConfigSection.skills => _TeamSkillsSection(
+        team: team,
+        cubit: teamCubit,
+      ),
       TeamConfigSection.members => _MemberDetailSection(
         team: team,
         cubit: teamCubit,
@@ -199,8 +203,7 @@ class TeamConfigPage extends StatelessWidget {
                   }
                   context.go('/team-config/${s.routeSegment()}');
                 },
-                onSelectMember: (id) =>
-                    context.go('/team-config/members/$id'),
+                onSelectMember: (id) => context.go('/team-config/members/$id'),
                 onAddMember: () async {
                   await teamCubit.addMember();
                   final t = teamCubit.state.selectedTeam;
@@ -867,6 +870,22 @@ class _TeamInfoSectionState extends State<_TeamInfoSection> {
                     height: 1.35,
                   ),
                 ),
+                const SizedBox(height: 18),
+                _FieldLabel(text: l10n.teamCliLabel),
+                const SizedBox(height: 6),
+                Text(
+                  _teamCliDisplayLabel(l10n, widget.team.cli),
+                  style: Theme.of(context).textTheme.bodyLarge,
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  l10n.teamCliLockedSubtitle,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: textBase.withValues(alpha: 0.58),
+                    height: 1.35,
+                  ),
+                ),
                 const SizedBox(height: 14),
                 _FieldLabel(text: l10n.teamExtraArgs),
                 const SizedBox(height: 6),
@@ -1221,10 +1240,11 @@ class _MemberConfigFormState extends State<_MemberConfigForm> {
               _update(m.copyWith(agent: ''));
             } else if (v == FlashskyaiAgentCatalog.customDropdownValue) {
               final current = m.agent.trim();
-              final next = FlashskyaiAgentCatalog.isKnownAgentId(
-                current,
-                userAgentIds: _userAgentIds,
-              )
+              final next =
+                  FlashskyaiAgentCatalog.isKnownAgentId(
+                    current,
+                    userAgentIds: _userAgentIds,
+                  )
                   ? ''
                   : current;
               _agentCtl.text = next;

@@ -5,7 +5,10 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../models/skill.dart';
 import '../models/team_config.dart';
 import '../repositories/team_repository.dart';
+import '../services/app_storage.dart';
+import '../services/config_profile_service.dart';
 import '../services/launch_command_builder.dart';
+import '../services/team_launch_environment_builder.dart';
 import '../services/team_skill_linker_service.dart';
 import '../utils/logger.dart';
 
@@ -44,8 +47,9 @@ class TeamState extends Equatable {
   }) {
     return TeamState(
       teams: teams ?? this.teams,
-      selectedTeamId:
-          clearSelectedTeamId ? null : (selectedTeamId ?? this.selectedTeamId),
+      selectedTeamId: clearSelectedTeamId
+          ? null
+          : (selectedTeamId ?? this.selectedTeamId),
       statusMessage: statusMessage ?? this.statusMessage,
       isLoading: isLoading ?? this.isLoading,
       isLaunching: isLaunching ?? this.isLaunching,
@@ -55,17 +59,17 @@ class TeamState extends Equatable {
 
   @override
   List<Object?> get props => [
-        teams,
-        selectedTeamId,
-        statusMessage,
-        isLoading,
-        isLaunching,
-        isSyncingSkills,
-      ];
+    teams,
+    selectedTeamId,
+    statusMessage,
+    isLoading,
+    isLaunching,
+    isSyncingSkills,
+  ];
 }
 
-typedef TeamLauncher = Future<void> Function(
-    TeamConfig team, TeamMemberConfig member);
+typedef TeamLauncher =
+    Future<void> Function(TeamConfig team, TeamMemberConfig member);
 typedef StringProvider = String Function();
 typedef InstalledSkillsLoader = Future<List<Skill>> Function();
 
@@ -75,32 +79,81 @@ class TeamCubit extends Cubit<TeamState> {
     required String Function() executableResolver,
     TeamLauncher? launcher,
     String? Function()? llmConfigPathOverride,
+    String appDataBasePath = '',
+    ConfigProfileService? configProfileService,
+    StorageRootsResolver? storageRootsResolver,
     TeamSkillLinkerService? skillLinker,
     InstalledSkillsLoader? installedSkillsLoader,
-  })  : _repository = repository,
-        _executableResolver = executableResolver,
-        _llmConfigPathOverride = llmConfigPathOverride,
-        _skillLinker = skillLinker ?? TeamSkillLinkerService(),
-        _installedSkillsLoader = installedSkillsLoader,
-        _launcher = launcher ??
-            ((team, member) => LaunchCommandBuilder.launch(team,
-                member: member,
-                executable: executableResolver(),
-                extraEnvironment:
-                    _envFromOverride(llmConfigPathOverride?.call()))),
-        super(const TeamState());
+  }) : _repository = repository,
+       _executableResolver = executableResolver,
+       _llmConfigPathOverride = llmConfigPathOverride,
+       _appDataBasePath = appDataBasePath.isNotEmpty
+           ? appDataBasePath
+           : AppStorage.basePath,
+       _configProfileService = configProfileService,
+       _storageRootsResolver = storageRootsResolver,
+       _skillLinker = skillLinker ?? TeamSkillLinkerService(),
+       _installedSkillsLoader = installedSkillsLoader,
+       _launcher = launcher,
+       super(const TeamState());
 
   final TeamRepository _repository;
-  final TeamLauncher _launcher;
+  final TeamLauncher? _launcher;
   final String Function() _executableResolver;
-  // ignore: unused_field
   final String? Function()? _llmConfigPathOverride;
+  final String _appDataBasePath;
+  final ConfigProfileService? _configProfileService;
+  final StorageRootsResolver? _storageRootsResolver;
   final TeamSkillLinkerService _skillLinker;
   final InstalledSkillsLoader? _installedSkillsLoader;
 
-  static Map<String, String>? _envFromOverride(String? override) {
-    if (override == null || override.isEmpty) return null;
-    return {'LLM_CONFIG_PATH': override};
+  Future<Map<String, String>?> _buildLaunchEnvironment(TeamConfig team) {
+    return TeamLaunchEnvironmentBuilder.build(
+      appDataBasePath: _appDataBasePath,
+      team: team,
+      llmConfigPathOverride: _llmConfigPathOverride?.call(),
+      configProfileService: _configProfileService,
+      storageRootsResolver: _storageRootsResolver,
+    );
+  }
+
+  Future<ConfigProfileService> _profileService() async {
+    final injected = _configProfileService;
+    if (injected != null) return injected;
+    final resolver = _storageRootsResolver;
+    if (resolver == null) {
+      return ConfigProfileService(basePath: _appDataBasePath);
+    }
+    final roots = await resolver();
+    final remote = roots.remoteFileStore;
+    if (roots.storageIsRemote && remote != null) {
+      return ConfigProfileService(
+        basePath: roots.teampilotRoot,
+        createDirectory: remote.ensureDirectory,
+      );
+    }
+    return ConfigProfileService(basePath: roots.teampilotRoot);
+  }
+
+  Future<void> _ensureProfilesForTeams(List<TeamConfig> teams) async {
+    final profileService = await _profileService();
+    await profileService.ensureCommonProfiles();
+    for (final team in teams) {
+      await profileService.ensureTeamProfile(team.id, cli: team.cli);
+    }
+  }
+
+  Future<void> _runLaunch(TeamConfig team, TeamMemberConfig member) async {
+    final env = await _buildLaunchEnvironment(team);
+    final launch =
+        _launcher ??
+        (t, m) => LaunchCommandBuilder.launch(
+          t,
+          member: m,
+          executable: _executableResolver(),
+          extraEnvironment: env,
+        );
+    await launch(team, member);
   }
 
   String previewFor(TeamMemberConfig member) {
@@ -132,20 +185,27 @@ class TeamCubit extends Cubit<TeamState> {
       teams = [_defaultTeam()];
       await _repository.saveTeams(teams);
     }
-    emit(state.copyWith(
-      teams: teams,
-      selectedTeamId: teams.first.id,
-      isLoading: false,
-      statusMessage: 'Ready.',
-    ));
+    await _ensureProfilesForTeams(teams);
+    emit(
+      state.copyWith(
+        teams: teams,
+        selectedTeamId: teams.first.id,
+        isLoading: false,
+        statusMessage: 'Ready.',
+      ),
+    );
     appLogger.i('TeamCubit loaded ${teams.length} teams');
   }
 
   Future<void> selectTeam(String id) async {
     if (!state.teams.any((team) => team.id == id)) return;
     final team = state.teams.firstWhere((t) => t.id == id);
-    emit(state.copyWith(
-        selectedTeamId: id, statusMessage: 'Selected ${team.name}.'));
+    emit(
+      state.copyWith(
+        selectedTeamId: id,
+        statusMessage: 'Selected ${team.name}.',
+      ),
+    );
     await _syncSkillsForSelected();
   }
 
@@ -155,8 +215,7 @@ class TeamCubit extends Cubit<TeamState> {
 
   Future<void> removeSkillFromAllTeams(String skillId) async {
     final selected = state.selectedTeam;
-    final syncNeeded =
-        selected != null && selected.skillIds.contains(skillId);
+    final syncNeeded = selected != null && selected.skillIds.contains(skillId);
     var changed = false;
     final teams = [
       for (final team in state.teams)
@@ -190,8 +249,9 @@ class TeamCubit extends Cubit<TeamState> {
       if (installed != null) {
         catalog = installed;
       } else {
-        catalog = await (_installedSkillsLoader?.call() ??
-            Future.value(const <Skill>[]));
+        catalog =
+            await (_installedSkillsLoader?.call() ??
+                Future.value(const <Skill>[]));
       }
       final enabled = catalog.where((s) => s.enabled).toList(growable: false);
 
@@ -221,8 +281,7 @@ class TeamCubit extends Cubit<TeamState> {
 
       var status = state.statusMessage;
       if (result.linked.isNotEmpty) {
-        status =
-            'Linked ${result.linked.length} skill(s) for ${team.name}.';
+        status = 'Linked ${result.linked.length} skill(s) for ${team.name}.';
       } else if (team.skillIds.isEmpty) {
         status = 'Cleared CLI skills for ${team.name}.';
       }
@@ -243,15 +302,21 @@ class TeamCubit extends Cubit<TeamState> {
     }
   }
 
-  Future<bool> addTeam(String name) async {
+  Future<bool> addTeam(String name, {TeamCli cli = TeamCli.flashskyai}) async {
     final trimmed = name.trim();
     if (trimmed.isEmpty) {
       emit(state.copyWith(statusMessage: 'Team name is required.'));
       return false;
     }
     if (state.teams.any((t) => t.name == trimmed)) {
+      emit(state.copyWith(statusMessage: 'Team "$trimmed" already exists.'));
+      return false;
+    }
+    if (!cli.isLaunchSupported) {
       emit(
-        state.copyWith(statusMessage: 'Team "$trimmed" already exists.'),
+        state.copyWith(
+          statusMessage: 'CLI "${cli.value}" is not available for teams yet.',
+        ),
       );
       return false;
     }
@@ -259,15 +324,20 @@ class TeamCubit extends Cubit<TeamState> {
     final team = TeamConfig(
       id: trimmed,
       name: trimmed,
+      cli: cli,
       members: [TeamMemberConfig(id: memberName, name: memberName)],
     );
     final teams = [...state.teams, team];
-    emit(state.copyWith(
-      teams: teams,
-      selectedTeamId: team.id,
-      statusMessage: 'Added ${team.name}.',
-    ));
+    emit(
+      state.copyWith(
+        teams: teams,
+        selectedTeamId: team.id,
+        statusMessage: 'Added ${team.name}.',
+      ),
+    );
     await _repository.saveTeams(teams);
+    final profileService = await _profileService();
+    await profileService.ensureTeamProfile(team.id, cli: team.cli);
     await _syncSkillsForSelected();
     return true;
   }
@@ -283,9 +353,7 @@ class TeamCubit extends Cubit<TeamState> {
     }
     if (trimmed == selected.name) return true;
     if (state.teams.any((t) => t.name == trimmed && t.id != selected.id)) {
-      emit(
-        state.copyWith(statusMessage: 'Team "$trimmed" already exists.'),
-      );
+      emit(state.copyWith(statusMessage: 'Team "$trimmed" already exists.'));
       return false;
     }
     final oldName = selected.name;
@@ -294,11 +362,13 @@ class TeamCubit extends Cubit<TeamState> {
       for (final team in state.teams)
         if (team.id == selected.id) updated else team,
     ];
-    emit(state.copyWith(
-      teams: teams,
-      selectedTeamId: selected.id,
-      statusMessage: 'Renamed team to $trimmed.',
-    ));
+    emit(
+      state.copyWith(
+        teams: teams,
+        selectedTeamId: selected.id,
+        statusMessage: 'Renamed team to $trimmed.',
+      ),
+    );
     await _repository.saveTeams(teams);
     if (oldName != trimmed) {
       await _repository.deleteTeam(oldName);
@@ -317,13 +387,15 @@ class TeamCubit extends Cubit<TeamState> {
       for (final team in state.teams)
         if (team.id == selected.id) normalized else team,
     ];
-    emit(state.copyWith(
-      teams: teams,
-      selectedTeamId: normalized.id,
-      statusMessage: normalized.isValid
-          ? 'Saved ${normalized.name}.'
-          : 'Name is required.',
-    ));
+    emit(
+      state.copyWith(
+        teams: teams,
+        selectedTeamId: normalized.id,
+        statusMessage: normalized.isValid
+            ? 'Saved ${normalized.name}.'
+            : 'Name is required.',
+      ),
+    );
     await _repository.saveTeams(teams);
     if (skillsChanged) {
       await _syncSkillsForSelected();
@@ -334,13 +406,15 @@ class TeamCubit extends Cubit<TeamState> {
     final selected = state.selectedTeam;
     if (selected == null) return;
     await _repository.deleteTeam(selected.name);
-    var teams =
-        state.teams.where((team) => team.id != selected.id).toList();
+    var teams = state.teams.where((team) => team.id != selected.id).toList();
     if (teams.isEmpty) teams = [_defaultTeam()];
-    emit(state.copyWith(
+    emit(
+      state.copyWith(
         teams: teams,
         selectedTeamId: teams.first.id,
-        statusMessage: 'Deleted ${selected.name}.'));
+        statusMessage: 'Deleted ${selected.name}.',
+      ),
+    );
     await _repository.saveTeams(teams);
     await _syncSkillsForSelected();
   }
@@ -350,19 +424,21 @@ class TeamCubit extends Cubit<TeamState> {
     if (team == null) return;
     final name = _uniqueMemberName(team, 'New Member');
     final member = TeamMemberConfig(id: name, name: name);
-    await updateSelected(
-        team.copyWith(members: [...team.members, member]));
+    await updateSelected(team.copyWith(members: [...team.members, member]));
     emit(state.copyWith(statusMessage: 'Added ${member.name}.'));
   }
 
-  Future<void> updateMember(
-      String memberId, TeamMemberConfig updated) async {
+  Future<void> updateMember(String memberId, TeamMemberConfig updated) async {
     final team = state.selectedTeam;
     if (team == null) return;
-    await updateSelected(team.copyWith(members: [
-      for (final m in team.members)
-        if (m.id == memberId) updated else m,
-    ]));
+    await updateSelected(
+      team.copyWith(
+        members: [
+          for (final m in team.members)
+            if (m.id == memberId) updated else m,
+        ],
+      ),
+    );
   }
 
   /// Updates [TeamMemberConfig.provider] on every team when an LLM provider is renamed.
@@ -393,84 +469,101 @@ class TeamCubit extends Cubit<TeamState> {
     final team = state.selectedTeam;
     if (team == null) return;
     if (team.members.length == 1) {
-      emit(state.copyWith(
-          statusMessage: 'A team needs at least one member.'));
+      emit(state.copyWith(statusMessage: 'A team needs at least one member.'));
       return;
     }
-    final deleted =
-        team.members.firstWhere((m) => m.id == memberId);
-    await updateSelected(team.copyWith(
-      members: team.members
-          .where((m) => m.id != memberId)
-          .toList(growable: false),
-    ));
+    final deleted = team.members.firstWhere((m) => m.id == memberId);
+    await updateSelected(
+      team.copyWith(
+        members: team.members
+            .where((m) => m.id != memberId)
+            .toList(growable: false),
+      ),
+    );
     emit(state.copyWith(statusMessage: 'Deleted ${deleted.name}.'));
   }
 
   Future<void> launchMember(String memberId) async {
     final team = state.selectedTeam;
     if (team == null || team.name.trim().isEmpty) {
-      emit(state.copyWith(
-          statusMessage: 'Team name is required.'));
+      emit(state.copyWith(statusMessage: 'Team name is required.'));
       return;
     }
-    final member = team.members.firstWhere((m) => m.id == memberId,
-        orElse: () => const TeamMemberConfig(id: '', name: ''));
+    final member = team.members.firstWhere(
+      (m) => m.id == memberId,
+      orElse: () => const TeamMemberConfig(id: '', name: ''),
+    );
     if (!member.isValid) {
       emit(state.copyWith(statusMessage: 'Member name is required.'));
       return;
     }
-    emit(state.copyWith(
-        isLaunching: true, statusMessage: 'Starting ${member.name}...'));
+    emit(
+      state.copyWith(
+        isLaunching: true,
+        statusMessage: 'Starting ${member.name}...',
+      ),
+    );
     try {
-      await _launcher(team, member);
-      emit(state.copyWith(
+      await _runLaunch(team, member);
+      emit(
+        state.copyWith(
           isLaunching: false,
           statusMessage:
-              'Started ${member.name}: ${LaunchCommandBuilder.preview(team, member, executable: _executableResolver())}'));
+              'Started ${member.name}: ${LaunchCommandBuilder.preview(team, member, executable: _executableResolver())}',
+        ),
+      );
     } on Object catch (error) {
-      emit(state.copyWith(
-          isLaunching: false, statusMessage: 'Launch failed: $error'));
+      emit(
+        state.copyWith(
+          isLaunching: false,
+          statusMessage: 'Launch failed: $error',
+        ),
+      );
     }
   }
 
   Future<void> launchSelectedTeam() async {
     final team = state.selectedTeam;
     if (team == null || team.name.trim().isEmpty) {
-      emit(state.copyWith(
-          statusMessage: 'Team name is required.'));
+      emit(state.copyWith(statusMessage: 'Team name is required.'));
       return;
     }
-    final validMembers =
-        team.members.where((m) => m.isValid).toList();
+    final validMembers = team.members.where((m) => m.isValid).toList();
     if (validMembers.isEmpty) {
-      emit(state.copyWith(
-          statusMessage: 'At least one valid member is required.'));
+      emit(
+        state.copyWith(statusMessage: 'At least one valid member is required.'),
+      );
       return;
     }
-    emit(state.copyWith(
+    emit(
+      state.copyWith(
         isLaunching: true,
-        statusMessage: 'Starting ${validMembers.length} members...'));
+        statusMessage: 'Starting ${validMembers.length} members...',
+      ),
+    );
     try {
       for (final member in validMembers) {
-        await _launcher(team, member);
+        await _runLaunch(team, member);
       }
-      emit(state.copyWith(
+      emit(
+        state.copyWith(
           isLaunching: false,
-          statusMessage: 'Started ${validMembers.length} members.'));
+          statusMessage: 'Started ${validMembers.length} members.',
+        ),
+      );
     } on Object catch (error) {
-      emit(state.copyWith(
-          isLaunching: false, statusMessage: 'Launch failed: $error'));
+      emit(
+        state.copyWith(
+          isLaunching: false,
+          statusMessage: 'Launch failed: $error',
+        ),
+      );
     }
   }
 
   TeamConfig _defaultTeam() {
     const name = 'Default Team';
-    return TeamConfig(
-      id: name,
-      name: name,
-      members: [_defaultMember()],
-    );
+    return TeamConfig(id: name, name: name, members: [_defaultMember()]);
   }
 
   TeamMemberConfig _defaultMember() =>
