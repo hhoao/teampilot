@@ -236,6 +236,15 @@ class AppProviderConfig {
       category == AppProviderCategory.thirdParty ||
       category == AppProviderCategory.aggregator;
 
+  /// Model count from flashskyai tool config without building [LlmConfig].
+  int get flashskyaiModelCount {
+    if (!enables(AppProviderTool.flashskyai)) return 0;
+    final raw = toolConfigs.flashskyai.unknownFields['models'];
+    if (raw is Map) return raw.length;
+    if (defaultModel.trim().isNotEmpty) return 1;
+    return 0;
+  }
+
   AppProviderConfig copyWith({
     String? id,
     String? name,

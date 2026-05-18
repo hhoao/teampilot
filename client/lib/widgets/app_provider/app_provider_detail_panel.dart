@@ -24,10 +24,8 @@ class AppProviderDetailPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final cubit = context.read<AppProviderCubit>();
-    final llm = cubit.flashskyaiLlmConfigFor(provider);
-    final modelCount = llm.models.length;
     final requiresKey = provider.requiresApiKey;
+    final modelCount = provider.flashskyaiModelCount;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
@@ -78,31 +76,21 @@ class AppProviderDetailPanel extends StatelessWidget {
             _InfoRow(label: l10n.baseUrl, value: provider.baseUrl),
           if (provider.defaultModel.isNotEmpty)
             _InfoRow(label: l10n.defaultModel, value: provider.defaultModel),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              for (final tool in provider.enabledTools)
-                Chip(label: Text(_toolLabel(l10n, tool))),
-            ],
-          ),
+          if (provider.enabledTools.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Text(
+              provider.enabledTools
+                  .map((tool) => _toolLabel(l10n, tool))
+                  .join(' · '),
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
           const SizedBox(height: 24),
           Text(l10n.jsonPreview, style: Theme.of(context).textTheme.labelLarge),
           const SizedBox(height: 8),
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surfaceContainerHighest,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: SelectableText(
-              const ToolConfigGenerator()
-                  .buildFlashskyaiLlmConfig(provider)
-                  .toMaskedJsonString(),
-              style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
-            ),
-          ),
+          _ProviderJsonPreview(provider: provider),
         ],
       ),
     );
@@ -114,6 +102,72 @@ class AppProviderDetailPanel extends StatelessWidget {
       AppProviderTool.codex => l10n.appProviderToolCodex,
       AppProviderTool.claude => l10n.appProviderToolClaude,
     };
+  }
+}
+
+/// Builds masked JSON off the UI thread so first paint stays fast.
+class _ProviderJsonPreview extends StatefulWidget {
+  const _ProviderJsonPreview({required this.provider});
+
+  final AppProviderConfig provider;
+
+  @override
+  State<_ProviderJsonPreview> createState() => _ProviderJsonPreviewState();
+}
+
+class _ProviderJsonPreviewState extends State<_ProviderJsonPreview> {
+  static const _generator = ToolConfigGenerator();
+  String? _json;
+  int _loadGeneration = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _scheduleLoad();
+  }
+
+  @override
+  void didUpdateWidget(covariant _ProviderJsonPreview oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.provider.updatedAt != widget.provider.updatedAt ||
+        oldWidget.provider.id != widget.provider.id) {
+      _scheduleLoad();
+    }
+  }
+
+  void _scheduleLoad() {
+    final generation = ++_loadGeneration;
+    setState(() => _json = null);
+    Future<void>.microtask(() {
+      if (!mounted || generation != _loadGeneration) return;
+      final json = _generator
+          .buildFlashskyaiLlmConfig(widget.provider)
+          .toMaskedJsonString();
+      if (!mounted || generation != _loadGeneration) return;
+      setState(() => _json = json);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final json = _json;
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: json == null
+          ? const SizedBox(
+              height: 120,
+              child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+            )
+          : SelectableText(
+              json,
+              style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
+            ),
+    );
   }
 }
 
