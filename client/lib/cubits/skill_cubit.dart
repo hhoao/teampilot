@@ -158,10 +158,8 @@ class SkillCubit extends Cubit<SkillState> {
   }
 
   Future<void> refreshDiscoverable({bool force = false}) async {
-    final generation = ++_discoveryGeneration;
     final enabled = state.repos.where((r) => r.enabled).toList();
     if (enabled.isEmpty) {
-      if (generation != _discoveryGeneration) return;
       emit(
         state.copyWith(
           discoveryLoading: false,
@@ -171,18 +169,33 @@ class SkillCubit extends Cubit<SkillState> {
       );
       return;
     }
+    await _syncReposInBackground(enabled, force: force, clearError: true);
+  }
 
-    var syncing = enabled.map(SkillRepoDiskCacheService.repoKey).toSet();
+  /// Syncs only [reposToSync] against GitHub; discoverable list includes all enabled repos from disk.
+  Future<void> _syncReposInBackground(
+    List<SkillRepo> reposToSync, {
+    bool force = false,
+    bool clearError = false,
+  }) async {
+    if (reposToSync.isEmpty) return;
+
+    final generation = ++_discoveryGeneration;
+    final enabled = state.repos.where((r) => r.enabled).toList();
+    var syncing = {
+      ...state.repoSyncingKeys,
+      ...reposToSync.map(SkillRepoDiskCacheService.repoKey),
+    };
     emit(
       state.copyWith(
         discoveryLoading: true,
         discoverable: await _aggregateDiscoverableFromDisk(enabled),
         repoSyncingKeys: syncing,
-        clearError: true,
+        clearError: clearError,
       ),
     );
 
-    for (final repo in enabled) {
+    for (final repo in reposToSync) {
       if (generation != _discoveryGeneration) return;
       final key = SkillRepoDiskCacheService.repoKey(repo);
       try {
@@ -194,7 +207,9 @@ class SkillCubit extends Cubit<SkillState> {
       syncing = Set.of(syncing)..remove(key);
       emit(
         state.copyWith(
-          discoverable: await _aggregateDiscoverableFromDisk(enabled),
+          discoverable: await _aggregateDiscoverableFromDisk(
+            state.repos.where((r) => r.enabled).toList(),
+          ),
           discoveryLoading: true,
           repoSyncingKeys: syncing,
         ),
@@ -225,7 +240,9 @@ class SkillCubit extends Cubit<SkillState> {
       await _repo.repos.addRepo(repo);
       final repos = await _repo.loadRepos();
       emit(state.copyWith(repos: repos));
-      unawaited(refreshDiscoverable());
+      if (repo.enabled) {
+        unawaited(_syncReposInBackground([repo]));
+      }
     } catch (e) {
       emit(state.copyWith(errorMessage: '$e'));
     }
@@ -238,8 +255,20 @@ class SkillCubit extends Cubit<SkillState> {
       );
       await _repo.repos.removeRepo(owner, name);
       final repos = await _repo.loadRepos();
-      emit(state.copyWith(repos: repos));
-      unawaited(refreshDiscoverable());
+      final key = SkillRepoDiskCacheService.repoKey(
+        SkillRepo(owner: owner, name: name, branch: 'main'),
+      );
+      final discoverable = state.discoverable
+          .where((d) => d.repoOwner != owner || d.repoName != name)
+          .toList();
+      final syncing = Set.of(state.repoSyncingKeys)..remove(key);
+      emit(
+        state.copyWith(
+          repos: repos,
+          discoverable: discoverable,
+          repoSyncingKeys: syncing,
+        ),
+      );
     } catch (e) {
       emit(state.copyWith(errorMessage: '$e'));
     }
@@ -249,8 +278,31 @@ class SkillCubit extends Cubit<SkillState> {
     try {
       await _repo.repos.setEnabled(repo.owner, repo.name, enabled);
       final repos = await _repo.loadRepos();
-      emit(state.copyWith(repos: repos));
-      unawaited(refreshDiscoverable());
+      if (!enabled) {
+        final cacheKey = SkillRepoDiskCacheService.repoKey(repo);
+        final discoverable = state.discoverable
+            .where((d) => d.repoOwner != repo.owner || d.repoName != repo.name)
+            .toList();
+        final syncing = Set.of(state.repoSyncingKeys)..remove(cacheKey);
+        emit(
+          state.copyWith(
+            repos: repos,
+            discoverable: discoverable,
+            repoSyncingKeys: syncing,
+          ),
+        );
+        return;
+      }
+      final enabledRepos = repos.where((r) => r.enabled).toList();
+      emit(
+        state.copyWith(
+          repos: repos,
+          discoverable: await _aggregateDiscoverableFromDisk(enabledRepos),
+        ),
+      );
+      final updated =
+          repos.firstWhere((r) => r.owner == repo.owner && r.name == repo.name);
+      unawaited(_syncReposInBackground([updated]));
     } catch (e) {
       emit(state.copyWith(errorMessage: '$e'));
     }
