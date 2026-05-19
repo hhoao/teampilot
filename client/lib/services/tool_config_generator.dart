@@ -137,6 +137,15 @@ requires_openai_auth = true
     if (provider.baseUrl.isNotEmpty) {
       env.putIfAbsent('ANTHROPIC_BASE_URL', () => provider.baseUrl);
     }
+    final model = provider.defaultModel.trim();
+    if (model.isNotEmpty) {
+      env.putIfAbsent('ANTHROPIC_MODEL', () => model);
+      env.putIfAbsent('ANTHROPIC_DEFAULT_HAIKU_MODEL', () => model);
+      env.putIfAbsent('ANTHROPIC_DEFAULT_SONNET_MODEL', () => model);
+      env.putIfAbsent('ANTHROPIC_DEFAULT_OPUS_MODEL', () => model);
+    }
+    env.putIfAbsent('CCGUI_CLI_LOGIN_AUTHORIZED', () => '1');
+    env.putIfAbsent('CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC', () => '1');
     if (env.isNotEmpty) {
       settings['env'] = env;
     }

@@ -112,6 +112,7 @@ model = "gpt-5.4"
     final provider = AppProviderConfig(
       id: 'ds',
       name: 'DeepSeek',
+      defaultModel: 'deepseek-v4-pro[1m]',
       enabledTools: const [AppProviderTool.claude],
       toolConfigs: const AppProviderToolConfigs(
         claude: AppProviderToolConfigPayload(
@@ -129,6 +130,12 @@ model = "gpt-5.4"
     final env = settings['env'] as Map;
     expect(env['ANTHROPIC_BASE_URL'], 'https://api.deepseek.com');
     expect(env['ANTHROPIC_API_KEY'], 'sk-claude');
+    expect(env['ANTHROPIC_MODEL'], 'deepseek-v4-pro[1m]');
+    expect(env['ANTHROPIC_DEFAULT_HAIKU_MODEL'], 'deepseek-v4-pro[1m]');
+    expect(env['ANTHROPIC_DEFAULT_SONNET_MODEL'], 'deepseek-v4-pro[1m]');
+    expect(env['ANTHROPIC_DEFAULT_OPUS_MODEL'], 'deepseek-v4-pro[1m]');
+    expect(env['CCGUI_CLI_LOGIN_AUTHORIZED'], '1');
+    expect(env['CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC'], '1');
   });
 
   test('uses configured claude api key field', () {

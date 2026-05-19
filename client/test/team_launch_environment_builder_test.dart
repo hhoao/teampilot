@@ -137,6 +137,56 @@ void main() {
     expect((members.last as Map<String, Object?>)['cwd'], '/workspace/team-a');
   });
 
+  test('claude team launch writes settings from selected provider', () async {
+    final providerSettings = File(
+      p.join(base.path, 'providers', 'claude', 'deepseek', 'settings.json'),
+    );
+    await providerSettings.parent.create(recursive: true);
+    await providerSettings.writeAsString(
+      jsonEncode({
+        'env': {
+          'ANTHROPIC_BASE_URL': 'https://api.deepseek.com/anthropic',
+          'ANTHROPIC_AUTH_TOKEN': 'sk-test',
+          'ANTHROPIC_MODEL': 'deepseek-v4-pro[1m]',
+        },
+        'effortLevel': 'high',
+      }),
+    );
+
+    await TeamLaunchEnvironmentBuilder.build(
+      appDataBasePath: base.path,
+      team: const TeamConfig(
+        id: 'team-a',
+        name: 'Team A',
+        cli: TeamCli.claude,
+        providerIdsByTool: {'claude': 'deepseek'},
+      ),
+    );
+
+    final settingsFile = File(
+      p.join(
+        base.path,
+        'config-profiles',
+        'teams',
+        'team-a',
+        'claude',
+        'settings.json',
+      ),
+    );
+    final settings =
+        jsonDecode(await settingsFile.readAsString()) as Map<String, Object?>;
+    final env = settings['env'] as Map<String, Object?>;
+    expect(env['ANTHROPIC_BASE_URL'], 'https://api.deepseek.com/anthropic');
+    expect(env['ANTHROPIC_AUTH_TOKEN'], 'sk-test');
+    expect(env['ANTHROPIC_MODEL'], 'deepseek-v4-pro[1m]');
+    expect(env['CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS'], '1');
+    expect(env['CCGUI_CLI_LOGIN_AUTHORIZED'], '1');
+    expect(env['CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC'], '1');
+    expect(settings['effortLevel'], 'high');
+    expect(settings['skipDangerousModePermissionPrompt'], true);
+    expect(settings['teammateMode'], 'in-process');
+  });
+
   test('empty team id keeps legacy llm override fallback', () async {
     final env = await TeamLaunchEnvironmentBuilder.build(
       appDataBasePath: base.path,

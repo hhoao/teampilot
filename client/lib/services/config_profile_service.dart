@@ -111,6 +111,7 @@ class ConfigProfileService {
     TeamCli cli = TeamCli.flashskyai,
     List<TeamMemberConfig> members = const [],
     String workingDirectory = '',
+    Map<String, Object?>? claudeSettings,
   }) async {
     final trimmedTeamId = teamId.trim();
     if (trimmedTeamId.isEmpty) {
@@ -119,6 +120,7 @@ class ConfigProfileService {
 
     await ensureTeamProfile(trimmedTeamId, cli: cli);
     if (cli == TeamCli.claude) {
+      await _writeClaudeSettings(trimmedTeamId, claudeSettings);
       await _writeClaudeRoster(
         teamId: trimmedTeamId,
         members: members,
@@ -137,6 +139,18 @@ class ConfigProfileService {
         'CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS': '1',
       },
     };
+  }
+
+  Future<void> _writeClaudeSettings(
+    String teamId,
+    Map<String, Object?>? providerSettings,
+  ) async {
+    final file = File(p.join(teamToolDir(teamId, 'claude'), 'settings.json'));
+    final settings = _claudeTeamSettings(providerSettings);
+    await file.parent.create(recursive: true);
+    await file.writeAsString(
+      const JsonEncoder.withIndent('  ').convert(settings),
+    );
   }
 
   Future<void> _writeClaudeRoster({
@@ -237,6 +251,22 @@ class ConfigProfileService {
     }
     env['CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS'] = '1';
     return env;
+  }
+
+  static Map<String, Object?> _claudeTeamSettings(
+    Map<String, Object?>? providerSettings,
+  ) {
+    final settings = <String, Object?>{
+      if (providerSettings != null) ...providerSettings,
+    };
+    final env = _claudeRosterEnv(settings['env']);
+    env.putIfAbsent('CCGUI_CLI_LOGIN_AUTHORIZED', () => '1');
+    env.putIfAbsent('CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC', () => '1');
+    settings['env'] = env;
+    settings.putIfAbsent('effortLevel', () => 'xhigh');
+    settings.putIfAbsent('skipDangerousModePermissionPrompt', () => true);
+    settings.putIfAbsent('teammateMode', () => 'in-process');
+    return settings;
   }
 
   static Future<Map<String, Object?>> _readJsonObject(File file) async {
