@@ -18,7 +18,7 @@ import '../widgets/dropdown/flashsky_dropdown_field.dart';
 import '../widgets/settings/workspace_hub_shell.dart';
 import '../theme/workspace_surface_layers.dart';
 
-enum SkillSection { installed, discovery, repos, backups }
+enum SkillSection { installed, discovery, repos }
 
 extension SkillSectionRoute on SkillSection {
   String routeSegment() => name;
@@ -27,7 +27,6 @@ extension SkillSectionRoute on SkillSection {
     SkillSection.installed => l10n.skillsNavInstalled,
     SkillSection.discovery => l10n.skillsNavDiscovery,
     SkillSection.repos => l10n.skillsNavRepos,
-    SkillSection.backups => l10n.skillsNavBackups,
   };
 }
 
@@ -57,7 +56,6 @@ IconData _skillSectionIcon(SkillSection section) => switch (section) {
   SkillSection.installed => Icons.inventory_2_outlined,
   SkillSection.discovery => Icons.travel_explore_outlined,
   SkillSection.repos => Icons.source_outlined,
-  SkillSection.backups => Icons.history,
 };
 
 class SkillManagementPage extends StatelessWidget {
@@ -92,7 +90,6 @@ class SkillManagementPage extends StatelessWidget {
             onGoRepos: () => _goSection(context, SkillSection.repos),
           ),
           SkillSection.repos => _ReposSection(state: state),
-          SkillSection.backups => _BackupsSection(state: state),
         };
 
         if (useAndroidHubNavigation(context)) {
@@ -1461,152 +1458,6 @@ class _RepoRow extends StatelessWidget {
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-// ============================================================================
-// Backups section
-// ============================================================================
-
-class _BackupsSection extends StatelessWidget {
-  const _BackupsSection({required this.state});
-  final SkillState state;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = context.l10n;
-    if (state.backups.isEmpty) {
-      return _Card(
-        child: _EmptyBlock(
-          icon: Icons.history,
-          title: l10n.skillsBackupsEmpty,
-          hint: '',
-        ),
-      );
-    }
-    return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [for (final b in state.backups) _BackupRow(backup: b)],
-      ),
-    );
-  }
-}
-
-class _BackupRow extends StatelessWidget {
-  const _BackupRow({required this.backup});
-  final SkillBackup backup;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final l10n = context.l10n;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textBase = isDark ? Colors.white : const Color(0xFF111827);
-    final cubit = context.read<SkillCubit>();
-    final created = DateTime.fromMillisecondsSinceEpoch(backup.createdAt);
-    return _Card(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Flexible(
-                      child: Text(
-                        backup.skill.name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
-                          color: textBase,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 6,
-                        vertical: 2,
-                      ),
-                      decoration: BoxDecoration(
-                        color: cs.workspaceInset,
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Text(
-                        backup.skill.directory,
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: textBase.withValues(alpha: 0.7),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                if (backup.skill.description.isNotEmpty) ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    backup.skill.description,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: textBase.withValues(alpha: 0.65),
-                    ),
-                  ),
-                ],
-                const SizedBox(height: 6),
-                Text(
-                  '${l10n.skillsBackupCreatedAt}: ${created.toLocal()}',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: textBase.withValues(alpha: 0.5),
-                  ),
-                ),
-                Tooltip(
-                  message: backup.backupPath,
-                  child: Text(
-                    backup.backupPath,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: textBase.withValues(alpha: 0.4),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 12),
-          OutlinedButton(
-            onPressed: () => cubit.restoreBackup(backup),
-            child: Text(l10n.skillsBackupRestore),
-          ),
-          const SizedBox(width: 8),
-          OutlinedButton(
-            style: OutlinedButton.styleFrom(
-              foregroundColor: Theme.of(context).colorScheme.error,
-            ),
-            onPressed: () async {
-              final ok = await _confirm(
-                context,
-                title: l10n.skillsBackupDelete,
-                message: l10n.skillsBackupDeleteConfirm(backup.skill.name),
-                confirmLabel: l10n.skillsBackupDelete,
-                destructive: true,
-              );
-              if (ok) await cubit.deleteBackup(backup);
-            },
-            child: Text(l10n.skillsBackupDelete),
-          ),
-        ],
       ),
     );
   }

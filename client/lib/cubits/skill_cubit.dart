@@ -51,7 +51,6 @@ class SkillState extends Equatable {
     this.repos = const [],
     this.discoverable = const [],
     this.updates = const [],
-    this.backups = const [],
     this.skillsSh = const SkillsShSearchState(),
     this.status = SkillLoadStatus.idle,
     this.errorMessage,
@@ -65,7 +64,6 @@ class SkillState extends Equatable {
   final List<SkillRepo> repos;
   final List<DiscoverableSkill> discoverable;
   final List<SkillUpdateInfo> updates;
-  final List<SkillBackup> backups;
   final SkillsShSearchState skillsSh;
   final SkillLoadStatus status;
   final String? errorMessage;
@@ -79,7 +77,6 @@ class SkillState extends Equatable {
     List<SkillRepo>? repos,
     List<DiscoverableSkill>? discoverable,
     List<SkillUpdateInfo>? updates,
-    List<SkillBackup>? backups,
     SkillsShSearchState? skillsSh,
     SkillLoadStatus? status,
     String? errorMessage,
@@ -93,7 +90,6 @@ class SkillState extends Equatable {
     repos: repos ?? this.repos,
     discoverable: discoverable ?? this.discoverable,
     updates: updates ?? this.updates,
-    backups: backups ?? this.backups,
     skillsSh: skillsSh ?? this.skillsSh,
     status: status ?? this.status,
     errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
@@ -109,7 +105,6 @@ class SkillState extends Equatable {
     repos,
     discoverable,
     updates,
-    backups,
     skillsSh,
     status,
     errorMessage,
@@ -137,16 +132,13 @@ class SkillCubit extends Cubit<SkillState> {
       final results = await Future.wait([
         _repo.loadInstalled(),
         _repo.loadRepos(),
-        _repo.loadBackups(),
       ]);
       final installed = results[0] as List<Skill>;
       final repos = results[1] as List<SkillRepo>;
-      final backups = results[2] as List<SkillBackup>;
       emit(
         state.copyWith(
           installed: installed,
           repos: repos,
-          backups: backups,
           status: SkillLoadStatus.ready,
         ),
       );
@@ -387,8 +379,7 @@ class SkillCubit extends Cubit<SkillState> {
     try {
       await _repo.uninstall(s);
       final installed = await _repo.loadInstalled();
-      final backups = await _repo.loadBackups();
-      emit(state.copyWith(installed: installed, backups: backups));
+      emit(state.copyWith(installed: installed));
       await _onSkillUninstalled?.call(s.id);
     } catch (e) {
       emit(state.copyWith(errorMessage: '$e'));
@@ -420,15 +411,8 @@ class SkillCubit extends Cubit<SkillState> {
     try {
       await _repo.updateSkill(s);
       final installed = await _repo.loadInstalled();
-      final backups = await _repo.loadBackups();
       final updates = state.updates.where((u) => u.id != s.id).toList();
-      emit(
-        state.copyWith(
-          installed: installed,
-          backups: backups,
-          updates: updates,
-        ),
-      );
+      emit(state.copyWith(installed: installed, updates: updates));
     } catch (e) {
       emit(state.copyWith(errorMessage: '$e'));
     } finally {
@@ -444,27 +428,6 @@ class SkillCubit extends Cubit<SkillState> {
       final skill = match.first;
       if (skill.repoOwner == null) continue;
       await updateSkill(skill);
-    }
-  }
-
-  Future<void> restoreBackup(SkillBackup b) async {
-    try {
-      await _repo.restoreBackup(b);
-      final installed = await _repo.loadInstalled();
-      final backups = await _repo.loadBackups();
-      emit(state.copyWith(installed: installed, backups: backups));
-    } catch (e) {
-      emit(state.copyWith(errorMessage: '$e'));
-    }
-  }
-
-  Future<void> deleteBackup(SkillBackup b) async {
-    try {
-      await _repo.deleteBackup(b);
-      final backups = await _repo.loadBackups();
-      emit(state.copyWith(backups: backups));
-    } catch (e) {
-      emit(state.copyWith(errorMessage: '$e'));
     }
   }
 

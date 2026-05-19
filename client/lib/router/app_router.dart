@@ -212,12 +212,6 @@ final appRouter = GoRouter(
           ),
         ),
         GoRoute(
-          path: '/skills/backups',
-          pageBuilder: (context, state) => const NoTransitionPage(
-            child: SkillManagementPage(section: SkillSection.backups),
-          ),
-        ),
-        GoRoute(
           path: '/ssh-profiles',
           redirect: (context, state) => '/config/ssh-profiles',
         ),

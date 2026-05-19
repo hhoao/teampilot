@@ -249,7 +249,6 @@
   "skillsNavInstalled": "Installed",
   "skillsNavDiscovery": "Discovery",
   "skillsNavRepos": "Repos",
-  "skillsNavBackups": "Backups",
   "skillsInstalledCount": "{count} installed",
   "@skillsInstalledCount": {
     "placeholders": {
@@ -304,19 +303,7 @@
       }
     }
   },
-  "skillsBackupsEmpty": "No backups yet",
-  "skillsBackupRestore": "Restore",
-  "skillsBackupDelete": "Delete",
-  "skillsBackupDeleteConfirm": "Delete backup {name}? This cannot be undone.",
-  "@skillsBackupDeleteConfirm": {
-    "placeholders": {
-      "name": {
-        "type": "String"
-      }
-    }
-  },
-  "skillsBackupCreatedAt": "Created at",
-  "skillsUninstallConfirm": "Uninstall {name}? Files will be moved to backups.",
+  "skillsUninstallConfirm": "Uninstall {name}?",
   "@skillsUninstallConfirm": {
     "placeholders": {
       "name": {

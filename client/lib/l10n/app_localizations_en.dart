@@ -618,9 +618,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get skillsNavRepos => 'Repos';
 
   @override
-  String get skillsNavBackups => 'Backups';
-
-  @override
   String skillsInstalledCount(int count) {
     return '$count installed';
   }
@@ -729,25 +726,8 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get skillsBackupsEmpty => 'No backups yet';
-
-  @override
-  String get skillsBackupRestore => 'Restore';
-
-  @override
-  String get skillsBackupDelete => 'Delete';
-
-  @override
-  String skillsBackupDeleteConfirm(String name) {
-    return 'Delete backup $name? This cannot be undone.';
-  }
-
-  @override
-  String get skillsBackupCreatedAt => 'Created at';
-
-  @override
   String skillsUninstallConfirm(String name) {
-    return 'Uninstall $name? Files will be moved to backups.';
+    return 'Uninstall $name?';
   }
 
   @override

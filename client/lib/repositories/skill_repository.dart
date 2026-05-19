@@ -54,7 +54,6 @@ class SkillRepository {
   final SkillsShService skillsSh;
 
   Future<List<Skill>> loadInstalled() => manifest.loadSkills();
-  Future<List<SkillBackup>> loadBackups() => manifest.loadBackups();
   Future<List<SkillRepo>> loadRepos() => repos.loadRepos();
 
   Future<List<DiscoverableSkill>> readCachedDiscoverable(SkillRepo repo) =>
@@ -78,9 +77,10 @@ class SkillRepository {
   Future<List<Skill>> installFromZip(File zip, {bool overwrite = false}) =>
       install.installFromZip(zip, overwrite: overwrite);
 
-  Future<SkillBackup> uninstall(Skill s) => install.uninstall(s);
-  Future<Skill> restoreBackup(SkillBackup b) => install.restoreBackup(b);
-  Future<void> deleteBackup(SkillBackup b) => install.deleteBackup(b);
+  Future<void> uninstall(Skill s) async {
+    await install.uninstall(s);
+  }
+
   Future<Skill> updateSkill(Skill s) => install.updateSkill(s);
 
   Future<List<UnmanagedSkill>> scanUnmanaged() => install.scanUnmanaged();

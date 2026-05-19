@@ -1238,12 +1238,6 @@ abstract class AppLocalizations {
   /// **'Repos'**
   String get skillsNavRepos;
 
-  /// No description provided for @skillsNavBackups.
-  ///
-  /// In en, this message translates to:
-  /// **'Backups'**
-  String get skillsNavBackups;
-
   /// No description provided for @skillsInstalledCount.
   ///
   /// In en, this message translates to:
@@ -1442,40 +1436,10 @@ abstract class AppLocalizations {
   /// **'Remove repo {name}?'**
   String skillsRepoRemoveConfirm(String name);
 
-  /// No description provided for @skillsBackupsEmpty.
-  ///
-  /// In en, this message translates to:
-  /// **'No backups yet'**
-  String get skillsBackupsEmpty;
-
-  /// No description provided for @skillsBackupRestore.
-  ///
-  /// In en, this message translates to:
-  /// **'Restore'**
-  String get skillsBackupRestore;
-
-  /// No description provided for @skillsBackupDelete.
-  ///
-  /// In en, this message translates to:
-  /// **'Delete'**
-  String get skillsBackupDelete;
-
-  /// No description provided for @skillsBackupDeleteConfirm.
-  ///
-  /// In en, this message translates to:
-  /// **'Delete backup {name}? This cannot be undone.'**
-  String skillsBackupDeleteConfirm(String name);
-
-  /// No description provided for @skillsBackupCreatedAt.
-  ///
-  /// In en, this message translates to:
-  /// **'Created at'**
-  String get skillsBackupCreatedAt;
-
   /// No description provided for @skillsUninstallConfirm.
   ///
   /// In en, this message translates to:
-  /// **'Uninstall {name}? Files will be moved to backups.'**
+  /// **'Uninstall {name}?'**
   String skillsUninstallConfirm(String name);
 
   /// No description provided for @skillsOverwriteConfirm.

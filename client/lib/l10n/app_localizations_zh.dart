@@ -604,9 +604,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get skillsNavRepos => '仓库';
 
   @override
-  String get skillsNavBackups => '备份';
-
-  @override
   String skillsInstalledCount(int count) {
     return '已安装 $count';
   }
@@ -713,25 +710,8 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String get skillsBackupsEmpty => '暂无备份';
-
-  @override
-  String get skillsBackupRestore => '恢复';
-
-  @override
-  String get skillsBackupDelete => '删除';
-
-  @override
-  String skillsBackupDeleteConfirm(String name) {
-    return '删除备份 $name？此操作不可撤销。';
-  }
-
-  @override
-  String get skillsBackupCreatedAt => '创建时间';
-
-  @override
   String skillsUninstallConfirm(String name) {
-    return '卸载 $name？文件会移入备份目录。';
+    return '卸载 $name？';
   }
 
   @override
