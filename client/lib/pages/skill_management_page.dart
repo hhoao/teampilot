@@ -4,14 +4,15 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:infinite_scroll_pagination/infinite_scroll_pagination.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../cubits/skill_cubit.dart';
+import '../services/skill_repo_disk_cache_service.dart';
 import '../l10n/l10n_extensions.dart';
 import '../models/skill.dart';
 import '../services/platform_utils.dart';
 import '../utils/app_keys.dart';
+import '../utils/skill_repo_parse.dart';
 import '../widgets/app_outline_text_field.dart';
 import '../widgets/dropdown/flashsky_dropdown_field.dart';
 import '../widgets/settings/workspace_hub_shell.dart';
@@ -723,60 +724,45 @@ class _DiscoverySectionState extends State<_DiscoverySection> {
   String _filterRepo = 'all';
   String _filterStatus = 'all';
   final _skillsShCtl = TextEditingController();
-  static const _pageSize = 30;
-
-  late final PagingController<int, DiscoverableSkill> _pagingController;
-  SkillState? _lastState;
-
-  Set<String> _installedKeys(SkillState s) => s.installed
-      .map(
-        (sk) =>
-            '${sk.directory.toLowerCase()}:${(sk.repoOwner ?? '').toLowerCase()}:${(sk.repoName ?? '').toLowerCase()}',
-      )
-      .toSet();
-
-  @override
-  void initState() {
-    super.initState();
-    _pagingController = PagingController<int, DiscoverableSkill>(
-      getNextPageKey: (s) {
-        final allItems = (s.pages ?? const []).expand((p) => p).toList();
-        return allItems.length;
-      },
-      fetchPage: (pageKey) {
-        final ik = _installedKeys(widget.state);
-        final all = _filtered(ik);
-        final start = pageKey;
-        final end = (start + _pageSize).clamp(0, all.length);
-        if (start >= all.length) return const [];
-        return all.sublist(start, end);
-      },
-    );
-    _lastState = widget.state;
-  }
-
-  @override
-  void didUpdateWidget(covariant _DiscoverySection oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (widget.state.discoverable != _lastState?.discoverable ||
-        oldWidget.state != widget.state) {
-      _lastState = widget.state;
-      _pagingController.refresh();
-    }
-  }
 
   @override
   void dispose() {
-    _pagingController.dispose();
     _skillsShCtl.dispose();
     super.dispose();
   }
 
+  /// Filter value → short label (`owner/name`) for the repo dropdown.
+  Map<String, String> _repoFilterChoices(
+    SkillState state,
+    AppLocalizations l10n,
+  ) {
+    final choices = <String, String>{'all': l10n.skillsFilterRepoAll};
+    for (final r in state.repos.where((r) => r.enabled)) {
+      choices[r.githubUrl] = r.fullName;
+    }
+    for (final d in state.discoverable) {
+      final url = 'https://github.com/${d.repoOwner}/${d.repoName}';
+      choices.putIfAbsent(url, () => '${d.repoOwner}/${d.repoName}');
+    }
+    return choices;
+  }
+
+  String _resolveRepoFilter(String raw, Map<String, String> choices) {
+    if (choices.containsKey(raw)) return raw;
+    final byLabel = choices.entries.where((e) => e.value == raw).toList();
+    if (byLabel.length == 1) return byLabel.first.key;
+    return 'all';
+  }
+
+  bool _matchesRepoFilter(DiscoverableSkill d) {
+    if (_filterRepo == 'all') return true;
+    final url = 'https://github.com/${d.repoOwner}/${d.repoName}';
+    return url == _filterRepo || '${d.repoOwner}/${d.repoName}' == _filterRepo;
+  }
+
   List<DiscoverableSkill> _filtered(Set<String> installedKeys) {
     return widget.state.discoverable.where((d) {
-      if (_filterRepo != 'all') {
-        if ('${d.repoOwner}/${d.repoName}' != _filterRepo) return false;
-      }
+      if (!_matchesRepoFilter(d)) return false;
       final installKey =
           '${d.directory.split('/').last.toLowerCase()}:${d.repoOwner.toLowerCase()}:${d.repoName.toLowerCase()}';
       final installed = installedKeys.contains(installKey);
@@ -813,19 +799,13 @@ class _DiscoverySectionState extends State<_DiscoverySection> {
                   _SourceToggle(
                     label: l10n.skillsSourceRepos,
                     selected: _source == _SearchSource.repos,
-                    onTap: () {
-                      setState(() => _source = _SearchSource.repos);
-                      _pagingController.refresh();
-                    },
+                    onTap: () => setState(() => _source = _SearchSource.repos),
                   ),
                   const SizedBox(width: 8),
                   _SourceToggle(
                     label: l10n.skillsSourceSkillsSh,
                     selected: _source == _SearchSource.skillsSh,
-                    onTap: () {
-                      setState(() => _source = _SearchSource.skillsSh);
-                      _pagingController.refresh();
-                    },
+                    onTap: () => setState(() => _source = _SearchSource.skillsSh),
                   ),
                   const Spacer(),
                   if (_source == _SearchSource.repos)
@@ -833,8 +813,10 @@ class _DiscoverySectionState extends State<_DiscoverySection> {
                       tooltip: l10n.skillsCheckUpdates,
                       onPressed: state.discoveryLoading
                           ? null
-                          : cubit.refreshDiscoverable,
-                      icon: state.discoveryLoading
+                          : () => cubit.refreshDiscoverable(force: true),
+                      icon:
+                          state.discoveryLoading ||
+                              state.repoSyncingKeys.isNotEmpty
                           ? const SizedBox(
                               width: 14,
                               height: 14,
@@ -844,6 +826,26 @@ class _DiscoverySectionState extends State<_DiscoverySection> {
                     ),
                 ],
               ),
+              if (_source == _SearchSource.repos &&
+                  state.repoSyncingKeys.isNotEmpty) ...[
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    const SizedBox(
+                      width: 14,
+                      height: 14,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        l10n.skillsDiscoverySyncing,
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
               const SizedBox(height: 14),
               if (_source == _SearchSource.repos)
                 _buildReposFilters(context, state)
@@ -853,7 +855,7 @@ class _DiscoverySectionState extends State<_DiscoverySection> {
           ),
         ),
         if (_source == _SearchSource.repos)
-          _buildReposPagedGrid(context, state, installedKeys)
+          _buildReposGrid(context, state, installedKeys)
         else
           _buildSkillsShGrid(context, state, cubit, installedKeys),
       ],
@@ -862,19 +864,21 @@ class _DiscoverySectionState extends State<_DiscoverySection> {
 
   Widget _buildReposFilters(BuildContext context, SkillState state) {
     final l10n = context.l10n;
-    final repoOptions = <String>{
-      for (final d in state.discoverable) '${d.repoOwner}/${d.repoName}',
-    }.toList()..sort();
-    final repoItems = <String>['all', ...repoOptions];
-    final effectiveRepo = repoItems.contains(_filterRepo) ? _filterRepo : 'all';
+    final repoChoices = _repoFilterChoices(state, l10n);
+    final repoItems = repoChoices.keys.toList()
+      ..sort((a, b) {
+        if (a == 'all') return -1;
+        if (b == 'all') return 1;
+        return repoChoices[a]!.compareTo(repoChoices[b]!);
+      });
+    final effectiveRepo = _resolveRepoFilter(_filterRepo, repoChoices);
     if (effectiveRepo != _filterRepo) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
         setState(() => _filterRepo = effectiveRepo);
-        _pagingController.refresh();
       });
     }
-    String repoLabel(String v) => v == 'all' ? l10n.skillsFilterRepoAll : v;
+    String repoLabel(String v) => repoChoices[v] ?? v;
 
     String statusLabel(String v) {
       switch (v) {
@@ -898,23 +902,20 @@ class _DiscoverySectionState extends State<_DiscoverySection> {
             prefixIcon: const Icon(Icons.search, size: 18),
             hintText: l10n.skillsSearchPlaceholder,
             contentPadding: const EdgeInsets.symmetric(vertical: 4),
-            onChanged: (v) {
-              setState(() => _searchQuery = v);
-              _pagingController.refresh();
-            },
+            onChanged: (v) => setState(() => _searchQuery = v),
           ),
         ),
         SizedBox(
-          width: 200,
+          width: 300,
           child: FlashskyDropdownField<String>(
+            key: ValueKey(repoItems.join('|')),
             items: repoItems,
             initialItem: effectiveRepo,
-            overlayHeight: 240,
+            overlayHeight: 320,
+            headerMaxLines: 2,
+            listItemMaxLines: 2,
             itemLabel: repoLabel,
-            onChanged: (v) {
-              setState(() => _filterRepo = v ?? 'all');
-              _pagingController.refresh();
-            },
+            onChanged: (v) => setState(() => _filterRepo = v ?? 'all'),
           ),
         ),
         SizedBox(
@@ -924,10 +925,7 @@ class _DiscoverySectionState extends State<_DiscoverySection> {
             initialItem: _filterStatus,
             overlayHeight: 200,
             itemLabel: statusLabel,
-            onChanged: (v) {
-              setState(() => _filterStatus = v ?? 'all');
-              _pagingController.refresh();
-            },
+            onChanged: (v) => setState(() => _filterStatus = v ?? 'all'),
           ),
         ),
       ],
@@ -963,7 +961,7 @@ class _DiscoverySectionState extends State<_DiscoverySection> {
     );
   }
 
-  Widget _buildReposPagedGrid(
+  Widget _buildReposGrid(
     BuildContext context,
     SkillState state,
     Set<String> installedKeys,
@@ -975,7 +973,8 @@ class _DiscoverySectionState extends State<_DiscoverySection> {
         child: Center(child: CircularProgressIndicator()),
       );
     }
-    if (!state.discoveryLoading && state.discoverable.isEmpty) {
+    final filtered = _filtered(installedKeys);
+    if (!state.discoveryLoading && filtered.isEmpty) {
       return _Card(
         child: _EmptyBlock(
           icon: Icons.travel_explore_outlined,
@@ -988,41 +987,27 @@ class _DiscoverySectionState extends State<_DiscoverySection> {
     }
 
     return Expanded(
-      child: ValueListenableBuilder<PagingState<int, DiscoverableSkill>>(
-        valueListenable: _pagingController,
-        builder: (context, pagingState, _) {
-          return PagedGridView<int, DiscoverableSkill>(
-            state: pagingState,
-            fetchNextPage: _pagingController.fetchNextPage,
-            gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-              maxCrossAxisExtent: 380,
-              crossAxisSpacing: 12,
-              mainAxisSpacing: 12,
-              mainAxisExtent: 168,
-            ),
-            padding: const EdgeInsets.only(top: 2),
-            builderDelegate: PagedChildBuilderDelegate<DiscoverableSkill>(
-              firstPageProgressIndicatorBuilder: (_) => const SizedBox.shrink(),
-              newPageProgressIndicatorBuilder: (_) => const Padding(
-                padding: EdgeInsets.symmetric(vertical: 24),
-                child: Center(child: CircularProgressIndicator()),
-              ),
-              noItemsFoundIndicatorBuilder: (_) => const SizedBox.shrink(),
-              itemBuilder: (context, d, index) {
-                final installKey =
-                    '${d.directory.split('/').last.toLowerCase()}:${d.repoOwner.toLowerCase()}:${d.repoName.toLowerCase()}';
-                return _SkillCard(
-                  name: d.name,
-                  description: d.description,
-                  source: '${d.repoOwner}/${d.repoName}',
-                  readmeUrl: d.readmeUrl,
-                  installed: installedKeys.contains(installKey),
-                  busy: state.busyIds.contains(d.key),
-                  onInstall: () =>
-                      context.read<SkillCubit>().installFromDiscovery(d),
-                );
-              },
-            ),
+      child: GridView.builder(
+        padding: const EdgeInsets.only(top: 2),
+        gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+          maxCrossAxisExtent: 380,
+          crossAxisSpacing: 12,
+          mainAxisSpacing: 12,
+          mainAxisExtent: 168,
+        ),
+        itemCount: filtered.length,
+        itemBuilder: (context, index) {
+          final d = filtered[index];
+          final installKey =
+              '${d.directory.split('/').last.toLowerCase()}:${d.repoOwner.toLowerCase()}:${d.repoName.toLowerCase()}';
+          return _SkillCard(
+            name: d.name,
+            description: d.description,
+            source: '${d.repoOwner}/${d.repoName}',
+            readmeUrl: d.readmeUrl,
+            installed: installedKeys.contains(installKey),
+            busy: state.busyIds.contains(d.key),
+            onInstall: () => context.read<SkillCubit>().installFromDiscovery(d),
           );
         },
       ),
@@ -1298,14 +1283,12 @@ class _ReposSection extends StatefulWidget {
 }
 
 class _ReposSectionState extends State<_ReposSection> {
-  final _ownerCtl = TextEditingController();
-  final _nameCtl = TextEditingController();
+  final _urlCtl = TextEditingController();
   final _branchCtl = TextEditingController(text: 'main');
 
   @override
   void dispose() {
-    _ownerCtl.dispose();
-    _nameCtl.dispose();
+    _urlCtl.dispose();
     _branchCtl.dispose();
     super.dispose();
   }
@@ -1334,7 +1317,13 @@ class _ReposSectionState extends State<_ReposSection> {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      for (final r in widget.state.repos) _RepoRow(repo: r),
+                      for (final r in widget.state.repos)
+                        _RepoRow(
+                          repo: r,
+                          syncing: widget.state.repoSyncingKeys.contains(
+                            SkillRepoDiskCacheService.repoKey(r),
+                          ),
+                        ),
                     ],
                   ),
               ],
@@ -1346,13 +1335,13 @@ class _ReposSectionState extends State<_ReposSection> {
               children: [
                 _CardHeader(title: l10n.skillsRepoAdd),
                 const SizedBox(height: 12),
-                _FieldLabel(text: l10n.skillsRepoOwner),
+                _FieldLabel(text: l10n.skillsRepoUrl),
                 const SizedBox(height: 4),
-                AppOutlineTextField(controller: _ownerCtl),
-                const SizedBox(height: 10),
-                _FieldLabel(text: l10n.skillsRepoName),
-                const SizedBox(height: 4),
-                AppOutlineTextField(controller: _nameCtl),
+                AppOutlineTextField(
+                  controller: _urlCtl,
+                  hintText: l10n.skillsRepoUrlHint,
+                  hintMaxLines: 2,
+                ),
                 const SizedBox(height: 10),
                 _FieldLabel(text: l10n.skillsRepoBranch),
                 const SizedBox(height: 4),
@@ -1362,16 +1351,27 @@ class _ReposSectionState extends State<_ReposSection> {
                   alignment: Alignment.centerRight,
                   child: FilledButton.icon(
                     onPressed: () async {
-                      final owner = _ownerCtl.text.trim();
-                      final name = _nameCtl.text.trim();
+                      final url = _urlCtl.text.trim();
                       var branch = _branchCtl.text.trim();
-                      if (owner.isEmpty || name.isEmpty) return;
+                      if (url.isEmpty) return;
+                      final parsed = parseGithubRepoUrl(url);
+                      if (parsed == null) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(l10n.skillsRepoInvalidUrl),
+                          ),
+                        );
+                        return;
+                      }
                       if (branch.isEmpty) branch = 'main';
                       await cubit.addRepo(
-                        SkillRepo(owner: owner, name: name, branch: branch),
+                        SkillRepo(
+                          owner: parsed.owner,
+                          name: parsed.name,
+                          branch: branch,
+                        ),
                       );
-                      _ownerCtl.clear();
-                      _nameCtl.clear();
+                      _urlCtl.clear();
                       _branchCtl.text = 'main';
                     },
                     icon: const Icon(Icons.add, size: 16),
@@ -1388,8 +1388,9 @@ class _ReposSectionState extends State<_ReposSection> {
 }
 
 class _RepoRow extends StatelessWidget {
-  const _RepoRow({required this.repo});
+  const _RepoRow({required this.repo, required this.syncing});
   final SkillRepo repo;
+  final bool syncing;
 
   @override
   Widget build(BuildContext context) {
@@ -1410,7 +1411,7 @@ class _RepoRow extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    repo.fullName,
+                    repo.githubUrl,
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w700,
@@ -1428,9 +1429,17 @@ class _RepoRow extends StatelessWidget {
                 ],
               ),
             ),
+            if (syncing) ...[
+              const SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+              const SizedBox(width: 8),
+            ],
             Switch(
               value: repo.enabled,
-              onChanged: (v) => cubit.toggleRepoEnabled(repo, v),
+              onChanged: syncing ? null : (v) => cubit.toggleRepoEnabled(repo, v),
             ),
             IconButton(
               tooltip: l10n.skillsRemove,
@@ -1438,7 +1447,7 @@ class _RepoRow extends StatelessWidget {
                 final ok = await _confirm(
                   context,
                   title: l10n.skillsRepoRemove,
-                  message: l10n.skillsRepoRemoveConfirm(repo.fullName),
+                  message: l10n.skillsRepoRemoveConfirm(repo.githubUrl),
                   confirmLabel: l10n.skillsRemove,
                   destructive: true,
                 );

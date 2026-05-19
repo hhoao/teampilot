@@ -120,6 +120,8 @@ class SkillRepo {
 
   String get fullName => '$owner/$name';
 
+  String get githubUrl => 'https://github.com/$owner/$name';
+
   SkillRepo copyWith({
     String? owner,
     String? name,
@@ -152,10 +154,12 @@ class SkillRepo {
       other is SkillRepo &&
           runtimeType == other.runtimeType &&
           owner == other.owner &&
-          name == other.name;
+          name == other.name &&
+          branch == other.branch &&
+          enabled == other.enabled;
 
   @override
-  int get hashCode => Object.hash(owner, name);
+  int get hashCode => Object.hash(owner, name, branch, enabled);
 }
 
 class SkillUpdateInfo {

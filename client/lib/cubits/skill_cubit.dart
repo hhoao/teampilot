@@ -8,6 +8,7 @@ import '../models/skill.dart';
 import '../repositories/skill_repository.dart';
 import '../services/skill_fetch_service.dart';
 import '../services/skill_install_service.dart';
+import '../services/skill_repo_disk_cache_service.dart';
 import '../utils/logger.dart';
 
 enum SkillLoadStatus { idle, loading, ready, error }
@@ -57,6 +58,7 @@ class SkillState extends Equatable {
     this.busyIds = const {},
     this.discoveryLoading = false,
     this.updatesLoading = false,
+    this.repoSyncingKeys = const {},
   });
 
   final List<Skill> installed;
@@ -70,6 +72,7 @@ class SkillState extends Equatable {
   final Set<String> busyIds;
   final bool discoveryLoading;
   final bool updatesLoading;
+  final Set<String> repoSyncingKeys;
 
   SkillState copyWith({
     List<Skill>? installed,
@@ -84,6 +87,7 @@ class SkillState extends Equatable {
     Set<String>? busyIds,
     bool? discoveryLoading,
     bool? updatesLoading,
+    Set<String>? repoSyncingKeys,
   }) => SkillState(
     installed: installed ?? this.installed,
     repos: repos ?? this.repos,
@@ -96,6 +100,7 @@ class SkillState extends Equatable {
     busyIds: busyIds ?? this.busyIds,
     discoveryLoading: discoveryLoading ?? this.discoveryLoading,
     updatesLoading: updatesLoading ?? this.updatesLoading,
+    repoSyncingKeys: repoSyncingKeys ?? this.repoSyncingKeys,
   );
 
   @override
@@ -111,6 +116,7 @@ class SkillState extends Equatable {
     busyIds,
     discoveryLoading,
     updatesLoading,
+    repoSyncingKeys,
   ];
 }
 
@@ -123,6 +129,7 @@ class SkillCubit extends Cubit<SkillState> {
 
   final SkillRepository _repo;
   final SkillUninstalledHandler? _onSkillUninstalled;
+  int _discoveryGeneration = 0;
 
   Future<void> loadAll() async {
     emit(state.copyWith(status: SkillLoadStatus.loading, clearError: true));
@@ -150,38 +157,67 @@ class SkillCubit extends Cubit<SkillState> {
     }
   }
 
-  Future<void> refreshDiscoverable() async {
-    emit(state.copyWith(discoveryLoading: true, discoverable: const []));
+  Future<void> refreshDiscoverable({bool force = false}) async {
+    final generation = ++_discoveryGeneration;
     final enabled = state.repos.where((r) => r.enabled).toList();
     if (enabled.isEmpty) {
-      emit(state.copyWith(discoveryLoading: false));
-      return;
-    }
-    // Emit incrementally as each repo's tarball is decoded so the UI never
-    // freezes for seconds waiting on the slowest repo.
-    final seen = <String>{};
-    final accumulated = <DiscoverableSkill>[];
-    for (final repo in enabled) {
-      List<DiscoverableSkill> batch;
-      try {
-        batch = await _repo.fetch.listSkills(repo);
-      } catch (_) {
-        batch = const [];
-      }
-      for (final d in batch) {
-        final key = '${d.directory}:${d.repoOwner}:${d.repoName}';
-        if (seen.add(key)) accumulated.add(d);
-      }
-      // Emit after every repo so the grid populates progressively.
+      if (generation != _discoveryGeneration) return;
       emit(
         state.copyWith(
-          discoverable: List.of(accumulated),
+          discoveryLoading: false,
+          discoverable: const [],
+          repoSyncingKeys: const {},
+        ),
+      );
+      return;
+    }
+
+    var syncing = enabled.map(SkillRepoDiskCacheService.repoKey).toSet();
+    emit(
+      state.copyWith(
+        discoveryLoading: true,
+        discoverable: await _aggregateDiscoverableFromDisk(enabled),
+        repoSyncingKeys: syncing,
+        clearError: true,
+      ),
+    );
+
+    for (final repo in enabled) {
+      if (generation != _discoveryGeneration) return;
+      final key = SkillRepoDiskCacheService.repoKey(repo);
+      try {
+        await _repo.syncRepoCache(repo, force: force);
+      } catch (e) {
+        appLogger.w('[skills] sync ${repo.fullName} failed: $e');
+      }
+      if (generation != _discoveryGeneration) return;
+      syncing = Set.of(syncing)..remove(key);
+      emit(
+        state.copyWith(
+          discoverable: await _aggregateDiscoverableFromDisk(enabled),
           discoveryLoading: true,
-          clearError: true,
+          repoSyncingKeys: syncing,
         ),
       );
     }
-    emit(state.copyWith(discoveryLoading: false));
+    if (generation != _discoveryGeneration) return;
+    emit(
+      state.copyWith(discoveryLoading: false, repoSyncingKeys: const {}),
+    );
+  }
+
+  Future<List<DiscoverableSkill>> _aggregateDiscoverableFromDisk(
+    List<SkillRepo> enabled,
+  ) async {
+    final seen = <String>{};
+    final out = <DiscoverableSkill>[];
+    for (final repo in enabled) {
+      for (final d in await _repo.readCachedDiscoverable(repo)) {
+        final key = '${d.directory}:${d.repoOwner}:${d.repoName}';
+        if (seen.add(key)) out.add(d);
+      }
+    }
+    return out;
   }
 
   Future<void> addRepo(SkillRepo repo) async {
@@ -197,6 +233,9 @@ class SkillCubit extends Cubit<SkillState> {
 
   Future<void> removeRepo(String owner, String name) async {
     try {
+      await _repo.deleteRepoCache(
+        SkillRepo(owner: owner, name: name, branch: 'main'),
+      );
       await _repo.repos.removeRepo(owner, name);
       final repos = await _repo.loadRepos();
       emit(state.copyWith(repos: repos));

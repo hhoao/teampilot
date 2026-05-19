@@ -4,29 +4,51 @@ import '../models/skill.dart';
 import '../services/skill_fetch_service.dart';
 import '../services/skill_install_service.dart';
 import '../services/skill_manifest_service.dart';
+import '../services/skill_repo_disk_cache_service.dart';
 import '../services/skill_repo_service.dart';
 import '../services/skills_sh_service.dart';
 
 class SkillRepository {
-  SkillRepository({
+  factory SkillRepository({
     SkillManifestService? manifest,
     SkillFetchService? fetch,
+    SkillRepoDiskCacheService? repoCache,
     SkillInstallService? install,
     SkillRepoService? repos,
     SkillsShService? skillsSh,
-  }) : manifest = manifest ?? SkillManifestService(),
-       fetch = fetch ?? SkillFetchService(),
-       repos = repos ?? SkillRepoService(),
-       skillsSh = skillsSh ?? SkillsShService(),
-       install =
-           install ??
-           SkillInstallService(
-             manifest: manifest ?? SkillManifestService(),
-             fetch: fetch,
-           );
+  }) {
+    final resolvedFetch = fetch ?? SkillFetchService();
+    final resolvedManifest = manifest ?? SkillManifestService();
+    final resolvedCache =
+        repoCache ?? SkillRepoDiskCacheService(fetch: resolvedFetch);
+    return SkillRepository._(
+      manifest: resolvedManifest,
+      fetch: resolvedFetch,
+      repoCache: resolvedCache,
+      install:
+          install ??
+          SkillInstallService(
+            manifest: resolvedManifest,
+            fetch: resolvedFetch,
+            repoCache: resolvedCache,
+          ),
+      repos: repos ?? SkillRepoService(),
+      skillsSh: skillsSh ?? SkillsShService(),
+    );
+  }
+
+  SkillRepository._({
+    required this.manifest,
+    required this.fetch,
+    required this.repoCache,
+    required this.install,
+    required this.repos,
+    required this.skillsSh,
+  });
 
   final SkillManifestService manifest;
   final SkillFetchService fetch;
+  final SkillRepoDiskCacheService repoCache;
   final SkillInstallService install;
   final SkillRepoService repos;
   final SkillsShService skillsSh;
@@ -35,17 +57,15 @@ class SkillRepository {
   Future<List<SkillBackup>> loadBackups() => manifest.loadBackups();
   Future<List<SkillRepo>> loadRepos() => repos.loadRepos();
 
-  Future<List<DiscoverableSkill>> discover(List<SkillRepo> enabledRepos) async {
-    final futures = enabledRepos.where((r) => r.enabled).map((r) async {
-      try {
-        return await fetch.listSkills(r);
-      } catch (_) {
-        return const <DiscoverableSkill>[];
-      }
-    }).toList();
-    final results = await Future.wait(futures);
-    return results.expand((e) => e).toList();
-  }
+  Future<List<DiscoverableSkill>> readCachedDiscoverable(SkillRepo repo) =>
+      repoCache.readSkillsFromDisk(repo);
+
+  Future<SkillRepoSyncResult> syncRepoCache(
+    SkillRepo repo, {
+    bool force = false,
+  }) => repoCache.ensureSynced(repo, force: force);
+
+  Future<void> deleteRepoCache(SkillRepo repo) => repoCache.deleteRepoCache(repo);
 
   Future<List<SkillUpdateInfo>> checkUpdates(List<Skill> installed) =>
       install.checkUpdates(installed);

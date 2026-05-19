@@ -1,4 +1,4 @@
-import 'dart:async';
+import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:archive/archive.dart';
@@ -12,7 +12,8 @@ class SkillFetchException implements Exception {
   final String message;
   final Object? cause;
   @override
-  String toString() => 'SkillFetchException: $message';
+  String toString() =>
+      cause != null ? 'SkillFetchException: $message ($cause)' : 'SkillFetchException: $message';
 }
 
 class SkillParseException implements Exception {
@@ -90,108 +91,206 @@ class TarballPayload {
   final Map<String, Uint8List> entries;
 }
 
+/// Branch fallbacks aligned with cc-switch-1 (`download_repo`).
+List<String> skillRepoBranchCandidates(String configuredBranch) {
+  final branches = <String>[];
+  final trimmed = configuredBranch.trim();
+  if (trimmed.isNotEmpty && trimmed.toLowerCase() != 'head') {
+    branches.add(trimmed);
+  }
+  if (!branches.contains('main')) branches.add('main');
+  if (!branches.contains('master')) branches.add('master');
+  return branches;
+}
+
+/// Scan tarball paths for SKILL.md (recursive, includes repo root).
+List<DiscoverableSkill> discoverSkillsInTarballEntries({
+  required Map<String, Uint8List> entries,
+  required SkillRepo repo,
+  required String resolvedBranch,
+}) {
+  const skillMd = 'SKILL.md';
+  const skillMdSuffix = '/$skillMd';
+  final result = <DiscoverableSkill>[];
+  for (final entry in entries.entries) {
+    final path = entry.key;
+    if (path != skillMd && !path.endsWith(skillMdSuffix)) continue;
+
+    final dir = path == skillMd
+        ? repo.name
+        : path.substring(0, path.length - skillMdSuffix.length);
+    final installBasename = p.basename(dir);
+    final displayName = _skillDisplayName(entry.value, installBasename);
+
+    final docPath = path;
+    result.add(
+      DiscoverableSkill(
+        key: '${repo.owner}/${repo.name}:$dir',
+        name: displayName,
+        description: _skillDescription(entry.value),
+        directory: dir,
+        readmeUrl:
+            'https://github.com/${repo.owner}/${repo.name}/tree/$resolvedBranch/$docPath',
+        repoOwner: repo.owner,
+        repoName: repo.name,
+        repoBranch: resolvedBranch,
+      ),
+    );
+  }
+  return result;
+}
+
+String _skillDisplayName(Uint8List skillMdBytes, String fallback) {
+  try {
+    return parseSkillFrontmatter(String.fromCharCodes(skillMdBytes)).name;
+  } on SkillParseException {
+    return fallback;
+  }
+}
+
+String _skillDescription(Uint8List skillMdBytes) {
+  try {
+    return parseSkillFrontmatter(String.fromCharCodes(skillMdBytes)).description;
+  } on SkillParseException {
+    return '';
+  }
+}
+
 class SkillFetchService {
   SkillFetchService({http.Client? client}) : _client = client ?? http.Client();
 
   final http.Client _client;
-  final Map<String, _CacheEntry> _cache = {};
-  static const _cacheTtl = Duration(hours: 1);
 
-  Future<TarballPayload> fetchTarball(SkillRepo repo) async {
-    final key = '${repo.owner}/${repo.name}@${repo.branch}';
-    final cached = _cache[key];
-    if (cached != null &&
-        DateTime.now().difference(cached.fetchedAt) < _cacheTtl) {
-      return cached.payload;
+  /// Latest commit SHA for [branch] (null if branch missing or API error).
+  Future<String?> fetchBranchCommitSha(
+    String owner,
+    String name,
+    String branch,
+  ) async {
+    final url = Uri.parse(
+      'https://api.github.com/repos/$owner/$name/commits/$branch',
+    );
+    try {
+      final resp = await _client.get(
+        url,
+        headers: const {'Accept': 'application/vnd.github+json'},
+      );
+      if (resp.statusCode != 200) return null;
+      final body = json.decode(resp.body) as Map<String, dynamic>;
+      return body['sha'] as String?;
+    } catch (_) {
+      return null;
     }
-    final payload = await _downloadAndDecode(repo);
-    _cache[key] = _CacheEntry(payload, DateTime.now());
-    return payload;
   }
 
-  Future<TarballPayload> _downloadAndDecode(SkillRepo repo) async {
+  /// Downloads and decodes a repo tarball (no in-memory cache).
+  Future<({Map<String, Uint8List> entries, String branch})> downloadRepoEntries(
+    SkillRepo repo,
+  ) async {
+    Object? lastError;
+    for (final branch in skillRepoBranchCandidates(repo.branch)) {
+      try {
+        final payload = await _downloadTarball(repo, branch);
+        return (entries: payload.entries, branch: branch);
+      } catch (e) {
+        lastError = e;
+        try {
+          final payload = await _downloadZipArchive(repo, branch);
+          return (entries: payload.entries, branch: branch);
+        } catch (e2) {
+          lastError = e2;
+        }
+      }
+    }
+    throw SkillFetchException(
+      'Failed to download ${repo.fullName} (tried ${skillRepoBranchCandidates(repo.branch).join(", ")})',
+      lastError,
+    );
+  }
+
+  Future<TarballPayload> _downloadTarball(SkillRepo repo, String branch) async {
     final url = Uri.parse(
-      'https://codeload.github.com/${repo.owner}/${repo.name}/tar.gz/${repo.branch}',
+      'https://codeload.github.com/${repo.owner}/${repo.name}/tar.gz/$branch',
     );
     final http.Response resp;
     try {
       resp = await _client.get(url);
     } catch (e) {
-      throw SkillFetchException('Network error for ${repo.fullName}: $e', e);
+      throw SkillFetchException(
+        'Network error for ${repo.fullName}@$branch: $e',
+        e,
+      );
     }
     if (resp.statusCode != 200) {
       throw SkillFetchException(
-        'GitHub tarball HTTP ${resp.statusCode} for ${repo.fullName}',
+        'GitHub tarball HTTP ${resp.statusCode} for ${repo.fullName}@$branch',
       );
     }
     try {
       final gunzipped = GZipDecoder().decodeBytes(resp.bodyBytes);
       final archive = TarDecoder().decodeBytes(gunzipped);
-      final entries = <String, Uint8List>{};
-      String? prefix;
-      for (final file in archive) {
-        if (!file.isFile) continue;
-        final fullName = file.name;
-        prefix ??= '${fullName.split('/').first}/';
-        if (!fullName.startsWith(prefix)) continue;
-        final rel = fullName.substring(prefix.length);
-        if (rel.isEmpty) continue;
-        entries[rel] = Uint8List.fromList(file.content as List<int>);
-      }
-      return TarballPayload(entries: entries);
+      return TarballPayload(entries: _entriesFromArchive(archive));
     } catch (e) {
       throw SkillFetchException(
-        'Failed to decode tarball for ${repo.fullName}',
+        'Failed to decode tarball for ${repo.fullName}@$branch',
         e,
       );
     }
   }
 
-  Future<List<DiscoverableSkill>> listSkills(SkillRepo repo) async {
-    final payload = await fetchTarball(repo);
-    final byDir = <String, Uint8List>{};
-    for (final entry in payload.entries.entries) {
-      final parts = entry.key.split('/');
-      if (parts.length >= 2 && parts.last == 'SKILL.md') {
-        byDir[parts.sublist(0, parts.length - 1).join('/')] = entry.value;
-      }
+  Future<TarballPayload> _downloadZipArchive(SkillRepo repo, String branch) async {
+    final url = Uri.parse(
+      'https://github.com/${repo.owner}/${repo.name}/archive/refs/heads/$branch.zip',
+    );
+    final http.Response resp;
+    try {
+      resp = await _client.get(url);
+    } catch (e) {
+      throw SkillFetchException(
+        'Network error (zip) for ${repo.fullName}@$branch: $e',
+        e,
+      );
     }
-    final result = <DiscoverableSkill>[];
-    for (final e in byDir.entries) {
-      final dir = e.key;
-      final basename = p.basename(dir);
-      try {
-        final fm = parseSkillFrontmatter(String.fromCharCodes(e.value));
-        result.add(
-          DiscoverableSkill(
-            key: '${repo.owner}/${repo.name}:$basename',
-            name: fm.name,
-            description: fm.description,
-            directory: dir,
-            readmeUrl:
-                'https://github.com/${repo.owner}/${repo.name}/tree/${repo.branch}/$dir',
-            repoOwner: repo.owner,
-            repoName: repo.name,
-            repoBranch: repo.branch,
-          ),
-        );
-      } on SkillParseException {
-        continue;
-      }
+    if (resp.statusCode != 200) {
+      throw SkillFetchException(
+        'GitHub zip HTTP ${resp.statusCode} for ${repo.fullName}@$branch',
+      );
     }
-    return result;
+    try {
+      final archive = ZipDecoder().decodeBytes(resp.bodyBytes);
+      return TarballPayload(entries: _entriesFromArchive(archive));
+    } catch (e) {
+      throw SkillFetchException(
+        'Failed to decode zip for ${repo.fullName}@$branch',
+        e,
+      );
+    }
   }
 
-  /// Returns the relative paths inside [directory] (e.g. `subdir/foo`) inside
-  /// the tarball, with [directory] stripped from the keys.
-  Future<Map<String, Uint8List>> downloadSkillFiles(
+  Map<String, Uint8List> _entriesFromArchive(Archive archive) {
+    final entries = <String, Uint8List>{};
+    String? prefix;
+    for (final file in archive) {
+      if (!file.isFile) continue;
+      final fullName = file.name;
+      prefix ??= '${fullName.split('/').first}/';
+      if (!fullName.startsWith(prefix)) continue;
+      final rel = fullName.substring(prefix.length);
+      if (rel.isEmpty) continue;
+      entries[rel] = Uint8List.fromList(file.content as List<int>);
+    }
+    return entries;
+  }
+
+  /// Returns the relative paths inside [directory] from a fresh tarball download.
+  Future<Map<String, Uint8List>> downloadSkillFilesFromNetwork(
     SkillRepo repo,
     String directory,
   ) async {
-    final payload = await fetchTarball(repo);
+    final downloaded = await downloadRepoEntries(repo);
     final prefix = '$directory/';
     final out = <String, Uint8List>{};
-    for (final e in payload.entries.entries) {
+    for (final e in downloaded.entries.entries) {
       if (e.key.startsWith(prefix)) {
         out[e.key.substring(prefix.length)] = e.value;
       }
@@ -225,10 +324,4 @@ class SkillFetchService {
   }
 
   void close() => _client.close();
-}
-
-class _CacheEntry {
-  _CacheEntry(this.payload, this.fetchedAt);
-  final TarballPayload payload;
-  final DateTime fetchedAt;
 }

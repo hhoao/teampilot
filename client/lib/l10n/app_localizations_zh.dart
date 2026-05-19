@@ -686,10 +686,20 @@ class AppLocalizationsZh extends AppLocalizations {
   String get skillsRepoAdd => '添加仓库';
 
   @override
-  String get skillsRepoOwner => 'Owner';
+  String get skillsDiscoverySyncing => '正在后台检查仓库更新并同步 Skill…';
 
   @override
-  String get skillsRepoName => '名称';
+  String get skillsRepoSyncing => '更新中';
+
+  @override
+  String get skillsRepoInvalidUrl =>
+      '请输入有效的 GitHub 仓库地址，例如 https://github.com/owner/repo';
+
+  @override
+  String get skillsRepoUrl => '仓库地址';
+
+  @override
+  String get skillsRepoUrlHint => 'https://github.com/owner/repo';
 
   @override
   String get skillsRepoBranch => '分支';

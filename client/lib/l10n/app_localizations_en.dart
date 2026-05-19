@@ -701,10 +701,21 @@ class AppLocalizationsEn extends AppLocalizations {
   String get skillsRepoAdd => 'Add repo';
 
   @override
-  String get skillsRepoOwner => 'Owner';
+  String get skillsDiscoverySyncing =>
+      'Checking repos for updates and syncing skills in the background…';
 
   @override
-  String get skillsRepoName => 'Name';
+  String get skillsRepoSyncing => 'Updating';
+
+  @override
+  String get skillsRepoInvalidUrl =>
+      'Enter a valid GitHub repo URL, e.g. https://github.com/owner/repo';
+
+  @override
+  String get skillsRepoUrl => 'Repository URL';
+
+  @override
+  String get skillsRepoUrlHint => 'https://github.com/owner/repo';
 
   @override
   String get skillsRepoBranch => 'Branch';

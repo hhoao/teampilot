@@ -54,7 +54,9 @@ class SkillRepoService {
 
   Future<void> addRepo(SkillRepo repo) async {
     final repos = await loadRepos();
-    if (repos.any((r) => r.owner == repo.owner && r.name == repo.name)) return;
+    if (repos.any((r) => r.owner == repo.owner && r.name == repo.name)) {
+      return;
+    }
     repos.add(repo);
     await saveRepos(repos);
   }

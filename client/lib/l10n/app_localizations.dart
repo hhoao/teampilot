@@ -1394,17 +1394,35 @@ abstract class AppLocalizations {
   /// **'Add repo'**
   String get skillsRepoAdd;
 
-  /// No description provided for @skillsRepoOwner.
+  /// No description provided for @skillsDiscoverySyncing.
   ///
   /// In en, this message translates to:
-  /// **'Owner'**
-  String get skillsRepoOwner;
+  /// **'Checking repos for updates and syncing skills in the background…'**
+  String get skillsDiscoverySyncing;
 
-  /// No description provided for @skillsRepoName.
+  /// No description provided for @skillsRepoSyncing.
   ///
   /// In en, this message translates to:
-  /// **'Name'**
-  String get skillsRepoName;
+  /// **'Updating'**
+  String get skillsRepoSyncing;
+
+  /// No description provided for @skillsRepoInvalidUrl.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a valid GitHub repo URL, e.g. https://github.com/owner/repo'**
+  String get skillsRepoInvalidUrl;
+
+  /// No description provided for @skillsRepoUrl.
+  ///
+  /// In en, this message translates to:
+  /// **'Repository URL'**
+  String get skillsRepoUrl;
+
+  /// No description provided for @skillsRepoUrlHint.
+  ///
+  /// In en, this message translates to:
+  /// **'https://github.com/owner/repo'**
+  String get skillsRepoUrlHint;
 
   /// No description provided for @skillsRepoBranch.
   ///

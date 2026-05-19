@@ -11,6 +11,7 @@ import '../models/skill.dart';
 import '../utils/logger.dart';
 import 'skill_fetch_service.dart';
 import 'skill_manifest_service.dart';
+import 'skill_repo_disk_cache_service.dart';
 
 class SkillInstallException implements Exception {
   SkillInstallException(this.message, [this.cause]);
@@ -21,11 +22,16 @@ class SkillInstallException implements Exception {
 }
 
 class SkillInstallService {
-  SkillInstallService({required this.manifest, SkillFetchService? fetch})
-    : fetch = fetch ?? SkillFetchService();
+  SkillInstallService({
+    required this.manifest,
+    SkillFetchService? fetch,
+    SkillRepoDiskCacheService? repoCache,
+  }) : fetch = fetch ?? SkillFetchService(),
+       repoCache = repoCache ?? SkillRepoDiskCacheService(fetch: fetch);
 
   final SkillManifestService manifest;
   final SkillFetchService fetch;
+  final SkillRepoDiskCacheService repoCache;
   static const int backupRetention = 20;
 
   String _idFor({
@@ -135,7 +141,7 @@ class SkillInstallService {
       name: d.repoName,
       branch: d.repoBranch,
     );
-    final files = await fetch.downloadSkillFiles(repo, d.directory);
+    final files = await _loadSkillFiles(repo, d.directory);
     final basename = p.basename(d.directory);
     return installLocal(
       basename: basename,
@@ -399,23 +405,21 @@ class SkillInstallService {
         name: skill.repoName!,
         branch: skill.repoBranch!,
       );
-      final fullPayload = await fetch.fetchTarball(repo);
-      String? matchPath;
-      for (final key in fullPayload.entries.keys) {
-        final parts = key.split('/');
-        if (parts.length >= 2 &&
-            parts.last == 'SKILL.md' &&
-            parts[parts.length - 2] == skill.directory) {
-          matchPath = parts.sublist(0, parts.length - 1).join('/');
+      await repoCache.ensureSynced(repo, force: true);
+      final cached = await repoCache.readSkillsFromDisk(repo);
+      DiscoverableSkill? match;
+      for (final d in cached) {
+        if (p.basename(d.directory) == skill.directory) {
+          match = d;
           break;
         }
       }
-      if (matchPath == null) {
+      if (match == null) {
         throw SkillInstallException(
           'Could not locate ${skill.directory} in ${repo.fullName}',
         );
       }
-      final files = await fetch.downloadSkillFiles(repo, matchPath);
+      final files = await _loadSkillFiles(repo, match.directory);
       final fm = parseSkillFrontmatter(
         String.fromCharCodes(files['SKILL.md']!),
       );
@@ -437,6 +441,18 @@ class SkillInstallService {
       } catch (_) {}
       rethrow;
     }
+  }
+
+  Future<Map<String, Uint8List>> _loadSkillFiles(
+    SkillRepo repo,
+    String directory,
+  ) async {
+    var files = await repoCache.readCachedSkillFiles(repo, directory);
+    if (files.isNotEmpty) return files;
+    await repoCache.ensureSynced(repo);
+    files = await repoCache.readCachedSkillFiles(repo, directory);
+    if (files.isNotEmpty) return files;
+    return fetch.downloadSkillFilesFromNetwork(repo, directory);
   }
 
   Future<void> _moveDir(Directory src, Directory target) async {

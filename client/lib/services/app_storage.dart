@@ -190,6 +190,13 @@ class AppStorage {
   static String skillReposConfigPathForTeampilotRoot(String teampilotRoot) =>
       _pathUnderTeampilotRoot(teampilotRoot, 'skills.json');
 
+  /// Local disk cache for GitHub skill repos (tarball files + discovered skills).
+  static String skillRepoCacheDirForTeampilotRoot(String teampilotRoot) =>
+      p.join(teampilotRoot, 'skill-repo-cache');
+
+  static String get skillRepoCacheDir =>
+      skillRepoCacheDirForTeampilotRoot(basePath);
+
   static String tempTeamRegistryPathForTeampilotRoot(String teampilotRoot) =>
       _pathUnderTeampilotRoot(teampilotRoot, 'ui-temp-teams.json');
 
