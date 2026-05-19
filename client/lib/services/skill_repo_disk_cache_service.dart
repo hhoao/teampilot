@@ -129,35 +129,57 @@ class SkillRepoDiskCacheService {
           repoKey: key,
         );
       }
+      if (remoteSha == null) {
+        appLogger.w(
+          '[SkillRepoCache] SHA check unavailable for ${repo.fullName}, using disk cache',
+        );
+        return SkillRepoSyncResult(
+          skills: await readSkillsFromDisk(repo),
+          updated: false,
+          repoKey: key,
+        );
+      }
     }
 
-    final downloaded = await _fetch.downloadRepoEntries(repo);
-    final commitSha =
-        await _fetch.fetchBranchCommitSha(
-          repo.owner,
-          repo.name,
-          downloaded.branch,
-        ) ??
-        '';
-    final skills = discoverSkillsInTarballEntries(
-      entries: downloaded.entries,
-      repo: repo,
-      resolvedBranch: downloaded.branch,
-    );
+    try {
+      final downloaded = await _fetch.downloadRepoEntries(repo);
+      final commitSha =
+          await _fetch.fetchBranchCommitSha(
+            repo.owner,
+            repo.name,
+            downloaded.branch,
+          ) ??
+          '';
+      final skills = discoverSkillsInTarballEntries(
+        entries: downloaded.entries,
+        repo: repo,
+        resolvedBranch: downloaded.branch,
+      );
 
-    await _writeSnapshot(
-      repo: repo,
-      entries: downloaded.entries,
-      skills: skills,
-      resolvedBranch: downloaded.branch,
-      commitSha: commitSha,
-    );
+      await _writeSnapshot(
+        repo: repo,
+        entries: downloaded.entries,
+        skills: skills,
+        resolvedBranch: downloaded.branch,
+        commitSha: commitSha,
+      );
 
-    return SkillRepoSyncResult(
-      skills: skills,
-      updated: true,
-      repoKey: key,
-    );
+      return SkillRepoSyncResult(
+        skills: skills,
+        updated: true,
+        repoKey: key,
+      );
+    } catch (e) {
+      appLogger.w('[SkillRepoCache] sync failed for ${repo.fullName}: $e');
+      if (_hasSnapshot(dir)) {
+        return SkillRepoSyncResult(
+          skills: await readSkillsFromDisk(repo),
+          updated: false,
+          repoKey: key,
+        );
+      }
+      rethrow;
+    }
   }
 
   Future<void> _writeSnapshot({
@@ -197,10 +219,31 @@ class SkillRepoDiskCacheService {
     ).writeAsString(const JsonEncoder.withIndent('  ').convert(meta.toJson()));
 
     await Directory(_cacheRoot).create(recursive: true);
-    if (repoDir.existsSync()) {
-      await repoDir.delete(recursive: true);
+    final backup = Directory('${repoDir.path}.bak');
+    if (backup.existsSync()) {
+      await backup.delete(recursive: true);
     }
-    await tmp.rename(repoDir.path);
+    try {
+      if (repoDir.existsSync()) {
+        await repoDir.rename(backup.path);
+      }
+      await tmp.rename(repoDir.path);
+      if (backup.existsSync()) {
+        await backup.delete(recursive: true);
+      }
+    } catch (e) {
+      if (backup.existsSync()) {
+        if (repoDir.existsSync()) {
+          await repoDir.delete(recursive: true);
+        }
+        await backup.rename(repoDir.path);
+      }
+      rethrow;
+    } finally {
+      if (tmp.existsSync()) {
+        await tmp.delete(recursive: true);
+      }
+    }
   }
 
   /// Skill files for install/update from disk cache (`files/{directory}/**`).

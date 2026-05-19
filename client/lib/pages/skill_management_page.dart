@@ -813,7 +813,7 @@ class _DiscoverySectionState extends State<_DiscoverySection> {
                       tooltip: l10n.skillsCheckUpdates,
                       onPressed: state.discoveryLoading
                           ? null
-                          : () => cubit.refreshDiscoverable(force: true),
+                          : () => cubit.refreshDiscoverable(),
                       icon:
                           state.discoveryLoading ||
                               state.repoSyncingKeys.isNotEmpty

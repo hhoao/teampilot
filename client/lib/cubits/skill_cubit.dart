@@ -195,29 +195,53 @@ class SkillCubit extends Cubit<SkillState> {
       ),
     );
 
-    for (final repo in reposToSync) {
+    final batchKeys = reposToSync.map(SkillRepoDiskCacheService.repoKey).toSet();
+    final remaining = Set<String>.from(batchKeys);
+
+    Future<void> onRepoSyncFinished(String key) async {
       if (generation != _discoveryGeneration) return;
-      final key = SkillRepoDiskCacheService.repoKey(repo);
-      try {
-        await _repo.syncRepoCache(repo, force: force);
-      } catch (e) {
-        appLogger.w('[skills] sync ${repo.fullName} failed: $e');
-      }
+      remaining.remove(key);
+      final discoverable = await _aggregateDiscoverableFromDisk(
+        state.repos.where((r) => r.enabled).toList(),
+      );
       if (generation != _discoveryGeneration) return;
-      syncing = Set.of(syncing)..remove(key);
+      final repoSyncingKeys = {
+        ...state.repoSyncingKeys.where((k) => !batchKeys.contains(k)),
+        ...remaining,
+      };
       emit(
         state.copyWith(
-          discoverable: await _aggregateDiscoverableFromDisk(
-            state.repos.where((r) => r.enabled).toList(),
-          ),
-          discoveryLoading: true,
-          repoSyncingKeys: syncing,
+          discoverable: discoverable,
+          discoveryLoading: repoSyncingKeys.isNotEmpty,
+          repoSyncingKeys: repoSyncingKeys,
         ),
       );
     }
+
+    await Future.wait(
+      reposToSync.map((repo) async {
+        final key = SkillRepoDiskCacheService.repoKey(repo);
+        try {
+          await _repo.syncRepoCache(repo, force: force);
+        } catch (e) {
+          appLogger.w('[skills] sync ${repo.fullName} failed: $e');
+        } finally {
+          await onRepoSyncFinished(key);
+        }
+      }),
+    );
+
     if (generation != _discoveryGeneration) return;
+    final repoSyncingKeys =
+        state.repoSyncingKeys.where((k) => !batchKeys.contains(k)).toSet();
     emit(
-      state.copyWith(discoveryLoading: false, repoSyncingKeys: const {}),
+      state.copyWith(
+        discoveryLoading: false,
+        repoSyncingKeys: repoSyncingKeys,
+        discoverable: await _aggregateDiscoverableFromDisk(
+          state.repos.where((r) => r.enabled).toList(),
+        ),
+      ),
     );
   }
 
