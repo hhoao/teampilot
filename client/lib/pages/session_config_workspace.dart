@@ -10,6 +10,7 @@ import '../services/flashskyai_storage_roots.dart';
 import '../cubits/skill_cubit.dart';
 import '../cubits/team_cubit.dart';
 import '../models/connection_mode.dart';
+import '../models/team_config.dart';
 import '../l10n/l10n_extensions.dart';
 import '../utils/app_keys.dart';
 import '../utils/debounce/debounce.dart';
@@ -90,61 +91,36 @@ class _SessionControls extends StatefulWidget {
 }
 
 class _SessionControlsState extends State<_SessionControls> {
-  late final TextEditingController _pathController;
   late final TextEditingController _sshCwdController;
-  late final FocusNode _cliPathFocus;
   late final FocusNode _sshCwdFocus;
-  late final Debouncer _cliPathPersistDebouncer;
   late final Debouncer _sshCwdPersistDebouncer;
-  String _lastSyncedPath = '';
   String _lastSyncedSshCwd = '';
 
   @override
   void initState() {
     super.initState();
-    _cliPathPersistDebouncer = Debouncer(
-      tag: 'session_cli_executable_path',
-      duration: _kSessionPathPersistDebounce,
-    );
-    _cliPathFocus = FocusNode()..addListener(_onCliPathFocusChanged);
     _sshCwdPersistDebouncer = Debouncer(
       tag: 'session_ssh_default_working_directory',
       duration: _kSessionPathPersistDebounce,
     );
     _sshCwdFocus = FocusNode()..addListener(_onSshCwdFocusChanged);
-    _pathController = TextEditingController(
-      text: widget.cubit.state.preferences.cliExecutablePath,
-    );
     _sshCwdController = TextEditingController(
       text: widget.cubit.state.preferences.defaultSshWorkingDirectory,
     );
-    _lastSyncedPath = widget.cubit.state.preferences.cliExecutablePath;
     _lastSyncedSshCwd =
         widget.cubit.state.preferences.defaultSshWorkingDirectory;
   }
 
   @override
   void dispose() {
-    _cliPathPersistDebouncer.dispose();
     _sshCwdPersistDebouncer.dispose();
-    _cliPathFocus.removeListener(_onCliPathFocusChanged);
     _sshCwdFocus.removeListener(_onSshCwdFocusChanged);
-    _cliPathFocus.dispose();
     _sshCwdFocus.dispose();
-    _pathController.dispose();
     _sshCwdController.dispose();
     super.dispose();
   }
 
-  void _syncFromState(String stored, String sshCwd) {
-    if (stored != _lastSyncedPath) {
-      _cliPathPersistDebouncer.cancel();
-      _lastSyncedPath = stored;
-      _pathController.value = TextEditingValue(
-        text: stored,
-        selection: TextSelection.collapsed(offset: stored.length),
-      );
-    }
+  void _syncFromState(String sshCwd) {
     if (sshCwd != _lastSyncedSshCwd) {
       _sshCwdPersistDebouncer.cancel();
       _lastSyncedSshCwd = sshCwd;
@@ -153,26 +129,6 @@ class _SessionControlsState extends State<_SessionControls> {
         selection: TextSelection.collapsed(offset: sshCwd.length),
       );
     }
-  }
-
-  Future<void> _pickFile() async {
-    final cubit = widget.cubit;
-    final result = await FilePicker.platform.pickFiles(type: FileType.any);
-    final picked = result?.files.single.path;
-    if (picked == null) return;
-    if (!mounted) return;
-    _cliPathPersistDebouncer.cancel();
-    _pathController.text = picked;
-    await cubit.setCliExecutablePath(picked);
-  }
-
-  Future<void> _persistCliExecutablePathFromField() async {
-    if (!mounted) return;
-    final cubit = widget.cubit;
-    final trimmed = _pathController.text.trim();
-    final stored = cubit.state.preferences.cliExecutablePath.trim();
-    if (trimmed == stored) return;
-    await cubit.setCliExecutablePath(_pathController.text);
   }
 
   Future<void> _persistSshCwdFromField() async {
@@ -184,24 +140,10 @@ class _SessionControlsState extends State<_SessionControls> {
     await cubit.setDefaultSshWorkingDirectory(_sshCwdController.text);
   }
 
-  void _onCliPathFocusChanged() {
-    if (!_cliPathFocus.hasFocus) {
-      _flushCliExecutablePathPersist();
-    }
-  }
-
   void _onSshCwdFocusChanged() {
     if (!_sshCwdFocus.hasFocus) {
       _flushSshCwdPersist();
     }
-  }
-
-  void _scheduleDebouncedCliPathPersist() {
-    _cliPathPersistDebouncer(() {
-      if (mounted) {
-        _persistCliExecutablePathFromField();
-      }
-    });
   }
 
   void _scheduleDebouncedSshCwdPersist() {
@@ -212,20 +154,9 @@ class _SessionControlsState extends State<_SessionControls> {
     });
   }
 
-  void _flushCliExecutablePathPersist() {
-    _cliPathPersistDebouncer.cancel();
-    _persistCliExecutablePathFromField();
-  }
-
   void _flushSshCwdPersist() {
     _sshCwdPersistDebouncer.cancel();
     _persistSshCwdFromField();
-  }
-
-  Future<void> _reset() async {
-    _cliPathPersistDebouncer.cancel();
-    _pathController.clear();
-    await widget.cubit.setCliExecutablePath('');
   }
 
   Future<void> _resetSshCwd() async {
@@ -238,17 +169,8 @@ class _SessionControlsState extends State<_SessionControls> {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final state = widget.cubit.state;
-    _syncFromState(
-      state.preferences.cliExecutablePath,
-      state.preferences.defaultSshWorkingDirectory,
-    );
+    _syncFromState(state.preferences.defaultSshWorkingDirectory);
     final isSshMode = widget.cubit.isSshMode;
-    final effective = widget.cubit.resolveExecutable();
-    final isFallback = state.preferences.cliExecutablePath.trim().isEmpty;
-    final cliFieldEmpty = _pathController.text.trim().isEmpty;
-    final cliHint = cliFieldEmpty
-        ? '${l10n.cliExecutablePathUsing}$effective'
-        : null;
 
     return Expanded(
       child: SingleChildScrollView(
@@ -299,40 +221,30 @@ class _SessionControlsState extends State<_SessionControls> {
                   ),
                   showDividerBelow: true,
                 ),
-              SettingsLabeledStackedRow(
+              _CliExecutablePathSettingsRow(
+                cubit: widget.cubit,
+                cli: TeamCli.flashskyai,
                 title: l10n.cliExecutablePathLabel,
                 subtitle: isSshMode
                     ? l10n.cliExecutablePathDescriptionSsh
                     : l10n.cliExecutablePathDescription,
-                body: Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Expanded(
-                      child: AppOutlineTextField(
-                        key: AppKeys.cliExecutablePathField,
-                        controller: _pathController,
-                        focusNode: _cliPathFocus,
-                        hintText: cliHint,
-                        hintMaxLines: 3,
-                        onChanged: (_) => _scheduleDebouncedCliPathPersist(),
-                        onSubmitted: (_) => _flushCliExecutablePathPersist(),
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    OutlinedButton.icon(
-                      key: AppKeys.cliExecutablePathBrowseButton,
-                      onPressed: isSshMode ? null : _pickFile,
-                      icon: const Icon(Icons.folder_open_outlined, size: 16),
-                      label: Text(l10n.cliExecutablePathBrowse),
-                    ),
-                    const SizedBox(width: 6),
-                    TextButton(
-                      key: AppKeys.cliExecutablePathResetButton,
-                      onPressed: isFallback ? null : _reset,
-                      child: Text(l10n.cliExecutablePathReset),
-                    ),
-                  ],
-                ),
+                fieldKey: AppKeys.cliExecutablePathField,
+                browseKey: AppKeys.cliExecutablePathBrowseButton,
+                resetKey: AppKeys.cliExecutablePathResetButton,
+                debouncerTag: 'session_cli_executable_path',
+                showDividerBelow: true,
+              ),
+              _CliExecutablePathSettingsRow(
+                cubit: widget.cubit,
+                cli: TeamCli.claude,
+                title: l10n.claudeCliExecutablePathLabel,
+                subtitle: isSshMode
+                    ? l10n.claudeCliExecutablePathDescriptionSsh
+                    : l10n.claudeCliExecutablePathDescription,
+                fieldKey: AppKeys.claudeCliExecutablePathField,
+                browseKey: AppKeys.claudeCliExecutablePathBrowseButton,
+                resetKey: AppKeys.claudeCliExecutablePathResetButton,
+                debouncerTag: 'session_claude_cli_executable_path',
                 showDividerBelow: true,
               ),
               if (isSshMode) ...[
@@ -403,6 +315,173 @@ class _SessionControlsState extends State<_SessionControls> {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _CliExecutablePathSettingsRow extends StatefulWidget {
+  const _CliExecutablePathSettingsRow({
+    required this.cubit,
+    required this.cli,
+    required this.title,
+    required this.subtitle,
+    required this.fieldKey,
+    required this.browseKey,
+    required this.resetKey,
+    required this.debouncerTag,
+    required this.showDividerBelow,
+  });
+
+  final SessionPreferencesCubit cubit;
+  final TeamCli cli;
+  final String title;
+  final String subtitle;
+  final Key fieldKey;
+  final Key browseKey;
+  final Key resetKey;
+  final String debouncerTag;
+  final bool showDividerBelow;
+
+  @override
+  State<_CliExecutablePathSettingsRow> createState() =>
+      _CliExecutablePathSettingsRowState();
+}
+
+class _CliExecutablePathSettingsRowState
+    extends State<_CliExecutablePathSettingsRow> {
+  late final TextEditingController _controller;
+  late final FocusNode _focusNode;
+  late final Debouncer _persistDebouncer;
+  String _lastSyncedPath = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _persistDebouncer = Debouncer(
+      tag: widget.debouncerTag,
+      duration: _kSessionPathPersistDebounce,
+    );
+    _focusNode = FocusNode()..addListener(_onFocusChanged);
+    final initial = _storedPath();
+    _controller = TextEditingController(text: initial);
+    _lastSyncedPath = initial;
+  }
+
+  @override
+  void dispose() {
+    _persistDebouncer.dispose();
+    _focusNode.removeListener(_onFocusChanged);
+    _focusNode.dispose();
+    _controller.dispose();
+    super.dispose();
+  }
+
+  String _storedPath() {
+    final prefs = widget.cubit.state.preferences;
+    if (widget.cli == TeamCli.flashskyai) {
+      return prefs.cliExecutablePath;
+    }
+    return prefs.cliExecutablePaths[widget.cli.value] ?? '';
+  }
+
+  void _syncFromState(String stored) {
+    if (stored == _lastSyncedPath) return;
+    _persistDebouncer.cancel();
+    _lastSyncedPath = stored;
+    _controller.value = TextEditingValue(
+      text: stored,
+      selection: TextSelection.collapsed(offset: stored.length),
+    );
+  }
+
+  Future<void> _pickFile() async {
+    final result = await FilePicker.platform.pickFiles(type: FileType.any);
+    final picked = result?.files.single.path;
+    if (picked == null) return;
+    if (!mounted) return;
+    _persistDebouncer.cancel();
+    _controller.text = picked;
+    await widget.cubit.setCliExecutablePathFor(widget.cli, picked);
+  }
+
+  Future<void> _persistFromField() async {
+    if (!mounted) return;
+    final trimmed = _controller.text.trim();
+    final stored = _storedPath().trim();
+    if (trimmed == stored) return;
+    await widget.cubit.setCliExecutablePathFor(widget.cli, _controller.text);
+  }
+
+  void _onFocusChanged() {
+    if (!_focusNode.hasFocus) {
+      _flushPersist();
+    }
+  }
+
+  void _scheduleDebouncedPersist() {
+    _persistDebouncer(() {
+      if (mounted) {
+        _persistFromField();
+      }
+    });
+  }
+
+  void _flushPersist() {
+    _persistDebouncer.cancel();
+    _persistFromField();
+  }
+
+  Future<void> _reset() async {
+    _persistDebouncer.cancel();
+    _controller.clear();
+    await widget.cubit.setCliExecutablePathFor(widget.cli, '');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final stored = _storedPath();
+    _syncFromState(stored);
+
+    final isSshMode = widget.cubit.isSshMode;
+    final effective = widget.cubit.resolveExecutable(widget.cli);
+    final isFallback = stored.trim().isEmpty;
+    final fieldEmpty = _controller.text.trim().isEmpty;
+    final hint = fieldEmpty ? '${l10n.cliExecutablePathUsing}$effective' : null;
+
+    return SettingsLabeledStackedRow(
+      title: widget.title,
+      subtitle: widget.subtitle,
+      body: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Expanded(
+            child: AppOutlineTextField(
+              key: widget.fieldKey,
+              controller: _controller,
+              focusNode: _focusNode,
+              hintText: hint,
+              hintMaxLines: 3,
+              onChanged: (_) => _scheduleDebouncedPersist(),
+              onSubmitted: (_) => _flushPersist(),
+            ),
+          ),
+          const SizedBox(width: 6),
+          OutlinedButton.icon(
+            key: widget.browseKey,
+            onPressed: isSshMode ? null : _pickFile,
+            icon: const Icon(Icons.folder_open_outlined, size: 16),
+            label: Text(l10n.cliExecutablePathBrowse),
+          ),
+          const SizedBox(width: 6),
+          TextButton(
+            key: widget.resetKey,
+            onPressed: isFallback ? null : _reset,
+            child: Text(l10n.cliExecutablePathReset),
+          ),
+        ],
+      ),
+      showDividerBelow: widget.showDividerBelow,
     );
   }
 }

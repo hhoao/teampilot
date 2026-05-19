@@ -704,6 +704,24 @@ abstract class AppLocalizations {
   /// **'Using PATH lookup'**
   String get cliExecutablePathUsingFallback;
 
+  /// No description provided for @claudeCliExecutablePathLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Claude Code CLI path'**
+  String get claudeCliExecutablePathLabel;
+
+  /// No description provided for @claudeCliExecutablePathDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Absolute path to the Claude Code executable. Leave empty to use the one on PATH.'**
+  String get claudeCliExecutablePathDescription;
+
+  /// No description provided for @claudeCliExecutablePathDescriptionSsh.
+  ///
+  /// In en, this message translates to:
+  /// **'Absolute path to Claude Code on the remote SSH host. Leave empty to resolve claude from the remote PATH.'**
+  String get claudeCliExecutablePathDescriptionSsh;
+
   /// No description provided for @shellChatWorkbench.
   ///
   /// In en, this message translates to:

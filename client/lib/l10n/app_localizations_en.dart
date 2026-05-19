@@ -333,6 +333,17 @@ class AppLocalizationsEn extends AppLocalizations {
   String get cliExecutablePathUsingFallback => 'Using PATH lookup';
 
   @override
+  String get claudeCliExecutablePathLabel => 'Claude Code CLI path';
+
+  @override
+  String get claudeCliExecutablePathDescription =>
+      'Absolute path to the Claude Code executable. Leave empty to use the one on PATH.';
+
+  @override
+  String get claudeCliExecutablePathDescriptionSsh =>
+      'Absolute path to Claude Code on the remote SSH host. Leave empty to resolve claude from the remote PATH.';
+
+  @override
   String get shellChatWorkbench => 'Shell chat workbench';
 
   @override

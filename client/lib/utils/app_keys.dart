@@ -55,6 +55,15 @@ class AppKeys {
   static const cliExecutablePathResetButton = Key(
     'cli-executable-path-reset-button',
   );
+  static const claudeCliExecutablePathField = Key(
+    'claude-cli-executable-path-field',
+  );
+  static const claudeCliExecutablePathBrowseButton = Key(
+    'claude-cli-executable-path-browse-button',
+  );
+  static const claudeCliExecutablePathResetButton = Key(
+    'claude-cli-executable-path-reset-button',
+  );
   static const llmConfigPathOverrideField = Key(
     'llm-config-path-override-field',
   );

@@ -361,6 +361,40 @@ void main() {
     expect(decoration.color, cs.surfaceContainer);
   });
 
+  testWidgets('session settings configure Claude Code CLI path', (
+    tester,
+  ) async {
+    final teamCubit = await createTeamCubitInTest(tester);
+    final sessionCubit = await tester.runAsync(testSessionPreferencesCubit);
+    expect(sessionCubit, isNotNull);
+    await sessionCubit!.load();
+
+    await pumpDesktopApp(
+      tester,
+      teamCubit,
+      sessionPreferencesCubit: sessionCubit,
+    );
+
+    await tester.tap(find.byKey(AppKeys.sidebarSettingsButton));
+    await pumpPhaseTransitions(tester);
+    await tester.tap(find.byKey(AppKeys.configSessionSectionButton));
+    await pumpPhaseTransitions(tester);
+
+    expect(find.text('Claude Code CLI path'), findsOneWidget);
+    final claudeField = find.byWidgetPredicate(
+      (widget) =>
+          widget is TextField &&
+          widget.key == AppKeys.claudeCliExecutablePathField,
+    );
+    await tester.ensureVisible(claudeField);
+    await tester.enterText(claudeField, '/opt/bin/claude');
+    await tester.pump(const Duration(milliseconds: 500));
+
+    expect(sessionCubit.state.preferences.cliExecutablePaths, {
+      'claude': '/opt/bin/claude',
+    });
+  });
+
   testWidgets('opening a sidebar session starts team-lead member shell', (
     tester,
   ) async {

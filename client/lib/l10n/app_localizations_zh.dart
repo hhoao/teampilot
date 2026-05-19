@@ -321,6 +321,17 @@ class AppLocalizationsZh extends AppLocalizations {
   String get cliExecutablePathUsingFallback => '使用 PATH 中查找的版本';
 
   @override
+  String get claudeCliExecutablePathLabel => 'Claude Code CLI 路径';
+
+  @override
+  String get claudeCliExecutablePathDescription =>
+      'Claude Code 可执行文件的绝对路径。留空则使用 PATH 中查找到的版本。';
+
+  @override
+  String get claudeCliExecutablePathDescriptionSsh =>
+      '远程 SSH 主机上 Claude Code 的绝对路径。留空则从远端 PATH 解析 claude。';
+
+  @override
   String get shellChatWorkbench => 'Shell 聊天工作台';
 
   @override
