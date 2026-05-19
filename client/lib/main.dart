@@ -36,6 +36,7 @@ import 'services/flashskyai_storage_roots.dart';
 import 'services/remote_cli_session_checker.dart';
 import 'services/remote_ssh_storage_paths.dart';
 import 'services/skill_fetch_service.dart';
+import 'services/skill_repo_git_service.dart';
 import 'services/skill_repo_disk_cache_service.dart';
 import 'services/skill_repo_service.dart';
 import 'services/skill_install_service.dart';
@@ -220,7 +221,8 @@ void main() async {
 
   final teamRepo = TeamRepository(storageRoots: storageRoots);
   final skillManifest = SkillManifestService(storageRoots: storageRoots);
-  final skillFetch = SkillFetchService();
+  final skillGit = SkillRepoGitService();
+  final skillFetch = SkillFetchService(git: skillGit);
   final skillRepoCache = SkillRepoDiskCacheService(fetch: skillFetch);
   final skillRepo = SkillRepository(
     manifest: skillManifest,

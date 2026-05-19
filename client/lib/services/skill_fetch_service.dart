@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:archive/archive.dart';
@@ -6,6 +7,32 @@ import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as p;
 
 import '../models/skill.dart';
+import '../utils/logger.dart';
+import 'skill_repo_git_service.dart';
+
+/// GitHub REST API rejects requests without a valid User-Agent (HTTP fallback).
+const _githubUserAgent = 'flashskyai-ui-skill-sync/1.0';
+
+Map<String, String> _githubApiHeaders() {
+  final headers = <String, String>{
+    'Accept': 'application/vnd.github+json',
+    'X-GitHub-Api-Version': '2022-11-28',
+    'User-Agent': _githubUserAgent,
+  };
+  try {
+    final token =
+        Platform.environment['GITHUB_TOKEN'] ??
+        Platform.environment['GH_TOKEN'];
+    if (token != null && token.trim().isNotEmpty) {
+      headers['Authorization'] = 'Bearer ${token.trim()}';
+    }
+  } catch (_) {}
+  return headers;
+}
+
+Map<String, String> _githubHttpHeaders() => {
+  'User-Agent': _githubUserAgent,
+};
 
 class SkillFetchException implements Exception {
   SkillFetchException(this.message, [this.cause]);
@@ -157,46 +184,89 @@ String _skillDescription(Uint8List skillMdBytes) {
 }
 
 class SkillFetchService {
-  SkillFetchService({http.Client? client}) : _client = client ?? http.Client();
+  SkillFetchService({http.Client? client, SkillRepoGitService? git})
+    : _client = client ?? http.Client(),
+      _git = git ?? SkillRepoGitService();
 
   final http.Client _client;
+  final SkillRepoGitService _git;
 
-  /// Latest commit SHA for [branch] (null if branch missing or API error).
+  SkillRepoGitService get git => _git;
+
+  /// Latest commit on [branch]: local `git ls-remote` first, then GitHub API.
   Future<String?> fetchBranchCommitSha(
     String owner,
     String name,
     String branch,
   ) async {
+    final viaGit = await _git.resolveRemoteSha(owner, name, branch);
+    if (viaGit != null) return viaGit;
+    return _fetchBranchCommitShaFromApi(owner, name, branch);
+  }
+
+  Future<String?> _fetchBranchCommitShaFromApi(
+    String owner,
+    String name,
+    String branch,
+  ) async {
+    final ref = Uri.encodeComponent(branch);
     final url = Uri.parse(
-      'https://api.github.com/repos/$owner/$name/commits/$branch',
+      'https://api.github.com/repos/$owner/$name/commits/$ref',
     );
     try {
-      final resp = await _client.get(
-        url,
-        headers: const {'Accept': 'application/vnd.github+json'},
-      );
-      if (resp.statusCode != 200) return null;
+      final resp = await _client.get(url, headers: _githubApiHeaders());
+      if (resp.statusCode != 200) {
+        appLogger.d(
+          '[SkillFetch] API commit SHA $owner/$name@$branch: HTTP ${resp.statusCode}',
+        );
+        return null;
+      }
       final body = json.decode(resp.body) as Map<String, dynamic>;
       return body['sha'] as String?;
-    } catch (_) {
+    } catch (e) {
+      appLogger.d('[SkillFetch] API commit SHA $owner/$name@$branch: $e');
       return null;
     }
   }
 
-  /// Downloads and decodes a repo tarball (no in-memory cache).
-  Future<({Map<String, Uint8List> entries, String branch})> downloadRepoEntries(
-    SkillRepo repo,
-  ) async {
+  /// Sync via local git when [persistentGitDir] is set; otherwise HTTP tarball/zip.
+  Future<({
+    Map<String, Uint8List> entries,
+    String branch,
+    String commitSha,
+  })> downloadRepoEntries(
+    SkillRepo repo, {
+    Directory? persistentGitDir,
+  }) async {
+    if (persistentGitDir != null && await _git.isAvailable) {
+      try {
+        final synced = await _git.syncCheckout(repo, persistentGitDir);
+        return (
+          entries: synced.entries,
+          branch: synced.branch,
+          commitSha: synced.commitSha,
+        );
+      } catch (e) {
+        appLogger.w(
+          '[SkillFetch] git sync ${repo.fullName} failed, trying HTTP: $e',
+        );
+      }
+    }
+
     Object? lastError;
     for (final branch in skillRepoBranchCandidates(repo.branch)) {
       try {
         final payload = await _downloadTarball(repo, branch);
-        return (entries: payload.entries, branch: branch);
+        final sha =
+            await fetchBranchCommitSha(repo.owner, repo.name, branch) ?? '';
+        return (entries: payload.entries, branch: branch, commitSha: sha);
       } catch (e) {
         lastError = e;
         try {
           final payload = await _downloadZipArchive(repo, branch);
-          return (entries: payload.entries, branch: branch);
+          final sha =
+              await fetchBranchCommitSha(repo.owner, repo.name, branch) ?? '';
+          return (entries: payload.entries, branch: branch, commitSha: sha);
         } catch (e2) {
           lastError = e2;
         }
@@ -214,7 +284,7 @@ class SkillFetchService {
     );
     final http.Response resp;
     try {
-      resp = await _client.get(url);
+      resp = await _client.get(url, headers: _githubHttpHeaders());
     } catch (e) {
       throw SkillFetchException(
         'Network error for ${repo.fullName}@$branch: $e',
@@ -239,12 +309,13 @@ class SkillFetchService {
   }
 
   Future<TarballPayload> _downloadZipArchive(SkillRepo repo, String branch) async {
+    final ref = Uri.encodeComponent(branch);
     final url = Uri.parse(
-      'https://github.com/${repo.owner}/${repo.name}/archive/refs/heads/$branch.zip',
+      'https://github.com/${repo.owner}/${repo.name}/archive/refs/heads/$ref.zip',
     );
     final http.Response resp;
     try {
-      resp = await _client.get(url);
+      resp = await _client.get(url, headers: _githubHttpHeaders());
     } catch (e) {
       throw SkillFetchException(
         'Network error (zip) for ${repo.fullName}@$branch: $e',
@@ -313,7 +384,7 @@ class SkillFetchService {
     final url = Uri.parse(
       'https://raw.githubusercontent.com/$owner/$name/$branch/$directory/SKILL.md',
     );
-    final resp = await _client.get(url);
+    final resp = await _client.get(url, headers: _githubHttpHeaders());
     if (resp.statusCode == 404) return null;
     if (resp.statusCode != 200) {
       throw SkillFetchException(

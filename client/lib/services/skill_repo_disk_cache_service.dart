@@ -130,8 +130,8 @@ class SkillRepoDiskCacheService {
         );
       }
       if (remoteSha == null) {
-        appLogger.w(
-          '[SkillRepoCache] SHA check unavailable for ${repo.fullName}, using disk cache',
+        appLogger.d(
+          '[SkillRepoCache] remote SHA unavailable for ${repo.fullName}, using disk cache',
         );
         return SkillRepoSyncResult(
           skills: await readSkillsFromDisk(repo),
@@ -142,14 +142,12 @@ class SkillRepoDiskCacheService {
     }
 
     try {
-      final downloaded = await _fetch.downloadRepoEntries(repo);
-      final commitSha =
-          await _fetch.fetchBranchCommitSha(
-            repo.owner,
-            repo.name,
-            downloaded.branch,
-          ) ??
-          '';
+      final sourceDir = Directory(p.join(dir.path, 'source'));
+      final downloaded = await _fetch.downloadRepoEntries(
+        repo,
+        persistentGitDir: sourceDir,
+      );
+      final commitSha = downloaded.commitSha;
       final skills = discoverSkillsInTarballEntries(
         entries: downloaded.entries,
         repo: repo,
