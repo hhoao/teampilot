@@ -36,6 +36,18 @@ void main() {
     expect(message, contains('/tmp/teampilot-missing-flashskyai-executable'));
   });
 
+  test('reports missing Claude executable without flashskyai copy', () {
+    final message = CliExecutableValidator.validateLaunch(
+      executable: '/tmp/teampilot-missing-claude-executable',
+      workingDirectory: Directory.current.path,
+    );
+
+    expect(message, isNotNull);
+    expect(message, contains('无法启动 claude'));
+    expect(message, contains('/tmp/teampilot-missing-claude-executable'));
+    expect(message, isNot(contains('flashskyai CLI')));
+  });
+
   test('reports missing working directory', () {
     final message = CliExecutableValidator.validateLaunch(
       executable: 'flashskyai',

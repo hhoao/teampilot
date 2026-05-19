@@ -91,7 +91,7 @@ class ClaudeCodeCliToolAdapter implements CliToolAdapter {
   List<String> buildArguments(CliLaunchContext context) {
     final member = context.member;
     final args = <String>[
-      ..._buildSessionPrefixArgs(context),
+      ..._buildSessionPrefixArgs(context, includeWorkingDirectory: false),
       '--agent-teams',
       '--team-name',
       context.teamName,
@@ -114,7 +114,10 @@ class ClaudeCodeCliToolAdapter implements CliToolAdapter {
   }
 }
 
-List<String> _buildSessionPrefixArgs(CliLaunchContext context) {
+List<String> _buildSessionPrefixArgs(
+  CliLaunchContext context, {
+  bool includeWorkingDirectory = true,
+}) {
   final args = <String>[];
   final resume = context.resumeSessionId?.trim() ?? '';
   final fixed = context.fixedSessionId?.trim() ?? '';
@@ -124,7 +127,7 @@ List<String> _buildSessionPrefixArgs(CliLaunchContext context) {
     args.addAll(['--session-id', fixed]);
   }
   final wd = context.workingDirectory ?? '';
-  if (wd.isNotEmpty) {
+  if (includeWorkingDirectory && wd.isNotEmpty) {
     args.addAll(['--dir', _normalizePathForCli(wd, context.useWslPaths)]);
   }
   for (final path in context.additionalDirectories) {

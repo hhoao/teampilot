@@ -361,8 +361,9 @@ class TerminalSession {
       if (startGeneration != _transportStartGeneration || !_starting) {
         return;
       }
-      Logger().e('Failed to start flashskyai: $error', stackTrace: stackTrace);
-      _handleStartFailure('[Failed to start flashskyai: $error]');
+      final cliName = CliExecutableValidator.cliDisplayName(executable);
+      Logger().e('Failed to start $cliName: $error', stackTrace: stackTrace);
+      _handleStartFailure('[Failed to start $cliName: $error]');
     }
   }
 
@@ -414,20 +415,22 @@ class TerminalSession {
   }
 
   String _launchFailureMessage(String executable) {
+    final cliName = CliExecutableValidator.cliDisplayName(executable);
     if (!validateLaunch) {
-      return '[无法启动远端 flashskyai: "$executable"。\n'
+      return '[无法启动远端 $cliName: "$executable"。\n'
           '  请检查 SSH Profile 中的远端路径、PATH、工作目录和执行权限。]';
     }
     return _execFailureMessage(executable);
   }
 
   static String _execFailureMessage(String executable) {
+    final cliName = CliExecutableValidator.cliDisplayName(executable);
     return CliExecutableValidator.validateLaunch(
           executable: executable,
           workingDirectory: '',
         ) ??
-        '[无法启动 flashskyai: 未找到可执行文件 "$executable"。\n'
-            '  请在「设置 → 会话」中配置 flashskyai CLI 的绝对路径，'
+        '[无法启动 $cliName: 未找到可执行文件 "$executable"。\n'
+            '  请在「设置 → 会话」中配置 $cliName CLI 的绝对路径，'
             '或确保其已在 PATH 中（从文件管理器启动 AppImage 时 PATH 可能很短）。]';
   }
 

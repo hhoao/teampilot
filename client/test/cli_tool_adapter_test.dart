@@ -84,8 +84,6 @@ void main() {
       [
         '--resume',
         '22222222-2222-2222-2222-222222222222',
-        '--dir',
-        '/home/hhoa/git/agent',
         '--add-dir',
         '/home/hhoa/git/shared',
         '--agent-teams',
@@ -105,6 +103,23 @@ void main() {
         'be careful',
       ],
     );
+  });
+
+  test('claude adapter does not pass unsupported --dir option', () {
+    final args = ClaudeCodeCliToolAdapter().buildArguments(
+      CliLaunchContext(
+        team: const TeamConfig(
+          id: 'team-1',
+          name: 'agent',
+          cli: TeamCli.claude,
+        ),
+        member: member,
+        workingDirectory: '/home/hhoa/git/agent',
+      ),
+    );
+
+    expect(args, isNot(contains('--dir')));
+    expect(args, isNot(contains('/home/hhoa/git/agent')));
   });
 
   test('claude adapter omits flashskyai-only flags', () {

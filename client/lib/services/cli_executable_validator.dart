@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'cli_invocation.dart';
 
-/// Pre-flight checks before spawning a PTY for [flashskyai].
+/// Pre-flight checks before spawning a PTY for a configured CLI.
 class CliExecutableValidator {
   const CliExecutableValidator._();
 
@@ -33,6 +33,7 @@ class CliExecutableValidator {
   }
 
   static String? _validateExecutablePath(String executable) {
+    final cliName = cliDisplayName(executable);
     final looksLikePath =
         executable.contains('/') ||
         (Platform.isWindows &&
@@ -46,19 +47,18 @@ class CliExecutableValidator {
         final result = Process.runSync(cmd, [executable]);
         if (result.exitCode != 0) {
           return _formatMessage(
-            'flashskyai executable not found on PATH',
+            '$cliName executable not found on PATH',
             executable,
-            hint:
-                'Open Settings → Session and set the absolute path to flashskyai, '
-                'or add it to PATH in ~/.bashrc.',
+            cliName: cliName,
+            hint: _settingsHint(cliName, includePathHint: true),
           );
         }
       } on ProcessException {
         return _formatMessage(
-          'flashskyai executable not found on PATH',
+          '$cliName executable not found on PATH',
           executable,
-          hint:
-              'Open Settings → Session and set the absolute path to flashskyai.',
+          cliName: cliName,
+          hint: _settingsHint(cliName, includePathHint: false),
         );
       }
       return null;
@@ -66,22 +66,38 @@ class CliExecutableValidator {
 
     if (!File(executable).existsSync()) {
       return _formatMessage(
-        'flashskyai executable not found',
+        '$cliName executable not found',
         executable,
-        hint:
-            'Open Settings → Session and set the absolute path to flashskyai, '
-            'or install it on your PATH.',
+        cliName: cliName,
+        hint: _settingsHint(cliName, includePathHint: true),
       );
     }
     return null;
   }
 
+  static String cliDisplayName(String executable) {
+    final normalized = executable.replaceAll(r'\', '/').toLowerCase();
+    final basename = normalized.split('/').last;
+    if (basename.contains('claude')) return 'claude';
+    if (basename.contains('flashskyai')) return 'flashskyai';
+    if (basename.contains('codex')) return 'codex';
+    return 'CLI';
+  }
+
+  static String _settingsHint(String cliName, {required bool includePathHint}) {
+    final base =
+        'Open Settings → Session and set the absolute path to $cliName';
+    if (!includePathHint) return '$base.';
+    return '$base, or install it on your PATH.';
+  }
+
   static String _formatMessage(
     String title,
     String detail, {
+    String? cliName,
     required String hint,
   }) {
-    return '[无法启动 flashskyai: $title\n'
+    return '[无法启动 ${cliName ?? 'CLI'}: $title\n'
         '  $detail\n'
         '  $hint]';
   }
