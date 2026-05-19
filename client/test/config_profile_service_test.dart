@@ -60,6 +60,24 @@ void main() {
     expect(await Directory(p.join(teamRoot, 'flashskyai')).exists(), isFalse);
   });
 
+  test(
+    'ensureTeamProfile for claude creates claude dir and metadata only',
+    () async {
+      await service.ensureTeamProfile('team-a', cli: TeamCli.claude);
+
+      final teamRoot = p.join(base.path, 'config-profiles', 'teams', 'team-a');
+      expect(await Directory(p.join(teamRoot, 'claude')).exists(), isTrue);
+      expect(await Directory(p.join(teamRoot, 'flashskyai')).exists(), isFalse);
+      expect(await Directory(p.join(teamRoot, 'codex')).exists(), isFalse);
+
+      final metadata = File(p.join(teamRoot, 'claude', '.claude.json'));
+      expect(await metadata.exists(), isTrue);
+      final decoded =
+          jsonDecode(await metadata.readAsString()) as Map<String, Object?>;
+      expect(decoded, {'hasCompletedOnboarding': true});
+    },
+  );
+
   test('does not overwrite existing team flashskyai metadata', () async {
     final metadata = File(
       p.join(
@@ -75,6 +93,25 @@ void main() {
     await metadata.writeAsString('{"hasCompletedOnboarding":false}');
 
     await service.ensureTeamProfile('team-a', cli: TeamCli.flashskyai);
+
+    expect(await metadata.readAsString(), '{"hasCompletedOnboarding":false}');
+  });
+
+  test('does not overwrite existing team claude metadata', () async {
+    final metadata = File(
+      p.join(
+        base.path,
+        'config-profiles',
+        'teams',
+        'team-a',
+        'claude',
+        '.claude.json',
+      ),
+    );
+    await metadata.parent.create(recursive: true);
+    await metadata.writeAsString('{"hasCompletedOnboarding":false}');
+
+    await service.ensureTeamProfile('team-a', cli: TeamCli.claude);
 
     expect(await metadata.readAsString(), '{"hasCompletedOnboarding":false}');
   });

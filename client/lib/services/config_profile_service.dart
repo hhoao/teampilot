@@ -11,11 +11,15 @@ typedef ConfigProfileDirectoryCreator = Future<void> Function(String path);
 
 /// Ensures team runtime isolation directories and returns launch env vars.
 ///
-/// Does not write provider native configs or team-level `llm_config.json`.
+/// Does not write team-level `llm_config.json`.
 class ConfigProfileService {
   static const flashskyaiMetadataFileName = '.flashskyai.json';
+  static const claudeMetadataFileName = '.claude.json';
 
   static const Map<String, Object?> defaultFlashskyaiMetadata = {
+    'hasCompletedOnboarding': true,
+  };
+  static const Map<String, Object?> defaultClaudeMetadata = {
     'hasCompletedOnboarding': true,
   };
   ConfigProfileService({
@@ -46,6 +50,9 @@ class ConfigProfileService {
   String teamFlashskyaiMetadataFile(String teamId) =>
       p.join(teamToolDir(teamId, 'flashskyai'), flashskyaiMetadataFileName);
 
+  String teamClaudeMetadataFile(String teamId) =>
+      p.join(teamToolDir(teamId, 'claude'), claudeMetadataFileName);
+
   Future<void> ensureCommonProfiles() async {
     await _createDirectory(commonFlashskyaiDir);
   }
@@ -63,7 +70,9 @@ class ConfigProfileService {
         await ensureCommonProfiles();
         await ensureTeamFlashskyaiDefaults(trimmed);
       case TeamCli.codex:
+        break;
       case TeamCli.claude:
+        await ensureTeamClaudeDefaults(trimmed);
         break;
     }
   }
@@ -79,6 +88,20 @@ class ConfigProfileService {
     await file.parent.create(recursive: true);
     await file.writeAsString(
       const JsonEncoder.withIndent('  ').convert(defaultFlashskyaiMetadata),
+    );
+  }
+
+  /// Seeds `.claude.json` so Claude Code skips the first-run onboarding UI.
+  Future<void> ensureTeamClaudeDefaults(String teamId) async {
+    final trimmed = teamId.trim();
+    if (trimmed.isEmpty) return;
+
+    final file = File(teamClaudeMetadataFile(trimmed));
+    if (await file.exists()) return;
+
+    await file.parent.create(recursive: true);
+    await file.writeAsString(
+      const JsonEncoder.withIndent('  ').convert(defaultClaudeMetadata),
     );
   }
 
