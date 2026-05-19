@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:teampilot/models/team_config.dart';
+import 'package:teampilot/services/config_profile_service.dart';
 import 'package:teampilot/services/flashskyai_storage_roots.dart';
 import 'package:teampilot/services/team_launch_environment_builder.dart';
 
@@ -186,6 +187,166 @@ void main() {
     expect(settings['skipDangerousModePermissionPrompt'], true);
     expect(settings['teammateMode'], 'in-process');
   });
+
+  test(
+    'claude member launch returns shared config dir and settings file',
+    () async {
+      final providerSettings = File(
+        p.join(base.path, 'providers', 'claude', 'deepseek', 'settings.json'),
+      );
+      await providerSettings.parent.create(recursive: true);
+      await providerSettings.writeAsString(
+        jsonEncode({
+          'env': {
+            'ANTHROPIC_BASE_URL': 'https://api.deepseek.com/anthropic',
+            'ANTHROPIC_MODEL': 'deepseek-default',
+          },
+        }),
+      );
+
+      final env = await TeamLaunchEnvironmentBuilder.build(
+        appDataBasePath: base.path,
+        runtimeTeamId: 'team-a-session-0',
+        team: const TeamConfig(
+          id: 'team-a',
+          name: 'Team A',
+          cli: TeamCli.claude,
+          providerIdsByTool: {'claude': 'deepseek'},
+          members: [
+            TeamMemberConfig(id: 'lead', name: 'team-lead', model: 'opus'),
+            TeamMemberConfig(id: 'dev', name: 'developer', model: 'sonnet'),
+          ],
+        ),
+        member: const TeamMemberConfig(
+          id: 'dev',
+          name: 'developer',
+          model: 'sonnet',
+        ),
+      );
+
+      final claudeDir = p.join(
+        base.path,
+        'config-profiles',
+        'teams',
+        'team-a-session-0',
+        'claude',
+      );
+      final developerSettings = p.join(claudeDir, 'settings', 'developer.json');
+      expect(env!['CLAUDE_CONFIG_DIR'], claudeDir);
+      expect(
+        env[ConfigProfileService.claudeSettingsFileEnvKey],
+        developerSettings,
+      );
+
+      final settingsFile = File(developerSettings);
+      final settings =
+          jsonDecode(await settingsFile.readAsString()) as Map<String, Object?>;
+      final settingsEnv = settings['env'] as Map<String, Object?>;
+      expect(
+        settingsEnv['ANTHROPIC_BASE_URL'],
+        'https://api.deepseek.com/anthropic',
+      );
+      expect(settingsEnv['ANTHROPIC_MODEL'], 'sonnet');
+    },
+  );
+
+  test(
+    'claude member settings use member provider over team provider',
+    () async {
+      Future<void> writeProvider({
+        required String id,
+        required String baseUrl,
+        required String token,
+        required String model,
+      }) async {
+        final providerSettings = File(
+          p.join(base.path, 'providers', 'claude', id, 'settings.json'),
+        );
+        await providerSettings.parent.create(recursive: true);
+        await providerSettings.writeAsString(
+          jsonEncode({
+            'env': {
+              'ANTHROPIC_BASE_URL': baseUrl,
+              'ANTHROPIC_AUTH_TOKEN': token,
+              'ANTHROPIC_MODEL': model,
+            },
+          }),
+        );
+      }
+
+      await writeProvider(
+        id: 'deepseek',
+        baseUrl: 'https://api.deepseek.com/anthropic',
+        token: 'sk-deepseek',
+        model: 'deepseek-default',
+      );
+      await writeProvider(
+        id: 'moonshot',
+        baseUrl: 'https://api.moonshot.example/anthropic',
+        token: 'sk-moonshot',
+        model: 'moonshot-default',
+      );
+
+      await TeamLaunchEnvironmentBuilder.build(
+        appDataBasePath: base.path,
+        team: const TeamConfig(
+          id: 'team-a',
+          name: 'Team A',
+          cli: TeamCli.claude,
+          providerIdsByTool: {'claude': 'deepseek'},
+          members: [
+            TeamMemberConfig(id: 'dev', name: 'developer', model: 'sonnet'),
+            TeamMemberConfig(
+              id: 'reviewer',
+              name: 'reviewer',
+              provider: 'moonshot',
+              model: 'opus',
+            ),
+          ],
+        ),
+        member: const TeamMemberConfig(
+          id: 'dev',
+          name: 'developer',
+          provider: 'deepseek',
+          model: 'sonnet',
+        ),
+      );
+
+      Future<Map<String, Object?>> readEnv(String memberName) async {
+        final settingsFile = File(
+          p.join(
+            base.path,
+            'config-profiles',
+            'teams',
+            'team-a',
+            'claude',
+            'settings',
+            '$memberName.json',
+          ),
+        );
+        final settings =
+            jsonDecode(await settingsFile.readAsString())
+                as Map<String, Object?>;
+        return settings['env'] as Map<String, Object?>;
+      }
+
+      final developerEnv = await readEnv('developer');
+      expect(
+        developerEnv['ANTHROPIC_BASE_URL'],
+        'https://api.deepseek.com/anthropic',
+      );
+      expect(developerEnv['ANTHROPIC_AUTH_TOKEN'], 'sk-deepseek');
+      expect(developerEnv['ANTHROPIC_MODEL'], 'sonnet');
+
+      final reviewerEnv = await readEnv('reviewer');
+      expect(
+        reviewerEnv['ANTHROPIC_BASE_URL'],
+        'https://api.moonshot.example/anthropic',
+      );
+      expect(reviewerEnv['ANTHROPIC_AUTH_TOKEN'], 'sk-moonshot');
+      expect(reviewerEnv['ANTHROPIC_MODEL'], 'opus');
+    },
+  );
 
   test('empty team id keeps legacy llm override fallback', () async {
     final env = await TeamLaunchEnvironmentBuilder.build(

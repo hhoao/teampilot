@@ -15,6 +15,7 @@ typedef ConfigProfileDirectoryCreator = Future<void> Function(String path);
 class ConfigProfileService {
   static const flashskyaiMetadataFileName = '.flashskyai.json';
   static const claudeMetadataFileName = '.claude.json';
+  static const claudeSettingsFileEnvKey = 'TEAMPILOT_CLAUDE_SETTINGS_FILE';
 
   static const Map<String, Object?> defaultFlashskyaiMetadata = {
     'hasCompletedOnboarding': true,
@@ -46,6 +47,13 @@ class ConfigProfileService {
 
   String teamToolDir(String teamId, String tool) =>
       p.join(teamProfileDir(teamId), tool);
+
+  String teamClaudeMemberSettingsFile(String teamId, TeamMemberConfig member) =>
+      p.join(
+        teamToolDir(teamId, 'claude'),
+        'settings',
+        '${_safeClaudePathName(member.name)}.json',
+      );
 
   String teamFlashskyaiMetadataFile(String teamId) =>
       p.join(teamToolDir(teamId, 'flashskyai'), flashskyaiMetadataFileName);
@@ -106,36 +114,57 @@ class ConfigProfileService {
   }
 
   /// Creates dirs for [cli] and returns launch env vars for that CLI only.
+  ///
+  /// [teamId] identifies the source team metadata. [runtimeTeamId], when set,
+  /// identifies the launch-time profile directory used by one session.
   Future<TeamLaunchEnvironment> prepareTeamLaunch({
     required String teamId,
+    String runtimeTeamId = '',
     TeamCli cli = TeamCli.flashskyai,
     List<TeamMemberConfig> members = const [],
+    TeamMemberConfig? member,
     String workingDirectory = '',
     Map<String, Object?>? claudeSettings,
+    Map<String, Map<String, Object?>> claudeSettingsByMember = const {},
   }) async {
     final trimmedTeamId = teamId.trim();
     if (trimmedTeamId.isEmpty) {
       return const {};
     }
+    final profileTeamId = runtimeTeamId.trim().isNotEmpty
+        ? runtimeTeamId.trim()
+        : trimmedTeamId;
 
-    await ensureTeamProfile(trimmedTeamId, cli: cli);
+    await ensureTeamProfile(profileTeamId, cli: cli);
     if (cli == TeamCli.claude) {
-      await _writeClaudeSettings(trimmedTeamId, claudeSettings);
+      await _writeClaudeSettings(profileTeamId, claudeSettings);
       await _writeClaudeRoster(
-        teamId: trimmedTeamId,
+        teamId: profileTeamId,
         members: members,
         workingDirectory: workingDirectory,
+      );
+      await _writeClaudeMemberProfiles(
+        teamId: profileTeamId,
+        members: members,
+        launchedMember: member,
+        providerSettings: claudeSettings,
+        providerSettingsByMember: claudeSettingsByMember,
       );
     }
 
     return switch (cli) {
       TeamCli.flashskyai => {
-        'FLASHSKYAI_CONFIG_DIR': teamToolDir(trimmedTeamId, 'flashskyai'),
+        'FLASHSKYAI_CONFIG_DIR': teamToolDir(profileTeamId, 'flashskyai'),
         'LLM_CONFIG_PATH': commonFlashskyaiLlmConfigFile,
       },
-      TeamCli.codex => {'CODEX_HOME': teamToolDir(trimmedTeamId, 'codex')},
+      TeamCli.codex => {'CODEX_HOME': teamToolDir(profileTeamId, 'codex')},
       TeamCli.claude => {
-        'CLAUDE_CONFIG_DIR': teamToolDir(trimmedTeamId, 'claude'),
+        'CLAUDE_CONFIG_DIR': teamToolDir(profileTeamId, 'claude'),
+        if (member != null && member.isValid)
+          claudeSettingsFileEnvKey: teamClaudeMemberSettingsFile(
+            profileTeamId,
+            member,
+          ),
         'CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS': '1',
       },
     };
@@ -200,6 +229,47 @@ class ConfigProfileService {
     await roster.parent.create(recursive: true);
     await roster.writeAsString(
       const JsonEncoder.withIndent('  ').convert(config),
+    );
+  }
+
+  Future<void> _writeClaudeMemberProfiles({
+    required String teamId,
+    required List<TeamMemberConfig> members,
+    required TeamMemberConfig? launchedMember,
+    required Map<String, Object?>? providerSettings,
+    required Map<String, Map<String, Object?>> providerSettingsByMember,
+  }) async {
+    final uniqueMembers = <String, TeamMemberConfig>{};
+    for (final member in members.where((member) => member.isValid)) {
+      uniqueMembers[member.name] = member;
+    }
+    final selected = launchedMember;
+    if (selected != null && selected.isValid) {
+      uniqueMembers[selected.name] = selected;
+    }
+
+    for (final member in uniqueMembers.values) {
+      await _writeClaudeMemberProfile(
+        teamId: teamId,
+        member: member,
+        providerSettings:
+            providerSettingsByMember[member.id] ??
+            providerSettingsByMember[member.name] ??
+            providerSettings,
+      );
+    }
+  }
+
+  Future<void> _writeClaudeMemberProfile({
+    required String teamId,
+    required TeamMemberConfig member,
+    required Map<String, Object?>? providerSettings,
+  }) async {
+    final file = File(teamClaudeMemberSettingsFile(teamId, member));
+    final settings = _claudeMemberSettings(providerSettings, member);
+    await file.parent.create(recursive: true);
+    await file.writeAsString(
+      const JsonEncoder.withIndent('  ').convert(settings),
     );
   }
 
@@ -269,6 +339,23 @@ class ConfigProfileService {
     return settings;
   }
 
+  static Map<String, Object?> _claudeMemberSettings(
+    Map<String, Object?>? providerSettings,
+    TeamMemberConfig member,
+  ) {
+    final settings = _claudeTeamSettings(providerSettings);
+    final model = member.model.trim();
+    if (model.isNotEmpty) {
+      final env = Map<String, Object?>.from(settings['env'] as Map);
+      env['ANTHROPIC_MODEL'] = model;
+      env['ANTHROPIC_DEFAULT_HAIKU_MODEL'] = model;
+      env['ANTHROPIC_DEFAULT_SONNET_MODEL'] = model;
+      env['ANTHROPIC_DEFAULT_OPUS_MODEL'] = model;
+      settings['env'] = env;
+    }
+    return settings;
+  }
+
   static Future<Map<String, Object?>> _readJsonObject(File file) async {
     if (!await file.exists()) return const <String, Object?>{};
     try {
@@ -283,7 +370,12 @@ class ConfigProfileService {
   }
 
   static String _safeClaudeTeamName(String teamId) =>
-      teamId.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '-');
+      _safeClaudePathName(teamId);
+
+  static String _safeClaudePathName(String value) {
+    final safe = value.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '-');
+    return safe.isEmpty ? 'default' : safe;
+  }
 
   static Future<void> _createLocalDirectory(String path) =>
       Directory(path).create(recursive: true);

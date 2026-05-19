@@ -253,11 +253,15 @@ class ChatCubit extends Cubit<ChatState> {
 
   Future<Map<String, String>?> _spawnEnvironment(
     TeamConfig team, {
+    TeamMemberConfig? member,
+    String runtimeTeamId = '',
     String workingDirectory = '',
   }) {
     return TeamLaunchEnvironmentBuilder.build(
       appDataBasePath: AppStorage.basePath,
       team: team,
+      member: member,
+      runtimeTeamId: runtimeTeamId,
       llmConfigPathOverride: _llmConfigPathOverride?.call(),
       workingDirectory: workingDirectory,
       storageRootsResolver: _storageRootsResolver,
@@ -467,6 +471,8 @@ class ChatCubit extends Cubit<ChatState> {
           final env = team != null
               ? await _spawnEnvironment(
                   team,
+                  member: member,
+                  runtimeTeamId: cliTeamDirName,
                   workingDirectory: session.primaryPath,
                 )
               : await TeamLaunchEnvironmentBuilder.build(
@@ -636,6 +642,8 @@ class ChatCubit extends Cubit<ChatState> {
           sessionTeam: tab.sessionTeamName,
           extraEnvironment: await _spawnEnvironment(
             team,
+            member: member,
+            runtimeTeamId: tab.sessionTeamName,
             workingDirectory: launch.$1,
           ),
           onProcessStarted: () => _updateTabRunning(tab.info.id),

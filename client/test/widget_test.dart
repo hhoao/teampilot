@@ -23,11 +23,13 @@ import 'package:teampilot/repositories/team_repository.dart';
 import 'package:teampilot/models/connection_mode.dart';
 import 'package:teampilot/services/config_profile_service.dart';
 import 'package:teampilot/services/connection_mode_service.dart';
+import 'package:teampilot/services/flashskyai_storage_roots.dart';
 import 'package:teampilot/services/terminal_session.dart';
 import 'package:teampilot/utils/app_keys.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:path/path.dart' as p;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'support/post_frame_test_harness.dart';
@@ -149,12 +151,8 @@ Future<SessionPreferencesCubit> testSessionPreferencesCubit() async {
 
 Future<TeamCubit> createTeamCubit({TeamLauncher? launcher}) async {
   final tmp = await Directory.systemTemp.createTemp('teams_widget_');
-  final cliTmp = await Directory.systemTemp.createTemp('teams_widget_cli_');
   final appData = await Directory.systemTemp.createTemp('teams_widget_app_');
-  final repository = TeamRepository(
-    rootDir: tmp.path,
-    cliTeamsDir: cliTmp.path,
-  );
+  final repository = TeamRepository(rootDir: tmp.path);
   final cubit = TeamCubit(
     repository: repository,
     executableResolver: _testExecutable,
@@ -188,6 +186,7 @@ class FakeTerminalSession extends TerminalSession {
   final lastFixedSessionIds = <String?>[];
   final lastResumeSessionIds = <String?>[];
   final lastAdditionalDirectoriesLists = <List<String>>[];
+  final lastExtraEnvironments = <Map<String, String>?>[];
 
   @override
   bool get isRunning => _running;
@@ -209,6 +208,11 @@ class FakeTerminalSession extends TerminalSession {
     lastResumeSessionIds.add(resumeSessionId);
     lastAdditionalDirectoriesLists.add(
       List<String>.from(additionalDirectories),
+    );
+    lastExtraEnvironments.add(
+      extraEnvironment == null
+          ? null
+          : Map<String, String>.from(extraEnvironment),
     );
     _running = true;
     if (resumeSessionId != null && resumeSessionId.isNotEmpty) {
@@ -456,12 +460,8 @@ void main() {
 
   test('team cubit manages teams', () async {
     final tmp = await Directory.systemTemp.createTemp('teams_cubit_');
-    final cliTmp = await Directory.systemTemp.createTemp('teams_cubit_cli_');
     final appData = await Directory.systemTemp.createTemp('teams_cubit_app_');
-    final repository = TeamRepository(
-      rootDir: tmp.path,
-      cliTeamsDir: cliTmp.path,
-    );
+    final repository = TeamRepository(rootDir: tmp.path);
     final cubit = TeamCubit(
       repository: repository,
       executableResolver: _testExecutable,
@@ -554,6 +554,69 @@ void main() {
     expect(cubit.isMemberRunning('lead'), isTrue);
     expect(cubit.isMemberRunning('dev'), isTrue);
   });
+
+  test(
+    'chat cubit launches Claude members with team dir and settings file',
+    () async {
+      final tmp = await Directory.systemTemp.createTemp('chat_claude_cfg_');
+      addTearDown(() => tmp.deleteSync(recursive: true));
+      final sessions = <FakeTerminalSession>[];
+      final postFrame = PostFrameTestHarness();
+      final cubit = ChatCubit(
+        executableResolver: () => 'claude',
+        terminalSessionFactory: ({required String executable}) {
+          final session = FakeTerminalSession(executable: executable);
+          sessions.add(session);
+          return session;
+        },
+        postFrameScheduler: postFrame.scheduler,
+        storageRootsResolver: () async => StorageRootsSnapshot(
+          storageIsRemote: false,
+          teampilotRoot: tmp.path,
+          teamsUiDir: p.join(tmp.path, 'teams'),
+          cliTeamsDir: p.join(tmp.path, 'cli-teams'),
+          skillsRoot: p.join(tmp.path, 'skills'),
+          skillBackupsDir: p.join(tmp.path, 'skill-backups'),
+          cliSkillsDir: p.join(tmp.path, 'cli-skills'),
+          cliAgentsDir: p.join(tmp.path, 'cli-agents'),
+          appProjectsDir: p.join(tmp.path, 'projects'),
+          skillReposConfigPath: p.join(tmp.path, 'skills.json'),
+          tempTeamRegistryPath: p.join(tmp.path, 'ui-temp-teams.json'),
+        ),
+      );
+      const team = TeamConfig(
+        id: 'test-team',
+        name: 'Test',
+        cli: TeamCli.claude,
+        members: [
+          TeamMemberConfig(id: 'lead', name: 'team-lead', model: 'opus'),
+          TeamMemberConfig(id: 'dev', name: 'developer', model: 'sonnet'),
+        ],
+      );
+
+      await cubit.openMemberTab(team, team.members[1]);
+      await postFrame.flush();
+
+      expect(sessions, hasLength(1));
+      expect(
+        sessions.single.lastExtraEnvironments.single?['CLAUDE_CONFIG_DIR'],
+        p.join(tmp.path, 'config-profiles', 'teams', 'test-0', 'claude'),
+      );
+      expect(
+        sessions.single.lastExtraEnvironments.single?[ConfigProfileService
+            .claudeSettingsFileEnvKey],
+        p.join(
+          tmp.path,
+          'config-profiles',
+          'teams',
+          'test-0',
+          'claude',
+          'settings',
+          'developer.json',
+        ),
+      );
+    },
+  );
 
   test(
     'chat cubit connectSession starts all members when auto-launch enabled',

@@ -4,6 +4,7 @@ import 'dart:io';
 import '../models/team_config.dart';
 import 'cli_tool_adapter.dart';
 import 'cli_invocation.dart';
+import 'config_profile_service.dart';
 
 typedef ProcessStarter =
     Future<Process> Function(
@@ -59,6 +60,7 @@ class LaunchCommandBuilder {
     List<String> additionalDirectories = const [],
     String? fixedSessionId,
     String? resumeSessionId,
+    String? settingsPath,
     bool useWslPaths = false,
   }) {
     return const CliToolAdapterRegistry()
@@ -72,6 +74,7 @@ class LaunchCommandBuilder {
             additionalDirectories: additionalDirectories,
             fixedSessionId: fixedSessionId,
             resumeSessionId: resumeSessionId,
+            settingsPath: settingsPath,
             useWslPaths: useWslPaths,
           ),
         );
@@ -169,6 +172,11 @@ class LaunchCommandBuilder {
       wd,
       useWslPaths: invocation.usesWsl,
     );
+    final normalizedEnvironment = invocation.usesWsl
+        ? normalizeEnvironmentForCli(extraEnvironment, useWslPaths: true)
+        : extraEnvironment;
+    final settingsPath = settingsPathFromEnvironment(normalizedEnvironment);
+    final env = launchEnvironmentForProcess(normalizedEnvironment);
     final args = buildArguments(
       team,
       member,
@@ -177,11 +185,9 @@ class LaunchCommandBuilder {
       additionalDirectories: additionalDirectories,
       fixedSessionId: fixedSessionId,
       resumeSessionId: resumeSessionId,
+      settingsPath: settingsPath,
       useWslPaths: invocation.usesWsl,
     );
-    final env = invocation.usesWsl
-        ? normalizeEnvironmentForCli(extraEnvironment, useWslPaths: true)
-        : extraEnvironment;
     final launchArgs = invocation.withArgs(args, environment: env);
 
     if (Platform.isLinux) {
@@ -358,6 +364,28 @@ class LaunchCommandBuilder {
     return {
       for (final entry in environment.entries)
         entry.key: normalizePathForCli(entry.value, useWslPaths: true),
+    };
+  }
+
+  static String? settingsPathFromEnvironment(Map<String, String>? environment) {
+    final value = environment?[ConfigProfileService.claudeSettingsFileEnvKey]
+        ?.trim();
+    return value == null || value.isEmpty ? null : value;
+  }
+
+  static Map<String, String>? launchEnvironmentForProcess(
+    Map<String, String>? environment,
+  ) {
+    if (environment == null ||
+        !environment.containsKey(
+          ConfigProfileService.claudeSettingsFileEnvKey,
+        )) {
+      return environment;
+    }
+    return {
+      for (final entry in environment.entries)
+        if (entry.key != ConfigProfileService.claudeSettingsFileEnvKey)
+          entry.key: entry.value,
     };
   }
 }

@@ -9,6 +9,7 @@ class CliLaunchContext {
     this.additionalDirectories = const [],
     this.fixedSessionId,
     this.resumeSessionId,
+    this.settingsPath,
     this.useWslPaths = false,
   });
 
@@ -19,6 +20,7 @@ class CliLaunchContext {
   final List<String> additionalDirectories;
   final String? fixedSessionId;
   final String? resumeSessionId;
+  final String? settingsPath;
   final bool useWslPaths;
 
   String get teamName => sessionTeam ?? team.name.trim();
@@ -102,6 +104,10 @@ class ClaudeCodeCliToolAdapter implements CliToolAdapter {
 
     if (member.model.trim().isNotEmpty) {
       args.addAll(['--model', member.model.trim()]);
+    }
+    final settings = context.settingsPath?.trim() ?? '';
+    if (settings.isNotEmpty) {
+      args.addAll(['--settings', settings]);
     }
     if (member.dangerouslySkipPermissions) {
       args.add('--dangerously-skip-permissions');

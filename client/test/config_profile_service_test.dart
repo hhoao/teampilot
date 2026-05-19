@@ -226,6 +226,70 @@ void main() {
   });
 
   test(
+    'prepareTeamLaunch for claude member returns runtime dir and settings file',
+    () async {
+      final env = await service.prepareTeamLaunch(
+        teamId: 'team-a',
+        runtimeTeamId: 'team-a-session-0',
+        cli: TeamCli.claude,
+        members: const [
+          TeamMemberConfig(id: 'lead', name: 'team-lead', model: 'opus'),
+          TeamMemberConfig(id: 'dev', name: 'developer', model: 'sonnet'),
+        ],
+        member: const TeamMemberConfig(
+          id: 'dev',
+          name: 'developer',
+          model: 'sonnet',
+        ),
+        claudeSettings: const {
+          'env': {
+            'ANTHROPIC_BASE_URL': 'https://api.example.com/anthropic',
+            'ANTHROPIC_MODEL': 'team-default',
+          },
+        },
+      );
+
+      final claudeDir = p.join(
+        base.path,
+        'config-profiles',
+        'teams',
+        'team-a-session-0',
+        'claude',
+      );
+      final developerSettings = p.join(claudeDir, 'settings', 'developer.json');
+      expect(env['CLAUDE_CONFIG_DIR'], claudeDir);
+      expect(env['CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS'], '1');
+      expect(
+        env[ConfigProfileService.claudeSettingsFileEnvKey],
+        developerSettings,
+      );
+
+      final teamSettings =
+          jsonDecode(
+                await File(p.join(claudeDir, 'settings.json')).readAsString(),
+              )
+              as Map<String, Object?>;
+      final teamEnv = teamSettings['env'] as Map<String, Object?>;
+      expect(teamEnv['ANTHROPIC_MODEL'], 'team-default');
+
+      final memberSettings =
+          jsonDecode(await File(developerSettings).readAsString())
+              as Map<String, Object?>;
+      final memberEnv = memberSettings['env'] as Map<String, Object?>;
+      expect(
+        memberEnv['ANTHROPIC_BASE_URL'],
+        'https://api.example.com/anthropic',
+      );
+      expect(memberEnv['ANTHROPIC_MODEL'], 'sonnet');
+      expect(memberEnv['ANTHROPIC_DEFAULT_HAIKU_MODEL'], 'sonnet');
+      expect(memberEnv['ANTHROPIC_DEFAULT_SONNET_MODEL'], 'sonnet');
+      expect(memberEnv['ANTHROPIC_DEFAULT_OPUS_MODEL'], 'sonnet');
+      expect(memberEnv['CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS'], '1');
+      expect(await Directory(p.join(claudeDir, 'members')).exists(), isFalse);
+    },
+  );
+
+  test(
     'prepareTeamLaunch for claude preserves existing roster fields',
     () async {
       final roster = File(

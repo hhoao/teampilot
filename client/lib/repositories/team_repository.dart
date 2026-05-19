@@ -8,50 +8,31 @@ import '../services/app_storage.dart';
 import '../services/flashskyai_storage_roots.dart';
 import '../services/remote_file_store.dart';
 
-/// Persists [TeamConfig] objects across two locations and merges them on read.
+/// Persists [TeamConfig] objects in TeamPilot's own metadata directory.
 ///
 /// - UI dir ([AppStorage.teamsDir]): one `<name>.json` per team, holding the
 ///   full UI schema (provider, model, agent, extraArgs, prompt, ...).
-/// - CLI dir ([AppStorage.cliTeamsDir]): one `<name>/config.json` per team,
-///   holding the subset shared with the `flashskyai` CLI (name, createdAt,
-///   loop, plus per-member name/joinedAt/dangerouslySkipPermissions).
 ///
-/// On load, the two dirs are unioned by team name. For names present in both,
-/// CLI wins on the fields it knows about; UI-only fields survive untouched.
-/// On save, the full schema is written to the UI dir and the CLI subset is
-/// read-modify-written back to the CLI dir so the CLI's own extras (agentId,
-/// sessionId, cwd, isActive, leadAgentId, ...) are preserved.
+/// CLI-specific files are launch-time artifacts and are generated outside this
+/// repository path.
 class _TeamPaths {
-  const _TeamPaths({
-    required this.teamsUiDir,
-    required this.cliTeamsDir,
-    this.remote,
-  });
+  const _TeamPaths({required this.teamsUiDir, this.remote});
 
   final String teamsUiDir;
-  final String cliTeamsDir;
   final RemoteFileStore? remote;
 
-  bool get cliIsRemote => remote != null;
+  bool get uiIsRemote => remote != null;
 }
 
 class TeamRepository {
-  TeamRepository({
-    String? rootDir,
-    String? cliTeamsDir,
-    FlashskyaiStorageRoots? storageRoots,
-  }) : _rootDirOverride = rootDir,
-       _cliTeamsDirOverride = cliTeamsDir,
-       _storageRoots = storageRoots;
+  TeamRepository({String? rootDir, FlashskyaiStorageRoots? storageRoots})
+    : _rootDirOverride = rootDir,
+      _storageRoots = storageRoots;
 
   final String? _rootDirOverride;
-  final String? _cliTeamsDirOverride;
   final FlashskyaiStorageRoots? _storageRoots;
 
   String get rootDir => _rootDirOverride ?? AppStorage.teamsDir;
-
-  /// The `~/.flashskyai/teams` directory managed by the CLI.
-  String get cliTeamsDir => _cliTeamsDirOverride ?? AppStorage.cliTeamsDir;
 
   Future<_TeamPaths> _paths() async {
     if (_storageRoots != null) {
@@ -59,59 +40,28 @@ class TeamRepository {
       if (snap.storageIsRemote && snap.remoteFileStore != null) {
         return _TeamPaths(
           teamsUiDir: snap.teamsUiDir,
-          cliTeamsDir: snap.cliTeamsDir,
           remote: snap.remoteFileStore,
         );
       }
     }
-    return _TeamPaths(
-      teamsUiDir: _rootDirOverride ?? AppStorage.teamsDir,
-      cliTeamsDir: _cliTeamsDirOverride ?? AppStorage.cliTeamsDir,
-    );
+    return _TeamPaths(teamsUiDir: _rootDirOverride ?? AppStorage.teamsDir);
   }
 
   Future<List<TeamConfig>> loadTeams() async {
     final paths = await _paths();
-    final List<TeamConfig> uiTeams;
-    final List<TeamConfig> cliTeams;
-    if (paths.cliIsRemote) {
-      final results = await Future.wait([
-        _readUiDirRemote(paths),
-        _readCliDirRemote(paths),
-      ]);
-      uiTeams = results[0];
-      cliTeams = results[1];
-    } else {
-      final results = await Future.wait([
-        _readUiDir(paths.teamsUiDir),
-        _readCliDir(paths.cliTeamsDir),
-      ]);
-      uiTeams = results[0];
-      cliTeams = results[1];
-    }
+    final teams = List<TeamConfig>.of(
+      paths.uiIsRemote
+          ? await _readUiDirRemote(paths)
+          : await _readUiDir(paths.teamsUiDir),
+    );
 
-    final uiByName = {for (final t in uiTeams) t.name: t};
-    final cliByName = {for (final t in cliTeams) t.name: t};
-
-    final names = <String>{...uiByName.keys, ...cliByName.keys};
-    final merged = <TeamConfig>[];
-    for (final name in names) {
-      final ui = uiByName[name];
-      final cli = cliByName[name];
-      if (ui != null && cli != null) {
-        merged.add(_mergeTeam(ui: ui, cli: cli));
-      } else {
-        merged.add((ui ?? cli)!);
-      }
-    }
-
-    merged.sort((a, b) {
+    teams.sort((a, b) {
       if (a.createdAt != b.createdAt) {
         return a.createdAt.compareTo(b.createdAt);
       }
       return a.name.compareTo(b.name);
     });
-    return List.unmodifiable(merged);
+    return List.unmodifiable(teams);
   }
 
   Future<void> saveTeams(List<TeamConfig> teams) async {
@@ -123,12 +73,10 @@ class TeamRepository {
       stamped.add(team.createdAt > 0 ? team : team.copyWith(createdAt: now));
     }
     final paths = await _paths();
-    if (paths.cliIsRemote) {
+    if (paths.uiIsRemote) {
       await _writeUiDirRemote(paths, stamped);
-      await _syncToCliDirRemote(paths, stamped);
     } else {
       await _writeUiDir(stamped, paths.teamsUiDir);
-      await _syncToCliDir(stamped, paths.cliTeamsDir);
     }
   }
 
@@ -187,79 +135,6 @@ class TeamRepository {
     }
   }
 
-  Future<List<TeamConfig>> _readCliDirRemote(_TeamPaths paths) async {
-    final store = paths.remote!;
-    final posix = p.Context(style: p.Style.posix);
-    final teams = <TeamConfig>[];
-    try {
-      final entries = await store.listDirectoryEntries(paths.cliTeamsDir);
-      for (final entry in entries) {
-        if (!entry.isDirectory) continue;
-        final content = await store.readFile(
-          posix.join(paths.cliTeamsDir, entry.name, 'config.json'),
-        );
-        if (content == null || content.isEmpty) continue;
-        try {
-          final decoded = jsonDecode(content);
-          if (decoded is! Map) continue;
-          final team = _cliJsonToTeam(Map<String, Object?>.from(decoded));
-          if (team != null) teams.add(team);
-        } on FormatException {
-          continue;
-        }
-      }
-    } on Object {
-      return const [];
-    }
-    return teams;
-  }
-
-  Future<void> _syncToCliDirRemote(
-    _TeamPaths paths,
-    List<TeamConfig> teams,
-  ) async {
-    final store = paths.remote!;
-    final posix = p.Context(style: p.Style.posix);
-    for (final team in teams) {
-      final configPath = posix.join(
-        paths.cliTeamsDir,
-        team.name,
-        'config.json',
-      );
-      await store.ensureDirectory(posix.join(paths.cliTeamsDir, team.name));
-
-      Map<String, Object?> existing = {};
-      final raw = await store.readFile(configPath);
-      if (raw != null && raw.isNotEmpty) {
-        try {
-          final decoded = jsonDecode(raw);
-          if (decoded is Map) {
-            existing = Map<String, Object?>.from(decoded);
-          }
-        } on FormatException {
-          existing = {};
-        }
-      }
-
-      existing['name'] = team.name;
-      existing['createdAt'] = team.createdAt;
-      if (team.loop != null) {
-        existing['loop'] = team.loop;
-      } else {
-        existing.remove('loop');
-      }
-      existing['members'] = _mergeMembersForCli(
-        team.members,
-        existing['members'],
-      );
-
-      await store.writeFile(
-        configPath,
-        const JsonEncoder.withIndent('  ').convert(existing),
-      );
-    }
-  }
-
   Future<List<TeamConfig>> _readUiDir(String rootDir) async {
     final dir = Directory(rootDir);
     if (!await dir.exists()) return const [];
@@ -279,106 +154,6 @@ class TeamRepository {
       }
     }
     return teams;
-  }
-
-  Future<List<TeamConfig>> _readCliDir(String cliTeamsDir) async {
-    final dir = Directory(cliTeamsDir);
-    if (!await dir.exists()) return const [];
-    final teams = <TeamConfig>[];
-    await for (final entity in dir.list()) {
-      if (entity is! Directory) continue;
-      final configFile = File(p.join(entity.path, 'config.json'));
-      if (!await configFile.exists()) continue;
-      try {
-        final raw = await configFile.readAsString();
-        final decoded = jsonDecode(raw);
-        if (decoded is! Map) continue;
-        final team = _cliJsonToTeam(Map<String, Object?>.from(decoded));
-        if (team != null) teams.add(team);
-      } on FormatException {
-        continue;
-      } on FileSystemException {
-        continue;
-      }
-    }
-    return teams;
-  }
-
-  TeamConfig _mergeTeam({required TeamConfig ui, required TeamConfig cli}) {
-    return ui.copyWith(
-      name: cli.name,
-      createdAt: cli.createdAt,
-      loop: cli.loop,
-      updateLoop: true,
-      members: _mergeMembers(uiMembers: ui.members, cliMembers: cli.members),
-    );
-  }
-
-  List<TeamMemberConfig> _mergeMembers({
-    required List<TeamMemberConfig> uiMembers,
-    required List<TeamMemberConfig> cliMembers,
-  }) {
-    final uiByName = {for (final m in uiMembers) m.name: m};
-    final cliNames = cliMembers.map((m) => m.name).toSet();
-
-    final merged = <TeamMemberConfig>[];
-    // CLI order first — CLI owns the canonical member ordering.
-    for (final cli in cliMembers) {
-      final ui = uiByName[cli.name];
-      if (ui != null) {
-        merged.add(
-          ui.copyWith(
-            name: cli.name,
-            joinedAt: cli.joinedAt,
-            dangerouslySkipPermissions: cli.dangerouslySkipPermissions,
-          ),
-        );
-      } else {
-        merged.add(cli);
-      }
-    }
-    // UI-only members (just added in UI, not yet synced to CLI) at the end.
-    for (final ui in uiMembers) {
-      if (!cliNames.contains(ui.name)) merged.add(ui);
-    }
-    return merged;
-  }
-
-  TeamConfig? _cliJsonToTeam(Map<String, Object?> json) {
-    final name = (json['name'] as String?)?.trim();
-    if (name == null || name.isEmpty) return null;
-
-    final createdAt = (json['createdAt'] as num?)?.toInt() ?? 0;
-    final rawMembers = json['members'];
-    final members = <TeamMemberConfig>[];
-    if (rawMembers is List) {
-      for (final m in rawMembers) {
-        if (m is! Map) continue;
-        final member = _cliJsonToMember(Map<String, Object?>.from(m));
-        if (member.name.isEmpty) continue;
-        members.add(member);
-      }
-    }
-    return TeamConfig(
-      id: name,
-      name: name,
-      members: members,
-      createdAt: createdAt,
-      loop: TeamConfig.decodeLoop(json['loop']),
-    );
-  }
-
-  TeamMemberConfig _cliJsonToMember(Map<String, Object?> json) {
-    final name = json['name'] as String? ?? '';
-    return TeamMemberConfig(
-      id: name,
-      name: name,
-      joinedAt: (json['joinedAt'] as num?)?.toInt() ?? 0,
-      dangerouslySkipPermissions:
-          TeamMemberConfig.decodeDangerouslySkipPermissions(
-            json['dangerouslySkipPermissions'],
-          ),
-    );
   }
 
   Future<void> _writeUiDir(List<TeamConfig> teams, String rootDir) async {
@@ -407,72 +182,16 @@ class TeamRepository {
     }
   }
 
-  /// Writes the CLI subset back to `<cliTeamsDir>/<name>/config.json` for
-  /// each team. Read-modify-write: any field the UI doesn't know (agentId,
-  /// sessionId, cwd, isActive, leadAgentId, ...) is preserved.
-  ///
-  /// Does NOT delete CLI directories for teams missing from [teams].
-  /// CLI-side deletion is driven by the explicit [deleteTeam] entry point so
-  /// that incremental edits don't accidentally clobber CLI-only entries
-  /// (e.g. temp session teams the UI hasn't seen yet).
-  Future<void> _syncToCliDir(List<TeamConfig> teams, String cliTeamsDir) async {
-    for (final team in teams) {
-      final teamDir = Directory(p.join(cliTeamsDir, team.name));
-      await teamDir.create(recursive: true);
-      final configFile = File(p.join(teamDir.path, 'config.json'));
-
-      Map<String, Object?> existing = {};
-      if (await configFile.exists()) {
-        try {
-          final raw = await configFile.readAsString();
-          final decoded = jsonDecode(raw);
-          if (decoded is Map) {
-            existing = Map<String, Object?>.from(decoded);
-          }
-        } on FormatException {
-          existing = {};
-        } on FileSystemException {
-          existing = {};
-        }
-      }
-
-      existing['name'] = team.name;
-      existing['createdAt'] = team.createdAt;
-      if (team.loop != null) {
-        existing['loop'] = team.loop;
-      } else {
-        existing.remove('loop');
-      }
-      existing['members'] = _mergeMembersForCli(
-        team.members,
-        existing['members'],
-      );
-
-      await configFile.writeAsString(
-        const JsonEncoder.withIndent('  ').convert(existing),
-      );
-    }
-  }
-
-  /// Removes [name] from both the UI dir (`<rootDir>/<name>.json`) and the
-  /// CLI dir (`<cliTeamsDir>/<name>/`, recursively). Best-effort: missing
-  /// files/dirs are silently ignored. Only deletes a CLI directory if it
-  /// actually has a `config.json` (i.e. looks like a team dir), to avoid
-  /// nuking unrelated subdirs that happen to share the name.
+  /// Removes [name] from the UI dir (`<rootDir>/<name>.json`).
   Future<void> deleteTeam(String name) async {
     final trimmed = name.trim();
     if (trimmed.isEmpty) return;
 
     final paths = await _paths();
-    if (paths.cliIsRemote) {
+    if (paths.uiIsRemote) {
       final store = paths.remote!;
       final posix = p.Context(style: p.Style.posix);
       await store.deleteFile(posix.join(paths.teamsUiDir, '$trimmed.json'));
-      final cliDir = posix.join(paths.cliTeamsDir, trimmed);
-      final configPath = posix.join(cliDir, 'config.json');
-      if (await store.fileExists(configPath)) {
-        await store.removeRecursive(cliDir);
-      }
       return;
     }
 
@@ -484,45 +203,5 @@ class TeamRepository {
         // best effort
       }
     }
-
-    final cliDir = Directory(p.join(paths.cliTeamsDir, trimmed));
-    if (await cliDir.exists()) {
-      final configFile = File(p.join(cliDir.path, 'config.json'));
-      if (await configFile.exists()) {
-        try {
-          await cliDir.delete(recursive: true);
-        } on FileSystemException {
-          // best effort
-        }
-      }
-    }
-  }
-
-  List<Map<String, Object?>> _mergeMembersForCli(
-    List<TeamMemberConfig> uiMembers,
-    Object? existingRaw,
-  ) {
-    final existingByName = <String, Map<String, Object?>>{};
-    if (existingRaw is List) {
-      for (final m in existingRaw) {
-        if (m is! Map) continue;
-        final entry = Map<String, Object?>.from(m);
-        final name = entry['name'] as String? ?? '';
-        if (name.isNotEmpty) existingByName[name] = entry;
-      }
-    }
-    return uiMembers
-        .map((member) {
-          final base = existingByName[member.name] ?? <String, Object?>{};
-          base['name'] = member.name;
-          base['joinedAt'] = member.joinedAt;
-          if (member.dangerouslySkipPermissions) {
-            base['dangerouslySkipPermissions'] = true;
-          } else {
-            base.remove('dangerouslySkipPermissions');
-          }
-          return base;
-        })
-        .toList(growable: false);
   }
 }

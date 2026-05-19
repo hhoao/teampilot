@@ -120,10 +120,14 @@ class TeamCubit extends Cubit<TeamState> {
   final TeamSkillLinkerService _skillLinker;
   final InstalledSkillsLoader? _installedSkillsLoader;
 
-  Future<Map<String, String>?> _buildLaunchEnvironment(TeamConfig team) {
+  Future<Map<String, String>?> _buildLaunchEnvironment(
+    TeamConfig team, {
+    TeamMemberConfig? member,
+  }) {
     return TeamLaunchEnvironmentBuilder.build(
       appDataBasePath: _resolvedAppDataBasePath,
       team: team,
+      member: member,
       llmConfigPathOverride: _llmConfigPathOverride?.call(),
       configProfileService: _configProfileService,
       storageRootsResolver: _storageRootsResolver,
@@ -157,7 +161,7 @@ class TeamCubit extends Cubit<TeamState> {
   }
 
   Future<void> _runLaunch(TeamConfig team, TeamMemberConfig member) async {
-    final env = await _buildLaunchEnvironment(team);
+    final env = await _buildLaunchEnvironment(team, member: member);
     final launch =
         _launcher ??
         (t, m) => LaunchCommandBuilder.launch(

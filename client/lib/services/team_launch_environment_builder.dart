@@ -16,6 +16,8 @@ class TeamLaunchEnvironmentBuilder {
   static Future<Map<String, String>?> build({
     required String appDataBasePath,
     required TeamConfig team,
+    TeamMemberConfig? member,
+    String runtimeTeamId = '',
     String? llmConfigPathOverride,
     String workingDirectory = '',
     ConfigProfileService? configProfileService,
@@ -32,15 +34,25 @@ class TeamLaunchEnvironmentBuilder {
       final claudeSettings = team.cli == TeamCli.claude
           ? await _loadClaudeProviderSettings(
               basePath: service.basePath,
-              team: team,
+              providerId: team.providerIdsByTool['claude'],
             )
           : null;
+      final claudeSettingsByMember = team.cli == TeamCli.claude
+          ? await _loadClaudeMemberProviderSettings(
+              basePath: service.basePath,
+              team: team,
+              launchedMember: member,
+            )
+          : const <String, Map<String, Object?>>{};
       return service.prepareTeamLaunch(
         teamId: teamId,
+        runtimeTeamId: runtimeTeamId,
         cli: team.cli,
         members: team.members,
+        member: member,
         workingDirectory: workingDirectory,
         claudeSettings: claudeSettings,
+        claudeSettingsByMember: claudeSettingsByMember,
       );
     }
 
@@ -72,13 +84,13 @@ class TeamLaunchEnvironmentBuilder {
 
   static Future<Map<String, Object?>?> _loadClaudeProviderSettings({
     required String basePath,
-    required TeamConfig team,
+    required String? providerId,
   }) async {
-    final providerId = team.providerIdsByTool['claude']?.trim() ?? '';
-    if (providerId.isEmpty) return null;
+    final trimmed = providerId?.trim() ?? '';
+    if (trimmed.isEmpty) return null;
 
     final file = File(
-      p.join(basePath, 'providers', 'claude', providerId, 'settings.json'),
+      p.join(basePath, 'providers', 'claude', trimmed, 'settings.json'),
     );
     if (!await file.exists()) return null;
 
@@ -93,5 +105,34 @@ class TeamLaunchEnvironmentBuilder {
       return null;
     }
     return null;
+  }
+
+  static Future<Map<String, Map<String, Object?>>>
+  _loadClaudeMemberProviderSettings({
+    required String basePath,
+    required TeamConfig team,
+    required TeamMemberConfig? launchedMember,
+  }) async {
+    final members = <String, TeamMemberConfig>{};
+    for (final member in team.members.where((member) => member.isValid)) {
+      members[member.id] = member;
+    }
+    final selected = launchedMember;
+    if (selected != null && selected.isValid) {
+      members[selected.id] = selected;
+    }
+
+    final settingsByMember = <String, Map<String, Object?>>{};
+    for (final member in members.values) {
+      final settings = await _loadClaudeProviderSettings(
+        basePath: basePath,
+        providerId: member.provider,
+      );
+      if (settings != null) {
+        settingsByMember[member.id] = settings;
+        settingsByMember[member.name] = settings;
+      }
+    }
+    return settingsByMember;
   }
 }

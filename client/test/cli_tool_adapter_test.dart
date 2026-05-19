@@ -104,6 +104,28 @@ void main() {
     );
   });
 
+  test('claude adapter appends member settings file argument', () {
+    final args = ClaudeCodeCliToolAdapter().buildArguments(
+      CliLaunchContext(
+        team: const TeamConfig(
+          id: 'team-1',
+          name: 'agent',
+          cli: TeamCli.claude,
+        ),
+        member: member,
+        settingsPath: '/tmp/team/claude/settings/planner.json',
+      ),
+    );
+
+    expect(
+      args,
+      containsAllInOrder([
+        '--settings',
+        '/tmp/team/claude/settings/planner.json',
+      ]),
+    );
+  });
+
   test('claude adapter relies on env instead of unsupported --agent-teams', () {
     final args = ClaudeCodeCliToolAdapter().buildArguments(
       CliLaunchContext(

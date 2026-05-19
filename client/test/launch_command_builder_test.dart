@@ -1,4 +1,7 @@
+import 'dart:io';
+
 import 'package:teampilot/services/launch_command_builder.dart';
+import 'package:teampilot/services/config_profile_service.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -173,6 +176,58 @@ void main() {
       '--agent-id planner@agent --model sonnet',
     );
   });
+
+  test(
+    'launch passes Claude settings as argument and strips internal env',
+    () async {
+      const team = TeamConfig(id: '1', name: 'agent', cli: TeamCli.claude);
+      List<String>? capturedArgs;
+      Map<String, String>? capturedEnv;
+
+      try {
+        await LaunchCommandBuilder.launch(
+          team,
+          member: member,
+          executable: 'claude',
+          extraEnvironment: const {
+            'CLAUDE_CONFIG_DIR': '/tmp/team/claude',
+            ConfigProfileService.claudeSettingsFileEnvKey:
+                '/tmp/team/claude/settings/planner.json',
+          },
+          starter:
+              (
+                executable,
+                arguments, {
+                workingDirectory,
+                runInShell = false,
+                environment,
+                includeParentEnvironment = true,
+              }) async {
+                capturedArgs ??= List<String>.from(arguments);
+                capturedEnv ??= environment == null
+                    ? null
+                    : Map<String, String>.from(environment);
+                throw const ProcessException('stop', []);
+              },
+        );
+      } on ProcessException {
+        // Expected: the fake starter records launch data, then prevents spawn.
+      }
+
+      expect(
+        capturedArgs,
+        containsAllInOrder([
+          '--settings',
+          '/tmp/team/claude/settings/planner.json',
+        ]),
+      );
+      expect(capturedEnv?['CLAUDE_CONFIG_DIR'], '/tmp/team/claude');
+      expect(
+        capturedEnv?.containsKey(ConfigProfileService.claudeSettingsFileEnvKey),
+        isFalse,
+      );
+    },
+  );
 
   group('buildSessionPrefixArgs', () {
     test('--resume wins over fixed session id', () {

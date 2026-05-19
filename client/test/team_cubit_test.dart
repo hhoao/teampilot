@@ -34,10 +34,8 @@ class _RecordingLinker extends TeamSkillLinkerService {
   }
 }
 
-TeamRepository _repo(Directory dir) => TeamRepository(
-  rootDir: p.join(dir.path, 'teams'),
-  cliTeamsDir: p.join(dir.path, 'cli-teams'),
-);
+TeamRepository _repo(Directory dir) =>
+    TeamRepository(rootDir: p.join(dir.path, 'teams'));
 
 void main() {
   late Directory appDataRoot;
@@ -245,6 +243,57 @@ void main() {
     await cubit.load();
 
     expect(cubit.previewFor(member), startsWith('/opt/bin/claude '));
+
+    await cubit.close();
+    await base.delete(recursive: true);
+  });
+
+  test('updateMember only saves Claude member metadata', () async {
+    final base = await Directory.systemTemp.createTemp(
+      'team_claude_member_metadata_',
+    );
+    final repo = _repo(base);
+    final cubit = TeamCubit(
+      repository: repo,
+      executableResolver: () => 'claude',
+      appDataBasePath: base.path,
+      configProfileService: ConfigProfileService(basePath: base.path),
+    );
+
+    const member = TeamMemberConfig(
+      id: 'developer',
+      name: 'developer',
+      provider: 'deepseek',
+      model: 'deepseek-chat',
+    );
+    const team = TeamConfig(
+      id: 'Claude Team',
+      name: 'Claude Team',
+      cli: TeamCli.claude,
+      members: [member],
+    );
+    await repo.saveTeams([team]);
+    await cubit.load();
+
+    await cubit.updateMember(
+      'developer',
+      member.copyWith(provider: 'moonshot', model: 'kimi-k2'),
+    );
+
+    final settingsFile = File(
+      p.join(
+        base.path,
+        'config-profiles',
+        'teams',
+        'Claude Team',
+        'claude',
+        'settings',
+        'developer.json',
+      ),
+    );
+    expect(await settingsFile.exists(), isFalse);
+    expect(cubit.state.selectedTeam?.members.single.provider, 'moonshot');
+    expect(cubit.state.selectedTeam?.members.single.model, 'kimi-k2');
 
     await cubit.close();
     await base.delete(recursive: true);

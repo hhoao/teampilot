@@ -100,6 +100,12 @@ class TerminalSession {
       extraEnvironment,
       useWslPaths: invocation.usesWsl,
     );
+    final settingsPath = LaunchCommandBuilder.settingsPathFromEnvironment(
+      _extraEnvironment,
+    );
+    _extraEnvironment = LaunchCommandBuilder.launchEnvironmentForProcess(
+      _extraEnvironment,
+    );
     _ptyEnvironment = buildPtyEnvironment(_extraEnvironment);
     _onProcessStarted = onProcessStarted;
     _onProcessFailed = onProcessFailed;
@@ -116,6 +122,7 @@ class TerminalSession {
           additionalDirectories: additionalDirectories,
           fixedSessionId: fixedSessionId,
           resumeSessionId: resumeSessionId,
+          settingsPath: settingsPath,
           useWslPaths: invocation.usesWsl,
         ),
       );
