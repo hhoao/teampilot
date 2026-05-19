@@ -581,7 +581,6 @@ void main() {
           cliAgentsDir: p.join(tmp.path, 'cli-agents'),
           appProjectsDir: p.join(tmp.path, 'projects'),
           skillReposConfigPath: p.join(tmp.path, 'skills.json'),
-          tempTeamRegistryPath: p.join(tmp.path, 'ui-temp-teams.json'),
         ),
       );
       const team = TeamConfig(
@@ -598,9 +597,22 @@ void main() {
       await postFrame.flush();
 
       expect(sessions, hasLength(1));
+      final claudeDir =
+          sessions.single.lastExtraEnvironments.single?['CLAUDE_CONFIG_DIR']
+              as String?;
+      expect(claudeDir, isNotNull);
+      final runtimeTeamId = p.basename(p.dirname(claudeDir!));
       expect(
-        sessions.single.lastExtraEnvironments.single?['CLAUDE_CONFIG_DIR'],
-        p.join(tmp.path, 'config-profiles', 'teams', 'test-0', 'claude'),
+        runtimeTeamId,
+        matches(
+          RegExp(
+            r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
+          ),
+        ),
+      );
+      expect(
+        claudeDir,
+        p.join(tmp.path, 'config-profiles', 'teams', runtimeTeamId, 'claude'),
       );
       expect(
         sessions.single.lastExtraEnvironments.single?[ConfigProfileService
@@ -609,7 +621,7 @@ void main() {
           tmp.path,
           'config-profiles',
           'teams',
-          'test-0',
+          runtimeTeamId,
           'claude',
           'settings',
           'developer.json',

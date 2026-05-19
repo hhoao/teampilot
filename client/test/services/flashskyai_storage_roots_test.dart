@@ -54,8 +54,6 @@ void main() {
       appProjectsDir: AppStorage.appProjectsDirForTeampilotRoot(teampilotRoot),
       skillReposConfigPath:
           AppStorage.skillReposConfigPathForTeampilotRoot(teampilotRoot),
-      tempTeamRegistryPath:
-          AppStorage.tempTeamRegistryPathForTeampilotRoot(teampilotRoot),
       remoteCliDataDir: dataDir,
     );
     expect(snap.teampilotRoot, teampilotRoot);
@@ -66,10 +64,6 @@ void main() {
     expect(snap.cliAgentsDir, '/home/remote/.flashskyai/agents');
     expect(snap.appProjectsDir, '$teampilotRoot/projects');
     expect(snap.skillReposConfigPath, '$teampilotRoot/skills.json');
-    expect(
-      snap.tempTeamRegistryPath,
-      '$teampilotRoot/ui-temp-teams.json',
-    );
   });
 
   test('pickTeampilotRoot prefers primary when it has data', () async {

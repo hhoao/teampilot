@@ -197,9 +197,6 @@ class AppStorage {
   static String get skillRepoCacheDir =>
       skillRepoCacheDirForTeampilotRoot(basePath);
 
-  static String tempTeamRegistryPathForTeampilotRoot(String teampilotRoot) =>
-      _pathUnderTeampilotRoot(teampilotRoot, 'ui-temp-teams.json');
-
   @Deprecated(
     'Use teampilot app-data root helpers (teamsUiDirForTeampilotRoot)',
   )
@@ -222,17 +219,10 @@ class AppStorage {
   static String skillReposConfigPathForCliData(String cliDataDir) =>
       skillReposConfigPathForTeampilotRoot(teampilotDirForCliData(cliDataDir));
 
-  @Deprecated('Use teampilot app-data root helpers')
-  static String tempTeamRegistryPathForCliData(String cliDataDir) =>
-      tempTeamRegistryPathForTeampilotRoot(teampilotDirForCliData(cliDataDir));
-
   /// App-owned project/session metadata (`projects.json` + `sessions/`).
   static String get appProjectsDir => p.join(basePath, 'projects');
 
   static String get skillReposConfigPath => p.join(basePath, 'skills.json');
-
-  static String get tempTeamRegistryPath =>
-      p.join(basePath, 'ui-temp-teams.json');
 
   /// Application-level unified provider catalog (`providers/providers.json`).
   static String get providerConfigDir => p.join(basePath, 'providers');

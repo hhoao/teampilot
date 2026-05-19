@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:equatable/equatable.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:uuid/uuid.dart';
 
 import '../models/app_project.dart';
 import '../models/connection_mode.dart';
@@ -14,7 +15,6 @@ import '../models/team_config.dart';
 import '../repositories/session_repository.dart';
 import '../services/app_storage.dart';
 import '../services/team_launch_environment_builder.dart';
-import '../services/temp_team_cleaner.dart';
 import '../services/terminal_session.dart';
 import '../services/terminal_transport_factory.dart';
 import '../utils/logger.dart';
@@ -56,14 +56,16 @@ class ChatTabInfo extends Equatable {
 class _InternalTab {
   _InternalTab({
     required this.info,
-    required this.sessionTeamName,
+    required this.cliTeamName,
     this.selectedMemberId = '',
   });
 
   ChatTabInfo info;
   TerminalSession? resumeSession;
   String selectedMemberId;
-  final String sessionTeamName;
+
+  /// CLI `--team-name` and config-profiles runtime id (usually [AppSession.sessionId]).
+  final String cliTeamName;
   final Map<String, TerminalSession> memberShells = {};
 
   Iterable<TerminalSession> get sessions sync* {
@@ -144,7 +146,6 @@ class ChatCubit extends Cubit<ChatState> {
     CliExecutableResolver? cliExecutableResolver,
     TerminalSessionFactory terminalSessionFactory = TerminalSession.new,
     PostFrameScheduler? postFrameScheduler,
-    TempTeamCleaner? tempTeamCleaner,
     String? Function()? llmConfigPathOverride,
     bool Function()? autoLaunchAllMembersOnConnect,
     CliSessionDescriptorExists? cliSessionDescriptorExists,
@@ -157,7 +158,6 @@ class ChatCubit extends Cubit<ChatState> {
     ConnectionMode Function()? connectionModeResolver,
   }) : _terminalSessionFactory = terminalSessionFactory,
        _postFrameScheduler = postFrameScheduler ?? _defaultPostFrameScheduler,
-       _tempTeamCleaner = tempTeamCleaner,
        _llmConfigPathOverride = llmConfigPathOverride,
        _autoLaunchAllMembersOnConnect = autoLaunchAllMembersOnConnect,
        _cliSessionDescriptorExists =
@@ -180,7 +180,6 @@ class ChatCubit extends Cubit<ChatState> {
   String? _selectedTeamId;
   final TerminalSessionFactory _terminalSessionFactory;
   final PostFrameScheduler _postFrameScheduler;
-  final TempTeamCleaner? _tempTeamCleaner;
   final String? Function()? _llmConfigPathOverride;
   final bool Function()? _autoLaunchAllMembersOnConnect;
   final CliSessionDescriptorExists _cliSessionDescriptorExists;
@@ -268,39 +267,11 @@ class ChatCubit extends Cubit<ChatState> {
     );
   }
 
-  var _sessionCounter = 0;
+  static const _uuid = Uuid();
 
-  int _nextCounter() => _sessionCounter++;
-
-  /// Generates a session-team name the CLI will use as a directory name under
-  /// `~/.flashskyai/teams/`.  The CLI normalises names by lowercasing and
-  /// replacing non-alphanumeric runs with a single dash, so we produce the
-  /// same format here so the [TempTeamCleaner] can reliably locate and remove
-  /// the directories later.
-  static String _cliTeamName(String baseName, int counter) {
-    final slug = baseName
-        .trim()
-        .toLowerCase()
-        .replaceAll(RegExp(r'[^a-z0-9]+'), '-')
-        .replaceAll(RegExp(r'^-|-$'), '');
-    return '$slug-$counter';
-  }
-
-  String _allocSessionTeamName(String baseName) {
-    final name = _cliTeamName(baseName, _nextCounter());
-    // Register this temp team name so [TempTeamCleaner.cleanup] can remove
-    // the CLI dir later (on next app startup or on app close). Fire-and-forget
-    // — the registry write is async and best-effort.
-    final cleaner = _tempTeamCleaner;
-    if (cleaner != null) {
-      unawaited(
-        cleaner.record(name).catchError((Object e) {
-          appLogger.w('TempTeamCleaner.record failed for $name: $e');
-        }),
-      );
-    }
-    return name;
-  }
+  /// CLI `--team-name` and config-profiles runtime directory for a session.
+  static String _cliTeamNameForSession(AppSession session) =>
+      session.sessionId.trim();
 
   static void _defaultPostFrameScheduler(VoidCallback callback) {
     WidgetsBinding.instance.addPostFrameCallback((_) => callback());
@@ -440,15 +411,10 @@ class ChatCubit extends Cubit<ChatState> {
       session.primaryPath,
     );
     final useResume = launched && cliHasSession;
-    final cliTeamDirName = useResume
-        ? () {
-            final d = session.effectiveCliTeamDirectory.trim();
-            return d.isNotEmpty ? d : _assignSessionTeam(team);
-          }()
-        : _assignSessionTeam(team);
+    final cliTeamName = _cliTeamNameForSession(session);
     final internalTab = _InternalTab(
       info: info,
-      sessionTeamName: cliTeamDirName,
+      cliTeamName: cliTeamName,
     );
     if (team != null && member != null) {
       internalTab.memberShells[member.id] = ts;
@@ -472,7 +438,7 @@ class ChatCubit extends Cubit<ChatState> {
               ? await _spawnEnvironment(
                   team,
                   member: member,
-                  runtimeTeamId: cliTeamDirName,
+                  runtimeTeamId: cliTeamName,
                   workingDirectory: session.primaryPath,
                 )
               : await TeamLaunchEnvironmentBuilder.build(
@@ -487,7 +453,7 @@ class ChatCubit extends Cubit<ChatState> {
             resumeSessionId: useResume ? session.sessionId : null,
             team: team,
             member: member,
-            sessionTeam: cliTeamDirName,
+            sessionTeam: cliTeamName,
             extraEnvironment: env,
             onProcessFailed: () => _updateTabRunning(info.id),
             onProcessStarted: repo == null
@@ -497,7 +463,7 @@ class ChatCubit extends Cubit<ChatState> {
                       repo
                           .markSessionLaunched(
                             session.sessionId,
-                            launchTeam: cliTeamDirName,
+                            launchTeam: cliTeamName,
                           )
                           .then((_) {
                             if (isClosed) return;
@@ -505,7 +471,7 @@ class ChatCubit extends Cubit<ChatState> {
                               if (s.sessionId != session.sessionId) {
                                 return s;
                               }
-                              final lt = cliTeamDirName.trim();
+                              final lt = cliTeamName.trim();
                               return s.copyWith(
                                 launchState: AppSessionLaunchState.started,
                                 launchTeam: lt.isNotEmpty ? lt : s.launchTeam,
@@ -639,11 +605,11 @@ class ChatCubit extends Cubit<ChatState> {
           additionalDirectories: launch.$2,
           team: team,
           member: member,
-          sessionTeam: tab.sessionTeamName,
+          sessionTeam: tab.cliTeamName,
           extraEnvironment: await _spawnEnvironment(
             team,
             member: member,
-            runtimeTeamId: tab.sessionTeamName,
+            runtimeTeamId: tab.cliTeamName,
             workingDirectory: launch.$1,
           ),
           onProcessStarted: () => _updateTabRunning(tab.info.id),
@@ -1025,7 +991,7 @@ class ChatCubit extends Cubit<ChatState> {
     final info = _localSessionInfo(team);
     final tab = _InternalTab(
       info: info,
-      sessionTeamName: _allocSessionTeamName(team.name),
+      cliTeamName: _uuid.v4(),
       selectedMemberId: _defaultMemberId(team),
     );
     _internalTabs.add(tab);
@@ -1059,15 +1025,6 @@ class ChatCubit extends Cubit<ChatState> {
     );
   }
 
-  String _assignSessionTeam(TeamConfig? team) {
-    final fallbackName = team?.name.trim().isNotEmpty == true
-        ? team!.name
-        : 'session';
-    // Persisted as [AppSession.launchTeam] via [SessionRepository.markSessionLaunched]
-    // when the process starts ([openSessionTab] onProcessStarted).
-    return _allocSessionTeamName(fallbackName);
-  }
-
   String _defaultMemberId(TeamConfig team) {
     if (team.members.isEmpty) return '';
     final lead = team.members.where((m) => m.name == 'team-lead');
@@ -1087,14 +1044,6 @@ class ChatCubit extends Cubit<ChatState> {
       }
     }
     _internalTabs.clear();
-    final cleaner = _tempTeamCleaner;
-    if (cleaner != null) {
-      try {
-        await cleaner.cleanup();
-      } on Object catch (e) {
-        appLogger.w('TempTeamCleaner failed on close: $e');
-      }
-    }
     await super.close();
   }
 }

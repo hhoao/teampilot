@@ -47,7 +47,6 @@ import 'services/remote_flashskyai_cli_locator.dart';
 import 'services/ssh_client_factory.dart';
 import 'services/provider_migration_service.dart';
 import 'services/team_skill_linker_service.dart';
-import 'services/temp_team_cleaner.dart';
 import 'services/terminal_transport_factory.dart';
 import 'theme/app_theme.dart';
 import 'widgets/ui_warmup.dart';
@@ -217,7 +216,6 @@ void main() async {
 
   sessionRepo = SessionRepository(storageRoots: storageRoots);
   final remoteCliSessionChecker = RemoteCliSessionChecker(storageRoots);
-  final tempTeamCleaner = TempTeamCleaner(storageRoots: storageRoots);
 
   final teamRepo = TeamRepository(storageRoots: storageRoots);
   final skillManifest = SkillManifestService(storageRoots: storageRoots);
@@ -282,7 +280,6 @@ void main() async {
 
   chatCubit = ChatCubit(
     sessionRepository: sessionRepo,
-    tempTeamCleaner: tempTeamCleaner,
     cliSessionDescriptorExists: remoteCliSessionChecker.exists,
     llmConfigPathOverride: llmConfigPathOverrideForLaunch,
     storageRootsResolver: storageRoots.resolve,
@@ -351,7 +348,6 @@ void main() async {
     unawaited(
       _bootstrapAppData(
         storageRoots: storageRoots,
-        tempTeamCleaner: tempTeamCleaner,
         sshProfileCubit: sshProfileCubit,
         llmConfigCubit: llmConfigCubit,
         appProviderCubit: appProviderCubit,
@@ -387,7 +383,6 @@ Future<void> _reloadRemoteBackedAppData({
 
 Future<void> _bootstrapAppData({
   required FlashskyaiStorageRoots storageRoots,
-  required TempTeamCleaner tempTeamCleaner,
   required SshProfileCubit sshProfileCubit,
   required LlmConfigCubit llmConfigCubit,
   required AppProviderCubit appProviderCubit,
@@ -398,18 +393,15 @@ Future<void> _bootstrapAppData({
 }) async {
   await sshProfileCubit.load(notifyActiveProfileChanged: false);
   storageRoots.invalidate();
-  await Future.wait([
-    tempTeamCleaner.cleanup(),
-    _reloadRemoteBackedAppData(
-      storageRoots: storageRoots,
-      llmConfigCubit: llmConfigCubit,
-      appProviderCubit: appProviderCubit,
-      teamCubit: teamCubit,
-      skillCubit: skillCubit,
-      chatCubit: chatCubit,
-      sessionRepo: sessionRepo,
-    ),
-  ]);
+  await _reloadRemoteBackedAppData(
+    storageRoots: storageRoots,
+    llmConfigCubit: llmConfigCubit,
+    appProviderCubit: appProviderCubit,
+    teamCubit: teamCubit,
+    skillCubit: skillCubit,
+    chatCubit: chatCubit,
+    sessionRepo: sessionRepo,
+  );
 }
 
 class TeamPilotApp extends StatelessWidget {

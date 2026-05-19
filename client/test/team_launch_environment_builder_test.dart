@@ -63,7 +63,6 @@ void main() {
         cliAgentsDir: '/remote/.flashskyai/agents',
         appProjectsDir: p.join(remoteRoot, 'projects'),
         skillReposConfigPath: p.join(remoteRoot, 'skills.json'),
-        tempTeamRegistryPath: p.join(remoteRoot, 'ui-temp-teams.json'),
       ),
     );
 
@@ -206,7 +205,7 @@ void main() {
 
       final env = await TeamLaunchEnvironmentBuilder.build(
         appDataBasePath: base.path,
-        runtimeTeamId: 'team-a-session-0',
+        runtimeTeamId: '00000000-0000-4000-8000-000000000001',
         team: const TeamConfig(
           id: 'team-a',
           name: 'Team A',
@@ -228,7 +227,7 @@ void main() {
         base.path,
         'config-profiles',
         'teams',
-        'team-a-session-0',
+        '00000000-0000-4000-8000-000000000001',
         'claude',
       );
       final developerSettings = p.join(claudeDir, 'settings', 'developer.json');

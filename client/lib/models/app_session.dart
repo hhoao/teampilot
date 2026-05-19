@@ -50,7 +50,7 @@ class AppSession {
   /// Stable UI team id ([TeamConfig.id]) for filtering; not the CLI temp dir name.
   final String sessionTeam;
 
-  /// CLI `--session-team` directory name under `~/.flashskyai/teams/`.
+  /// CLI `--team-name` used at first launch; normally equals [sessionId].
   final String launchTeam;
   final AppSessionLaunchState launchState;
   final int createdAt;
@@ -59,12 +59,11 @@ class AppSession {
   String resolveDisplayTitle(String whenDisplayEmpty) =>
       display.isNotEmpty ? display : whenDisplayEmpty;
 
-  /// CLI team directory for resume: [launchTeam] when set, otherwise [sessionTeam]
-  /// (legacy sessions stored the CLI name in [sessionTeam]).
+  /// CLI `--team-name` for this session: [launchTeam] when set, otherwise [sessionId].
   String get effectiveCliTeamDirectory {
     final lt = launchTeam.trim();
     if (lt.isNotEmpty) return lt;
-    return sessionTeam.trim();
+    return sessionId.trim();
   }
 
   AppSession copyWith({

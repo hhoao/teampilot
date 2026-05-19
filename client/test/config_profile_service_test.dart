@@ -230,7 +230,7 @@ void main() {
     () async {
       final env = await service.prepareTeamLaunch(
         teamId: 'team-a',
-        runtimeTeamId: 'team-a-session-0',
+        runtimeTeamId: '00000000-0000-4000-8000-000000000001',
         cli: TeamCli.claude,
         members: const [
           TeamMemberConfig(id: 'lead', name: 'team-lead', model: 'opus'),
@@ -253,7 +253,7 @@ void main() {
         base.path,
         'config-profiles',
         'teams',
-        'team-a-session-0',
+        '00000000-0000-4000-8000-000000000001',
         'claude',
       );
       final developerSettings = p.join(claudeDir, 'settings', 'developer.json');

@@ -26,7 +26,6 @@ class StorageRootsSnapshot {
     required this.cliAgentsDir,
     required this.appProjectsDir,
     required this.skillReposConfigPath,
-    required this.tempTeamRegistryPath,
     this.remoteFileStore,
     this.remoteCliDataDir,
   });
@@ -43,7 +42,6 @@ class StorageRootsSnapshot {
       cliAgentsDir: AppStorage.cliAgentsDir,
       appProjectsDir: AppStorage.appProjectsDir,
       skillReposConfigPath: AppStorage.skillReposConfigPath,
-      tempTeamRegistryPath: AppStorage.tempTeamRegistryPath,
     );
   }
 
@@ -66,9 +64,6 @@ class StorageRootsSnapshot {
 
   /// Skill marketplace repo list (`skills.json`).
   final String skillReposConfigPath;
-
-  /// Registry of UI-created temp CLI team folder names.
-  final String tempTeamRegistryPath;
 
   final RemoteFileStore? remoteFileStore;
   final String? remoteCliDataDir;
@@ -175,9 +170,6 @@ class FlashskyaiStorageRoots {
       cliAgentsDir: posix.join(dataDir, 'agents'),
       appProjectsDir: AppStorage.appProjectsDirForTeampilotRoot(teampilot),
       skillReposConfigPath: AppStorage.skillReposConfigPathForTeampilotRoot(
-        teampilot,
-      ),
-      tempTeamRegistryPath: AppStorage.tempTeamRegistryPathForTeampilotRoot(
         teampilot,
       ),
       remoteFileStore: fileStore,
