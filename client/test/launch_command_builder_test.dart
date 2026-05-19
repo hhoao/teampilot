@@ -169,7 +169,7 @@ void main() {
 
     expect(
       LaunchCommandBuilder.preview(team, planner, executable: 'claude'),
-      'claude --agent-teams --team-name agent --agent-name planner '
+      'claude --team-name agent --agent-name planner '
       '--agent-id planner@agent --model sonnet',
     );
   });

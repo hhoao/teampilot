@@ -86,7 +86,6 @@ void main() {
         '22222222-2222-2222-2222-222222222222',
         '--add-dir',
         '/home/hhoa/git/shared',
-        '--agent-teams',
         '--team-name',
         'agent',
         '--agent-name',
@@ -103,6 +102,21 @@ void main() {
         'be careful',
       ],
     );
+  });
+
+  test('claude adapter relies on env instead of unsupported --agent-teams', () {
+    final args = ClaudeCodeCliToolAdapter().buildArguments(
+      CliLaunchContext(
+        team: const TeamConfig(
+          id: 'team-1',
+          name: 'agent',
+          cli: TeamCli.claude,
+        ),
+        member: member,
+      ),
+    );
+
+    expect(args, isNot(contains('--agent-teams')));
   });
 
   test('claude adapter does not pass unsupported --dir option', () {

@@ -92,7 +92,6 @@ class ClaudeCodeCliToolAdapter implements CliToolAdapter {
     final member = context.member;
     final args = <String>[
       ..._buildSessionPrefixArgs(context, includeWorkingDirectory: false),
-      '--agent-teams',
       '--team-name',
       context.teamName,
       '--agent-name',
