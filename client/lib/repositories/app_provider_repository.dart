@@ -130,14 +130,14 @@ class AppProviderRepository {
           await _deleteIfExists(File(p.join(codexDir.path, 'config.toml')));
         }
       }
-      if (provider.enables(AppProviderTool.claude)) {
-        final claudeDir = Directory(p.join(root.path, 'claude', provider.id));
-        await claudeDir.create(recursive: true);
-        await _generator.writeJsonAtomic(
-          File(p.join(claudeDir.path, 'settings.json')),
-          _generator.buildClaudeSettings(provider),
-        );
-      }
+    }
+    await _removeLegacyClaudeProviderDirs(providersFile.parent);
+  }
+
+  Future<void> _removeLegacyClaudeProviderDirs(Directory providersRoot) async {
+    final claudeDir = Directory(p.join(providersRoot.path, 'claude'));
+    if (await claudeDir.exists()) {
+      await claudeDir.delete(recursive: true);
     }
   }
 
@@ -147,10 +147,6 @@ class AppProviderRepository {
     final expectedByTool = {
       AppProviderTool.codex.value: providers
           .where((p) => p.enables(AppProviderTool.codex))
-          .map((p) => p.id)
-          .toSet(),
-      AppProviderTool.claude.value: providers
-          .where((p) => p.enables(AppProviderTool.claude))
           .map((p) => p.id)
           .toSet(),
     };

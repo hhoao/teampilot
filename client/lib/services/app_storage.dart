@@ -239,9 +239,6 @@ class AppStorage {
   static String codexProviderDir(String providerId) =>
       providerToolDir('codex', providerId);
 
-  static String claudeProviderDir(String providerId) =>
-      providerToolDir('claude', providerId);
-
   static String commonProfileDirForTool(String tool) =>
       p.join(configProfilesDir, 'common', tool.trim());
 

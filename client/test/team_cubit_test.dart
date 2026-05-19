@@ -197,9 +197,8 @@ void main() {
     expect(await cubit.addTeam('alpha'), isTrue);
 
     final teamRoot = p.join(base.path, 'config-profiles', 'teams', 'alpha');
-    expect(await Directory(p.join(teamRoot, 'flashskyai')).exists(), isTrue);
-    expect(await Directory(p.join(teamRoot, 'codex')).exists(), isFalse);
-    expect(await Directory(p.join(teamRoot, 'claude')).exists(), isFalse);
+    expect(await Directory(teamRoot).exists(), isTrue);
+    expect(await Directory(p.join(teamRoot, 'flashskyai')).exists(), isFalse);
     expect(cubit.state.teams.single.cli, TeamCli.flashskyai);
 
     await cubit.close();
@@ -286,6 +285,7 @@ void main() {
         'config-profiles',
         'teams',
         'Claude Team',
+        configProfileAdhocSessionId,
         'claude',
         'settings',
         'developer.json',
@@ -316,9 +316,8 @@ void main() {
       'teams',
       'Default Team',
     );
-    expect(await Directory(p.join(teamRoot, 'flashskyai')).exists(), isTrue);
-    expect(await Directory(p.join(teamRoot, 'codex')).exists(), isFalse);
-    expect(await Directory(p.join(teamRoot, 'claude')).exists(), isFalse);
+    expect(await Directory(teamRoot).exists(), isTrue);
+    expect(await Directory(p.join(teamRoot, 'flashskyai')).exists(), isFalse);
 
     await cubit.close();
     await base.delete(recursive: true);

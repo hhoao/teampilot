@@ -143,10 +143,8 @@ void main() {
         isTrue,
       );
       expect(
-        await File(
-          p.join(root.path, 'providers', 'claude', 'deepseek', 'settings.json'),
-        ).exists(),
-        isTrue,
+        await Directory(p.join(root.path, 'providers', 'claude')).exists(),
+        isFalse,
       );
     },
   );
@@ -226,10 +224,8 @@ void main() {
       isTrue,
     );
     expect(
-      await Directory(
-        p.join(root.path, 'providers', 'claude', 'deepseek'),
-      ).exists(),
-      isTrue,
+      await Directory(p.join(root.path, 'providers', 'claude')).exists(),
+      isFalse,
     );
 
     await repo.saveProviders([
@@ -243,9 +239,7 @@ void main() {
       isFalse,
     );
     expect(
-      await Directory(
-        p.join(root.path, 'providers', 'claude', 'deepseek'),
-      ).exists(),
+      await Directory(p.join(root.path, 'providers', 'claude')).exists(),
       isFalse,
     );
   });

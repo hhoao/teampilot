@@ -601,9 +601,9 @@ void main() {
           sessions.single.lastExtraEnvironments.single?['CLAUDE_CONFIG_DIR']
               as String?;
       expect(claudeDir, isNotNull);
-      final runtimeTeamId = p.basename(p.dirname(claudeDir!));
+      final sessionId = p.basename(p.dirname(claudeDir!));
       expect(
-        runtimeTeamId,
+        sessionId,
         matches(
           RegExp(
             r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
@@ -612,7 +612,14 @@ void main() {
       );
       expect(
         claudeDir,
-        p.join(tmp.path, 'config-profiles', 'teams', runtimeTeamId, 'claude'),
+        p.join(
+          tmp.path,
+          'config-profiles',
+          'teams',
+          'test-team',
+          sessionId,
+          'claude',
+        ),
       );
       expect(
         sessions.single.lastExtraEnvironments.single?[ConfigProfileService
@@ -621,7 +628,8 @@ void main() {
           tmp.path,
           'config-profiles',
           'teams',
-          runtimeTeamId,
+          'test-team',
+          sessionId,
           'claude',
           'settings',
           'developer.json',

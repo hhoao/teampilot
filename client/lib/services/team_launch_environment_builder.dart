@@ -1,9 +1,5 @@
-import 'dart:convert';
-import 'dart:io';
-
-import 'package:path/path.dart' as p;
-
 import '../models/team_config.dart';
+import 'claude_provider_settings_resolver.dart';
 import 'config_profile_service.dart';
 import 'flashskyai_storage_roots.dart';
 
@@ -22,6 +18,7 @@ class TeamLaunchEnvironmentBuilder {
     String workingDirectory = '',
     ConfigProfileService? configProfileService,
     StorageRootsResolver? storageRootsResolver,
+    ClaudeProviderSettingsResolver? claudeSettingsResolver,
   }) async {
     final teamId = team.id.trim();
     if (teamId.isNotEmpty) {
@@ -31,15 +28,15 @@ class TeamLaunchEnvironmentBuilder {
             appDataBasePath: appDataBasePath,
             storageRootsResolver: storageRootsResolver,
           );
+      final resolver =
+          claudeSettingsResolver ??
+          ClaudeProviderSettingsResolver(basePath: service.basePath);
       final claudeSettings = team.cli == TeamCli.claude
-          ? await _loadClaudeProviderSettings(
-              basePath: service.basePath,
-              providerId: team.providerIdsByTool['claude'],
-            )
+          ? await resolver.resolve(team.providerIdsByTool['claude'])
           : null;
       final claudeSettingsByMember = team.cli == TeamCli.claude
           ? await _loadClaudeMemberProviderSettings(
-              basePath: service.basePath,
+              resolver: resolver,
               team: team,
               launchedMember: member,
             )
@@ -82,34 +79,9 @@ class TeamLaunchEnvironmentBuilder {
     return ConfigProfileService(basePath: roots.teampilotRoot);
   }
 
-  static Future<Map<String, Object?>?> _loadClaudeProviderSettings({
-    required String basePath,
-    required String? providerId,
-  }) async {
-    final trimmed = providerId?.trim() ?? '';
-    if (trimmed.isEmpty) return null;
-
-    final file = File(
-      p.join(basePath, 'providers', 'claude', trimmed, 'settings.json'),
-    );
-    if (!await file.exists()) return null;
-
-    try {
-      final decoded = jsonDecode(await file.readAsString());
-      if (decoded is Map) {
-        return Map<String, Object?>.from(decoded);
-      }
-    } on FormatException {
-      return null;
-    } on TypeError {
-      return null;
-    }
-    return null;
-  }
-
   static Future<Map<String, Map<String, Object?>>>
   _loadClaudeMemberProviderSettings({
-    required String basePath,
+    required ClaudeProviderSettingsResolver resolver,
     required TeamConfig team,
     required TeamMemberConfig? launchedMember,
   }) async {
@@ -124,10 +96,7 @@ class TeamLaunchEnvironmentBuilder {
 
     final settingsByMember = <String, Map<String, Object?>>{};
     for (final member in members.values) {
-      final settings = await _loadClaudeProviderSettings(
-        basePath: basePath,
-        providerId: member.provider,
-      );
+      final settings = await resolver.resolve(member.provider);
       if (settings != null) {
         settingsByMember[member.id] = settings;
         settingsByMember[member.name] = settings;

@@ -9,6 +9,9 @@ import '../models/team_config.dart';
 typedef TeamLaunchEnvironment = Map<String, String>;
 typedef ConfigProfileDirectoryCreator = Future<void> Function(String path);
 
+/// Profile directory key when launching without a chat [AppSession].
+const configProfileAdhocSessionId = '_adhoc';
+
 /// Ensures team runtime isolation directories and returns launch env vars.
 ///
 /// Does not write team-level `llm_config.json`.
@@ -42,55 +45,84 @@ class ConfigProfileService {
   String commonProfileDirForTool(String tool) =>
       p.join(configProfilesDir, 'common', tool.trim());
 
-  String teamProfileDir(String teamId) =>
+  /// Team metadata scope: `config-profiles/teams/<teamId>/`.
+  String teamScopeDir(String teamId) =>
       p.join(configProfilesDir, 'teams', teamId.trim());
 
-  String teamToolDir(String teamId, String tool) =>
-      p.join(teamProfileDir(teamId), tool);
+  /// Per-session scope: `config-profiles/teams/<teamId>/<sessionId>/`.
+  String sessionProfileDir(String teamId, String sessionId) =>
+      p.join(teamScopeDir(teamId), sessionId.trim());
 
-  String teamClaudeMemberSettingsFile(String teamId, TeamMemberConfig member) =>
+  String sessionToolDir(String teamId, String sessionId, String tool) =>
+      p.join(sessionProfileDir(teamId, sessionId), tool.trim());
+
+  String sessionClaudeMemberSettingsFile(
+    String teamId,
+    String sessionId,
+    TeamMemberConfig member,
+  ) =>
       p.join(
-        teamToolDir(teamId, 'claude'),
+        sessionToolDir(teamId, sessionId, 'claude'),
         'settings',
         '${_safeClaudePathName(member.name)}.json',
       );
 
-  String teamFlashskyaiMetadataFile(String teamId) =>
-      p.join(teamToolDir(teamId, 'flashskyai'), flashskyaiMetadataFileName);
+  String sessionFlashskyaiMetadataFile(String teamId, String sessionId) =>
+      p.join(
+        sessionToolDir(teamId, sessionId, 'flashskyai'),
+        flashskyaiMetadataFileName,
+      );
 
-  String teamClaudeMetadataFile(String teamId) =>
-      p.join(teamToolDir(teamId, 'claude'), claudeMetadataFileName);
+  String sessionClaudeMetadataFile(String teamId, String sessionId) =>
+      p.join(
+        sessionToolDir(teamId, sessionId, 'claude'),
+        claudeMetadataFileName,
+      );
 
   Future<void> ensureCommonProfiles() async {
     await _createDirectory(commonFlashskyaiDir);
   }
 
+  /// Ensures the team container exists under `config-profiles/teams/<teamId>/`.
   Future<void> ensureTeamProfile(
     String teamId, {
     TeamCli cli = TeamCli.flashskyai,
   }) async {
     final trimmed = teamId.trim();
     if (trimmed.isEmpty) return;
+    await _createDirectory(teamScopeDir(trimmed));
+  }
 
-    await _createDirectory(teamToolDir(trimmed, cli.value));
+  Future<void> ensureSessionProfile(
+    String teamId,
+    String sessionId, {
+    TeamCli cli = TeamCli.flashskyai,
+  }) async {
+    final trimmedTeamId = teamId.trim();
+    final trimmedSessionId = sessionId.trim();
+    if (trimmedTeamId.isEmpty || trimmedSessionId.isEmpty) return;
+
+    await ensureTeamProfile(trimmedTeamId);
+    await _createDirectory(
+      sessionToolDir(trimmedTeamId, trimmedSessionId, cli.value),
+    );
     switch (cli) {
       case TeamCli.flashskyai:
         await ensureCommonProfiles();
-        await ensureTeamFlashskyaiDefaults(trimmed);
+        await ensureSessionFlashskyaiDefaults(trimmedTeamId, trimmedSessionId);
       case TeamCli.codex:
         break;
       case TeamCli.claude:
-        await ensureTeamClaudeDefaults(trimmed);
+        await ensureSessionClaudeDefaults(trimmedTeamId, trimmedSessionId);
         break;
     }
   }
 
-  /// Seeds `.flashskyai.json` so the CLI skips first-run onboarding UI.
-  Future<void> ensureTeamFlashskyaiDefaults(String teamId) async {
-    final trimmed = teamId.trim();
-    if (trimmed.isEmpty) return;
-
-    final file = File(teamFlashskyaiMetadataFile(trimmed));
+  Future<void> ensureSessionFlashskyaiDefaults(
+    String teamId,
+    String sessionId,
+  ) async {
+    final file = File(sessionFlashskyaiMetadataFile(teamId, sessionId));
     if (await file.exists()) return;
 
     await file.parent.create(recursive: true);
@@ -99,12 +131,8 @@ class ConfigProfileService {
     );
   }
 
-  /// Seeds `.claude.json` so Claude Code skips the first-run onboarding UI.
-  Future<void> ensureTeamClaudeDefaults(String teamId) async {
-    final trimmed = teamId.trim();
-    if (trimmed.isEmpty) return;
-
-    final file = File(teamClaudeMetadataFile(trimmed));
+  Future<void> ensureSessionClaudeDefaults(String teamId, String sessionId) async {
+    final file = File(sessionClaudeMetadataFile(teamId, sessionId));
     if (await file.exists()) return;
 
     await file.parent.create(recursive: true);
@@ -115,8 +143,8 @@ class ConfigProfileService {
 
   /// Creates dirs for [cli] and returns launch env vars for that CLI only.
   ///
-  /// [teamId] identifies the source team metadata. [runtimeTeamId], when set,
-  /// identifies the launch-time profile directory used by one session.
+  /// [teamId] is [TeamConfig.id]. [runtimeTeamId] is the chat session id (CLI
+  /// `--team-name`); when empty, uses [configProfileAdhocSessionId] for paths.
   Future<TeamLaunchEnvironment> prepareTeamLaunch({
     required String teamId,
     String runtimeTeamId = '',
@@ -131,20 +159,26 @@ class ConfigProfileService {
     if (trimmedTeamId.isEmpty) {
       return const {};
     }
-    final profileTeamId = runtimeTeamId.trim().isNotEmpty
-        ? runtimeTeamId.trim()
-        : trimmedTeamId;
 
-    await ensureTeamProfile(profileTeamId, cli: cli);
+    final scope = _resolveLaunchScope(
+      teamId: trimmedTeamId,
+      runtimeTeamId: runtimeTeamId,
+    );
+
+    await ensureSessionProfile(
+      scope.teamId,
+      scope.sessionId,
+      cli: cli,
+    );
     if (cli == TeamCli.claude) {
-      await _writeClaudeSettings(profileTeamId, claudeSettings);
+      await _writeClaudeSettings(scope, claudeSettings);
       await _writeClaudeRoster(
-        teamId: profileTeamId,
+        scope: scope,
         members: members,
         workingDirectory: workingDirectory,
       );
       await _writeClaudeMemberProfiles(
-        teamId: profileTeamId,
+        scope: scope,
         members: members,
         launchedMember: member,
         providerSettings: claudeSettings,
@@ -154,15 +188,26 @@ class ConfigProfileService {
 
     return switch (cli) {
       TeamCli.flashskyai => {
-        'FLASHSKYAI_CONFIG_DIR': teamToolDir(profileTeamId, 'flashskyai'),
+        'FLASHSKYAI_CONFIG_DIR': sessionToolDir(
+          scope.teamId,
+          scope.sessionId,
+          'flashskyai',
+        ),
         'LLM_CONFIG_PATH': commonFlashskyaiLlmConfigFile,
       },
-      TeamCli.codex => {'CODEX_HOME': teamToolDir(profileTeamId, 'codex')},
+      TeamCli.codex => {
+        'CODEX_HOME': sessionToolDir(scope.teamId, scope.sessionId, 'codex'),
+      },
       TeamCli.claude => {
-        'CLAUDE_CONFIG_DIR': teamToolDir(profileTeamId, 'claude'),
+        'CLAUDE_CONFIG_DIR': sessionToolDir(
+          scope.teamId,
+          scope.sessionId,
+          'claude',
+        ),
         if (member != null && member.isValid)
-          claudeSettingsFileEnvKey: teamClaudeMemberSettingsFile(
-            profileTeamId,
+          claudeSettingsFileEnvKey: sessionClaudeMemberSettingsFile(
+            scope.teamId,
+            scope.sessionId,
             member,
           ),
         'CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS': '1',
@@ -170,11 +215,30 @@ class ConfigProfileService {
     };
   }
 
+  static _LaunchProfileScope _resolveLaunchScope({
+    required String teamId,
+    required String runtimeTeamId,
+  }) {
+    final runtime = runtimeTeamId.trim();
+    final sessionId = runtime.isNotEmpty ? runtime : configProfileAdhocSessionId;
+    final cliTeamName = runtime.isNotEmpty ? runtime : teamId;
+    return _LaunchProfileScope(
+      teamId: teamId,
+      sessionId: sessionId,
+      cliTeamName: cliTeamName,
+    );
+  }
+
   Future<void> _writeClaudeSettings(
-    String teamId,
+    _LaunchProfileScope scope,
     Map<String, Object?>? providerSettings,
   ) async {
-    final file = File(p.join(teamToolDir(teamId, 'claude'), 'settings.json'));
+    final file = File(
+      p.join(
+        sessionToolDir(scope.teamId, scope.sessionId, 'claude'),
+        'settings.json',
+      ),
+    );
     final settings = _claudeTeamSettings(providerSettings);
     await file.parent.create(recursive: true);
     await file.writeAsString(
@@ -183,13 +247,18 @@ class ConfigProfileService {
   }
 
   Future<void> _writeClaudeRoster({
-    required String teamId,
+    required _LaunchProfileScope scope,
     required List<TeamMemberConfig> members,
     required String workingDirectory,
   }) async {
-    final claudeDir = teamToolDir(teamId, 'claude');
+    final claudeDir = sessionToolDir(scope.teamId, scope.sessionId, 'claude');
     final roster = File(
-      p.join(claudeDir, 'teams', _safeClaudeTeamName(teamId), 'config.json'),
+      p.join(
+        claudeDir,
+        'teams',
+        _safeClaudeTeamName(scope.cliTeamName),
+        'config.json',
+      ),
     );
 
     final existing = await _readJsonObject(roster);
@@ -206,19 +275,20 @@ class ConfigProfileService {
       }
     }
 
+    final cliTeamName = scope.cliTeamName;
     final createdAt = existing['createdAt'];
     final config = <String, Object?>{
       ...existing,
-      'name': teamId,
+      'name': cliTeamName,
       'createdAt': createdAt is int
           ? createdAt
           : DateTime.now().millisecondsSinceEpoch,
-      'leadAgentId': 'team-lead@$teamId',
+      'leadAgentId': 'team-lead@$cliTeamName',
       'env': _claudeRosterEnv(existing['env']),
       'members': [
         for (final member in members.where((member) => member.isValid))
           _claudeRosterMember(
-            teamId: teamId,
+            teamId: cliTeamName,
             member: member,
             existing: existingMembersByName[member.name],
             workingDirectory: workingDirectory,
@@ -233,7 +303,7 @@ class ConfigProfileService {
   }
 
   Future<void> _writeClaudeMemberProfiles({
-    required String teamId,
+    required _LaunchProfileScope scope,
     required List<TeamMemberConfig> members,
     required TeamMemberConfig? launchedMember,
     required Map<String, Object?>? providerSettings,
@@ -250,7 +320,7 @@ class ConfigProfileService {
 
     for (final member in uniqueMembers.values) {
       await _writeClaudeMemberProfile(
-        teamId: teamId,
+        scope: scope,
         member: member,
         providerSettings:
             providerSettingsByMember[member.id] ??
@@ -261,11 +331,13 @@ class ConfigProfileService {
   }
 
   Future<void> _writeClaudeMemberProfile({
-    required String teamId,
+    required _LaunchProfileScope scope,
     required TeamMemberConfig member,
     required Map<String, Object?>? providerSettings,
   }) async {
-    final file = File(teamClaudeMemberSettingsFile(teamId, member));
+    final file = File(
+      sessionClaudeMemberSettingsFile(scope.teamId, scope.sessionId, member),
+    );
     final settings = _claudeMemberSettings(providerSettings, member);
     await file.parent.create(recursive: true);
     await file.writeAsString(
@@ -379,4 +451,16 @@ class ConfigProfileService {
 
   static Future<void> _createLocalDirectory(String path) =>
       Directory(path).create(recursive: true);
+}
+
+class _LaunchProfileScope {
+  const _LaunchProfileScope({
+    required this.teamId,
+    required this.sessionId,
+    required this.cliTeamName,
+  });
+
+  final String teamId;
+  final String sessionId;
+  final String cliTeamName;
 }

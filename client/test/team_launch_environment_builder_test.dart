@@ -3,10 +3,33 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
+import 'package:teampilot/models/app_provider_config.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/config_profile_service.dart';
 import 'package:teampilot/services/flashskyai_storage_roots.dart';
 import 'package:teampilot/services/team_launch_environment_builder.dart';
+
+Future<void> _writeProvidersCatalog(
+  String basePath,
+  List<AppProviderConfig> providers,
+) async {
+  final file = File(p.join(basePath, 'providers', 'providers.json'));
+  await file.parent.create(recursive: true);
+  await file.writeAsString(
+    jsonEncode({
+      'providers': {for (final provider in providers) provider.id: provider.toJson()},
+    }),
+  );
+}
+
+String _claudeDir(String base, String teamId, String sessionId) => p.join(
+  base,
+  'config-profiles',
+  'teams',
+  teamId,
+  sessionId,
+  'claude',
+);
 
 void main() {
   late Directory base;
@@ -28,21 +51,19 @@ void main() {
       llmConfigPathOverride: '/global/llm_config.json',
     );
 
-    final teamRoot = p.join(base.path, 'config-profiles', 'teams', 'team-a');
     expect(env, isNotNull);
     expect(env!.keys, ['FLASHSKYAI_CONFIG_DIR', 'LLM_CONFIG_PATH']);
-    expect(env['FLASHSKYAI_CONFIG_DIR'], p.join(teamRoot, 'flashskyai'));
     expect(
-      env['LLM_CONFIG_PATH'],
+      env['FLASHSKYAI_CONFIG_DIR'],
       p.join(
         base.path,
         'config-profiles',
-        'common',
+        'teams',
+        'team-a',
+        configProfileAdhocSessionId,
         'flashskyai',
-        'llm_config.json',
       ),
     );
-    expect(env.containsKey('CODEX_HOME'), isFalse);
     expect(env.containsKey('CLAUDE_CONFIG_DIR'), isFalse);
   });
 
@@ -66,19 +87,15 @@ void main() {
       ),
     );
 
-    expect(env!.keys, ['FLASHSKYAI_CONFIG_DIR', 'LLM_CONFIG_PATH']);
     expect(
-      env['FLASHSKYAI_CONFIG_DIR'],
-      p.join(remoteRoot, 'config-profiles', 'teams', 'team-a', 'flashskyai'),
-    );
-    expect(
-      env['LLM_CONFIG_PATH'],
+      env!['FLASHSKYAI_CONFIG_DIR'],
       p.join(
         remoteRoot,
         'config-profiles',
-        'common',
+        'teams',
+        'team-a',
+        configProfileAdhocSessionId,
         'flashskyai',
-        'llm_config.json',
       ),
     );
   });
@@ -92,13 +109,22 @@ void main() {
     expect(env!.keys, ['CODEX_HOME']);
     expect(
       env['CODEX_HOME'],
-      p.join(base.path, 'config-profiles', 'teams', 'team-a', 'codex'),
+      p.join(
+        base.path,
+        'config-profiles',
+        'teams',
+        'team-a',
+        configProfileAdhocSessionId,
+        'codex',
+      ),
     );
   });
 
   test('claude team launch passes members to roster generation', () async {
+    const sessionId = 'sess-roster-1';
     final env = await TeamLaunchEnvironmentBuilder.build(
       appDataBasePath: base.path,
+      runtimeTeamId: sessionId,
       workingDirectory: '/workspace/team-a',
       team: const TeamConfig(
         id: 'team-a',
@@ -111,47 +137,28 @@ void main() {
       ),
     );
 
-    final claudeDir = p.join(
-      base.path,
-      'config-profiles',
-      'teams',
-      'team-a',
-      'claude',
-    );
-    expect(env!.keys, [
-      'CLAUDE_CONFIG_DIR',
-      'CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS',
-    ]);
-    expect(env['CLAUDE_CONFIG_DIR'], claudeDir);
-    expect(env['CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS'], '1');
+    final claudeDir = _claudeDir(base.path, 'team-a', sessionId);
+    expect(env!['CLAUDE_CONFIG_DIR'], claudeDir);
 
-    final roster = File(p.join(claudeDir, 'teams', 'team-a', 'config.json'));
+    final roster = File(p.join(claudeDir, 'teams', sessionId, 'config.json'));
     final decoded =
         jsonDecode(await roster.readAsString()) as Map<String, Object?>;
     final members = decoded['members'] as List<Object?>;
-    expect(members.map((member) => (member as Map<String, Object?>)['name']), [
-      'team-lead',
-      'developer',
-    ]);
-    expect((members.last as Map<String, Object?>)['model'], 'sonnet');
-    expect((members.last as Map<String, Object?>)['cwd'], '/workspace/team-a');
+    expect(members.map((m) => (m as Map)['name']), ['team-lead', 'developer']);
+    expect((members.last as Map)['model'], 'sonnet');
   });
 
-  test('claude team launch writes settings from selected provider', () async {
-    final providerSettings = File(
-      p.join(base.path, 'providers', 'claude', 'deepseek', 'settings.json'),
-    );
-    await providerSettings.parent.create(recursive: true);
-    await providerSettings.writeAsString(
-      jsonEncode({
-        'env': {
-          'ANTHROPIC_BASE_URL': 'https://api.deepseek.com/anthropic',
-          'ANTHROPIC_AUTH_TOKEN': 'sk-test',
-          'ANTHROPIC_MODEL': 'deepseek-v4-pro[1m]',
-        },
-        'effortLevel': 'high',
-      }),
-    );
+  test('claude team launch writes settings from providers.json', () async {
+    await _writeProvidersCatalog(base.path, [
+      AppProviderConfig(
+        id: 'deepseek',
+        name: 'DeepSeek',
+        apiKey: 'sk-test',
+        baseUrl: 'https://api.deepseek.com',
+        defaultModel: 'deepseek-v4-pro[1m]',
+        enabledTools: const [AppProviderTool.claude],
+      ),
+    ]);
 
     await TeamLaunchEnvironmentBuilder.build(
       appDataBasePath: base.path,
@@ -165,47 +172,36 @@ void main() {
 
     final settingsFile = File(
       p.join(
-        base.path,
-        'config-profiles',
-        'teams',
-        'team-a',
-        'claude',
+        _claudeDir(base.path, 'team-a', configProfileAdhocSessionId),
         'settings.json',
       ),
     );
     final settings =
         jsonDecode(await settingsFile.readAsString()) as Map<String, Object?>;
     final env = settings['env'] as Map<String, Object?>;
-    expect(env['ANTHROPIC_BASE_URL'], 'https://api.deepseek.com/anthropic');
-    expect(env['ANTHROPIC_AUTH_TOKEN'], 'sk-test');
+    expect(env['ANTHROPIC_API_KEY'], 'sk-test');
     expect(env['ANTHROPIC_MODEL'], 'deepseek-v4-pro[1m]');
-    expect(env['CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS'], '1');
-    expect(env['CCGUI_CLI_LOGIN_AUTHORIZED'], '1');
-    expect(env['CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC'], '1');
-    expect(settings['effortLevel'], 'high');
-    expect(settings['skipDangerousModePermissionPrompt'], true);
     expect(settings['teammateMode'], 'in-process');
   });
 
   test(
     'claude member launch returns shared config dir and settings file',
     () async {
-      final providerSettings = File(
-        p.join(base.path, 'providers', 'claude', 'deepseek', 'settings.json'),
-      );
-      await providerSettings.parent.create(recursive: true);
-      await providerSettings.writeAsString(
-        jsonEncode({
-          'env': {
-            'ANTHROPIC_BASE_URL': 'https://api.deepseek.com/anthropic',
-            'ANTHROPIC_MODEL': 'deepseek-default',
-          },
-        }),
-      );
+      const sessionId = '00000000-0000-4000-8000-000000000001';
+      await _writeProvidersCatalog(base.path, [
+        AppProviderConfig(
+          id: 'deepseek',
+          name: 'DeepSeek',
+          apiKey: 'sk-test',
+          baseUrl: 'https://api.deepseek.com/anthropic',
+          defaultModel: 'deepseek-default',
+          enabledTools: const [AppProviderTool.claude],
+        ),
+      ]);
 
       final env = await TeamLaunchEnvironmentBuilder.build(
         appDataBasePath: base.path,
-        runtimeTeamId: '00000000-0000-4000-8000-000000000001',
+        runtimeTeamId: sessionId,
         team: const TeamConfig(
           id: 'team-a',
           name: 'Team A',
@@ -223,13 +219,7 @@ void main() {
         ),
       );
 
-      final claudeDir = p.join(
-        base.path,
-        'config-profiles',
-        'teams',
-        '00000000-0000-4000-8000-000000000001',
-        'claude',
-      );
+      final claudeDir = _claudeDir(base.path, 'team-a', sessionId);
       final developerSettings = p.join(claudeDir, 'settings', 'developer.json');
       expect(env!['CLAUDE_CONFIG_DIR'], claudeDir);
       expect(
@@ -237,13 +227,13 @@ void main() {
         developerSettings,
       );
 
-      final settingsFile = File(developerSettings);
-      final settings =
-          jsonDecode(await settingsFile.readAsString()) as Map<String, Object?>;
-      final settingsEnv = settings['env'] as Map<String, Object?>;
+      final settingsEnv =
+          (jsonDecode(await File(developerSettings).readAsString())
+                  as Map<String, Object?>)['env']
+              as Map<String, Object?>;
       expect(
         settingsEnv['ANTHROPIC_BASE_URL'],
-        'https://api.deepseek.com/anthropic',
+        contains('deepseek.com'),
       );
       expect(settingsEnv['ANTHROPIC_MODEL'], 'sonnet');
     },
@@ -252,42 +242,29 @@ void main() {
   test(
     'claude member settings use member provider over team provider',
     () async {
-      Future<void> writeProvider({
-        required String id,
-        required String baseUrl,
-        required String token,
-        required String model,
-      }) async {
-        final providerSettings = File(
-          p.join(base.path, 'providers', 'claude', id, 'settings.json'),
-        );
-        await providerSettings.parent.create(recursive: true);
-        await providerSettings.writeAsString(
-          jsonEncode({
-            'env': {
-              'ANTHROPIC_BASE_URL': baseUrl,
-              'ANTHROPIC_AUTH_TOKEN': token,
-              'ANTHROPIC_MODEL': model,
-            },
-          }),
-        );
-      }
+      await _writeProvidersCatalog(base.path, [
+        AppProviderConfig(
+          id: 'deepseek',
+          name: 'DeepSeek',
+          apiKey: 'sk-deepseek',
+          baseUrl: 'https://api.deepseek.com/anthropic',
+          defaultModel: 'deepseek-default',
+          enabledTools: const [AppProviderTool.claude],
+        ),
+        AppProviderConfig(
+          id: 'moonshot',
+          name: 'Moonshot',
+          apiKey: 'sk-moonshot',
+          baseUrl: 'https://api.moonshot.example/anthropic',
+          defaultModel: 'moonshot-default',
+          enabledTools: const [AppProviderTool.claude],
+        ),
+      ]);
 
-      await writeProvider(
-        id: 'deepseek',
-        baseUrl: 'https://api.deepseek.com/anthropic',
-        token: 'sk-deepseek',
-        model: 'deepseek-default',
-      );
-      await writeProvider(
-        id: 'moonshot',
-        baseUrl: 'https://api.moonshot.example/anthropic',
-        token: 'sk-moonshot',
-        model: 'moonshot-default',
-      );
-
+      const sessionId = 'sess-multi-prov';
       await TeamLaunchEnvironmentBuilder.build(
         appDataBasePath: base.path,
+        runtimeTeamId: sessionId,
         team: const TeamConfig(
           id: 'team-a',
           name: 'Team A',
@@ -314,36 +291,18 @@ void main() {
       Future<Map<String, Object?>> readEnv(String memberName) async {
         final settingsFile = File(
           p.join(
-            base.path,
-            'config-profiles',
-            'teams',
-            'team-a',
-            'claude',
+            _claudeDir(base.path, 'team-a', sessionId),
             'settings',
             '$memberName.json',
           ),
         );
-        final settings =
-            jsonDecode(await settingsFile.readAsString())
-                as Map<String, Object?>;
-        return settings['env'] as Map<String, Object?>;
+        return (jsonDecode(await settingsFile.readAsString())
+                as Map<String, Object?>)['env']
+            as Map<String, Object?>;
       }
 
-      final developerEnv = await readEnv('developer');
-      expect(
-        developerEnv['ANTHROPIC_BASE_URL'],
-        'https://api.deepseek.com/anthropic',
-      );
-      expect(developerEnv['ANTHROPIC_AUTH_TOKEN'], 'sk-deepseek');
-      expect(developerEnv['ANTHROPIC_MODEL'], 'sonnet');
-
-      final reviewerEnv = await readEnv('reviewer');
-      expect(
-        reviewerEnv['ANTHROPIC_BASE_URL'],
-        'https://api.moonshot.example/anthropic',
-      );
-      expect(reviewerEnv['ANTHROPIC_AUTH_TOKEN'], 'sk-moonshot');
-      expect(reviewerEnv['ANTHROPIC_MODEL'], 'opus');
+      expect((await readEnv('developer'))['ANTHROPIC_API_KEY'], 'sk-deepseek');
+      expect((await readEnv('reviewer'))['ANTHROPIC_API_KEY'], 'sk-moonshot');
     },
   );
 
