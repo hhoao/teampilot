@@ -163,6 +163,7 @@ void main() {
     expect(decoded['name'], 'Team A!');
     expect(decoded['createdAt'], isA<int>());
     expect(decoded['leadAgentId'], 'team-lead@Team A!');
+    expect(decoded['env'], {'CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS': '1'});
 
     final members = decoded['members'] as List<Object?>;
     expect(members, hasLength(2));
@@ -209,6 +210,10 @@ void main() {
           'createdAt': 1234,
           'leadAgentId': 'old-lead',
           'customTop': 'keep',
+          'env': {
+            'ANTHROPIC_BASE_URL': 'https://proxy.example.com',
+            'CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS': '0',
+          },
           'members': [
             {
               'agentId': 'developer@team-a',
@@ -239,6 +244,10 @@ void main() {
       expect(decoded['createdAt'], 1234);
       expect(decoded['leadAgentId'], 'team-lead@team-a');
       expect(decoded['customTop'], 'keep');
+      expect(decoded['env'], {
+        'ANTHROPIC_BASE_URL': 'https://proxy.example.com',
+        'CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS': '1',
+      });
 
       final members = decoded['members'] as List<Object?>;
       expect(members, hasLength(1));

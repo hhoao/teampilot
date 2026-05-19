@@ -148,6 +148,7 @@ class ConfigProfileService {
           ? createdAt
           : DateTime.now().millisecondsSinceEpoch,
       'leadAgentId': 'team-lead@$teamId',
+      'env': _claudeRosterEnv(existing['env']),
       'members': [
         for (final member in members.where((member) => member.isValid))
           _claudeRosterMember(
@@ -199,6 +200,20 @@ class ConfigProfileService {
     }
 
     return memberJson;
+  }
+
+  static Map<String, Object?> _claudeRosterEnv(Object? existing) {
+    final env = <String, Object?>{};
+    if (existing is Map) {
+      for (final entry in existing.entries) {
+        final key = entry.key;
+        if (key is String) {
+          env[key] = entry.value;
+        }
+      }
+    }
+    env['CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS'] = '1';
+    return env;
   }
 
   static Future<Map<String, Object?>> _readJsonObject(File file) async {
