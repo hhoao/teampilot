@@ -13,23 +13,19 @@ Future<void> _writeProvidersCatalog(
   String basePath,
   List<AppProviderConfig> providers,
 ) async {
-  final file = File(p.join(basePath, 'providers', 'providers.json'));
+  final file = File(p.join(basePath, 'providers', 'claude', 'providers.json'));
   await file.parent.create(recursive: true);
   await file.writeAsString(
     jsonEncode({
-      'providers': {for (final provider in providers) provider.id: provider.toJson()},
+      'providers': {
+        for (final provider in providers) provider.id: provider.toJson(),
+      },
     }),
   );
 }
 
-String _claudeDir(String base, String teamId, String sessionId) => p.join(
-  base,
-  'config-profiles',
-  'teams',
-  teamId,
-  sessionId,
-  'claude',
-);
+String _claudeDir(String base, String teamId, String sessionId) =>
+    p.join(base, 'config-profiles', 'teams', teamId, sessionId, 'claude');
 
 void main() {
   late Directory base;
@@ -154,11 +150,11 @@ void main() {
       await _writeProvidersCatalog(base.path, [
         AppProviderConfig(
           id: 'deepseek',
+          cli: AppProviderCli.claude,
           name: 'DeepSeek',
           apiKey: 'sk-member-only',
           baseUrl: 'https://api.deepseek.com/anthropic',
           defaultModel: 'deepseek-default',
-          enabledTools: const [AppProviderTool.claude],
         ),
       ]);
 
@@ -217,11 +213,11 @@ void main() {
     await _writeProvidersCatalog(base.path, [
       AppProviderConfig(
         id: 'deepseek',
+        cli: AppProviderCli.claude,
         name: 'DeepSeek',
         apiKey: 'sk-test',
         baseUrl: 'https://api.deepseek.com',
         defaultModel: 'deepseek-v4-pro[1m]',
-        enabledTools: const [AppProviderTool.claude],
       ),
     ]);
 
@@ -256,11 +252,11 @@ void main() {
       await _writeProvidersCatalog(base.path, [
         AppProviderConfig(
           id: 'deepseek',
+          cli: AppProviderCli.claude,
           name: 'DeepSeek',
           apiKey: 'sk-test',
           baseUrl: 'https://api.deepseek.com/anthropic',
           defaultModel: 'deepseek-default',
-          enabledTools: const [AppProviderTool.claude],
         ),
       ]);
 
@@ -296,10 +292,7 @@ void main() {
           (jsonDecode(await File(developerSettings).readAsString())
                   as Map<String, Object?>)['env']
               as Map<String, Object?>;
-      expect(
-        settingsEnv['ANTHROPIC_BASE_URL'],
-        contains('deepseek.com'),
-      );
+      expect(settingsEnv['ANTHROPIC_BASE_URL'], contains('deepseek.com'));
       expect(settingsEnv['ANTHROPIC_MODEL'], 'sonnet');
     },
   );
@@ -310,19 +303,19 @@ void main() {
       await _writeProvidersCatalog(base.path, [
         AppProviderConfig(
           id: 'deepseek',
+          cli: AppProviderCli.claude,
           name: 'DeepSeek',
           apiKey: 'sk-deepseek',
           baseUrl: 'https://api.deepseek.com/anthropic',
           defaultModel: 'deepseek-default',
-          enabledTools: const [AppProviderTool.claude],
         ),
         AppProviderConfig(
           id: 'moonshot',
+          cli: AppProviderCli.claude,
           name: 'Moonshot',
           apiKey: 'sk-moonshot',
           baseUrl: 'https://api.moonshot.example/anthropic',
           defaultModel: 'moonshot-default',
-          enabledTools: const [AppProviderTool.claude],
         ),
       ]);
 

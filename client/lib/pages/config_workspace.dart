@@ -6,6 +6,7 @@ import '../cubits/config_cubit.dart';
 import '../cubits/layout_cubit.dart';
 import '../cubits/team_cubit.dart';
 import '../l10n/l10n_extensions.dart';
+import '../models/app_provider_config.dart';
 import '../models/layout_preferences.dart';
 import '../services/platform_utils.dart';
 import '../theme/app_theme.dart';
@@ -13,6 +14,7 @@ import '../utils/app_keys.dart';
 import '../widgets/settings/workspace_hub_shell.dart';
 import '../widgets/settings/workspace_settings_toggle_strip.dart';
 import '../widgets/settings/workspace_settings_widgets.dart';
+import 'about_page.dart';
 import 'llm_config_workspace.dart';
 import 'session_config_workspace.dart';
 
@@ -65,15 +67,31 @@ class ConfigSettingsHubPage extends StatelessWidget {
           icon: Icons.dns_outlined,
           onTap: () => context.push('/config/ssh-profiles'),
         ),
+        WorkspaceHubEntry(
+          key: AppKeys.configAboutSectionButton,
+          title: l10n.aboutTitle,
+          icon: Icons.info_outline,
+          onTap: () {
+            context.read<ConfigCubit>().selectSection(ConfigSection.about);
+            context.push('/config/about');
+          },
+        ),
       ],
     );
   }
 }
 
 class ConfigWorkspace extends StatelessWidget {
-  const ConfigWorkspace({required this.section, super.key});
+  const ConfigWorkspace({
+    required this.section,
+    this.initialProviderCli,
+    this.showAddProviderOnOpen = false,
+    super.key,
+  });
 
   final ConfigSection section;
+  final AppProviderCli? initialProviderCli;
+  final bool showAddProviderOnOpen;
 
   @override
   Widget build(BuildContext context) {
@@ -91,7 +109,11 @@ class ConfigWorkspace extends StatelessWidget {
     }
 
     if (useAndroidHubNavigation(context)) {
-      return _AndroidConfigSectionPage(section: section);
+      return _AndroidConfigSectionPage(
+        section: section,
+        initialProviderCli: initialProviderCli,
+        showAddProviderOnOpen: showAddProviderOnOpen,
+      );
     }
 
     return _DesktopConfigWorkspace(
@@ -100,14 +122,22 @@ class ConfigWorkspace extends StatelessWidget {
         context.read<ConfigCubit>().selectSection(selected);
         context.go('/config/${selected.name}');
       },
+      initialProviderCli: initialProviderCli,
+      showAddProviderOnOpen: showAddProviderOnOpen,
     );
   }
 }
 
 class _AndroidConfigSectionPage extends StatelessWidget {
-  const _AndroidConfigSectionPage({required this.section});
+  const _AndroidConfigSectionPage({
+    required this.section,
+    this.initialProviderCli,
+    this.showAddProviderOnOpen = false,
+  });
 
   final ConfigSection section;
+  final AppProviderCli? initialProviderCli;
+  final bool showAddProviderOnOpen;
 
   @override
   Widget build(BuildContext context) {
@@ -117,10 +147,14 @@ class _AndroidConfigSectionPage extends StatelessWidget {
       pageKey: AppKeys.configWorkspace,
       child: switch (section) {
         ConfigSection.layout => LayoutConfigWorkspace(showHeading: showHeading),
-        ConfigSection.llm => const LlmConfigWorkspace(),
+        ConfigSection.llm => LlmConfigWorkspace(
+          initialCli: initialProviderCli,
+          showAddProviderOnOpen: showAddProviderOnOpen,
+        ),
         ConfigSection.session => SessionConfigWorkspace(
           showHeading: showHeading,
         ),
+        ConfigSection.about => AboutConfigWorkspace(showHeading: showHeading),
       },
     );
   }
@@ -130,10 +164,14 @@ class _DesktopConfigWorkspace extends StatelessWidget {
   const _DesktopConfigWorkspace({
     required this.section,
     required this.onSelectSection,
+    this.initialProviderCli,
+    this.showAddProviderOnOpen = false,
   });
 
   final ConfigSection section;
   final ValueChanged<ConfigSection> onSelectSection;
+  final AppProviderCli? initialProviderCli;
+  final bool showAddProviderOnOpen;
 
   @override
   Widget build(BuildContext context) {
@@ -159,8 +197,12 @@ class _DesktopConfigWorkspace extends StatelessWidget {
               ),
               body: switch (section) {
                 ConfigSection.layout => const LayoutConfigWorkspace(),
-                ConfigSection.llm => const LlmConfigWorkspace(),
+                ConfigSection.llm => LlmConfigWorkspace(
+                  initialCli: initialProviderCli,
+                  showAddProviderOnOpen: showAddProviderOnOpen,
+                ),
                 ConfigSection.session => const SessionConfigWorkspace(),
+                ConfigSection.about => const AboutConfigWorkspace(),
               },
             ),
           ),
@@ -596,6 +638,13 @@ class _ConfigNavPanel extends StatelessWidget {
           icon: Icons.terminal_outlined,
           selected: section == ConfigSection.session,
           onTap: () => onSelectSection(ConfigSection.session),
+        ),
+        WorkspaceHubEntry(
+          key: AppKeys.configAboutSectionButton,
+          title: l10n.aboutTitle,
+          icon: Icons.info_outline,
+          selected: section == ConfigSection.about,
+          onTap: () => onSelectSection(ConfigSection.about),
         ),
       ],
     );

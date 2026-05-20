@@ -932,7 +932,31 @@ class AppLocalizationsZh extends AppLocalizations {
   String get appProviderPresetLabel => '预设';
 
   @override
+  String get appProviderPresetCustom => '自定义';
+
+  @override
+  String get appProviderClaudeApiFormatAnthropic => 'Anthropic Messages（原生）';
+
+  @override
+  String get appProviderClaudeApiFormatOpenaiChat => 'OpenAI Chat Completions';
+
+  @override
+  String get appProviderClaudeApiFormatOpenaiResponses => 'OpenAI Responses';
+
+  @override
+  String get appProviderClaudeApiFormatGeminiNative => 'Gemini Native';
+
+  @override
+  String get appProviderClaudeAuthTokenDefault => 'ANTHROPIC_AUTH_TOKEN（默认）';
+
+  @override
+  String get appProviderClaudeAuthApiKey => 'ANTHROPIC_API_KEY';
+
+  @override
   String get appProviderAdvancedJson => '高级 JSON 编辑';
+
+  @override
+  String get appProviderAdvancedOptions => '高级选项';
 
   @override
   String get appProviderWebsite => '官网';
@@ -957,6 +981,34 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get appProviderTeamNone => '无';
+
+  @override
+  String get appProviderClaudeApiFormat => 'API 格式';
+
+  @override
+  String get appProviderClaudeApiFormatHint => '选择服务商 API 的输入格式。';
+
+  @override
+  String get appProviderClaudeAuthField => '认证字段';
+
+  @override
+  String get appProviderClaudeAuthFieldHint => '选择写入 settings 的认证环境变量。';
+
+  @override
+  String get appProviderClaudeModelMapping => '模型映射';
+
+  @override
+  String get appProviderClaudeModelMappingHint =>
+      '原生 Claude 服务商可留空；仅在服务商将 Claude 模型角色映射为不同模型名称时填写。';
+
+  @override
+  String get appProviderClaudeHaikuModel => 'Haiku 默认模型';
+
+  @override
+  String get appProviderClaudeSonnetModel => 'Sonnet 默认模型';
+
+  @override
+  String get appProviderClaudeOpusModel => 'Opus 默认模型';
 
   @override
   String get notes => '备注';

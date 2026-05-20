@@ -23,11 +23,19 @@ import '../widgets/settings/workspace_hub_shell.dart';
 
 // LLM 配置页统一留白（8dp 网格）。
 
-String llmProviderConfigRoute(String providerName) =>
-    '/config/llm/provider/${Uri.encodeComponent(providerName)}';
+String llmCliRoute(AppProviderCli cli) => '/config/llm/${cli.value}';
 
-String llmProviderModelsRoute(String providerName) =>
-    '${llmProviderConfigRoute(providerName)}/models';
+String llmProviderAddRoute(AppProviderCli cli) =>
+    '${llmCliRoute(cli)}/provider/add';
+
+String llmProviderConfigRoute(AppProviderCli cli, String providerName) =>
+    '${llmCliRoute(cli)}/provider/${Uri.encodeComponent(providerName)}';
+
+String llmProviderEditRoute(AppProviderCli cli, String providerName) =>
+    '${llmProviderConfigRoute(cli, providerName)}/edit';
+
+String llmProviderModelsRoute(AppProviderCli cli, String providerName) =>
+    '${llmProviderConfigRoute(cli, providerName)}/models';
 
 const double _kLlmInsetH = 16;
 const double _kLlmInsetHSm = 12;
@@ -35,43 +43,75 @@ const double _kLlmSectionGap = 12;
 const double _kLlmFieldGap = 8;
 
 class LlmConfigWorkspace extends StatelessWidget {
-  const LlmConfigWorkspace({super.key});
+  const LlmConfigWorkspace({
+    this.initialCli,
+    this.showAddProviderOnOpen = false,
+    super.key,
+  });
+
+  final AppProviderCli? initialCli;
+  final bool showAddProviderOnOpen;
 
   @override
   Widget build(BuildContext context) {
-    final controller = context.watch<LlmConfigCubit>();
-    if (useAndroidHubNavigation(context)) {
-      return Column(
-        key: AppKeys.llmConfigWorkspace,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Expanded(
-            child: _LlmProvidersListContent(
-              controller: controller,
-              hubStyle: true,
-            ),
-          ),
-        ],
-      );
+    final cli = initialCli;
+    if (cli != null &&
+        context.read<AppProviderCubit>().state.selectedCli != cli) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (context.mounted) {
+          context.read<AppProviderCubit>().setSelectedCli(cli);
+        }
+      });
     }
+    final l10n = context.l10n;
+    final controller = context.watch<LlmConfigCubit>();
+    final body = useAndroidHubNavigation(context)
+        ? _LlmProvidersListContent(controller: controller, hubStyle: true)
+        : _ProvidersTabContent(
+            controller: controller,
+            showAddProviderOnOpen: showAddProviderOnOpen,
+          );
+
     return Column(
       key: AppKeys.llmConfigWorkspace,
       crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [Expanded(child: _ProvidersTabContent(controller: controller))],
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+          child: WorkspaceSectionHeading(
+            title: l10n.appProviderCatalogLabel,
+            subtitle: l10n.appProviderCatalogHint,
+          ),
+        ),
+        Expanded(child: body),
+      ],
     );
   }
 }
 
 /// Android: full-screen provider configuration.
 class LlmProviderConfigPage extends StatelessWidget {
-  const LlmProviderConfigPage({required this.providerName, super.key});
+  const LlmProviderConfigPage({
+    required this.cli,
+    required this.providerName,
+    super.key,
+  });
 
+  final AppProviderCli cli;
   final String providerName;
 
   @override
   Widget build(BuildContext context) {
     final appCubit = context.watch<AppProviderCubit>();
-    final provider = appCubit.state.providers
+    if (appCubit.state.selectedCli != cli) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (context.mounted) {
+          context.read<AppProviderCubit>().setSelectedCli(cli);
+        }
+      });
+    }
+    final provider = appCubit.state
+        .providersFor(cli)
         .where((p) => p.id == providerName)
         .firstOrNull;
 
@@ -88,30 +128,121 @@ class LlmProviderConfigPage extends StatelessWidget {
           : AppProviderDetailPanel(
               provider: provider,
               onEdit: () =>
-                  _promptEditAppProvider(context, provider, hubStyle: true),
+                  context.push(llmProviderEditRoute(cli, provider.id)),
               onDelete: () async {
                 await _confirmDeleteAppProvider(context, provider.id);
                 if (context.mounted) {
-                  context.go('/config/llm');
+                  context.go(llmCliRoute(cli));
                 }
               },
-              onShowModels: () =>
-                  context.push(llmProviderModelsRoute(provider.id)),
+              onShowModels: () {
+                if (provider.cli == AppProviderCli.flashskyai) {
+                  context.push(llmProviderModelsRoute(cli, provider.id));
+                }
+              },
             ),
+    );
+  }
+}
+
+class LlmProviderAddPage extends StatelessWidget {
+  const LlmProviderAddPage({required this.cli, super.key});
+
+  final AppProviderCli cli;
+
+  @override
+  Widget build(BuildContext context) {
+    final appCubit = context.read<AppProviderCubit>();
+    if (context.watch<AppProviderCubit>().state.selectedCli != cli) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (context.mounted) {
+          context.read<AppProviderCubit>().setSelectedCli(cli);
+        }
+      });
+    }
+
+    return WorkspaceSectionPage(
+      pageKey: AppKeys.llmProviderDetail,
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: AppProviderFormPage(
+          cli: cli,
+          onCliChanged: (nextCli) => context.go(llmProviderAddRoute(nextCli)),
+          onCancel: () => context.go(llmCliRoute(cli)),
+          onSaved: (draft) async {
+            final id = await _saveNewAppProvider(context, draft);
+            if (!context.mounted || id == null) return;
+            appCubit.selectProvider(id);
+            context.go(llmProviderConfigRoute(draft.cli, id));
+          },
+        ),
+      ),
+    );
+  }
+}
+
+class LlmProviderEditPage extends StatelessWidget {
+  const LlmProviderEditPage({
+    required this.cli,
+    required this.providerName,
+    super.key,
+  });
+
+  final AppProviderCli cli;
+  final String providerName;
+
+  @override
+  Widget build(BuildContext context) {
+    final appCubit = context.watch<AppProviderCubit>();
+    final provider = appCubit.state
+        .providersFor(cli)
+        .where((p) => p.id == providerName)
+        .firstOrNull;
+
+    return WorkspaceSectionPage(
+      pageKey: AppKeys.llmProviderDetail,
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: provider == null
+            ? Center(
+                child: Text('${context.l10n.missingProvider} $providerName'),
+              )
+            : AppProviderFormPage(
+                cli: cli,
+                existing: provider,
+                onCancel: () =>
+                    context.go(llmProviderConfigRoute(cli, provider.id)),
+                onSaved: (draft) async {
+                  await _saveExistingAppProvider(
+                    context,
+                    provider,
+                    draft: draft,
+                  );
+                  if (!context.mounted) return;
+                  context.go(llmProviderConfigRoute(cli, provider.id));
+                },
+              ),
+      ),
     );
   }
 }
 
 /// Android: models for one provider.
 class LlmProviderModelsPage extends StatelessWidget {
-  const LlmProviderModelsPage({required this.providerName, super.key});
+  const LlmProviderModelsPage({
+    required this.cli,
+    required this.providerName,
+    super.key,
+  });
 
+  final AppProviderCli cli;
   final String providerName;
 
   @override
   Widget build(BuildContext context) {
     final appCubit = context.watch<AppProviderCubit>();
-    final provider = appCubit.state.providers
+    final provider = appCubit.state
+        .providersFor(cli)
         .where((p) => p.id == providerName)
         .firstOrNull;
 
@@ -132,11 +263,15 @@ class _LlmProvidersListContent extends StatelessWidget {
     required this.controller,
     this.hubStyle = false,
     this.onSelected,
+    this.onAdd,
+    this.onEdit,
   });
 
   final LlmConfigCubit controller;
   final bool hubStyle;
   final VoidCallback? onSelected;
+  final VoidCallback? onAdd;
+  final ValueChanged<AppProviderConfig>? onEdit;
 
   @override
   Widget build(BuildContext context) {
@@ -149,12 +284,19 @@ class _LlmProvidersListContent extends StatelessWidget {
         appCubit.selectProvider(id);
         onSelected?.call();
         if (hubStyle) {
-          context.push(llmProviderConfigRoute(id));
+          context.push(llmProviderConfigRoute(appCubit.state.selectedCli, id));
         }
       },
-      onAdd: () => _promptAddAppProvider(context, hubStyle: hubStyle),
-      onEdit: (provider) =>
-          _promptEditAppProvider(context, provider, hubStyle: hubStyle),
+      onAdd:
+          onAdd ??
+          () => context.push(llmProviderAddRoute(appCubit.state.selectedCli)),
+      onEdit: (provider) {
+        if (onEdit != null) {
+          onEdit!(provider);
+          return;
+        }
+        context.push(llmProviderEditRoute(provider.cli, provider.id));
+      },
       onDelete: (id) => _confirmDeleteAppProvider(context, id),
     );
   }
@@ -180,9 +322,13 @@ class _LlmWorkspaceDetailCard extends StatelessWidget {
 // --- Providers tab: split view ---
 
 class _ProvidersTabContent extends StatefulWidget {
-  const _ProvidersTabContent({required this.controller});
+  const _ProvidersTabContent({
+    required this.controller,
+    this.showAddProviderOnOpen = false,
+  });
 
   final LlmConfigCubit controller;
+  final bool showAddProviderOnOpen;
 
   @override
   State<_ProvidersTabContent> createState() => _ProvidersTabContentState();
@@ -190,19 +336,55 @@ class _ProvidersTabContent extends StatefulWidget {
 
 class _ProvidersTabContentState extends State<_ProvidersTabContent> {
   String? _modelsProviderId;
+  String? _editingProviderId;
+  late bool _showAddProvider;
 
   LlmConfigCubit get _controller => widget.controller;
 
   @override
+  void initState() {
+    super.initState();
+    _showAddProvider = widget.showAddProviderOnOpen;
+  }
+
+  @override
+  void didUpdateWidget(covariant _ProvidersTabContent oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!oldWidget.showAddProviderOnOpen && widget.showAddProviderOnOpen) {
+      setState(() {
+        _showAddProvider = true;
+        _editingProviderId = null;
+        _modelsProviderId = null;
+      });
+    }
+  }
+
+  void _closeRightPanelEditor() {
+    setState(() {
+      _showAddProvider = false;
+      _editingProviderId = null;
+    });
+  }
+
+  void _openEditProvider(String providerId) {
+    setState(() {
+      _editingProviderId = providerId;
+      _showAddProvider = false;
+      _modelsProviderId = null;
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final appState = context.watch<AppProviderCubit>().state;
+    final appCubit = context.watch<AppProviderCubit>();
+    final appState = appCubit.state;
     final selected = appState.selectedProvider;
 
     final showModels =
         _modelsProviderId != null &&
         selected != null &&
         _modelsProviderId == selected.id &&
-        selected.enables(AppProviderTool.flashskyai);
+        selected.cli == AppProviderCli.flashskyai;
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
@@ -214,48 +396,120 @@ class _ProvidersTabContentState extends State<_ProvidersTabContent> {
           padding: const EdgeInsets.only(right: 6),
           child: _LlmProvidersListContent(
             controller: _controller,
-            onSelected: () => setState(() => _modelsProviderId = null),
+            onSelected: () => setState(() {
+              _modelsProviderId = null;
+              _showAddProvider = false;
+              _editingProviderId = null;
+            }),
+            onAdd: () => setState(() {
+              _modelsProviderId = null;
+              _showAddProvider = true;
+              _editingProviderId = null;
+            }),
+            onEdit: (provider) => _openEditProvider(provider.id),
           ),
         ),
         right: Padding(
           padding: const EdgeInsets.only(left: 6),
           child: _LlmWorkspaceDetailCard(
-            child: selected == null
-                ? Center(child: Text(context.l10n.selectProvider))
-                : showModels
-                ? _AppProviderModelsPanel(
-                    provider: selected,
-                    onBack: () => setState(() => _modelsProviderId = null),
-                  )
-                : AppProviderDetailPanel(
-                    provider: selected,
-                    onEdit: () => _promptEditAppProvider(context, selected),
-                    onDelete: () =>
-                        _confirmDeleteAppProvider(context, selected.id),
-                    onShowModels: () {
-                      if (useAndroidHubNavigation(context)) {
-                        context.push(llmProviderModelsRoute(selected.id));
-                      } else {
-                        setState(() => _modelsProviderId = selected.id);
-                      }
-                    },
-                  ),
+            child: _buildRightPanelContent(
+              context,
+              appState: appState,
+              selected: selected,
+              showModels: showModels,
+            ),
           ),
         ),
       ),
     );
   }
+
+  Widget _buildRightPanelContent(
+    BuildContext context, {
+    required AppProviderState appState,
+    required AppProviderConfig? selected,
+    required bool showModels,
+  }) {
+    if (_showAddProvider) {
+      return Padding(
+        padding: const EdgeInsets.all(12),
+        child: AppProviderFormPage(
+          cli: appState.selectedCli,
+          onCliChanged: (cli) async {
+            await context.read<AppProviderCubit>().setSelectedCli(cli);
+            if (!mounted) return;
+            setState(() => _modelsProviderId = null);
+          },
+          onCancel: _closeRightPanelEditor,
+          onSaved: (draft) async {
+            final id = await _saveNewAppProvider(context, draft);
+            if (!mounted || id == null) return;
+            setState(() {
+              _showAddProvider = false;
+              _editingProviderId = null;
+              _modelsProviderId = null;
+            });
+          },
+        ),
+      );
+    }
+
+    if (selected != null &&
+        _editingProviderId != null &&
+        selected.id == _editingProviderId) {
+      return Padding(
+        padding: const EdgeInsets.all(12),
+        child: AppProviderFormPage(
+          cli: selected.cli,
+          existing: selected,
+          onCancel: _closeRightPanelEditor,
+          onSaved: (draft) async {
+            await _saveExistingAppProvider(
+              context,
+              selected,
+              draft: draft,
+            );
+            if (!mounted) return;
+            _closeRightPanelEditor();
+          },
+        ),
+      );
+    }
+
+    if (selected == null) {
+      return Center(child: Text(context.l10n.selectProvider));
+    }
+
+    if (showModels) {
+      return _AppProviderModelsPanel(
+        provider: selected,
+        onBack: () => setState(() => _modelsProviderId = null),
+      );
+    }
+
+    return AppProviderDetailPanel(
+      provider: selected,
+      onEdit: () => _openEditProvider(selected.id),
+      onDelete: () => _confirmDeleteAppProvider(context, selected.id),
+      onShowModels: () {
+        if (selected.cli != AppProviderCli.flashskyai) return;
+        if (useAndroidHubNavigation(context)) {
+          context.push(llmProviderModelsRoute(selected.cli, selected.id));
+        } else {
+          setState(() => _modelsProviderId = selected.id);
+        }
+      },
+    );
+  }
 }
 
-Future<void> _promptAddAppProvider(
-  BuildContext context, {
-  bool hubStyle = false,
-}) async {
+Future<String?> _saveNewAppProvider(
+  BuildContext context,
+  AppProviderConfig draft,
+) async {
   final appCubit = context.read<AppProviderCubit>();
-  final draft = await showAppProviderFormSheet(context);
-  if (draft == null || !context.mounted) return;
 
-  final existingIds = appCubit.state.providers.map((p) => p.id);
+  final existingIds = appCubit.state.providersFor(draft.cli).map((p) => p.id);
   final baseId = draft.id.trim().isNotEmpty
       ? draft.id.trim()
       : AppProviderCubit.slugifyId(draft.name);
@@ -263,25 +517,18 @@ Future<void> _promptAddAppProvider(
   final provider = draft.copyWith(id: id, name: draft.name.trim());
 
   await appCubit.upsertProvider(provider);
-  if (!context.mounted) return;
-  appCubit.selectProvider(id);
-  if (hubStyle) {
-    context.push(llmProviderConfigRoute(id));
-  }
+  return id;
 }
 
-Future<void> _promptEditAppProvider(
+Future<void> _saveExistingAppProvider(
   BuildContext context,
   AppProviderConfig existing, {
-  bool hubStyle = false,
+  required AppProviderConfig draft,
 }) async {
   final appCubit = context.read<AppProviderCubit>();
-  final updated = await showAppProviderFormSheet(context, existing: existing);
-  if (updated == null || !context.mounted) return;
-  await appCubit.upsertProvider(updated.copyWith(id: existing.id));
-  if (hubStyle && context.mounted) {
-    context.push(llmProviderConfigRoute(existing.id));
-  }
+  await appCubit.upsertProvider(
+    draft.copyWith(id: existing.id, cli: existing.cli),
+  );
 }
 
 Future<void> _confirmDeleteAppProvider(BuildContext context, String id) async {

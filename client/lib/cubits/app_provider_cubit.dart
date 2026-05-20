@@ -9,16 +9,26 @@ import '../services/tool_config_generator.dart';
 
 class AppProviderState extends Equatable {
   const AppProviderState({
-    this.providers = const [],
-    this.selectedId,
+    this.selectedCli = AppProviderCli.claude,
+    this.providersByCli = const {},
+    this.selectedProviderIdByCli = const {},
     this.isLoading = false,
     this.statusMessage = '',
   });
 
-  final List<AppProviderConfig> providers;
-  final String? selectedId;
+  final AppProviderCli selectedCli;
+  final Map<AppProviderCli, List<AppProviderConfig>> providersByCli;
+  final Map<AppProviderCli, String?> selectedProviderIdByCli;
   final bool isLoading;
   final String statusMessage;
+
+  List<AppProviderConfig> get providers =>
+      providersByCli[selectedCli] ?? const [];
+
+  List<AppProviderConfig> providersFor(AppProviderCli cli) =>
+      providersByCli[cli] ?? const [];
+
+  String? get selectedId => selectedProviderIdByCli[selectedCli];
 
   AppProviderConfig? get selectedProvider {
     final id = selectedId;
@@ -30,22 +40,30 @@ class AppProviderState extends Equatable {
   }
 
   AppProviderState copyWith({
-    List<AppProviderConfig>? providers,
-    String? selectedId,
+    AppProviderCli? selectedCli,
+    Map<AppProviderCli, List<AppProviderConfig>>? providersByCli,
+    Map<AppProviderCli, String?>? selectedProviderIdByCli,
     bool? isLoading,
     String? statusMessage,
-    bool clearSelectedId = false,
   }) {
     return AppProviderState(
-      providers: providers ?? this.providers,
-      selectedId: clearSelectedId ? null : (selectedId ?? this.selectedId),
+      selectedCli: selectedCli ?? this.selectedCli,
+      providersByCli: providersByCli ?? this.providersByCli,
+      selectedProviderIdByCli:
+          selectedProviderIdByCli ?? this.selectedProviderIdByCli,
       isLoading: isLoading ?? this.isLoading,
       statusMessage: statusMessage ?? this.statusMessage,
     );
   }
 
   @override
-  List<Object?> get props => [providers, selectedId, isLoading, statusMessage];
+  List<Object?> get props => [
+    selectedCli,
+    providersByCli,
+    selectedProviderIdByCli,
+    isLoading,
+    statusMessage,
+  ];
 }
 
 class AppProviderCubit extends Cubit<AppProviderState> {
@@ -59,55 +77,105 @@ class AppProviderCubit extends Cubit<AppProviderState> {
   final AppProviderRepository _repository;
   final ToolConfigGenerator _generator;
 
-  String get catalogPath => AppStorage.providerConfigFile;
+  String get catalogPath => AppStorage.providerConfigDir;
 
   Future<void> load() async {
     emit(state.copyWith(isLoading: true, statusMessage: ''));
-    final providers = await _repository.loadProviders();
-    final selected = state.selectedId;
-    final nextSelected =
-        selected != null && providers.any((p) => p.id == selected)
-        ? selected
-        : providers.firstOrNull?.id;
+    final byCli = <AppProviderCli, List<AppProviderConfig>>{};
+    final selectedByCli = Map<AppProviderCli, String?>.from(
+      state.selectedProviderIdByCli,
+    );
+    for (final cli in AppProviderCli.values) {
+      final providers = await _repository.loadProviders(cli);
+      byCli[cli] = providers;
+      final selected = selectedByCli[cli];
+      selectedByCli[cli] =
+          selected != null && providers.any((p) => p.id == selected)
+          ? selected
+          : providers.firstOrNull?.id;
+    }
     emit(
       state.copyWith(
-        providers: providers,
-        selectedId: nextSelected,
+        providersByCli: byCli,
+        selectedProviderIdByCli: selectedByCli,
         isLoading: false,
-        statusMessage: providers.isEmpty ? 'No providers yet.' : 'Ready.',
+        statusMessage: (byCli[state.selectedCli] ?? const []).isEmpty
+            ? 'No providers yet.'
+            : 'Ready.',
+      ),
+    );
+  }
+
+  Future<void> setSelectedCli(AppProviderCli cli) async {
+    if (cli == state.selectedCli && state.providersByCli.containsKey(cli)) {
+      return;
+    }
+    var byCli = state.providersByCli;
+    var selectedByCli = state.selectedProviderIdByCli;
+    if (!byCli.containsKey(cli)) {
+      final providers = await _repository.loadProviders(cli);
+      byCli = {...byCli, cli: providers};
+      selectedByCli = {
+        ...selectedByCli,
+        cli:
+            selectedByCli[cli] != null &&
+                providers.any((p) => p.id == selectedByCli[cli])
+            ? selectedByCli[cli]
+            : providers.firstOrNull?.id,
+      };
+    }
+    emit(
+      state.copyWith(
+        selectedCli: cli,
+        providersByCli: byCli,
+        selectedProviderIdByCli: selectedByCli,
       ),
     );
   }
 
   void selectProvider(String id) {
     if (!state.providers.any((p) => p.id == id)) return;
-    emit(state.copyWith(selectedId: id));
+    emit(
+      state.copyWith(
+        selectedProviderIdByCli: {
+          ...state.selectedProviderIdByCli,
+          state.selectedCli: id,
+        },
+      ),
+    );
   }
 
   Future<bool> upsertProvider(AppProviderConfig provider) async {
+    final cli = provider.cli;
     final trimmedId = provider.id.trim();
     if (trimmedId.isEmpty) return false;
+    final current =
+        state.providersByCli[cli] ?? await _repository.loadProviders(cli);
     final now = DateTime.now().toUtc().millisecondsSinceEpoch;
-    final existing = state.providers
-        .where((p) => p.id == trimmedId)
-        .firstOrNull;
+    final existing = current.where((p) => p.id == trimmedId).firstOrNull;
     final next = provider.copyWith(
       id: trimmedId,
+      cli: cli,
+      name: provider.name.trim(),
       createdAt:
           existing?.createdAt ??
           (provider.createdAt > 0 ? provider.createdAt : now),
       updatedAt: now,
     );
     final list = [
-      for (final p in state.providers)
+      for (final p in current)
         if (p.id != trimmedId) p,
       next,
     ]..sort((a, b) => a.name.compareTo(b.name));
-    await _repository.saveProviders(list);
+    await _repository.saveProviders(cli, list);
     emit(
       state.copyWith(
-        providers: list,
-        selectedId: trimmedId,
+        selectedCli: cli,
+        providersByCli: {...state.providersByCli, cli: list},
+        selectedProviderIdByCli: {
+          ...state.selectedProviderIdByCli,
+          cli: trimmedId,
+        },
         statusMessage: 'Saved ${next.name}.',
       ),
     );
@@ -115,19 +183,22 @@ class AppProviderCubit extends Cubit<AppProviderState> {
   }
 
   Future<void> deleteProvider(String id) async {
+    final cli = state.selectedCli;
     final list = state.providers
         .where((p) => p.id != id)
         .toList(growable: false);
-    await _repository.saveProviders(list);
+    await _repository.saveProviders(cli, list);
     final selectedStillExists = list.any((p) => p.id == state.selectedId);
     final nextSelected = selectedStillExists
         ? state.selectedId
         : list.firstOrNull?.id;
     emit(
       state.copyWith(
-        providers: list,
-        clearSelectedId: nextSelected == null,
-        selectedId: nextSelected,
+        providersByCli: {...state.providersByCli, cli: list},
+        selectedProviderIdByCli: {
+          ...state.selectedProviderIdByCli,
+          cli: nextSelected,
+        },
         statusMessage: 'Provider removed.',
       ),
     );
@@ -141,20 +212,16 @@ class AppProviderCubit extends Cubit<AppProviderState> {
     String providerId,
     Map<String, LlmModelConfig> models,
   ) async {
-    final provider = state.providers
+    final provider = state
+        .providersFor(AppProviderCli.flashskyai)
         .where((p) => p.id == providerId)
         .firstOrNull;
     if (provider == null) return;
     final modelsJson = {
       for (final entry in models.entries) entry.key: entry.value.toJson(),
     };
-    final tool = provider.toolConfigs.flashskyai.unknownFields;
     final updated = provider.copyWith(
-      toolConfigs: provider.toolConfigs.copyWith(
-        flashskyai: AppProviderToolConfigPayload(
-          unknownFields: {...tool, 'models': modelsJson},
-        ),
-      ),
+      config: {...provider.config, 'models': modelsJson},
     );
     await upsertProvider(updated);
   }

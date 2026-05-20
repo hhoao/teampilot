@@ -19,19 +19,15 @@ void main() {
     if (await temp.exists()) await temp.delete(recursive: true);
   });
 
-  test('builds flashskyai llm_config from unified provider', () {
-    final provider = AppProviderConfig(
+  test('builds flashskyai llm_config from flashskyai provider config', () {
+    const provider = AppProviderConfig(
       id: 'deepseek',
+      cli: AppProviderCli.flashskyai,
       name: 'DeepSeek',
       apiKey: 'sk-test',
       baseUrl: 'https://api.deepseek.com',
       defaultModel: 'deepseek-chat',
-      enabledTools: const [AppProviderTool.flashskyai],
-      toolConfigs: const AppProviderToolConfigs(
-        flashskyai: AppProviderToolConfigPayload(
-          unknownFields: {'provider_type': 'openai'},
-        ),
-      ),
+      config: {'provider_type': 'openai'},
     );
 
     final llm = generator.buildFlashskyaiLlmConfig(provider);
@@ -41,15 +37,15 @@ void main() {
     expect(llm.models['deepseek-default']?.model, 'deepseek-chat');
   });
 
-  test('builds codex auth and config.toml for third-party provider', () {
-    final provider = AppProviderConfig(
+  test('builds codex auth and config.toml for codex provider', () {
+    const provider = AppProviderConfig(
       id: 'My Provider',
+      cli: AppProviderCli.codex,
       name: 'My Provider',
       apiKey: 'codex-key',
       baseUrl: 'https://api.example.com/v1',
       defaultModel: 'gpt-5.4',
       category: AppProviderCategory.thirdParty,
-      enabledTools: const [AppProviderTool.codex],
     );
 
     final auth = generator.buildCodexAuth(provider);
@@ -61,69 +57,48 @@ void main() {
     expect(toml, contains('base_url = "https://api.example.com/v1"'));
   });
 
-  test('keeps codex config-only fields out of auth.json', () {
-    final provider = AppProviderConfig(
-      id: 'deepseek',
-      name: 'DeepSeek',
-      apiKey: 'codex-key',
-      baseUrl: 'https://api.deepseek.com',
-      enabledTools: const [AppProviderTool.codex],
-      toolConfigs: const AppProviderToolConfigs(
-        codex: AppProviderToolConfigPayload(
-          unknownFields: {
-            'wire_api': 'responses',
-            'model': 'deepseek-chat',
-            'base_url': 'https://api.deepseek.com',
-            'custom_auth_value': 'kept',
-          },
-        ),
-      ),
+  test('uses explicit codex configToml and auth config when present', () {
+    const provider = AppProviderConfig(
+      id: 'openrouter',
+      cli: AppProviderCli.codex,
+      name: 'OpenRouter',
+      apiKey: 'sk-openrouter',
+      config: {
+        'auth': {'CUSTOM_VALUE': 'kept'},
+        'configToml': '''
+model_provider = "openrouter"
+model = "gpt-5.4"
+
+[model_providers.openrouter]
+name = "OpenRouter"
+base_url = "https://openrouter.ai/api/v1"
+wire_api = "responses"
+requires_openai_auth = true
+''',
+      },
     );
 
     final auth = generator.buildCodexAuth(provider);
-    expect(auth['OPENAI_API_KEY'], 'codex-key');
-    expect(auth['custom_auth_value'], 'kept');
-    expect(auth, isNot(contains('wire_api')));
-    expect(auth, isNot(contains('model')));
-    expect(auth, isNot(contains('base_url')));
-  });
+    expect(auth['CUSTOM_VALUE'], 'kept');
+    expect(auth['OPENAI_API_KEY'], 'sk-openrouter');
 
-  test('reuses existing model_provider from team config.toml', () {
-    const existing = '''
-model_provider = "legacy_custom"
-model = "gpt-5.4"
-''';
-    final provider = AppProviderConfig(
-      id: 'renamed',
-      name: 'Renamed',
-      baseUrl: 'https://api.example.com/v1',
-      enabledTools: const [AppProviderTool.codex],
-    );
-
-    final toml = generator.buildCodexConfigToml(
-      provider,
-      existingConfigToml: existing,
-    );
-    expect(toml, contains('model_provider = "legacy_custom"'));
-    expect(toml, isNot(contains('model_provider = "renamed"')));
+    final toml = generator.buildCodexConfigToml(provider);
+    expect(toml, contains('model_provider = "openrouter"'));
+    expect(toml, contains('base_url = "https://openrouter.ai/api/v1"'));
   });
 
   test('builds claude settings.json with env overrides', () {
-    final provider = AppProviderConfig(
+    const provider = AppProviderConfig(
       id: 'ds',
+      cli: AppProviderCli.claude,
       name: 'DeepSeek',
       defaultModel: 'deepseek-v4-pro[1m]',
-      enabledTools: const [AppProviderTool.claude],
-      toolConfigs: const AppProviderToolConfigs(
-        claude: AppProviderToolConfigPayload(
-          unknownFields: {
-            'env': {
-              'ANTHROPIC_BASE_URL': 'https://api.deepseek.com',
-              'ANTHROPIC_API_KEY': 'sk-claude',
-            },
-          },
-        ),
-      ),
+      config: {
+        'env': {
+          'ANTHROPIC_BASE_URL': 'https://api.deepseek.com',
+          'ANTHROPIC_API_KEY': 'sk-claude',
+        },
+      },
     );
 
     final settings = generator.buildClaudeSettings(provider);
@@ -139,13 +114,13 @@ model = "gpt-5.4"
   });
 
   test('uses configured claude api key field', () {
-    final provider = AppProviderConfig(
+    const provider = AppProviderConfig(
       id: 'claude-proxy',
+      cli: AppProviderCli.claude,
       name: 'Claude Proxy',
       apiKey: 'sk-claude',
       apiKeyField: 'ANTHROPIC_AUTH_TOKEN',
       baseUrl: 'https://proxy.example.com',
-      enabledTools: const [AppProviderTool.claude],
     );
 
     final settings = generator.buildClaudeSettings(provider);

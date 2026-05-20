@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -41,7 +43,7 @@ class AppProviderDetailPanel extends StatelessWidget {
                   style: Theme.of(context).textTheme.headlineSmall,
                 ),
               ),
-              if (provider.enables(AppProviderTool.flashskyai))
+              if (provider.cli == AppProviderCli.flashskyai)
                 TextButton.icon(
                   onPressed: onShowModels,
                   icon: const Icon(Icons.hub_outlined, size: 18),
@@ -77,17 +79,11 @@ class AppProviderDetailPanel extends StatelessWidget {
             _InfoRow(label: l10n.baseUrl, value: provider.baseUrl),
           if (provider.defaultModel.isNotEmpty)
             _InfoRow(label: l10n.defaultModel, value: provider.defaultModel),
-          if (provider.enabledTools.isNotEmpty) ...[
-            const SizedBox(height: 12),
-            Text(
-              provider.enabledTools
-                  .map((tool) => _toolLabel(l10n, tool))
-                  .join(' · '),
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
-            ),
-          ],
+          const SizedBox(height: 12),
+          _InfoRow(
+            label: l10n.appProviderEnabledTools,
+            value: l10n.appProviderCliLabel(provider.cli),
+          ),
           const SizedBox(height: 24),
           Text(l10n.jsonPreview, style: Theme.of(context).textTheme.labelLarge),
           const SizedBox(height: 8),
@@ -95,14 +91,6 @@ class AppProviderDetailPanel extends StatelessWidget {
         ],
       ),
     );
-  }
-
-  String _toolLabel(dynamic l10n, AppProviderTool tool) {
-    return switch (tool) {
-      AppProviderTool.flashskyai => l10n.appProviderToolFlashskyai,
-      AppProviderTool.codex => l10n.appProviderToolCodex,
-      AppProviderTool.claude => l10n.appProviderToolClaude,
-    };
   }
 }
 
@@ -141,9 +129,13 @@ class _ProviderJsonPreviewState extends State<_ProviderJsonPreview> {
     setState(() => _json = null);
     Future<void>.microtask(() {
       if (!mounted || generation != _loadGeneration) return;
-      final json = _generator
-          .buildFlashskyaiLlmConfig(widget.provider)
-          .toMaskedJsonString();
+      final json = widget.provider.cli == AppProviderCli.flashskyai
+          ? _generator
+                .buildFlashskyaiLlmConfig(widget.provider)
+                .toMaskedJsonString()
+          : const JsonEncoder.withIndent(
+              '  ',
+            ).convert(_maskedProviderJson(widget.provider));
       if (!mounted || generation != _loadGeneration) return;
       setState(() => _json = json);
     });
@@ -167,6 +159,14 @@ class _ProviderJsonPreviewState extends State<_ProviderJsonPreview> {
             ),
     );
   }
+}
+
+Map<String, Object?> _maskedProviderJson(AppProviderConfig provider) {
+  final json = Map<String, Object?>.from(provider.toJson());
+  if ((json['apiKey'] as String? ?? '').isNotEmpty) {
+    json['apiKey'] = '***';
+  }
+  return json;
 }
 
 class _InfoRow extends StatelessWidget {

@@ -1178,8 +1178,7 @@ class _MemberConfigFormState extends State<_MemberConfigForm> {
       final appProviders = context
           .watch<AppProviderCubit>()
           .state
-          .providers
-          .where((p) => p.enables(AppProviderTool.claude))
+          .providersFor(AppProviderCli.claude)
           .toList(growable: false);
       providerIds = appProviders.map((p) => p.id).toList()..sort();
       if (prov.trim().isNotEmpty && !providerIds.contains(prov)) {
@@ -1203,7 +1202,9 @@ class _MemberConfigFormState extends State<_MemberConfigForm> {
 
     AppProviderConfig? selectedAppProvider;
     if (isClaudeTeam && prov.trim().isNotEmpty) {
-      for (final p in context.read<AppProviderCubit>().state.providers) {
+      for (final p in context.read<AppProviderCubit>().state.providersFor(
+        AppProviderCli.claude,
+      )) {
         if (p.id == prov) {
           selectedAppProvider = p;
           break;
@@ -1211,18 +1212,19 @@ class _MemberConfigFormState extends State<_MemberConfigForm> {
       }
     }
 
-    final modelNames = isClaudeTeam
-        ? _modelNamesForClaudeProvider(
-            providerId: prov,
-            appProvider: selectedAppProvider,
-            llmState: llmState,
-            currentModel: m.model,
-          )
-        : llmState.config.models.values
-                  .where((model) => prov.isEmpty || model.provider == prov)
-                  .map((model) => model.name)
-                  .toList()
-            ..sort();
+    final modelNames =
+        isClaudeTeam
+              ? _modelNamesForClaudeProvider(
+                  providerId: prov,
+                  appProvider: selectedAppProvider,
+                  llmState: llmState,
+                  currentModel: m.model,
+                )
+              : llmState.config.models.values
+                    .where((model) => prov.isEmpty || model.provider == prov)
+                    .map((model) => model.name)
+                    .toList()
+          ..sort();
     final model = m.model;
     if (!isClaudeTeam &&
         model.trim().isNotEmpty &&
@@ -1256,7 +1258,8 @@ class _MemberConfigFormState extends State<_MemberConfigForm> {
             var newModel = m.model;
             if (isClaudeTeam) {
               AppProviderConfig? nextProvider;
-              for (final p in context.read<AppProviderCubit>().state.providers) {
+              for (final p
+                  in context.read<AppProviderCubit>().state.providers) {
                 if (p.id == newProv) {
                   nextProvider = p;
                   break;

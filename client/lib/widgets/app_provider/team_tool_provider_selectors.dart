@@ -21,7 +21,10 @@ class TeamToolProviderSelectors extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final providers = context.watch<AppProviderCubit>().state.providers;
+    final providerCli = _providerCliForTeamCli(team.cli);
+    final providers = context.watch<AppProviderCubit>().state.providersFor(
+      providerCli,
+    );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -40,48 +43,46 @@ class TeamToolProviderSelectors extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 12),
-        for (final tool in AppProviderTool.values) ...[
-          _ToolRow(
-            label: _toolLabel(l10n, tool),
-            tool: tool,
-            providers: providers,
-            selectedId: team.providerIdsByTool[tool.value] ?? '',
-            onSelected: (id) {
-              final next = Map<String, String>.from(team.providerIdsByTool);
-              if (id == null || id.isEmpty) {
-                next.remove(tool.value);
-              } else {
-                next[tool.value] = id;
-              }
-              onChanged(team.copyWith(providerIdsByTool: next));
-            },
-          ),
-          const SizedBox(height: 10),
-        ],
+        _CliProviderRow(
+          label: l10n.appProviderCliLabel(providerCli),
+          cli: providerCli,
+          providers: providers,
+          selectedId: team.providerIdsByTool[providerCli.value] ?? '',
+          onSelected: (id) {
+            final next = Map<String, String>.from(team.providerIdsByTool);
+            if (id == null || id.isEmpty) {
+              next.remove(providerCli.value);
+            } else {
+              next[providerCli.value] = id;
+            }
+            onChanged(team.copyWith(providerIdsByTool: next));
+          },
+        ),
       ],
     );
   }
 
-  String _toolLabel(dynamic l10n, AppProviderTool tool) {
-    return switch (tool) {
-      AppProviderTool.flashskyai => l10n.appProviderToolFlashskyai,
-      AppProviderTool.codex => l10n.appProviderToolCodex,
-      AppProviderTool.claude => l10n.appProviderToolClaude,
+  AppProviderCli _providerCliForTeamCli(TeamCli cli) {
+    return switch (cli) {
+      TeamCli.flashskyai => AppProviderCli.flashskyai,
+      TeamCli.codex => AppProviderCli.codex,
+      TeamCli.claude => AppProviderCli.claude,
     };
   }
+
 }
 
-class _ToolRow extends StatelessWidget {
-  const _ToolRow({
+class _CliProviderRow extends StatelessWidget {
+  const _CliProviderRow({
     required this.label,
-    required this.tool,
+    required this.cli,
     required this.providers,
     required this.selectedId,
     required this.onSelected,
   });
 
   final String label;
-  final AppProviderTool tool;
+  final AppProviderCli cli;
   final List<AppProviderConfig> providers;
   final String selectedId;
   final ValueChanged<String?> onSelected;
@@ -90,7 +91,7 @@ class _ToolRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final eligible = providers
-        .where((p) => p.enables(tool))
+        .where((p) => p.cli == cli)
         .toList(growable: false);
     final items = <String>['', ...eligible.map((p) => p.id)];
     final effectiveSelectedId = items.contains(selectedId) ? selectedId : '';

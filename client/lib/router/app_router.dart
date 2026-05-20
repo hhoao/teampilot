@@ -10,6 +10,7 @@ import '../cubits/config_cubit.dart';
 import '../cubits/layout_cubit.dart';
 import '../cubits/session_preferences_cubit.dart';
 import '../cubits/team_cubit.dart';
+import '../models/app_provider_config.dart';
 import '../pages/chat_page.dart';
 import '../pages/config_workspace.dart';
 import '../pages/llm_config_workspace.dart';
@@ -124,9 +125,31 @@ final appRouter = GoRouter(
           ),
         ),
         GoRoute(
-          path: '/config/llm/provider/:providerName',
+          path: '/config/llm/:cli',
+          pageBuilder: (context, state) => NoTransitionPage(
+            child: ConfigWorkspace(
+              section: ConfigSection.llm,
+              initialProviderCli: _appProviderCliFromRoute(state),
+            ),
+          ),
+        ),
+        GoRoute(
+          path: '/config/llm/:cli/provider/add',
+          pageBuilder: (context, state) => NoTransitionPage(
+            child: Platform.isAndroid
+                ? LlmProviderAddPage(cli: _appProviderCliFromRoute(state))
+                : ConfigWorkspace(
+                    section: ConfigSection.llm,
+                    initialProviderCli: _appProviderCliFromRoute(state),
+                    showAddProviderOnOpen: true,
+                  ),
+          ),
+        ),
+        GoRoute(
+          path: '/config/llm/:cli/provider/:providerName',
           pageBuilder: (context, state) => NoTransitionPage(
             child: LlmProviderConfigPage(
+              cli: _appProviderCliFromRoute(state),
               providerName: Uri.decodeComponent(
                 state.pathParameters['providerName']!,
               ),
@@ -134,9 +157,21 @@ final appRouter = GoRouter(
           ),
         ),
         GoRoute(
-          path: '/config/llm/provider/:providerName/models',
+          path: '/config/llm/:cli/provider/:providerName/edit',
+          pageBuilder: (context, state) => NoTransitionPage(
+            child: LlmProviderEditPage(
+              cli: _appProviderCliFromRoute(state),
+              providerName: Uri.decodeComponent(
+                state.pathParameters['providerName']!,
+              ),
+            ),
+          ),
+        ),
+        GoRoute(
+          path: '/config/llm/:cli/provider/:providerName/models',
           pageBuilder: (context, state) => NoTransitionPage(
             child: LlmProviderModelsPage(
+              cli: _appProviderCliFromRoute(state),
               providerName: Uri.decodeComponent(
                 state.pathParameters['providerName']!,
               ),
@@ -153,6 +188,12 @@ final appRouter = GoRouter(
           path: '/config/ssh-profiles',
           pageBuilder: (context, state) =>
               const NoTransitionPage(child: SshProfilesPage(embedded: true)),
+        ),
+        GoRoute(
+          path: '/config/about',
+          pageBuilder: (context, state) => const NoTransitionPage(
+            child: ConfigWorkspace(section: ConfigSection.about),
+          ),
         ),
         GoRoute(
           path: '/team-config',
@@ -219,6 +260,10 @@ final appRouter = GoRouter(
     ),
   ],
 );
+
+AppProviderCli _appProviderCliFromRoute(GoRouterState state) {
+  return AppProviderCli.parse(state.pathParameters['cli']);
+}
 
 Future<void> _createProject(BuildContext context) async {
   closeAndroidDrawerIfOpen(context);

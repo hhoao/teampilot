@@ -3,6 +3,7 @@
 
 import 'package:flutter/widgets.dart';
 
+import '../models/app_provider_config.dart';
 import 'app_localizations.dart';
 
 export 'app_localizations.dart';
@@ -29,6 +30,32 @@ extension AppLocalizationsX on AppLocalizations {
     final countPart = providerListModelCount(modelCount);
     final proxyPart = proxyEnabled ? proxyOnShort : proxyOffShort;
     return '$countPart · $proxyPart';
+  }
+
+  String appProviderCliLabel(AppProviderCli cli) {
+    return switch (cli) {
+      AppProviderCli.claude => appProviderToolClaude,
+      AppProviderCli.codex => appProviderToolCodex,
+      AppProviderCli.flashskyai => appProviderToolFlashskyai,
+    };
+  }
+
+  String appProviderClaudeApiFormatOption(String value) {
+    return switch (value) {
+      'anthropic' => appProviderClaudeApiFormatAnthropic,
+      'openai_chat' => appProviderClaudeApiFormatOpenaiChat,
+      'openai_responses' => appProviderClaudeApiFormatOpenaiResponses,
+      'gemini_native' => appProviderClaudeApiFormatGeminiNative,
+      _ => value,
+    };
+  }
+
+  String appProviderClaudeAuthFieldOption(String value) {
+    return switch (value) {
+      'ANTHROPIC_AUTH_TOKEN' => appProviderClaudeAuthTokenDefault,
+      'ANTHROPIC_API_KEY' => appProviderClaudeAuthApiKey,
+      _ => value,
+    };
   }
 }
 

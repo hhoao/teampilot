@@ -1,21 +1,26 @@
 import 'package:flutter/foundation.dart';
 
-/// Tool identifiers supported by unified app-level providers.
-enum AppProviderTool {
+/// CLI owner for an app-level provider. A provider belongs to exactly one CLI.
+enum AppProviderCli {
   flashskyai('flashskyai'),
   codex('codex'),
   claude('claude');
 
-  const AppProviderTool(this.value);
+  const AppProviderCli(this.value);
 
   final String value;
 
-  static AppProviderTool? tryParse(String raw) {
-    final normalized = raw.trim().toLowerCase();
-    for (final tool in AppProviderTool.values) {
-      if (tool.value == normalized) return tool;
+  static AppProviderCli? tryParse(Object? raw) {
+    final normalized = raw?.toString().trim().toLowerCase();
+    if (normalized == null || normalized.isEmpty) return null;
+    for (final cli in AppProviderCli.values) {
+      if (cli.value == normalized) return cli;
     }
     return null;
+  }
+
+  static AppProviderCli parse(Object? raw, {AppProviderCli? fallback}) {
+    return tryParse(raw) ?? fallback ?? AppProviderCli.claude;
   }
 }
 
@@ -23,6 +28,8 @@ enum AppProviderTool {
 enum AppProviderCategory {
   custom('custom'),
   official('official'),
+  cnOfficial('cn_official'),
+  cloudProvider('cloud_provider'),
   thirdParty('third_party'),
   aggregator('aggregator');
 
@@ -40,148 +47,65 @@ enum AppProviderCategory {
 }
 
 @immutable
-class AppProviderToolConfigPayload {
-  const AppProviderToolConfigPayload({this.unknownFields = const {}});
-
-  factory AppProviderToolConfigPayload.fromJson(Map<String, Object?>? json) {
-    if (json == null || json.isEmpty) {
-      return const AppProviderToolConfigPayload();
-    }
-    return AppProviderToolConfigPayload(
-      unknownFields: Map<String, Object?>.from(json),
-    );
-  }
-
-  final Map<String, Object?> unknownFields;
-
-  Map<String, Object?> toJson() => Map<String, Object?>.from(unknownFields);
-
-  AppProviderToolConfigPayload copyWith({Map<String, Object?>? unknownFields}) {
-    return AppProviderToolConfigPayload(
-      unknownFields: unknownFields ?? this.unknownFields,
-    );
-  }
-}
-
-@immutable
-class AppProviderToolConfigs {
-  const AppProviderToolConfigs({
-    this.flashskyai = const AppProviderToolConfigPayload(),
-    this.codex = const AppProviderToolConfigPayload(),
-    this.claude = const AppProviderToolConfigPayload(),
-  });
-
-  factory AppProviderToolConfigs.fromJson(Map<String, Object?>? json) {
-    if (json == null || json.isEmpty) {
-      return const AppProviderToolConfigs();
-    }
-    return AppProviderToolConfigs(
-      flashskyai: AppProviderToolConfigPayload.fromJson(
-        _toolMap(json, AppProviderTool.flashskyai.value),
-      ),
-      codex: AppProviderToolConfigPayload.fromJson(
-        _toolMap(json, AppProviderTool.codex.value),
-      ),
-      claude: AppProviderToolConfigPayload.fromJson(
-        _toolMap(json, AppProviderTool.claude.value),
-      ),
-    );
-  }
-
-  static Map<String, Object?>? _toolMap(Map<String, Object?> json, String key) {
-    final raw = json[key];
-    if (raw is Map) {
-      return Map<String, Object?>.from(raw);
-    }
-    return null;
-  }
-
-  final AppProviderToolConfigPayload flashskyai;
-  final AppProviderToolConfigPayload codex;
-  final AppProviderToolConfigPayload claude;
-
-  AppProviderToolConfigPayload forTool(AppProviderTool tool) {
-    return switch (tool) {
-      AppProviderTool.flashskyai => flashskyai,
-      AppProviderTool.codex => codex,
-      AppProviderTool.claude => claude,
-    };
-  }
-
-  Map<String, Object?> toJson() {
-    return {
-      AppProviderTool.flashskyai.value: flashskyai.toJson(),
-      AppProviderTool.codex.value: codex.toJson(),
-      AppProviderTool.claude.value: claude.toJson(),
-    };
-  }
-
-  AppProviderToolConfigs copyWith({
-    AppProviderToolConfigPayload? flashskyai,
-    AppProviderToolConfigPayload? codex,
-    AppProviderToolConfigPayload? claude,
-  }) {
-    return AppProviderToolConfigs(
-      flashskyai: flashskyai ?? this.flashskyai,
-      codex: codex ?? this.codex,
-      claude: claude ?? this.claude,
-    );
-  }
-}
-
-@immutable
 class AppProviderConfig {
   const AppProviderConfig({
     required this.id,
+    required this.cli,
     required this.name,
     this.notes = '',
     this.websiteUrl = '',
+    this.apiKeyUrl = '',
     this.category = AppProviderCategory.custom,
     this.apiKey = '',
     this.apiKeyField = 'api_key',
     this.baseUrl = '',
     this.defaultModel = '',
     this.icon = '',
-    this.enabledTools = const [],
-    this.toolConfigs = const AppProviderToolConfigs(),
-    this.commonConfigEnabled = false,
-    this.managedAccountId = '', // Legacy import metadata only.
+    this.iconColor = '',
+    this.isOfficial = false,
+    this.isPartner = false,
+    this.partnerPromotionKey = '',
+    this.endpointCandidates = const [],
+    this.config = const {},
     this.createdAt = 0,
     this.updatedAt = 0,
     this.unknownFields = const {},
   });
 
-  factory AppProviderConfig.fromJson(Map<String, Object?> json) {
+  factory AppProviderConfig.fromJson(
+    Map<String, Object?> json, {
+    AppProviderCli? cliFallback,
+  }) {
     final id = json['id'] as String? ?? '';
-    final enabledRaw = json['enabledTools'];
-    final enabled = <AppProviderTool>[];
-    if (enabledRaw is List) {
-      for (final entry in enabledRaw) {
-        final tool = AppProviderTool.tryParse(entry?.toString() ?? '');
-        if (tool != null) enabled.add(tool);
-      }
-    }
-
-    final toolConfigsRaw = json['toolConfigs'];
+    final endpointRaw = json['endpointCandidates'];
+    final endpoints = endpointRaw is List
+        ? endpointRaw
+              .map((e) => e?.toString() ?? '')
+              .where((e) => e.isNotEmpty)
+              .toList(growable: false)
+        : const <String>[];
+    final configRaw = json['config'];
     return AppProviderConfig(
       id: id,
+      cli: AppProviderCli.parse(json['cli'], fallback: cliFallback),
       name: json['name'] as String? ?? id,
       notes: json['notes'] as String? ?? '',
       websiteUrl: json['websiteUrl'] as String? ?? '',
+      apiKeyUrl: json['apiKeyUrl'] as String? ?? '',
       category: AppProviderCategory.fromJson(json['category']),
       apiKey: json['apiKey'] as String? ?? '',
       apiKeyField: json['apiKeyField'] as String? ?? 'api_key',
       baseUrl: json['baseUrl'] as String? ?? '',
       defaultModel: json['defaultModel'] as String? ?? '',
       icon: json['icon'] as String? ?? '',
-      enabledTools: enabled,
-      toolConfigs: toolConfigsRaw is Map
-          ? AppProviderToolConfigs.fromJson(
-              Map<String, Object?>.from(toolConfigsRaw),
-            )
-          : const AppProviderToolConfigs(),
-      commonConfigEnabled: json['commonConfigEnabled'] as bool? ?? false,
-      managedAccountId: json['managedAccountId'] as String? ?? '',
+      iconColor: json['iconColor'] as String? ?? '',
+      isOfficial: json['isOfficial'] as bool? ?? false,
+      isPartner: json['isPartner'] as bool? ?? false,
+      partnerPromotionKey: json['partnerPromotionKey'] as String? ?? '',
+      endpointCandidates: endpoints,
+      config: configRaw is Map
+          ? Map<String, Object?>.from(configRaw)
+          : const {},
       createdAt: (json['createdAt'] as num?)?.toInt() ?? 0,
       updatedAt: (json['updatedAt'] as num?)?.toInt() ?? 0,
       unknownFields: {
@@ -193,53 +117,57 @@ class AppProviderConfig {
 
   static const _knownKeys = {
     'id',
+    'cli',
     'name',
     'notes',
     'websiteUrl',
+    'apiKeyUrl',
     'category',
     'apiKey',
     'apiKeyField',
     'baseUrl',
     'defaultModel',
     'icon',
-    'enabledTools',
-    'toolConfigs',
-    'commonConfigEnabled',
-    'managedAccountId',
+    'iconColor',
+    'isOfficial',
+    'isPartner',
+    'partnerPromotionKey',
+    'endpointCandidates',
+    'config',
     'createdAt',
     'updatedAt',
   };
 
   final String id;
+  final AppProviderCli cli;
   final String name;
   final String notes;
   final String websiteUrl;
+  final String apiKeyUrl;
   final AppProviderCategory category;
   final String apiKey;
   final String apiKeyField;
   final String baseUrl;
   final String defaultModel;
   final String icon;
-  final List<AppProviderTool> enabledTools;
-  final AppProviderToolConfigs toolConfigs;
-  final bool commonConfigEnabled;
-
-  /// Legacy import metadata. Do not resolve into legacy account profile dirs.
-  final String managedAccountId;
+  final String iconColor;
+  final bool isOfficial;
+  final bool isPartner;
+  final String partnerPromotionKey;
+  final List<String> endpointCandidates;
+  final Map<String, Object?> config;
   final int createdAt;
   final int updatedAt;
   final Map<String, Object?> unknownFields;
 
-  bool enables(AppProviderTool tool) => enabledTools.contains(tool);
-
   bool get requiresApiKey =>
       category == AppProviderCategory.thirdParty ||
-      category == AppProviderCategory.aggregator;
+      category == AppProviderCategory.aggregator ||
+      category == AppProviderCategory.cnOfficial;
 
-  /// Model count from flashskyai tool config without building [LlmConfig].
   int get flashskyaiModelCount {
-    if (!enables(AppProviderTool.flashskyai)) return 0;
-    final raw = toolConfigs.flashskyai.unknownFields['models'];
+    if (cli != AppProviderCli.flashskyai) return 0;
+    final raw = config['models'];
     if (raw is Map) return raw.length;
     if (defaultModel.trim().isNotEmpty) return 1;
     return 0;
@@ -247,38 +175,46 @@ class AppProviderConfig {
 
   AppProviderConfig copyWith({
     String? id,
+    AppProviderCli? cli,
     String? name,
     String? notes,
     String? websiteUrl,
+    String? apiKeyUrl,
     AppProviderCategory? category,
     String? apiKey,
     String? apiKeyField,
     String? baseUrl,
     String? defaultModel,
     String? icon,
-    List<AppProviderTool>? enabledTools,
-    AppProviderToolConfigs? toolConfigs,
-    bool? commonConfigEnabled,
-    String? managedAccountId,
+    String? iconColor,
+    bool? isOfficial,
+    bool? isPartner,
+    String? partnerPromotionKey,
+    List<String>? endpointCandidates,
+    Map<String, Object?>? config,
     int? createdAt,
     int? updatedAt,
     Map<String, Object?>? unknownFields,
   }) {
     return AppProviderConfig(
       id: id ?? this.id,
+      cli: cli ?? this.cli,
       name: name ?? this.name,
       notes: notes ?? this.notes,
       websiteUrl: websiteUrl ?? this.websiteUrl,
+      apiKeyUrl: apiKeyUrl ?? this.apiKeyUrl,
       category: category ?? this.category,
       apiKey: apiKey ?? this.apiKey,
       apiKeyField: apiKeyField ?? this.apiKeyField,
       baseUrl: baseUrl ?? this.baseUrl,
       defaultModel: defaultModel ?? this.defaultModel,
       icon: icon ?? this.icon,
-      enabledTools: enabledTools ?? this.enabledTools,
-      toolConfigs: toolConfigs ?? this.toolConfigs,
-      commonConfigEnabled: commonConfigEnabled ?? this.commonConfigEnabled,
-      managedAccountId: managedAccountId ?? this.managedAccountId,
+      iconColor: iconColor ?? this.iconColor,
+      isOfficial: isOfficial ?? this.isOfficial,
+      isPartner: isPartner ?? this.isPartner,
+      partnerPromotionKey: partnerPromotionKey ?? this.partnerPromotionKey,
+      endpointCandidates: endpointCandidates ?? this.endpointCandidates,
+      config: config ?? this.config,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       unknownFields: unknownFields ?? this.unknownFields,
@@ -289,19 +225,23 @@ class AppProviderConfig {
     return {
       ...unknownFields,
       'id': id,
+      'cli': cli.value,
       'name': name,
       'notes': notes,
       'websiteUrl': websiteUrl,
+      'apiKeyUrl': apiKeyUrl,
       'category': category.value,
       'apiKey': apiKey,
       'apiKeyField': apiKeyField,
       'baseUrl': baseUrl,
       'defaultModel': defaultModel,
       if (icon.isNotEmpty) 'icon': icon,
-      'enabledTools': enabledTools.map((t) => t.value).toList(),
-      'toolConfigs': toolConfigs.toJson(),
-      'commonConfigEnabled': commonConfigEnabled,
-      if (managedAccountId.isNotEmpty) 'managedAccountId': managedAccountId,
+      if (iconColor.isNotEmpty) 'iconColor': iconColor,
+      'isOfficial': isOfficial,
+      'isPartner': isPartner,
+      'partnerPromotionKey': partnerPromotionKey,
+      'endpointCandidates': endpointCandidates,
+      'config': config,
       'createdAt': createdAt,
       'updatedAt': updatedAt,
     };
@@ -319,86 +259,4 @@ class AppProviderPreset {
   final String id;
   final String label;
   final AppProviderConfig template;
-}
-
-/// Built-in presets for the add-provider panel.
-class AppProviderPresets {
-  AppProviderPresets._();
-
-  static const List<AppProviderPreset> all = [
-    AppProviderPreset(
-      id: 'custom',
-      label: 'Custom',
-      template: AppProviderConfig(
-        id: '',
-        name: '',
-        category: AppProviderCategory.custom,
-        enabledTools: AppProviderTool.values,
-      ),
-    ),
-    AppProviderPreset(
-      id: 'deepseek',
-      label: 'DeepSeek',
-      template: AppProviderConfig(
-        id: 'deepseek',
-        name: 'DeepSeek',
-        websiteUrl: 'https://platform.deepseek.com',
-        category: AppProviderCategory.thirdParty,
-        baseUrl: 'https://api.deepseek.com',
-        defaultModel: 'deepseek-chat',
-        enabledTools: [
-          AppProviderTool.flashskyai,
-          AppProviderTool.codex,
-          AppProviderTool.claude,
-        ],
-        toolConfigs: AppProviderToolConfigs(
-          flashskyai: AppProviderToolConfigPayload(
-            unknownFields: {'provider_type': 'openai'},
-          ),
-          codex: AppProviderToolConfigPayload(
-            unknownFields: {'wire_api': 'chat'},
-          ),
-          claude: AppProviderToolConfigPayload(
-            unknownFields: {
-              'env': {'ANTHROPIC_BASE_URL': 'https://api.deepseek.com'},
-            },
-          ),
-        ),
-      ),
-    ),
-    AppProviderPreset(
-      id: 'openai-official',
-      label: 'OpenAI (official)',
-      template: AppProviderConfig(
-        id: 'openai-official',
-        name: 'OpenAI',
-        websiteUrl: 'https://platform.openai.com',
-        category: AppProviderCategory.official,
-        enabledTools: [AppProviderTool.codex],
-        toolConfigs: AppProviderToolConfigs(
-          codex: AppProviderToolConfigPayload(
-            unknownFields: {'auth_mode': 'chatgpt'},
-          ),
-        ),
-      ),
-    ),
-    AppProviderPreset(
-      id: 'claude-official',
-      label: 'Claude (official)',
-      template: AppProviderConfig(
-        id: 'claude-official',
-        name: 'Claude',
-        websiteUrl: 'https://claude.ai',
-        category: AppProviderCategory.official,
-        enabledTools: [AppProviderTool.claude],
-      ),
-    ),
-  ];
-
-  static AppProviderPreset? byId(String id) {
-    for (final preset in all) {
-      if (preset.id == id) return preset;
-    }
-    return null;
-  }
 }

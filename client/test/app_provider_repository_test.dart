@@ -12,9 +12,7 @@ void main() {
 
   setUp(() async {
     root = await Directory.systemTemp.createTemp('app_providers_');
-    repo = AppProviderRepository(
-      providersFile: File(p.join(root.path, 'providers', 'providers.json')),
-    );
+    repo = AppProviderRepository(basePath: root.path);
   });
 
   tearDown(() async {
@@ -23,168 +21,117 @@ void main() {
     }
   });
 
-  test('loads empty list when file is missing', () async {
-    expect(await repo.loadProviders(), isEmpty);
+  test('loads empty list when cli providers file is missing', () async {
+    expect(await repo.loadProviders(AppProviderCli.claude), isEmpty);
+    expect(await repo.loadProviders(AppProviderCli.codex), isEmpty);
+    expect(await repo.loadProviders(AppProviderCli.flashskyai), isEmpty);
   });
 
-  test('saves and reloads multiple providers', () async {
-    final now = DateTime.utc(2026, 5, 18).millisecondsSinceEpoch;
-    final providers = [
-      AppProviderConfig(
-        id: 'deepseek',
-        name: 'DeepSeek',
-        baseUrl: 'https://api.deepseek.com',
-        defaultModel: 'deepseek-chat',
-        enabledTools: const [AppProviderTool.flashskyai],
-        createdAt: now,
-        updatedAt: now,
-      ),
-      AppProviderConfig(
-        id: 'openai',
-        name: 'OpenAI',
-        enabledTools: const [AppProviderTool.codex, AppProviderTool.claude],
-        createdAt: now,
-        updatedAt: now,
-      ),
-    ];
-
-    await repo.saveProviders(providers);
-    final loaded = await repo.loadProviders();
-
-    expect(loaded, hasLength(2));
-    expect(loaded.map((p) => p.id).toSet(), {'deepseek', 'openai'});
-    expect(
-      loaded.firstWhere((p) => p.id == 'deepseek').baseUrl,
-      'https://api.deepseek.com',
-    );
-  });
-
-  test('preserves apiKey when edit save leaves key field empty', () async {
-    final now = DateTime.utc(2026, 5, 18).millisecondsSinceEpoch;
-    const original = AppProviderConfig(
+  test('saves and reloads providers under cli-specific catalogs', () async {
+    const claudeProvider = AppProviderConfig(
       id: 'deepseek',
+      cli: AppProviderCli.claude,
       name: 'DeepSeek',
-      apiKey: 'sk-secret',
-      enabledTools: [AppProviderTool.claude],
-      createdAt: 1,
-      updatedAt: 1,
+      baseUrl: 'https://api.deepseek.com/anthropic',
+      defaultModel: 'deepseek-v4-pro',
     );
-    await repo.saveProviders([original.copyWith(createdAt: now, updatedAt: now)]);
+    const codexProvider = AppProviderConfig(
+      id: 'deepseek',
+      cli: AppProviderCli.codex,
+      name: 'DeepSeek',
+      baseUrl: 'https://api.deepseek.com/v1',
+      defaultModel: 'gpt-5.4',
+    );
 
-    await repo.saveProviders([
-      original.copyWith(
-        name: 'DeepSeek Renamed',
-        apiKey: '',
-        updatedAt: now + 1,
-      ),
-    ]);
+    await repo.saveProviders(AppProviderCli.claude, [claudeProvider]);
+    await repo.saveProviders(AppProviderCli.codex, [codexProvider]);
 
-    final loaded = await repo.loadProviders();
-    expect(loaded.single.apiKey, 'sk-secret');
-    expect(loaded.single.name, 'DeepSeek Renamed');
+    expect(
+      await File(
+        p.join(root.path, 'providers', 'providers.json'),
+      ).exists(),
+      isFalse,
+    );
+    expect(
+      (await repo.loadProviders(AppProviderCli.claude)).single.baseUrl,
+      'https://api.deepseek.com/anthropic',
+    );
+    expect(
+      (await repo.loadProviders(AppProviderCli.codex)).single.baseUrl,
+      'https://api.deepseek.com/v1',
+    );
   });
 
-  test('preserves unknown top-level and provider fields', () async {
-    final file = repo.providersFile;
-    await file.parent.create(recursive: true);
-    await file.writeAsString('''
+  test('ignores legacy shared providers catalog', () async {
+    final legacyFile = File(p.join(root.path, 'providers', 'providers.json'));
+    await legacyFile.parent.create(recursive: true);
+    await legacyFile.writeAsString('''
 {
-  "schemaVersion": 2,
   "providers": {
-    "demo": {
-      "id": "demo",
-      "name": "Demo",
-      "enabledTools": ["flashskyai"],
-      "toolConfigs": {
-        "flashskyai": { "custom_flag": true }
-      },
-      "future_flag": "keep-me",
-      "createdAt": 1,
-      "updatedAt": 1
-    }
+    "legacy": { "id": "legacy", "name": "Legacy" }
   }
 }
 ''');
 
-    final loaded = await repo.loadProviders();
-    expect(loaded.single.unknownFields['future_flag'], 'keep-me');
+    expect(await repo.loadProviders(AppProviderCli.claude), isEmpty);
+  });
+
+  test('preserves apiKey within the same cli when edit leaves it empty', () async {
+    const original = AppProviderConfig(
+      id: 'deepseek',
+      cli: AppProviderCli.claude,
+      name: 'DeepSeek',
+      apiKey: 'sk-secret',
+    );
+    await repo.saveProviders(AppProviderCli.claude, [original]);
+
+    await repo.saveProviders(AppProviderCli.claude, [
+      original.copyWith(name: 'DeepSeek Renamed', apiKey: ''),
+    ]);
+
+    final loaded = await repo.loadProviders(AppProviderCli.claude);
+    expect(loaded.single.apiKey, 'sk-secret');
+    expect(loaded.single.name, 'DeepSeek Renamed');
+  });
+
+  test('writes native codex files for codex providers only', () async {
+    const provider = AppProviderConfig(
+      id: 'deepseek',
+      cli: AppProviderCli.codex,
+      name: 'DeepSeek',
+      apiKey: 'sk-test',
+      baseUrl: 'https://api.deepseek.com/v1',
+      defaultModel: 'gpt-5.4',
+    );
+
+    await repo.saveProviders(AppProviderCli.codex, [provider]);
+
     expect(
-      loaded.single.toolConfigs.flashskyai.unknownFields['custom_flag'],
-      true,
+      await File(
+        p.join(root.path, 'providers', 'codex', 'deepseek', 'auth.json'),
+      ).exists(),
+      isTrue,
     );
-
-    final raw = jsonDecode(await file.readAsString()) as Map<String, Object?>;
-    expect(raw['schemaVersion'], 2);
+    expect(
+      await File(
+        p.join(root.path, 'providers', 'codex', 'deepseek', 'config.toml'),
+      ).exists(),
+      isTrue,
+    );
   });
 
-  test('keeps provider id stable when display name changes', () async {
-    final now = DateTime.utc(2026, 5, 18).millisecondsSinceEpoch;
-    await repo.saveProviders([
-      AppProviderConfig(
-        id: 'stable-id',
-        name: 'Original Name',
-        createdAt: now,
-        updatedAt: now,
-      ),
-    ]);
-
-    final renamed = AppProviderConfig(
-      id: 'stable-id',
-      name: 'Renamed Provider',
-      createdAt: now,
-      updatedAt: now + 1,
+  test('writes common flashskyai llm_config.json from flashskyai catalog', () async {
+    const provider = AppProviderConfig(
+      id: 'deepseek',
+      cli: AppProviderCli.flashskyai,
+      name: 'DeepSeek',
+      apiKey: 'sk-test',
+      baseUrl: 'https://api.deepseek.com',
+      defaultModel: 'deepseek-chat',
+      config: {'provider_type': 'openai'},
     );
-    await repo.saveProviders([renamed]);
 
-    final loaded = await repo.loadProviders();
-    expect(loaded.single.id, 'stable-id');
-    expect(loaded.single.name, 'Renamed Provider');
-  });
-
-  test(
-    'writes native tool configs under providers tool provider dirs',
-    () async {
-      final provider = AppProviderConfig(
-        id: 'deepseek',
-        name: 'DeepSeek',
-        apiKey: 'sk-test',
-        baseUrl: 'https://api.deepseek.com',
-        defaultModel: 'deepseek-chat',
-        enabledTools: const [AppProviderTool.codex, AppProviderTool.claude],
-      );
-
-      await repo.saveProviders([provider]);
-
-      expect(
-        await File(
-          p.join(root.path, 'providers', 'codex', 'deepseek', 'auth.json'),
-        ).exists(),
-        isTrue,
-      );
-      expect(
-        await File(
-          p.join(root.path, 'providers', 'codex', 'deepseek', 'config.toml'),
-        ).exists(),
-        isTrue,
-      );
-      expect(
-        await Directory(p.join(root.path, 'providers', 'claude')).exists(),
-        isFalse,
-      );
-    },
-  );
-
-  test('writes common flashskyai llm_config.json', () async {
-    await repo.saveProviders([
-      AppProviderConfig(
-        id: 'deepseek',
-        name: 'DeepSeek',
-        apiKey: 'sk-test',
-        baseUrl: 'https://api.deepseek.com',
-        defaultModel: 'deepseek-chat',
-        enabledTools: const [AppProviderTool.flashskyai],
-      ),
-    ]);
+    await repo.saveProviders(AppProviderCli.flashskyai, [provider]);
 
     final commonFile = File(
       p.join(
@@ -196,75 +143,33 @@ void main() {
       ),
     );
     expect(await commonFile.exists(), isTrue);
-    expect(await commonFile.readAsString(), contains('deepseek'));
+    final raw = jsonDecode(await commonFile.readAsString()) as Map;
+    expect((raw['providers'] as Map).keys, contains('deepseek'));
   });
 
-  test(
-    'clears common flashskyai llm_config.json when no flashskyai providers remain',
-    () async {
-      await repo.saveProviders([
-        const AppProviderConfig(
-          id: 'deepseek',
-          name: 'DeepSeek',
-          apiKey: 'sk-test',
-          baseUrl: 'https://api.deepseek.com',
-          defaultModel: 'deepseek-chat',
-          enabledTools: [AppProviderTool.flashskyai],
-        ),
-      ]);
-
-      final commonFile = File(
-        p.join(
-          root.path,
-          'config-profiles',
-          'common',
-          'flashskyai',
-          'llm_config.json',
-        ),
-      );
-      expect(await commonFile.readAsString(), contains('deepseek'));
-
-      await repo.saveProviders(const []);
-
-      final raw = jsonDecode(await commonFile.readAsString()) as Map;
-      expect(raw['providers'], isEmpty);
-      expect(raw['models'], isEmpty);
-    },
-  );
-
-  test('removes stale native tool config directories', () async {
+  test('removes stale codex provider directories', () async {
     const provider = AppProviderConfig(
       id: 'deepseek',
+      cli: AppProviderCli.codex,
       name: 'DeepSeek',
       apiKey: 'sk-test',
-      baseUrl: 'https://api.deepseek.com',
-      defaultModel: 'deepseek-chat',
-      enabledTools: [AppProviderTool.codex, AppProviderTool.claude],
+      baseUrl: 'https://api.deepseek.com/v1',
     );
-    await repo.saveProviders([provider]);
+    await repo.saveProviders(AppProviderCli.codex, [provider]);
+
     expect(
       await Directory(
         p.join(root.path, 'providers', 'codex', 'deepseek'),
       ).exists(),
       isTrue,
     );
-    expect(
-      await Directory(p.join(root.path, 'providers', 'claude')).exists(),
-      isFalse,
-    );
 
-    await repo.saveProviders([
-      provider.copyWith(enabledTools: const [AppProviderTool.flashskyai]),
-    ]);
+    await repo.saveProviders(AppProviderCli.codex, const []);
 
     expect(
       await Directory(
         p.join(root.path, 'providers', 'codex', 'deepseek'),
       ).exists(),
-      isFalse,
-    );
-    expect(
-      await Directory(p.join(root.path, 'providers', 'claude')).exists(),
       isFalse,
     );
   });

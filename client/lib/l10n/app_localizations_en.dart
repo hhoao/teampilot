@@ -960,7 +960,33 @@ class AppLocalizationsEn extends AppLocalizations {
   String get appProviderPresetLabel => 'Preset';
 
   @override
+  String get appProviderPresetCustom => 'Custom';
+
+  @override
+  String get appProviderClaudeApiFormatAnthropic =>
+      'Anthropic Messages (native)';
+
+  @override
+  String get appProviderClaudeApiFormatOpenaiChat => 'OpenAI Chat Completions';
+
+  @override
+  String get appProviderClaudeApiFormatOpenaiResponses => 'OpenAI Responses';
+
+  @override
+  String get appProviderClaudeApiFormatGeminiNative => 'Gemini Native';
+
+  @override
+  String get appProviderClaudeAuthTokenDefault =>
+      'ANTHROPIC_AUTH_TOKEN (default)';
+
+  @override
+  String get appProviderClaudeAuthApiKey => 'ANTHROPIC_API_KEY';
+
+  @override
   String get appProviderAdvancedJson => 'Advanced JSON editor';
+
+  @override
+  String get appProviderAdvancedOptions => 'Advanced options';
 
   @override
   String get appProviderWebsite => 'Website';
@@ -986,6 +1012,36 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get appProviderTeamNone => 'None';
+
+  @override
+  String get appProviderClaudeApiFormat => 'API format';
+
+  @override
+  String get appProviderClaudeApiFormatHint =>
+      'Select the provider API input format.';
+
+  @override
+  String get appProviderClaudeAuthField => 'Authentication field';
+
+  @override
+  String get appProviderClaudeAuthFieldHint =>
+      'Select the authentication environment variable written to settings.';
+
+  @override
+  String get appProviderClaudeModelMapping => 'Model mapping';
+
+  @override
+  String get appProviderClaudeModelMappingHint =>
+      'Leave these empty for native Claude providers. Fill them only when a provider maps Claude model roles to different model names.';
+
+  @override
+  String get appProviderClaudeHaikuModel => 'Haiku default model';
+
+  @override
+  String get appProviderClaudeSonnetModel => 'Sonnet default model';
+
+  @override
+  String get appProviderClaudeOpusModel => 'Opus default model';
 
   @override
   String get notes => 'Notes';

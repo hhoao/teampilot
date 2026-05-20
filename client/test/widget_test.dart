@@ -365,6 +365,25 @@ void main() {
     expect(decoration.color, cs.surfaceContainer);
   });
 
+  testWidgets('desktop add provider opens form in detail area', (tester) async {
+    final teamCubit = await createTeamCubitInTest(tester);
+    await pumpDesktopApp(tester, teamCubit);
+
+    await tester.tap(find.byKey(AppKeys.sidebarSettingsButton));
+    await pumpPhaseTransitions(tester);
+    await tester.tap(find.byKey(AppKeys.configLlmSectionButton));
+    await pumpPhaseTransitions(tester);
+
+    await tester.tap(find.widgetWithText(TextButton, '+ Add').first);
+    await pumpPhaseTransitions(tester);
+
+    expect(find.byKey(AppKeys.llmProviderList), findsOneWidget);
+    expect(find.text('Add Provider'), findsOneWidget);
+    expect(find.text('Provider name'), findsOneWidget);
+    expect(find.byType(BottomSheet), findsNothing);
+    expect(find.byType(DraggableScrollableSheet), findsNothing);
+  });
+
   testWidgets('session settings configure Claude Code CLI path', (
     tester,
   ) async {

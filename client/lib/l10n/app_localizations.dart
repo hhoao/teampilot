@@ -1844,11 +1844,59 @@ abstract class AppLocalizations {
   /// **'Preset'**
   String get appProviderPresetLabel;
 
+  /// No description provided for @appProviderPresetCustom.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom'**
+  String get appProviderPresetCustom;
+
+  /// No description provided for @appProviderClaudeApiFormatAnthropic.
+  ///
+  /// In en, this message translates to:
+  /// **'Anthropic Messages (native)'**
+  String get appProviderClaudeApiFormatAnthropic;
+
+  /// No description provided for @appProviderClaudeApiFormatOpenaiChat.
+  ///
+  /// In en, this message translates to:
+  /// **'OpenAI Chat Completions'**
+  String get appProviderClaudeApiFormatOpenaiChat;
+
+  /// No description provided for @appProviderClaudeApiFormatOpenaiResponses.
+  ///
+  /// In en, this message translates to:
+  /// **'OpenAI Responses'**
+  String get appProviderClaudeApiFormatOpenaiResponses;
+
+  /// No description provided for @appProviderClaudeApiFormatGeminiNative.
+  ///
+  /// In en, this message translates to:
+  /// **'Gemini Native'**
+  String get appProviderClaudeApiFormatGeminiNative;
+
+  /// No description provided for @appProviderClaudeAuthTokenDefault.
+  ///
+  /// In en, this message translates to:
+  /// **'ANTHROPIC_AUTH_TOKEN (default)'**
+  String get appProviderClaudeAuthTokenDefault;
+
+  /// No description provided for @appProviderClaudeAuthApiKey.
+  ///
+  /// In en, this message translates to:
+  /// **'ANTHROPIC_API_KEY'**
+  String get appProviderClaudeAuthApiKey;
+
   /// No description provided for @appProviderAdvancedJson.
   ///
   /// In en, this message translates to:
   /// **'Advanced JSON editor'**
   String get appProviderAdvancedJson;
+
+  /// No description provided for @appProviderAdvancedOptions.
+  ///
+  /// In en, this message translates to:
+  /// **'Advanced options'**
+  String get appProviderAdvancedOptions;
 
   /// No description provided for @appProviderWebsite.
   ///
@@ -1897,6 +1945,60 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'None'**
   String get appProviderTeamNone;
+
+  /// No description provided for @appProviderClaudeApiFormat.
+  ///
+  /// In en, this message translates to:
+  /// **'API format'**
+  String get appProviderClaudeApiFormat;
+
+  /// No description provided for @appProviderClaudeApiFormatHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Select the provider API input format.'**
+  String get appProviderClaudeApiFormatHint;
+
+  /// No description provided for @appProviderClaudeAuthField.
+  ///
+  /// In en, this message translates to:
+  /// **'Authentication field'**
+  String get appProviderClaudeAuthField;
+
+  /// No description provided for @appProviderClaudeAuthFieldHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Select the authentication environment variable written to settings.'**
+  String get appProviderClaudeAuthFieldHint;
+
+  /// No description provided for @appProviderClaudeModelMapping.
+  ///
+  /// In en, this message translates to:
+  /// **'Model mapping'**
+  String get appProviderClaudeModelMapping;
+
+  /// No description provided for @appProviderClaudeModelMappingHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave these empty for native Claude providers. Fill them only when a provider maps Claude model roles to different model names.'**
+  String get appProviderClaudeModelMappingHint;
+
+  /// No description provided for @appProviderClaudeHaikuModel.
+  ///
+  /// In en, this message translates to:
+  /// **'Haiku default model'**
+  String get appProviderClaudeHaikuModel;
+
+  /// No description provided for @appProviderClaudeSonnetModel.
+  ///
+  /// In en, this message translates to:
+  /// **'Sonnet default model'**
+  String get appProviderClaudeSonnetModel;
+
+  /// No description provided for @appProviderClaudeOpusModel.
+  ///
+  /// In en, this message translates to:
+  /// **'Opus default model'**
+  String get appProviderClaudeOpusModel;
 
   /// No description provided for @notes.
   ///

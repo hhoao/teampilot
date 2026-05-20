@@ -7,6 +7,8 @@ import '../../models/app_provider_config.dart';
 import '../../theme/workspace_surface_layers.dart';
 import '../../utils/app_keys.dart';
 import '../app_outline_text_field.dart';
+import '../dropdown/flashsky_dropdown_field.dart';
+import '../dropdown/flashskyai_dropdown_decoration.dart';
 
 class AppProviderListPanel extends StatefulWidget {
   const AppProviderListPanel({
@@ -61,19 +63,37 @@ class _AppProviderListPanelState extends State<AppProviderListPanel> {
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(12, 10, 8, 8),
-            child: Row(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Expanded(
-                  child: Text(
-                    l10n.providerList,
-                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w700,
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        l10n.providerList,
+                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
                     ),
-                  ),
+                    TextButton(
+                      onPressed: widget.onAdd,
+                      child: Text('+ ${l10n.add}'),
+                    ),
+                  ],
                 ),
-                TextButton(
-                  onPressed: widget.onAdd,
-                  child: Text('+ ${l10n.add}'),
+                const SizedBox(height: 8),
+                Padding(
+                  padding: const EdgeInsets.only(right: 4),
+                  child: FlashskyDropdownField<AppProviderCli>(
+                    items: AppProviderCli.values,
+                    initialItem: appCubit.state.selectedCli,
+                    decoration: FlashskyDropdownDecorations.denseField(context),
+                    itemLabel: l10n.appProviderCliLabel,
+                    onChanged: (cli) {
+                      if (cli != null) appCubit.setSelectedCli(cli);
+                    },
+                  ),
                 ),
               ],
             ),
@@ -97,14 +117,11 @@ class _AppProviderListPanelState extends State<AppProviderListPanel> {
                       final p = providers[index];
                       final selected =
                           !widget.hubStyle && p.id == widget.selectedId;
-                      final modelCount = p.enables(AppProviderTool.flashskyai)
-                          ? appCubit.flashskyaiLlmConfigFor(p).models.length
-                          : 0;
-                      final subtitle = p.enables(AppProviderTool.flashskyai)
-                          ? l10n.providerListModelCount(modelCount)
-                          : p.enabledTools
-                                .map((t) => _toolLabel(l10n, t))
-                                .join(' · ');
+                      final subtitle = p.cli == AppProviderCli.flashskyai
+                          ? l10n.providerListModelCount(
+                              appCubit.flashskyaiLlmConfigFor(p).models.length,
+                            )
+                          : l10n.appProviderCliLabel(p.cli);
                       final titleColor = selected
                           ? cs.onPrimaryContainer
                           : cs.onSurface;
@@ -172,11 +189,4 @@ class _AppProviderListPanelState extends State<AppProviderListPanel> {
     );
   }
 
-  String _toolLabel(dynamic l10n, AppProviderTool tool) {
-    return switch (tool) {
-      AppProviderTool.flashskyai => l10n.appProviderToolFlashskyai,
-      AppProviderTool.codex => l10n.appProviderToolCodex,
-      AppProviderTool.claude => l10n.appProviderToolClaude,
-    };
-  }
 }

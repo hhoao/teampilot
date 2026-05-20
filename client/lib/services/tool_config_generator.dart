@@ -11,9 +11,10 @@ class ToolConfigGenerator {
   const ToolConfigGenerator();
 
   LlmConfig buildFlashskyaiLlmConfig(AppProviderConfig provider) {
-    final tool = provider.toolConfigs.flashskyai.unknownFields;
-    final providerType = tool['provider_type']?.toString() ?? 'openai';
-    final type = tool['type']?.toString() ?? 'api';
+    final config = provider.config;
+    final type = config['type']?.toString() ?? 'api';
+    final providerType = config['provider_type']?.toString() ?? 'openai';
+    final accounts = _stringListFromConfig(config['account']);
 
     final providerEntry = LlmProviderConfig(
       name: provider.name,
@@ -21,22 +22,25 @@ class ToolConfigGenerator {
       providerType: providerType,
       baseUrl: provider.baseUrl,
       apiKey: provider.apiKey,
-      proxy: tool['proxy'] as bool? ?? false,
-      proxyUrl: tool['proxy_url']?.toString() ?? '',
+      proxy: config['proxy'] as bool? ?? false,
+      proxyUrl: config['proxy_url']?.toString() ?? '',
+      accounts: accounts,
       unknownFields: {
-        for (final entry in tool.entries)
+        for (final entry in config.entries)
           if (!{
             'type',
             'provider_type',
             'proxy',
             'proxy_url',
+            'account',
+            'models',
           }.contains(entry.key))
             entry.key: entry.value,
       },
     );
 
     final models = <String, LlmModelConfig>{};
-    final rawModels = tool['models'];
+    final rawModels = config['models'];
     if (rawModels is Map) {
       for (final entry in rawModels.entries) {
         if (entry.key is! String || entry.value is! Map) continue;
@@ -61,12 +65,12 @@ class ToolConfigGenerator {
   }
 
   Map<String, Object?> buildCodexAuth(AppProviderConfig provider) {
-    final tool = provider.toolConfigs.codex.unknownFields;
-    final rawAuth = tool['auth'];
+    final config = provider.config;
+    final rawAuth = config['auth'];
     final fromTool = rawAuth is Map
         ? Map<String, Object?>.from(rawAuth)
         : {
-            for (final entry in tool.entries)
+            for (final entry in config.entries)
               if (!_codexConfigOnlyKeys.contains(entry.key))
                 entry.key: entry.value,
           };
@@ -80,8 +84,9 @@ class ToolConfigGenerator {
     AppProviderConfig provider, {
     String? existingConfigToml,
   }) {
-    final tool = provider.toolConfigs.codex.unknownFields;
-    final explicit = tool['config_toml']?.toString();
+    final config = provider.config;
+    final explicit =
+        config['configToml']?.toString() ?? config['config_toml']?.toString();
     if (explicit != null && explicit.trim().isNotEmpty) {
       return explicit;
     }
@@ -92,11 +97,11 @@ class ToolConfigGenerator {
     );
     final model = provider.defaultModel.trim().isNotEmpty
         ? provider.defaultModel.trim()
-        : (tool['model']?.toString() ?? 'gpt-5.4');
+        : (config['model']?.toString() ?? 'gpt-5.4');
     final baseUrl = provider.baseUrl.trim().isNotEmpty
         ? provider.baseUrl.trim()
-        : (tool['base_url']?.toString() ?? '');
-    final wireApi = tool['wire_api']?.toString() ?? 'responses';
+        : (config['base_url']?.toString() ?? '');
+    final wireApi = config['wire_api']?.toString() ?? 'responses';
 
     if (baseUrl.isEmpty) {
       return existingConfigToml?.trim() ?? '';
@@ -118,13 +123,13 @@ requires_openai_auth = true
   }
 
   Map<String, Object?> buildClaudeSettings(AppProviderConfig provider) {
-    final tool = provider.toolConfigs.claude.unknownFields;
+    final config = provider.config;
     final settings = <String, Object?>{
-      for (final entry in tool.entries)
+      for (final entry in config.entries)
         if (entry.key != 'env') entry.key: entry.value,
     };
     final env = <String, String>{};
-    final rawEnv = tool['env'];
+    final rawEnv = config['env'];
     if (rawEnv is Map) {
       for (final entry in rawEnv.entries) {
         env[entry.key.toString()] = entry.value?.toString() ?? '';
@@ -156,6 +161,7 @@ requires_openai_auth = true
     'auth_mode',
     'base_url',
     'config',
+    'configToml',
     'config_toml',
     'disable_response_storage',
     'model',
@@ -167,10 +173,10 @@ requires_openai_auth = true
   };
 
   String _claudeApiKeyField(AppProviderConfig provider) {
-    final tool = provider.toolConfigs.claude.unknownFields;
-    final fromTool = tool['api_key_field']?.toString().trim();
-    if (fromTool == 'ANTHROPIC_AUTH_TOKEN' || fromTool == 'ANTHROPIC_API_KEY') {
-      return fromTool!;
+    final fromConfig = provider.config['api_key_field']?.toString().trim();
+    if (fromConfig == 'ANTHROPIC_AUTH_TOKEN' ||
+        fromConfig == 'ANTHROPIC_API_KEY') {
+      return fromConfig!;
     }
     final fromProvider = provider.apiKeyField.trim();
     if (fromProvider == 'ANTHROPIC_AUTH_TOKEN' ||
@@ -233,5 +239,10 @@ requires_openai_auth = true
         .toLowerCase()
         .replaceAll(RegExp(r'[^a-z0-9_]+'), '_')
         .replaceAll(RegExp(r'^_+|_+$'), '');
+  }
+
+  List<String> _stringListFromConfig(Object? raw) {
+    if (raw is! List) return const [];
+    return raw.map((e) => e.toString()).where((e) => e.isNotEmpty).toList();
   }
 }
