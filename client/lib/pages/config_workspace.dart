@@ -408,7 +408,7 @@ class _AppearanceSettingsSection extends StatelessWidget {
     final l10n = context.l10n;
     final controller = context.read<LayoutCubit>();
 
-    return BlocSelector<LayoutCubit, LayoutState, (String, String, String)>(
+    return BlocSelector<LayoutCubit, LayoutState, (String, String, String, String)>(
       selector: (state) {
         var themeMode = state.preferences.themeMode;
         if (themeMode != 'light' &&
@@ -425,11 +425,12 @@ class _AppearanceSettingsSection extends StatelessWidget {
         return (
           themeMode,
           normalizeThemeColorPreset(state.preferences.themeColorPreset),
+          state.preferences.terminalThemeMode,
           langValue,
         );
       },
       builder: (context, appearance) {
-        final (themeMode, colorPreset, langValue) = appearance;
+        final (themeMode, colorPreset, terminalThemeMode, langValue) = appearance;
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -466,6 +467,22 @@ class _AppearanceSettingsSection extends StatelessWidget {
               trailing: _ThemeColorPresetPicker(
                 selected: colorPreset,
                 onSelect: controller.setThemeColorPreset,
+              ),
+              showDividerBelow: true,
+            ),
+            SettingsLabeledRow(
+              title: '终端主题',
+              subtitle: '跟随主题色或使用固定风格',
+              trailing: SettingsCompactDropdown<String>(
+                value: terminalThemeMode,
+                entries: const [
+                  ('adaptive', '跟随主题'),
+                  ('classicDark', '经典暗色'),
+                  ('highContrast', '高对比'),
+                ],
+                onChanged: (v) {
+                  if (v != null) controller.setTerminalThemeMode(v);
+                },
               ),
               showDividerBelow: true,
             ),

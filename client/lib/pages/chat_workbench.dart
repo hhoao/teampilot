@@ -6,6 +6,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:xterm/xterm.dart';
 
 import '../cubits/chat_cubit.dart';
+import '../cubits/layout_cubit.dart';
 import '../cubits/team_cubit.dart';
 import '../l10n/l10n_extensions.dart';
 import '../models/app_session.dart';
@@ -24,6 +25,115 @@ const _terminalTextStyle = TerminalStyle(
   fontFamilyFallback: [kUbuntuSansMonoFontFamily, 'monospace'],
 );
 
+TerminalTheme _terminalThemeFor(
+  ColorScheme cs, {
+  required bool isDark,
+  required String mode,
+}) {
+  if (mode == 'classicDark') {
+    return const TerminalTheme(
+      cursor: Color(0xFF9AA0A8),
+      selection: Color(0x409AA0A8),
+      foreground: Color(0xFFC8CCD4),
+      background: Color(0xFF0A0C10),
+      black: Color(0xFF1A1A1A),
+      red: Color(0xFFD04A62),
+      green: Color(0xFF52C07E),
+      yellow: Color(0xFFD4B85A),
+      blue: Color(0xFF5298D8),
+      magenta: Color(0xFFB87CD8),
+      cyan: Color(0xFF4EB8C4),
+      white: Color(0xFFD0D4DC),
+      brightBlack: Color(0xFF5A5A5A),
+      brightRed: Color(0xFFE86A7E),
+      brightGreen: Color(0xFF6CD898),
+      brightYellow: Color(0xFFE8CC70),
+      brightBlue: Color(0xFF72B0E8),
+      brightMagenta: Color(0xFFD098F0),
+      brightCyan: Color(0xFF72D0DC),
+      brightWhite: Color(0xFFE4E6EC),
+      searchHitBackground: Color(0xFFFFFF2B),
+      searchHitBackgroundCurrent: Color(0xFF31FF26),
+      searchHitForeground: Color(0xFF000000),
+    );
+  }
+
+  if (mode == 'highContrast') {
+    final bg = isDark ? const Color(0xFF000000) : const Color(0xFFFFFFFF);
+    final fg = isDark ? const Color(0xFFF5F7FA) : const Color(0xFF111111);
+    final primary = isDark ? const Color(0xFF69B3FF) : const Color(0xFF005FCC);
+    final secondary = isDark ? const Color(0xFF4EE2A8) : const Color(0xFF007A4B);
+    return TerminalTheme(
+      cursor: primary,
+      selection: primary.withValues(alpha: 0.35),
+      foreground: fg,
+      background: bg,
+      black: isDark ? const Color(0xFF1A1A1A) : const Color(0xFF2A2A2A),
+      red: isDark ? const Color(0xFFFF6B7A) : const Color(0xFFB00020),
+      green: secondary,
+      yellow: isDark ? const Color(0xFFFFD166) : const Color(0xFF8A6D00),
+      blue: primary,
+      magenta: isDark ? const Color(0xFFD79BFF) : const Color(0xFF7A3DB8),
+      cyan: isDark ? const Color(0xFF63E6FF) : const Color(0xFF006A85),
+      white: fg,
+      brightBlack: isDark ? const Color(0xFF8C8C8C) : const Color(0xFF666666),
+      brightRed: isDark ? const Color(0xFFFF98A3) : const Color(0xFFD32F2F),
+      brightGreen: isDark ? const Color(0xFF8AF0C6) : const Color(0xFF0A8F5A),
+      brightYellow: isDark ? const Color(0xFFFFE08A) : const Color(0xFFA88700),
+      brightBlue: isDark ? const Color(0xFF9CCEFF) : const Color(0xFF1976D2),
+      brightMagenta: isDark ? const Color(0xFFE7C0FF) : const Color(0xFF9C4DCC),
+      brightCyan: isDark ? const Color(0xFF9CEEFF) : const Color(0xFF008DB3),
+      brightWhite: isDark ? const Color(0xFFFFFFFF) : const Color(0xFF000000),
+      searchHitBackground: const Color(0xFFFFFF2B),
+      searchHitBackgroundCurrent: const Color(0xFF31FF26),
+      searchHitForeground: const Color(0xFF000000),
+    );
+  }
+
+  final baseBackground = isDark
+      ? Color.alphaBlend(cs.surface.withValues(alpha: 0.88), const Color(0xFF06080C))
+      : Color.alphaBlend(cs.surface.withValues(alpha: 0.96), const Color(0xFFF7F9FC));
+  final foreground = isDark ? const Color(0xFFC8CCD4) : const Color(0xFF1F2937);
+  final weak = isDark ? const Color(0xFF59606A) : const Color(0xFF9AA3B2);
+  return TerminalTheme(
+    cursor: cs.primary.withValues(alpha: isDark ? 0.95 : 0.9),
+    selection: cs.primary.withValues(alpha: isDark ? 0.28 : 0.2),
+    foreground: foreground,
+    background: baseBackground,
+    black: isDark ? const Color(0xFF161A21) : const Color(0xFF4B5563),
+    red: cs.error,
+    green: cs.secondary,
+    yellow: Color.lerp(cs.secondary, const Color(0xFFE5B95C), 0.5)!,
+    blue: cs.primary,
+    magenta: Color.lerp(cs.primary, cs.secondary, 0.45)!,
+    cyan: Color.lerp(cs.secondary, const Color(0xFF58C8D7), 0.55)!,
+    white: isDark ? const Color(0xFFD8DCE5) : const Color(0xFF374151),
+    brightBlack: weak,
+    brightRed: Color.lerp(cs.error, Colors.white, isDark ? 0.18 : 0.1)!,
+    brightGreen: Color.lerp(cs.secondary, Colors.white, isDark ? 0.16 : 0.08)!,
+    brightYellow: Color.lerp(
+      Color.lerp(cs.secondary, const Color(0xFFE5B95C), 0.5)!,
+      Colors.white,
+      isDark ? 0.2 : 0.1,
+    )!,
+    brightBlue: Color.lerp(cs.primary, Colors.white, isDark ? 0.16 : 0.08)!,
+    brightMagenta: Color.lerp(
+      Color.lerp(cs.primary, cs.secondary, 0.45)!,
+      Colors.white,
+      isDark ? 0.2 : 0.1,
+    )!,
+    brightCyan: Color.lerp(
+      Color.lerp(cs.secondary, const Color(0xFF58C8D7), 0.55)!,
+      Colors.white,
+      isDark ? 0.2 : 0.1,
+    )!,
+    brightWhite: isDark ? const Color(0xFFF2F4F8) : const Color(0xFF111827),
+    searchHitBackground: const Color(0xFFFFFF2B),
+    searchHitBackgroundCurrent: const Color(0xFF31FF26),
+    searchHitForeground: const Color(0xFF000000),
+  );
+}
+
 class ChatWorkbench extends StatefulWidget {
   const ChatWorkbench({this.sessionId, this.onOpenRightTools, super.key});
 
@@ -36,33 +146,6 @@ class ChatWorkbench extends StatefulWidget {
 
 class _ChatWorkbenchState extends State<ChatWorkbench> {
   final _terminalController = TerminalController();
-
-  /// Slightly muted vs pure #E0E0E0 — Nerd Mono strokes are heavy on dark UI.
-  static const _terminalTheme = TerminalTheme(
-    cursor: Color(0xFF9AA0A8),
-    selection: Color(0x409AA0A8),
-    foreground: Color(0xFFC8CCD4),
-    background: Color(0xFF0A0C10),
-    black: Color(0xFF1A1A1A),
-    red: Color(0xFFD04A62),
-    green: Color(0xFF52C07E),
-    yellow: Color(0xFFD4B85A),
-    blue: Color(0xFF5298D8),
-    magenta: Color(0xFFB87CD8),
-    cyan: Color(0xFF4EB8C4),
-    white: Color(0xFFD0D4DC),
-    brightBlack: Color(0xFF5A5A5A),
-    brightRed: Color(0xFFE86A7E),
-    brightGreen: Color(0xFF6CD898),
-    brightYellow: Color(0xFFE8CC70),
-    brightBlue: Color(0xFF72B0E8),
-    brightMagenta: Color(0xFFD098F0),
-    brightCyan: Color(0xFF72D0DC),
-    brightWhite: Color(0xFFE4E6EC),
-    searchHitBackground: Color(0xFFFFFF2B),
-    searchHitBackgroundCurrent: Color(0xFF31FF26),
-    searchHitForeground: Color(0xFF000000),
-  );
 
   var _handledRouteSession = false;
   StreamSubscription<ChatState>? _chatSub;
@@ -252,6 +335,15 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final terminalThemeMode = context.select<LayoutCubit, String>(
+      (cubit) => cubit.state.preferences.terminalThemeMode,
+    );
+    final terminalTheme = _terminalThemeFor(
+      cs,
+      isDark: isDark,
+      mode: terminalThemeMode,
+    );
     final teamCubit = context.watch<TeamCubit>();
     final chatCubit = context.read<ChatCubit>();
     final team = teamCubit.state.selectedTeam;
@@ -284,7 +376,7 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
             ),
             Expanded(
               child: Container(
-                color: const Color(0xFF0A0C10),
+                color: terminalTheme.background,
                 child: _TerminalPlaceholder(onConnect: onConnect),
               ),
             ),
@@ -329,12 +421,12 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
           ),
           Expanded(
             child: Container(
-              color: const Color(0xFF0A0C10),
+              color: terminalTheme.background,
               child: session.isRunning
                   ? TerminalView(
                       session.terminal,
                       controller: _terminalController,
-                      theme: _terminalTheme,
+                      theme: terminalTheme,
                       backgroundOpacity: 0.98,
                       padding: const EdgeInsets.all(16),
                       textStyle: _terminalTextStyle,
