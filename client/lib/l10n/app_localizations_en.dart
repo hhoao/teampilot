@@ -998,4 +998,39 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get invalidJson => 'Invalid JSON. Fix the syntax and try again.';
+
+  @override
+  String get aboutTitle => 'About';
+
+  @override
+  String get aboutPageSubtitle => 'TeamPilot version and application updates.';
+
+  @override
+  String get aboutCurrentVersion => 'Current version';
+
+  @override
+  String get aboutVersionLoading => 'Loading…';
+
+  @override
+  String get appUpdateCheck => 'Check for updates';
+
+  @override
+  String get appUpdateDownloadInstall => 'Download and install';
+
+  @override
+  String get appUpdateUpToDate => 'You are on the latest version.';
+
+  @override
+  String get appUpdateDownloading => 'Downloading update…';
+
+  @override
+  String get appUpdateInstalling => 'Installing update…';
+
+  @override
+  String get appUpdateViewRelease => 'View release on GitHub';
+
+  @override
+  String appUpdateNewVersion(String version) {
+    return 'Version $version available';
+  }
 }

@@ -39,6 +39,9 @@ dependencies:
   url_launcher: ^6.3.2
   infinite_scroll_pagination: ^5.1.1
   http: ^1.6.0
+  package_info_plus: ^8.3.0
+  pub_semver: ^2.2.0
+  install_plugin: ^2.1.0
   crypto: ^3.0.7
   archive: ^4.0.9
   toggle_switch: ^2.3.0

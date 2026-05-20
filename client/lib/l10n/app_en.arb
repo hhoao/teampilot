@@ -449,5 +449,23 @@
   "notes": "Notes",
   "defaultModel": "Default model",
   "editProvider": "Edit provider",
-  "invalidJson": "Invalid JSON. Fix the syntax and try again."
+  "invalidJson": "Invalid JSON. Fix the syntax and try again.",
+  "aboutTitle": "About",
+  "aboutPageSubtitle": "TeamPilot version and application updates.",
+  "aboutCurrentVersion": "Current version",
+  "aboutVersionLoading": "Loading…",
+  "appUpdateCheck": "Check for updates",
+  "appUpdateDownloadInstall": "Download and install",
+  "appUpdateUpToDate": "You are on the latest version.",
+  "appUpdateDownloading": "Downloading update…",
+  "appUpdateInstalling": "Installing update…",
+  "appUpdateViewRelease": "View release on GitHub",
+  "appUpdateNewVersion": "Version {version} available",
+  "@appUpdateNewVersion": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  }
 }

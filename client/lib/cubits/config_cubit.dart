@@ -3,7 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../models/team_config.dart';
 
-enum ConfigSection { layout, llm, session }
+enum ConfigSection { layout, llm, session, about }
 
 class ConfigState extends Equatable {
   const ConfigState({
@@ -18,12 +18,14 @@ class ConfigState extends Equatable {
     ConfigSection.layout => 'Layout Configuration',
     ConfigSection.llm => 'LLM Configuration',
     ConfigSection.session => 'Session Configuration',
+    ConfigSection.about => 'About',
   };
 
   String get breadcrumb => switch (section) {
     ConfigSection.layout => 'Config / Layout',
     ConfigSection.llm => 'Config / LLM',
     ConfigSection.session => 'Config / Session',
+    ConfigSection.about => 'Config / About',
   };
 
   ConfigState copyWith({ConfigSection? section, String? selectedMemberId}) {

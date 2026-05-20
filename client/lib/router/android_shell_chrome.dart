@@ -25,14 +25,17 @@ class AndroidShellChrome {
     final l10n = context.l10n;
     if (path == '/config') return l10n.settings;
     if (path == '/config/layout') return l10n.layout;
-    if (path == '/config/llm') return l10n.llmConfig;
-    if (path.startsWith('/config/llm/provider/')) {
+    if (path == '/config/llm' || _isLlmCliRoot(path)) return l10n.llmConfig;
+    if (_isLlmProviderDetail(path)) {
+      if (path.endsWith('/edit')) return l10n.editProvider;
+      if (path.endsWith('/add')) return l10n.addProvider;
       if (path.endsWith('/models')) return l10n.models;
       final name = _llmProviderNameFromPath(path);
       if (name != null) return name;
     }
     if (path == '/config/session') return l10n.session;
     if (path == '/config/ssh-profiles') return l10n.sshProfilesSettingsTitle;
+    if (path == '/config/about') return l10n.aboutTitle;
 
     if (path == '/team-config') return l10n.teamConfig;
     if (path == '/team-config/team') return l10n.teamSettings;
@@ -64,7 +67,7 @@ class AndroidShellChrome {
         context.pop();
         return;
       }
-      context.go('/config/llm');
+      context.go(_llmCliRootFromPath(path) ?? '/config/llm');
       return;
     }
     if (_isConfigDetail(path) || path == '/config') {
@@ -84,17 +87,35 @@ class AndroidShellChrome {
       path.startsWith('/config/') && path.length > '/config/'.length;
 
   static bool _isLlmProviderDetail(String path) =>
-      path.startsWith('/config/llm/provider/');
+      path.startsWith('/config/llm/') && path.contains('/provider/');
 
   static String? _llmProviderNameFromPath(String path) {
-    const prefix = '/config/llm/provider/';
-    if (!path.startsWith(prefix)) return null;
-    var segment = path.substring(prefix.length);
+    final marker = '/provider/';
+    final idx = path.indexOf(marker);
+    if (idx < 0) return null;
+    var segment = path.substring(idx + marker.length);
+    if (segment == 'add') return null;
     if (segment.endsWith('/models')) {
       segment = segment.substring(0, segment.length - '/models'.length);
     }
+    if (segment.endsWith('/edit')) {
+      segment = segment.substring(0, segment.length - '/edit'.length);
+    }
     if (segment.isEmpty) return null;
     return Uri.decodeComponent(segment);
+  }
+
+  static bool _isLlmCliRoot(String path) {
+    final parts = path.split('/').where((p) => p.isNotEmpty).toList();
+    return parts.length == 3 && parts[0] == 'config' && parts[1] == 'llm';
+  }
+
+  static String? _llmCliRootFromPath(String path) {
+    final parts = path.split('/').where((p) => p.isNotEmpty).toList();
+    if (parts.length < 3 || parts[0] != 'config' || parts[1] != 'llm') {
+      return null;
+    }
+    return '/config/llm/${parts[2]}';
   }
 
   static bool _isTeamConfigDetail(String path) =>

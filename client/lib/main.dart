@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:window_manager/window_manager.dart';
 
 import 'cubits/app_provider_cubit.dart';
+import 'cubits/app_update_cubit.dart';
 import 'cubits/chat_cubit.dart';
 import 'cubits/config_cubit.dart';
 import 'cubits/layout_cubit.dart';
@@ -171,6 +172,7 @@ void main() async {
   late final AppProviderCubit appProviderCubit;
   late final TeamCubit teamCubit;
   late final SkillCubit skillCubit;
+  late final AppUpdateCubit appUpdateCubit;
   late final SessionRepository sessionRepo;
   late final ChatCubit chatCubit;
   late final FlashskyaiStorageRoots storageRoots;
@@ -269,6 +271,7 @@ void main() async {
     skillRepo,
     onSkillUninstalled: teamCubit.removeSkillFromAllTeams,
   );
+  appUpdateCubit = AppUpdateCubit();
   final layoutCubit = LayoutCubit(repository: LayoutRepository(preferences));
 
   final transportFactory = TerminalTransportFactory(
@@ -336,6 +339,7 @@ void main() async {
             BlocProvider.value(value: layoutCubit),
             BlocProvider.value(value: sessionPreferencesCubit),
             BlocProvider.value(value: skillCubit),
+            BlocProvider.value(value: appUpdateCubit),
             BlocProvider.value(value: sshProfileCubit),
           ],
           child: const TeamPilotApp(),

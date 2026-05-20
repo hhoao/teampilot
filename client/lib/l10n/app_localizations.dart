@@ -1921,6 +1921,72 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Invalid JSON. Fix the syntax and try again.'**
   String get invalidJson;
+
+  /// No description provided for @aboutTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'About'**
+  String get aboutTitle;
+
+  /// No description provided for @aboutPageSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'TeamPilot version and application updates.'**
+  String get aboutPageSubtitle;
+
+  /// No description provided for @aboutCurrentVersion.
+  ///
+  /// In en, this message translates to:
+  /// **'Current version'**
+  String get aboutCurrentVersion;
+
+  /// No description provided for @aboutVersionLoading.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading…'**
+  String get aboutVersionLoading;
+
+  /// No description provided for @appUpdateCheck.
+  ///
+  /// In en, this message translates to:
+  /// **'Check for updates'**
+  String get appUpdateCheck;
+
+  /// No description provided for @appUpdateDownloadInstall.
+  ///
+  /// In en, this message translates to:
+  /// **'Download and install'**
+  String get appUpdateDownloadInstall;
+
+  /// No description provided for @appUpdateUpToDate.
+  ///
+  /// In en, this message translates to:
+  /// **'You are on the latest version.'**
+  String get appUpdateUpToDate;
+
+  /// No description provided for @appUpdateDownloading.
+  ///
+  /// In en, this message translates to:
+  /// **'Downloading update…'**
+  String get appUpdateDownloading;
+
+  /// No description provided for @appUpdateInstalling.
+  ///
+  /// In en, this message translates to:
+  /// **'Installing update…'**
+  String get appUpdateInstalling;
+
+  /// No description provided for @appUpdateViewRelease.
+  ///
+  /// In en, this message translates to:
+  /// **'View release on GitHub'**
+  String get appUpdateViewRelease;
+
+  /// No description provided for @appUpdateNewVersion.
+  ///
+  /// In en, this message translates to:
+  /// **'Version {version} available'**
+  String appUpdateNewVersion(String version);
 }
 
 class _AppLocalizationsDelegate

@@ -969,4 +969,39 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get invalidJson => 'JSON 无效，请修正语法后重试。';
+
+  @override
+  String get aboutTitle => '关于';
+
+  @override
+  String get aboutPageSubtitle => 'TeamPilot 版本与应用更新。';
+
+  @override
+  String get aboutCurrentVersion => '当前版本';
+
+  @override
+  String get aboutVersionLoading => '加载中…';
+
+  @override
+  String get appUpdateCheck => '检查更新';
+
+  @override
+  String get appUpdateDownloadInstall => '下载并安装';
+
+  @override
+  String get appUpdateUpToDate => '已是最新版本。';
+
+  @override
+  String get appUpdateDownloading => '正在下载更新…';
+
+  @override
+  String get appUpdateInstalling => '正在安装更新…';
+
+  @override
+  String get appUpdateViewRelease => '在 GitHub 查看发布';
+
+  @override
+  String appUpdateNewVersion(String version) {
+    return '新版本 $version 可用';
+  }
 }
