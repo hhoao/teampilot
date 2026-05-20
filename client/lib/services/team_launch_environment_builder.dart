@@ -32,12 +32,13 @@ class TeamLaunchEnvironmentBuilder {
           claudeSettingsResolver ??
           ClaudeProviderSettingsResolver(basePath: service.basePath);
       final claudeSettings = team.cli == TeamCli.claude
-          ? await resolver.resolve(team.providerIdsByTool['claude'])
+          ? await resolver.resolveTeamClaudeSettings(team)
           : null;
       final claudeSettingsByMember = team.cli == TeamCli.claude
           ? await _loadClaudeMemberProviderSettings(
               resolver: resolver,
               team: team,
+              teamClaudeSettings: claudeSettings,
               launchedMember: member,
             )
           : const <String, Map<String, Object?>>{};
@@ -83,6 +84,7 @@ class TeamLaunchEnvironmentBuilder {
   _loadClaudeMemberProviderSettings({
     required ClaudeProviderSettingsResolver resolver,
     required TeamConfig team,
+    required Map<String, Object?>? teamClaudeSettings,
     required TeamMemberConfig? launchedMember,
   }) async {
     final members = <String, TeamMemberConfig>{};
@@ -96,7 +98,11 @@ class TeamLaunchEnvironmentBuilder {
 
     final settingsByMember = <String, Map<String, Object?>>{};
     for (final member in members.values) {
-      final settings = await resolver.resolve(member.provider);
+      final settings = await resolver.resolveMemberClaudeSettings(
+        team: team,
+        member: member,
+        teamClaudeSettings: teamClaudeSettings,
+      );
       if (settings != null) {
         settingsByMember[member.id] = settings;
         settingsByMember[member.name] = settings;

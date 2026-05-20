@@ -57,7 +57,7 @@ class _AppProviderFormSheetState extends State<_AppProviderFormSheet> {
     _nameCtl = TextEditingController(text: e?.name ?? '');
     _notesCtl = TextEditingController(text: e?.notes ?? '');
     _websiteCtl = TextEditingController(text: e?.websiteUrl ?? '');
-    _apiKeyCtl = TextEditingController(text: e?.apiKey ?? '');
+    _apiKeyCtl = TextEditingController(text: _isEditing ? '' : (e?.apiKey ?? ''));
     _baseUrlCtl = TextEditingController(text: e?.baseUrl ?? '');
     _defaultModelCtl = TextEditingController(text: e?.defaultModel ?? '');
     _presetId = 'custom';
@@ -255,6 +255,7 @@ class _AppProviderFormSheetState extends State<_AppProviderFormSheet> {
                           AppOutlineTextField(
                             controller: _apiKeyCtl,
                             labelText: l10n.apiKey,
+                            hintText: _isEditing ? l10n.appProviderApiKeyEditHint : null,
                             obscureText: true,
                           ),
                           const SizedBox(height: 12),

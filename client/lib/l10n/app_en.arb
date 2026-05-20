@@ -203,6 +203,7 @@
   "proxyUrl": "Proxy URL",
   "baseUrl": "Base URL",
   "apiKey": "API Key",
+  "appProviderApiKeyEditHint": "Leave blank to keep the existing key",
   "reveal": "Reveal",
   "hide": "Hide",
   "replaceKey": "Replace key",

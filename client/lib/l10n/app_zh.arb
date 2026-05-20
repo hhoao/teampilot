@@ -151,6 +151,7 @@
   "proxyUrl": "代理 URL",
   "baseUrl": "基础 URL",
   "apiKey": "API 密钥",
+  "appProviderApiKeyEditHint": "留空则保留原密钥",
   "reveal": "显示",
   "hide": "隐藏",
   "replaceKey": "替换密钥",

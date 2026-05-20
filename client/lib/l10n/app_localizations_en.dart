@@ -499,6 +499,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get apiKey => 'API Key';
 
   @override
+  String get appProviderApiKeyEditHint =>
+      'Leave blank to keep the existing key';
+
+  @override
   String get reveal => 'Reveal';
 
   @override

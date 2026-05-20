@@ -1004,6 +1004,12 @@ abstract class AppLocalizations {
   /// **'API Key'**
   String get apiKey;
 
+  /// No description provided for @appProviderApiKeyEditHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave blank to keep the existing key'**
+  String get appProviderApiKeyEditHint;
+
   /// No description provided for @reveal.
   ///
   /// In en, this message translates to:

@@ -66,8 +66,13 @@ class AppProviderRepository {
     final previous = await loadProviders();
     final previousById = {for (final p in previous) p.id: p};
 
+    final merged = [
+      for (final provider in providers)
+        _mergePreservedSecrets(provider, previousById[provider.id]),
+    ];
+
     final encoded = <String, Object?>{
-      for (final provider in providers) provider.id: provider.toJson(),
+      for (final provider in merged) provider.id: provider.toJson(),
     };
 
     final unknownTopLevel = await _loadUnknownTopLevel(file);
@@ -79,17 +84,20 @@ class AppProviderRepository {
       ).convert({...unknownTopLevel, 'providers': encoded}),
     );
 
-    for (final provider in providers) {
-      final prev = previousById[provider.id];
-      if (prev == null) continue;
-      if (provider.apiKey.isEmpty && prev.apiKey.isNotEmpty) {
-        // Callers should pass full apiKey on save when updating secrets.
-      }
-    }
+    await _writeNativeToolConfigs(merged);
+    await _removeStaleNativeToolConfigs(merged);
+    await _writeCommonFlashskyaiLlmConfig(merged);
+  }
 
-    await _writeNativeToolConfigs(providers);
-    await _removeStaleNativeToolConfigs(providers);
-    await _writeCommonFlashskyaiLlmConfig(providers);
+  static AppProviderConfig _mergePreservedSecrets(
+    AppProviderConfig provider,
+    AppProviderConfig? previous,
+  ) {
+    if (previous == null) return provider;
+    if (provider.apiKey.isNotEmpty || previous.apiKey.isEmpty) {
+      return provider;
+    }
+    return provider.copyWith(apiKey: previous.apiKey);
   }
 
   Future<AppProviderConfig?> findById(String id) async {

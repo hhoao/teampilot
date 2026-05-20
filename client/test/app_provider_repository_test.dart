@@ -59,6 +59,31 @@ void main() {
     );
   });
 
+  test('preserves apiKey when edit save leaves key field empty', () async {
+    final now = DateTime.utc(2026, 5, 18).millisecondsSinceEpoch;
+    const original = AppProviderConfig(
+      id: 'deepseek',
+      name: 'DeepSeek',
+      apiKey: 'sk-secret',
+      enabledTools: [AppProviderTool.claude],
+      createdAt: 1,
+      updatedAt: 1,
+    );
+    await repo.saveProviders([original.copyWith(createdAt: now, updatedAt: now)]);
+
+    await repo.saveProviders([
+      original.copyWith(
+        name: 'DeepSeek Renamed',
+        apiKey: '',
+        updatedAt: now + 1,
+      ),
+    ]);
+
+    final loaded = await repo.loadProviders();
+    expect(loaded.single.apiKey, 'sk-secret');
+    expect(loaded.single.name, 'DeepSeek Renamed');
+  });
+
   test('preserves unknown top-level and provider fields', () async {
     final file = repo.providersFile;
     await file.parent.create(recursive: true);

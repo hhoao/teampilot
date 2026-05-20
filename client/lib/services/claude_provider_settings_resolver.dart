@@ -1,4 +1,5 @@
 import '../models/app_provider_config.dart';
+import '../models/team_config.dart';
 import '../repositories/app_provider_repository.dart';
 import 'tool_config_generator.dart';
 
@@ -29,5 +30,43 @@ class ClaudeProviderSettingsResolver {
       return null;
     }
     return _generator.buildClaudeSettings(provider);
+  }
+
+  /// Team-level Claude settings: team tool binding, then any member id, then sole claude provider.
+  Future<Map<String, Object?>?> resolveTeamClaudeSettings(TeamConfig team) async {
+    final fromTeam = await resolve(team.providerIdsByTool['claude']);
+    if (fromTeam != null) return fromTeam;
+
+    for (final member in team.members) {
+      final fromMember = await resolve(member.provider);
+      if (fromMember != null) return fromMember;
+    }
+
+    final claudeProviders = await _listClaudeProviders();
+    if (claudeProviders.length == 1) {
+      return _generator.buildClaudeSettings(claudeProviders.first);
+    }
+    return null;
+  }
+
+  /// Member settings: member provider, then [teamClaudeSettings], then team-level fallbacks.
+  Future<Map<String, Object?>?> resolveMemberClaudeSettings({
+    required TeamConfig team,
+    required TeamMemberConfig member,
+    Map<String, Object?>? teamClaudeSettings,
+  }) async {
+    final fromMember = await resolve(member.provider);
+    if (fromMember != null) return fromMember;
+
+    if (teamClaudeSettings != null) return teamClaudeSettings;
+
+    return resolveTeamClaudeSettings(team);
+  }
+
+  Future<List<AppProviderConfig>> _listClaudeProviders() async {
+    final all = await _repository.loadProviders();
+    return all
+        .where((provider) => provider.enables(AppProviderTool.claude))
+        .toList(growable: false);
   }
 }

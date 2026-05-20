@@ -485,6 +485,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get apiKey => 'API 密钥';
 
   @override
+  String get appProviderApiKeyEditHint => '留空则保留原密钥';
+
+  @override
   String get reveal => '显示';
 
   @override

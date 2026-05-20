@@ -148,6 +148,71 @@ void main() {
     expect((members.last as Map)['model'], 'sonnet');
   });
 
+  test(
+    'claude launch resolves member provider when team tool binding is empty',
+    () async {
+      await _writeProvidersCatalog(base.path, [
+        AppProviderConfig(
+          id: 'deepseek',
+          name: 'DeepSeek',
+          apiKey: 'sk-member-only',
+          baseUrl: 'https://api.deepseek.com/anthropic',
+          defaultModel: 'deepseek-default',
+          enabledTools: const [AppProviderTool.claude],
+        ),
+      ]);
+
+      const sessionId = 'sess-member-prov-only';
+      await TeamLaunchEnvironmentBuilder.build(
+        appDataBasePath: base.path,
+        runtimeTeamId: sessionId,
+        team: const TeamConfig(
+          id: 'team-a',
+          name: 'Team A',
+          cli: TeamCli.claude,
+          members: [
+            TeamMemberConfig(
+              id: 'dev',
+              name: 'developer',
+              provider: 'deepseek',
+              model: 'deepseek-v4-pro[1m]',
+            ),
+          ],
+        ),
+        member: const TeamMemberConfig(
+          id: 'dev',
+          name: 'developer',
+          provider: 'deepseek',
+          model: 'deepseek-v4-pro[1m]',
+        ),
+      );
+
+      final settingsFile = File(
+        p.join(_claudeDir(base.path, 'team-a', sessionId), 'settings.json'),
+      );
+      final teamEnv =
+          (jsonDecode(await settingsFile.readAsString())
+                  as Map<String, Object?>)['env']
+              as Map<String, Object?>;
+      expect(teamEnv['ANTHROPIC_API_KEY'], 'sk-member-only');
+      expect(teamEnv['ANTHROPIC_BASE_URL'], contains('deepseek.com'));
+
+      final memberFile = File(
+        p.join(
+          _claudeDir(base.path, 'team-a', sessionId),
+          'settings',
+          'developer.json',
+        ),
+      );
+      final memberEnv =
+          (jsonDecode(await memberFile.readAsString())
+                  as Map<String, Object?>)['env']
+              as Map<String, Object?>;
+      expect(memberEnv['ANTHROPIC_API_KEY'], 'sk-member-only');
+      expect(memberEnv['ANTHROPIC_MODEL'], 'deepseek-v4-pro[1m]');
+    },
+  );
+
   test('claude team launch writes settings from providers.json', () async {
     await _writeProvidersCatalog(base.path, [
       AppProviderConfig(

@@ -5,9 +5,11 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../cubits/app_provider_cubit.dart';
 import '../cubits/llm_config_cubit.dart';
 import '../cubits/skill_cubit.dart';
 import '../cubits/team_cubit.dart';
+import '../models/app_provider_config.dart';
 import '../l10n/l10n_extensions.dart';
 import '../models/skill.dart';
 import '../models/team_config.dart';
@@ -16,6 +18,7 @@ import '../services/flashskyai_storage_roots.dart';
 import '../services/platform_utils.dart';
 import '../utils/app_keys.dart';
 import '../widgets/app_outline_text_field.dart';
+import '../widgets/app_provider/team_tool_provider_selectors.dart';
 import '../widgets/dropdown/flashsky_dropdown_field.dart';
 import '../widgets/dropdown/flashskyai_dropdown_decoration.dart';
 import '../widgets/settings/workspace_hub_shell.dart';
@@ -889,6 +892,13 @@ class _TeamInfoSectionState extends State<_TeamInfoSection> {
                     widget.team.copyWith(extraArgs: v),
                   ),
                 ),
+                if (widget.team.cli == TeamCli.claude) ...[
+                  const SizedBox(height: 18),
+                  TeamToolProviderSelectors(
+                    team: widget.team,
+                    onChanged: widget.cubit.updateSelected,
+                  ),
+                ],
               ],
             ),
           ),
@@ -1058,6 +1068,7 @@ class _MemberDetailSection extends StatelessWidget {
           _Card(
             child: _MemberConfigForm(
               key: ValueKey(member.id),
+              team: team,
               member: member,
               cubit: cubit,
             ),
@@ -1071,10 +1082,12 @@ class _MemberDetailSection extends StatelessWidget {
 class _MemberConfigForm extends StatefulWidget {
   const _MemberConfigForm({
     super.key,
+    required this.team,
     required this.member,
     required this.cubit,
   });
 
+  final TeamConfig team;
   final TeamMemberConfig member;
   final TeamCubit cubit;
 
@@ -1125,28 +1138,95 @@ class _MemberConfigFormState extends State<_MemberConfigForm> {
     widget.cubit.updateMember(widget.member.id, next);
   }
 
+  List<String> _modelNamesForClaudeProvider({
+    required String providerId,
+    required AppProviderConfig? appProvider,
+    required LlmConfigState llmState,
+    required String currentModel,
+  }) {
+    final names = <String>{};
+    final defaultModel = appProvider?.defaultModel.trim() ?? '';
+    if (defaultModel.isNotEmpty) {
+      names.add(defaultModel);
+    }
+    for (final model in llmState.config.models.values) {
+      if (providerId.isEmpty || model.provider == providerId) {
+        final name = model.name.trim();
+        if (name.isNotEmpty) names.add(name);
+      }
+    }
+    final trimmed = currentModel.trim();
+    if (trimmed.isNotEmpty) {
+      names.add(trimmed);
+    }
+    return names.toList()..sort();
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final m = widget.member;
     final llmState = context.watch<LlmConfigCubit>().state;
+    final isClaudeTeam = widget.team.cli == TeamCli.claude;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textBase = isDark ? Colors.white : const Color(0xFF111827);
 
-    final providerNames = llmState.config.providers.keys.toList()..sort();
     final prov = m.provider;
-    if (prov.trim().isNotEmpty && !providerNames.contains(prov)) {
-      providerNames.add(prov);
+    final List<String> providerIds;
+    final Map<String, String> providerLabels;
+    if (isClaudeTeam) {
+      final appProviders = context
+          .watch<AppProviderCubit>()
+          .state
+          .providers
+          .where((p) => p.enables(AppProviderTool.claude))
+          .toList(growable: false);
+      providerIds = appProviders.map((p) => p.id).toList()..sort();
+      if (prov.trim().isNotEmpty && !providerIds.contains(prov)) {
+        providerIds.add(prov);
+      }
+      providerLabels = {
+        for (final p in appProviders) p.id: p.name,
+        if (prov.trim().isNotEmpty && !appProviders.any((p) => p.id == prov))
+          prov: prov,
+      };
+    } else {
+      providerIds = llmState.config.providers.keys.toList()..sort();
+      if (prov.trim().isNotEmpty && !providerIds.contains(prov)) {
+        providerIds.add(prov);
+      }
+      providerLabels = {
+        for (final id in providerIds)
+          id: llmState.config.providers[id]?.name ?? id,
+      };
     }
 
-    final modelNames =
-        llmState.config.models.values
-            .where((model) => prov.isEmpty || model.provider == prov)
-            .map((model) => model.name)
-            .toList()
-          ..sort();
+    AppProviderConfig? selectedAppProvider;
+    if (isClaudeTeam && prov.trim().isNotEmpty) {
+      for (final p in context.read<AppProviderCubit>().state.providers) {
+        if (p.id == prov) {
+          selectedAppProvider = p;
+          break;
+        }
+      }
+    }
+
+    final modelNames = isClaudeTeam
+        ? _modelNamesForClaudeProvider(
+            providerId: prov,
+            appProvider: selectedAppProvider,
+            llmState: llmState,
+            currentModel: m.model,
+          )
+        : llmState.config.models.values
+                  .where((model) => prov.isEmpty || model.provider == prov)
+                  .map((model) => model.name)
+                  .toList()
+            ..sort();
     final model = m.model;
-    if (model.trim().isNotEmpty && !modelNames.contains(model)) {
+    if (!isClaudeTeam &&
+        model.trim().isNotEmpty &&
+        !modelNames.contains(model)) {
       modelNames.add(model);
     }
 
@@ -1167,20 +1247,41 @@ class _MemberConfigFormState extends State<_MemberConfigForm> {
         _FieldLabel(text: l10n.provider),
         const SizedBox(height: 6),
         FlashskyDropdownField<String>(
-          items: providerNames,
+          items: providerIds,
           initialItem: prov.isEmpty ? null : prov,
           hintText: l10n.selectProvider,
           decoration: dropdownDeco,
           onChanged: (value) {
             final newProv = value ?? '';
             var newModel = m.model;
-            final stillValid = llmState.config.models.values.any(
-              (md) => md.name == newModel && md.provider == newProv,
-            );
-            if (!stillValid) newModel = '';
+            if (isClaudeTeam) {
+              AppProviderConfig? nextProvider;
+              for (final p in context.read<AppProviderCubit>().state.providers) {
+                if (p.id == newProv) {
+                  nextProvider = p;
+                  break;
+                }
+              }
+              final defaultModel = nextProvider?.defaultModel.trim() ?? '';
+              final names = _modelNamesForClaudeProvider(
+                providerId: newProv,
+                appProvider: nextProvider,
+                llmState: llmState,
+                currentModel: m.model,
+              );
+              final stillValid = names.contains(newModel);
+              if (!stillValid) {
+                newModel = defaultModel.isNotEmpty ? defaultModel : '';
+              }
+            } else {
+              final stillValid = llmState.config.models.values.any(
+                (md) => md.name == newModel && md.provider == newProv,
+              );
+              if (!stillValid) newModel = '';
+            }
             _update(m.copyWith(provider: newProv, model: newModel));
           },
-          itemLabel: (value) => value,
+          itemLabel: (value) => providerLabels[value] ?? value,
         ),
         const SizedBox(height: 12),
         _FieldLabel(text: l10n.model),
