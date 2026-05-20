@@ -122,6 +122,8 @@
   "cliExecutablePathReset": "Reset",
   "cliExecutablePathUsing": "Using: ",
   "cliExecutablePathUsingFallback": "Using PATH lookup",
+  "cliInstallButton": "Install",
+  "cliInstallInstalling": "Installing…",
   "claudeCliExecutablePathLabel": "Claude Code CLI path",
   "claudeCliExecutablePathDescription": "Absolute path to the Claude Code executable. Leave empty to use the one on PATH.",
   "claudeCliExecutablePathDescriptionSsh": "Absolute path to Claude Code on the remote SSH host. Leave empty to resolve claude from the remote PATH.",

@@ -376,11 +376,10 @@ void main() {
     await tester.tap(find.byKey(AppKeys.configLlmSectionButton));
     await pumpPhaseTransitions(tester);
 
-    final providerList = tester.widget<Container>(
+    final providerList = tester.widget<Material>(
       find.byKey(AppKeys.llmProviderList),
     );
-    final decoration = providerList.decoration! as BoxDecoration;
-    expect(decoration.color, cs.surfaceContainer);
+    expect(providerList.color, cs.surfaceContainer);
   });
 
   testWidgets('desktop add provider opens form in detail area', (tester) async {

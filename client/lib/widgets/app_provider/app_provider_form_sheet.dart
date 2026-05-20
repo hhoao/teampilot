@@ -246,8 +246,12 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
       ...appProviderPresetsFor(widget.cli).map((p) => p.id),
     ];
 
-    return Container(
-      decoration: workspaceCardDecoration(cs),
+    return Material(
+      color: cs.workspaceCard,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(10),
+        side: BorderSide(color: cs.outlineVariant),
+      ),
       clipBehavior: Clip.antiAlias,
       child: Column(
         children: [
@@ -487,15 +491,17 @@ class _ClaudeAdvancedOptions extends StatelessWidget {
     final l10n = context.l10n;
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
-    return ExpansionTile(
-      initiallyExpanded: true,
-      tilePadding: EdgeInsets.zero,
-      childrenPadding: EdgeInsets.zero,
-      title: Text(
-        l10n.appProviderAdvancedOptions,
-        style: theme.textTheme.titleSmall,
-      ),
-      children: [
+    return Material(
+      color: Colors.transparent,
+      child: ExpansionTile(
+        initiallyExpanded: true,
+        tilePadding: EdgeInsets.zero,
+        childrenPadding: EdgeInsets.zero,
+        title: Text(
+          l10n.appProviderAdvancedOptions,
+          style: theme.textTheme.titleSmall,
+        ),
+        children: [
         const SizedBox(height: 8),
         _FieldLabel(l10n.appProviderClaudeApiFormat),
         const SizedBox(height: 6),
@@ -592,6 +598,7 @@ class _ClaudeAdvancedOptions extends StatelessWidget {
           },
         ),
       ],
+      ),
     );
   }
 }

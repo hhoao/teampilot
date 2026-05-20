@@ -321,6 +321,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get cliExecutablePathUsingFallback => '使用 PATH 中查找的版本';
 
   @override
+  String get cliInstallButton => '安装';
+
+  @override
+  String get cliInstallInstalling => '安装中…';
+
+  @override
   String get claudeCliExecutablePathLabel => 'Claude Code CLI 路径';
 
   @override

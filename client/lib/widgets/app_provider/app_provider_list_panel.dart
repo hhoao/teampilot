@@ -58,9 +58,16 @@ class _AppProviderListPanelState extends State<AppProviderListPanel> {
         )
         .toList(growable: false);
 
-    return Container(
+    return Material(
       key: AppKeys.llmProviderList,
-      decoration: widget.hubStyle ? null : workspaceCardDecoration(cs),
+      color: widget.hubStyle ? Colors.transparent : cs.workspaceCard,
+      shape: widget.hubStyle
+          ? null
+          : RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+              side: BorderSide(color: cs.outlineVariant),
+            ),
+      clipBehavior: widget.hubStyle ? Clip.none : Clip.antiAlias,
       child: Column(
         children: [
           Padding(

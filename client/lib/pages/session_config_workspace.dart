@@ -12,6 +12,10 @@ import '../cubits/team_cubit.dart';
 import '../models/connection_mode.dart';
 import '../models/team_config.dart';
 import '../l10n/l10n_extensions.dart';
+import '../cubits/ssh_profile_cubit.dart';
+import '../services/cli_installer_service.dart';
+import '../services/connection_mode_service.dart';
+import '../services/ssh_client_factory.dart';
 import '../utils/app_keys.dart';
 import '../utils/debounce/debounce.dart';
 import '../widgets/app_outline_text_field.dart';
@@ -245,6 +249,7 @@ class _SessionControlsState extends State<_SessionControls> {
                 browseKey: AppKeys.claudeCliExecutablePathBrowseButton,
                 resetKey: AppKeys.claudeCliExecutablePathResetButton,
                 debouncerTag: 'session_claude_cli_executable_path',
+                installKey: AppKeys.claudeCliInstallButton,
                 showDividerBelow: true,
               ),
               if (isSshMode) ...[
@@ -330,6 +335,7 @@ class _CliExecutablePathSettingsRow extends StatefulWidget {
     required this.resetKey,
     required this.debouncerTag,
     required this.showDividerBelow,
+    this.installKey,
   });
 
   final SessionPreferencesCubit cubit;
@@ -341,6 +347,7 @@ class _CliExecutablePathSettingsRow extends StatefulWidget {
   final Key resetKey;
   final String debouncerTag;
   final bool showDividerBelow;
+  final Key? installKey;
 
   @override
   State<_CliExecutablePathSettingsRow> createState() =>
@@ -353,6 +360,7 @@ class _CliExecutablePathSettingsRowState
   late final FocusNode _focusNode;
   late final Debouncer _persistDebouncer;
   String _lastSyncedPath = '';
+  bool _isInstalling = false;
 
   @override
   void initState() {
@@ -437,6 +445,40 @@ class _CliExecutablePathSettingsRowState
     await widget.cubit.setCliExecutablePathFor(widget.cli, '');
   }
 
+  Future<void> _installCli() async {
+    if (_isInstalling) return;
+    setState(() => _isInstalling = true);
+    try {
+      final connectionMode = context.read<ConnectionModeService>();
+      final sshProfile = context.read<SshProfileCubit>().state.selectedProfile;
+      final installer = CliInstallerService(
+        sshClientFactory: context.read<SshClientFactory>(),
+      );
+      final result = await installer.install(
+        cli: widget.cli,
+        mode: connectionMode.isSshMode
+            ? CliInstallMode.ssh
+            : CliInstallMode.local,
+        sshProfile: sshProfile,
+      );
+      if (!mounted) return;
+      final path = result.executablePath?.trim() ?? '';
+      if (result.success && path.isNotEmpty) {
+        _persistDebouncer.cancel();
+        _controller.text = path;
+        await widget.cubit.setCliExecutablePathFor(widget.cli, path);
+      }
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(result.message)),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isInstalling = false);
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
@@ -467,6 +509,25 @@ class _CliExecutablePathSettingsRowState
             ),
           ),
           const SizedBox(width: 6),
+          if (widget.installKey != null) ...[
+            OutlinedButton.icon(
+              key: widget.installKey,
+              onPressed: _isInstalling ? null : _installCli,
+              icon: _isInstalling
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.download_outlined, size: 16),
+              label: Text(
+                _isInstalling
+                    ? l10n.cliInstallInstalling
+                    : l10n.cliInstallButton,
+              ),
+            ),
+            const SizedBox(width: 6),
+          ],
           OutlinedButton.icon(
             key: widget.browseKey,
             onPressed: isSshMode ? null : _pickFile,

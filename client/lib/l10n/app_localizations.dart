@@ -704,6 +704,18 @@ abstract class AppLocalizations {
   /// **'Using PATH lookup'**
   String get cliExecutablePathUsingFallback;
 
+  /// No description provided for @cliInstallButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Install'**
+  String get cliInstallButton;
+
+  /// No description provided for @cliInstallInstalling.
+  ///
+  /// In en, this message translates to:
+  /// **'Installing…'**
+  String get cliInstallInstalling;
+
   /// No description provided for @claudeCliExecutablePathLabel.
   ///
   /// In en, this message translates to:

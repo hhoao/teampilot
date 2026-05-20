@@ -333,6 +333,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get cliExecutablePathUsingFallback => 'Using PATH lookup';
 
   @override
+  String get cliInstallButton => 'Install';
+
+  @override
+  String get cliInstallInstalling => 'Installing…';
+
+  @override
   String get claudeCliExecutablePathLabel => 'Claude Code CLI path';
 
   @override
