@@ -199,11 +199,15 @@ void main() {
 
     expect(startedArgs, hasLength(2));
     expect(
-      startedArgs.any((args) => args.contains('--member') && args.contains('team-lead')),
+      startedArgs.any(
+        (args) => args.contains('--agent-name') && args.contains('team-lead'),
+      ),
       isTrue,
     );
     expect(
-      startedArgs.any((args) => args.contains('--member') && args.contains('developer')),
+      startedArgs.any(
+        (args) => args.contains('--agent-name') && args.contains('developer'),
+      ),
       isTrue,
     );
     expect(leadSession.isRunning, isTrue);

@@ -150,58 +150,61 @@ class _AppProviderListPanelState extends State<AppProviderListPanel> {
                       final subtitleColor = selected
                           ? cs.onPrimaryContainer.withValues(alpha: 0.74)
                           : cs.onSurfaceVariant;
-                      return Material(
-                        color: selected
-                            ? cs.primaryContainer
-                            : widget.hubStyle
-                            ? cs.workspaceSubtleSurface
-                            : cs.workspaceInset,
-                        borderRadius: BorderRadius.circular(8),
-                        child: ListTile(
-                          dense: true,
-                          iconColor: titleColor,
-                          textColor: titleColor,
-                          title: Text(
-                            p.name,
-                            style: TextStyle(
-                              color: titleColor,
-                              fontWeight: selected
-                                  ? FontWeight.w600
-                                  : FontWeight.w500,
-                            ),
-                          ),
-                          subtitle: Text(
-                            subtitle,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(color: subtitleColor),
-                          ),
-                          trailing: widget.hubStyle
-                              ? Icon(Icons.chevron_right, color: titleColor)
-                              : PopupMenuButton<String>(
-                                  iconColor: titleColor,
-                                  itemBuilder: (_) => [
-                                    PopupMenuItem(
-                                      value: 'edit',
-                                      child: Text(l10n.edit),
-                                    ),
-                                    PopupMenuItem(
-                                      value: 'delete',
-                                      child: Text(l10n.delete),
-                                    ),
-                                  ],
-                                  onSelected: (action) {
-                                    switch (action) {
-                                      case 'edit':
-                                        widget.onEdit(p);
-                                      case 'delete':
-                                        widget.onDelete(p.id);
-                                    }
-                                  },
-                                ),
-                          onTap: () => widget.onSelect(p.id),
-                          onLongPress: () => widget.onEdit(p),
+                      final tileColor = selected
+                          ? cs.primaryContainer
+                          : widget.hubStyle
+                          ? cs.workspaceSubtleSurface
+                          : cs.workspaceInset;
+                      return ListTile(
+                        dense: true,
+                        selected: selected,
+                        tileColor: tileColor,
+                        selectedTileColor: cs.primaryContainer,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
                         ),
+                        iconColor: titleColor,
+                        textColor: titleColor,
+                        title: Text(
+                          p.name,
+                          style: TextStyle(
+                            color: titleColor,
+                            fontWeight: selected
+                                ? FontWeight.w600
+                                : FontWeight.w500,
+                          ),
+                        ),
+                        subtitle: Text(
+                          subtitle,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(color: subtitleColor),
+                        ),
+                        trailing: widget.hubStyle
+                            ? Icon(Icons.chevron_right, color: titleColor)
+                            : PopupMenuButton<String>(
+                                iconColor: titleColor,
+                                itemBuilder: (_) => [
+                                  PopupMenuItem(
+                                    value: 'edit',
+                                    child: Text(l10n.edit),
+                                  ),
+                                  PopupMenuItem(
+                                    value: 'delete',
+                                    child: Text(l10n.delete),
+                                  ),
+                                ],
+                                onSelected: (action) {
+                                  switch (action) {
+                                    case 'edit':
+                                      widget.onEdit(p);
+                                    case 'delete':
+                                      widget.onDelete(p.id);
+                                  }
+                                },
+                              ),
+                        onTap: () => widget.onSelect(p.id),
+                        onLongPress: () => widget.onEdit(p),
                       );
                     },
                   ),

@@ -15,7 +15,7 @@ void main() {
   );
 
   test('builds required flashskyai arguments for a member', () {
-    const team = TeamConfig(id: '1', name: 'agent');
+    const team = TeamConfig(id: '1', name: 'agent', cli: TeamCli.flashskyai);
 
     expect(
       LaunchCommandBuilder.buildArguments(
@@ -41,7 +41,7 @@ void main() {
   });
 
   test('omits --dir when workingDirectory is empty', () {
-    const team = TeamConfig(id: '1', name: 'agent');
+    const team = TeamConfig(id: '1', name: 'agent', cli: TeamCli.flashskyai);
 
     expect(LaunchCommandBuilder.buildArguments(team, member), [
       '--team',
@@ -58,7 +58,12 @@ void main() {
   });
 
   test('adds --loop after --member when team.loop is set', () {
-    const team = TeamConfig(id: '1', name: 'agent', loop: false);
+    const team = TeamConfig(
+      id: '1',
+      name: 'agent',
+      cli: TeamCli.flashskyai,
+      loop: false,
+    );
 
     expect(LaunchCommandBuilder.buildArguments(team, member), [
       '--team',
@@ -77,7 +82,7 @@ void main() {
   });
 
   test('adds --dangerously-skip-permissions when member requests it', () {
-    const team = TeamConfig(id: '1', name: 'agent');
+    const team = TeamConfig(id: '1', name: 'agent', cli: TeamCli.flashskyai);
     const risky = TeamMemberConfig(
       id: 'member-1',
       name: 'planner',
@@ -106,6 +111,7 @@ void main() {
     const team = TeamConfig(
       id: '1',
       name: 'agent',
+      cli: TeamCli.flashskyai,
       extraArgs: '--permission-mode acceptEdits',
     );
     const reviewer = TeamMemberConfig(
@@ -137,7 +143,11 @@ void main() {
   });
 
   test('quotes command preview for display', () {
-    const team = TeamConfig(id: '1', name: 'hello team');
+    const team = TeamConfig(
+      id: '1',
+      name: 'hello team',
+      cli: TeamCli.flashskyai,
+    );
     const reviewer = TeamMemberConfig(id: 'member-2', name: 'code reviewer');
 
     expect(
@@ -147,7 +157,7 @@ void main() {
   });
 
   test('preview honours the supplied executable path', () {
-    const team = TeamConfig(id: '1', name: 'agent');
+    const team = TeamConfig(id: '1', name: 'agent', cli: TeamCli.flashskyai);
     const planner = TeamMemberConfig(id: 'm', name: 'planner');
 
     expect(

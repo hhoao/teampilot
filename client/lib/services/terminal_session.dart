@@ -332,6 +332,9 @@ class TerminalSession {
           .transform(const Utf8Decoder(allowMalformed: true))
           .listen((text) {
             _writeOutput(text);
+            if (_starting && !_startFailed && _looksLikeExecFailure(text)) {
+              _handleStartFailure(_launchFailureMessage(executable));
+            }
           });
 
       transport.done.then((code) {
@@ -350,7 +353,10 @@ class TerminalSession {
 
       _spawnWatchdogTimer = Timer(const Duration(seconds: 8), () {
         if (_startFailed || !_starting) return;
-        _handleStartFailure('  (PTY did not become ready)');
+        _handleStartFailure(
+          '${_execFailureMessage(executable)}\r\n'
+          '  (PTY did not become ready)',
+        );
       });
 
       _startConfirmationTimer = Timer(
@@ -421,6 +427,32 @@ class TerminalSession {
   void _writeOutput(String text) {
     terminal.write(text);
     _schedulePtyViewportSync();
+  }
+
+  static bool _looksLikeExecFailure(String text) {
+    return text.contains('execvp:') ||
+        text.contains('No such file or directory') ||
+        text.contains('没有那个文件或目录');
+  }
+
+  String _launchFailureMessage(String executable) {
+    final cliName = CliExecutableValidator.cliDisplayName(executable);
+    if (!validateLaunch) {
+      return '[无法启动远端 $cliName: "$executable"。\n'
+          '  请检查 SSH Profile 中的远端路径、PATH、工作目录和执行权限。]';
+    }
+    return _execFailureMessage(executable);
+  }
+
+  static String _execFailureMessage(String executable) {
+    final cliName = CliExecutableValidator.cliDisplayName(executable);
+    return CliExecutableValidator.validateLaunch(
+          executable: executable,
+          workingDirectory: '',
+        ) ??
+        '[无法启动 $cliName: 未找到可执行文件 "$executable"。\n'
+            '  请在「设置 → 会话」中配置 $cliName CLI 的绝对路径，'
+            '或确保其已在 PATH 中（从文件管理器启动 AppImage 时 PATH 可能很短）。]';
   }
 
   void disconnect() {

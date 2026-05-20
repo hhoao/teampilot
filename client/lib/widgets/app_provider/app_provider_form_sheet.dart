@@ -313,20 +313,23 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
                   },
                 ),
                 const SizedBox(height: 14),
-                SwitchListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: Text(l10n.appProviderAdvancedJson),
-                  value: _showAdvancedJson,
-                  onChanged: (v) {
-                    setState(() {
-                      if (v) {
-                        _jsonCtl.text = const JsonEncoder.withIndent(
-                          '  ',
-                        ).convert(_buildNormalDraft().toJson());
-                      }
-                      _showAdvancedJson = v;
-                    });
-                  },
+                Material(
+                  color: Colors.transparent,
+                  child: SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(l10n.appProviderAdvancedJson),
+                    value: _showAdvancedJson,
+                    onChanged: (v) {
+                      setState(() {
+                        if (v) {
+                          _jsonCtl.text = const JsonEncoder.withIndent(
+                            '  ',
+                          ).convert(_buildNormalDraft().toJson());
+                        }
+                        _showAdvancedJson = v;
+                      });
+                    },
+                  ),
                 ),
                 if (_showAdvancedJson)
                   AppOutlineTextField(
