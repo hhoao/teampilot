@@ -6,7 +6,6 @@ import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../cubits/app_provider_cubit.dart';
-import '../cubits/llm_config_cubit.dart';
 import '../cubits/skill_cubit.dart';
 import '../cubits/team_cubit.dart';
 import '../models/app_provider_config.dart';
@@ -1152,7 +1151,6 @@ class _MemberConfigFormState extends State<_MemberConfigForm> {
   List<String> _modelNamesForClaudeProvider({
     required String providerId,
     required AppProviderConfig? appProvider,
-    required LlmConfigState llmState,
     required String currentModel,
   }) {
     final names = <String>{};
@@ -1160,10 +1158,19 @@ class _MemberConfigFormState extends State<_MemberConfigForm> {
     if (defaultModel.isNotEmpty) {
       names.add(defaultModel);
     }
-    for (final model in llmState.config.models.values) {
-      if (providerId.isEmpty || model.provider == providerId) {
-        final name = model.name.trim();
-        if (name.isNotEmpty) names.add(name);
+    final rawModels = appProvider?.config['models'];
+    if (rawModels is Map) {
+      for (final entry in rawModels.entries) {
+        final id = entry.key.toString().trim();
+        if (entry.value is Map) {
+          final modelJson = Map<String, Object?>.from(entry.value as Map);
+          final name = (modelJson['name'] as String? ?? '').trim();
+          final model = (modelJson['model'] as String? ?? '').trim();
+          if (name.isNotEmpty) names.add(name);
+          if (model.isNotEmpty) names.add(model);
+        } else if (id.isNotEmpty) {
+          names.add(id);
+        }
       }
     }
     final trimmed = currentModel.trim();
@@ -1177,7 +1184,6 @@ class _MemberConfigFormState extends State<_MemberConfigForm> {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final m = widget.member;
-    final llmState = context.watch<LlmConfigCubit>().state;
     final memberCatalogCli = _appCatalogCliForTeam(widget.team.cli);
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textBase = isDark ? Colors.white : const Color(0xFF111827);
@@ -1213,7 +1219,6 @@ class _MemberConfigFormState extends State<_MemberConfigForm> {
     final modelNames = _modelNamesForClaudeProvider(
       providerId: prov,
       appProvider: selectedAppProvider,
-      llmState: llmState,
       currentModel: m.model,
     )..sort();
     final model = m.model;
@@ -1255,7 +1260,6 @@ class _MemberConfigFormState extends State<_MemberConfigForm> {
             final names = _modelNamesForClaudeProvider(
               providerId: newProv,
               appProvider: nextProvider,
-              llmState: llmState,
               currentModel: m.model,
             );
             final stillValid = names.contains(newModel);
