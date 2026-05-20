@@ -8,11 +8,13 @@ import 'package:teampilot/repositories/app_provider_repository.dart';
 void main() {
   late Directory temp;
   late AppProviderCubit cubit;
+  late AppProviderRepository repository;
 
   setUp(() async {
     temp = await Directory.systemTemp.createTemp('app_provider_cubit_');
+    repository = AppProviderRepository(basePath: temp.path);
     cubit = AppProviderCubit(
-      repository: AppProviderRepository(basePath: temp.path),
+      repository: repository,
     );
   });
 
@@ -70,5 +72,32 @@ void main() {
     await cubit.setSelectedCli(AppProviderCli.codex);
     expect(cubit.state.selectedCli, AppProviderCli.codex);
     expect(cubit.state.selectedId, 'codex-provider');
+  });
+
+  test('flashskyai models provider is normalized to provider id', () async {
+    await cubit.upsertProvider(
+      const AppProviderConfig(
+        id: 'deepseek',
+        cli: AppProviderCli.flashskyai,
+        name: 'DeepSeek',
+        config: {
+          'models': {
+            'deepseek-chat': {
+              'name': 'deepseek-chat',
+              'provider': 'DeepSeek',
+              'model': 'deepseek-chat',
+              'enabled': true,
+            },
+          },
+        },
+      ),
+    );
+
+    final saved = (await repository.loadProviders(
+      AppProviderCli.flashskyai,
+    )).single;
+    final models = saved.config['models'] as Map;
+    final model = models['deepseek-chat'] as Map;
+    expect(model['provider'], 'deepseek');
   });
 }
