@@ -4,7 +4,7 @@ import 'package:path/path.dart' as p;
 
 import '../models/skill.dart';
 import '../utils/logger.dart';
-import 'app_storage.dart';
+import 'cli_data_layout.dart';
 import 'flashskyai_storage_roots.dart';
 
 class TeamSkillSyncResult {
@@ -21,45 +21,63 @@ class TeamSkillSyncResult {
   bool get ok => errors.isEmpty;
 }
 
+/// Provisions team-scope skill links under
+/// `config-profiles/teams/<teamId>/flashskyai/skills/<skill-dir>`.
+///
+/// Source of truth is the UI-owned skills directory ([appSkillsDir]); the team
+/// dir holds symlinks (or copies on Windows / SFTP fallback) per the layout's
+/// 3-layer inheritance contract.
 class TeamSkillLinkerService {
   TeamSkillLinkerService({
     String? appSkillsRoot,
-    String? cliSkillsDir,
+    String? teamSkillsRootOverride,
     bool? useWslSymlinks,
     FlashskyaiStorageRoots? storageRoots,
   }) : _appSkillsRoot = appSkillsRoot,
-       _cliSkillsDirOverride = cliSkillsDir,
+       _teamSkillsRootOverride = teamSkillsRootOverride,
        _useWslSymlinks = useWslSymlinks,
        _storageRoots = storageRoots;
 
   final String? _appSkillsRoot;
-  final String? _cliSkillsDirOverride;
+  final String? _teamSkillsRootOverride;
   final bool? _useWslSymlinks;
   final FlashskyaiStorageRoots? _storageRoots;
 
-  String get appSkillsDir =>
-      _appSkillsRoot ?? p.join(AppStorage.basePath, 'skills');
+  String get appSkillsDir {
+    final root = _appSkillsRoot;
+    if (root != null) return root;
+    throw StateError(
+      'TeamSkillLinkerService requires appSkillsRoot or storageRoots.',
+    );
+  }
 
-  String get cliSkillsDir =>
-      _cliSkillsDirOverride ?? p.join(AppStorage.flashskyaiDataDir, 'skills');
+  /// Team-scope skills dir for [teamId] under the resolved layout.
+  String teamSkillsDirFor(String teamId, {required CliDataLayout layout}) {
+    final override = _teamSkillsRootOverride;
+    if (override != null) return override;
+    return p.join(layout.teamToolDir(teamId, 'flashskyai'), 'skills');
+  }
 
   String sourceDirFor(Skill skill) => p.join(appSkillsDir, skill.directory);
 
   bool get _shouldUseWsl {
     if (_useWslSymlinks != null) return _useWslSymlinks;
-    if (!Platform.isWindows) return false;
-    return AppStorage.flashskyaiDataDir.contains(r'\') ||
-        AppStorage.flashskyaiDataDir.contains(':');
+    return false;
   }
 
   Future<TeamSkillSyncResult> syncForTeam({
+    required String teamId,
     required List<String> skillIds,
     required List<Skill> installed,
   }) async {
+    final trimmedTeamId = teamId.trim();
+    if (trimmedTeamId.isEmpty) {
+      return const TeamSkillSyncResult();
+    }
+
     final byId = {for (final s in installed) s.id: s};
     final toLink = <Skill>[];
     final skipped = <String>[];
-
     for (final id in skillIds) {
       final skill = byId[id];
       if (skill == null) {
@@ -73,18 +91,32 @@ class TeamSkillLinkerService {
     if (roots != null &&
         roots.storageIsRemote &&
         roots.remoteFileStore != null) {
-      return _syncRemoteSymlinks(roots, toLink, skipped);
+      return _syncRemoteSymlinks(roots, trimmedTeamId, toLink, skipped);
     }
+
+    final layout =
+        roots?.layout ??
+        CliDataLayout(
+          teampilotRoot:
+              _teamSkillsRootOverride != null ? '' : _appSkillsRootParent(),
+        );
+    final teamSkillsDir = teamSkillsDirFor(trimmedTeamId, layout: layout);
 
     if (_shouldUseWsl) {
-      return _syncViaWsl(toLink, skipped);
+      return _syncViaWsl(toLink, skipped, teamSkillsDir);
     }
-    return _syncNative(toLink, skipped);
+    return _syncNative(toLink, skipped, teamSkillsDir);
   }
 
-  /// Links remote teampilot/skills → ~/.flashskyai/skills (same as desktop).
+  String _appSkillsRootParent() {
+    final root = _appSkillsRoot;
+    if (root == null || root.isEmpty) return '';
+    return p.dirname(root);
+  }
+
   Future<TeamSkillSyncResult> _syncRemoteSymlinks(
     StorageRootsSnapshot roots,
+    String teamId,
     List<Skill> toLink,
     List<String> skipped,
   ) async {
@@ -93,22 +125,27 @@ class TeamSkillLinkerService {
     final errors = <String>[];
     final linked = <String>[];
 
+    final teamSkillsDir = posix.join(
+      roots.layout.teamToolDir(teamId, 'flashskyai'),
+      'skills',
+    );
+
     try {
-      await store.ensureDirectory(roots.cliSkillsDir);
-      final entries = await store.listDirectoryEntries(roots.cliSkillsDir);
+      await store.ensureDirectory(teamSkillsDir);
+      final entries = await store.listDirectoryEntries(teamSkillsDir);
       for (final entry in entries) {
-        await store.removeRecursive(posix.join(roots.cliSkillsDir, entry.name));
+        await store.removeRecursive(posix.join(teamSkillsDir, entry.name));
       }
     } catch (e) {
       return TeamSkillSyncResult(
         skippedMissingIds: skipped,
-        errors: ['Failed to clear remote CLI skills dir: $e'],
+        errors: ['Failed to clear remote team skills dir: $e'],
       );
     }
 
     for (final skill in toLink) {
       final source = posix.join(roots.skillsRoot, skill.directory);
-      final target = posix.join(roots.cliSkillsDir, skill.directory);
+      final target = posix.join(teamSkillsDir, skill.directory);
       try {
         if (!await store.fileExists(posix.join(source, 'SKILL.md'))) {
           errors.add('${skill.name}: source missing at $source');
@@ -132,6 +169,7 @@ class TeamSkillLinkerService {
   Future<TeamSkillSyncResult> _syncNative(
     List<Skill> toLink,
     List<String> skipped,
+    String teamSkillsDir,
   ) async {
     final errors = <String>[];
     final linked = <String>[];
@@ -146,17 +184,17 @@ class TeamSkillLinkerService {
     }
 
     try {
-      await _clearCliSkillsDir();
+      await _clearTeamSkillsDir(teamSkillsDir);
     } catch (e) {
       return TeamSkillSyncResult(
         skippedMissingIds: skipped,
-        errors: ['Failed to clear skills dir: $e'],
+        errors: ['Failed to clear team skills dir: $e'],
       );
     }
 
     for (final skill in toLink) {
       final source = sourceDirFor(skill);
-      final target = p.join(cliSkillsDir, skill.directory);
+      final target = p.join(teamSkillsDir, skill.directory);
       try {
         await _createDirectoryLink(source: source, target: target);
         linked.add(skill.directory);
@@ -176,15 +214,16 @@ class TeamSkillLinkerService {
   Future<TeamSkillSyncResult> _syncViaWsl(
     List<Skill> toLink,
     List<String> skipped,
+    String teamSkillsDir,
   ) async {
     final errors = <String>[];
     final linked = <String>[];
 
-    final wslCliDir = await _windowsPathToWsl(cliSkillsDir);
+    final wslCliDir = await _windowsPathToWsl(teamSkillsDir);
     if (wslCliDir == null) {
       return TeamSkillSyncResult(
         skippedMissingIds: skipped,
-        errors: ['Could not resolve WSL path for CLI skills directory'],
+        errors: ['Could not resolve WSL path for team skills directory'],
       );
     }
 
@@ -219,8 +258,8 @@ class TeamSkillLinkerService {
     );
   }
 
-  Future<void> _clearCliSkillsDir() async {
-    final dir = Directory(cliSkillsDir);
+  Future<void> _clearTeamSkillsDir(String teamSkillsDir) async {
+    final dir = Directory(teamSkillsDir);
     if (!dir.existsSync()) {
       dir.createSync(recursive: true);
       return;
@@ -257,6 +296,7 @@ class TeamSkillLinkerService {
     }
 
     try {
+      await Directory(p.dirname(target)).create(recursive: true);
       await Link(target).create(source);
     } on FileSystemException catch (e) {
       if (!Platform.isWindows) rethrow;

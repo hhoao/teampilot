@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
 
 import 'app_storage.dart';
+import 'cli_data_layout.dart';
 import 'flashskyai_storage_roots.dart';
 import 'remote_file_store.dart';
 
@@ -84,7 +85,7 @@ abstract final class FlashskyaiAgentCatalog {
   }
 }
 
-/// Lists user-defined agent ids from [AppStorage.cliAgentsDir] (`*.md`).
+/// Lists user-defined agent ids from `config-profiles/flashskyai/agents/*.md`.
 class FlashskyaiAgentCatalogService {
   FlashskyaiAgentCatalogService({FlashskyaiStorageRoots? storageRoots})
     : _storageRoots = storageRoots;
@@ -102,12 +103,16 @@ class FlashskyaiAgentCatalogService {
   Future<List<String>> listUserAgentIds() async {
     if (_storageRoots != null) {
       final snap = await _storageRoots.resolve();
+      final agentsDir = p.Context(
+        style: snap.storageIsRemote ? p.Style.posix : p.Style.platform,
+      ).join(snap.layout.appToolRoot('flashskyai'), 'agents');
       if (snap.storageIsRemote && snap.remoteFileStore != null) {
-        return _listRemote(snap.remoteFileStore!, snap.cliAgentsDir);
+        return _listRemote(snap.remoteFileStore!, agentsDir);
       }
-      return _listLocal(snap.cliAgentsDir);
+      return _listLocal(agentsDir);
     }
-    return _listLocal(AppStorage.cliAgentsDir);
+    final layout = CliDataLayout(teampilotRoot: AppStorage.basePath);
+    return _listLocal(p.join(layout.appToolRoot('flashskyai'), 'agents'));
   }
 
   Future<List<String>> _listLocal(String agentsDir) async {

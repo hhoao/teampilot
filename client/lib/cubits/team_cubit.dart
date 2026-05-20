@@ -154,7 +154,6 @@ class TeamCubit extends Cubit<TeamState> {
 
   Future<void> _ensureProfilesForTeams(List<TeamConfig> teams) async {
     final profileService = await _profileService();
-    await profileService.ensureCommonProfiles();
     for (final team in teams) {
       await profileService.ensureTeamProfile(team.id, cli: team.cli);
     }
@@ -277,6 +276,7 @@ class TeamCubit extends Cubit<TeamState> {
       final enabled = catalog.where((s) => s.enabled).toList(growable: false);
 
       var result = await _skillLinker.syncForTeam(
+        teamId: team.id,
         skillIds: team.skillIds,
         installed: enabled,
       );
@@ -294,6 +294,7 @@ class TeamCubit extends Cubit<TeamState> {
           emit(state.copyWith(teams: teams));
           await _repository.saveTeams(teams);
           result = await _skillLinker.syncForTeam(
+            teamId: team.id,
             skillIds: prunedIds,
             installed: enabled,
           );

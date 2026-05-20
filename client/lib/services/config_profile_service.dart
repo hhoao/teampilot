@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:path/path.dart' as p;
 
 import '../models/team_config.dart';
+import 'cli_data_layout.dart';
 
 /// Launch-time environment for tool-isolated team profiles.
 typedef TeamLaunchEnvironment = Map<String, String>;
@@ -14,7 +15,9 @@ const configProfileAdhocSessionId = '_adhoc';
 
 /// Ensures team runtime isolation directories and returns launch env vars.
 ///
-/// Does not write team-level `llm_config.json`.
+/// All paths are derived from [CliDataLayout]; this class is a thin wrapper
+/// that adds CLI-specific bootstrap files (Claude roster, member settings,
+/// metadata) on top of the canonical layout.
 class ConfigProfileService {
   static const flashskyaiMetadataFileName = '.flashskyai.json';
   static const claudeMetadataFileName = '.claude.json';
@@ -26,46 +29,51 @@ class ConfigProfileService {
   static const Map<String, Object?> defaultClaudeMetadata = {
     'hasCompletedOnboarding': true,
   };
+
   ConfigProfileService({
-    required this.basePath,
+    required String basePath,
     ConfigProfileDirectoryCreator? createDirectory,
-  }) : _createDirectory = createDirectory ?? _createLocalDirectory;
+    CliDataLayout? layout,
+  }) : basePath = basePath,
+       _createDirectory = createDirectory ?? _createLocalDirectory,
+       layout =
+           layout ??
+           CliDataLayout(
+             teampilotRoot: basePath,
+             createDirectory: createDirectory,
+           );
 
   final String basePath;
   final ConfigProfileDirectoryCreator _createDirectory;
+  final CliDataLayout layout;
 
-  String get configProfilesDir => p.join(basePath, 'config-profiles');
+  String get configProfilesDir => layout.configProfilesDir;
 
-  String get commonFlashskyaiDir =>
-      p.join(configProfilesDir, 'common', 'flashskyai');
+  /// App-level FlashskyAI provider catalog file (`config-profiles/flashskyai/llm_config.json`).
+  String get appFlashskyaiLlmConfigFile => layout.appFlashskyaiLlmConfigFile;
 
-  String get commonFlashskyaiLlmConfigFile =>
-      p.join(commonFlashskyaiDir, 'llm_config.json');
-
-  String commonProfileDirForTool(String tool) =>
-      p.join(configProfilesDir, 'common', tool.trim());
+  String appToolDir(String tool) => layout.appToolRoot(tool);
 
   /// Team metadata scope: `config-profiles/teams/<teamId>/`.
   String teamScopeDir(String teamId) =>
       p.join(configProfilesDir, 'teams', teamId.trim());
 
-  /// Per-session scope: `config-profiles/teams/<teamId>/<sessionId>/`.
+  /// Per-session member scope: `config-profiles/teams/<teamId>/members/<sessionId>/`.
   String sessionProfileDir(String teamId, String sessionId) =>
-      p.join(teamScopeDir(teamId), sessionId.trim());
+      p.join(teamScopeDir(teamId), 'members', sessionId.trim());
 
   String sessionToolDir(String teamId, String sessionId, String tool) =>
-      p.join(sessionProfileDir(teamId, sessionId), tool.trim());
+      layout.memberToolDir(teamId, sessionId, tool);
 
   String sessionClaudeMemberSettingsFile(
     String teamId,
     String sessionId,
     TeamMemberConfig member,
-  ) =>
-      p.join(
-        sessionToolDir(teamId, sessionId, 'claude'),
-        'settings',
-        '${_safeClaudePathName(member.name)}.json',
-      );
+  ) => p.join(
+    sessionToolDir(teamId, sessionId, 'claude'),
+    'settings',
+    '${_safeClaudePathName(member.name)}.json',
+  );
 
   String sessionFlashskyaiMetadataFile(String teamId, String sessionId) =>
       p.join(
@@ -73,17 +81,18 @@ class ConfigProfileService {
         flashskyaiMetadataFileName,
       );
 
-  String sessionClaudeMetadataFile(String teamId, String sessionId) =>
-      p.join(
-        sessionToolDir(teamId, sessionId, 'claude'),
-        claudeMetadataFileName,
-      );
+  String sessionClaudeMetadataFile(String teamId, String sessionId) => p.join(
+    sessionToolDir(teamId, sessionId, 'claude'),
+    claudeMetadataFileName,
+  );
 
-  Future<void> ensureCommonProfiles() async {
-    await _createDirectory(commonFlashskyaiDir);
-  }
-
-  /// Ensures the team container exists under `config-profiles/teams/<teamId>/`.
+  /// Ensures the bare team scope directory exists.
+  ///
+  /// The team-level `{tool}/` subdirectory and inherited symlinks are
+  /// provisioned lazily by [ensureSessionProfile] (i.e. only when a member
+  /// actually launches the tool). Calling this on every load keeps the
+  /// `teams/<id>/` UI metadata location in lockstep with addTeam without
+  /// allocating empty tool roots.
   Future<void> ensureTeamProfile(
     String teamId, {
     TeamCli cli = TeamCli.flashskyai,
@@ -102,13 +111,15 @@ class ConfigProfileService {
     final trimmedSessionId = sessionId.trim();
     if (trimmedTeamId.isEmpty || trimmedSessionId.isEmpty) return;
 
-    await ensureTeamProfile(trimmedTeamId);
-    await _createDirectory(
-      sessionToolDir(trimmedTeamId, trimmedSessionId, cli.value),
+    await ensureTeamProfile(trimmedTeamId, cli: cli);
+    await layout.ensureMemberInheritsTeam(
+      trimmedTeamId,
+      trimmedSessionId,
+      cli.value,
     );
     switch (cli) {
       case TeamCli.flashskyai:
-        await ensureCommonProfiles();
+        await layout.ensureAppToolLayout('flashskyai');
         await ensureSessionFlashskyaiDefaults(trimmedTeamId, trimmedSessionId);
       case TeamCli.codex:
         break;
@@ -131,7 +142,10 @@ class ConfigProfileService {
     );
   }
 
-  Future<void> ensureSessionClaudeDefaults(String teamId, String sessionId) async {
+  Future<void> ensureSessionClaudeDefaults(
+    String teamId,
+    String sessionId,
+  ) async {
     final file = File(sessionClaudeMetadataFile(teamId, sessionId));
     if (await file.exists()) return;
 
@@ -165,11 +179,7 @@ class ConfigProfileService {
       runtimeTeamId: runtimeTeamId,
     );
 
-    await ensureSessionProfile(
-      scope.teamId,
-      scope.sessionId,
-      cli: cli,
-    );
+    await ensureSessionProfile(scope.teamId, scope.sessionId, cli: cli);
     if (cli == TeamCli.claude) {
       await _writeClaudeSettings(scope, claudeSettings);
       await _writeClaudeRoster(
@@ -193,7 +203,7 @@ class ConfigProfileService {
           scope.sessionId,
           'flashskyai',
         ),
-        'LLM_CONFIG_PATH': commonFlashskyaiLlmConfigFile,
+        'LLM_CONFIG_PATH': appFlashskyaiLlmConfigFile,
       },
       TeamCli.codex => {
         'CODEX_HOME': sessionToolDir(scope.teamId, scope.sessionId, 'codex'),

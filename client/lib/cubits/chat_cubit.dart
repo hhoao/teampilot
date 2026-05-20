@@ -23,7 +23,11 @@ typedef TerminalSessionFactory =
     TerminalSession Function({required String executable});
 typedef PostFrameScheduler = void Function(VoidCallback callback);
 typedef CliSessionDescriptorExists =
-    Future<bool> Function(String sessionId, String primaryPath);
+    Future<bool> Function({
+      required String sessionId,
+      required String teamId,
+      required String primaryPath,
+    });
 typedef SshActiveProfileResolver = SshProfile? Function();
 typedef CliExecutableResolver = String Function(TeamCli cli);
 
@@ -162,8 +166,11 @@ class ChatCubit extends Cubit<ChatState> {
        _autoLaunchAllMembersOnConnect = autoLaunchAllMembersOnConnect,
        _cliSessionDescriptorExists =
            cliSessionDescriptorExists ??
-           ((String sid, String path) async =>
-               AppStorage.cliSessionDescriptorExists(sid, path)),
+           (({
+             required String sessionId,
+             required String teamId,
+             required String primaryPath,
+           }) async => false),
        _sessionRepository = sessionRepository,
        _executableResolver = executableResolver,
        _cliExecutableResolver = cliExecutableResolver,
@@ -407,8 +414,9 @@ class ChatCubit extends Cubit<ChatState> {
     );
     final launched = session.launchState == AppSessionLaunchState.started;
     final cliHasSession = await _cliSessionDescriptorExists(
-      session.sessionId,
-      session.primaryPath,
+      sessionId: session.sessionId,
+      teamId: team?.id ?? session.sessionTeam,
+      primaryPath: session.primaryPath,
     );
     final useResume = launched && cliHasSession;
     final cliTeamName = _cliTeamNameForSession(session);

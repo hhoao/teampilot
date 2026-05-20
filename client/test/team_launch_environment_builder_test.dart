@@ -24,8 +24,15 @@ Future<void> _writeProvidersCatalog(
   );
 }
 
-String _claudeDir(String base, String teamId, String sessionId) =>
-    p.join(base, 'config-profiles', 'teams', teamId, sessionId, 'claude');
+String _claudeDir(String base, String teamId, String sessionId) => p.join(
+  base,
+  'config-profiles',
+  'teams',
+  teamId,
+  'members',
+  sessionId,
+  'claude',
+);
 
 void main() {
   late Directory base;
@@ -56,9 +63,14 @@ void main() {
         'config-profiles',
         'teams',
         'team-a',
+        'members',
         configProfileAdhocSessionId,
         'flashskyai',
       ),
+    );
+    expect(
+      env['LLM_CONFIG_PATH'],
+      p.join(base.path, 'config-profiles', 'flashskyai', 'llm_config.json'),
     );
     expect(env.containsKey('CLAUDE_CONFIG_DIR'), isFalse);
   });
@@ -73,11 +85,8 @@ void main() {
         storageIsRemote: true,
         teampilotRoot: remoteRoot,
         teamsUiDir: p.join(remoteRoot, 'teams'),
-        cliTeamsDir: '/remote/.flashskyai/teams',
         skillsRoot: p.join(remoteRoot, 'skills'),
         skillBackupsDir: p.join(remoteRoot, 'skill-backups'),
-        cliSkillsDir: '/remote/.flashskyai/skills',
-        cliAgentsDir: '/remote/.flashskyai/agents',
         appProjectsDir: p.join(remoteRoot, 'projects'),
         skillReposConfigPath: p.join(remoteRoot, 'skills.json'),
       ),
@@ -90,6 +99,7 @@ void main() {
         'config-profiles',
         'teams',
         'team-a',
+        'members',
         configProfileAdhocSessionId,
         'flashskyai',
       ),
@@ -110,6 +120,7 @@ void main() {
         'config-profiles',
         'teams',
         'team-a',
+        'members',
         configProfileAdhocSessionId,
         'codex',
       ),

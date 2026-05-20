@@ -120,7 +120,7 @@ void main() {
     );
   });
 
-  test('writes common flashskyai llm_config.json from flashskyai catalog', () async {
+  test('writes app flashskyai llm_config.json from flashskyai catalog', () async {
     const provider = AppProviderConfig(
       id: 'deepseek',
       cli: AppProviderCli.flashskyai,
@@ -133,17 +133,16 @@ void main() {
 
     await repo.saveProviders(AppProviderCli.flashskyai, [provider]);
 
-    final commonFile = File(
+    final appFile = File(
       p.join(
         root.path,
         'config-profiles',
-        'common',
         'flashskyai',
         'llm_config.json',
       ),
     );
-    expect(await commonFile.exists(), isTrue);
-    final raw = jsonDecode(await commonFile.readAsString()) as Map;
+    expect(await appFile.exists(), isTrue);
+    final raw = jsonDecode(await appFile.readAsString()) as Map;
     expect((raw['providers'] as Map).keys, contains('deepseek'));
   });
 

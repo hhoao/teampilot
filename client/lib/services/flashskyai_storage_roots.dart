@@ -2,44 +2,54 @@ import 'package:path/path.dart' as p;
 
 import '../models/ssh_profile.dart';
 import 'app_storage.dart';
+import 'cli_data_layout.dart';
 import 'remote_file_store.dart';
 import 'remote_ssh_storage_paths.dart';
 import 'remote_teampilot_app_data_resolver.dart';
 import 'ssh_client_factory.dart';
 
-/// Resolved filesystem roots for teams, skills, sessions, and CLI data.
+/// Resolved filesystem roots for teams, skills, sessions, and CLI config profiles.
 ///
-/// **Local PTY:** [teampilotRoot] is [AppStorage.basePath] (same layout as desktop).
+/// **Local PTY:** [teampilotRoot] is [AppStorage.basePath].
 ///
 /// **SSH:** [teampilotRoot] is the remote TeamPilot app-data directory
-/// (`~/.local/share/com.hhoa.teampilot`, same as desktop [AppStorage.basePath]).
-/// CLI-owned trees still use [remoteCliDataDir] (`~/.flashskyai`).
+/// (`~/.local/share/com.hhoa.teampilot`, mirroring desktop [AppStorage.basePath]).
+/// All CLI runtime data lives under `<teampilotRoot>/config-profiles/`; the
+/// legacy `~/.flashskyai` tree is no longer consulted.
 class StorageRootsSnapshot {
-  const StorageRootsSnapshot({
+  StorageRootsSnapshot({
     required this.storageIsRemote,
     required this.teampilotRoot,
     required this.teamsUiDir,
-    required this.cliTeamsDir,
     required this.skillsRoot,
     required this.skillBackupsDir,
-    required this.cliSkillsDir,
-    required this.cliAgentsDir,
     required this.appProjectsDir,
     required this.skillReposConfigPath,
     this.remoteFileStore,
-    this.remoteCliDataDir,
-  });
+    CliDataLayout? layout,
+  }) : layout =
+           layout ??
+           CliDataLayout(
+             teampilotRoot: teampilotRoot,
+             createDirectory: remoteFileStore?.ensureDirectory,
+             createSymlink: remoteFileStore == null
+                 ? null
+                 : ({required String target, required String linkPath}) async {
+                     await remoteFileStore.createSymlink(
+                       target: target,
+                       linkPath: linkPath,
+                     );
+                     return true;
+                   },
+           );
 
   factory StorageRootsSnapshot.local() {
     return StorageRootsSnapshot(
       storageIsRemote: false,
       teampilotRoot: AppStorage.basePath,
       teamsUiDir: AppStorage.teamsDir,
-      cliTeamsDir: AppStorage.cliTeamsDir,
       skillsRoot: p.join(AppStorage.basePath, 'skills'),
       skillBackupsDir: p.join(AppStorage.basePath, 'skill-backups'),
-      cliSkillsDir: p.join(AppStorage.flashskyaiDataDir, 'skills'),
-      cliAgentsDir: AppStorage.cliAgentsDir,
       appProjectsDir: AppStorage.appProjectsDir,
       skillReposConfigPath: AppStorage.skillReposConfigPath,
     );
@@ -51,13 +61,8 @@ class StorageRootsSnapshot {
   final String teampilotRoot;
 
   final String teamsUiDir;
-  final String cliTeamsDir;
   final String skillsRoot;
   final String skillBackupsDir;
-  final String cliSkillsDir;
-
-  /// User agent markdown under the CLI data root (`agents/*.md`).
-  final String cliAgentsDir;
 
   /// `projects.json` + `sessions/` (app session index).
   final String appProjectsDir;
@@ -66,13 +71,12 @@ class StorageRootsSnapshot {
   final String skillReposConfigPath;
 
   final RemoteFileStore? remoteFileStore;
-  final String? remoteCliDataDir;
 
-  @Deprecated('Use storageIsRemote')
-  bool get cliStorageIsRemote => storageIsRemote;
+  /// CLI runtime layout under `<teampilotRoot>/config-profiles/`.
+  final CliDataLayout layout;
 
-  @Deprecated('Use storageIsRemote')
-  bool get isRemote => storageIsRemote;
+  /// Convenience accessor: `<teampilotRoot>/config-profiles/flashskyai/`.
+  String get appFlashskyaiDir => layout.appToolRoot('flashskyai');
 }
 
 class FlashskyaiStorageRoots {
@@ -134,8 +138,6 @@ class FlashskyaiStorageRoots {
       return StorageRootsSnapshot.local();
     }
 
-    final dataDir = paths.cliDataDir;
-    final posix = p.Context(style: p.Style.posix);
     final fileStore = RemoteFileStore(profile: profile, clientFactory: factory);
 
     // Warm the shared SFTP channel before parallel stat probes.
@@ -143,7 +145,7 @@ class FlashskyaiStorageRoots {
 
     final primaryTeampilot = paths.teampilotAppDir;
     final legacyTeampilot =
-        RemoteTeampilotAppDataResolver.legacyTeampilotRootForCliData(dataDir);
+        AppStorage.defaultTeampilotAppDataDirForHome(paths.home);
     var teampilot = primaryTeampilot;
     if (primaryTeampilot != legacyTeampilot) {
       final exists = await Future.wait([
@@ -163,17 +165,13 @@ class FlashskyaiStorageRoots {
       storageIsRemote: true,
       teampilotRoot: teampilot,
       teamsUiDir: AppStorage.teamsUiDirForTeampilotRoot(teampilot),
-      cliTeamsDir: posix.join(dataDir, 'teams'),
       skillsRoot: AppStorage.skillsDirForTeampilotRoot(teampilot),
       skillBackupsDir: AppStorage.skillBackupsDirForTeampilotRoot(teampilot),
-      cliSkillsDir: posix.join(dataDir, 'skills'),
-      cliAgentsDir: posix.join(dataDir, 'agents'),
       appProjectsDir: AppStorage.appProjectsDirForTeampilotRoot(teampilot),
       skillReposConfigPath: AppStorage.skillReposConfigPathForTeampilotRoot(
         teampilot,
       ),
       remoteFileStore: fileStore,
-      remoteCliDataDir: dataDir,
     );
   }
 }

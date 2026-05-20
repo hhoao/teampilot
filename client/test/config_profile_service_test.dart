@@ -6,17 +6,19 @@ import 'package:path/path.dart' as p;
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/config_profile_service.dart';
 
-String _sessionClaudeDir(String base, String teamId, String sessionId) => p.join(
-  base,
-  'config-profiles',
-  'teams',
-  teamId,
-  sessionId,
-  'claude',
-);
+String _sessionClaudeDir(String base, String teamId, String sessionId) =>
+    p.join(
+      base,
+      'config-profiles',
+      'teams',
+      teamId,
+      'members',
+      sessionId,
+      'claude',
+    );
 
-String _commonFlashskyaiDirPath(String base) =>
-    p.join(base, 'config-profiles', 'common', 'flashskyai');
+String _appFlashskyaiDirPath(String base) =>
+    p.join(base, 'config-profiles', 'flashskyai');
 
 void main() {
   late Directory base;
@@ -31,7 +33,7 @@ void main() {
     if (await base.exists()) await base.delete(recursive: true);
   });
 
-  test('ensureTeamProfile creates team scope dir only', () async {
+  test('ensureTeamProfile creates bare team scope dir only', () async {
     await service.ensureTeamProfile('team-a', cli: TeamCli.flashskyai);
 
     final teamRoot = Directory(
@@ -42,48 +44,42 @@ void main() {
       await Directory(p.join(teamRoot.path, 'flashskyai')).exists(),
       isFalse,
     );
-    expect(await Directory(p.join(teamRoot.path, '_adhoc')).exists(), isFalse);
+    expect(await Directory(p.join(teamRoot.path, 'members')).exists(), isFalse);
   });
 
   test(
-    'prepareTeamLaunch for flashskyai uses team and adhoc session dirs',
+    'prepareTeamLaunch for flashskyai uses team adhoc member dir',
     () async {
       final env = await service.prepareTeamLaunch(
         teamId: 'team-a',
         cli: TeamCli.flashskyai,
       );
 
-      final sessionRoot = p.join(
+      final memberFlashskyaiDir = p.join(
         base.path,
         'config-profiles',
         'teams',
         'team-a',
+        'members',
         configProfileAdhocSessionId,
+        'flashskyai',
       );
 
       expect(
-        await Directory(_commonFlashskyaiDirPath(base.path)).exists(),
+        await Directory(_appFlashskyaiDirPath(base.path)).exists(),
         isTrue,
       );
-      expect(await Directory(p.join(sessionRoot, 'flashskyai')).exists(), isTrue);
-      expect(await Directory(p.join(sessionRoot, 'codex')).exists(), isFalse);
+      expect(await Directory(memberFlashskyaiDir).exists(), isTrue);
       expect(env.keys, ['FLASHSKYAI_CONFIG_DIR', 'LLM_CONFIG_PATH']);
-      expect(env['FLASHSKYAI_CONFIG_DIR'], p.join(sessionRoot, 'flashskyai'));
+      expect(env['FLASHSKYAI_CONFIG_DIR'], memberFlashskyaiDir);
       expect(
         env['LLM_CONFIG_PATH'],
-        p.join(
-          base.path,
-          'config-profiles',
-          'common',
-          'flashskyai',
-          'llm_config.json',
-        ),
+        p.join(base.path, 'config-profiles', 'flashskyai', 'llm_config.json'),
       );
 
       final metadata = File(
         p.join(
-          sessionRoot,
-          'flashskyai',
+          memberFlashskyaiDir,
           ConfigProfileService.flashskyaiMetadataFileName,
         ),
       );
@@ -102,6 +98,7 @@ void main() {
       'config-profiles',
       'teams',
       'team-a',
+      'members',
       configProfileAdhocSessionId,
       'codex',
     );

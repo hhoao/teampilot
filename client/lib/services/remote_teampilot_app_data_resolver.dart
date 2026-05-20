@@ -4,7 +4,6 @@ import 'package:dartssh2/dartssh2.dart';
 import 'package:path/path.dart' as p;
 
 import '../models/ssh_profile.dart';
-import 'app_storage.dart';
 import 'ssh_client_factory.dart';
 
 typedef SshRunCapture =
@@ -44,10 +43,6 @@ printf '%s' "${TEAMPILOT_APP_DATA_DIR:-${XDG_DATA_HOME:-$HOME/.local/share}/com.
       return null;
     }
   }
-
-  /// Legacy layout used during early SSH experiments: `~/.flashskyai/teampilot`.
-  static String legacyTeampilotRootForCliData(String cliDataDir) =>
-      AppStorage.teampilotDirForCliData(cliDataDir);
 
   static Future<String> pickTeampilotRoot({
     required String primary,

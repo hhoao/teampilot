@@ -131,7 +131,6 @@ void main() async {
     }
   }
   final cliLocated = locatedExecutables[TeamCli.flashskyai];
-  await AppStorage.useWslCliDataDirIfNeeded(cliLocated);
 
   if (!Platform.isAndroid) {
     await windowManager.setPreventClose(true);

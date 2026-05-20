@@ -10,16 +10,14 @@ import 'ssh_client_factory.dart';
 typedef SshRunCapture =
     Future<SSHRunResult> Function(SSHClient client, String command);
 
-/// Home, CLI data dir, and TeamPilot app-data dir on a remote SSH host.
+/// Home + TeamPilot app-data dir on a remote SSH host.
 class RemoteSshStoragePaths {
   const RemoteSshStoragePaths({
     required this.home,
-    required this.cliDataDir,
     required this.teampilotAppDir,
   });
 
   final String home;
-  final String cliDataDir;
   final String teampilotAppDir;
 }
 
@@ -34,12 +32,11 @@ class RemoteSshStoragePathResolver {
   final SshClientFactory _clientFactory;
   final SshRunCapture? _runCommand;
 
-  /// One shell invocation: `$HOME`, flashskyai data dir, teampilot app dir.
+  /// Resolves `$HOME` and the TeamPilot app-data dir in one shell round-trip.
   static const resolveCommand = r'''
 HOME_DIR="$HOME"
-CLI_DIR="${FLASHSKYAI_DATA_DIR:-$HOME_DIR/.flashskyai}"
 TP_DIR="${TEAMPILOT_APP_DATA_DIR:-${XDG_DATA_HOME:-$HOME_DIR/.local/share}/com.hhoa.teampilot}"
-printf '%s\n' "$HOME_DIR" "$CLI_DIR" "$TP_DIR"
+printf '%s\n' "$HOME_DIR" "$TP_DIR"
 ''';
 
   Future<RemoteSshStoragePaths?> resolve(SshProfile profile) async {
@@ -53,12 +50,8 @@ printf '%s\n' "$HOME_DIR" "$CLI_DIR" "$TP_DIR"
           .map((l) => l.trim())
           .where((l) => l.isNotEmpty)
           .toList();
-      if (lines.length < 3) return null;
-      return RemoteSshStoragePaths(
-        home: lines[0],
-        cliDataDir: lines[1],
-        teampilotAppDir: lines[2],
-      );
+      if (lines.length < 2) return null;
+      return RemoteSshStoragePaths(home: lines[0], teampilotAppDir: lines[1]);
     } on Object {
       return null;
     }
@@ -69,8 +62,9 @@ printf '%s\n' "$HOME_DIR" "$CLI_DIR" "$TP_DIR"
     final posix = p.Context(style: p.Style.posix);
     return RemoteSshStoragePaths(
       home: home,
-      cliDataDir: posix.join(home, '.flashskyai'),
-      teampilotAppDir: AppStorage.defaultTeampilotAppDataDirForHome(home),
+      teampilotAppDir: posix.join(
+        AppStorage.defaultTeampilotAppDataDirForHome(home),
+      ),
     );
   }
 

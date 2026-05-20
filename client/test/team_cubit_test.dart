@@ -20,16 +20,26 @@ Skill _skill(String id) => Skill(
 );
 
 class _RecordingLinker extends TeamSkillLinkerService {
-  _RecordingLinker() : super(appSkillsRoot: '/tmp', cliSkillsDir: '/tmp/cli');
+  _RecordingLinker()
+    : super(appSkillsRoot: '/tmp', teamSkillsRootOverride: '/tmp/cli');
 
-  final syncs = <({List<String> skillIds, List<Skill> installed})>[];
+  final syncs = <({
+    String teamId,
+    List<String> skillIds,
+    List<Skill> installed,
+  })>[];
 
   @override
   Future<TeamSkillSyncResult> syncForTeam({
+    required String teamId,
     required List<String> skillIds,
     required List<Skill> installed,
   }) async {
-    syncs.add((skillIds: List.of(skillIds), installed: List.of(installed)));
+    syncs.add((
+      teamId: teamId,
+      skillIds: List.of(skillIds),
+      installed: List.of(installed),
+    ));
     return const TeamSkillSyncResult();
   }
 }

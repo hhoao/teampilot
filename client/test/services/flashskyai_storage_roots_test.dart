@@ -25,8 +25,7 @@ void main() {
     final snap = await roots.resolve();
     expect(snap.storageIsRemote, isFalse);
     expect(snap.teamsUiDir, AppStorage.teamsDir);
-    expect(snap.cliTeamsDir, AppStorage.cliTeamsDir);
-    expect(snap.cliAgentsDir, AppStorage.cliAgentsDir);
+    expect(snap.appFlashskyaiDir, endsWith('/config-profiles/flashskyai'));
     expect(snap.remoteFileStore, isNull);
   });
 
@@ -39,31 +38,32 @@ void main() {
     expect(snap.storageIsRemote, isFalse);
   });
 
-  test('SSH snapshot uses XDG teampilot app dir + flashskyai CLI dir', () {
+  test('SSH snapshot exposes layout under teampilotRoot/config-profiles', () {
     const teampilotRoot = '/home/remote/.local/share/com.hhoa.teampilot';
-    const dataDir = '/home/remote/.flashskyai';
     final snap = StorageRootsSnapshot(
       storageIsRemote: true,
       teampilotRoot: teampilotRoot,
       teamsUiDir: AppStorage.teamsUiDirForTeampilotRoot(teampilotRoot),
-      cliTeamsDir: '$dataDir/teams',
       skillsRoot: AppStorage.skillsDirForTeampilotRoot(teampilotRoot),
       skillBackupsDir: AppStorage.skillBackupsDirForTeampilotRoot(teampilotRoot),
-      cliSkillsDir: '$dataDir/skills',
-      cliAgentsDir: '$dataDir/agents',
       appProjectsDir: AppStorage.appProjectsDirForTeampilotRoot(teampilotRoot),
       skillReposConfigPath:
           AppStorage.skillReposConfigPathForTeampilotRoot(teampilotRoot),
-      remoteCliDataDir: dataDir,
     );
     expect(snap.teampilotRoot, teampilotRoot);
     expect(snap.teamsUiDir, '$teampilotRoot/teams');
-    expect(snap.cliTeamsDir, '/home/remote/.flashskyai/teams');
     expect(snap.skillsRoot, '$teampilotRoot/skills');
-    expect(snap.cliSkillsDir, '/home/remote/.flashskyai/skills');
-    expect(snap.cliAgentsDir, '/home/remote/.flashskyai/agents');
     expect(snap.appProjectsDir, '$teampilotRoot/projects');
     expect(snap.skillReposConfigPath, '$teampilotRoot/skills.json');
+    expect(snap.appFlashskyaiDir, '$teampilotRoot/config-profiles/flashskyai');
+    expect(
+      snap.layout.teamToolDir('team-a', 'flashskyai'),
+      '$teampilotRoot/config-profiles/teams/team-a/flashskyai',
+    );
+    expect(
+      snap.layout.memberToolDir('team-a', 'sess-1', 'flashskyai'),
+      '$teampilotRoot/config-profiles/teams/team-a/members/sess-1/flashskyai',
+    );
   });
 
   test('pickTeampilotRoot prefers primary when it has data', () async {

@@ -593,11 +593,8 @@ void main() {
           storageIsRemote: false,
           teampilotRoot: tmp.path,
           teamsUiDir: p.join(tmp.path, 'teams'),
-          cliTeamsDir: p.join(tmp.path, 'cli-teams'),
           skillsRoot: p.join(tmp.path, 'skills'),
           skillBackupsDir: p.join(tmp.path, 'skill-backups'),
-          cliSkillsDir: p.join(tmp.path, 'cli-skills'),
-          cliAgentsDir: p.join(tmp.path, 'cli-agents'),
           appProjectsDir: p.join(tmp.path, 'projects'),
           skillReposConfigPath: p.join(tmp.path, 'skills.json'),
         ),
@@ -636,6 +633,7 @@ void main() {
           'config-profiles',
           'teams',
           'test-team',
+          'members',
           sessionId,
           'claude',
         ),
@@ -648,6 +646,7 @@ void main() {
           'config-profiles',
           'teams',
           'test-team',
+          'members',
           sessionId,
           'claude',
           'settings',
@@ -808,7 +807,11 @@ void main() {
         return captured!;
       },
       postFrameScheduler: postFrame.scheduler,
-      cliSessionDescriptorExists: (_, __) async => true,
+      cliSessionDescriptorExists: ({
+        required String sessionId,
+        required String teamId,
+        required String primaryPath,
+      }) async => true,
     );
     await cubit.loadProjectData(repo);
     final rel = cubit.state.sessions.single;
@@ -847,7 +850,11 @@ void main() {
           return captured!;
         },
         postFrameScheduler: postFrame.scheduler,
-        cliSessionDescriptorExists: (_, __) async => false,
+        cliSessionDescriptorExists: ({
+          required String sessionId,
+          required String teamId,
+          required String primaryPath,
+        }) async => false,
       );
       await cubit.loadProjectData(repo);
       final rel = cubit.state.sessions.single;

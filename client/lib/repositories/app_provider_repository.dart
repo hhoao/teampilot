@@ -42,10 +42,9 @@ class AppProviderRepository {
   File providersFile(AppProviderCli cli) =>
       providersFileForBasePath(_basePath, cli);
 
-  String get _commonFlashskyaiLlmConfigFile => p.join(
+  String get _appFlashskyaiLlmConfigFile => p.join(
     _basePath,
     'config-profiles',
-    'common',
     'flashskyai',
     'llm_config.json',
   );
@@ -191,7 +190,7 @@ class AppProviderRepository {
     );
 
     await _generator.writeJsonAtomic(
-      File(_commonFlashskyaiLlmConfigFile),
+      File(_appFlashskyaiLlmConfigFile),
       config.toJson(),
     );
   }

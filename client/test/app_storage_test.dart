@@ -25,121 +25,25 @@ void main() {
       }
     });
 
-    test('cliAgentsDir is under flashskyai data root', () {
-    expect(
-      AppStorage.cliAgentsDir,
-      endsWith('${Platform.pathSeparator}agents'),
-    );
-    expect(
-      AppStorage.cliAgentsDir,
-      startsWith(AppStorage.flashskyaiDataDir),
-    );
+    test('teamsDir sits next to basePath', () {
+      expect(AppStorage.teamsDir, p.join(appDataRoot.path, 'teams'));
     });
 
-    test('cliProjectBucketForPrimaryPath matches CLI projects layout', () {
-    expect(
-      AppStorage.cliProjectBucketForPrimaryPath('/home/hhoa/agent'),
-      '-home-hhoa-agent',
-    );
-    expect(
-      AppStorage.cliProjectBucketForPrimaryPath(
-        r'D:\a\teampilot\teampilot\client',
-      ),
-      '-mnt-d-a-teampilot-teampilot-client',
-    );
-    expect(
-      AppStorage.cliProjectBucketForPrimaryPath(r'C:\Users\hhoa\agent'),
-      '-mnt-c-Users-hhoa-agent',
-    );
-    expect(AppStorage.cliProjectBucketForPrimaryPath(''), '');
+    test('configProfilesDir sits under basePath', () {
+      expect(
+        AppStorage.configProfilesDir,
+        p.join(appDataRoot.path, 'config-profiles'),
+      );
     });
-  });
 
-  test('cliSessionDescriptorExists resolves Windows drive bucket slugs', () async {
-    final tmp = await Directory.systemTemp.createTemp('fsai_cli_root_');
-    addTearDown(() => tmp.deleteSync(recursive: true));
-    const uuid = 'dddddddd-dddd-dddd-dddd-dddddddddddd';
-    final bucket = p.join(
-      tmp.path,
-      'projects',
-      '-mnt-d-a-teampilot-teampilot-client',
-    );
-    await Directory(bucket).create(recursive: true);
-    await File(p.join(bucket, '$uuid.jsonl')).writeAsString('');
-
-    expect(
-      AppStorage.cliSessionDescriptorExists(
-        uuid,
-        r'D:\a\teampilot\teampilot\client',
-        dataRoot: tmp.path,
-      ),
-      isTrue,
-    );
-  });
-
-  test('cliSessionDescriptorExists finds jsonl under projects bucket', () async {
-    final tmp = await Directory.systemTemp.createTemp('fsai_cli_root_');
-    addTearDown(() => tmp.deleteSync(recursive: true));
-    const uuid = '2b5f4dec-9534-4960-b967-fd492e272cec';
-    final bucket = p.join(tmp.path, 'projects', '-home-hhoa-agent');
-    await Directory(bucket).create(recursive: true);
-    await File(p.join(bucket, '$uuid.jsonl')).writeAsString('');
-
-    expect(
-      AppStorage.cliSessionDescriptorExists(
-        uuid,
-        '/home/hhoa/agent',
-        dataRoot: tmp.path,
-      ),
-      isTrue,
-    );
-  });
-
-  test('cliSessionDescriptorExists finds sessions json', () async {
-    final tmp = await Directory.systemTemp.createTemp('fsai_cli_root_');
-    addTearDown(() => tmp.deleteSync(recursive: true));
-    const uuid = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee';
-    await Directory(p.join(tmp.path, 'sessions')).create(recursive: true);
-    await File(p.join(tmp.path, 'sessions', '$uuid.json')).writeAsString('{}');
-
-    expect(
-      AppStorage.cliSessionDescriptorExists(uuid, '', dataRoot: tmp.path),
-      isTrue,
-    );
-  });
-
-  test('cliSessionDescriptorExists scans projects when slug mismatches', () async {
-    final tmp = await Directory.systemTemp.createTemp('fsai_cli_root_');
-    addTearDown(() => tmp.deleteSync(recursive: true));
-    const uuid = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
-    final bucket = p.join(tmp.path, 'projects', 'custom-bucket-name');
-    await Directory(bucket).create(recursive: true);
-    await File(p.join(bucket, '$uuid.jsonl')).writeAsString('');
-
-    expect(
-      AppStorage.cliSessionDescriptorExists(
-        uuid,
-        '/wrong/path',
-        dataRoot: tmp.path,
-      ),
-      isTrue,
-    );
-  });
-
-  test('cliSessionDescriptorExists finds session directory under bucket', () async {
-    final tmp = await Directory.systemTemp.createTemp('fsai_cli_root_');
-    addTearDown(() => tmp.deleteSync(recursive: true));
-    const uuid = 'cccccccc-cccc-cccc-cccc-cccccccccccc';
-    final bucket = p.join(tmp.path, 'projects', '-tmp-work');
-    await Directory(p.join(bucket, uuid)).create(recursive: true);
-
-    expect(
-      AppStorage.cliSessionDescriptorExists(
-        uuid,
-        '/tmp/work',
-        dataRoot: tmp.path,
-      ),
-      isTrue,
-    );
+    test('teamPilot teampilotRoot helpers join under root', () {
+      const root = '/remote/.local/share/com.hhoa.teampilot';
+      expect(AppStorage.teamsUiDirForTeampilotRoot(root), '$root/teams');
+      expect(AppStorage.skillsDirForTeampilotRoot(root), '$root/skills');
+      expect(
+        AppStorage.appProjectsDirForTeampilotRoot(root),
+        '$root/projects',
+      );
+    });
   });
 }
