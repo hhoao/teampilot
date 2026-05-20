@@ -2,7 +2,24 @@ import 'dart:io';
 
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/repositories/session_repository.dart';
+import 'package:teampilot/services/session_lifecycle_service.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+class _RecordingLifecycleService extends SessionLifecycleService {
+  _RecordingLifecycleService()
+    : super(appDataBasePath: Directory.systemTemp.path);
+
+  final destroyed = <({String teamId, String sessionId})>[];
+
+  @override
+  Future<void> destroyCliState({
+    required String teamId,
+    required String sessionId,
+    String? runtimeSessionId,
+  }) async {
+    destroyed.add((teamId: teamId, sessionId: sessionId));
+  }
+}
 
 void main() {
   test('empty root yields empty projects and sessions', () async {
@@ -66,6 +83,50 @@ void main() {
       File('${tmp.path}/sessions/${s2.sessionId}.json').existsSync(),
       isFalse,
     );
+  });
+
+  test(
+    'deleteSession destroys CLI state before removing session metadata',
+    () async {
+      final tmp = await Directory.systemTemp.createTemp('fs_session_repo_');
+      addTearDown(() => tmp.deleteSync(recursive: true));
+      final lifecycle = _RecordingLifecycleService();
+      final repo = SessionRepository(
+        rootDir: tmp.path,
+        lifecycleService: lifecycle,
+      );
+      final project = await repo.createProject('/a');
+      final session = await repo.createSession(
+        project.projectId,
+        sessionTeam: 'team-a',
+      );
+
+      await repo.deleteSession(session.sessionId);
+
+      expect(lifecycle.destroyed, [
+        (teamId: 'team-a', sessionId: session.sessionId),
+      ]);
+    },
+  );
+
+  test('deleteProject cascades CLI state for all project sessions', () async {
+    final tmp = await Directory.systemTemp.createTemp('fs_session_repo_');
+    addTearDown(() => tmp.deleteSync(recursive: true));
+    final lifecycle = _RecordingLifecycleService();
+    final repo = SessionRepository(
+      rootDir: tmp.path,
+      lifecycleService: lifecycle,
+    );
+    final project = await repo.createProject('/a');
+    final s1 = await repo.createSession(project.projectId, sessionTeam: 'T');
+    final s2 = await repo.createSession(project.projectId, sessionTeam: 'T');
+
+    await repo.deleteProject(project.projectId);
+
+    expect(lifecycle.destroyed, [
+      (teamId: 'T', sessionId: s1.sessionId),
+      (teamId: 'T', sessionId: s2.sessionId),
+    ]);
   });
 
   test(

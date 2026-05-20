@@ -34,8 +34,8 @@ import 'services/app_storage.dart';
 import 'services/cli_tool_locator.dart';
 import 'services/connection_mode_service.dart';
 import 'services/flashskyai_storage_roots.dart';
-import 'services/remote_cli_session_checker.dart';
 import 'services/remote_ssh_storage_paths.dart';
+import 'services/session_lifecycle_service.dart';
 import 'services/skill_fetch_service.dart';
 import 'services/skill_repo_git_service.dart';
 import 'services/skill_repo_disk_cache_service.dart';
@@ -175,6 +175,7 @@ void main() async {
   late final SessionRepository sessionRepo;
   late final ChatCubit chatCubit;
   late final FlashskyaiStorageRoots storageRoots;
+  late final SessionLifecycleService sessionLifecycleService;
 
   final sshProfileCubit = SshProfileCubit(
     profileRepository: sshProfileRepo,
@@ -215,10 +216,6 @@ void main() async {
     ),
   );
 
-  sessionRepo = SessionRepository(storageRoots: storageRoots);
-  final remoteCliSessionChecker = RemoteCliSessionChecker(storageRoots);
-
-  final teamRepo = TeamRepository(storageRoots: storageRoots);
   final skillManifest = SkillManifestService(storageRoots: storageRoots);
   final skillGit = SkillRepoGitService();
   final skillFetch = SkillFetchService(git: skillGit);
@@ -257,12 +254,26 @@ void main() async {
     return s.isUsingCustomPath ? path : null;
   }
 
+  sessionLifecycleService = SessionLifecycleService(
+    llmConfigPathOverride: llmConfigPathOverrideForLaunch,
+    storageRootsResolver: storageRoots.resolve,
+  );
+  sessionRepo = SessionRepository(
+    storageRoots: storageRoots,
+    lifecycleService: sessionLifecycleService,
+  );
+  final teamRepo = TeamRepository(
+    storageRoots: storageRoots,
+    lifecycleService: sessionLifecycleService,
+  );
+
   teamCubit = TeamCubit(
     repository: teamRepo,
     executableResolver: () => sessionPreferencesCubit.resolveExecutable(),
     cliExecutableResolver: sessionPreferencesCubit.resolveExecutable,
     llmConfigPathOverride: llmConfigPathOverrideForLaunch,
     storageRootsResolver: storageRoots.resolve,
+    lifecycleService: sessionLifecycleService,
     skillLinker: TeamSkillLinkerService(storageRoots: storageRoots),
     installedSkillsLoader: () => skillRepo.loadInstalled(),
   );
@@ -282,9 +293,7 @@ void main() async {
 
   chatCubit = ChatCubit(
     sessionRepository: sessionRepo,
-    cliSessionDescriptorExists: remoteCliSessionChecker.exists,
-    llmConfigPathOverride: llmConfigPathOverrideForLaunch,
-    storageRootsResolver: storageRoots.resolve,
+    lifecycleService: sessionLifecycleService,
     autoLaunchAllMembersOnConnect: () =>
         sessionPreferencesCubit.state.preferences.autoLaunchAllMembersOnConnect,
     executableResolver: () => sessionPreferencesCubit.resolveExecutable(),

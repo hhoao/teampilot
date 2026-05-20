@@ -24,6 +24,7 @@ import 'package:teampilot/models/connection_mode.dart';
 import 'package:teampilot/services/config_profile_service.dart';
 import 'package:teampilot/services/connection_mode_service.dart';
 import 'package:teampilot/services/flashskyai_storage_roots.dart';
+import 'package:teampilot/services/session_lifecycle_service.dart';
 import 'package:teampilot/services/terminal_session.dart';
 import 'package:teampilot/utils/app_keys.dart';
 import 'package:flutter/material.dart';
@@ -232,6 +233,29 @@ class FakeTerminalSession extends TerminalSession {
   @override
   void dispose() {
     _running = false;
+  }
+}
+
+class _FixedResumeLifecycleService extends SessionLifecycleService {
+  _FixedResumeLifecycleService({required this.resume})
+    : super(appDataBasePath: Directory.systemTemp.path);
+
+  final bool resume;
+
+  @override
+  Future<LaunchPlan> prepareLaunch({
+    required AppSession session,
+    TeamConfig? team,
+    TeamMemberConfig? member,
+    String? llmConfigPathOverride,
+  }) async {
+    return LaunchPlan(
+      env: const {},
+      resume: resume,
+      sessionIdArg: session.sessionId,
+      memberConfigDir: '',
+      resolvedRoots: const [],
+    );
   }
 }
 
@@ -589,14 +613,16 @@ void main() {
           return session;
         },
         postFrameScheduler: postFrame.scheduler,
-        storageRootsResolver: () async => StorageRootsSnapshot(
-          storageIsRemote: false,
-          teampilotRoot: tmp.path,
-          teamsUiDir: p.join(tmp.path, 'teams'),
-          skillsRoot: p.join(tmp.path, 'skills'),
-          skillBackupsDir: p.join(tmp.path, 'skill-backups'),
-          appProjectsDir: p.join(tmp.path, 'projects'),
-          skillReposConfigPath: p.join(tmp.path, 'skills.json'),
+        lifecycleService: SessionLifecycleService(
+          storageRootsResolver: () async => StorageRootsSnapshot(
+            storageIsRemote: false,
+            teampilotRoot: tmp.path,
+            teamsUiDir: p.join(tmp.path, 'teams'),
+            skillsRoot: p.join(tmp.path, 'skills'),
+            skillBackupsDir: p.join(tmp.path, 'skill-backups'),
+            appProjectsDir: p.join(tmp.path, 'projects'),
+            skillReposConfigPath: p.join(tmp.path, 'skills.json'),
+          ),
         ),
       );
       const team = TeamConfig(
@@ -614,8 +640,7 @@ void main() {
 
       expect(sessions, hasLength(1));
       final claudeDir =
-          sessions.single.lastExtraEnvironments.single?['CLAUDE_CONFIG_DIR']
-              as String?;
+          sessions.single.lastExtraEnvironments.single?['CLAUDE_CONFIG_DIR'];
       expect(claudeDir, isNotNull);
       final sessionId = p.basename(p.dirname(claudeDir!));
       expect(
@@ -807,11 +832,7 @@ void main() {
         return captured!;
       },
       postFrameScheduler: postFrame.scheduler,
-      cliSessionDescriptorExists: ({
-        required String sessionId,
-        required String teamId,
-        required String primaryPath,
-      }) async => true,
+      lifecycleService: _FixedResumeLifecycleService(resume: true),
     );
     await cubit.loadProjectData(repo);
     final rel = cubit.state.sessions.single;
@@ -850,11 +871,7 @@ void main() {
           return captured!;
         },
         postFrameScheduler: postFrame.scheduler,
-        cliSessionDescriptorExists: ({
-          required String sessionId,
-          required String teamId,
-          required String primaryPath,
-        }) async => false,
+        lifecycleService: _FixedResumeLifecycleService(resume: false),
       );
       await cubit.loadProjectData(repo);
       final rel = cubit.state.sessions.single;

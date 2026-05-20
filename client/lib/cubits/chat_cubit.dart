@@ -13,8 +13,7 @@ import '../models/launch_target.dart';
 import '../models/ssh_profile.dart';
 import '../models/team_config.dart';
 import '../repositories/session_repository.dart';
-import '../services/app_storage.dart';
-import '../services/team_launch_environment_builder.dart';
+import '../services/session_lifecycle_service.dart';
 import '../services/terminal_session.dart';
 import '../services/terminal_transport_factory.dart';
 import '../utils/logger.dart';
@@ -22,12 +21,6 @@ import '../utils/logger.dart';
 typedef TerminalSessionFactory =
     TerminalSession Function({required String executable});
 typedef PostFrameScheduler = void Function(VoidCallback callback);
-typedef CliSessionDescriptorExists =
-    Future<bool> Function({
-      required String sessionId,
-      required String teamId,
-      required String primaryPath,
-    });
 typedef SshActiveProfileResolver = SshProfile? Function();
 typedef CliExecutableResolver = String Function(TeamCli cli);
 
@@ -150,33 +143,23 @@ class ChatCubit extends Cubit<ChatState> {
     CliExecutableResolver? cliExecutableResolver,
     TerminalSessionFactory terminalSessionFactory = TerminalSession.new,
     PostFrameScheduler? postFrameScheduler,
-    String? Function()? llmConfigPathOverride,
     bool Function()? autoLaunchAllMembersOnConnect,
-    CliSessionDescriptorExists? cliSessionDescriptorExists,
+    SessionLifecycleService? lifecycleService,
     SessionRepository? sessionRepository,
     TerminalTransportFactory? transportFactory,
     SshActiveProfileResolver? sshProfileResolver,
-    StorageRootsResolver? storageRootsResolver,
     String Function()? sshDefaultWorkingDirectoryResolver,
     bool Function()? sshUseLoginShellResolver,
     ConnectionMode Function()? connectionModeResolver,
   }) : _terminalSessionFactory = terminalSessionFactory,
        _postFrameScheduler = postFrameScheduler ?? _defaultPostFrameScheduler,
-       _llmConfigPathOverride = llmConfigPathOverride,
        _autoLaunchAllMembersOnConnect = autoLaunchAllMembersOnConnect,
-       _cliSessionDescriptorExists =
-           cliSessionDescriptorExists ??
-           (({
-             required String sessionId,
-             required String teamId,
-             required String primaryPath,
-           }) async => false),
+       _lifecycle = lifecycleService ?? SessionLifecycleService(),
        _sessionRepository = sessionRepository,
        _executableResolver = executableResolver,
        _cliExecutableResolver = cliExecutableResolver,
        _transportFactory = transportFactory,
        _sshProfileResolver = sshProfileResolver,
-       _storageRootsResolver = storageRootsResolver,
        _sshDefaultWorkingDirectoryResolver = sshDefaultWorkingDirectoryResolver,
        _sshUseLoginShellResolver = sshUseLoginShellResolver,
        _connectionModeResolver = connectionModeResolver,
@@ -187,15 +170,13 @@ class ChatCubit extends Cubit<ChatState> {
   String? _selectedTeamId;
   final TerminalSessionFactory _terminalSessionFactory;
   final PostFrameScheduler _postFrameScheduler;
-  final String? Function()? _llmConfigPathOverride;
   final bool Function()? _autoLaunchAllMembersOnConnect;
-  final CliSessionDescriptorExists _cliSessionDescriptorExists;
+  final SessionLifecycleService _lifecycle;
   final SessionRepository? _sessionRepository;
   final String Function() _executableResolver;
   final CliExecutableResolver? _cliExecutableResolver;
   final TerminalTransportFactory? _transportFactory;
   final SshActiveProfileResolver? _sshProfileResolver;
-  final StorageRootsResolver? _storageRootsResolver;
   final String Function()? _sshDefaultWorkingDirectoryResolver;
   final bool Function()? _sshUseLoginShellResolver;
   final ConnectionMode Function()? _connectionModeResolver;
@@ -257,28 +238,11 @@ class ChatCubit extends Cubit<ChatState> {
     return _terminalSessionFactory(executable: executable);
   }
 
-  Future<Map<String, String>?> _spawnEnvironment(
-    TeamConfig team, {
-    TeamMemberConfig? member,
-    String runtimeTeamId = '',
-    String workingDirectory = '',
-  }) {
-    return TeamLaunchEnvironmentBuilder.build(
-      appDataBasePath: AppStorage.basePath,
-      team: team,
-      member: member,
-      runtimeTeamId: runtimeTeamId,
-      llmConfigPathOverride: _llmConfigPathOverride?.call(),
-      workingDirectory: workingDirectory,
-      storageRootsResolver: _storageRootsResolver,
-    );
-  }
-
   static const _uuid = Uuid();
 
   /// CLI `--team-name` and config-profiles runtime directory for a session.
   static String _cliTeamNameForSession(AppSession session) =>
-      session.sessionId.trim();
+      session.effectiveCliTeamDirectory;
 
   static void _defaultPostFrameScheduler(VoidCallback callback) {
     WidgetsBinding.instance.addPostFrameCallback((_) => callback());
@@ -413,17 +377,8 @@ class ChatCubit extends Cubit<ChatState> {
       subtitle: session.primaryPath,
     );
     final launched = session.launchState == AppSessionLaunchState.started;
-    final cliHasSession = await _cliSessionDescriptorExists(
-      sessionId: session.sessionId,
-      teamId: team?.id ?? session.sessionTeam,
-      primaryPath: session.primaryPath,
-    );
-    final useResume = launched && cliHasSession;
     final cliTeamName = _cliTeamNameForSession(session);
-    final internalTab = _InternalTab(
-      info: info,
-      cliTeamName: cliTeamName,
-    );
+    final internalTab = _InternalTab(info: info, cliTeamName: cliTeamName);
     if (team != null && member != null) {
       internalTab.memberShells[member.id] = ts;
       internalTab.selectedMemberId = member.id;
@@ -442,27 +397,21 @@ class ChatCubit extends Cubit<ChatState> {
     if (connectImmediately) {
       _postFrameScheduler(() async {
         try {
-          final env = team != null
-              ? await _spawnEnvironment(
-                  team,
-                  member: member,
-                  runtimeTeamId: cliTeamName,
-                  workingDirectory: session.primaryPath,
-                )
-              : await TeamLaunchEnvironmentBuilder.build(
-                  appDataBasePath: AppStorage.basePath,
-                  team: const TeamConfig(id: '', name: ''),
-                  llmConfigPathOverride: _llmConfigPathOverride?.call(),
-                );
+          final plan = await _lifecycle.prepareLaunch(
+            session: session,
+            team: team,
+            member: member,
+          );
+          final useResume = launched && plan.resume;
           ts.connect(
             workingDirectory: session.primaryPath,
             additionalDirectories: session.additionalPaths,
-            fixedSessionId: useResume ? null : session.sessionId,
-            resumeSessionId: useResume ? session.sessionId : null,
+            fixedSessionId: useResume ? null : plan.sessionIdArg,
+            resumeSessionId: useResume ? plan.sessionIdArg : null,
             team: team,
             member: member,
             sessionTeam: cliTeamName,
-            extraEnvironment: env,
+            extraEnvironment: plan.env.isEmpty ? null : plan.env,
             onProcessFailed: () => _updateTabRunning(info.id),
             onProcessStarted: repo == null
                 ? null
@@ -608,18 +557,24 @@ class ChatCubit extends Cubit<ChatState> {
           _updateTabRunning(tab.info.id);
           return;
         }
+        final plan = await _lifecycle.prepareLaunch(
+          session: AppSession(
+            sessionId: tab.cliTeamName,
+            projectId: '',
+            primaryPath: launch.$1,
+            sessionTeam: team.id,
+            createdAt: DateTime.now().millisecondsSinceEpoch,
+          ),
+          team: team,
+          member: member,
+        );
         shell.connect(
           workingDirectory: launch.$1,
           additionalDirectories: launch.$2,
           team: team,
           member: member,
           sessionTeam: tab.cliTeamName,
-          extraEnvironment: await _spawnEnvironment(
-            team,
-            member: member,
-            runtimeTeamId: tab.cliTeamName,
-            workingDirectory: launch.$1,
-          ),
+          extraEnvironment: plan.env.isEmpty ? null : plan.env,
           onProcessStarted: () => _updateTabRunning(tab.info.id),
           onProcessFailed: () => _updateTabRunning(tab.info.id),
         );

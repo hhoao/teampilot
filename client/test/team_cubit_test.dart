@@ -8,6 +8,7 @@ import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/repositories/team_repository.dart';
 import 'package:teampilot/services/app_storage.dart';
 import 'package:teampilot/services/config_profile_service.dart';
+import 'package:teampilot/services/session_lifecycle_service.dart';
 import 'package:teampilot/services/team_skill_linker_service.dart';
 
 Skill _skill(String id) => Skill(
@@ -23,11 +24,8 @@ class _RecordingLinker extends TeamSkillLinkerService {
   _RecordingLinker()
     : super(appSkillsRoot: '/tmp', teamSkillsRootOverride: '/tmp/cli');
 
-  final syncs = <({
-    String teamId,
-    List<String> skillIds,
-    List<Skill> installed,
-  })>[];
+  final syncs =
+      <({String teamId, List<String> skillIds, List<Skill> installed})>[];
 
   @override
   Future<TeamSkillSyncResult> syncForTeam({
@@ -41,6 +39,18 @@ class _RecordingLinker extends TeamSkillLinkerService {
       installed: List.of(installed),
     ));
     return const TeamSkillSyncResult();
+  }
+}
+
+class _RecordingLifecycleService extends SessionLifecycleService {
+  _RecordingLifecycleService()
+    : super(appDataBasePath: Directory.systemTemp.path);
+
+  final destroyedTeams = <String>[];
+
+  @override
+  Future<void> destroyTeamCliState(String teamId) async {
+    destroyedTeams.add(teamId);
   }
 }
 
@@ -173,7 +183,11 @@ void main() {
     'renameSelectedTeamName updates storage and removes old files',
     () async {
       final dir = await Directory.systemTemp.createTemp('team-cubit-');
-      final repo = _repo(dir);
+      final lifecycle = _RecordingLifecycleService();
+      final repo = TeamRepository(
+        rootDir: p.join(dir.path, 'teams'),
+        lifecycleService: lifecycle,
+      );
       final cubit = TeamCubit(
         repository: repo,
         executableResolver: () => 'flashskyai',
@@ -190,6 +204,11 @@ void main() {
       expect(cubit.state.selectedTeam?.name, 'New');
       expect(File(p.join(dir.path, 'teams', 'New.json')).existsSync(), isTrue);
       expect(File(p.join(dir.path, 'teams', 'Old.json')).existsSync(), isFalse);
+      expect(lifecycle.destroyedTeams, isEmpty);
+
+      await cubit.deleteSelected();
+      expect(lifecycle.destroyedTeams, ['Old']);
+      expect(File(p.join(dir.path, 'teams', 'New.json')).existsSync(), isFalse);
 
       await dir.delete(recursive: true);
     },

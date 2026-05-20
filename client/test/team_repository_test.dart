@@ -5,6 +5,19 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/repositories/team_repository.dart';
+import 'package:teampilot/services/session_lifecycle_service.dart';
+
+class _RecordingLifecycleService extends SessionLifecycleService {
+  _RecordingLifecycleService()
+    : super(appDataBasePath: Directory.systemTemp.path);
+
+  final destroyedTeams = <String>[];
+
+  @override
+  Future<void> destroyTeamCliState(String teamId) async {
+    destroyedTeams.add(teamId);
+  }
+}
 
 void main() {
   group('save/load TeamPilot team metadata', () {
@@ -217,6 +230,25 @@ void main() {
 
       expect(await File(p.join(uiRoot.path, 'gone.json')).exists(), isFalse);
       expect(await cliDir.exists(), isTrue);
+    });
+
+    test('destroys the team CLI state when deleting a team', () async {
+      final lifecycle = _RecordingLifecycleService();
+      final repository = TeamRepository(
+        rootDir: uiRoot.path,
+        lifecycleService: lifecycle,
+      );
+      await repository.saveTeams(const [
+        TeamConfig(
+          id: 'gone',
+          name: 'gone',
+          members: [TeamMemberConfig(id: 'm', name: 'm')],
+        ),
+      ]);
+
+      await repository.deleteTeam('gone');
+
+      expect(lifecycle.destroyedTeams, ['gone']);
     });
 
     test('is idempotent on missing teams', () async {

@@ -8,6 +8,7 @@ import '../models/app_project.dart';
 import '../models/app_session.dart';
 import '../services/app_storage.dart';
 import '../services/flashskyai_storage_roots.dart';
+import '../services/session_lifecycle_service.dart';
 import 'session_repository_fs.dart';
 
 class _AsyncLock {
@@ -24,12 +25,17 @@ class _AsyncLock {
 }
 
 class SessionRepository {
-  SessionRepository({String? rootDir, FlashskyaiStorageRoots? storageRoots})
-    : _rootOverride = rootDir,
-      _storageRoots = storageRoots;
+  SessionRepository({
+    String? rootDir,
+    FlashskyaiStorageRoots? storageRoots,
+    SessionLifecycleService? lifecycleService,
+  }) : _rootOverride = rootDir,
+       _storageRoots = storageRoots,
+       _lifecycleService = lifecycleService;
 
   final String? _rootOverride;
   final FlashskyaiStorageRoots? _storageRoots;
+  final SessionLifecycleService? _lifecycleService;
   final Map<String, _AsyncLock> _sessionFileLocks = {};
 
   Future<T> _withSessionFile<T>(String sessionId, Future<T> Function() fn) {
@@ -367,6 +373,15 @@ class SessionRepository {
   Future<void> deleteSession(String sessionId) async {
     await _withSessionFile(sessionId, () async {
       final fs = await _fs();
+      final existing = await _readSession(fs, sessionId);
+      final teamId = existing?.sessionTeam.trim() ?? '';
+      if (teamId.isNotEmpty) {
+        await _lifecycleService?.destroyCliState(
+          teamId: teamId,
+          sessionId: sessionId,
+          runtimeSessionId: existing?.effectiveCliTeamDirectory,
+        );
+      }
       final index = await _loadIndex(fs);
       final now = DateTime.now().millisecondsSinceEpoch;
       final projects = index.projects.map((p) {
@@ -399,16 +414,17 @@ class SessionRepository {
     }
     if (project == null) return;
 
-    for (final sid in project.sessionIds) {
-      await _withSessionFile(sid, () async {
-        final innerFs = await _fs();
-        await innerFs.deleteFile(innerFs.sessionFile(sid));
-      });
+    for (final sid in project.sessionIds.toList()) {
+      await deleteSession(sid);
     }
 
-    final next = index.projects.where((p) => p.projectId != projectId).toList();
+    final latestFs = await _fs();
+    final latestIndex = await _loadIndex(latestFs);
+    final next = latestIndex.projects
+        .where((p) => p.projectId != projectId)
+        .toList();
     await _saveIndex(
-      fs,
+      latestFs,
       AppProjectsIndex(schemaVersion: index.schemaVersion, projects: next),
     );
   }

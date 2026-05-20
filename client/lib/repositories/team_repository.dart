@@ -7,6 +7,7 @@ import '../models/team_config.dart';
 import '../services/app_storage.dart';
 import '../services/flashskyai_storage_roots.dart';
 import '../services/remote_file_store.dart';
+import '../services/session_lifecycle_service.dart';
 
 /// Persists [TeamConfig] objects in TeamPilot's own metadata directory.
 ///
@@ -25,12 +26,17 @@ class _TeamPaths {
 }
 
 class TeamRepository {
-  TeamRepository({String? rootDir, FlashskyaiStorageRoots? storageRoots})
-    : _rootDirOverride = rootDir,
-      _storageRoots = storageRoots;
+  TeamRepository({
+    String? rootDir,
+    FlashskyaiStorageRoots? storageRoots,
+    SessionLifecycleService? lifecycleService,
+  }) : _rootDirOverride = rootDir,
+       _storageRoots = storageRoots,
+       _lifecycleService = lifecycleService;
 
   final String? _rootDirOverride;
   final FlashskyaiStorageRoots? _storageRoots;
+  final SessionLifecycleService? _lifecycleService;
 
   String get rootDir => _rootDirOverride ?? AppStorage.teamsDir;
 
@@ -183,9 +189,22 @@ class TeamRepository {
   }
 
   /// Removes [name] from the UI dir (`<rootDir>/<name>.json`).
-  Future<void> deleteTeam(String name) async {
+  Future<void> deleteTeam(
+    String name, {
+    bool destroyCliState = true,
+    String? cliStateTeamId,
+  }) async {
     final trimmed = name.trim();
     if (trimmed.isEmpty) return;
+
+    if (destroyCliState) {
+      final cleanupTeamId = cliStateTeamId?.trim();
+      await _lifecycleService?.destroyTeamCliState(
+        cleanupTeamId != null && cleanupTeamId.isNotEmpty
+            ? cleanupTeamId
+            : trimmed,
+      );
+    }
 
     final paths = await _paths();
     if (paths.uiIsRemote) {

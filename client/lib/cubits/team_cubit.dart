@@ -1,14 +1,16 @@
 import 'package:equatable/equatable.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:uuid/uuid.dart';
 
+import '../models/app_session.dart';
 import '../models/skill.dart';
 import '../models/team_config.dart';
 import '../repositories/team_repository.dart';
 import '../services/app_storage.dart';
 import '../services/config_profile_service.dart';
 import '../services/launch_command_builder.dart';
-import '../services/team_launch_environment_builder.dart';
+import '../services/session_lifecycle_service.dart';
 import '../services/team_skill_linker_service.dart';
 import '../utils/logger.dart';
 
@@ -84,17 +86,27 @@ class TeamCubit extends Cubit<TeamState> {
     String appDataBasePath = '',
     ConfigProfileService? configProfileService,
     StorageRootsResolver? storageRootsResolver,
+    SessionLifecycleService? lifecycleService,
     TeamSkillLinkerService? skillLinker,
     InstalledSkillsLoader? installedSkillsLoader,
   }) : _repository = repository,
        _executableResolver = executableResolver,
        _cliExecutableResolver = cliExecutableResolver,
-       _llmConfigPathOverride = llmConfigPathOverride,
        _appDataBasePathOverride = appDataBasePath.isNotEmpty
            ? appDataBasePath
            : null,
        _configProfileService = configProfileService,
        _storageRootsResolver = storageRootsResolver,
+       _lifecycle =
+           lifecycleService ??
+           SessionLifecycleService(
+             appDataBasePath: appDataBasePath.isNotEmpty
+                 ? appDataBasePath
+                 : null,
+             llmConfigPathOverride: llmConfigPathOverride,
+             configProfileService: configProfileService,
+             storageRootsResolver: storageRootsResolver,
+           ),
        _skillLinker = skillLinker ?? TeamSkillLinkerService(),
        _installedSkillsLoader = installedSkillsLoader,
        _launcher = launcher,
@@ -104,7 +116,6 @@ class TeamCubit extends Cubit<TeamState> {
   final TeamLauncher? _launcher;
   final String Function() _executableResolver;
   final CliExecutableResolver? _cliExecutableResolver;
-  final String? Function()? _llmConfigPathOverride;
   final String? _appDataBasePathOverride;
   final ConfigProfileService? _configProfileService;
 
@@ -117,21 +128,27 @@ class TeamCubit extends Cubit<TeamState> {
   }
 
   final StorageRootsResolver? _storageRootsResolver;
+  final SessionLifecycleService _lifecycle;
   final TeamSkillLinkerService _skillLinker;
   final InstalledSkillsLoader? _installedSkillsLoader;
+  static const _uuid = Uuid();
 
   Future<Map<String, String>?> _buildLaunchEnvironment(
     TeamConfig team, {
     TeamMemberConfig? member,
-  }) {
-    return TeamLaunchEnvironmentBuilder.build(
-      appDataBasePath: _resolvedAppDataBasePath,
+  }) async {
+    final plan = await _lifecycle.prepareLaunch(
+      session: AppSession(
+        sessionId: _uuid.v4(),
+        projectId: '',
+        primaryPath: '',
+        sessionTeam: team.id,
+        createdAt: DateTime.now().millisecondsSinceEpoch,
+      ),
       team: team,
       member: member,
-      llmConfigPathOverride: _llmConfigPathOverride?.call(),
-      configProfileService: _configProfileService,
-      storageRootsResolver: _storageRootsResolver,
     );
+    return plan.env.isEmpty ? null : plan.env;
   }
 
   Future<ConfigProfileService> _profileService() async {
@@ -393,7 +410,7 @@ class TeamCubit extends Cubit<TeamState> {
     );
     await _repository.saveTeams(teams);
     if (oldName != trimmed) {
-      await _repository.deleteTeam(oldName);
+      await _repository.deleteTeam(oldName, destroyCliState: false);
     }
     return true;
   }
@@ -427,7 +444,7 @@ class TeamCubit extends Cubit<TeamState> {
   Future<void> deleteSelected() async {
     final selected = state.selectedTeam;
     if (selected == null) return;
-    await _repository.deleteTeam(selected.name);
+    await _repository.deleteTeam(selected.name, cliStateTeamId: selected.id);
     var teams = state.teams.where((team) => team.id != selected.id).toList();
     if (teams.isEmpty) teams = [_defaultTeam()];
     emit(
