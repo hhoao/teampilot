@@ -37,6 +37,20 @@ import 'support/post_frame_test_harness.dart';
 
 String _testExecutable() => 'flashskyai';
 
+Future<void> _deleteTempDirBestEffort(Directory dir) async {
+  for (var attempt = 0; attempt < 8; attempt++) {
+    try {
+      if (await dir.exists()) {
+        await dir.delete(recursive: true);
+      }
+      return;
+    } on FileSystemException {
+      if (attempt == 7) rethrow;
+      await Future<void>.delayed(Duration(milliseconds: 25 * (attempt + 1)));
+    }
+  }
+}
+
 late Directory _widgetTestSessionRepoDir;
 late SessionRepository _widgetTestSessionRepo;
 
@@ -595,7 +609,7 @@ void main() {
     'chat cubit launches Claude members with team dir and settings file',
     () async {
       final tmp = await Directory.systemTemp.createTemp('chat_claude_cfg_');
-      addTearDown(() => tmp.deleteSync(recursive: true));
+      addTearDown(() => _deleteTempDirBestEffort(tmp));
       final sessions = <FakeTerminalSession>[];
       final postFrame = PostFrameTestHarness();
       final cubit = ChatCubit(
@@ -776,7 +790,7 @@ void main() {
 
   test('openSessionTab first launch uses session-id not resume', () async {
     final tmp = await Directory.systemTemp.createTemp('open_sess_');
-    addTearDown(() => tmp.deleteSync(recursive: true));
+    addTearDown(() => _deleteTempDirBestEffort(tmp));
     final repo = SessionRepository(rootDir: tmp.path);
     final project = await repo.createProject('/wd');
     final session = await repo.createSession(project.projectId);
@@ -810,7 +824,7 @@ void main() {
 
   test('openSessionTab started session uses resume not session-id', () async {
     final tmp = await Directory.systemTemp.createTemp('open_sess_');
-    addTearDown(() => tmp.deleteSync(recursive: true));
+    addTearDown(() => _deleteTempDirBestEffort(tmp));
     final repo = SessionRepository(rootDir: tmp.path);
     final project = await repo.createProject('/wd');
     final session = await repo.createSession(project.projectId);
@@ -849,7 +863,7 @@ void main() {
     'openSessionTab started session without CLI descriptor uses session-id',
     () async {
       final tmp = await Directory.systemTemp.createTemp('open_sess_');
-      addTearDown(() => tmp.deleteSync(recursive: true));
+      addTearDown(() => _deleteTempDirBestEffort(tmp));
       final repo = SessionRepository(rootDir: tmp.path);
       final project = await repo.createProject('/wd');
       final session = await repo.createSession(project.projectId);
@@ -889,7 +903,7 @@ void main() {
     'openSessionTab passes session additionalDirectories to connect',
     () async {
       final tmp = await Directory.systemTemp.createTemp('open_sess_');
-      addTearDown(() => tmp.deleteSync(recursive: true));
+      addTearDown(() => _deleteTempDirBestEffort(tmp));
       final repo = SessionRepository(rootDir: tmp.path);
       final project = await repo.createProject(
         '/root',

@@ -25,7 +25,10 @@ void main() {
     final snap = await roots.resolve();
     expect(snap.storageIsRemote, isFalse);
     expect(snap.teamsUiDir, AppPathsBootstrapper.current.teamsDir);
-    expect(snap.appFlashskyaiDir, endsWith('/config-profiles/flashskyai'));
+    expect(
+      snap.appFlashskyaiDir.replaceAll(r'\', '/'),
+      endsWith('config-profiles/flashskyai'),
+    );
     expect(snap.remoteFileStore, isNull);
   });
 
@@ -51,19 +54,37 @@ void main() {
         teampilotRoot,
       ),
     );
+    final posix = AppPaths.posixPathContext;
     expect(snap.teampilotRoot, teampilotRoot);
-    expect(snap.teamsUiDir, '$teampilotRoot/teams');
-    expect(snap.skillsRoot, '$teampilotRoot/skills');
-    expect(snap.appProjectsDir, '$teampilotRoot/projects');
-    expect(snap.skillReposConfigPath, '$teampilotRoot/skills.json');
-    expect(snap.appFlashskyaiDir, '$teampilotRoot/config-profiles/flashskyai');
+    expect(snap.teamsUiDir, posix.join(teampilotRoot, 'teams'));
+    expect(snap.skillsRoot, posix.join(teampilotRoot, 'skills'));
+    expect(snap.appProjectsDir, posix.join(teampilotRoot, 'projects'));
+    expect(snap.skillReposConfigPath, posix.join(teampilotRoot, 'skills.json'));
+    expect(
+      snap.appFlashskyaiDir,
+      posix.join(teampilotRoot, 'config-profiles', 'flashskyai'),
+    );
     expect(
       snap.layout.teamToolDir('team-a', 'flashskyai'),
-      '$teampilotRoot/config-profiles/teams/team-a/flashskyai',
+      posix.join(
+        teampilotRoot,
+        'config-profiles',
+        'teams',
+        'team-a',
+        'flashskyai',
+      ),
     );
     expect(
       snap.layout.memberToolDir('team-a', 'sess-1', 'flashskyai'),
-      '$teampilotRoot/config-profiles/teams/team-a/members/sess-1/flashskyai',
+      posix.join(
+        teampilotRoot,
+        'config-profiles',
+        'teams',
+        'team-a',
+        'members',
+        'sess-1',
+        'flashskyai',
+      ),
     );
   });
 

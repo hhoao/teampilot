@@ -19,6 +19,18 @@ class AppPaths {
 
   static p.Context get posixPathContext => p.Context(style: p.Style.posix);
 
+  /// POSIX-style roots (remote SSH paths, in-memory `/tp` tests) must not use
+  /// the host [p.context] on Windows — otherwise joins emit `\` separators.
+  static p.Context pathContextForDataRoot(String root) {
+    final trimmed = root.trim();
+    if (trimmed.startsWith('/') ||
+        trimmed.startsWith(r'\\') ||
+        trimmed.startsWith('//')) {
+      return posixPathContext;
+    }
+    return p.context;
+  }
+
   /// Joins under [root], using POSIX separators when [root] is a remote path.
   static String _pathUnderTeampilotRoot(String teampilotRoot, String segment) {
     if (teampilotRoot.startsWith('/')) {

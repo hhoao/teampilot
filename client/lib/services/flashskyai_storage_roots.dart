@@ -31,12 +31,18 @@ class StorageRootsSnapshot {
     required this.skillBackupsDir,
     required this.appProjectsDir,
     required this.skillReposConfigPath,
-  }) : fs = fs ?? LocalFilesystem(pathContext: p.context),
+  }) : fs = fs ?? LocalFilesystem(
+         pathContext: AppPaths.pathContextForDataRoot(teampilotRoot),
+       ),
        layout =
            layout ??
            CliDataLayout(
              teampilotRoot: teampilotRoot,
-             fs: fs ?? LocalFilesystem(pathContext: p.context),
+             fs:
+                 fs ??
+                 LocalFilesystem(
+                   pathContext: AppPaths.pathContextForDataRoot(teampilotRoot),
+                 ),
            );
 
   factory StorageRootsSnapshot.local() {

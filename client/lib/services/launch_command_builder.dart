@@ -165,6 +165,7 @@ class LaunchCommandBuilder {
     String? resumeSessionId,
     Map<String, String>? extraEnvironment,
     ProcessStarter starter = Process.start,
+    bool launchInExternalTerminal = true,
   }) async {
     final wd = workingDirectory ?? '';
     final invocation = CliInvocation.fromExecutable(executable);
@@ -190,7 +191,7 @@ class LaunchCommandBuilder {
     );
     final launchArgs = invocation.withArgs(args, environment: env);
 
-    if (Platform.isLinux) {
+    if (launchInExternalTerminal && Platform.isLinux) {
       if (await _tryStartTerminal(
         starter,
         'x-terminal-emulator',
@@ -227,7 +228,7 @@ class LaunchCommandBuilder {
       )) {
         return;
       }
-    } else if (Platform.isMacOS) {
+    } else if (launchInExternalTerminal && Platform.isMacOS) {
       // `open -a Terminal` does not propagate parent env to the spawned shell.
       // Inline `export` so flashskyai sees the values we want.
       final exports = env == null || env.isEmpty
@@ -245,7 +246,7 @@ class LaunchCommandBuilder {
       )) {
         return;
       }
-    } else if (Platform.isWindows) {
+    } else if (launchInExternalTerminal && Platform.isWindows) {
       // `cmd /c start ... cmd /k` doesn't reliably forward parent env. Prefix
       // explicit `set` commands so flashskyai sees them in the new console.
       final sets = env == null || env.isEmpty

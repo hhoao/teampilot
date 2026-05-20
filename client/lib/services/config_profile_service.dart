@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:path/path.dart' as p;
 
 import '../models/team_config.dart';
+import 'app_storage.dart';
 import 'cli_data_layout.dart';
 import 'io/filesystem.dart';
 import 'io/local_filesystem.dart';
@@ -35,10 +36,19 @@ class ConfigProfileService {
     required this.basePath,
     Filesystem? fs,
     CliDataLayout? layout,
-  }) : _fs = fs ?? LocalFilesystem(),
+  }) : _fs =
+           fs ??
+           LocalFilesystem(pathContext: AppPaths.pathContextForDataRoot(basePath)),
        layout =
            layout ??
-           CliDataLayout(teampilotRoot: basePath, fs: fs ?? LocalFilesystem());
+           CliDataLayout(
+             teampilotRoot: basePath,
+             fs:
+                 fs ??
+                 LocalFilesystem(
+                   pathContext: AppPaths.pathContextForDataRoot(basePath),
+                 ),
+           );
 
   final String basePath;
   final Filesystem _fs;
@@ -309,14 +319,21 @@ class ConfigProfileService {
     );
   }
 
+  String _projectMetadataKey(String workingDirectory) {
+    final trimmed = workingDirectory.trim();
+    if (trimmed.isEmpty) return '';
+    if (trimmed.startsWith('/')) {
+      return trimmed.replaceAll('\\', '/');
+    }
+    return _pathContext.normalize(trimmed);
+  }
+
   Map<String, Object?> _metadataWithTrustedProject(
     Map<String, Object?> baseMetadata,
     String workingDirectory,
   ) {
     final metadata = <String, Object?>{...baseMetadata};
-    final normalizedWorkingDirectory = workingDirectory.trim().isEmpty
-        ? ''
-        : _pathContext.normalize(workingDirectory.trim());
+    final normalizedWorkingDirectory = _projectMetadataKey(workingDirectory);
     if (normalizedWorkingDirectory.isNotEmpty) {
       metadata['projects'] = {
         normalizedWorkingDirectory: {'hasTrustDialogAccepted': true},

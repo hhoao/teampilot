@@ -199,6 +199,7 @@ void main() {
           team,
           member: member,
           executable: 'claude',
+          launchInExternalTerminal: false,
           extraEnvironment: const {
             'CLAUDE_CONFIG_DIR': '/tmp/team/claude',
             ConfigProfileService.claudeSettingsFileEnvKey:

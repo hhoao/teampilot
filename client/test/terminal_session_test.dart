@@ -154,8 +154,14 @@ void main() {
     expect(session.isRunning, isFalse);
   });
 
-  test('independent sessions spawn concurrently with distinct member args', () async {
-    const team = TeamConfig(id: 'team', name: 'default-team-0');
+  test(
+    'independent Claude sessions spawn concurrently with distinct agent args',
+    () async {
+    const team = TeamConfig(
+      id: 'team',
+      name: 'default-team-0',
+      cli: TeamCli.claude,
+    );
     const lead = TeamMemberConfig(id: 'lead', name: 'team-lead');
     const dev = TeamMemberConfig(id: 'dev', name: 'developer');
     final startedArgs = <List<String>>[];
@@ -212,6 +218,70 @@ void main() {
     );
     expect(leadSession.isRunning, isTrue);
     expect(devSession.isRunning, isTrue);
+  });
+
+  test(
+    'independent flashskyai sessions use --team and --member per member',
+    () async {
+    const team = TeamConfig(
+      id: 'team',
+      name: 'default-team-0',
+      cli: TeamCli.flashskyai,
+    );
+    const lead = TeamMemberConfig(id: 'lead', name: 'team-lead');
+    const dev = TeamMemberConfig(id: 'dev', name: 'developer');
+    final startedArgs = <List<String>>[];
+
+    TerminalSession sessionFor(TeamMemberConfig member) {
+      return TerminalSession(
+        executable: _ptyTestExecutable,
+        transportStarter:
+            (
+              executable, {
+              required arguments,
+              required workingDirectory,
+              required columns,
+              required rows,
+              environment,
+            }) {
+              startedArgs.add(List<String>.from(arguments));
+              return Future.value(_FakeTransport());
+            },
+      );
+    }
+
+    final leadSession = sessionFor(lead);
+    final devSession = sessionFor(dev);
+    addTearDown(() async {
+      leadSession.dispose();
+      devSession.dispose();
+    });
+
+    leadSession.connect(
+      workingDirectory: Directory.systemTemp.path,
+      team: team,
+      member: lead,
+    );
+    devSession.connect(
+      workingDirectory: Directory.systemTemp.path,
+      team: team,
+      member: dev,
+    );
+    await Future<void>.delayed(const Duration(milliseconds: 500));
+
+    expect(startedArgs, hasLength(2));
+    expect(
+      startedArgs.any(
+        (args) => args.contains('--member') && args.contains('team-lead'),
+      ),
+      isTrue,
+    );
+    expect(
+      startedArgs.any(
+        (args) => args.contains('--member') && args.contains('developer'),
+      ),
+      isTrue,
+    );
   });
 
   test(
@@ -564,7 +634,11 @@ void main() {
       await handle.outputController.close();
     });
 
-    const team = TeamConfig(id: 'team', name: 'default-team-0');
+    const team = TeamConfig(
+      id: 'team',
+      name: 'default-team-0',
+      cli: TeamCli.flashskyai,
+    );
     const member = TeamMemberConfig(id: 'member', name: 'team-lead');
     session.connect(
       workingDirectory: r'C:\Users\haung\git\teampilot\client',

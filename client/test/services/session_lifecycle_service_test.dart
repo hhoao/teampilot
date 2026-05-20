@@ -77,6 +77,7 @@ void main() {
         team: const TeamConfig(
           id: 'team-a',
           name: 'Team A',
+          cli: TeamCli.claude,
           members: [TeamMemberConfig(id: 'lead', name: 'team-lead')],
         ),
         member: const TeamMemberConfig(id: 'lead', name: 'team-lead'),
@@ -93,6 +94,37 @@ void main() {
       expect(plan.env['CLAUDE_CONFIG_DIR'], memberDir);
       expect(plan.env['CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS'], '1');
       expect(plan.env.containsKey('TEAMPILOT_CLAUDE_SETTINGS_FILE'), isTrue);
+      expect(plan.resolvedRoots, contains(memberDir));
+    },
+  );
+
+  test(
+    'prepareLaunch for flashskyai team uses flashskyai member dir and env',
+    () async {
+      final plan = await service().prepareLaunch(
+        session: _session(),
+        team: const TeamConfig(
+          id: 'team-a',
+          name: 'Team A',
+          cli: TeamCli.flashskyai,
+          members: [TeamMemberConfig(id: 'lead', name: 'team-lead')],
+        ),
+        member: const TeamMemberConfig(id: 'lead', name: 'team-lead'),
+      );
+
+      final memberDir = layout.memberToolDir(
+        'team-a',
+        'session-1',
+        'flashskyai',
+      );
+      expect(plan.resume, isFalse);
+      expect(plan.sessionIdArg, 'session-1');
+      expect(plan.memberConfigDir, memberDir);
+      expect(plan.env['FLASHSKYAI_CONFIG_DIR'], memberDir);
+      expect(
+        plan.env['LLM_CONFIG_PATH'],
+        p.join(base.path, 'config-profiles', 'flashskyai', 'llm_config.json'),
+      );
       expect(plan.resolvedRoots, contains(memberDir));
     },
   );

@@ -7,6 +7,8 @@ import 'package:teampilot/services/io/local_filesystem.dart';
 
 import '../support/in_memory_filesystem.dart';
 
+final _posixPath = p.Context(style: p.Style.posix);
+
 class _NoSymlinkFilesystem extends InMemoryFilesystem {
   @override
   Future<bool> createSymlink({
@@ -190,7 +192,7 @@ void main() {
 
         await layout.ensureMemberInheritsTeam('team-a', 'sess-1', 'flashskyai');
 
-        final memberSkills = p.join(
+        final memberSkills = _posixPath.join(
           layout.memberToolDir('team-a', 'sess-1', 'flashskyai'),
           'skills',
         );
@@ -207,20 +209,26 @@ void main() {
       final fs = _NoSymlinkFilesystem();
       final layout = CliDataLayout(teampilotRoot: '/tp', fs: fs);
       await layout.ensureAppToolLayout('flashskyai');
-      final appAgents = p.join(layout.appToolRoot('flashskyai'), 'agents');
+      final appAgents = _posixPath.join(
+        layout.appToolRoot('flashskyai'),
+        'agents',
+      );
       await fs.ensureDir(appAgents);
-      await fs.writeString(p.join(appAgents, 'demo.md'), 'hello');
+      await fs.writeString(_posixPath.join(appAgents, 'demo.md'), 'hello');
 
       await layout.ensureTeamInheritsApp('team-a', 'flashskyai');
 
-      final teamAgentsPath = p.join(
+      final teamAgentsPath = _posixPath.join(
         layout.teamToolDir('team-a', 'flashskyai'),
         'agents',
       );
       expect(fs.symlinks.containsKey(teamAgentsPath), isFalse);
       expect(fs.directories.contains(teamAgentsPath), isTrue);
       // Copy preserved the demo.md.
-      expect(await fs.readString(p.join(teamAgentsPath, 'demo.md')), 'hello');
+      expect(
+        await fs.readString(_posixPath.join(teamAgentsPath, 'demo.md')),
+        'hello',
+      );
     });
   });
 }

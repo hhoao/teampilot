@@ -103,8 +103,40 @@ class LocalFilesystem implements Filesystem {
     final tmp =
         '$path.tmp.${DateTime.now().microsecondsSinceEpoch}.${_tmpWriteCounter++}';
     await File(tmp).writeAsString(content);
-    await removeRecursive(path);
-    await File(tmp).rename(path);
+    await _commitAtomicWrite(path, tmp);
+  }
+
+  Future<void> _commitAtomicWrite(String path, String tmp) async {
+    const maxAttempts = 6;
+    for (var attempt = 0; attempt < maxAttempts; attempt++) {
+      try {
+        await File(tmp).rename(path);
+        return;
+      } on FileSystemException {
+        await _deleteFileIfPresent(path);
+        try {
+          await File(tmp).rename(path);
+          return;
+        } on FileSystemException {
+          if (attempt == maxAttempts - 1) rethrow;
+          await Future<void>.delayed(
+            Duration(milliseconds: 15 * (attempt + 1)),
+          );
+        }
+      }
+    }
+  }
+
+  Future<void> _deleteFileIfPresent(String path) async {
+    try {
+      final target = File(path);
+      if (await target.exists()) {
+        await target.delete();
+      }
+    } on FileSystemException catch (e) {
+      if (e.osError?.errorCode == 2) return;
+      rethrow;
+    }
   }
 
   @override
