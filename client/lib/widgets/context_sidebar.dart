@@ -66,75 +66,107 @@ String _teamCliDisplayLabel(dynamic l10n, TeamCli cli) {
 
 Future<void> _promptAddTeam(BuildContext context, TeamCubit teamCubit) async {
   final l10n = context.l10n;
-  final nameController = TextEditingController();
-  var selectedCli = TeamCli.flashskyai;
   final result = await showDialog<({String name, TeamCli cli})?>(
     context: context,
-    builder: (dialogContext) => StatefulBuilder(
-      builder: (context, setState) => AlertDialog(
-        title: Text(l10n.addTeamTitle),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            AppOutlineTextField(
-              key: AppKeys.teamNameDialogField,
-              controller: nameController,
-              autofocus: true,
-              labelText: l10n.teamName,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              l10n.teamCliLabel,
-              style: Theme.of(context).textTheme.labelLarge,
-            ),
-            const SizedBox(height: 4),
-            Text(
-              l10n.teamCliSubtitle,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
-            ),
-            const SizedBox(height: 8),
-            for (final cli in TeamCli.values)
-              RadioListTile<TeamCli>(
-                value: cli,
-                groupValue: selectedCli,
-                onChanged: cli.isLaunchSupported
-                    ? (value) {
-                        if (value == null) return;
-                        setState(() => selectedCli = value);
-                      }
-                    : null,
-                title: Text(_teamCliDisplayLabel(l10n, cli)),
-                subtitle: cli.isLaunchSupported
-                    ? null
-                    : Text(l10n.teamCliComingSoon),
-                dense: true,
-                contentPadding: EdgeInsets.zero,
-              ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: Text(l10n.cancel),
-          ),
-          FilledButton(
-            onPressed: () {
-              final name = nameController.text.trim();
-              if (name.isEmpty) return;
-              Navigator.pop(dialogContext, (name: name, cli: selectedCli));
-            },
-            child: Text(l10n.add),
-          ),
-        ],
-      ),
-    ),
+    builder: (dialogContext) => _AddTeamDialog(l10n: l10n),
   );
-  nameController.dispose();
   if (result == null || !context.mounted) return;
   await teamCubit.addTeam(result.name, cli: result.cli);
+}
+
+/// Owns the team name [TextEditingController] for the add-team dialog.
+///
+/// The dialog route can still be animating after [showDialog]'s future
+/// completes; disposing the controller in the caller would race updates
+/// against a still-mounted [TextField].
+class _AddTeamDialog extends StatefulWidget {
+  const _AddTeamDialog({required this.l10n});
+
+  final AppLocalizations l10n;
+
+  @override
+  State<_AddTeamDialog> createState() => _AddTeamDialogState();
+}
+
+class _AddTeamDialogState extends State<_AddTeamDialog> {
+  late final TextEditingController _nameController;
+  TeamCli _selectedCli = TeamCli.flashskyai;
+
+  @override
+  void initState() {
+    super.initState();
+    _nameController = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = widget.l10n;
+    return AlertDialog(
+      title: Text(l10n.addTeamTitle),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          AppOutlineTextField(
+            key: AppKeys.teamNameDialogField,
+            controller: _nameController,
+            autofocus: true,
+            labelText: l10n.teamName,
+          ),
+          const SizedBox(height: 16),
+          Text(
+            l10n.teamCliLabel,
+            style: Theme.of(context).textTheme.labelLarge,
+          ),
+          const SizedBox(height: 4),
+          Text(
+            l10n.teamCliSubtitle,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 8),
+          for (final cli in TeamCli.values)
+            RadioListTile<TeamCli>(
+              value: cli,
+              groupValue: _selectedCli,
+              onChanged: cli.isLaunchSupported
+                  ? (value) {
+                      if (value == null) return;
+                      setState(() => _selectedCli = value);
+                    }
+                  : null,
+              title: Text(_teamCliDisplayLabel(l10n, cli)),
+              subtitle: cli.isLaunchSupported
+                  ? null
+                  : Text(l10n.teamCliComingSoon),
+              dense: true,
+              contentPadding: EdgeInsets.zero,
+            ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text(l10n.cancel),
+        ),
+        FilledButton(
+          onPressed: () {
+            final name = _nameController.text.trim();
+            if (name.isEmpty) return;
+            Navigator.pop(context, (name: name, cli: _selectedCli));
+          },
+          child: Text(l10n.add),
+        ),
+      ],
+    );
+  }
 }
 
 class ContextSidebar extends StatefulWidget {
