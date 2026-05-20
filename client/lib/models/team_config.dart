@@ -158,7 +158,7 @@ class TeamConfig {
     this.members = const [],
     this.skillIds = const [],
     this.providerIdsByTool = const {},
-    this.cli = TeamCli.flashskyai,
+    this.cli = TeamCli.claude,
     this.createdAt = 0,
     this.loop,
   });
