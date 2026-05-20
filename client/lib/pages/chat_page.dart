@@ -37,6 +37,11 @@ class ChatPage extends StatelessWidget {
       panelKey: AppKeys.rightToolsPanel,
       dismissDrawerOnAction: toolsAsDrawer,
     );
+    final activeChatAnimationId =
+        chatCubit.state.activeTabIndex >= 0 &&
+            chatCubit.state.activeTabIndex < chatCubit.state.tabs.length
+        ? chatCubit.state.tabs[chatCubit.state.activeTabIndex].id
+        : sessionId ?? 'empty';
 
     Widget buildShell({VoidCallback? onOpenRightTools, Widget? rightTools}) {
       return WorkspaceShell(
@@ -61,6 +66,9 @@ class ChatPage extends StatelessWidget {
             : (w) => context.read<LayoutCubit>().setRightToolsWidth(w),
         actions: _chatActions(context, team),
         rightTools: rightTools,
+        childAnimationKey: ValueKey(
+          'chat-workspace-body-$activeChatAnimationId',
+        ),
         child: ChatWorkbench(
           sessionId: sessionId,
           onOpenRightTools: onOpenRightTools,

@@ -36,6 +36,7 @@ void main() {
       ),
       findsOneWidget,
     );
+
   });
 
   testWidgets('split shell recreates body animation when the key changes', (

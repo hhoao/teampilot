@@ -35,6 +35,7 @@ class WorkspaceShell extends StatelessWidget {
     this.layoutPreferences = const LayoutPreferences(),
     this.onRightToolsWidthChanged,
     this.rightTools,
+    this.childAnimationKey,
     super.key,
   });
 
@@ -53,6 +54,7 @@ class WorkspaceShell extends StatelessWidget {
   final LayoutPreferences layoutPreferences;
   final ValueChanged<double>? onRightToolsWidthChanged;
   final Widget? rightTools;
+  final Key? childAnimationKey;
 
   @override
   Widget build(BuildContext context) {
@@ -145,6 +147,7 @@ class WorkspaceShell extends StatelessWidget {
             preferences: layoutPreferences,
             rightTools: rightTools,
             onRightToolsWidthChanged: onRightToolsWidthChanged,
+            childAnimationKey: childAnimationKey,
             child: child,
           ),
         ),
@@ -159,22 +162,28 @@ class _WorkspaceBody extends StatelessWidget {
     required this.child,
     required this.rightTools,
     required this.onRightToolsWidthChanged,
+    required this.childAnimationKey,
   });
 
   final LayoutPreferences preferences;
   final Widget child;
   final Widget? rightTools;
   final ValueChanged<double>? onRightToolsWidthChanged;
+  final Key? childAnimationKey;
 
   @override
   Widget build(BuildContext context) {
+    final animatedChild = childAnimationKey == null
+        ? child
+        : _FadeSlideIn(key: childAnimationKey, child: child);
+
     if (rightTools == null) {
-      return child;
+      return animatedChild;
     }
     if (preferences.toolPlacement == ToolPanelPlacement.bottom) {
       return Column(
         children: [
-          Expanded(child: child),
+          Expanded(child: animatedChild),
           SizedBox(height: preferences.bottomToolsHeight, child: rightTools),
         ],
       );
@@ -183,7 +192,7 @@ class _WorkspaceBody extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         return ResizableSplitView(
-          left: child,
+          left: animatedChild,
           right: rightTools!,
           initialLeftWidth: (constraints.maxWidth - rightWidth).clamp(
             150,
@@ -194,6 +203,33 @@ class _WorkspaceBody extends StatelessWidget {
           onWidthChanged: (leftWidth) {
             onRightToolsWidthChanged?.call(constraints.maxWidth - leftWidth);
           },
+        );
+      },
+    );
+  }
+}
+
+class _FadeSlideIn extends StatelessWidget {
+  const _FadeSlideIn({required this.child, super.key});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return TweenAnimationBuilder<double>(
+      key: key,
+      tween: Tween(begin: 0, end: 1),
+      duration: const Duration(milliseconds: 280),
+      curve: Curves.easeOutCubic,
+      child: child,
+      builder: (context, value, child) {
+        final opacity = Curves.easeOut.transform(value);
+        return Opacity(
+          opacity: opacity,
+          child: FractionalTranslation(
+            translation: Offset(0.025 * (1 - value), 0),
+            child: child,
+          ),
         );
       },
     );
