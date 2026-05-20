@@ -21,6 +21,7 @@ class LayoutPreferences {
     this.membersSplit = 0.42,
     this.themeMode = 'system',
     this.themeColorPreset = 'graphite',
+    this.terminalThemeMode = 'adaptive',
     this.locale = '',
   });
 
@@ -57,6 +58,9 @@ class LayoutPreferences {
       themeColorPreset: normalizeThemeColorPreset(
         json['themeColorPreset'] as String?,
       ),
+      terminalThemeMode: _terminalThemeModeValue(
+        json['terminalThemeMode'] as String?,
+      ),
       locale: json['locale'] as String? ?? '',
     ).withAtLeastOneToolVisible();
   }
@@ -84,6 +88,7 @@ class LayoutPreferences {
   final double membersSplit;
   final String themeMode;
   final String themeColorPreset;
+  final String terminalThemeMode;
   final String locale;
 
   LayoutPreferences copyWith({
@@ -100,6 +105,7 @@ class LayoutPreferences {
     double? membersSplit,
     String? themeMode,
     String? themeColorPreset,
+    String? terminalThemeMode,
     String? locale,
   }) {
     return LayoutPreferences(
@@ -126,6 +132,9 @@ class LayoutPreferences {
       membersSplit: (membersSplit ?? this.membersSplit).clamp(0.25, 0.75),
       themeMode: themeMode ?? this.themeMode,
       themeColorPreset: themeColorPreset ?? this.themeColorPreset,
+      terminalThemeMode: terminalThemeMode == null
+          ? this.terminalThemeMode
+          : _terminalThemeModeValue(terminalThemeMode),
       locale: locale ?? this.locale,
     ).withAtLeastOneToolVisible();
   }
@@ -148,6 +157,7 @@ class LayoutPreferences {
       membersSplit: membersSplit,
       themeMode: themeMode,
       themeColorPreset: themeColorPreset,
+      terminalThemeMode: terminalThemeMode,
       locale: locale,
     );
   }
@@ -167,6 +177,7 @@ class LayoutPreferences {
       'membersSplit': membersSplit,
       'themeMode': themeMode,
       'themeColorPreset': themeColorPreset,
+      'terminalThemeMode': terminalThemeMode,
       'locale': locale,
     };
   }
@@ -189,4 +200,11 @@ double _doubleValue(Object? raw, {double fallback = 320.0}) {
     return raw.toDouble();
   }
   return fallback;
+}
+
+String _terminalThemeModeValue(String? raw) {
+  if (raw == 'adaptive' || raw == 'classicDark' || raw == 'highContrast') {
+    return raw!;
+  }
+  return 'adaptive';
 }
