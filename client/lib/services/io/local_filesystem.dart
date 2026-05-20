@@ -8,6 +8,8 @@ class LocalFilesystem implements Filesystem {
   LocalFilesystem({p.Context? pathContext})
     : pathContext = pathContext ?? p.context;
 
+  static int _tmpWriteCounter = 0;
+
   @override
   final p.Context pathContext;
 
@@ -47,17 +49,31 @@ class LocalFilesystem implements Filesystem {
   Future<void> removeRecursive(String path) async {
     final link = Link(path);
     if (await link.exists()) {
-      await link.delete();
+      await _deleteIfStillPresent(link);
       return;
     }
     final dir = Directory(path);
     if (await dir.exists()) {
-      await dir.delete(recursive: true);
+      await _deleteIfStillPresent(dir, recursive: true);
       return;
     }
     final file = File(path);
     if (await file.exists()) {
-      await file.delete();
+      await _deleteIfStillPresent(file);
+    }
+  }
+
+  Future<void> _deleteIfStillPresent(
+    FileSystemEntity entity, {
+    bool recursive = false,
+  }) async {
+    try {
+      await entity.delete(recursive: recursive);
+    } on PathNotFoundException {
+      return;
+    } on FileSystemException {
+      if (!await entity.exists()) return;
+      rethrow;
     }
   }
 
@@ -84,7 +100,8 @@ class LocalFilesystem implements Filesystem {
   @override
   Future<void> atomicWrite(String path, String content) async {
     await ensureDir(pathContext.dirname(path));
-    final tmp = '$path.tmp.${DateTime.now().microsecondsSinceEpoch}';
+    final tmp =
+        '$path.tmp.${DateTime.now().microsecondsSinceEpoch}.${_tmpWriteCounter++}';
     await File(tmp).writeAsString(content);
     await removeRecursive(path);
     await File(tmp).rename(path);

@@ -932,6 +932,24 @@ abstract class AppLocalizations {
   /// **'Filter providers...'**
   String get filterProviders;
 
+  /// No description provided for @appProviderImport.
+  ///
+  /// In en, this message translates to:
+  /// **'Import'**
+  String get appProviderImport;
+
+  /// No description provided for @appProviderImportNothing.
+  ///
+  /// In en, this message translates to:
+  /// **'No providers found to import.'**
+  String get appProviderImportNothing;
+
+  /// No description provided for @appProviderImportSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Imported {count} providers. Mirrored {mirrored} to FlashskyAI, skipped {skipped} existing.'**
+  String appProviderImportSuccess(int count, int mirrored, int skipped);
+
   /// No description provided for @modelsUsingProvider.
   ///
   /// In en, this message translates to:

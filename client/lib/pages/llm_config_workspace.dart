@@ -290,6 +290,22 @@ class _LlmProvidersListContent extends StatelessWidget {
       onAdd:
           onAdd ??
           () => context.push(llmProviderAddRoute(appCubit.state.selectedCli)),
+      onImport: () async {
+        final result = await context.read<AppProviderCubit>().importFromExternal();
+        if (!context.mounted) return;
+        final l10n = context.l10n;
+        final changed = result.added + result.updated;
+        final message = changed == 0 && result.mirroredToFlashskyai == 0
+            ? l10n.appProviderImportNothing
+            : l10n.appProviderImportSuccess(
+                changed,
+                result.mirroredToFlashskyai,
+                result.mirrorSkipped,
+              );
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(message)),
+        );
+      },
       onEdit: (provider) {
         if (onEdit != null) {
           onEdit!(provider);

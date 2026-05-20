@@ -167,6 +167,22 @@
   },
   "providerList": "Provider List",
   "filterProviders": "Filter providers...",
+  "appProviderImport": "Import",
+  "appProviderImportNothing": "No providers found to import.",
+  "appProviderImportSuccess": "Imported {count} providers. Mirrored {mirrored} to FlashskyAI, skipped {skipped} existing.",
+  "@appProviderImportSuccess": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "mirrored": {
+        "type": "int"
+      },
+      "skipped": {
+        "type": "int"
+      }
+    }
+  },
   "modelsUsingProvider": "Models using this provider: {count}",
   "@modelsUsingProvider": {
     "placeholders": {

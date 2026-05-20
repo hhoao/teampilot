@@ -457,6 +457,17 @@ class AppLocalizationsEn extends AppLocalizations {
   String get filterProviders => 'Filter providers...';
 
   @override
+  String get appProviderImport => 'Import';
+
+  @override
+  String get appProviderImportNothing => 'No providers found to import.';
+
+  @override
+  String appProviderImportSuccess(int count, int mirrored, int skipped) {
+    return 'Imported $count providers. Mirrored $mirrored to FlashskyAI, skipped $skipped existing.';
+  }
+
+  @override
   String modelsUsingProvider(int count) {
     return 'Models using this provider: $count';
   }

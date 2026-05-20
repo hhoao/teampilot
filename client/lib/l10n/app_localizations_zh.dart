@@ -443,6 +443,17 @@ class AppLocalizationsZh extends AppLocalizations {
   String get filterProviders => '筛选提供商...';
 
   @override
+  String get appProviderImport => '导入';
+
+  @override
+  String get appProviderImportNothing => '未发现可导入的提供商。';
+
+  @override
+  String appProviderImportSuccess(int count, int mirrored, int skipped) {
+    return '已导入 $count 个提供商，同步到 FlashskyAI $mirrored 个，跳过已存在 $skipped 个。';
+  }
+
+  @override
   String modelsUsingProvider(int count) {
     return '使用此提供商的模型： $count';
   }

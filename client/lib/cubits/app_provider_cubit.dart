@@ -5,6 +5,7 @@ import '../models/app_provider_config.dart';
 import '../models/llm_config.dart';
 import '../repositories/app_provider_repository.dart';
 import '../services/app_storage.dart';
+import '../services/provider_import_service.dart';
 import '../services/tool_config_generator.dart';
 
 class AppProviderState extends Equatable {
@@ -69,13 +70,26 @@ class AppProviderState extends Equatable {
 class AppProviderCubit extends Cubit<AppProviderState> {
   AppProviderCubit({
     AppProviderRepository? repository,
+    ProviderImportService? importService,
+    String? homeDirectory,
+    String? currentDirectory,
+    String? flashskyaiExecutablePath,
     ToolConfigGenerator? generator,
   }) : _repository = repository ?? AppProviderRepository(),
        _generator = generator ?? const ToolConfigGenerator(),
+       _importService =
+           importService ??
+           ProviderImportService(
+             repository: repository ?? AppProviderRepository(),
+             homeDirectory: homeDirectory,
+             currentDirectory: currentDirectory,
+             flashskyaiExecutablePath: flashskyaiExecutablePath,
+           ),
        super(const AppProviderState());
 
   final AppProviderRepository _repository;
   final ToolConfigGenerator _generator;
+  final ProviderImportService _importService;
 
   String get catalogPath => AppPathsBootstrapper.current.providerConfigDir;
 
@@ -210,6 +224,36 @@ class AppProviderCubit extends Cubit<AppProviderState> {
     );
   }
 
+  Future<ProviderImportResult> importFromExternal() async {
+    final cli = state.selectedCli;
+    emit(state.copyWith(isLoading: true, statusMessage: ''));
+    final result = await _importService.importForCli(cli, onlyIfEmpty: false);
+
+    final byCli = <AppProviderCli, List<AppProviderConfig>>{};
+    final selectedByCli = Map<AppProviderCli, String?>.from(
+      state.selectedProviderIdByCli,
+    );
+    for (final item in AppProviderCli.values) {
+      final providers = await _repository.loadProviders(item);
+      byCli[item] = providers;
+      final selected = selectedByCli[item];
+      selectedByCli[item] =
+          selected != null && providers.any((p) => p.id == selected)
+          ? selected
+          : providers.firstOrNull?.id;
+    }
+
+    emit(
+      state.copyWith(
+        providersByCli: byCli,
+        selectedProviderIdByCli: selectedByCli,
+        isLoading: false,
+        statusMessage: _importStatusMessage(result),
+      ),
+    );
+    return result;
+  }
+
   LlmConfig flashskyaiLlmConfigFor(AppProviderConfig provider) {
     return _generator.buildFlashskyaiLlmConfig(provider);
   }
@@ -249,6 +293,15 @@ class AppProviderCubit extends Cubit<AppProviderState> {
       i++;
     }
     return candidate;
+  }
+
+  static String _importStatusMessage(ProviderImportResult result) {
+    final changed = result.added + result.updated;
+    if (changed == 0 && result.mirroredToFlashskyai == 0) {
+      return 'No providers imported.';
+    }
+    return 'Imported $changed providers'
+        '${result.mirroredToFlashskyai > 0 ? ', mirrored ${result.mirroredToFlashskyai} to FlashskyAI' : ''}.';
   }
 
   Map<String, Object?> _normalizedConfigForCli({

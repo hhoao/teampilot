@@ -1,9 +1,9 @@
 import '../repositories/app_provider_repository.dart';
+import '../models/app_provider_config.dart';
+import 'provider_import_service.dart';
 import 'tool_config_generator.dart';
 
-/// Legacy provider migration is intentionally disabled for the single-CLI
-/// provider catalog. Old `providers/providers.json` and legacy FlashskyAI
-/// imports are ignored in this version.
+/// One-time silent import of CLI provider configs into TeamPilot catalogs.
 class ProviderMigrationService {
   ProviderMigrationService({
     AppProviderRepository? providerRepository,
@@ -12,7 +12,26 @@ class ProviderMigrationService {
     String? currentDirectory,
     String? cliExecutablePath,
     ToolConfigGenerator? generator,
-  });
+  }) : _importService = ProviderImportService(
+         repository:
+             providerRepository ?? AppProviderRepository(basePath: appDataBasePath),
+         appDataBasePath: appDataBasePath,
+         homeDirectory: homeDirectory,
+         currentDirectory: currentDirectory,
+         flashskyaiExecutablePath: cliExecutablePath,
+       );
 
-  Future<bool> migrateIfNeeded() async => false;
+  final ProviderImportService _importService;
+
+  Future<bool> migrateIfNeeded() async {
+    var changed = false;
+    for (final cli in AppProviderCli.values) {
+      final result = await _importService.importForCli(
+        cli,
+        onlyIfEmpty: true,
+      );
+      changed = changed || result.changed;
+    }
+    return changed;
+  }
 }

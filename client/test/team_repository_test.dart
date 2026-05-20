@@ -196,6 +196,22 @@ void main() {
       expect(await File(p.join(uiRoot.path, 'drop.json')).exists(), isFalse);
       expect(await File(p.join(uiRoot.path, 'keep.json')).exists(), isTrue);
     });
+
+    test('concurrent saves do not fail when replacing the same UI file', () async {
+      const team = TeamConfig(
+        id: 'default',
+        name: 'Default Team',
+        members: [TeamMemberConfig(id: 'm', name: 'm')],
+      );
+
+      await repo().saveTeams(const [team]);
+
+      await Future.wait([
+        for (var i = 0; i < 200; i++) repo().saveTeams(const [team]),
+      ]);
+
+      expect(await File(p.join(uiRoot.path, 'Default Team.json')).exists(), isTrue);
+    });
   });
 
   group('deleteTeam', () {

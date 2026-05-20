@@ -15,6 +15,7 @@ class AppProviderListPanel extends StatefulWidget {
     required this.selectedId,
     required this.onSelect,
     required this.onAdd,
+    required this.onImport,
     required this.onEdit,
     required this.onDelete,
     this.hubStyle = false,
@@ -24,6 +25,7 @@ class AppProviderListPanel extends StatefulWidget {
   final String? selectedId;
   final ValueChanged<String> onSelect;
   final VoidCallback onAdd;
+  final Future<void> Function() onImport;
   final ValueChanged<AppProviderConfig> onEdit;
   final ValueChanged<String> onDelete;
   final bool hubStyle;
@@ -67,18 +69,38 @@ class _AppProviderListPanelState extends State<AppProviderListPanel> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Expanded(
                       child: Text(
                         l10n.providerList,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: Theme.of(context).textTheme.titleSmall?.copyWith(
                           fontWeight: FontWeight.w700,
                         ),
                       ),
                     ),
-                    TextButton(
-                      onPressed: widget.onAdd,
-                      child: Text('+ ${l10n.add}'),
+                    const SizedBox(width: 8),
+                    Flexible(
+                      child: Wrap(
+                        alignment: WrapAlignment.end,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        spacing: 4,
+                        runSpacing: 4,
+                        children: [
+                          TextButton(
+                            onPressed: appCubit.state.isLoading
+                                ? null
+                                : () => widget.onImport(),
+                            child: Text(l10n.appProviderImport),
+                          ),
+                          TextButton(
+                            onPressed: widget.onAdd,
+                            child: Text('+ ${l10n.add}'),
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),
