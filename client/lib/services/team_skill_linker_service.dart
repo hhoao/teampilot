@@ -1,11 +1,11 @@
-import 'dart:io';
-
 import 'package:path/path.dart' as p;
 
 import '../models/skill.dart';
 import '../utils/logger.dart';
 import 'cli_data_layout.dart';
 import 'flashskyai_storage_roots.dart';
+import 'io/filesystem.dart';
+import 'io/local_filesystem.dart';
 
 class TeamSkillSyncResult {
   const TeamSkillSyncResult({
@@ -35,12 +35,10 @@ class TeamSkillLinkerService {
     FlashskyaiStorageRoots? storageRoots,
   }) : _appSkillsRoot = appSkillsRoot,
        _teamSkillsRootOverride = teamSkillsRootOverride,
-       _useWslSymlinks = useWslSymlinks,
        _storageRoots = storageRoots;
 
   final String? _appSkillsRoot;
   final String? _teamSkillsRootOverride;
-  final bool? _useWslSymlinks;
   final FlashskyaiStorageRoots? _storageRoots;
 
   String get appSkillsDir {
@@ -59,11 +57,6 @@ class TeamSkillLinkerService {
   }
 
   String sourceDirFor(Skill skill) => p.join(appSkillsDir, skill.directory);
-
-  bool get _shouldUseWsl {
-    if (_useWslSymlinks != null) return _useWslSymlinks;
-    return false;
-  }
 
   Future<TeamSkillSyncResult> syncForTeam({
     required String teamId,
@@ -88,24 +81,24 @@ class TeamSkillLinkerService {
     }
 
     final roots = await _storageRoots?.resolve();
-    if (roots != null &&
-        roots.storageIsRemote &&
-        roots.remoteFileStore != null) {
-      return _syncRemoteSymlinks(roots, trimmedTeamId, toLink, skipped);
-    }
-
+    final fs = roots?.fs ?? LocalFilesystem();
     final layout =
         roots?.layout ??
         CliDataLayout(
-          teampilotRoot:
-              _teamSkillsRootOverride != null ? '' : _appSkillsRootParent(),
+          teampilotRoot: _teamSkillsRootOverride != null
+              ? ''
+              : _appSkillsRootParent(),
+          fs: fs,
         );
     final teamSkillsDir = teamSkillsDirFor(trimmedTeamId, layout: layout);
-
-    if (_shouldUseWsl) {
-      return _syncViaWsl(toLink, skipped, teamSkillsDir);
-    }
-    return _syncNative(toLink, skipped, teamSkillsDir);
+    final sourceRoot = roots?.skillsRoot ?? appSkillsDir;
+    return _syncWithFilesystem(
+      fs: fs,
+      sourceRoot: sourceRoot,
+      teamSkillsDir: teamSkillsDir,
+      toLink: toLink,
+      skipped: skipped,
+    );
   }
 
   String _appSkillsRootParent() {
@@ -114,77 +107,22 @@ class TeamSkillLinkerService {
     return p.dirname(root);
   }
 
-  Future<TeamSkillSyncResult> _syncRemoteSymlinks(
-    StorageRootsSnapshot roots,
-    String teamId,
-    List<Skill> toLink,
-    List<String> skipped,
-  ) async {
-    final store = roots.remoteFileStore!;
-    final posix = p.Context(style: p.Style.posix);
+  Future<TeamSkillSyncResult> _syncWithFilesystem({
+    required Filesystem fs,
+    required String sourceRoot,
+    required String teamSkillsDir,
+    required List<Skill> toLink,
+    required List<String> skipped,
+  }) async {
+    final path = fs.pathContext;
     final errors = <String>[];
     final linked = <String>[];
 
-    final teamSkillsDir = posix.join(
-      roots.layout.teamToolDir(teamId, 'flashskyai'),
-      'skills',
-    );
-
     try {
-      await store.ensureDirectory(teamSkillsDir);
-      final entries = await store.listDirectoryEntries(teamSkillsDir);
-      for (final entry in entries) {
-        await store.removeRecursive(posix.join(teamSkillsDir, entry.name));
+      await fs.ensureDir(teamSkillsDir);
+      for (final entry in await fs.listDir(teamSkillsDir)) {
+        await fs.removeRecursive(path.join(teamSkillsDir, entry.name));
       }
-    } catch (e) {
-      return TeamSkillSyncResult(
-        skippedMissingIds: skipped,
-        errors: ['Failed to clear remote team skills dir: $e'],
-      );
-    }
-
-    for (final skill in toLink) {
-      final source = posix.join(roots.skillsRoot, skill.directory);
-      final target = posix.join(teamSkillsDir, skill.directory);
-      try {
-        if (!await store.fileExists(posix.join(source, 'SKILL.md'))) {
-          errors.add('${skill.name}: source missing at $source');
-          continue;
-        }
-        await store.createSymlink(target: source, linkPath: target);
-        linked.add(skill.directory);
-      } catch (e) {
-        errors.add('${skill.name}: $e');
-        appLogger.w('[team-skills] remote link failed for ${skill.id}: $e');
-      }
-    }
-
-    return TeamSkillSyncResult(
-      linked: linked,
-      skippedMissingIds: skipped,
-      errors: errors,
-    );
-  }
-
-  Future<TeamSkillSyncResult> _syncNative(
-    List<Skill> toLink,
-    List<String> skipped,
-    String teamSkillsDir,
-  ) async {
-    final errors = <String>[];
-    final linked = <String>[];
-
-    // Android local-PTY has no CLI — symlinks would serve no purpose and may
-    // fail on filesystems that don't support them (e.g. sdcardfs).
-    if (Platform.isAndroid) {
-      return TeamSkillSyncResult(
-        linked: toLink.map((s) => s.directory).toList(),
-        skippedMissingIds: skipped,
-      );
-    }
-
-    try {
-      await _clearTeamSkillsDir(teamSkillsDir);
     } catch (e) {
       return TeamSkillSyncResult(
         skippedMissingIds: skipped,
@@ -193,10 +131,20 @@ class TeamSkillLinkerService {
     }
 
     for (final skill in toLink) {
-      final source = sourceDirFor(skill);
-      final target = p.join(teamSkillsDir, skill.directory);
+      final source = path.join(sourceRoot, skill.directory);
+      final target = path.join(teamSkillsDir, skill.directory);
       try {
-        await _createDirectoryLink(source: source, target: target);
+        if (!(await fs.stat(source)).isDirectory) {
+          errors.add('${skill.name}: source missing at $source');
+          continue;
+        }
+        final linkedOk = await fs.createSymlink(
+          target: source,
+          linkPath: target,
+        );
+        if (!linkedOk) {
+          await fs.copyTree(source: source, destination: target);
+        }
         linked.add(skill.directory);
       } catch (e) {
         errors.add('${skill.name}: $e');
@@ -209,125 +157,5 @@ class TeamSkillLinkerService {
       skippedMissingIds: skipped,
       errors: errors,
     );
-  }
-
-  Future<TeamSkillSyncResult> _syncViaWsl(
-    List<Skill> toLink,
-    List<String> skipped,
-    String teamSkillsDir,
-  ) async {
-    final errors = <String>[];
-    final linked = <String>[];
-
-    final wslCliDir = await _windowsPathToWsl(teamSkillsDir);
-    if (wslCliDir == null) {
-      return TeamSkillSyncResult(
-        skippedMissingIds: skipped,
-        errors: ['Could not resolve WSL path for team skills directory'],
-      );
-    }
-
-    await _wslRun(['rm', '-rf', '$wslCliDir/*'], ignoreErrors: true);
-    await _wslRun(['mkdir', '-p', wslCliDir]);
-
-    for (final skill in toLink) {
-      final source = sourceDirFor(skill);
-      if (!Directory(source).existsSync()) {
-        errors.add('${skill.name}: source missing at $source');
-        continue;
-      }
-      final wslSource = await _windowsPathToWsl(source);
-      if (wslSource == null) {
-        errors.add('${skill.name}: could not resolve WSL source path');
-        continue;
-      }
-      final wslTarget = '$wslCliDir/${skill.directory}';
-      final result = await _wslRun(['ln', '-sf', wslSource, wslTarget]);
-      if (result.exitCode != 0) {
-        final msg = (result.stderr as String?)?.trim() ?? 'ln failed';
-        errors.add('${skill.name}: $msg');
-      } else {
-        linked.add(skill.directory);
-      }
-    }
-
-    return TeamSkillSyncResult(
-      linked: linked,
-      skippedMissingIds: skipped,
-      errors: errors,
-    );
-  }
-
-  Future<void> _clearTeamSkillsDir(String teamSkillsDir) async {
-    final dir = Directory(teamSkillsDir);
-    if (!dir.existsSync()) {
-      dir.createSync(recursive: true);
-      return;
-    }
-    for (final entity in dir.listSync(followLinks: false)) {
-      await _deleteEntity(entity);
-    }
-  }
-
-  Future<void> _deleteEntity(FileSystemEntity entity) async {
-    if (entity is Directory) {
-      await entity.delete(recursive: true);
-    } else if (entity is File || entity is Link) {
-      await entity.delete();
-    }
-  }
-
-  Future<void> _createDirectoryLink({
-    required String source,
-    required String target,
-  }) async {
-    final srcDir = Directory(source);
-    if (!srcDir.existsSync()) {
-      throw StateError('source directory missing: $source');
-    }
-
-    final targetLink = Link(target);
-    if (targetLink.existsSync()) {
-      await targetLink.delete();
-    }
-    final targetDir = Directory(target);
-    if (targetDir.existsSync()) {
-      await targetDir.delete(recursive: true);
-    }
-
-    try {
-      await Directory(p.dirname(target)).create(recursive: true);
-      await Link(target).create(source);
-    } on FileSystemException catch (e) {
-      if (!Platform.isWindows) rethrow;
-      final result = await Process.run('cmd', [
-        '/c',
-        'mklink',
-        '/J',
-        target,
-        source,
-      ]);
-      if (result.exitCode != 0) {
-        throw FileSystemException('junction failed', target, e.osError);
-      }
-    }
-  }
-
-  Future<String?> _windowsPathToWsl(String windowsPath) async {
-    final result = await Process.run('wsl.exe', ['wslpath', '-u', windowsPath]);
-    if (result.exitCode != 0) return null;
-    final out = (result.stdout as String?)?.trim() ?? '';
-    return out.isEmpty ? null : out;
-  }
-
-  Future<ProcessResult> _wslRun(
-    List<String> args, {
-    bool ignoreErrors = false,
-  }) async {
-    final result = await Process.run('wsl.exe', args);
-    if (!ignoreErrors && result.exitCode != 0) {
-      appLogger.w('[team-skills] wsl ${args.join(' ')}: ${result.stderr}');
-    }
-    return result;
   }
 }

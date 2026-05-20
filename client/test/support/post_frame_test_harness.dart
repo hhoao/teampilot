@@ -7,14 +7,14 @@ import 'package:teampilot/services/app_storage.dart';
 
 Directory? _testAppDataDir;
 
-/// Initializes [AppStorage.basePath] for cubit tests that spawn team env.
+/// Initializes app paths for cubit tests that spawn team env.
 void setUpTestAppStorage() {
   _testAppDataDir = Directory.systemTemp.createTempSync('test_app_data_');
-  AppStorage.setBasePathForTesting(_testAppDataDir!.path);
+  AppPathsBootstrapper.setCurrentForTesting(AppPaths(_testAppDataDir!.path));
 }
 
 void tearDownTestAppStorage() {
-  AppStorage.resetForTesting();
+  AppPathsBootstrapper.resetForTesting();
   final dir = _testAppDataDir;
   _testAppDataDir = null;
   if (dir != null && dir.existsSync()) {

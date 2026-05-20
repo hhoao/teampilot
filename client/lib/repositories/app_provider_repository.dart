@@ -25,7 +25,7 @@ class AppProviderRepository {
   }) : _basePath =
            basePath ??
            (providersFile == null
-               ? AppStorage.basePath
+               ? AppPathsBootstrapper.current.basePath
                : providersFile.parent.parent.path),
        _generator = generator ?? const ToolConfigGenerator();
 
@@ -42,12 +42,8 @@ class AppProviderRepository {
   File providersFile(AppProviderCli cli) =>
       providersFileForBasePath(_basePath, cli);
 
-  String get _appFlashskyaiLlmConfigFile => p.join(
-    _basePath,
-    'config-profiles',
-    'flashskyai',
-    'llm_config.json',
-  );
+  String get _appFlashskyaiLlmConfigFile =>
+      p.join(_basePath, 'config-profiles', 'flashskyai', 'llm_config.json');
 
   Future<List<AppProviderConfig>> loadProviders(AppProviderCli cli) async {
     final file = providersFile(cli);

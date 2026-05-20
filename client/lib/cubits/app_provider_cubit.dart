@@ -77,7 +77,7 @@ class AppProviderCubit extends Cubit<AppProviderState> {
   final AppProviderRepository _repository;
   final ToolConfigGenerator _generator;
 
-  String get catalogPath => AppStorage.providerConfigDir;
+  String get catalogPath => AppPathsBootstrapper.current.providerConfigDir;
 
   Future<void> load() async {
     emit(state.copyWith(isLoading: true, statusMessage: ''));

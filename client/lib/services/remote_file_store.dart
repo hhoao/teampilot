@@ -195,6 +195,29 @@ class RemoteFileStore {
     }
   }
 
+  Future<void> copyTree({
+    required String source,
+    required String destination,
+  }) async {
+    final posix = p.Context(style: p.Style.posix);
+    final parent = posix.dirname(destination);
+    if (parent.isNotEmpty && parent != '.' && parent != '/') {
+      await ensureDirectory(parent);
+    }
+    await removeRecursive(destination);
+    await ensureDirectory(destination);
+    final client = await _clientFactory.clientFor(_profile);
+    final result = await client.runWithResult(
+      'cp -R -- ${shellSingleQuote('$source/.')} ${shellSingleQuote(destination)}',
+      stderr: false,
+    );
+    if (result.exitCode != 0) {
+      throw StateError(
+        'cp failed (${result.exitCode}): ${utf8.decode(result.stderr, allowMalformed: true)}',
+      );
+    }
+  }
+
   Future<void> createDirectory(String path) async {
     final sftp = await _ensureConnected();
     final resolved = await expandHome(path);

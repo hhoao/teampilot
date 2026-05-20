@@ -8,7 +8,9 @@ import '../models/skill.dart';
 import '../models/team_config.dart';
 import '../repositories/team_repository.dart';
 import '../services/app_storage.dart';
+import '../services/cli_data_layout.dart';
 import '../services/config_profile_service.dart';
+import '../services/io/local_filesystem.dart';
 import '../services/launch_command_builder.dart';
 import '../services/session_lifecycle_service.dart';
 import '../services/team_skill_linker_service.dart';
@@ -124,7 +126,7 @@ class TeamCubit extends Cubit<TeamState> {
     if (override != null && override.isNotEmpty) {
       return override;
     }
-    return AppStorage.basePath;
+    return AppPathsBootstrapper.current.basePath;
   }
 
   final StorageRootsResolver? _storageRootsResolver;
@@ -156,17 +158,19 @@ class TeamCubit extends Cubit<TeamState> {
     if (injected != null) return injected;
     final resolver = _storageRootsResolver;
     if (resolver == null) {
-      return ConfigProfileService(basePath: _resolvedAppDataBasePath);
-    }
-    final roots = await resolver();
-    final remote = roots.remoteFileStore;
-    if (roots.storageIsRemote && remote != null) {
+      final fs = LocalFilesystem();
       return ConfigProfileService(
-        basePath: roots.teampilotRoot,
-        createDirectory: remote.ensureDirectory,
+        basePath: _resolvedAppDataBasePath,
+        fs: fs,
+        layout: CliDataLayout(teampilotRoot: _resolvedAppDataBasePath, fs: fs),
       );
     }
-    return ConfigProfileService(basePath: roots.teampilotRoot);
+    final roots = await resolver();
+    return ConfigProfileService(
+      basePath: roots.teampilotRoot,
+      fs: roots.fs,
+      layout: roots.layout,
+    );
   }
 
   Future<void> _ensureProfilesForTeams(List<TeamConfig> teams) async {

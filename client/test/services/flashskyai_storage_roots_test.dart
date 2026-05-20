@@ -10,11 +10,11 @@ void main() {
 
   setUp(() async {
     appDataRoot = await Directory.systemTemp.createTemp('teampilot_app_data_');
-    AppStorage.setBasePathForTesting(appDataRoot.path);
+    AppPathsBootstrapper.setCurrentForTesting(AppPaths(appDataRoot.path));
   });
 
   tearDown(() async {
-    AppStorage.resetForTesting();
+    AppPathsBootstrapper.resetForTesting();
     if (await appDataRoot.exists()) {
       await appDataRoot.delete(recursive: true);
     }
@@ -24,7 +24,7 @@ void main() {
     final roots = FlashskyaiStorageRoots(isSshMode: () => false);
     final snap = await roots.resolve();
     expect(snap.storageIsRemote, isFalse);
-    expect(snap.teamsUiDir, AppStorage.teamsDir);
+    expect(snap.teamsUiDir, AppPathsBootstrapper.current.teamsDir);
     expect(snap.appFlashskyaiDir, endsWith('/config-profiles/flashskyai'));
     expect(snap.remoteFileStore, isNull);
   });
@@ -43,12 +43,13 @@ void main() {
     final snap = StorageRootsSnapshot(
       storageIsRemote: true,
       teampilotRoot: teampilotRoot,
-      teamsUiDir: AppStorage.teamsUiDirForTeampilotRoot(teampilotRoot),
-      skillsRoot: AppStorage.skillsDirForTeampilotRoot(teampilotRoot),
-      skillBackupsDir: AppStorage.skillBackupsDirForTeampilotRoot(teampilotRoot),
-      appProjectsDir: AppStorage.appProjectsDirForTeampilotRoot(teampilotRoot),
-      skillReposConfigPath:
-          AppStorage.skillReposConfigPathForTeampilotRoot(teampilotRoot),
+      teamsUiDir: AppPaths.teamsUiDirForTeampilotRoot(teampilotRoot),
+      skillsRoot: AppPaths.skillsDirForTeampilotRoot(teampilotRoot),
+      skillBackupsDir: AppPaths.skillBackupsDirForTeampilotRoot(teampilotRoot),
+      appProjectsDir: AppPaths.appProjectsDirForTeampilotRoot(teampilotRoot),
+      skillReposConfigPath: AppPaths.skillReposConfigPathForTeampilotRoot(
+        teampilotRoot,
+      ),
     );
     expect(snap.teampilotRoot, teampilotRoot);
     expect(snap.teamsUiDir, '$teampilotRoot/teams');
@@ -75,12 +76,15 @@ void main() {
     expect(root, '/xdg/teampilot');
   });
 
-  test('pickTeampilotRoot falls back to legacy when primary is empty', () async {
-    final root = await RemoteTeampilotAppDataResolver.pickTeampilotRoot(
-      primary: '/xdg/teampilot',
-      legacy: '/cli/.flashskyai/teampilot',
-      hasExistingData: (path) async => path.contains('.flashskyai'),
-    );
-    expect(root, '/cli/.flashskyai/teampilot');
-  });
+  test(
+    'pickTeampilotRoot falls back to legacy when primary is empty',
+    () async {
+      final root = await RemoteTeampilotAppDataResolver.pickTeampilotRoot(
+        primary: '/xdg/teampilot',
+        legacy: '/cli/.flashskyai/teampilot',
+        hasExistingData: (path) async => path.contains('.flashskyai'),
+      );
+      expect(root, '/cli/.flashskyai/teampilot');
+    },
+  );
 }

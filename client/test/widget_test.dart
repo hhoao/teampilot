@@ -333,15 +333,13 @@ void main() {
     expect(chatCubit.state.tabs.length, 0);
     expect(find.text('Terminal not connected'), findsOneWidget);
 
-    await tester.tap(find.widgetWithText(FilledButton, 'Connect'));
+    final selectedTeam = teamCubit.state.selectedTeam;
+    expect(selectedTeam, isNotNull);
+    // Real repository I/O must run inside runAsync in widget tests.
+    await tester.runAsync(
+      () => chatCubit.connectSession(selectedTeam!),
+    );
     await tester.pump();
-    for (var i = 0; i < 40; i++) {
-      await tester.runAsync(
-        () => Future<void>.delayed(const Duration(milliseconds: 50)),
-      );
-      await tester.pump();
-      if (chatCubit.state.tabs.isNotEmpty) break;
-    }
     await tester.runAsync(postFrame.flush);
     await tester.pump();
     expect(chatCubit.state.tabs.length, 1);

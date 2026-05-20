@@ -1,12 +1,10 @@
 import 'dart:convert';
-import 'dart:io';
-
-import 'package:path/path.dart' as p;
 
 import '../models/team_config.dart';
 import '../services/app_storage.dart';
 import '../services/flashskyai_storage_roots.dart';
-import '../services/remote_file_store.dart';
+import '../services/io/filesystem.dart';
+import '../services/io/local_filesystem.dart';
 import '../services/session_lifecycle_service.dart';
 
 /// Persists [TeamConfig] objects in TeamPilot's own metadata directory.
@@ -17,12 +15,11 @@ import '../services/session_lifecycle_service.dart';
 /// CLI-specific files are launch-time artifacts and are generated outside this
 /// repository path.
 class _TeamPaths {
-  const _TeamPaths({required this.teamsUiDir, this.remote});
+  _TeamPaths({required this.teamsUiDir, Filesystem? fs})
+    : fs = fs ?? LocalFilesystem();
 
   final String teamsUiDir;
-  final RemoteFileStore? remote;
-
-  bool get uiIsRemote => remote != null;
+  final Filesystem fs;
 }
 
 class TeamRepository {
@@ -38,28 +35,22 @@ class TeamRepository {
   final FlashskyaiStorageRoots? _storageRoots;
   final SessionLifecycleService? _lifecycleService;
 
-  String get rootDir => _rootDirOverride ?? AppStorage.teamsDir;
+  String get rootDir =>
+      _rootDirOverride ?? AppPathsBootstrapper.current.teamsDir;
 
   Future<_TeamPaths> _paths() async {
     if (_storageRoots != null) {
       final snap = await _storageRoots.resolve();
-      if (snap.storageIsRemote && snap.remoteFileStore != null) {
-        return _TeamPaths(
-          teamsUiDir: snap.teamsUiDir,
-          remote: snap.remoteFileStore,
-        );
-      }
+      return _TeamPaths(teamsUiDir: snap.teamsUiDir, fs: snap.fs);
     }
-    return _TeamPaths(teamsUiDir: _rootDirOverride ?? AppStorage.teamsDir);
+    return _TeamPaths(
+      teamsUiDir: _rootDirOverride ?? AppPathsBootstrapper.current.teamsDir,
+    );
   }
 
   Future<List<TeamConfig>> loadTeams() async {
     final paths = await _paths();
-    final teams = List<TeamConfig>.of(
-      paths.uiIsRemote
-          ? await _readUiDirRemote(paths)
-          : await _readUiDir(paths.teamsUiDir),
-    );
+    final teams = List<TeamConfig>.of(await _readUiDir(paths));
 
     teams.sort((a, b) {
       if (a.createdAt != b.createdAt) {
@@ -79,23 +70,17 @@ class TeamRepository {
       stamped.add(team.createdAt > 0 ? team : team.copyWith(createdAt: now));
     }
     final paths = await _paths();
-    if (paths.uiIsRemote) {
-      await _writeUiDirRemote(paths, stamped);
-    } else {
-      await _writeUiDir(stamped, paths.teamsUiDir);
-    }
+    await _writeUiDir(paths, stamped);
   }
 
-  Future<List<TeamConfig>> _readUiDirRemote(_TeamPaths paths) async {
-    final store = paths.remote!;
-    final posix = p.Context(style: p.Style.posix);
+  Future<List<TeamConfig>> _readUiDir(_TeamPaths paths) async {
     final teams = <TeamConfig>[];
     try {
-      final entries = await store.listDirectoryEntries(paths.teamsUiDir);
+      final entries = await paths.fs.listDir(paths.teamsUiDir);
       for (final entry in entries) {
         if (entry.isDirectory || !entry.name.endsWith('.json')) continue;
-        final content = await store.readFile(
-          posix.join(paths.teamsUiDir, entry.name),
+        final content = await paths.fs.readString(
+          paths.fs.pathContext.join(paths.teamsUiDir, entry.name),
         );
         if (content == null || content.isEmpty) continue;
         try {
@@ -112,79 +97,29 @@ class TeamRepository {
     return teams;
   }
 
-  Future<void> _writeUiDirRemote(
-    _TeamPaths paths,
-    List<TeamConfig> teams,
-  ) async {
-    final store = paths.remote!;
-    final posix = p.Context(style: p.Style.posix);
-    await store.ensureDirectory(paths.teamsUiDir);
+  Future<void> _writeUiDir(_TeamPaths paths, List<TeamConfig> teams) async {
+    await paths.fs.ensureDir(paths.teamsUiDir);
     final keepFiles = <String>{};
     for (final team in teams) {
       final filename = '${team.name}.json';
       keepFiles.add(filename);
-      await store.writeFile(
-        posix.join(paths.teamsUiDir, filename),
+      await paths.fs.atomicWrite(
+        paths.fs.pathContext.join(paths.teamsUiDir, filename),
         const JsonEncoder.withIndent('  ').convert(team.toJson()),
       );
     }
     try {
-      final entries = await store.listDirectoryEntries(paths.teamsUiDir);
+      final entries = await paths.fs.listDir(paths.teamsUiDir);
       for (final entry in entries) {
         if (entry.isDirectory) continue;
         if (!entry.name.endsWith('.json')) continue;
         if (keepFiles.contains(entry.name)) continue;
-        await store.deleteFile(posix.join(paths.teamsUiDir, entry.name));
+        await paths.fs.removeRecursive(
+          paths.fs.pathContext.join(paths.teamsUiDir, entry.name),
+        );
       }
     } on Object {
       // best effort
-    }
-  }
-
-  Future<List<TeamConfig>> _readUiDir(String rootDir) async {
-    final dir = Directory(rootDir);
-    if (!await dir.exists()) return const [];
-    final teams = <TeamConfig>[];
-    await for (final entity in dir.list()) {
-      if (entity is! File) continue;
-      if (!entity.path.endsWith('.json')) continue;
-      try {
-        final raw = await entity.readAsString();
-        final decoded = jsonDecode(raw);
-        if (decoded is! Map) continue;
-        teams.add(TeamConfig.fromJson(Map<String, Object?>.from(decoded)));
-      } on FormatException {
-        continue;
-      } on FileSystemException {
-        continue;
-      }
-    }
-    return teams;
-  }
-
-  Future<void> _writeUiDir(List<TeamConfig> teams, String rootDir) async {
-    final root = Directory(rootDir);
-    await root.create(recursive: true);
-
-    final keepFiles = <String>{};
-    for (final team in teams) {
-      final filename = '${team.name}.json';
-      keepFiles.add(filename);
-      final file = File(p.join(root.path, filename));
-      await file.writeAsString(
-        const JsonEncoder.withIndent('  ').convert(team.toJson()),
-      );
-    }
-    await for (final entity in root.list()) {
-      if (entity is! File) continue;
-      final name = p.basename(entity.path);
-      if (!name.endsWith('.json')) continue;
-      if (keepFiles.contains(name)) continue;
-      try {
-        await entity.delete();
-      } on FileSystemException {
-        // best effort
-      }
     }
   }
 
@@ -207,20 +142,12 @@ class TeamRepository {
     }
 
     final paths = await _paths();
-    if (paths.uiIsRemote) {
-      final store = paths.remote!;
-      final posix = p.Context(style: p.Style.posix);
-      await store.deleteFile(posix.join(paths.teamsUiDir, '$trimmed.json'));
-      return;
-    }
-
-    final uiFile = File(p.join(paths.teamsUiDir, '$trimmed.json'));
-    if (await uiFile.exists()) {
-      try {
-        await uiFile.delete();
-      } on FileSystemException {
-        // best effort
-      }
+    try {
+      await paths.fs.removeRecursive(
+        paths.fs.pathContext.join(paths.teamsUiDir, '$trimmed.json'),
+      );
+    } on Object {
+      // best effort
     }
   }
 }

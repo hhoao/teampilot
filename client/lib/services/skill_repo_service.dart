@@ -30,7 +30,7 @@ class SkillRepoService {
     if (_storageRoots != null) {
       return (await _storageRoots.resolve()).skillReposConfigPath;
     }
-    return AppStorage.skillReposConfigPath;
+    return AppPathsBootstrapper.current.skillReposConfigPath;
   }
 
   Future<List<SkillRepo>> loadRepos() async {

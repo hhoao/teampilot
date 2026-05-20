@@ -54,7 +54,7 @@ class SkillManifestService {
         );
       }
     }
-    final root = _rootDir ?? AppStorage.basePath;
+    final root = _rootDir ?? AppPathsBootstrapper.current.basePath;
     final skillsDir = p.join(root, 'skills');
     return _SkillPaths(
       skillsDir: skillsDir,
@@ -64,12 +64,12 @@ class SkillManifestService {
   }
 
   String get skillsDir {
-    final root = _rootDir ?? AppStorage.basePath;
+    final root = _rootDir ?? AppPathsBootstrapper.current.basePath;
     return p.join(root, 'skills');
   }
 
   String get backupsDir {
-    final root = _rootDir ?? AppStorage.basePath;
+    final root = _rootDir ?? AppPathsBootstrapper.current.basePath;
     return p.join(root, 'skill-backups');
   }
 

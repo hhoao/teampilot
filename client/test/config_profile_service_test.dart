@@ -4,7 +4,9 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:teampilot/models/team_config.dart';
+import 'package:teampilot/services/cli_data_layout.dart';
 import 'package:teampilot/services/config_profile_service.dart';
+import 'package:teampilot/services/io/local_filesystem.dart';
 
 String _sessionClaudeDir(String base, String teamId, String sessionId) =>
     p.join(
@@ -26,7 +28,12 @@ void main() {
 
   setUp(() async {
     base = await Directory.systemTemp.createTemp('cfg_profile_');
-    service = ConfigProfileService(basePath: base.path);
+    final fs = LocalFilesystem();
+    service = ConfigProfileService(
+      basePath: base.path,
+      fs: fs,
+      layout: CliDataLayout(teampilotRoot: base.path, fs: fs),
+    );
   });
 
   tearDown(() async {
@@ -47,45 +54,39 @@ void main() {
     expect(await Directory(p.join(teamRoot.path, 'members')).exists(), isFalse);
   });
 
-  test(
-    'prepareTeamLaunch for flashskyai uses team adhoc member dir',
-    () async {
-      final env = await service.prepareTeamLaunch(
-        teamId: 'team-a',
-        cli: TeamCli.flashskyai,
-      );
+  test('prepareTeamLaunch for flashskyai uses team adhoc member dir', () async {
+    final env = await service.prepareTeamLaunch(
+      teamId: 'team-a',
+      cli: TeamCli.flashskyai,
+    );
 
-      final memberFlashskyaiDir = p.join(
-        base.path,
-        'config-profiles',
-        'teams',
-        'team-a',
-        'members',
-        configProfileAdhocSessionId,
-        'flashskyai',
-      );
+    final memberFlashskyaiDir = p.join(
+      base.path,
+      'config-profiles',
+      'teams',
+      'team-a',
+      'members',
+      configProfileAdhocSessionId,
+      'flashskyai',
+    );
 
-      expect(
-        await Directory(_appFlashskyaiDirPath(base.path)).exists(),
-        isTrue,
-      );
-      expect(await Directory(memberFlashskyaiDir).exists(), isTrue);
-      expect(env.keys, ['FLASHSKYAI_CONFIG_DIR', 'LLM_CONFIG_PATH']);
-      expect(env['FLASHSKYAI_CONFIG_DIR'], memberFlashskyaiDir);
-      expect(
-        env['LLM_CONFIG_PATH'],
-        p.join(base.path, 'config-profiles', 'flashskyai', 'llm_config.json'),
-      );
+    expect(await Directory(_appFlashskyaiDirPath(base.path)).exists(), isTrue);
+    expect(await Directory(memberFlashskyaiDir).exists(), isTrue);
+    expect(env.keys, ['FLASHSKYAI_CONFIG_DIR', 'LLM_CONFIG_PATH']);
+    expect(env['FLASHSKYAI_CONFIG_DIR'], memberFlashskyaiDir);
+    expect(
+      env['LLM_CONFIG_PATH'],
+      p.join(base.path, 'config-profiles', 'flashskyai', 'llm_config.json'),
+    );
 
-      final metadata = File(
-        p.join(
-          memberFlashskyaiDir,
-          ConfigProfileService.flashskyaiMetadataFileName,
-        ),
-      );
-      expect(await metadata.exists(), isTrue);
-    },
-  );
+    final metadata = File(
+      p.join(
+        memberFlashskyaiDir,
+        ConfigProfileService.flashskyaiMetadataFileName,
+      ),
+    );
+    expect(await metadata.exists(), isTrue);
+  });
 
   test('prepareTeamLaunch for codex returns CODEX_HOME only', () async {
     final env = await service.prepareTeamLaunch(
@@ -188,7 +189,9 @@ void main() {
 
       final teamEnv =
           (jsonDecode(
-                    await File(p.join(claudeDir, 'settings.json')).readAsString(),
+                    await File(
+                      p.join(claudeDir, 'settings.json'),
+                    ).readAsString(),
                   )
                   as Map<String, Object?>)['env']
               as Map<String, Object?>;
@@ -198,7 +201,10 @@ void main() {
           (jsonDecode(await File(developerSettings).readAsString())
                   as Map<String, Object?>)['env']
               as Map<String, Object?>;
-      expect(memberEnv['ANTHROPIC_BASE_URL'], 'https://api.example.com/anthropic');
+      expect(
+        memberEnv['ANTHROPIC_BASE_URL'],
+        'https://api.example.com/anthropic',
+      );
       expect(memberEnv['ANTHROPIC_MODEL'], 'sonnet');
     },
   );

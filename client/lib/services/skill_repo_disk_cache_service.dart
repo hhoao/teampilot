@@ -61,7 +61,7 @@ class SkillRepoDiskCacheService {
 
   static String repoKey(SkillRepo repo) => '${repo.owner}__${repo.name}';
 
-  String get _cacheRoot => AppStorage.skillRepoCacheDir;
+  String get _cacheRoot => AppPathsBootstrapper.current.skillRepoCacheDir;
 
   Directory _repoDir(SkillRepo repo) =>
       Directory(p.join(_cacheRoot, repoKey(repo)));
@@ -80,7 +80,9 @@ class SkillRepoDiskCacheService {
           )
           .toList();
     } catch (e) {
-      appLogger.w('[SkillRepoCache] corrupt skills.json for ${repo.fullName}: $e');
+      appLogger.w(
+        '[SkillRepoCache] corrupt skills.json for ${repo.fullName}: $e',
+      );
       return const [];
     }
   }
@@ -94,7 +96,9 @@ class SkillRepoDiskCacheService {
             .cast<String, Object?>(),
       );
     } catch (e) {
-      appLogger.w('[SkillRepoCache] corrupt meta.json for ${repo.fullName}: $e');
+      appLogger.w(
+        '[SkillRepoCache] corrupt meta.json for ${repo.fullName}: $e',
+      );
       return null;
     }
   }
@@ -162,11 +166,7 @@ class SkillRepoDiskCacheService {
         commitSha: commitSha,
       );
 
-      return SkillRepoSyncResult(
-        skills: skills,
-        updated: true,
-        repoKey: key,
-      );
+      return SkillRepoSyncResult(skills: skills, updated: true, repoKey: key);
     } catch (e) {
       appLogger.w('[SkillRepoCache] sync failed for ${repo.fullName}: $e');
       if (_hasSnapshot(dir)) {

@@ -63,7 +63,7 @@ printf '%s\n' "$HOME_DIR" "$TP_DIR"
     return RemoteSshStoragePaths(
       home: home,
       teampilotAppDir: posix.join(
-        AppStorage.defaultTeampilotAppDataDirForHome(home),
+        AppPaths.defaultTeampilotAppDataDirForHome(home),
       ),
     );
   }

@@ -1,0 +1,153 @@
+import 'dart:convert';
+import 'dart:io';
+
+import 'package:path/path.dart' as p;
+
+import '../remote_file_store.dart';
+import 'filesystem.dart';
+
+typedef ProcessRunner =
+    Future<ProcessResult> Function(String executable, List<String> arguments);
+
+class WslFilesystem implements Filesystem {
+  WslFilesystem({String? distro, ProcessRunner? processRunner})
+    : _distro = distro?.trim(),
+      _processRunner = processRunner ?? Process.run;
+
+  final String? _distro;
+  final ProcessRunner _processRunner;
+
+  @override
+  p.Context get pathContext => p.Context(style: p.Style.posix);
+
+  List<String> _args(List<String> command) {
+    final distro = _distro;
+    if (distro == null || distro.isEmpty) return command;
+    return ['-d', distro, ...command];
+  }
+
+  Future<ProcessResult> _run(List<String> command) {
+    return _processRunner('wsl.exe', _args(command));
+  }
+
+  Future<void> _checked(List<String> command) async {
+    final result = await _run(command);
+    if (result.exitCode != 0) {
+      throw StateError(
+        'wsl ${command.join(' ')} failed (${result.exitCode}): ${result.stderr}',
+      );
+    }
+  }
+
+  @override
+  Future<FsStat> stat(String path) async {
+    final result = await _run([
+      'sh',
+      '-lc',
+      'if [ -L ${RemoteFileStore.shellSingleQuote(path)} ]; then echo symlink; '
+          'elif [ -d ${RemoteFileStore.shellSingleQuote(path)} ]; then echo directory; '
+          'elif [ -f ${RemoteFileStore.shellSingleQuote(path)} ]; then echo file; '
+          'else echo missing; fi',
+    ]);
+    if (result.exitCode != 0) return const FsStat(kind: FsEntityKind.notFound);
+    return switch ((result.stdout as String).trim()) {
+      'directory' => const FsStat(kind: FsEntityKind.directory),
+      'file' => const FsStat(kind: FsEntityKind.file),
+      'symlink' => const FsStat(kind: FsEntityKind.symlink),
+      _ => const FsStat(kind: FsEntityKind.notFound),
+    };
+  }
+
+  @override
+  Future<void> ensureDir(String path) => _checked(['mkdir', '-p', '--', path]);
+
+  @override
+  Future<void> removeRecursive(String path) =>
+      _checked(['rm', '-rf', '--', path]);
+
+  @override
+  Future<void> rename(String from, String to) async {
+    await ensureDir(pathContext.dirname(to));
+    await removeRecursive(to);
+    await _checked(['mv', '--', from, to]);
+  }
+
+  @override
+  Future<String?> readString(String path) async {
+    final result = await _run(['cat', path]);
+    if (result.exitCode != 0) return null;
+    return result.stdout as String;
+  }
+
+  @override
+  Future<void> writeString(String path, String content) async {
+    await ensureDir(pathContext.dirname(path));
+    final encoded = base64.encode(utf8.encode(content));
+    final quotedPath = RemoteFileStore.shellSingleQuote(path);
+    final quotedContent = RemoteFileStore.shellSingleQuote(encoded);
+    final result = await _run([
+      'sh',
+      '-lc',
+      'printf %s $quotedContent | base64 -d > $quotedPath',
+    ]);
+    if (result.exitCode != 0) {
+      throw StateError(
+        'wsl write failed (${result.exitCode}): ${result.stderr}',
+      );
+    }
+  }
+
+  @override
+  Future<void> atomicWrite(String path, String content) async {
+    final tmp = '$path.tmp.${DateTime.now().microsecondsSinceEpoch}';
+    await writeString(tmp, content);
+    await rename(tmp, path);
+  }
+
+  @override
+  Future<List<FsDirEntry>> listDir(String path) async {
+    final result = await _run([
+      'sh',
+      '-lc',
+      'find ${RemoteFileStore.shellSingleQuote(path)} -mindepth 1 -maxdepth 1 '
+          r'-printf "%f\t%y\n"',
+    ]);
+    if (result.exitCode != 0) return const [];
+    final lines = (result.stdout as String).split('\n');
+    return [
+      for (final line in lines)
+        if (line.trim().isNotEmpty)
+          FsDirEntry(
+            name: line.split('\t').first,
+            isDirectory: line.split('\t').last == 'd',
+          ),
+    ];
+  }
+
+  @override
+  Future<bool> createSymlink({
+    required String target,
+    required String linkPath,
+  }) async {
+    await ensureDir(pathContext.dirname(linkPath));
+    await removeRecursive(linkPath);
+    await _checked(['ln', '-sf', '--', target, linkPath]);
+    return true;
+  }
+
+  @override
+  Future<void> copyTree({
+    required String source,
+    required String destination,
+  }) async {
+    await ensureDir(pathContext.dirname(destination));
+    await removeRecursive(destination);
+    await ensureDir(destination);
+    await _checked([
+      'sh',
+      '-lc',
+      'cp -R -- ${RemoteFileStore.shellSingleQuote('$source/.')} '
+          '${RemoteFileStore.shellSingleQuote(destination)}',
+    ]);
+  }
+}

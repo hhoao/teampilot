@@ -1,7 +1,3 @@
-import 'dart:io';
-
-import 'package:path/path.dart' as p;
-
 import '../models/app_session.dart';
 import '../models/team_config.dart';
 import '../utils/logger.dart';
@@ -10,7 +6,8 @@ import 'claude_provider_settings_resolver.dart';
 import 'cli_data_layout.dart';
 import 'config_profile_service.dart';
 import 'flashskyai_storage_roots.dart';
-import 'remote_file_store.dart';
+import 'io/filesystem.dart';
+import 'io/local_filesystem.dart';
 
 typedef StorageRootsResolver = Future<StorageRootsSnapshot> Function();
 
@@ -131,7 +128,7 @@ class SessionLifecycleService {
         : trimmedSessionId;
 
     final roots = await _resolveRoots();
-    final memberRoot = p.dirname(
+    final memberRoot = roots.fs.pathContext.dirname(
       roots.layout.memberToolDir(
         trimmedTeamId,
         memberDirectoryId,
@@ -146,7 +143,7 @@ class SessionLifecycleService {
     if (trimmedTeamId.isEmpty) return;
 
     final roots = await _resolveRoots();
-    final teamRoot = p.dirname(
+    final teamRoot = roots.fs.pathContext.dirname(
       roots.layout.teamToolDir(trimmedTeamId, 'flashskyai'),
     );
     await _removeTree(roots, teamRoot);
@@ -201,12 +198,9 @@ class SessionLifecycleService {
   ) async {
     final injected = _configProfileService;
     if (injected != null) return injected;
-    final remote = roots.remoteFileStore;
     return ConfigProfileService(
       basePath: roots.teampilotRoot,
-      createDirectory: roots.storageIsRemote && remote != null
-          ? remote.ensureDirectory
-          : null,
+      fs: roots.fs,
       layout: roots.layout,
     );
   }
@@ -214,18 +208,23 @@ class SessionLifecycleService {
   Future<StorageRootsSnapshot> _resolveRoots() async {
     final resolver = _storageRootsResolver;
     if (resolver != null) return resolver();
-    return _localRoots(_appDataBasePath ?? AppStorage.basePath);
+    return _localRoots(
+      _appDataBasePath ?? AppPathsBootstrapper.current.basePath,
+    );
   }
 
   StorageRootsSnapshot _localRoots(String basePath) {
+    final fs = LocalFilesystem();
+    final layout = CliDataLayout(teampilotRoot: basePath, fs: fs);
     return StorageRootsSnapshot(
-      storageIsRemote: false,
       teampilotRoot: basePath,
-      teamsUiDir: AppStorage.teamsUiDirForTeampilotRoot(basePath),
-      skillsRoot: AppStorage.skillsDirForTeampilotRoot(basePath),
-      skillBackupsDir: AppStorage.skillBackupsDirForTeampilotRoot(basePath),
-      appProjectsDir: AppStorage.appProjectsDirForTeampilotRoot(basePath),
-      skillReposConfigPath: AppStorage.skillReposConfigPathForTeampilotRoot(
+      fs: fs,
+      layout: layout,
+      teamsUiDir: AppPaths.teamsUiDirForTeampilotRoot(basePath),
+      skillsRoot: AppPaths.skillsDirForTeampilotRoot(basePath),
+      skillBackupsDir: AppPaths.skillBackupsDirForTeampilotRoot(basePath),
+      appProjectsDir: AppPaths.appProjectsDirForTeampilotRoot(basePath),
+      skillReposConfigPath: AppPaths.skillReposConfigPathForTeampilotRoot(
         basePath,
       ),
     );
@@ -249,51 +248,45 @@ class SessionLifecycleService {
     final bucket = CliDataLayout.projectBucketForPrimaryPath(
       session.primaryPath,
     );
-    final remote = roots.remoteFileStore;
-    if (roots.storageIsRemote && remote != null) {
-      return _findRemoteCliState(
-        store: remote,
-        toolRoots: toolRoots,
-        sessionId: id,
-        bucket: bucket,
-      );
-    }
-    return _findLocalCliState(
+    return _findCliStateInFilesystem(
+      fs: roots.fs,
       toolRoots: toolRoots,
       sessionId: id,
       bucket: bucket,
     );
   }
 
-  _CliStateProbeResult _findLocalCliState({
+  Future<_CliStateProbeResult> _findCliStateInFilesystem({
+    required Filesystem fs,
     required Iterable<String> toolRoots,
     required String sessionId,
     required String bucket,
-  }) {
+  }) async {
+    final path = fs.pathContext;
     final rootsTried = <String>[];
     for (final root in toolRoots) {
       rootsTried.add(root);
-      final sessionFile = p.join(root, 'sessions', '$sessionId.json');
-      if (File(sessionFile).existsSync()) {
+      final sessionFile = path.join(root, 'sessions', '$sessionId.json');
+      if ((await fs.stat(sessionFile)).isFile) {
         return _CliStateProbeResult(
           exists: true,
           rootsTried: rootsTried,
           matchedPath: sessionFile,
         );
       }
-      final projectsDir = p.join(root, 'projects');
+      final projectsDir = path.join(root, 'projects');
       if (bucket.isNotEmpty) {
-        final bucketDir = p.join(projectsDir, bucket);
-        final transcriptFile = p.join(bucketDir, '$sessionId.jsonl');
-        if (File(transcriptFile).existsSync()) {
+        final bucketDir = path.join(projectsDir, bucket);
+        final transcriptFile = path.join(bucketDir, '$sessionId.jsonl');
+        if ((await fs.stat(transcriptFile)).isFile) {
           return _CliStateProbeResult(
             exists: true,
             rootsTried: rootsTried,
             matchedPath: transcriptFile,
           );
         }
-        final transcriptDir = p.join(bucketDir, sessionId);
-        if (Directory(transcriptDir).existsSync()) {
+        final transcriptDir = path.join(bucketDir, sessionId);
+        if ((await fs.stat(transcriptDir)).isDirectory) {
           return _CliStateProbeResult(
             exists: true,
             rootsTried: rootsTried,
@@ -301,7 +294,7 @@ class SessionLifecycleService {
           );
         }
       }
-      final scanned = _scanProjectsLocal(projectsDir, sessionId);
+      final scanned = await _scanProjects(fs, projectsDir, sessionId);
       if (scanned != null) {
         return _CliStateProbeResult(
           exists: true,
@@ -313,99 +306,21 @@ class SessionLifecycleService {
     return _CliStateProbeResult(exists: false, rootsTried: rootsTried);
   }
 
-  Future<_CliStateProbeResult> _findRemoteCliState({
-    required RemoteFileStore store,
-    required Iterable<String> toolRoots,
-    required String sessionId,
-    required String bucket,
-  }) async {
-    final posix = p.Context(style: p.Style.posix);
-    final rootsTried = <String>[];
-    for (final root in toolRoots) {
-      rootsTried.add(root);
-      final sessionFile = posix.join(root, 'sessions', '$sessionId.json');
-      if (await store.fileExists(sessionFile)) {
-        return _CliStateProbeResult(
-          exists: true,
-          rootsTried: rootsTried,
-          matchedPath: sessionFile,
-        );
-      }
-      final projectsDir = posix.join(root, 'projects');
-      if (bucket.isNotEmpty) {
-        final bucketDir = posix.join(projectsDir, bucket);
-        final transcriptFile = posix.join(bucketDir, '$sessionId.jsonl');
-        if (await store.fileExists(transcriptFile)) {
-          return _CliStateProbeResult(
-            exists: true,
-            rootsTried: rootsTried,
-            matchedPath: transcriptFile,
-          );
-        }
-        try {
-          final entries = await store.listDirectoryEntries(bucketDir);
-          if (entries.any((e) => e.isDirectory && e.name == sessionId)) {
-            return _CliStateProbeResult(
-              exists: true,
-              rootsTried: rootsTried,
-              matchedPath: posix.join(bucketDir, sessionId),
-            );
-          }
-        } on Object {
-          // Fall through to broad scan.
-        }
-      }
-      final scanned = await _scanProjectsRemote(store, projectsDir, sessionId);
-      if (scanned != null) {
-        return _CliStateProbeResult(
-          exists: true,
-          rootsTried: rootsTried,
-          matchedPath: scanned,
-        );
-      }
-    }
-    return _CliStateProbeResult(exists: false, rootsTried: rootsTried);
-  }
-
-  static String? _scanProjectsLocal(String projectsDir, String sessionId) {
-    final root = Directory(projectsDir);
-    if (!root.existsSync()) return null;
-    try {
-      for (final entity in root.listSync(followLinks: false)) {
-        if (entity is! Directory) continue;
-        final bucketPath = entity.path;
-        final transcriptFile = p.join(bucketPath, '$sessionId.jsonl');
-        if (File(transcriptFile).existsSync()) return transcriptFile;
-        final transcriptDir = p.join(bucketPath, sessionId);
-        if (Directory(transcriptDir).existsSync()) return transcriptDir;
-      }
-    } on FileSystemException {
-      return null;
-    }
-    return null;
-  }
-
-  static Future<String?> _scanProjectsRemote(
-    RemoteFileStore store,
+  static Future<String?> _scanProjects(
+    Filesystem fs,
     String projectsDir,
     String sessionId,
   ) async {
-    final posix = p.Context(style: p.Style.posix);
+    final path = fs.pathContext;
     try {
-      final buckets = await store.listDirectoryEntries(projectsDir);
+      final buckets = await fs.listDir(projectsDir);
       for (final bucket in buckets) {
         if (!bucket.isDirectory) continue;
-        final bucketPath = posix.join(projectsDir, bucket.name);
-        final transcriptFile = posix.join(bucketPath, '$sessionId.jsonl');
-        if (await store.fileExists(transcriptFile)) return transcriptFile;
-        try {
-          final inner = await store.listDirectoryEntries(bucketPath);
-          if (inner.any((e) => e.isDirectory && e.name == sessionId)) {
-            return posix.join(bucketPath, sessionId);
-          }
-        } on Object {
-          continue;
-        }
+        final bucketPath = path.join(projectsDir, bucket.name);
+        final transcriptFile = path.join(bucketPath, '$sessionId.jsonl');
+        if ((await fs.stat(transcriptFile)).isFile) return transcriptFile;
+        final transcriptDir = path.join(bucketPath, sessionId);
+        if ((await fs.stat(transcriptDir)).isDirectory) return transcriptDir;
       }
     } on Object {
       return null;
@@ -414,22 +329,10 @@ class SessionLifecycleService {
   }
 
   Future<void> _removeTree(StorageRootsSnapshot roots, String path) async {
-    final remote = roots.remoteFileStore;
-    if (roots.storageIsRemote && remote != null) {
-      try {
-        await remote.removeRecursive(path);
-      } on Object catch (e, st) {
-        appLogger.w(
-          '[session-lifecycle] remote cleanup failed: $e',
-          stackTrace: st,
-        );
-      }
-      return;
-    }
-
-    final dir = Directory(path);
-    if (await dir.exists()) {
-      await dir.delete(recursive: true);
+    try {
+      await roots.fs.removeRecursive(path);
+    } on Object catch (e, st) {
+      appLogger.w('[session-lifecycle] cleanup failed: $e', stackTrace: st);
     }
   }
 

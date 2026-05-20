@@ -1,14 +1,14 @@
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:path/path.dart' as p;
 
 import '../models/team_config.dart';
 import 'cli_data_layout.dart';
+import 'io/filesystem.dart';
+import 'io/local_filesystem.dart';
 
 /// Launch-time environment for tool-isolated team profiles.
 typedef TeamLaunchEnvironment = Map<String, String>;
-typedef ConfigProfileDirectoryCreator = Future<void> Function(String path);
 
 /// Profile directory key when launching without a chat [AppSession].
 const configProfileAdhocSessionId = '_adhoc';
@@ -31,21 +31,19 @@ class ConfigProfileService {
   };
 
   ConfigProfileService({
-    required String basePath,
-    ConfigProfileDirectoryCreator? createDirectory,
+    required this.basePath,
+    Filesystem? fs,
     CliDataLayout? layout,
-  }) : basePath = basePath,
-       _createDirectory = createDirectory ?? _createLocalDirectory,
+  }) : _fs = fs ?? LocalFilesystem(),
        layout =
            layout ??
-           CliDataLayout(
-             teampilotRoot: basePath,
-             createDirectory: createDirectory,
-           );
+           CliDataLayout(teampilotRoot: basePath, fs: fs ?? LocalFilesystem());
 
   final String basePath;
-  final ConfigProfileDirectoryCreator _createDirectory;
+  final Filesystem _fs;
   final CliDataLayout layout;
+
+  p.Context get _pathContext => _fs.pathContext;
 
   String get configProfilesDir => layout.configProfilesDir;
 
@@ -56,11 +54,11 @@ class ConfigProfileService {
 
   /// Team metadata scope: `config-profiles/teams/<teamId>/`.
   String teamScopeDir(String teamId) =>
-      p.join(configProfilesDir, 'teams', teamId.trim());
+      _pathContext.join(configProfilesDir, 'teams', teamId.trim());
 
   /// Per-session member scope: `config-profiles/teams/<teamId>/members/<sessionId>/`.
   String sessionProfileDir(String teamId, String sessionId) =>
-      p.join(teamScopeDir(teamId), 'members', sessionId.trim());
+      _pathContext.join(teamScopeDir(teamId), 'members', sessionId.trim());
 
   String sessionToolDir(String teamId, String sessionId, String tool) =>
       layout.memberToolDir(teamId, sessionId, tool);
@@ -69,22 +67,23 @@ class ConfigProfileService {
     String teamId,
     String sessionId,
     TeamMemberConfig member,
-  ) => p.join(
+  ) => _pathContext.join(
     sessionToolDir(teamId, sessionId, 'claude'),
     'settings',
     '${_safeClaudePathName(member.name)}.json',
   );
 
   String sessionFlashskyaiMetadataFile(String teamId, String sessionId) =>
-      p.join(
+      _pathContext.join(
         sessionToolDir(teamId, sessionId, 'flashskyai'),
         flashskyaiMetadataFileName,
       );
 
-  String sessionClaudeMetadataFile(String teamId, String sessionId) => p.join(
-    sessionToolDir(teamId, sessionId, 'claude'),
-    claudeMetadataFileName,
-  );
+  String sessionClaudeMetadataFile(String teamId, String sessionId) =>
+      _pathContext.join(
+        sessionToolDir(teamId, sessionId, 'claude'),
+        claudeMetadataFileName,
+      );
 
   /// Ensures the bare team scope directory exists.
   ///
@@ -99,7 +98,7 @@ class ConfigProfileService {
   }) async {
     final trimmed = teamId.trim();
     if (trimmed.isEmpty) return;
-    await _createDirectory(teamScopeDir(trimmed));
+    await _fs.ensureDir(teamScopeDir(trimmed));
   }
 
   Future<void> ensureSessionProfile(
@@ -133,11 +132,11 @@ class ConfigProfileService {
     String teamId,
     String sessionId,
   ) async {
-    final file = File(sessionFlashskyaiMetadataFile(teamId, sessionId));
-    if (await file.exists()) return;
+    final file = sessionFlashskyaiMetadataFile(teamId, sessionId);
+    if ((await _fs.stat(file)).exists) return;
 
-    await file.parent.create(recursive: true);
-    await file.writeAsString(
+    await _fs.atomicWrite(
+      file,
       const JsonEncoder.withIndent('  ').convert(defaultFlashskyaiMetadata),
     );
   }
@@ -146,11 +145,11 @@ class ConfigProfileService {
     String teamId,
     String sessionId,
   ) async {
-    final file = File(sessionClaudeMetadataFile(teamId, sessionId));
-    if (await file.exists()) return;
+    final file = sessionClaudeMetadataFile(teamId, sessionId);
+    if ((await _fs.stat(file)).exists) return;
 
-    await file.parent.create(recursive: true);
-    await file.writeAsString(
+    await _fs.atomicWrite(
+      file,
       const JsonEncoder.withIndent('  ').convert(defaultClaudeMetadata),
     );
   }
@@ -230,7 +229,9 @@ class ConfigProfileService {
     required String runtimeTeamId,
   }) {
     final runtime = runtimeTeamId.trim();
-    final sessionId = runtime.isNotEmpty ? runtime : configProfileAdhocSessionId;
+    final sessionId = runtime.isNotEmpty
+        ? runtime
+        : configProfileAdhocSessionId;
     final cliTeamName = runtime.isNotEmpty ? runtime : teamId;
     return _LaunchProfileScope(
       teamId: teamId,
@@ -243,15 +244,13 @@ class ConfigProfileService {
     _LaunchProfileScope scope,
     Map<String, Object?>? providerSettings,
   ) async {
-    final file = File(
-      p.join(
-        sessionToolDir(scope.teamId, scope.sessionId, 'claude'),
-        'settings.json',
-      ),
+    final file = _pathContext.join(
+      sessionToolDir(scope.teamId, scope.sessionId, 'claude'),
+      'settings.json',
     );
     final settings = _claudeTeamSettings(providerSettings);
-    await file.parent.create(recursive: true);
-    await file.writeAsString(
+    await _fs.atomicWrite(
+      file,
       const JsonEncoder.withIndent('  ').convert(settings),
     );
   }
@@ -262,52 +261,31 @@ class ConfigProfileService {
     required String workingDirectory,
   }) async {
     final claudeDir = sessionToolDir(scope.teamId, scope.sessionId, 'claude');
-    final roster = File(
-      p.join(
-        claudeDir,
-        'teams',
-        _safeClaudeTeamName(scope.cliTeamName),
-        'config.json',
-      ),
+    final roster = _pathContext.join(
+      claudeDir,
+      'teams',
+      _safeClaudeTeamName(scope.cliTeamName),
+      'config.json',
     );
 
-    final existing = await _readJsonObject(roster);
-    final existingMembersByName = <String, Map<String, Object?>>{};
-    final rawExistingMembers = existing['members'];
-    if (rawExistingMembers is List) {
-      for (final rawMember in rawExistingMembers) {
-        if (rawMember is! Map) continue;
-        final memberJson = Map<String, Object?>.from(rawMember);
-        final name = memberJson['name']?.toString();
-        if (name != null && name.isNotEmpty) {
-          existingMembersByName[name] = memberJson;
-        }
-      }
-    }
-
     final cliTeamName = scope.cliTeamName;
-    final createdAt = existing['createdAt'];
     final config = <String, Object?>{
-      ...existing,
       'name': cliTeamName,
-      'createdAt': createdAt is int
-          ? createdAt
-          : DateTime.now().millisecondsSinceEpoch,
+      'createdAt': DateTime.now().millisecondsSinceEpoch,
       'leadAgentId': 'team-lead@$cliTeamName',
-      'env': _claudeRosterEnv(existing['env']),
+      'env': _claudeRosterEnv(null),
       'members': [
         for (final member in members.where((member) => member.isValid))
           _claudeRosterMember(
             teamId: cliTeamName,
             member: member,
-            existing: existingMembersByName[member.name],
             workingDirectory: workingDirectory,
           ),
       ],
     };
 
-    await roster.parent.create(recursive: true);
-    await roster.writeAsString(
+    await _fs.atomicWrite(
+      roster,
       const JsonEncoder.withIndent('  ').convert(config),
     );
   }
@@ -345,12 +323,14 @@ class ConfigProfileService {
     required TeamMemberConfig member,
     required Map<String, Object?>? providerSettings,
   }) async {
-    final file = File(
-      sessionClaudeMemberSettingsFile(scope.teamId, scope.sessionId, member),
+    final file = sessionClaudeMemberSettingsFile(
+      scope.teamId,
+      scope.sessionId,
+      member,
     );
     final settings = _claudeMemberSettings(providerSettings, member);
-    await file.parent.create(recursive: true);
-    await file.writeAsString(
+    await _fs.atomicWrite(
+      file,
       const JsonEncoder.withIndent('  ').convert(settings),
     );
   }
@@ -358,30 +338,18 @@ class ConfigProfileService {
   Map<String, Object?> _claudeRosterMember({
     required String teamId,
     required TeamMemberConfig member,
-    required Map<String, Object?>? existing,
     required String workingDirectory,
   }) {
-    final existingMember = existing ?? const <String, Object?>{};
-    final joinedAt = existingMember['joinedAt'];
     final memberJson = <String, Object?>{
-      ...existingMember,
       'agentId': '${member.name}@$teamId',
       'name': member.name,
-      'joinedAt': joinedAt is int ? joinedAt : member.joinedAt,
+      'joinedAt': member.joinedAt,
       'tmuxPaneId': '',
-      'cwd': existingMember.containsKey('cwd')
-          ? existingMember['cwd']
-          : workingDirectory,
+      'cwd': workingDirectory,
       'subscriptions': <Object?>[],
       if (member.model.trim().isNotEmpty) 'model': member.model.trim(),
     };
 
-    if (existingMember.containsKey('sessionId')) {
-      memberJson['sessionId'] = existingMember['sessionId'];
-    }
-    if (existingMember.containsKey('isActive')) {
-      memberJson['isActive'] = existingMember['isActive'];
-    }
     if (member.name == 'team-lead') {
       memberJson['agentType'] = 'team-lead';
     } else {
@@ -438,19 +406,6 @@ class ConfigProfileService {
     return settings;
   }
 
-  static Future<Map<String, Object?>> _readJsonObject(File file) async {
-    if (!await file.exists()) return const <String, Object?>{};
-    try {
-      final decoded = jsonDecode(await file.readAsString());
-      if (decoded is Map) {
-        return Map<String, Object?>.from(decoded);
-      }
-    } on FormatException {
-      return const <String, Object?>{};
-    }
-    return const <String, Object?>{};
-  }
-
   static String _safeClaudeTeamName(String teamId) =>
       _safeClaudePathName(teamId);
 
@@ -458,9 +413,6 @@ class ConfigProfileService {
     final safe = value.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '-');
     return safe.isEmpty ? 'default' : safe;
   }
-
-  static Future<void> _createLocalDirectory(String path) =>
-      Directory(path).create(recursive: true);
 }
 
 class _LaunchProfileScope {

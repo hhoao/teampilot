@@ -116,7 +116,7 @@ void main() async {
     });
   }
 
-  await AppStorage.init();
+  await AppPathsBootstrapper.init();
 
   final preferences = await SharedPreferences.getInstance();
   final locatedExecutables = <TeamCli, String>{};

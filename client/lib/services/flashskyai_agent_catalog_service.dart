@@ -1,12 +1,10 @@
-import 'dart:io';
-
 import 'package:flutter/foundation.dart';
-import 'package:path/path.dart' as p;
 
 import 'app_storage.dart';
 import 'cli_data_layout.dart';
+import 'io/filesystem.dart';
+import 'io/local_filesystem.dart';
 import 'flashskyai_storage_roots.dart';
-import 'remote_file_store.dart';
 
 /// Built-in `--agent` ids (subset of `flashskyai agents` / CLI presets).
 @immutable
@@ -103,40 +101,28 @@ class FlashskyaiAgentCatalogService {
   Future<List<String>> listUserAgentIds() async {
     if (_storageRoots != null) {
       final snap = await _storageRoots.resolve();
-      final agentsDir = p.Context(
-        style: snap.storageIsRemote ? p.Style.posix : p.Style.platform,
-      ).join(snap.layout.appToolRoot('flashskyai'), 'agents');
-      if (snap.storageIsRemote && snap.remoteFileStore != null) {
-        return _listRemote(snap.remoteFileStore!, agentsDir);
-      }
-      return _listLocal(agentsDir);
+      final agentsDir = snap.fs.pathContext.join(
+        snap.layout.appToolRoot('flashskyai'),
+        'agents',
+      );
+      return _listWithFs(snap.fs, agentsDir);
     }
-    final layout = CliDataLayout(teampilotRoot: AppStorage.basePath);
-    return _listLocal(p.join(layout.appToolRoot('flashskyai'), 'agents'));
+    final fs = LocalFilesystem();
+    final layout = CliDataLayout(
+      teampilotRoot: AppPathsBootstrapper.current.basePath,
+      fs: fs,
+    );
+    return _listWithFs(
+      fs,
+      fs.pathContext.join(layout.appToolRoot('flashskyai'), 'agents'),
+    );
   }
 
-  Future<List<String>> _listLocal(String agentsDir) async {
-    final dir = Directory(agentsDir);
-    if (!await dir.exists()) return const [];
-    final ids = <String>[];
-    await for (final entity in dir.list(followLinks: false)) {
-      if (entity is! File) continue;
-      final id = agentIdFromMdFilename(p.basename(entity.path));
-      if (id != null) ids.add(id);
-    }
-    ids.sort();
-    return ids;
-  }
-
-  Future<List<String>> _listRemote(
-    RemoteFileStore store,
-    String agentsDir,
-  ) async {
+  Future<List<String>> _listWithFs(Filesystem fs, String agentsDir) async {
     try {
-      if (!await store.fileExists(agentsDir)) return const [];
-      final entries = await store.listDirectoryEntries(agentsDir);
+      if (!(await fs.stat(agentsDir)).isDirectory) return const [];
       final ids = <String>[];
-      for (final entry in entries) {
+      for (final entry in await fs.listDir(agentsDir)) {
         if (entry.isDirectory) continue;
         final id = agentIdFromMdFilename(entry.name);
         if (id != null) ids.add(id);

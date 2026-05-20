@@ -8,7 +8,9 @@ import '../services/app_storage.dart';
 
 class SshProfileRepository {
   SshProfileRepository({String? rootDir})
-    : _root = rootDir ?? p.join(AppStorage.basePath, 'ssh_profiles');
+    : _root =
+          rootDir ??
+          p.join(AppPathsBootstrapper.current.basePath, 'ssh_profiles');
 
   final String _root;
 

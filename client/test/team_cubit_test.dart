@@ -62,11 +62,11 @@ void main() {
 
   setUp(() async {
     appDataRoot = await Directory.systemTemp.createTemp('teampilot_app_data_');
-    AppStorage.setBasePathForTesting(appDataRoot.path);
+    AppPathsBootstrapper.setCurrentForTesting(AppPaths(appDataRoot.path));
   });
 
   tearDown(() async {
-    AppStorage.resetForTesting();
+    AppPathsBootstrapper.resetForTesting();
     if (await appDataRoot.exists()) {
       await appDataRoot.delete(recursive: true);
     }

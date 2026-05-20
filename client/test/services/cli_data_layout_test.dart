@@ -3,13 +3,32 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:teampilot/services/cli_data_layout.dart';
+import 'package:teampilot/services/io/local_filesystem.dart';
+
+import '../support/in_memory_filesystem.dart';
+
+class _NoSymlinkFilesystem extends InMemoryFilesystem {
+  @override
+  Future<bool> createSymlink({
+    required String target,
+    required String linkPath,
+  }) async {
+    return false;
+  }
+}
 
 void main() {
   group('CliDataLayout path computation', () {
-    final layout = CliDataLayout(teampilotRoot: '/tp');
+    final layout = CliDataLayout(
+      teampilotRoot: '/tp',
+      fs: InMemoryFilesystem(),
+    );
 
     test('appToolRoot is config-profiles/<tool>', () {
-      expect(layout.appToolRoot('flashskyai'), '/tp/config-profiles/flashskyai');
+      expect(
+        layout.appToolRoot('flashskyai'),
+        '/tp/config-profiles/flashskyai',
+      );
       expect(layout.appToolRoot('claude'), '/tp/config-profiles/claude');
     });
 
@@ -27,26 +46,23 @@ void main() {
       );
     });
 
-    test(
-      'transcriptSearchRoots returns app + team + member for each tool',
-      () {
-        final roots = layout.transcriptSearchRoots(
-          teamId: 'team-a',
-          runtimeSessionId: 'sess-1',
-        );
-        expect(roots, [
-          '/tp/config-profiles/claude',
-          '/tp/config-profiles/flashskyai',
-          '/tp/config-profiles/codex',
-          '/tp/config-profiles/teams/team-a/claude',
-          '/tp/config-profiles/teams/team-a/flashskyai',
-          '/tp/config-profiles/teams/team-a/codex',
-          '/tp/config-profiles/teams/team-a/members/sess-1/claude',
-          '/tp/config-profiles/teams/team-a/members/sess-1/flashskyai',
-          '/tp/config-profiles/teams/team-a/members/sess-1/codex',
-        ]);
-      },
-    );
+    test('transcriptSearchRoots returns app + team + member for each tool', () {
+      final roots = layout.transcriptSearchRoots(
+        teamId: 'team-a',
+        runtimeSessionId: 'sess-1',
+      );
+      expect(roots, [
+        '/tp/config-profiles/claude',
+        '/tp/config-profiles/flashskyai',
+        '/tp/config-profiles/codex',
+        '/tp/config-profiles/teams/team-a/claude',
+        '/tp/config-profiles/teams/team-a/flashskyai',
+        '/tp/config-profiles/teams/team-a/codex',
+        '/tp/config-profiles/teams/team-a/members/sess-1/claude',
+        '/tp/config-profiles/teams/team-a/members/sess-1/flashskyai',
+        '/tp/config-profiles/teams/team-a/members/sess-1/codex',
+      ]);
+    });
 
     test('transcriptSearchRoots omits member layer when sessionId empty', () {
       final roots = layout.transcriptSearchRoots(
@@ -108,7 +124,10 @@ void main() {
     });
 
     test('ensureAppToolLayout creates app tool dir', () async {
-      final layout = CliDataLayout(teampilotRoot: base.path);
+      final layout = CliDataLayout(
+        teampilotRoot: base.path,
+        fs: LocalFilesystem(),
+      );
       await layout.ensureAppToolLayout('flashskyai');
       expect(
         await Directory(layout.appToolRoot('flashskyai')).exists(),
@@ -119,7 +138,10 @@ void main() {
     test(
       'ensureTeamInheritsApp symlinks agents and skills from app level',
       () async {
-        final layout = CliDataLayout(teampilotRoot: base.path);
+        final layout = CliDataLayout(
+          teampilotRoot: base.path,
+          fs: LocalFilesystem(),
+        );
         await layout.ensureAppToolLayout('flashskyai');
         // Seed an app-level file so we can verify inheritance via readlink.
         final appAgents = Directory(
@@ -153,7 +175,10 @@ void main() {
     test(
       'ensureMemberInheritsTeam chains app → team → member symlinks',
       () async {
-        final layout = CliDataLayout(teampilotRoot: base.path);
+        final layout = CliDataLayout(
+          teampilotRoot: base.path,
+          fs: LocalFilesystem(),
+        );
         await layout.ensureAppToolLayout('flashskyai');
         final appSkills = Directory(
           p.join(layout.appToolRoot('flashskyai'), 'skills'),
@@ -163,11 +188,7 @@ void main() {
           p.join(appSkills.path, 'README.md'),
         ).writeAsString('top-level');
 
-        await layout.ensureMemberInheritsTeam(
-          'team-a',
-          'sess-1',
-          'flashskyai',
-        );
+        await layout.ensureMemberInheritsTeam('team-a', 'sess-1', 'flashskyai');
 
         final memberSkills = p.join(
           layout.memberToolDir('team-a', 'sess-1', 'flashskyai'),
@@ -183,17 +204,12 @@ void main() {
     );
 
     test('symlink failure falls back to copy', () async {
-      final layout = CliDataLayout(
-        teampilotRoot: base.path,
-        createSymlink:
-            ({required String target, required String linkPath}) async => false,
-      );
+      final fs = _NoSymlinkFilesystem();
+      final layout = CliDataLayout(teampilotRoot: '/tp', fs: fs);
       await layout.ensureAppToolLayout('flashskyai');
-      final appAgents = Directory(
-        p.join(layout.appToolRoot('flashskyai'), 'agents'),
-      );
-      await appAgents.create(recursive: true);
-      await File(p.join(appAgents.path, 'demo.md')).writeAsString('hello');
+      final appAgents = p.join(layout.appToolRoot('flashskyai'), 'agents');
+      await fs.ensureDir(appAgents);
+      await fs.writeString(p.join(appAgents, 'demo.md'), 'hello');
 
       await layout.ensureTeamInheritsApp('team-a', 'flashskyai');
 
@@ -201,13 +217,10 @@ void main() {
         layout.teamToolDir('team-a', 'flashskyai'),
         'agents',
       );
-      expect(Link(teamAgentsPath).existsSync(), isFalse);
-      expect(Directory(teamAgentsPath).existsSync(), isTrue);
+      expect(fs.symlinks.containsKey(teamAgentsPath), isFalse);
+      expect(fs.directories.contains(teamAgentsPath), isTrue);
       // Copy preserved the demo.md.
-      expect(
-        await File(p.join(teamAgentsPath, 'demo.md')).readAsString(),
-        'hello',
-      );
+      expect(await fs.readString(p.join(teamAgentsPath, 'demo.md')), 'hello');
     });
   });
 }
