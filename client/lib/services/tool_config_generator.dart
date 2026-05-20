@@ -136,8 +136,9 @@ requires_openai_auth = true
       }
     }
     if (provider.apiKey.isNotEmpty) {
-      final keyField = _claudeApiKeyField(provider);
-      env.putIfAbsent(keyField, () => provider.apiKey);
+      // Presets keep `ANTHROPIC_AUTH_TOKEN: ""` placeholders in catalog JSON;
+      // always overwrite so top-level [apiKey] wins at launch time.
+      env[_claudeApiKeyField(provider)] = provider.apiKey;
     }
     if (provider.baseUrl.isNotEmpty) {
       env.putIfAbsent('ANTHROPIC_BASE_URL', () => provider.baseUrl);
