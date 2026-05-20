@@ -1,14 +1,29 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:path/path.dart' as p;
 
 import 'filesystem.dart';
 
+class _AsyncLock {
+  Future<void> _tail = Future.value();
+
+  Future<T> synchronized<T>(Future<T> Function() fn) {
+    final completer = Completer<void>();
+    final previous = _tail;
+    _tail = completer.future;
+    return previous.then((_) => fn()).whenComplete(() {
+      if (!completer.isCompleted) completer.complete();
+    });
+  }
+}
+
 class LocalFilesystem implements Filesystem {
   LocalFilesystem({p.Context? pathContext})
     : pathContext = pathContext ?? p.context;
 
   static int _tmpWriteCounter = 0;
+  static final Map<String, _AsyncLock> _atomicWriteLocks = {};
 
   @override
   final p.Context pathContext;
@@ -99,11 +114,17 @@ class LocalFilesystem implements Filesystem {
 
   @override
   Future<void> atomicWrite(String path, String content) async {
-    await ensureDir(pathContext.dirname(path));
-    final tmp =
-        '$path.tmp.${DateTime.now().microsecondsSinceEpoch}.${_tmpWriteCounter++}';
-    await File(tmp).writeAsString(content);
-    await _commitAtomicWrite(path, tmp);
+    final lock = _atomicWriteLocks.putIfAbsent(
+      pathContext.normalize(path),
+      () => _AsyncLock(),
+    );
+    await lock.synchronized(() async {
+      await ensureDir(pathContext.dirname(path));
+      final tmp =
+          '$path.tmp.${DateTime.now().microsecondsSinceEpoch}.${_tmpWriteCounter++}';
+      await File(tmp).writeAsString(content);
+      await _commitAtomicWrite(path, tmp);
+    });
   }
 
   Future<void> _commitAtomicWrite(String path, String tmp) async {
@@ -128,15 +149,32 @@ class LocalFilesystem implements Filesystem {
   }
 
   Future<void> _deleteFileIfPresent(String path) async {
-    try {
-      final target = File(path);
-      if (await target.exists()) {
+    const maxAttempts = 8;
+    for (var attempt = 0; attempt < maxAttempts; attempt++) {
+      try {
+        final target = File(path);
+        if (!await target.exists()) return;
         await target.delete();
+        return;
+      } on FileSystemException catch (e) {
+        final code = e.osError?.errorCode;
+        if (code == 2) return;
+        if (_isTransientDeleteError(code) && attempt < maxAttempts - 1) {
+          await Future<void>.delayed(
+            Duration(milliseconds: 15 * (attempt + 1)),
+          );
+          continue;
+        }
+        rethrow;
       }
-    } on FileSystemException catch (e) {
-      if (e.osError?.errorCode == 2) return;
-      rethrow;
     }
+  }
+
+  bool _isTransientDeleteError(int? code) {
+    if (code == null) return false;
+    // Windows: ERROR_ACCESS_DENIED (5), ERROR_SHARING_VIOLATION (32).
+    if (Platform.isWindows) return code == 5 || code == 32;
+    return false;
   }
 
   @override
