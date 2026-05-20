@@ -58,6 +58,7 @@ void main() {
     final env = await service.prepareTeamLaunch(
       teamId: 'team-a',
       cli: TeamCli.flashskyai,
+      workingDirectory: '/workspace/flashskyai',
     );
 
     final memberFlashskyaiDir = p.join(
@@ -86,6 +87,23 @@ void main() {
       ),
     );
     expect(await metadata.exists(), isTrue);
+    final metadataJson =
+        jsonDecode(await metadata.readAsString()) as Map<String, Object?>;
+    final projects = metadataJson['projects'] as Map<String, Object?>;
+    final projectConfig =
+        projects['/workspace/flashskyai'] as Map<String, Object?>;
+    expect(projectConfig['hasTrustDialogAccepted'], isTrue);
+
+    final settings = File(
+      p.join(
+        memberFlashskyaiDir,
+        ConfigProfileService.flashskyaiSettingsFileName,
+      ),
+    );
+    expect(await settings.exists(), isTrue);
+    final settingsJson =
+        jsonDecode(await settings.readAsString()) as Map<String, Object?>;
+    expect(settingsJson['skipDangerousModePermissionPrompt'], isTrue);
   });
 
   test('prepareTeamLaunch for codex returns CODEX_HOME only', () async {
@@ -147,6 +165,17 @@ void main() {
         jsonDecode(await roster.readAsString()) as Map<String, Object?>;
     expect(decoded['name'], sessionId);
     expect(decoded['leadAgentId'], 'team-lead@$sessionId');
+
+    final metadata =
+        jsonDecode(
+              await File(
+                p.join(claudeDir, ConfigProfileService.claudeMetadataFileName),
+              ).readAsString(),
+            )
+            as Map<String, Object?>;
+    final projects = metadata['projects'] as Map<String, Object?>;
+    final projectConfig = projects['/workspace/project'] as Map<String, Object?>;
+    expect(projectConfig['hasTrustDialogAccepted'], isTrue);
 
     final members = decoded['members'] as List<Object?>;
     expect(members, hasLength(2));

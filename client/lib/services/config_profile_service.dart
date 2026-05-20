@@ -20,6 +20,7 @@ const configProfileAdhocSessionId = '_adhoc';
 /// metadata) on top of the canonical layout.
 class ConfigProfileService {
   static const flashskyaiMetadataFileName = '.flashskyai.json';
+  static const flashskyaiSettingsFileName = 'settings.json';
   static const claudeMetadataFileName = '.claude.json';
   static const claudeSettingsFileEnvKey = 'TEAMPILOT_CLAUDE_SETTINGS_FILE';
 
@@ -179,20 +180,29 @@ class ConfigProfileService {
     );
 
     await ensureSessionProfile(scope.teamId, scope.sessionId, cli: cli);
-    if (cli == TeamCli.claude) {
-      await _writeClaudeSettings(scope, claudeSettings);
-      await _writeClaudeRoster(
-        scope: scope,
-        members: members,
-        workingDirectory: workingDirectory,
-      );
-      await _writeClaudeMemberProfiles(
-        scope: scope,
-        members: members,
-        launchedMember: member,
-        providerSettings: claudeSettings,
-        providerSettingsByMember: claudeSettingsByMember,
-      );
+    switch (cli) {
+      case TeamCli.flashskyai:
+        await _writeFlashskyaiMetadata(scope, workingDirectory);
+        await _writeFlashskyaiSettings(scope);
+        break;
+      case TeamCli.claude:
+        await _writeClaudeMetadata(scope, workingDirectory);
+        await _writeClaudeSettings(scope, claudeSettings);
+        await _writeClaudeRoster(
+          scope: scope,
+          members: members,
+          workingDirectory: workingDirectory,
+        );
+        await _writeClaudeMemberProfiles(
+          scope: scope,
+          members: members,
+          launchedMember: member,
+          providerSettings: claudeSettings,
+          providerSettingsByMember: claudeSettingsByMember,
+        );
+        break;
+      case TeamCli.codex:
+        break;
     }
 
     return switch (cli) {
@@ -253,6 +263,66 @@ class ConfigProfileService {
       file,
       const JsonEncoder.withIndent('  ').convert(settings),
     );
+  }
+
+  Future<void> _writeClaudeMetadata(
+    _LaunchProfileScope scope,
+    String workingDirectory,
+  ) async {
+    final metadata = _metadataWithTrustedProject(
+      defaultClaudeMetadata,
+      workingDirectory,
+    );
+    final metadataPath = sessionClaudeMetadataFile(scope.teamId, scope.sessionId);
+    await _fs.atomicWrite(
+      metadataPath,
+      const JsonEncoder.withIndent('  ').convert(metadata),
+    );
+  }
+
+  Future<void> _writeFlashskyaiMetadata(
+    _LaunchProfileScope scope,
+    String workingDirectory,
+  ) async {
+    final metadata = _metadataWithTrustedProject(
+      defaultFlashskyaiMetadata,
+      workingDirectory,
+    );
+    final metadataPath = sessionFlashskyaiMetadataFile(
+      scope.teamId,
+      scope.sessionId,
+    );
+    await _fs.atomicWrite(
+      metadataPath,
+      const JsonEncoder.withIndent('  ').convert(metadata),
+    );
+  }
+
+  Future<void> _writeFlashskyaiSettings(_LaunchProfileScope scope) async {
+    final file = _pathContext.join(
+      sessionToolDir(scope.teamId, scope.sessionId, 'flashskyai'),
+      flashskyaiSettingsFileName,
+    );
+    await _fs.atomicWrite(
+      file,
+      const JsonEncoder.withIndent('  ').convert(_flashskyaiTeamSettings()),
+    );
+  }
+
+  Map<String, Object?> _metadataWithTrustedProject(
+    Map<String, Object?> baseMetadata,
+    String workingDirectory,
+  ) {
+    final metadata = <String, Object?>{...baseMetadata};
+    final normalizedWorkingDirectory = workingDirectory.trim().isEmpty
+        ? ''
+        : _pathContext.normalize(workingDirectory.trim());
+    if (normalizedWorkingDirectory.isNotEmpty) {
+      metadata['projects'] = {
+        normalizedWorkingDirectory: {'hasTrustDialogAccepted': true},
+      };
+    }
+    return metadata;
   }
 
   Future<void> _writeClaudeRoster({
@@ -404,6 +474,12 @@ class ConfigProfileService {
       settings['env'] = env;
     }
     return settings;
+  }
+
+  static Map<String, Object?> _flashskyaiTeamSettings() {
+    return <String, Object?>{
+      'skipDangerousModePermissionPrompt': true,
+    };
   }
 
   static String _safeClaudeTeamName(String teamId) =>
