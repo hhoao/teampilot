@@ -130,7 +130,7 @@ ThemeData buildLightTheme([String? themeColorPreset]) => _applyTypography(
 
     /// Higher blend: scaffold / cards pick up more of the seed colors so
     /// presets change the whole UI, not only primary-filled controls.
-    blendLevel: 12,
+    blendLevel: 30,
     subThemesData: _subThemes,
     useMaterial3: true,
   ),
@@ -140,7 +140,7 @@ ThemeData buildDarkTheme([String? themeColorPreset]) => _applyTypography(
   FlexThemeData.dark(
     colors: _flexSchemeColors(normalizeThemeColorPreset(themeColorPreset)),
     surfaceMode: FlexSurfaceMode.levelSurfacesLowScaffold,
-    blendLevel: 40,
+    blendLevel: 30,
 
     /// When true, base layer stays near #000 so only upper surfaces show
     /// strong tint. Set false for a fully tinted dark scaffold (tradeoff:
