@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 
 import '../../theme/workspace_surface_layers.dart';
 
@@ -163,28 +164,44 @@ class WorkspaceHubNavList extends StatelessWidget {
     required this.entries,
     this.hubStyle = false,
     this.sidebarStyle = false,
+    this.animateEntries = false,
     super.key,
   });
 
   final List<WorkspaceHubEntry> entries;
   final bool hubStyle;
   final bool sidebarStyle;
+  final bool animateEntries;
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final items = [
-      for (final entry in entries)
-        WorkspaceHubNavItem(
-          key: entry.key,
-          title: entry.title,
-          icon: entry.icon,
-          selected: entry.selected,
-          hubStyle: hubStyle,
-          trailingIcon: entry.trailingIcon,
-          onTap: entry.onTap,
-        ),
-    ];
+    final items = entries.indexed.map((indexedEntry) {
+      final (index, entry) = indexedEntry;
+      final item = WorkspaceHubNavItem(
+        key: entry.key,
+        title: entry.title,
+        icon: entry.icon,
+        selected: entry.selected,
+        hubStyle: hubStyle,
+        trailingIcon: entry.trailingIcon,
+        onTap: entry.onTap,
+      );
+
+      if (!animateEntries) {
+        return item;
+      }
+
+      return item
+          .animate(delay: (index * 35).ms)
+          .fadeIn(duration: 180.ms, curve: Curves.easeOut)
+          .slideX(
+            begin: -0.06,
+            end: 0,
+            duration: 220.ms,
+            curve: Curves.easeOutCubic,
+          );
+    }).toList();
 
     if (hubStyle) {
       return ListView(
@@ -246,12 +263,14 @@ class WorkspaceSplitShell extends StatelessWidget {
     required this.nav,
     required this.body,
     this.navWidth = 220,
+    this.bodyAnimationKey,
     super.key,
   });
 
   final Widget nav;
   final Widget body;
   final double navWidth;
+  final Key? bodyAnimationKey;
 
   static const compactBreakpoint = 820.0;
 
@@ -270,6 +289,18 @@ class WorkspaceSplitShell extends StatelessWidget {
           3200.0,
         );
 
+        final animatedBody = bodyAnimationKey == null
+            ? body
+            : body
+                  .animate(key: bodyAnimationKey)
+                  .fadeIn(duration: 180.ms, curve: Curves.easeOut)
+                  .slideX(
+                    begin: 0.025,
+                    end: 0,
+                    duration: 220.ms,
+                    curve: Curves.easeOutCubic,
+                  );
+
         return Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -285,7 +316,7 @@ class WorkspaceSplitShell extends StatelessWidget {
                   alignment: Alignment.topLeft,
                   child: ConstrainedBox(
                     constraints: BoxConstraints(maxWidth: bodyMaxWidth),
-                    child: body,
+                    child: animatedBody,
                   ),
                 ),
               ),

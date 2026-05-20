@@ -190,6 +190,7 @@ class _DesktopConfigWorkspace extends StatelessWidget {
           ),
           Expanded(
             child: WorkspaceSplitShell(
+              bodyAnimationKey: ValueKey('settings-body-${section.name}'),
               nav: _ConfigNavPanel(
                 section: section,
                 onSelectSection: onSelectSection,
@@ -617,6 +618,7 @@ class _ConfigNavPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     return WorkspaceHubNavList(
       sidebarStyle: true,
+      animateEntries: true,
       entries: [
         WorkspaceHubEntry(
           key: AppKeys.configLayoutSectionButton,

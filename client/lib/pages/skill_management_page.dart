@@ -110,6 +110,7 @@ class SkillManagementPage extends StatelessWidget {
               ),
               Expanded(
                 child: WorkspaceSplitShell(
+                  bodyAnimationKey: ValueKey('skills-body-${section.name}'),
                   nav: _SkillsNavPanel(
                     section: section,
                     l10n: l10n,
@@ -163,16 +164,15 @@ class _SkillsNavPanel extends StatelessWidget {
 }
 
 class _Card extends StatelessWidget {
-  const _Card({required this.child, this.padding});
+  const _Card({required this.child});
   final Widget child;
-  final EdgeInsetsGeometry? padding;
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
-      padding: padding ?? const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(18),
       decoration: workspaceCardDecoration(cs, radius: 12),
       child: child,
     );
@@ -802,7 +802,8 @@ class _DiscoverySectionState extends State<_DiscoverySection> {
                   _SourceToggle(
                     label: l10n.skillsSourceSkillsSh,
                     selected: _source == _SearchSource.skillsSh,
-                    onTap: () => setState(() => _source = _SearchSource.skillsSh),
+                    onTap: () =>
+                        setState(() => _source = _SearchSource.skillsSh),
                   ),
                   const Spacer(),
                   if (_source == _SearchSource.repos)
@@ -1354,9 +1355,7 @@ class _ReposSectionState extends State<_ReposSection> {
                       final parsed = parseGithubRepoUrl(url);
                       if (parsed == null) {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(l10n.skillsRepoInvalidUrl),
-                          ),
+                          SnackBar(content: Text(l10n.skillsRepoInvalidUrl)),
                         );
                         return;
                       }
@@ -1436,7 +1435,9 @@ class _RepoRow extends StatelessWidget {
             ],
             Switch(
               value: repo.enabled,
-              onChanged: syncing ? null : (v) => cubit.toggleRepoEnabled(repo, v),
+              onChanged: syncing
+                  ? null
+                  : (v) => cubit.toggleRepoEnabled(repo, v),
             ),
             IconButton(
               tooltip: l10n.skillsRemove,

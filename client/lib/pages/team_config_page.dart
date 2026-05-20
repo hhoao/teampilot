@@ -193,6 +193,9 @@ class TeamConfigPage extends StatelessWidget {
           ),
           Expanded(
             child: WorkspaceSplitShell(
+              bodyAnimationKey: ValueKey(
+                'team-config-body-${section.name}-${resolvedMemberId ?? ''}',
+              ),
               nav: _NavPanel(
                 team: team,
                 section: section,

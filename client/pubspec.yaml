@@ -47,6 +47,7 @@ dependencies:
   toggle_switch: ^2.3.0
   google_fonts: ^8.1.0
   flex_color_scheme: ^8.4.0
+  flutter_animate: 4.5.2
 
 dev_dependencies:
   flutter_test:
