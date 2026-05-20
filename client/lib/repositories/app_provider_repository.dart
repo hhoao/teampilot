@@ -20,22 +20,15 @@ class AppProviderRepositoryException implements Exception {
 class AppProviderRepository {
   AppProviderRepository({
     String? basePath,
-    File? providersFile,
     ToolConfigGenerator? generator,
-  }) : _basePath =
-           basePath ??
-           (providersFile == null
-               ? AppPathsBootstrapper.current.basePath
-               : providersFile.parent.parent.path),
+  }) : _basePath = basePath ?? AppPathsBootstrapper.current.basePath,
        _generator = generator ?? const ToolConfigGenerator();
 
   final String _basePath;
   final ToolConfigGenerator _generator;
 
-  static File providersFileForBasePath(String basePath, [AppProviderCli? cli]) {
-    if (cli == null) {
-      return File(p.join(basePath, 'providers', 'providers.json'));
-    }
+  /// Catalog for one CLI: `<basePath>/providers/<cli>/providers.json`.
+  static File providersFileForBasePath(String basePath, AppProviderCli cli) {
     return File(p.join(basePath, 'providers', cli.value, 'providers.json'));
   }
 

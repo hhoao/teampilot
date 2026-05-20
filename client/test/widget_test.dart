@@ -108,11 +108,7 @@ Future<void> pumpDesktopApp(
       (await tester.runAsync(() async {
         final dir = await Directory.systemTemp.createTemp('providers_widget_');
         return AppProviderCubit(
-          repository: AppProviderRepository(
-            providersFile: AppProviderRepository.providersFileForBasePath(
-              dir.path,
-            ),
-          ),
+          repository: AppProviderRepository(basePath: dir.path),
         );
       }))!;
   await tester.pumpWidget(

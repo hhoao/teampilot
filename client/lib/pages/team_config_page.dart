@@ -34,6 +34,14 @@ extension TeamConfigSectionRoute on TeamConfigSection {
   };
 }
 
+/// Same mapping as [TeamToolProviderSelectors]: member provider catalog is
+/// `<appData>/providers/<cli>/providers.json` per [AppProviderRepository].
+AppProviderCli _appCatalogCliForTeam(TeamCli cli) => switch (cli) {
+  TeamCli.flashskyai => AppProviderCli.flashskyai,
+  TeamCli.codex => AppProviderCli.codex,
+  TeamCli.claude => AppProviderCli.claude,
+};
+
 String _teamCliDisplayLabel(AppLocalizations l10n, TeamCli cli) {
   return switch (cli) {
     TeamCli.flashskyai => l10n.appProviderToolFlashskyai,
@@ -1170,43 +1178,30 @@ class _MemberConfigFormState extends State<_MemberConfigForm> {
     final l10n = context.l10n;
     final m = widget.member;
     final llmState = context.watch<LlmConfigCubit>().state;
-    final isClaudeTeam = widget.team.cli == TeamCli.claude;
+    final memberCatalogCli = _appCatalogCliForTeam(widget.team.cli);
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textBase = isDark ? Colors.white : const Color(0xFF111827);
 
     final prov = m.provider;
-    final List<String> providerIds;
-    final Map<String, String> providerLabels;
-    if (isClaudeTeam) {
-      final appProviders = context
-          .watch<AppProviderCubit>()
-          .state
-          .providersFor(AppProviderCli.claude)
-          .toList(growable: false);
-      providerIds = appProviders.map((p) => p.id).toList()..sort();
-      if (prov.trim().isNotEmpty && !providerIds.contains(prov)) {
-        providerIds.add(prov);
-      }
-      providerLabels = {
-        for (final p in appProviders) p.id: p.name,
-        if (prov.trim().isNotEmpty && !appProviders.any((p) => p.id == prov))
-          prov: prov,
-      };
-    } else {
-      providerIds = llmState.config.providers.keys.toList()..sort();
-      if (prov.trim().isNotEmpty && !providerIds.contains(prov)) {
-        providerIds.add(prov);
-      }
-      providerLabels = {
-        for (final id in providerIds)
-          id: llmState.config.providers[id]?.name ?? id,
-      };
+    final appProviders = context
+        .watch<AppProviderCubit>()
+        .state
+        .providersFor(memberCatalogCli)
+        .toList(growable: false);
+    final providerIds = appProviders.map((p) => p.id).toList()..sort();
+    if (prov.trim().isNotEmpty && !providerIds.contains(prov)) {
+      providerIds.add(prov);
     }
+    final providerLabels = {
+      for (final p in appProviders) p.id: p.name,
+      if (prov.trim().isNotEmpty && !appProviders.any((p) => p.id == prov))
+        prov: prov,
+    };
 
     AppProviderConfig? selectedAppProvider;
-    if (isClaudeTeam && prov.trim().isNotEmpty) {
+    if (prov.trim().isNotEmpty) {
       for (final p in context.read<AppProviderCubit>().state.providersFor(
-        AppProviderCli.claude,
+        memberCatalogCli,
       )) {
         if (p.id == prov) {
           selectedAppProvider = p;
@@ -1215,25 +1210,13 @@ class _MemberConfigFormState extends State<_MemberConfigForm> {
       }
     }
 
-    final modelNames =
-        isClaudeTeam
-              ? _modelNamesForClaudeProvider(
-                  providerId: prov,
-                  appProvider: selectedAppProvider,
-                  llmState: llmState,
-                  currentModel: m.model,
-                )
-              : llmState.config.models.values
-                    .where((model) => prov.isEmpty || model.provider == prov)
-                    .map((model) => model.name)
-                    .toList()
-          ..sort();
+    final modelNames = _modelNamesForClaudeProvider(
+      providerId: prov,
+      appProvider: selectedAppProvider,
+      llmState: llmState,
+      currentModel: m.model,
+    )..sort();
     final model = m.model;
-    if (!isClaudeTeam &&
-        model.trim().isNotEmpty &&
-        !modelNames.contains(model)) {
-      modelNames.add(model);
-    }
 
     final dropdownDeco = FlashskyDropdownDecorations.denseField(context);
 
@@ -1259,31 +1242,25 @@ class _MemberConfigFormState extends State<_MemberConfigForm> {
           onChanged: (value) {
             final newProv = value ?? '';
             var newModel = m.model;
-            if (isClaudeTeam) {
-              AppProviderConfig? nextProvider;
-              for (final p
-                  in context.read<AppProviderCubit>().state.providers) {
-                if (p.id == newProv) {
-                  nextProvider = p;
-                  break;
-                }
+            AppProviderConfig? nextProvider;
+            for (final p in context.read<AppProviderCubit>().state.providersFor(
+              memberCatalogCli,
+            )) {
+              if (p.id == newProv) {
+                nextProvider = p;
+                break;
               }
-              final defaultModel = nextProvider?.defaultModel.trim() ?? '';
-              final names = _modelNamesForClaudeProvider(
-                providerId: newProv,
-                appProvider: nextProvider,
-                llmState: llmState,
-                currentModel: m.model,
-              );
-              final stillValid = names.contains(newModel);
-              if (!stillValid) {
-                newModel = defaultModel.isNotEmpty ? defaultModel : '';
-              }
-            } else {
-              final stillValid = llmState.config.models.values.any(
-                (md) => md.name == newModel && md.provider == newProv,
-              );
-              if (!stillValid) newModel = '';
+            }
+            final defaultModel = nextProvider?.defaultModel.trim() ?? '';
+            final names = _modelNamesForClaudeProvider(
+              providerId: newProv,
+              appProvider: nextProvider,
+              llmState: llmState,
+              currentModel: m.model,
+            );
+            final stillValid = names.contains(newModel);
+            if (!stillValid) {
+              newModel = defaultModel.isNotEmpty ? defaultModel : '';
             }
             _update(m.copyWith(provider: newProv, model: newModel));
           },
