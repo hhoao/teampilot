@@ -288,4 +288,14 @@ void main() {
       );
     });
   });
+
+  test('workingDirectoryForProcess uses native Windows cwd for WSL PTY', () {
+    if (!Platform.isWindows) return;
+    final cwd = LaunchCommandBuilder.workingDirectoryForProcess(
+      '/mnt/c/Users/dev/repo',
+      useWslPaths: true,
+    );
+    expect(cwd, isNot(startsWith('/')));
+    expect(Directory(cwd).existsSync(), isTrue);
+  });
 }

@@ -351,7 +351,7 @@ class _ProjectGroupState extends State<_ProjectGroup> {
     final displayName = p.effectiveDisplay.isNotEmpty
         ? p.effectiveDisplay
         : (p.primaryPath.isNotEmpty
-              ? p.primaryPath.split(Platform.pathSeparator).last
+              ? p.primaryPath.split(RegExp(r'[/\\]')).last
               : l10n.unknownFolder);
 
     return Column(

@@ -52,6 +52,10 @@ class CliDataLayout {
         tool.trim(),
       );
 
+  /// Team-scope skills dir: `config-profiles/teams/{teamId}/flashskyai/skills/`.
+  String teamSkillsDir(String teamId) =>
+      _pathContext.join(teamToolDir(teamId, 'flashskyai'), 'skills');
+
   /// Convenience accessor for the FlashskyAI provider catalog file.
   String get appFlashskyaiLlmConfigFile =>
       _pathContext.join(appToolRoot('flashskyai'), 'llm_config.json');

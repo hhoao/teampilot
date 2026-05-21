@@ -24,6 +24,7 @@ import 'android_shell_chrome.dart';
 import '../widgets/context_sidebar.dart';
 import '../widgets/create_project_dialog.dart';
 import '../widgets/resizable_split_view.dart';
+import '../l10n/l10n_extensions.dart';
 
 final appRouter = GoRouter(
   initialLocation: '/chat',
@@ -270,11 +271,18 @@ Future<void> _createProject(BuildContext context) async {
   final draft = await showCreateProjectDialog(context);
   if (draft == null || !context.mounted) return;
   final teamId = context.read<TeamCubit>().state.selectedTeam?.id ?? '';
-  await context.read<ChatCubit>().createProjectWithFirstSession(
-    draft.primaryPath,
-    context.read<SessionRepository>(),
-    sessionTeamId: teamId,
-    additionalPaths: draft.additionalPaths,
-    display: draft.display,
-  );
+  try {
+    await context.read<ChatCubit>().createProjectWithFirstSession(
+      draft.primaryPath,
+      context.read<SessionRepository>(),
+      sessionTeamId: teamId,
+      additionalPaths: draft.additionalPaths,
+      display: draft.display,
+    );
+  } on Object catch (error) {
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('${context.l10n.newProject}: $error')),
+    );
+  }
 }

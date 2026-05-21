@@ -211,10 +211,11 @@ class SkillInstallService {
     final backupsDirPath = await manifest.resolveBackupsDir();
     final ts = DateTime.now().millisecondsSinceEpoch ~/ 1000;
     final backupId = '${skill.directory}-$ts';
-    final targetPath = p.join(backupsDirPath, backupId);
+    late final String targetPath;
 
     if (remote != null) {
       final posix = p.Context(style: p.Style.posix);
+      targetPath = posix.join(backupsDirPath, backupId);
       final src = posix.join(skillsDir, skill.directory);
       if (!await remote.fileExists(posix.join(src, 'SKILL.md'))) {
         await manifest.removeSkill(skill.id);
@@ -226,6 +227,7 @@ class SkillInstallService {
     } else {
       final fs = AppStorage.fs;
       final ctx = fs.pathContext;
+      targetPath = ctx.join(backupsDirPath, backupId);
       final src = ctx.join(skillsDir, skill.directory);
       if (!(await fs.stat(ctx.join(src, 'SKILL.md'))).isFile) {
         await manifest.removeSkill(skill.id);
@@ -263,10 +265,10 @@ class SkillInstallService {
   Future<Skill> restoreBackup(SkillBackup backup) async {
     final remote = await manifest.remoteFileStore();
     final skillsDir = await manifest.resolveSkillsDir();
-    final targetPath = p.join(skillsDir, backup.skill.directory);
 
     if (remote != null) {
       final posix = p.Context(style: p.Style.posix);
+      final targetPath = posix.join(skillsDir, backup.skill.directory);
       if (!await remote.fileExists(posix.join(backup.backupPath, 'SKILL.md'))) {
         throw SkillInstallException(
           'Backup payload missing at ${backup.backupPath}',
@@ -279,6 +281,7 @@ class SkillInstallService {
     } else {
       final fs = AppStorage.fs;
       final ctx = fs.pathContext;
+      final targetPath = ctx.join(skillsDir, backup.skill.directory);
       if (!(await fs.stat(ctx.join(backup.backupPath, 'SKILL.md'))).isFile) {
         throw SkillInstallException(
           'Backup payload missing at ${backup.backupPath}',

@@ -53,10 +53,11 @@ class TeamSkillLinkerService {
   String teamSkillsDirFor(String teamId, {required CliDataLayout layout}) {
     final override = _teamSkillsRootOverride;
     if (override != null) return override;
-    return p.join(layout.teamToolDir(teamId, 'flashskyai'), 'skills');
+    return layout.teamSkillsDir(teamId);
   }
 
-  String sourceDirFor(Skill skill) => p.join(appSkillsDir, skill.directory);
+  String sourceDirFor(Skill skill) =>
+      AppStorage.fs.pathContext.join(appSkillsDir, skill.directory);
 
   Future<TeamSkillSyncResult> syncForTeam({
     required String teamId,

@@ -47,16 +47,18 @@ class SessionRepository {
   Future<SessionRepositoryFs> _fs() async {
     if (_storageRoots != null) {
       final snap = await _storageRoots.resolve();
+      final pathCtx = AppPaths.pathContextForDataRoot(snap.appProjectsDir);
       return SessionRepositoryFs(
-        projectsFile: p.join(snap.appProjectsDir, 'projects.json'),
-        sessionsDir: p.join(snap.appProjectsDir, 'sessions'),
+        projectsFile: pathCtx.join(snap.appProjectsDir, 'projects.json'),
+        sessionsDir: pathCtx.join(snap.appProjectsDir, 'sessions'),
         fs: snap.fs,
       );
     }
     final root = _rootOverride ?? AppStorage.paths.appProjectsDir;
+    final pathCtx = AppPaths.pathContextForDataRoot(root);
     return SessionRepositoryFs(
-      projectsFile: p.join(root, 'projects.json'),
-      sessionsDir: p.join(root, 'sessions'),
+      projectsFile: pathCtx.join(root, 'projects.json'),
+      sessionsDir: pathCtx.join(root, 'sessions'),
     );
   }
 

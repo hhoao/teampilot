@@ -346,15 +346,17 @@ class LaunchCommandBuilder {
   }) {
     if (!useWslPaths) return workingDirectory;
     if (!Platform.isWindows) return workingDirectory;
-    final trimmed = workingDirectory.trim();
-    if (trimmed.isNotEmpty &&
-        windowsPathToWsl(trimmed) == null &&
-        !trimmed.startsWith(r'\\')) {
-      return trimmed;
+    // Windows PTY wraps `wsl.exe`; CreateProcess cwd must be a native path.
+    // Project dirs are passed separately via CLI args in WSL form.
+    final userProfile = Platform.environment['USERPROFILE']?.trim();
+    if (userProfile != null && userProfile.isNotEmpty) {
+      return userProfile;
     }
-    return Platform.environment['USERPROFILE'] ??
-        Platform.environment['SystemRoot'] ??
-        Directory.current.path;
+    final systemRoot = Platform.environment['SystemRoot']?.trim();
+    if (systemRoot != null && systemRoot.isNotEmpty) {
+      return systemRoot;
+    }
+    return Directory.current.path;
   }
 
   static Map<String, String>? normalizeEnvironmentForCli(
