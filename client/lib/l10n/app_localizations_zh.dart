@@ -1073,4 +1073,88 @@ class AppLocalizationsZh extends AppLocalizations {
   String appUpdateNewVersion(String version) {
     return '新版本 $version 可用';
   }
+
+  @override
+  String get appUpdateDialogTitle => '发现新版本';
+
+  @override
+  String get appUpdateLatestVersion => '最新版本';
+
+  @override
+  String get appUpdateUnknownVersion => '未知';
+
+  @override
+  String get appUpdateChangelogTitle => '更新内容';
+
+  @override
+  String get appUpdateChangelogDefaultSection => '更新';
+
+  @override
+  String get appUpdateReadyToDownload => '准备下载';
+
+  @override
+  String get appUpdateLater => '以后更新';
+
+  @override
+  String get appUpdateDownloadNow => '立即下载';
+
+  @override
+  String get appUpdateDownloadInBackground => '后台下载';
+
+  @override
+  String get appUpdateInstallNow => '立即安装';
+
+  @override
+  String get appUpdateBrowserDownload => '浏览器下载';
+
+  @override
+  String get appUpdateInvalidPackagePath => '安装包路径无效';
+
+  @override
+  String get appUpdateReleaseBuildRequired => '请使用 Release 构建包进行应用内安装';
+
+  @override
+  String get appUpdatePackagePlatformMismatch => '安装包类型与当前系统不匹配';
+
+  @override
+  String appUpdateInstallFailed(String message) {
+    return '安装失败：$message';
+  }
+
+  @override
+  String get appUpdateInstallNoResult => '安装未返回结果';
+
+  @override
+  String get appUpdateInstallComplete => '安装完成';
+
+  @override
+  String get appUpdateRedirectBrowserOnly => '该链接需要在浏览器中下载';
+
+  @override
+  String get appUpdateDownloadStarting => '开始下载…';
+
+  @override
+  String get appUpdateDownloadComplete => '下载完成';
+
+  @override
+  String get appUpdateDownloadFailed => '下载失败';
+
+  @override
+  String appUpdateDownloadError(String error) {
+    return '下载过程中发生错误：$error';
+  }
+
+  @override
+  String get appUpdateResolvingDownloadUrl => '正在获取下载链接…';
+
+  @override
+  String get appUpdateBrowserOpened => '已在浏览器中打开下载链接';
+
+  @override
+  String get appUpdateCannotOpenDownloadLink => '无法打开下载链接';
+
+  @override
+  String appUpdateBrowserOpenFailed(String error) {
+    return '打开浏览器失败：$error';
+  }
 }

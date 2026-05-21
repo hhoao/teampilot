@@ -2119,6 +2119,162 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Version {version} available'**
   String appUpdateNewVersion(String version);
+
+  /// No description provided for @appUpdateDialogTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'New version available'**
+  String get appUpdateDialogTitle;
+
+  /// No description provided for @appUpdateLatestVersion.
+  ///
+  /// In en, this message translates to:
+  /// **'Latest version'**
+  String get appUpdateLatestVersion;
+
+  /// No description provided for @appUpdateUnknownVersion.
+  ///
+  /// In en, this message translates to:
+  /// **'Unknown'**
+  String get appUpdateUnknownVersion;
+
+  /// No description provided for @appUpdateChangelogTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'What\'s new'**
+  String get appUpdateChangelogTitle;
+
+  /// No description provided for @appUpdateChangelogDefaultSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Updates'**
+  String get appUpdateChangelogDefaultSection;
+
+  /// No description provided for @appUpdateReadyToDownload.
+  ///
+  /// In en, this message translates to:
+  /// **'Ready to download'**
+  String get appUpdateReadyToDownload;
+
+  /// No description provided for @appUpdateLater.
+  ///
+  /// In en, this message translates to:
+  /// **'Later'**
+  String get appUpdateLater;
+
+  /// No description provided for @appUpdateDownloadNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Download now'**
+  String get appUpdateDownloadNow;
+
+  /// No description provided for @appUpdateDownloadInBackground.
+  ///
+  /// In en, this message translates to:
+  /// **'Download in background'**
+  String get appUpdateDownloadInBackground;
+
+  /// No description provided for @appUpdateInstallNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Install now'**
+  String get appUpdateInstallNow;
+
+  /// No description provided for @appUpdateBrowserDownload.
+  ///
+  /// In en, this message translates to:
+  /// **'Download in browser'**
+  String get appUpdateBrowserDownload;
+
+  /// No description provided for @appUpdateInvalidPackagePath.
+  ///
+  /// In en, this message translates to:
+  /// **'Invalid package path'**
+  String get appUpdateInvalidPackagePath;
+
+  /// No description provided for @appUpdateReleaseBuildRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Use a release build for in-app installation'**
+  String get appUpdateReleaseBuildRequired;
+
+  /// No description provided for @appUpdatePackagePlatformMismatch.
+  ///
+  /// In en, this message translates to:
+  /// **'Package type does not match this system'**
+  String get appUpdatePackagePlatformMismatch;
+
+  /// No description provided for @appUpdateInstallFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Install failed: {message}'**
+  String appUpdateInstallFailed(String message);
+
+  /// No description provided for @appUpdateInstallNoResult.
+  ///
+  /// In en, this message translates to:
+  /// **'Install returned no result'**
+  String get appUpdateInstallNoResult;
+
+  /// No description provided for @appUpdateInstallComplete.
+  ///
+  /// In en, this message translates to:
+  /// **'Installation complete'**
+  String get appUpdateInstallComplete;
+
+  /// No description provided for @appUpdateRedirectBrowserOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'This link must be downloaded in the browser'**
+  String get appUpdateRedirectBrowserOnly;
+
+  /// No description provided for @appUpdateDownloadStarting.
+  ///
+  /// In en, this message translates to:
+  /// **'Starting download…'**
+  String get appUpdateDownloadStarting;
+
+  /// No description provided for @appUpdateDownloadComplete.
+  ///
+  /// In en, this message translates to:
+  /// **'Download complete'**
+  String get appUpdateDownloadComplete;
+
+  /// No description provided for @appUpdateDownloadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Download failed'**
+  String get appUpdateDownloadFailed;
+
+  /// No description provided for @appUpdateDownloadError.
+  ///
+  /// In en, this message translates to:
+  /// **'Error while downloading: {error}'**
+  String appUpdateDownloadError(String error);
+
+  /// No description provided for @appUpdateResolvingDownloadUrl.
+  ///
+  /// In en, this message translates to:
+  /// **'Resolving download link…'**
+  String get appUpdateResolvingDownloadUrl;
+
+  /// No description provided for @appUpdateBrowserOpened.
+  ///
+  /// In en, this message translates to:
+  /// **'Opened download link in the browser'**
+  String get appUpdateBrowserOpened;
+
+  /// No description provided for @appUpdateCannotOpenDownloadLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not open download link'**
+  String get appUpdateCannotOpenDownloadLink;
+
+  /// No description provided for @appUpdateBrowserOpenFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to open browser: {error}'**
+  String appUpdateBrowserOpenFailed(String error);
 }
 
 class _AppLocalizationsDelegate

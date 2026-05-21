@@ -343,5 +343,52 @@
         "type": "String"
       }
     }
+  },
+  "appUpdateDialogTitle": "发现新版本",
+  "appUpdateLatestVersion": "最新版本",
+  "appUpdateUnknownVersion": "未知",
+  "appUpdateChangelogTitle": "更新内容",
+  "appUpdateChangelogDefaultSection": "更新",
+  "appUpdateReadyToDownload": "准备下载",
+  "appUpdateLater": "以后更新",
+  "appUpdateDownloadNow": "立即下载",
+  "appUpdateDownloadInBackground": "后台下载",
+  "appUpdateInstallNow": "立即安装",
+  "appUpdateBrowserDownload": "浏览器下载",
+  "appUpdateInvalidPackagePath": "安装包路径无效",
+  "appUpdateReleaseBuildRequired": "请使用 Release 构建包进行应用内安装",
+  "appUpdatePackagePlatformMismatch": "安装包类型与当前系统不匹配",
+  "appUpdateInstallFailed": "安装失败：{message}",
+  "@appUpdateInstallFailed": {
+    "placeholders": {
+      "message": {
+        "type": "String"
+      }
+    }
+  },
+  "appUpdateInstallNoResult": "安装未返回结果",
+  "appUpdateInstallComplete": "安装完成",
+  "appUpdateRedirectBrowserOnly": "该链接需要在浏览器中下载",
+  "appUpdateDownloadStarting": "开始下载…",
+  "appUpdateDownloadComplete": "下载完成",
+  "appUpdateDownloadFailed": "下载失败",
+  "appUpdateDownloadError": "下载过程中发生错误：{error}",
+  "@appUpdateDownloadError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "appUpdateResolvingDownloadUrl": "正在获取下载链接…",
+  "appUpdateBrowserOpened": "已在浏览器中打开下载链接",
+  "appUpdateCannotOpenDownloadLink": "无法打开下载链接",
+  "appUpdateBrowserOpenFailed": "打开浏览器失败：{error}",
+  "@appUpdateBrowserOpenFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
   }
 }

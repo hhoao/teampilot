@@ -502,5 +502,52 @@
         "type": "String"
       }
     }
+  },
+  "appUpdateDialogTitle": "New version available",
+  "appUpdateLatestVersion": "Latest version",
+  "appUpdateUnknownVersion": "Unknown",
+  "appUpdateChangelogTitle": "What's new",
+  "appUpdateChangelogDefaultSection": "Updates",
+  "appUpdateReadyToDownload": "Ready to download",
+  "appUpdateLater": "Later",
+  "appUpdateDownloadNow": "Download now",
+  "appUpdateDownloadInBackground": "Download in background",
+  "appUpdateInstallNow": "Install now",
+  "appUpdateBrowserDownload": "Download in browser",
+  "appUpdateInvalidPackagePath": "Invalid package path",
+  "appUpdateReleaseBuildRequired": "Use a release build for in-app installation",
+  "appUpdatePackagePlatformMismatch": "Package type does not match this system",
+  "appUpdateInstallFailed": "Install failed: {message}",
+  "@appUpdateInstallFailed": {
+    "placeholders": {
+      "message": {
+        "type": "String"
+      }
+    }
+  },
+  "appUpdateInstallNoResult": "Install returned no result",
+  "appUpdateInstallComplete": "Installation complete",
+  "appUpdateRedirectBrowserOnly": "This link must be downloaded in the browser",
+  "appUpdateDownloadStarting": "Starting download…",
+  "appUpdateDownloadComplete": "Download complete",
+  "appUpdateDownloadFailed": "Download failed",
+  "appUpdateDownloadError": "Error while downloading: {error}",
+  "@appUpdateDownloadError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "appUpdateResolvingDownloadUrl": "Resolving download link…",
+  "appUpdateBrowserOpened": "Opened download link in the browser",
+  "appUpdateCannotOpenDownloadLink": "Could not open download link",
+  "appUpdateBrowserOpenFailed": "Failed to open browser: {error}",
+  "@appUpdateBrowserOpenFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
   }
 }

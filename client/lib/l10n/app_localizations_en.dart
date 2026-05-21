@@ -1106,4 +1106,91 @@ class AppLocalizationsEn extends AppLocalizations {
   String appUpdateNewVersion(String version) {
     return 'Version $version available';
   }
+
+  @override
+  String get appUpdateDialogTitle => 'New version available';
+
+  @override
+  String get appUpdateLatestVersion => 'Latest version';
+
+  @override
+  String get appUpdateUnknownVersion => 'Unknown';
+
+  @override
+  String get appUpdateChangelogTitle => 'What\'s new';
+
+  @override
+  String get appUpdateChangelogDefaultSection => 'Updates';
+
+  @override
+  String get appUpdateReadyToDownload => 'Ready to download';
+
+  @override
+  String get appUpdateLater => 'Later';
+
+  @override
+  String get appUpdateDownloadNow => 'Download now';
+
+  @override
+  String get appUpdateDownloadInBackground => 'Download in background';
+
+  @override
+  String get appUpdateInstallNow => 'Install now';
+
+  @override
+  String get appUpdateBrowserDownload => 'Download in browser';
+
+  @override
+  String get appUpdateInvalidPackagePath => 'Invalid package path';
+
+  @override
+  String get appUpdateReleaseBuildRequired =>
+      'Use a release build for in-app installation';
+
+  @override
+  String get appUpdatePackagePlatformMismatch =>
+      'Package type does not match this system';
+
+  @override
+  String appUpdateInstallFailed(String message) {
+    return 'Install failed: $message';
+  }
+
+  @override
+  String get appUpdateInstallNoResult => 'Install returned no result';
+
+  @override
+  String get appUpdateInstallComplete => 'Installation complete';
+
+  @override
+  String get appUpdateRedirectBrowserOnly =>
+      'This link must be downloaded in the browser';
+
+  @override
+  String get appUpdateDownloadStarting => 'Starting download…';
+
+  @override
+  String get appUpdateDownloadComplete => 'Download complete';
+
+  @override
+  String get appUpdateDownloadFailed => 'Download failed';
+
+  @override
+  String appUpdateDownloadError(String error) {
+    return 'Error while downloading: $error';
+  }
+
+  @override
+  String get appUpdateResolvingDownloadUrl => 'Resolving download link…';
+
+  @override
+  String get appUpdateBrowserOpened => 'Opened download link in the browser';
+
+  @override
+  String get appUpdateCannotOpenDownloadLink => 'Could not open download link';
+
+  @override
+  String appUpdateBrowserOpenFailed(String error) {
+    return 'Failed to open browser: $error';
+  }
 }

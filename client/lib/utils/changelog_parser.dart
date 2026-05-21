@@ -10,7 +10,10 @@ class ChangelogEntry {
 
 /// Parses and renders backend changelog markdown.
 class ChangelogData {
-  static List<ChangelogEntry> parseMarkdownContent(String content) {
+  static List<ChangelogEntry> parseMarkdownContent(
+    String content, {
+    String defaultSectionTitle = 'Updates',
+  }) {
     final trimmed = content.trim();
     if (trimmed.isEmpty) return const [];
 
@@ -22,7 +25,7 @@ class ChangelogData {
       if (currentVersion == null && currentItems.isEmpty) return;
       entries.add(
         ChangelogEntry(
-          version: currentVersion ?? '更新',
+          version: currentVersion ?? defaultSectionTitle,
           items: List.unmodifiable(currentItems),
         ),
       );
@@ -49,7 +52,7 @@ class ChangelogData {
           : text;
       if (item.isNotEmpty) {
         if (currentVersion == null && entries.isEmpty && currentItems.isEmpty) {
-          currentVersion = '更新';
+          currentVersion = defaultSectionTitle;
         }
         currentItems.add(item);
       }
@@ -57,7 +60,9 @@ class ChangelogData {
     flush();
 
     if (entries.isEmpty) {
-      return [ChangelogEntry(version: '更新', items: [trimmed])];
+      return [
+        ChangelogEntry(version: defaultSectionTitle, items: [trimmed]),
+      ];
     }
     return entries;
   }

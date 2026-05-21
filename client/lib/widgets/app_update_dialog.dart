@@ -4,6 +4,7 @@ import 'package:android_package_installer/android_package_installer.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:teampilot/l10n/l10n_extensions.dart';
 import 'package:teampilot/models/app_models.dart';
 import 'package:teampilot/router/app_router.dart';
 import 'package:teampilot/services/app_update_installer.dart';
@@ -35,25 +36,31 @@ class _AppUpdateDialogState extends State<AppUpdateDialog> {
 
   bool _isDownloading = false;
   double _downloadProgress = 0.0;
-  String _downloadStatus = '准备下载';
+  late String _downloadStatus;
   bool _isExpanded = false;
-  late List<ChangelogEntry> changelogs;
+  List<ChangelogEntry> _changelogs = const [];
   bool _downloadCompleted = false;
   String _downloadSavePath = '';
   bool _installInProgress = false;
-
-  @override
-  void initState() {
-    super.initState();
-    changelogs = ChangelogData.parseMarkdownContent(
-      widget.updateInfo.changelogs?.join('\n') ?? '',
-    );
-  }
+  bool _localized = false;
 
   @override
   void dispose() {
     _downloadService.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_localized) return;
+    _localized = true;
+    final l10n = context.l10n;
+    _downloadStatus = l10n.appUpdateReadyToDownload;
+    _changelogs = ChangelogData.parseMarkdownContent(
+      widget.updateInfo.changelogs?.join('\n') ?? '',
+      defaultSectionTitle: l10n.appUpdateChangelogDefaultSection,
+    );
   }
 
   DownloadTypeEnum? get _downloadType =>
@@ -74,6 +81,7 @@ class _AppUpdateDialogState extends State<AppUpdateDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final latestApp = widget.updateInfo.latestApp;
     final currentApp = widget.updateInfo.currentApp;
 
@@ -88,10 +96,10 @@ class _AppUpdateDialogState extends State<AppUpdateDialog> {
           mainAxisSize: MainAxisSize.min,
           children: [
             const SizedBox(height: 20),
-            const Center(
+            Center(
               child: Text(
-                '发现新版本',
-                style: TextStyle(
+                l10n.appUpdateDialogTitle,
+                style: const TextStyle(
                   color: Colors.black,
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
@@ -107,11 +115,11 @@ class _AppUpdateDialogState extends State<AppUpdateDialog> {
                   children: [
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 20),
-                      child: _buildVersionInfo(latestApp, currentApp),
+                      child: _buildVersionInfo(l10n, latestApp, currentApp),
                     ),
                     if (_isDownloading || _downloadCompleted)
                       _buildDownloadProgress(),
-                    if (latestApp != null) _buildBottomRow(latestApp),
+                    if (latestApp != null) _buildBottomRow(l10n, latestApp),
                   ],
                 ),
               ),
@@ -123,6 +131,7 @@ class _AppUpdateDialogState extends State<AppUpdateDialog> {
   }
 
   Widget _buildVersionInfo(
+    AppLocalizations l10n,
     AppApplicationRespVO? latestApp,
     AppApplicationRespVO? currentApp,
   ) {
@@ -138,7 +147,7 @@ class _AppUpdateDialogState extends State<AppUpdateDialog> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '当前版本',
+                      l10n.aboutCurrentVersion,
                       style: TextStyle(fontSize: 14, color: Colors.grey[600]),
                     ),
                     const SizedBox(height: 4),
@@ -158,12 +167,12 @@ class _AppUpdateDialogState extends State<AppUpdateDialog> {
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     Text(
-                      '最新版本',
+                      l10n.appUpdateLatestVersion,
                       style: TextStyle(fontSize: 14, color: Colors.grey[600]),
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      latestApp?.version ?? '未知',
+                      latestApp?.version ?? l10n.appUpdateUnknownVersion,
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w500,
@@ -175,7 +184,7 @@ class _AppUpdateDialogState extends State<AppUpdateDialog> {
               ),
             ],
           ),
-          if (changelogs.isNotEmpty)
+          if (_changelogs.isNotEmpty)
             Theme(
               data: Theme.of(context).copyWith(
                 dividerColor: Colors.transparent,
@@ -189,7 +198,7 @@ class _AppUpdateDialogState extends State<AppUpdateDialog> {
                 backgroundColor: Colors.transparent,
                 collapsedBackgroundColor: Colors.transparent,
                 title: Text(
-                  '更新内容',
+                  l10n.appUpdateChangelogTitle,
                   style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                 ),
                 collapsedIconColor: Colors.grey[600],
@@ -211,7 +220,7 @@ class _AppUpdateDialogState extends State<AppUpdateDialog> {
                       child: SingleChildScrollView(
                         child: Column(
                           children: [
-                            for (final changelog in changelogs) ...[
+                            for (final changelog in _changelogs) ...[
                               ChangelogData.buildChangelogItem(
                                 context,
                                 changelog,
@@ -268,7 +277,10 @@ class _AppUpdateDialogState extends State<AppUpdateDialog> {
     );
   }
 
-  Widget _buildBottomRow(AppApplicationRespVO latestApp) {
+  Widget _buildBottomRow(
+    AppLocalizations l10n,
+    AppApplicationRespVO latestApp,
+  ) {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
@@ -282,7 +294,7 @@ class _AppUpdateDialogState extends State<AppUpdateDialog> {
               child: _buildBottomButton(
                 _isDownloading ? null : () => Navigator.of(context).pop(),
                 null,
-                '以后更新',
+                l10n.appUpdateLater,
               ),
             ),
           if (!_isRedirectDownload)
@@ -290,7 +302,7 @@ class _AppUpdateDialogState extends State<AppUpdateDialog> {
               child: _buildBottomButton(
                 _installInProgress ? null : _onPrimaryAction,
                 null,
-                _primaryButtonLabel(),
+                _primaryButtonLabel(l10n),
               ),
             ),
           if (_isRedirectDownload && !_isDownloading && !_downloadCompleted)
@@ -298,7 +310,7 @@ class _AppUpdateDialogState extends State<AppUpdateDialog> {
               child: _buildBottomButton(
                 () => _handleBrowserDownload(latestApp),
                 const Icon(Icons.open_in_browser, size: 18),
-                '浏览器下载',
+                l10n.appUpdateBrowserDownload,
               ),
             ),
         ],
@@ -306,11 +318,11 @@ class _AppUpdateDialogState extends State<AppUpdateDialog> {
     );
   }
 
-  String _primaryButtonLabel() {
-    if (_installInProgress) return '正在安装…';
-    if (_downloadCompleted) return '立即安装';
-    if (_isDownloading) return '后台下载';
-    return '立即下载';
+  String _primaryButtonLabel(AppLocalizations l10n) {
+    if (_installInProgress) return l10n.appUpdateInstalling;
+    if (_downloadCompleted) return l10n.appUpdateInstallNow;
+    if (_isDownloading) return l10n.appUpdateDownloadInBackground;
+    return l10n.appUpdateDownloadNow;
   }
 
   void _onPrimaryAction() {
@@ -329,21 +341,22 @@ class _AppUpdateDialogState extends State<AppUpdateDialog> {
   }
 
   Future<void> _handleInstall() async {
+    final l10n = context.l10n;
     if (!_downloadCompleted || !_supportsInAppInstall) return;
     if (_downloadSavePath.isEmpty) {
-      _showSnackBar('安装包路径无效', isError: true);
+      _showSnackBar(l10n.appUpdateInvalidPackagePath, isError: true);
       return;
     }
 
     if (kDebugMode) {
-      _showSnackBar('请使用 Release 构建包进行应用内安装', isError: true);
+      _showSnackBar(l10n.appUpdateReleaseBuildRequired, isError: true);
       return;
     }
 
     if (!BackendAppUpdateService.packageMatchesCurrentPlatform(
       _downloadSavePath,
     )) {
-      _showSnackBar('安装包类型与当前系统不匹配', isError: true);
+      _showSnackBar(l10n.appUpdatePackagePlatformMismatch, isError: true);
       return;
     }
 
@@ -355,9 +368,13 @@ class _AppUpdateDialogState extends State<AppUpdateDialog> {
         await _packageInstaller.install(File(_downloadSavePath));
       }
     } on AppUpdateException catch (e) {
-      if (mounted) _showSnackBar('安装失败: ${e.message}', isError: true);
+      if (mounted) {
+        _showSnackBar(l10n.appUpdateInstallFailed(e.message), isError: true);
+      }
     } catch (e) {
-      if (mounted) _showSnackBar('安装失败: $e', isError: true);
+      if (mounted) {
+        _showSnackBar(l10n.appUpdateInstallFailed('$e'), isError: true);
+      }
     } finally {
       if (mounted) {
         setState(() => _installInProgress = false);
@@ -366,35 +383,37 @@ class _AppUpdateDialogState extends State<AppUpdateDialog> {
   }
 
   Future<void> _installAndroidApk(String path) async {
+    final l10n = context.l10n;
     final statusCode = await AndroidPackageInstaller.installApk(
       apkFilePath: path,
     );
     if (!mounted) return;
 
     if (statusCode == null) {
-      _showSnackBar('安装未返回结果', isError: true);
+      _showSnackBar(l10n.appUpdateInstallNoResult, isError: true);
       return;
     }
 
     final status = PackageInstallerStatus.byCode(statusCode);
     if (status == PackageInstallerStatus.success) {
-      _showSnackBar('安装完成');
+      _showSnackBar(l10n.appUpdateInstallComplete);
       Navigator.of(context).pop();
     } else {
-      _showSnackBar('安装失败: ${status.name}', isError: true);
+      _showSnackBar(l10n.appUpdateInstallFailed(status.name), isError: true);
     }
   }
 
   Future<void> _handleDownload(AppApplicationRespVO latestApp) async {
+    final l10n = context.l10n;
     if (_downloadType == DownloadTypeEnum.redirect) {
-      _showSnackBar('该链接需要在浏览器中下载');
+      _showSnackBar(l10n.appUpdateRedirectBrowserOnly);
       return;
     }
 
     setState(() {
       _isDownloading = true;
       _downloadProgress = 0;
-      _downloadStatus = '开始下载…';
+      _downloadStatus = l10n.appUpdateDownloadStarting;
       _downloadCompleted = false;
       _downloadSavePath = '';
     });
@@ -426,21 +445,22 @@ class _AppUpdateDialogState extends State<AppUpdateDialog> {
         _downloadCompleted = true;
         _downloadSavePath = file.path;
         _downloadProgress = 1;
-        _downloadStatus = '下载完成';
+        _downloadStatus = l10n.appUpdateDownloadComplete;
         _isDownloading = false;
       });
     } catch (e) {
       if (!mounted) return;
       setState(() {
         _isDownloading = false;
-        _downloadStatus = '下载失败';
+        _downloadStatus = l10n.appUpdateDownloadFailed;
       });
-      _showSnackBar('下载过程中发生错误: $e', isError: true);
+      _showSnackBar(l10n.appUpdateDownloadError('$e'), isError: true);
     }
   }
 
   Future<void> _handleBrowserDownload(AppApplicationRespVO latestApp) async {
-    _showSnackBar('正在获取下载链接…', long: true);
+    final l10n = context.l10n;
+    _showSnackBar(l10n.appUpdateResolvingDownloadUrl, long: true);
 
     try {
       final downloadUrl = _downloadService.resolveDownloadUrl(
@@ -459,14 +479,14 @@ class _AppUpdateDialogState extends State<AppUpdateDialog> {
       final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
       if (!mounted) return;
       if (launched) {
-        _showSnackBar('已在浏览器中打开下载链接');
+        _showSnackBar(l10n.appUpdateBrowserOpened);
       } else {
-        _showSnackBar('无法打开下载链接', isError: true);
+        _showSnackBar(l10n.appUpdateCannotOpenDownloadLink, isError: true);
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).hideCurrentSnackBar();
-        _showSnackBar('打开浏览器失败: $e', isError: true);
+        _showSnackBar(l10n.appUpdateBrowserOpenFailed('$e'), isError: true);
       }
     }
   }
