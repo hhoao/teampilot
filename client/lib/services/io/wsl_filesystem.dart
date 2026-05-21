@@ -80,6 +80,24 @@ class WslFilesystem implements Filesystem {
   }
 
   @override
+  Future<List<int>?> readBytes(String path) async {
+    final quoted = RemoteFileStore.shellSingleQuote(path);
+    final result = await _run([
+      'sh',
+      '-lc',
+      'base64 -w0 $quoted 2>/dev/null || base64 $quoted',
+    ]);
+    if (result.exitCode != 0) return null;
+    final encoded = (result.stdout as String).replaceAll(RegExp(r'\s+'), '');
+    if (encoded.isEmpty) return null;
+    try {
+      return base64.decode(encoded);
+    } on Object {
+      return null;
+    }
+  }
+
+  @override
   Future<void> writeString(String path, String content) async {
     await ensureDir(pathContext.dirname(path));
     final encoded = base64.encode(utf8.encode(content));
@@ -93,6 +111,24 @@ class WslFilesystem implements Filesystem {
     if (result.exitCode != 0) {
       throw StateError(
         'wsl write failed (${result.exitCode}): ${result.stderr}',
+      );
+    }
+  }
+
+  @override
+  Future<void> writeBytes(String path, List<int> bytes) async {
+    await ensureDir(pathContext.dirname(path));
+    final encoded = base64.encode(bytes);
+    final quotedPath = RemoteFileStore.shellSingleQuote(path);
+    final quotedContent = RemoteFileStore.shellSingleQuote(encoded);
+    final result = await _run([
+      'sh',
+      '-lc',
+      'printf %s $quotedContent | base64 -d > $quotedPath',
+    ]);
+    if (result.exitCode != 0) {
+      throw StateError(
+        'wsl writeBytes failed (${result.exitCode}): ${result.stderr}',
       );
     }
   }

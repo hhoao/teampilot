@@ -1,10 +1,13 @@
 import 'dart:io';
 import 'dart:typed_data';
 
-import 'package:teampilot/services/skill_install_service.dart';
-import 'package:teampilot/services/skill_manifest_service.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
+import 'package:teampilot/services/app_storage.dart';
+import 'package:teampilot/services/io/local_filesystem.dart';
+import 'package:teampilot/services/runtime_storage_context.dart';
+import 'package:teampilot/services/skill_install_service.dart';
+import 'package:teampilot/services/skill_manifest_service.dart';
 
 void main() {
   late Directory tmp;
@@ -13,11 +16,22 @@ void main() {
 
   setUp(() {
     tmp = Directory.systemTemp.createTempSync('skill_install_test_');
+    final paths = AppPaths(tmp.path);
+    RuntimeStorageContext.installForTesting(
+      filesystem: LocalFilesystem(
+        pathContext: AppPaths.pathContextForDataRoot(paths.basePath),
+      ),
+      paths: paths,
+      home: tmp.path,
+      cwd: tmp.path,
+    );
     manifest = SkillManifestService(rootDir: tmp.path);
     svc = SkillInstallService(manifest: manifest);
   });
 
   tearDown(() {
+    RuntimeStorageContext.resetForTesting();
+    AppPathsBootstrapper.resetForTesting();
     if (tmp.existsSync()) tmp.deleteSync(recursive: true);
   });
 

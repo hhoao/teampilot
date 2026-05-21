@@ -6,8 +6,11 @@ import 'package:path/path.dart' as p;
 import 'package:sqlite3/sqlite3.dart';
 import 'package:teampilot/models/app_provider_config.dart';
 import 'package:teampilot/repositories/app_provider_repository.dart';
+import 'package:teampilot/services/app_storage.dart';
+import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/provider_import_service.dart';
 import 'package:teampilot/services/provider_migration_service.dart';
+import 'package:teampilot/services/runtime_storage_context.dart';
 
 void main() {
   late Directory root;
@@ -20,10 +23,17 @@ void main() {
     appData = p.join(root.path, 'app-data');
     home = p.join(root.path, 'home');
     await Directory(home).create(recursive: true);
+    RuntimeStorageContext.installForTesting(
+      filesystem: LocalFilesystem(),
+      paths: AppPaths(appData),
+      home: home,
+      cwd: root.path,
+    );
     repository = AppProviderRepository(basePath: appData);
   });
 
   tearDown(() async {
+    RuntimeStorageContext.resetForTesting();
     if (await root.exists()) {
       await root.delete(recursive: true);
     }
@@ -59,9 +69,6 @@ void main() {
 
     final service = ProviderImportService(
       repository: repository,
-      appDataBasePath: appData,
-      homeDirectory: home,
-      currentDirectory: root.path,
       flashskyaiExecutablePath: executable,
     );
 
@@ -118,12 +125,7 @@ void main() {
         ],
       );
 
-      final service = ProviderImportService(
-        repository: repository,
-        appDataBasePath: appData,
-        homeDirectory: home,
-        currentDirectory: root.path,
-      );
+      final service = ProviderImportService(repository: repository);
 
       final result = await service.importForCli(
         AppProviderCli.claude,
@@ -185,12 +187,7 @@ wire_api = "chat"
 ''',
     );
 
-    final service = ProviderImportService(
-      repository: repository,
-      appDataBasePath: appData,
-      homeDirectory: home,
-      currentDirectory: root.path,
-    );
+    final service = ProviderImportService(repository: repository);
 
     final result = await service.importForCli(
       AppProviderCli.codex,
@@ -247,12 +244,7 @@ wire_api = "chat"
 ''',
       );
 
-      final service = ProviderImportService(
-        repository: repository,
-        appDataBasePath: appData,
-        homeDirectory: home,
-        currentDirectory: root.path,
-      );
+      final service = ProviderImportService(repository: repository);
 
       final result = await service.importForCli(
         AppProviderCli.codex,
@@ -302,12 +294,7 @@ wire_api = "chat"
       {'OPENAI_API_KEY': 'sk-codex'},
     );
 
-    final service = ProviderMigrationService(
-      providerRepository: repository,
-      appDataBasePath: appData,
-      homeDirectory: home,
-      currentDirectory: root.path,
-    );
+    final service = ProviderMigrationService(providerRepository: repository);
 
     expect(await service.migrateIfNeeded(), isTrue);
     expect(

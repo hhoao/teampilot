@@ -9,11 +9,13 @@ class InMemoryFilesystem implements Filesystem {
   final p.Context pathContext;
 
   final Map<String, String> files = {};
+  final Map<String, List<int>> byteFiles = {};
   final Set<String> directories = {};
   final Map<String, String> symlinks = {};
 
   @override
   Future<FsStat> stat(String path) async {
+    if (byteFiles.containsKey(path)) return const FsStat(kind: FsEntityKind.file);
     if (files.containsKey(path)) return const FsStat(kind: FsEntityKind.file);
     if (directories.contains(path)) {
       return const FsStat(kind: FsEntityKind.directory);
@@ -37,6 +39,9 @@ class InMemoryFilesystem implements Filesystem {
 
   @override
   Future<void> removeRecursive(String path) async {
+    byteFiles.removeWhere(
+      (key, _) => key == path || pathContext.isWithin(path, key),
+    );
     files.removeWhere(
       (key, _) => key == path || pathContext.isWithin(path, key),
     );
@@ -61,9 +66,26 @@ class InMemoryFilesystem implements Filesystem {
   Future<String?> readString(String path) async => files[path];
 
   @override
+  Future<List<int>?> readBytes(String path) async {
+    final bytes = byteFiles[path];
+    if (bytes != null) return bytes;
+    final text = files[path];
+    if (text == null) return null;
+    return text.codeUnits;
+  }
+
+  @override
   Future<void> writeString(String path, String content) async {
     await ensureDir(pathContext.dirname(path));
+    byteFiles.remove(path);
     files[path] = content;
+  }
+
+  @override
+  Future<void> writeBytes(String path, List<int> bytes) async {
+    await ensureDir(pathContext.dirname(path));
+    files.remove(path);
+    byteFiles[path] = List<int>.from(bytes);
   }
 
   @override
@@ -79,6 +101,11 @@ class InMemoryFilesystem implements Filesystem {
       }
     }
     for (final file in files.keys) {
+      if (pathContext.dirname(file) == path) {
+        names[pathContext.basename(file)] = false;
+      }
+    }
+    for (final file in byteFiles.keys) {
       if (pathContext.dirname(file) == path) {
         names[pathContext.basename(file)] = false;
       }

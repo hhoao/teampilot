@@ -3,7 +3,6 @@ import 'package:flutter/foundation.dart';
 import 'app_storage.dart';
 import 'cli_data_layout.dart';
 import 'io/filesystem.dart';
-import 'io/local_filesystem.dart';
 import 'flashskyai_storage_roots.dart';
 
 /// Built-in `--agent` ids (subset of `flashskyai agents` / CLI presets).
@@ -107,9 +106,9 @@ class FlashskyaiAgentCatalogService {
       );
       return _listWithFs(snap.fs, agentsDir);
     }
-    final fs = LocalFilesystem();
+    final fs = AppStorage.fs;
     final layout = CliDataLayout(
-      teampilotRoot: AppPathsBootstrapper.current.basePath,
+      teampilotRoot: AppStorage.paths.basePath,
       fs: fs,
     );
     return _listWithFs(

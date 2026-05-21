@@ -8,6 +8,8 @@ import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/repositories/team_repository.dart';
 import 'package:teampilot/services/app_storage.dart';
 import 'package:teampilot/services/config_profile_service.dart';
+import 'package:teampilot/services/io/local_filesystem.dart';
+import 'package:teampilot/services/runtime_storage_context.dart';
 import 'package:teampilot/services/session_lifecycle_service.dart';
 import 'package:teampilot/services/team_skill_linker_service.dart';
 
@@ -62,10 +64,19 @@ void main() {
 
   setUp(() async {
     appDataRoot = await Directory.systemTemp.createTemp('teampilot_app_data_');
-    AppPathsBootstrapper.setCurrentForTesting(AppPaths(appDataRoot.path));
+    final paths = AppPaths(appDataRoot.path);
+    RuntimeStorageContext.installForTesting(
+      filesystem: LocalFilesystem(
+        pathContext: AppPaths.pathContextForDataRoot(paths.basePath),
+      ),
+      paths: paths,
+      home: appDataRoot.path,
+      cwd: appDataRoot.path,
+    );
   });
 
   tearDown(() async {
+    RuntimeStorageContext.resetForTesting();
     AppPathsBootstrapper.resetForTesting();
     if (await appDataRoot.exists()) {
       await appDataRoot.delete(recursive: true);

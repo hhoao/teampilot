@@ -4,7 +4,6 @@ import '../models/team_config.dart';
 import '../services/app_storage.dart';
 import '../services/flashskyai_storage_roots.dart';
 import '../services/io/filesystem.dart';
-import '../services/io/local_filesystem.dart';
 import '../services/session_lifecycle_service.dart';
 
 /// Persists [TeamConfig] objects in TeamPilot's own metadata directory.
@@ -16,7 +15,7 @@ import '../services/session_lifecycle_service.dart';
 /// repository path.
 class _TeamPaths {
   _TeamPaths({required this.teamsUiDir, Filesystem? fs})
-    : fs = fs ?? LocalFilesystem();
+    : fs = fs ?? AppStorage.fs;
 
   final String teamsUiDir;
   final Filesystem fs;
@@ -36,7 +35,7 @@ class TeamRepository {
   final SessionLifecycleService? _lifecycleService;
 
   String get rootDir =>
-      _rootDirOverride ?? AppPathsBootstrapper.current.teamsDir;
+      _rootDirOverride ?? AppStorage.paths.teamsDir;
 
   Future<_TeamPaths> _paths() async {
     if (_storageRoots != null) {

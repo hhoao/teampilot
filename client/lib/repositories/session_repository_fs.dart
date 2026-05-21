@@ -2,8 +2,8 @@ import 'dart:convert';
 
 import 'package:path/path.dart' as p;
 
+import '../services/app_storage.dart';
 import '../services/io/filesystem.dart';
-import '../services/io/local_filesystem.dart';
 
 /// Local or remote file access for [SessionRepository].
 class SessionRepositoryFs {
@@ -11,7 +11,7 @@ class SessionRepositoryFs {
     required this.projectsFile,
     required this.sessionsDir,
     Filesystem? fs,
-  }) : fs = fs ?? LocalFilesystem();
+  }) : fs = fs ?? AppStorage.fs;
 
   final String projectsFile;
   final String sessionsDir;

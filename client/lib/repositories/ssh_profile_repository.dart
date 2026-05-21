@@ -1,28 +1,28 @@
 import 'dart:convert';
-import 'dart:io';
-
-import 'package:path/path.dart' as p;
 
 import '../models/ssh_profile.dart';
 import '../services/app_storage.dart';
+import '../services/io/filesystem.dart';
 
 class SshProfileRepository {
-  SshProfileRepository({String? rootDir})
-    : _root =
-          rootDir ??
-          p.join(AppPathsBootstrapper.current.basePath, 'ssh_profiles');
+  SshProfileRepository({String? rootDir, Filesystem? fs})
+    : _root = rootDir ?? AppStorage.paths.sshProfilesDir,
+      _fs = fs ?? AppStorage.fs;
 
   final String _root;
+  final Filesystem _fs;
 
-  String get _profilesFile => p.join(_root, 'profiles.json');
+  String get _profilesFile => _fs.pathContext.join(_root, 'profiles.json');
 
-  String get _selectedProfileFile => p.join(_root, 'selected_profile.txt');
+  String get _selectedProfileFile =>
+      _fs.pathContext.join(_root, 'selected_profile.txt');
 
   Future<List<SshProfile>> loadAll() async {
-    final file = File(_profilesFile);
-    if (!await file.exists()) return [];
+    if (!(await _fs.stat(_profilesFile)).isFile) return [];
     try {
-      final json = jsonDecode(await file.readAsString());
+      final raw = await _fs.readString(_profilesFile);
+      if (raw == null || raw.isEmpty) return [];
+      final json = jsonDecode(raw);
       if (json is List) {
         return json
             .whereType<Map<String, Object?>>()
@@ -36,46 +36,29 @@ class SshProfileRepository {
   }
 
   Future<void> saveAll(List<SshProfile> profiles) async {
-    final dir = Directory(_root);
-    if (!await dir.exists()) {
-      await dir.create(recursive: true);
-    }
+    await _fs.ensureDir(_root);
     final jsonList = profiles.map((p) => p.toJson()).toList();
-    final file = File(_profilesFile);
-    final tmp = File(
-      '${file.path}.${DateTime.now().microsecondsSinceEpoch}.tmp',
-    );
-    await tmp.writeAsString(jsonEncode(jsonList));
-    await tmp.rename(file.path);
+    await _fs.atomicWrite(_profilesFile, jsonEncode(jsonList));
   }
 
   Future<String> loadSelectedProfileId() async {
-    final file = File(_selectedProfileFile);
-    if (!await file.exists()) return '';
+    if (!(await _fs.stat(_selectedProfileFile)).isFile) return '';
     try {
-      return (await file.readAsString()).trim();
+      return (await _fs.readString(_selectedProfileFile))?.trim() ?? '';
     } on Object {
       return '';
     }
   }
 
   Future<void> saveSelectedProfileId(String profileId) async {
-    final dir = Directory(_root);
-    if (!await dir.exists()) {
-      await dir.create(recursive: true);
-    }
-    final file = File(_selectedProfileFile);
+    await _fs.ensureDir(_root);
     if (profileId.trim().isEmpty) {
-      if (await file.exists()) {
-        await file.delete();
+      if ((await _fs.stat(_selectedProfileFile)).exists) {
+        await _fs.removeRecursive(_selectedProfileFile);
       }
       return;
     }
-    final tmp = File(
-      '${file.path}.${DateTime.now().microsecondsSinceEpoch}.tmp',
-    );
-    await tmp.writeAsString(profileId.trim());
-    await tmp.rename(file.path);
+    await _fs.atomicWrite(_selectedProfileFile, profileId.trim());
   }
 
   Future<void> save(SshProfile profile) async {

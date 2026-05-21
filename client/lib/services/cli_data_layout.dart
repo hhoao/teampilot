@@ -1,7 +1,7 @@
 import 'package:path/path.dart' as p;
 
+import 'app_storage.dart';
 import 'io/filesystem.dart';
-import 'io/local_filesystem.dart';
 import 'launch_command_builder.dart';
 
 /// Three tools whose runtime config we provision under `config-profiles/`.
@@ -23,7 +23,7 @@ const List<String> cliLayoutDefaultTools = ['claude', 'flashskyai', 'codex'];
 /// `--resume` lookups across all three layers.
 class CliDataLayout {
   CliDataLayout({required this.teampilotRoot, Filesystem? fs})
-    : _fs = fs ?? LocalFilesystem();
+    : _fs = fs ?? AppStorage.fs;
 
   final String teampilotRoot;
   final Filesystem _fs;

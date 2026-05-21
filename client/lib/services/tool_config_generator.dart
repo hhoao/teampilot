@@ -1,11 +1,11 @@
 import 'dart:convert';
-import 'dart:io';
 
-import 'package:path/path.dart' as p;
 import 'package:toml/toml.dart';
 
 import '../models/app_provider_config.dart';
 import '../models/llm_config.dart';
+import 'app_storage.dart';
+import 'io/filesystem.dart';
 
 class ToolConfigGenerator {
   const ToolConfigGenerator();
@@ -200,22 +200,22 @@ requires_openai_auth = true
     }
   }
 
-  Future<void> writeJsonAtomic(File target, Map<String, Object?> json) async {
+  Future<void> writeJsonAtomic(
+    String path,
+    Map<String, Object?> json, {
+    Filesystem? fs,
+  }) async {
     final body = const JsonEncoder.withIndent('  ').convert(json);
-    await writeTextAtomic(target, body);
+    await writeTextAtomic(path, body, fs: fs);
   }
 
-  Future<void> writeTextAtomic(File target, String body) async {
-    await target.parent.create(recursive: true);
-    final dir = target.parent.path;
-    final temp = File(
-      p.join(
-        dir,
-        '.${p.basename(target.path)}.${DateTime.now().microsecondsSinceEpoch}.tmp',
-      ),
-    );
-    await temp.writeAsString(body);
-    await temp.rename(target.path);
+  Future<void> writeTextAtomic(
+    String path,
+    String body, {
+    Filesystem? fs,
+  }) async {
+    final store = fs ?? AppStorage.fs;
+    await store.atomicWrite(path, body);
   }
 
   String _resolveCodexModelProvider(

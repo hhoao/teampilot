@@ -8,7 +8,6 @@ import 'app_storage.dart';
 import 'claude_team_roster_service.dart';
 import 'cli_data_layout.dart';
 import 'io/filesystem.dart';
-import 'io/local_filesystem.dart';
 
 /// Launch-time environment for tool-isolated team profiles.
 typedef TeamLaunchEnvironment = Map<String, String>;
@@ -38,20 +37,12 @@ class ConfigProfileService {
     required this.basePath,
     Filesystem? fs,
     CliDataLayout? layout,
-  }) : _fs =
-           fs ??
-           LocalFilesystem(
-             pathContext: AppPaths.pathContextForDataRoot(basePath),
-           ),
+  }) : _fs = fs ?? AppStorage.fs,
        layout =
            layout ??
            CliDataLayout(
              teampilotRoot: basePath,
-             fs:
-                 fs ??
-                 LocalFilesystem(
-                   pathContext: AppPaths.pathContextForDataRoot(basePath),
-                 ),
+             fs: fs ?? AppStorage.fs,
            );
 
   final String basePath;

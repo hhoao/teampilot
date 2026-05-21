@@ -71,27 +71,28 @@ class AppProviderCubit extends Cubit<AppProviderState> {
   AppProviderCubit({
     AppProviderRepository? repository,
     ProviderImportService? importService,
-    String? homeDirectory,
-    String? currentDirectory,
-    String? flashskyaiExecutablePath,
+    String? Function()? flashskyaiExecutablePath,
     ToolConfigGenerator? generator,
   }) : _repository = repository ?? AppProviderRepository(),
        _generator = generator ?? const ToolConfigGenerator(),
-       _importService =
-           importService ??
-           ProviderImportService(
-             repository: repository ?? AppProviderRepository(),
-             homeDirectory: homeDirectory,
-             currentDirectory: currentDirectory,
-             flashskyaiExecutablePath: flashskyaiExecutablePath,
-           ),
+       _flashskyaiExecutablePath = flashskyaiExecutablePath,
+       _importService = importService,
        super(const AppProviderState());
 
   final AppProviderRepository _repository;
   final ToolConfigGenerator _generator;
-  final ProviderImportService _importService;
+  final ProviderImportService? _importService;
+  final String? Function()? _flashskyaiExecutablePath;
 
-  String get catalogPath => AppPathsBootstrapper.current.providerConfigDir;
+  ProviderImportService _importServiceForRequest() {
+    return _importService ??
+        ProviderImportService(
+          repository: _repository,
+          flashskyaiExecutablePath: _flashskyaiExecutablePath?.call(),
+        );
+  }
+
+  String get catalogPath => AppStorage.paths.providerConfigDir;
 
   Future<void> load() async {
     emit(state.copyWith(isLoading: true, statusMessage: ''));
@@ -227,7 +228,7 @@ class AppProviderCubit extends Cubit<AppProviderState> {
   Future<ProviderImportResult> importFromExternal() async {
     final cli = state.selectedCli;
     emit(state.copyWith(isLoading: true, statusMessage: ''));
-    final result = await _importService.importForCli(cli, onlyIfEmpty: false);
+    final result = await _importServiceForRequest().importForCli(cli, onlyIfEmpty: false);
 
     final byCli = <AppProviderCli, List<AppProviderConfig>>{};
     final selectedByCli = Map<AppProviderCli, String?>.from(

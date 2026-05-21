@@ -5,8 +5,12 @@ import 'package:teampilot/services/cli_executable_validator.dart';
 
 void main() {
   test('returns null for bare executable name on PATH', () {
-    final which = Process.runSync('which', ['true']);
-    if (which.exitCode != 0) return;
+    try {
+      final which = Process.runSync('which', ['true']);
+      if (which.exitCode != 0) return;
+    } on ProcessException {
+      return;
+    }
 
     expect(
       CliExecutableValidator.validateLaunch(

@@ -3,17 +3,28 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/app_storage.dart';
 import 'package:teampilot/services/flashskyai_storage_roots.dart';
+import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/remote_teampilot_app_data_resolver.dart';
+import 'package:teampilot/services/runtime_storage_context.dart';
 
 void main() {
   late Directory appDataRoot;
 
   setUp(() async {
     appDataRoot = await Directory.systemTemp.createTemp('teampilot_app_data_');
-    AppPathsBootstrapper.setCurrentForTesting(AppPaths(appDataRoot.path));
+    final paths = AppPaths(appDataRoot.path);
+    RuntimeStorageContext.installForTesting(
+      filesystem: LocalFilesystem(
+        pathContext: AppPaths.pathContextForDataRoot(paths.basePath),
+      ),
+      paths: paths,
+      home: appDataRoot.path,
+      cwd: appDataRoot.path,
+    );
   });
 
   tearDown(() async {
+    RuntimeStorageContext.resetForTesting();
     AppPathsBootstrapper.resetForTesting();
     if (await appDataRoot.exists()) {
       await appDataRoot.delete(recursive: true);
@@ -46,6 +57,7 @@ void main() {
     final snap = StorageRootsSnapshot(
       storageIsRemote: true,
       teampilotRoot: teampilotRoot,
+      fs: LocalFilesystem(pathContext: AppPaths.posixPathContext),
       teamsUiDir: AppPaths.teamsUiDirForTeampilotRoot(teampilotRoot),
       skillsRoot: AppPaths.skillsDirForTeampilotRoot(teampilotRoot),
       skillBackupsDir: AppPaths.skillBackupsDirForTeampilotRoot(teampilotRoot),

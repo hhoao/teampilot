@@ -11,7 +11,6 @@ import '../repositories/team_repository.dart';
 import '../services/app_storage.dart';
 import '../services/cli_data_layout.dart';
 import '../services/config_profile_service.dart';
-import '../services/io/local_filesystem.dart';
 import '../services/launch_command_builder.dart';
 import '../services/session_lifecycle_service.dart';
 import '../services/team_skill_linker_service.dart';
@@ -128,7 +127,7 @@ class TeamCubit extends Cubit<TeamState> {
     if (override != null && override.isNotEmpty) {
       return override;
     }
-    return AppPathsBootstrapper.current.basePath;
+    return AppStorage.paths.basePath;
   }
 
   final StorageRootsResolver? _storageRootsResolver;
@@ -161,7 +160,7 @@ class TeamCubit extends Cubit<TeamState> {
     if (injected != null) return injected;
     final resolver = _storageRootsResolver;
     if (resolver == null) {
-      final fs = LocalFilesystem();
+      final fs = AppStorage.fs;
       return ConfigProfileService(
         basePath: _resolvedAppDataBasePath,
         fs: fs,

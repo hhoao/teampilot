@@ -6,6 +6,9 @@ import 'package:path/path.dart' as p;
 String normalizeProjectPath(String path) {
   final trimmed = path.trim();
   if (trimmed.isEmpty || trimmed.startsWith('~')) return trimmed;
+  if (trimmed.startsWith('/') && !trimmed.startsWith('//')) {
+    return p.Context(style: p.Style.posix).normalize(trimmed);
+  }
   return p.normalize(trimmed);
 }
 

@@ -1,23 +1,14 @@
 import '../repositories/app_provider_repository.dart';
 import '../models/app_provider_config.dart';
 import 'provider_import_service.dart';
-import 'tool_config_generator.dart';
 
 /// One-time silent import of CLI provider configs into TeamPilot catalogs.
 class ProviderMigrationService {
   ProviderMigrationService({
     AppProviderRepository? providerRepository,
-    String? appDataBasePath,
-    String? homeDirectory,
-    String? currentDirectory,
     String? cliExecutablePath,
-    ToolConfigGenerator? generator,
   }) : _importService = ProviderImportService(
-         repository:
-             providerRepository ?? AppProviderRepository(basePath: appDataBasePath),
-         appDataBasePath: appDataBasePath,
-         homeDirectory: homeDirectory,
-         currentDirectory: currentDirectory,
+         repository: providerRepository ?? AppProviderRepository(),
          flashskyaiExecutablePath: cliExecutablePath,
        );
 

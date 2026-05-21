@@ -3,9 +3,9 @@ import 'package:path/path.dart' as p;
 import '../models/skill.dart';
 import '../utils/logger.dart';
 import 'cli_data_layout.dart';
+import '../services/app_storage.dart';
 import 'flashskyai_storage_roots.dart';
 import 'io/filesystem.dart';
-import 'io/local_filesystem.dart';
 
 class TeamSkillSyncResult {
   const TeamSkillSyncResult({
@@ -81,7 +81,7 @@ class TeamSkillLinkerService {
     }
 
     final roots = await _storageRoots?.resolve();
-    final fs = roots?.fs ?? LocalFilesystem();
+    final fs = roots?.fs ?? AppStorage.fs;
     final layout =
         roots?.layout ??
         CliDataLayout(

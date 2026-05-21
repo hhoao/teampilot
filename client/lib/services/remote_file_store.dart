@@ -59,6 +59,20 @@ class RemoteFileStore {
     }
   }
 
+  Future<List<int>?> readFileBytes(String path) async {
+    try {
+      final sftp = await _ensureConnected();
+      final resolved = await expandHome(path);
+      final file = await sftp.open(resolved, mode: SftpFileOpenMode.read);
+      final bytes = await file.readBytes();
+      await file.close();
+      return bytes;
+    } on SftpStatusError catch (e) {
+      if (e.code == SftpStatusCode.noSuchFile) return null;
+      rethrow;
+    }
+  }
+
   Future<void> writeFile(String path, String contents) async {
     final sftp = await _ensureConnected();
     final resolved = await expandHome(path);

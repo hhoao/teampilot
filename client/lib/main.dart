@@ -34,7 +34,6 @@ import 'services/app_storage.dart';
 import 'services/cli_tool_locator.dart';
 import 'services/connection_mode_service.dart';
 import 'services/flashskyai_storage_roots.dart';
-import 'services/remote_ssh_storage_paths.dart';
 import 'services/session_lifecycle_service.dart';
 import 'services/skill_fetch_service.dart';
 import 'services/skill_repo_git_service.dart';
@@ -47,6 +46,7 @@ import 'services/flashskyai_cli_locator.dart';
 import 'services/remote_flashskyai_cli_locator.dart';
 import 'services/ssh_client_factory.dart';
 import 'services/provider_migration_service.dart';
+import 'services/runtime_storage_context.dart';
 import 'services/team_skill_linker_service.dart';
 import 'services/terminal_transport_factory.dart';
 import 'theme/app_theme.dart';
@@ -117,6 +117,7 @@ void main() async {
   }
 
   await AppPathsBootstrapper.init();
+  final nativeAppDataPath = AppPathsBootstrapper.current.basePath;
 
   final preferences = await SharedPreferences.getInstance();
   final locatedExecutables = <TeamCli, String>{};
@@ -136,25 +137,15 @@ void main() async {
     await windowManager.setPreventClose(true);
   }
   final appSettings = SharedPrefsAppSettingsRepository(preferences);
-  final homeDirectory =
-      Platform.environment['HOME'] ?? Platform.environment['USERPROFILE'];
-
-  if (!Platform.isAndroid) {
-    await ProviderMigrationService(
-      homeDirectory: homeDirectory,
-      currentDirectory: Directory.current.path,
-      cliExecutablePath: cliLocated,
-    ).migrateIfNeeded();
-  }
 
   final sessionPreferencesCubit = SessionPreferencesCubit(
     repository: SessionPreferencesRepository(preferences),
     locatedExecutable: cliLocated,
     locatedExecutables: locatedExecutables,
   );
+  await sessionPreferencesCubit.load();
 
-  // SSH infrastructure (Android + future desktop)
-  final sshProfileRepo = SshProfileRepository();
+  // SSH client factory (needed before storage context install on SSH/Android).
   final sshCredentialStore = const SecureSshCredentialStore(
     FlutterSecureKeyValueStore(),
   );
@@ -163,6 +154,28 @@ void main() async {
     credentialStore: sshCredentialStore,
     knownHostRepository: sshKnownHostRepo,
   );
+
+  await RuntimeStorageContext.install(
+    isSshMode:
+        Platform.isAndroid ||
+        sessionPreferencesCubit.state.preferences.connectionMode ==
+            ConnectionMode.ssh,
+    sshProfile: null,
+    sshClientFactory: sshClientFactory,
+    nativeAppDataPath: nativeAppDataPath,
+    nativeHome:
+        Platform.environment['HOME'] ?? Platform.environment['USERPROFILE'],
+    nativeCwd: Directory.current.path,
+    wslDistro: RuntimeStorageContext.parseWslDistro(cliLocated),
+  );
+
+  if (!Platform.isAndroid) {
+    await ProviderMigrationService(
+      cliExecutablePath: cliLocated,
+    ).migrateIfNeeded();
+  }
+
+  final sshProfileRepo = SshProfileRepository();
   final remoteCliLocator = RemoteFlashskyaiCliLocator(
     clientFactory: sshClientFactory,
   );
@@ -176,6 +189,8 @@ void main() async {
   late final ChatCubit chatCubit;
   late final FlashskyaiStorageRoots storageRoots;
   late final SessionLifecycleService sessionLifecycleService;
+  late final ConnectionModeService connectionModeService;
+  late final Future<RuntimeStorageContext> Function() reinstallStorageContext;
 
   final sshProfileCubit = SshProfileCubit(
     profileRepository: sshProfileRepo,
@@ -188,6 +203,7 @@ void main() async {
         sessionPreferencesCubit.state.preferences.connectionMode ==
             ConnectionMode.ssh,
     onActiveProfileChanged: () async {
+      await reinstallStorageContext();
       storageRoots.invalidate();
       await _reloadRemoteBackedAppData(
         storageRoots: storageRoots,
@@ -201,19 +217,29 @@ void main() async {
     },
   );
 
-  final connectionModeService = ConnectionModeService(
+  connectionModeService = ConnectionModeService(
     readPreferredMode: () =>
         sessionPreferencesCubit.state.preferences.connectionMode,
     hasSshProfiles: () => sshProfileCubit.state.hasProfiles,
   );
 
+  reinstallStorageContext = () => RuntimeStorageContext.install(
+    isSshMode: connectionModeService.isSshMode,
+    sshProfile: sshProfileCubit.state.selectedProfile,
+    sshClientFactory: sshClientFactory,
+    nativeAppDataPath: nativeAppDataPath,
+    nativeHome:
+        Platform.environment['HOME'] ?? Platform.environment['USERPROFILE'],
+    nativeCwd: Directory.current.path,
+    wslDistro: RuntimeStorageContext.parseWslDistro(
+      sessionPreferencesCubit.resolveExecutable(),
+    ),
+  );
+
   storageRoots = FlashskyaiStorageRoots(
     isSshMode: () => connectionModeService.isSshMode,
     sshProfileResolver: () => sshProfileCubit.state.selectedProfile,
-    sshClientFactory: sshClientFactory,
-    remotePathResolver: RemoteSshStoragePathResolver(
-      clientFactory: sshClientFactory,
-    ),
+    reinstallContext: reinstallStorageContext,
   );
 
   final skillManifest = SkillManifestService(storageRoots: storageRoots);
@@ -232,12 +258,14 @@ void main() async {
     repos: SkillRepoService(storageRoots: storageRoots),
   );
 
-  appProviderCubit = AppProviderCubit();
+  appProviderCubit = AppProviderCubit(
+    flashskyaiExecutablePath: sessionPreferencesCubit.resolveExecutable,
+  );
 
   llmConfigCubit = LlmConfigCubit(
     appSettings: appSettings,
-    currentDirectory: Directory.current.path,
-    homeDirectory: homeDirectory,
+    currentDirectory: AppStorage.cwd,
+    homeDirectory: AppStorage.home,
     executableResolver: () => sessionPreferencesCubit.resolveExecutable(),
     isSshMode: () => connectionModeService.isSshMode,
     sshProfileResolver: () => sshProfileCubit.state.selectedProfile,
@@ -308,7 +336,6 @@ void main() async {
   );
   final configCubit = ConfigCubit();
 
-  await sessionPreferencesCubit.load();
   await layoutCubit.load();
 
   if (!Platform.isAndroid) {
@@ -367,6 +394,7 @@ void main() async {
         skillCubit: skillCubit,
         chatCubit: chatCubit,
         sessionRepo: sessionRepo,
+        reinstallStorageContext: reinstallStorageContext,
       ),
     );
   });
@@ -402,8 +430,10 @@ Future<void> _bootstrapAppData({
   required SkillCubit skillCubit,
   required ChatCubit chatCubit,
   required SessionRepository sessionRepo,
+  required Future<RuntimeStorageContext> Function() reinstallStorageContext,
 }) async {
   await sshProfileCubit.load(notifyActiveProfileChanged: false);
+  await reinstallStorageContext();
   storageRoots.invalidate();
   await _reloadRemoteBackedAppData(
     storageRoots: storageRoots,

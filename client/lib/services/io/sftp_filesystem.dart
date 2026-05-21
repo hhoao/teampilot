@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:path/path.dart' as p;
 
 import '../remote_file_store.dart';
@@ -45,8 +47,15 @@ class SftpFilesystem implements Filesystem {
   Future<String?> readString(String path) => store.readFile(path);
 
   @override
+  Future<List<int>?> readBytes(String path) => store.readFileBytes(path);
+
+  @override
   Future<void> writeString(String path, String content) =>
       store.writeFile(path, content);
+
+  @override
+  Future<void> writeBytes(String path, List<int> bytes) =>
+      store.writeBytes(path, Uint8List.fromList(bytes));
 
   @override
   Future<void> atomicWrite(String path, String content) async {

@@ -1,25 +1,12 @@
-import 'package:path/path.dart' as p;
-
 import '../models/ssh_profile.dart';
 import 'app_storage.dart';
 import 'cli_data_layout.dart';
 import 'io/filesystem.dart';
-import 'io/local_filesystem.dart';
 import 'io/sftp_filesystem.dart';
-import 'io/wsl_filesystem.dart';
 import 'remote_file_store.dart';
-import 'remote_ssh_storage_paths.dart';
-import 'remote_teampilot_app_data_resolver.dart';
-import 'ssh_client_factory.dart';
+import 'runtime_storage_context.dart';
 
 /// Resolved filesystem roots for teams, skills, sessions, and CLI config profiles.
-///
-/// **Local PTY:** [teampilotRoot] is [AppStorage.basePath].
-///
-/// **SSH:** [teampilotRoot] is the remote TeamPilot app-data directory
-/// (`~/.local/share/com.hhoa.teampilot`, mirroring desktop [AppStorage.basePath]).
-/// All CLI runtime data lives under `<teampilotRoot>/config-profiles/`; the
-/// legacy `~/.flashskyai` tree is no longer consulted.
 class StorageRootsSnapshot {
   StorageRootsSnapshot({
     bool? storageIsRemote,
@@ -31,37 +18,31 @@ class StorageRootsSnapshot {
     required this.skillBackupsDir,
     required this.appProjectsDir,
     required this.skillReposConfigPath,
-  }) : fs = fs ?? LocalFilesystem(
-         pathContext: AppPaths.pathContextForDataRoot(teampilotRoot),
-       ),
+  }) : fs = fs ?? AppStorage.fs,
        layout =
            layout ??
            CliDataLayout(
              teampilotRoot: teampilotRoot,
-             fs:
-                 fs ??
-                 LocalFilesystem(
-                   pathContext: AppPaths.pathContextForDataRoot(teampilotRoot),
-                 ),
+             fs: fs ?? AppStorage.fs,
            );
 
-  factory StorageRootsSnapshot.local() {
-    final paths = AppPathsBootstrapper.current;
-    final fs = LocalFilesystem(pathContext: p.context);
-    final layout = CliDataLayout(teampilotRoot: paths.basePath, fs: fs);
+  factory StorageRootsSnapshot.fromContext(RuntimeStorageContext context) {
+    final root = context.appDataRoot;
+    final fs = context.filesystem;
+    final layout = CliDataLayout(teampilotRoot: root, fs: fs);
     return StorageRootsSnapshot(
-      teampilotRoot: paths.basePath,
+      teampilotRoot: root,
       fs: fs,
       layout: layout,
-      teamsUiDir: paths.teamsDir,
-      skillsRoot: p.join(paths.basePath, 'skills'),
-      skillBackupsDir: p.join(paths.basePath, 'skill-backups'),
-      appProjectsDir: paths.appProjectsDir,
-      skillReposConfigPath: paths.skillReposConfigPath,
+      teamsUiDir: AppPaths.teamsUiDirForTeampilotRoot(root),
+      skillsRoot: AppPaths.skillsDirForTeampilotRoot(root),
+      skillBackupsDir: AppPaths.skillBackupsDirForTeampilotRoot(root),
+      appProjectsDir: AppPaths.appProjectsDirForTeampilotRoot(root),
+      skillReposConfigPath: AppPaths.skillReposConfigPathForTeampilotRoot(root),
     );
   }
 
-  /// UI app-data root: [AppStorage.basePath] locally; remote XDG app dir on SSH.
+  /// UI app-data root: [AppStorage.appDataRoot] locally; remote XDG app dir on SSH.
   final String teampilotRoot;
   final Filesystem fs;
 
@@ -90,20 +71,14 @@ class FlashskyaiStorageRoots {
   FlashskyaiStorageRoots({
     bool Function()? isSshMode,
     SshProfile? Function()? sshProfileResolver,
-    SshClientFactory? sshClientFactory,
-    RemoteSshStoragePathResolver? remotePathResolver,
-    String? Function()? cliExecutableResolver,
+    Future<RuntimeStorageContext> Function()? reinstallContext,
   }) : _isSshMode = isSshMode,
        _sshProfileResolver = sshProfileResolver,
-       _sshClientFactory = sshClientFactory,
-       _remotePathResolver = remotePathResolver,
-       _cliExecutableResolver = cliExecutableResolver;
+       _reinstallContext = reinstallContext;
 
   final bool Function()? _isSshMode;
   final SshProfile? Function()? _sshProfileResolver;
-  final SshClientFactory? _sshClientFactory;
-  final RemoteSshStoragePathResolver? _remotePathResolver;
-  final String? Function()? _cliExecutableResolver;
+  final Future<RuntimeStorageContext> Function()? _reinstallContext;
 
   StorageRootsSnapshot? _cache;
   Future<StorageRootsSnapshot>? _inflight;
@@ -131,90 +106,11 @@ class FlashskyaiStorageRoots {
   }
 
   Future<StorageRootsSnapshot> _resolveUncached() async {
-    if (!(_isSshMode?.call() ?? false)) {
-      return _localSnapshot();
+    final reinstall = _reinstallContext;
+    if (reinstall != null &&
+        ((_isSshMode?.call() ?? false) || _sshProfileResolver?.call() != null)) {
+      await reinstall();
     }
-    final profile = _sshProfileResolver?.call();
-    final factory = _sshClientFactory;
-    if (profile == null || factory == null) {
-      return _localSnapshot();
-    }
-
-    final pathResolver =
-        _remotePathResolver ??
-        RemoteSshStoragePathResolver(clientFactory: factory);
-    final paths = await pathResolver.resolve(profile);
-    if (paths == null) {
-      return _localSnapshot();
-    }
-
-    final fileStore = RemoteFileStore(profile: profile, clientFactory: factory);
-
-    // Warm the shared SFTP channel before parallel stat probes.
-    await factory.sftpFor(profile);
-
-    final primaryTeampilot = paths.teampilotAppDir;
-    final legacyTeampilot = AppPaths.defaultTeampilotAppDataDirForHome(
-      paths.home,
-    );
-    var teampilot = primaryTeampilot;
-    if (primaryTeampilot != legacyTeampilot) {
-      final exists = await Future.wait([
-        RemoteTeampilotAppDataResolver.teampilotTreeHasData(
-          fileStore.fileExists,
-          primaryTeampilot,
-        ),
-        RemoteTeampilotAppDataResolver.teampilotTreeHasData(
-          fileStore.fileExists,
-          legacyTeampilot,
-        ),
-      ]);
-      if (!exists[0] && exists[1]) teampilot = legacyTeampilot;
-    }
-
-    final fs = SftpFilesystem(fileStore);
-    final layout = CliDataLayout(teampilotRoot: teampilot, fs: fs);
-    return StorageRootsSnapshot(
-      teampilotRoot: teampilot,
-      fs: fs,
-      layout: layout,
-      teamsUiDir: AppPaths.teamsUiDirForTeampilotRoot(teampilot),
-      skillsRoot: AppPaths.skillsDirForTeampilotRoot(teampilot),
-      skillBackupsDir: AppPaths.skillBackupsDirForTeampilotRoot(teampilot),
-      appProjectsDir: AppPaths.appProjectsDirForTeampilotRoot(teampilot),
-      skillReposConfigPath: AppPaths.skillReposConfigPathForTeampilotRoot(
-        teampilot,
-      ),
-    );
-  }
-
-  StorageRootsSnapshot _localSnapshot() {
-    final paths = AppPathsBootstrapper.current;
-    final executable = _cliExecutableResolver?.call()?.trim() ?? '';
-    final fs = executable.startsWith('wsl ')
-        ? WslFilesystem(distro: _parseWslDistro(executable))
-        : LocalFilesystem(pathContext: p.context);
-    final layout = CliDataLayout(teampilotRoot: paths.basePath, fs: fs);
-    return StorageRootsSnapshot(
-      teampilotRoot: paths.basePath,
-      fs: fs,
-      layout: layout,
-      teamsUiDir: paths.teamsDir,
-      skillsRoot: AppPaths.skillsDirForTeampilotRoot(paths.basePath),
-      skillBackupsDir: AppPaths.skillBackupsDirForTeampilotRoot(paths.basePath),
-      appProjectsDir: paths.appProjectsDir,
-      skillReposConfigPath: paths.skillReposConfigPath,
-    );
-  }
-
-  static String? _parseWslDistro(String executable) {
-    final parts = executable.split(RegExp(r'\s+'));
-    for (var i = 0; i < parts.length - 1; i++) {
-      if (parts[i] == '-d' || parts[i] == '--distribution') {
-        final distro = parts[i + 1].trim();
-        return distro.isEmpty ? null : distro;
-      }
-    }
-    return null;
+    return StorageRootsSnapshot.fromContext(RuntimeStorageContext.current);
   }
 }

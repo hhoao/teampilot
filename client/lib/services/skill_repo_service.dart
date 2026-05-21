@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:path/path.dart' as p;
 
@@ -30,7 +29,7 @@ class SkillRepoService {
     if (_storageRoots != null) {
       return (await _storageRoots.resolve()).skillReposConfigPath;
     }
-    return AppPathsBootstrapper.current.skillReposConfigPath;
+    return AppStorage.paths.skillReposConfigPath;
   }
 
   Future<List<SkillRepo>> loadRepos() async {
@@ -110,16 +109,17 @@ class SkillRepoService {
       }
     }
 
-    final file = File(path);
-    if (!file.existsSync()) return {};
+    final stat = await AppStorage.fs.stat(path);
+    if (!stat.isFile) return {};
     try {
-      final content = await file.readAsString();
+      final content = await AppStorage.fs.readString(path);
+      if (content == null) return {};
       return (json.decode(content) as Map<String, dynamic>)
           .cast<String, Object?>();
     } on FormatException catch (e) {
       appLogger.w('[SkillRepoService] Corrupt skills.json, resetting: $e');
       return {};
-    } on FileSystemException catch (e) {
+    } catch (e) {
       appLogger.w('[SkillRepoService] Cannot read skills.json: $e');
       return {};
     }
@@ -138,8 +138,6 @@ class SkillRepoService {
       await remote.writeFile(path, text);
       return;
     }
-    final file = File(path);
-    await file.parent.create(recursive: true);
-    await file.writeAsString(text);
+    await AppStorage.fs.writeString(path, text);
   }
 }

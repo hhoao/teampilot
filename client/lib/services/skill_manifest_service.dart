@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:path/path.dart' as p;
 
@@ -54,23 +53,24 @@ class SkillManifestService {
         );
       }
     }
-    final root = _rootDir ?? AppPathsBootstrapper.current.basePath;
-    final skillsDir = p.join(root, 'skills');
+    final root = _rootDir ?? AppStorage.paths.basePath;
+    final ctx = AppStorage.fs.pathContext;
+    final skillsDir = ctx.join(root, 'skills');
     return _SkillPaths(
       skillsDir: skillsDir,
-      backupsDir: p.join(root, 'skill-backups'),
-      manifestPath: p.join(skillsDir, 'manifest.json'),
+      backupsDir: ctx.join(root, 'skill-backups'),
+      manifestPath: ctx.join(skillsDir, 'manifest.json'),
     );
   }
 
   String get skillsDir {
-    final root = _rootDir ?? AppPathsBootstrapper.current.basePath;
-    return p.join(root, 'skills');
+    final root = _rootDir ?? AppStorage.paths.basePath;
+    return AppStorage.fs.pathContext.join(root, 'skills');
   }
 
   String get backupsDir {
-    final root = _rootDir ?? AppPathsBootstrapper.current.basePath;
-    return p.join(root, 'skill-backups');
+    final root = _rootDir ?? AppStorage.paths.basePath;
+    return AppStorage.fs.pathContext.join(root, 'skill-backups');
   }
 
   Future<List<Skill>> loadSkills() async {
@@ -161,13 +161,12 @@ class SkillManifestService {
       }
     }
 
-    final file = File(paths.manifestPath);
-    if (!file.existsSync()) {
+    final raw = await AppStorage.fs.readString(paths.manifestPath);
+    if (raw == null || raw.isEmpty) {
       return <String, Object?>{'version': 1, 'skills': [], 'backups': []};
     }
     try {
-      final text = await file.readAsString();
-      final parsed = json.decode(text);
+      final parsed = json.decode(raw);
       if (parsed is! Map) {
         throw SkillManifestException('manifest root is not an object');
       }
@@ -187,10 +186,8 @@ class SkillManifestService {
       await store.writeFile(paths.manifestPath, text);
       return;
     }
-    final dir = Directory(paths.skillsDir);
-    if (!dir.existsSync()) dir.createSync(recursive: true);
-    final file = File(paths.manifestPath);
-    await file.writeAsString(text);
+    await AppStorage.fs.ensureDir(paths.skillsDir);
+    await AppStorage.fs.atomicWrite(paths.manifestPath, text);
   }
 
   Future<String> resolveSkillsDir() async => (await _paths()).skillsDir;

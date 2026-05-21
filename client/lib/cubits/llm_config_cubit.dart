@@ -7,11 +7,11 @@ import '../models/llm_config.dart';
 import '../models/ssh_profile.dart';
 import '../repositories/app_settings_repository.dart';
 import '../repositories/llm_config_store.dart';
+import '../services/app_storage.dart';
 import '../services/llm_config_path_resolver.dart';
 import '../services/remote_file_store.dart';
 import '../services/remote_home_resolver.dart';
 import '../services/ssh_client_factory.dart';
-import '../services/wsl_posix_path_for_windows_io.dart';
 import '../utils/logger.dart';
 
 class LlmConfigState extends Equatable {
@@ -112,7 +112,7 @@ class LlmConfigCubit extends Cubit<LlmConfigState> {
        _homeDirectory = homeDirectory,
        _executableResolver = executableResolver ?? (() => ''),
        _localStoreFactory =
-           storeFactory ?? ((path) => LocalLlmConfigStore(path)),
+           storeFactory ?? ((path) => FilesystemLlmConfigStore(path: path)),
        _isSshMode = isSshMode,
        _sshProfileResolver = sshProfileResolver,
        _sshClientFactory = sshClientFactory,
@@ -146,8 +146,9 @@ class LlmConfigCubit extends Cubit<LlmConfigState> {
     final profile = sshActive ? _sshProfileResolver?.call() : null;
     final useRemote = sshActive && profile != null && _sshClientFactory != null;
 
-    var homeDirectory = _homeDirectory;
+    var homeDirectory = _homeDirectory ?? AppStorage.home;
     var currentDirectory = _currentDirectory;
+    if (currentDirectory.isEmpty) currentDirectory = AppStorage.cwd;
     if (useRemote) {
       final factory = _sshClientFactory;
       final remoteHome =
@@ -158,9 +159,7 @@ class LlmConfigCubit extends Cubit<LlmConfigState> {
         homeDirectory = remoteHome;
       }
       final workdir = _sshWorkingDirectoryResolver?.call().trim() ?? '';
-      currentDirectory = workdir.isNotEmpty
-          ? workdir
-          : (homeDirectory?.trim().isNotEmpty == true ? homeDirectory! : '/');
+      currentDirectory = workdir.isNotEmpty ? workdir : homeDirectory;
     }
 
     final resolved = resolveLlmConfigPath(
@@ -168,12 +167,10 @@ class LlmConfigCubit extends Cubit<LlmConfigState> {
       currentDirectory: currentDirectory,
       homeDirectory: homeDirectory,
       cliExecutablePath: _executableResolver(),
-      usePosixPaths: useRemote,
+      usePosixPaths: useRemote || AppStorage.usesPosixPaths,
     );
 
-    final effectivePath = useRemote
-        ? resolved.path
-        : await windowsFilePathForPossibleWslPosixPath(resolved.path);
+    final effectivePath = resolved.path;
 
     if (useRemote) {
       final factory = _sshClientFactory;

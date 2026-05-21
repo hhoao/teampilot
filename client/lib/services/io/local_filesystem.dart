@@ -107,9 +107,22 @@ class LocalFilesystem implements Filesystem {
   }
 
   @override
+  Future<List<int>?> readBytes(String path) async {
+    final file = File(path);
+    if (!await file.exists()) return null;
+    return file.readAsBytes();
+  }
+
+  @override
   Future<void> writeString(String path, String content) async {
     await ensureDir(pathContext.dirname(path));
     await File(path).writeAsString(content);
+  }
+
+  @override
+  Future<void> writeBytes(String path, List<int> bytes) async {
+    await ensureDir(pathContext.dirname(path));
+    await File(path).writeAsBytes(bytes, flush: true);
   }
 
   @override

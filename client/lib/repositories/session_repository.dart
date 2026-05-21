@@ -53,7 +53,7 @@ class SessionRepository {
         fs: snap.fs,
       );
     }
-    final root = _rootOverride ?? AppPathsBootstrapper.current.appProjectsDir;
+    final root = _rootOverride ?? AppStorage.paths.appProjectsDir;
     return SessionRepositoryFs(
       projectsFile: p.join(root, 'projects.json'),
       sessionsDir: p.join(root, 'sessions'),

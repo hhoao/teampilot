@@ -1,11 +1,9 @@
 import 'dart:convert';
-import 'dart:io';
-
-import 'package:path/path.dart' as p;
 
 import '../models/app_provider_config.dart';
 import '../models/llm_config.dart';
 import '../services/app_storage.dart';
+import '../services/io/filesystem.dart';
 import '../services/tool_config_generator.dart';
 
 class AppProviderRepositoryException implements Exception {
@@ -21,28 +19,32 @@ class AppProviderRepository {
   AppProviderRepository({
     String? basePath,
     ToolConfigGenerator? generator,
-  }) : _basePath = basePath ?? AppPathsBootstrapper.current.basePath,
-       _generator = generator ?? const ToolConfigGenerator();
+    Filesystem? fs,
+  }) : _basePath = basePath ?? AppStorage.paths.basePath,
+       _generator = generator ?? const ToolConfigGenerator(),
+       _fs = fs ?? AppStorage.fs;
 
   final String _basePath;
   final ToolConfigGenerator _generator;
+  final Filesystem _fs;
 
-  /// Catalog for one CLI: `<basePath>/providers/<cli>/providers.json`.
-  static File providersFileForBasePath(String basePath, AppProviderCli cli) {
-    return File(p.join(basePath, 'providers', cli.value, 'providers.json'));
-  }
+  String providersPath(AppProviderCli cli) =>
+      _fs.pathContext.join(_basePath, 'providers', cli.value, 'providers.json');
 
-  File providersFile(AppProviderCli cli) =>
-      providersFileForBasePath(_basePath, cli);
-
-  String get _appFlashskyaiLlmConfigFile =>
-      p.join(_basePath, 'config-profiles', 'flashskyai', 'llm_config.json');
+  String get _appFlashskyaiLlmConfigFile => _fs.pathContext.join(
+    _basePath,
+    'config-profiles',
+    'flashskyai',
+    'llm_config.json',
+  );
 
   Future<List<AppProviderConfig>> loadProviders(AppProviderCli cli) async {
-    final file = providersFile(cli);
-    if (!await file.exists()) return const [];
+    final path = providersPath(cli);
+    if (!(await _fs.stat(path)).isFile) return const [];
     try {
-      final decoded = jsonDecode(await file.readAsString());
+      final raw = await _fs.readString(path);
+      if (raw == null || raw.isEmpty) return const [];
+      final decoded = jsonDecode(raw);
       if (decoded is! Map) return const [];
       return _decodeCatalog(cli, Map<String, Object?>.from(decoded));
     } on FormatException {
@@ -56,8 +58,8 @@ class AppProviderRepository {
     AppProviderCli cli,
     List<AppProviderConfig> providers,
   ) async {
-    final file = providersFile(cli);
-    await file.parent.create(recursive: true);
+    final path = providersPath(cli);
+    await _fs.ensureDir(_fs.pathContext.dirname(path));
 
     final previous = await loadProviders(cli);
     final previousById = {for (final p in previous) p.id: p};
@@ -73,10 +75,11 @@ class AppProviderRepository {
       for (final provider in merged) provider.id: provider.toJson(),
     };
 
-    final unknownTopLevel = await _loadUnknownTopLevel(file);
+    final unknownTopLevel = await _loadUnknownTopLevel(path);
     unknownTopLevel.remove('providers');
 
-    await file.writeAsString(
+    await _fs.atomicWrite(
+      path,
       const JsonEncoder.withIndent(
         '  ',
       ).convert({...unknownTopLevel, 'providers': encoded}),
@@ -117,13 +120,15 @@ class AppProviderRepository {
   Future<void> _writeCodexNativeToolConfigs(
     List<AppProviderConfig> providers,
   ) async {
-    final root = Directory(p.join(_basePath, 'providers', 'codex'));
+    final path = _fs.pathContext;
+    final root = path.join(_basePath, 'providers', 'codex');
     for (final provider in providers) {
-      final codexDir = Directory(p.join(root.path, provider.id));
-      await codexDir.create(recursive: true);
+      final codexDir = path.join(root, provider.id);
+      await _fs.ensureDir(codexDir);
       await _generator.writeJsonAtomic(
-        File(p.join(codexDir.path, 'auth.json')),
+        path.join(codexDir, 'auth.json'),
         _generator.buildCodexAuth(provider),
+        fs: _fs,
       );
       final toml = _generator.buildCodexConfigToml(provider);
       final error = _generator.validateCodexToml(toml);
@@ -134,11 +139,12 @@ class AppProviderRepository {
       }
       if (toml.trim().isNotEmpty) {
         await _generator.writeTextAtomic(
-          File(p.join(codexDir.path, 'config.toml')),
+          path.join(codexDir, 'config.toml'),
           toml,
+          fs: _fs,
         );
       } else {
-        await _deleteIfExists(File(p.join(codexDir.path, 'config.toml')));
+        await _deleteIfExists(path.join(codexDir, 'config.toml'));
       }
     }
   }
@@ -146,14 +152,14 @@ class AppProviderRepository {
   Future<void> _removeStaleCodexNativeToolConfigs(
     List<AppProviderConfig> providers,
   ) async {
+    final path = _fs.pathContext;
     final expected = providers.map((p) => p.id).toSet();
-    final root = Directory(p.join(_basePath, 'providers', 'codex'));
-    if (!await root.exists()) return;
-    await for (final entity in root.list(followLinks: false)) {
-      if (entity is! Directory) continue;
-      final providerId = p.basename(entity.path);
-      if (!expected.contains(providerId)) {
-        await entity.delete(recursive: true);
+    final root = path.join(_basePath, 'providers', 'codex');
+    if (!(await _fs.stat(root)).isDirectory) return;
+    for (final entry in await _fs.listDir(root)) {
+      if (!entry.isDirectory) continue;
+      if (!expected.contains(entry.name)) {
+        await _fs.removeRecursive(path.join(root, entry.name));
       }
     }
   }
@@ -179,14 +185,15 @@ class AppProviderRepository {
     );
 
     await _generator.writeJsonAtomic(
-      File(_appFlashskyaiLlmConfigFile),
+      _appFlashskyaiLlmConfigFile,
       config.toJson(),
+      fs: _fs,
     );
   }
 
-  Future<void> _deleteIfExists(File file) async {
-    if (await file.exists()) {
-      await file.delete();
+  Future<void> _deleteIfExists(String path) async {
+    if ((await _fs.stat(path)).exists) {
+      await _fs.removeRecursive(path);
     }
   }
 
@@ -209,10 +216,12 @@ class AppProviderRepository {
     return providers;
   }
 
-  Future<Map<String, Object?>> _loadUnknownTopLevel(File file) async {
-    if (!await file.exists()) return {};
+  Future<Map<String, Object?>> _loadUnknownTopLevel(String path) async {
+    if (!(await _fs.stat(path)).isFile) return {};
     try {
-      final decoded = jsonDecode(await file.readAsString());
+      final raw = await _fs.readString(path);
+      if (raw == null || raw.isEmpty) return {};
+      final decoded = jsonDecode(raw);
       if (decoded is! Map) return {};
       return {
         for (final entry in decoded.entries)

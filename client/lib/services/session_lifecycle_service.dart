@@ -10,7 +10,7 @@ import 'cli_data_layout.dart';
 import 'config_profile_service.dart';
 import 'flashskyai_storage_roots.dart';
 import 'io/filesystem.dart';
-import 'io/local_filesystem.dart';
+import 'runtime_storage_context.dart';
 
 typedef StorageRootsResolver = Future<StorageRootsSnapshot> Function();
 
@@ -221,25 +221,12 @@ class SessionLifecycleService {
     final resolver = _storageRootsResolver;
     if (resolver != null) return resolver();
     return _localRoots(
-      _appDataBasePath ?? AppPathsBootstrapper.current.basePath,
+      _appDataBasePath ?? AppStorage.paths.basePath,
     );
   }
 
   StorageRootsSnapshot _localRoots(String basePath) {
-    final fs = LocalFilesystem();
-    final layout = CliDataLayout(teampilotRoot: basePath, fs: fs);
-    return StorageRootsSnapshot(
-      teampilotRoot: basePath,
-      fs: fs,
-      layout: layout,
-      teamsUiDir: AppPaths.teamsUiDirForTeampilotRoot(basePath),
-      skillsRoot: AppPaths.skillsDirForTeampilotRoot(basePath),
-      skillBackupsDir: AppPaths.skillBackupsDirForTeampilotRoot(basePath),
-      appProjectsDir: AppPaths.appProjectsDirForTeampilotRoot(basePath),
-      skillReposConfigPath: AppPaths.skillReposConfigPathForTeampilotRoot(
-        basePath,
-      ),
-    );
+    return StorageRootsSnapshot.fromContext(RuntimeStorageContext.current);
   }
 
   Future<_CliStateProbeResult> _findCliState({

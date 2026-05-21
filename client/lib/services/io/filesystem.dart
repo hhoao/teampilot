@@ -31,7 +31,9 @@ abstract interface class Filesystem {
   Future<void> rename(String from, String to);
 
   Future<String?> readString(String path);
+  Future<List<int>?> readBytes(String path);
   Future<void> writeString(String path, String content);
+  Future<void> writeBytes(String path, List<int> bytes);
   Future<void> atomicWrite(String path, String content);
   Future<List<FsDirEntry>> listDir(String path);
 

@@ -2,11 +2,10 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
-import 'package:path/path.dart' as p;
-
 import '../models/skill.dart';
 import '../utils/logger.dart';
 import 'app_storage.dart';
+import 'io/filesystem.dart';
 import 'skill_fetch_service.dart';
 
 /// On-disk layout under [AppStorage.skillRepoCacheDir]:
@@ -59,19 +58,24 @@ class SkillRepoDiskCacheService {
 
   final SkillFetchService _fetch;
 
+  Filesystem get _fs => AppStorage.fs;
+
   static String repoKey(SkillRepo repo) => '${repo.owner}__${repo.name}';
 
-  String get _cacheRoot => AppPathsBootstrapper.current.skillRepoCacheDir;
+  String get _cacheRoot => AppStorage.paths.skillRepoCacheDir;
 
-  Directory _repoDir(SkillRepo repo) =>
-      Directory(p.join(_cacheRoot, repoKey(repo)));
+  String _repoDirPath(SkillRepo repo) =>
+      _fs.pathContext.join(_cacheRoot, repoKey(repo));
 
   /// Reads cached discoverable skills from disk; empty if none.
   Future<List<DiscoverableSkill>> readSkillsFromDisk(SkillRepo repo) async {
-    final file = File(p.join(_repoDir(repo).path, 'skills.json'));
-    if (!file.existsSync()) return const [];
+    final path = _fs.pathContext.join(_repoDirPath(repo), 'skills.json');
+    final stat = await _fs.stat(path);
+    if (!stat.isFile) return const [];
     try {
-      final list = json.decode(await file.readAsString()) as List<dynamic>;
+      final text = await _fs.readString(path);
+      if (text == null) return const [];
+      final list = json.decode(text) as List<dynamic>;
       return list
           .map(
             (e) => DiscoverableSkill.fromJson(
@@ -88,12 +92,14 @@ class SkillRepoDiskCacheService {
   }
 
   Future<SkillRepoCacheMeta?> readMeta(SkillRepo repo) async {
-    final file = File(p.join(_repoDir(repo).path, 'meta.json'));
-    if (!file.existsSync()) return null;
+    final path = _fs.pathContext.join(_repoDirPath(repo), 'meta.json');
+    final stat = await _fs.stat(path);
+    if (!stat.isFile) return null;
     try {
+      final text = await _fs.readString(path);
+      if (text == null) return null;
       return SkillRepoCacheMeta.fromJson(
-        (json.decode(await file.readAsString()) as Map<String, dynamic>)
-            .cast<String, Object?>(),
+        (json.decode(text) as Map<String, dynamic>).cast<String, Object?>(),
       );
     } catch (e) {
       appLogger.w(
@@ -103,9 +109,12 @@ class SkillRepoDiskCacheService {
     }
   }
 
-  bool _hasSnapshot(Directory repoDir) {
-    return File(p.join(repoDir.path, 'skills.json')).existsSync() &&
-        Directory(p.join(repoDir.path, 'files')).existsSync();
+  Future<bool> _hasSnapshot(String repoDirPath) async {
+    final skillsPath = _fs.pathContext.join(repoDirPath, 'skills.json');
+    final filesPath = _fs.pathContext.join(repoDirPath, 'files');
+    final skillsStat = await _fs.stat(skillsPath);
+    final filesStat = await _fs.stat(filesPath);
+    return skillsStat.isFile && filesStat.isDirectory;
   }
 
   /// Loads disk cache when fresh; otherwise downloads, writes files + skills, returns result.
@@ -114,13 +123,13 @@ class SkillRepoDiskCacheService {
     bool force = false,
   }) async {
     final key = repoKey(repo);
-    final dir = _repoDir(repo);
+    final dirPath = _repoDirPath(repo);
     final meta = await readMeta(repo);
 
     if (!force &&
         meta != null &&
         meta.configuredBranch == repo.branch &&
-        _hasSnapshot(dir)) {
+        await _hasSnapshot(dirPath)) {
       final remoteSha = await _fetch.fetchBranchCommitSha(
         repo.owner,
         repo.name,
@@ -146,10 +155,12 @@ class SkillRepoDiskCacheService {
     }
 
     try {
-      final sourceDir = Directory(p.join(dir.path, 'source'));
+      final sourceDirPath = _fs.pathContext.join(dirPath, 'source');
       final downloaded = await _fetch.downloadRepoEntries(
         repo,
-        persistentGitDir: sourceDir,
+        persistentGitDir: AppStorage.usesPosixPaths
+            ? null
+            : Directory(sourceDirPath),
       );
       final commitSha = downloaded.commitSha;
       final skills = discoverSkillsInTarballEntries(
@@ -169,7 +180,7 @@ class SkillRepoDiskCacheService {
       return SkillRepoSyncResult(skills: skills, updated: true, repoKey: key);
     } catch (e) {
       appLogger.w('[SkillRepoCache] sync failed for ${repo.fullName}: $e');
-      if (_hasSnapshot(dir)) {
+      if (await _hasSnapshot(dirPath)) {
         return SkillRepoSyncResult(
           skills: await readSkillsFromDisk(repo),
           updated: false,
@@ -187,24 +198,25 @@ class SkillRepoDiskCacheService {
     required String resolvedBranch,
     required String commitSha,
   }) async {
-    final repoDir = _repoDir(repo);
-    final tmp = Directory('${repoDir.path}.tmp');
-    if (tmp.existsSync()) {
-      await tmp.delete(recursive: true);
-    }
-    final filesDir = Directory(p.join(tmp.path, 'files'));
-    await filesDir.create(recursive: true);
+    final repoDirPath = _repoDirPath(repo);
+    final tmpPath = '$repoDirPath.tmp';
+    await _fs.removeRecursive(tmpPath);
+    final filesDirPath = _fs.pathContext.join(tmpPath, 'files');
+    await _fs.ensureDir(filesDirPath);
 
     for (final entry in entries.entries) {
-      final out = File(p.join(filesDir.path, entry.key));
-      await out.parent.create(recursive: true);
-      await out.writeAsBytes(entry.value, flush: true);
+      final outPath = _fs.pathContext.join(filesDirPath, entry.key);
+      await _fs.ensureDir(_fs.pathContext.dirname(outPath));
+      await _fs.writeBytes(outPath, entry.value);
     }
 
     final skillsJson = const JsonEncoder.withIndent(
       '  ',
     ).convert(skills.map((s) => s.toJson()).toList());
-    await File(p.join(tmp.path, 'skills.json')).writeAsString(skillsJson);
+    await _fs.writeString(
+      _fs.pathContext.join(tmpPath, 'skills.json'),
+      skillsJson,
+    );
 
     final meta = SkillRepoCacheMeta(
       configuredBranch: repo.branch,
@@ -212,35 +224,30 @@ class SkillRepoDiskCacheService {
       commitSha: commitSha,
       syncedAtMs: DateTime.now().millisecondsSinceEpoch,
     );
-    await File(
-      p.join(tmp.path, 'meta.json'),
-    ).writeAsString(const JsonEncoder.withIndent('  ').convert(meta.toJson()));
+    await _fs.writeString(
+      _fs.pathContext.join(tmpPath, 'meta.json'),
+      const JsonEncoder.withIndent('  ').convert(meta.toJson()),
+    );
 
-    await Directory(_cacheRoot).create(recursive: true);
-    final backup = Directory('${repoDir.path}.bak');
-    if (backup.existsSync()) {
-      await backup.delete(recursive: true);
-    }
+    await _fs.ensureDir(_cacheRoot);
+    final backupPath = '$repoDirPath.bak';
+    await _fs.removeRecursive(backupPath);
     try {
-      if (repoDir.existsSync()) {
-        await repoDir.rename(backup.path);
+      final repoStat = await _fs.stat(repoDirPath);
+      if (repoStat.exists) {
+        await _fs.rename(repoDirPath, backupPath);
       }
-      await tmp.rename(repoDir.path);
-      if (backup.existsSync()) {
-        await backup.delete(recursive: true);
-      }
+      await _fs.rename(tmpPath, repoDirPath);
+      await _fs.removeRecursive(backupPath);
     } catch (e) {
-      if (backup.existsSync()) {
-        if (repoDir.existsSync()) {
-          await repoDir.delete(recursive: true);
-        }
-        await backup.rename(repoDir.path);
+      final backupStat = await _fs.stat(backupPath);
+      if (backupStat.exists) {
+        await _fs.removeRecursive(repoDirPath);
+        await _fs.rename(backupPath, repoDirPath);
       }
       rethrow;
     } finally {
-      if (tmp.existsSync()) {
-        await tmp.delete(recursive: true);
-      }
+      await _fs.removeRecursive(tmpPath);
     }
   }
 
@@ -249,28 +256,42 @@ class SkillRepoDiskCacheService {
     SkillRepo repo,
     String directory,
   ) async {
-    final base = Directory(p.join(_repoDir(repo).path, 'files', directory));
-    if (!base.existsSync()) return {};
+    final base = _fs.pathContext.join(_repoDirPath(repo), 'files', directory);
+    final baseStat = await _fs.stat(base);
+    if (!baseStat.isDirectory) return {};
 
     final out = <String, Uint8List>{};
-    await for (final entity in base.list(recursive: true, followLinks: false)) {
-      if (entity is! File) continue;
-      final rel = p.relative(entity.path, from: base.path);
-      if (rel.startsWith('..')) continue;
-      out[rel] = await entity.readAsBytes();
-    }
+    await _collectFilesRecursive(base, base, out);
     return out;
   }
 
+  Future<void> _collectFilesRecursive(
+    String root,
+    String dir,
+    Map<String, Uint8List> out,
+  ) async {
+    for (final entry in await _fs.listDir(dir)) {
+      final fullPath = _fs.pathContext.join(dir, entry.name);
+      if (entry.isDirectory) {
+        await _collectFilesRecursive(root, fullPath, out);
+        continue;
+      }
+      final rel = _fs.pathContext.relative(fullPath, from: root);
+      if (rel.startsWith('..')) continue;
+      final bytes = await _fs.readBytes(fullPath);
+      if (bytes != null) {
+        out[rel] = Uint8List.fromList(bytes);
+      }
+    }
+  }
+
   Future<void> deleteRepoCache(SkillRepo repo) async {
-    final dir = _repoDir(repo);
-    if (dir.existsSync()) {
-      await dir.delete(recursive: true);
+    final dirPath = _repoDirPath(repo);
+    final dirStat = await _fs.stat(dirPath);
+    if (dirStat.exists) {
+      await _fs.removeRecursive(dirPath);
     }
-    final tmp = Directory('${dir.path}.tmp');
-    if (tmp.existsSync()) {
-      await tmp.delete(recursive: true);
-    }
+    await _fs.removeRecursive('$dirPath.tmp');
   }
 
   void close() => _fetch.close();

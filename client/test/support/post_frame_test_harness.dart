@@ -4,16 +4,27 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
 import 'package:teampilot/services/app_storage.dart';
+import 'package:teampilot/services/io/local_filesystem.dart';
+import 'package:teampilot/services/runtime_storage_context.dart';
 
 Directory? _testAppDataDir;
 
-/// Initializes app paths for cubit tests that spawn team env.
+/// Initializes app paths and [RuntimeStorageContext] for cubit tests.
 void setUpTestAppStorage() {
   _testAppDataDir = Directory.systemTemp.createTempSync('test_app_data_');
-  AppPathsBootstrapper.setCurrentForTesting(AppPaths(_testAppDataDir!.path));
+  final paths = AppPaths(_testAppDataDir!.path);
+  RuntimeStorageContext.installForTesting(
+    filesystem: LocalFilesystem(
+      pathContext: AppPaths.pathContextForDataRoot(paths.basePath),
+    ),
+    paths: paths,
+    home: _testAppDataDir!.path,
+    cwd: _testAppDataDir!.path,
+  );
 }
 
 void tearDownTestAppStorage() {
+  RuntimeStorageContext.resetForTesting();
   AppPathsBootstrapper.resetForTesting();
   final dir = _testAppDataDir;
   _testAppDataDir = null;

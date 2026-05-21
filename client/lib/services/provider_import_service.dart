@@ -1,12 +1,13 @@
 import 'dart:convert';
-import 'dart:io';
+import 'dart:io' show Directory, File;
 
-import 'package:path/path.dart' as p;
 import 'package:sqlite3/sqlite3.dart';
 
 import '../models/app_provider_config.dart';
+import '../models/llm_config.dart';
 import '../repositories/app_provider_repository.dart';
-import '../repositories/llm_config_repository.dart';
+import 'app_storage.dart';
+import 'io/filesystem.dart';
 import 'llm_config_path_resolver.dart';
 
 class ProviderImportResult {
@@ -34,19 +35,11 @@ class ProviderImportResult {
 class ProviderImportService {
   ProviderImportService({
     AppProviderRepository? repository,
-    String? appDataBasePath,
-    String? homeDirectory,
-    String? currentDirectory,
     String? flashskyaiExecutablePath,
-  }) : _repository =
-           repository ?? AppProviderRepository(basePath: appDataBasePath),
-       _homeDirectory = homeDirectory,
-       _currentDirectory = currentDirectory ?? Directory.current.path,
+  }) : _repository = repository ?? AppProviderRepository(),
        _flashskyaiExecutablePath = flashskyaiExecutablePath;
 
   final AppProviderRepository _repository;
-  final String? _homeDirectory;
-  final String _currentDirectory;
   final String? _flashskyaiExecutablePath;
 
   Future<ProviderImportResult> importForCli(
@@ -99,18 +92,17 @@ class ProviderImportService {
   }
 
   Future<_ImportedProviders> _importFlashskyai() async {
+    final fs = AppStorage.fs;
     final resolved = resolveLlmConfigPath(
       userOverride: null,
-      currentDirectory: _currentDirectory,
-      homeDirectory: _homeDirectory,
+      currentDirectory: AppStorage.cwd,
+      homeDirectory: AppStorage.home,
       cliExecutablePath: _flashskyaiExecutablePath,
+      usePosixPaths: AppStorage.usesPosixPaths,
     );
     if (resolved.path.isEmpty) return const _ImportedProviders();
 
-    final file = File(resolved.path);
-    if (!await file.exists()) return const _ImportedProviders();
-
-    final llm = await LlmConfigRepository(file).load();
+    final llm = await _loadLlmConfig(fs, resolved.path);
     if (llm.providers.isEmpty) return const _ImportedProviders();
 
     final now = _now();
@@ -162,6 +154,24 @@ class ProviderImportService {
     return _ImportedProviders(providers, const ['llm_config']);
   }
 
+  Future<LlmConfig> _loadLlmConfig(Filesystem fs, String path) async {
+    final content = await fs.readString(path);
+    if (content == null || content.isEmpty) {
+      return const LlmConfig();
+    }
+    try {
+      final decoded = jsonDecode(content);
+      if (decoded is! Map) {
+        return const LlmConfig();
+      }
+      return LlmConfig.fromJson(Map<String, Object?>.from(decoded));
+    } on FormatException {
+      return const LlmConfig();
+    } on TypeError {
+      return const LlmConfig();
+    }
+  }
+
   Future<_ImportedProviders> _importClaude() async {
     final byId = <String, AppProviderConfig>{};
     final sources = <String>{};
@@ -169,7 +179,7 @@ class ProviderImportService {
       byId[provider.id] = provider;
       sources.add('live');
     }
-    for (final provider in _importCcSwitch(AppProviderCli.claude)) {
+    for (final provider in await _importCcSwitch(AppProviderCli.claude)) {
       byId[provider.id] = provider;
       sources.add('cc-switch');
     }
@@ -183,7 +193,7 @@ class ProviderImportService {
       byId[provider.id] = provider;
       sources.add('live');
     }
-    for (final provider in _importCcSwitch(AppProviderCli.codex)) {
+    for (final provider in await _importCcSwitch(AppProviderCli.codex)) {
       byId[provider.id] = provider;
       sources.add('cc-switch');
     }
@@ -191,31 +201,35 @@ class ProviderImportService {
   }
 
   Future<List<AppProviderConfig>> _importClaudeLive() async {
-    final home = _homeDirectory?.trim();
-    if (home == null || home.isEmpty) return const [];
-    final dir = Directory(p.join(home, '.claude'));
-    if (!await dir.exists()) return const [];
+    final fs = AppStorage.fs;
+    final ctx = fs.pathContext;
+    final home = AppStorage.home.trim();
+    if (home.isEmpty) return const [];
+
+    final dirPath = ctx.join(home, '.claude');
+    final dirStat = await fs.stat(dirPath);
+    if (!dirStat.isDirectory) return const [];
 
     final files = <_NamedFile>[];
-    final settings = File(p.join(dir.path, 'settings.json'));
-    final legacy = File(p.join(dir.path, 'claude.json'));
-    if (await settings.exists()) {
-      files.add(_NamedFile('default', settings));
-    } else if (await legacy.exists()) {
-      files.add(_NamedFile('default', legacy));
+    final settingsPath = ctx.join(dirPath, 'settings.json');
+    final legacyPath = ctx.join(dirPath, 'claude.json');
+    if ((await fs.stat(settingsPath)).isFile) {
+      files.add(_NamedFile('default', settingsPath));
+    } else if ((await fs.stat(legacyPath)).isFile) {
+      files.add(_NamedFile('default', legacyPath));
     }
-    await for (final entity in dir.list(followLinks: false)) {
-      if (entity is! File) continue;
-      final name = p.basename(entity.path);
+    for (final entry in await fs.listDir(dirPath)) {
+      if (entry.isDirectory) continue;
+      final name = entry.name;
       if (!name.startsWith('settings-') || !name.endsWith('.json')) continue;
       final base = name.substring('settings-'.length, name.length - '.json'.length);
-      files.add(_NamedFile(sanitizeProviderId(base), entity));
+      files.add(_NamedFile(sanitizeProviderId(base), ctx.join(dirPath, name)));
     }
 
     final now = _now();
     final providers = <AppProviderConfig>[];
     for (final named in files) {
-      final config = await _readJsonObject(named.file);
+      final config = await _readJsonObject(named.path);
       if (config == null || named.id.isEmpty) continue;
       providers.add(_claudeProviderFromConfig(named.id, config, now));
     }
@@ -223,52 +237,69 @@ class ProviderImportService {
   }
 
   Future<List<AppProviderConfig>> _importCodexLive() async {
-    final home = _homeDirectory?.trim();
-    if (home == null || home.isEmpty) return const [];
-    final dir = Directory(p.join(home, '.codex'));
-    if (!await dir.exists()) return const [];
+    final fs = AppStorage.fs;
+    final ctx = fs.pathContext;
+    final home = AppStorage.home.trim();
+    if (home.isEmpty) return const [];
+
+    final dirPath = ctx.join(home, '.codex');
+    final dirStat = await fs.stat(dirPath);
+    if (!dirStat.isDirectory) return const [];
 
     final ids = <String>{};
-    if (await File(p.join(dir.path, 'auth.json')).exists() ||
-        await File(p.join(dir.path, 'config.toml')).exists()) {
+    if ((await fs.stat(ctx.join(dirPath, 'auth.json'))).isFile ||
+        (await fs.stat(ctx.join(dirPath, 'config.toml'))).isFile) {
       ids.add('default');
     }
-    await for (final entity in dir.list(followLinks: false)) {
-      if (entity is! File) continue;
-      final name = p.basename(entity.path);
+    for (final entry in await fs.listDir(dirPath)) {
+      if (entry.isDirectory) continue;
+      final name = entry.name;
       if (!name.startsWith('auth-') || !name.endsWith('.json')) continue;
-      ids.add(sanitizeProviderId(name.substring('auth-'.length, name.length - '.json'.length)));
+      ids.add(
+        sanitizeProviderId(
+          name.substring('auth-'.length, name.length - '.json'.length),
+        ),
+      );
     }
 
     final now = _now();
     final providers = <AppProviderConfig>[];
     for (final id in ids) {
       if (id.isEmpty) continue;
-      final authFile = File(
-        p.join(dir.path, id == 'default' ? 'auth.json' : 'auth-$id.json'),
+      final authPath = ctx.join(
+        dirPath,
+        id == 'default' ? 'auth.json' : 'auth-$id.json',
       );
-      final tomlFile = File(
-        p.join(dir.path, id == 'default' ? 'config.toml' : 'config-$id.toml'),
+      final tomlPath = ctx.join(
+        dirPath,
+        id == 'default' ? 'config.toml' : 'config-$id.toml',
       );
-      final auth = await _readJsonObject(authFile) ?? <String, Object?>{};
-      final toml = await tomlFile.exists() ? await tomlFile.readAsString() : '';
+      final auth = await _readJsonObject(authPath) ?? <String, Object?>{};
+      final toml = await fs.readString(tomlPath) ?? '';
       if (auth.isEmpty && toml.trim().isEmpty) continue;
       providers.add(_codexProviderFromConfig(id, auth, toml, now));
     }
     return providers;
   }
 
-  List<AppProviderConfig> _importCcSwitch(AppProviderCli cli) {
-    final home = _homeDirectory?.trim();
-    if (home == null || home.isEmpty) return const [];
-    final file = File(p.join(home, '.cc-switch', 'cc-switch.db'));
-    if (!file.existsSync()) return const [];
+  Future<List<AppProviderConfig>> _importCcSwitch(AppProviderCli cli) async {
+    final fs = AppStorage.fs;
+    final ctx = fs.pathContext;
+    final home = AppStorage.home.trim();
+    if (home.isEmpty) return const [];
+
+    final dbPath = ctx.join(home, '.cc-switch', 'cc-switch.db');
+    final bytes = await fs.readBytes(dbPath);
+    if (bytes == null || bytes.isEmpty) return const [];
 
     final appType = cli.value;
     final providers = <AppProviderConfig>[];
     Database? db;
+    final tempDir = await Directory.systemTemp.createTemp('cc-switch-');
     try {
-      db = sqlite3.open(file.path, mode: OpenMode.readOnly);
+      final tempFile = File(ctx.join(tempDir.path, 'cc-switch.db'));
+      await tempFile.writeAsBytes(bytes);
+      db = sqlite3.open(tempFile.path, mode: OpenMode.readOnly);
       final rows = db.select(
         '''
 SELECT id, name, settings_config, website_url, category, created_at,
@@ -329,6 +360,9 @@ WHERE app_type = ?
       return const [];
     } finally {
       db?.close();
+      if (await tempDir.exists()) {
+        await tempDir.delete(recursive: true);
+      }
     }
     return providers;
   }
@@ -528,10 +562,11 @@ WHERE app_type = ?
     return 'openai';
   }
 
-  Future<Map<String, Object?>?> _readJsonObject(File file) async {
-    if (!await file.exists()) return null;
+  Future<Map<String, Object?>?> _readJsonObject(String path) async {
     try {
-      final decoded = jsonDecode(await file.readAsString());
+      final content = await AppStorage.fs.readString(path);
+      if (content == null || content.isEmpty) return null;
+      final decoded = jsonDecode(content);
       if (decoded is! Map) return null;
       return Map<String, Object?>.from(decoded);
     } on Object {
@@ -607,10 +642,10 @@ class _MirrorResult {
 }
 
 class _NamedFile {
-  const _NamedFile(this.id, this.file);
+  const _NamedFile(this.id, this.path);
 
   final String id;
-  final File file;
+  final String path;
 }
 
 class _CodexTomlParts {

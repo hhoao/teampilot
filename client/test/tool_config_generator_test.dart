@@ -4,6 +4,9 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:teampilot/models/app_provider_config.dart';
+import 'package:teampilot/services/app_storage.dart';
+import 'package:teampilot/services/io/local_filesystem.dart';
+import 'package:teampilot/services/runtime_storage_context.dart';
 import 'package:teampilot/services/tool_config_generator.dart';
 
 void main() {
@@ -13,9 +16,16 @@ void main() {
   setUp(() async {
     generator = const ToolConfigGenerator();
     temp = await Directory.systemTemp.createTemp('tool_cfg_gen_');
+    RuntimeStorageContext.installForTesting(
+      filesystem: LocalFilesystem(),
+      paths: AppPaths(temp.path),
+      home: temp.path,
+      cwd: temp.path,
+    );
   });
 
   tearDown(() async {
+    RuntimeStorageContext.resetForTesting();
     if (await temp.exists()) await temp.delete(recursive: true);
   });
 
@@ -150,17 +160,18 @@ requires_openai_auth = true
   });
 
   test('writes files atomically without leaving temp artifacts', () async {
-    final target = File(p.join(temp.path, 'nested', 'out.json'));
+    final target = p.join(temp.path, 'nested', 'out.json');
     await generator.writeJsonAtomic(target, {'ok': true});
 
-    expect(await target.exists(), isTrue);
+    final file = File(target);
+    expect(await file.exists(), isTrue);
     expect(
       Directory(
         p.join(temp.path, 'nested'),
       ).listSync().whereType<File>().length,
       1,
     );
-    final decoded = jsonDecode(await target.readAsString());
+    final decoded = jsonDecode(await file.readAsString());
     expect(decoded['ok'], isTrue);
   });
 

@@ -2,13 +2,41 @@ import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
+import 'io/filesystem.dart';
+import 'io/local_filesystem.dart';
+import 'runtime_storage_context.dart';
+
+/// Global business storage facade. Requires [RuntimeStorageContext.install].
+class AppStorage {
+  AppStorage._();
+
+  static RuntimeStorageContext get context => RuntimeStorageContext.current;
+
+  static Filesystem get fs =>
+      RuntimeStorageContext.isInstalled
+          ? RuntimeStorageContext.current.filesystem
+          : LocalFilesystem();
+
+  static AppPaths get paths => RuntimeStorageContext.current.paths;
+
+  static String get home => RuntimeStorageContext.current.home;
+
+  static String get cwd => RuntimeStorageContext.current.cwd;
+
+  static String get appDataRoot => RuntimeStorageContext.current.appDataRoot;
+
+  static bool get usesPosixPaths => RuntimeStorageContext.current.usesPosixPaths;
+}
+
 @immutable
 class AppPaths {
   const AppPaths(this.basePath);
 
   final String basePath;
 
-  String get teamsDir => p.join(basePath, 'teams');
+  p.Context get _ctx => pathContextForDataRoot(basePath);
+
+  String get teamsDir => _ctx.join(basePath, 'teams');
 
   /// Linux desktop / `path_provider` app-data id (e.g. `~/.local/share/com.hhoa.teampilot`).
   static const teampilotAppDataDirName = 'com.hhoa.teampilot';
@@ -57,25 +85,27 @@ class AppPaths {
 
   /// Local disk cache for GitHub skill repos (tarball files + discovered skills).
   static String skillRepoCacheDirForTeampilotRoot(String teampilotRoot) =>
-      p.join(teampilotRoot, 'skill-repo-cache');
+      _pathUnderTeampilotRoot(teampilotRoot, 'skill-repo-cache');
 
   String get skillRepoCacheDir => skillRepoCacheDirForTeampilotRoot(basePath);
 
   /// App-owned project/session metadata (`projects.json` + `sessions/`).
-  String get appProjectsDir => p.join(basePath, 'projects');
+  String get appProjectsDir => _ctx.join(basePath, 'projects');
 
-  String get skillReposConfigPath => p.join(basePath, 'skills.json');
+  String get skillReposConfigPath => _ctx.join(basePath, 'skills.json');
 
   /// Application-level unified provider catalog (`providers/providers.json`).
-  String get providerConfigDir => p.join(basePath, 'providers');
+  String get providerConfigDir => _ctx.join(basePath, 'providers');
 
-  String get providerConfigFile => p.join(providerConfigDir, 'providers.json');
+  String get providerConfigFile => _ctx.join(providerConfigDir, 'providers.json');
+
+  String get sshProfilesDir => _ctx.join(basePath, 'ssh_profiles');
 
   /// Team runtime isolation and FlashskyAI / Claude / Codex config profiles.
-  String get configProfilesDir => p.join(basePath, 'config-profiles');
+  String get configProfilesDir => _ctx.join(basePath, 'config-profiles');
 
   String providerToolDir(String tool, String providerId) =>
-      p.join(providerConfigDir, tool.trim(), providerId.trim());
+      _ctx.join(providerConfigDir, tool.trim(), providerId.trim());
 
   String codexProviderDir(String providerId) =>
       providerToolDir('codex', providerId);
@@ -100,12 +130,16 @@ class AppPathsBootstrapper {
 
   static Future<void> init() async {
     final dir = await getApplicationSupportDirectory();
-    _current = AppPaths(dir.path);
+    syncPaths(AppPaths(dir.path));
+  }
+
+  static void syncPaths(AppPaths paths) {
+    _current = paths;
   }
 
   @visibleForTesting
   static void setCurrentForTesting(AppPaths paths) {
-    _current = paths;
+    syncPaths(paths);
   }
 
   @visibleForTesting
