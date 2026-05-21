@@ -5,6 +5,8 @@ import 'package:teampilot/cubits/ssh_profile_cubit.dart';
 import 'package:teampilot/models/ssh_profile.dart';
 import 'package:teampilot/repositories/ssh_credential_store.dart';
 import 'package:teampilot/repositories/ssh_profile_repository.dart';
+import 'package:teampilot/services/app_storage.dart';
+import 'package:teampilot/services/runtime_storage_context.dart';
 
 void main() {
   test('selected SSH profile persists across cubit reloads', () async {
@@ -84,5 +86,51 @@ void main() {
     await cubit.selectProfile('p1');
 
     expect(appliedPath, '/remote/bin/flashskyai');
+  });
+
+  test('load follows RuntimeStorageContext when repository root is dynamic', () async {
+    final rootA = await Directory.systemTemp.createTemp('ssh_cubit_a_');
+    final rootB = await Directory.systemTemp.createTemp('ssh_cubit_b_');
+    addTearDown(() async {
+      if (await rootA.exists()) await rootA.delete(recursive: true);
+      if (await rootB.exists()) await rootB.delete(recursive: true);
+      RuntimeStorageContext.resetForTesting();
+      AppPathsBootstrapper.resetForTesting();
+    });
+
+    await RuntimeStorageContext.install(
+      isSshMode: false,
+      nativeAppDataPath: rootA.path,
+      nativeHome: rootA.path,
+      nativeCwd: rootA.path,
+    );
+
+    final repository = SshProfileRepository();
+    final cubit = SshProfileCubit(
+      profileRepository: repository,
+      credentialStore: InMemorySshCredentialStore(),
+    );
+    addTearDown(cubit.close);
+
+    await repository.save(
+      const SshProfile(
+        id: 'p1',
+        name: 'Server A',
+        host: 'example.com',
+        username: 'user',
+      ),
+    );
+    await cubit.load(notifyActiveProfileChanged: false);
+    expect(cubit.state.profiles, hasLength(1));
+
+    await RuntimeStorageContext.install(
+      isSshMode: false,
+      nativeAppDataPath: rootB.path,
+      nativeHome: rootB.path,
+      nativeCwd: rootB.path,
+    );
+
+    await cubit.load(notifyActiveProfileChanged: false);
+    expect(cubit.state.profiles, isEmpty);
   });
 }

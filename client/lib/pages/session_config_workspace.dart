@@ -194,6 +194,7 @@ class _SessionControlsState extends State<_SessionControls> {
       skillCubit: skillCubit,
       chatCubit: chatCubit,
       sessionRepo: sessionRepo,
+      sshProfileCubit: context.read<SshProfileCubit>(),
     );
   }
 

@@ -20,13 +20,17 @@ class AppProviderRepository {
     String? basePath,
     ToolConfigGenerator? generator,
     Filesystem? fs,
-  }) : _basePath = basePath ?? AppStorage.paths.basePath,
+  }) : _basePathOverride = basePath,
        _generator = generator ?? const ToolConfigGenerator(),
-       _fs = fs ?? AppStorage.fs;
+       _fsOverride = fs;
 
-  final String _basePath;
+  final String? _basePathOverride;
+  final Filesystem? _fsOverride;
   final ToolConfigGenerator _generator;
-  final Filesystem _fs;
+
+  String get _basePath => _basePathOverride ?? AppStorage.paths.basePath;
+
+  Filesystem get _fs => _fsOverride ?? AppStorage.fs;
 
   String providersPath(AppProviderCli cli) =>
       _fs.pathContext.join(_basePath, 'providers', cli.value, 'providers.json');

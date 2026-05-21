@@ -47,8 +47,6 @@ void main() {
     final prefs = await SharedPreferences.getInstance();
     final cubit = LlmConfigCubit(
       appSettings: SharedPrefsAppSettingsRepository(prefs),
-      currentDirectory: tmp.path,
-      homeDirectory: '/home/test',
       executableResolver: () => '/opt/flashskyai/dist/flashskyai',
       storeFactory: (path) => LocalLlmConfigStore(path),
     );
@@ -65,8 +63,6 @@ void main() {
     final prefs = await SharedPreferences.getInstance();
     final cubit = LlmConfigCubit(
       appSettings: SharedPrefsAppSettingsRepository(prefs),
-      currentDirectory: tmp.path,
-      homeDirectory: '/home/test',
     );
 
     await cubit.load();
@@ -86,8 +82,6 @@ void main() {
 
     final cubit = LlmConfigCubit(
       appSettings: SharedPrefsAppSettingsRepository(prefs),
-      currentDirectory: tmp.path,
-      homeDirectory: '/home/test',
     );
     await cubit.load();
 
@@ -114,8 +108,6 @@ void main() {
     final prefs = await SharedPreferences.getInstance();
     final cubit = LlmConfigCubit(
       appSettings: SharedPrefsAppSettingsRepository(prefs),
-      currentDirectory: tmp.path,
-      homeDirectory: '/home/test',
     );
 
     await cubit.setConfigPath(fileA.path);
@@ -140,8 +132,6 @@ void main() {
 
     final cubit = LlmConfigCubit(
       appSettings: SharedPrefsAppSettingsRepository(prefs),
-      currentDirectory: tmp.path,
-      homeDirectory: '/home/test',
     );
     await cubit.setConfigPath(null);
 
@@ -154,8 +144,6 @@ void main() {
     final prefs = await SharedPreferences.getInstance();
     final cubit = LlmConfigCubit(
       appSettings: SharedPrefsAppSettingsRepository(prefs),
-      currentDirectory: tmp.path,
-      homeDirectory: '/home/test',
       initialConfig: LlmConfig(
         providers: {
           'old-name': const LlmProviderConfig(
@@ -191,8 +179,6 @@ void main() {
     final prefs = await SharedPreferences.getInstance();
     final cubit = LlmConfigCubit(
       appSettings: SharedPrefsAppSettingsRepository(prefs),
-      currentDirectory: tmp.path,
-      homeDirectory: '/home/test',
       initialConfig: const LlmConfig(
         providers: {
           'a': LlmProviderConfig(name: 'a', type: 'api'),
@@ -206,12 +192,68 @@ void main() {
     expect(cubit.state.config.providers.containsKey('a'), isTrue);
   });
 
+  test('load follows RuntimeStorageContext home for tilde override paths', () async {
+    final homeA = await Directory.systemTemp.createTemp('llm_home_a_');
+    final homeB = await Directory.systemTemp.createTemp('llm_home_b_');
+    addTearDown(() async {
+      if (await homeA.exists()) await homeA.delete(recursive: true);
+      if (await homeB.exists()) await homeB.delete(recursive: true);
+    });
+
+    RuntimeStorageContext.installForTesting(
+      filesystem: LocalFilesystem(
+        pathContext: AppPaths.pathContextForDataRoot(homeA.path),
+      ),
+      paths: AppPaths(homeA.path),
+      home: homeA.path,
+      cwd: homeA.path,
+    );
+
+    final fileA = File(p.join(homeA.path, 'llm.json'));
+    await fileA.writeAsString(jsonEncode({
+      'providers': {
+        'a': {'name': 'a', 'apiKey': 'k'},
+      },
+    }));
+
+    final prefs = await SharedPreferences.getInstance();
+    await SharedPrefsAppSettingsRepository(
+      prefs,
+    ).saveLlmConfigPathOverride('~/llm.json');
+
+    final cubit = LlmConfigCubit(
+      appSettings: SharedPrefsAppSettingsRepository(prefs),
+    );
+    addTearDown(cubit.close);
+
+    await cubit.load();
+    expect(
+      p.normalize(cubit.state.effectiveConfigPath),
+      p.normalize(fileA.path),
+    );
+    expect(cubit.state.config.providers.keys, ['a']);
+
+    RuntimeStorageContext.installForTesting(
+      filesystem: LocalFilesystem(
+        pathContext: AppPaths.pathContextForDataRoot(homeB.path),
+      ),
+      paths: AppPaths(homeB.path),
+      home: homeB.path,
+      cwd: homeB.path,
+    );
+
+    await cubit.load();
+    expect(
+      p.normalize(cubit.state.effectiveConfigPath),
+      p.normalize(p.join(homeB.path, 'llm.json')),
+    );
+    expect(cubit.state.config.providers, isEmpty);
+  });
+
   test('setConfigPath with empty string reverts to default', () async {
     final prefs = await SharedPreferences.getInstance();
     final cubit = LlmConfigCubit(
       appSettings: SharedPrefsAppSettingsRepository(prefs),
-      currentDirectory: tmp.path,
-      homeDirectory: '/home/test',
     );
     await cubit.setConfigPath('   ');
 

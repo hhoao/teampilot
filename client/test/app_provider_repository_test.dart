@@ -4,7 +4,10 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:teampilot/models/app_provider_config.dart';
+import 'package:teampilot/models/windows_storage_backend.dart';
 import 'package:teampilot/repositories/app_provider_repository.dart';
+import 'package:teampilot/services/app_storage.dart';
+import 'package:teampilot/services/runtime_storage_context.dart';
 
 void main() {
   late Directory root;
@@ -145,6 +148,61 @@ void main() {
     final raw = jsonDecode(await appFile.readAsString()) as Map;
     expect((raw['providers'] as Map).keys, contains('deepseek'));
   });
+
+  test(
+    'load follows RuntimeStorageContext when basePath is not overridden',
+    () async {
+      final rootA = await Directory.systemTemp.createTemp('providers_a_');
+      final rootB = await Directory.systemTemp.createTemp('providers_b_');
+      addTearDown(() async {
+        if (await rootA.exists()) {
+          await rootA.delete(recursive: true);
+        }
+        if (await rootB.exists()) {
+          await rootB.delete(recursive: true);
+        }
+        RuntimeStorageContext.resetForTesting();
+        AppPathsBootstrapper.resetForTesting();
+      });
+
+      await RuntimeStorageContext.install(
+        isSshMode: false,
+        nativeAppDataPath: rootA.path,
+        nativeHome: rootA.path,
+        nativeCwd: rootA.path,
+        windowsStorageBackend: WindowsStorageBackend.native,
+      );
+
+      final dynamicRepo = AppProviderRepository();
+      const provider = AppProviderConfig(
+        id: 'test',
+        cli: AppProviderCli.claude,
+        name: 'Test Provider',
+      );
+      await dynamicRepo.saveProviders(AppProviderCli.claude, [provider]);
+      expect(await dynamicRepo.loadProviders(AppProviderCli.claude), hasLength(1));
+
+      await RuntimeStorageContext.install(
+        isSshMode: false,
+        nativeAppDataPath: rootB.path,
+        nativeHome: rootB.path,
+        nativeCwd: rootB.path,
+        windowsStorageBackend: WindowsStorageBackend.native,
+      );
+
+      expect(await dynamicRepo.loadProviders(AppProviderCli.claude), isEmpty);
+
+      await RuntimeStorageContext.install(
+        isSshMode: false,
+        nativeAppDataPath: rootA.path,
+        nativeHome: rootA.path,
+        nativeCwd: rootA.path,
+        windowsStorageBackend: WindowsStorageBackend.native,
+      );
+
+      expect(await dynamicRepo.loadProviders(AppProviderCli.claude), hasLength(1));
+    },
+  );
 
   test('removes stale codex provider directories', () async {
     const provider = AppProviderConfig(

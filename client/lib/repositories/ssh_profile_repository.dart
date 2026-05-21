@@ -6,11 +6,15 @@ import '../services/io/filesystem.dart';
 
 class SshProfileRepository {
   SshProfileRepository({String? rootDir, Filesystem? fs})
-    : _root = rootDir ?? AppStorage.paths.sshProfilesDir,
-      _fs = fs ?? AppStorage.fs;
+    : _rootDirOverride = rootDir,
+      _fsOverride = fs;
 
-  final String _root;
-  final Filesystem _fs;
+  final String? _rootDirOverride;
+  final Filesystem? _fsOverride;
+
+  String get _root => _rootDirOverride ?? AppStorage.paths.sshProfilesDir;
+
+  Filesystem get _fs => _fsOverride ?? AppStorage.fs;
 
   String get _profilesFile => _fs.pathContext.join(_root, 'profiles.json');
 

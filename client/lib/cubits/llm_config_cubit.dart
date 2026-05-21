@@ -97,8 +97,6 @@ typedef LlmConfigStoreFactory = LlmConfigStore Function(String path);
 class LlmConfigCubit extends Cubit<LlmConfigState> {
   LlmConfigCubit({
     required AppSettingsRepository appSettings,
-    required String currentDirectory,
-    required String? homeDirectory,
     String Function()? executableResolver,
     LlmConfigStoreFactory? storeFactory,
     bool Function()? isSshMode,
@@ -108,8 +106,6 @@ class LlmConfigCubit extends Cubit<LlmConfigState> {
     RemoteHomeResolver? remoteHomeResolver,
     LlmConfig initialConfig = const LlmConfig(),
   }) : _appSettings = appSettings,
-       _currentDirectory = currentDirectory,
-       _homeDirectory = homeDirectory,
        _executableResolver = executableResolver ?? (() => ''),
        _localStoreFactory =
            storeFactory ?? ((path) => FilesystemLlmConfigStore(path: path)),
@@ -121,8 +117,6 @@ class LlmConfigCubit extends Cubit<LlmConfigState> {
        super(LlmConfigState(config: initialConfig, savedConfig: initialConfig));
 
   final AppSettingsRepository _appSettings;
-  final String _currentDirectory;
-  final String? _homeDirectory;
   final String Function() _executableResolver;
   final LlmConfigStoreFactory _localStoreFactory;
   final bool Function()? _isSshMode;
@@ -146,9 +140,8 @@ class LlmConfigCubit extends Cubit<LlmConfigState> {
     final profile = sshActive ? _sshProfileResolver?.call() : null;
     final useRemote = sshActive && profile != null && _sshClientFactory != null;
 
-    var homeDirectory = _homeDirectory ?? AppStorage.home;
-    var currentDirectory = _currentDirectory;
-    if (currentDirectory.isEmpty) currentDirectory = AppStorage.cwd;
+    var homeDirectory = AppStorage.home;
+    var currentDirectory = AppStorage.cwd;
     if (useRemote) {
       final factory = _sshClientFactory;
       final remoteHome =

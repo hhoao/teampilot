@@ -146,8 +146,6 @@ LlmConfigCubit testLlmConfigCubit({
 }) {
   return LlmConfigCubit(
     appSettings: InMemoryAppSettingsRepository(),
-    currentDirectory: Directory.systemTemp.path,
-    homeDirectory: '/tmp',
     initialConfig: initialConfig,
   );
 }

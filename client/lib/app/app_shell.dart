@@ -28,7 +28,6 @@ import '../repositories/ssh_credential_store.dart';
 import '../repositories/ssh_known_host_repository.dart';
 import '../repositories/ssh_profile_repository.dart';
 import '../repositories/team_repository.dart';
-import '../services/app_storage.dart';
 import '../services/cli_tool_locator.dart';
 import '../services/connection_mode_service.dart';
 import '../services/flashskyai_cli_locator.dart';
@@ -188,7 +187,8 @@ Future<AppShell> buildAppShell({
   late final ConnectionModeService connectionModeService;
   late final Future<RuntimeStorageContext> Function() reinstallStorageContext;
 
-  final sshProfileCubit = SshProfileCubit(
+  late final SshProfileCubit sshProfileCubit;
+  sshProfileCubit = SshProfileCubit(
     profileRepository: sshProfileRepo,
     credentialStore: sshCredentialStore,
     locateRemoteCliPath: remoteCliLocator.locate,
@@ -209,6 +209,7 @@ Future<AppShell> buildAppShell({
         skillCubit: skillCubit,
         chatCubit: chatCubit,
         sessionRepo: sessionRepo,
+        sshProfileCubit: sshProfileCubit,
       );
     },
   );
@@ -259,8 +260,6 @@ Future<AppShell> buildAppShell({
 
   llmConfigCubit = LlmConfigCubit(
     appSettings: appSettings,
-    currentDirectory: AppStorage.cwd,
-    homeDirectory: AppStorage.home,
     executableResolver: () => sessionPreferencesCubit.resolveExecutable(),
     isSshMode: () => connectionModeService.isSshMode,
     sshProfileResolver: () => sshProfileCubit.state.selectedProfile,
@@ -350,6 +349,7 @@ Future<AppShell> buildAppShell({
       skillCubit: skillCubit,
       chatCubit: chatCubit,
       sessionRepo: sessionRepo,
+      sshProfileCubit: sshProfileCubit,
     );
   }
 
@@ -385,6 +385,7 @@ Future<void> reloadRemoteBackedAppData({
   required SkillCubit skillCubit,
   required ChatCubit chatCubit,
   required SessionRepository sessionRepo,
+  required SshProfileCubit sshProfileCubit,
 }) async {
   await storageRoots.resolve();
   await Future.wait([
@@ -393,6 +394,7 @@ Future<void> reloadRemoteBackedAppData({
     teamCubit.load(),
     skillCubit.loadAll(),
     chatCubit.loadProjectData(sessionRepo),
+    sshProfileCubit.load(notifyActiveProfileChanged: false),
   ]);
   await teamCubit.syncSelectedTeamSkills(installed: skillCubit.state.installed);
 }
