@@ -41,7 +41,7 @@ dependencies:
   http: ^1.6.0
   package_info_plus: ^8.3.0
   pub_semver: ^2.2.0
-  install_plugin: ^2.1.0
+  android_package_installer: ^0.0.3
   crypto: ^3.0.7
   archive: ^4.0.9
   toggle_switch: ^2.3.0

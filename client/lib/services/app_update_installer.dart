@@ -1,8 +1,9 @@
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
-import 'package:install_plugin/install_plugin.dart';
 import 'package:path/path.dart' as p;
+
+import 'package:android_package_installer/android_package_installer.dart';
 
 import 'app_update_asset_selector.dart';
 import 'app_update_service.dart';
@@ -170,11 +171,15 @@ class AppUpdateInstaller {
   }
 
   Future<void> _installAndroidApk(File apk) async {
-    final result = await InstallPlugin.install(apk.path);
-    final success = result['isSuccess'] == true;
-    if (!success) {
-      final message = result['errorMessage'] as String? ?? 'Unknown error';
-      throw AppUpdateException('APK install failed: $message');
+    final statusCode = await AndroidPackageInstaller.installApk(
+      apkFilePath: apk.path,
+    );
+    if (statusCode == null) {
+      throw AppUpdateException('APK install returned no status');
+    }
+    final status = PackageInstallerStatus.byCode(statusCode);
+    if (status != PackageInstallerStatus.success) {
+      throw AppUpdateException('APK install failed: ${status.name}');
     }
   }
 }
