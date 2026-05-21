@@ -13,9 +13,12 @@ import '../models/team_config.dart';
 import '../repositories/session_repository.dart';
 import '../services/platform_utils.dart';
 import '../utils/app_keys.dart';
+import '../utils/project_path_picker.dart';
+import '../utils/project_path_utils.dart';
 import '../widgets/app_outline_text_field.dart';
 import '../widgets/dropdown/flashsky_dropdown_field.dart';
 import '../widgets/dropdown/flashskyai_dropdown_decoration.dart';
+import 'project_details_dialog.dart';
 
 /// Matches [_ProjectHeader] label start: `padding.left` + chevron + gap + folder + gap.
 const double _kSidebarTreeTextInset = 12 + 16 + 6 + 16 + 6;
@@ -224,6 +227,7 @@ class _ContextSidebarState extends State<ContextSidebar> {
                 _SidebarSectionTitle(
                   title: l10n.projects,
                   actionLabel: '+',
+                  actionTooltip: l10n.newProjectTooltip,
                   onAction: widget.onNewProject,
                 ),
                 Expanded(
@@ -360,11 +364,21 @@ class _ProjectGroupState extends State<_ProjectGroup> {
           expanded: _expanded,
           onToggle: () => setState(() => _expanded = !_expanded),
           onNewSession: () => _createSession(context, p.projectId),
+          onViewDetails: p.projectId.isNotEmpty
+              ? () => showProjectDetailsDialog(
+                  context,
+                  p,
+                  widget.sessions.length,
+                )
+              : null,
+          onAddDirectory: p.projectId.isNotEmpty
+              ? () => _addProjectDirectory(context, p)
+              : null,
           onOpenFolder: p.primaryPath.isNotEmpty
               ? () => _openFolder(p.primaryPath)
               : null,
           onCopyPath: p.primaryPath.isNotEmpty
-              ? () => _copyPath(p.primaryPath)
+              ? () => _copyPath(context, p.primaryPath)
               : null,
           onDelete: p.projectId.isNotEmpty
               ? () => _confirmDeleteProject(context, p, displayName)
@@ -417,11 +431,36 @@ class _ProjectGroupState extends State<_ProjectGroup> {
     return 'xdg-open';
   }
 
-  void _copyPath(String path) {
+  Future<void> _addProjectDirectory(BuildContext context, AppProject project) async {
+    final path = await pickProjectDirectoryPath(context);
+    if (path == null || path.trim().isEmpty || !context.mounted) return;
+    final l10n = context.l10n;
+    final trimmed = normalizeProjectPath(path);
+    if (projectPathsEqual(trimmed, project.primaryPath)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(l10n.projectDirectoryAlreadyPrimary)),
+      );
+      return;
+    }
+    if (projectPathsContains(project.additionalPaths, trimmed)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(l10n.projectDirectoryAlreadyAdded)),
+      );
+      return;
+    }
+    final repo = context.read<SessionRepository>();
+    await context.read<ChatCubit>().addProjectDirectory(repo, project, trimmed);
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(l10n.projectDirectoryAdded)),
+    );
+  }
+
+  void _copyPath(BuildContext context, String path) {
     Clipboard.setData(ClipboardData(text: path));
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Path copied: $path'),
+        content: Text(context.l10n.pathCopied(path)),
         duration: const Duration(seconds: 2),
       ),
     );
@@ -473,6 +512,8 @@ class _ProjectHeader extends StatefulWidget {
     required this.expanded,
     required this.onToggle,
     required this.onNewSession,
+    this.onViewDetails,
+    this.onAddDirectory,
     this.onOpenFolder,
     this.onCopyPath,
     this.onDelete,
@@ -484,6 +525,8 @@ class _ProjectHeader extends StatefulWidget {
   final bool expanded;
   final VoidCallback onToggle;
   final VoidCallback onNewSession;
+  final VoidCallback? onViewDetails;
+  final VoidCallback? onAddDirectory;
   final VoidCallback? onOpenFolder;
   final VoidCallback? onCopyPath;
   final VoidCallback? onDelete;
@@ -497,6 +540,8 @@ class _ProjectHeaderState extends State<_ProjectHeader> {
   var _menuOpen = false;
 
   bool get _hasOverflowMenu =>
+      widget.onViewDetails != null ||
+      widget.onAddDirectory != null ||
       widget.onOpenFolder != null ||
       widget.onCopyPath != null ||
       widget.onDelete != null;
@@ -506,6 +551,28 @@ class _ProjectHeaderState extends State<_ProjectHeader> {
   List<PopupMenuEntry<String>> _projectMenuEntries(BuildContext context) {
     final l10n = context.l10n;
     return [
+      if (widget.onViewDetails != null)
+        PopupMenuItem(
+          value: 'details',
+          child: Row(
+            children: [
+              const Icon(Icons.info_outline, size: 18),
+              const SizedBox(width: 8),
+              Text(l10n.projectDetails),
+            ],
+          ),
+        ),
+      if (widget.onAddDirectory != null)
+        PopupMenuItem(
+          value: 'addDirectory',
+          child: Row(
+            children: [
+              const Icon(Icons.create_new_folder_outlined, size: 18),
+              const SizedBox(width: 8),
+              Text(l10n.addProjectDirectory),
+            ],
+          ),
+        ),
       if (widget.onOpenFolder != null)
         PopupMenuItem(
           value: 'openFolder',
@@ -548,6 +615,12 @@ class _ProjectHeaderState extends State<_ProjectHeader> {
 
   void _handleProjectMenuSelection(String value) {
     switch (value) {
+      case 'details':
+        widget.onViewDetails?.call();
+        break;
+      case 'addDirectory':
+        widget.onAddDirectory?.call();
+        break;
       case 'openFolder':
         widget.onOpenFolder?.call();
         break;
@@ -1098,11 +1171,13 @@ class _SidebarSectionTitle extends StatelessWidget {
   const _SidebarSectionTitle({
     required this.title,
     required this.actionLabel,
+    this.actionTooltip,
     this.onAction,
   });
 
   final String title;
   final String actionLabel;
+  final String? actionTooltip;
   final VoidCallback? onAction;
 
   @override
@@ -1126,27 +1201,36 @@ class _SidebarSectionTitle extends StatelessWidget {
             ),
           ),
           if (actionLabel.isNotEmpty)
-            Material(
-              color: Colors.transparent,
-              borderRadius: BorderRadius.circular(4),
-              child: InkWell(
-                borderRadius: BorderRadius.circular(4),
-                onTap: onAction,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 6,
-                    vertical: 2,
-                  ),
-                  child: Text(
-                    actionLabel,
-                    style: TextStyle(
-                      color: cs.primary,
-                      fontWeight: FontWeight.w700,
-                      fontSize: 14,
+            Builder(
+              builder: (context) {
+                final action = Material(
+                  color: Colors.transparent,
+                  borderRadius: BorderRadius.circular(4),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(4),
+                    onTap: onAction,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 2,
+                      ),
+                      child: Text(
+                        actionLabel,
+                        style: TextStyle(
+                          color: cs.primary,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 14,
+                        ),
+                      ),
                     ),
                   ),
-                ),
-              ),
+                );
+                final tip = actionTooltip;
+                if (tip != null && tip.isNotEmpty) {
+                  return Tooltip(message: tip, child: action);
+                }
+                return action;
+              },
             ),
         ],
       ),

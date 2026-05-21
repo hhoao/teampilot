@@ -226,6 +226,25 @@ class AppLocalizationsEn extends AppLocalizations {
   String get newProject => 'New Project';
 
   @override
+  String get newProjectTooltip =>
+      'Create a project with one or more directories';
+
+  @override
+  String get create => 'Create';
+
+  @override
+  String get pickPrimaryDirectory => 'Pick primary directory';
+
+  @override
+  String get projectPrimaryPathRequired => 'Select a primary directory first.';
+
+  @override
+  String get projectPrimaryPathNotSelected => 'No primary directory selected';
+
+  @override
+  String get projectDirectoryAdded => 'Directory added to project';
+
+  @override
   String get newSessionTooltip => 'New session';
 
   @override
@@ -236,6 +255,52 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get copyFolderPath => 'Copy Folder Path';
+
+  @override
+  String pathCopied(String path) {
+    return 'Path copied: $path';
+  }
+
+  @override
+  String get projectDetails => 'Project details';
+
+  @override
+  String get projectDetailsTitle => 'Project Details';
+
+  @override
+  String get addProjectDirectory => 'Add directory';
+
+  @override
+  String get removeProjectDirectory => 'Remove directory';
+
+  @override
+  String get projectDisplayName => 'Display name';
+
+  @override
+  String get projectPrimaryPath => 'Primary directory';
+
+  @override
+  String get projectAdditionalDirectories => 'Additional directories';
+
+  @override
+  String get projectNoAdditionalDirectories => 'No additional directories';
+
+  @override
+  String get projectSessionCount => 'Sessions';
+
+  @override
+  String get projectCreatedAt => 'Created';
+
+  @override
+  String get projectUpdatedAt => 'Updated';
+
+  @override
+  String get projectDirectoryAlreadyPrimary =>
+      'This path is already the primary directory.';
+
+  @override
+  String get projectDirectoryAlreadyAdded =>
+      'This directory is already in the project.';
 
   @override
   String get deleteProject => 'Delete Project';

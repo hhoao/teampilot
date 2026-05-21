@@ -9,6 +9,7 @@ import '../models/app_session.dart';
 import '../services/app_storage.dart';
 import '../services/flashskyai_storage_roots.dart';
 import '../services/session_lifecycle_service.dart';
+import '../utils/project_path_utils.dart';
 import 'session_repository_fs.dart';
 
 class _AsyncLock {
@@ -124,14 +125,14 @@ class SessionRepository {
     String display = '',
   }) async {
     final fs = await _fs();
-    final trimmed = primaryPath.trim();
+    final trimmed = normalizeProjectPath(primaryPath);
     final index = await _loadIndex(fs);
     final now = DateTime.now().millisecondsSinceEpoch;
     for (var i = 0; i < index.projects.length; i++) {
       final existing = index.projects[i];
-      if (existing.primaryPath != trimmed) continue;
+      if (!projectPathsEqual(existing.primaryPath, trimmed)) continue;
       final newAdd = additionalPaths
-          .map((e) => e.trim())
+          .map(normalizeProjectPath)
           .where((e) => e.isNotEmpty)
           .toList();
       final mergedPaths = List<String>.from(existing.additionalPaths);
@@ -165,7 +166,7 @@ class SessionRepository {
       projectId: const Uuid().v4(),
       primaryPath: trimmed,
       additionalPaths: List<String>.from(
-        additionalPaths.map((e) => e.trim()).where((e) => e.isNotEmpty),
+        additionalPaths.map(normalizeProjectPath).where((e) => e.isNotEmpty),
       ),
       display: display.trim(),
       createdAt: now,
@@ -179,6 +180,34 @@ class SessionRepository {
     return project;
   }
 
+  Future<void> updateProjectMetadata(
+    String projectId, {
+    String? display,
+    List<String>? additionalPaths,
+  }) async {
+    final fs = await _fs();
+    final index = await _loadIndex(fs);
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final projects = index.projects.map((proj) {
+      if (proj.projectId != projectId) return proj;
+      return proj.copyWith(
+        display: display != null ? display.trim() : proj.display,
+        additionalPaths: additionalPaths != null
+            ? List<String>.from(
+                additionalPaths
+                    .map(normalizeProjectPath)
+                    .where((e) => e.isNotEmpty),
+              )
+            : proj.additionalPaths,
+        updatedAt: now,
+      );
+    }).toList();
+    await _saveIndex(
+      fs,
+      AppProjectsIndex(schemaVersion: index.schemaVersion, projects: projects),
+    );
+  }
+
   Future<void> updateProjectPaths(
     String projectId,
     String primaryPath,
@@ -190,9 +219,9 @@ class SessionRepository {
     final projects = index.projects.map((proj) {
       if (proj.projectId != projectId) return proj;
       return proj.copyWith(
-        primaryPath: primaryPath.trim(),
+        primaryPath: normalizeProjectPath(primaryPath),
         additionalPaths: List<String>.from(
-          additionalPaths.map((e) => e.trim()).where((e) => e.isNotEmpty),
+          additionalPaths.map(normalizeProjectPath).where((e) => e.isNotEmpty),
         ),
         updatedAt: now,
       );

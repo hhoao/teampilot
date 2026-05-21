@@ -215,6 +215,24 @@ class AppLocalizationsZh extends AppLocalizations {
   String get newProject => '新建项目';
 
   @override
+  String get newProjectTooltip => '创建项目，可添加主目录与附加目录';
+
+  @override
+  String get create => '创建';
+
+  @override
+  String get pickPrimaryDirectory => '选择主目录';
+
+  @override
+  String get projectPrimaryPathRequired => '请先选择主目录。';
+
+  @override
+  String get projectPrimaryPathNotSelected => '尚未选择主目录';
+
+  @override
+  String get projectDirectoryAdded => '已添加目录到项目';
+
+  @override
   String get newSessionTooltip => '新建会话';
 
   @override
@@ -225,6 +243,50 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get copyFolderPath => '复制文件夹路径';
+
+  @override
+  String pathCopied(String path) {
+    return '已复制路径：$path';
+  }
+
+  @override
+  String get projectDetails => '项目详情';
+
+  @override
+  String get projectDetailsTitle => '项目详情';
+
+  @override
+  String get addProjectDirectory => '添加目录';
+
+  @override
+  String get removeProjectDirectory => '移除目录';
+
+  @override
+  String get projectDisplayName => '显示名称';
+
+  @override
+  String get projectPrimaryPath => '主目录';
+
+  @override
+  String get projectAdditionalDirectories => '附加目录';
+
+  @override
+  String get projectNoAdditionalDirectories => '暂无附加目录';
+
+  @override
+  String get projectSessionCount => '会话数';
+
+  @override
+  String get projectCreatedAt => '创建时间';
+
+  @override
+  String get projectUpdatedAt => '更新时间';
+
+  @override
+  String get projectDirectoryAlreadyPrimary => '该路径已是项目主目录。';
+
+  @override
+  String get projectDirectoryAlreadyAdded => '该目录已在项目中。';
 
   @override
   String get deleteProject => '删除项目';

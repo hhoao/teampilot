@@ -68,10 +68,37 @@
   "teamNameAlreadyExists": "已存在名为「{name}」的团队。",
   "projects": "项目",
   "newProject": "新建项目",
+  "newProjectTooltip": "创建项目，可添加主目录与附加目录",
+  "create": "创建",
+  "pickPrimaryDirectory": "选择主目录",
+  "projectPrimaryPathRequired": "请先选择主目录。",
+  "projectPrimaryPathNotSelected": "尚未选择主目录",
+  "projectDirectoryAdded": "已添加目录到项目",
   "newSessionTooltip": "新建会话",
   "defaultNewChatSessionTitle": "新对话",
   "openFolder": "打开文件夹",
   "copyFolderPath": "复制文件夹路径",
+  "pathCopied": "已复制路径：{path}",
+  "@pathCopied": {
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
+  },
+  "projectDetails": "项目详情",
+  "projectDetailsTitle": "项目详情",
+  "addProjectDirectory": "添加目录",
+  "removeProjectDirectory": "移除目录",
+  "projectDisplayName": "显示名称",
+  "projectPrimaryPath": "主目录",
+  "projectAdditionalDirectories": "附加目录",
+  "projectNoAdditionalDirectories": "暂无附加目录",
+  "projectSessionCount": "会话数",
+  "projectCreatedAt": "创建时间",
+  "projectUpdatedAt": "更新时间",
+  "projectDirectoryAlreadyPrimary": "该路径已是项目主目录。",
+  "projectDirectoryAlreadyAdded": "该目录已在项目中。",
   "deleteProject": "删除项目",
   "deleteProjectConfirm": "删除项目 \"{name}\" 及其所有会话？此操作不可撤销。",
   "noSessions": "暂无会话",

@@ -153,6 +153,22 @@ void main() {
     },
   );
 
+  test('updateProjectMetadata updates display and additionalPaths', () async {
+    final tmp = await Directory.systemTemp.createTemp('fs_session_repo_');
+    addTearDown(() => tmp.deleteSync(recursive: true));
+
+    final repo = SessionRepository(rootDir: tmp.path);
+    final p = await repo.createProject('/base', additionalPaths: const ['/a']);
+    await repo.updateProjectMetadata(
+      p.projectId,
+      display: 'My App',
+      additionalPaths: const ['/b'],
+    );
+    final loaded = await repo.loadProjects();
+    expect(loaded.single.display, 'My App');
+    expect(loaded.single.additionalPaths, ['/b']);
+  });
+
   test('updateProjectPaths updates index', () async {
     final tmp = await Directory.systemTemp.createTemp('fs_session_repo_');
     addTearDown(() => tmp.deleteSync(recursive: true));

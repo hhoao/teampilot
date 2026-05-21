@@ -75,10 +75,37 @@
   },
   "projects": "Projects",
   "newProject": "New Project",
+  "newProjectTooltip": "Create a project with one or more directories",
+  "create": "Create",
+  "pickPrimaryDirectory": "Pick primary directory",
+  "projectPrimaryPathRequired": "Select a primary directory first.",
+  "projectPrimaryPathNotSelected": "No primary directory selected",
+  "projectDirectoryAdded": "Directory added to project",
   "newSessionTooltip": "New session",
   "defaultNewChatSessionTitle": "New Chat",
   "openFolder": "Open Folder",
   "copyFolderPath": "Copy Folder Path",
+  "pathCopied": "Path copied: {path}",
+  "@pathCopied": {
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
+  },
+  "projectDetails": "Project details",
+  "projectDetailsTitle": "Project Details",
+  "addProjectDirectory": "Add directory",
+  "removeProjectDirectory": "Remove directory",
+  "projectDisplayName": "Display name",
+  "projectPrimaryPath": "Primary directory",
+  "projectAdditionalDirectories": "Additional directories",
+  "projectNoAdditionalDirectories": "No additional directories",
+  "projectSessionCount": "Sessions",
+  "projectCreatedAt": "Created",
+  "projectUpdatedAt": "Updated",
+  "projectDirectoryAlreadyPrimary": "This path is already the primary directory.",
+  "projectDirectoryAlreadyAdded": "This directory is already in the project.",
   "deleteProject": "Delete Project",
   "deleteProjectConfirm": "Delete project \"{name}\" and all its sessions? This cannot be undone.",
   "@deleteProjectConfirm": {

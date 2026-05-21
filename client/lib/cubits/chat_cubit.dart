@@ -17,6 +17,7 @@ import '../services/session_lifecycle_service.dart';
 import '../services/terminal_session.dart';
 import '../services/terminal_transport_factory.dart';
 import '../utils/logger.dart';
+import '../utils/project_path_utils.dart';
 
 typedef TerminalSessionFactory =
     TerminalSession Function({required String executable});
@@ -341,9 +342,45 @@ class ChatCubit extends Cubit<ChatState> {
     String primaryPath,
     SessionRepository repo, {
     String sessionTeamId = '',
+    List<String> additionalPaths = const [],
+    String display = '',
   }) async {
-    final project = await repo.createProject(primaryPath);
+    final project = await repo.createProject(
+      primaryPath,
+      additionalPaths: additionalPaths,
+      display: display,
+    );
     await repo.createSession(project.projectId, sessionTeam: sessionTeamId);
+    await loadProjectData(repo);
+  }
+
+  Future<void> addProjectDirectory(
+    SessionRepository repo,
+    AppProject project,
+    String directoryPath,
+  ) async {
+    final trimmed = directoryPath.trim();
+    if (trimmed.isEmpty) return;
+    if (projectPathsEqual(trimmed, project.primaryPath)) return;
+    if (projectPathsContains(project.additionalPaths, trimmed)) return;
+    await repo.createProject(
+      project.primaryPath,
+      additionalPaths: [trimmed],
+    );
+    await loadProjectData(repo);
+  }
+
+  Future<void> updateProjectMetadata(
+    SessionRepository repo,
+    String projectId, {
+    String? display,
+    List<String>? additionalPaths,
+  }) async {
+    await repo.updateProjectMetadata(
+      projectId,
+      display: display,
+      additionalPaths: additionalPaths,
+    );
     await loadProjectData(repo);
   }
 

@@ -506,6 +506,42 @@ abstract class AppLocalizations {
   /// **'New Project'**
   String get newProject;
 
+  /// No description provided for @newProjectTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Create a project with one or more directories'**
+  String get newProjectTooltip;
+
+  /// No description provided for @create.
+  ///
+  /// In en, this message translates to:
+  /// **'Create'**
+  String get create;
+
+  /// No description provided for @pickPrimaryDirectory.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick primary directory'**
+  String get pickPrimaryDirectory;
+
+  /// No description provided for @projectPrimaryPathRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Select a primary directory first.'**
+  String get projectPrimaryPathRequired;
+
+  /// No description provided for @projectPrimaryPathNotSelected.
+  ///
+  /// In en, this message translates to:
+  /// **'No primary directory selected'**
+  String get projectPrimaryPathNotSelected;
+
+  /// No description provided for @projectDirectoryAdded.
+  ///
+  /// In en, this message translates to:
+  /// **'Directory added to project'**
+  String get projectDirectoryAdded;
+
   /// No description provided for @newSessionTooltip.
   ///
   /// In en, this message translates to:
@@ -529,6 +565,90 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Copy Folder Path'**
   String get copyFolderPath;
+
+  /// No description provided for @pathCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Path copied: {path}'**
+  String pathCopied(String path);
+
+  /// No description provided for @projectDetails.
+  ///
+  /// In en, this message translates to:
+  /// **'Project details'**
+  String get projectDetails;
+
+  /// No description provided for @projectDetailsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Project Details'**
+  String get projectDetailsTitle;
+
+  /// No description provided for @addProjectDirectory.
+  ///
+  /// In en, this message translates to:
+  /// **'Add directory'**
+  String get addProjectDirectory;
+
+  /// No description provided for @removeProjectDirectory.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove directory'**
+  String get removeProjectDirectory;
+
+  /// No description provided for @projectDisplayName.
+  ///
+  /// In en, this message translates to:
+  /// **'Display name'**
+  String get projectDisplayName;
+
+  /// No description provided for @projectPrimaryPath.
+  ///
+  /// In en, this message translates to:
+  /// **'Primary directory'**
+  String get projectPrimaryPath;
+
+  /// No description provided for @projectAdditionalDirectories.
+  ///
+  /// In en, this message translates to:
+  /// **'Additional directories'**
+  String get projectAdditionalDirectories;
+
+  /// No description provided for @projectNoAdditionalDirectories.
+  ///
+  /// In en, this message translates to:
+  /// **'No additional directories'**
+  String get projectNoAdditionalDirectories;
+
+  /// No description provided for @projectSessionCount.
+  ///
+  /// In en, this message translates to:
+  /// **'Sessions'**
+  String get projectSessionCount;
+
+  /// No description provided for @projectCreatedAt.
+  ///
+  /// In en, this message translates to:
+  /// **'Created'**
+  String get projectCreatedAt;
+
+  /// No description provided for @projectUpdatedAt.
+  ///
+  /// In en, this message translates to:
+  /// **'Updated'**
+  String get projectUpdatedAt;
+
+  /// No description provided for @projectDirectoryAlreadyPrimary.
+  ///
+  /// In en, this message translates to:
+  /// **'This path is already the primary directory.'**
+  String get projectDirectoryAlreadyPrimary;
+
+  /// No description provided for @projectDirectoryAlreadyAdded.
+  ///
+  /// In en, this message translates to:
+  /// **'This directory is already in the project.'**
+  String get projectDirectoryAlreadyAdded;
 
   /// No description provided for @deleteProject.
   ///

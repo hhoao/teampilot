@@ -1,6 +1,5 @@
 import 'dart:io';
 
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -23,6 +22,7 @@ import '../repositories/session_repository.dart';
 import '../services/platform_utils.dart';
 import 'android_shell_chrome.dart';
 import '../widgets/context_sidebar.dart';
+import '../widgets/create_project_dialog.dart';
 import '../widgets/resizable_split_view.dart';
 
 final appRouter = GoRouter(
@@ -267,89 +267,14 @@ AppProviderCli _appProviderCliFromRoute(GoRouterState state) {
 
 Future<void> _createProject(BuildContext context) async {
   closeAndroidDrawerIfOpen(context);
-  String? path;
-  if (Platform.isAndroid) {
-    if (!context.mounted) return;
-    path = await _promptRemoteProjectPath(context);
-  } else {
-    path = await FilePicker.platform.getDirectoryPath();
-  }
-  if (path != null && path.trim().isNotEmpty && context.mounted) {
-    final teamId = context.read<TeamCubit>().state.selectedTeam?.id ?? '';
-    await context.read<ChatCubit>().createProjectWithFirstSession(
-      path.trim(),
-      context.read<SessionRepository>(),
-      sessionTeamId: teamId,
-    );
-  }
-}
-
-Future<String?> _promptRemoteProjectPath(BuildContext context) {
-  return showDialog<String>(
-    context: context,
-    builder: (dialogContext) => const _RemoteProjectPathDialog(),
+  final draft = await showCreateProjectDialog(context);
+  if (draft == null || !context.mounted) return;
+  final teamId = context.read<TeamCubit>().state.selectedTeam?.id ?? '';
+  await context.read<ChatCubit>().createProjectWithFirstSession(
+    draft.primaryPath,
+    context.read<SessionRepository>(),
+    sessionTeamId: teamId,
+    additionalPaths: draft.additionalPaths,
+    display: draft.display,
   );
-}
-
-class _RemoteProjectPathDialog extends StatefulWidget {
-  const _RemoteProjectPathDialog();
-
-  @override
-  State<_RemoteProjectPathDialog> createState() =>
-      _RemoteProjectPathDialogState();
-}
-
-class _RemoteProjectPathDialogState extends State<_RemoteProjectPathDialog> {
-  final _formKey = GlobalKey<FormState>();
-  late final TextEditingController _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = TextEditingController(text: '~/');
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  void _submit() {
-    if (_formKey.currentState?.validate() != true) return;
-    Navigator.of(context).pop(_controller.text.trim());
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text('Remote Project Path'),
-      content: Form(
-        key: _formKey,
-        child: TextFormField(
-          controller: _controller,
-          autofocus: true,
-          decoration: const InputDecoration(
-            labelText: 'Path on SSH host',
-            hintText: '~/work/project',
-          ),
-          textInputAction: TextInputAction.done,
-          validator: (value) {
-            if (value == null || value.trim().isEmpty) {
-              return 'Required';
-            }
-            return null;
-          },
-          onFieldSubmitted: (_) => _submit(),
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
-        ),
-        FilledButton(onPressed: _submit, child: const Text('Create')),
-      ],
-    );
-  }
 }
