@@ -43,7 +43,12 @@ class AppPaths {
 
   /// Default TeamPilot UI data root for a remote POSIX home (matches [basePath] on desktop).
   static String defaultTeampilotAppDataDirForHome(String home) =>
-      p.join(home, '.local', 'share', teampilotAppDataDirName);
+      pathContextForDataRoot(home).join(
+        home,
+        '.local',
+        'share',
+        teampilotAppDataDirName,
+      );
 
   static p.Context get posixPathContext => p.Context(style: p.Style.posix);
 

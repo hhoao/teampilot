@@ -1,52 +1,57 @@
+import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:path/path.dart' as p;
 
 import '../remote_file_store.dart';
 import 'filesystem.dart';
-import 'wsl_shell_session.dart';
+
+typedef ProcessRunner =
+    Future<ProcessResult> Function(String executable, List<String> arguments);
 
 class WslFilesystem implements Filesystem {
-  WslFilesystem({String? distro, WslShellSession? session})
-    : _session = session ?? WslShellSession(distro: distro);
+  WslFilesystem({String? distro, ProcessRunner? processRunner})
+    : _distro = distro?.trim(),
+      _processRunner = processRunner ?? Process.run;
 
-  final WslShellSession _session;
+  final String? _distro;
+  final ProcessRunner _processRunner;
 
   @override
   p.Context get pathContext => p.Context(style: p.Style.posix);
 
-  WslShellSession get session => _session;
-
-  Future<void> closeSession() => _session.close();
-
-  Future<({int exitCode, String stdout, String stderr})> _run(
-    String script,
-  ) async {
-    final result = await _session.run(script);
-    if (result.exitCode != 0) {
-      throw StateError(
-        'wsl script failed (${result.exitCode}): ${result.stderr}',
-      );
-    }
-    return result;
+  List<String> _args(List<String> command) {
+    final distro = _distro;
+    if (distro == null || distro.isEmpty) return command;
+    return ['-d', distro, ...command];
   }
 
-  Future<({int exitCode, String stdout, String stderr})> _runAllowFail(
-    String script,
-  ) => _session.run(script);
+  Future<ProcessResult> _run(List<String> command) {
+    return _processRunner('wsl.exe', _args(command));
+  }
+
+  Future<void> _checked(List<String> command) async {
+    final result = await _run(command);
+    if (result.exitCode != 0) {
+      throw StateError(
+        'wsl ${command.join(' ')} failed (${result.exitCode}): ${result.stderr}',
+      );
+    }
+  }
 
   @override
   Future<FsStat> stat(String path) async {
-    final quoted = RemoteFileStore.shellSingleQuote(path);
-    final result = await _runAllowFail('''
-if [ -L $quoted ]; then echo symlink
-elif [ -d $quoted ]; then echo directory
-elif [ -f $quoted ]; then echo file
-else echo missing
-fi
-''');
+    final result = await _run([
+      'sh',
+      '-lc',
+      'if [ -L ${RemoteFileStore.shellSingleQuote(path)} ]; then echo symlink; '
+          'elif [ -d ${RemoteFileStore.shellSingleQuote(path)} ]; then echo directory; '
+          'elif [ -f ${RemoteFileStore.shellSingleQuote(path)} ]; then echo file; '
+          'else echo missing; fi',
+    ]);
     if (result.exitCode != 0) return const FsStat(kind: FsEntityKind.notFound);
-    return switch (result.stdout.trim()) {
+    return switch ((result.stdout as String).trim()) {
       'directory' => const FsStat(kind: FsEntityKind.directory),
       'file' => const FsStat(kind: FsEntityKind.file),
       'symlink' => const FsStat(kind: FsEntityKind.symlink),
@@ -55,41 +60,36 @@ fi
   }
 
   @override
-  Future<void> ensureDir(String path) async {
-    await _run('mkdir -p -- ${RemoteFileStore.shellSingleQuote(path)}');
-  }
+  Future<void> ensureDir(String path) => _checked(['mkdir', '-p', '--', path]);
 
   @override
-  Future<void> removeRecursive(String path) async {
-    await _run('rm -rf -- ${RemoteFileStore.shellSingleQuote(path)}');
-  }
+  Future<void> removeRecursive(String path) =>
+      _checked(['rm', '-rf', '--', path]);
 
   @override
   Future<void> rename(String from, String to) async {
     await ensureDir(pathContext.dirname(to));
     await removeRecursive(to);
-    await _run(
-      'mv -- ${RemoteFileStore.shellSingleQuote(from)} ${RemoteFileStore.shellSingleQuote(to)}',
-    );
+    await _checked(['mv', '--', from, to]);
   }
 
   @override
   Future<String?> readString(String path) async {
-    final result = await _runAllowFail(
-      'cat -- ${RemoteFileStore.shellSingleQuote(path)}',
-    );
+    final result = await _run(['cat', path]);
     if (result.exitCode != 0) return null;
-    return result.stdout;
+    return result.stdout as String;
   }
 
   @override
   Future<List<int>?> readBytes(String path) async {
     final quoted = RemoteFileStore.shellSingleQuote(path);
-    final result = await _runAllowFail(
+    final result = await _run([
+      'sh',
+      '-lc',
       'base64 -w0 $quoted 2>/dev/null || base64 $quoted',
-    );
+    ]);
     if (result.exitCode != 0) return null;
-    final encoded = result.stdout.replaceAll(RegExp(r'\s+'), '');
+    final encoded = (result.stdout as String).replaceAll(RegExp(r'\s+'), '');
     if (encoded.isEmpty) return null;
     try {
       return base64.decode(encoded);
@@ -98,24 +98,48 @@ fi
     }
   }
 
+  Future<String> _collectStreamText(Stream<List<int>> stream) {
+    return stream
+        .transform(const Utf8Decoder(allowMalformed: true))
+        .join();
+  }
+
+  Future<void> _pipeBase64ToFile(String path, String encoded) async {
+    await ensureDir(pathContext.dirname(path));
+    final quotedPath = RemoteFileStore.shellSingleQuote(path);
+    final process = await Process.start(
+      'wsl.exe',
+      _args(['sh', '-lc', 'base64 -d > $quotedPath']),
+    );
+    final stderrFuture = _collectStreamText(process.stderr);
+    unawaited(process.stdout.drain());
+    final payload = utf8.encode(encoded);
+    const chunkSize = 64 * 1024;
+    for (var offset = 0; offset < payload.length; offset += chunkSize) {
+      final end =
+          offset + chunkSize < payload.length
+              ? offset + chunkSize
+              : payload.length;
+      process.stdin.add(payload.sublist(offset, end));
+    }
+    await process.stdin.close();
+    final exitCode = await process.exitCode;
+    final stderr = await stderrFuture;
+    if (exitCode != 0) {
+      throw StateError('wsl write failed ($exitCode): $stderr');
+    }
+  }
+
   @override
   Future<void> writeString(String path, String content) async {
-    await ensureDir(pathContext.dirname(path));
     final encoded = base64.encode(utf8.encode(content));
-    final quotedPath = RemoteFileStore.shellSingleQuote(path);
-    await _run(
-      'printf %s ${RemoteFileStore.shellSingleQuote(encoded)} | base64 -d > $quotedPath',
-    );
+    await _pipeBase64ToFile(path, encoded);
   }
 
   @override
   Future<void> writeBytes(String path, List<int> bytes) async {
-    await ensureDir(pathContext.dirname(path));
     final encoded = base64.encode(bytes);
-    final quotedPath = RemoteFileStore.shellSingleQuote(path);
-    await _run(
-      'printf %s ${RemoteFileStore.shellSingleQuote(encoded)} | base64 -d > $quotedPath',
-    );
+    await _pipeBase64ToFile(path, encoded);
   }
 
   @override
@@ -127,13 +151,16 @@ fi
 
   @override
   Future<List<FsDirEntry>> listDir(String path) async {
-    final quoted = RemoteFileStore.shellSingleQuote(path);
-    final result = await _runAllowFail(
-      'find $quoted -mindepth 1 -maxdepth 1 -printf "%f\\t%y\\n"',
-    );
+    final result = await _run([
+      'sh',
+      '-lc',
+      'find ${RemoteFileStore.shellSingleQuote(path)} -mindepth 1 -maxdepth 1 '
+          r'-printf "%f\t%y\n"',
+    ]);
     if (result.exitCode != 0) return const [];
+    final lines = (result.stdout as String).split('\n');
     return [
-      for (final line in result.stdout.split('\n'))
+      for (final line in lines)
         if (line.trim().isNotEmpty)
           FsDirEntry(
             name: line.split('\t').first,
@@ -149,9 +176,7 @@ fi
   }) async {
     await ensureDir(pathContext.dirname(linkPath));
     await removeRecursive(linkPath);
-    await _run(
-      'ln -sf -- ${RemoteFileStore.shellSingleQuote(target)} ${RemoteFileStore.shellSingleQuote(linkPath)}',
-    );
+    await _checked(['ln', '-sf', '--', target, linkPath]);
     return true;
   }
 
@@ -163,8 +188,11 @@ fi
     await ensureDir(pathContext.dirname(destination));
     await removeRecursive(destination);
     await ensureDir(destination);
-    await _run(
-      'cp -R -- ${RemoteFileStore.shellSingleQuote('$source/.')} ${RemoteFileStore.shellSingleQuote(destination)}',
-    );
+    await _checked([
+      'sh',
+      '-lc',
+      'cp -R -- ${RemoteFileStore.shellSingleQuote('$source/.')} '
+          '${RemoteFileStore.shellSingleQuote(destination)}',
+    ]);
   }
 }

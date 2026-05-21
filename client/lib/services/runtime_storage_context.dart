@@ -8,7 +8,6 @@ import 'io/filesystem.dart';
 import 'io/local_filesystem.dart';
 import 'io/sftp_filesystem.dart';
 import 'io/wsl_filesystem.dart';
-import 'io/wsl_shell_session.dart';
 import 'remote_file_store.dart';
 import 'remote_ssh_storage_paths.dart';
 import 'remote_teampilot_app_data_resolver.dart';
@@ -75,20 +74,9 @@ class RuntimeStorageContext {
       nativeCwd: nativeCwd,
       wslDistro: wslDistro,
     );
-    await _disposePreviousFilesystem(_current);
     _current = ctx;
     AppPathsBootstrapper.syncPaths(ctx.paths);
     return ctx;
-  }
-
-  static Future<void> _disposePreviousFilesystem(
-    RuntimeStorageContext? previous,
-  ) async {
-    if (previous == null) return;
-    final fs = previous.filesystem;
-    if (fs is WslFilesystem) {
-      await fs.closeSession();
-    }
   }
 
   static Future<RuntimeStorageContext> resolve({
@@ -129,14 +117,15 @@ class RuntimeStorageContext {
   static Future<RuntimeStorageContext> _resolveWsl({String? distro}) async {
     final trimmedDistro = distro?.trim();
     final distroKey = trimmedDistro ?? '';
-    final session = WslShellSession(
+    final fs = WslFilesystem(
       distro: trimmedDistro == null || trimmedDistro.isEmpty
           ? null
           : trimmedDistro,
     );
-    final fs = WslFilesystem(session: session);
     final home = await _queryWslHome(
-      session: session,
+      distro: trimmedDistro == null || trimmedDistro.isEmpty
+          ? null
+          : trimmedDistro,
       distroKey: distroKey,
     );
     final appDataRoot = AppPaths.defaultTeampilotAppDataDirForHome(home);
@@ -225,19 +214,25 @@ class RuntimeStorageContext {
   }
 
   static Future<String> _queryWslHome({
-    required WslShellSession session,
+    String? distro,
     required String distroKey,
   }) async {
     if (_cachedWslHome != null && _cachedWslDistroKey == distroKey) {
       return _cachedWslHome!;
     }
-    final result = await session.run(r'printf %s "$HOME"');
+    final args = <String>[];
+    final trimmedDistro = distro?.trim();
+    if (trimmedDistro != null && trimmedDistro.isNotEmpty) {
+      args.addAll(['-d', trimmedDistro]);
+    }
+    args.addAll(['sh', '-lc', r'printf %s "$HOME"']);
+    final result = await Process.run('wsl.exe', args);
     if (result.exitCode != 0) {
       throw StateError(
         'Failed to resolve WSL HOME (${result.exitCode}): ${result.stderr}',
       );
     }
-    final home = result.stdout
+    final home = (result.stdout as String)
         .split(RegExp(r'\r?\n'))
         .map((l) => l.trim())
         .firstWhere((l) => l.isNotEmpty, orElse: () => '');

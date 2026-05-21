@@ -48,5 +48,16 @@ void main() {
       expect(AppPaths.skillsDirForTeampilotRoot(root), '$root/skills');
       expect(AppPaths.appProjectsDirForTeampilotRoot(root), '$root/projects');
     });
+
+    test('defaultTeampilotAppDataDirForHome uses POSIX separators for WSL home', () {
+      expect(
+        AppPaths.defaultTeampilotAppDataDirForHome('/home/hhoa'),
+        '/home/hhoa/.local/share/com.hhoa.teampilot',
+      );
+      expect(
+        AppPaths.defaultTeampilotAppDataDirForHome('/home/hhoa'),
+        isNot(contains(r'\')),
+      );
+    });
   });
 }

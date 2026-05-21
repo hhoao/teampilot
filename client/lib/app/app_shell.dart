@@ -43,6 +43,7 @@ import '../services/skill_repo_service.dart';
 import '../services/ssh_client_factory.dart';
 import '../services/team_skill_linker_service.dart';
 import '../services/terminal_transport_factory.dart';
+import '../utils/logger.dart';
 
 /// Fully wired app dependencies produced after async bootstrap.
 class AppShell {
@@ -95,8 +96,12 @@ Future<AppShell> buildAppShell({
   required SharedPreferences preferences,
   required String nativeAppDataPath,
 }) async {
+  void boot(String phase) => appLogger.i('[boot] $phase');
+
+  boot('start');
   final locatedExecutables = <TeamCli, String>{};
   if (!Platform.isAndroid) {
+    boot('locating CLI tools');
     final flashskyaiLocated = await FlashskyaiCliLocator.locate();
     if (flashskyaiLocated != null && flashskyaiLocated.isNotEmpty) {
       locatedExecutables[TeamCli.flashskyai] = flashskyaiLocated;
@@ -114,7 +119,9 @@ Future<AppShell> buildAppShell({
     locatedExecutable: cliLocated,
     locatedExecutables: locatedExecutables,
   );
+  boot('loading session preferences');
   await sessionPreferencesCubit.load();
+  boot('session preferences loaded');
 
   final sshCredentialStore = const SecureSshCredentialStore(
     FlutterSecureKeyValueStore(),
@@ -125,6 +132,7 @@ Future<AppShell> buildAppShell({
     knownHostRepository: sshKnownHostRepo,
   );
 
+  boot('installing RuntimeStorageContext');
   await RuntimeStorageContext.install(
     isSshMode:
         Platform.isAndroid ||
@@ -138,6 +146,7 @@ Future<AppShell> buildAppShell({
     nativeCwd: Directory.current.path,
     wslDistro: RuntimeStorageContext.parseWslDistro(cliLocated),
   );
+  boot('RuntimeStorageContext installed (${RuntimeStorageContext.current.mode})');
 
   if (!Platform.isAndroid) {
     unawaited(
@@ -307,7 +316,9 @@ Future<AppShell> buildAppShell({
     connectionModeResolver: () => connectionModeService.effectiveMode,
   );
 
+  boot('loading layout');
   await layoutCubit.load();
+  boot('buildAppShell complete');
 
   Future<void> bootstrapAppData() async {
     await sshProfileCubit.load(notifyActiveProfileChanged: false);
@@ -399,6 +410,7 @@ class _TeamPilotBootstrapState extends State<TeamPilotBootstrap> {
 
   Future<void> _start() async {
     try {
+      appLogger.i('[boot] TeamPilotBootstrap starting buildAppShell');
       final shell = await buildAppShell(
         preferences: widget.preferences,
         nativeAppDataPath: widget.nativeAppDataPath,
@@ -408,7 +420,8 @@ class _TeamPilotBootstrapState extends State<TeamPilotBootstrap> {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         unawaited(shell.bootstrapAppData());
       });
-    } on Object catch (error) {
+    } on Object catch (error, stackTrace) {
+      appLogger.e('[boot] buildAppShell failed', error: error, stackTrace: stackTrace);
       if (!mounted) return;
       setState(() => _error = error);
     }
