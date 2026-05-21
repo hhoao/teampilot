@@ -96,7 +96,17 @@ class LocalFilesystem implements Filesystem {
   Future<void> rename(String from, String to) async {
     await ensureDir(pathContext.dirname(to));
     await removeRecursive(to);
-    await File(from).rename(to);
+    final dir = Directory(from);
+    if (await dir.exists()) {
+      await dir.rename(to);
+      return;
+    }
+    final file = File(from);
+    if (await file.exists()) {
+      await file.rename(to);
+      return;
+    }
+    throw FileSystemException('rename failed', from, const OSError('Source path not found', 2));
   }
 
   @override

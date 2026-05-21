@@ -105,6 +105,16 @@ class FlashskyaiStorageRoots {
     }
   }
 
+  /// Re-runs [reinstallContext] then resolves a fresh snapshot (storage backend changes).
+  Future<StorageRootsSnapshot> reinstallAndResolve() async {
+    final reinstall = _reinstallContext;
+    if (reinstall != null) {
+      await reinstall();
+    }
+    invalidate();
+    return resolve(forceRefresh: true);
+  }
+
   Future<StorageRootsSnapshot> _resolveUncached() async {
     final reinstall = _reinstallContext;
     if (reinstall != null &&

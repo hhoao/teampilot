@@ -24,7 +24,7 @@ class FlashskyaiProviderPresets {
         config: {
           'type': 'api',
           'proxy': false,
-          'provider_type': 'https://api.deepseek.com/anthropic',
+          'provider_type': 'openai',
           'models': {
             'deepseek-chat': {
               'name': 'deepseek-chat',
@@ -179,11 +179,7 @@ class FlashskyaiProviderPresets {
         baseUrl: 'https://api.siliconflow.cn/v1',
         defaultModel: '',
         icon: 'siliconflow',
-        config: {
-          'type': 'api',
-          'proxy': false,
-          'provider_type': 'siliconflow',
-        },
+        config: {'type': 'api', 'proxy': false, 'provider_type': 'siliconflow'},
       ),
     ),
     AppProviderPreset(

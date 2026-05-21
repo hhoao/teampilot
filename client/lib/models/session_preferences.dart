@@ -1,4 +1,5 @@
 import 'connection_mode.dart';
+import 'windows_storage_backend.dart';
 import '../services/platform_utils.dart';
 
 class SessionPreferences {
@@ -10,7 +11,10 @@ class SessionPreferences {
     this.sshUseLoginShell = false,
     this.autoLaunchAllMembersOnConnect = true,
     this.scopeSessionsToSelectedTeam = true,
+    WindowsStorageBackend? windowsStorageBackend,
   }) : connectionMode = connectionMode ?? defaultConnectionMode(),
+       windowsStorageBackend =
+           windowsStorageBackend ?? WindowsStorageBackend.native,
        cliExecutablePaths = Map.unmodifiable(
          _normalizeCliExecutablePaths(cliExecutablePaths),
        );
@@ -32,6 +36,9 @@ class SessionPreferences {
           json['autoLaunchAllMembersOnConnect'] as bool? ?? true,
       scopeSessionsToSelectedTeam:
           json['scopeSessionsToSelectedTeam'] as bool? ?? true,
+      windowsStorageBackend: WindowsStorageBackendJson.fromJson(
+        json['windowsStorageBackend'] as String?,
+      ),
     );
   }
 
@@ -67,6 +74,9 @@ class SessionPreferences {
   /// matches the selected team id.
   final bool scopeSessionsToSelectedTeam;
 
+  /// Windows-only: business file I/O via native AppData or WSL home.
+  final WindowsStorageBackend windowsStorageBackend;
+
   SessionPreferences copyWith({
     ConnectionMode? connectionMode,
     String? cliExecutablePath,
@@ -75,6 +85,7 @@ class SessionPreferences {
     bool? sshUseLoginShell,
     bool? autoLaunchAllMembersOnConnect,
     bool? scopeSessionsToSelectedTeam,
+    WindowsStorageBackend? windowsStorageBackend,
   }) {
     return SessionPreferences(
       connectionMode: connectionMode ?? this.connectionMode,
@@ -87,6 +98,8 @@ class SessionPreferences {
           autoLaunchAllMembersOnConnect ?? this.autoLaunchAllMembersOnConnect,
       scopeSessionsToSelectedTeam:
           scopeSessionsToSelectedTeam ?? this.scopeSessionsToSelectedTeam,
+      windowsStorageBackend:
+          windowsStorageBackend ?? this.windowsStorageBackend,
     );
   }
 
@@ -98,6 +111,7 @@ class SessionPreferences {
       'sshUseLoginShell': sshUseLoginShell,
       'autoLaunchAllMembersOnConnect': autoLaunchAllMembersOnConnect,
       'scopeSessionsToSelectedTeam': scopeSessionsToSelectedTeam,
+      'windowsStorageBackend': windowsStorageBackend.toJson(),
     };
     if (cliExecutablePaths.isNotEmpty) {
       json['cliExecutablePaths'] = cliExecutablePaths;

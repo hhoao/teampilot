@@ -97,13 +97,6 @@ class SessionLifecycleService {
       memberConfigDir: memberConfigDir,
       resolvedRoots: resolvedRoots,
     );
-    _logLaunchPlan(
-      session: session,
-      team: team,
-      plan: plan,
-      roots: roots,
-      matchedCliStatePath: cliState.matchedPath,
-    );
     return plan;
   }
 
@@ -220,9 +213,7 @@ class SessionLifecycleService {
   Future<StorageRootsSnapshot> _resolveRoots() async {
     final resolver = _storageRootsResolver;
     if (resolver != null) return resolver();
-    return _localRoots(
-      _appDataBasePath ?? AppStorage.paths.basePath,
-    );
+    return _localRoots(_appDataBasePath ?? AppStorage.paths.basePath);
   }
 
   StorageRootsSnapshot _localRoots(String basePath) {
@@ -399,24 +390,6 @@ class SessionLifecycleService {
         env['FLASHSKYAI_CONFIG_DIR'] ??
         env['CODEX_HOME'] ??
         '';
-  }
-
-  void _logLaunchPlan({
-    required AppSession session,
-    required TeamConfig? team,
-    required LaunchPlan plan,
-    required StorageRootsSnapshot roots,
-    required String? matchedCliStatePath,
-  }) {
-    appLogger.d(
-      '[launch] sid=${session.sessionId} team=${team?.id ?? session.sessionTeam} cli=${team?.cli.value ?? 'flashskyai'}\n'
-      '  appRoot=${roots.layout.appToolRoot(team?.cli.value ?? 'flashskyai')}\n'
-      '  teamRoot=${(team?.id ?? session.sessionTeam).trim().isEmpty ? '' : roots.layout.teamToolDir((team?.id ?? session.sessionTeam).trim(), team?.cli.value ?? 'flashskyai')}\n'
-      '  memberRoot=${plan.memberConfigDir}\n'
-      '  searched=${plan.resolvedRoots}\n'
-      '  resume=${plan.resume}${matchedCliStatePath == null ? '' : ' (matched $matchedCliStatePath)'}\n'
-      '  env keys=${plan.env.keys.toList()}',
-    );
   }
 }
 

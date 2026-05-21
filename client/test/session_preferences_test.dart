@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/session_preferences.dart';
 import 'package:teampilot/models/connection_mode.dart';
+import 'package:teampilot/models/windows_storage_backend.dart';
 
 void main() {
   group('SessionPreferences', () {
@@ -11,6 +12,7 @@ void main() {
       expect(prefs.sshUseLoginShell, false);
       expect(prefs.autoLaunchAllMembersOnConnect, true);
       expect(prefs.scopeSessionsToSelectedTeam, true);
+      expect(prefs.windowsStorageBackend, WindowsStorageBackend.native);
     });
 
     test('toJson/fromJson round-trips', () {
@@ -25,6 +27,7 @@ void main() {
         sshUseLoginShell: true,
         autoLaunchAllMembersOnConnect: true,
         scopeSessionsToSelectedTeam: true,
+        windowsStorageBackend: WindowsStorageBackend.wsl,
       );
       final restored = SessionPreferences.fromJson(prefs.toJson());
       expect(restored.connectionMode, ConnectionMode.ssh);
@@ -37,6 +40,7 @@ void main() {
       expect(restored.sshUseLoginShell, true);
       expect(restored.autoLaunchAllMembersOnConnect, true);
       expect(restored.scopeSessionsToSelectedTeam, true);
+      expect(restored.windowsStorageBackend, WindowsStorageBackend.wsl);
     });
 
     test('fromJson falls back to defaults when keys are missing', () {
@@ -47,6 +51,7 @@ void main() {
       expect(restored.sshUseLoginShell, false);
       expect(restored.autoLaunchAllMembersOnConnect, true);
       expect(restored.scopeSessionsToSelectedTeam, true);
+      expect(restored.windowsStorageBackend, WindowsStorageBackend.native);
     });
 
     test('copyWith updates only specified fields', () {
@@ -65,6 +70,13 @@ void main() {
       expect(next2.scopeSessionsToSelectedTeam, true);
       expect(next2.cliExecutablePath, '');
       expect(next2.cliExecutablePaths, isEmpty);
+    });
+
+    test('copyWith updates windowsStorageBackend', () {
+      final prefs = SessionPreferences();
+      final next = prefs.copyWith(windowsStorageBackend: WindowsStorageBackend.wsl);
+      expect(next.windowsStorageBackend, WindowsStorageBackend.wsl);
+      expect(prefs.windowsStorageBackend, WindowsStorageBackend.native);
     });
 
     test('fromJson ignores non-string cli executable path entries', () {

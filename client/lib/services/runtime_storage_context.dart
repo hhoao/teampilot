@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 
 import '../models/ssh_profile.dart';
+import '../models/windows_storage_backend.dart';
 import 'app_storage.dart';
 import 'io/filesystem.dart';
 import 'io/local_filesystem.dart';
@@ -63,6 +64,7 @@ class RuntimeStorageContext {
     String? nativeHome,
     String? nativeCwd,
     String? wslDistro,
+    WindowsStorageBackend? windowsStorageBackend,
   }) async {
     final ctx = await resolve(
       isSshMode: isSshMode,
@@ -73,6 +75,7 @@ class RuntimeStorageContext {
       nativeHome: nativeHome,
       nativeCwd: nativeCwd,
       wslDistro: wslDistro,
+      windowsStorageBackend: windowsStorageBackend,
     );
     _current = ctx;
     AppPathsBootstrapper.syncPaths(ctx.paths);
@@ -88,6 +91,7 @@ class RuntimeStorageContext {
     String? nativeHome,
     String? nativeCwd,
     String? wslDistro,
+    WindowsStorageBackend? windowsStorageBackend,
   }) async {
     final useSsh =
         Platform.isAndroid ||
@@ -104,7 +108,15 @@ class RuntimeStorageContext {
     }
 
     if (Platform.isWindows) {
-      return _resolveWsl(distro: wslDistro);
+      final backend = windowsStorageBackend ?? WindowsStorageBackend.native;
+      return switch (backend) {
+        WindowsStorageBackend.wsl => _resolveWsl(distro: wslDistro),
+        WindowsStorageBackend.native => _resolveNative(
+          appDataPath: nativeAppDataPath,
+          home: nativeHome,
+          cwd: nativeCwd,
+        ),
+      };
     }
 
     return _resolveNative(
@@ -211,6 +223,20 @@ class RuntimeStorageContext {
       appDataRoot: teampilot,
       paths: AppPaths(teampilot),
     );
+  }
+
+  /// Lightweight check before selecting WSL storage or switching to it.
+  static Future<bool> probeWslAvailable({String? distro}) async {
+    if (!Platform.isWindows) return false;
+    try {
+      await _queryWslHome(
+        distro: distro?.trim().isEmpty == true ? null : distro?.trim(),
+        distroKey: distro?.trim() ?? '',
+      );
+      return true;
+    } on Object {
+      return false;
+    }
   }
 
   static Future<String> _queryWslHome({

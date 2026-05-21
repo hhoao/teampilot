@@ -100,6 +100,21 @@ void main() {
     );
   });
 
+  test('reinstallAndResolve invokes reinstallContext before resolving', () async {
+    var reinstallCalls = 0;
+    final roots = FlashskyaiStorageRoots(
+      isSshMode: () => false,
+      reinstallContext: () async {
+        reinstallCalls++;
+        return RuntimeStorageContext.current;
+      },
+    );
+
+    await roots.reinstallAndResolve();
+
+    expect(reinstallCalls, 1);
+  });
+
   test('pickTeampilotRoot prefers primary when it has data', () async {
     final root = await RemoteTeampilotAppDataResolver.pickTeampilotRoot(
       primary: '/xdg/teampilot',

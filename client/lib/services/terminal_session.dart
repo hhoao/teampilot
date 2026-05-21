@@ -500,6 +500,16 @@ class TerminalSession {
     required int rows,
     Map<String, String>? environment,
   }) async {
+    Logger().i(
+      '--------------------------------\n'
+      'Starting transport:\n'
+      '--------------------------------\n'
+      'Executable: $executable,\n'
+      'Arguments: ${arguments.join(' ')},\n'
+      'WorkingDirectory: $workingDirectory,\n'
+      'Environment: ${environment?.entries.map((e) => '${e.key}=${e.value}').join(', ')}\n'
+      '--------------------------------\n',
+    );
     final pty = Pty.start(
       executable,
       arguments: arguments,

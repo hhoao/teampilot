@@ -420,6 +420,57 @@ class AppLocalizationsZh extends AppLocalizations {
       '开启后，侧边栏仅显示归属当前团队的会话。新建会话仍会写入当前所选团队，之后开启本选项即可看到它们。';
 
   @override
+  String get windowsStorageBackendTitle => '数据存储位置';
+
+  @override
+  String get windowsStorageBackendDescription =>
+      '团队、技能、项目与配置文件的读写位置。切换会使用另一套数据目录，不会自动迁移。';
+
+  @override
+  String get windowsStorageBackendNative => 'Windows 本地';
+
+  @override
+  String get windowsStorageBackendWsl => 'WSL';
+
+  @override
+  String windowsStorageBackendCurrentRoot(String path) {
+    return '当前根目录：$path';
+  }
+
+  @override
+  String get windowsStorageBackendSwitchConfirmTitle => '切换存储位置？';
+
+  @override
+  String get windowsStorageBackendSwitchConfirmBody =>
+      '将使用另一套数据目录。另一位置下的团队、项目与技能需切回后才能看到。';
+
+  @override
+  String get windowsStorageBackendSwitchConfirmAction => '切换';
+
+  @override
+  String get windowsStorageBackendWslUnavailable =>
+      'WSL 不可用。请先安装或启动 WSL 后再选择 WSL 存储。';
+
+  @override
+  String get windowsStorageCliMismatchNativeCli =>
+      'CLI 在 WSL 中运行，但数据保存在 Windows AppData，配置可能不一致。';
+
+  @override
+  String get windowsStorageCliMismatchWslCli =>
+      'CLI 在 Windows 上运行，但数据保存在 WSL，配置可能不一致。';
+
+  @override
+  String get windowsStorageSwitchReloadHint => '切换存储后建议重连已打开的会话。';
+
+  @override
+  String bootstrapStartupFailed(String error) {
+    return '启动失败：$error';
+  }
+
+  @override
+  String get bootstrapUseNativeStorageInstead => '改用 Windows 本地存储';
+
+  @override
   String get runsPlaceholder => '运行历史将显示在此处。';
 
   @override

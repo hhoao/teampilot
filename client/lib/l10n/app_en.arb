@@ -160,6 +160,34 @@
   "autoLaunchAllMembersDescription": "When enabled, Connect and Restart launch every valid member shell; otherwise only the selected member starts.",
   "scopeSessionsToSelectedTeamTitle": "Scope sessions to selected team",
   "scopeSessionsToSelectedTeamDescription": "When enabled, the sidebar shows only sessions assigned to the current team. New sessions are always tagged with the selected team so they appear here if you turn this on later.",
+  "windowsStorageBackendTitle": "Data storage location",
+  "windowsStorageBackendDescription": "Where teams, skills, projects, and config profiles are stored. Switching uses a separate data tree; nothing is migrated automatically.",
+  "windowsStorageBackendNative": "Windows local",
+  "windowsStorageBackendWsl": "WSL",
+  "windowsStorageBackendCurrentRoot": "Current root: {path}",
+  "@windowsStorageBackendCurrentRoot": {
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
+  },
+  "windowsStorageBackendSwitchConfirmTitle": "Switch storage location?",
+  "windowsStorageBackendSwitchConfirmBody": "This uses a different data directory. Teams, projects, and skills from the other location will not appear until you switch back.",
+  "windowsStorageBackendSwitchConfirmAction": "Switch",
+  "windowsStorageBackendWslUnavailable": "WSL is not available. Install or start WSL before using WSL storage.",
+  "windowsStorageCliMismatchNativeCli": "CLI runs in WSL but data is stored in Windows AppData. Config may not match.",
+  "windowsStorageCliMismatchWslCli": "CLI runs on Windows but data is stored in WSL. Config may not match.",
+  "windowsStorageSwitchReloadHint": "Reconnect open sessions after switching storage.",
+  "bootstrapStartupFailed": "Startup failed: {error}",
+  "@bootstrapStartupFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "bootstrapUseNativeStorageInstead": "Use Windows local storage instead",
   "runsPlaceholder": "Run history will appear here.",
   "llmConfig": "Provider",
   "llmConfigSubtitle": "providers and models",

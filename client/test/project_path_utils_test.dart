@@ -30,6 +30,22 @@ void main() {
     expect(normalized, isNot(contains(r'\')));
   });
 
+  test('normalizeProjectPath keeps Windows paths under native storage', () {
+    if (!Platform.isWindows) return;
+    RuntimeStorageContext.installForTesting(
+      filesystem: LocalFilesystem(),
+      paths: AppPaths(r'C:\Users\dev\AppData\Roaming\com.hhoa.teampilot'),
+      mode: StorageBackendMode.native,
+    );
+    addTearDown(RuntimeStorageContext.resetForTesting);
+
+    expect(
+      normalizeProjectPath(r'C:\Users\dev\repo'),
+      p.normalize(r'C:\Users\dev\repo'),
+    );
+    expect(normalizeProjectPath(r'C:\Users\dev\repo'), isNot(startsWith('/mnt/')));
+  });
+
   test('normalizeProjectPath keeps POSIX paths unchanged', () {
     RuntimeStorageContext.resetForTesting();
     expect(normalizeProjectPath('/tmp/work'), '/tmp/work');

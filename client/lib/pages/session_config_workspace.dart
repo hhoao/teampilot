@@ -1,20 +1,28 @@
+import 'dart:io';
+
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../app/app_shell.dart';
+import '../cubits/app_provider_cubit.dart';
 import '../cubits/chat_cubit.dart';
 import '../cubits/llm_config_cubit.dart';
 import '../cubits/session_preferences_cubit.dart';
 import '../repositories/session_repository.dart';
+import '../services/app_storage.dart';
+import '../services/cli_invocation.dart';
 import '../services/flashskyai_storage_roots.dart';
 import '../cubits/skill_cubit.dart';
 import '../cubits/team_cubit.dart';
 import '../models/connection_mode.dart';
 import '../models/team_config.dart';
+import '../models/windows_storage_backend.dart';
 import '../l10n/l10n_extensions.dart';
 import '../cubits/ssh_profile_cubit.dart';
 import '../services/cli_installer_service.dart';
 import '../services/connection_mode_service.dart';
+import '../services/runtime_storage_context.dart';
 import '../services/ssh_client_factory.dart';
 import '../utils/app_keys.dart';
 import '../utils/debounce/debounce.dart';
@@ -169,6 +177,91 @@ class _SessionControlsState extends State<_SessionControls> {
     await widget.cubit.setDefaultSshWorkingDirectory('');
   }
 
+  Future<void> _reloadAfterStorageBackendChange() async {
+    final storageRoots = context.read<FlashskyaiStorageRoots>();
+    final llmCubit = context.read<LlmConfigCubit>();
+    final teamCubit = context.read<TeamCubit>();
+    final skillCubit = context.read<SkillCubit>();
+    final chatCubit = context.read<ChatCubit>();
+    final sessionRepo = context.read<SessionRepository>();
+    storageRoots.invalidate();
+    await storageRoots.reinstallAndResolve();
+    await reloadRemoteBackedAppData(
+      storageRoots: storageRoots,
+      llmConfigCubit: llmCubit,
+      appProviderCubit: context.read<AppProviderCubit>(),
+      teamCubit: teamCubit,
+      skillCubit: skillCubit,
+      chatCubit: chatCubit,
+      sessionRepo: sessionRepo,
+    );
+  }
+
+  Future<void> _onWindowsStorageBackendChanged(
+    WindowsStorageBackend selected,
+  ) async {
+    final l10n = context.l10n;
+    final current = widget.cubit.state.preferences.windowsStorageBackend;
+    if (selected == current) return;
+
+    if (selected == WindowsStorageBackend.wsl) {
+      final distro = RuntimeStorageContext.parseWslDistro(
+        widget.cubit.resolveExecutable(),
+      );
+      final available = await RuntimeStorageContext.probeWslAvailable(
+        distro: distro,
+      );
+      if (!available) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(l10n.windowsStorageBackendWslUnavailable)),
+        );
+        return;
+      }
+    }
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.windowsStorageBackendSwitchConfirmTitle),
+        content: Text(l10n.windowsStorageBackendSwitchConfirmBody),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(l10n.cancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(l10n.windowsStorageBackendSwitchConfirmAction),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    await widget.cubit.setWindowsStorageBackend(selected);
+    if (!mounted) return;
+    await _reloadAfterStorageBackendChange();
+  }
+
+  String? _storageCliMismatchMessage(AppLocalizations l10n) {
+    if (!Platform.isWindows || !RuntimeStorageContext.isInstalled) {
+      return null;
+    }
+    final usesWslCli = CliInvocation.fromExecutable(
+      widget.cubit.resolveExecutable(),
+    ).usesWsl;
+    final storageIsWsl =
+        RuntimeStorageContext.current.mode == StorageBackendMode.wsl;
+    if (usesWslCli && !storageIsWsl) {
+      return l10n.windowsStorageCliMismatchNativeCli;
+    }
+    if (!usesWslCli && storageIsWsl) {
+      return l10n.windowsStorageCliMismatchWslCli;
+    }
+    return null;
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
@@ -182,6 +275,60 @@ class _SessionControlsState extends State<_SessionControls> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              if (Platform.isWindows) ...[
+                SettingsLabeledStackedRow(
+                  title: l10n.windowsStorageBackendTitle,
+                  subtitle: l10n.windowsStorageBackendDescription,
+                  body: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      SegmentedButton<WindowsStorageBackend>(
+                        segments: [
+                          ButtonSegment(
+                            value: WindowsStorageBackend.native,
+                            label: Text(l10n.windowsStorageBackendNative),
+                            icon: const Icon(Icons.folder_outlined),
+                          ),
+                          ButtonSegment(
+                            value: WindowsStorageBackend.wsl,
+                            label: Text(l10n.windowsStorageBackendWsl),
+                            icon: const Icon(Icons.terminal),
+                          ),
+                        ],
+                        selected: {state.preferences.windowsStorageBackend},
+                        onSelectionChanged: (selected) =>
+                            _onWindowsStorageBackendChanged(selected.first),
+                      ),
+                      if (RuntimeStorageContext.isInstalled) ...[
+                        const SizedBox(height: 8),
+                        Text(
+                          l10n.windowsStorageBackendCurrentRoot(
+                            RuntimeStorageContext.current.appDataRoot,
+                          ),
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      ],
+                      if (_storageCliMismatchMessage(l10n) case final msg?) ...[
+                        const SizedBox(height: 8),
+                        Text(
+                          msg,
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: Theme.of(context).colorScheme.error,
+                          ),
+                        ),
+                      ],
+                      const SizedBox(height: 4),
+                      Text(
+                        l10n.windowsStorageSwitchReloadHint,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                  showDividerBelow: true,
+                ),
+              ],
               if (_kShowConnectionModeSetting)
                 SettingsLabeledStackedRow(
                   title: l10n.connectionModeLabel,

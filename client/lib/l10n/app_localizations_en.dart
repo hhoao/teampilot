@@ -436,6 +436,60 @@ class AppLocalizationsEn extends AppLocalizations {
       'When enabled, the sidebar shows only sessions assigned to the current team. New sessions are always tagged with the selected team so they appear here if you turn this on later.';
 
   @override
+  String get windowsStorageBackendTitle => 'Data storage location';
+
+  @override
+  String get windowsStorageBackendDescription =>
+      'Where teams, skills, projects, and config profiles are stored. Switching uses a separate data tree; nothing is migrated automatically.';
+
+  @override
+  String get windowsStorageBackendNative => 'Windows local';
+
+  @override
+  String get windowsStorageBackendWsl => 'WSL';
+
+  @override
+  String windowsStorageBackendCurrentRoot(String path) {
+    return 'Current root: $path';
+  }
+
+  @override
+  String get windowsStorageBackendSwitchConfirmTitle =>
+      'Switch storage location?';
+
+  @override
+  String get windowsStorageBackendSwitchConfirmBody =>
+      'This uses a different data directory. Teams, projects, and skills from the other location will not appear until you switch back.';
+
+  @override
+  String get windowsStorageBackendSwitchConfirmAction => 'Switch';
+
+  @override
+  String get windowsStorageBackendWslUnavailable =>
+      'WSL is not available. Install or start WSL before using WSL storage.';
+
+  @override
+  String get windowsStorageCliMismatchNativeCli =>
+      'CLI runs in WSL but data is stored in Windows AppData. Config may not match.';
+
+  @override
+  String get windowsStorageCliMismatchWslCli =>
+      'CLI runs on Windows but data is stored in WSL. Config may not match.';
+
+  @override
+  String get windowsStorageSwitchReloadHint =>
+      'Reconnect open sessions after switching storage.';
+
+  @override
+  String bootstrapStartupFailed(String error) {
+    return 'Startup failed: $error';
+  }
+
+  @override
+  String get bootstrapUseNativeStorageInstead =>
+      'Use Windows local storage instead';
+
+  @override
   String get runsPlaceholder => 'Run history will appear here.';
 
   @override

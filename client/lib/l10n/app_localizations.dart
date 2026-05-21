@@ -890,6 +890,90 @@ abstract class AppLocalizations {
   /// **'When enabled, the sidebar shows only sessions assigned to the current team. New sessions are always tagged with the selected team so they appear here if you turn this on later.'**
   String get scopeSessionsToSelectedTeamDescription;
 
+  /// No description provided for @windowsStorageBackendTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Data storage location'**
+  String get windowsStorageBackendTitle;
+
+  /// No description provided for @windowsStorageBackendDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Where teams, skills, projects, and config profiles are stored. Switching uses a separate data tree; nothing is migrated automatically.'**
+  String get windowsStorageBackendDescription;
+
+  /// No description provided for @windowsStorageBackendNative.
+  ///
+  /// In en, this message translates to:
+  /// **'Windows local'**
+  String get windowsStorageBackendNative;
+
+  /// No description provided for @windowsStorageBackendWsl.
+  ///
+  /// In en, this message translates to:
+  /// **'WSL'**
+  String get windowsStorageBackendWsl;
+
+  /// No description provided for @windowsStorageBackendCurrentRoot.
+  ///
+  /// In en, this message translates to:
+  /// **'Current root: {path}'**
+  String windowsStorageBackendCurrentRoot(String path);
+
+  /// No description provided for @windowsStorageBackendSwitchConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Switch storage location?'**
+  String get windowsStorageBackendSwitchConfirmTitle;
+
+  /// No description provided for @windowsStorageBackendSwitchConfirmBody.
+  ///
+  /// In en, this message translates to:
+  /// **'This uses a different data directory. Teams, projects, and skills from the other location will not appear until you switch back.'**
+  String get windowsStorageBackendSwitchConfirmBody;
+
+  /// No description provided for @windowsStorageBackendSwitchConfirmAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Switch'**
+  String get windowsStorageBackendSwitchConfirmAction;
+
+  /// No description provided for @windowsStorageBackendWslUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'WSL is not available. Install or start WSL before using WSL storage.'**
+  String get windowsStorageBackendWslUnavailable;
+
+  /// No description provided for @windowsStorageCliMismatchNativeCli.
+  ///
+  /// In en, this message translates to:
+  /// **'CLI runs in WSL but data is stored in Windows AppData. Config may not match.'**
+  String get windowsStorageCliMismatchNativeCli;
+
+  /// No description provided for @windowsStorageCliMismatchWslCli.
+  ///
+  /// In en, this message translates to:
+  /// **'CLI runs on Windows but data is stored in WSL. Config may not match.'**
+  String get windowsStorageCliMismatchWslCli;
+
+  /// No description provided for @windowsStorageSwitchReloadHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Reconnect open sessions after switching storage.'**
+  String get windowsStorageSwitchReloadHint;
+
+  /// No description provided for @bootstrapStartupFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Startup failed: {error}'**
+  String bootstrapStartupFailed(String error);
+
+  /// No description provided for @bootstrapUseNativeStorageInstead.
+  ///
+  /// In en, this message translates to:
+  /// **'Use Windows local storage instead'**
+  String get bootstrapUseNativeStorageInstead;
+
   /// No description provided for @runsPlaceholder.
   ///
   /// In en, this message translates to:

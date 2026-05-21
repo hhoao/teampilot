@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../models/connection_mode.dart';
 import '../models/session_preferences.dart';
 import '../models/team_config.dart';
+import '../models/windows_storage_backend.dart';
 import '../repositories/session_preferences_repository.dart';
 
 class SessionPreferencesState extends Equatable {
@@ -99,6 +100,10 @@ class SessionPreferencesCubit extends Cubit<SessionPreferencesState> {
     return _save(
       state.preferences.copyWith(scopeSessionsToSelectedTeam: value),
     );
+  }
+
+  Future<void> setWindowsStorageBackend(WindowsStorageBackend backend) {
+    return _save(state.preferences.copyWith(windowsStorageBackend: backend));
   }
 
   /// Returns the actual executable string to invoke for [cli]:

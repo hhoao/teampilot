@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -16,6 +17,8 @@ import '../cubits/ssh_profile_cubit.dart';
 import '../cubits/team_cubit.dart';
 import '../models/connection_mode.dart';
 import '../models/team_config.dart';
+import '../models/windows_storage_backend.dart';
+import '../l10n/app_localizations.dart';
 import '../repositories/app_settings_repository.dart';
 import '../repositories/layout_repository.dart';
 import '../repositories/session_preferences_repository.dart';
@@ -123,6 +126,13 @@ Future<AppShell> buildAppShell({
   await sessionPreferencesCubit.load();
   boot('session preferences loaded');
 
+  WindowsStorageBackend windowsStorageBackend() =>
+      sessionPreferencesCubit.state.preferences.windowsStorageBackend;
+
+  String? wslDistroFromPrefs() => RuntimeStorageContext.parseWslDistro(
+    sessionPreferencesCubit.resolveExecutable(),
+  );
+
   final sshCredentialStore = const SecureSshCredentialStore(
     FlutterSecureKeyValueStore(),
   );
@@ -145,8 +155,14 @@ Future<AppShell> buildAppShell({
         Platform.environment['HOME'] ?? Platform.environment['USERPROFILE'],
     nativeCwd: Directory.current.path,
     wslDistro: RuntimeStorageContext.parseWslDistro(cliLocated),
+    windowsStorageBackend: windowsStorageBackend(),
   );
-  boot('RuntimeStorageContext installed (${RuntimeStorageContext.current.mode})');
+  boot(
+    'RuntimeStorageContext installed '
+    '(${RuntimeStorageContext.current.mode}, '
+    'backend=${windowsStorageBackend().name}, '
+    'root=${RuntimeStorageContext.current.appDataRoot})',
+  );
 
   if (!Platform.isAndroid) {
     unawaited(
@@ -211,9 +227,8 @@ Future<AppShell> buildAppShell({
     nativeHome:
         Platform.environment['HOME'] ?? Platform.environment['USERPROFILE'],
     nativeCwd: Directory.current.path,
-    wslDistro: RuntimeStorageContext.parseWslDistro(
-      sessionPreferencesCubit.resolveExecutable(),
-    ),
+    wslDistro: wslDistroFromPrefs(),
+    windowsStorageBackend: windowsStorageBackend(),
   );
 
   storageRoots = FlashskyaiStorageRoots(
@@ -401,6 +416,7 @@ class TeamPilotBootstrap extends StatefulWidget {
 class _TeamPilotBootstrapState extends State<TeamPilotBootstrap> {
   AppShell? _shell;
   Object? _error;
+  var _retrying = false;
 
   @override
   void initState() {
@@ -416,14 +432,50 @@ class _TeamPilotBootstrapState extends State<TeamPilotBootstrap> {
         nativeAppDataPath: widget.nativeAppDataPath,
       );
       if (!mounted) return;
-      setState(() => _shell = shell);
+      setState(() {
+        _shell = shell;
+        _error = null;
+        _retrying = false;
+      });
       WidgetsBinding.instance.addPostFrameCallback((_) {
         unawaited(shell.bootstrapAppData());
       });
     } on Object catch (error, stackTrace) {
       appLogger.e('[boot] buildAppShell failed', error: error, stackTrace: stackTrace);
       if (!mounted) return;
-      setState(() => _error = error);
+      setState(() {
+        _error = error;
+        _retrying = false;
+      });
+    }
+  }
+
+  Future<void> _switchToNativeStorageAndRetry() async {
+    if (_retrying) return;
+    setState(() => _retrying = true);
+    final repo = SessionPreferencesRepository(widget.preferences);
+    final prefs = await repo.load();
+    await repo.save(
+      prefs.copyWith(windowsStorageBackend: WindowsStorageBackend.native),
+    );
+    await _start();
+  }
+
+  bool get _canFallbackToNativeStorage {
+    if (!Platform.isWindows || _error == null) return false;
+    try {
+      final raw = widget.preferences.getString(
+        SessionPreferencesRepository.storageKey,
+      );
+      if (raw == null || raw.isEmpty) return true;
+      final decoded = jsonDecode(raw);
+      if (decoded is! Map) return true;
+      return WindowsStorageBackendJson.fromJson(
+            decoded['windowsStorageBackend'] as String?,
+          ) ==
+          WindowsStorageBackend.wsl;
+    } on Object {
+      return true;
     }
   }
 
@@ -431,11 +483,39 @@ class _TeamPilotBootstrapState extends State<TeamPilotBootstrap> {
   Widget build(BuildContext context) {
     if (_error != null) {
       return MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(
           body: Center(
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: Text('Startup failed: $_error'),
+            child: Builder(
+              builder: (context) {
+                final l10n = AppLocalizations.of(context);
+                return Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(l10n.bootstrapStartupFailed(_error.toString())),
+                      if (_canFallbackToNativeStorage) ...[
+                        const SizedBox(height: 16),
+                        FilledButton(
+                          onPressed:
+                              _retrying ? null : _switchToNativeStorageAndRetry,
+                          child: _retrying
+                              ? const SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : Text(l10n.bootstrapUseNativeStorageInstead),
+                        ),
+                      ],
+                    ],
+                  ),
+                );
+              },
             ),
           ),
         ),
