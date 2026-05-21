@@ -19,7 +19,8 @@ dependencies:
   flutter_secure_storage: ^10.2.0
   xterm:
     path: packages/xterm
-  flutter_pty: ^0.4.2
+  flutter_pty:
+    path: packages/flutter_pty
   dartssh2:
     path: packages/dartssh2
   flutter_bloc: ^9.1.0
