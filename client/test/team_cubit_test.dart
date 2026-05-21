@@ -412,7 +412,7 @@ void main() {
       configProfileService: ConfigProfileService(basePath: base.path),
     );
 
-    await cubit.load();
+    await cubit.load(awaitProfiles: true);
 
     final teamRoot = p.join(
       base.path,

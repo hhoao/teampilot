@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
@@ -9,6 +8,7 @@ import 'io/filesystem.dart';
 import 'io/local_filesystem.dart';
 import 'io/sftp_filesystem.dart';
 import 'io/wsl_filesystem.dart';
+import 'io/wsl_shell_session.dart';
 import 'remote_file_store.dart';
 import 'remote_ssh_storage_paths.dart';
 import 'remote_teampilot_app_data_resolver.dart';
@@ -40,6 +40,8 @@ class RuntimeStorageContext {
       mode == StorageBackendMode.wsl || mode == StorageBackendMode.ssh;
 
   static RuntimeStorageContext? _current;
+  static String? _cachedWslHome;
+  static String? _cachedWslDistroKey;
 
   static RuntimeStorageContext get current {
     final ctx = _current;
@@ -73,9 +75,20 @@ class RuntimeStorageContext {
       nativeCwd: nativeCwd,
       wslDistro: wslDistro,
     );
+    await _disposePreviousFilesystem(_current);
     _current = ctx;
     AppPathsBootstrapper.syncPaths(ctx.paths);
     return ctx;
+  }
+
+  static Future<void> _disposePreviousFilesystem(
+    RuntimeStorageContext? previous,
+  ) async {
+    if (previous == null) return;
+    final fs = previous.filesystem;
+    if (fs is WslFilesystem) {
+      await fs.closeSession();
+    }
   }
 
   static Future<RuntimeStorageContext> resolve({
@@ -115,12 +128,17 @@ class RuntimeStorageContext {
 
   static Future<RuntimeStorageContext> _resolveWsl({String? distro}) async {
     final trimmedDistro = distro?.trim();
-    final fs = WslFilesystem(
+    final distroKey = trimmedDistro ?? '';
+    final session = WslShellSession(
       distro: trimmedDistro == null || trimmedDistro.isEmpty
           ? null
           : trimmedDistro,
     );
-    final home = await _queryWslHome(distro: trimmedDistro);
+    final fs = WslFilesystem(session: session);
+    final home = await _queryWslHome(
+      session: session,
+      distroKey: distroKey,
+    );
     final appDataRoot = AppPaths.defaultTeampilotAppDataDirForHome(home);
     return RuntimeStorageContext._(
       mode: StorageBackendMode.wsl,
@@ -206,34 +224,28 @@ class RuntimeStorageContext {
     );
   }
 
-  static Future<String> _queryWslHome({String? distro}) async {
-    final args = <String>[];
-    if (distro != null && distro.isNotEmpty) {
-      args.addAll(['-d', distro]);
+  static Future<String> _queryWslHome({
+    required WslShellSession session,
+    required String distroKey,
+  }) async {
+    if (_cachedWslHome != null && _cachedWslDistroKey == distroKey) {
+      return _cachedWslHome!;
     }
-    args.addAll(['sh', '-lc', r'printf %s "$HOME"']);
-    final result = await Process.run(
-      'wsl.exe',
-      args,
-      stdoutEncoding: latin1,
-      stderrEncoding: latin1,
-    );
+    final result = await session.run(r'printf %s "$HOME"');
     if (result.exitCode != 0) {
       throw StateError(
         'Failed to resolve WSL HOME (${result.exitCode}): ${result.stderr}',
       );
     }
-    final out = result.stdout;
-    final text = out is String
-        ? out
-        : latin1.decode(out as List<int>, allowInvalid: true);
-    final home = text
+    final home = result.stdout
         .split(RegExp(r'\r?\n'))
         .map((l) => l.trim())
         .firstWhere((l) => l.isNotEmpty, orElse: () => '');
     if (home.isEmpty) {
       throw StateError('WSL HOME resolved to an empty path.');
     }
+    _cachedWslHome = home;
+    _cachedWslDistroKey = distroKey;
     return home;
   }
 
@@ -273,5 +285,7 @@ class RuntimeStorageContext {
   @visibleForTesting
   static void resetForTesting() {
     _current = null;
+    _cachedWslHome = null;
+    _cachedWslDistroKey = null;
   }
 }

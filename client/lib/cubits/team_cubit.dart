@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'dart:async';
 
 import 'package:equatable/equatable.dart';
 import 'package:flutter/foundation.dart';
@@ -144,7 +144,7 @@ class TeamCubit extends Cubit<TeamState> {
       session: AppSession(
         sessionId: runtimeTeamName,
         projectId: '',
-        primaryPath: Directory.current.path,
+        primaryPath: AppStorage.cwd,
         sessionTeam: team.id,
         launchTeam: runtimeTeamName,
         createdAt: DateTime.now().millisecondsSinceEpoch,
@@ -220,7 +220,7 @@ class TeamCubit extends Cubit<TeamState> {
     );
   }
 
-  Future<void> load() async {
+  Future<void> load({bool awaitProfiles = false}) async {
     appLogger.i('TeamCubit loading teams...');
     emit(state.copyWith(isLoading: true));
     var teams = await _repository.loadTeams();
@@ -228,7 +228,6 @@ class TeamCubit extends Cubit<TeamState> {
       teams = [_defaultTeam()];
       await _repository.saveTeams(teams);
     }
-    await _ensureProfilesForTeams(teams);
     emit(
       state.copyWith(
         teams: teams,
@@ -238,6 +237,16 @@ class TeamCubit extends Cubit<TeamState> {
       ),
     );
     appLogger.i('TeamCubit loaded ${teams.length} teams');
+    final profiles = _ensureProfilesForTeams(teams);
+    if (awaitProfiles) {
+      await profiles;
+    } else {
+      unawaited(
+        profiles.catchError((Object e) {
+          appLogger.w('[TeamCubit] background profile ensure failed: $e');
+        }),
+      );
+    }
   }
 
   Future<void> selectTeam(String id) async {
