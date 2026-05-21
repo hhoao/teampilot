@@ -41,3 +41,19 @@ bool projectPathsContains(Iterable<String> paths, String target) {
   }
   return false;
 }
+
+/// All `projects` keys a CLI may use for [path] in metadata JSON.
+///
+/// On Windows, Claude Code stores both `C:\foo` and `C:/foo` variants.
+Iterable<String> projectMetadataKeys(String path) {
+  final normalized = normalizeProjectPath(path);
+  if (normalized.isEmpty) return const [];
+
+  if (!Platform.isWindows || normalized.startsWith('/')) {
+    return [normalized];
+  }
+
+  final forward = normalized.replaceAll(r'\', '/');
+  final backslash = forward.replaceAll('/', r'\');
+  return {normalized, forward, backslash};
+}

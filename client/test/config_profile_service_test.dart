@@ -346,4 +346,96 @@ void main() {
     final dev = members.cast<Map>().firstWhere((m) => m['name'] == 'developer');
     expect(dev.containsKey('model'), isFalse);
   });
+
+  test(
+    'prepareTeamLaunch merges trusted projects into existing metadata',
+    () async {
+      const sessionId = 'sess-trust';
+      final metadataPath = p.join(
+        _sessionClaudeDir(base.path, 'team-a', sessionId),
+        ConfigProfileService.claudeMetadataFileName,
+      );
+      await Directory(p.dirname(metadataPath)).create(recursive: true);
+      await File(metadataPath).writeAsString(
+        const JsonEncoder.withIndent('  ').convert({
+          'hasCompletedOnboarding': true,
+          'customField': 'keep-me',
+          'projects': {
+            '/workspace/old': {
+              'hasTrustDialogAccepted': true,
+              'lastOpenedAt': '2024',
+            },
+          },
+        }),
+      );
+
+      await service.prepareTeamLaunch(
+        teamId: 'team-a',
+        runtimeTeamId: sessionId,
+        cli: TeamCli.claude,
+        workingDirectory: '/workspace/new',
+        additionalDirectories: const ['/workspace/extra'],
+      );
+
+      final metadata =
+          jsonDecode(await File(metadataPath).readAsString())
+              as Map<String, Object?>;
+      expect(metadata['customField'], 'keep-me');
+      final projects = metadata['projects'] as Map<String, Object?>;
+      expect(projects.keys, containsAll(['/workspace/old', '/workspace/new', '/workspace/extra']));
+      expect(
+        (projects['/workspace/old'] as Map)['lastOpenedAt'],
+        '2024',
+      );
+      expect(
+        (projects['/workspace/new'] as Map)['hasTrustDialogAccepted'],
+        isTrue,
+      );
+      expect(
+        (projects['/workspace/new'] as Map)['projectOnboardingSeenCount'],
+        1,
+      );
+      expect(
+        (projects['/workspace/extra'] as Map)['hasTrustDialogAccepted'],
+        isTrue,
+      );
+    },
+  );
+
+  test(
+    'prepareTeamLaunch writes Windows path variants for trusted projects',
+    () async {
+      if (!Platform.isWindows) return;
+
+      const sessionId = 'sess-win-trust';
+      await service.prepareTeamLaunch(
+        teamId: 'team-a',
+        runtimeTeamId: sessionId,
+        cli: TeamCli.claude,
+        workingDirectory: r'C:\Users\haung\Documents',
+      );
+
+      final metadataPath = p.join(
+        _sessionClaudeDir(base.path, 'team-a', sessionId),
+        ConfigProfileService.claudeMetadataFileName,
+      );
+      final metadata =
+          jsonDecode(await File(metadataPath).readAsString())
+              as Map<String, Object?>;
+      final projects = metadata['projects'] as Map<String, Object?>;
+      expect(
+        projects.keys,
+        containsAll([
+          p.normalize(r'C:\Users\haung\Documents'),
+          'C:/Users/haung/Documents',
+        ]),
+      );
+      final forwardSlash =
+          projects['C:/Users/haung/Documents'] as Map<String, Object?>;
+      expect(forwardSlash['hasTrustDialogAccepted'], isTrue);
+      expect(forwardSlash['projectOnboardingSeenCount'], 1);
+      expect(forwardSlash['allowedTools'], isA<List<Object?>>());
+      expect(forwardSlash['mcpServers'], isA<Map<String, Object?>>());
+    },
+  );
 }

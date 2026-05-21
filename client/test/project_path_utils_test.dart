@@ -54,4 +54,22 @@ void main() {
       p.normalize(r'C:\temp'),
     );
   });
+
+  test('projectMetadataKeys includes Windows path separator variants', () {
+    if (!Platform.isWindows) return;
+    RuntimeStorageContext.resetForTesting();
+
+    final keys = projectMetadataKeys(r'C:\Users\haung\Documents');
+    expect(
+      keys,
+      containsAll([
+        p.normalize(r'C:\Users\haung\Documents'),
+        'C:/Users/haung/Documents',
+      ]),
+    );
+  });
+
+  test('projectMetadataKeys keeps single key for POSIX paths', () {
+    expect(projectMetadataKeys('/tmp/work'), ['/tmp/work']);
+  });
 }

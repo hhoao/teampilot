@@ -183,6 +183,7 @@ class SessionLifecycleService {
         members: team.members,
         member: member,
         workingDirectory: workingDirectory,
+        additionalDirectories: session.additionalPaths,
         claudeSettings: claudeSettings,
         claudeSettingsByMember: claudeSettingsByMember,
         team: team,

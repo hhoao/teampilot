@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:path/path.dart' as p;
 
 import '../models/team_config.dart';
+import '../utils/project_path_utils.dart';
 import '../utils/team_member_naming.dart';
 import 'app_storage.dart';
 import 'claude_team_roster_service.dart';
@@ -32,6 +33,10 @@ class ConfigProfileService {
   static const Map<String, Object?> defaultClaudeMetadata = {
     'hasCompletedOnboarding': true,
   };
+  static const Map<String, Object?> defaultTrustedProjectConfig = {
+    'hasTrustDialogAccepted': true,
+    'projectOnboardingSeenCount': 1,
+  };
 
   ConfigProfileService({
     required this.basePath,
@@ -40,10 +45,7 @@ class ConfigProfileService {
   }) : _fs = fs ?? AppStorage.fs,
        layout =
            layout ??
-           CliDataLayout(
-             teampilotRoot: basePath,
-             fs: fs ?? AppStorage.fs,
-           );
+           CliDataLayout(teampilotRoot: basePath, fs: fs ?? AppStorage.fs);
 
   final String basePath;
   final Filesystem _fs;
@@ -176,6 +178,7 @@ class ConfigProfileService {
     List<TeamMemberConfig> members = const [],
     TeamMemberConfig? member,
     String workingDirectory = '',
+    List<String> additionalDirectories = const [],
     Map<String, Object?>? claudeSettings,
     Map<String, Map<String, Object?>> claudeSettingsByMember = const {},
     TeamConfig? team,
@@ -194,11 +197,19 @@ class ConfigProfileService {
     await ensureSessionProfile(scope.teamId, scope.sessionId, cli: cli);
     switch (cli) {
       case TeamCli.flashskyai:
-        await _writeFlashskyaiMetadata(scope, workingDirectory);
+        await _writeFlashskyaiMetadata(
+          scope,
+          workingDirectory,
+          additionalDirectories: additionalDirectories,
+        );
         await _writeFlashskyaiSettings(scope);
         break;
       case TeamCli.claude:
-        await _writeClaudeMetadata(scope, workingDirectory);
+        await _writeClaudeMetadata(
+          scope,
+          workingDirectory,
+          additionalDirectories: additionalDirectories,
+        );
         await _writeClaudeSettings(
           scope,
           claudeSettings,
@@ -293,15 +304,17 @@ class ConfigProfileService {
 
   Future<void> _writeClaudeMetadata(
     _LaunchProfileScope scope,
-    String workingDirectory,
-  ) async {
-    final metadata = _metadataWithTrustedProject(
-      defaultClaudeMetadata,
-      workingDirectory,
-    );
+    String workingDirectory, {
+    List<String> additionalDirectories = const [],
+  }) async {
     final metadataPath = sessionClaudeMetadataFile(
       scope.teamId,
       scope.sessionId,
+    );
+    final metadata = await _metadataWithTrustedProjects(
+      metadataPath: metadataPath,
+      defaultMetadata: defaultClaudeMetadata,
+      directories: [workingDirectory, ...additionalDirectories],
     );
     await _fs.atomicWrite(
       metadataPath,
@@ -311,15 +324,17 @@ class ConfigProfileService {
 
   Future<void> _writeFlashskyaiMetadata(
     _LaunchProfileScope scope,
-    String workingDirectory,
-  ) async {
-    final metadata = _metadataWithTrustedProject(
-      defaultFlashskyaiMetadata,
-      workingDirectory,
-    );
+    String workingDirectory, {
+    List<String> additionalDirectories = const [],
+  }) async {
     final metadataPath = sessionFlashskyaiMetadataFile(
       scope.teamId,
       scope.sessionId,
+    );
+    final metadata = await _metadataWithTrustedProjects(
+      metadataPath: metadataPath,
+      defaultMetadata: defaultFlashskyaiMetadata,
+      directories: [workingDirectory, ...additionalDirectories],
     );
     await _fs.atomicWrite(
       metadataPath,
@@ -338,26 +353,68 @@ class ConfigProfileService {
     );
   }
 
-  String _projectMetadataKey(String workingDirectory) {
-    final trimmed = workingDirectory.trim();
-    if (trimmed.isEmpty) return '';
-    if (trimmed.startsWith('/')) {
-      return trimmed.replaceAll('\\', '/');
+  Future<Map<String, Object?>> _readMetadataFile(
+    String path,
+    Map<String, Object?> defaults,
+  ) async {
+    if (!(await _fs.stat(path)).exists) {
+      return {...defaults};
     }
-    return _pathContext.normalize(trimmed);
+    final raw = await _fs.readString(path);
+    if (raw == null || raw.trim().isEmpty) {
+      return {...defaults};
+    }
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is Map) {
+        return Map<String, Object?>.from(
+          decoded.map((key, value) => MapEntry(key.toString(), value)),
+        );
+      }
+    } on Object {
+      return {...defaults};
+    }
+    return {...defaults};
   }
 
-  Map<String, Object?> _metadataWithTrustedProject(
-    Map<String, Object?> baseMetadata,
-    String workingDirectory,
-  ) {
-    final metadata = <String, Object?>{...baseMetadata};
-    final normalizedWorkingDirectory = _projectMetadataKey(workingDirectory);
-    if (normalizedWorkingDirectory.isNotEmpty) {
-      metadata['projects'] = {
-        normalizedWorkingDirectory: {'hasTrustDialogAccepted': true},
-      };
+  Future<Map<String, Object?>> _metadataWithTrustedProjects({
+    required String metadataPath,
+    required Map<String, Object?> defaultMetadata,
+    required Iterable<String> directories,
+  }) async {
+    final metadata = await _readMetadataFile(metadataPath, defaultMetadata);
+    final trustedKeys = <String>{
+      for (final dir in directories) ...projectMetadataKeys(dir),
+    };
+    if (trustedKeys.isEmpty) {
+      return metadata;
     }
+
+    final existingProjects = metadata['projects'];
+    final projects = existingProjects is Map
+        ? Map<String, Object?>.from(
+            existingProjects.map(
+              (key, value) => MapEntry(key.toString(), value),
+            ),
+          )
+        : <String, Object?>{};
+
+    for (final key in trustedKeys) {
+      final existing = projects[key];
+      final projectConfig = existing is Map
+          ? Map<String, Object?>.from(
+              existing.map(
+                (entryKey, value) => MapEntry(entryKey.toString(), value),
+              ),
+            )
+          : <String, Object?>{...defaultTrustedProjectConfig};
+      for (final entry in defaultTrustedProjectConfig.entries) {
+        projectConfig.putIfAbsent(entry.key, () => entry.value);
+      }
+      projectConfig['hasTrustDialogAccepted'] = true;
+      projects[key] = projectConfig;
+    }
+    metadata['projects'] = projects;
     return metadata;
   }
 
@@ -410,10 +467,7 @@ class ConfigProfileService {
       rosterPath,
       const JsonEncoder.withIndent('  ').convert(config),
     );
-    await rosterService.ensureInboxes(
-      rosterDir: rosterDir,
-      members: members,
-    );
+    await rosterService.ensureInboxes(rosterDir: rosterDir, members: members);
   }
 
   Future<void> _writeClaudeMemberProfiles({
@@ -513,7 +567,6 @@ class ConfigProfileService {
   static Map<String, Object?> _flashskyaiTeamSettings() {
     return <String, Object?>{'skipDangerousModePermissionPrompt': true};
   }
-
 }
 
 class _LaunchProfileScope {
