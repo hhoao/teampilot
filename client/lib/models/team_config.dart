@@ -34,6 +34,7 @@ class TeamMemberConfig {
     this.provider = '',
     this.model = '',
     this.agent = '',
+    this.agentType = '',
     this.extraArgs = '',
     this.prompt = '',
     this.joinedAt = 0,
@@ -57,6 +58,7 @@ class TeamMemberConfig {
       provider: json['provider'] as String? ?? '',
       model: json['model'] as String? ?? '',
       agent: json['agent'] as String? ?? '',
+      agentType: json['agentType'] as String? ?? '',
       extraArgs: json['extraArgs'] as String? ?? '',
       prompt: json['prompt'] as String? ?? '',
       joinedAt: (json['joinedAt'] as num?)?.toInt() ?? 0,
@@ -71,6 +73,9 @@ class TeamMemberConfig {
   final String provider;
   final String model;
   final String agent;
+
+  /// Claude roster `agentType` (role name); falls back to [agent] then [name].
+  final String agentType;
   final String extraArgs;
   final String prompt;
   final int joinedAt;
@@ -86,6 +91,7 @@ class TeamMemberConfig {
     String? provider,
     String? model,
     String? agent,
+    String? agentType,
     String? extraArgs,
     String? prompt,
     int? joinedAt,
@@ -97,6 +103,7 @@ class TeamMemberConfig {
       provider: provider ?? this.provider,
       model: model ?? this.model,
       agent: agent ?? this.agent,
+      agentType: agentType ?? this.agentType,
       extraArgs: extraArgs ?? this.extraArgs,
       prompt: prompt ?? this.prompt,
       joinedAt: joinedAt ?? this.joinedAt,
@@ -112,6 +119,7 @@ class TeamMemberConfig {
       'provider': provider,
       'model': model,
       'agent': agent,
+      if (agentType.isNotEmpty) 'agentType': agentType,
       'extraArgs': extraArgs,
       'prompt': prompt,
       'joinedAt': joinedAt,
@@ -129,6 +137,7 @@ class TeamMemberConfig {
             provider == other.provider &&
             model == other.model &&
             agent == other.agent &&
+            agentType == other.agentType &&
             extraArgs == other.extraArgs &&
             prompt == other.prompt &&
             joinedAt == other.joinedAt &&
@@ -142,6 +151,7 @@ class TeamMemberConfig {
     provider,
     model,
     agent,
+    agentType,
     extraArgs,
     prompt,
     joinedAt,
@@ -154,6 +164,7 @@ class TeamConfig {
   const TeamConfig({
     required this.id,
     required this.name,
+    this.description = '',
     this.extraArgs = '',
     this.members = const [],
     this.skillIds = const [],
@@ -161,6 +172,9 @@ class TeamConfig {
     this.cli = TeamCli.claude,
     this.createdAt = 0,
     this.loop,
+    this.claudeTeammateMode = 'in-process',
+    this.claudeEffortLevel = 'xhigh',
+    this.autoLaunchMembers,
   });
 
   static List<String> decodeSkillIds(Object? raw) {
@@ -199,6 +213,7 @@ class TeamConfig {
     return TeamConfig(
       id: json['id'] as String? ?? name,
       name: name,
+      description: json['description'] as String? ?? '',
       extraArgs: json['extraArgs'] as String? ?? '',
       members: members,
       skillIds: decodeSkillIds(json['skillIds']),
@@ -206,6 +221,10 @@ class TeamConfig {
       cli: TeamCli.decode(json['cli']),
       createdAt: (json['createdAt'] as num?)?.toInt() ?? 0,
       loop: decodeLoop(json['loop']),
+      claudeTeammateMode:
+          json['claudeTeammateMode'] as String? ?? 'in-process',
+      claudeEffortLevel: json['claudeEffortLevel'] as String? ?? 'xhigh',
+      autoLaunchMembers: json['autoLaunchMembers'] as bool?,
     );
   }
 
@@ -222,6 +241,7 @@ class TeamConfig {
 
   final String id;
   final String name;
+  final String description;
   final String extraArgs;
   final List<TeamMemberConfig> members;
 
@@ -238,11 +258,21 @@ class TeamConfig {
   /// When non-null, launch passes `--loop true` or `--loop false` (team mode).
   final bool? loop;
 
+  /// Claude `settings.json` `teammateMode` (`in-process`, `tmux`, …).
+  final String claudeTeammateMode;
+
+  /// Claude `settings.json` `effortLevel`.
+  final String claudeEffortLevel;
+
+  /// When non-null, overrides global session pref for auto-launching members.
+  final bool? autoLaunchMembers;
+
   bool get isValid => name.trim().isNotEmpty;
 
   TeamConfig copyWith({
     String? id,
     String? name,
+    String? description,
     String? extraArgs,
     List<TeamMemberConfig>? members,
     List<String>? skillIds,
@@ -251,10 +281,15 @@ class TeamConfig {
     int? createdAt,
     bool? loop,
     bool updateLoop = false,
+    String? claudeTeammateMode,
+    String? claudeEffortLevel,
+    bool? autoLaunchMembers,
+    bool updateAutoLaunchMembers = false,
   }) {
     return TeamConfig(
       id: id ?? this.id,
       name: name ?? this.name,
+      description: description ?? this.description,
       extraArgs: extraArgs ?? this.extraArgs,
       members: members ?? this.members,
       skillIds: skillIds ?? this.skillIds,
@@ -262,6 +297,11 @@ class TeamConfig {
       cli: cli ?? this.cli,
       createdAt: createdAt ?? this.createdAt,
       loop: updateLoop ? loop : this.loop,
+      claudeTeammateMode: claudeTeammateMode ?? this.claudeTeammateMode,
+      claudeEffortLevel: claudeEffortLevel ?? this.claudeEffortLevel,
+      autoLaunchMembers: updateAutoLaunchMembers
+          ? autoLaunchMembers
+          : this.autoLaunchMembers,
     );
   }
 
@@ -269,6 +309,7 @@ class TeamConfig {
     return {
       'id': id,
       'name': name,
+      if (description.isNotEmpty) 'description': description,
       'extraArgs': extraArgs,
       'members': members.map((member) => member.toJson()).toList(),
       if (skillIds.isNotEmpty) 'skillIds': skillIds,
@@ -276,6 +317,10 @@ class TeamConfig {
       if (cli != TeamCli.flashskyai) 'cli': cli.value,
       'createdAt': createdAt,
       if (loop != null) 'loop': loop!,
+      if (claudeTeammateMode != 'in-process')
+        'claudeTeammateMode': claudeTeammateMode,
+      if (claudeEffortLevel != 'xhigh') 'claudeEffortLevel': claudeEffortLevel,
+      if (autoLaunchMembers != null) 'autoLaunchMembers': autoLaunchMembers!,
     };
   }
 
@@ -286,19 +331,24 @@ class TeamConfig {
             runtimeType == other.runtimeType &&
             id == other.id &&
             name == other.name &&
+            description == other.description &&
             extraArgs == other.extraArgs &&
             listEquals(members, other.members) &&
             listEquals(skillIds, other.skillIds) &&
             mapEquals(providerIdsByTool, other.providerIdsByTool) &&
             cli == other.cli &&
             createdAt == other.createdAt &&
-            loop == other.loop;
+            loop == other.loop &&
+            claudeTeammateMode == other.claudeTeammateMode &&
+            claudeEffortLevel == other.claudeEffortLevel &&
+            autoLaunchMembers == other.autoLaunchMembers;
   }
 
   @override
   int get hashCode => Object.hash(
     id,
     name,
+    description,
     extraArgs,
     Object.hashAll(members),
     Object.hashAll(skillIds),
@@ -306,5 +356,8 @@ class TeamConfig {
     cli,
     createdAt,
     loop,
+    claudeTeammateMode,
+    claudeEffortLevel,
+    autoLaunchMembers,
   );
 }

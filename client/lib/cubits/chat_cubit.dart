@@ -363,10 +363,7 @@ class ChatCubit extends Cubit<ChatState> {
     if (trimmed.isEmpty) return;
     if (projectPathsEqual(trimmed, project.primaryPath)) return;
     if (projectPathsContains(project.additionalPaths, trimmed)) return;
-    await repo.createProject(
-      project.primaryPath,
-      additionalPaths: [trimmed],
-    );
+    await repo.createProject(project.primaryPath, additionalPaths: [trimmed]);
     await loadProjectData(repo);
   }
 

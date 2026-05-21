@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:equatable/equatable.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -14,6 +16,7 @@ import '../services/launch_command_builder.dart';
 import '../services/session_lifecycle_service.dart';
 import '../services/team_skill_linker_service.dart';
 import '../utils/logger.dart';
+import '../utils/team_member_naming.dart';
 
 class TeamState extends Equatable {
   const TeamState({
@@ -142,7 +145,7 @@ class TeamCubit extends Cubit<TeamState> {
       session: AppSession(
         sessionId: runtimeTeamName,
         projectId: '',
-        primaryPath: '',
+        primaryPath: Directory.current.path,
         sessionTeam: team.id,
         launchTeam: runtimeTeamName,
         createdAt: DateTime.now().millisecondsSinceEpoch,
@@ -363,12 +366,16 @@ class TeamCubit extends Cubit<TeamState> {
       );
       return false;
     }
-    const memberName = 'team-lead';
+    final now = DateTime.now().millisecondsSinceEpoch;
+    const memberName = TeamMemberNaming.teamLeadName;
     final team = TeamConfig(
       id: trimmed,
       name: trimmed,
       cli: cli,
-      members: [TeamMemberConfig(id: memberName, name: memberName)],
+      createdAt: now,
+      members: [
+        TeamMemberConfig(id: memberName, name: memberName, joinedAt: now),
+      ],
     );
     final teams = [...state.teams, team];
     emit(
@@ -423,9 +430,11 @@ class TeamCubit extends Cubit<TeamState> {
     final selected = state.selectedTeam;
     if (selected == null) return;
     final skillsChanged = !listEquals(selected.skillIds, updated.skillIds);
-    final normalized = updated.members.isEmpty
-        ? updated.copyWith(members: [_defaultMember()])
-        : updated;
+    final normalized = _normalizeTeam(
+      updated.members.isEmpty
+          ? updated.copyWith(members: [_defaultMember()])
+          : updated,
+    );
     final teams = [
       for (final team in state.teams)
         if (team.id == selected.id) normalized else team,
@@ -465,8 +474,9 @@ class TeamCubit extends Cubit<TeamState> {
   Future<void> addMember() async {
     final team = state.selectedTeam;
     if (team == null) return;
-    final name = _uniqueMemberName(team, 'New Member');
-    final member = TeamMemberConfig(id: name, name: name);
+    final slug = _uniqueMemberSlug(team, 'member');
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final member = TeamMemberConfig(id: slug, name: slug, joinedAt: now);
     await updateSelected(team.copyWith(members: [...team.members, member]));
     emit(state.copyWith(statusMessage: 'Added ${member.name}.'));
   }
@@ -474,11 +484,23 @@ class TeamCubit extends Cubit<TeamState> {
   Future<void> updateMember(String memberId, TeamMemberConfig updated) async {
     final team = state.selectedTeam;
     if (team == null) return;
+    final error = TeamMemberNaming.validateMemberName(updated.name);
+    if (error != null) {
+      emit(
+        state.copyWith(
+          statusMessage: error == 'at_sign'
+              ? 'Member name cannot contain @.'
+              : 'Member name is required.',
+        ),
+      );
+      return;
+    }
+    final normalized = _normalizeMember(updated);
     await updateSelected(
       team.copyWith(
         members: [
           for (final m in team.members)
-            if (m.id == memberId) updated else m,
+            if (m.id == memberId) normalized else m,
         ],
       ),
     );
@@ -511,6 +533,21 @@ class TeamCubit extends Cubit<TeamState> {
   Future<void> deleteMember(String memberId) async {
     final team = state.selectedTeam;
     if (team == null) return;
+    TeamMemberConfig? target;
+    for (final m in team.members) {
+      if (m.id == memberId) {
+        target = m;
+        break;
+      }
+    }
+    if (target != null && target.name == TeamMemberNaming.teamLeadName) {
+      emit(
+        state.copyWith(
+          statusMessage: 'Cannot remove team-lead from the roster.',
+        ),
+      );
+      return;
+    }
     if (team.members.length == 1) {
       emit(state.copyWith(statusMessage: 'A team needs at least one member.'));
       return;
@@ -606,19 +643,47 @@ class TeamCubit extends Cubit<TeamState> {
 
   TeamConfig _defaultTeam() {
     const name = 'Default Team';
-    return TeamConfig(id: name, name: name, members: [_defaultMember()]);
+    final now = DateTime.now().millisecondsSinceEpoch;
+    return TeamConfig(
+      id: name,
+      name: name,
+      createdAt: now,
+      members: [_defaultMember(now: now)],
+    );
   }
 
-  TeamMemberConfig _defaultMember() =>
-      const TeamMemberConfig(id: 'team-lead', name: 'team-lead');
+  TeamMemberConfig _defaultMember({int? now}) {
+    final ts = now ?? DateTime.now().millisecondsSinceEpoch;
+    const name = TeamMemberNaming.teamLeadName;
+    return TeamMemberConfig(id: name, name: name, joinedAt: ts);
+  }
 
-  String _uniqueMemberName(TeamConfig team, String base) {
+  TeamConfig _normalizeTeam(TeamConfig team) {
+    final hasLead = team.members.any(
+      (m) => m.name == TeamMemberNaming.teamLeadName,
+    );
+    if (hasLead) return team;
+    final now = DateTime.now().millisecondsSinceEpoch;
+    return team.copyWith(
+      members: [_defaultMember(now: now), ...team.members],
+    );
+  }
+
+  TeamMemberConfig _normalizeMember(TeamMemberConfig member) {
+    if (member.name == TeamMemberNaming.teamLeadName) return member;
+    final slug = TeamMemberNaming.slugMemberName(member.name);
+    return member.copyWith(name: slug);
+  }
+
+  String _uniqueMemberSlug(TeamConfig team, String base) {
     final existing = team.members.map((m) => m.name).toSet();
-    if (!existing.contains(base)) return base;
+    final first = TeamMemberNaming.slugMemberName(base);
+    if (!existing.contains(first)) return first;
     var i = 2;
-    while (existing.contains('$base $i')) {
+    while (true) {
+      final candidate = TeamMemberNaming.slugMemberName('$base-$i');
+      if (!existing.contains(candidate)) return candidate;
       i++;
     }
-    return '$base $i';
   }
 }

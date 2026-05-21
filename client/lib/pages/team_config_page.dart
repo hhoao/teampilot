@@ -775,6 +775,7 @@ class _TeamInfoSection extends StatefulWidget {
 
 class _TeamInfoSectionState extends State<_TeamInfoSection> {
   late TextEditingController _nameCtl;
+  late TextEditingController _descCtl;
   late TextEditingController _argsCtl;
   late String _trackedTeamId;
 
@@ -782,6 +783,7 @@ class _TeamInfoSectionState extends State<_TeamInfoSection> {
   void initState() {
     super.initState();
     _nameCtl = TextEditingController(text: widget.team.name);
+    _descCtl = TextEditingController(text: widget.team.description);
     _argsCtl = TextEditingController(text: widget.team.extraArgs);
     _trackedTeamId = widget.team.id;
   }
@@ -792,9 +794,13 @@ class _TeamInfoSectionState extends State<_TeamInfoSection> {
     if (widget.team.id != _trackedTeamId) {
       _trackedTeamId = widget.team.id;
       _nameCtl.text = widget.team.name;
+      _descCtl.text = widget.team.description;
       _argsCtl.text = widget.team.extraArgs;
     } else if (widget.team.name != _nameCtl.text) {
       _nameCtl.text = widget.team.name;
+    }
+    if (widget.team.description != _descCtl.text) {
+      _descCtl.text = widget.team.description;
     }
   }
 
@@ -802,6 +808,7 @@ class _TeamInfoSectionState extends State<_TeamInfoSection> {
   void dispose() {
     unawaited(_commitName());
     _nameCtl.dispose();
+    _descCtl.dispose();
     _argsCtl.dispose();
     super.dispose();
   }
@@ -840,6 +847,17 @@ class _TeamInfoSectionState extends State<_TeamInfoSection> {
                   key: AppKeys.teamNameField,
                   controller: _nameCtl,
                   onSubmitted: (_) => unawaited(_commitName()),
+                ),
+                const SizedBox(height: 14),
+                _FieldLabel(text: l10n.teamDescription),
+                const SizedBox(height: 6),
+                AppOutlineTextField(
+                  controller: _descCtl,
+                  maxLines: 3,
+                  hintText: l10n.teamDescriptionHint,
+                  onChanged: (v) => widget.cubit.updateSelected(
+                    widget.team.copyWith(description: v),
+                  ),
                 ),
                 const SizedBox(height: 14),
                 _FieldLabel(text: l10n.teamLoop),

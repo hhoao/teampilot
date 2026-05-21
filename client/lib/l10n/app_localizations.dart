@@ -1778,6 +1778,18 @@ abstract class AppLocalizations {
   /// **'Team name'**
   String get teamName;
 
+  /// No description provided for @teamDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Team description'**
+  String get teamDescription;
+
+  /// No description provided for @teamDescriptionHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Optional note for Claude roster and team context'**
+  String get teamDescriptionHint;
+
   /// No description provided for @deleteTeam.
   ///
   /// In en, this message translates to:

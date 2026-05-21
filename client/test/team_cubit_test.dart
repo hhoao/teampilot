@@ -321,8 +321,17 @@ void main() {
       ),
     );
     expect(await settingsFile.exists(), isFalse);
-    expect(cubit.state.selectedTeam?.members.single.provider, 'moonshot');
-    expect(cubit.state.selectedTeam?.members.single.model, 'kimi-k2');
+    final dev = cubit.state.selectedTeam!.members.firstWhere(
+      (m) => m.id == 'developer',
+    );
+    expect(dev.provider, 'moonshot');
+    expect(dev.model, 'kimi-k2');
+    expect(
+      cubit.state.selectedTeam!.members.any(
+        (m) => m.name == 'team-lead',
+      ),
+      isTrue,
+    );
 
     await cubit.close();
     await base.delete(recursive: true);

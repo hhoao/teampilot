@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import '../models/app_session.dart';
 import '../models/team_config.dart';
+import '../utils/team_member_naming.dart';
 import '../utils/logger.dart';
 import 'app_storage.dart';
 import 'claude_provider_settings_resolver.dart';
@@ -76,6 +77,7 @@ class SessionLifecycleService {
 
     final env = await _prepareEnv(
       service: service,
+      session: session,
       team: team,
       member: member,
       runtimeTeamId: runtimeTeamId,
@@ -153,6 +155,7 @@ class SessionLifecycleService {
 
   Future<Map<String, String>> _prepareEnv({
     required ConfigProfileService service,
+    required AppSession session,
     required TeamConfig? team,
     required TeamMemberConfig? member,
     required String runtimeTeamId,
@@ -175,6 +178,11 @@ class SessionLifecycleService {
               launchedMember: member,
             )
           : const <String, Map<String, Object?>>{};
+      final leadSessionId =
+          member?.name == TeamMemberNaming.teamLeadName &&
+              session.sessionId.trim().isNotEmpty
+          ? session.sessionId.trim()
+          : null;
       return service.prepareTeamLaunch(
         teamId: teamId,
         runtimeTeamId: runtimeTeamId,
@@ -184,6 +192,8 @@ class SessionLifecycleService {
         workingDirectory: workingDirectory,
         claudeSettings: claudeSettings,
         claudeSettingsByMember: claudeSettingsByMember,
+        team: team,
+        leadSessionId: leadSessionId,
       );
     }
 

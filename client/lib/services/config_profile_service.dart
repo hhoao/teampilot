@@ -3,7 +3,9 @@ import 'dart:convert';
 import 'package:path/path.dart' as p;
 
 import '../models/team_config.dart';
+import '../utils/team_member_naming.dart';
 import 'app_storage.dart';
+import 'claude_team_roster_service.dart';
 import 'cli_data_layout.dart';
 import 'io/filesystem.dart';
 import 'io/local_filesystem.dart';
@@ -38,7 +40,9 @@ class ConfigProfileService {
     CliDataLayout? layout,
   }) : _fs =
            fs ??
-           LocalFilesystem(pathContext: AppPaths.pathContextForDataRoot(basePath)),
+           LocalFilesystem(
+             pathContext: AppPaths.pathContextForDataRoot(basePath),
+           ),
        layout =
            layout ??
            CliDataLayout(
@@ -78,11 +82,16 @@ class ConfigProfileService {
     String teamId,
     String sessionId,
     TeamMemberConfig member,
-  ) => _pathContext.join(
-    sessionToolDir(teamId, sessionId, 'claude'),
-    'settings',
-    '${_safeClaudePathName(member.name)}.json',
-  );
+  ) {
+    final safeName = member.name == TeamMemberNaming.teamLeadName
+        ? TeamMemberNaming.teamLeadName
+        : TeamMemberNaming.slugMemberName(member.name);
+    return _pathContext.join(
+      sessionToolDir(teamId, sessionId, 'claude'),
+      'settings',
+      '${ClaudeTeamRosterService.safeClaudePathSegment(safeName)}.json',
+    );
+  }
 
   String sessionFlashskyaiMetadataFile(String teamId, String sessionId) =>
       _pathContext.join(
@@ -178,6 +187,8 @@ class ConfigProfileService {
     String workingDirectory = '',
     Map<String, Object?>? claudeSettings,
     Map<String, Map<String, Object?>> claudeSettingsByMember = const {},
+    TeamConfig? team,
+    String? leadSessionId,
   }) async {
     final trimmedTeamId = teamId.trim();
     if (trimmedTeamId.isEmpty) {
@@ -197,11 +208,19 @@ class ConfigProfileService {
         break;
       case TeamCli.claude:
         await _writeClaudeMetadata(scope, workingDirectory);
-        await _writeClaudeSettings(scope, claudeSettings);
+        await _writeClaudeSettings(
+          scope,
+          claudeSettings,
+          effortLevel: team?.claudeEffortLevel ?? 'xhigh',
+          teammateMode: team?.claudeTeammateMode ?? 'in-process',
+        );
         await _writeClaudeRoster(
           scope: scope,
           members: members,
           workingDirectory: workingDirectory,
+          description: team?.description ?? '',
+          leadSessionId: leadSessionId,
+          teammateMode: team?.claudeTeammateMode ?? 'in-process',
         );
         await _writeClaudeMemberProfiles(
           scope: scope,
@@ -262,13 +281,19 @@ class ConfigProfileService {
 
   Future<void> _writeClaudeSettings(
     _LaunchProfileScope scope,
-    Map<String, Object?>? providerSettings,
-  ) async {
+    Map<String, Object?>? providerSettings, {
+    required String effortLevel,
+    required String teammateMode,
+  }) async {
     final file = _pathContext.join(
       sessionToolDir(scope.teamId, scope.sessionId, 'claude'),
       'settings.json',
     );
-    final settings = _claudeTeamSettings(providerSettings);
+    final settings = _claudeTeamSettings(
+      providerSettings,
+      effortLevel: effortLevel,
+      teammateMode: teammateMode,
+    );
     await _fs.atomicWrite(
       file,
       const JsonEncoder.withIndent('  ').convert(settings),
@@ -283,7 +308,10 @@ class ConfigProfileService {
       defaultClaudeMetadata,
       workingDirectory,
     );
-    final metadataPath = sessionClaudeMetadataFile(scope.teamId, scope.sessionId);
+    final metadataPath = sessionClaudeMetadataFile(
+      scope.teamId,
+      scope.sessionId,
+    );
     await _fs.atomicWrite(
       metadataPath,
       const JsonEncoder.withIndent('  ').convert(metadata),
@@ -346,34 +374,54 @@ class ConfigProfileService {
     required _LaunchProfileScope scope,
     required List<TeamMemberConfig> members,
     required String workingDirectory,
+    required String description,
+    required String teammateMode,
+    String? leadSessionId,
   }) async {
     final claudeDir = sessionToolDir(scope.teamId, scope.sessionId, 'claude');
-    final roster = _pathContext.join(
+    final rosterDir = _pathContext.join(
       claudeDir,
       'teams',
-      _safeClaudeTeamName(scope.cliTeamName),
-      'config.json',
+      ClaudeTeamRosterService.safeClaudePathSegment(scope.cliTeamName),
+    );
+    final rosterPath = _pathContext.join(rosterDir, 'config.json');
+
+    final cwd = ClaudeTeamRosterService.resolveWorkingDirectory(
+      workingDirectory: workingDirectory,
+      fallback: '',
     );
 
-    final cliTeamName = scope.cliTeamName;
-    final config = <String, Object?>{
-      'name': cliTeamName,
-      'createdAt': DateTime.now().millisecondsSinceEpoch,
-      'leadAgentId': 'team-lead@$cliTeamName',
-      'env': _claudeRosterEnv(null),
-      'members': [
-        for (final member in members.where((member) => member.isValid))
-          _claudeRosterMember(
-            teamId: cliTeamName,
-            member: member,
-            workingDirectory: workingDirectory,
-          ),
-      ],
-    };
+    Map<String, Object?>? existing;
+    if ((await _fs.stat(rosterPath)).exists) {
+      final raw = await _fs.readString(rosterPath);
+      if (raw != null && raw.trim().isNotEmpty) {
+        final decoded = jsonDecode(raw);
+        if (decoded is Map) {
+          existing = Map<String, Object?>.from(
+            decoded.map((k, v) => MapEntry(k.toString(), v)),
+          );
+        }
+      }
+    }
+
+    final rosterService = ClaudeTeamRosterService(fs: _fs);
+    final config = rosterService.mergeConfig(
+      cliTeamName: scope.cliTeamName,
+      members: members,
+      cwd: cwd,
+      teammateMode: teammateMode,
+      description: description,
+      leadSessionId: leadSessionId,
+      existing: existing,
+    );
 
     await _fs.atomicWrite(
-      roster,
+      rosterPath,
       const JsonEncoder.withIndent('  ').convert(config),
+    );
+    await rosterService.ensureInboxes(
+      rosterDir: rosterDir,
+      members: members,
     );
   }
 
@@ -422,34 +470,18 @@ class ConfigProfileService {
     );
   }
 
-  Map<String, Object?> _claudeRosterMember({
-    required String teamId,
-    required TeamMemberConfig member,
-    required String workingDirectory,
+  static Map<String, Object?> _claudeTeamSettings(
+    Map<String, Object?>? providerSettings, {
+    required String effortLevel,
+    required String teammateMode,
   }) {
-    final memberJson = <String, Object?>{
-      'agentId': '${member.name}@$teamId',
-      'name': member.name,
-      'joinedAt': member.joinedAt,
-      'tmuxPaneId': '',
-      'cwd': workingDirectory,
-      'subscriptions': <Object?>[],
-      if (member.model.trim().isNotEmpty) 'model': member.model.trim(),
+    final settings = <String, Object?>{
+      if (providerSettings != null) ...providerSettings,
     };
-
-    if (member.name == 'team-lead') {
-      memberJson['agentType'] = 'team-lead';
-    } else {
-      memberJson.remove('agentType');
-    }
-
-    return memberJson;
-  }
-
-  static Map<String, Object?> _claudeRosterEnv(Object? existing) {
     final env = <String, Object?>{};
-    if (existing is Map) {
-      for (final entry in existing.entries) {
+    final existingEnv = settings['env'];
+    if (existingEnv is Map) {
+      for (final entry in existingEnv.entries) {
         final key = entry.key;
         if (key is String) {
           env[key] = entry.value;
@@ -457,22 +489,12 @@ class ConfigProfileService {
       }
     }
     env['CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS'] = '1';
-    return env;
-  }
-
-  static Map<String, Object?> _claudeTeamSettings(
-    Map<String, Object?>? providerSettings,
-  ) {
-    final settings = <String, Object?>{
-      if (providerSettings != null) ...providerSettings,
-    };
-    final env = _claudeRosterEnv(settings['env']);
     env.putIfAbsent('CCGUI_CLI_LOGIN_AUTHORIZED', () => '1');
     env.putIfAbsent('CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC', () => '1');
     settings['env'] = env;
-    settings.putIfAbsent('effortLevel', () => 'xhigh');
-    settings.putIfAbsent('skipDangerousModePermissionPrompt', () => true);
-    settings.putIfAbsent('teammateMode', () => 'in-process');
+    settings['effortLevel'] = effortLevel;
+    settings['skipDangerousModePermissionPrompt'] = true;
+    settings['teammateMode'] = teammateMode;
     return settings;
   }
 
@@ -480,7 +502,11 @@ class ConfigProfileService {
     Map<String, Object?>? providerSettings,
     TeamMemberConfig member,
   ) {
-    final settings = _claudeTeamSettings(providerSettings);
+    final settings = _claudeTeamSettings(
+      providerSettings,
+      effortLevel: 'xhigh',
+      teammateMode: 'in-process',
+    );
     final model = member.model.trim();
     if (model.isNotEmpty) {
       final env = Map<String, Object?>.from(settings['env'] as Map);
@@ -494,18 +520,9 @@ class ConfigProfileService {
   }
 
   static Map<String, Object?> _flashskyaiTeamSettings() {
-    return <String, Object?>{
-      'skipDangerousModePermissionPrompt': true,
-    };
+    return <String, Object?>{'skipDangerousModePermissionPrompt': true};
   }
 
-  static String _safeClaudeTeamName(String teamId) =>
-      _safeClaudePathName(teamId);
-
-  static String _safeClaudePathName(String value) {
-    final safe = value.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '-');
-    return safe.isEmpty ? 'default' : safe;
-  }
 }
 
 class _LaunchProfileScope {

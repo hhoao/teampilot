@@ -439,6 +439,8 @@
   "teamSkillsManage": "All skills",
   "memberQuickList": "MEMBER QUICK LIST",
   "teamName": "Team name",
+  "teamDescription": "Team description",
+  "teamDescriptionHint": "Optional note for Claude roster and team context",
   "deleteTeam": "Delete team",
   "deleteTeamSubtitle": "Removes this team from the UI and the shared flashskyai data directory. This cannot be undone.",
   "deleteTeamConfirm": "Delete team \"{name}\"? This cannot be undone.",

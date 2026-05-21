@@ -922,6 +922,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get teamName => 'Team name';
 
   @override
+  String get teamDescription => 'Team description';
+
+  @override
+  String get teamDescriptionHint =>
+      'Optional note for Claude roster and team context';
+
+  @override
   String get deleteTeam => 'Delete team';
 
   @override

@@ -901,6 +901,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get teamName => '团队名称';
 
   @override
+  String get teamDescription => '团队描述';
+
+  @override
+  String get teamDescriptionHint => '可选，写入 Claude roster 的 description 字段';
+
+  @override
   String get deleteTeam => '删除团队';
 
   @override

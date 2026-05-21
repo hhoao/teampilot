@@ -174,13 +174,78 @@ void main() {
             )
             as Map<String, Object?>;
     final projects = metadata['projects'] as Map<String, Object?>;
-    final projectConfig = projects['/workspace/project'] as Map<String, Object?>;
+    final projectConfig =
+        projects['/workspace/project'] as Map<String, Object?>;
     expect(projectConfig['hasTrustDialogAccepted'], isTrue);
 
     final members = decoded['members'] as List<Object?>;
     expect(members, hasLength(2));
     expect((members.first as Map)['agentId'], 'team-lead@$sessionId');
-    expect((members.last as Map)['cwd'], '/workspace/project');
+    expect((members.first as Map)['agentType'], 'team-lead');
+    expect((members.first as Map)['backendType'], isNull);
+    final dev = members.last as Map;
+    expect(dev['agentId'], 'developer-one@$sessionId');
+    expect(dev['name'], 'developer-one');
+    expect(dev['agentType'], 'developer-one');
+    expect(dev['backendType'], 'in-process');
+    expect(dev['tmuxPaneId'], 'in-process');
+    expect(dev['isActive'], true);
+    expect(dev['cwd'], '/workspace/project');
+    expect(decoded.containsKey('env'), isFalse);
+
+    final inboxDir = Directory(p.join(claudeDir, 'teams', sessionId.toLowerCase(), 'inboxes'));
+    expect(await inboxDir.exists(), isTrue);
+    expect(
+      await File(p.join(inboxDir.path, 'team-lead.json')).exists(),
+      isTrue,
+    );
+    expect(
+      await File(p.join(inboxDir.path, 'developer-one.json')).exists(),
+      isTrue,
+    );
+  });
+
+  test('claude roster merge preserves createdAt across launches', () async {
+    const sessionId = 'sess-merge';
+    const members = [
+      TeamMemberConfig(id: 'lead', name: 'team-lead', joinedAt: 100),
+      TeamMemberConfig(id: 'dev', name: 'researcher', joinedAt: 200),
+    ];
+    await service.prepareTeamLaunch(
+      teamId: 'team-a',
+      runtimeTeamId: sessionId,
+      cli: TeamCli.claude,
+      members: members,
+      workingDirectory: '/ws',
+    );
+    final rosterPath = p.join(
+      _sessionClaudeDir(base.path, 'team-a', sessionId),
+      'teams',
+      sessionId,
+      'config.json',
+    );
+    final first =
+        jsonDecode(await File(rosterPath).readAsString()) as Map<String, Object?>;
+    final createdAt = first['createdAt'];
+
+    await service.prepareTeamLaunch(
+      teamId: 'team-a',
+      runtimeTeamId: sessionId,
+      cli: TeamCli.claude,
+      members: members,
+      workingDirectory: '/ws',
+      team: const TeamConfig(
+        id: 'team-a',
+        name: 'team-a',
+        description: 'Research squad',
+      ),
+      leadSessionId: 'chat-session-uuid',
+    );
+    final second =
+        jsonDecode(await File(rosterPath).readAsString()) as Map<String, Object?>;
+    expect(second['createdAt'], createdAt);
+    expect(second['description'], 'Research squad');
+    expect(second['leadSessionId'], 'chat-session-uuid');
   });
 
   test(
@@ -276,8 +341,9 @@ void main() {
         'config.json',
       ),
     );
-    final member =
+    final members =
         (jsonDecode(await roster.readAsString()) as Map)['members'] as List;
-    expect((member.single as Map).containsKey('model'), isFalse);
+    final dev = members.cast<Map>().firstWhere((m) => m['name'] == 'developer');
+    expect(dev.containsKey('model'), isFalse);
   });
 }

@@ -287,6 +287,8 @@
   "teamSkillsManage": "全部 Skills",
   "memberQuickList": "成员快速列表",
   "teamName": "团队名称",
+  "teamDescription": "团队描述",
+  "teamDescriptionHint": "可选，写入 Claude roster 的 description 字段",
   "deleteTeam": "删除团队",
   "deleteTeamSubtitle": "从 UI 和共享的 flashskyai 数据目录中移除该团队。此操作不可撤销。",
   "deleteTeamConfirm": "删除团队 \"{name}\"？此操作不可撤销。",
