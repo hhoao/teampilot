@@ -15,7 +15,7 @@ void main() {
 
     final deepseek = FlashskyaiProviderPresets.byId('DeepSeek')!.template;
     expect(deepseek.config['type'], 'api');
-    expect(deepseek.config['provider_type'], 'https://api.deepseek.com/anthropic');
+    expect(deepseek.config['provider_type'], 'openai');
     expect(deepseek.baseUrl, 'https://api.deepseek.com');
     expect(deepseek.defaultModel, 'deepseek-chat');
 

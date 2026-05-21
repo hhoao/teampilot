@@ -36,6 +36,8 @@ class ConfigProfileService {
   static const Map<String, Object?> defaultTrustedProjectConfig = {
     'hasTrustDialogAccepted': true,
     'projectOnboardingSeenCount': 1,
+    'allowedTools': <Object?>[],
+    'mcpServers': <String, Object?>{},
   };
 
   ConfigProfileService({
