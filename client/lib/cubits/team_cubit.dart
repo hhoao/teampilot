@@ -1,7 +1,6 @@
 import 'package:equatable/equatable.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:uuid/uuid.dart';
 
 import '../models/app_session.dart';
 import '../models/skill.dart';
@@ -133,18 +132,19 @@ class TeamCubit extends Cubit<TeamState> {
   final SessionLifecycleService _lifecycle;
   final TeamSkillLinkerService _skillLinker;
   final InstalledSkillsLoader? _installedSkillsLoader;
-  static const _uuid = Uuid();
 
   Future<Map<String, String>?> _buildLaunchEnvironment(
     TeamConfig team, {
     TeamMemberConfig? member,
   }) async {
+    final runtimeTeamName = team.name.trim();
     final plan = await _lifecycle.prepareLaunch(
       session: AppSession(
-        sessionId: _uuid.v4(),
+        sessionId: runtimeTeamName,
         projectId: '',
         primaryPath: '',
         sessionTeam: team.id,
+        launchTeam: runtimeTeamName,
         createdAt: DateTime.now().millisecondsSinceEpoch,
       ),
       team: team,

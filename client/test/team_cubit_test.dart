@@ -328,6 +328,61 @@ void main() {
     await base.delete(recursive: true);
   });
 
+  test('launchSelectedTeam writes Claude roster under CLI team name', () async {
+    final base = await Directory.systemTemp.createTemp(
+      'team_claude_direct_launch_',
+    );
+    final repo = _repo(base);
+    final launched = <String>[];
+    final cubit = TeamCubit(
+      repository: repo,
+      executableResolver: () => 'claude',
+      appDataBasePath: base.path,
+      configProfileService: ConfigProfileService(basePath: base.path),
+      launcher: (_, member) async => launched.add(member.name),
+    );
+
+    const team = TeamConfig(
+      id: 'Claude Team',
+      name: 'Claude Team',
+      cli: TeamCli.claude,
+      members: [
+        TeamMemberConfig(id: 'team-lead', name: 'team-lead'),
+        TeamMemberConfig(id: 'developer', name: 'developer'),
+      ],
+    );
+    await repo.saveTeams([team]);
+    await cubit.load();
+
+    await cubit.launchSelectedTeam();
+
+    expect(launched, ['team-lead', 'developer']);
+    final memberRoot = Directory(
+      p.join(base.path, 'config-profiles', 'teams', 'Claude Team', 'members'),
+    );
+    final memberDirs = await memberRoot
+        .list()
+        .where((entry) => entry is Directory)
+        .map((entry) => p.basename(entry.path))
+        .toList();
+    expect(memberDirs, ['Claude Team']);
+
+    final rosterFile = File(
+      p.join(
+        memberRoot.path,
+        'Claude Team',
+        'claude',
+        'teams',
+        'claude-team',
+        'config.json',
+      ),
+    );
+    expect(await rosterFile.exists(), isTrue);
+
+    await cubit.close();
+    await base.delete(recursive: true);
+  });
+
   test('load creates runtime profile directories for default team', () async {
     final base = await Directory.systemTemp.createTemp('team_profile_load_');
     final cubit = TeamCubit(
