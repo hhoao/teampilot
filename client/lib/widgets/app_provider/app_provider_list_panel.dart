@@ -76,7 +76,7 @@ class _AppProviderListPanelState extends State<AppProviderListPanel> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     Expanded(
                       child: Text(
@@ -88,26 +88,32 @@ class _AppProviderListPanelState extends State<AppProviderListPanel> {
                         ),
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    Flexible(
-                      child: Wrap(
-                        alignment: WrapAlignment.end,
-                        crossAxisAlignment: WrapCrossAlignment.center,
-                        spacing: 4,
-                        runSpacing: 4,
-                        children: [
-                          TextButton(
-                            onPressed: appCubit.state.isLoading
-                                ? null
-                                : () => widget.onImport(),
-                            child: Text(l10n.appProviderImport),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        TextButton(
+                          onPressed: appCubit.state.isLoading
+                              ? null
+                              : () => widget.onImport(),
+                          style: TextButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(horizontal: 8),
+                            minimumSize: Size.zero,
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            visualDensity: VisualDensity.compact,
                           ),
-                          TextButton(
-                            onPressed: widget.onAdd,
-                            child: Text('+ ${l10n.add}'),
+                          child: Text(l10n.appProviderImport),
+                        ),
+                        TextButton(
+                          onPressed: widget.onAdd,
+                          style: TextButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(horizontal: 8),
+                            minimumSize: Size.zero,
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            visualDensity: VisualDensity.compact,
                           ),
-                        ],
-                      ),
+                          child: Text('+ ${l10n.add}'),
+                        ),
+                      ],
                     ),
                   ],
                 ),
