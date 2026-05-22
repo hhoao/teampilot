@@ -651,6 +651,49 @@ class AppLocalizationsEn extends AppLocalizations {
   String get deleteProviderTooltip => 'Delete provider';
 
   @override
+  String deleteProviderWithCredentialsConfirm(String name) {
+    return 'Delete provider $name? Saved Claude login credentials for this provider will also be removed.';
+  }
+
+  @override
+  String get claudeOfficialCredentialsTitle => 'Claude Official login';
+
+  @override
+  String get claudeOfficialCredentialsReady => 'Credentials ready';
+
+  @override
+  String get claudeOfficialCredentialsMissing =>
+      'No credentials saved for this provider';
+
+  @override
+  String get claudeOfficialCredentialsLogin => 'Sign in with Claude';
+
+  @override
+  String get claudeOfficialCredentialsImportGlobal => 'Import from ~/.claude';
+
+  @override
+  String get claudeOfficialCredentialsImportFile => 'Import file…';
+
+  @override
+  String get claudeOfficialCredentialsRevoke => 'Sign out';
+
+  @override
+  String claudeOfficialCredentialsRevokeConfirm(String name) {
+    return 'Sign out and remove saved credentials for $name?';
+  }
+
+  @override
+  String get claudeOfficialCredentialsActionSuccess => 'Credentials updated';
+
+  @override
+  String get claudeOfficialCredentialsActionFailed =>
+      'Could not update credentials';
+
+  @override
+  String get claudeLaunchCredentialsMissingWarning =>
+      'Claude Official credentials are missing for this team provider. Sign in from Providers settings.';
+
+  @override
   String get noModelsUsingProvider => 'No models are using this provider.';
 
   @override

@@ -85,6 +85,7 @@ class ChatState extends Equatable {
     this.activeSessionId,
     this.selectedMemberId = '',
     this.stateVersion = 0,
+    this.snackbarMessage,
   });
 
   final List<ChatTabInfo> tabs;
@@ -96,6 +97,7 @@ class ChatState extends Equatable {
   final String? activeSessionId;
   final String selectedMemberId;
   final int stateVersion;
+  final String? snackbarMessage;
 
   ChatState copyWith({
     List<ChatTabInfo>? tabs,
@@ -108,6 +110,8 @@ class ChatState extends Equatable {
     String? selectedMemberId,
     bool clearActiveSessionId = false,
     int? stateVersion,
+    String? snackbarMessage,
+    bool clearSnackbarMessage = false,
   }) {
     return ChatState(
       tabs: tabs ?? this.tabs,
@@ -121,6 +125,9 @@ class ChatState extends Equatable {
           : (activeSessionId ?? this.activeSessionId),
       selectedMemberId: selectedMemberId ?? this.selectedMemberId,
       stateVersion: stateVersion ?? this.stateVersion,
+      snackbarMessage: clearSnackbarMessage
+          ? null
+          : (snackbarMessage ?? this.snackbarMessage),
     );
   }
 
@@ -135,6 +142,7 @@ class ChatState extends Equatable {
     activeSessionId,
     selectedMemberId,
     stateVersion,
+    snackbarMessage,
   ];
 }
 
@@ -436,6 +444,7 @@ class ChatCubit extends Cubit<ChatState> {
             team: team,
             member: member,
           );
+          _emitLaunchWarnings(plan.warnings);
           final useResume = launched && plan.resume;
           ts.connect(
             workingDirectory: session.primaryPath,
@@ -602,6 +611,7 @@ class ChatCubit extends Cubit<ChatState> {
           team: team,
           member: member,
         );
+        _emitLaunchWarnings(plan.warnings);
         shell.connect(
           workingDirectory: launch.$1,
           additionalDirectories: launch.$2,
@@ -1030,6 +1040,21 @@ class ChatCubit extends Cubit<ChatState> {
 
   List<ChatTabInfo> _visibleTabs() {
     return _internalTabs.map((t) => t.info).toList();
+  }
+
+  void _emitLaunchWarnings(List<String> warnings) {
+    if (warnings.isEmpty || isClosed) return;
+    emit(
+      state.copyWith(
+        snackbarMessage: warnings.first,
+        stateVersion: state.stateVersion + 1,
+      ),
+    );
+  }
+
+  void clearSnackbarMessage() {
+    if (isClosed || state.snackbarMessage == null) return;
+    emit(state.copyWith(clearSnackbarMessage: true));
   }
 
   @override

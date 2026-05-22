@@ -21,6 +21,7 @@ class LaunchPlan {
     required this.sessionIdArg,
     required this.memberConfigDir,
     required this.resolvedRoots,
+    this.warnings = const [],
   });
 
   final Map<String, String> env;
@@ -28,6 +29,7 @@ class LaunchPlan {
   final String sessionIdArg;
   final String memberConfigDir;
   final List<String> resolvedRoots;
+  final List<String> warnings;
 }
 
 class SessionLifecycleService {
@@ -75,7 +77,7 @@ class SessionLifecycleService {
             ),
           );
 
-    final env = await _prepareEnv(
+    final prepared = await _prepareEnv(
       service: service,
       session: session,
       team: team,
@@ -84,18 +86,19 @@ class SessionLifecycleService {
       workingDirectory: session.primaryPath,
       llmConfigPathOverride: llmConfigPathOverride,
     );
-    final memberConfigDir = _memberConfigDirFromEnv(env);
+    final memberConfigDir = _memberConfigDirFromEnv(prepared.env);
     final resolvedRoots = <String>{
       ...cliState.rootsTried,
       if (memberConfigDir.isNotEmpty) memberConfigDir,
     }.toList(growable: false);
 
     final plan = LaunchPlan(
-      env: env,
+      env: prepared.env,
       resume: cliState.exists,
       sessionIdArg: sessionId,
       memberConfigDir: memberConfigDir,
       resolvedRoots: resolvedRoots,
+      warnings: prepared.warnings,
     );
     return plan;
   }
@@ -146,7 +149,7 @@ class SessionLifecycleService {
     await _removeTree(roots, teamRoot);
   }
 
-  Future<Map<String, String>> _prepareEnv({
+  Future<_PreparedLaunch> _prepareEnv({
     required ConfigProfileService service,
     required AppSession session,
     required TeamConfig? team,
@@ -163,6 +166,9 @@ class SessionLifecycleService {
       final claudeSettings = team.cli == TeamCli.claude
           ? await resolver.resolveTeamClaudeSettings(team)
           : null;
+      final claudeProviderId = team.cli == TeamCli.claude
+          ? await resolver.resolveProviderId(team)
+          : null;
       final claudeSettingsByMember = team.cli == TeamCli.claude
           ? await _loadClaudeMemberProviderSettings(
               resolver: resolver,
@@ -176,7 +182,7 @@ class SessionLifecycleService {
               session.sessionId.trim().isNotEmpty
           ? session.sessionId.trim()
           : null;
-      return service.prepareTeamLaunch(
+      final outcome = await service.prepareTeamLaunch(
         teamId: teamId,
         runtimeTeamId: runtimeTeamId,
         cli: team.cli,
@@ -188,6 +194,11 @@ class SessionLifecycleService {
         claudeSettingsByMember: claudeSettingsByMember,
         team: team,
         leadSessionId: leadSessionId,
+        claudeProviderId: claudeProviderId,
+      );
+      return _PreparedLaunch(
+        env: outcome.environment,
+        warnings: outcome.warnings,
       );
     }
 
@@ -195,8 +206,8 @@ class SessionLifecycleService {
         llmConfigPathOverride?.trim() ??
         _llmConfigPathOverride?.call()?.trim() ??
         '';
-    if (override.isEmpty) return const {};
-    return {'LLM_CONFIG_PATH': override};
+    if (override.isEmpty) return const _PreparedLaunch(env: {});
+    return _PreparedLaunch(env: {'LLM_CONFIG_PATH': override});
   }
 
   Future<ConfigProfileService> _configProfileServiceFor(
@@ -392,6 +403,13 @@ class SessionLifecycleService {
         env['CODEX_HOME'] ??
         '';
   }
+}
+
+class _PreparedLaunch {
+  const _PreparedLaunch({required this.env, this.warnings = const []});
+
+  final Map<String, String> env;
+  final List<String> warnings;
 }
 
 class _CliStateProbeResult {

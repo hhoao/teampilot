@@ -6,6 +6,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../cubits/chat_cubit.dart';
 import '../cubits/layout_cubit.dart';
 import '../cubits/team_cubit.dart';
+import '../l10n/l10n_extensions.dart';
 import '../models/layout_preferences.dart';
 import '../models/team_config.dart';
 import '../services/platform_utils.dart';
@@ -77,27 +78,53 @@ class ChatPage extends StatelessWidget {
     }
 
     if (!toolsAsDrawer) {
-      return buildShell(
-        rightTools: RightToolsPanel(
-          preferences: preferences,
-          panelKey: preferences.toolPlacement == ToolPanelPlacement.right
-              ? AppKeys.rightToolsPanel
-              : AppKeys.bottomToolsPanel,
+      return _chatLaunchListener(
+        context,
+        buildShell(
+          rightTools: RightToolsPanel(
+            preferences: preferences,
+            panelKey: preferences.toolPlacement == ToolPanelPlacement.right
+                ? AppKeys.rightToolsPanel
+                : AppKeys.bottomToolsPanel,
+          ),
         ),
       );
     }
 
-    return Scaffold(
-      endDrawer: Drawer(
-        width: rightToolsDrawerWidth(context, preferences),
-        child: SafeArea(child: rightToolsPanel),
-      ),
-      body: Builder(
-        builder: (scaffoldContext) => buildShell(
-          onOpenRightTools: () => Scaffold.of(scaffoldContext).openEndDrawer(),
-          rightTools: null,
+    return _chatLaunchListener(
+      context,
+      Scaffold(
+        endDrawer: Drawer(
+          width: rightToolsDrawerWidth(context, preferences),
+          child: SafeArea(child: rightToolsPanel),
+        ),
+        body: Builder(
+          builder: (scaffoldContext) => buildShell(
+            onOpenRightTools: () => Scaffold.of(scaffoldContext).openEndDrawer(),
+            rightTools: null,
+          ),
         ),
       ),
+    );
+  }
+
+  Widget _chatLaunchListener(BuildContext context, Widget child) {
+    return BlocListener<ChatCubit, ChatState>(
+      listenWhen: (previous, next) =>
+          previous.snackbarMessage != next.snackbarMessage &&
+          next.snackbarMessage != null,
+      listener: (listenerContext, state) {
+        final code = state.snackbarMessage;
+        if (code == null) return;
+        final message = code == 'claude_credentials_missing'
+            ? listenerContext.l10n.claudeLaunchCredentialsMissingWarning
+            : code;
+        ScaffoldMessenger.of(listenerContext).showSnackBar(
+          SnackBar(content: Text(message)),
+        );
+        listenerContext.read<ChatCubit>().clearSnackbarMessage();
+      },
+      child: child,
     );
   }
 

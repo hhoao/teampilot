@@ -9,6 +9,7 @@ import '../../models/app_provider_config.dart';
 import '../../models/llm_config.dart';
 import '../../services/tool_config_generator.dart';
 import '../../theme/workspace_surface_layers.dart';
+import 'claude_official_credential_actions.dart';
 
 class AppProviderDetailPanel extends StatelessWidget {
   const AppProviderDetailPanel({
@@ -84,6 +85,8 @@ class AppProviderDetailPanel extends StatelessWidget {
             label: l10n.appProviderEnabledTools,
             value: l10n.appProviderCliLabel(provider.cli),
           ),
+          const SizedBox(height: 24),
+          ClaudeOfficialCredentialActions(provider: provider),
           const SizedBox(height: 24),
           Text(l10n.jsonPreview, style: Theme.of(context).textTheme.labelLarge),
           const SizedBox(height: 8),

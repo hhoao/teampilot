@@ -1268,6 +1268,78 @@ abstract class AppLocalizations {
   /// **'Delete provider'**
   String get deleteProviderTooltip;
 
+  /// No description provided for @deleteProviderWithCredentialsConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete provider {name}? Saved Claude login credentials for this provider will also be removed.'**
+  String deleteProviderWithCredentialsConfirm(String name);
+
+  /// No description provided for @claudeOfficialCredentialsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Claude Official login'**
+  String get claudeOfficialCredentialsTitle;
+
+  /// No description provided for @claudeOfficialCredentialsReady.
+  ///
+  /// In en, this message translates to:
+  /// **'Credentials ready'**
+  String get claudeOfficialCredentialsReady;
+
+  /// No description provided for @claudeOfficialCredentialsMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'No credentials saved for this provider'**
+  String get claudeOfficialCredentialsMissing;
+
+  /// No description provided for @claudeOfficialCredentialsLogin.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in with Claude'**
+  String get claudeOfficialCredentialsLogin;
+
+  /// No description provided for @claudeOfficialCredentialsImportGlobal.
+  ///
+  /// In en, this message translates to:
+  /// **'Import from ~/.claude'**
+  String get claudeOfficialCredentialsImportGlobal;
+
+  /// No description provided for @claudeOfficialCredentialsImportFile.
+  ///
+  /// In en, this message translates to:
+  /// **'Import file…'**
+  String get claudeOfficialCredentialsImportFile;
+
+  /// No description provided for @claudeOfficialCredentialsRevoke.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign out'**
+  String get claudeOfficialCredentialsRevoke;
+
+  /// No description provided for @claudeOfficialCredentialsRevokeConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign out and remove saved credentials for {name}?'**
+  String claudeOfficialCredentialsRevokeConfirm(String name);
+
+  /// No description provided for @claudeOfficialCredentialsActionSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Credentials updated'**
+  String get claudeOfficialCredentialsActionSuccess;
+
+  /// No description provided for @claudeOfficialCredentialsActionFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not update credentials'**
+  String get claudeOfficialCredentialsActionFailed;
+
+  /// No description provided for @claudeLaunchCredentialsMissingWarning.
+  ///
+  /// In en, this message translates to:
+  /// **'Claude Official credentials are missing for this team provider. Sign in from Providers settings.'**
+  String get claudeLaunchCredentialsMissingWarning;
+
   /// No description provided for @noModelsUsingProvider.
   ///
   /// In en, this message translates to:

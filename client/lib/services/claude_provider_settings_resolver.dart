@@ -24,6 +24,26 @@ class ClaudeProviderSettingsResolver {
     return _generator.buildClaudeSettings(provider);
   }
 
+  Future<String?> resolveProviderId(TeamConfig team) async {
+    final fromTeam = team.providerIdsByTool['claude']?.trim() ?? '';
+    if (fromTeam.isNotEmpty) return fromTeam;
+
+    for (final member in team.members) {
+      final fromMember = member.provider.trim();
+      if (fromMember.isNotEmpty) {
+        final provider = await _repository.findById(
+          AppProviderCli.claude,
+          fromMember,
+        );
+        if (provider != null) return fromMember;
+      }
+    }
+
+    final claudeProviders = await _listClaudeProviders();
+    if (claudeProviders.length == 1) return claudeProviders.first.id;
+    return null;
+  }
+
   /// Team-level Claude settings: team tool binding, then any member id, then sole claude provider.
   Future<Map<String, Object?>?> resolveTeamClaudeSettings(
     TeamConfig team,

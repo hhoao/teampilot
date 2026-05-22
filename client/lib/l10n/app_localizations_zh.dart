@@ -630,6 +630,47 @@ class AppLocalizationsZh extends AppLocalizations {
   String get deleteProviderTooltip => '删除提供商';
 
   @override
+  String deleteProviderWithCredentialsConfirm(String name) {
+    return '删除提供商 $name？将同时删除该 Provider 已保存的 Claude 登录凭据。';
+  }
+
+  @override
+  String get claudeOfficialCredentialsTitle => 'Claude Official 登录';
+
+  @override
+  String get claudeOfficialCredentialsReady => '凭据已就绪';
+
+  @override
+  String get claudeOfficialCredentialsMissing => '该 Provider 尚未保存凭据';
+
+  @override
+  String get claudeOfficialCredentialsLogin => 'Claude 登录';
+
+  @override
+  String get claudeOfficialCredentialsImportGlobal => '从 ~/.claude 导入';
+
+  @override
+  String get claudeOfficialCredentialsImportFile => '导入文件…';
+
+  @override
+  String get claudeOfficialCredentialsRevoke => '退出登录';
+
+  @override
+  String claudeOfficialCredentialsRevokeConfirm(String name) {
+    return '退出登录并删除 $name 的已保存凭据？';
+  }
+
+  @override
+  String get claudeOfficialCredentialsActionSuccess => '凭据已更新';
+
+  @override
+  String get claudeOfficialCredentialsActionFailed => '凭据更新失败';
+
+  @override
+  String get claudeLaunchCredentialsMissingWarning =>
+      '该 Team 绑定的 Claude Official Provider 缺少凭据，请在 Providers 设置中登录。';
+
+  @override
   String get noModelsUsingProvider => '没有模型使用此提供商。';
 
   @override

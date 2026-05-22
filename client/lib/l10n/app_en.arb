@@ -281,6 +281,32 @@
   "hide": "Hide",
   "replaceKey": "Replace key",
   "deleteProviderTooltip": "Delete provider",
+  "deleteProviderWithCredentialsConfirm": "Delete provider {name}? Saved Claude login credentials for this provider will also be removed.",
+  "@deleteProviderWithCredentialsConfirm": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "claudeOfficialCredentialsTitle": "Claude Official login",
+  "claudeOfficialCredentialsReady": "Credentials ready",
+  "claudeOfficialCredentialsMissing": "No credentials saved for this provider",
+  "claudeOfficialCredentialsLogin": "Sign in with Claude",
+  "claudeOfficialCredentialsImportGlobal": "Import from ~/.claude",
+  "claudeOfficialCredentialsImportFile": "Import file…",
+  "claudeOfficialCredentialsRevoke": "Sign out",
+  "claudeOfficialCredentialsRevokeConfirm": "Sign out and remove saved credentials for {name}?",
+  "@claudeOfficialCredentialsRevokeConfirm": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "claudeOfficialCredentialsActionSuccess": "Credentials updated",
+  "claudeOfficialCredentialsActionFailed": "Could not update credentials",
+  "claudeLaunchCredentialsMissingWarning": "Claude Official credentials are missing for this team provider. Sign in from Providers settings.",
   "noModelsUsingProvider": "No models are using this provider.",
   "modelsUsingProviderTitle": "Models using this provider",
   "selectProvider": "Select a provider from the list",

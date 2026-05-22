@@ -3,6 +3,8 @@ import 'dart:convert';
 import '../models/app_provider_config.dart';
 import '../models/llm_config.dart';
 import '../services/app_storage.dart';
+import '../services/claude_official_provider.dart';
+import '../services/claude_provider_credentials_service.dart';
 import '../services/io/filesystem.dart';
 import '../services/tool_config_generator.dart';
 
@@ -20,17 +22,24 @@ class AppProviderRepository {
     String? basePath,
     ToolConfigGenerator? generator,
     Filesystem? fs,
+    ClaudeProviderCredentialsService? claudeCredentialsService,
   }) : _basePathOverride = basePath,
        _generator = generator ?? const ToolConfigGenerator(),
-       _fsOverride = fs;
+       _fsOverride = fs,
+       _claudeCredentialsServiceOverride = claudeCredentialsService;
 
   final String? _basePathOverride;
   final Filesystem? _fsOverride;
   final ToolConfigGenerator _generator;
+  final ClaudeProviderCredentialsService? _claudeCredentialsServiceOverride;
 
   String get _basePath => _basePathOverride ?? AppStorage.paths.basePath;
 
   Filesystem get _fs => _fsOverride ?? AppStorage.fs;
+
+  ClaudeProviderCredentialsService get _claudeCredentials =>
+      _claudeCredentialsServiceOverride ??
+      ClaudeProviderCredentialsService(fs: _fs, basePath: _basePath);
 
   String providersPath(AppProviderCli cli) =>
       _fs.pathContext.join(_basePath, 'providers', cli.value, 'providers.json');
@@ -43,6 +52,14 @@ class AppProviderRepository {
   );
 
   Future<List<AppProviderConfig>> loadProviders(AppProviderCli cli) async {
+    final providers = await _loadProvidersFromDisk(cli);
+    if (cli != AppProviderCli.claude) return providers;
+    return _probeClaudeCredentials(providers);
+  }
+
+  Future<List<AppProviderConfig>> _loadProvidersFromDisk(
+    AppProviderCli cli,
+  ) async {
     final path = providersPath(cli);
     if (!(await _fs.stat(path)).isFile) return const [];
     try {
@@ -65,7 +82,7 @@ class AppProviderRepository {
     final path = providersPath(cli);
     await _fs.ensureDir(_fs.pathContext.dirname(path));
 
-    final previous = await loadProviders(cli);
+    final previous = await _loadProvidersFromDisk(cli);
     final previousById = {for (final p in previous) p.id: p};
     final merged = [
       for (final provider in providers)
@@ -96,8 +113,49 @@ class AppProviderRepository {
       case AppProviderCli.flashskyai:
         await _writeCommonFlashskyaiLlmConfig(merged);
       case AppProviderCli.claude:
+        await _removeStaleClaudeNativeDirs(merged);
         break;
     }
+  }
+
+  Future<void> _removeStaleClaudeNativeDirs(
+    List<AppProviderConfig> providers,
+  ) async {
+    final path = _fs.pathContext;
+    final expected = providers.map((p) => p.id).toSet();
+    final root = path.join(_basePath, 'providers', 'claude');
+    if (!(await _fs.stat(root)).isDirectory) return;
+    for (final entry in await _fs.listDir(root)) {
+      if (!entry.isDirectory) continue;
+      if (entry.name == 'providers.json') continue;
+      if (!expected.contains(entry.name)) {
+        await _fs.removeRecursive(path.join(root, entry.name));
+      }
+    }
+  }
+
+  Future<List<AppProviderConfig>> _probeClaudeCredentials(
+    List<AppProviderConfig> providers,
+  ) async {
+    var changed = false;
+    final probed = <AppProviderConfig>[];
+    for (final provider in providers) {
+      if (!isOfficialClaudeProvider(provider)) {
+        probed.add(provider);
+        continue;
+      }
+      final probe = await _claudeCredentials.probe(provider.id);
+      final next = provider.withCredentialProbe(probe);
+      if (next.credentialStatus != provider.credentialStatus ||
+          next.credentialUpdatedAt != provider.credentialUpdatedAt) {
+        changed = true;
+      }
+      probed.add(next);
+    }
+    if (changed) {
+      await saveProviders(AppProviderCli.claude, probed);
+    }
+    return probed;
   }
 
   Future<AppProviderConfig?> findById(AppProviderCli cli, String id) async {

@@ -556,11 +556,16 @@ Future<void> _confirmDeleteAppProvider(BuildContext context, String id) async {
       .where((p) => p.id == id)
       .firstOrNull;
   final label = provider?.name ?? id;
+  final hasCredentials = provider?.hasClaudeCredentialsReady ?? false;
   final confirmed = await showDialog<bool>(
     context: context,
     builder: (context) => AlertDialog(
       title: Text(l10n.deleteProvider),
-      content: Text(l10n.deleteProviderConfirm(label)),
+      content: Text(
+        hasCredentials
+            ? l10n.deleteProviderWithCredentialsConfirm(label)
+            : l10n.deleteProviderConfirm(label),
+      ),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context, false),

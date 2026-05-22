@@ -2,16 +2,29 @@ import 'dart:convert';
 
 import 'package:path/path.dart' as p;
 
+import '../models/claude_credential_link_result.dart';
 import '../models/team_config.dart';
 import '../utils/project_path_utils.dart';
 import '../utils/team_member_naming.dart';
 import 'app_storage.dart';
+import 'claude_official_provider.dart';
+import 'claude_provider_credentials_service.dart';
 import 'claude_team_roster_service.dart';
 import 'cli_data_layout.dart';
 import 'io/filesystem.dart';
 
 /// Launch-time environment for tool-isolated team profiles.
 typedef TeamLaunchEnvironment = Map<String, String>;
+
+class TeamLaunchOutcome {
+  const TeamLaunchOutcome({
+    required this.environment,
+    this.warnings = const [],
+  });
+
+  final TeamLaunchEnvironment environment;
+  final List<String> warnings;
+}
 
 /// Profile directory key when launching without a chat [AppSession].
 const configProfileAdhocSessionId = '_adhoc';
@@ -44,14 +57,21 @@ class ConfigProfileService {
     required this.basePath,
     Filesystem? fs,
     CliDataLayout? layout,
+    ClaudeProviderCredentialsService? claudeCredentialsService,
   }) : _fs = fs ?? AppStorage.fs,
        layout =
            layout ??
-           CliDataLayout(teampilotRoot: basePath, fs: fs ?? AppStorage.fs);
+           CliDataLayout(teampilotRoot: basePath, fs: fs ?? AppStorage.fs),
+       _claudeCredentialsService = claudeCredentialsService;
 
   final String basePath;
   final Filesystem _fs;
   final CliDataLayout layout;
+  final ClaudeProviderCredentialsService? _claudeCredentialsService;
+
+  ClaudeProviderCredentialsService get _claudeCredentials =>
+      _claudeCredentialsService ??
+      ClaudeProviderCredentialsService(fs: _fs, basePath: basePath);
 
   p.Context get _pathContext => _fs.pathContext;
 
@@ -173,7 +193,7 @@ class ConfigProfileService {
   ///
   /// [teamId] is [TeamConfig.id]. [runtimeTeamId] is the chat session id (CLI
   /// `--team-name`); when empty, uses [configProfileAdhocSessionId] for paths.
-  Future<TeamLaunchEnvironment> prepareTeamLaunch({
+  Future<TeamLaunchOutcome> prepareTeamLaunch({
     required String teamId,
     String runtimeTeamId = '',
     TeamCli cli = TeamCli.flashskyai,
@@ -185,11 +205,14 @@ class ConfigProfileService {
     Map<String, Map<String, Object?>> claudeSettingsByMember = const {},
     TeamConfig? team,
     String? leadSessionId,
+    String? claudeProviderId,
   }) async {
     final trimmedTeamId = teamId.trim();
     if (trimmedTeamId.isEmpty) {
-      return const {};
+      return const TeamLaunchOutcome(environment: {});
     }
+
+    final warnings = <String>[];
 
     final scope = _resolveLaunchScope(
       teamId: trimmedTeamId,
@@ -233,12 +256,30 @@ class ConfigProfileService {
           providerSettings: claudeSettings,
           providerSettingsByMember: claudeSettingsByMember,
         );
+        final providerId = claudeProviderId?.trim() ?? '';
+        if (providerId.isNotEmpty &&
+            claudeSettings != null &&
+            isOfficialClaudeSettings(claudeSettings)) {
+          final sessionClaudeDir = sessionToolDir(
+            scope.teamId,
+            scope.sessionId,
+            'claude',
+          );
+          final link = await _claudeCredentials.ensureLinked(
+            sessionClaudeDir,
+            providerId,
+          );
+          if (link == CredentialLinkResult.missing) {
+            warnings.add('claude_credentials_missing');
+          }
+        }
         break;
       case TeamCli.codex:
         break;
     }
 
-    return switch (cli) {
+    return TeamLaunchOutcome(
+      environment: switch (cli) {
       TeamCli.flashskyai => {
         'FLASHSKYAI_CONFIG_DIR': sessionToolDir(
           scope.teamId,
@@ -264,7 +305,9 @@ class ConfigProfileService {
           ),
         'CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS': '1',
       },
-    };
+    },
+      warnings: warnings,
+    );
   }
 
   static _LaunchProfileScope _resolveLaunchScope({

@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
 
+import 'claude_credential_link_result.dart';
+
 /// CLI owner for an app-level provider. A provider belongs to exactly one CLI.
 enum AppProviderCli {
   flashskyai('flashskyai'),
@@ -69,6 +71,8 @@ class AppProviderConfig {
     this.config = const {},
     this.createdAt = 0,
     this.updatedAt = 0,
+    this.credentialStatus = 'missing',
+    this.credentialUpdatedAt = 0,
     this.unknownFields = const {},
   });
 
@@ -108,6 +112,8 @@ class AppProviderConfig {
           : const {},
       createdAt: (json['createdAt'] as num?)?.toInt() ?? 0,
       updatedAt: (json['updatedAt'] as num?)?.toInt() ?? 0,
+      credentialStatus: json['credentialStatus'] as String? ?? 'missing',
+      credentialUpdatedAt: (json['credentialUpdatedAt'] as num?)?.toInt() ?? 0,
       unknownFields: {
         for (final entry in json.entries)
           if (!_knownKeys.contains(entry.key)) entry.key: entry.value,
@@ -136,6 +142,8 @@ class AppProviderConfig {
     'config',
     'createdAt',
     'updatedAt',
+    'credentialStatus',
+    'credentialUpdatedAt',
   };
 
   final String id;
@@ -158,7 +166,11 @@ class AppProviderConfig {
   final Map<String, Object?> config;
   final int createdAt;
   final int updatedAt;
+  final String credentialStatus;
+  final int credentialUpdatedAt;
   final Map<String, Object?> unknownFields;
+
+  bool get hasClaudeCredentialsReady => credentialStatus == 'ready';
 
   bool get requiresApiKey =>
       category == AppProviderCategory.thirdParty ||
@@ -194,6 +206,8 @@ class AppProviderConfig {
     Map<String, Object?>? config,
     int? createdAt,
     int? updatedAt,
+    String? credentialStatus,
+    int? credentialUpdatedAt,
     Map<String, Object?>? unknownFields,
   }) {
     return AppProviderConfig(
@@ -217,9 +231,17 @@ class AppProviderConfig {
       config: config ?? this.config,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      credentialStatus: credentialStatus ?? this.credentialStatus,
+      credentialUpdatedAt: credentialUpdatedAt ?? this.credentialUpdatedAt,
       unknownFields: unknownFields ?? this.unknownFields,
     );
   }
+
+  AppProviderConfig withCredentialProbe(CredentialProbe probe) => copyWith(
+    credentialStatus: probe.isReady ? 'ready' : 'missing',
+    credentialUpdatedAt:
+        probe.updatedAt?.millisecondsSinceEpoch ?? credentialUpdatedAt,
+  );
 
   Map<String, Object?> toJson() {
     return {
@@ -244,6 +266,10 @@ class AppProviderConfig {
       'config': config,
       'createdAt': createdAt,
       'updatedAt': updatedAt,
+      if (cli == AppProviderCli.claude) ...{
+        'credentialStatus': credentialStatus,
+        if (credentialUpdatedAt > 0) 'credentialUpdatedAt': credentialUpdatedAt,
+      },
     };
   }
 }

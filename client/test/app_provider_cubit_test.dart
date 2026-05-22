@@ -15,6 +15,7 @@ void main() {
     repository = AppProviderRepository(basePath: temp.path);
     cubit = AppProviderCubit(
       repository: repository,
+      basePath: temp.path,
     );
   });
 

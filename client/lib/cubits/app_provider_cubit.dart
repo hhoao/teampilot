@@ -2,9 +2,11 @@ import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../models/app_provider_config.dart';
+import '../models/claude_credential_link_result.dart';
 import '../models/llm_config.dart';
 import '../repositories/app_provider_repository.dart';
 import '../services/app_storage.dart';
+import '../services/claude_provider_credentials_service.dart';
 import '../services/provider_import_service.dart';
 import '../services/tool_config_generator.dart';
 
@@ -73,16 +75,36 @@ class AppProviderCubit extends Cubit<AppProviderState> {
     ProviderImportService? importService,
     String? Function()? flashskyaiExecutablePath,
     ToolConfigGenerator? generator,
-  }) : _repository = repository ?? AppProviderRepository(),
+    ClaudeProviderCredentialsService? claudeCredentialsService,
+    String? basePath,
+  }) : _repository = repository ?? AppProviderRepository(basePath: basePath),
        _generator = generator ?? const ToolConfigGenerator(),
        _flashskyaiExecutablePath = flashskyaiExecutablePath,
        _importService = importService,
+       _claudeCredentials =
+           claudeCredentialsService ??
+           ClaudeProviderCredentialsService(
+             fs: AppStorage.fs,
+             basePath: _resolveBasePath(basePath),
+           ),
        super(const AppProviderState());
 
   final AppProviderRepository _repository;
   final ToolConfigGenerator _generator;
   final ProviderImportService? _importService;
   final String? Function()? _flashskyaiExecutablePath;
+  final ClaudeProviderCredentialsService _claudeCredentials;
+
+  static String _resolveBasePath(String? basePath) {
+    if (basePath != null && basePath.trim().isNotEmpty) {
+      return basePath.trim();
+    }
+    try {
+      return AppStorage.paths.basePath;
+    } on Object {
+      return '';
+    }
+  }
 
   ProviderImportService _importServiceForRequest() {
     return _importService ??
@@ -223,6 +245,59 @@ class AppProviderCubit extends Cubit<AppProviderState> {
         statusMessage: 'Provider removed.',
       ),
     );
+  }
+
+  Future<CredentialProbe> probeClaudeCredentials(String providerId) async {
+    return _claudeCredentials.probe(providerId);
+  }
+
+  Future<bool> loginClaudeOfficialProvider(String providerId) async {
+    final ok = await _claudeCredentials.runAuthLogin(providerId);
+    if (!ok) return false;
+    return _refreshClaudeCredentialStatus(providerId);
+  }
+
+  Future<bool> importClaudeCredentialsFromGlobal(
+    String providerId, {
+    bool replace = false,
+  }) async {
+    final home = AppStorage.home;
+    final ok = await _claudeCredentials.importFromGlobal(
+      providerId,
+      homeDirectory: home,
+      replace: replace,
+    );
+    if (!ok) return false;
+    return _refreshClaudeCredentialStatus(providerId);
+  }
+
+  Future<bool> importClaudeCredentialsFromFile(
+    String providerId,
+    String path, {
+    bool replace = false,
+  }) async {
+    final ok = await _claudeCredentials.importFromFile(
+      providerId,
+      path,
+      replace: replace,
+    );
+    if (!ok) return false;
+    return _refreshClaudeCredentialStatus(providerId);
+  }
+
+  Future<bool> revokeClaudeOfficialProvider(String providerId) async {
+    final ok = await _claudeCredentials.revokeCredentials(providerId);
+    if (!ok) return false;
+    return _refreshClaudeCredentialStatus(providerId);
+  }
+
+  Future<bool> _refreshClaudeCredentialStatus(String providerId) async {
+    final probe = await _claudeCredentials.probe(providerId);
+    final provider = state.providers
+        .where((p) => p.id == providerId)
+        .firstOrNull;
+    if (provider == null) return false;
+    return upsertProvider(provider.withCredentialProbe(probe));
   }
 
   Future<ProviderImportResult> importFromExternal() async {

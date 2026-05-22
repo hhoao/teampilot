@@ -55,11 +55,11 @@ void main() {
   });
 
   test('prepareTeamLaunch for flashskyai uses team adhoc member dir', () async {
-    final env = await service.prepareTeamLaunch(
+    final env = (await service.prepareTeamLaunch(
       teamId: 'team-a',
       cli: TeamCli.flashskyai,
       workingDirectory: '/workspace/flashskyai',
-    );
+    )).environment;
 
     final memberFlashskyaiDir = p.join(
       base.path,
@@ -107,10 +107,10 @@ void main() {
   });
 
   test('prepareTeamLaunch for codex returns CODEX_HOME only', () async {
-    final env = await service.prepareTeamLaunch(
+    final env = (await service.prepareTeamLaunch(
       teamId: 'team-a',
       cli: TeamCli.codex,
-    );
+    )).environment;
 
     final codexDir = p.join(
       base.path,
@@ -128,7 +128,7 @@ void main() {
 
   test('prepareTeamLaunch for claude returns env and writes roster', () async {
     const sessionId = '00000000-0000-4000-8000-000000000099';
-    final env = await service.prepareTeamLaunch(
+    final env = (await service.prepareTeamLaunch(
       teamId: 'Team A!',
       runtimeTeamId: sessionId,
       cli: TeamCli.claude,
@@ -147,7 +147,7 @@ void main() {
         ),
       ],
       workingDirectory: '/workspace/project',
-    );
+    )).environment;
 
     final claudeDir = _sessionClaudeDir(base.path, 'Team A!', sessionId);
     expect(env.keys, [
@@ -252,7 +252,7 @@ void main() {
     'prepareTeamLaunch for claude member returns runtime dir and settings file',
     () async {
       const sessionId = '00000000-0000-4000-8000-000000000001';
-      final env = await service.prepareTeamLaunch(
+      final env = (await service.prepareTeamLaunch(
         teamId: 'team-a',
         runtimeTeamId: sessionId,
         cli: TeamCli.claude,
@@ -271,7 +271,7 @@ void main() {
             'ANTHROPIC_MODEL': 'team-default',
           },
         },
-      );
+      )).environment;
 
       final claudeDir = _sessionClaudeDir(base.path, 'team-a', sessionId);
       final developerSettings = p.join(claudeDir, 'settings', 'developer.json');
