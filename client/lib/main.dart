@@ -11,6 +11,7 @@ import 'app/app_shell.dart';
 import 'cubits/chat_cubit.dart';
 import 'cubits/layout_cubit.dart';
 import 'l10n/l10n_extensions.dart';
+import 'repositories/app_settings_repository.dart';
 import 'repositories/session_repository.dart';
 import 'repositories/ssh_credential_store.dart';
 import 'repositories/ssh_known_host_repository.dart';
@@ -23,6 +24,8 @@ import 'services/ssh_client_factory.dart';
 import 'services/terminal_transport_factory.dart';
 import 'services/terminal_fonts.dart';
 import 'theme/app_theme.dart';
+import 'pages/system/error_page.dart';
+import 'utils/logger.dart';
 import 'widgets/ui_warmup.dart';
 
 class _CleanupWindowListener extends WindowListener {
@@ -89,8 +92,16 @@ void main() async {
     });
   }
 
-  await AppPathsBootstrapper.init();
-  final nativeAppDataPath = AppPathsBootstrapper.current.basePath;
+  late final String nativeAppDataPath;
+  try {
+    await AppPathsBootstrapper.init();
+    nativeAppDataPath = AppPathsBootstrapper.current.basePath;
+    await initAppLogging(nativeAppDataPath);
+  } on Object catch (error, stackTrace) {
+    showInitErrorApp(error: error, stackTrace: stackTrace);
+    return;
+  }
+
   final preferences = await SharedPreferences.getInstance();
 
   if (!Platform.isAndroid) {
@@ -101,7 +112,7 @@ void main() async {
     TeamPilotBootstrap(
       preferences: preferences,
       nativeAppDataPath: nativeAppDataPath,
-      childBuilder: (shell) {
+          childBuilder: (shell) {
         if (!Platform.isAndroid) {
           windowManager.addListener(_CleanupWindowListener(shell.chatCubit));
         }
@@ -109,6 +120,12 @@ void main() async {
           chatCubit: shell.chatCubit,
           child: MultiRepositoryProvider(
             providers: [
+              RepositoryProvider<SharedPreferences>.value(
+                value: preferences,
+              ),
+              RepositoryProvider<AppSettingsRepository>.value(
+                value: shell.appSettings,
+              ),
               RepositoryProvider<SessionRepository>.value(
                 value: shell.sessionRepo,
               ),

@@ -68,6 +68,7 @@ class AppShell {
     required this.skillCubit,
     required this.appUpdateCubit,
     required this.sshProfileCubit,
+    required this.appSettings,
     required this.reinstallStorageContext,
     required this.bootstrapAppData,
   });
@@ -90,6 +91,7 @@ class AppShell {
   final SkillCubit skillCubit;
   final AppUpdateCubit appUpdateCubit;
   final SshProfileCubit sshProfileCubit;
+  final AppSettingsRepository appSettings;
   final Future<RuntimeStorageContext> Function() reinstallStorageContext;
   final Future<void> Function() bootstrapAppData;
 }
@@ -372,6 +374,7 @@ Future<AppShell> buildAppShell({
     skillCubit: skillCubit,
     appUpdateCubit: appUpdateCubit,
     sshProfileCubit: sshProfileCubit,
+    appSettings: appSettings,
     reinstallStorageContext: reinstallStorageContext,
     bootstrapAppData: bootstrapAppData,
   );

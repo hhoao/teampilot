@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../cubits/app_update_cubit.dart';
 import '../l10n/l10n_extensions.dart';
+import '../pages/onboarding/onboarding_gate.dart';
 import '../utils/app_keys.dart';
 import '../widgets/settings/workspace_hub_shell.dart';
 import '../widgets/settings/workspace_settings_widgets.dart';
@@ -156,6 +158,15 @@ class _AboutConfigWorkspaceState extends State<AboutConfigWorkspace> {
                                 ),
                                 child: Text(l10n.appUpdateViewRelease),
                               ),
+                            TextButton(
+                              onPressed: () => resetOnboardingWizard(context),
+                              child: Text(l10n.onboardingRerunSetup),
+                            ),
+                            OutlinedButton.icon(
+                              onPressed: () => context.push('/config/logs'),
+                              icon: const Icon(Icons.article_outlined),
+                              label: const Text('查看日志'),
+                            ),
                           ],
                         ),
                       ),

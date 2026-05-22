@@ -5,6 +5,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 abstract class AppSettingsRepository {
   Future<String?> loadLlmConfigPathOverride();
   Future<void> saveLlmConfigPathOverride(String? path);
+
+  Future<bool> loadHasCompletedOnboarding();
+  Future<void> saveHasCompletedOnboarding(bool value);
 }
 
 class SharedPrefsAppSettingsRepository implements AppSettingsRepository {
@@ -12,6 +15,7 @@ class SharedPrefsAppSettingsRepository implements AppSettingsRepository {
 
   static const storageKey = 'flashskyai.app_settings.v1';
   static const _llmConfigPathKey = 'llmConfigPath';
+  static const _hasCompletedOnboardingKey = 'hasCompletedOnboarding';
 
   final SharedPreferences _preferences;
 
@@ -40,6 +44,23 @@ class SharedPrefsAppSettingsRepository implements AppSettingsRepository {
     } else {
       current[_llmConfigPathKey] = path;
     }
+    await _writeMap(current);
+  }
+
+  @override
+  Future<bool> loadHasCompletedOnboarding() async {
+    final value = _readMap()[_hasCompletedOnboardingKey];
+    return value == true;
+  }
+
+  @override
+  Future<void> saveHasCompletedOnboarding(bool value) async {
+    final current = _readMap();
+    current[_hasCompletedOnboardingKey] = value;
+    await _writeMap(current);
+  }
+
+  Future<void> _writeMap(Map<String, Object?> current) async {
     if (current.isEmpty) {
       await _preferences.remove(storageKey);
     } else {
@@ -62,10 +83,14 @@ class SharedPrefsAppSettingsRepository implements AppSettingsRepository {
 
 /// Test-friendly in-memory implementation.
 class InMemoryAppSettingsRepository implements AppSettingsRepository {
-  InMemoryAppSettingsRepository({String? llmConfigPathOverride})
-    : _llmConfigPathOverride = llmConfigPathOverride;
+  InMemoryAppSettingsRepository({
+    String? llmConfigPathOverride,
+    bool hasCompletedOnboarding = false,
+  }) : _llmConfigPathOverride = llmConfigPathOverride,
+       _hasCompletedOnboarding = hasCompletedOnboarding;
 
   String? _llmConfigPathOverride;
+  bool _hasCompletedOnboarding;
 
   @override
   Future<String?> loadLlmConfigPathOverride() async => _llmConfigPathOverride;
@@ -76,5 +101,13 @@ class InMemoryAppSettingsRepository implements AppSettingsRepository {
     _llmConfigPathOverride = (trimmed == null || trimmed.isEmpty)
         ? null
         : trimmed;
+  }
+
+  @override
+  Future<bool> loadHasCompletedOnboarding() async => _hasCompletedOnboarding;
+
+  @override
+  Future<void> saveHasCompletedOnboarding(bool value) async {
+    _hasCompletedOnboarding = value;
   }
 }

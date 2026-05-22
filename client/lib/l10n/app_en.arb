@@ -606,5 +606,42 @@
         "type": "String"
       }
     }
-  }
+  },
+  "onboardingTitle": "First-time setup",
+  "onboardingProgress": "Step {current} of {total}",
+  "@onboardingProgress": {
+    "placeholders": {
+      "current": { "type": "int" },
+      "total": { "type": "int" }
+    }
+  },
+  "onboardingSkip": "Skip",
+  "onboardingNext": "Next",
+  "onboardingGetStarted": "Get started",
+  "onboardingStepAppearance": "Language & theme",
+  "onboardingStepSsh": "SSH",
+  "onboardingStepCli": "Claude Code CLI",
+  "onboardingStepProviderImport": "Import providers",
+  "onboardingStepDefaultProvider": "Default provider",
+  "onboardingAppearanceTitle": "Choose language and appearance",
+  "onboardingAppearanceSubtitle": "You can change these later in Settings → Layout.",
+  "onboardingSshTitle": "Configure SSH connection",
+  "onboardingSshSubtitle": "Android runs Claude Code on a remote host over SSH.",
+  "onboardingCliTitle": "Detect Claude Code CLI",
+  "onboardingCliSubtitle": "TeamPilot needs the Claude Code executable to start sessions.",
+  "onboardingCliFound": "CLI found",
+  "onboardingCliNotFound": "CLI not detected on PATH",
+  "onboardingCliRedetect": "Scan again",
+  "onboardingProviderImportTitle": "Import Claude providers",
+  "onboardingProviderImportSubtitle": "Scan ~/.claude settings and cc-switch for existing provider configs.",
+  "onboardingProviderImportResults": "Import results",
+  "onboardingProviderImportEmpty": "No Claude providers detected. You can configure them later in Settings.",
+  "onboardingProviderImportFailed": "Import failed",
+  "onboardingProviderImportRescan": "Scan again",
+  "onboardingDefaultProviderTitle": "Choose default Claude provider",
+  "onboardingDefaultProviderSubtitle": "New sessions will use this provider and default model.",
+  "onboardingDefaultProviderEmpty": "No providers to choose from. Skip this step or add providers in Settings.",
+  "onboardingDefaultProviderPick": "Select the default Claude Code provider",
+  "onboardingDefaultProviderModelHint": "Primary model id for this provider",
+  "onboardingRerunSetup": "Run setup wizard again"
 }

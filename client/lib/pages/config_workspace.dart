@@ -76,6 +76,11 @@ class ConfigSettingsHubPage extends StatelessWidget {
             context.push('/config/about');
           },
         ),
+        WorkspaceHubEntry(
+          title: '日志',
+          icon: Icons.article_outlined,
+          onTap: () => context.push('/config/logs'),
+        ),
       ],
     );
   }

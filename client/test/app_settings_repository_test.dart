@@ -1,6 +1,6 @@
-import 'package:teampilot/repositories/app_settings_repository.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:teampilot/repositories/app_settings_repository.dart';
 
 void main() {
   setUp(() {
@@ -53,6 +53,35 @@ void main() {
       final repo = SharedPrefsAppSettingsRepository(prefs);
 
       expect(await repo.loadLlmConfigPathOverride(), isNull);
+    });
+  });
+
+  group('AppSettingsRepository.hasCompletedOnboarding', () {
+    test('returns false when nothing is stored', () async {
+      final prefs = await SharedPreferences.getInstance();
+      final repo = SharedPrefsAppSettingsRepository(prefs);
+
+      expect(await repo.loadHasCompletedOnboarding(), isFalse);
+    });
+
+    test('round-trips completion flag', () async {
+      final prefs = await SharedPreferences.getInstance();
+      final repo = SharedPrefsAppSettingsRepository(prefs);
+
+      await repo.saveHasCompletedOnboarding(true);
+
+      expect(await repo.loadHasCompletedOnboarding(), isTrue);
+    });
+
+    test('stores alongside llm config override', () async {
+      final prefs = await SharedPreferences.getInstance();
+      final repo = SharedPrefsAppSettingsRepository(prefs);
+
+      await repo.saveLlmConfigPathOverride('/custom/llm.json');
+      await repo.saveHasCompletedOnboarding(true);
+
+      expect(await repo.loadLlmConfigPathOverride(), '/custom/llm.json');
+      expect(await repo.loadHasCompletedOnboarding(), isTrue);
     });
   });
 }

@@ -1,0 +1,72 @@
+import 'dart:async';
+
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import '../../repositories/app_settings_repository.dart';
+import '../../services/onboarding_service.dart';
+import 'onboarding_wizard.dart';
+
+class OnboardingGate extends StatefulWidget {
+  const OnboardingGate({super.key, required this.child});
+
+  final Widget child;
+
+  @override
+  State<OnboardingGate> createState() => OnboardingGateState();
+}
+
+class OnboardingGateState extends State<OnboardingGate> {
+  bool? _showWizard;
+  late final OnboardingService _onboardingService;
+
+  @override
+  void initState() {
+    super.initState();
+    _onboardingService = OnboardingService(
+      appSettings: context.read<AppSettingsRepository>(),
+      preferences: context.read<SharedPreferences>(),
+    );
+    unawaited(_resolve());
+  }
+
+  Future<void> _resolve() async {
+    final show = await _onboardingService.shouldShowOnboarding();
+    if (!mounted) return;
+    setState(() => _showWizard = show);
+  }
+
+  void completeOnboarding() {
+    unawaited(_completeOnboarding());
+  }
+
+  Future<void> _completeOnboarding() async {
+    await context.read<AppSettingsRepository>().saveHasCompletedOnboarding(true);
+    if (!mounted) return;
+    setState(() => _showWizard = false);
+  }
+
+  Future<void> reopenWizard() async {
+    await context.read<AppSettingsRepository>().saveHasCompletedOnboarding(false);
+    if (!mounted) return;
+    setState(() => _showWizard = true);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final showWizard = _showWizard;
+    if (showWizard == null) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+    if (showWizard) {
+      return OnboardingWizard(onComplete: completeOnboarding);
+    }
+    return widget.child;
+  }
+}
+
+/// Allows settings UI to re-open the setup wizard without restarting the app.
+Future<void> resetOnboardingWizard(BuildContext context) async {
+  await context.findAncestorStateOfType<OnboardingGateState>()?.reopenWizard();
+}

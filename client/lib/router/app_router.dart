@@ -12,8 +12,10 @@ import '../cubits/team_cubit.dart';
 import '../models/app_provider_config.dart';
 import '../pages/chat_page.dart';
 import '../pages/config_workspace.dart';
+import '../pages/system/log_viewer_page.dart';
 import '../pages/llm_config_workspace.dart';
 import '../pages/skill_management_page.dart';
+import '../pages/onboarding/onboarding_gate.dart';
 import '../pages/startup_gate.dart';
 import '../pages/ssh_profiles_page.dart';
 import '../pages/team_config_page.dart';
@@ -66,8 +68,9 @@ final appRouter = GoRouter(
         if (Platform.isAndroid) {
           final path = state.uri.path;
           final hubDetail = AndroidShellChrome.isHubDetailPath(path);
-          return StartupGate(
-            child: Scaffold(
+          return OnboardingGate(
+            child: StartupGate(
+              child: Scaffold(
               appBar: AppBar(
                 title: Text(AndroidShellChrome.title(context, path)),
                 leading: hubDetail
@@ -83,11 +86,16 @@ final appRouter = GoRouter(
                   : Drawer(child: SafeArea(child: sidebar)),
               body: body,
             ),
+          ),
           );
         }
 
-        return Scaffold(
-          body: SafeArea(child: StartupGate(child: body)),
+        return OnboardingGate(
+          child: StartupGate(
+            child: Scaffold(
+              body: SafeArea(child: body),
+            ),
+          ),
         );
       },
       routes: [
@@ -195,6 +203,11 @@ final appRouter = GoRouter(
           pageBuilder: (context, state) => const NoTransitionPage(
             child: ConfigWorkspace(section: ConfigSection.about),
           ),
+        ),
+        GoRoute(
+          path: '/config/logs',
+          pageBuilder: (context, state) =>
+              const NoTransitionPage(child: LogViewerPage()),
         ),
         GoRoute(
           path: '/team-config',

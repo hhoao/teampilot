@@ -1276,4 +1276,100 @@ class AppLocalizationsZh extends AppLocalizations {
   String appUpdateBrowserOpenFailed(String error) {
     return '打开浏览器失败：$error';
   }
+
+  @override
+  String get onboardingTitle => '首次设置';
+
+  @override
+  String onboardingProgress(int current, int total) {
+    return '第 $current / $total 步';
+  }
+
+  @override
+  String get onboardingSkip => '跳过';
+
+  @override
+  String get onboardingNext => '下一步';
+
+  @override
+  String get onboardingGetStarted => '开始使用';
+
+  @override
+  String get onboardingStepAppearance => '语言 / 主题';
+
+  @override
+  String get onboardingStepSsh => 'SSH';
+
+  @override
+  String get onboardingStepCli => 'Claude Code CLI';
+
+  @override
+  String get onboardingStepProviderImport => '导入 Provider';
+
+  @override
+  String get onboardingStepDefaultProvider => '默认 Provider';
+
+  @override
+  String get onboardingAppearanceTitle => '选择语言与外观';
+
+  @override
+  String get onboardingAppearanceSubtitle => '可随时在「设置 → 布局」中修改。';
+
+  @override
+  String get onboardingSshTitle => '配置 SSH 连接';
+
+  @override
+  String get onboardingSshSubtitle => 'Android 通过 SSH 在远程主机运行 Claude Code。';
+
+  @override
+  String get onboardingCliTitle => '检测 Claude Code CLI';
+
+  @override
+  String get onboardingCliSubtitle => '应用需要 Claude Code 可执行文件才能启动会话。';
+
+  @override
+  String get onboardingCliFound => '已找到 CLI';
+
+  @override
+  String get onboardingCliNotFound => '未在 PATH 中检测到 CLI';
+
+  @override
+  String get onboardingCliRedetect => '重新检测';
+
+  @override
+  String get onboardingProviderImportTitle => '导入 Claude Provider';
+
+  @override
+  String get onboardingProviderImportSubtitle =>
+      '扫描 ~/.claude 配置与 cc-switch 中的现有 Provider。';
+
+  @override
+  String get onboardingProviderImportResults => '导入结果';
+
+  @override
+  String get onboardingProviderImportEmpty => '未检测到 Claude Provider，可稍后在设置中配置。';
+
+  @override
+  String get onboardingProviderImportFailed => '导入失败';
+
+  @override
+  String get onboardingProviderImportRescan => '重新扫描';
+
+  @override
+  String get onboardingDefaultProviderTitle => '选择默认 Claude Provider';
+
+  @override
+  String get onboardingDefaultProviderSubtitle => '新建会话时将使用此 Provider 与默认模型。';
+
+  @override
+  String get onboardingDefaultProviderEmpty => '暂无可选 Provider，可跳过或在设置中添加。';
+
+  @override
+  String get onboardingDefaultProviderPick => '选择 Claude Code 默认 Provider';
+
+  @override
+  String get onboardingDefaultProviderModelHint => '该 Provider 的主模型 ID';
+
+  @override
+  String get onboardingRerunSetup => '重新运行设置向导';
 }

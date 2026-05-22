@@ -1319,4 +1319,108 @@ class AppLocalizationsEn extends AppLocalizations {
   String appUpdateBrowserOpenFailed(String error) {
     return 'Failed to open browser: $error';
   }
+
+  @override
+  String get onboardingTitle => 'First-time setup';
+
+  @override
+  String onboardingProgress(int current, int total) {
+    return 'Step $current of $total';
+  }
+
+  @override
+  String get onboardingSkip => 'Skip';
+
+  @override
+  String get onboardingNext => 'Next';
+
+  @override
+  String get onboardingGetStarted => 'Get started';
+
+  @override
+  String get onboardingStepAppearance => 'Language & theme';
+
+  @override
+  String get onboardingStepSsh => 'SSH';
+
+  @override
+  String get onboardingStepCli => 'Claude Code CLI';
+
+  @override
+  String get onboardingStepProviderImport => 'Import providers';
+
+  @override
+  String get onboardingStepDefaultProvider => 'Default provider';
+
+  @override
+  String get onboardingAppearanceTitle => 'Choose language and appearance';
+
+  @override
+  String get onboardingAppearanceSubtitle =>
+      'You can change these later in Settings → Layout.';
+
+  @override
+  String get onboardingSshTitle => 'Configure SSH connection';
+
+  @override
+  String get onboardingSshSubtitle =>
+      'Android runs Claude Code on a remote host over SSH.';
+
+  @override
+  String get onboardingCliTitle => 'Detect Claude Code CLI';
+
+  @override
+  String get onboardingCliSubtitle =>
+      'TeamPilot needs the Claude Code executable to start sessions.';
+
+  @override
+  String get onboardingCliFound => 'CLI found';
+
+  @override
+  String get onboardingCliNotFound => 'CLI not detected on PATH';
+
+  @override
+  String get onboardingCliRedetect => 'Scan again';
+
+  @override
+  String get onboardingProviderImportTitle => 'Import Claude providers';
+
+  @override
+  String get onboardingProviderImportSubtitle =>
+      'Scan ~/.claude settings and cc-switch for existing provider configs.';
+
+  @override
+  String get onboardingProviderImportResults => 'Import results';
+
+  @override
+  String get onboardingProviderImportEmpty =>
+      'No Claude providers detected. You can configure them later in Settings.';
+
+  @override
+  String get onboardingProviderImportFailed => 'Import failed';
+
+  @override
+  String get onboardingProviderImportRescan => 'Scan again';
+
+  @override
+  String get onboardingDefaultProviderTitle => 'Choose default Claude provider';
+
+  @override
+  String get onboardingDefaultProviderSubtitle =>
+      'New sessions will use this provider and default model.';
+
+  @override
+  String get onboardingDefaultProviderEmpty =>
+      'No providers to choose from. Skip this step or add providers in Settings.';
+
+  @override
+  String get onboardingDefaultProviderPick =>
+      'Select the default Claude Code provider';
+
+  @override
+  String get onboardingDefaultProviderModelHint =>
+      'Primary model id for this provider';
+
+  @override
+  String get onboardingRerunSetup => 'Run setup wizard again';
 }

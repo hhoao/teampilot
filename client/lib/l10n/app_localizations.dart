@@ -2491,6 +2491,192 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Failed to open browser: {error}'**
   String appUpdateBrowserOpenFailed(String error);
+
+  /// No description provided for @onboardingTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'First-time setup'**
+  String get onboardingTitle;
+
+  /// No description provided for @onboardingProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'Step {current} of {total}'**
+  String onboardingProgress(int current, int total);
+
+  /// No description provided for @onboardingSkip.
+  ///
+  /// In en, this message translates to:
+  /// **'Skip'**
+  String get onboardingSkip;
+
+  /// No description provided for @onboardingNext.
+  ///
+  /// In en, this message translates to:
+  /// **'Next'**
+  String get onboardingNext;
+
+  /// No description provided for @onboardingGetStarted.
+  ///
+  /// In en, this message translates to:
+  /// **'Get started'**
+  String get onboardingGetStarted;
+
+  /// No description provided for @onboardingStepAppearance.
+  ///
+  /// In en, this message translates to:
+  /// **'Language & theme'**
+  String get onboardingStepAppearance;
+
+  /// No description provided for @onboardingStepSsh.
+  ///
+  /// In en, this message translates to:
+  /// **'SSH'**
+  String get onboardingStepSsh;
+
+  /// No description provided for @onboardingStepCli.
+  ///
+  /// In en, this message translates to:
+  /// **'Claude Code CLI'**
+  String get onboardingStepCli;
+
+  /// No description provided for @onboardingStepProviderImport.
+  ///
+  /// In en, this message translates to:
+  /// **'Import providers'**
+  String get onboardingStepProviderImport;
+
+  /// No description provided for @onboardingStepDefaultProvider.
+  ///
+  /// In en, this message translates to:
+  /// **'Default provider'**
+  String get onboardingStepDefaultProvider;
+
+  /// No description provided for @onboardingAppearanceTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose language and appearance'**
+  String get onboardingAppearanceTitle;
+
+  /// No description provided for @onboardingAppearanceSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'You can change these later in Settings → Layout.'**
+  String get onboardingAppearanceSubtitle;
+
+  /// No description provided for @onboardingSshTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Configure SSH connection'**
+  String get onboardingSshTitle;
+
+  /// No description provided for @onboardingSshSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Android runs Claude Code on a remote host over SSH.'**
+  String get onboardingSshSubtitle;
+
+  /// No description provided for @onboardingCliTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Detect Claude Code CLI'**
+  String get onboardingCliTitle;
+
+  /// No description provided for @onboardingCliSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'TeamPilot needs the Claude Code executable to start sessions.'**
+  String get onboardingCliSubtitle;
+
+  /// No description provided for @onboardingCliFound.
+  ///
+  /// In en, this message translates to:
+  /// **'CLI found'**
+  String get onboardingCliFound;
+
+  /// No description provided for @onboardingCliNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'CLI not detected on PATH'**
+  String get onboardingCliNotFound;
+
+  /// No description provided for @onboardingCliRedetect.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan again'**
+  String get onboardingCliRedetect;
+
+  /// No description provided for @onboardingProviderImportTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Import Claude providers'**
+  String get onboardingProviderImportTitle;
+
+  /// No description provided for @onboardingProviderImportSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan ~/.claude settings and cc-switch for existing provider configs.'**
+  String get onboardingProviderImportSubtitle;
+
+  /// No description provided for @onboardingProviderImportResults.
+  ///
+  /// In en, this message translates to:
+  /// **'Import results'**
+  String get onboardingProviderImportResults;
+
+  /// No description provided for @onboardingProviderImportEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No Claude providers detected. You can configure them later in Settings.'**
+  String get onboardingProviderImportEmpty;
+
+  /// No description provided for @onboardingProviderImportFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Import failed'**
+  String get onboardingProviderImportFailed;
+
+  /// No description provided for @onboardingProviderImportRescan.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan again'**
+  String get onboardingProviderImportRescan;
+
+  /// No description provided for @onboardingDefaultProviderTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose default Claude provider'**
+  String get onboardingDefaultProviderTitle;
+
+  /// No description provided for @onboardingDefaultProviderSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'New sessions will use this provider and default model.'**
+  String get onboardingDefaultProviderSubtitle;
+
+  /// No description provided for @onboardingDefaultProviderEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No providers to choose from. Skip this step or add providers in Settings.'**
+  String get onboardingDefaultProviderEmpty;
+
+  /// No description provided for @onboardingDefaultProviderPick.
+  ///
+  /// In en, this message translates to:
+  /// **'Select the default Claude Code provider'**
+  String get onboardingDefaultProviderPick;
+
+  /// No description provided for @onboardingDefaultProviderModelHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Primary model id for this provider'**
+  String get onboardingDefaultProviderModelHint;
+
+  /// No description provided for @onboardingRerunSetup.
+  ///
+  /// In en, this message translates to:
+  /// **'Run setup wizard again'**
+  String get onboardingRerunSetup;
 }
 
 class _AppLocalizationsDelegate
