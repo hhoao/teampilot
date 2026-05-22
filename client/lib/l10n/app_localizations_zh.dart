@@ -1372,4 +1372,115 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get onboardingRerunSetup => '重新运行设置向导';
+
+  @override
+  String get logViewerTitle => '日志';
+
+  @override
+  String get logViewerSubtitle => '应用数据目录下的运行日志与错误记录。';
+
+  @override
+  String get logViewerFileLabel => '日志文件';
+
+  @override
+  String get logViewerSearchHint => '搜索日志…';
+
+  @override
+  String get logViewerFilterTitle => '过滤';
+
+  @override
+  String get logViewerFilterLevel => '级别';
+
+  @override
+  String get logViewerWrapLines => '自动换行';
+
+  @override
+  String get logViewerReverseOrder => '从最新内容开始';
+
+  @override
+  String get logViewerCompactView => '简洁视图';
+
+  @override
+  String logViewerLineCount(int count) {
+    return '$count 行';
+  }
+
+  @override
+  String get logViewerActionsMenu => '更多操作';
+
+  @override
+  String get logViewerRefresh => '刷新';
+
+  @override
+  String get logViewerCopyPath => '复制日志路径';
+
+  @override
+  String get logViewerClearOld => '清理过期日志';
+
+  @override
+  String get logViewerEmpty => '暂无日志文件';
+
+  @override
+  String get logViewerEmptyHint => '应用运行后会在此生成日志。';
+
+  @override
+  String get logViewerPendingTitle => '日志尚未写入磁盘';
+
+  @override
+  String get logViewerPendingBody => '以下为等待写入文件的缓冲条目：';
+
+  @override
+  String logViewerLoadFilesFailed(String error) {
+    return '加载日志列表失败：$error';
+  }
+
+  @override
+  String logViewerReadFailed(String error) {
+    return '读取日志失败：$error';
+  }
+
+  @override
+  String get logViewerClearDone => '已清理过期日志';
+
+  @override
+  String logViewerClearFailed(String error) {
+    return '清理失败：$error';
+  }
+
+  @override
+  String logViewerPathCopied(String name) {
+    return '已复制路径：$name';
+  }
+
+  @override
+  String get initErrorTitle => '应用启动失败';
+
+  @override
+  String get initErrorDetails => '错误信息';
+
+  @override
+  String get initErrorStackTrace => '堆栈跟踪';
+
+  @override
+  String get initErrorPendingLogs => '待写入日志';
+
+  @override
+  String get initErrorViewLogs => '查看日志';
+
+  @override
+  String get initErrorCopyReport => '复制报告';
+
+  @override
+  String get initErrorCopy => '复制';
+
+  @override
+  String get initErrorCopied => '已复制';
+
+  @override
+  String get initErrorStackEmpty => '（堆栈为空）';
+
+  @override
+  String initErrorVersion(String version, String build) {
+    return '版本 $version（$build）';
+  }
 }

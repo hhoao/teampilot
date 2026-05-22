@@ -98,7 +98,7 @@ void main() async {
     nativeAppDataPath = AppPathsBootstrapper.current.basePath;
     await initAppLogging(nativeAppDataPath);
   } on Object catch (error, stackTrace) {
-    showInitErrorApp(error: error, stackTrace: stackTrace);
+    await showInitErrorApp(error: error, stackTrace: stackTrace);
     return;
   }
 

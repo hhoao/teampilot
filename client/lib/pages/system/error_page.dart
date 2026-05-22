@@ -2,22 +2,38 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
+import '../../l10n/l10n_extensions.dart';
+import '../../widgets/settings/workspace_hub_shell.dart';
+import '../../widgets/settings/workspace_settings_widgets.dart';
 import '../../utils/logger_utils.dart';
+import 'fatal_app_theme.dart';
 import 'log_viewer_page.dart';
 
 /// Fallback UI when startup fails before the main app shell loads.
-void showInitErrorApp({
+Future<void> showInitErrorApp({
   required Object error,
   required StackTrace stackTrace,
-}) {
-  runApp(_InitErrorApp(error: error, stackTrace: stackTrace));
+}) async {
+  final theme = await resolveFatalAppTheme();
+  runApp(
+    _InitErrorApp(
+      error: error,
+      stackTrace: stackTrace,
+      theme: theme,
+    ),
+  );
 }
 
 class _InitErrorApp extends StatefulWidget {
-  const _InitErrorApp({required this.error, required this.stackTrace});
+  const _InitErrorApp({
+    required this.error,
+    required this.stackTrace,
+    required this.theme,
+  });
 
   final Object error;
   final StackTrace stackTrace;
+  final ThemeData theme;
 
   @override
   State<_InitErrorApp> createState() => _InitErrorAppState();
@@ -29,7 +45,8 @@ class _InitErrorAppState extends State<_InitErrorApp> {
 
   String? _version;
   String? _buildNumber;
-  bool _copied = false;
+  bool _copiedReport = false;
+  bool _copiedStack = false;
 
   @override
   void initState() {
@@ -50,13 +67,14 @@ class _InitErrorAppState extends State<_InitErrorApp> {
     }
   }
 
-  String _formatStackTrace(StackTrace stackTrace) {
+  String _formatStackTrace(BuildContext context, StackTrace stackTrace) {
     final text = stackTrace.toString().trim();
     if (text.isNotEmpty) return text;
 
-    final buffer = StringBuffer('（堆栈为空）\n\n');
-    buffer.writeln('错误：${widget.error}');
-    buffer.writeln('类型：${widget.error.runtimeType}');
+    final l10n = context.l10n;
+    final buffer = StringBuffer('${l10n.initErrorStackEmpty}\n\n');
+    buffer.writeln('${widget.error}');
+    buffer.writeln(widget.error.runtimeType);
     if (widget.error is PlatformException) {
       final pe = widget.error as PlatformException;
       buffer.writeln('code: ${pe.code}');
@@ -66,196 +84,217 @@ class _InitErrorAppState extends State<_InitErrorApp> {
     return buffer.toString();
   }
 
-  String _buildReportText() {
+  String _buildReportText(BuildContext context) {
+    final l10n = context.l10n;
     return '''
 TeamPilot
-版本: ${_version ?? '?'} (${_buildNumber ?? '?'})
-错误: ${widget.error}
-类型: ${widget.error.runtimeType}
-堆栈:
-${_formatStackTrace(widget.stackTrace)}
+${l10n.initErrorVersion(_version ?? '?', _buildNumber ?? '?')}
+${widget.error}
+${widget.error.runtimeType}
+${_formatStackTrace(context, widget.stackTrace)}
 
-待写入日志:
+${l10n.initErrorPendingLogs}:
 ${AppLogger.instance.getFormattedPendingLogs()}
 ''';
   }
 
-  void _copyAll() {
-    Clipboard.setData(ClipboardData(text: _buildReportText()));
-    setState(() => _copied = true);
+  void _copyAll(BuildContext context) {
+    Clipboard.setData(ClipboardData(text: _buildReportText(context)));
+    setState(() => _copiedReport = true);
     Future.delayed(const Duration(seconds: 2), () {
-      if (mounted) setState(() => _copied = false);
+      if (mounted) setState(() => _copiedReport = false);
     });
   }
 
-  void _copyStack() {
-    Clipboard.setData(ClipboardData(text: _formatStackTrace(widget.stackTrace)));
-    setState(() => _copied = true);
+  void _copyStack(BuildContext context) {
+    Clipboard.setData(
+      ClipboardData(text: _formatStackTrace(context, widget.stackTrace)),
+    );
+    setState(() => _copiedStack = true);
     Future.delayed(const Duration(seconds: 2), () {
-      if (mounted) setState(() => _copied = false);
+      if (mounted) setState(() => _copiedStack = false);
     });
   }
 
   void _openLogViewer() {
     navigatorKey.currentState?.push(
-      MaterialPageRoute(builder: (_) => const LogViewerPage()),
+      MaterialPageRoute(
+        builder: (_) => Theme(
+          data: widget.theme,
+          child: const LogViewerPage(),
+        ),
+      ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'TeamPilot — 启动失败',
-      debugShowCheckedModeBanner: false,
+    return FatalAppShell(
+      theme: widget.theme,
       navigatorKey: navigatorKey,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
-        useMaterial3: true,
-      ),
-      home: Builder(
-        builder: (context) {
-          final cs = Theme.of(context).colorScheme;
-          return Scaffold(
-            body: SafeArea(
+      home: Builder(builder: _buildHome),
+    );
+  }
+
+  Widget _buildHome(BuildContext context) {
+    final l10n = context.l10n;
+    final cs = Theme.of(context).colorScheme;
+
+    return Scaffold(
+      backgroundColor: cs.workspacePage,
+      body: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            WorkspaceHubTitleBar(
+              title: l10n.initErrorTitle,
+              subtitle: _version != null
+                  ? l10n.initErrorVersion(_version!, _buildNumber!)
+                  : l10n.logViewerSubtitle,
+              compact: true,
+            ),
+            Expanded(
               child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Icon(Icons.error_outline, color: cs.error, size: 40),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            '应用启动失败',
-                            style: Theme.of(context).textTheme.headlineSmall,
-                          ),
-                          if (_version != null)
-                            Text(
-                              '版本 $_version ($_buildNumber)',
-                              style: Theme.of(context).textTheme.bodySmall
-                                  ?.copyWith(color: cs.onSurfaceVariant),
-                            ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 24),
-                Expanded(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+                child: SettingsSurfaceCard(
                   child: SingleChildScrollView(
+                    padding: const EdgeInsets.only(bottom: 8),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        _SectionCard(
-                          title: '错误信息',
+                        _ErrorBlock(
+                          title: l10n.initErrorDetails,
                           child: SelectableText(
                             widget.error.toString(),
-                            style: TextStyle(color: cs.error),
+                            style: logMonospaceStyle(
+                              context,
+                              color: cs.error,
+                            ),
                           ),
                         ),
-                        const SizedBox(height: 12),
-                        _SectionCard(
-                          title: '堆栈跟踪',
+                        _ErrorBlock(
+                          title: l10n.initErrorStackTrace,
                           trailing: TextButton.icon(
-                            onPressed: _copyStack,
+                            onPressed: () => _copyStack(context),
                             icon: Icon(
-                              _copied ? Icons.check : Icons.copy,
+                              _copiedStack ? Icons.check : Icons.copy,
                               size: 18,
                             ),
-                            label: Text(_copied ? '已复制' : '复制'),
+                            label: Text(
+                              _copiedStack
+                                  ? l10n.initErrorCopied
+                                  : l10n.initErrorCopy,
+                            ),
                           ),
                           child: SelectableText(
-                            _formatStackTrace(widget.stackTrace),
-                            style: const TextStyle(
-                              fontFamily: 'monospace',
-                              fontSize: 12,
-                            ),
+                            _formatStackTrace(context, widget.stackTrace),
+                            style: logMonospaceStyle(context),
                           ),
                         ),
-                        const SizedBox(height: 12),
-                        _SectionCard(
-                          title: '待写入日志',
+                        _ErrorBlock(
+                          title: l10n.initErrorPendingLogs,
+                          showDividerBelow: false,
                           child: SelectableText(
                             AppLogger.instance.getFormattedPendingLogs(),
-                            style: const TextStyle(
-                              fontFamily: 'monospace',
-                              fontSize: 12,
-                            ),
+                            style: logMonospaceStyle(context),
                           ),
                         ),
                       ],
                     ),
                   ),
                 ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: _openLogViewer,
-                        icon: const Icon(Icons.description_outlined),
-                        label: const Text('查看日志'),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: _openLogViewer,
+                      icon: const Icon(Icons.article_outlined),
+                      label: Text(l10n.initErrorViewLogs),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: FilledButton.icon(
+                      onPressed: () => _copyAll(context),
+                      icon: Icon(_copiedReport ? Icons.check : Icons.copy),
+                      label: Text(
+                        _copiedReport
+                            ? l10n.initErrorCopied
+                            : l10n.initErrorCopyReport,
                       ),
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: FilledButton.icon(
-                        onPressed: _copyAll,
-                        icon: Icon(_copied ? Icons.check : Icons.copy),
-                        label: Text(_copied ? '已复制' : '复制报告'),
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
                 ],
               ),
             ),
-          ),
-        );
-        },
+          ],
+        ),
       ),
     );
   }
 }
 
-class _SectionCard extends StatelessWidget {
-  const _SectionCard({
+class _ErrorBlock extends StatelessWidget {
+  const _ErrorBlock({
     required this.title,
     required this.child,
     this.trailing,
+    this.showDividerBelow = true,
   });
 
   final String title;
   final Widget child;
   final Widget? trailing;
+  final bool showDividerBelow;
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Text(
-                  title,
-                  style: Theme.of(context).textTheme.titleMedium,
+    final cs = Theme.of(context).colorScheme;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      title,
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: cs.onSurface,
+                      ),
+                    ),
+                  ),
+                  if (trailing != null) trailing!,
+                ],
+              ),
+              const SizedBox(height: 10),
+              DecoratedBox(
+                decoration: workspaceCodeDecoration(cs),
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: child,
                 ),
-                if (trailing != null) ...[const Spacer(), trailing!],
-              ],
-            ),
-            const SizedBox(height: 12),
-            child,
-          ],
+              ),
+            ],
+          ),
         ),
-      ),
+        if (showDividerBelow)
+          Divider(
+            height: 1,
+            color: cs.outlineVariant.withValues(alpha: 0.5),
+          ),
+      ],
     );
   }
 }

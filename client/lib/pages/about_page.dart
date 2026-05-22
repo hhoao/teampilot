@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../cubits/app_update_cubit.dart';
+import '../cubits/config_cubit.dart';
 import '../l10n/l10n_extensions.dart';
 import '../pages/onboarding/onboarding_gate.dart';
 import '../utils/app_keys.dart';
@@ -163,9 +164,14 @@ class _AboutConfigWorkspaceState extends State<AboutConfigWorkspace> {
                               child: Text(l10n.onboardingRerunSetup),
                             ),
                             OutlinedButton.icon(
-                              onPressed: () => context.push('/config/logs'),
+                              onPressed: () {
+                                context.read<ConfigCubit>().selectSection(
+                                  ConfigSection.logs,
+                                );
+                                context.go('/config/logs');
+                              },
                               icon: const Icon(Icons.article_outlined),
-                              label: const Text('查看日志'),
+                              label: Text(l10n.logViewerTitle),
                             ),
                           ],
                         ),

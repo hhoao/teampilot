@@ -17,6 +17,7 @@ import '../widgets/settings/workspace_settings_widgets.dart';
 import 'about_page.dart';
 import 'llm_config_workspace.dart';
 import 'session_config_workspace.dart';
+import 'system/log_viewer_page.dart';
 
 /// Android settings landing: title + section list (each section is a full page).
 class ConfigSettingsHubPage extends StatelessWidget {
@@ -77,9 +78,12 @@ class ConfigSettingsHubPage extends StatelessWidget {
           },
         ),
         WorkspaceHubEntry(
-          title: '日志',
+          title: l10n.logViewerTitle,
           icon: Icons.article_outlined,
-          onTap: () => context.push('/config/logs'),
+          onTap: () {
+            context.read<ConfigCubit>().selectSection(ConfigSection.logs);
+            context.push('/config/logs');
+          },
         ),
       ],
     );
@@ -160,6 +164,7 @@ class _AndroidConfigSectionPage extends StatelessWidget {
           showHeading: showHeading,
         ),
         ConfigSection.about => AboutConfigWorkspace(showHeading: showHeading),
+        ConfigSection.logs => LogConfigWorkspace(showHeading: showHeading),
       },
     );
   }
@@ -209,6 +214,7 @@ class _DesktopConfigWorkspace extends StatelessWidget {
                 ),
                 ConfigSection.session => const SessionConfigWorkspace(),
                 ConfigSection.about => const AboutConfigWorkspace(),
+                ConfigSection.logs => const LogConfigWorkspace(),
               },
             ),
           ),
@@ -662,6 +668,13 @@ class _ConfigNavPanel extends StatelessWidget {
           icon: Icons.terminal_outlined,
           selected: section == ConfigSection.session,
           onTap: () => onSelectSection(ConfigSection.session),
+        ),
+        WorkspaceHubEntry(
+          key: AppKeys.configLogsSectionButton,
+          title: l10n.logViewerTitle,
+          icon: Icons.article_outlined,
+          selected: section == ConfigSection.logs,
+          onTap: () => onSelectSection(ConfigSection.logs),
         ),
         WorkspaceHubEntry(
           key: AppKeys.configAboutSectionButton,

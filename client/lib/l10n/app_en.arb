@@ -643,5 +643,59 @@
   "onboardingDefaultProviderEmpty": "No providers to choose from. Skip this step or add providers in Settings.",
   "onboardingDefaultProviderPick": "Select the default Claude Code provider",
   "onboardingDefaultProviderModelHint": "Primary model id for this provider",
-  "onboardingRerunSetup": "Run setup wizard again"
+  "onboardingRerunSetup": "Run setup wizard again",
+  "logViewerTitle": "Logs",
+  "logViewerSubtitle": "Application and error logs under your TeamPilot app data folder.",
+  "logViewerFileLabel": "Log file",
+  "logViewerSearchHint": "Search logs…",
+  "logViewerFilterTitle": "Filters",
+  "logViewerFilterLevel": "Level",
+  "logViewerWrapLines": "Wrap lines",
+  "logViewerReverseOrder": "Newest first",
+  "logViewerCompactView": "Compact view",
+  "logViewerLineCount": "{count} lines",
+  "@logViewerLineCount": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "logViewerActionsMenu": "More actions",
+  "logViewerRefresh": "Refresh",
+  "logViewerCopyPath": "Copy log path",
+  "logViewerClearOld": "Remove old logs",
+  "logViewerEmpty": "No log files yet",
+  "logViewerEmptyHint": "Logs are created while the app runs.",
+  "logViewerPendingTitle": "Logs not on disk yet",
+  "logViewerPendingBody": "Buffered entries waiting for file logging:",
+  "logViewerLoadFilesFailed": "Failed to list logs: {error}",
+  "@logViewerLoadFilesFailed": {
+    "placeholders": { "error": { "type": "String" } }
+  },
+  "logViewerReadFailed": "Failed to read log: {error}",
+  "@logViewerReadFailed": {
+    "placeholders": { "error": { "type": "String" } }
+  },
+  "logViewerClearDone": "Old log files removed",
+  "logViewerClearFailed": "Cleanup failed: {error}",
+  "@logViewerClearFailed": {
+    "placeholders": { "error": { "type": "String" } }
+  },
+  "logViewerPathCopied": "Copied path: {name}",
+  "@logViewerPathCopied": {
+    "placeholders": { "name": { "type": "String" } }
+  },
+  "initErrorTitle": "Startup failed",
+  "initErrorDetails": "Error details",
+  "initErrorStackTrace": "Stack trace",
+  "initErrorPendingLogs": "Pending logs",
+  "initErrorViewLogs": "View logs",
+  "initErrorCopyReport": "Copy report",
+  "initErrorCopy": "Copy",
+  "initErrorCopied": "Copied",
+  "initErrorStackEmpty": "Stack trace is empty.",
+  "initErrorVersion": "Version {version} ({build})",
+  "@initErrorVersion": {
+    "placeholders": {
+      "version": { "type": "String" },
+      "build": { "type": "String" }
+    }
+  }
 }

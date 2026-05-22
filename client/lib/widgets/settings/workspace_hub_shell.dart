@@ -312,12 +312,18 @@ class WorkspaceSplitShell extends StatelessWidget {
             Expanded(
               child: Padding(
                 padding: contentPadding,
-                child: Align(
-                  alignment: Alignment.topLeft,
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(maxWidth: bodyMaxWidth),
-                    child: animatedBody,
-                  ),
+                child: LayoutBuilder(
+                  builder: (context, inner) {
+                    final w = inner.maxWidth;
+                    final contentWidth = w.isFinite
+                        ? (w < bodyMaxWidth ? w : bodyMaxWidth)
+                        : bodyMaxWidth;
+                    return SizedBox(
+                      width: contentWidth,
+                      height: inner.maxHeight,
+                      child: animatedBody,
+                    );
+                  },
                 ),
               ),
             ),

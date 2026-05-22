@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
@@ -60,6 +61,17 @@ class AppLogger {
       output: ConsoleOutput(),
       filter: _ConsoleLogFilter(),
     );
+  }
+
+  /// Waits for or starts file logging (safe to call from the log viewer).
+  Future<void> ensureFileLogging(String appDataRoot) async {
+    if (_fileLoggerInitialized || _fileLoggingDisabled) return;
+    while (_fileLoggerInitializing) {
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+    }
+    if (!_fileLoggerInitialized && !_fileLoggingDisabled) {
+      await initFileLogging(appDataRoot);
+    }
   }
 
   /// Initializes file logging at `{appDataRoot}/logs/app_YYYY-MM-DD.log`.
@@ -306,9 +318,51 @@ class AppLogger {
     _consoleLogger?.w(reason);
   }
 
+  /// Reads log text (tail of large files) with a timeout.
+  Future<List<String>> readLogFileLines(
+    String filePath, {
+    Duration timeout = const Duration(seconds: 20),
+    int maxBytes = 512 * 1024,
+  }) {
+    Future<List<String>> read() async {
+      final file = File(filePath);
+      if (!await file.exists()) return const [];
+
+      final length = await file.length();
+      if (length == 0) return const [];
+
+      final start = length > maxBytes ? length - maxBytes : 0;
+      final raf = await file.open(mode: FileMode.read);
+      try {
+        if (start > 0) {
+          await raf.setPosition(start);
+        }
+        final bytes = await raf.read(length - start);
+        var text = utf8.decode(bytes, allowMalformed: true);
+        if (start > 0) {
+          final firstNewline = text.indexOf('\n');
+          if (firstNewline >= 0) {
+            text = text.substring(firstNewline + 1);
+          }
+        }
+        return text.split('\n');
+      } finally {
+        await raf.close();
+      }
+    }
+
+    return read().timeout(
+      timeout,
+      onTimeout: () =>
+          throw TimeoutException('Reading log file timed out', timeout),
+    );
+  }
+
   /// Sorted newest-first paths under `{appDataRoot}/logs/*.log`.
-  Future<List<String>> listLogFiles() async {
-    final dirPath = _logDirPath;
+  Future<List<String>> listLogFiles({String? appDataRoot}) async {
+    final dirPath =
+        _logDirPath ??
+        (appDataRoot != null ? p.join(appDataRoot, 'logs') : null);
     if (dirPath == null) return [];
 
     final logDir = Directory(dirPath);
@@ -333,7 +387,8 @@ class AppLogger {
   bool getFileLoggerInitialized() => _fileLoggerInitialized;
 
   /// Alias for [listLogFiles] (includes `app_*.log` and `errors.jsonl`).
-  Future<List<String>> getLogFiles() => listLogFiles();
+  Future<List<String>> getLogFiles({String? appDataRoot}) =>
+      listLogFiles(appDataRoot: appDataRoot);
 
   Future<void> clearOldLogs() async {
     final dirPath = _logDirPath;

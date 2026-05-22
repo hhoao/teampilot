@@ -2677,6 +2677,204 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Run setup wizard again'**
   String get onboardingRerunSetup;
+
+  /// No description provided for @logViewerTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Logs'**
+  String get logViewerTitle;
+
+  /// No description provided for @logViewerSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Application and error logs under your TeamPilot app data folder.'**
+  String get logViewerSubtitle;
+
+  /// No description provided for @logViewerFileLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Log file'**
+  String get logViewerFileLabel;
+
+  /// No description provided for @logViewerSearchHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search logs…'**
+  String get logViewerSearchHint;
+
+  /// No description provided for @logViewerFilterTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Filters'**
+  String get logViewerFilterTitle;
+
+  /// No description provided for @logViewerFilterLevel.
+  ///
+  /// In en, this message translates to:
+  /// **'Level'**
+  String get logViewerFilterLevel;
+
+  /// No description provided for @logViewerWrapLines.
+  ///
+  /// In en, this message translates to:
+  /// **'Wrap lines'**
+  String get logViewerWrapLines;
+
+  /// No description provided for @logViewerReverseOrder.
+  ///
+  /// In en, this message translates to:
+  /// **'Newest first'**
+  String get logViewerReverseOrder;
+
+  /// No description provided for @logViewerCompactView.
+  ///
+  /// In en, this message translates to:
+  /// **'Compact view'**
+  String get logViewerCompactView;
+
+  /// No description provided for @logViewerLineCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} lines'**
+  String logViewerLineCount(int count);
+
+  /// No description provided for @logViewerActionsMenu.
+  ///
+  /// In en, this message translates to:
+  /// **'More actions'**
+  String get logViewerActionsMenu;
+
+  /// No description provided for @logViewerRefresh.
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh'**
+  String get logViewerRefresh;
+
+  /// No description provided for @logViewerCopyPath.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy log path'**
+  String get logViewerCopyPath;
+
+  /// No description provided for @logViewerClearOld.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove old logs'**
+  String get logViewerClearOld;
+
+  /// No description provided for @logViewerEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No log files yet'**
+  String get logViewerEmpty;
+
+  /// No description provided for @logViewerEmptyHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Logs are created while the app runs.'**
+  String get logViewerEmptyHint;
+
+  /// No description provided for @logViewerPendingTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Logs not on disk yet'**
+  String get logViewerPendingTitle;
+
+  /// No description provided for @logViewerPendingBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Buffered entries waiting for file logging:'**
+  String get logViewerPendingBody;
+
+  /// No description provided for @logViewerLoadFilesFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to list logs: {error}'**
+  String logViewerLoadFilesFailed(String error);
+
+  /// No description provided for @logViewerReadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to read log: {error}'**
+  String logViewerReadFailed(String error);
+
+  /// No description provided for @logViewerClearDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Old log files removed'**
+  String get logViewerClearDone;
+
+  /// No description provided for @logViewerClearFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Cleanup failed: {error}'**
+  String logViewerClearFailed(String error);
+
+  /// No description provided for @logViewerPathCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Copied path: {name}'**
+  String logViewerPathCopied(String name);
+
+  /// No description provided for @initErrorTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Startup failed'**
+  String get initErrorTitle;
+
+  /// No description provided for @initErrorDetails.
+  ///
+  /// In en, this message translates to:
+  /// **'Error details'**
+  String get initErrorDetails;
+
+  /// No description provided for @initErrorStackTrace.
+  ///
+  /// In en, this message translates to:
+  /// **'Stack trace'**
+  String get initErrorStackTrace;
+
+  /// No description provided for @initErrorPendingLogs.
+  ///
+  /// In en, this message translates to:
+  /// **'Pending logs'**
+  String get initErrorPendingLogs;
+
+  /// No description provided for @initErrorViewLogs.
+  ///
+  /// In en, this message translates to:
+  /// **'View logs'**
+  String get initErrorViewLogs;
+
+  /// No description provided for @initErrorCopyReport.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy report'**
+  String get initErrorCopyReport;
+
+  /// No description provided for @initErrorCopy.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy'**
+  String get initErrorCopy;
+
+  /// No description provided for @initErrorCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Copied'**
+  String get initErrorCopied;
+
+  /// No description provided for @initErrorStackEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Stack trace is empty.'**
+  String get initErrorStackEmpty;
+
+  /// No description provided for @initErrorVersion.
+  ///
+  /// In en, this message translates to:
+  /// **'Version {version} ({build})'**
+  String initErrorVersion(String version, String build);
 }
 
 class _AppLocalizationsDelegate

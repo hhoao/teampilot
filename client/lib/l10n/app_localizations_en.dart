@@ -1423,4 +1423,117 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get onboardingRerunSetup => 'Run setup wizard again';
+
+  @override
+  String get logViewerTitle => 'Logs';
+
+  @override
+  String get logViewerSubtitle =>
+      'Application and error logs under your TeamPilot app data folder.';
+
+  @override
+  String get logViewerFileLabel => 'Log file';
+
+  @override
+  String get logViewerSearchHint => 'Search logs…';
+
+  @override
+  String get logViewerFilterTitle => 'Filters';
+
+  @override
+  String get logViewerFilterLevel => 'Level';
+
+  @override
+  String get logViewerWrapLines => 'Wrap lines';
+
+  @override
+  String get logViewerReverseOrder => 'Newest first';
+
+  @override
+  String get logViewerCompactView => 'Compact view';
+
+  @override
+  String logViewerLineCount(int count) {
+    return '$count lines';
+  }
+
+  @override
+  String get logViewerActionsMenu => 'More actions';
+
+  @override
+  String get logViewerRefresh => 'Refresh';
+
+  @override
+  String get logViewerCopyPath => 'Copy log path';
+
+  @override
+  String get logViewerClearOld => 'Remove old logs';
+
+  @override
+  String get logViewerEmpty => 'No log files yet';
+
+  @override
+  String get logViewerEmptyHint => 'Logs are created while the app runs.';
+
+  @override
+  String get logViewerPendingTitle => 'Logs not on disk yet';
+
+  @override
+  String get logViewerPendingBody =>
+      'Buffered entries waiting for file logging:';
+
+  @override
+  String logViewerLoadFilesFailed(String error) {
+    return 'Failed to list logs: $error';
+  }
+
+  @override
+  String logViewerReadFailed(String error) {
+    return 'Failed to read log: $error';
+  }
+
+  @override
+  String get logViewerClearDone => 'Old log files removed';
+
+  @override
+  String logViewerClearFailed(String error) {
+    return 'Cleanup failed: $error';
+  }
+
+  @override
+  String logViewerPathCopied(String name) {
+    return 'Copied path: $name';
+  }
+
+  @override
+  String get initErrorTitle => 'Startup failed';
+
+  @override
+  String get initErrorDetails => 'Error details';
+
+  @override
+  String get initErrorStackTrace => 'Stack trace';
+
+  @override
+  String get initErrorPendingLogs => 'Pending logs';
+
+  @override
+  String get initErrorViewLogs => 'View logs';
+
+  @override
+  String get initErrorCopyReport => 'Copy report';
+
+  @override
+  String get initErrorCopy => 'Copy';
+
+  @override
+  String get initErrorCopied => 'Copied';
+
+  @override
+  String get initErrorStackEmpty => 'Stack trace is empty.';
+
+  @override
+  String initErrorVersion(String version, String build) {
+    return 'Version $version ($build)';
+  }
 }

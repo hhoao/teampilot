@@ -12,7 +12,6 @@ import '../cubits/team_cubit.dart';
 import '../models/app_provider_config.dart';
 import '../pages/chat_page.dart';
 import '../pages/config_workspace.dart';
-import '../pages/system/log_viewer_page.dart';
 import '../pages/llm_config_workspace.dart';
 import '../pages/skill_management_page.dart';
 import '../pages/onboarding/onboarding_gate.dart';
@@ -206,8 +205,9 @@ final appRouter = GoRouter(
         ),
         GoRoute(
           path: '/config/logs',
-          pageBuilder: (context, state) =>
-              const NoTransitionPage(child: LogViewerPage()),
+          pageBuilder: (context, state) => const NoTransitionPage(
+            child: ConfigWorkspace(section: ConfigSection.logs),
+          ),
         ),
         GoRoute(
           path: '/team-config',
