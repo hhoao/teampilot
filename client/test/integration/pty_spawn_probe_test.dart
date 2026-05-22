@@ -304,6 +304,25 @@ void main() {
   );
 
   test(
+    'profile A2 — cmd echo preserves spaced argument via ConPTY quoting',
+    () async {
+      if (!Platform.isWindows) return;
+      const spaced = 'TEAMPILOT_SPACE_OK=Default Team';
+      await _runProbe(
+        label: 'A2 cmd spaced arg',
+        executable: PtySpawnFixtures.smokeExecutable,
+        arguments: const [
+          '/c',
+          'echo',
+          spaced,
+        ],
+        listenFor: const Duration(seconds: 2),
+      );
+    },
+    skip: _nativePtyAvailable ? false : _skipWithoutNativePty,
+  );
+
+  test(
     'profile B — claude short name (flutter_pty default env)',
     () async {
       if (!Platform.isWindows) return;
