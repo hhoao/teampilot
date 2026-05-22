@@ -616,6 +616,7 @@
     }
   },
   "onboardingSkip": "Skip",
+  "onboardingPrevious": "Previous",
   "onboardingNext": "Next",
   "onboardingGetStarted": "Get started",
   "onboardingStepAppearance": "Language & theme",

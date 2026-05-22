@@ -2510,6 +2510,12 @@ abstract class AppLocalizations {
   /// **'Skip'**
   String get onboardingSkip;
 
+  /// No description provided for @onboardingPrevious.
+  ///
+  /// In en, this message translates to:
+  /// **'Previous'**
+  String get onboardingPrevious;
+
   /// No description provided for @onboardingNext.
   ///
   /// In en, this message translates to:

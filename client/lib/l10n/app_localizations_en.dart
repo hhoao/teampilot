@@ -1332,6 +1332,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get onboardingSkip => 'Skip';
 
   @override
+  String get onboardingPrevious => 'Previous';
+
+  @override
   String get onboardingNext => 'Next';
 
   @override

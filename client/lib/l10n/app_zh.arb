@@ -443,6 +443,7 @@
     }
   },
   "onboardingSkip": "跳过",
+  "onboardingPrevious": "上一步",
   "onboardingNext": "下一步",
   "onboardingGetStarted": "开始使用",
   "onboardingStepAppearance": "语言 / 主题",

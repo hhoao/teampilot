@@ -80,26 +80,28 @@ class _OnboardingProviderImportStepState
           ),
         ),
         const SizedBox(height: 20),
-        if (_importing)
-          const LinearProgressIndicator(minHeight: 2)
-        else if (_error != null)
-          Card(
-            child: ListTile(
-              leading: Icon(Icons.error_outline, color: Theme.of(context).colorScheme.error),
-              title: Text(l10n.onboardingProviderImportFailed),
-              subtitle: Text('$_error'),
-            ),
-          )
-        else if (_providers.isEmpty)
-          Card(
-            child: ListTile(
-              leading: const Icon(Icons.info_outline),
-              title: Text(l10n.onboardingProviderImportEmpty),
-              subtitle: _statusMessage.isEmpty ? null : Text(_statusMessage),
-            ),
-          )
-        else
-          SettingsSurfaceCard(
+        if (!_importing)
+          if (_error != null)
+            SettingsSurfaceCard(
+              child: ListTile(
+                leading: Icon(
+                  Icons.error_outline,
+                  color: Theme.of(context).colorScheme.error,
+                ),
+                title: Text(l10n.onboardingProviderImportFailed),
+                subtitle: Text('$_error'),
+              ),
+            )
+          else if (_providers.isEmpty)
+            SettingsSurfaceCard(
+              child: ListTile(
+                leading: const Icon(Icons.info_outline),
+                title: Text(l10n.onboardingProviderImportEmpty),
+                subtitle: _statusMessage.isEmpty ? null : Text(_statusMessage),
+              ),
+            )
+          else
+            SettingsSurfaceCard(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [

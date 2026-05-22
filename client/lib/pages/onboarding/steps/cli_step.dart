@@ -159,30 +159,29 @@ class _OnboardingCliStepState extends State<OnboardingCliStep> {
           ),
         ),
         const SizedBox(height: 20),
-        if (_detecting)
-          const LinearProgressIndicator(minHeight: 2)
-        else if (_detectedPath != null && _detectedPath!.isNotEmpty)
-          Card(
-            child: ListTile(
-              leading: const Icon(Icons.check_circle_outline),
-              title: Text(l10n.onboardingCliFound),
-              subtitle: Text(
-                _detectedPath!,
-                style: const TextStyle(fontFamily: 'monospace'),
+        if (!_detecting)
+          if (_detectedPath != null && _detectedPath!.isNotEmpty)
+            SettingsSurfaceCard(
+              child: ListTile(
+                leading: const Icon(Icons.check_circle_outline),
+                title: Text(l10n.onboardingCliFound),
+                subtitle: Text(
+                  _detectedPath!,
+                  style: const TextStyle(fontFamily: 'monospace'),
+                ),
+              ),
+            )
+          else
+            SettingsSurfaceCard(
+              child: ListTile(
+                leading: Icon(
+                  Icons.info_outline,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+                title: Text(l10n.onboardingCliNotFound),
+                subtitle: _detectError == null ? null : Text(_detectError!),
               ),
             ),
-          )
-        else
-          Card(
-            child: ListTile(
-              leading: Icon(
-                Icons.info_outline,
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
-              title: Text(l10n.onboardingCliNotFound),
-              subtitle: _detectError == null ? null : Text(_detectError!),
-            ),
-          ),
         const SizedBox(height: 16),
         SettingsSurfaceCard(
           child: SettingsLabeledStackedRow(

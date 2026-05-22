@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../repositories/app_settings_repository.dart';
 import '../../services/onboarding_service.dart';
+import '../../theme/workspace_surface_layers.dart';
 import 'onboarding_wizard.dart';
 
 class OnboardingGate extends StatefulWidget {
@@ -57,7 +58,11 @@ class OnboardingGateState extends State<OnboardingGate> {
   Widget build(BuildContext context) {
     final showWizard = _showWizard;
     if (showWizard == null) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      final cs = Theme.of(context).colorScheme;
+      return Scaffold(
+        backgroundColor: cs.workspacePage,
+        body: const Center(child: CircularProgressIndicator()),
+      );
     }
     if (showWizard) {
       return OnboardingWizard(onComplete: completeOnboarding);

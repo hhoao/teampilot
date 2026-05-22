@@ -1,9 +1,9 @@
-import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
 
 import '../../l10n/l10n_extensions.dart';
+import '../../theme/workspace_surface_layers.dart';
 import 'steps/appearance_step.dart';
 import 'steps/cli_step.dart';
 import 'steps/default_provider_step.dart';
@@ -36,17 +36,6 @@ List<OnboardingStepKind> onboardingStepsForPlatform() {
   ];
 }
 
-String onboardingStepLabel(BuildContext context, OnboardingStepKind kind) {
-  final l10n = context.l10n;
-  return switch (kind) {
-    OnboardingStepKind.appearance => l10n.onboardingStepAppearance,
-    OnboardingStepKind.ssh => l10n.onboardingStepSsh,
-    OnboardingStepKind.cli => l10n.onboardingStepCli,
-    OnboardingStepKind.providerImport => l10n.onboardingStepProviderImport,
-    OnboardingStepKind.defaultProvider => l10n.onboardingStepDefaultProvider,
-  };
-}
-
 class OnboardingWizard extends StatefulWidget {
   const OnboardingWizard({super.key, required this.onComplete});
 
@@ -58,38 +47,28 @@ class OnboardingWizard extends StatefulWidget {
 
 class _OnboardingWizardState extends State<OnboardingWizard> {
   late final List<OnboardingStepKind> _steps;
-  late final PageController _pageController;
   var _pageIndex = 0;
 
   @override
   void initState() {
     super.initState();
     _steps = onboardingStepsForPlatform();
-    _pageController = PageController();
   }
 
-  @override
-  void dispose() {
-    _pageController.dispose();
-    super.dispose();
-  }
-
+  bool get _isFirstStep => _pageIndex <= 0;
   bool get _isLastStep => _pageIndex >= _steps.length - 1;
+
+  void _goPrevious() {
+    if (_isFirstStep) return;
+    setState(() => _pageIndex -= 1);
+  }
 
   void _goNext() {
     if (_isLastStep) {
       widget.onComplete();
       return;
     }
-    final next = _pageIndex + 1;
-    setState(() => _pageIndex = next);
-    unawaited(
-      _pageController.animateToPage(
-        next,
-        duration: const Duration(milliseconds: 240),
-        curve: Curves.easeOutCubic,
-      ),
-    );
+    setState(() => _pageIndex += 1);
   }
 
   void _skip() => _goNext();
@@ -101,102 +80,90 @@ class _OnboardingWizardState extends State<OnboardingWizard> {
     final tt = Theme.of(context).textTheme;
 
     return Scaffold(
+      backgroundColor: cs.workspacePage,
       body: SafeArea(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 720),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        width: 28,
-                        height: 28,
-                        decoration: BoxDecoration(
-                          color: cs.primary,
-                          borderRadius: BorderRadius.circular(7),
-                        ),
-                        alignment: Alignment.center,
-                        child: Text(
-                          'TP',
-                          style: tt.labelSmall?.copyWith(
-                            color: cs.onPrimary,
-                            fontWeight: FontWeight.w700,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            return SingleChildScrollView(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 720),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 16,
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                width: 28,
+                                height: 28,
+                                decoration: BoxDecoration(
+                                  color: cs.primary,
+                                  borderRadius: BorderRadius.circular(7),
+                                ),
+                                alignment: Alignment.center,
+                                child: Text(
+                                  'TP',
+                                  style: tt.labelSmall?.copyWith(
+                                    color: cs.onPrimary,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Text(l10n.onboardingTitle, style: tt.titleMedium),
+                            ],
                           ),
-                        ),
+                          const SizedBox(height: 20),
+                          AnimatedSwitcher(
+                            duration: const Duration(milliseconds: 240),
+                            switchInCurve: Curves.easeOutCubic,
+                            switchOutCurve: Curves.easeInCubic,
+                            child: KeyedSubtree(
+                              key: ValueKey(_pageIndex),
+                              child: _buildStep(_steps[_pageIndex]),
+                            ),
+                          ),
+                          const SizedBox(height: 20),
+                          Row(
+                            children: [
+                              TextButton(
+                                onPressed: _skip,
+                                child: Text(l10n.onboardingSkip),
+                              ),
+                              const Spacer(),
+                              if (!_isFirstStep) ...[
+                                OutlinedButton(
+                                  onPressed: _goPrevious,
+                                  child: Text(l10n.onboardingPrevious),
+                                ),
+                                const SizedBox(width: 12),
+                              ],
+                              FilledButton(
+                                onPressed: _goNext,
+                                child: Text(
+                                  _isLastStep
+                                      ? l10n.onboardingGetStarted
+                                      : l10n.onboardingNext,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
                       ),
-                      const SizedBox(width: 10),
-                      Text(l10n.onboardingTitle, style: tt.titleMedium),
-                      const Spacer(),
-                      Text(
-                        l10n.onboardingProgress(
-                          _pageIndex + 1,
-                          _steps.length,
-                        ),
-                        style: tt.labelLarge,
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(2),
-                    child: LinearProgressIndicator(
-                      value: (_pageIndex + 1) / _steps.length,
-                      minHeight: 4,
                     ),
                   ),
-                  const SizedBox(height: 10),
-                  Wrap(
-                    spacing: 6,
-                    runSpacing: 6,
-                    children: [
-                      for (var i = 0; i < _steps.length; i++)
-                        InputChip(
-                          label: Text(onboardingStepLabel(context, _steps[i])),
-                          selected: i == _pageIndex,
-                          onSelected: null,
-                          visualDensity: VisualDensity.compact,
-                        ),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-                  Expanded(
-                    child: PageView.builder(
-                      controller: _pageController,
-                      physics: const NeverScrollableScrollPhysics(),
-                      itemCount: _steps.length,
-                      itemBuilder: (context, index) {
-                        return SingleChildScrollView(
-                          child: _buildStep(_steps[index]),
-                        );
-                      },
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      TextButton(
-                        onPressed: _skip,
-                        child: Text(l10n.onboardingSkip),
-                      ),
-                      const Spacer(),
-                      FilledButton(
-                        onPressed: _goNext,
-                        child: Text(
-                          _isLastStep
-                              ? l10n.onboardingGetStarted
-                              : l10n.onboardingNext,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
+                ),
               ),
-            ),
-          ),
+            );
+          },
         ),
       ),
     );

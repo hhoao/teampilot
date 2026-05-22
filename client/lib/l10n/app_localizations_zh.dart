@@ -1289,6 +1289,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get onboardingSkip => '跳过';
 
   @override
+  String get onboardingPrevious => '上一步';
+
+  @override
   String get onboardingNext => '下一步';
 
   @override
