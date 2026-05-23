@@ -65,6 +65,13 @@ void main() {
       skillReposConfigPath: AppPaths.skillReposConfigPathForTeampilotRoot(
         teampilotRoot,
       ),
+      pluginsRoot: AppPaths.pluginsDirForTeampilotRoot(teampilotRoot),
+      pluginBackupsDir: AppPaths.pluginBackupsDirForTeampilotRoot(teampilotRoot),
+      pluginsJsonPath: AppPaths.pluginsJsonForTeampilotRoot(teampilotRoot),
+      pluginMarketplacesConfigPath:
+          AppPaths.pluginMarketplacesConfigPathForTeampilotRoot(teampilotRoot),
+      pluginMarketplaceCacheDir:
+          AppPaths.pluginMarketplaceCacheDirForTeampilotRoot(teampilotRoot),
     );
     final posix = AppPaths.posixPathContext;
     expect(snap.teampilotRoot, teampilotRoot);

@@ -632,6 +632,13 @@ void main() {
             skillBackupsDir: p.join(tmp.path, 'skill-backups'),
             appProjectsDir: p.join(tmp.path, 'projects'),
             skillReposConfigPath: p.join(tmp.path, 'skills.json'),
+            pluginsRoot: p.join(tmp.path, 'plugins'),
+            pluginBackupsDir: p.join(tmp.path, 'plugin-backups'),
+            pluginsJsonPath: p.join(tmp.path, 'plugins.json'),
+            pluginMarketplacesConfigPath:
+                p.join(tmp.path, 'plugin-marketplaces.json'),
+            pluginMarketplaceCacheDir:
+                p.join(tmp.path, 'plugin-marketplace-cache'),
           ),
         ),
       );

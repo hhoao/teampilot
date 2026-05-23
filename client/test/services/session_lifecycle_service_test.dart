@@ -21,6 +21,11 @@ StorageRootsSnapshot _roots(String basePath) => StorageRootsSnapshot(
   skillBackupsDir: p.join(basePath, 'skill-backups'),
   appProjectsDir: p.join(basePath, 'projects'),
   skillReposConfigPath: p.join(basePath, 'skills.json'),
+  pluginsRoot: p.join(basePath, 'plugins'),
+  pluginBackupsDir: p.join(basePath, 'plugin-backups'),
+  pluginsJsonPath: p.join(basePath, 'plugins.json'),
+  pluginMarketplacesConfigPath: p.join(basePath, 'plugin-marketplaces.json'),
+  pluginMarketplaceCacheDir: p.join(basePath, 'plugin-marketplace-cache'),
 );
 
 AppSession _session({
