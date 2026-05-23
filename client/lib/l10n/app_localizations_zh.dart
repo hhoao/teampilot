@@ -1085,6 +1085,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get selectModel => '选择一个模型';
 
   @override
+  String get memberOfficialClaudeModelHint =>
+      '使用 Claude 账号默认模型；请在 Providers 设置中管理 Official 登录。';
+
+  @override
   String get editMemberSubtitle => '编辑提供商、模型、代理和命令参数。';
 
   @override

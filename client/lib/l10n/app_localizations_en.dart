@@ -1117,6 +1117,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get selectModel => 'Select a model';
 
   @override
+  String get memberOfficialClaudeModelHint =>
+      'Uses your Claude account default model. Manage Official login in Providers settings.';
+
+  @override
   String get editMemberSubtitle =>
       'Edit provider, model, agent, and command arguments.';
 

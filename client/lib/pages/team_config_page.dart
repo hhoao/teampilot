@@ -14,6 +14,7 @@ import '../models/skill.dart';
 import '../models/team_config.dart';
 import '../services/flashskyai_agent_catalog_service.dart';
 import '../services/flashskyai_storage_roots.dart';
+import '../services/claude_official_provider.dart';
 import '../services/platform_utils.dart';
 import '../utils/app_keys.dart';
 import '../widgets/app_outline_text_field.dart';
@@ -1240,6 +1241,10 @@ class _MemberConfigFormState extends State<_MemberConfigForm> {
       currentModel: m.model,
     )..sort();
     final model = m.model;
+    final hideModelPicker =
+        widget.team.cli == TeamCli.claude &&
+        selectedAppProvider != null &&
+        isOfficialClaudeProvider(selectedAppProvider);
 
     final dropdownDeco = FlashskyDropdownDecorations.denseField(context);
 
@@ -1274,31 +1279,46 @@ class _MemberConfigFormState extends State<_MemberConfigForm> {
                 break;
               }
             }
-            final defaultModel = nextProvider?.defaultModel.trim() ?? '';
-            final names = _modelNamesForClaudeProvider(
-              providerId: newProv,
-              appProvider: nextProvider,
-              currentModel: m.model,
-            );
-            final stillValid = names.contains(newModel);
-            if (!stillValid) {
-              newModel = defaultModel.isNotEmpty ? defaultModel : '';
+            if (nextProvider != null && isOfficialClaudeProvider(nextProvider)) {
+              newModel = '';
+            } else {
+              final defaultModel = nextProvider?.defaultModel.trim() ?? '';
+              final names = _modelNamesForClaudeProvider(
+                providerId: newProv,
+                appProvider: nextProvider,
+                currentModel: m.model,
+              );
+              final stillValid = names.contains(newModel);
+              if (!stillValid) {
+                newModel = defaultModel.isNotEmpty ? defaultModel : '';
+              }
             }
             _update(m.copyWith(provider: newProv, model: newModel));
           },
           itemLabel: (value) => providerLabels[value] ?? value,
         ),
         const SizedBox(height: 12),
-        _FieldLabel(text: l10n.model),
-        const SizedBox(height: 6),
-        FlashskyDropdownField<String>(
-          items: modelNames,
-          initialItem: model.isEmpty ? null : model,
-          hintText: l10n.selectModel,
-          decoration: dropdownDeco,
-          onChanged: (value) => _update(m.copyWith(model: value ?? '')),
-          itemLabel: (value) => value,
-        ),
+        if (hideModelPicker) ...[
+          Text(
+            l10n.memberOfficialClaudeModelHint,
+            style: TextStyle(
+              fontSize: 12,
+              height: 1.35,
+              color: textBase.withValues(alpha: 0.58),
+            ),
+          ),
+        ] else ...[
+          _FieldLabel(text: l10n.model),
+          const SizedBox(height: 6),
+          FlashskyDropdownField<String>(
+            items: modelNames,
+            initialItem: model.isEmpty ? null : model,
+            hintText: l10n.selectModel,
+            decoration: dropdownDeco,
+            onChanged: (value) => _update(m.copyWith(model: value ?? '')),
+            itemLabel: (value) => value,
+          ),
+        ],
         const SizedBox(height: 12),
         _FieldLabel(text: l10n.agent),
         const SizedBox(height: 4),

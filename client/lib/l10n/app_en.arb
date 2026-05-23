@@ -530,6 +530,7 @@
   "memberDangerouslySkipPermissionsHint": "Only for isolated / no-network sandboxes. Extremely risky otherwise.",
   "prompt": "Prompt",
   "selectModel": "Select a model",
+  "memberOfficialClaudeModelHint": "Uses your Claude account default model. Manage Official login in Providers settings.",
   "editMemberSubtitle": "Edit provider, model, agent, and command arguments.",
   "teamLeadNameRequired": "FlashskyAI team delegation expects this member to be named exactly team-lead.",
   "teamLeadNotice": "FlashskyAI team delegation expects this member to be named exactly team-lead.",

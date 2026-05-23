@@ -343,6 +343,7 @@
   "memberDangerouslySkipPermissionsHint": "仅限隔离或无网络沙箱使用，否则风险极高。",
   "prompt": "提示词",
   "selectModel": "选择一个模型",
+  "memberOfficialClaudeModelHint": "使用 Claude 账号默认模型；请在 Providers 设置中管理 Official 登录。",
   "editMemberSubtitle": "编辑提供商、模型、代理和命令参数。",
   "teamLeadNameRequired": "FlashskyAI 团队委托要求此成员名称必须为 team-lead。",
   "teamLeadNotice": "FlashskyAI 团队委托要求此成员名称必须为 team-lead。",

@@ -2114,6 +2114,12 @@ abstract class AppLocalizations {
   /// **'Select a model'**
   String get selectModel;
 
+  /// No description provided for @memberOfficialClaudeModelHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Uses your Claude account default model. Manage Official login in Providers settings.'**
+  String get memberOfficialClaudeModelHint;
+
   /// No description provided for @editMemberSubtitle.
   ///
   /// In en, this message translates to:
