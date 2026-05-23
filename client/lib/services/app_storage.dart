@@ -92,7 +92,25 @@ class AppPaths {
   static String skillRepoCacheDirForTeampilotRoot(String teampilotRoot) =>
       _pathUnderTeampilotRoot(teampilotRoot, 'skill-repo-cache');
 
+  static String pluginsDirForTeampilotRoot(String teampilotRoot) =>
+      _pathUnderTeampilotRoot(teampilotRoot, 'plugins');
+
+  static String pluginBackupsDirForTeampilotRoot(String teampilotRoot) =>
+      _pathUnderTeampilotRoot(teampilotRoot, 'plugin-backups');
+
+  static String pluginsJsonForTeampilotRoot(String teampilotRoot) =>
+      _pathUnderTeampilotRoot(teampilotRoot, 'plugins.json');
+
+  static String pluginMarketplacesConfigPathForTeampilotRoot(String teampilotRoot) =>
+      _pathUnderTeampilotRoot(teampilotRoot, 'plugin-marketplaces.json');
+
+  static String pluginMarketplaceCacheDirForTeampilotRoot(String teampilotRoot) =>
+      _pathUnderTeampilotRoot(teampilotRoot, 'plugin-marketplace-cache');
+
   String get skillRepoCacheDir => skillRepoCacheDirForTeampilotRoot(basePath);
+
+  String get pluginsJson => _ctx.join(basePath, 'plugins.json');
+  String get pluginMarketplacesConfigPath => _ctx.join(basePath, 'plugin-marketplaces.json');
 
   /// App-owned project/session metadata (`projects.json` + `sessions/`).
   String get appProjectsDir => _ctx.join(basePath, 'projects');

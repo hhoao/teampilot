@@ -59,5 +59,16 @@ void main() {
         isNot(contains(r'\')),
       );
     });
+
+    test('AppPaths exposes plugin paths under teampilotRoot', () {
+      final root = '/tmp/tp';
+      expect(AppPaths.pluginsDirForTeampilotRoot(root), '/tmp/tp/plugins');
+      expect(AppPaths.pluginBackupsDirForTeampilotRoot(root), '/tmp/tp/plugin-backups');
+      expect(AppPaths.pluginsJsonForTeampilotRoot(root), '/tmp/tp/plugins.json');
+      expect(AppPaths.pluginMarketplacesConfigPathForTeampilotRoot(root),
+        '/tmp/tp/plugin-marketplaces.json');
+      expect(AppPaths.pluginMarketplaceCacheDirForTeampilotRoot(root),
+        '/tmp/tp/plugin-marketplace-cache');
+    });
   });
 }

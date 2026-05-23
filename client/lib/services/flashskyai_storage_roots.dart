@@ -18,6 +18,11 @@ class StorageRootsSnapshot {
     required this.skillBackupsDir,
     required this.appProjectsDir,
     required this.skillReposConfigPath,
+    required this.pluginsRoot,
+    required this.pluginBackupsDir,
+    required this.pluginsJsonPath,
+    required this.pluginMarketplacesConfigPath,
+    required this.pluginMarketplaceCacheDir,
   }) : fs = fs ?? AppStorage.fs,
        layout =
            layout ??
@@ -39,6 +44,11 @@ class StorageRootsSnapshot {
       skillBackupsDir: AppPaths.skillBackupsDirForTeampilotRoot(root),
       appProjectsDir: AppPaths.appProjectsDirForTeampilotRoot(root),
       skillReposConfigPath: AppPaths.skillReposConfigPathForTeampilotRoot(root),
+      pluginsRoot: AppPaths.pluginsDirForTeampilotRoot(root),
+      pluginBackupsDir: AppPaths.pluginBackupsDirForTeampilotRoot(root),
+      pluginsJsonPath: AppPaths.pluginsJsonForTeampilotRoot(root),
+      pluginMarketplacesConfigPath: AppPaths.pluginMarketplacesConfigPathForTeampilotRoot(root),
+      pluginMarketplaceCacheDir: AppPaths.pluginMarketplaceCacheDirForTeampilotRoot(root),
     );
   }
 
@@ -55,6 +65,12 @@ class StorageRootsSnapshot {
 
   /// Skill marketplace repo list (`skills.json`).
   final String skillReposConfigPath;
+
+  final String pluginsRoot;
+  final String pluginBackupsDir;
+  final String pluginsJsonPath;
+  final String pluginMarketplacesConfigPath;
+  final String pluginMarketplaceCacheDir;
 
   /// CLI runtime layout under `<teampilotRoot>/config-profiles/`.
   final CliDataLayout layout;
