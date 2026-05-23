@@ -6,6 +6,10 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../cubits/app_provider_cubit.dart';
 import '../../../l10n/l10n_extensions.dart';
 import '../../../models/app_provider_config.dart';
+import '../../../services/claude_official_provider.dart';
+import '../../../utils/app_provider_model_candidates.dart';
+import '../../../widgets/dropdown/flashsky_dropdown_field.dart';
+import '../../../widgets/dropdown/flashskyai_dropdown_decoration.dart';
 import '../../../widgets/settings/workspace_settings_widgets.dart';
 
 class OnboardingDefaultProviderStep extends StatefulWidget {
@@ -19,7 +23,7 @@ class OnboardingDefaultProviderStep extends StatefulWidget {
 class _OnboardingDefaultProviderStepState
     extends State<OnboardingDefaultProviderStep> {
   String? _selectedProviderId;
-  final _defaultModelController = TextEditingController();
+  String _defaultModel = '';
   final _haikuController = TextEditingController();
   final _sonnetController = TextEditingController();
   final _opusController = TextEditingController();
@@ -32,7 +36,6 @@ class _OnboardingDefaultProviderStepState
 
   @override
   void dispose() {
-    _defaultModelController.dispose();
     _haikuController.dispose();
     _sonnetController.dispose();
     _opusController.dispose();
@@ -51,6 +54,11 @@ class _OnboardingDefaultProviderStepState
     return null;
   }
 
+  bool get _hideModelPicker {
+    final provider = _selectedProvider;
+    return provider != null && isOfficialClaudeProvider(provider);
+  }
+
   void _syncFromCubit() {
     final cubit = context.read<AppProviderCubit>();
     final providers = cubit.state.providersFor(AppProviderCli.claude);
@@ -63,7 +71,8 @@ class _OnboardingDefaultProviderStepState
   }
 
   void _loadProviderFields(AppProviderConfig? provider) {
-    _defaultModelController.text = provider?.defaultModel ?? '';
+    final isOfficial = provider != null && isOfficialClaudeProvider(provider);
+    _defaultModel = isOfficial ? '' : (provider?.defaultModel ?? '');
     final env = _readEnv(provider);
     _haikuController.text = env['ANTHROPIC_DEFAULT_HAIKU_MODEL'] ?? '';
     _sonnetController.text = env['ANTHROPIC_DEFAULT_SONNET_MODEL'] ?? '';
@@ -97,9 +106,10 @@ class _OnboardingDefaultProviderStepState
       env['ANTHROPIC_DEFAULT_OPUS_MODEL'] = _opusController.text.trim();
     }
 
+    final isOfficial = isOfficialClaudeProvider(provider);
     await cubit.upsertProvider(
       provider.copyWith(
-        defaultModel: _defaultModelController.text.trim(),
+        defaultModel: isOfficial ? '' : _defaultModel.trim(),
         config: {
           ...provider.config,
           if (env.isNotEmpty) 'env': env,
@@ -132,10 +142,20 @@ class _OnboardingDefaultProviderStepState
       );
     }
 
+    final selectedProvider = _selectedProvider;
+    final hideModelPicker = _hideModelPicker;
+    final modelNames = selectedProvider == null || hideModelPicker
+        ? const <String>[]
+        : collectClaudeModelCandidates(
+            selectedProvider,
+            currentModel: _defaultModel,
+          );
     final showClaudeModels = _haikuController.text.isNotEmpty ||
         _sonnetController.text.isNotEmpty ||
         _opusController.text.isNotEmpty ||
-        _readEnv(_selectedProvider).isNotEmpty;
+        _readEnv(selectedProvider).isNotEmpty;
+    final showModelSection = !hideModelPicker;
+    final dropdownDeco = FlashskyDropdownDecorations.settingsCompact(context);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -175,19 +195,43 @@ class _OnboardingDefaultProviderStepState
                     unawaited(_applySelection());
                   },
                 ),
-                showDividerBelow: true,
+                showDividerBelow: hideModelPicker || showModelSection,
               ),
-              SettingsLabeledStackedRow(
-                title: l10n.defaultModel,
-                subtitle: l10n.onboardingDefaultProviderModelHint,
-                body: TextField(
-                  controller: _defaultModelController,
-                  decoration: const InputDecoration(isDense: true),
-                  onSubmitted: (_) => unawaited(_applySelection()),
-                  onEditingComplete: () => unawaited(_applySelection()),
+              if (hideModelPicker) ...[
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                  child: Text(
+                    l10n.memberOfficialClaudeModelHint,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
                 ),
-                showDividerBelow: showClaudeModels,
-              ),
+              ] else if (showModelSection) ...[
+                SettingsLabeledStackedRow(
+                  title: l10n.defaultModel,
+                  subtitle: l10n.onboardingDefaultProviderModelHint,
+                  body: modelNames.isEmpty
+                      ? Text(
+                          l10n.selectModel,
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          ),
+                        )
+                      : FlashskyDropdownField<String>(
+                          items: modelNames,
+                          initialItem: _defaultModel.isEmpty ? null : _defaultModel,
+                          hintText: l10n.selectModel,
+                          decoration: dropdownDeco,
+                          onChanged: (value) {
+                            setState(() => _defaultModel = value ?? '');
+                            unawaited(_applySelection());
+                          },
+                          itemLabel: (value) => value,
+                        ),
+                  showDividerBelow: showClaudeModels,
+                ),
+              ],
               if (showClaudeModels) ...[
                 SettingsLabeledStackedRow(
                   title: l10n.appProviderClaudeHaikuModel,

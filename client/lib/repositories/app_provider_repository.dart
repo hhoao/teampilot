@@ -140,11 +140,23 @@ class AppProviderRepository {
     var changed = false;
     final probed = <AppProviderConfig>[];
     for (final provider in providers) {
-      if (!isOfficialClaudeProvider(provider)) {
+      if (provider.cli != AppProviderCli.claude ||
+          !isOfficialClaudeSettings(provider.config)) {
         probed.add(provider);
         continue;
       }
-      final probe = await _claudeCredentials.probe(provider.id);
+      var probe = await _claudeCredentials.probe(provider.id);
+      if (!probe.isReady) {
+        final home = AppStorage.home.trim();
+        if (home.isNotEmpty) {
+          await _claudeCredentials.importFromGlobal(
+            provider.id,
+            homeDirectory: home,
+            replace: false,
+          );
+          probe = await _claudeCredentials.probe(provider.id);
+        }
+      }
       final next = provider.withCredentialProbe(probe);
       if (next.credentialStatus != provider.credentialStatus ||
           next.credentialUpdatedAt != provider.credentialUpdatedAt) {

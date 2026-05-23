@@ -7,6 +7,7 @@ import '../models/app_provider_config.dart';
 import '../models/llm_config.dart';
 import '../repositories/app_provider_repository.dart';
 import 'app_storage.dart';
+import 'claude_official_provider.dart';
 import 'io/filesystem.dart';
 import 'llm_config_path_resolver.dart';
 
@@ -393,19 +394,25 @@ WHERE app_type = ?
         env['ANTHROPIC_DEFAULT_OPUS_MODEL'] ??
         env['ANTHROPIC_DEFAULT_HAIKU_MODEL'] ??
         '';
+    final resolvedCategory =
+        category == AppProviderCategory.custom &&
+            isOfficialClaudeSettings(config)
+        ? AppProviderCategory.official
+        : category;
     return AppProviderConfig(
       id: id,
       cli: AppProviderCli.claude,
       name: (name?.trim().isNotEmpty ?? false) ? name!.trim() : id,
       websiteUrl: websiteUrl,
       notes: notes,
-      category: category,
+      category: resolvedCategory,
       apiKey: apiKey,
       apiKeyField: config['api_key_field']?.toString() ?? apiKeyField,
       baseUrl: baseUrl,
       defaultModel: defaultModel,
       icon: icon,
       iconColor: iconColor,
+      isOfficial: resolvedCategory == AppProviderCategory.official,
       config: {
         ...config,
         if (meta != null && meta.isNotEmpty) 'meta': meta,

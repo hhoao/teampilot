@@ -17,6 +17,7 @@ import '../services/flashskyai_storage_roots.dart';
 import '../services/claude_official_provider.dart';
 import '../services/platform_utils.dart';
 import '../utils/app_keys.dart';
+import '../utils/app_provider_model_candidates.dart';
 import '../widgets/app_outline_text_field.dart';
 import '../widgets/app_provider/team_tool_provider_selectors.dart';
 import '../widgets/dropdown/flashsky_dropdown_field.dart';
@@ -1172,31 +1173,14 @@ class _MemberConfigFormState extends State<_MemberConfigForm> {
     required AppProviderConfig? appProvider,
     required String currentModel,
   }) {
-    final names = <String>{};
-    final defaultModel = appProvider?.defaultModel.trim() ?? '';
-    if (defaultModel.isNotEmpty) {
-      names.add(defaultModel);
+    if (appProvider == null) {
+      final trimmed = currentModel.trim();
+      return trimmed.isEmpty ? const [] : [trimmed];
     }
-    final rawModels = appProvider?.config['models'];
-    if (rawModels is Map) {
-      for (final entry in rawModels.entries) {
-        final id = entry.key.toString().trim();
-        if (entry.value is Map) {
-          final modelJson = Map<String, Object?>.from(entry.value as Map);
-          final name = (modelJson['name'] as String? ?? '').trim();
-          final model = (modelJson['model'] as String? ?? '').trim();
-          if (name.isNotEmpty) names.add(name);
-          if (model.isNotEmpty) names.add(model);
-        } else if (id.isNotEmpty) {
-          names.add(id);
-        }
-      }
-    }
-    final trimmed = currentModel.trim();
-    if (trimmed.isNotEmpty) {
-      names.add(trimmed);
-    }
-    return names.toList()..sort();
+    return collectClaudeModelCandidates(
+      appProvider,
+      currentModel: currentModel,
+    );
   }
 
   @override

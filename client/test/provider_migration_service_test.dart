@@ -86,6 +86,46 @@ void main() {
   });
 
   test(
+    'imports claude official credentials from global home during provider import',
+    () async {
+      await _writeJson(
+        p.join(home, '.claude', 'settings.json'),
+        const {'env': {}},
+      );
+      await _writeJson(
+        p.join(home, '.claude', '.credentials.json'),
+        const {
+          'claudeAiOauth': {'accessToken': 'global-oauth'},
+        },
+      );
+
+      final service = ProviderImportService(repository: repository);
+      final result = await service.importForCli(
+        AppProviderCli.claude,
+        onlyIfEmpty: false,
+      );
+
+      expect(result.added, 1);
+      final claude = await repository.loadProviders(AppProviderCli.claude);
+      final official = claude.singleWhere((p) => p.id == 'default');
+      expect(official.category, AppProviderCategory.official);
+      expect(official.hasClaudeCredentialsReady, isTrue);
+      expect(
+        await File(
+          p.join(
+            appData,
+            'providers',
+            'claude',
+            'default',
+            '.credentials.json',
+          ),
+        ).exists(),
+        isTrue,
+      );
+    },
+  );
+
+  test(
     'imports claude from live and cc-switch then mirrors missing ids to flashskyai',
     () async {
       await _writeJson(
