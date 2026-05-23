@@ -43,4 +43,32 @@ void main() {
     );
     expect(plugin.source, 'local');
   });
+
+  test('PluginMarketplace round-trips', () {
+    const m = PluginMarketplace(
+      owner: 'acme', name: 'market', branch: 'main',
+      enabled: false, displayName: 'Acme Market');
+    final decoded = PluginMarketplace.fromJson(m.toJson());
+    expect(decoded, m);
+    expect(decoded.fullName, 'acme/market');
+    expect(decoded.githubUrl, 'https://github.com/acme/market');
+  });
+
+  test('DiscoverablePlugin round-trips', () {
+    const d = DiscoverablePlugin(
+      key: 'acme:market:p',
+      name: 'p',
+      description: 'desc',
+      version: '1.0.0',
+      readmeUrl: 'https://...',
+      marketplaceOwner: 'acme',
+      marketplaceName: 'market',
+      marketplaceBranch: 'main',
+      source: '.',
+      categories: ['dev'],
+      keywords: ['k1'],
+    );
+    final decoded = DiscoverablePlugin.fromJson(d.toJson());
+    expect(decoded, d);
+  });
 }

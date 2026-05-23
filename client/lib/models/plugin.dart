@@ -238,3 +238,140 @@ class PluginMcpServer {
   @override
   int get hashCode => Object.hash(name, type);
 }
+
+class PluginMarketplace {
+  const PluginMarketplace({
+    required this.owner,
+    required this.name,
+    this.branch = 'main',
+    this.enabled = true,
+    this.displayName,
+  });
+
+  final String owner;
+  final String name;
+  final String branch;
+  final bool enabled;
+  final String? displayName;
+
+  String get fullName => '$owner/$name';
+  String get githubUrl => 'https://github.com/$owner/$name';
+
+  PluginMarketplace copyWith({
+    String? owner, String? name, String? branch, bool? enabled, String? displayName,
+  }) => PluginMarketplace(
+    owner: owner ?? this.owner,
+    name: name ?? this.name,
+    branch: branch ?? this.branch,
+    enabled: enabled ?? this.enabled,
+    displayName: displayName ?? this.displayName,
+  );
+
+  Map<String, Object?> toJson() => {
+    'owner': owner, 'name': name, 'branch': branch,
+    'enabled': enabled, 'displayName': displayName,
+  };
+
+  factory PluginMarketplace.fromJson(Map<String, Object?> json) => PluginMarketplace(
+    owner: json['owner'] as String,
+    name: json['name'] as String,
+    branch: json['branch'] as String? ?? 'main',
+    enabled: json['enabled'] as bool? ?? true,
+    displayName: json['displayName'] as String?,
+  );
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is PluginMarketplace &&
+          owner == other.owner &&
+          name == other.name &&
+          branch == other.branch &&
+          enabled == other.enabled &&
+          displayName == other.displayName;
+
+  @override
+  int get hashCode => Object.hash(owner, name, branch, enabled, displayName);
+}
+
+class DiscoverablePlugin {
+  const DiscoverablePlugin({
+    required this.key,
+    required this.name,
+    required this.description,
+    required this.version,
+    this.readmeUrl,
+    required this.marketplaceOwner,
+    required this.marketplaceName,
+    required this.marketplaceBranch,
+    required this.source,
+    this.categories = const [],
+    this.keywords = const [],
+  });
+
+  final String key;
+  final String name;
+  final String description;
+  final String version;
+  final String? readmeUrl;
+  final String marketplaceOwner;
+  final String marketplaceName;
+  final String marketplaceBranch;
+  final String source;
+  final List<String> categories;
+  final List<String> keywords;
+
+  String get marketplaceFullName => '$marketplaceOwner/$marketplaceName';
+
+  Map<String, Object?> toJson() => {
+    'key': key, 'name': name, 'description': description, 'version': version,
+    'readmeUrl': readmeUrl,
+    'marketplaceOwner': marketplaceOwner,
+    'marketplaceName': marketplaceName,
+    'marketplaceBranch': marketplaceBranch,
+    'source': source,
+    'categories': categories,
+    'keywords': keywords,
+  };
+
+  factory DiscoverablePlugin.fromJson(Map<String, Object?> json) => DiscoverablePlugin(
+    key: json['key'] as String,
+    name: json['name'] as String,
+    description: json['description'] as String? ?? '',
+    version: json['version'] as String? ?? '0.0.0',
+    readmeUrl: json['readmeUrl'] as String?,
+    marketplaceOwner: json['marketplaceOwner'] as String,
+    marketplaceName: json['marketplaceName'] as String,
+    marketplaceBranch: json['marketplaceBranch'] as String? ?? 'main',
+    source: json['source'] as String? ?? '.',
+    categories: (json['categories'] as List? ?? const []).whereType<String>().toList(),
+    keywords: (json['keywords'] as List? ?? const []).whereType<String>().toList(),
+  );
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is DiscoverablePlugin &&
+          key == other.key &&
+          name == other.name &&
+          description == other.description &&
+          version == other.version &&
+          marketplaceOwner == other.marketplaceOwner &&
+          marketplaceName == other.marketplaceName &&
+          marketplaceBranch == other.marketplaceBranch &&
+          source == other.source &&
+          _listStringEq(categories, other.categories) &&
+          _listStringEq(keywords, other.keywords);
+
+  @override
+  int get hashCode => Object.hash(
+    key, name, version, marketplaceOwner, marketplaceName, marketplaceBranch);
+}
+
+bool _listStringEq(List<String> a, List<String> b) {
+  if (a.length != b.length) return false;
+  for (var i = 0; i < a.length; i++) {
+    if (a[i] != b[i]) return false;
+  }
+  return true;
+}
