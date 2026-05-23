@@ -160,4 +160,19 @@ void main() {
     expect(team.copyWith(loop: null, updateLoop: true).loop, isNull);
     expect(team.copyWith(loop: false, updateLoop: true).loop, isFalse);
   });
+
+  test('TeamConfig round-trips pluginIds', () {
+    const team = TeamConfig(
+      id: 't', name: 'T',
+      pluginIds: ['acme/market/p1', 'beta/market/p2'],
+    );
+    final decoded = TeamConfig.fromJson(team.toJson());
+    expect(decoded.pluginIds, ['acme/market/p1', 'beta/market/p2']);
+    expect(decoded, team);
+  });
+
+  test('TeamConfig omits pluginIds when empty', () {
+    const team = TeamConfig(id: 't', name: 'T');
+    expect(team.toJson().containsKey('pluginIds'), isFalse);
+  });
 }
