@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'package:teampilot/models/plugin.dart';
 import 'package:teampilot/services/plugin_exceptions.dart';
 import 'package:teampilot/services/plugin_manifest_service.dart';
 import 'package:flutter_test/flutter_test.dart';
