@@ -1886,6 +1886,216 @@ abstract class AppLocalizations {
   /// **'{count} installs'**
   String skillsInstalls(int count);
 
+  /// No description provided for @pluginsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Plugins'**
+  String get pluginsTitle;
+
+  /// No description provided for @pluginsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage Claude Code-style plugin bundles'**
+  String get pluginsSubtitle;
+
+  /// No description provided for @pluginsSidebarLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Plugins'**
+  String get pluginsSidebarLabel;
+
+  /// No description provided for @pluginsNavInstalled.
+  ///
+  /// In en, this message translates to:
+  /// **'Installed'**
+  String get pluginsNavInstalled;
+
+  /// No description provided for @pluginsNavDiscovery.
+  ///
+  /// In en, this message translates to:
+  /// **'Discovery'**
+  String get pluginsNavDiscovery;
+
+  /// No description provided for @pluginsNavMarketplaces.
+  ///
+  /// In en, this message translates to:
+  /// **'Marketplaces'**
+  String get pluginsNavMarketplaces;
+
+  /// No description provided for @pluginsInstalledCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} installed'**
+  String pluginsInstalledCount(int count);
+
+  /// No description provided for @pluginsUpdateAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Update all ({count})'**
+  String pluginsUpdateAll(int count);
+
+  /// No description provided for @pluginsImportFromDisk.
+  ///
+  /// In en, this message translates to:
+  /// **'Import from disk'**
+  String get pluginsImportFromDisk;
+
+  /// No description provided for @pluginsInstallFromZip.
+  ///
+  /// In en, this message translates to:
+  /// **'Install from ZIP'**
+  String get pluginsInstallFromZip;
+
+  /// No description provided for @pluginsCheckUpdates.
+  ///
+  /// In en, this message translates to:
+  /// **'Check updates'**
+  String get pluginsCheckUpdates;
+
+  /// No description provided for @pluginsCheckingUpdates.
+  ///
+  /// In en, this message translates to:
+  /// **'Checking…'**
+  String get pluginsCheckingUpdates;
+
+  /// No description provided for @pluginsNoInstalled.
+  ///
+  /// In en, this message translates to:
+  /// **'No plugins installed'**
+  String get pluginsNoInstalled;
+
+  /// No description provided for @pluginsNoInstalledHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a marketplace and install plugins from the Discovery tab.'**
+  String get pluginsNoInstalledHint;
+
+  /// No description provided for @pluginsGoDiscovery.
+  ///
+  /// In en, this message translates to:
+  /// **'Browse marketplace'**
+  String get pluginsGoDiscovery;
+
+  /// No description provided for @pluginsCardInstall.
+  ///
+  /// In en, this message translates to:
+  /// **'Install'**
+  String get pluginsCardInstall;
+
+  /// No description provided for @pluginsCardInstalled.
+  ///
+  /// In en, this message translates to:
+  /// **'Installed'**
+  String get pluginsCardInstalled;
+
+  /// No description provided for @pluginsCardUpdate.
+  ///
+  /// In en, this message translates to:
+  /// **'Update'**
+  String get pluginsCardUpdate;
+
+  /// No description provided for @pluginsCardUninstall.
+  ///
+  /// In en, this message translates to:
+  /// **'Uninstall'**
+  String get pluginsCardUninstall;
+
+  /// No description provided for @pluginsMarketplaceAdd.
+  ///
+  /// In en, this message translates to:
+  /// **'Add marketplace'**
+  String get pluginsMarketplaceAdd;
+
+  /// No description provided for @pluginsMarketplaceUrl.
+  ///
+  /// In en, this message translates to:
+  /// **'GitHub repository URL'**
+  String get pluginsMarketplaceUrl;
+
+  /// No description provided for @pluginsMarketplaceUrlHint.
+  ///
+  /// In en, this message translates to:
+  /// **'https://github.com/owner/marketplace'**
+  String get pluginsMarketplaceUrlHint;
+
+  /// No description provided for @pluginsMarketplaceBranch.
+  ///
+  /// In en, this message translates to:
+  /// **'Branch'**
+  String get pluginsMarketplaceBranch;
+
+  /// No description provided for @pluginsMarketplaceRemove.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove marketplace'**
+  String get pluginsMarketplaceRemove;
+
+  /// No description provided for @pluginsMarketplaceRemoveConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove marketplace {url}? Installed plugins are kept.'**
+  String pluginsMarketplaceRemoveConfirm(String url);
+
+  /// No description provided for @pluginsMarketplaceInvalidUrl.
+  ///
+  /// In en, this message translates to:
+  /// **'Please enter a valid GitHub repository URL.'**
+  String get pluginsMarketplaceInvalidUrl;
+
+  /// No description provided for @pluginsMarketplacesEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No marketplaces configured'**
+  String get pluginsMarketplacesEmpty;
+
+  /// No description provided for @pluginsSearchPlaceholder.
+  ///
+  /// In en, this message translates to:
+  /// **'Search plugins'**
+  String get pluginsSearchPlaceholder;
+
+  /// No description provided for @pluginsFilterMarketplaceAll.
+  ///
+  /// In en, this message translates to:
+  /// **'All marketplaces'**
+  String get pluginsFilterMarketplaceAll;
+
+  /// No description provided for @pluginsFilterAll.
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get pluginsFilterAll;
+
+  /// No description provided for @pluginsFilterInstalled.
+  ///
+  /// In en, this message translates to:
+  /// **'Installed'**
+  String get pluginsFilterInstalled;
+
+  /// No description provided for @pluginsFilterUninstalled.
+  ///
+  /// In en, this message translates to:
+  /// **'Not installed'**
+  String get pluginsFilterUninstalled;
+
+  /// No description provided for @pluginsDiscoveryEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No matching plugins'**
+  String get pluginsDiscoveryEmpty;
+
+  /// No description provided for @pluginsUninstallConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Uninstall {name}? This may affect {n} team(s).'**
+  String pluginsUninstallConfirm(String name, int n);
+
+  /// No description provided for @pluginsUninstallSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Uninstalled {name}'**
+  String pluginsUninstallSuccess(String name);
+
   /// No description provided for @members.
   ///
   /// In en, this message translates to:

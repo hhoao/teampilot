@@ -475,6 +475,79 @@
       }
     }
   },
+  "pluginsTitle": "Plugins",
+  "pluginsSubtitle": "Manage Claude Code-style plugin bundles",
+  "pluginsSidebarLabel": "Plugins",
+  "pluginsNavInstalled": "Installed",
+  "pluginsNavDiscovery": "Discovery",
+  "pluginsNavMarketplaces": "Marketplaces",
+  "pluginsInstalledCount": "{count} installed",
+  "@pluginsInstalledCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "pluginsUpdateAll": "Update all ({count})",
+  "@pluginsUpdateAll": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "pluginsImportFromDisk": "Import from disk",
+  "pluginsInstallFromZip": "Install from ZIP",
+  "pluginsCheckUpdates": "Check updates",
+  "pluginsCheckingUpdates": "Checking…",
+  "pluginsNoInstalled": "No plugins installed",
+  "pluginsNoInstalledHint": "Add a marketplace and install plugins from the Discovery tab.",
+  "pluginsGoDiscovery": "Browse marketplace",
+  "pluginsCardInstall": "Install",
+  "pluginsCardInstalled": "Installed",
+  "pluginsCardUpdate": "Update",
+  "pluginsCardUninstall": "Uninstall",
+  "pluginsMarketplaceAdd": "Add marketplace",
+  "pluginsMarketplaceUrl": "GitHub repository URL",
+  "pluginsMarketplaceUrlHint": "https://github.com/owner/marketplace",
+  "pluginsMarketplaceBranch": "Branch",
+  "pluginsMarketplaceRemove": "Remove marketplace",
+  "pluginsMarketplaceRemoveConfirm": "Remove marketplace {url}? Installed plugins are kept.",
+  "@pluginsMarketplaceRemoveConfirm": {
+    "placeholders": {
+      "url": {
+        "type": "String"
+      }
+    }
+  },
+  "pluginsMarketplaceInvalidUrl": "Please enter a valid GitHub repository URL.",
+  "pluginsMarketplacesEmpty": "No marketplaces configured",
+  "pluginsSearchPlaceholder": "Search plugins",
+  "pluginsFilterMarketplaceAll": "All marketplaces",
+  "pluginsFilterAll": "All",
+  "pluginsFilterInstalled": "Installed",
+  "pluginsFilterUninstalled": "Not installed",
+  "pluginsDiscoveryEmpty": "No matching plugins",
+  "pluginsUninstallConfirm": "Uninstall {name}? This may affect {n} team(s).",
+  "@pluginsUninstallConfirm": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "pluginsUninstallSuccess": "Uninstalled {name}",
+  "@pluginsUninstallSuccess": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "members": "Members",
   "teamSessions": "Team Sessions",
   "configure": "Configure",

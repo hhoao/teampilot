@@ -994,6 +994,124 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get pluginsTitle => 'Plugins';
+
+  @override
+  String get pluginsSubtitle => 'Manage Claude Code-style plugin bundles';
+
+  @override
+  String get pluginsSidebarLabel => 'Plugins';
+
+  @override
+  String get pluginsNavInstalled => 'Installed';
+
+  @override
+  String get pluginsNavDiscovery => 'Discovery';
+
+  @override
+  String get pluginsNavMarketplaces => 'Marketplaces';
+
+  @override
+  String pluginsInstalledCount(int count) {
+    return '$count installed';
+  }
+
+  @override
+  String pluginsUpdateAll(int count) {
+    return 'Update all ($count)';
+  }
+
+  @override
+  String get pluginsImportFromDisk => 'Import from disk';
+
+  @override
+  String get pluginsInstallFromZip => 'Install from ZIP';
+
+  @override
+  String get pluginsCheckUpdates => 'Check updates';
+
+  @override
+  String get pluginsCheckingUpdates => 'Checking…';
+
+  @override
+  String get pluginsNoInstalled => 'No plugins installed';
+
+  @override
+  String get pluginsNoInstalledHint =>
+      'Add a marketplace and install plugins from the Discovery tab.';
+
+  @override
+  String get pluginsGoDiscovery => 'Browse marketplace';
+
+  @override
+  String get pluginsCardInstall => 'Install';
+
+  @override
+  String get pluginsCardInstalled => 'Installed';
+
+  @override
+  String get pluginsCardUpdate => 'Update';
+
+  @override
+  String get pluginsCardUninstall => 'Uninstall';
+
+  @override
+  String get pluginsMarketplaceAdd => 'Add marketplace';
+
+  @override
+  String get pluginsMarketplaceUrl => 'GitHub repository URL';
+
+  @override
+  String get pluginsMarketplaceUrlHint =>
+      'https://github.com/owner/marketplace';
+
+  @override
+  String get pluginsMarketplaceBranch => 'Branch';
+
+  @override
+  String get pluginsMarketplaceRemove => 'Remove marketplace';
+
+  @override
+  String pluginsMarketplaceRemoveConfirm(String url) {
+    return 'Remove marketplace $url? Installed plugins are kept.';
+  }
+
+  @override
+  String get pluginsMarketplaceInvalidUrl =>
+      'Please enter a valid GitHub repository URL.';
+
+  @override
+  String get pluginsMarketplacesEmpty => 'No marketplaces configured';
+
+  @override
+  String get pluginsSearchPlaceholder => 'Search plugins';
+
+  @override
+  String get pluginsFilterMarketplaceAll => 'All marketplaces';
+
+  @override
+  String get pluginsFilterAll => 'All';
+
+  @override
+  String get pluginsFilterInstalled => 'Installed';
+
+  @override
+  String get pluginsFilterUninstalled => 'Not installed';
+
+  @override
+  String get pluginsDiscoveryEmpty => 'No matching plugins';
+
+  @override
+  String pluginsUninstallConfirm(String name, int n) {
+    return 'Uninstall $name? This may affect $n team(s).';
+  }
+
+  @override
+  String pluginsUninstallSuccess(String name) {
+    return 'Uninstalled $name';
+  }
+
+  @override
   String get members => 'Members';
 
   @override

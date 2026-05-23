@@ -967,6 +967,123 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String get pluginsTitle => '插件';
+
+  @override
+  String get pluginsSubtitle => '管理 Claude Code 风格插件包';
+
+  @override
+  String get pluginsSidebarLabel => '插件';
+
+  @override
+  String get pluginsNavInstalled => '已安装';
+
+  @override
+  String get pluginsNavDiscovery => '发现';
+
+  @override
+  String get pluginsNavMarketplaces => 'Marketplaces';
+
+  @override
+  String pluginsInstalledCount(int count) {
+    return '已安装 $count 个';
+  }
+
+  @override
+  String pluginsUpdateAll(int count) {
+    return '全部更新 ($count)';
+  }
+
+  @override
+  String get pluginsImportFromDisk => '从目录导入';
+
+  @override
+  String get pluginsInstallFromZip => '从 ZIP 安装';
+
+  @override
+  String get pluginsCheckUpdates => '检查更新';
+
+  @override
+  String get pluginsCheckingUpdates => '检查中…';
+
+  @override
+  String get pluginsNoInstalled => '尚未安装插件';
+
+  @override
+  String get pluginsNoInstalledHint =>
+      '在 Marketplaces 选项卡添加 marketplace，然后在 Discovery 中安装。';
+
+  @override
+  String get pluginsGoDiscovery => '浏览 marketplace';
+
+  @override
+  String get pluginsCardInstall => '安装';
+
+  @override
+  String get pluginsCardInstalled => '已安装';
+
+  @override
+  String get pluginsCardUpdate => '更新';
+
+  @override
+  String get pluginsCardUninstall => '卸载';
+
+  @override
+  String get pluginsMarketplaceAdd => '添加 marketplace';
+
+  @override
+  String get pluginsMarketplaceUrl => 'GitHub 仓库地址';
+
+  @override
+  String get pluginsMarketplaceUrlHint =>
+      'https://github.com/owner/marketplace';
+
+  @override
+  String get pluginsMarketplaceBranch => '分支';
+
+  @override
+  String get pluginsMarketplaceRemove => '移除 marketplace';
+
+  @override
+  String pluginsMarketplaceRemoveConfirm(String url) {
+    return '确认移除 marketplace $url？已安装的插件会保留。';
+  }
+
+  @override
+  String get pluginsMarketplaceInvalidUrl => '请输入合法的 GitHub 仓库地址。';
+
+  @override
+  String get pluginsMarketplacesEmpty => '尚未配置 marketplace';
+
+  @override
+  String get pluginsSearchPlaceholder => '搜索插件';
+
+  @override
+  String get pluginsFilterMarketplaceAll => '全部 marketplace';
+
+  @override
+  String get pluginsFilterAll => '全部';
+
+  @override
+  String get pluginsFilterInstalled => '已安装';
+
+  @override
+  String get pluginsFilterUninstalled => '未安装';
+
+  @override
+  String get pluginsDiscoveryEmpty => '无匹配的插件';
+
+  @override
+  String pluginsUninstallConfirm(String name, int n) {
+    return '确认卸载 $name？将影响 $n 个团队。';
+  }
+
+  @override
+  String pluginsUninstallSuccess(String name) {
+    return '已卸载 $name';
+  }
+
+  @override
   String get members => '成员';
 
   @override
