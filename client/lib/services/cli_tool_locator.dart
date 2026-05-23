@@ -36,21 +36,23 @@ class CliToolLocator {
 
   Future<String?> locate({
     ProcessRunner runner = cliToolDefaultProcessRun,
+    bool? isWindowsOverride,
   }) async {
-    final cmd = Platform.isWindows ? 'where' : 'which';
+    final isWindows = isWindowsOverride ?? Platform.isWindows;
+    final cmd = isWindows ? 'where' : 'which';
     try {
       final result = await runner(cmd, [executableName]);
       if (result.exitCode == 0) {
         final located = parseFirstStdoutLine(result.stdout);
         if (located != null) return located;
       }
-      return _locateWithShellFallback(runner);
+      return _locateWithShellFallback(runner, isWindows: isWindows);
     } on ProcessException catch (error, stackTrace) {
       Logger().w(
         'Failed to locate $executableName: $error',
         stackTrace: stackTrace,
       );
-      return _locateWithShellFallback(runner);
+      return _locateWithShellFallback(runner, isWindows: isWindows);
     } on Object catch (error, stackTrace) {
       Logger().w(
         'Failed to locate $executableName: $error',
@@ -60,8 +62,11 @@ class CliToolLocator {
     }
   }
 
-  Future<String?> _locateWithShellFallback(ProcessRunner runner) async {
-    if (Platform.isWindows) {
+  Future<String?> _locateWithShellFallback(
+    ProcessRunner runner, {
+    required bool isWindows,
+  }) async {
+    if (isWindows) {
       return _locateInWsl(runner);
     }
     if (Platform.isLinux || Platform.isMacOS) {

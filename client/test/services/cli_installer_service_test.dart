@@ -7,12 +7,19 @@ void main() {
   test('installs Claude Code locally with npm and resolves the executable', () async {
     final commands = <String>[];
     final installer = CliInstallerService(
+      isWindowsOverride: false,
       localRunner: (command) async {
         commands.add(command.commandLine);
+        if (command.commandLine == 'command -v npm') {
+          return const CliInstallerCommandResult(
+            exitCode: 0,
+            stdout: '/usr/bin/npm\n',
+          );
+        }
         if (command.commandLine == 'npm install -g @anthropic-ai/claude-code') {
           return const CliInstallerCommandResult(exitCode: 0);
         }
-        if (command.commandLine == 'command -v claude') {
+        if (command.commandLine == 'which claude') {
           return const CliInstallerCommandResult(
             exitCode: 0,
             stdout: '/usr/local/bin/claude\n',
@@ -30,17 +37,151 @@ void main() {
     expect(result.success, isTrue);
     expect(result.executablePath, '/usr/local/bin/claude');
     expect(commands, [
+      'command -v npm',
       'npm install -g @anthropic-ai/claude-code',
-      'command -v claude',
+      'which claude',
     ]);
+  });
+
+  test('installs Claude Code locally on Windows using where', () async {
+    final commands = <String>[];
+    final installer = CliInstallerService(
+      isWindowsOverride: true,
+      localRunner: (command) async {
+        commands.add(command.commandLine);
+        if (command.commandLine == 'where npm') {
+          return const CliInstallerCommandResult(
+            exitCode: 0,
+            stdout: r'C:\Program Files\nodejs\npm.cmd',
+          );
+        }
+        if (command.commandLine == 'npm install -g @anthropic-ai/claude-code') {
+          return const CliInstallerCommandResult(exitCode: 0);
+        }
+        if (command.commandLine == 'where claude') {
+          return const CliInstallerCommandResult(
+            exitCode: 0,
+            stdout: r'C:\Users\alice\AppData\Roaming\npm\claude.cmd',
+          );
+        }
+        return const CliInstallerCommandResult(exitCode: 127);
+      },
+    );
+
+    final result = await installer.install(
+      cli: TeamCli.claude,
+      mode: CliInstallMode.local,
+    );
+
+    expect(result.success, isTrue);
+    expect(result.executablePath, r'C:\Users\alice\AppData\Roaming\npm\claude.cmd');
+    expect(commands, [
+      'where npm',
+      'npm install -g @anthropic-ai/claude-code',
+      'where claude',
+    ]);
+  });
+
+  test('falls back to WSL on Windows when where claude misses', () async {
+    final commands = <String>[];
+    final installer = CliInstallerService(
+      isWindowsOverride: true,
+      localRunner: (command) async {
+        commands.add(command.commandLine);
+        if (command.commandLine == 'where npm') {
+          return const CliInstallerCommandResult(
+            exitCode: 0,
+            stdout: r'C:\Program Files\nodejs\npm.cmd',
+          );
+        }
+        if (command.commandLine == 'npm install -g @anthropic-ai/claude-code') {
+          return const CliInstallerCommandResult(exitCode: 0);
+        }
+        if (command.commandLine == 'where claude') {
+          return const CliInstallerCommandResult(exitCode: 1);
+        }
+        if (command.commandLine == "wsl.exe bash -ilc 'command -v claude'") {
+          return const CliInstallerCommandResult(
+            exitCode: 0,
+            stdout: '/home/alice/.npm-global/bin/claude\n',
+          );
+        }
+        return const CliInstallerCommandResult(exitCode: 127);
+      },
+    );
+
+    final result = await installer.install(
+      cli: TeamCli.claude,
+      mode: CliInstallMode.local,
+    );
+
+    expect(result.success, isTrue);
+    expect(result.executablePath, 'wsl.exe /home/alice/.npm-global/bin/claude');
+    expect(commands, [
+      'where npm',
+      'npm install -g @anthropic-ai/claude-code',
+      'where claude',
+      "wsl.exe bash -ilc 'command -v claude'",
+    ]);
+  });
+
+  test('bootstraps local Node when npm is missing on Unix', () async {
+    final commands = <String>[];
+    final installer = CliInstallerService(
+      isWindowsOverride: false,
+      localRunner: (command) async {
+        commands.add(command.commandLine);
+        if (command.commandLine == 'command -v npm') {
+          return const CliInstallerCommandResult(exitCode: 1);
+        }
+        if (command.commandLine.contains('nodejs.org/dist/')) {
+          return const CliInstallerCommandResult(
+            exitCode: 0,
+            stdout: '10.9.0\n',
+          );
+        }
+        if (command.commandLine.contains(
+          r"$HOME/.local/share/teampilot/node/v24.15.0/bin/npm install -g @anthropic-ai/claude-code",
+        )) {
+          return const CliInstallerCommandResult(exitCode: 0);
+        }
+        if (command.commandLine == 'which claude') {
+          return const CliInstallerCommandResult(
+            exitCode: 0,
+            stdout: '/home/alice/.local/bin/claude\n',
+          );
+        }
+        return const CliInstallerCommandResult(exitCode: 127);
+      },
+    );
+
+    final result = await installer.install(
+      cli: TeamCli.claude,
+      mode: CliInstallMode.local,
+    );
+
+    expect(result.success, isTrue);
+    expect(result.executablePath, '/home/alice/.local/bin/claude');
+    expect(commands[0], 'command -v npm');
+    expect(commands[1], contains('nodejs.org/dist/'));
+    expect(commands[2], contains('npm install -g @anthropic-ai/claude-code'));
   });
 
   test('reports local npm install failure', () async {
     final installer = CliInstallerService(
-      localRunner: (_) async => const CliInstallerCommandResult(
-        exitCode: 1,
-        stderr: 'permission denied',
-      ),
+      isWindowsOverride: false,
+      localRunner: (command) async {
+        if (command.commandLine == 'command -v npm') {
+          return const CliInstallerCommandResult(
+            exitCode: 0,
+            stdout: '/usr/bin/npm\n',
+          );
+        }
+        return const CliInstallerCommandResult(
+          exitCode: 1,
+          stderr: 'permission denied',
+        );
+      },
     );
 
     final result = await installer.install(

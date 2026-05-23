@@ -4,6 +4,7 @@ import 'dart:typed_data';
 
 import '../models/ssh_profile.dart';
 import '../models/team_config.dart';
+import 'cli_tool_locator.dart';
 import 'ssh_client_factory.dart';
 
 enum CliInstallMode { local, ssh }
@@ -70,14 +71,19 @@ class CliInstallerService {
     LocalCliInstallRunner? localRunner,
     SshCliInstallRunner? sshRunner,
     SshClientFactory? sshClientFactory,
+    bool? isWindowsOverride,
   }) : _localRunner = localRunner ?? _runLocal,
-       _sshRunner = sshRunner ?? _SshCommandRunner(sshClientFactory).run;
+       _sshRunner = sshRunner ?? _SshCommandRunner(sshClientFactory).run,
+       _isWindows = isWindowsOverride ?? Platform.isWindows;
 
   static const nodeVersion = 'v24.15.0';
   static const _claudePackage = '@anthropic-ai/claude-code';
+  static const _bootstrappedNpmPath =
+      r'$HOME/.local/share/teampilot/node/v24.15.0/bin/npm';
 
   final LocalCliInstallRunner _localRunner;
   final SshCliInstallRunner _sshRunner;
+  final bool _isWindows;
 
   Future<CliInstallResult> install({
     required TeamCli cli,
@@ -97,19 +103,32 @@ class CliInstallerService {
   }
 
   Future<CliInstallResult> _installLocal() async {
-    final install = await _localRunner(
-      const CliInstallerCommand('npm', ['install', '-g', _claudePackage]),
-    );
+    var installCommand = const CliInstallerCommand('npm', [
+      'install',
+      '-g',
+      _claudePackage,
+    ]);
+    final npmProbe = await _localRunner(_localNpmProbeCommand());
+    if (npmProbe.exitCode != 0) {
+      final bootstrap = await _localRunner(_localNodeBootstrapCommand());
+      if (bootstrap.exitCode != 0) {
+        return CliInstallResult(
+          success: false,
+          message: _failureMessage('Local Node/npm install failed', bootstrap),
+        );
+      }
+      installCommand = _bootstrappedLocalInstallCommand();
+    }
+
+    final install = await _localRunner(installCommand);
     if (install.exitCode != 0) {
       return CliInstallResult(
         success: false,
         message: _failureMessage('Claude Code install failed', install),
       );
     }
-    final resolved = await _localRunner(
-      const CliInstallerCommand('command', ['-v', 'claude']),
-    );
-    final path = _firstOutputLine(resolved);
+
+    final path = await _locateLocalExecutable('claude');
     return CliInstallResult(
       success: true,
       message: 'Claude Code installed.',
@@ -133,7 +152,7 @@ class CliInstallerService {
     if (npmProbe.exitCode != 0) {
       final bootstrap = await _sshRunner(
         profile,
-        CliInstallerCommand('sh', ['-lc', _nodeBootstrapScript()]),
+        CliInstallerCommand('sh', ['-lc', _unixNodeBootstrapScript()]),
       );
       if (bootstrap.exitCode != 0) {
         return CliInstallResult(
@@ -141,8 +160,7 @@ class CliInstallerService {
           message: _failureMessage('Remote Node/npm install failed', bootstrap),
         );
       }
-      npmCommand =
-          r'$HOME/.local/share/teampilot/node/v24.15.0/bin/npm';
+      npmCommand = _bootstrappedNpmPath;
     }
 
     final install = await _sshRunner(
@@ -168,6 +186,54 @@ class CliInstallerService {
     );
   }
 
+  CliInstallerCommand _localNpmProbeCommand() {
+    if (_isWindows) {
+      return const CliInstallerCommand('where', ['npm']);
+    }
+    return const CliInstallerCommand('command', ['-v', 'npm']);
+  }
+
+  CliInstallerCommand _localNodeBootstrapCommand() {
+    if (_isWindows) {
+      return CliInstallerCommand(
+        'powershell',
+        ['-NoProfile', '-Command', _windowsNodeBootstrapScript()],
+      );
+    }
+    return CliInstallerCommand('sh', ['-lc', _unixNodeBootstrapScript()]);
+  }
+
+  CliInstallerCommand _bootstrappedLocalInstallCommand() {
+    if (_isWindows) {
+      return CliInstallerCommand('powershell', [
+        '-NoProfile',
+        '-Command',
+        "& (Join-Path \$env:LOCALAPPDATA 'teampilot\\node\\$nodeVersion\\npm.cmd') install -g $_claudePackage",
+      ]);
+    }
+    return CliInstallerCommand('sh', [
+      '-lc',
+      '\$HOME/.local/share/teampilot/node/$nodeVersion/bin/npm install -g $_claudePackage',
+    ]);
+  }
+
+  Future<String?> _locateLocalExecutable(String name) {
+    return CliToolLocator(name).locate(
+      runner: (executable, arguments, {stdoutEncoding, stderrEncoding}) async {
+        final result = await _localRunner(
+          CliInstallerCommand(executable, arguments),
+        );
+        return ProcessResult(
+          -1,
+          result.exitCode,
+          result.stdout,
+          result.stderr,
+        );
+      },
+      isWindowsOverride: _isWindows,
+    );
+  }
+
   static Future<CliInstallerCommandResult> _runLocal(
     CliInstallerCommand command,
   ) async {
@@ -183,10 +249,16 @@ class CliInstallerService {
     }
   }
 
-  static String _nodeBootstrapScript() {
+  static String _unixNodeBootstrapScript() {
     return '''
 set -e
+os="\$(uname -s)"
 arch="\$(uname -m)"
+case "\$os" in
+  Linux) platform="linux" ;;
+  Darwin) platform="darwin" ;;
+  *) echo "Unsupported OS: \$os" >&2; exit 2 ;;
+esac
 case "\$arch" in
   x86_64|amd64) node_arch="x64" ;;
   aarch64|arm64) node_arch="arm64" ;;
@@ -195,7 +267,7 @@ esac
 version="$nodeVersion"
 base="\$HOME/.local/share/teampilot/node"
 target="\$base/\$version"
-archive="node-\$version-linux-\$node_arch.tar.xz"
+archive="node-\$version-\$platform-\$node_arch.tar.xz"
 url="https://nodejs.org/dist/\$version/\$archive"
 mkdir -p "\$base" "\$HOME/.local/bin"
 tmp="\$(mktemp -d)"
@@ -211,11 +283,34 @@ else
 fi
 tar -xJf "\$tmp/\$archive" -C "\$tmp"
 rm -rf "\$target"
-mv "\$tmp/node-\$version-linux-\$node_arch" "\$target"
+mv "\$tmp/node-\$version-\$platform-\$node_arch" "\$target"
 ln -sf "\$target/bin/node" "\$HOME/.local/bin/node"
 ln -sf "\$target/bin/npm" "\$HOME/.local/bin/npm"
 ln -sf "\$target/bin/npx" "\$HOME/.local/bin/npx"
 "\$target/bin/npm" --version
+''';
+  }
+
+  static String _windowsNodeBootstrapScript() {
+    return r'''
+$ErrorActionPreference = 'Stop'
+$version = 'v24.15.0'
+$arch = if ([System.Runtime.InteropServices.RuntimeInformation]::ProcessArchitecture -eq 'Arm64') { 'arm64' } else { 'x64' }
+$base = Join-Path $env:LOCALAPPDATA 'teampilot\node'
+$target = Join-Path $base $version
+$archive = "node-$version-win-$arch.zip"
+$url = "https://nodejs.org/dist/$version/$archive"
+$tmp = Join-Path ([System.IO.Path]::GetTempPath()) ([System.IO.Path]::GetRandomFileName())
+New-Item -ItemType Directory -Force -Path $base, $tmp | Out-Null
+try {
+  Invoke-WebRequest -Uri $url -OutFile (Join-Path $tmp $archive)
+  if (Test-Path $target) { Remove-Item -Recurse -Force $target }
+  Expand-Archive -Path (Join-Path $tmp $archive) -DestinationPath $tmp -Force
+  Move-Item -Path (Join-Path $tmp "node-$version-win-$arch") -Destination $target
+  & (Join-Path $target 'npm.cmd') --version
+} finally {
+  Remove-Item -Recurse -Force $tmp -ErrorAction SilentlyContinue
+}
 ''';
   }
 
