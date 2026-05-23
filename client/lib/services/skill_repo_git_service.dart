@@ -197,7 +197,7 @@ class SkillRepoGitService {
 
     await for (final entity in root.list(recursive: true, followLinks: false)) {
       if (entity is! File) continue;
-      final rel = p.relative(entity.path, from: root.path);
+      final rel = p.relative(entity.path, from: root.path).replaceAll('\\', '/');
       if (rel.startsWith('..') || _shouldSkipRelativePath(rel)) continue;
       out[rel] = await entity.readAsBytes();
     }

@@ -140,7 +140,8 @@ List<DiscoverableSkill> discoverSkillsInTarballEntries({
   const skillMdSuffix = '/$skillMd';
   final result = <DiscoverableSkill>[];
   for (final entry in entries.entries) {
-    final path = entry.key;
+    // Git checkout on Windows uses backslashes; tarball paths use forward slashes.
+    final path = entry.key.replaceAll('\\', '/');
     if (path != skillMd && !path.endsWith(skillMdSuffix)) continue;
 
     final dir = path == skillMd

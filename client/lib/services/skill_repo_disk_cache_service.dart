@@ -76,18 +76,83 @@ class SkillRepoDiskCacheService {
       final text = await _fs.readString(path);
       if (text == null) return const [];
       final list = json.decode(text) as List<dynamic>;
-      return list
+      final skills = list
           .map(
             (e) => DiscoverableSkill.fromJson(
               (e as Map<String, dynamic>).cast<String, Object?>(),
             ),
           )
           .toList();
+      if (skills.isNotEmpty) return skills;
+      return _recoverSkillsFromCachedFiles(repo, path);
     } catch (e) {
       appLogger.w(
         '[SkillRepoCache] corrupt skills.json for ${repo.fullName}: $e',
       );
       return const [];
+    }
+  }
+
+  /// Rebuilds skills.json when git sync wrote files but discovery missed paths.
+  Future<List<DiscoverableSkill>> _recoverSkillsFromCachedFiles(
+    SkillRepo repo,
+    String skillsPath,
+  ) async {
+    final entries = await _collectSkillMdEntriesFromDisk(repo);
+    if (entries.isEmpty) return const [];
+
+    final meta = await readMeta(repo);
+    final skills = discoverSkillsInTarballEntries(
+      entries: entries,
+      repo: repo,
+      resolvedBranch: meta?.resolvedBranch ?? repo.branch,
+    );
+    if (skills.isEmpty) return const [];
+
+    appLogger.i(
+      '[SkillRepoCache] recovered ${skills.length} skills for ${repo.fullName} from cached files',
+    );
+    await _fs.writeString(
+      skillsPath,
+      const JsonEncoder.withIndent('  ').convert(
+        skills.map((s) => s.toJson()).toList(),
+      ),
+    );
+    return skills;
+  }
+
+  Future<Map<String, Uint8List>> _collectSkillMdEntriesFromDisk(
+    SkillRepo repo,
+  ) async {
+    final filesDir = _fs.pathContext.join(_repoDirPath(repo), 'files');
+    final filesStat = await _fs.stat(filesDir);
+    if (!filesStat.isDirectory) return const {};
+
+    final out = <String, Uint8List>{};
+    await _collectSkillMdEntriesRecursive(filesDir, filesDir, out);
+    return out;
+  }
+
+  Future<void> _collectSkillMdEntriesRecursive(
+    String root,
+    String dir,
+    Map<String, Uint8List> out,
+  ) async {
+    for (final entry in await _fs.listDir(dir)) {
+      final fullPath = _fs.pathContext.join(dir, entry.name);
+      if (entry.isDirectory) {
+        await _collectSkillMdEntriesRecursive(root, fullPath, out);
+        continue;
+      }
+      if (entry.name != 'SKILL.md') continue;
+      final rel = _fs.pathContext
+          .relative(fullPath, from: root)
+          .replaceAll('\\', '/');
+      if (rel.startsWith('..')) continue;
+      final bytes = await _fs.readBytes(fullPath);
+      if (bytes != null) {
+        out[rel] = Uint8List.fromList(bytes);
+      }
     }
   }
 

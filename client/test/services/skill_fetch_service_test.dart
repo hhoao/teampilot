@@ -105,5 +105,16 @@ void main() {
       );
       expect(found.single.name, 'bar');
     });
+
+    test('finds SKILL.md with Windows path separators', () {
+      final found = discoverSkillsInTarballEntries(
+        entries: {
+          r'skills\foo\SKILL.md': skillMd,
+        },
+        repo: repo,
+        resolvedBranch: 'main',
+      );
+      expect(found.single.directory, 'skills/foo');
+    });
   });
 }
