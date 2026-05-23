@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../repositories/app_settings_repository.dart';
 import '../../services/onboarding_service.dart';
@@ -27,7 +26,6 @@ class OnboardingGateState extends State<OnboardingGate> {
     super.initState();
     _onboardingService = OnboardingService(
       appSettings: context.read<AppSettingsRepository>(),
-      preferences: context.read<SharedPreferences>(),
     );
     unawaited(_resolve());
   }

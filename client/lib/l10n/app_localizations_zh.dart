@@ -389,6 +389,18 @@ class AppLocalizationsZh extends AppLocalizations {
   String get cliInstallInstalling => '安装中…';
 
   @override
+  String get cliInstallProgressCheckingNpm => '正在检测 npm…';
+
+  @override
+  String get cliInstallProgressBootstrappingNode => '正在安装 Node.js…';
+
+  @override
+  String get cliInstallProgressInstallingClaude => '正在安装 Claude Code…';
+
+  @override
+  String get cliInstallProgressLocatingExecutable => '正在定位 Claude Code 可执行文件…';
+
+  @override
   String get claudeCliExecutablePathLabel => 'Claude Code CLI 路径';
 
   @override

@@ -836,6 +836,30 @@ abstract class AppLocalizations {
   /// **'Installing…'**
   String get cliInstallInstalling;
 
+  /// No description provided for @cliInstallProgressCheckingNpm.
+  ///
+  /// In en, this message translates to:
+  /// **'Checking for npm…'**
+  String get cliInstallProgressCheckingNpm;
+
+  /// No description provided for @cliInstallProgressBootstrappingNode.
+  ///
+  /// In en, this message translates to:
+  /// **'Installing Node.js…'**
+  String get cliInstallProgressBootstrappingNode;
+
+  /// No description provided for @cliInstallProgressInstallingClaude.
+  ///
+  /// In en, this message translates to:
+  /// **'Installing Claude Code…'**
+  String get cliInstallProgressInstallingClaude;
+
+  /// No description provided for @cliInstallProgressLocatingExecutable.
+  ///
+  /// In en, this message translates to:
+  /// **'Locating Claude Code executable…'**
+  String get cliInstallProgressLocatingExecutable;
+
   /// No description provided for @claudeCliExecutablePathLabel.
   ///
   /// In en, this message translates to:

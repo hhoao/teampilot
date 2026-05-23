@@ -27,6 +27,7 @@ import '../services/ssh_client_factory.dart';
 import '../utils/app_keys.dart';
 import '../utils/debounce/debounce.dart';
 import '../widgets/app_outline_text_field.dart';
+import '../widgets/cli_install_progress_panel.dart';
 import '../widgets/settings/workspace_settings_widgets.dart';
 
 const _kSessionPathPersistDebounce = Duration(milliseconds: 400);
@@ -509,6 +510,8 @@ class _CliExecutablePathSettingsRowState
   late final Debouncer _persistDebouncer;
   String _lastSyncedPath = '';
   bool _isInstalling = false;
+  CliInstallPhase? _installPhase;
+  final List<String> _installLog = [];
 
   @override
   void initState() {
@@ -595,7 +598,11 @@ class _CliExecutablePathSettingsRowState
 
   Future<void> _installCli() async {
     if (_isInstalling) return;
-    setState(() => _isInstalling = true);
+    setState(() {
+      _isInstalling = true;
+      _installPhase = CliInstallPhase.checkingNpm;
+      _installLog.clear();
+    });
     try {
       final connectionMode = context.read<ConnectionModeService>();
       final sshProfile = context.read<SshProfileCubit>().state.selectedProfile;
@@ -608,6 +615,7 @@ class _CliExecutablePathSettingsRowState
             ? CliInstallMode.ssh
             : CliInstallMode.local,
         sshProfile: sshProfile,
+        onProgress: _onInstallProgress,
       );
       if (!mounted) return;
       final path = result.executablePath?.trim() ?? '';
@@ -622,9 +630,26 @@ class _CliExecutablePathSettingsRowState
       );
     } finally {
       if (mounted) {
-        setState(() => _isInstalling = false);
+        setState(() {
+          _isInstalling = false;
+          _installPhase = null;
+        });
       }
     }
+  }
+
+  void _onInstallProgress(CliInstallProgress progress) {
+    if (!mounted) return;
+    setState(() {
+      _installPhase = progress.phase;
+      final detail = progress.detail?.trim();
+      if (detail != null && detail.isNotEmpty) {
+        _installLog.add(detail);
+        if (_installLog.length > 80) {
+          _installLog.removeRange(0, _installLog.length - 80);
+        }
+      }
+    });
   }
 
   @override
@@ -642,52 +667,64 @@ class _CliExecutablePathSettingsRowState
     return SettingsLabeledStackedRow(
       title: widget.title,
       subtitle: widget.subtitle,
-      body: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Expanded(
-            child: AppOutlineTextField(
-              key: widget.fieldKey,
-              controller: _controller,
-              focusNode: _focusNode,
-              hintText: hint,
-              hintMaxLines: 3,
-              onChanged: (_) => _scheduleDebouncedPersist(),
-              onSubmitted: (_) => _flushPersist(),
-            ),
-          ),
-          const SizedBox(width: 6),
-          if (widget.installKey != null) ...[
-            OutlinedButton.icon(
-              key: widget.installKey,
-              onPressed: _isInstalling ? null : _installCli,
-              icon: _isInstalling
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.download_outlined, size: 16),
-              label: Text(
-                _isInstalling
-                    ? l10n.cliInstallInstalling
-                    : l10n.cliInstallButton,
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Expanded(
+                child: AppOutlineTextField(
+                  key: widget.fieldKey,
+                  controller: _controller,
+                  focusNode: _focusNode,
+                  hintText: hint,
+                  hintMaxLines: 3,
+                  onChanged: (_) => _scheduleDebouncedPersist(),
+                  onSubmitted: (_) => _flushPersist(),
+                ),
               ),
+              const SizedBox(width: 6),
+              if (widget.installKey != null) ...[
+                OutlinedButton.icon(
+                  key: widget.installKey,
+                  onPressed: _isInstalling ? null : _installCli,
+                  icon: _isInstalling
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.download_outlined, size: 16),
+                  label: Text(
+                    _isInstalling
+                        ? l10n.cliInstallInstalling
+                        : l10n.cliInstallButton,
+                  ),
+                ),
+                const SizedBox(width: 6),
+              ],
+              OutlinedButton.icon(
+                key: widget.browseKey,
+                onPressed: isSshMode ? null : _pickFile,
+                icon: const Icon(Icons.folder_open_outlined, size: 16),
+                label: Text(l10n.cliExecutablePathBrowse),
+              ),
+              const SizedBox(width: 6),
+              TextButton(
+                key: widget.resetKey,
+                onPressed: isFallback ? null : _reset,
+                child: Text(l10n.cliExecutablePathReset),
+              ),
+            ],
+          ),
+          if (_isInstalling && _installPhase != null) ...[
+            const SizedBox(height: 12),
+            CliInstallProgressPanel(
+              phase: _installPhase!,
+              logLines: _installLog,
             ),
-            const SizedBox(width: 6),
           ],
-          OutlinedButton.icon(
-            key: widget.browseKey,
-            onPressed: isSshMode ? null : _pickFile,
-            icon: const Icon(Icons.folder_open_outlined, size: 16),
-            label: Text(l10n.cliExecutablePathBrowse),
-          ),
-          const SizedBox(width: 6),
-          TextButton(
-            key: widget.resetKey,
-            onPressed: isFallback ? null : _reset,
-            child: Text(l10n.cliExecutablePathReset),
-          ),
         ],
       ),
       showDividerBelow: widget.showDividerBelow,

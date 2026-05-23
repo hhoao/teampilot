@@ -404,6 +404,19 @@ class AppLocalizationsEn extends AppLocalizations {
   String get cliInstallInstalling => 'Installing…';
 
   @override
+  String get cliInstallProgressCheckingNpm => 'Checking for npm…';
+
+  @override
+  String get cliInstallProgressBootstrappingNode => 'Installing Node.js…';
+
+  @override
+  String get cliInstallProgressInstallingClaude => 'Installing Claude Code…';
+
+  @override
+  String get cliInstallProgressLocatingExecutable =>
+      'Locating Claude Code executable…';
+
+  @override
   String get claudeCliExecutablePathLabel => 'Claude Code CLI path';
 
   @override

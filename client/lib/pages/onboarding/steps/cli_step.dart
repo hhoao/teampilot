@@ -14,6 +14,7 @@ import '../../../services/connection_mode_service.dart';
 import '../../../services/remote_flashskyai_cli_locator.dart';
 import '../../../services/ssh_client_factory.dart';
 import '../../../utils/app_keys.dart';
+import '../../../widgets/cli_install_progress_panel.dart';
 import '../../../widgets/app_outline_text_field.dart';
 import '../../../widgets/settings/workspace_settings_widgets.dart';
 
@@ -30,13 +31,14 @@ class _OnboardingCliStepState extends State<OnboardingCliStep> {
   final _controller = TextEditingController();
   var _detecting = false;
   var _installing = false;
+  CliInstallPhase? _installPhase;
+  final List<String> _installLog = [];
   String? _detectedPath;
   String? _detectError;
 
   @override
   void initState() {
     super.initState();
-    _syncFromPreferences();
     unawaited(_detect());
   }
 
@@ -44,14 +46,6 @@ class _OnboardingCliStepState extends State<OnboardingCliStep> {
   void dispose() {
     _controller.dispose();
     super.dispose();
-  }
-
-  void _syncFromPreferences() {
-    final cubit = context.read<SessionPreferencesCubit>();
-    final stored = cubit.state.preferences.cliExecutablePaths[_cli.value] ?? '';
-    if (_controller.text != stored) {
-      _controller.text = stored;
-    }
   }
 
   Future<void> _detect() async {
@@ -77,16 +71,16 @@ class _OnboardingCliStepState extends State<OnboardingCliStep> {
       setState(() {
         _detectedPath = located;
         _detecting = false;
+        if (located != null && located.isNotEmpty) {
+          _controller.text = located;
+        } else {
+          _controller.clear();
+        }
       });
-      if (located != null &&
-          located.isNotEmpty &&
-          _controller.text.trim().isEmpty) {
-        _controller.text = located;
-        await context.read<SessionPreferencesCubit>().setCliExecutablePathFor(
-          _cli,
-          located,
-        );
-      }
+      await context.read<SessionPreferencesCubit>().setCliExecutablePathFor(
+        _cli,
+        located ?? '',
+      );
     } on Object catch (error) {
       if (!mounted) return;
       setState(() {
@@ -105,7 +99,11 @@ class _OnboardingCliStepState extends State<OnboardingCliStep> {
 
   Future<void> _install() async {
     if (_installing) return;
-    setState(() => _installing = true);
+    setState(() {
+      _installing = true;
+      _installPhase = CliInstallPhase.checkingNpm;
+      _installLog.clear();
+    });
     try {
       final connectionMode = context.read<ConnectionModeService>();
       final sshProfile = context.read<SshProfileCubit>().state.selectedProfile;
@@ -118,31 +116,58 @@ class _OnboardingCliStepState extends State<OnboardingCliStep> {
             ? CliInstallMode.ssh
             : CliInstallMode.local,
         sshProfile: sshProfile,
+        onProgress: _onInstallProgress,
       );
       if (!mounted) return;
       final path = result.executablePath?.trim() ?? '';
       if (result.success && path.isNotEmpty) {
-        _controller.text = path;
+        setState(() {
+          _controller.text = path;
+          _detectedPath = path;
+          _detectError = null;
+        });
         await _persistPath(path);
+      } else if (result.success) {
+        await _detect();
       }
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(result.message)),
       );
     } finally {
-      if (mounted) setState(() => _installing = false);
+      if (mounted) {
+        setState(() {
+          _installing = false;
+          _installPhase = null;
+        });
+      }
     }
+  }
+
+  void _onInstallProgress(CliInstallProgress progress) {
+    if (!mounted) return;
+    setState(() {
+      _installPhase = progress.phase;
+      final detail = progress.detail?.trim();
+      if (detail != null && detail.isNotEmpty) {
+        _installLog.add(detail);
+        if (_installLog.length > 80) {
+          _installLog.removeRange(0, _installLog.length - 80);
+        }
+      }
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final prefsCubit = context.read<SessionPreferencesCubit>();
     final isSshMode = context.read<ConnectionModeService>().isSshMode;
-    final effective = prefsCubit.resolveExecutable(_cli);
     final subtitle = isSshMode
         ? l10n.claudeCliExecutablePathDescriptionSsh
         : l10n.claudeCliExecutablePathDescription;
+    final pathHint = _controller.text.trim().isEmpty
+        ? l10n.onboardingCliNotFound
+        : null;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -190,9 +215,15 @@ class _OnboardingCliStepState extends State<OnboardingCliStep> {
             body: AppOutlineTextField(
               key: AppKeys.claudeCliExecutablePathField,
               controller: _controller,
-              hintText: '${l10n.cliExecutablePathUsing}$effective',
+              hintText: pathHint,
               hintMaxLines: 2,
-              onChanged: (value) => unawaited(_persistPath(value)),
+              onChanged: (value) {
+                setState(() {
+                  _detectError = null;
+                  _detectedPath = null;
+                });
+                unawaited(_persistPath(value));
+              },
             ),
           ),
         ),
@@ -222,6 +253,13 @@ class _OnboardingCliStepState extends State<OnboardingCliStep> {
             ),
           ],
         ),
+        if (_installing && _installPhase != null) ...[
+          const SizedBox(height: 12),
+          CliInstallProgressPanel(
+            phase: _installPhase!,
+            logLines: _installLog,
+          ),
+        ],
       ],
     );
   }

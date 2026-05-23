@@ -43,6 +43,51 @@ void main() {
     ]);
   });
 
+  test('reports install progress phases locally', () async {
+    final phases = <CliInstallPhase>[];
+    final commands = <String>[];
+    final installer = CliInstallerService(
+      isWindowsOverride: false,
+      localRunner: (command) async {
+        commands.add(command.commandLine);
+        if (command.commandLine == 'command -v npm') {
+          return const CliInstallerCommandResult(
+            exitCode: 0,
+            stdout: '/usr/bin/npm\n',
+          );
+        }
+        if (command.commandLine == 'npm install -g @anthropic-ai/claude-code') {
+          return const CliInstallerCommandResult(exitCode: 0);
+        }
+        if (command.commandLine == 'which claude') {
+          return const CliInstallerCommandResult(
+            exitCode: 0,
+            stdout: '/usr/local/bin/claude\n',
+          );
+        }
+        return const CliInstallerCommandResult(exitCode: 127);
+      },
+    );
+
+    final result = await installer.install(
+      cli: TeamCli.claude,
+      mode: CliInstallMode.local,
+      onProgress: (progress) => phases.add(progress.phase),
+    );
+
+    expect(result.success, isTrue, reason: result.message);
+    expect(commands, [
+      'command -v npm',
+      'npm install -g @anthropic-ai/claude-code',
+      'which claude',
+    ]);
+    expect(phases, [
+      CliInstallPhase.checkingNpm,
+      CliInstallPhase.installingClaude,
+      CliInstallPhase.locatingExecutable,
+    ]);
+  });
+
   test('installs Claude Code locally on Windows using where', () async {
     final commands = <String>[];
     final installer = CliInstallerService(
@@ -55,7 +100,8 @@ void main() {
             stdout: r'C:\Program Files\nodejs\npm.cmd',
           );
         }
-        if (command.commandLine == 'npm install -g @anthropic-ai/claude-code') {
+        if (command.commandLine ==
+            r"cmd /c 'C:\Program Files\nodejs\npm.cmd' install -g @anthropic-ai/claude-code") {
           return const CliInstallerCommandResult(exitCode: 0);
         }
         if (command.commandLine == 'where claude') {
@@ -77,7 +123,7 @@ void main() {
     expect(result.executablePath, r'C:\Users\alice\AppData\Roaming\npm\claude.cmd');
     expect(commands, [
       'where npm',
-      'npm install -g @anthropic-ai/claude-code',
+      r"cmd /c 'C:\Program Files\nodejs\npm.cmd' install -g @anthropic-ai/claude-code",
       'where claude',
     ]);
   });
@@ -94,7 +140,8 @@ void main() {
             stdout: r'C:\Program Files\nodejs\npm.cmd',
           );
         }
-        if (command.commandLine == 'npm install -g @anthropic-ai/claude-code') {
+        if (command.commandLine ==
+            r"cmd /c 'C:\Program Files\nodejs\npm.cmd' install -g @anthropic-ai/claude-code") {
           return const CliInstallerCommandResult(exitCode: 0);
         }
         if (command.commandLine == 'where claude') {
@@ -119,7 +166,7 @@ void main() {
     expect(result.executablePath, 'wsl.exe /home/alice/.npm-global/bin/claude');
     expect(commands, [
       'where npm',
-      'npm install -g @anthropic-ai/claude-code',
+      r"cmd /c 'C:\Program Files\nodejs\npm.cmd' install -g @anthropic-ai/claude-code",
       'where claude',
       "wsl.exe bash -ilc 'command -v claude'",
     ]);

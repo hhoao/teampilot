@@ -9,6 +9,20 @@ import 'ssh_client_factory.dart';
 
 enum CliInstallMode { local, ssh }
 
+enum CliInstallPhase {
+  checkingNpm,
+  bootstrappingNode,
+  installingClaude,
+  locatingExecutable,
+}
+
+class CliInstallProgress {
+  const CliInstallProgress({required this.phase, this.detail});
+
+  final CliInstallPhase phase;
+  final String? detail;
+}
+
 class CliInstallerCommand {
   const CliInstallerCommand(this.executable, this.arguments);
 
@@ -66,6 +80,8 @@ typedef SshCliInstallRunner =
       CliInstallerCommand command,
     );
 
+typedef CliInstallProgressCallback = void Function(CliInstallProgress progress);
+
 class CliInstallerService {
   CliInstallerService({
     LocalCliInstallRunner? localRunner,
@@ -84,33 +100,64 @@ class CliInstallerService {
   final LocalCliInstallRunner _localRunner;
   final SshCliInstallRunner _sshRunner;
   final bool _isWindows;
+  CliInstallProgressCallback? _onProgress;
 
   Future<CliInstallResult> install({
     required TeamCli cli,
     required CliInstallMode mode,
     SshProfile? sshProfile,
+    CliInstallProgressCallback? onProgress,
   }) async {
-    if (cli != TeamCli.claude) {
-      return const CliInstallResult(
-        success: false,
-        message: 'Only Claude Code installation is supported.',
+    _onProgress = onProgress;
+    try {
+      if (cli != TeamCli.claude) {
+        return const CliInstallResult(
+          success: false,
+          message: 'Only Claude Code installation is supported.',
+        );
+      }
+      return switch (mode) {
+        CliInstallMode.local => await _installLocal(),
+        CliInstallMode.ssh => await _installSsh(sshProfile),
+      };
+    } finally {
+      _onProgress = null;
+    }
+  }
+
+  void _report(CliInstallPhase phase, {String? detail}) {
+    _onProgress?.call(CliInstallProgress(phase: phase, detail: detail));
+  }
+
+  Future<CliInstallerCommandResult> _runLocalTracked(
+    CliInstallerCommand command, {
+    required CliInstallPhase phase,
+    bool streamOutput = false,
+  }) async {
+    _report(phase);
+    final useStreaming =
+        streamOutput && _onProgress != null && identical(_localRunner, _runLocal);
+    if (useStreaming) {
+      return _runLocalStreaming(
+        command,
+        onOutput: (line) => _report(phase, detail: line),
       );
     }
-    return switch (mode) {
-      CliInstallMode.local => _installLocal(),
-      CliInstallMode.ssh => _installSsh(sshProfile),
-    };
+    return _localRunner(command);
   }
 
   Future<CliInstallResult> _installLocal() async {
-    var installCommand = const CliInstallerCommand('npm', [
-      'install',
-      '-g',
-      _claudePackage,
-    ]);
-    final npmProbe = await _localRunner(_localNpmProbeCommand());
+    final npmProbe = await _runLocalTracked(
+      _localNpmProbeCommand(),
+      phase: CliInstallPhase.checkingNpm,
+    );
+    late final CliInstallerCommand installCommand;
     if (npmProbe.exitCode != 0) {
-      final bootstrap = await _localRunner(_localNodeBootstrapCommand());
+      final bootstrap = await _runLocalTracked(
+        _localNodeBootstrapCommand(),
+        phase: CliInstallPhase.bootstrappingNode,
+        streamOutput: true,
+      );
       if (bootstrap.exitCode != 0) {
         return CliInstallResult(
           success: false,
@@ -118,9 +165,15 @@ class CliInstallerService {
         );
       }
       installCommand = _bootstrappedLocalInstallCommand();
+    } else {
+      installCommand = _localNpmInstallCommand(npmProbe);
     }
 
-    final install = await _localRunner(installCommand);
+    final install = await _runLocalTracked(
+      installCommand,
+      phase: CliInstallPhase.installingClaude,
+      streamOutput: true,
+    );
     if (install.exitCode != 0) {
       return CliInstallResult(
         success: false,
@@ -128,6 +181,7 @@ class CliInstallerService {
       );
     }
 
+    _report(CliInstallPhase.locatingExecutable);
     final path = await _locateLocalExecutable('claude');
     return CliInstallResult(
       success: true,
@@ -145,11 +199,13 @@ class CliInstallerService {
     }
 
     var npmCommand = 'npm';
+    _report(CliInstallPhase.checkingNpm);
     final npmProbe = await _sshRunner(
       profile,
       const CliInstallerCommand('command', ['-v', 'npm']),
     );
     if (npmProbe.exitCode != 0) {
+      _report(CliInstallPhase.bootstrappingNode);
       final bootstrap = await _sshRunner(
         profile,
         CliInstallerCommand('sh', ['-lc', _unixNodeBootstrapScript()]),
@@ -163,6 +219,7 @@ class CliInstallerService {
       npmCommand = _bootstrappedNpmPath;
     }
 
+    _report(CliInstallPhase.installingClaude);
     final install = await _sshRunner(
       profile,
       CliInstallerCommand(npmCommand, ['install', '-g', _claudePackage]),
@@ -174,6 +231,7 @@ class CliInstallerService {
       );
     }
 
+    _report(CliInstallPhase.locatingExecutable);
     final resolved = await _sshRunner(
       profile,
       const CliInstallerCommand('command', ['-v', 'claude']),
@@ -201,6 +259,33 @@ class CliInstallerService {
       );
     }
     return CliInstallerCommand('sh', ['-lc', _unixNodeBootstrapScript()]);
+  }
+
+  CliInstallerCommand _localNpmInstallCommand(
+    CliInstallerCommandResult npmProbe,
+  ) {
+    if (_isWindows) {
+      final npmPath = _firstOutputLine(npmProbe);
+      if (npmPath != null && npmPath.isNotEmpty) {
+        // Windows npm is a .cmd shim; invoke through cmd.exe so Process.run
+        // can execute it reliably from a GUI-launched app.
+        return CliInstallerCommand('cmd', [
+          '/c',
+          npmPath,
+          'install',
+          '-g',
+          _claudePackage,
+        ]);
+      }
+      return CliInstallerCommand('cmd', [
+        '/c',
+        'npm',
+        'install',
+        '-g',
+        _claudePackage,
+      ]);
+    }
+    return const CliInstallerCommand('npm', ['install', '-g', _claudePackage]);
   }
 
   CliInstallerCommand _bootstrappedLocalInstallCommand() {
@@ -243,6 +328,49 @@ class CliInstallerService {
         exitCode: result.exitCode,
         stdout: result.stdout?.toString() ?? '',
         stderr: result.stderr?.toString() ?? '',
+      );
+    } on ProcessException catch (e) {
+      return CliInstallerCommandResult(exitCode: 127, stderr: e.message);
+    }
+  }
+
+  static Future<CliInstallerCommandResult> _runLocalStreaming(
+    CliInstallerCommand command, {
+    void Function(String line)? onOutput,
+  }) async {
+    try {
+      final process = await Process.start(
+        command.executable,
+        command.arguments,
+      );
+      final stdoutBuffer = StringBuffer();
+      final stderrBuffer = StringBuffer();
+
+      Future<void> drainStream(
+        Stream<List<int>> stream,
+        StringBuffer buffer,
+      ) async {
+        await stream
+            .transform(utf8.decoder)
+            .transform(const LineSplitter())
+            .forEach((line) {
+              buffer.writeln(line);
+              final trimmed = line.trim();
+              if (trimmed.isNotEmpty) {
+                onOutput?.call(trimmed);
+              }
+            });
+      }
+
+      await Future.wait([
+        drainStream(process.stdout, stdoutBuffer),
+        drainStream(process.stderr, stderrBuffer),
+      ]);
+      final exitCode = await process.exitCode;
+      return CliInstallerCommandResult(
+        exitCode: exitCode,
+        stdout: stdoutBuffer.toString(),
+        stderr: stderrBuffer.toString(),
       );
     } on ProcessException catch (e) {
       return CliInstallerCommandResult(exitCode: 127, stderr: e.message);
