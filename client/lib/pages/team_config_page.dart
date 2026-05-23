@@ -1175,7 +1175,7 @@ class _MemberConfigFormState extends State<_MemberConfigForm> {
   }) {
     if (appProvider == null) {
       final trimmed = currentModel.trim();
-      return trimmed.isEmpty ? const [] : [trimmed];
+      return trimmed.isEmpty ? <String>[] : [trimmed];
     }
     return collectClaudeModelCandidates(
       appProvider,
@@ -1219,10 +1219,12 @@ class _MemberConfigFormState extends State<_MemberConfigForm> {
       }
     }
 
-    final modelNames = _modelNamesForClaudeProvider(
-      providerId: prov,
-      appProvider: selectedAppProvider,
-      currentModel: m.model,
+    final modelNames = List<String>.of(
+      _modelNamesForClaudeProvider(
+        providerId: prov,
+        appProvider: selectedAppProvider,
+        currentModel: m.model,
+      ),
     )..sort();
     final model = m.model;
     final hideModelPicker =

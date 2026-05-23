@@ -187,6 +187,7 @@ class _DesktopConfigWorkspace extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final l10n = context.l10n;
+    const showHeading = false;
 
     return Container(
       key: AppKeys.configWorkspace,
@@ -207,14 +208,23 @@ class _DesktopConfigWorkspace extends StatelessWidget {
                 l10n: l10n,
               ),
               body: switch (section) {
-                ConfigSection.layout => const LayoutConfigWorkspace(),
+                ConfigSection.layout => LayoutConfigWorkspace(
+                  showHeading: showHeading,
+                ),
                 ConfigSection.llm => LlmConfigWorkspace(
                   initialCli: initialProviderCli,
                   showAddProviderOnOpen: showAddProviderOnOpen,
+                  showHeading: showHeading,
                 ),
-                ConfigSection.session => const SessionConfigWorkspace(),
-                ConfigSection.about => const AboutConfigWorkspace(),
-                ConfigSection.logs => const LogConfigWorkspace(),
+                ConfigSection.session => SessionConfigWorkspace(
+                  showHeading: showHeading,
+                ),
+                ConfigSection.about => AboutConfigWorkspace(
+                  showHeading: showHeading,
+                ),
+                ConfigSection.logs => LogConfigWorkspace(
+                  showHeading: showHeading,
+                ),
               },
             ),
           ),
@@ -419,7 +429,11 @@ class _AppearanceSettingsSection extends StatelessWidget {
     final l10n = context.l10n;
     final controller = context.read<LayoutCubit>();
 
-    return BlocSelector<LayoutCubit, LayoutState, (String, String, String, String)>(
+    return BlocSelector<
+      LayoutCubit,
+      LayoutState,
+      (String, String, String, String)
+    >(
       selector: (state) {
         var themeMode = state.preferences.themeMode;
         if (themeMode != 'light' &&
@@ -441,7 +455,8 @@ class _AppearanceSettingsSection extends StatelessWidget {
         );
       },
       builder: (context, appearance) {
-        final (themeMode, colorPreset, terminalThemeMode, langValue) = appearance;
+        final (themeMode, colorPreset, terminalThemeMode, langValue) =
+            appearance;
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [

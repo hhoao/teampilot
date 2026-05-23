@@ -46,12 +46,13 @@ class LlmConfigWorkspace extends StatelessWidget {
   const LlmConfigWorkspace({
     this.initialCli,
     this.showAddProviderOnOpen = false,
+    this.showHeading = true,
     super.key,
   });
 
   final AppProviderCli? initialCli;
   final bool showAddProviderOnOpen;
-
+  final bool showHeading;
   @override
   Widget build(BuildContext context) {
     final cli = initialCli;
@@ -76,13 +77,15 @@ class LlmConfigWorkspace extends StatelessWidget {
       key: AppKeys.llmConfigWorkspace,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-          child: WorkspaceSectionHeading(
-            title: l10n.appProviderCatalogLabel,
-            subtitle: l10n.appProviderCatalogHint,
+        if (showHeading) ...[
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+            child: WorkspaceSectionHeading(
+              title: l10n.appProviderCatalogLabel,
+              subtitle: l10n.appProviderCatalogHint,
+            ),
           ),
-        ),
+        ],
         Expanded(child: body),
       ],
     );
@@ -291,7 +294,9 @@ class _LlmProvidersListContent extends StatelessWidget {
           onAdd ??
           () => context.push(llmProviderAddRoute(appCubit.state.selectedCli)),
       onImport: () async {
-        final result = await context.read<AppProviderCubit>().importFromExternal();
+        final result = await context
+            .read<AppProviderCubit>()
+            .importFromExternal();
         if (!context.mounted) return;
         final l10n = context.l10n;
         final changed = result.added + result.updated;
@@ -302,9 +307,9 @@ class _LlmProvidersListContent extends StatelessWidget {
                 result.mirroredToFlashskyai,
                 result.mirrorSkipped,
               );
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(message)),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(message)));
       },
       onEdit: (provider) {
         if (onEdit != null) {
@@ -480,11 +485,7 @@ class _ProvidersTabContentState extends State<_ProvidersTabContent> {
           existing: selected,
           onCancel: _closeRightPanelEditor,
           onSaved: (draft) async {
-            await _saveExistingAppProvider(
-              context,
-              selected,
-              draft: draft,
-            );
+            await _saveExistingAppProvider(context, selected, draft: draft);
             if (!mounted) return;
             _closeRightPanelEditor();
           },
