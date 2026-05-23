@@ -109,6 +109,9 @@ class AppPaths {
 
   String get skillRepoCacheDir => skillRepoCacheDirForTeampilotRoot(basePath);
 
+  String get pluginMarketplaceCacheDir =>
+      pluginMarketplaceCacheDirForTeampilotRoot(basePath);
+
   String get pluginsJson => _ctx.join(basePath, 'plugins.json');
   String get pluginMarketplacesConfigPath => _ctx.join(basePath, 'plugin-marketplaces.json');
 
