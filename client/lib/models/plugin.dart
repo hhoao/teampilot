@@ -259,12 +259,13 @@ class PluginMarketplace {
 
   PluginMarketplace copyWith({
     String? owner, String? name, String? branch, bool? enabled, String? displayName,
+    bool clearDisplayName = false,
   }) => PluginMarketplace(
     owner: owner ?? this.owner,
     name: name ?? this.name,
     branch: branch ?? this.branch,
     enabled: enabled ?? this.enabled,
-    displayName: displayName ?? this.displayName,
+    displayName: clearDisplayName ? null : (displayName ?? this.displayName),
   );
 
   Map<String, Object?> toJson() => {
@@ -284,6 +285,7 @@ class PluginMarketplace {
   bool operator ==(Object other) =>
       identical(this, other) ||
       other is PluginMarketplace &&
+          runtimeType == other.runtimeType &&
           owner == other.owner &&
           name == other.name &&
           branch == other.branch &&
@@ -348,30 +350,46 @@ class DiscoverablePlugin {
     keywords: (json['keywords'] as List? ?? const []).whereType<String>().toList(),
   );
 
+  DiscoverablePlugin copyWith({
+    String? key, String? name, String? description, String? version,
+    String? readmeUrl, String? marketplaceOwner, String? marketplaceName,
+    String? marketplaceBranch, String? source,
+    List<String>? categories, List<String>? keywords,
+    bool clearReadmeUrl = false,
+  }) => DiscoverablePlugin(
+    key: key ?? this.key,
+    name: name ?? this.name,
+    description: description ?? this.description,
+    version: version ?? this.version,
+    readmeUrl: clearReadmeUrl ? null : (readmeUrl ?? this.readmeUrl),
+    marketplaceOwner: marketplaceOwner ?? this.marketplaceOwner,
+    marketplaceName: marketplaceName ?? this.marketplaceName,
+    marketplaceBranch: marketplaceBranch ?? this.marketplaceBranch,
+    source: source ?? this.source,
+    categories: categories ?? this.categories,
+    keywords: keywords ?? this.keywords,
+  );
+
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       other is DiscoverablePlugin &&
+          runtimeType == other.runtimeType &&
           key == other.key &&
           name == other.name &&
           description == other.description &&
           version == other.version &&
+          readmeUrl == other.readmeUrl &&
           marketplaceOwner == other.marketplaceOwner &&
           marketplaceName == other.marketplaceName &&
           marketplaceBranch == other.marketplaceBranch &&
           source == other.source &&
-          _listStringEq(categories, other.categories) &&
-          _listStringEq(keywords, other.keywords);
+          _listEq(categories, other.categories) &&
+          _listEq(keywords, other.keywords);
 
   @override
   int get hashCode => Object.hash(
-    key, name, version, marketplaceOwner, marketplaceName, marketplaceBranch);
-}
-
-bool _listStringEq(List<String> a, List<String> b) {
-  if (a.length != b.length) return false;
-  for (var i = 0; i < a.length; i++) {
-    if (a[i] != b[i]) return false;
-  }
-  return true;
+    key, name, description, version, marketplaceOwner, marketplaceName,
+    marketplaceBranch, readmeUrl, source,
+    Object.hashAll(categories), Object.hashAll(keywords));
 }

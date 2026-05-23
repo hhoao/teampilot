@@ -71,4 +71,25 @@ void main() {
     final decoded = DiscoverablePlugin.fromJson(d.toJson());
     expect(decoded, d);
   });
+
+  test('DiscoverablePlugin == considers readmeUrl', () {
+    const a = DiscoverablePlugin(
+      key: 'k', name: 'n', description: 'd', version: '1.0.0',
+      readmeUrl: 'http://a',
+      marketplaceOwner: 'o', marketplaceName: 'm', marketplaceBranch: 'main',
+      source: '.');
+    const b = DiscoverablePlugin(
+      key: 'k', name: 'n', description: 'd', version: '1.0.0',
+      readmeUrl: 'http://b',
+      marketplaceOwner: 'o', marketplaceName: 'm', marketplaceBranch: 'main',
+      source: '.');
+    expect(a == b, isFalse);
+  });
+
+  test('PluginMarketplace.copyWith can clear displayName', () {
+    const m = PluginMarketplace(
+      owner: 'o', name: 'n', displayName: 'D');
+    final cleared = m.copyWith(clearDisplayName: true);
+    expect(cleared.displayName, isNull);
+  });
 }
