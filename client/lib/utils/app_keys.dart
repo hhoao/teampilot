@@ -86,6 +86,8 @@ class AppKeys {
   static const teamConfigWorkspace = Key('team-config-workspace');
   static const skillsHub = Key('skills-hub');
   static const skillsWorkspace = Key('skills-workspace');
+  static const pluginsHub = Key('plugins-hub');
+  static const pluginsWorkspace = Key('plugins-workspace');
   static const memberConfigWorkspace = Key('member-config-workspace');
   static const llmConfigWorkspace = Key('llm-config-workspace');
   static const llmProviderDetail = Key('llm-provider-detail');

@@ -279,5 +279,40 @@ class PluginCubit extends Cubit<PluginState> {
     emit(state.copyWith(marketplaces: marketplaces));
   }
 
+  Future<void> checkUpdates() async {
+    emit(state.copyWith(updatesLoading: true));
+    try {
+      final updates = <PluginUpdateInfo>[];
+      // Updates check requires network; placeholder for Phase 3.
+      emit(state.copyWith(updates: updates, updatesLoading: false));
+    } catch (e) {
+      emit(state.copyWith(updatesLoading: false, errorMessage: '$e'));
+    }
+  }
+
+  Future<void> updatePlugin(Plugin plugin) async {
+    final busy = {...state.busyIds, plugin.id};
+    emit(state.copyWith(busyIds: busy, clearError: true));
+    try {
+      // Update requires downloading new version from marketplace.
+      // Placeholder for Phase 3.
+      final installed = await repository.loadAll();
+      emit(state.copyWith(installed: installed));
+    } catch (e) {
+      emit(state.copyWith(errorMessage: '$e'));
+    } finally {
+      final next = {...state.busyIds}..remove(plugin.id);
+      emit(state.copyWith(busyIds: next));
+    }
+  }
+
+  Future<void> updateAll() async {
+    for (final u in List<PluginUpdateInfo>.from(state.updates)) {
+      final match = state.installed.where((p) => p.id == u.id).toList();
+      if (match.isEmpty) continue;
+      await updatePlugin(match.first);
+    }
+  }
+
   void clearError() => emit(state.copyWith(clearError: true));
 }

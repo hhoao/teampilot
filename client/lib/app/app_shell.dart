@@ -12,6 +12,7 @@ import '../cubits/config_cubit.dart';
 import '../cubits/layout_cubit.dart';
 import '../cubits/llm_config_cubit.dart';
 import '../cubits/session_preferences_cubit.dart';
+import '../cubits/plugin_cubit.dart';
 import '../cubits/skill_cubit.dart';
 import '../cubits/ssh_profile_cubit.dart';
 import '../cubits/team_cubit.dart';
@@ -23,6 +24,7 @@ import '../repositories/app_settings_repository.dart';
 import '../repositories/layout_repository.dart';
 import '../repositories/session_preferences_repository.dart';
 import '../repositories/session_repository.dart';
+import '../repositories/plugin_repository.dart';
 import '../repositories/skill_repository.dart';
 import '../repositories/ssh_credential_store.dart';
 import '../repositories/ssh_known_host_repository.dart';
@@ -37,6 +39,9 @@ import '../services/remote_flashskyai_cli_locator.dart';
 import '../services/runtime_storage_context.dart';
 import '../services/session_lifecycle_service.dart';
 import '../services/skill_fetch_service.dart';
+import '../services/plugin_install_service.dart';
+import '../services/plugin_manifest_service.dart';
+import '../services/plugin_repo_service.dart';
 import '../services/skill_install_service.dart';
 import '../services/skill_manifest_service.dart';
 import '../services/skill_repo_disk_cache_service.dart';
@@ -65,6 +70,7 @@ class AppShell {
     required this.llmConfigCubit,
     required this.layoutCubit,
     required this.sessionPreferencesCubit,
+    required this.pluginCubit,
     required this.skillCubit,
     required this.appUpdateCubit,
     required this.sshProfileCubit,
@@ -88,6 +94,7 @@ class AppShell {
   final LlmConfigCubit llmConfigCubit;
   final LayoutCubit layoutCubit;
   final SessionPreferencesCubit sessionPreferencesCubit;
+  final PluginCubit pluginCubit;
   final SkillCubit skillCubit;
   final AppUpdateCubit appUpdateCubit;
   final SshProfileCubit sshProfileCubit;
@@ -181,6 +188,7 @@ Future<AppShell> buildAppShell({
   late final LlmConfigCubit llmConfigCubit;
   late final AppProviderCubit appProviderCubit;
   late final TeamCubit teamCubit;
+  late final PluginCubit pluginCubit;
   late final SkillCubit skillCubit;
   late final SessionRepository sessionRepo;
   late final ChatCubit chatCubit;
@@ -208,6 +216,7 @@ Future<AppShell> buildAppShell({
         llmConfigCubit: llmConfigCubit,
         appProviderCubit: appProviderCubit,
         teamCubit: teamCubit,
+        pluginCubit: pluginCubit,
         skillCubit: skillCubit,
         chatCubit: chatCubit,
         sessionRepo: sessionRepo,
@@ -305,6 +314,11 @@ Future<AppShell> buildAppShell({
     skillRepo,
     onSkillUninstalled: teamCubit.removeSkillFromAllTeams,
   );
+  pluginCubit = PluginCubit(
+    repository: PluginRepository(),
+    installService: PluginInstallService(manifestService: PluginManifestService()),
+    repoService: PluginRepoService(),
+  );
   final appUpdateCubit = AppUpdateCubit();
   final layoutCubit = LayoutCubit(repository: LayoutRepository(preferences));
   final configCubit = ConfigCubit();
@@ -348,6 +362,7 @@ Future<AppShell> buildAppShell({
       llmConfigCubit: llmConfigCubit,
       appProviderCubit: appProviderCubit,
       teamCubit: teamCubit,
+      pluginCubit: pluginCubit,
       skillCubit: skillCubit,
       chatCubit: chatCubit,
       sessionRepo: sessionRepo,
@@ -371,6 +386,7 @@ Future<AppShell> buildAppShell({
     llmConfigCubit: llmConfigCubit,
     layoutCubit: layoutCubit,
     sessionPreferencesCubit: sessionPreferencesCubit,
+    pluginCubit: pluginCubit,
     skillCubit: skillCubit,
     appUpdateCubit: appUpdateCubit,
     sshProfileCubit: sshProfileCubit,
@@ -385,6 +401,7 @@ Future<void> reloadRemoteBackedAppData({
   required LlmConfigCubit llmConfigCubit,
   required AppProviderCubit appProviderCubit,
   required TeamCubit teamCubit,
+  required PluginCubit pluginCubit,
   required SkillCubit skillCubit,
   required ChatCubit chatCubit,
   required SessionRepository sessionRepo,
@@ -395,6 +412,7 @@ Future<void> reloadRemoteBackedAppData({
     llmConfigCubit.load(),
     appProviderCubit.load(),
     teamCubit.load(),
+    pluginCubit.load(),
     skillCubit.loadAll(),
     chatCubit.loadProjectData(sessionRepo),
     sshProfileCubit.load(notifyActiveProfileChanged: false),

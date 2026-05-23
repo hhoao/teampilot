@@ -160,6 +160,7 @@ void main() async {
                 BlocProvider.value(value: shell.llmConfigCubit),
                 BlocProvider.value(value: shell.layoutCubit),
                 BlocProvider.value(value: shell.sessionPreferencesCubit),
+                BlocProvider.value(value: shell.pluginCubit),
                 BlocProvider.value(value: shell.skillCubit),
                 BlocProvider.value(value: shell.appUpdateCubit),
                 BlocProvider.value(value: shell.sshProfileCubit),

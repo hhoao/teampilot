@@ -13,6 +13,7 @@ import '../repositories/session_repository.dart';
 import '../services/app_storage.dart';
 import '../services/cli_invocation.dart';
 import '../services/flashskyai_storage_roots.dart';
+import '../cubits/plugin_cubit.dart';
 import '../cubits/skill_cubit.dart';
 import '../cubits/team_cubit.dart';
 import '../models/connection_mode.dart';
@@ -192,6 +193,7 @@ class _SessionControlsState extends State<_SessionControls> {
       llmConfigCubit: llmCubit,
       appProviderCubit: context.read<AppProviderCubit>(),
       teamCubit: teamCubit,
+      pluginCubit: context.read<PluginCubit>(),
       skillCubit: skillCubit,
       chatCubit: chatCubit,
       sessionRepo: sessionRepo,

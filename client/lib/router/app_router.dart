@@ -14,6 +14,7 @@ import '../pages/chat_page.dart';
 import '../pages/config_workspace.dart';
 import '../pages/llm_config_workspace.dart';
 import '../pages/skill_management_page.dart';
+import '../pages/plugin_management_page.dart';
 import '../pages/onboarding/onboarding_gate.dart';
 import '../pages/startup_gate.dart';
 import '../pages/ssh_profiles_page.dart';
@@ -264,6 +265,33 @@ final appRouter = GoRouter(
           path: '/skills/repos',
           pageBuilder: (context, state) => const NoTransitionPage(
             child: SkillManagementPage(section: SkillSection.repos),
+          ),
+        ),
+        GoRoute(
+          path: '/plugins',
+          redirect: (context, state) {
+            if (Platform.isAndroid) return null;
+            return '/plugins/installed';
+          },
+          pageBuilder: (context, state) =>
+              const NoTransitionPage(child: PluginManagementHubPage()),
+        ),
+        GoRoute(
+          path: '/plugins/installed',
+          pageBuilder: (context, state) => const NoTransitionPage(
+            child: PluginManagementPage(section: PluginSection.installed),
+          ),
+        ),
+        GoRoute(
+          path: '/plugins/discovery',
+          pageBuilder: (context, state) => const NoTransitionPage(
+            child: PluginManagementPage(section: PluginSection.discovery),
+          ),
+        ),
+        GoRoute(
+          path: '/plugins/marketplaces',
+          pageBuilder: (context, state) => const NoTransitionPage(
+            child: PluginManagementPage(section: PluginSection.marketplaces),
           ),
         ),
         GoRoute(
