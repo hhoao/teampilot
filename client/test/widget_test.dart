@@ -61,14 +61,19 @@ Widget buildTestApp({
   LayoutCubit? layoutCubit,
   LlmConfigCubit? llmConfigCubit,
   AppProviderCubit? appProviderCubit,
+  AppSettingsRepository? appSettings,
 }) {
   final connectionModeService = ConnectionModeService(
     readPreferredMode: () => ConnectionMode.localPty,
     hasSshProfiles: () => true,
   );
+  final settings =
+      appSettings ??
+      InMemoryAppSettingsRepository(hasCompletedOnboarding: true);
 
   return MultiRepositoryProvider(
     providers: [
+      RepositoryProvider<AppSettingsRepository>.value(value: settings),
       RepositoryProvider<SessionRepository>.value(
         value: _widgetTestSessionRepo,
       ),

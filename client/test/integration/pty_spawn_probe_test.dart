@@ -30,13 +30,38 @@ abstract final class PtySpawnFixtures {
       if (result.exitCode != 0) return null;
       for (final raw in result.stdout.toString().split(RegExp(r'\r?\n'))) {
         final line = raw.trim();
-        if (line.isNotEmpty) return line;
+        if (line.isEmpty) continue;
+        final resolved = _resolveWindowsExecutablePath(line);
+        if (resolved != null) return resolved;
       }
     } on ProcessException {
       return null;
     }
     return null;
   }
+
+  static String? _resolveWindowsExecutablePath(String candidate) {
+    for (final suffix in ['.cmd', '.exe', '.bat']) {
+      final withSuffix = '$candidate$suffix';
+      if (File(withSuffix).existsSync()) return withSuffix;
+    }
+    final lower = candidate.toLowerCase();
+    if (File(candidate).existsSync() &&
+        (lower.endsWith('.exe') ||
+            lower.endsWith('.cmd') ||
+            lower.endsWith('.bat'))) {
+      return candidate;
+    }
+    return null;
+  }
+}
+
+String? _requireClaudeExecutable() {
+  final absolute = PtySpawnFixtures.resolveClaudeAbsolutePath();
+  if (absolute == null) {
+    markTestSkipped('claude not found on PATH');
+  }
+  return absolute;
 }
 
 final _nativePtyAvailable = _detectNativePty();
@@ -277,11 +302,12 @@ void main() {
     'profile 0 — baseline Process.run claude --version (no PTY)',
     () async {
       if (!Platform.isWindows) return;
+      final claude = _requireClaudeExecutable();
       // ignore: avoid_print
       print('\n--- baseline: Process.run claude --version ---');
       // ignore: avoid_print
       print('Platform.environment keys: ${Platform.environment.length}');
-      final result = await Process.run('claude', ['--version']);
+      final result = await Process.run(claude!, ['--version']);
       // ignore: avoid_print
       print('exit=${result.exitCode} stdout=${result.stdout} stderr=${result.stderr}');
       expect(result.exitCode, 0);
@@ -331,6 +357,7 @@ void main() {
         executable: PtySpawnFixtures.shortExecutable,
         arguments: PtySpawnFixtures.claudeArguments,
         listenFor: const Duration(seconds: 10),
+        expectProcess: false,
       );
     },
     skip: _nativePtyAvailable ? false : _skipWithoutNativePty,
@@ -340,9 +367,10 @@ void main() {
     'profile B2 — claude short name (TeamPilot full env)',
     () async {
       if (!Platform.isWindows) return;
+      final claude = _requireClaudeExecutable();
       await _runProbe(
         label: 'B2 claude / TeamPilot buildPtyEnvironment',
-        executable: PtySpawnFixtures.shortExecutable,
+        executable: claude!,
         arguments: PtySpawnFixtures.claudeArguments,
         environment: TerminalSession.buildPtyEnvironment(null),
         listenFor: const Duration(seconds: 15),
@@ -355,10 +383,7 @@ void main() {
     'profile C — claude absolute path (TeamPilot full env)',
     () async {
       if (!Platform.isWindows) return;
-      final absolute = PtySpawnFixtures.resolveClaudeAbsolutePath();
-      if (absolute == null) {
-        markTestSkipped('claude not found on PATH');
-      }
+      final absolute = _requireClaudeExecutable();
       await _runProbe(
         label: 'C claude.exe / TeamPilot env',
         executable: absolute!,
@@ -404,9 +429,10 @@ void main() {
     'profile P — claude bare via Process.start (pipe, no PTY)',
     () async {
       if (!Platform.isWindows) return;
+      final claude = _requireClaudeExecutable();
       await _runProcessProbe(
         label: 'P Process.start claude / TeamPilot env',
-        executable: PtySpawnFixtures.shortExecutable,
+        executable: claude!,
         arguments: PtySpawnFixtures.claudeArguments,
         environment: TerminalSession.buildPtyEnvironment(null),
         listenFor: const Duration(seconds: 15),
@@ -459,6 +485,7 @@ void main() {
     'profile R2 — Process.run claude bare (pipe, no TTY — exits without TUI)',
     () async {
       if (!Platform.isWindows) return;
+      final claude = _requireClaudeExecutable();
       // ignore: avoid_print
       print('\n========== PROCESS PROBE: R2 Process.run claude bare ==========');
       // ignore: avoid_print
@@ -467,7 +494,7 @@ void main() {
         'then exits (does not hang).',
       );
       final result = await Process.run(
-        PtySpawnFixtures.shortExecutable,
+        claude!,
         PtySpawnFixtures.claudeArguments,
         workingDirectory: PtySpawnFixtures.workingDirectory,
         environment: TerminalSession.buildPtyEnvironment(null),

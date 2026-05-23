@@ -9,11 +9,14 @@ import 'package:teampilot/repositories/app_provider_repository.dart';
 import 'package:teampilot/services/app_storage.dart';
 import 'package:teampilot/services/runtime_storage_context.dart';
 
+import 'support/post_frame_test_harness.dart';
+
 void main() {
   late Directory root;
   late AppProviderRepository repo;
 
   setUp(() async {
+    setUpTestAppStorage();
     root = await Directory.systemTemp.createTemp('app_providers_');
     repo = AppProviderRepository(basePath: root.path);
   });
@@ -22,6 +25,7 @@ void main() {
     if (await root.exists()) {
       await root.delete(recursive: true);
     }
+    tearDownTestAppStorage();
   });
 
   test('loads empty list when cli providers file is missing', () async {

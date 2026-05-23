@@ -59,6 +59,20 @@ class _RecordingLifecycleService extends SessionLifecycleService {
 TeamRepository _repo(Directory dir) =>
     TeamRepository(rootDir: p.join(dir.path, 'teams'));
 
+Future<void> _deleteTempDirBestEffort(Directory dir) async {
+  for (var attempt = 0; attempt < 8; attempt++) {
+    try {
+      if (await dir.exists()) {
+        await dir.delete(recursive: true);
+      }
+      return;
+    } on FileSystemException {
+      if (attempt == 7) rethrow;
+      await Future<void>.delayed(Duration(milliseconds: 25 * (attempt + 1)));
+    }
+  }
+}
+
 void main() {
   late Directory appDataRoot;
 
@@ -78,9 +92,7 @@ void main() {
   tearDown(() async {
     RuntimeStorageContext.resetForTesting();
     AppPathsBootstrapper.resetForTesting();
-    if (await appDataRoot.exists()) {
-      await appDataRoot.delete(recursive: true);
-    }
+    await _deleteTempDirBestEffort(appDataRoot);
   });
 
   test('selectTeam syncs skills for selected team', () async {

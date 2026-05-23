@@ -11,6 +11,8 @@ import 'package:teampilot/services/config_profile_service.dart';
 import 'package:teampilot/services/flashskyai_storage_roots.dart';
 import 'package:teampilot/services/session_lifecycle_service.dart';
 
+import '../support/post_frame_test_harness.dart';
+
 StorageRootsSnapshot _roots(String basePath) => StorageRootsSnapshot(
   storageIsRemote: false,
   teampilotRoot: basePath,
@@ -54,6 +56,7 @@ void main() {
   late CliDataLayout layout;
 
   setUp(() async {
+    setUpTestAppStorage();
     base = await Directory.systemTemp.createTemp('session_lifecycle_');
     layout = CliDataLayout(teampilotRoot: base.path);
   });
@@ -62,6 +65,7 @@ void main() {
     if (await base.exists()) {
       await base.delete(recursive: true);
     }
+    tearDownTestAppStorage();
   });
 
   SessionLifecycleService service() => SessionLifecycleService(
