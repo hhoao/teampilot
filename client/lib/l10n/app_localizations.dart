@@ -1940,6 +1940,18 @@ abstract class AppLocalizations {
   /// **'Import from disk'**
   String get pluginsImportFromDisk;
 
+  /// No description provided for @pluginsImportTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Import unmanaged plugins'**
+  String get pluginsImportTitle;
+
+  /// No description provided for @pluginsImportNothing.
+  ///
+  /// In en, this message translates to:
+  /// **'No unmanaged plugins found.'**
+  String get pluginsImportNothing;
+
   /// No description provided for @pluginsInstallFromZip.
   ///
   /// In en, this message translates to:
@@ -2090,6 +2102,12 @@ abstract class AppLocalizations {
   /// **'Uninstall {name}? This may affect {n} team(s).'**
   String pluginsUninstallConfirm(String name, int n);
 
+  /// No description provided for @pluginsUninstallImpactList.
+  ///
+  /// In en, this message translates to:
+  /// **'Affected teams:'**
+  String get pluginsUninstallImpactList;
+
   /// No description provided for @pluginsUninstallSuccess.
   ///
   /// In en, this message translates to:
@@ -2155,6 +2173,72 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'All skills'**
   String get teamSkillsManage;
+
+  /// No description provided for @teamPluginsNav.
+  ///
+  /// In en, this message translates to:
+  /// **'Plugins'**
+  String get teamPluginsNav;
+
+  /// No description provided for @teamPluginsAssignedCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{assigned} of {total} installed'**
+  String teamPluginsAssignedCount(int assigned, int total);
+
+  /// No description provided for @teamPluginsManage.
+  ///
+  /// In en, this message translates to:
+  /// **'All plugins'**
+  String get teamPluginsManage;
+
+  /// No description provided for @teamPluginsEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No plugins installed'**
+  String get teamPluginsEmpty;
+
+  /// No description provided for @teamPluginsEmptyHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Install plugins from Discovery to enable them per team.'**
+  String get teamPluginsEmptyHint;
+
+  /// No description provided for @teamPluginsGoDiscovery.
+  ///
+  /// In en, this message translates to:
+  /// **'Browse marketplace'**
+  String get teamPluginsGoDiscovery;
+
+  /// No description provided for @teamPluginsMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} enabled plugin(s) missing on disk. Reinstall or remove below.'**
+  String teamPluginsMissing(int count);
+
+  /// No description provided for @teamPluginsRemoveMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove'**
+  String get teamPluginsRemoveMissing;
+
+  /// No description provided for @teamPluginsMissingLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Missing on disk'**
+  String get teamPluginsMissingLabel;
+
+  /// No description provided for @teamPluginsNameConflict.
+  ///
+  /// In en, this message translates to:
+  /// **'Linked as {dir} due to name conflict'**
+  String teamPluginsNameConflict(String dir);
+
+  /// No description provided for @teamPluginsCliUnsupportedBanner.
+  ///
+  /// In en, this message translates to:
+  /// **'This team\'s CLI does not support plugins yet. Selections are saved but ignored at launch.'**
+  String get teamPluginsCliUnsupportedBanner;
 
   /// No description provided for @memberQuickList.
   ///

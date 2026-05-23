@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../cubits/plugin_cubit.dart';
+import '../cubits/team_cubit.dart';
 import '../l10n/l10n_extensions.dart';
 import '../models/plugin.dart';
 import '../services/platform_utils.dart';
@@ -212,13 +213,34 @@ Future<bool> _pluginConfirm(
   required String message,
   required String confirmLabel,
   bool destructive = false,
+  List<String>? detailLines,
+  String? detailHeading,
 }) async {
   final l10n = context.l10n;
   final result = await showDialog<bool>(
     context: context,
     builder: (ctx) => AlertDialog(
       title: Text(title),
-      content: Text(message),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(message),
+          if (detailLines != null && detailLines.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            if (detailHeading != null)
+              Text(
+                detailHeading,
+                style: const TextStyle(fontWeight: FontWeight.w600),
+              ),
+            for (final line in detailLines)
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Text('• $line'),
+              ),
+          ],
+        ],
+      ),
       actions: [
         TextButton(
           onPressed: () => Navigator.of(ctx).pop(false),
@@ -288,6 +310,11 @@ class _InstalledSection extends StatelessWidget {
                           label: Text(l10n.pluginsUpdateAll(state.updates.length)),
                         ),
                       OutlinedButton.icon(
+                        onPressed: () => _onImportFromDisk(context),
+                        icon: const Icon(Icons.folder_open_outlined, size: 16),
+                        label: Text(l10n.pluginsImportFromDisk),
+                      ),
+                      OutlinedButton.icon(
                         onPressed: () => _onInstallZip(context),
                         icon: const Icon(Icons.archive_outlined, size: 16),
                         label: Text(l10n.pluginsInstallFromZip),
@@ -348,6 +375,119 @@ class _InstalledSection extends StatelessWidget {
     if (path == null) return;
     if (!context.mounted) return;
     await context.read<PluginCubit>().installFromZip(File(path));
+  }
+
+  Future<void> _onImportFromDisk(BuildContext context) async {
+    final cubit = context.read<PluginCubit>();
+    final l10n = context.l10n;
+    final scanned = await cubit.scanUnmanaged();
+    if (!context.mounted) return;
+    if (scanned.isEmpty) {
+      _showPluginSnack(context, l10n.pluginsImportNothing);
+      return;
+    }
+    final selected = await showDialog<List<UnmanagedPlugin>>(
+      context: context,
+      builder: (_) => _ImportUnmanagedPluginsDialog(plugins: scanned),
+    );
+    if (selected == null || selected.isEmpty) return;
+    if (!context.mounted) return;
+    await context.read<PluginCubit>().importUnmanaged(selected);
+  }
+}
+
+class _ImportUnmanagedPluginsDialog extends StatefulWidget {
+  const _ImportUnmanagedPluginsDialog({required this.plugins});
+  final List<UnmanagedPlugin> plugins;
+
+  @override
+  State<_ImportUnmanagedPluginsDialog> createState() =>
+      _ImportUnmanagedPluginsDialogState();
+}
+
+class _ImportUnmanagedPluginsDialogState
+    extends State<_ImportUnmanagedPluginsDialog> {
+  late Set<String> _selected;
+
+  @override
+  void initState() {
+    super.initState();
+    _selected = widget.plugins.map((p) => p.directory).toSet();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    return Dialog(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 560, maxHeight: 600),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 18, 20, 14),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                l10n.pluginsImportTitle,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Flexible(
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: widget.plugins.length,
+                  itemBuilder: (context, i) {
+                    final plugin = widget.plugins[i];
+                    final checked = _selected.contains(plugin.directory);
+                    return CheckboxListTile(
+                      value: checked,
+                      onChanged: (v) {
+                        setState(() {
+                          if (v ?? false) {
+                            _selected.add(plugin.directory);
+                          } else {
+                            _selected.remove(plugin.directory);
+                          }
+                        });
+                      },
+                      title: Text(plugin.name),
+                      subtitle: Text(
+                        plugin.description ?? plugin.path,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      controlAffinity: ListTileControlAffinity.leading,
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: Text(l10n.cancel),
+                  ),
+                  FilledButton(
+                    onPressed: () {
+                      final selected = widget.plugins
+                          .where((p) => _selected.contains(p.directory))
+                          .toList(growable: false);
+                      Navigator.of(context).pop(selected);
+                    },
+                    child: Text(l10n.pluginsImportFromDisk),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 
@@ -466,9 +606,15 @@ class _InstalledPluginRow extends StatelessWidget {
 
   Future<void> _uninstall(BuildContext context, Plugin plugin,
       AppLocalizations l10n, PluginCubit cubit) async {
+    final teams = context.read<TeamCubit>().state.teams;
+    final impacted =
+        teams.where((t) => t.pluginIds.contains(plugin.id)).toList();
     final ok = await _pluginConfirm(context,
         title: plugin.name,
-        message: l10n.pluginsUninstallConfirm(plugin.name, 0),
+        message: l10n.pluginsUninstallConfirm(plugin.name, impacted.length),
+        detailHeading:
+            impacted.isNotEmpty ? l10n.pluginsUninstallImpactList : null,
+        detailLines: impacted.map((t) => t.name).toList(growable: false),
         confirmLabel: l10n.pluginsCardUninstall,
         destructive: true);
     if (!ok || !context.mounted) return;

@@ -10,11 +10,13 @@ class TeamPluginSyncResult {
     this.linked = const [],
     this.skippedMissingIds = const [],
     this.errors = const [],
+    this.conflictResolutions = const [],
   });
 
   final List<String> linked;
   final List<String> skippedMissingIds;
   final List<String> errors;
+  final List<(String, String)> conflictResolutions;
 
   bool get ok => errors.isEmpty;
 }
@@ -103,6 +105,8 @@ class TeamPluginLinkerService {
     final path = fs.pathContext;
     final errors = <String>[];
     final linked = <String>[];
+    final resolutions = <(String, String)>[];
+    final usedNames = <String>{};
 
     try {
       await fs.ensureDir(teamPluginsDir);
@@ -117,8 +121,17 @@ class TeamPluginLinkerService {
     }
 
     for (final plugin in toLink) {
+      String targetName = plugin.name;
+      if (usedNames.contains(targetName)) {
+        final owner = plugin.marketplaceOwner ?? 'local';
+        final fallback = '${owner}__${plugin.name}';
+        resolutions.add((plugin.id, fallback));
+        targetName = fallback;
+      }
+      usedNames.add(targetName);
+
       final source = path.join(sourceRoot, plugin.directory);
-      final target = path.join(teamPluginsDir, plugin.directory);
+      final target = path.join(teamPluginsDir, targetName);
       try {
         if (!(await fs.stat(source)).isDirectory) {
           errors.add('${plugin.name}: source missing at $source');
@@ -131,7 +144,7 @@ class TeamPluginLinkerService {
         if (!linkedOk) {
           await fs.copyTree(source: source, destination: target);
         }
-        linked.add(plugin.directory);
+        linked.add(targetName);
       } catch (e) {
         errors.add('${plugin.name}: $e');
         appLogger.w('[team-plugins] link failed for ${plugin.id}: $e');
@@ -142,6 +155,7 @@ class TeamPluginLinkerService {
       linked: linked,
       skippedMissingIds: skipped,
       errors: errors,
+      conflictResolutions: resolutions,
     );
   }
 }

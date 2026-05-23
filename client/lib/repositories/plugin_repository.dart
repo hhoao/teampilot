@@ -1,13 +1,55 @@
 import 'dart:convert';
+import 'dart:io';
+
 import '../models/plugin.dart';
 import '../services/app_storage.dart';
 import '../services/flashskyai_storage_roots.dart';
+import '../services/plugin_fetch_service.dart';
+import '../services/plugin_install_service.dart';
+import '../services/plugin_manifest_service.dart';
+import '../services/plugin_repo_disk_cache_service.dart';
+import '../services/plugin_repo_git_service.dart';
+import '../services/plugin_repo_service.dart';
 
 class PluginRepository {
-  PluginRepository({FlashskyaiStorageRoots? storageRoots})
-      : _storageRoots = storageRoots;
+  factory PluginRepository({
+    FlashskyaiStorageRoots? storageRoots,
+    PluginManifestService? manifest,
+    PluginFetchService? fetch,
+    PluginRepoDiskCacheService? diskCache,
+    PluginInstallService? install,
+    PluginRepoService? repos,
+  }) {
+    final resolvedFetch = fetch ?? PluginFetchService();
+    final resolvedManifest = manifest ?? PluginManifestService();
+    final resolvedGit = PluginRepoGitService();
+    final resolvedCache = diskCache ??
+        PluginRepoDiskCacheService(
+          gitService: resolvedGit,
+          storageRoots: storageRoots,
+        );
+    return PluginRepository._(
+      storageRoots: storageRoots,
+      install: install ??
+          PluginInstallService(
+            manifestService: resolvedManifest,
+            fetchService: resolvedFetch,
+            diskCache: resolvedCache,
+            storageRoots: storageRoots,
+          ),
+      repos: repos ?? PluginRepoService(storageRoots: storageRoots),
+    );
+  }
+
+  PluginRepository._({
+    FlashskyaiStorageRoots? storageRoots,
+    required this.install,
+    required this.repos,
+  }) : _storageRoots = storageRoots;
 
   final FlashskyaiStorageRoots? _storageRoots;
+  final PluginInstallService install;
+  final PluginRepoService repos;
 
   Future<List<Plugin>> loadAll() async {
     final path = _storageRoots != null
@@ -36,4 +78,23 @@ class PluginRepository {
       return null;
     }
   }
+
+  Future<List<PluginUpdateInfo>> checkUpdates(List<Plugin> installed) =>
+      install.checkUpdates(installed);
+
+  Future<Plugin> updatePlugin(Plugin plugin) => install.updatePlugin(plugin);
+
+  Future<List<UnmanagedPlugin>> scanUnmanaged() => install.scanUnmanaged();
+
+  Future<List<Plugin>> importUnmanaged(List<UnmanagedPlugin> plugins) =>
+      install.importUnmanaged(plugins);
+
+  Future<Plugin> installFromZip(File zip) => install.installFromZip(zip);
+
+  Future<Plugin> installFromDirectory(
+    Directory source, {
+    PluginMarketplace? marketplace,
+  }) => install.installFromDirectory(source, marketplace: marketplace);
+
+  Future<void> uninstall(Plugin plugin) => install.uninstall(plugin);
 }

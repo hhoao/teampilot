@@ -998,6 +998,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get pluginsImportFromDisk => '从目录导入';
 
   @override
+  String get pluginsImportTitle => '导入未管理的插件';
+
+  @override
+  String get pluginsImportNothing => '未发现未管理的插件。';
+
+  @override
   String get pluginsInstallFromZip => '从 ZIP 安装';
 
   @override
@@ -1079,6 +1085,9 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String get pluginsUninstallImpactList => '受影响的团队：';
+
+  @override
   String pluginsUninstallSuccess(String name) {
     return '已卸载 $name';
   }
@@ -1114,6 +1123,45 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get teamSkillsManage => '全部 Skills';
+
+  @override
+  String get teamPluginsNav => '插件';
+
+  @override
+  String teamPluginsAssignedCount(int assigned, int total) {
+    return '已安装 $assigned/$total';
+  }
+
+  @override
+  String get teamPluginsManage => '全部插件';
+
+  @override
+  String get teamPluginsEmpty => '尚未安装插件';
+
+  @override
+  String get teamPluginsEmptyHint => '在「发现」中安装插件后，可在此处按团队启用。';
+
+  @override
+  String get teamPluginsGoDiscovery => '浏览 marketplace';
+
+  @override
+  String teamPluginsMissing(int count) {
+    return '有 $count 个已启用插件在磁盘上缺失，重新安装或手动移除。';
+  }
+
+  @override
+  String get teamPluginsRemoveMissing => '移除';
+
+  @override
+  String get teamPluginsMissingLabel => '磁盘上缺失';
+
+  @override
+  String teamPluginsNameConflict(String dir) {
+    return '因名称冲突，已链接为 $dir';
+  }
+
+  @override
+  String get teamPluginsCliUnsupportedBanner => '当前团队 CLI 暂不支持插件，启用记录已保存但不会生效。';
 
   @override
   String get memberQuickList => '成员快速列表';

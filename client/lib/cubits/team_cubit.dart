@@ -29,6 +29,7 @@ class TeamState extends Equatable {
     this.isLaunching = false,
     this.isSyncingSkills = false,
     this.isSyncingPlugins = false,
+    this.pluginSyncConflicts = const {},
   });
 
   final List<TeamConfig> teams;
@@ -38,6 +39,8 @@ class TeamState extends Equatable {
   final bool isLaunching;
   final bool isSyncingSkills;
   final bool isSyncingPlugins;
+  /// Plugin ids on the selected team that were linked under a fallback dir name.
+  final Map<String, String> pluginSyncConflicts;
 
   TeamConfig? get selectedTeam {
     for (final team in teams) {
@@ -54,6 +57,7 @@ class TeamState extends Equatable {
     bool? isLaunching,
     bool? isSyncingSkills,
     bool? isSyncingPlugins,
+    Map<String, String>? pluginSyncConflicts,
     bool clearSelectedTeamId = false,
   }) {
     return TeamState(
@@ -66,6 +70,7 @@ class TeamState extends Equatable {
       isLaunching: isLaunching ?? this.isLaunching,
       isSyncingSkills: isSyncingSkills ?? this.isSyncingSkills,
       isSyncingPlugins: isSyncingPlugins ?? this.isSyncingPlugins,
+      pluginSyncConflicts: pluginSyncConflicts ?? this.pluginSyncConflicts,
     );
   }
 
@@ -78,6 +83,7 @@ class TeamState extends Equatable {
     isLaunching,
     isSyncingSkills,
     isSyncingPlugins,
+    pluginSyncConflicts,
   ];
 }
 
@@ -290,6 +296,17 @@ class TeamCubit extends Cubit<TeamState> {
     await _syncPluginsForSelected(installed: installed);
   }
 
+  Future<void> syncTeamsUsingPlugin(
+    String pluginId, {
+    List<Plugin>? installed,
+  }) async {
+    final teamIds = [
+      for (final team in state.teams)
+        if (team.pluginIds.contains(pluginId)) team.id,
+    ];
+    await _syncPluginsForTeamIds(teamIds, installed: installed);
+  }
+
   Future<void> removeSkillFromAllTeams(String skillId) async {
     final selected = state.selectedTeam;
     final syncNeeded = selected != null && selected.skillIds.contains(skillId);
@@ -384,46 +401,70 @@ class TeamCubit extends Cubit<TeamState> {
   Future<void> _syncPluginsForSelected({List<Plugin>? installed}) async {
     final team = state.selectedTeam;
     if (team == null) return;
+    await _syncPluginsForTeamIds([team.id], installed: installed);
+  }
+
+  Future<void> _syncPluginsForTeamIds(
+    Iterable<String> teamIds, {
+    List<Plugin>? installed,
+  }) async {
+    final ids = teamIds.toList(growable: false);
+    if (ids.isEmpty) return;
 
     emit(state.copyWith(isSyncingPlugins: true));
     try {
-      final List<Plugin> catalog;
-      if (installed != null) {
-        catalog = installed;
-      } else {
-        catalog = await (_installedPluginsLoader?.call() ??
-            _pluginRepository.loadAll());
-      }
+      final catalog = installed ??
+          await (_installedPluginsLoader?.call() ??
+              _pluginRepository.loadAll());
 
-      var result = await _pluginLinker.syncForTeam(
-        teamId: team.id,
-        pluginIds: team.pluginIds,
-        installed: catalog,
-      );
+      var conflicts = state.pluginSyncConflicts;
+      for (final teamId in ids) {
+        TeamConfig? team;
+        for (final candidate in state.teams) {
+          if (candidate.id == teamId) {
+            team = candidate;
+            break;
+          }
+        }
+        if (team == null) continue;
 
-      if (result.skippedMissingIds.isNotEmpty) {
-        final prunedIds = team.pluginIds
-            .where((id) => !result.skippedMissingIds.contains(id))
-            .toList(growable: false);
-        if (prunedIds.length != team.pluginIds.length) {
-          final prunedTeam = team.copyWith(pluginIds: prunedIds);
-          final teams = [
-            for (final t in state.teams)
-              if (t.id == team.id) prunedTeam else t,
-          ];
-          emit(state.copyWith(teams: teams));
-          await _repository.saveTeams(teams);
-          result = await _pluginLinker.syncForTeam(
-            teamId: team.id,
-            pluginIds: prunedIds,
-            installed: catalog,
+        final result = await _pluginLinker.syncForTeam(
+          teamId: team.id,
+          pluginIds: team.pluginIds,
+          installed: catalog,
+        );
+
+        if (result.skippedMissingIds.isNotEmpty) {
+          appLogger.w(
+            '[team-plugins] skipped missing for ${team.id}: '
+            '${result.skippedMissingIds}',
           );
+        }
+
+        if (result.errors.isNotEmpty) {
+          appLogger.w(
+            '[team-plugins] sync errors for ${team.id}: ${result.errors}',
+          );
+          if (team.id == state.selectedTeamId) {
+            emit(
+              state.copyWith(
+                statusMessage:
+                    'Plugin sync had ${result.errors.length} error(s): '
+                    '${result.errors.first}',
+              ),
+            );
+          }
+        }
+
+        if (team.id == state.selectedTeamId) {
+          conflicts = {
+            for (final resolution in result.conflictResolutions)
+              resolution.$1: resolution.$2,
+          };
         }
       }
 
-      if (result.errors.isNotEmpty) {
-        appLogger.w('[team-plugins] sync errors: ${result.errors}');
-      }
+      emit(state.copyWith(pluginSyncConflicts: conflicts));
     } catch (e) {
       appLogger.e('[team-plugins] sync failed: $e');
     } finally {
@@ -432,29 +473,26 @@ class TeamCubit extends Cubit<TeamState> {
   }
 
   Future<void> removePluginFromAllTeams(String pluginId) async {
-    final selected = state.selectedTeam;
-    final syncNeeded = selected != null && selected.pluginIds.contains(pluginId);
-    var changed = false;
+    final affectedTeamIds = [
+      for (final team in state.teams)
+        if (team.pluginIds.contains(pluginId)) team.id,
+    ];
+    if (affectedTeamIds.isEmpty) return;
+
     final teams = [
       for (final team in state.teams)
         if (team.pluginIds.contains(pluginId))
-          () {
-            changed = true;
-            return team.copyWith(
-              pluginIds: team.pluginIds
-                  .where((id) => id != pluginId)
-                  .toList(growable: false),
-            );
-          }()
+          team.copyWith(
+            pluginIds: team.pluginIds
+                .where((id) => id != pluginId)
+                .toList(growable: false),
+          )
         else
           team,
     ];
-    if (!changed) return;
     emit(state.copyWith(teams: teams));
     await _repository.saveTeams(teams);
-    if (syncNeeded) {
-      await _syncPluginsForSelected();
-    }
+    await _syncPluginsForTeamIds(affectedTeamIds);
   }
 
   Future<bool> addTeam(String name, {TeamCli cli = TeamCli.flashskyai}) async {
@@ -700,6 +738,7 @@ class TeamCubit extends Cubit<TeamState> {
       ),
     );
     try {
+      await syncSelectedTeamPlugins();
       await _runLaunch(team, member);
       emit(
         state.copyWith(
@@ -738,6 +777,7 @@ class TeamCubit extends Cubit<TeamState> {
       ),
     );
     try {
+      await syncSelectedTeamPlugins();
       for (final member in validMembers) {
         await _runLaunch(team, member);
       }

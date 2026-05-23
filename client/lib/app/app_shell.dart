@@ -39,9 +39,7 @@ import '../services/remote_flashskyai_cli_locator.dart';
 import '../services/runtime_storage_context.dart';
 import '../services/session_lifecycle_service.dart';
 import '../services/skill_fetch_service.dart';
-import '../services/plugin_install_service.dart';
-import '../services/plugin_manifest_service.dart';
-import '../services/plugin_repo_service.dart';
+import '../services/plugin_repo_disk_cache_service.dart';
 import '../services/skill_install_service.dart';
 import '../services/skill_manifest_service.dart';
 import '../services/skill_repo_disk_cache_service.dart';
@@ -301,7 +299,7 @@ Future<AppShell> buildAppShell({
     lifecycleService: sessionLifecycleService,
   );
 
-  final pluginRepository = PluginRepository();
+  final pluginRepository = PluginRepository(storageRoots: storageRoots);
   teamCubit = TeamCubit(
     repository: teamRepo,
     executableResolver: () => sessionPreferencesCubit.resolveExecutable(),
@@ -321,8 +319,12 @@ Future<AppShell> buildAppShell({
   );
   pluginCubit = PluginCubit(
     repository: pluginRepository,
-    installService: PluginInstallService(manifestService: PluginManifestService()),
-    repoService: PluginRepoService(),
+    installService: pluginRepository.install,
+    repoService: pluginRepository.repos,
+    diskCache: PluginRepoDiskCacheService(storageRoots: storageRoots),
+    storageRoots: storageRoots,
+    onPluginUninstalled: teamCubit.removePluginFromAllTeams,
+    onPluginUpdated: teamCubit.syncTeamsUsingPlugin,
   );
   final appUpdateCubit = AppUpdateCubit();
   final layoutCubit = LayoutCubit(repository: LayoutRepository(preferences));

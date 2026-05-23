@@ -55,7 +55,7 @@ void main() {
     );
 
     expect(result.errors, isEmpty);
-    expect(result.linked, ['acme__market__p1']);
+    expect(result.linked, ['p1']);
   });
 
   test('syncForTeam removes stale links not in pluginIds', () async {
@@ -86,5 +86,52 @@ void main() {
       installed: const [],
     );
     expect(result.skippedMissingIds, ['gone/market/p']);
+  });
+
+  test('syncForTeam resolves plugin-name collision with owner__name fallback',
+      () async {
+    final pluginsRoot = Directory(p.join(tmp.path, 'plugins'))..createSync();
+    final dirA = Directory(p.join(pluginsRoot.path, 'acmeA__market__shared'))
+      ..createSync();
+    File(p.join(dirA.path, 'plugin.json')).writeAsStringSync('{}');
+    final dirB = Directory(p.join(pluginsRoot.path, 'acmeB__market__shared'))
+      ..createSync();
+    File(p.join(dirB.path, 'plugin.json')).writeAsStringSync('{}');
+
+    final svc = TeamPluginLinkerService(appPluginsRoot: pluginsRoot.path);
+    final result = await svc.syncForTeam(
+      teamId: 't1',
+      pluginIds: ['acmeA/market/shared', 'acmeB/market/shared'],
+      installed: [
+        const Plugin(
+          id: 'acmeA/market/shared',
+          name: 'shared',
+          description: '',
+          version: '1.0.0',
+          directory: 'acmeA__market__shared',
+          marketplaceOwner: 'acmeA',
+          marketplaceName: 'market',
+          capabilities: PluginCapabilities(),
+          installedAt: 0,
+          updatedAt: 0,
+        ),
+        const Plugin(
+          id: 'acmeB/market/shared',
+          name: 'shared',
+          description: '',
+          version: '1.0.0',
+          directory: 'acmeB__market__shared',
+          marketplaceOwner: 'acmeB',
+          marketplaceName: 'market',
+          capabilities: PluginCapabilities(),
+          installedAt: 0,
+          updatedAt: 0,
+        ),
+      ],
+    );
+
+    expect(result.conflictResolutions, hasLength(1));
+    expect(result.linked, contains('shared'));
+    expect(result.linked, contains('acmeB__shared'));
   });
 }

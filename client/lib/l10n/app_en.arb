@@ -498,6 +498,8 @@
     }
   },
   "pluginsImportFromDisk": "Import from disk",
+  "pluginsImportTitle": "Import unmanaged plugins",
+  "pluginsImportNothing": "No unmanaged plugins found.",
   "pluginsInstallFromZip": "Install from ZIP",
   "pluginsCheckUpdates": "Check updates",
   "pluginsCheckingUpdates": "Checking…",
@@ -540,6 +542,7 @@
       }
     }
   },
+  "pluginsUninstallImpactList": "Affected teams:",
   "pluginsUninstallSuccess": "Uninstalled {name}",
   "@pluginsUninstallSuccess": {
     "placeholders": {
@@ -568,6 +571,41 @@
     }
   },
   "teamSkillsManage": "All skills",
+  "teamPluginsNav": "Plugins",
+  "teamPluginsAssignedCount": "{assigned} of {total} installed",
+  "@teamPluginsAssignedCount": {
+    "placeholders": {
+      "assigned": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "teamPluginsManage": "All plugins",
+  "teamPluginsEmpty": "No plugins installed",
+  "teamPluginsEmptyHint": "Install plugins from Discovery to enable them per team.",
+  "teamPluginsGoDiscovery": "Browse marketplace",
+  "teamPluginsMissing": "{count} enabled plugin(s) missing on disk. Reinstall or remove below.",
+  "@teamPluginsMissing": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "teamPluginsRemoveMissing": "Remove",
+  "teamPluginsMissingLabel": "Missing on disk",
+  "teamPluginsNameConflict": "Linked as {dir} due to name conflict",
+  "@teamPluginsNameConflict": {
+    "placeholders": {
+      "dir": {
+        "type": "String"
+      }
+    }
+  },
+  "teamPluginsCliUnsupportedBanner": "This team's CLI does not support plugins yet. Selections are saved but ignored at launch.",
   "memberQuickList": "MEMBER QUICK LIST",
   "teamName": "Team name",
   "teamDescription": "Team description",

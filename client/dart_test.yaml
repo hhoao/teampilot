@@ -1,0 +1,3 @@
+tags:
+  integration:
+    description: Filesystem integration tests that use temp directories.

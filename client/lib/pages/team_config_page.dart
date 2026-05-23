@@ -6,10 +6,12 @@ import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../cubits/app_provider_cubit.dart';
+import '../cubits/plugin_cubit.dart';
 import '../cubits/skill_cubit.dart';
 import '../cubits/team_cubit.dart';
 import '../models/app_provider_config.dart';
 import '../l10n/l10n_extensions.dart';
+import '../models/plugin.dart';
 import '../models/skill.dart';
 import '../models/team_config.dart';
 import '../services/flashskyai_agent_catalog_service.dart';
@@ -25,12 +27,13 @@ import '../widgets/dropdown/flashskyai_dropdown_decoration.dart';
 import '../widgets/settings/workspace_hub_shell.dart';
 import '../theme/workspace_surface_layers.dart';
 
-enum TeamConfigSection { team, skills, members }
+enum TeamConfigSection { team, skills, plugins, members }
 
 extension TeamConfigSectionRoute on TeamConfigSection {
   String routeSegment() => switch (this) {
     TeamConfigSection.team => 'team',
     TeamConfigSection.skills => 'skills',
+    TeamConfigSection.plugins => 'plugins',
     TeamConfigSection.members => 'members',
   };
 }
@@ -112,6 +115,11 @@ class TeamConfigHubPage extends StatelessWidget {
         icon: Icons.extension_outlined,
         onTap: () => context.push('/team-config/skills'),
       ),
+      WorkspaceHubEntry(
+        title: l10n.teamPluginsNav,
+        icon: Icons.widgets_outlined,
+        onTap: () => context.push('/team-config/plugins'),
+      ),
       for (final member in team.members)
         WorkspaceHubEntry(
           title: member.name.trim().isEmpty ? l10n.memberName : member.name,
@@ -174,6 +182,10 @@ class TeamConfigPage extends StatelessWidget {
     final body = switch (section) {
       TeamConfigSection.team => _TeamInfoSection(team: team, cubit: teamCubit),
       TeamConfigSection.skills => _TeamSkillsSection(
+        team: team,
+        cubit: teamCubit,
+      ),
+      TeamConfigSection.plugins => _TeamPluginsSection(
         team: team,
         cubit: teamCubit,
       ),
@@ -277,6 +289,12 @@ class _NavPanel extends StatelessWidget {
             icon: Icons.extension_outlined,
             selected: section == TeamConfigSection.skills,
             onTap: () => onSelect(TeamConfigSection.skills),
+          ),
+          _NavItem(
+            title: l10n.teamPluginsNav,
+            icon: Icons.widgets_outlined,
+            selected: section == TeamConfigSection.plugins,
+            onTap: () => onSelect(TeamConfigSection.plugins),
           ),
           _NavItem(
             title: l10n.members,
@@ -750,6 +768,375 @@ class _TeamSkillRow extends StatelessWidget {
             ),
             const SizedBox(width: 12),
             Switch(value: assigned, onChanged: onAssignedChanged),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _TeamPluginsSection extends StatelessWidget {
+  const _TeamPluginsSection({required this.team, required this.cubit});
+
+  final TeamConfig team;
+  final TeamCubit cubit;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textBase = isDark ? Colors.white : const Color(0xFF111827);
+    final pluginState = context.watch<PluginCubit>().state;
+    final teamState = context.watch<TeamCubit>().state;
+    final syncing = teamState.isSyncingPlugins;
+    final conflicts = teamState.pluginSyncConflicts;
+    final installed = pluginState.installed;
+    final installedIds = installed.map((p) => p.id).toSet();
+    final missingIds = team.pluginIds
+        .where((id) => !installedIds.contains(id))
+        .toList(growable: false);
+    final assignedCount = installed
+        .where((p) => team.pluginIds.contains(p.id))
+        .length;
+    final codexUnsupported = team.cli == TeamCli.codex;
+
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (codexUnsupported)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: _Card(
+                child: Text(
+                  l10n.teamPluginsCliUnsupportedBanner,
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: textBase.withValues(alpha: 0.6),
+                  ),
+                ),
+              ),
+            ),
+          _Card(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _CardHeader(
+                  title: l10n.teamPluginsAssignedCount(
+                    assignedCount,
+                    installed.length,
+                  ),
+                  trailing: OutlinedButton.icon(
+                    onPressed: () => context.go('/plugins'),
+                    icon: const Icon(Icons.widgets_outlined, size: 16),
+                    label: Text(l10n.teamPluginsManage),
+                  ),
+                ),
+                if (syncing) ...[
+                  const SizedBox(height: 12),
+                  const LinearProgressIndicator(),
+                ],
+                if (missingIds.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context)
+                          .colorScheme
+                          .errorContainer
+                          .withValues(alpha: 0.35),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      l10n.teamPluginsMissing(missingIds.length),
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: textBase.withValues(alpha: 0.75),
+                      ),
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 14),
+                if (installed.isEmpty && missingIds.isEmpty)
+                  _TeamPluginsEmptyBlock(
+                    textBase: textBase,
+                    onGoPlugins: () => context.go('/plugins/discovery'),
+                  )
+                else
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      for (final plugin in installed)
+                        _TeamPluginRow(
+                          plugin: plugin,
+                          assigned: team.pluginIds.contains(plugin.id),
+                          conflictDir: conflicts[plugin.id],
+                          onAssignedChanged: (assigned) {
+                            final ids = List<String>.from(team.pluginIds);
+                            if (assigned) {
+                              if (!ids.contains(plugin.id)) ids.add(plugin.id);
+                            } else {
+                              ids.remove(plugin.id);
+                            }
+                            cubit.updateSelected(
+                              team.copyWith(pluginIds: ids),
+                            );
+                          },
+                        ),
+                      for (final id in missingIds)
+                        _TeamMissingPluginRow(
+                          pluginId: id,
+                          onRemove: () {
+                            final ids = List<String>.from(team.pluginIds)
+                              ..remove(id);
+                            cubit.updateSelected(
+                              team.copyWith(pluginIds: ids),
+                            );
+                          },
+                        ),
+                    ],
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TeamPluginsEmptyBlock extends StatelessWidget {
+  const _TeamPluginsEmptyBlock({
+    required this.textBase,
+    required this.onGoPlugins,
+  });
+
+  final Color textBase;
+  final VoidCallback onGoPlugins;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 24),
+      child: Column(
+        children: [
+          Icon(
+            Icons.inventory_2_outlined,
+            size: 36,
+            color: textBase.withValues(alpha: 0.35),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            l10n.teamPluginsEmpty,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              color: textBase,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            l10n.teamPluginsEmptyHint,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 12,
+              color: textBase.withValues(alpha: 0.55),
+            ),
+          ),
+          const SizedBox(height: 14),
+          OutlinedButton.icon(
+            onPressed: onGoPlugins,
+            icon: const Icon(Icons.search, size: 16),
+            label: Text(l10n.teamPluginsGoDiscovery),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TeamPluginRow extends StatelessWidget {
+  const _TeamPluginRow({
+    required this.plugin,
+    required this.assigned,
+    required this.onAssignedChanged,
+    this.conflictDir,
+  });
+
+  final Plugin plugin;
+  final bool assigned;
+  final ValueChanged<bool> onAssignedChanged;
+  final String? conflictDir;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textBase = isDark ? Colors.white : const Color(0xFF111827);
+    final sourceLabel = plugin.marketplaceOwner != null &&
+            plugin.marketplaceName != null
+        ? '${plugin.marketplaceOwner}/${plugin.marketplaceName}'
+        : 'local';
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: workspaceInsetDecoration(cs, radius: 10),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          plugin.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: textBase,
+                          ),
+                        ),
+                      ),
+                      if (plugin.version.isNotEmpty) ...[
+                        const SizedBox(width: 8),
+                        Text(
+                          'v${plugin.version}',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: textBase.withValues(alpha: 0.55),
+                          ),
+                        ),
+                      ],
+                      if (plugin.readmeUrl != null) ...[
+                        const SizedBox(width: 4),
+                        InkWell(
+                          onTap: () => _openSkillUrl(plugin.readmeUrl!),
+                          child: Icon(
+                            Icons.open_in_new,
+                            size: 14,
+                            color: textBase.withValues(alpha: 0.5),
+                          ),
+                        ),
+                      ],
+                      const SizedBox(width: 8),
+                      Text(
+                        sourceLabel,
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: textBase.withValues(alpha: 0.5),
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (plugin.description.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      plugin.description,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: textBase.withValues(alpha: 0.6),
+                      ),
+                    ),
+                  ],
+                  if (conflictDir != null) ...[
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.warning_amber_rounded,
+                          size: 14,
+                          color: cs.tertiary,
+                        ),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            l10n.teamPluginsNameConflict(conflictDir!),
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: textBase.withValues(alpha: 0.65),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            const SizedBox(width: 12),
+            Switch(value: assigned, onChanged: onAssignedChanged),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _TeamMissingPluginRow extends StatelessWidget {
+  const _TeamMissingPluginRow({
+    required this.pluginId,
+    required this.onRemove,
+  });
+
+  final String pluginId;
+  final VoidCallback onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textBase = isDark ? Colors.white : const Color(0xFF111827);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: workspaceInsetDecoration(cs, radius: 10).copyWith(
+          color: cs.surfaceContainerHighest.withValues(alpha: 0.35),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    pluginId,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: textBase.withValues(alpha: 0.55),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    l10n.teamPluginsMissingLabel,
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: cs.error.withValues(alpha: 0.85),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            TextButton(
+              onPressed: onRemove,
+              child: Text(l10n.teamPluginsRemoveMissing),
+            ),
           ],
         ),
       ),

@@ -212,6 +212,118 @@ void main() {
     await dir.delete(recursive: true);
   });
 
+  test('removePluginFromAllTeams prunes all teams and syncs each', () async {
+    final dir = await Directory.systemTemp.createTemp('team-cubit-');
+    final repo = _repo(dir);
+    final linker = _RecordingPluginLinker();
+    final cubit = TeamCubit(
+      repository: repo,
+      executableResolver: () => 'flashskyai',
+      pluginLinker: linker,
+      installedPluginsLoader: () async => [],
+    );
+
+    const teamA = TeamConfig(
+      id: 'A',
+      name: 'A',
+      members: [TeamMemberConfig(id: 'm', name: 'm')],
+      pluginIds: ['acme/market/p1'],
+    );
+    const teamB = TeamConfig(
+      id: 'B',
+      name: 'B',
+      members: [TeamMemberConfig(id: 'm', name: 'm')],
+      pluginIds: ['acme/market/p1'],
+    );
+    await repo.saveTeams([teamA, teamB]);
+    await cubit.load();
+    await cubit.selectTeam('B');
+    linker.syncs.clear();
+
+    await cubit.removePluginFromAllTeams('acme/market/p1');
+
+    expect(
+      cubit.state.teams.every((t) => !t.pluginIds.contains('acme/market/p1')),
+      isTrue,
+    );
+    expect(linker.syncs.map((s) => s.teamId).toSet(), {'A', 'B'});
+
+    await dir.delete(recursive: true);
+  });
+
+  test('updateSelected syncs when pluginIds change', () async {
+    final dir = await Directory.systemTemp.createTemp('team-cubit-');
+    final repo = _repo(dir);
+    final linker = _RecordingPluginLinker();
+    const plugin = Plugin(
+      id: 'acme/market/p1',
+      name: 'p1',
+      description: 'd',
+      version: '1.0.0',
+      directory: 'acme__market__p1',
+      capabilities: PluginCapabilities(),
+      installedAt: 1,
+      updatedAt: 1,
+    );
+    final cubit = TeamCubit(
+      repository: repo,
+      executableResolver: () => 'flashskyai',
+      pluginLinker: linker,
+      installedPluginsLoader: () async => [plugin],
+    );
+
+    const team = TeamConfig(
+      id: 'T',
+      name: 'T',
+      members: [TeamMemberConfig(id: 'm', name: 'm')],
+    );
+    await repo.saveTeams([team]);
+    await cubit.load();
+    linker.syncs.clear();
+
+    await cubit.updateSelected(
+      cubit.state.selectedTeam!.copyWith(pluginIds: ['acme/market/p1']),
+    );
+
+    expect(linker.syncs, isNotEmpty);
+    expect(linker.syncs.last.pluginIds, ['acme/market/p1']);
+
+    await dir.delete(recursive: true);
+  });
+
+  test('syncTeamsUsingPlugin syncs all teams referencing plugin id', () async {
+    final dir = await Directory.systemTemp.createTemp('team-cubit-');
+    final repo = _repo(dir);
+    final linker = _RecordingPluginLinker();
+    final cubit = TeamCubit(
+      repository: repo,
+      executableResolver: () => 'flashskyai',
+      pluginLinker: linker,
+      installedPluginsLoader: () async => [],
+    );
+
+    const teamA = TeamConfig(
+      id: 'A',
+      name: 'A',
+      members: [TeamMemberConfig(id: 'm', name: 'm')],
+      pluginIds: ['acme/market/p1'],
+    );
+    const teamB = TeamConfig(
+      id: 'B',
+      name: 'B',
+      members: [TeamMemberConfig(id: 'm', name: 'm')],
+      pluginIds: ['acme/market/p1', 'other/p2'],
+    );
+    await repo.saveTeams([teamA, teamB]);
+    await cubit.load();
+    linker.syncs.clear();
+
+    await cubit.syncTeamsUsingPlugin('acme/market/p1');
+
+    expect(linker.syncs.map((s) => s.teamId).toSet(), {'A', 'B'});
+    await dir.delete(recursive: true);
+  });
+
   test('addTeam requires non-empty unique name', () async {
     final dir = await Directory.systemTemp.createTemp('team-cubit-');
     final repo = _repo(dir);

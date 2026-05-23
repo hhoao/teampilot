@@ -35,7 +35,8 @@ class PluginManifestService {
     final name = (manifest?['name'] as String?)?.trim().isNotEmpty == true
         ? manifest!['name'] as String
         : p.basename(pluginDir);
-    final version = (manifest?['version'] as String?) ?? '0.0.0';
+    final version = (manifest?['version'] as String?) ??
+        (manifest == null ? '0.0.0+local' : '0.0.0');
     final description = (manifest?['description'] as String?) ?? '';
     final homepage = manifest?['homepage'] as String?;
 

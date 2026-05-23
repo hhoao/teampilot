@@ -2,12 +2,13 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:equatable/equatable.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:meta/meta.dart';
 
 import '../models/plugin.dart';
 import '../repositories/plugin_repository.dart';
 import '../services/plugin_install_service.dart';
+import '../services/flashskyai_storage_roots.dart';
 import '../services/plugin_repo_disk_cache_service.dart';
 import '../services/plugin_repo_service.dart';
 import '../utils/logger.dart';
@@ -71,23 +72,37 @@ class PluginState extends Equatable {
   ];
 }
 
+typedef PluginUninstalledHandler = Future<void> Function(String pluginId);
+typedef PluginUpdatedHandler = Future<void> Function(String pluginId);
+
 class PluginCubit extends Cubit<PluginState> {
   PluginCubit({
     required this.repository,
     required this.installService,
     required this.repoService,
     PluginRepoDiskCacheService? diskCache,
-  })  : _diskCache = diskCache ?? PluginRepoDiskCacheService(),
+    PluginUninstalledHandler? onPluginUninstalled,
+    PluginUpdatedHandler? onPluginUpdated,
+    FlashskyaiStorageRoots? storageRoots,
+  })  : _diskCache = diskCache ??
+            PluginRepoDiskCacheService(storageRoots: storageRoots),
+        _onPluginUninstalled = onPluginUninstalled,
+        _onPluginUpdated = onPluginUpdated,
         super(const PluginState());
 
   /// Test-only constructor that skips service wiring and accepts a pre-built
   /// state. Do not use in production.
   @visibleForTesting
-  PluginCubit.test(PluginState state)
-      : repository = _dummyRepo,
+  PluginCubit.test(
+    PluginState state, {
+    PluginUninstalledHandler? onPluginUninstalled,
+    PluginUpdatedHandler? onPluginUpdated,
+  })  : repository = _dummyRepo,
         installService = _dummyInstallService,
         repoService = _dummyRepoService,
         _diskCache = PluginRepoDiskCacheService(),
+        _onPluginUninstalled = onPluginUninstalled,
+        _onPluginUpdated = onPluginUpdated,
         super(state);
 
   static final _dummyRepo = PluginRepository();
@@ -98,6 +113,8 @@ class PluginCubit extends Cubit<PluginState> {
   final PluginInstallService installService;
   final PluginRepoService repoService;
   final PluginRepoDiskCacheService _diskCache;
+  final PluginUninstalledHandler? _onPluginUninstalled;
+  final PluginUpdatedHandler? _onPluginUpdated;
   int _discoveryGeneration = 0;
 
   Future<void> load() async {
@@ -262,7 +279,8 @@ class PluginCubit extends Cubit<PluginState> {
     final busy = {...state.busyIds, plugin.id};
     emit(state.copyWith(busyIds: busy, clearError: true));
     try {
-      await installService.uninstall(plugin);
+      await _onPluginUninstalled?.call(plugin.id);
+      await repository.uninstall(plugin);
       final installed = await repository.loadAll();
       emit(state.copyWith(installed: installed));
     } catch (e) {
@@ -297,8 +315,7 @@ class PluginCubit extends Cubit<PluginState> {
   Future<void> checkUpdates() async {
     emit(state.copyWith(updatesLoading: true));
     try {
-      final updates = <PluginUpdateInfo>[];
-      // Updates check requires network; placeholder for Phase 3.
+      final updates = await repository.checkUpdates(state.installed);
       emit(state.copyWith(updates: updates, updatesLoading: false));
     } catch (e) {
       emit(state.copyWith(updatesLoading: false, errorMessage: '$e'));
@@ -309,15 +326,36 @@ class PluginCubit extends Cubit<PluginState> {
     final busy = {...state.busyIds, plugin.id};
     emit(state.copyWith(busyIds: busy, clearError: true));
     try {
-      // Update requires downloading new version from marketplace.
-      // Placeholder for Phase 3.
+      await repository.updatePlugin(plugin);
       final installed = await repository.loadAll();
-      emit(state.copyWith(installed: installed));
+      final updates = state.updates.where((u) => u.id != plugin.id).toList();
+      emit(state.copyWith(installed: installed, updates: updates));
+      await _onPluginUpdated?.call(plugin.id);
     } catch (e) {
       emit(state.copyWith(errorMessage: '$e'));
     } finally {
       final next = {...state.busyIds}..remove(plugin.id);
       emit(state.copyWith(busyIds: next));
+    }
+  }
+
+  Future<List<UnmanagedPlugin>> scanUnmanaged() async {
+    try {
+      return await repository.scanUnmanaged();
+    } catch (e) {
+      emit(state.copyWith(errorMessage: '$e'));
+      return const [];
+    }
+  }
+
+  Future<void> importUnmanaged(List<UnmanagedPlugin> selected) async {
+    emit(state.copyWith(clearError: true));
+    try {
+      await repository.importUnmanaged(selected);
+      final installed = await repository.loadAll();
+      emit(state.copyWith(installed: installed));
+    } catch (e) {
+      emit(state.copyWith(errorMessage: '$e'));
     }
   }
 

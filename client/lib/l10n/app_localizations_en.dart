@@ -1025,6 +1025,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get pluginsImportFromDisk => 'Import from disk';
 
   @override
+  String get pluginsImportTitle => 'Import unmanaged plugins';
+
+  @override
+  String get pluginsImportNothing => 'No unmanaged plugins found.';
+
+  @override
   String get pluginsInstallFromZip => 'Install from ZIP';
 
   @override
@@ -1107,6 +1113,9 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get pluginsUninstallImpactList => 'Affected teams:';
+
+  @override
   String pluginsUninstallSuccess(String name) {
     return 'Uninstalled $name';
   }
@@ -1142,6 +1151,47 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get teamSkillsManage => 'All skills';
+
+  @override
+  String get teamPluginsNav => 'Plugins';
+
+  @override
+  String teamPluginsAssignedCount(int assigned, int total) {
+    return '$assigned of $total installed';
+  }
+
+  @override
+  String get teamPluginsManage => 'All plugins';
+
+  @override
+  String get teamPluginsEmpty => 'No plugins installed';
+
+  @override
+  String get teamPluginsEmptyHint =>
+      'Install plugins from Discovery to enable them per team.';
+
+  @override
+  String get teamPluginsGoDiscovery => 'Browse marketplace';
+
+  @override
+  String teamPluginsMissing(int count) {
+    return '$count enabled plugin(s) missing on disk. Reinstall or remove below.';
+  }
+
+  @override
+  String get teamPluginsRemoveMissing => 'Remove';
+
+  @override
+  String get teamPluginsMissingLabel => 'Missing on disk';
+
+  @override
+  String teamPluginsNameConflict(String dir) {
+    return 'Linked as $dir due to name conflict';
+  }
+
+  @override
+  String get teamPluginsCliUnsupportedBanner =>
+      'This team\'s CLI does not support plugins yet. Selections are saved but ignored at launch.';
 
   @override
   String get memberQuickList => 'MEMBER QUICK LIST';

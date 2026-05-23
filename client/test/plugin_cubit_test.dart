@@ -3,11 +3,10 @@ import 'package:teampilot/cubits/plugin_cubit.dart';
 import 'package:teampilot/repositories/plugin_repository.dart';
 import 'package:teampilot/services/app_storage.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
-import 'package:teampilot/services/plugin_install_service.dart';
-import 'package:teampilot/services/plugin_manifest_service.dart';
 import 'package:teampilot/services/plugin_repo_service.dart';
 import 'package:teampilot/services/runtime_storage_context.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:path/path.dart' as p;
 
 void main() {
   late Directory tmp;
@@ -31,14 +30,55 @@ void main() {
   });
 
   test('load() populates installed + marketplaces', () async {
+    final repo = PluginRepository();
     final cubit = PluginCubit(
-      repository: PluginRepository(),
-      installService: PluginInstallService(manifestService: PluginManifestService()),
+      repository: repo,
+      installService: repo.install,
       repoService: PluginRepoService(),
     );
     await cubit.load();
     expect(cubit.state.status, PluginLoadStatus.ready);
     expect(cubit.state.marketplaces, isNotEmpty);
     expect(cubit.state.installed, isEmpty);
+  });
+
+  test('uninstall calls team cleanup before removing plugin files', () async {
+    final order = <String>[];
+    final repo = PluginRepository();
+    final svc = repo.install;
+    final src = Directory(p.join(tmp.path, 'src'))..createSync();
+    Directory(p.join(src.path, '.claude-plugin')).createSync();
+    File(p.join(src.path, '.claude-plugin', 'plugin.json'))
+        .writeAsStringSync('{"name":"foo","version":"0.1.0"}');
+    await svc.installFromDirectory(src);
+
+    final cubit = PluginCubit(
+      repository: repo,
+      installService: repo.install,
+      repoService: PluginRepoService(),
+      onPluginUninstalled: (_) async {
+        order.add('teams');
+        final list = await repo.loadAll();
+        expect(list, isNotEmpty);
+      },
+    );
+    await cubit.load();
+    await cubit.uninstall(cubit.state.installed.first);
+    expect(order, ['teams']);
+    expect(await repo.loadAll(), isEmpty);
+  });
+
+  test('scanUnmanaged finds plugin dir without manifest row', () async {
+    final pluginsRoot = Directory(p.join(tmp.path, 'plugins'))..createSync();
+    final orphan = Directory(p.join(pluginsRoot.path, 'orphan'))..createSync();
+    Directory(p.join(orphan.path, '.claude-plugin')).createSync();
+    File(p.join(orphan.path, '.claude-plugin', 'plugin.json')).writeAsStringSync(
+      '{"name":"orphan","version":"1.0.0","description":"x"}',
+    );
+
+    final repo = PluginRepository();
+    final scanned = await repo.scanUnmanaged();
+    expect(scanned, hasLength(1));
+    expect(scanned.single.name, 'orphan');
   });
 }

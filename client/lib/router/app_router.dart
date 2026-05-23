@@ -232,6 +232,12 @@ final appRouter = GoRouter(
           ),
         ),
         GoRoute(
+          path: '/team-config/plugins',
+          pageBuilder: (context, state) => const NoTransitionPage(
+            child: TeamConfigPage(section: TeamConfigSection.plugins),
+          ),
+        ),
+        GoRoute(
           path: '/team-config/members/:memberId',
           pageBuilder: (context, state) => NoTransitionPage(
             child: TeamConfigPage(
