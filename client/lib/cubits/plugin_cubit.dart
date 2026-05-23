@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:meta/meta.dart';
 
 import '../models/plugin.dart';
 import '../repositories/plugin_repository.dart';
@@ -78,6 +79,20 @@ class PluginCubit extends Cubit<PluginState> {
     PluginRepoDiskCacheService? diskCache,
   })  : _diskCache = diskCache ?? PluginRepoDiskCacheService(),
         super(const PluginState());
+
+  /// Test-only constructor that skips service wiring and accepts a pre-built
+  /// state. Do not use in production.
+  @visibleForTesting
+  PluginCubit.test(PluginState state)
+      : repository = _dummyRepo,
+        installService = _dummyInstallService,
+        repoService = _dummyRepoService,
+        _diskCache = PluginRepoDiskCacheService(),
+        super(state);
+
+  static final _dummyRepo = PluginRepository();
+  static final _dummyInstallService = PluginInstallService();
+  static final _dummyRepoService = PluginRepoService();
 
   final PluginRepository repository;
   final PluginInstallService installService;
