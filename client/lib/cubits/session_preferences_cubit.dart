@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../models/connection_mode.dart';
 import '../models/session_preferences.dart';
+import '../services/cli_tool_locator.dart';
 import '../models/team_config.dart';
 import '../models/windows_storage_backend.dart';
 import '../repositories/session_preferences_repository.dart';
@@ -112,9 +113,13 @@ class SessionPreferencesCubit extends Cubit<SessionPreferencesState> {
   ///   3. the CLI's command name (OS resolves via PATH)
   String resolveExecutable([TeamCli cli = TeamCli.flashskyai]) {
     final user = _userExecutableFor(cli);
-    if (user.isNotEmpty) return user;
+    if (user.isNotEmpty) {
+      return CliToolLocator.resolveSpawnExecutable(user);
+    }
     final located = _locatedExecutables[cli];
-    if (located != null && located.isNotEmpty) return located;
+    if (located != null && located.isNotEmpty) {
+      return CliToolLocator.resolveSpawnExecutable(located);
+    }
     return cli.value;
   }
 

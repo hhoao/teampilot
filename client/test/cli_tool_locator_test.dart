@@ -47,6 +47,64 @@ void main() {
   );
 
   test(
+    'parsePathLookupOutput prefers Windows-native npm shim on Windows',
+    () {
+      const stdout =
+          r'C:\Users\alice\AppData\Roaming\npm\claude'
+          '\r\n'
+          r'C:\Users\alice\AppData\Roaming\npm\claude.cmd';
+
+      expect(
+        CliToolLocator.parsePathLookupOutput(stdout, isWindows: true),
+        r'C:\Users\alice\AppData\Roaming\npm\claude.cmd',
+      );
+      expect(
+        CliToolLocator.parsePathLookupOutput(stdout, isWindows: false),
+        r'C:\Users\alice\AppData\Roaming\npm\claude',
+      );
+    },
+  );
+
+  test('locate prefers claude.cmd over npm shell shim on Windows', () async {
+    final located = await const CliToolLocator('claude').locate(
+      isWindowsOverride: true,
+      runner: (executable, arguments, {stdoutEncoding, stderrEncoding}) async {
+        expect(executable, 'where');
+        return ProcessResult(
+          1,
+          0,
+          r'C:\Users\alice\AppData\Roaming\npm\claude'
+          '\r\n'
+          r'C:\Users\alice\AppData\Roaming\npm\claude.cmd',
+          '',
+        );
+      },
+    );
+
+    expect(located, r'C:\Users\alice\AppData\Roaming\npm\claude.cmd');
+  });
+
+  test('resolveSpawnExecutable prefers sibling .cmd on Windows', () async {
+    if (!Platform.isWindows) return;
+
+    final tempDir = await Directory.systemTemp.createTemp('teampilot-cli-');
+    addTearDown(() => tempDir.delete(recursive: true));
+
+    final shimPath = '${tempDir.path}${Platform.pathSeparator}claude';
+    await File(shimPath).writeAsString('#!/bin/sh\n');
+    await File('$shimPath.cmd').writeAsString('@echo off\n');
+
+    expect(
+      CliToolLocator.resolveSpawnExecutable(shimPath),
+      '$shimPath.cmd',
+    );
+  });
+
+  test('resolveSpawnExecutable leaves bare PATH names unchanged', () {
+    expect(CliToolLocator.resolveSpawnExecutable('claude'), 'claude');
+  });
+
+  test(
     'locate WSL path preserves the requested executable name on Windows',
     () async {
       if (!Platform.isWindows) return;

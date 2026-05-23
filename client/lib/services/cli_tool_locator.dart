@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:logger/logger.dart';
+import 'package:path/path.dart' as p;
 
 typedef ProcessRunner =
     Future<ProcessResult> Function(
@@ -43,7 +44,10 @@ class CliToolLocator {
     try {
       final result = await runner(cmd, [executableName]);
       if (result.exitCode == 0) {
-        final located = parseFirstStdoutLine(result.stdout);
+        final located = parsePathLookupOutput(
+          result.stdout,
+          isWindows: isWindows,
+        );
         if (located != null) return located;
       }
       return _locateWithShellFallback(runner, isWindows: isWindows);
@@ -126,15 +130,68 @@ class CliToolLocator {
     }
   }
 
-  static String? parseFirstStdoutLine(Object? stdoutValue) {
+  static List<String> parseStdoutLines(Object? stdoutValue) {
     final text = _stdoutAsString(stdoutValue);
-    if (text == null) return null;
-    final firstLine = text
+    if (text == null) return const [];
+    return text
         .split(RegExp(r'\r?\n'))
-        .map((l) => l.trim())
-        .firstWhere((l) => l.isNotEmpty, orElse: () => '');
-    if (firstLine.isEmpty) return null;
-    return firstLine;
+        .map((line) => line.trim())
+        .where((line) => line.isNotEmpty)
+        .toList();
+  }
+
+  static String? parseFirstStdoutLine(Object? stdoutValue) {
+    final lines = parseStdoutLines(stdoutValue);
+    if (lines.isEmpty) return null;
+    return lines.first;
+  }
+
+  /// Picks a Windows-native executable from `where` output. npm global bins
+  /// list a shell shim before `.cmd`; flutter_pty cannot spawn the shim.
+  static String? parsePathLookupOutput(
+    Object? stdoutValue, {
+    required bool isWindows,
+  }) {
+    final lines = parseStdoutLines(stdoutValue);
+    if (lines.isEmpty) return null;
+    if (!isWindows) return lines.first;
+    return preferWindowsNativeExecutable(lines) ?? lines.first;
+  }
+
+  static String? preferWindowsNativeExecutable(List<String> candidates) {
+    for (final ext in const ['.exe', '.cmd', '.bat', '.com']) {
+      for (final candidate in candidates) {
+        if (p.extension(candidate).toLowerCase() == ext) {
+          return candidate;
+        }
+      }
+    }
+    return null;
+  }
+
+  /// Normalizes npm/global shims and other extensionless paths for PTY spawn.
+  static String resolveSpawnExecutable(String executable) {
+    if (!Platform.isWindows) return executable;
+    if (!_looksLikePath(executable)) return executable;
+
+    final ext = p.extension(executable).toLowerCase();
+    if (const {'.exe', '.cmd', '.bat', '.com'}.contains(ext)) {
+      return executable;
+    }
+
+    final cmdPath = '$executable.cmd';
+    if (File(cmdPath).existsSync()) return cmdPath;
+
+    final exePath = '$executable.exe';
+    if (File(exePath).existsSync()) return exePath;
+
+    return executable;
+  }
+
+  static bool _looksLikePath(String executable) {
+    return executable.contains('/') ||
+        executable.contains(r'\') ||
+        executable.contains(':');
   }
 
   String? _wslStdoutExecutablePath(Object? stdoutValue) {

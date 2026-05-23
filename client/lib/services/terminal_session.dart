@@ -9,6 +9,7 @@ import 'package:xterm/xterm.dart';
 
 import 'cli_executable_validator.dart';
 import 'cli_invocation.dart';
+import 'cli_tool_locator.dart';
 import 'launch_command_builder.dart';
 import 'local_pty_transport.dart';
 import 'terminal_transport.dart';
@@ -500,18 +501,19 @@ class TerminalSession {
     required int rows,
     Map<String, String>? environment,
   }) async {
+    final spawnExecutable = CliToolLocator.resolveSpawnExecutable(executable);
     Logger().i(
       '--------------------------------\n'
       'Starting transport:\n'
       '--------------------------------\n'
-      'Executable: $executable,\n'
+      'Executable: $spawnExecutable,\n'
       'Arguments: ${arguments.join(' ')},\n'
       'WorkingDirectory: $workingDirectory,\n'
       'Environment: ${environment?.entries.map((e) => '${e.key}=${e.value}').join(', ')}\n'
       '--------------------------------\n',
     );
     final pty = Pty.start(
-      executable,
+      spawnExecutable,
       arguments: arguments,
       workingDirectory: workingDirectory,
       columns: columns,
