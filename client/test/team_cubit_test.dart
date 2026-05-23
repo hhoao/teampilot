@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:teampilot/cubits/team_cubit.dart';
+import 'package:teampilot/models/plugin.dart';
 import 'package:teampilot/models/skill.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/repositories/team_repository.dart';
@@ -11,6 +12,7 @@ import 'package:teampilot/services/config_profile_service.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/runtime_storage_context.dart';
 import 'package:teampilot/services/session_lifecycle_service.dart';
+import 'package:teampilot/services/team_plugin_linker_service.dart';
 import 'package:teampilot/services/team_skill_linker_service.dart';
 
 Skill _skill(String id) => Skill(
@@ -41,6 +43,28 @@ class _RecordingLinker extends TeamSkillLinkerService {
       installed: List.of(installed),
     ));
     return const TeamSkillSyncResult();
+  }
+}
+
+class _RecordingPluginLinker extends TeamPluginLinkerService {
+  _RecordingPluginLinker()
+    : super(appPluginsRoot: '/tmp');
+
+  final syncs =
+      <({String teamId, List<String> pluginIds, List<Plugin> installed})>[];
+
+  @override
+  Future<TeamPluginSyncResult> syncForTeam({
+    required String teamId,
+    required List<String> pluginIds,
+    required List<Plugin> installed,
+  }) async {
+    syncs.add((
+      teamId: teamId,
+      pluginIds: List.of(pluginIds),
+      installed: List.of(installed),
+    ));
+    return const TeamPluginSyncResult();
   }
 }
 
@@ -102,6 +126,7 @@ void main() {
     final cubit = TeamCubit(
       repository: repo,
       executableResolver: () => 'flashskyai',
+      pluginLinker: _RecordingPluginLinker(),
       skillLinker: linker,
       installedSkillsLoader: () async => [_skill('a:foo')],
     );
@@ -132,6 +157,7 @@ void main() {
     final cubit = TeamCubit(
       repository: repo,
       executableResolver: () => 'flashskyai',
+      pluginLinker: _RecordingPluginLinker(),
       skillLinker: linker,
       installedSkillsLoader: () async => [_skill('a:foo'), _skill('b:bar')],
     );
@@ -162,6 +188,7 @@ void main() {
     final cubit = TeamCubit(
       repository: repo,
       executableResolver: () => 'flashskyai',
+      pluginLinker: _RecordingPluginLinker(),
       skillLinker: linker,
       installedSkillsLoader: () async => [],
     );
@@ -191,6 +218,7 @@ void main() {
     final cubit = TeamCubit(
       repository: repo,
       executableResolver: () => 'flashskyai',
+      pluginLinker: _RecordingPluginLinker(),
     );
     await cubit.load();
 
@@ -214,6 +242,7 @@ void main() {
       final cubit = TeamCubit(
         repository: repo,
         executableResolver: () => 'flashskyai',
+      pluginLinker: _RecordingPluginLinker(),
       );
       const team = TeamConfig(
         id: 'Old',
@@ -242,6 +271,7 @@ void main() {
     final cubit = TeamCubit(
       repository: _repo(base),
       executableResolver: () => 'flashskyai',
+      pluginLinker: _RecordingPluginLinker(),
       appDataBasePath: base.path,
       configProfileService: ConfigProfileService(basePath: base.path),
     );
@@ -262,6 +292,7 @@ void main() {
     final cubit = TeamCubit(
       repository: _repo(base),
       executableResolver: () => 'flashskyai',
+      pluginLinker: _RecordingPluginLinker(),
       appDataBasePath: base.path,
       configProfileService: ConfigProfileService(basePath: base.path),
     );
@@ -278,6 +309,7 @@ void main() {
     final cubit = TeamCubit(
       repository: _repo(base),
       executableResolver: () => 'flashskyai',
+      pluginLinker: _RecordingPluginLinker(),
       cliExecutableResolver: (cli) =>
           cli == TeamCli.claude ? '/opt/bin/claude' : cli.value,
       appDataBasePath: base.path,
@@ -307,6 +339,7 @@ void main() {
     final cubit = TeamCubit(
       repository: repo,
       executableResolver: () => 'claude',
+      pluginLinker: _RecordingPluginLinker(),
       appDataBasePath: base.path,
       configProfileService: ConfigProfileService(basePath: base.path),
     );
@@ -369,6 +402,7 @@ void main() {
     final cubit = TeamCubit(
       repository: repo,
       executableResolver: () => 'claude',
+      pluginLinker: _RecordingPluginLinker(),
       appDataBasePath: base.path,
       configProfileService: ConfigProfileService(basePath: base.path),
       launcher: (_, member) async => launched.add(member.name),
@@ -420,6 +454,7 @@ void main() {
     final cubit = TeamCubit(
       repository: _repo(base),
       executableResolver: () => 'flashskyai',
+      pluginLinker: _RecordingPluginLinker(),
       appDataBasePath: base.path,
       configProfileService: ConfigProfileService(basePath: base.path),
     );

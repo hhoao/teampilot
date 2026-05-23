@@ -48,6 +48,7 @@ import '../services/skill_repo_disk_cache_service.dart';
 import '../services/skill_repo_git_service.dart';
 import '../services/skill_repo_service.dart';
 import '../services/ssh_client_factory.dart';
+import '../services/team_plugin_linker_service.dart';
 import '../services/team_skill_linker_service.dart';
 import '../services/terminal_transport_factory.dart';
 import '../utils/logger.dart';
@@ -300,6 +301,7 @@ Future<AppShell> buildAppShell({
     lifecycleService: sessionLifecycleService,
   );
 
+  final pluginRepository = PluginRepository();
   teamCubit = TeamCubit(
     repository: teamRepo,
     executableResolver: () => sessionPreferencesCubit.resolveExecutable(),
@@ -309,13 +311,16 @@ Future<AppShell> buildAppShell({
     lifecycleService: sessionLifecycleService,
     skillLinker: TeamSkillLinkerService(storageRoots: storageRoots),
     installedSkillsLoader: () => skillRepo.loadInstalled(),
+    pluginLinker: TeamPluginLinkerService(storageRoots: storageRoots),
+    pluginRepository: pluginRepository,
+    installedPluginsLoader: () => pluginRepository.loadAll(),
   );
   skillCubit = SkillCubit(
     skillRepo,
     onSkillUninstalled: teamCubit.removeSkillFromAllTeams,
   );
   pluginCubit = PluginCubit(
-    repository: PluginRepository(),
+    repository: pluginRepository,
     installService: PluginInstallService(manifestService: PluginManifestService()),
     repoService: PluginRepoService(),
   );
@@ -418,6 +423,7 @@ Future<void> reloadRemoteBackedAppData({
     sshProfileCubit.load(notifyActiveProfileChanged: false),
   ]);
   await teamCubit.syncSelectedTeamSkills(installed: skillCubit.state.installed);
+  await teamCubit.syncSelectedTeamPlugins(installed: pluginCubit.state.installed);
 }
 
 class TeamPilotBootstrap extends StatefulWidget {

@@ -372,6 +372,9 @@ class _SessionControlsState extends State<_SessionControls> {
                       await teamCubit.syncSelectedTeamSkills(
                         installed: skillCubit.state.installed,
                       );
+                      await teamCubit.syncSelectedTeamPlugins(
+                        installed: context.read<PluginCubit>().state.installed,
+                      );
                     },
                   ),
                   showDividerBelow: true,

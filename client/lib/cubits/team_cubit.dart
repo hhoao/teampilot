@@ -5,14 +5,17 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../models/app_session.dart';
+import '../models/plugin.dart';
 import '../models/skill.dart';
 import '../models/team_config.dart';
+import '../repositories/plugin_repository.dart';
 import '../repositories/team_repository.dart';
 import '../services/app_storage.dart';
 import '../services/cli_data_layout.dart';
 import '../services/config_profile_service.dart';
 import '../services/launch_command_builder.dart';
 import '../services/session_lifecycle_service.dart';
+import '../services/team_plugin_linker_service.dart';
 import '../services/team_skill_linker_service.dart';
 import '../utils/logger.dart';
 import '../utils/team_member_naming.dart';
@@ -25,6 +28,7 @@ class TeamState extends Equatable {
     this.isLoading = true,
     this.isLaunching = false,
     this.isSyncingSkills = false,
+    this.isSyncingPlugins = false,
   });
 
   final List<TeamConfig> teams;
@@ -33,6 +37,7 @@ class TeamState extends Equatable {
   final bool isLoading;
   final bool isLaunching;
   final bool isSyncingSkills;
+  final bool isSyncingPlugins;
 
   TeamConfig? get selectedTeam {
     for (final team in teams) {
@@ -48,6 +53,7 @@ class TeamState extends Equatable {
     bool? isLoading,
     bool? isLaunching,
     bool? isSyncingSkills,
+    bool? isSyncingPlugins,
     bool clearSelectedTeamId = false,
   }) {
     return TeamState(
@@ -59,6 +65,7 @@ class TeamState extends Equatable {
       isLoading: isLoading ?? this.isLoading,
       isLaunching: isLaunching ?? this.isLaunching,
       isSyncingSkills: isSyncingSkills ?? this.isSyncingSkills,
+      isSyncingPlugins: isSyncingPlugins ?? this.isSyncingPlugins,
     );
   }
 
@@ -70,6 +77,7 @@ class TeamState extends Equatable {
     isLoading,
     isLaunching,
     isSyncingSkills,
+    isSyncingPlugins,
   ];
 }
 
@@ -78,6 +86,7 @@ typedef TeamLauncher =
 typedef StringProvider = String Function();
 typedef CliExecutableResolver = String Function(TeamCli cli);
 typedef InstalledSkillsLoader = Future<List<Skill>> Function();
+typedef InstalledPluginsLoader = Future<List<Plugin>> Function();
 
 class TeamCubit extends Cubit<TeamState> {
   TeamCubit({
@@ -92,6 +101,9 @@ class TeamCubit extends Cubit<TeamState> {
     SessionLifecycleService? lifecycleService,
     TeamSkillLinkerService? skillLinker,
     InstalledSkillsLoader? installedSkillsLoader,
+    TeamPluginLinkerService? pluginLinker,
+    PluginRepository? pluginRepository,
+    InstalledPluginsLoader? installedPluginsLoader,
   }) : _repository = repository,
        _executableResolver = executableResolver,
        _cliExecutableResolver = cliExecutableResolver,
@@ -112,6 +124,9 @@ class TeamCubit extends Cubit<TeamState> {
            ),
        _skillLinker = skillLinker ?? TeamSkillLinkerService(),
        _installedSkillsLoader = installedSkillsLoader,
+       _pluginLinker = pluginLinker ?? TeamPluginLinkerService(),
+       _pluginRepository = pluginRepository ?? PluginRepository(),
+       _installedPluginsLoader = installedPluginsLoader,
        _launcher = launcher,
        super(const TeamState());
 
@@ -134,6 +149,9 @@ class TeamCubit extends Cubit<TeamState> {
   final SessionLifecycleService _lifecycle;
   final TeamSkillLinkerService _skillLinker;
   final InstalledSkillsLoader? _installedSkillsLoader;
+  final TeamPluginLinkerService _pluginLinker;
+  final PluginRepository _pluginRepository;
+  final InstalledPluginsLoader? _installedPluginsLoader;
 
   Future<Map<String, String>?> _buildLaunchEnvironment(
     TeamConfig team, {
@@ -258,11 +276,18 @@ class TeamCubit extends Cubit<TeamState> {
         statusMessage: 'Selected ${team.name}.',
       ),
     );
-    await _syncSkillsForSelected();
+    await Future.wait([
+      _syncSkillsForSelected(),
+      _syncPluginsForSelected(),
+    ]);
   }
 
   Future<void> syncSelectedTeamSkills({List<Skill>? installed}) async {
     await _syncSkillsForSelected(installed: installed);
+  }
+
+  Future<void> syncSelectedTeamPlugins({List<Plugin>? installed}) async {
+    await _syncPluginsForSelected(installed: installed);
   }
 
   Future<void> removeSkillFromAllTeams(String skillId) async {
@@ -356,6 +381,82 @@ class TeamCubit extends Cubit<TeamState> {
     }
   }
 
+  Future<void> _syncPluginsForSelected({List<Plugin>? installed}) async {
+    final team = state.selectedTeam;
+    if (team == null) return;
+
+    emit(state.copyWith(isSyncingPlugins: true));
+    try {
+      final List<Plugin> catalog;
+      if (installed != null) {
+        catalog = installed;
+      } else {
+        catalog = await (_installedPluginsLoader?.call() ??
+            _pluginRepository.loadAll());
+      }
+
+      var result = await _pluginLinker.syncForTeam(
+        teamId: team.id,
+        pluginIds: team.pluginIds,
+        installed: catalog,
+      );
+
+      if (result.skippedMissingIds.isNotEmpty) {
+        final prunedIds = team.pluginIds
+            .where((id) => !result.skippedMissingIds.contains(id))
+            .toList(growable: false);
+        if (prunedIds.length != team.pluginIds.length) {
+          final prunedTeam = team.copyWith(pluginIds: prunedIds);
+          final teams = [
+            for (final t in state.teams)
+              if (t.id == team.id) prunedTeam else t,
+          ];
+          emit(state.copyWith(teams: teams));
+          await _repository.saveTeams(teams);
+          result = await _pluginLinker.syncForTeam(
+            teamId: team.id,
+            pluginIds: prunedIds,
+            installed: catalog,
+          );
+        }
+      }
+
+      if (result.errors.isNotEmpty) {
+        appLogger.w('[team-plugins] sync errors: ${result.errors}');
+      }
+    } catch (e) {
+      appLogger.e('[team-plugins] sync failed: $e');
+    } finally {
+      emit(state.copyWith(isSyncingPlugins: false));
+    }
+  }
+
+  Future<void> removePluginFromAllTeams(String pluginId) async {
+    final selected = state.selectedTeam;
+    final syncNeeded = selected != null && selected.pluginIds.contains(pluginId);
+    var changed = false;
+    final teams = [
+      for (final team in state.teams)
+        if (team.pluginIds.contains(pluginId))
+          () {
+            changed = true;
+            return team.copyWith(
+              pluginIds: team.pluginIds
+                  .where((id) => id != pluginId)
+                  .toList(growable: false),
+            );
+          }()
+        else
+          team,
+    ];
+    if (!changed) return;
+    emit(state.copyWith(teams: teams));
+    await _repository.saveTeams(teams);
+    if (syncNeeded) {
+      await _syncPluginsForSelected();
+    }
+  }
+
   Future<bool> addTeam(String name, {TeamCli cli = TeamCli.flashskyai}) async {
     final trimmed = name.trim();
     if (trimmed.isEmpty) {
@@ -396,7 +497,8 @@ class TeamCubit extends Cubit<TeamState> {
     await _repository.saveTeams(teams);
     final profileService = await _profileService();
     await profileService.ensureTeamProfile(team.id, cli: team.cli);
-    await _syncSkillsForSelected();
+    unawaited(_syncSkillsForSelected());
+    unawaited(_syncPluginsForSelected());
     return true;
   }
 
@@ -438,6 +540,8 @@ class TeamCubit extends Cubit<TeamState> {
     final selected = state.selectedTeam;
     if (selected == null) return;
     final skillsChanged = !listEquals(selected.skillIds, updated.skillIds);
+    final pluginsChanged =
+        !listEquals(selected.pluginIds, updated.pluginIds);
     final normalized = _normalizeTeam(
       updated.members.isEmpty
           ? updated.copyWith(members: [_defaultMember()])
@@ -460,6 +564,9 @@ class TeamCubit extends Cubit<TeamState> {
     if (skillsChanged) {
       await _syncSkillsForSelected();
     }
+    if (pluginsChanged) {
+      await _syncPluginsForSelected();
+    }
   }
 
   Future<void> deleteSelected() async {
@@ -476,7 +583,8 @@ class TeamCubit extends Cubit<TeamState> {
       ),
     );
     await _repository.saveTeams(teams);
-    await _syncSkillsForSelected();
+    unawaited(_syncSkillsForSelected());
+    unawaited(_syncPluginsForSelected());
   }
 
   Future<void> addMember() async {
