@@ -92,4 +92,26 @@ void main() {
     final cleared = m.copyWith(clearDisplayName: true);
     expect(cleared.displayName, isNull);
   });
+
+  test('PluginUpdateInfo round-trips', () {
+    const u = PluginUpdateInfo(
+      id: 'acme/market/p', name: 'p', remoteHash: 'r1', currentHash: 'c1');
+    expect(PluginUpdateInfo.fromJson(u.toJson()), u);
+  });
+
+  test('PluginBackup round-trips', () {
+    const plugin = Plugin(
+      id: 'a/b/c', name: 'c', description: '', version: '1.0.0',
+      directory: 'a__b__c',
+      capabilities: PluginCapabilities(),
+      installedAt: 1, updatedAt: 2);
+    const b = PluginBackup(
+      backupId: 'bk1', backupPath: '/tmp/bk', createdAt: 100, plugin: plugin);
+    expect(PluginBackup.fromJson(b.toJson()), b);
+  });
+
+  test('UnmanagedPlugin holds directory/name/path', () {
+    const u = UnmanagedPlugin(directory: 'foo', name: 'foo', path: '/tmp/foo');
+    expect(u.directory, 'foo');
+  });
 }

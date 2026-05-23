@@ -393,3 +393,95 @@ class DiscoverablePlugin {
     marketplaceBranch, readmeUrl, source,
     Object.hashAll(categories), Object.hashAll(keywords));
 }
+
+class PluginUpdateInfo {
+  const PluginUpdateInfo({
+    required this.id,
+    required this.name,
+    required this.remoteHash,
+    this.currentHash,
+  });
+
+  final String id;
+  final String name;
+  final String? currentHash;
+  final String remoteHash;
+
+  Map<String, Object?> toJson() => {
+    'id': id, 'name': name, 'currentHash': currentHash, 'remoteHash': remoteHash,
+  };
+
+  factory PluginUpdateInfo.fromJson(Map<String, Object?> json) => PluginUpdateInfo(
+    id: json['id'] as String,
+    name: json['name'] as String,
+    currentHash: json['currentHash'] as String?,
+    remoteHash: json['remoteHash'] as String,
+  );
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is PluginUpdateInfo &&
+          runtimeType == other.runtimeType &&
+          id == other.id && remoteHash == other.remoteHash &&
+          currentHash == other.currentHash && name == other.name;
+
+  @override
+  int get hashCode => Object.hash(id, remoteHash, currentHash, name);
+}
+
+class PluginBackup {
+  const PluginBackup({
+    required this.backupId,
+    required this.backupPath,
+    required this.createdAt,
+    required this.plugin,
+  });
+
+  final String backupId;
+  final String backupPath;
+  final int createdAt;
+  final Plugin plugin;
+
+  Map<String, Object?> toJson() => {
+    'backupId': backupId,
+    'backupPath': backupPath,
+    'createdAt': createdAt,
+    'plugin': plugin.toJson(),
+  };
+
+  factory PluginBackup.fromJson(Map<String, Object?> json) => PluginBackup(
+    backupId: json['backupId'] as String,
+    backupPath: json['backupPath'] as String,
+    createdAt: (json['createdAt'] as num).toInt(),
+    plugin: Plugin.fromJson((json['plugin'] as Map).cast<String, Object?>()),
+  );
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is PluginBackup &&
+          runtimeType == other.runtimeType &&
+          backupId == other.backupId &&
+          backupPath == other.backupPath &&
+          plugin == other.plugin;
+
+  @override
+  int get hashCode => Object.hash(backupId, backupPath, plugin);
+}
+
+class UnmanagedPlugin {
+  const UnmanagedPlugin({
+    required this.directory,
+    required this.name,
+    required this.path,
+    this.description,
+    this.version,
+  });
+
+  final String directory;
+  final String name;
+  final String? description;
+  final String? version;
+  final String path;
+}
