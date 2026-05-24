@@ -218,6 +218,7 @@ class FakeTerminalSession extends TerminalSession {
     void Function()? onProcessStarted,
     void Function()? onProcessFailed,
     void Function()? onProcessExited,
+    void Function(String line)? onFirstUserLineSubmitted,
   }) {
     lastFixedSessionIds.add(fixedSessionId);
     lastResumeSessionIds.add(resumeSessionId);
