@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../config/app_update_config.dart';
 import '../cubits/app_update_cubit.dart';
 import '../cubits/config_cubit.dart';
 import '../l10n/l10n_extensions.dart';
@@ -66,7 +67,7 @@ class _AboutConfigWorkspaceState extends State<AboutConfigWorkspace> {
                         subtitle: state.currentVersionLabel.isEmpty
                             ? l10n.aboutVersionLoading
                             : state.currentVersionLabel,
-                        trailing: const SizedBox.shrink(),
+                        trailing: _VersionUpdateActions(state: state),
                         showDividerBelow: true,
                       ),
                       if (state.availableRelease != null) ...[
@@ -122,24 +123,6 @@ class _AboutConfigWorkspaceState extends State<AboutConfigWorkspace> {
                           spacing: 12,
                           runSpacing: 8,
                           children: [
-                            FilledButton.icon(
-                              key: AppKeys.aboutCheckUpdatesButton,
-                              onPressed: state.isBusy
-                                  ? null
-                                  : () => context
-                                        .read<AppUpdateCubit>()
-                                        .checkForUpdates(),
-                              icon: state.status == AppUpdateStatus.checking
-                                  ? const SizedBox(
-                                      width: 18,
-                                      height: 18,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                      ),
-                                    )
-                                  : const Icon(Icons.system_update_outlined),
-                              label: Text(l10n.appUpdateCheck),
-                            ),
                             if (state.status == AppUpdateStatus.available ||
                                 state.availableRelease != null)
                               FilledButton.tonalIcon(
@@ -190,6 +173,55 @@ class _AboutConfigWorkspaceState extends State<AboutConfigWorkspace> {
   }
 
   Future<void> _openReleasePage(String url) async {
+    final uri = Uri.tryParse(url);
+    if (uri == null) return;
+    await launchUrl(uri, mode: LaunchMode.externalApplication);
+  }
+}
+
+class _VersionUpdateActions extends StatelessWidget {
+  const _VersionUpdateActions({required this.state});
+
+  final AppUpdateState state;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final checking = state.status == AppUpdateStatus.checking;
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        TextButton(
+          key: AppKeys.aboutGitHubButton,
+          onPressed: () => _openUrl(appUpdateGitHubRepoPageUrl()),
+          child: Text(l10n.aboutGitHub),
+        ),
+        const SizedBox(width: 8),
+        TextButton(
+          key: AppKeys.aboutViewReleasesButton,
+          onPressed: () => _openUrl(appUpdateGitHubReleasesPageUrl()),
+          child: Text(l10n.appUpdateViewReleases),
+        ),
+        const SizedBox(width: 8),
+        FilledButton(
+          key: AppKeys.aboutCheckUpdatesButton,
+          onPressed: state.isBusy
+              ? null
+              : () => context.read<AppUpdateCubit>().checkForUpdates(),
+          child: checking
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : Text(l10n.appUpdateCheck),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _openUrl(String url) async {
     final uri = Uri.tryParse(url);
     if (uri == null) return;
     await launchUrl(uri, mode: LaunchMode.externalApplication);

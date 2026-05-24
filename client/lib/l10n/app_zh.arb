@@ -476,6 +476,7 @@
   "invalidJson": "JSON 无效，请修正语法后重试。",
   "aboutTitle": "关于",
   "aboutPageSubtitle": "TeamPilot 版本与应用更新。",
+  "aboutGitHub": "GitHub",
   "aboutCurrentVersion": "当前版本",
   "aboutVersionLoading": "加载中…",
   "appUpdateCheck": "检查更新",
@@ -484,6 +485,7 @@
   "appUpdateDownloading": "正在下载更新…",
   "appUpdateInstalling": "正在安装更新…",
   "appUpdateViewRelease": "在 GitHub 查看发布",
+  "appUpdateViewReleases": "查看发布",
   "appUpdateNewVersion": "新版本 {version} 可用",
   "@appUpdateNewVersion": {
     "placeholders": {

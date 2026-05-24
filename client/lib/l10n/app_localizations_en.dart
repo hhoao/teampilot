@@ -1497,6 +1497,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get aboutPageSubtitle => 'TeamPilot version and application updates.';
 
   @override
+  String get aboutGitHub => 'GitHub';
+
+  @override
   String get aboutCurrentVersion => 'Current version';
 
   @override
@@ -1519,6 +1522,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get appUpdateViewRelease => 'View release on GitHub';
+
+  @override
+  String get appUpdateViewReleases => 'Releases';
 
   @override
   String appUpdateNewVersion(String version) {

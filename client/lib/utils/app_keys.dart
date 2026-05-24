@@ -52,6 +52,8 @@ class AppKeys {
   static const configAboutSectionButton = Key('config-about-section-button');
   static const aboutPage = Key('about-page');
   static const aboutCheckUpdatesButton = Key('about-check-updates-button');
+  static const aboutViewReleasesButton = Key('about-view-releases-button');
+  static const aboutGitHubButton = Key('about-github-button');
   static const aboutDownloadInstallButton = Key('about-download-install-button');
   static const cliExecutablePathField = Key('cli-executable-path-field');
   static const cliExecutablePathBrowseButton = Key(

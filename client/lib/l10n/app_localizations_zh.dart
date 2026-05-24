@@ -1449,6 +1449,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get aboutPageSubtitle => 'TeamPilot 版本与应用更新。';
 
   @override
+  String get aboutGitHub => 'GitHub';
+
+  @override
   String get aboutCurrentVersion => '当前版本';
 
   @override
@@ -1471,6 +1474,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get appUpdateViewRelease => '在 GitHub 查看发布';
+
+  @override
+  String get appUpdateViewReleases => '查看发布';
 
   @override
   String appUpdateNewVersion(String version) {

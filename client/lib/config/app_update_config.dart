@@ -21,3 +21,15 @@ String appUpdateLatestReleaseApiUrl({
   final r = repo ?? appUpdateGitHubRepo;
   return 'https://api.github.com/repos/$o/$r/releases/latest';
 }
+
+String appUpdateGitHubRepoPageUrl({String? owner, String? repo}) {
+  final o = owner ?? appUpdateGitHubOwner;
+  final r = repo ?? appUpdateGitHubRepo;
+  return 'https://github.com/$o/$r';
+}
+
+String appUpdateGitHubReleasesPageUrl({String? owner, String? repo}) {
+  final o = owner ?? appUpdateGitHubOwner;
+  final r = repo ?? appUpdateGitHubRepo;
+  return 'https://github.com/$o/$r/releases';
+}

@@ -725,6 +725,7 @@
   "invalidJson": "Invalid JSON. Fix the syntax and try again.",
   "aboutTitle": "About",
   "aboutPageSubtitle": "TeamPilot version and application updates.",
+  "aboutGitHub": "GitHub",
   "aboutCurrentVersion": "Current version",
   "aboutVersionLoading": "Loading…",
   "appUpdateCheck": "Check for updates",
@@ -733,6 +734,7 @@
   "appUpdateDownloading": "Downloading update…",
   "appUpdateInstalling": "Installing update…",
   "appUpdateViewRelease": "View release on GitHub",
+  "appUpdateViewReleases": "Releases",
   "appUpdateNewVersion": "Version {version} available",
   "@appUpdateNewVersion": {
     "placeholders": {

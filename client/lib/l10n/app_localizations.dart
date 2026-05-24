@@ -2786,6 +2786,12 @@ abstract class AppLocalizations {
   /// **'TeamPilot version and application updates.'**
   String get aboutPageSubtitle;
 
+  /// No description provided for @aboutGitHub.
+  ///
+  /// In en, this message translates to:
+  /// **'GitHub'**
+  String get aboutGitHub;
+
   /// No description provided for @aboutCurrentVersion.
   ///
   /// In en, this message translates to:
@@ -2833,6 +2839,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'View release on GitHub'**
   String get appUpdateViewRelease;
+
+  /// No description provided for @appUpdateViewReleases.
+  ///
+  /// In en, this message translates to:
+  /// **'Releases'**
+  String get appUpdateViewReleases;
 
   /// No description provided for @appUpdateNewVersion.
   ///

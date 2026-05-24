@@ -256,20 +256,22 @@ class LayoutConfigWorkspace extends StatelessWidget {
 class _LayoutSettingsScroll extends StatelessWidget {
   const _LayoutSettingsScroll();
 
+  static const _cardGap = 12.0;
+
   @override
   Widget build(BuildContext context) {
-    // return SizedBox(width: 360, height: 640);
     return SingleChildScrollView(
-      child: SettingsSurfaceCard(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: const [
-            _ToolLayoutSettingsSection(),
-            _RegionVisibilitySettingsSection(),
-            _RtkSettingsSection(),
-            _AppearanceSettingsSection(),
-          ],
-        ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: const [
+          SettingsSurfaceCard(child: _ToolLayoutSettingsSection()),
+          SizedBox(height: _cardGap),
+          SettingsSurfaceCard(child: _RegionVisibilitySettingsSection()),
+          SizedBox(height: _cardGap),
+          SettingsSurfaceCard(child: _RtkSettingsSection()),
+          SizedBox(height: _cardGap),
+          SettingsSurfaceCard(child: _AppearanceSettingsSection()),
+        ],
       ),
     );
   }
@@ -335,7 +337,7 @@ class _ToolLayoutSettingsSection extends StatelessWidget {
                 selected: toolsArrangement,
                 onChanged: controller.setToolsArrangement,
               ),
-              showDividerBelow: true,
+              showDividerBelow: false,
             ),
           ],
         );
@@ -408,7 +410,7 @@ class _RegionVisibilitySettingsSection extends StatelessWidget {
                 value: fileTreeVisible,
                 onChanged: (value) => setVisibility(fileTreeVisible: value),
               ),
-              showDividerBelow: true,
+              showDividerBelow: false,
             ),
           ],
         );
@@ -504,7 +506,7 @@ class _RtkSettingsSectionState extends State<_RtkSettingsSection> {
             onPressed: _openInstallDocs,
             child: Text(l10n.rtkSettingsInstallLink),
           ),
-          showDividerBelow: true,
+          showDividerBelow: false,
         ),
         Padding(
           padding: const EdgeInsets.only(left: 16, right: 16, bottom: 12),
