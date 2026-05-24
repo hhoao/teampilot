@@ -633,7 +633,6 @@ class _DiscoverySection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final installedIds = state.installed.map((p) => p.id).toSet();
     final marketplaceNames = {
       for (final m in state.marketplaces) m.fullName: m,
     };
@@ -641,7 +640,7 @@ class _DiscoverySection extends StatelessWidget {
 
     return _DiscoveryBody(
       state: state,
-      installedIds: installedIds,
+      installed: state.installed,
       marketplaceNames: all,
       onGoMarketplaces: onGoMarketplaces,
     );
@@ -651,13 +650,13 @@ class _DiscoverySection extends StatelessWidget {
 class _DiscoveryBody extends StatefulWidget {
   const _DiscoveryBody({
     required this.state,
-    required this.installedIds,
+    required this.installed,
     required this.marketplaceNames,
     required this.onGoMarketplaces,
   });
 
   final PluginState state;
-  final Set<String> installedIds;
+  final List<Plugin> installed;
   final List<String> marketplaceNames;
   final VoidCallback onGoMarketplaces;
 
@@ -691,11 +690,11 @@ class _DiscoveryBodyState extends State<_DiscoveryBody> {
       }
       switch (_statusFilter) {
         case 'installed':
-          if (!widget.installedIds.contains(d.key)) {
+          if (!d.isInstalledAmong(widget.installed)) {
             return false;
           }
         case 'uninstalled':
-          if (widget.installedIds.contains(d.key)) {
+          if (d.isInstalledAmong(widget.installed)) {
             return false;
           }
       }
@@ -778,7 +777,7 @@ class _DiscoveryBodyState extends State<_DiscoveryBody> {
             else
               for (final d in filtered) _DiscoverablePluginCard(
                 plugin: d,
-                installed: widget.installedIds.contains(d.key),
+                installed: d.isInstalledAmong(widget.installed),
                 busy: widget.state.busyIds.contains(d.key),
               ),
           ],

@@ -88,6 +88,37 @@ void main() {
     expect(list.last.readmeUrl, 'https://example.com/plugin');
   });
 
+  test('discoverable matches installed plugin id format', () {
+    const d = DiscoverablePlugin(
+      key: 'anthropics:claude-plugins-official:agent-sdk-dev',
+      name: 'agent-sdk-dev',
+      description: '',
+      version: '1.0.0',
+      marketplaceOwner: 'anthropics',
+      marketplaceName: 'claude-plugins-official',
+      marketplaceBranch: 'main',
+      source: './plugins/agent-sdk-dev',
+    );
+    expect(d.installedPluginId, 'anthropics/claude-plugins-official/agent-sdk-dev');
+    expect(
+      d.isInstalledAmong(const [
+        Plugin(
+          id: 'anthropics/claude-plugins-official/agent-sdk-dev',
+          name: 'agent-sdk-dev',
+          description: '',
+          version: '1.0.0',
+          directory: 'anthropics__claude-plugins-official__agent-sdk-dev',
+          marketplaceOwner: 'anthropics',
+          marketplaceName: 'claude-plugins-official',
+          installedAt: 0,
+          updatedAt: 0,
+        ),
+      ]),
+      isTrue,
+    );
+    expect(d.isInstalledAmong(const []), isFalse);
+  });
+
   test('repoKey is stable for owner/name/branch', () {
     expect(
       PluginRepoDiskCacheService.repoKey(

@@ -334,7 +334,22 @@ class DiscoverablePlugin {
 
   String get marketplaceFullName => '$marketplaceOwner/$marketplaceName';
 
+  /// Id written to `plugins.json` when installed from this discovery entry.
+  String get installedPluginId => '$marketplaceOwner/$marketplaceName/$name';
+
   bool get canInstall => localInstall || externalSource != null;
+
+  bool isInstalledAmong(Iterable<Plugin> installed) {
+    for (final plugin in installed) {
+      if (plugin.id == installedPluginId) return true;
+      if (plugin.marketplaceOwner == marketplaceOwner &&
+          plugin.marketplaceName == marketplaceName &&
+          plugin.name == name) {
+        return true;
+      }
+    }
+    return false;
+  }
 
   Map<String, Object?> toJson() => {
     'key': key, 'name': name, 'description': description, 'version': version,
