@@ -138,10 +138,34 @@ void main() {
       File(p.join(bundle.path, '.claude-plugin', 'plugin.json')).writeAsStringSync(
         '{"name":"demo","version":"1.0.0"}',
       );
-      await CliPluginLayout.normalizeBundleForFlavor(
-        fs,
-        bundle.path,
-        CliPluginManifestFlavor.flashskyai,
+
+      final memberPlugins = p.join(base.path, 'member', 'plugins');
+      await CliPluginLayout.copyBundlesToMember(
+        fs: fs,
+        teamPluginsDir: teamPlugins.path,
+        memberPluginsDir: memberPlugins,
+        flavor: CliPluginManifestFlavor.claude,
+      );
+
+      final memberBundle = p.join(memberPlugins, 'demo');
+      expect(Directory(memberBundle).existsSync(), isTrue);
+      if (Platform.isLinux || Platform.isMacOS) {
+        expect(Link(memberBundle).existsSync(), isTrue);
+      }
+      expect(
+        File(p.join(memberBundle, '.claude-plugin', 'plugin.json')).existsSync(),
+        isTrue,
+      );
+    });
+
+    test('symlinks flashskyai bundles when symlinks are available', () async {
+      final fs = LocalFilesystem();
+      final teamPlugins = Directory(p.join(base.path, 'team', 'plugins'))
+        ..createSync(recursive: true);
+      final bundle = Directory(p.join(teamPlugins.path, 'demo'))..createSync();
+      Directory(p.join(bundle.path, '.claude-plugin')).createSync();
+      File(p.join(bundle.path, '.claude-plugin', 'plugin.json')).writeAsStringSync(
+        '{"name":"demo","version":"1.0.0"}',
       );
 
       final memberPlugins = p.join(base.path, 'member', 'plugins');
@@ -158,7 +182,11 @@ void main() {
         expect(Link(memberBundle).existsSync(), isTrue);
       }
       expect(
-        File(p.join(memberBundle, '.claude-plugin', 'plugin.json')).existsSync(),
+        File(p.join(memberBundle, '.flashskyai-plugin', 'plugin.json')).existsSync(),
+        isTrue,
+      );
+      expect(
+        Link(p.join(bundle.path, '.flashskyai-plugin')).existsSync(),
         isTrue,
       );
     });

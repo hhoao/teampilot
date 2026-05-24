@@ -14,10 +14,6 @@ import 'runtime_storage_context.dart';
 
 typedef StorageRootsResolver = Future<StorageRootsSnapshot> Function();
 
-void _logLaunchTiming(String label, int elapsedMs) {
-  appLogger.i('[launch-timing] $label: ${elapsedMs}ms');
-}
-
 class LaunchPlan {
   const LaunchPlan({
     required this.env,
@@ -61,21 +57,12 @@ class SessionLifecycleService {
     TeamMemberConfig? member,
     String? llmConfigPathOverride,
   }) async {
-    final total = Stopwatch()..start();
-    var step = Stopwatch()..start();
     final roots = await _resolveRoots();
-    _logLaunchTiming('prepareLaunch.resolveRoots', step.elapsedMilliseconds);
-    step = Stopwatch()..start();
     final service = await _configProfileServiceFor(roots);
-    _logLaunchTiming(
-      'prepareLaunch.configProfileServiceFor',
-      step.elapsedMilliseconds,
-    );
     final sessionId = session.sessionId.trim();
     final teamId = (team?.id ?? session.sessionTeam).trim();
     final runtimeTeamId = session.effectiveCliTeamDirectory;
     final cli = team?.cli;
-    step = Stopwatch()..start();
     final cliState = session.launchState == AppSessionLaunchState.started
         ? await _findCliState(
             roots: roots,
@@ -92,9 +79,6 @@ class SessionLifecycleService {
               tools: cli != null ? [cli.value] : cliLayoutDefaultTools,
             ),
           );
-    _logLaunchTiming('prepareLaunch.findCliState', step.elapsedMilliseconds);
-
-    step = Stopwatch()..start();
     final prepared = await _prepareEnv(
       service: service,
       session: session,
@@ -104,7 +88,6 @@ class SessionLifecycleService {
       workingDirectory: session.primaryPath,
       llmConfigPathOverride: llmConfigPathOverride,
     );
-    _logLaunchTiming('prepareLaunch.prepareEnv', step.elapsedMilliseconds);
     final memberConfigDir = _memberConfigDirFromEnv(prepared.env);
     final resolvedRoots = <String>{
       ...cliState.rootsTried,
@@ -119,7 +102,6 @@ class SessionLifecycleService {
       resolvedRoots: resolvedRoots,
       warnings: prepared.warnings,
     );
-    _logLaunchTiming('prepareLaunch.total', total.elapsedMilliseconds);
     return plan;
   }
 
@@ -183,29 +165,17 @@ class SessionLifecycleService {
     required String workingDirectory,
     required String? llmConfigPathOverride,
   }) async {
-    final total = Stopwatch()..start();
     final teamId = team?.id.trim() ?? '';
     if (team != null && teamId.isNotEmpty) {
-      var step = Stopwatch()..start();
       final resolver =
           _claudeSettingsResolver ??
           ClaudeProviderSettingsResolver(basePath: service.basePath);
       final claudeSettings = team.cli == TeamCli.claude
           ? await resolver.resolveTeamClaudeSettings(team)
           : null;
-      _logLaunchTiming(
-        'prepareEnv.resolveTeamClaudeSettings',
-        step.elapsedMilliseconds,
-      );
-      step = Stopwatch()..start();
       final claudeProviderId = team.cli == TeamCli.claude
           ? await resolver.resolveProviderId(team)
           : null;
-      _logLaunchTiming(
-        'prepareEnv.resolveProviderId',
-        step.elapsedMilliseconds,
-      );
-      step = Stopwatch()..start();
       final claudeSettingsByMember = team.cli == TeamCli.claude
           ? await _loadClaudeMemberProviderSettings(
               resolver: resolver,
@@ -214,16 +184,11 @@ class SessionLifecycleService {
               launchedMember: member,
             )
           : const <String, Map<String, Object?>>{};
-      _logLaunchTiming(
-        'prepareEnv.loadClaudeMemberProviderSettings',
-        step.elapsedMilliseconds,
-      );
       final leadSessionId =
           member?.name == TeamMemberNaming.teamLeadName &&
               session.sessionId.trim().isNotEmpty
           ? session.sessionId.trim()
           : null;
-      step = Stopwatch()..start();
       final outcome = await service.prepareTeamLaunch(
         teamId: teamId,
         runtimeTeamId: runtimeTeamId,
@@ -238,11 +203,6 @@ class SessionLifecycleService {
         leadSessionId: leadSessionId,
         claudeProviderId: claudeProviderId,
       );
-      _logLaunchTiming(
-        'prepareEnv.prepareTeamLaunch',
-        step.elapsedMilliseconds,
-      );
-      _logLaunchTiming('prepareEnv.total', total.elapsedMilliseconds);
       return _PreparedLaunch(
         env: outcome.environment,
         warnings: outcome.warnings,
@@ -316,8 +276,15 @@ class SessionLifecycleService {
     required bool probeHistoryFiles,
   }) async {
     final path = fs.pathContext;
+    final memberSegment = '${path.separator}members${path.separator}';
+    final orderedRoots = [
+      for (final root in toolRoots)
+        if (root.contains(memberSegment)) root,
+      for (final root in toolRoots)
+        if (!root.contains(memberSegment)) root,
+    ];
     final rootsTried = <String>[];
-    for (final root in toolRoots) {
+    for (final root in orderedRoots) {
       rootsTried.add(root);
       // final sessionFile = path.join(root, 'sessions', '$sessionId.json');
       // if ((await fs.stat(sessionFile)).isFile) {

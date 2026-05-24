@@ -87,8 +87,8 @@ class PluginRepoDiskCacheService {
           meta.resolvedBranch,
         );
         if (remote != null && remote.sha == meta.commitSha) {
-          appLogger.i(
-            '[launch-timing] PluginRepoDiskCache: skipped ${m.fullName}@'
+          appLogger.d(
+            '[PluginRepoDiskCache] skipped ${m.fullName}@'
             '${meta.resolvedBranch} (up to date)',
           );
           return dirPath;

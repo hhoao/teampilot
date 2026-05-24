@@ -30,6 +30,10 @@ class CliPluginRegistryService {
   final CliDataLayout _layout;
   final PluginRepoService _marketplaceCatalog;
 
+  static String? _cachedCatalogPath;
+  static int? _cachedCatalogMtimeMs;
+  static List<Plugin>? _cachedCatalog;
+
   static const _installedPluginsFileName = 'installed_plugins.json';
   static const _knownMarketplacesFileName = 'known_marketplaces.json';
   static const _localMarketplaceName = 'local';
@@ -41,6 +45,7 @@ class CliPluginRegistryService {
     required String tool,
     TeamConfig? team,
     List<Plugin>? installedCatalog,
+    String? memberProvisionJson,
   }) async {
     final flavor = cliPluginManifestFlavorForTool(tool);
     if (flavor == null) return;
@@ -58,12 +63,12 @@ class CliPluginRegistryService {
     };
 
     final pluginsDir = fs.pathContext.join(configDir, 'plugins');
-    final memberProvisionJson =
+    final resolvedMemberProvisionJson = memberProvisionJson ??
         await CliPluginProvisionCache.memberProvisionStampJson(
           fs: fs,
           memberPluginsDir: memberPluginsDir,
         );
-    final marketplaceSourceStamps = await _marketplaceSourceStampInputs(
+    final marketplaceSourceStamps = await _marketplaceSourceStampsFromCatalog(
       catalog: catalog,
       enabledIds: enabledIds,
     );
@@ -73,70 +78,109 @@ class CliPluginRegistryService {
       configDir: configDir,
       tool: tool,
       flavor: flavor,
-      memberProvisionStampJson: memberProvisionJson,
+      memberProvisionStampJson: resolvedMemberProvisionJson,
       enabledPluginIds: enabledIds,
       catalog: catalog,
       marketplaceSourceStamps: marketplaceSourceStamps,
     )) {
-      appLogger.i('[launch-timing] writeForSession: skipped (registry current)');
       return;
     }
+
+    final needsMarketplaceCatalog = _needsMarketplaceCatalog(
+      catalog: catalog,
+      enabledIds: enabledIds,
+    );
+    final marketplaceCtx = needsMarketplaceCatalog
+        ? await _MarketplaceLaunchContext.fromCatalog(
+            catalog: catalog,
+            enabledIds: enabledIds,
+            fs: fs,
+            teampilotRoot: teampilotRoot,
+          )
+        : _MarketplaceLaunchContext.empty();
 
     final enabledPlugins = <String, bool>{};
     final installedV2 = <String, List<Map<String, Object?>>>{};
     final localMarketplacePlugins = <Map<String, Object?>>[];
+    final marketplaceEntriesCache = <String, List<Map<String, Object?>>>{};
 
-    for (final entry in await fs.listDir(memberPluginsDir)) {
-      if (entry.name.startsWith('.')) continue;
-      final bundlePath = fs.pathContext.join(memberPluginsDir, entry.name);
-      if (!await CliPluginLayout.isPluginBundleEntry(fs, bundlePath)) continue;
-      final root = await CliPluginLayout.resolvePluginRoot(
-        fs,
-        bundlePath,
-        flavor: flavor,
-      );
-      if (root == null) continue;
+    var bundleCount = 0;
+    final entries = await fs.listDir(memberPluginsDir);
+    final scanned = await Future.wait(
+      entries.map((entry) async {
+        if (entry.name.startsWith('.')) return null;
+        final bundlePath = fs.pathContext.join(memberPluginsDir, entry.name);
+        if (!await CliPluginLayout.isPluginBundleEntry(fs, bundlePath)) {
+          return null;
+        }
+        final root = await CliPluginLayout.resolvePluginRoot(
+          fs,
+          bundlePath,
+          flavor: flavor,
+        );
+        if (root == null) return null;
 
-      final manifest = await CliPluginLayout.readManifest(fs, root, flavor: flavor);
-      final pluginName = manifest?.name ?? entry.name;
-      final version = manifest?.version ?? '0.0.0';
+        final manifest = await CliPluginLayout.readManifest(
+          fs,
+          root,
+          flavor: flavor,
+        );
+        final pluginName = manifest?.name ?? entry.name;
+        final version = manifest?.version ?? '0.0.0';
 
-      final catalogPlugin = _matchCatalogPlugin(
-        catalog: catalog,
-        enabledById: enabledById,
-        bundleDirName: entry.name,
-        manifestName: pluginName,
-      );
+        final catalogPlugin = _matchCatalogPlugin(
+          catalog: catalog,
+          enabledById: enabledById,
+          bundleDirName: entry.name,
+          manifestName: pluginName,
+        );
 
-      final marketplaceKey = catalogPlugin?.marketplaceName ?? _localMarketplaceName;
-      final cliPluginName = await _resolveCliPluginName(
-        pluginsDir: fs.pathContext.join(configDir, 'plugins'),
-        marketplaceKey: marketplaceKey,
-        manifestName: pluginName,
-        catalogPlugin: catalogPlugin,
-        teampilotRoot: teampilotRoot,
-      );
-      final pluginId = '$cliPluginName@$marketplaceKey';
-      enabledPlugins[pluginId] = true;
-      installedV2[pluginId] = [
-        {
-          'scope': 'user',
-          'installPath': root,
-          'version': catalogPlugin?.version ?? version,
-          'installedAt': _isoNow(),
-        },
-      ];
+        final marketplaceKey =
+            catalogPlugin?.marketplaceName ?? _localMarketplaceName;
+        final cliPluginName = await _resolveCliPluginName(
+          pluginsDir: pluginsDir,
+          marketplaceKey: marketplaceKey,
+          manifestName: pluginName,
+          catalogPlugin: catalogPlugin,
+          teampilotRoot: teampilotRoot,
+          marketplaceEntriesCache: marketplaceEntriesCache,
+        );
+        final pluginId = '$cliPluginName@$marketplaceKey';
+        final localMarketplacePlugin = marketplaceKey == _localMarketplaceName
+            ? {
+                'name': pluginName,
+                'source': './$pluginName',
+                'version': catalogPlugin?.version ?? version,
+              }
+            : null;
+        return (
+          pluginId: pluginId,
+          installedEntry: [
+            {
+              'scope': 'user',
+              'installPath': root,
+              'version': catalogPlugin?.version ?? version,
+              'installedAt': _isoNow(),
+            },
+          ],
+          localMarketplacePlugin: localMarketplacePlugin,
+        );
+      }),
+    );
 
-      if (marketplaceKey == _localMarketplaceName) {
-        localMarketplacePlugins.add({
-          'name': pluginName,
-          'source': './$pluginName',
-          'version': catalogPlugin?.version ?? version,
-        });
+    for (final result in scanned) {
+      if (result == null) continue;
+      enabledPlugins[result.pluginId] = true;
+      installedV2[result.pluginId] = result.installedEntry;
+      if (result.localMarketplacePlugin != null) {
+        localMarketplacePlugins.add(result.localMarketplacePlugin!);
       }
+      bundleCount++;
     }
 
-    if (enabledPlugins.isEmpty) return;
+    if (enabledPlugins.isEmpty) {
+      return;
+    }
 
     await fs.ensureDir(pluginsDir);
     await fs.atomicWrite(
@@ -150,8 +194,7 @@ class CliPluginRegistryService {
     final materializedMarketplaceStamps = await _writeKnownMarketplaces(
       pluginsDir: pluginsDir,
       flavor: flavor,
-      catalog: catalog,
-      enabledIds: enabledIds,
+      marketplaceCtx: marketplaceCtx,
       localPlugins: localMarketplacePlugins,
     );
 
@@ -166,7 +209,7 @@ class CliPluginRegistryService {
       pluginsDir: pluginsDir,
       tool: tool,
       flavor: flavor,
-      memberProvisionStampJson: memberProvisionJson,
+      memberProvisionStampJson: resolvedMemberProvisionJson,
       enabledPluginIds: enabledIds,
       catalog: catalog,
       marketplaceSourceStamps: materializedMarketplaceStamps,
@@ -183,6 +226,7 @@ class CliPluginRegistryService {
     required String manifestName,
     required Plugin? catalogPlugin,
     required String teampilotRoot,
+    required Map<String, List<Map<String, Object?>>> marketplaceEntriesCache,
   }) async {
     if (marketplaceKey == _localMarketplaceName) {
       return catalogPlugin?.name ?? manifestName;
@@ -197,6 +241,7 @@ class CliPluginRegistryService {
         catalogPlugin: catalogPlugin,
         teampilotRoot: teampilotRoot,
         candidate: fromCatalog,
+        marketplaceEntriesCache: marketplaceEntriesCache,
       );
       if (matched != null) return matched;
     }
@@ -210,6 +255,7 @@ class CliPluginRegistryService {
         catalogPlugin: catalogPlugin,
         teampilotRoot: teampilotRoot,
         candidate: idTail,
+        marketplaceEntriesCache: marketplaceEntriesCache,
       );
       if (matched != null) return matched;
     }
@@ -221,6 +267,7 @@ class CliPluginRegistryService {
       catalogPlugin: catalogPlugin,
       teampilotRoot: teampilotRoot,
       candidate: manifestName,
+      marketplaceEntriesCache: marketplaceEntriesCache,
     );
     return byManifest ?? fromCatalog ?? manifestName;
   }
@@ -232,12 +279,14 @@ class CliPluginRegistryService {
     required Plugin? catalogPlugin,
     required String teampilotRoot,
     required String candidate,
+    required Map<String, List<Map<String, Object?>>> marketplaceEntriesCache,
   }) async {
     final entries = await _readMarketplacePluginEntries(
       pluginsDir: pluginsDir,
       marketplaceKey: marketplaceKey,
       catalogPlugin: catalogPlugin,
       teampilotRoot: teampilotRoot,
+      marketplaceEntriesCache: marketplaceEntriesCache,
     );
     if (entries.isEmpty) return null;
 
@@ -274,7 +323,13 @@ class CliPluginRegistryService {
     required String marketplaceKey,
     required Plugin? catalogPlugin,
     required String teampilotRoot,
+    Map<String, List<Map<String, Object?>>>? marketplaceEntriesCache,
   }) async {
+    final cache = marketplaceEntriesCache;
+    if (cache != null && cache.containsKey(marketplaceKey)) {
+      return cache[marketplaceKey]!;
+    }
+
     final candidates = <String>[
       fs.pathContext.join(
         pluginsDir,
@@ -311,14 +366,17 @@ class CliPluginRegistryService {
       if (text == null || text.trim().isEmpty) continue;
       try {
         final root = (jsonDecode(text) as Map).cast<String, Object?>();
-        return (root['plugins'] as List? ?? const [])
+        final entries = (root['plugins'] as List? ?? const [])
             .whereType<Map>()
             .map((m) => m.cast<String, Object?>())
             .toList();
+        cache?[marketplaceKey] = entries;
+        return entries;
       } catch (_) {
         continue;
       }
     }
+    cache?[marketplaceKey] = const [];
     return const [];
   }
 
@@ -340,60 +398,62 @@ class CliPluginRegistryService {
   Future<List<Map<String, Object?>>> _writeKnownMarketplaces({
     required String pluginsDir,
     required CliPluginManifestFlavor flavor,
-    required List<Plugin> catalog,
-    required List<String> enabledIds,
+    required _MarketplaceLaunchContext marketplaceCtx,
     required List<Map<String, Object?>> localPlugins,
   }) async {
-    final marketplaces = await _marketplaceCatalog.loadMarketplaces();
-    final byName = {for (final m in marketplaces) m.name: m};
     final now = _isoNow();
     final known = <String, Map<String, Object?>>{};
     final sourceStamps = <Map<String, Object?>>[];
 
-    final enabled = enabledIds.isEmpty
-        ? catalog
-        : catalog.where((p) => enabledIds.contains(p.id));
+    final marketplaceResults = await Future.wait(
+      marketplaceCtx.enabledMarketplaces.map((entry) async {
+        final name = entry.name;
+        final teampilotCache = entry.cacheDir;
+        final cacheStat = await fs.stat(teampilotCache);
+        if (!cacheStat.isDirectory) return null;
 
-    for (final plugin in enabled) {
-      final name = plugin.marketplaceName;
-      if (name == null || name.isEmpty || known.containsKey(name)) continue;
-      final marketplace = byName[name];
-      if (marketplace == null) continue;
+        final stamp =
+            await CliPluginProvisionCache.marketplaceSourceStampFromCacheDir(
+              fs: fs,
+              name: name,
+              cacheDir: teampilotCache,
+            ) ??
+            CliPluginProvisionCache.marketplaceSourceStampEntry(
+              name: name,
+              teampilotCacheDir: teampilotCache,
+              sourceMtimeMs: cacheStat.mtime?.millisecondsSinceEpoch ?? 0,
+            );
 
-      final teampilotCache = fs.pathContext.join(
-        teampilotRoot,
-        'plugin-marketplace-cache',
-        marketplace.owner,
-        '${marketplace.name}@${marketplace.branch}',
-      );
-      if (!(await fs.stat(teampilotCache)).isDirectory) continue;
-
-      final cacheStat = await fs.stat(teampilotCache);
-      sourceStamps.add(
-        CliPluginProvisionCache.marketplaceSourceStampEntry(
-          name: name,
+        final cliInstallLocation = await _materializeMarketplaceForCli(
+          pluginsDir: pluginsDir,
+          marketplaceName: name,
           teampilotCacheDir: teampilotCache,
-          sourceMtimeMs: cacheStat.mtime?.millisecondsSinceEpoch ?? 0,
-        ),
-      );
+          flavor: flavor,
+        );
+        if (cliInstallLocation == null) {
+          return (stamp: stamp, knownEntry: null);
+        }
 
-      final cliInstallLocation = await _materializeMarketplaceForCli(
-        pluginsDir: pluginsDir,
-        marketplaceName: name,
-        teampilotCacheDir: teampilotCache,
-        flavor: flavor,
-      );
-      if (cliInstallLocation == null) continue;
+        return (
+          stamp: stamp,
+          knownEntry: MapEntry(name, {
+            'source': {
+              'source': 'directory',
+              'path': cliInstallLocation,
+            },
+            'installLocation': cliInstallLocation,
+            'lastUpdated': now,
+          }),
+        );
+      }),
+    );
 
-      // Use directory source so the CLI reads installLocation only (no re-clone).
-      known[name] = {
-        'source': {
-          'source': 'directory',
-          'path': cliInstallLocation,
-        },
-        'installLocation': cliInstallLocation,
-        'lastUpdated': now,
-      };
+    for (final result in marketplaceResults) {
+      if (result == null) continue;
+      sourceStamps.add(result.stamp);
+      if (result.knownEntry != null) {
+        known[result.knownEntry!.key] = result.knownEntry!.value;
+      }
     }
 
     if (localPlugins.isNotEmpty) {
@@ -421,39 +481,54 @@ class CliPluginRegistryService {
     return sourceStamps;
   }
 
-  Future<List<Map<String, Object?>>> _marketplaceSourceStampInputs({
+  static bool _needsMarketplaceCatalog({
+    required List<Plugin> catalog,
+    required List<String> enabledIds,
+  }) {
+    final enabled = enabledIds.isEmpty
+        ? catalog
+        : catalog.where((p) => enabledIds.contains(p.id));
+    return enabled.any(
+      (p) =>
+          p.marketplaceName != null && p.marketplaceName!.trim().isNotEmpty,
+    );
+  }
+
+  Future<List<Map<String, Object?>>> _marketplaceSourceStampsFromCatalog({
     required List<Plugin> catalog,
     required List<String> enabledIds,
   }) async {
-    final marketplaces = await _marketplaceCatalog.loadMarketplaces();
-    final byName = {for (final m in marketplaces) m.name: m};
-    final stamps = <Map<String, Object?>>[];
     final enabled = enabledIds.isEmpty
         ? catalog
         : catalog.where((p) => enabledIds.contains(p.id));
     final seen = <String>{};
+    final stamps = <Map<String, Object?>>[];
+
     for (final plugin in enabled) {
-      final name = plugin.marketplaceName;
-      if (name == null || name.isEmpty || seen.contains(name)) continue;
-      seen.add(name);
-      final marketplace = byName[name];
-      if (marketplace == null) continue;
-      final teampilotCache = fs.pathContext.join(
+      final name = plugin.marketplaceName?.trim();
+      final owner = plugin.marketplaceOwner?.trim();
+      if (name == null || name.isEmpty || owner == null || owner.isEmpty) {
+        continue;
+      }
+      if (!seen.add(name)) continue;
+
+      final branch = plugin.marketplaceBranch?.trim().isNotEmpty == true
+          ? plugin.marketplaceBranch!.trim()
+          : 'main';
+      final cacheDir = fs.pathContext.join(
         teampilotRoot,
         'plugin-marketplace-cache',
-        marketplace.owner,
-        '${marketplace.name}@${marketplace.branch}',
+        owner,
+        '$name@$branch',
       );
-      final cacheStat = await fs.stat(teampilotCache);
-      if (!cacheStat.isDirectory) continue;
-      stamps.add(
-        CliPluginProvisionCache.marketplaceSourceStampEntry(
-          name: name,
-          teampilotCacheDir: teampilotCache,
-          sourceMtimeMs: cacheStat.mtime?.millisecondsSinceEpoch ?? 0,
-        ),
+      final stamp = await CliPluginProvisionCache.marketplaceSourceStampFromCacheDir(
+        fs: fs,
+        name: name,
+        cacheDir: cacheDir,
       );
+      if (stamp != null) stamps.add(stamp);
     }
+
     return stamps;
   }
 
@@ -476,6 +551,9 @@ class CliPluginRegistryService {
       dest: dest,
       teampilotCacheDir: teampilotCacheDir,
     )) {
+      appLogger.d(
+        '[CliPluginRegistry] materializeMarketplace: skipped ($marketplaceName)',
+      );
       return dest;
     }
 
@@ -556,18 +634,162 @@ class CliPluginRegistryService {
 
   Future<List<Plugin>> _loadInstalledCatalog() async {
     final path = AppPaths.pluginsJsonForTeampilotRoot(teampilotRoot);
+    final stat = await fs.stat(path);
+    final mtimeMs = stat.mtime?.millisecondsSinceEpoch ?? 0;
+    if (_cachedCatalogPath == path &&
+        _cachedCatalogMtimeMs == mtimeMs &&
+        _cachedCatalog != null) {
+      return _cachedCatalog!;
+    }
+
     final text = await fs.readString(path);
-    if (text == null || text.trim().isEmpty) return const [];
+    if (text == null || text.trim().isEmpty) {
+      _cachedCatalogPath = path;
+      _cachedCatalogMtimeMs = mtimeMs;
+      _cachedCatalog = const [];
+      return _cachedCatalog!;
+    }
     try {
       final root = (jsonDecode(text) as Map).cast<String, Object?>();
-      return (root['plugins'] as List? ?? const [])
+      final catalog = (root['plugins'] as List? ?? const [])
           .whereType<Map>()
           .map((m) => Plugin.fromJson(m.cast<String, Object?>()))
           .toList();
+      _cachedCatalogPath = path;
+      _cachedCatalogMtimeMs = mtimeMs;
+      _cachedCatalog = catalog;
+      return catalog;
     } catch (_) {
-      return const [];
+      _cachedCatalogPath = path;
+      _cachedCatalogMtimeMs = mtimeMs;
+      _cachedCatalog = const [];
+      return _cachedCatalog!;
     }
   }
 
   static String _isoNow() => DateTime.now().toUtc().toIso8601String();
+}
+
+class _EnabledMarketplaceEntry {
+  const _EnabledMarketplaceEntry({
+    required this.name,
+    required this.cacheDir,
+  });
+
+  final String name;
+  final String cacheDir;
+}
+
+class _MarketplaceLaunchContext {
+  _MarketplaceLaunchContext({
+    required this.sourceStamps,
+    required this.enabledMarketplaces,
+  });
+
+  final List<Map<String, Object?>> sourceStamps;
+  final List<_EnabledMarketplaceEntry> enabledMarketplaces;
+
+  static _MarketplaceLaunchContext empty() => _MarketplaceLaunchContext(
+    sourceStamps: const [],
+    enabledMarketplaces: const [],
+  );
+
+  static Future<_MarketplaceLaunchContext> fromCatalog({
+    required List<Plugin> catalog,
+    required List<String> enabledIds,
+    required Filesystem fs,
+    required String teampilotRoot,
+  }) async {
+    final enabled = enabledIds.isEmpty
+        ? catalog
+        : catalog.where((p) => enabledIds.contains(p.id));
+    final stamps = <Map<String, Object?>>[];
+    final enabledEntries = <_EnabledMarketplaceEntry>[];
+    final seen = <String>{};
+
+    for (final plugin in enabled) {
+      final name = plugin.marketplaceName?.trim();
+      final owner = plugin.marketplaceOwner?.trim();
+      if (name == null || name.isEmpty || owner == null || owner.isEmpty) {
+        continue;
+      }
+      if (!seen.add(name)) continue;
+
+      final branch = plugin.marketplaceBranch?.trim().isNotEmpty == true
+          ? plugin.marketplaceBranch!.trim()
+          : 'main';
+      final teampilotCache = fs.pathContext.join(
+        teampilotRoot,
+        'plugin-marketplace-cache',
+        owner,
+        '$name@$branch',
+      );
+      final cacheStat = await fs.stat(teampilotCache);
+      if (!cacheStat.isDirectory) continue;
+
+      final stamp = await CliPluginProvisionCache.marketplaceSourceStampFromCacheDir(
+        fs: fs,
+        name: name,
+        cacheDir: teampilotCache,
+      );
+      if (stamp == null) continue;
+      stamps.add(stamp);
+      enabledEntries.add(
+        _EnabledMarketplaceEntry(name: name, cacheDir: teampilotCache),
+      );
+    }
+
+    return _MarketplaceLaunchContext(
+      sourceStamps: stamps,
+      enabledMarketplaces: enabledEntries,
+    );
+  }
+
+  static Future<_MarketplaceLaunchContext> load({
+    required List<Plugin> catalog,
+    required List<String> enabledIds,
+    required PluginRepoService catalogService,
+    required Filesystem fs,
+    required String teampilotRoot,
+  }) async {
+    final marketplaces = await catalogService.loadMarketplaces();
+    final byName = {for (final m in marketplaces) m.name: m};
+    final stamps = <Map<String, Object?>>[];
+    final enabledEntries = <_EnabledMarketplaceEntry>[];
+    final enabled = enabledIds.isEmpty
+        ? catalog
+        : catalog.where((p) => enabledIds.contains(p.id));
+    final seen = <String>{};
+
+    for (final plugin in enabled) {
+      final name = plugin.marketplaceName;
+      if (name == null || name.isEmpty || seen.contains(name)) continue;
+      seen.add(name);
+      final marketplace = byName[name];
+      if (marketplace == null) continue;
+      final teampilotCache = fs.pathContext.join(
+        teampilotRoot,
+        'plugin-marketplace-cache',
+        marketplace.owner,
+        '${marketplace.name}@${marketplace.branch}',
+      );
+      final cacheStat = await fs.stat(teampilotCache);
+      if (!cacheStat.isDirectory) continue;
+      stamps.add(
+        CliPluginProvisionCache.marketplaceSourceStampEntry(
+          name: name,
+          teampilotCacheDir: teampilotCache,
+          sourceMtimeMs: cacheStat.mtime?.millisecondsSinceEpoch ?? 0,
+        ),
+      );
+      enabledEntries.add(
+        _EnabledMarketplaceEntry(name: name, cacheDir: teampilotCache),
+      );
+    }
+
+    return _MarketplaceLaunchContext(
+      sourceStamps: stamps,
+      enabledMarketplaces: enabledEntries,
+    );
+  }
 }

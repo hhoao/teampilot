@@ -18,10 +18,6 @@ import 'io/filesystem.dart';
 /// Launch-time environment for tool-isolated team profiles.
 typedef TeamLaunchEnvironment = Map<String, String>;
 
-void _logLaunchTiming(String label, int elapsedMs) {
-  appLogger.i('[launch-timing] $label: ${elapsedMs}ms');
-}
-
 class TeamLaunchOutcome {
   const TeamLaunchOutcome({
     required this.environment,
@@ -151,36 +147,27 @@ class ConfigProfileService {
     TeamCli cli = TeamCli.flashskyai,
     TeamConfig? team,
   }) async {
-    final total = Stopwatch()..start();
     final trimmedTeamId = teamId.trim();
     final trimmedSessionId = sessionId.trim();
     if (trimmedTeamId.isEmpty || trimmedSessionId.isEmpty) return;
 
-    var step = Stopwatch()..start();
     await ensureTeamProfile(trimmedTeamId, cli: cli);
-    _logLaunchTiming('ensureSessionProfile.ensureTeamProfile', step.elapsedMilliseconds);
-    step = Stopwatch()..start();
-    await layout.ensureMemberInheritsTeam(
-      trimmedTeamId,
-      trimmedSessionId,
-      cli.value,
-    );
-    _logLaunchTiming(
-      'ensureSessionProfile.ensureMemberInheritsTeam',
-      step.elapsedMilliseconds,
-    );
-    step = Stopwatch()..start();
-    await layout.provisionMemberPluginsFromTeam(
-      trimmedTeamId,
-      trimmedSessionId,
-      cli.value,
-    );
-    _logLaunchTiming(
-      'ensureSessionProfile.provisionMemberPluginsFromTeam',
-      step.elapsedMilliseconds,
-    );
+    String? memberProvisionJson;
+    await Future.wait([
+      layout.ensureMemberInheritsTeam(
+        trimmedTeamId,
+        trimmedSessionId,
+        cli.value,
+      ),
+      layout
+          .provisionMemberPluginsFromTeam(
+            trimmedTeamId,
+            trimmedSessionId,
+            cli.value,
+          )
+          .then((json) => memberProvisionJson = json),
+    ]);
     if (cli == TeamCli.flashskyai || cli == TeamCli.claude) {
-      step = Stopwatch()..start();
       await CliPluginRegistryService(
         fs: _fs,
         teampilotRoot: basePath,
@@ -190,38 +177,19 @@ class ConfigProfileService {
         sessionId: trimmedSessionId,
         tool: cli.value,
         team: team,
-      );
-      _logLaunchTiming(
-        'ensureSessionProfile.writeForSession',
-        step.elapsedMilliseconds,
+        memberProvisionJson: memberProvisionJson,
       );
     }
     switch (cli) {
       case TeamCli.flashskyai:
-        step = Stopwatch()..start();
         await layout.ensureAppToolLayout('flashskyai');
-        _logLaunchTiming(
-          'ensureSessionProfile.ensureAppToolLayout',
-          step.elapsedMilliseconds,
-        );
-        step = Stopwatch()..start();
         await ensureSessionFlashskyaiDefaults(trimmedTeamId, trimmedSessionId);
-        _logLaunchTiming(
-          'ensureSessionProfile.ensureSessionFlashskyaiDefaults',
-          step.elapsedMilliseconds,
-        );
       case TeamCli.codex:
         break;
       case TeamCli.claude:
-        step = Stopwatch()..start();
         await ensureSessionClaudeDefaults(trimmedTeamId, trimmedSessionId);
-        _logLaunchTiming(
-          'ensureSessionProfile.ensureSessionClaudeDefaults',
-          step.elapsedMilliseconds,
-        );
         break;
     }
-    _logLaunchTiming('ensureSessionProfile.total', total.elapsedMilliseconds);
   }
 
   Future<void> ensureSessionFlashskyaiDefaults(
@@ -268,7 +236,6 @@ class ConfigProfileService {
     String? leadSessionId,
     String? claudeProviderId,
   }) async {
-    final total = Stopwatch()..start();
     final trimmedTeamId = teamId.trim();
     if (trimmedTeamId.isEmpty) {
       return const TeamLaunchOutcome(environment: {});
@@ -281,56 +248,33 @@ class ConfigProfileService {
       runtimeTeamId: runtimeTeamId,
     );
 
-    var step = Stopwatch()..start();
     await ensureSessionProfile(
       scope.teamId,
       scope.sessionId,
       cli: cli,
       team: team,
     );
-    _logLaunchTiming('prepareTeamLaunch.ensureSessionProfile', step.elapsedMilliseconds);
     switch (cli) {
       case TeamCli.flashskyai:
-        step = Stopwatch()..start();
         await _writeFlashskyaiMetadata(
           scope,
           workingDirectory,
           additionalDirectories: additionalDirectories,
         );
-        _logLaunchTiming(
-          'prepareTeamLaunch.writeFlashskyaiMetadata',
-          step.elapsedMilliseconds,
-        );
-        step = Stopwatch()..start();
         await _writeFlashskyaiSettings(scope);
-        _logLaunchTiming(
-          'prepareTeamLaunch.writeFlashskyaiSettings',
-          step.elapsedMilliseconds,
-        );
         break;
       case TeamCli.claude:
-        step = Stopwatch()..start();
         await _writeClaudeMetadata(
           scope,
           workingDirectory,
           additionalDirectories: additionalDirectories,
         );
-        _logLaunchTiming(
-          'prepareTeamLaunch.writeClaudeMetadata',
-          step.elapsedMilliseconds,
-        );
-        step = Stopwatch()..start();
         await _writeClaudeSettings(
           scope,
           claudeSettings,
           effortLevel: team?.claudeEffortLevel ?? 'xhigh',
           teammateMode: team?.claudeTeammateMode ?? 'in-process',
         );
-        _logLaunchTiming(
-          'prepareTeamLaunch.writeClaudeSettings',
-          step.elapsedMilliseconds,
-        );
-        step = Stopwatch()..start();
         await _writeClaudeRoster(
           scope: scope,
           members: members,
@@ -339,21 +283,12 @@ class ConfigProfileService {
           leadSessionId: leadSessionId,
           teammateMode: team?.claudeTeammateMode ?? 'in-process',
         );
-        _logLaunchTiming(
-          'prepareTeamLaunch.writeClaudeRoster',
-          step.elapsedMilliseconds,
-        );
-        step = Stopwatch()..start();
         await _writeClaudeMemberProfiles(
           scope: scope,
           members: members,
           launchedMember: member,
           providerSettings: claudeSettings,
           providerSettingsByMember: claudeSettingsByMember,
-        );
-        _logLaunchTiming(
-          'prepareTeamLaunch.writeClaudeMemberProfiles',
-          step.elapsedMilliseconds,
         );
         final providerId = claudeProviderId?.trim() ?? '';
         if (providerId.isNotEmpty &&
@@ -364,14 +299,9 @@ class ConfigProfileService {
             scope.sessionId,
             'claude',
           );
-          step = Stopwatch()..start();
           final link = await _claudeCredentials.ensureLinked(
             sessionClaudeDir,
             providerId,
-          );
-          _logLaunchTiming(
-            'prepareTeamLaunch.ensureLinked',
-            step.elapsedMilliseconds,
           );
           if (link == CredentialLinkResult.missing) {
             warnings.add('claude_credentials_missing');
@@ -382,7 +312,6 @@ class ConfigProfileService {
         break;
     }
 
-    _logLaunchTiming('prepareTeamLaunch.total', total.elapsedMilliseconds);
     return TeamLaunchOutcome(
       environment: switch (cli) {
       TeamCli.flashskyai => _flashskyaiTeamLaunchEnvironment(scope),
@@ -484,15 +413,40 @@ class ConfigProfileService {
       scope.teamId,
       scope.sessionId,
     );
+    final directories = [workingDirectory, ...additionalDirectories];
+    if (await _trustedProjectsAlreadyCurrent(metadataPath, directories)) {
+      return;
+    }
     final metadata = await _metadataWithTrustedProjects(
       metadataPath: metadataPath,
       defaultMetadata: defaultFlashskyaiMetadata,
-      directories: [workingDirectory, ...additionalDirectories],
+      directories: directories,
     );
-    await _fs.atomicWrite(
+    await _writeJsonIfChanged(metadataPath, metadata);
+  }
+
+  Future<bool> _trustedProjectsAlreadyCurrent(
+    String metadataPath,
+    Iterable<String> directories,
+  ) async {
+    final trustedKeys = {
+      for (final dir in directories) ...projectMetadataKeys(dir),
+    };
+    if (trustedKeys.isEmpty) return false;
+
+    final metadata = await _readMetadataFile(
       metadataPath,
-      const JsonEncoder.withIndent('  ').convert(metadata),
+      defaultFlashskyaiMetadata,
     );
+    final projects = metadata['projects'];
+    if (projects is! Map) return false;
+
+    for (final key in trustedKeys) {
+      final project = projects[key];
+      if (project is! Map) return false;
+      if (project['hasTrustDialogAccepted'] != true) return false;
+    }
+    return true;
   }
 
   Future<void> _writeFlashskyaiSettings(_LaunchProfileScope scope) async {
@@ -500,7 +454,47 @@ class ConfigProfileService {
       sessionToolDir(scope.teamId, scope.sessionId, 'flashskyai'),
       flashskyaiSettingsFileName,
     );
-    await _writeSettingsFile(file, _flashskyaiTeamSettings());
+    final teamDefaults = _flashskyaiTeamSettings();
+    if (await _flashskyaiSettingsAlreadyCurrent(file, teamDefaults)) {
+      return;
+    }
+    final merged = await _flashskyaiTeamSettingsMerged(file);
+    await _writeJsonIfChanged(file, merged);
+  }
+
+  Future<bool> _flashskyaiSettingsAlreadyCurrent(
+    String path,
+    Map<String, Object?> teamDefaults,
+  ) async {
+    if (!(await _fs.stat(path)).isFile) return false;
+    final existing = await _readSettingsFile(path);
+    for (final entry in teamDefaults.entries) {
+      if (entry.key == 'enabledPlugins') continue;
+      if (existing[entry.key] != entry.value) return false;
+    }
+    return true;
+  }
+
+  Future<Map<String, Object?>> _flashskyaiTeamSettingsMerged(String path) async {
+    final existing = await _readSettingsFile(path);
+    final merged = Map<String, Object?>.from(_flashskyaiTeamSettings());
+    final enabledPlugins = existing['enabledPlugins'];
+    if (enabledPlugins is Map && enabledPlugins.isNotEmpty) {
+      merged['enabledPlugins'] = enabledPlugins;
+    }
+    return merged;
+  }
+
+  Future<void> _writeJsonIfChanged(
+    String path,
+    Map<String, Object?> value,
+  ) async {
+    final encoded = const JsonEncoder.withIndent('  ').convert(value);
+    final existing = await _fs.readString(path);
+    if (existing == encoded) {
+      return;
+    }
+    await _fs.atomicWrite(path, encoded);
   }
 
   /// Writes team defaults without dropping [enabledPlugins] from plugin registry.

@@ -1,6 +1,5 @@
 import 'dart:convert';
 
-import '../utils/logger.dart';
 import 'cli_plugin_manifest_flavor.dart';
 import 'cli_plugin_provision_cache.dart';
 import 'io/filesystem.dart';
@@ -154,8 +153,8 @@ class CliPluginLayout {
   /// [memberPluginsDir].
   ///
   /// Skips provisioning when [memberPluginsDir] already matches team bundles (see
-  /// [CliPluginProvisionCache]).
-  static Future<void> copyBundlesToMember({
+  /// [CliPluginProvisionCache]). Returns member provision stamp JSON.
+  static Future<String?> copyBundlesToMember({
     required Filesystem fs,
     required String teamPluginsDir,
     required String memberPluginsDir,
@@ -171,19 +170,19 @@ class CliPluginLayout {
         memberPluginsDir: memberPluginsDir,
         flavor: flavor,
       );
-      return;
+      return await CliPluginProvisionCache.memberProvisionStampJson(
+        fs: fs,
+        memberPluginsDir: memberPluginsDir,
+      );
     }
 
-    if (await CliPluginProvisionCache.isMemberProvisionCurrent(
+    if (await CliPluginProvisionCache.trySkipMemberProvision(
       fs: fs,
       teamPluginsDir: teamPluginsDir,
       memberPluginsDir: memberPluginsDir,
       flavor: flavor,
-    )) {
-      appLogger.i(
-        '[launch-timing] copyBundlesToMember: skipped (provision current)',
-      );
-      return;
+    ) case final stampJson?) {
+      return stampJson;
     }
 
     if ((await fs.stat(memberPluginsDir)).exists) {
@@ -191,26 +190,54 @@ class CliPluginLayout {
     }
     await fs.ensureDir(memberPluginsDir);
 
-    for (final entry in await fs.listDir(teamPluginsDir)) {
-      final source = ctx.join(teamPluginsDir, entry.name);
-      if (!await isPluginBundleEntry(fs, source)) continue;
-      final root = await resolvePluginRoot(fs, source, flavor: flavor);
-      if (root == null) continue;
-      final dirName = await bundleDirName(fs, root, flavor: flavor);
-      final dest = ctx.join(memberPluginsDir, dirName);
-      final linked = await linkOrCopyTree(
-        fs: fs,
-        source: root,
-        destination: dest,
-      );
-      await normalizeBundleForFlavor(fs, linked ? root : dest, flavor);
-    }
+    final teamEntries = await fs.listDir(teamPluginsDir);
+    final teamPluginsMtimeMs = teamStat.mtime?.millisecondsSinceEpoch ?? 0;
+    final copied = await Future.wait(
+      teamEntries.map((entry) async {
+        final source = ctx.join(teamPluginsDir, entry.name);
+        if (!await isPluginBundleEntry(fs, source)) return null;
+        final root = await resolvePluginRoot(fs, source, flavor: flavor);
+        if (root == null) return null;
+        final dirName = await bundleDirName(fs, root, flavor: flavor);
+        final dest = ctx.join(memberPluginsDir, dirName);
+        final linked = await linkOrCopyTree(
+          fs: fs,
+          source: root,
+          destination: dest,
+        );
+        // Symlinked member bundles share the team plugin root. FlashskyAI manifest
+        // mirroring is a cheap symlink on the team root (also done at team install).
+        if (linked) {
+          if (flavor == CliPluginManifestFlavor.flashskyai) {
+            await normalizeBundleForFlavor(fs, root, flavor);
+          }
+        } else {
+          await normalizeBundleForFlavor(fs, dest, flavor);
+        }
+        final manifest = await readManifest(fs, root, flavor: flavor);
+        final rootStat = await fs.stat(root);
+        return {
+          'dirName': dirName,
+          'teamEntryName': entry.name,
+          'name': manifest?.name ?? dirName,
+          'version': manifest?.version ?? '0.0.0',
+          'mtimeMs': rootStat.mtime?.millisecondsSinceEpoch ?? 0,
+        };
+      }),
+    );
+    final bundleStamps = copied.whereType<Map<String, Object?>>().toList();
 
     await CliPluginProvisionCache.writeMemberProvisionStamp(
       fs: fs,
       teamPluginsDir: teamPluginsDir,
       memberPluginsDir: memberPluginsDir,
       flavor: flavor,
+      bundles: bundleStamps,
+      teamPluginsMtimeMs: teamPluginsMtimeMs,
+    );
+    return await CliPluginProvisionCache.memberProvisionStampJson(
+      fs: fs,
+      memberPluginsDir: memberPluginsDir,
     );
   }
 }

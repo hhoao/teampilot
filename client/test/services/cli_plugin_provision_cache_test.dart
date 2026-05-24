@@ -100,6 +100,39 @@ void main() {
       );
     });
 
+    test('provisionFingerprintForRegistry ignores metadata-only stamp fields', () {
+      const legacy = '''
+{
+  "version": 1,
+  "flavor": "flashskyai",
+  "bundles": [
+    {"dirName": "demo", "name": "demo", "version": "1.0.0", "mtimeMs": 100}
+  ]
+}
+''';
+      const upgraded = '''
+{
+  "version": 1,
+  "flavor": "flashskyai",
+  "teamPluginsDir": "/team/plugins",
+  "teamPluginsMtimeMs": 200,
+  "bundles": [
+    {
+      "dirName": "demo",
+      "name": "demo",
+      "version": "1.0.0",
+      "mtimeMs": 100,
+      "teamEntryName": "demo-src"
+    }
+  ]
+}
+''';
+      expect(
+        CliPluginProvisionCache.provisionFingerprintForRegistry(legacy),
+        CliPluginProvisionCache.provisionFingerprintForRegistry(upgraded),
+      );
+    });
+
     test('marketplace materialization skips when cache unchanged', () async {
       const marketplaceName = 'demo-marketplace';
       final cacheDir = Directory(

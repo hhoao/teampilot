@@ -287,4 +287,64 @@ void main() {
       isTrue,
     );
   });
+
+  test('writeForSession skips registry rewrite when inputs unchanged', () async {
+    await seedMemberPlugin(
+      teamId: 't1',
+      sessionId: 's5',
+      tool: 'flashskyai',
+      pluginName: 'demo',
+    );
+
+    const team = TeamConfig(
+      id: 't1',
+      name: 'Team',
+      pluginIds: ['local/demo'],
+    );
+    const catalog = [
+      Plugin(
+        id: 'local/demo',
+        name: 'demo',
+        description: '',
+        version: '2.0.0',
+        directory: 'demo',
+        capabilities: PluginCapabilities(),
+        installedAt: 0,
+        updatedAt: 0,
+      ),
+    ];
+
+    await registry.writeForSession(
+      teamId: 't1',
+      sessionId: 's5',
+      tool: 'flashskyai',
+      team: team,
+      installedCatalog: catalog,
+    );
+
+    final stampBefore = await File(
+      p.join(
+        layout.memberToolDir('t1', 's5', 'flashskyai'),
+        'plugins',
+        '.teampilot-registry-stamp.json',
+      ),
+    ).readAsString();
+
+    await registry.writeForSession(
+      teamId: 't1',
+      sessionId: 's5',
+      tool: 'flashskyai',
+      team: team,
+      installedCatalog: catalog,
+    );
+
+    final stampAfter = await File(
+      p.join(
+        layout.memberToolDir('t1', 's5', 'flashskyai'),
+        'plugins',
+        '.teampilot-registry-stamp.json',
+      ),
+    ).readAsString();
+    expect(stampAfter, stampBefore);
+  });
 }

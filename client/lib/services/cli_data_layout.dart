@@ -115,16 +115,18 @@ class CliDataLayout {
     await ensureAppToolLayout(trimmedTool);
     final teamRoot = teamToolDir(trimmedTeam, trimmedTool);
     await _fs.ensureDir(teamRoot);
-    await _ensureInheritedChild(
-      childName: 'agents',
-      parentToolRoot: appToolRoot(trimmedTool),
-      ownToolRoot: teamRoot,
-    );
-    await _ensureInheritedChild(
-      childName: 'skills',
-      parentToolRoot: appToolRoot(trimmedTool),
-      ownToolRoot: teamRoot,
-    );
+    await Future.wait([
+      _ensureInheritedChild(
+        childName: 'agents',
+        parentToolRoot: appToolRoot(trimmedTool),
+        ownToolRoot: teamRoot,
+      ),
+      _ensureInheritedChild(
+        childName: 'skills',
+        parentToolRoot: appToolRoot(trimmedTool),
+        ownToolRoot: teamRoot,
+      ),
+    ]);
   }
 
   /// Creates member root and symlinks `agents/` + `skills/` to team level.
@@ -146,16 +148,18 @@ class CliDataLayout {
     final memberRoot = memberToolDir(trimmedTeam, trimmedSession, trimmedTool);
     await _fs.ensureDir(memberRoot);
     final teamRoot = teamToolDir(trimmedTeam, trimmedTool);
-    await _ensureInheritedChild(
-      childName: 'agents',
-      parentToolRoot: teamRoot,
-      ownToolRoot: memberRoot,
-    );
-    await _ensureInheritedChild(
-      childName: 'skills',
-      parentToolRoot: teamRoot,
-      ownToolRoot: memberRoot,
-    );
+    await Future.wait([
+      _ensureInheritedChild(
+        childName: 'agents',
+        parentToolRoot: teamRoot,
+        ownToolRoot: memberRoot,
+      ),
+      _ensureInheritedChild(
+        childName: 'skills',
+        parentToolRoot: teamRoot,
+        ownToolRoot: memberRoot,
+      ),
+    ]);
   }
 
   /// Member `plugins/` dir for a tool CONFIG_DIR.
@@ -169,7 +173,8 @@ class CliDataLayout {
   ///
   /// Source: [teamPluginsDir] (`flashskyai/plugins/<name>/` per bundle).
   /// Dest: `members/<session>/<tool>/plugins/<name>/` (symlink preferred).
-  Future<void> provisionMemberPluginsFromTeam(
+  /// Returns member provision stamp JSON (for registry skip inputs).
+  Future<String?> provisionMemberPluginsFromTeam(
     String teamId,
     String sessionId,
     String tool,
@@ -178,11 +183,11 @@ class CliDataLayout {
     final trimmedSession = sessionId.trim();
     final trimmedTool = tool.trim();
     if (trimmedTeam.isEmpty || trimmedSession.isEmpty || trimmedTool.isEmpty) {
-      return;
+      return null;
     }
     final flavor = cliPluginManifestFlavorForTool(trimmedTool) ??
         CliPluginManifestFlavor.claude;
-    await CliPluginLayout.copyBundlesToMember(
+    return CliPluginLayout.copyBundlesToMember(
       fs: _fs,
       teamPluginsDir: teamPluginsDir(trimmedTeam),
       memberPluginsDir: memberPluginsDir(trimmedTeam, trimmedSession, trimmedTool),
@@ -198,8 +203,26 @@ class CliDataLayout {
     final source = _pathContext.join(parentToolRoot, childName);
     final target = _pathContext.join(ownToolRoot, childName);
     await _fs.ensureDir(source);
+    if (await _inheritLinkCurrent(source: source, target: target)) {
+      return;
+    }
     final linked = await _fs.createSymlink(target: source, linkPath: target);
     if (linked) return;
     await _fs.copyTree(source: source, destination: target);
+  }
+
+  Future<bool> _inheritLinkCurrent({
+    required String source,
+    required String target,
+  }) async {
+    final targetStat = await _fs.stat(target);
+    if (!targetStat.exists) return false;
+    if (targetStat.isSymlink) {
+      final linkTarget = await _fs.readSymlinkTarget(target);
+      if (linkTarget == null) return false;
+      return _pathContext.normalize(linkTarget) ==
+          _pathContext.normalize(source);
+    }
+    return false;
   }
 }
