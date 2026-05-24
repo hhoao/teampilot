@@ -1029,6 +1029,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get pluginsCardInstalled => '已安装';
 
   @override
+  String get pluginsCardViewSource => '查看来源';
+
+  @override
   String get pluginsCardUpdate => '更新';
 
   @override

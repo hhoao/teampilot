@@ -307,6 +307,7 @@ class DiscoverablePlugin {
     required this.marketplaceName,
     required this.marketplaceBranch,
     required this.source,
+    this.localInstall = true,
     this.categories = const [],
     this.keywords = const [],
   });
@@ -319,7 +320,10 @@ class DiscoverablePlugin {
   final String marketplaceOwner;
   final String marketplaceName;
   final String marketplaceBranch;
+  /// Relative path inside the synced marketplace repo (install from cache).
   final String source;
+  /// When false, plugin is listed for discovery but must be installed via Claude Code / external fetch.
+  final bool localInstall;
   final List<String> categories;
   final List<String> keywords;
 
@@ -332,6 +336,7 @@ class DiscoverablePlugin {
     'marketplaceName': marketplaceName,
     'marketplaceBranch': marketplaceBranch,
     'source': source,
+    'localInstall': localInstall,
     'categories': categories,
     'keywords': keywords,
   };
@@ -346,6 +351,7 @@ class DiscoverablePlugin {
     marketplaceName: json['marketplaceName'] as String,
     marketplaceBranch: json['marketplaceBranch'] as String? ?? 'main',
     source: json['source'] as String? ?? '.',
+    localInstall: json['localInstall'] as bool? ?? true,
     categories: (json['categories'] as List? ?? const []).whereType<String>().toList(),
     keywords: (json['keywords'] as List? ?? const []).whereType<String>().toList(),
   );
@@ -353,7 +359,7 @@ class DiscoverablePlugin {
   DiscoverablePlugin copyWith({
     String? key, String? name, String? description, String? version,
     String? readmeUrl, String? marketplaceOwner, String? marketplaceName,
-    String? marketplaceBranch, String? source,
+    String? marketplaceBranch, String? source, bool? localInstall,
     List<String>? categories, List<String>? keywords,
     bool clearReadmeUrl = false,
   }) => DiscoverablePlugin(
@@ -366,6 +372,7 @@ class DiscoverablePlugin {
     marketplaceName: marketplaceName ?? this.marketplaceName,
     marketplaceBranch: marketplaceBranch ?? this.marketplaceBranch,
     source: source ?? this.source,
+    localInstall: localInstall ?? this.localInstall,
     categories: categories ?? this.categories,
     keywords: keywords ?? this.keywords,
   );
@@ -384,13 +391,14 @@ class DiscoverablePlugin {
           marketplaceName == other.marketplaceName &&
           marketplaceBranch == other.marketplaceBranch &&
           source == other.source &&
+          localInstall == other.localInstall &&
           _listEq(categories, other.categories) &&
           _listEq(keywords, other.keywords);
 
   @override
   int get hashCode => Object.hash(
     key, name, description, version, marketplaceOwner, marketplaceName,
-    marketplaceBranch, readmeUrl, source,
+    marketplaceBranch, readmeUrl, source, localInstall,
     Object.hashAll(categories), Object.hashAll(keywords));
 }
 

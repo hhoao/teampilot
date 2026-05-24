@@ -2000,6 +2000,12 @@ abstract class AppLocalizations {
   /// **'Installed'**
   String get pluginsCardInstalled;
 
+  /// No description provided for @pluginsCardViewSource.
+  ///
+  /// In en, this message translates to:
+  /// **'View source'**
+  String get pluginsCardViewSource;
+
   /// No description provided for @pluginsCardUpdate.
   ///
   /// In en, this message translates to:

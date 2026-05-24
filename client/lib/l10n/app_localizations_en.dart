@@ -1056,6 +1056,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get pluginsCardInstalled => 'Installed';
 
   @override
+  String get pluginsCardViewSource => 'View source';
+
+  @override
   String get pluginsCardUpdate => 'Update';
 
   @override

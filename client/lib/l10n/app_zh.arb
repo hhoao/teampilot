@@ -324,6 +324,7 @@
   "pluginsGoDiscovery": "浏览 marketplace",
   "pluginsCardInstall": "安装",
   "pluginsCardInstalled": "已安装",
+  "pluginsCardViewSource": "查看来源",
   "pluginsCardUpdate": "更新",
   "pluginsCardUninstall": "卸载",
   "pluginsMarketplaceAdd": "添加 marketplace",

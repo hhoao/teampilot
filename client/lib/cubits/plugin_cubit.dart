@@ -237,6 +237,14 @@ class PluginCubit extends Cubit<PluginState> {
   }
 
   Future<void> installFromDiscovery(DiscoverablePlugin d) async {
+    if (!d.localInstall || d.source.isEmpty) {
+      emit(state.copyWith(
+        errorMessage:
+            'Plugin "${d.name}" is hosted in an external repository; '
+            'install it with Claude Code (/plugin install) for now.',
+      ));
+      return;
+    }
     final busy = {...state.busyIds, d.key};
     emit(state.copyWith(busyIds: busy, clearError: true));
     try {

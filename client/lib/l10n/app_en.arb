@@ -508,6 +508,7 @@
   "pluginsGoDiscovery": "Browse marketplace",
   "pluginsCardInstall": "Install",
   "pluginsCardInstalled": "Installed",
+  "pluginsCardViewSource": "View source",
   "pluginsCardUpdate": "Update",
   "pluginsCardUninstall": "Uninstall",
   "pluginsMarketplaceAdd": "Add marketplace",

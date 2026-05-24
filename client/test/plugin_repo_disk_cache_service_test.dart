@@ -45,6 +45,47 @@ void main() {
     expect(list.last.keywords, contains('k1'));
   });
 
+  test('parses object source entries without failing the whole manifest', () {
+    final dir = Directory(p.join(tmp.path, 'official-like'))..createSync();
+    Directory(p.join(dir.path, '.claude-plugin')).createSync();
+    File(p.join(dir.path, '.claude-plugin', 'marketplace.json')).writeAsStringSync('''
+{
+  "plugins": [
+    {
+      "name": "local-one",
+      "description": "bundled",
+      "source": "./plugins/local-one"
+    },
+    {
+      "name": "external-one",
+      "description": "remote",
+      "homepage": "https://example.com/plugin",
+      "source": {
+        "source": "git-subdir",
+        "url": "https://github.com/other/vendor.git",
+        "path": "plugins/x",
+        "ref": "main"
+      }
+    }
+  ]
+}
+''');
+
+    final svc = PluginRepoDiskCacheService();
+    final list = svc.parseMarketplaceManifest(
+      directory: dir.path,
+      marketplace: const PluginMarketplace(
+        owner: 'anthropics',
+        name: 'claude-plugins-official',
+      ),
+    );
+    expect(list, hasLength(2));
+    expect(list.first.localInstall, isTrue);
+    expect(list.first.source, './plugins/local-one');
+    expect(list.last.localInstall, isFalse);
+    expect(list.last.readmeUrl, 'https://example.com/plugin');
+  });
+
   test('repoKey is stable for owner/name/branch', () {
     expect(
       PluginRepoDiskCacheService.repoKey(

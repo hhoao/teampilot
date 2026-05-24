@@ -127,21 +127,15 @@ class PluginRepoDiskCacheService {
 
       final description = entry['description'] as String? ?? '';
       final version = entry['version'] as String? ?? '0.0.0';
-      final source = entry['source'] as String? ?? '.';
+      final parsedSource = _parsePluginSource(
+        entry['source'],
+        marketplace: marketplace,
+        homepage: entry['homepage'] as String?,
+      );
 
       // `category` may be a String or a List<String>.
       final categories = _parseStringOrList(entry['category']);
       final keywords = _parseStringOrList(entry['keywords']);
-
-      // Build a readme URL when the source is not the repo root.
-      final String? readmeUrl;
-      if (source == '.' || source.isEmpty) {
-        readmeUrl = null;
-      } else {
-        readmeUrl =
-            'https://github.com/${marketplace.owner}/${marketplace.name}'
-            '/tree/${marketplace.branch}/$source';
-      }
 
       result.add(
         DiscoverablePlugin(
@@ -149,8 +143,9 @@ class PluginRepoDiskCacheService {
           name: pluginName,
           description: description,
           version: version,
-          source: source,
-          readmeUrl: readmeUrl,
+          source: parsedSource.relativePath,
+          readmeUrl: parsedSource.readmeUrl,
+          localInstall: parsedSource.localInstall,
           marketplaceOwner: marketplace.owner,
           marketplaceName: marketplace.name,
           marketplaceBranch: marketplace.branch,
@@ -162,10 +157,108 @@ class PluginRepoDiskCacheService {
     return result;
   }
 
+  /// Claude Code marketplace schema: `source` may be a repo-relative path string
+  /// or an object (`git-subdir`, `url`, `github`, …). See anthropics/claude-plugins-official.
+  static _ParsedMarketplaceSource _parsePluginSource(
+    Object? raw, {
+    required PluginMarketplace marketplace,
+    String? homepage,
+  }) {
+    if (raw is String) {
+      final path = raw.trim();
+      final relative = path.isEmpty ? '.' : path;
+      final readmeUrl = relative == '.'
+          ? homepage
+          : (homepage ??
+                'https://github.com/${marketplace.owner}/${marketplace.name}'
+                '/tree/${marketplace.branch}/$relative');
+      return _ParsedMarketplaceSource(
+        relativePath: relative,
+        readmeUrl: readmeUrl,
+        localInstall: true,
+      );
+    }
+
+    if (raw is Map) {
+      final map = raw.cast<String, Object?>();
+      final kind = map['source'] as String? ?? '';
+      switch (kind) {
+        case 'git-subdir':
+          final url = map['url'] as String? ?? '';
+          final path = (map['path'] as String? ?? '').trim();
+          if (path.isNotEmpty && _repoUrlMatchesMarketplace(url, marketplace)) {
+            final relative = path.startsWith('./') ? path : './$path';
+            return _ParsedMarketplaceSource(
+              relativePath: relative,
+              readmeUrl: homepage ?? _githubTreeUrl(url, map['ref'] as String?, path),
+              localInstall: true,
+            );
+          }
+          return _ParsedMarketplaceSource(
+            relativePath: '',
+            readmeUrl: homepage ?? (url.isEmpty ? null : url),
+            localInstall: false,
+          );
+        case 'url':
+        case 'github':
+          final url = map['url'] as String? ?? '';
+          return _ParsedMarketplaceSource(
+            relativePath: '',
+            readmeUrl: homepage ?? (url.isEmpty ? null : url),
+            localInstall: false,
+          );
+        default:
+          return _ParsedMarketplaceSource(
+            relativePath: '',
+            readmeUrl: homepage,
+            localInstall: false,
+          );
+      }
+    }
+
+    return _ParsedMarketplaceSource(
+      relativePath: '.',
+      readmeUrl: homepage,
+      localInstall: true,
+    );
+  }
+
+  static bool _repoUrlMatchesMarketplace(String url, PluginMarketplace m) {
+    final normalized = url.toLowerCase().replaceAll(RegExp(r'\.git$'), '');
+    return normalized.contains('github.com/${m.owner}/${m.name}') ||
+        normalized.endsWith('/${m.name}');
+  }
+
+  static String? _githubTreeUrl(String repoUrl, String? ref, String path) {
+    final match = RegExp(
+      r'github\.com/([^/]+)/([^/]+)',
+      caseSensitive: false,
+    ).firstMatch(repoUrl);
+    if (match == null) return repoUrl.isEmpty ? null : repoUrl;
+    final owner = match.group(1);
+    final name = match.group(2)?.replaceAll(RegExp(r'\.git$'), '');
+    if (owner == null || name == null) return repoUrl;
+    final branch = (ref == null || ref.isEmpty) ? 'main' : ref;
+    final cleanPath = path.startsWith('./') ? path.substring(2) : path;
+    return 'https://github.com/$owner/$name/tree/$branch/$cleanPath';
+  }
+
   static List<String> _parseStringOrList(Object? value) {
     if (value == null) return const [];
     if (value is String) return value.isEmpty ? const [] : [value];
     if (value is List) return value.whereType<String>().toList();
     return const [];
   }
+}
+
+class _ParsedMarketplaceSource {
+  const _ParsedMarketplaceSource({
+    required this.relativePath,
+    this.readmeUrl,
+    required this.localInstall,
+  });
+
+  final String relativePath;
+  final String? readmeUrl;
+  final bool localInstall;
 }
