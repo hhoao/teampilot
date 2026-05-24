@@ -42,19 +42,13 @@ class WslFilesystem implements Filesystem {
 
   @override
   Future<FsStat> stat(String path) async {
-    final result = await _run([
-      'sh',
-      '-lc',
-      'if [ -L ${RemoteFileStore.shellSingleQuote(path)} ]; then echo symlink; '
-          'elif [ -d ${RemoteFileStore.shellSingleQuote(path)} ]; then echo directory; '
-          'elif [ -f ${RemoteFileStore.shellSingleQuote(path)} ]; then echo file; '
-          'else echo missing; fi',
-    ]);
+    final result = await _run(['stat', '-c', '%F', '--', path]);
     if (result.exitCode != 0) return const FsStat(kind: FsEntityKind.notFound);
     return switch ((result.stdout as String).trim()) {
       'directory' => const FsStat(kind: FsEntityKind.directory),
-      'file' => const FsStat(kind: FsEntityKind.file),
-      'symlink' => const FsStat(kind: FsEntityKind.symlink),
+      'regular file' || 'regular empty file' =>
+        const FsStat(kind: FsEntityKind.file),
+      'symbolic link' => const FsStat(kind: FsEntityKind.symlink),
       _ => const FsStat(kind: FsEntityKind.notFound),
     };
   }
@@ -178,6 +172,18 @@ class WslFilesystem implements Filesystem {
     await removeRecursive(linkPath);
     await _checked(['ln', '-sf', '--', target, linkPath]);
     return true;
+  }
+
+  @override
+  Future<String?> readSymlinkTarget(String linkPath) async {
+    try {
+      final result = await _run(['readlink', '--', linkPath]);
+      if (result.exitCode != 0) return null;
+      final target = result.stdout.toString().trim();
+      return target.isEmpty ? null : target;
+    } on Object {
+      return null;
+    }
   }
 
   @override

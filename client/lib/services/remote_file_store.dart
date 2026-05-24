@@ -5,6 +5,7 @@ import 'dart:typed_data';
 import 'package:dartssh2/dartssh2.dart';
 import 'package:path/path.dart' as p;
 
+import 'io/filesystem.dart';
 import 'ssh_client_factory.dart';
 import '../models/ssh_profile.dart';
 
@@ -31,6 +32,20 @@ class RemoteFileStore {
     if (!path.startsWith('~')) return path;
     if (path == '~' || path == '~/') return '.';
     return path.substring(2);
+  }
+
+  Future<FsEntityKind> statKind(String path) async {
+    try {
+      final sftp = await _ensureConnected();
+      final resolved = await expandHome(path);
+      final attrs = await sftp.stat(resolved);
+      if (attrs.isDirectory) return FsEntityKind.directory;
+      if (attrs.isSymbolicLink) return FsEntityKind.symlink;
+      return FsEntityKind.file;
+    } on SftpStatusError catch (e) {
+      if (e.code == SftpStatusCode.noSuchFile) return FsEntityKind.notFound;
+      rethrow;
+    }
   }
 
   Future<bool> fileExists(String path) async {

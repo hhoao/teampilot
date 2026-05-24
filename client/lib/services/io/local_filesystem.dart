@@ -1,29 +1,14 @@
-import 'dart:async';
 import 'dart:io';
 
 import 'package:path/path.dart' as p;
 
 import 'filesystem.dart';
 
-class _AsyncLock {
-  Future<void> _tail = Future.value();
-
-  Future<T> synchronized<T>(Future<T> Function() fn) {
-    final completer = Completer<void>();
-    final previous = _tail;
-    _tail = completer.future;
-    return previous.then((_) => fn()).whenComplete(() {
-      if (!completer.isCompleted) completer.complete();
-    });
-  }
-}
-
 class LocalFilesystem implements Filesystem {
   LocalFilesystem({p.Context? pathContext})
     : pathContext = pathContext ?? p.context;
 
   static int _tmpWriteCounter = 0;
-  static final Map<String, _AsyncLock> _atomicWriteLocks = {};
 
   @override
   final p.Context pathContext;
@@ -62,19 +47,18 @@ class LocalFilesystem implements Filesystem {
 
   @override
   Future<void> removeRecursive(String path) async {
-    final link = Link(path);
-    if (await link.exists()) {
-      await _deleteIfStillPresent(link);
-      return;
-    }
-    final dir = Directory(path);
-    if (await dir.exists()) {
-      await _deleteIfStillPresent(dir, recursive: true);
-      return;
-    }
-    final file = File(path);
-    if (await file.exists()) {
-      await _deleteIfStillPresent(file);
+    final type = FileSystemEntity.typeSync(path, followLinks: false);
+    switch (type) {
+      case FileSystemEntityType.directory:
+        await _deleteIfStillPresent(Directory(path), recursive: true);
+      case FileSystemEntityType.link:
+        await _deleteIfStillPresent(Link(path));
+      case FileSystemEntityType.file:
+        await _deleteIfStillPresent(File(path));
+      case FileSystemEntityType.notFound:
+        break;
+      default:
+        break;
     }
   }
 
@@ -95,32 +79,44 @@ class LocalFilesystem implements Filesystem {
   @override
   Future<void> rename(String from, String to) async {
     await ensureDir(pathContext.dirname(to));
-    await removeRecursive(to);
-    final dir = Directory(from);
-    if (await dir.exists()) {
-      await dir.rename(to);
-      return;
+    final type = FileSystemEntity.typeSync(from, followLinks: false);
+    switch (type) {
+      case FileSystemEntityType.file:
+        await File(from).rename(to);
+      case FileSystemEntityType.directory:
+        try {
+          await Directory(from).rename(to);
+        } on FileSystemException {
+          await removeRecursive(to);
+          await Directory(from).rename(to);
+        }
+      case FileSystemEntityType.link:
+        await Link(from).rename(to);
+      case _:
+        throw FileSystemException(
+          'rename failed',
+          from,
+          const OSError('Source path not found', 2),
+        );
     }
-    final file = File(from);
-    if (await file.exists()) {
-      await file.rename(to);
-      return;
-    }
-    throw FileSystemException('rename failed', from, const OSError('Source path not found', 2));
   }
 
   @override
   Future<String?> readString(String path) async {
-    final file = File(path);
-    if (!await file.exists()) return null;
-    return file.readAsString();
+    try {
+      return await File(path).readAsString();
+    } on FileSystemException {
+      return null;
+    }
   }
 
   @override
   Future<List<int>?> readBytes(String path) async {
-    final file = File(path);
-    if (!await file.exists()) return null;
-    return file.readAsBytes();
+    try {
+      return await File(path).readAsBytes();
+    } on FileSystemException {
+      return null;
+    }
   }
 
   @override
@@ -132,72 +128,16 @@ class LocalFilesystem implements Filesystem {
   @override
   Future<void> writeBytes(String path, List<int> bytes) async {
     await ensureDir(pathContext.dirname(path));
-    await File(path).writeAsBytes(bytes, flush: true);
+    await File(path).writeAsBytes(bytes);
   }
 
   @override
   Future<void> atomicWrite(String path, String content) async {
-    final lock = _atomicWriteLocks.putIfAbsent(
-      pathContext.normalize(path),
-      () => _AsyncLock(),
-    );
-    await lock.synchronized(() async {
-      await ensureDir(pathContext.dirname(path));
-      final tmp =
-          '$path.tmp.${DateTime.now().microsecondsSinceEpoch}.${_tmpWriteCounter++}';
-      await File(tmp).writeAsString(content);
-      await _commitAtomicWrite(path, tmp);
-    });
-  }
-
-  Future<void> _commitAtomicWrite(String path, String tmp) async {
-    const maxAttempts = 6;
-    for (var attempt = 0; attempt < maxAttempts; attempt++) {
-      try {
-        await File(tmp).rename(path);
-        return;
-      } on FileSystemException {
-        await _deleteFileIfPresent(path);
-        try {
-          await File(tmp).rename(path);
-          return;
-        } on FileSystemException {
-          if (attempt == maxAttempts - 1) rethrow;
-          await Future<void>.delayed(
-            Duration(milliseconds: 15 * (attempt + 1)),
-          );
-        }
-      }
-    }
-  }
-
-  Future<void> _deleteFileIfPresent(String path) async {
-    const maxAttempts = 8;
-    for (var attempt = 0; attempt < maxAttempts; attempt++) {
-      try {
-        final target = File(path);
-        if (!await target.exists()) return;
-        await target.delete();
-        return;
-      } on FileSystemException catch (e) {
-        final code = e.osError?.errorCode;
-        if (code == 2) return;
-        if (_isTransientDeleteError(code) && attempt < maxAttempts - 1) {
-          await Future<void>.delayed(
-            Duration(milliseconds: 15 * (attempt + 1)),
-          );
-          continue;
-        }
-        rethrow;
-      }
-    }
-  }
-
-  bool _isTransientDeleteError(int? code) {
-    if (code == null) return false;
-    // Windows: ERROR_ACCESS_DENIED (5), ERROR_SHARING_VIOLATION (32).
-    if (Platform.isWindows) return code == 5 || code == 32;
-    return false;
+    await ensureDir(pathContext.dirname(path));
+    final tmp =
+        '$path.tmp.${DateTime.now().microsecondsSinceEpoch}.${_tmpWriteCounter++}';
+    await File(tmp).writeAsString(content, flush: true);
+    await File(tmp).rename(path);
   }
 
   @override
@@ -237,6 +177,17 @@ class LocalFilesystem implements Filesystem {
       ]);
       if (result.exitCode == 0) return true;
       throw FileSystemException('junction failed', linkPath, e.osError);
+    }
+  }
+
+  @override
+  Future<String?> readSymlinkTarget(String linkPath) async {
+    final link = Link(linkPath);
+    if (!await link.exists()) return null;
+    try {
+      return await link.target();
+    } on FileSystemException {
+      return null;
     }
   }
 

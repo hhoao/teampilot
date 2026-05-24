@@ -16,22 +16,12 @@ class SftpFilesystem implements Filesystem {
   @override
   Future<FsStat> stat(String path) async {
     if (path.trim().isEmpty) return const FsStat(kind: FsEntityKind.notFound);
-    final parent = pathContext.dirname(path);
-    final name = pathContext.basename(path);
     try {
-      final siblings = await store.listDirectoryEntries(parent);
-      for (final entry in siblings) {
-        if (entry.name != name) continue;
-        return FsStat(
-          kind: entry.isDirectory ? FsEntityKind.directory : FsEntityKind.file,
-        );
-      }
+      final kind = await store.statKind(path);
+      return FsStat(kind: kind);
     } on Object {
-      // Fall back to a direct stat probe below.
+      return const FsStat(kind: FsEntityKind.notFound);
     }
-    return await store.fileExists(path)
-        ? const FsStat(kind: FsEntityKind.file)
-        : const FsStat(kind: FsEntityKind.notFound);
   }
 
   @override
@@ -55,7 +45,7 @@ class SftpFilesystem implements Filesystem {
 
   @override
   Future<void> writeBytes(String path, List<int> bytes) =>
-      store.writeBytes(path, Uint8List.fromList(bytes));
+      store.writeBytes(path, bytes is Uint8List ? bytes : Uint8List.fromList(bytes));
 
   @override
   Future<void> atomicWrite(String path, String content) async {
@@ -63,9 +53,11 @@ class SftpFilesystem implements Filesystem {
     await store.writeFile(tmp, content);
     try {
       await store.movePath(tmp, path);
-    } on Object {
-      await store.writeFile(path, content);
-      await store.removeRecursive(tmp);
+    } on Exception {
+      try {
+        await store.removeRecursive(tmp);
+      } catch (_) {}
+      rethrow;
     }
   }
 
@@ -92,11 +84,13 @@ class SftpFilesystem implements Filesystem {
   }
 
   @override
+  Future<String?> readSymlinkTarget(String linkPath) async => null;
+
+  @override
   Future<void> copyTree({
     required String source,
     required String destination,
   }) async {
-    await store.ensureDirectory(pathContext.dirname(destination));
     await store.removeRecursive(destination);
     await store.ensureDirectory(destination);
     await store.copyTree(source: source, destination: destination);
