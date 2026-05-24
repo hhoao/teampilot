@@ -84,6 +84,18 @@
   "newSessionTooltip": "New session",
   "defaultNewChatSessionTitle": "New Chat",
   "sessionStarting": "Starting session…",
+  "sessionReadyTitle": "Ready to chat",
+  "sessionReadySubtitle": "Start a conversation with {memberName} in this workspace.",
+  "@sessionReadySubtitle": {
+    "placeholders": {
+      "memberName": {
+        "type": "String"
+      }
+    }
+  },
+  "sessionReadySubtitleGeneric": "Start a conversation in this workspace.",
+  "sessionReadyHint": "Describe what you want in everyday language — no terminal commands needed.",
+  "sessionStartButton": "Start conversation",
   "openFolder": "Open Folder",
   "copyFolderPath": "Copy Folder Path",
   "pathCopied": "Path copied: {path}",

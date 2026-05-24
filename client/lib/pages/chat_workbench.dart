@@ -13,7 +13,6 @@ import '../models/app_session.dart';
 import '../models/team_config.dart';
 import '../repositories/session_repository.dart';
 import '../services/terminal_fonts.dart';
-import '../services/terminal_session.dart';
 import '../utils/app_keys.dart';
 
 const _terminalTextStyle = TerminalStyle(
@@ -135,10 +134,9 @@ TerminalTheme _terminalThemeFor(
 }
 
 class ChatWorkbench extends StatefulWidget {
-  const ChatWorkbench({this.sessionId, this.onOpenRightTools, super.key});
+  const ChatWorkbench({this.sessionId, super.key});
 
   final String? sessionId;
-  final VoidCallback? onOpenRightTools;
 
   @override
   State<ChatWorkbench> createState() => _ChatWorkbenchState();
@@ -368,24 +366,14 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
       return Container(
         key: AppKeys.chatWorkspace,
         color: cs.surface,
-        child: Column(
-          children: [
-            _NoSessionToolbar(
-              colorScheme: cs,
-              memberName: chatCubit.selectedMemberName(team),
-              onConnect: onConnect,
-            ),
-            Expanded(
-              child: Container(
-                color: terminalTheme.background,
-                child: sessionConnectInProgress
-                    ? _SessionLoadingView(
-                        message: context.l10n.sessionStarting,
-                      )
-                    : _TerminalPlaceholder(onConnect: onConnect),
-              ),
-            ),
-          ],
+        child: Container(
+          color: terminalTheme.background,
+          child: sessionConnectInProgress
+              ? _SessionLoadingView(message: context.l10n.sessionStarting)
+              : _TerminalPlaceholder(
+                  onConnect: onConnect,
+                  memberName: chatCubit.selectedMemberName(team),
+                ),
         ),
       );
     }
@@ -398,253 +386,47 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
     return Container(
       key: AppKeys.chatWorkspace,
       color: cs.surface,
-      child: Column(
-        children: [
-          _TerminalToolbar(
-            colorScheme: cs,
-            session: session,
-            memberName: chatCubit.selectedMemberName(team),
-            onOpenRightTools: widget.onOpenRightTools,
-            onConnect: () {
-              unawaited(() async {
-                await chatCubit.connectSession(team);
-                if (mounted) setState(() {});
-              }());
-            },
-            onDisconnect: () {
-              chatCubit.disconnectSession();
-              setState(() {});
-            },
-            onRestart: () {
-              unawaited(() async {
-                await chatCubit.restartSession(team);
-                if (mounted) {
-                  setState(() {});
-                }
-              }());
-            },
-          ),
-          Expanded(
-            child: Container(
-              color: terminalTheme.background,
-              child: sessionConnectInProgress
-                  ? _SessionLoadingView(
-                      message: context.l10n.sessionStarting,
-                    )
-                  : session.isRunning
-                  ? TerminalView(
-                      session.terminal,
-                      controller: _terminalController,
-                      theme: terminalTheme,
-                      backgroundOpacity: 0.98,
-                      padding: const EdgeInsets.all(16),
-                      textStyle: _terminalTextStyle,
-                      autofocus: true,
-                      onSecondaryTapUp: (details, _) {
-                        unawaited(
-                          _showTerminalContextMenu(
-                            menuContext: context,
-                            globalPosition: details.globalPosition,
-                            terminal: session.terminal,
-                            sessionRunning: session.isRunning,
-                            onDisconnect: () {
-                              chatCubit.disconnectSession();
-                              setState(() {});
-                            },
-                            onRestart: () async {
-                              await chatCubit.restartSession(team);
-                              if (mounted) setState(() {});
-                            },
-                          ),
-                        );
+      child: Container(
+        color: terminalTheme.background,
+        child: sessionConnectInProgress
+            ? _SessionLoadingView(message: context.l10n.sessionStarting)
+            : session.isRunning
+            ? TerminalView(
+                session.terminal,
+                controller: _terminalController,
+                theme: terminalTheme,
+                backgroundOpacity: 0.98,
+                padding: const EdgeInsets.all(16),
+                textStyle: _terminalTextStyle,
+                autofocus: true,
+                onSecondaryTapUp: (details, _) {
+                  unawaited(
+                    _showTerminalContextMenu(
+                      menuContext: context,
+                      globalPosition: details.globalPosition,
+                      terminal: session.terminal,
+                      sessionRunning: session.isRunning,
+                      onDisconnect: () {
+                        chatCubit.disconnectSession();
+                        setState(() {});
                       },
-                    )
-                  : _TerminalPlaceholder(
-                      onConnect: () {
-                        unawaited(() async {
-                          await chatCubit.connectSession(team);
-                          if (mounted) setState(() {});
-                        }());
+                      onRestart: () async {
+                        await chatCubit.restartSession(team);
+                        if (mounted) setState(() {});
                       },
                     ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _NoSessionToolbar extends StatelessWidget {
-  const _NoSessionToolbar({
-    required this.colorScheme,
-    required this.memberName,
-    required this.onConnect,
-  });
-
-  final ColorScheme colorScheme;
-  final String memberName;
-  final VoidCallback onConnect;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 34,
-      padding: const EdgeInsets.symmetric(horizontal: 10),
-      decoration: BoxDecoration(
-        color: colorScheme.surfaceContainerHigh,
-        border: Border(
-          bottom: BorderSide(
-            color: colorScheme.outlineVariant.withValues(alpha: 0.5),
-          ),
-        ),
-      ),
-      child: Row(
-        children: [
-          Icon(Icons.terminal, size: 14, color: colorScheme.onSurfaceVariant),
-          const SizedBox(width: 6),
-          Text(
-            'disconnected',
-            style: TextStyle(
-              fontSize: 11,
-              color: Colors.white.withValues(alpha: 0.68),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Text(
-            '→ $memberName',
-            style: TextStyle(
-              fontSize: 11,
-              color: Colors.white.withValues(alpha: 0.4),
-            ),
-          ),
-          const Spacer(),
-          SizedBox(
-            height: 22,
-            child: TextButton.icon(
-              onPressed: onConnect,
-              icon: const Icon(Icons.play_arrow, size: 14),
-              label: const Text('Connect', style: TextStyle(fontSize: 11)),
-              style: TextButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-                minimumSize: const Size(0, 22),
+                  );
+                },
+              )
+            : _TerminalPlaceholder(
+                onConnect: () {
+                  unawaited(() async {
+                    await chatCubit.connectSession(team);
+                    if (mounted) setState(() {});
+                  }());
+                },
+                memberName: chatCubit.selectedMemberName(team),
               ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _TerminalToolbar extends StatelessWidget {
-  const _TerminalToolbar({
-    required this.colorScheme,
-    required this.session,
-    required this.memberName,
-    this.onOpenRightTools,
-    required this.onConnect,
-    required this.onDisconnect,
-    required this.onRestart,
-  });
-
-  final ColorScheme colorScheme;
-  final TerminalSession session;
-  final String memberName;
-  final VoidCallback? onOpenRightTools;
-  final VoidCallback onConnect;
-  final VoidCallback onDisconnect;
-  final VoidCallback onRestart;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 34,
-      padding: const EdgeInsets.symmetric(horizontal: 10),
-      decoration: BoxDecoration(
-        color: colorScheme.surfaceContainerHigh,
-        border: Border(
-          bottom: BorderSide(
-            color: colorScheme.outlineVariant.withValues(alpha: 0.5),
-          ),
-        ),
-      ),
-      child: Row(
-        children: [
-          Icon(
-            Icons.terminal,
-            size: 14,
-            color: session.isRunning
-                ? colorScheme.secondary
-                : colorScheme.onSurfaceVariant,
-          ),
-          const SizedBox(width: 6),
-          Text(
-            session.isRunning ? 'flashskyai' : 'disconnected',
-            style: TextStyle(
-              fontSize: 11,
-              color: Colors.white.withValues(alpha: 0.68),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Text(
-            '→ $memberName',
-            style: TextStyle(
-              fontSize: 11,
-              color: Colors.white.withValues(alpha: 0.4),
-            ),
-          ),
-          const Spacer(),
-          if (onOpenRightTools != null) ...[
-            SizedBox(
-              height: 22,
-              child: IconButton(
-                key: AppKeys.openRightToolsButton,
-                tooltip: context.l10n.openRightTools,
-                onPressed: onOpenRightTools,
-                icon: const Icon(Icons.view_sidebar_outlined, size: 14),
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(minWidth: 28, minHeight: 22),
-              ),
-            ),
-            const SizedBox(width: 4),
-          ],
-          if (session.isRunning) ...[
-            SizedBox(
-              height: 22,
-              child: IconButton(
-                tooltip: 'Disconnect',
-                onPressed: onDisconnect,
-                icon: const Icon(Icons.link_off, size: 14),
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(minWidth: 28, minHeight: 22),
-              ),
-            ),
-            const SizedBox(width: 4),
-            SizedBox(
-              height: 22,
-              child: IconButton(
-                tooltip: 'Restart session',
-                onPressed: onRestart,
-                icon: const Icon(Icons.refresh, size: 14),
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(minWidth: 28, minHeight: 22),
-              ),
-            ),
-          ] else
-            SizedBox(
-              height: 22,
-              child: TextButton.icon(
-                onPressed: onConnect,
-                icon: const Icon(Icons.play_arrow, size: 14),
-                label: const Text('Connect', style: TextStyle(fontSize: 11)),
-                style: TextButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                  minimumSize: const Size(0, 22),
-                ),
-              ),
-            ),
-        ],
       ),
     );
   }
@@ -683,46 +465,91 @@ class _SessionLoadingView extends StatelessWidget {
 }
 
 class _TerminalPlaceholder extends StatelessWidget {
-  const _TerminalPlaceholder({required this.onConnect});
+  const _TerminalPlaceholder({
+    required this.onConnect,
+    this.memberName,
+  });
 
   final VoidCallback onConnect;
+  final String? memberName;
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textBase = isDark ? Colors.white : const Color(0xFF111827);
+    final l10n = context.l10n;
+    final cs = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    final member = memberName?.trim();
+    final subtitle = member != null && member.isNotEmpty
+        ? l10n.sessionReadySubtitle(member)
+        : l10n.sessionReadySubtitleGeneric;
+
     return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            Icons.terminal,
-            size: 48,
-            color: textBase.withValues(alpha: 0.24),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 400),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              DecoratedBox(
+                decoration: BoxDecoration(
+                  color: Color.alphaBlend(
+                    cs.primary.withValues(alpha: 0.12),
+                    cs.surfaceContainerHighest,
+                  ),
+                  shape: BoxShape.circle,
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Icon(
+                    Icons.forum_outlined,
+                    size: 40,
+                    color: cs.primary,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+              Text(
+                l10n.sessionReadyTitle,
+                style: textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 10),
+              Text(
+                subtitle,
+                style: textTheme.bodyMedium?.copyWith(
+                  color: cs.onSurfaceVariant,
+                  height: 1.45,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 12),
+              Text(
+                l10n.sessionReadyHint,
+                style: textTheme.bodySmall?.copyWith(
+                  color: cs.onSurfaceVariant.withValues(alpha: 0.8),
+                  height: 1.5,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 28),
+              FilledButton.icon(
+                onPressed: onConnect,
+                icon: const Icon(Icons.play_arrow_rounded, size: 22),
+                label: Text(l10n.sessionStartButton),
+                style: FilledButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 28,
+                    vertical: 14,
+                  ),
+                  minimumSize: const Size(0, 48),
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 12),
-          Text(
-            'Terminal not connected',
-            style: TextStyle(
-              color: textBase.withValues(alpha: 0.54),
-              fontSize: 14,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            'Connect to start a flashskyai session',
-            style: TextStyle(
-              color: textBase.withValues(alpha: 0.34),
-              fontSize: 12,
-            ),
-          ),
-          const SizedBox(height: 16),
-          FilledButton.icon(
-            onPressed: onConnect,
-            icon: const Icon(Icons.play_arrow, size: 16),
-            label: const Text('Connect'),
-          ),
-        ],
+        ),
       ),
     );
   }

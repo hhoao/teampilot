@@ -254,6 +254,25 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionStarting => 'Starting session…';
 
   @override
+  String get sessionReadyTitle => 'Ready to chat';
+
+  @override
+  String sessionReadySubtitle(String memberName) {
+    return 'Start a conversation with $memberName in this workspace.';
+  }
+
+  @override
+  String get sessionReadySubtitleGeneric =>
+      'Start a conversation in this workspace.';
+
+  @override
+  String get sessionReadyHint =>
+      'Describe what you want in everyday language — no terminal commands needed.';
+
+  @override
+  String get sessionStartButton => 'Start conversation';
+
+  @override
   String get openFolder => 'Open Folder';
 
   @override

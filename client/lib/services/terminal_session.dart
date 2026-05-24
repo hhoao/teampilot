@@ -55,6 +55,7 @@ class TerminalSession {
   Map<String, String>? _ptyEnvironment;
   VoidCallback? _onProcessStarted;
   VoidCallback? _onProcessFailed;
+  VoidCallback? _onProcessExited;
   StreamSubscription<String>? _outputSubscription;
   Timer? _startConfirmationTimer;
   Timer? _spawnWatchdogTimer;
@@ -86,6 +87,7 @@ class TerminalSession {
     Map<String, String>? extraEnvironment,
     VoidCallback? onProcessStarted,
     VoidCallback? onProcessFailed,
+    VoidCallback? onProcessExited,
   }) {
     if (_running || _starting) {
       disconnect();
@@ -110,6 +112,7 @@ class TerminalSession {
     _ptyEnvironment = buildPtyEnvironment(_extraEnvironment);
     _onProcessStarted = onProcessStarted;
     _onProcessFailed = onProcessFailed;
+    _onProcessExited = onProcessExited;
     _startFailed = false;
 
     final args = <String>[];
@@ -343,13 +346,21 @@ class TerminalSession {
             _transport != transport) {
           return;
         }
-        if (_running && code != 0) {
+        if (!_running) {
           return;
         }
-        if (_running) {
-          terminal.write('\r\n[process exited]\r\n');
+        if (code != 0) {
+          terminal.write('\r\n[process exited with code $code]\r\n');
+          return;
+        }
+        if (_transport == transport) {
+          transport.close();
+          _transport = null;
         }
         _teardownPtyState();
+        final callback = _onProcessExited;
+        _onProcessExited = null;
+        callback?.call();
       });
 
       _spawnWatchdogTimer = Timer(const Duration(seconds: 8), () {
@@ -394,6 +405,7 @@ class TerminalSession {
     _outputSubscription?.cancel();
     _outputSubscription = null;
     _onProcessStarted = null;
+    _onProcessExited = null;
     _transport?.close();
     _transport = null;
     _running = false;
@@ -465,6 +477,7 @@ class TerminalSession {
     _detachTerminalViewportListener();
     _teardownPtyState();
     _onProcessFailed = null;
+    _onProcessExited = null;
     _ptyEnvironment = null;
     terminal.onOutput = null;
     terminal.onResize = null;

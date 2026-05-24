@@ -476,6 +476,7 @@ class ChatCubit extends Cubit<ChatState> {
             sessionTeam: cliTeamName,
             extraEnvironment: plan.env.isEmpty ? null : plan.env,
             onProcessFailed: () => _finishSessionConnect(info.id),
+            onProcessExited: () => _updateTabRunning(info.id),
             onProcessStarted: () {
               _finishSessionConnect(info.id);
               if (repo == null) return;
@@ -649,6 +650,7 @@ class ChatCubit extends Cubit<ChatState> {
           extraEnvironment: plan.env.isEmpty ? null : plan.env,
           onProcessStarted: () => _finishSessionConnect(tab.info.id),
           onProcessFailed: () => _finishSessionConnect(tab.info.id),
+          onProcessExited: () => _updateTabRunning(tab.info.id),
         );
         _updateTabRunning(tab.info.id);
       } on Object catch (e) {

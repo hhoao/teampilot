@@ -117,6 +117,89 @@ void main() {
     expect(session.isRunning, isTrue);
   });
 
+  test('clean exit stops running and notifies onProcessExited', () async {
+    final handle = _FakeTransport();
+    var exited = false;
+
+    final session = TerminalSession(
+      executable: _ptyTestExecutable,
+      validateLaunch: false,
+      transportStarter:
+          (
+            executable, {
+            required arguments,
+            required workingDirectory,
+            required columns,
+            required rows,
+            environment,
+          }) {
+            return Future.value(handle);
+          },
+    );
+    addTearDown(() async {
+      session.dispose();
+      await handle.outputController.close();
+    });
+
+    session.connect(
+      workingDirectory: Directory.systemTemp.path,
+      onProcessExited: () => exited = true,
+    );
+    session.terminal.onResize?.call(80, 24, 0, 0);
+    await Future<void>.delayed(const Duration(milliseconds: 300));
+    expect(session.isRunning, isTrue);
+
+    handle.doneCompleter.complete(0);
+    await Future<void>.delayed(Duration.zero);
+    await handle.done;
+
+    expect(exited, isTrue);
+    expect(session.isRunning, isFalse);
+    expect(handle.closed, isTrue);
+    expect(
+      session.terminal.buffer.getText(),
+      isNot(contains('[process exited]')),
+    );
+  });
+
+  test('non-zero exit keeps terminal running for inspection', () async {
+    final handle = _FakeTransport();
+
+    final session = TerminalSession(
+      executable: _ptyTestExecutable,
+      validateLaunch: false,
+      transportStarter:
+          (
+            executable, {
+            required arguments,
+            required workingDirectory,
+            required columns,
+            required rows,
+            environment,
+          }) {
+            return Future.value(handle);
+          },
+    );
+    addTearDown(() async {
+      session.dispose();
+      await handle.outputController.close();
+    });
+
+    session.connect(workingDirectory: Directory.systemTemp.path);
+    session.terminal.onResize?.call(80, 24, 0, 0);
+    await Future<void>.delayed(const Duration(milliseconds: 300));
+
+    handle.doneCompleter.complete(1);
+    await Future<void>.delayed(Duration.zero);
+    await handle.done;
+
+    expect(session.isRunning, isTrue);
+    expect(
+      session.terminal.buffer.getText(),
+      contains('[process exited with code 1]'),
+    );
+  });
+
   test('early pty exit reports failure and stops running', () async {
     final handle = _FakeTransport();
     var failed = false;

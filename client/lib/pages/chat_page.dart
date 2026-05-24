@@ -44,7 +44,7 @@ class ChatPage extends StatelessWidget {
         ? chatCubit.state.tabs[chatCubit.state.activeTabIndex].id
         : sessionId ?? 'empty';
 
-    Widget buildShell({VoidCallback? onOpenRightTools, Widget? rightTools}) {
+    Widget buildShell({Widget? rightTools}) {
       return WorkspaceShell(
         showHeader: false,
         breadcrumb: '${team.name} / Chat / Shell chat workbench',
@@ -70,10 +70,7 @@ class ChatPage extends StatelessWidget {
         childAnimationKey: ValueKey(
           'chat-workspace-body-$activeChatAnimationId',
         ),
-        child: ChatWorkbench(
-          sessionId: sessionId,
-          onOpenRightTools: onOpenRightTools,
-        ),
+        child: ChatWorkbench(sessionId: sessionId),
       );
     }
 
@@ -98,12 +95,7 @@ class ChatPage extends StatelessWidget {
           width: rightToolsDrawerWidth(context, preferences),
           child: SafeArea(child: rightToolsPanel),
         ),
-        body: Builder(
-          builder: (scaffoldContext) => buildShell(
-            onOpenRightTools: () => Scaffold.of(scaffoldContext).openEndDrawer(),
-            rightTools: null,
-          ),
-        ),
+        body: buildShell(rightTools: null),
       ),
     );
   }

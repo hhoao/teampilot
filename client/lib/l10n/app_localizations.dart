@@ -560,6 +560,36 @@ abstract class AppLocalizations {
   /// **'Starting session…'**
   String get sessionStarting;
 
+  /// No description provided for @sessionReadyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Ready to chat'**
+  String get sessionReadyTitle;
+
+  /// No description provided for @sessionReadySubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Start a conversation with {memberName} in this workspace.'**
+  String sessionReadySubtitle(String memberName);
+
+  /// No description provided for @sessionReadySubtitleGeneric.
+  ///
+  /// In en, this message translates to:
+  /// **'Start a conversation in this workspace.'**
+  String get sessionReadySubtitleGeneric;
+
+  /// No description provided for @sessionReadyHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Describe what you want in everyday language — no terminal commands needed.'**
+  String get sessionReadyHint;
+
+  /// No description provided for @sessionStartButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Start conversation'**
+  String get sessionStartButton;
+
   /// No description provided for @openFolder.
   ///
   /// In en, this message translates to:

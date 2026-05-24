@@ -47,6 +47,7 @@ class _FakeTerminalSession extends TerminalSession {
     Map<String, String>? extraEnvironment,
     void Function()? onProcessStarted,
     void Function()? onProcessFailed,
+    void Function()? onProcessExited,
   }) {
     if (member != null) {
       connectedMembers.add(member.id);

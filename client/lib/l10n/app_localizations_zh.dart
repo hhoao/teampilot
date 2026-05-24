@@ -242,6 +242,23 @@ class AppLocalizationsZh extends AppLocalizations {
   String get sessionStarting => '正在启动会话…';
 
   @override
+  String get sessionReadyTitle => '准备开始对话';
+
+  @override
+  String sessionReadySubtitle(String memberName) {
+    return '与 $memberName 在此工作区开始对话';
+  }
+
+  @override
+  String get sessionReadySubtitleGeneric => '在此工作区开始新对话';
+
+  @override
+  String get sessionReadyHint => '用日常语言描述你想做的事即可，无需输入命令。';
+
+  @override
+  String get sessionStartButton => '开始对话';
+
+  @override
   String get openFolder => '打开文件夹';
 
   @override

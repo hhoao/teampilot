@@ -217,6 +217,7 @@ class FakeTerminalSession extends TerminalSession {
     Map<String, String>? extraEnvironment,
     void Function()? onProcessStarted,
     void Function()? onProcessFailed,
+    void Function()? onProcessExited,
   }) {
     lastFixedSessionIds.add(fixedSessionId);
     lastResumeSessionIds.add(resumeSessionId);
