@@ -43,17 +43,20 @@ class SessionLifecycleService {
     ConfigProfileService? configProfileService,
     StorageRootsResolver? storageRootsResolver,
     ClaudeProviderSettingsResolver? claudeSettingsResolver,
+    Future<bool> Function()? loadRtkEnabled,
   }) : _appDataBasePath = appDataBasePath,
        _llmConfigPathOverride = llmConfigPathOverride,
        _configProfileService = configProfileService,
        _storageRootsResolver = storageRootsResolver,
-       _claudeSettingsResolver = claudeSettingsResolver;
+       _claudeSettingsResolver = claudeSettingsResolver,
+       _loadRtkEnabled = loadRtkEnabled;
 
   final String? _appDataBasePath;
   final String? Function()? _llmConfigPathOverride;
   final ConfigProfileService? _configProfileService;
   final StorageRootsResolver? _storageRootsResolver;
   final ClaudeProviderSettingsResolver? _claudeSettingsResolver;
+  final Future<bool> Function()? _loadRtkEnabled;
 
   Future<LaunchPlan> prepareLaunch({
     required AppSession session,
@@ -266,6 +269,7 @@ class SessionLifecycleService {
       basePath: roots.teampilotRoot,
       fs: roots.fs,
       layout: roots.layout,
+      loadRtkEnabled: _loadRtkEnabled,
     );
   }
 

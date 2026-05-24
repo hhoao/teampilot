@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../cubits/config_cubit.dart';
 import '../cubits/layout_cubit.dart';
@@ -8,7 +9,9 @@ import '../cubits/team_cubit.dart';
 import '../l10n/l10n_extensions.dart';
 import '../models/app_provider_config.dart';
 import '../models/layout_preferences.dart';
+import '../repositories/app_settings_repository.dart';
 import '../services/platform_utils.dart';
+import '../services/rtk_detector.dart';
 import '../theme/app_theme.dart';
 import '../utils/app_keys.dart';
 import '../widgets/settings/workspace_hub_shell.dart';
@@ -271,6 +274,7 @@ class _LayoutSettingsScroll extends StatelessWidget {
           children: const [
             _ToolLayoutSettingsSection(),
             _RegionVisibilitySettingsSection(),
+            _RtkSettingsSection(),
             _AppearanceSettingsSection(),
           ],
         ),
@@ -417,6 +421,107 @@ class _RegionVisibilitySettingsSection extends StatelessWidget {
           ],
         );
       },
+    );
+  }
+}
+
+class _RtkSettingsSection extends StatefulWidget {
+  const _RtkSettingsSection();
+
+  @override
+  State<_RtkSettingsSection> createState() => _RtkSettingsSectionState();
+}
+
+class _RtkSettingsSectionState extends State<_RtkSettingsSection> {
+  bool _rtkEnabled = false;
+  bool _loading = true;
+  String _statusLine = '';
+
+  static final _rtkInstallUri = Uri.parse(
+    'https://github.com/rtk-ai/rtk#installation',
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final settings = context.read<AppSettingsRepository>();
+    final enabled = await settings.loadRtkEnabled();
+    final probe = await const RtkDetector().probe();
+    if (!mounted) return;
+    setState(() {
+      _rtkEnabled = enabled;
+      _loading = false;
+      _statusLine = _formatStatus(context, probe);
+    });
+  }
+
+  String _formatStatus(BuildContext context, RtkProbeResult probe) {
+    final l10n = context.l10n;
+    if (!probe.found) return l10n.rtkStatusNotFound;
+    if (!probe.jqFound) return l10n.rtkStatusJqMissing;
+    if (probe.version != null &&
+        !const RtkDetector().isVersionSupported(probe.version!)) {
+      return l10n.rtkStatusVersionTooOld(probe.version!);
+    }
+    final version = probe.version?.trim();
+    return version == null || version.isEmpty
+        ? l10n.rtkStatusInstalledGeneric
+        : l10n.rtkStatusInstalled(version);
+  }
+
+  Future<void> _setEnabled(bool value) async {
+    await context.read<AppSettingsRepository>().saveRtkEnabled(value);
+    if (!mounted) return;
+    setState(() => _rtkEnabled = value);
+  }
+
+  Future<void> _openInstallDocs() async {
+    await launchUrl(_rtkInstallUri, mode: LaunchMode.externalApplication);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SettingsGroupHeader(title: l10n.rtkSettingsTitle),
+        SettingsLabeledRow(
+          title: l10n.rtkSettingsEnableTitle,
+          subtitle: l10n.rtkSettingsDescription,
+          trailing: _loading
+              ? const SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : Switch(
+                  value: _rtkEnabled,
+                  onChanged: _setEnabled,
+                ),
+          showDividerBelow: true,
+        ),
+        SettingsLabeledRow(
+          title: l10n.rtkSettingsStatusTitle,
+          subtitle: _statusLine.isEmpty ? '—' : _statusLine,
+          trailing: TextButton(
+            onPressed: _openInstallDocs,
+            child: Text(l10n.rtkSettingsInstallLink),
+          ),
+          showDividerBelow: true,
+        ),
+        Padding(
+          padding: const EdgeInsets.only(left: 16, right: 16, bottom: 12),
+          child: Text(
+            l10n.rtkBashOnlyHint,
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+        ),
+      ],
     );
   }
 }

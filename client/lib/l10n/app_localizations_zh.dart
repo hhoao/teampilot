@@ -90,6 +90,45 @@ class AppLocalizationsZh extends AppLocalizations {
   String get visibilityFileTreeHint => '显示项目文件树以便快速浏览。';
 
   @override
+  String get rtkSettingsTitle => 'RTK 省 token';
+
+  @override
+  String get rtkSettingsEnableTitle => '启用 RTK';
+
+  @override
+  String get rtkSettingsDescription =>
+      '在命令输出进入模型前压缩 Agent Bash 结果（需本机 PATH 中有 rtk 与 jq）。';
+
+  @override
+  String get rtkSettingsStatusTitle => '本机状态';
+
+  @override
+  String get rtkSettingsInstallLink => '安装说明';
+
+  @override
+  String get rtkStatusNotFound => 'PATH 中未找到 rtk';
+
+  @override
+  String get rtkStatusJqMissing => 'PATH 中未找到 jq';
+
+  @override
+  String get rtkStatusInstalledGeneric => 'rtk 已就绪';
+
+  @override
+  String rtkStatusInstalled(String version) {
+    return 'rtk $version 已就绪';
+  }
+
+  @override
+  String rtkStatusVersionTooOld(String version) {
+    return 'rtk $version 版本过低（需要 >= 0.23.0）';
+  }
+
+  @override
+  String get rtkBashOnlyHint =>
+      '仅作用于 Agent 的 Bash 工具调用；内置 Read、Grep、Glob 不会自动改写。';
+
+  @override
   String get themeModeTitle => '主题模式';
 
   @override

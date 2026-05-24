@@ -289,6 +289,7 @@ Future<AppShell> buildAppShell({
   sessionLifecycleService = SessionLifecycleService(
     llmConfigPathOverride: llmConfigPathOverrideForLaunch,
     storageRootsResolver: storageRoots.resolve,
+    loadRtkEnabled: appSettings.loadRtkEnabled,
   );
   sessionRepo = SessionRepository(
     storageRoots: storageRoots,

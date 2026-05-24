@@ -27,6 +27,31 @@
   "visibilityTeamSessionsHint": "Show the team sessions list in the left sidebar.",
   "visibilityMembersHint": "Show the member list next to tools or terminals.",
   "visibilityFileTreeHint": "Show the project file tree for quick navigation.",
+  "rtkSettingsTitle": "RTK token savings",
+  "rtkSettingsEnableTitle": "Enable RTK",
+  "rtkSettingsDescription": "Compress Agent Bash command output before it reaches the model (requires rtk and jq on PATH).",
+  "rtkSettingsStatusTitle": "Host status",
+  "rtkSettingsInstallLink": "Install guide",
+  "rtkStatusNotFound": "rtk not found on PATH",
+  "rtkStatusJqMissing": "jq not found on PATH",
+  "rtkStatusInstalledGeneric": "rtk ready",
+  "rtkStatusInstalled": "rtk {version} ready",
+  "@rtkStatusInstalled": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "rtkStatusVersionTooOld": "rtk {version} is too old (need >= 0.23.0)",
+  "@rtkStatusVersionTooOld": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "rtkBashOnlyHint": "Only applies to Agent Bash tool calls. Built-in Read, Grep, and Glob are not rewritten.",
   "themeModeTitle": "Theme mode",
   "themeModeDescription": "Light, dark, or match the operating system appearance.",
   "themeColorPresetTitle": "Theme colors",
