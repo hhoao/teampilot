@@ -9,6 +9,7 @@ import '../models/plugin.dart';
 import '../repositories/plugin_repository.dart';
 import '../services/plugin_install_service.dart';
 import '../services/flashskyai_storage_roots.dart';
+import '../services/plugin_external_fetch_service.dart';
 import '../services/plugin_repo_disk_cache_service.dart';
 import '../services/plugin_repo_service.dart';
 import '../utils/logger.dart';
@@ -81,11 +82,14 @@ class PluginCubit extends Cubit<PluginState> {
     required this.installService,
     required this.repoService,
     PluginRepoDiskCacheService? diskCache,
+    PluginExternalFetchService? externalFetch,
     PluginUninstalledHandler? onPluginUninstalled,
     PluginUpdatedHandler? onPluginUpdated,
     FlashskyaiStorageRoots? storageRoots,
   })  : _diskCache = diskCache ??
             PluginRepoDiskCacheService(storageRoots: storageRoots),
+        _externalFetch = externalFetch ??
+            PluginExternalFetchService(storageRoots: storageRoots),
         _onPluginUninstalled = onPluginUninstalled,
         _onPluginUpdated = onPluginUpdated,
         super(const PluginState());
@@ -101,6 +105,7 @@ class PluginCubit extends Cubit<PluginState> {
         installService = _dummyInstallService,
         repoService = _dummyRepoService,
         _diskCache = PluginRepoDiskCacheService(),
+        _externalFetch = PluginExternalFetchService(),
         _onPluginUninstalled = onPluginUninstalled,
         _onPluginUpdated = onPluginUpdated,
         super(state);
@@ -113,6 +118,7 @@ class PluginCubit extends Cubit<PluginState> {
   final PluginInstallService installService;
   final PluginRepoService repoService;
   final PluginRepoDiskCacheService _diskCache;
+  final PluginExternalFetchService _externalFetch;
   final PluginUninstalledHandler? _onPluginUninstalled;
   final PluginUpdatedHandler? _onPluginUpdated;
   int _discoveryGeneration = 0;
@@ -237,30 +243,33 @@ class PluginCubit extends Cubit<PluginState> {
   }
 
   Future<void> installFromDiscovery(DiscoverablePlugin d) async {
-    if (!d.localInstall || d.source.isEmpty) {
+    if (!d.canInstall) {
       emit(state.copyWith(
-        errorMessage:
-            'Plugin "${d.name}" is hosted in an external repository; '
-            'install it with Claude Code (/plugin install) for now.',
+        errorMessage: 'Plugin "${d.name}" cannot be installed from this marketplace entry.',
       ));
       return;
     }
     final busy = {...state.busyIds, d.key};
     emit(state.copyWith(busyIds: busy, clearError: true));
     try {
-      final marketDir = await _diskCache.syncMarketplace(PluginMarketplace(
+      final marketplace = PluginMarketplace(
         owner: d.marketplaceOwner,
         name: d.marketplaceName,
         branch: d.marketplaceBranch,
-      ));
-      final sourceDir = Directory('$marketDir/${d.source}');
+      );
+      final Directory sourceDir;
+      if (d.localInstall) {
+        final marketDir = await _diskCache.syncMarketplace(marketplace);
+        sourceDir = Directory('$marketDir/${d.source}');
+      } else {
+        sourceDir = await _externalFetch.fetchPluginDirectory(d.externalSource!);
+      }
+      if (!sourceDir.existsSync()) {
+        throw StateError('Plugin source directory missing: ${sourceDir.path}');
+      }
       await installService.installFromDirectory(
         sourceDir,
-        marketplace: PluginMarketplace(
-          owner: d.marketplaceOwner,
-          name: d.marketplaceName,
-          branch: d.marketplaceBranch,
-        ),
+        marketplace: marketplace,
       );
       final installed = await repository.loadAll();
       emit(state.copyWith(installed: installed));

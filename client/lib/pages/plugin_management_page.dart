@@ -908,16 +908,11 @@ class _DiscoverablePluginCard extends StatelessWidget {
               onPressed: null,
               child: Text(l10n.pluginsCardInstalled),
             )
-          else if (!plugin.localInstall)
-            OutlinedButton(
-              onPressed: plugin.readmeUrl == null
-                  ? null
-                  : () => _openPluginUrl(plugin.readmeUrl!),
-              child: Text(l10n.pluginsCardViewSource),
-            )
           else
             FilledButton.tonal(
-              onPressed: () => cubit.installFromDiscovery(plugin),
+              onPressed: plugin.canInstall
+                  ? () => cubit.installFromDiscovery(plugin)
+                  : null,
               child: Text(l10n.pluginsCardInstall),
             ),
         ],

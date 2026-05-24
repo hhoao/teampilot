@@ -72,6 +72,8 @@ void main() {
           AppPaths.pluginMarketplacesConfigPathForTeampilotRoot(teampilotRoot),
       pluginMarketplaceCacheDir:
           AppPaths.pluginMarketplaceCacheDirForTeampilotRoot(teampilotRoot),
+      pluginExternalCacheDir:
+          AppPaths.pluginExternalCacheDirForTeampilotRoot(teampilotRoot),
     );
     final posix = AppPaths.posixPathContext;
     expect(snap.teampilotRoot, teampilotRoot);

@@ -106,6 +106,103 @@ class PluginRepoGitService {
     );
   }
 
+  /// Shallow-clone [url] into [workDir], optionally at [ref] (branch/tag) or [sha].
+  Future<String> syncCheckoutFromUrl(
+    String url,
+    Directory workDir, {
+    String? ref,
+    String? sha,
+  }) async {
+    final git = await _git;
+    if (git == null) {
+      throw StateError('git executable not found on PATH');
+    }
+
+    final normalized = url.trim();
+    if (normalized.isEmpty) {
+      throw MarketplaceUnreachableException('empty git url');
+    }
+
+    if (sha != null && sha.isNotEmpty) {
+      await _checkoutPinnedCommit(
+        git,
+        normalized,
+        workDir,
+        sha,
+        ref: ref,
+      );
+      return _headSha(git, workDir.path);
+    }
+
+    final branch = (ref != null && ref.isNotEmpty) ? ref : 'main';
+    for (final candidate in skillRepoBranchCandidates(branch)) {
+      try {
+        await _cloneOrUpdate(git, normalized, workDir, candidate);
+        return _headSha(git, workDir.path);
+      } catch (e) {
+        appLogger.d('[PluginRepoGit] checkout $normalized@$candidate: $e');
+      }
+    }
+
+    throw MarketplaceUnreachableException(
+      'git sync failed for $normalized (tried ${skillRepoBranchCandidates(branch).join(", ")})',
+    );
+  }
+
+  Future<void> _checkoutPinnedCommit(
+    String git,
+    String url,
+    Directory workDir,
+    String sha, {
+    String? ref,
+  }) async {
+    if (ref != null && ref.isNotEmpty) {
+      try {
+        await _cloneOrUpdate(git, url, workDir, ref);
+        final head = await _headSha(git, workDir.path);
+        if (head == sha || head.startsWith(sha) || sha.startsWith(head)) {
+          return;
+        }
+      } catch (e) {
+        appLogger.d('[PluginRepoGit] ref checkout before sha ($ref): $e');
+      }
+    }
+
+    if (workDir.existsSync()) {
+      await workDir.delete(recursive: true);
+    }
+    await workDir.create(recursive: true);
+
+    var result = await _runner(git, ['clone', url, workDir.path]);
+    if (result.exitCode != 0) {
+      throw MarketplaceUnreachableException(
+        'git clone failed: ${_stderrSnippet(result)}',
+      );
+    }
+
+    result = await _runner(git, [
+      '-C',
+      workDir.path,
+      'fetch',
+      '--depth',
+      '1',
+      'origin',
+      sha,
+    ]);
+    if (result.exitCode != 0) {
+      throw MarketplaceUnreachableException(
+        'git fetch commit failed: ${_stderrSnippet(result)}',
+      );
+    }
+
+    result = await _runner(git, ['-C', workDir.path, 'checkout', sha]);
+    if (result.exitCode != 0) {
+      throw MarketplaceUnreachableException(
+        'git checkout commit failed: ${_stderrSnippet(result)}',
+      );
+    }
+  }
+
   Future<void> _cloneOrUpdate(
     String git,
     String url,

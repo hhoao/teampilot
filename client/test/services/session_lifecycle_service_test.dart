@@ -26,6 +26,7 @@ StorageRootsSnapshot _roots(String basePath) => StorageRootsSnapshot(
   pluginsJsonPath: p.join(basePath, 'plugins.json'),
   pluginMarketplacesConfigPath: p.join(basePath, 'plugin-marketplaces.json'),
   pluginMarketplaceCacheDir: p.join(basePath, 'plugin-marketplace-cache'),
+  pluginExternalCacheDir: p.join(basePath, 'plugin-external-cache'),
 );
 
 AppSession _session({

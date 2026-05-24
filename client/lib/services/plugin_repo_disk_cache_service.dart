@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import '../models/plugin.dart';
+import '../models/plugin_external_source.dart';
 import '../utils/logger.dart';
 import 'app_storage.dart';
 import 'flashskyai_storage_roots.dart';
@@ -146,6 +147,7 @@ class PluginRepoDiskCacheService {
           source: parsedSource.relativePath,
           readmeUrl: parsedSource.readmeUrl,
           localInstall: parsedSource.localInstall,
+          externalSource: parsedSource.externalSource,
           marketplaceOwner: marketplace.owner,
           marketplaceName: marketplace.name,
           marketplaceBranch: marketplace.branch,
@@ -194,18 +196,24 @@ class PluginRepoDiskCacheService {
               localInstall: true,
             );
           }
+          final external = PluginExternalSource.fromMarketplaceObject(map);
           return _ParsedMarketplaceSource(
             relativePath: '',
             readmeUrl: homepage ?? (url.isEmpty ? null : url),
             localInstall: false,
+            externalSource: external,
           );
         case 'url':
         case 'github':
-          final url = map['url'] as String? ?? '';
+          final external = PluginExternalSource.fromMarketplaceObject(map);
+          final readme = homepage ??
+              (map['url'] as String?) ??
+              (map['repo'] != null ? 'https://github.com/${map['repo']}' : null);
           return _ParsedMarketplaceSource(
             relativePath: '',
-            readmeUrl: homepage ?? (url.isEmpty ? null : url),
+            readmeUrl: readme,
             localInstall: false,
+            externalSource: external,
           );
         default:
           return _ParsedMarketplaceSource(
@@ -256,9 +264,11 @@ class _ParsedMarketplaceSource {
     required this.relativePath,
     this.readmeUrl,
     required this.localInstall,
+    this.externalSource,
   });
 
   final String relativePath;
   final String? readmeUrl;
   final bool localInstall;
+  final PluginExternalSource? externalSource;
 }

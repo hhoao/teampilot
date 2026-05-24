@@ -107,10 +107,16 @@ class AppPaths {
   static String pluginMarketplaceCacheDirForTeampilotRoot(String teampilotRoot) =>
       _pathUnderTeampilotRoot(teampilotRoot, 'plugin-marketplace-cache');
 
+  static String pluginExternalCacheDirForTeampilotRoot(String teampilotRoot) =>
+      _pathUnderTeampilotRoot(teampilotRoot, 'plugin-external-cache');
+
   String get skillRepoCacheDir => skillRepoCacheDirForTeampilotRoot(basePath);
 
   String get pluginMarketplaceCacheDir =>
       pluginMarketplaceCacheDirForTeampilotRoot(basePath);
+
+  String get pluginExternalCacheDir =>
+      pluginExternalCacheDirForTeampilotRoot(basePath);
 
   String get pluginsJson => _ctx.join(basePath, 'plugins.json');
   String get pluginMarketplacesConfigPath => _ctx.join(basePath, 'plugin-marketplaces.json');

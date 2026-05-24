@@ -1,3 +1,5 @@
+import 'plugin_external_source.dart';
+
 class Plugin {
   const Plugin({
     required this.id,
@@ -308,6 +310,7 @@ class DiscoverablePlugin {
     required this.marketplaceBranch,
     required this.source,
     this.localInstall = true,
+    this.externalSource,
     this.categories = const [],
     this.keywords = const [],
   });
@@ -322,12 +325,16 @@ class DiscoverablePlugin {
   final String marketplaceBranch;
   /// Relative path inside the synced marketplace repo (install from cache).
   final String source;
-  /// When false, plugin is listed for discovery but must be installed via Claude Code / external fetch.
+  /// When false, plugin files are not in the synced marketplace repo (see [externalSource]).
   final bool localInstall;
+  /// Set for `git-subdir` / `url` / `github` marketplace entries; fetched via git on install.
+  final PluginExternalSource? externalSource;
   final List<String> categories;
   final List<String> keywords;
 
   String get marketplaceFullName => '$marketplaceOwner/$marketplaceName';
+
+  bool get canInstall => localInstall || externalSource != null;
 
   Map<String, Object?> toJson() => {
     'key': key, 'name': name, 'description': description, 'version': version,
@@ -337,6 +344,7 @@ class DiscoverablePlugin {
     'marketplaceBranch': marketplaceBranch,
     'source': source,
     'localInstall': localInstall,
+    if (externalSource != null) 'externalSourceCloneUrl': externalSource!.cloneUrl,
     'categories': categories,
     'keywords': keywords,
   };
@@ -360,8 +368,10 @@ class DiscoverablePlugin {
     String? key, String? name, String? description, String? version,
     String? readmeUrl, String? marketplaceOwner, String? marketplaceName,
     String? marketplaceBranch, String? source, bool? localInstall,
+    PluginExternalSource? externalSource,
     List<String>? categories, List<String>? keywords,
     bool clearReadmeUrl = false,
+    bool clearExternalSource = false,
   }) => DiscoverablePlugin(
     key: key ?? this.key,
     name: name ?? this.name,
@@ -373,6 +383,9 @@ class DiscoverablePlugin {
     marketplaceBranch: marketplaceBranch ?? this.marketplaceBranch,
     source: source ?? this.source,
     localInstall: localInstall ?? this.localInstall,
+    externalSource: clearExternalSource
+        ? null
+        : (externalSource ?? this.externalSource),
     categories: categories ?? this.categories,
     keywords: keywords ?? this.keywords,
   );
@@ -392,13 +405,14 @@ class DiscoverablePlugin {
           marketplaceBranch == other.marketplaceBranch &&
           source == other.source &&
           localInstall == other.localInstall &&
+          externalSource == other.externalSource &&
           _listEq(categories, other.categories) &&
           _listEq(keywords, other.keywords);
 
   @override
   int get hashCode => Object.hash(
     key, name, description, version, marketplaceOwner, marketplaceName,
-    marketplaceBranch, readmeUrl, source, localInstall,
+    marketplaceBranch, readmeUrl, source, localInstall, externalSource,
     Object.hashAll(categories), Object.hashAll(keywords));
 }
 

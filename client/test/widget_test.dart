@@ -639,6 +639,7 @@ void main() {
                 p.join(tmp.path, 'plugin-marketplaces.json'),
             pluginMarketplaceCacheDir:
                 p.join(tmp.path, 'plugin-marketplace-cache'),
+            pluginExternalCacheDir: p.join(tmp.path, 'plugin-external-cache'),
           ),
         ),
       );

@@ -83,6 +83,8 @@ void main() {
     expect(list.first.localInstall, isTrue);
     expect(list.first.source, './plugins/local-one');
     expect(list.last.localInstall, isFalse);
+    expect(list.last.externalSource, isNotNull);
+    expect(list.last.canInstall, isTrue);
     expect(list.last.readmeUrl, 'https://example.com/plugin');
   });
 

@@ -23,6 +23,7 @@ class StorageRootsSnapshot {
     required this.pluginsJsonPath,
     required this.pluginMarketplacesConfigPath,
     required this.pluginMarketplaceCacheDir,
+    required this.pluginExternalCacheDir,
   }) : fs = fs ?? AppStorage.fs,
        layout =
            layout ??
@@ -49,6 +50,7 @@ class StorageRootsSnapshot {
       pluginsJsonPath: AppPaths.pluginsJsonForTeampilotRoot(root),
       pluginMarketplacesConfigPath: AppPaths.pluginMarketplacesConfigPathForTeampilotRoot(root),
       pluginMarketplaceCacheDir: AppPaths.pluginMarketplaceCacheDirForTeampilotRoot(root),
+      pluginExternalCacheDir: AppPaths.pluginExternalCacheDirForTeampilotRoot(root),
     );
   }
 
@@ -71,6 +73,7 @@ class StorageRootsSnapshot {
   final String pluginsJsonPath;
   final String pluginMarketplacesConfigPath;
   final String pluginMarketplaceCacheDir;
+  final String pluginExternalCacheDir;
 
   /// CLI runtime layout under `<teampilotRoot>/config-profiles/`.
   final CliDataLayout layout;
