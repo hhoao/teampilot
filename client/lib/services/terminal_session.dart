@@ -25,11 +25,16 @@ typedef TransportStarter =
       Map<String, String>? environment,
     });
 
+/// PTY attach → confirm → running. See [_handlePtyOutput] and [_confirmProcessStarted].
+enum _LaunchPhase { idle, spawning, confirming, running, failed }
+
 class TerminalSession {
   TerminalSession({
     required this.executable,
     this.validateLaunch = true,
     this.parseExecutable = true,
+    this.startupDeadline = const Duration(seconds: 15),
+    this.confirmFallback = const Duration(milliseconds: 150),
     TransportStarter? transportStarter,
     @Deprecated('Use transportStarter instead') dynamic ptyStarter,
   }) : _transportStarter = transportStarter ?? _defaultTransportStarter,
@@ -45,20 +50,22 @@ class TerminalSession {
   final String executable;
   final bool validateLaunch;
   final bool parseExecutable;
+  final Duration startupDeadline;
+  final Duration confirmFallback;
   final TransportStarter _transportStarter;
   final Terminal terminal;
   TerminalTransport? _transport;
-  var _running = false;
-  var _starting = false;
+  var _launchPhase = _LaunchPhase.idle;
   var _startFailed = false;
+  String? _startupExecutable;
   Map<String, String>? _extraEnvironment;
   Map<String, String>? _ptyEnvironment;
   VoidCallback? _onProcessStarted;
   VoidCallback? _onProcessFailed;
   VoidCallback? _onProcessExited;
   StreamSubscription<String>? _outputSubscription;
-  Timer? _startConfirmationTimer;
-  Timer? _spawnWatchdogTimer;
+  Timer? _confirmFallbackTimer;
+  Timer? _startupDeadlineTimer;
   Timer? _ptyGeometryTimer;
   Timer? _ptyGeometrySettleTimer;
   var _spawnRequested = false;
@@ -74,7 +81,17 @@ class TerminalSession {
   static const _outputGeometryDebounceMs = 80;
   static const _geometrySettleDelayMs = 120;
 
-  bool get isRunning => (_running || _starting) && !_startFailed;
+  bool get isRunning =>
+      (_launchPhase == _LaunchPhase.running ||
+          _launchPhase == _LaunchPhase.confirming ||
+          _launchPhase == _LaunchPhase.spawning) &&
+      !_startFailed;
+
+  bool get _starting =>
+      _launchPhase == _LaunchPhase.spawning ||
+      _launchPhase == _LaunchPhase.confirming;
+
+  bool get _running => _transport != null && _launchPhase != _LaunchPhase.idle;
 
   void connect({
     required String workingDirectory,
@@ -159,12 +176,12 @@ class TerminalSession {
       }
     }
 
-    _starting = true;
+    _beginStartup(invocation.executable);
 
     _attachTerminalViewportListener();
 
     terminal.onOutput = (String data) {
-      if (_running && _transport != null) {
+      if (_transportReadyForIo && _transport != null) {
         _transport!.write(Uint8List.fromList(utf8.encode(data)));
       }
     };
@@ -220,7 +237,7 @@ class TerminalSession {
       // Layout while transport is starting; applied when attach completes.
       return;
     }
-    if (!_running) return;
+    if (!_transportReadyForIo) return;
 
     _ptyGeometryTimer?.cancel();
     final debounceMs = fromLayout || cols != null
@@ -245,7 +262,7 @@ class TerminalSession {
 
     if (_transport == null) return;
 
-    if (!_running) return;
+    if (!_transportReadyForIo) return;
     _lastSyncedCols = cols;
     _lastSyncedRows = rows;
     _transport!.resize(rows, cols);
@@ -253,14 +270,14 @@ class TerminalSession {
   }
 
   void _schedulePtyGeometrySettle() {
-    if (!_running || _transport == null) return;
+    if (!_transportReadyForIo || _transport == null) return;
     if (_lastSyncedCols <= 0 || _lastSyncedRows <= 0) return;
     _ptyGeometrySettleTimer?.cancel();
     _ptyGeometrySettleTimer = Timer(
       const Duration(milliseconds: _geometrySettleDelayMs),
       () {
         _ptyGeometrySettleTimer = null;
-        if (!_running || _transport == null) return;
+        if (!_transportReadyForIo || _transport == null) return;
         _transport!.resize(_lastSyncedRows, _lastSyncedCols);
       },
     );
@@ -297,6 +314,57 @@ class TerminalSession {
     );
   }
 
+  bool get _transportReadyForIo =>
+      _transport != null &&
+      (_launchPhase == _LaunchPhase.confirming ||
+          _launchPhase == _LaunchPhase.running);
+
+  void _beginStartup(String executable) {
+    _startupExecutable = executable;
+    _launchPhase = _LaunchPhase.spawning;
+    _startFailed = false;
+    _armStartupDeadline();
+  }
+
+  void _enterConfirmingPhase() {
+    if (_launchPhase != _LaunchPhase.spawning) return;
+    _launchPhase = _LaunchPhase.confirming;
+    _confirmFallbackTimer?.cancel();
+    _confirmFallbackTimer = Timer(confirmFallback, _confirmProcessStarted);
+  }
+
+  void _armStartupDeadline() {
+    _startupDeadlineTimer?.cancel();
+    _startupDeadlineTimer = Timer(startupDeadline, _onStartupDeadline);
+  }
+
+  void _onStartupDeadline() {
+    if (!_starting || _startFailed) return;
+    final cliExecutable = _startupExecutable ?? this.executable;
+    final cliName = CliExecutableValidator.cliDisplayName(cliExecutable);
+    if (_transport == null) {
+      _handleStartFailure('[Failed to start $cliName: spawn timed out]');
+      return;
+    }
+    _handleStartFailure('[Failed to start $cliName: startup timed out]');
+  }
+
+  void _cancelStartupTimers() {
+    _confirmFallbackTimer?.cancel();
+    _confirmFallbackTimer = null;
+    _startupDeadlineTimer?.cancel();
+    _startupDeadlineTimer = null;
+  }
+
+  void _handlePtyOutput(String text, String executable) {
+    _writeOutput(text);
+    if (!_starting || _startFailed) return;
+    if (_looksLikeExecFailure(text)) {
+      _handleStartFailure(_launchFailureMessage(executable));
+      return;
+    }
+  }
+
   Future<void> _startTransport({
     required String executable,
     required List<String> args,
@@ -319,8 +387,7 @@ class TerminalSession {
         return;
       }
       _transport = transport;
-      _running = true;
-      _starting = true;
+      _enterConfirmingPhase();
 
       if (_hasPendingLayoutGeometry &&
           _pendingViewportCols > 0 &&
@@ -335,9 +402,9 @@ class TerminalSession {
           .map<List<int>>((data) => data)
           .transform(const Utf8Decoder(allowMalformed: true))
           .listen((text) {
-            _writeOutput(text);
-            if (_starting && !_startFailed && _looksLikeExecFailure(text)) {
-              _handleStartFailure(_launchFailureMessage(executable));
+            _handlePtyOutput(text, executable);
+            if (_starting && !_startFailed && text.isNotEmpty) {
+              _confirmProcessStarted();
             }
           });
 
@@ -346,7 +413,15 @@ class TerminalSession {
             _transport != transport) {
           return;
         }
-        if (!_running) {
+        if (_starting && !_startFailed) {
+          _handleStartFailure(
+            code == 0
+                ? '[process exited unexpectedly during startup]'
+                : '[process exited with code $code during startup]',
+          );
+          return;
+        }
+        if (_launchPhase != _LaunchPhase.running) {
           return;
         }
         if (code != 0) {
@@ -362,19 +437,6 @@ class TerminalSession {
         _onProcessExited = null;
         callback?.call();
       });
-
-      _spawnWatchdogTimer = Timer(const Duration(seconds: 8), () {
-        if (_startFailed || !_starting) return;
-        _handleStartFailure(
-          '${_execFailureMessage(executable)}\r\n'
-          '  (PTY did not become ready)',
-        );
-      });
-
-      _startConfirmationTimer = Timer(
-        const Duration(milliseconds: 450),
-        _confirmProcessStarted,
-      );
     } on Object catch (error, stackTrace) {
       if (startGeneration != _transportStartGeneration || !_starting) {
         return;
@@ -386,10 +448,13 @@ class TerminalSession {
   }
 
   void _confirmProcessStarted() {
-    if (!_running || _startFailed || _transport == null) return;
-    _starting = false;
-    _spawnWatchdogTimer?.cancel();
-    _spawnWatchdogTimer = null;
+    if (_launchPhase != _LaunchPhase.confirming ||
+        _startFailed ||
+        _transport == null) {
+      return;
+    }
+    _launchPhase = _LaunchPhase.running;
+    _cancelStartupTimers();
     final callback = _onProcessStarted;
     _onProcessStarted = null;
     callback?.call();
@@ -398,37 +463,31 @@ class TerminalSession {
   void _handleStartFailure(String message) {
     if (_startFailed) return;
     _startFailed = true;
-    _spawnWatchdogTimer?.cancel();
-    _spawnWatchdogTimer = null;
-    _startConfirmationTimer?.cancel();
-    _startConfirmationTimer = null;
+    _launchPhase = _LaunchPhase.failed;
+    _cancelStartupTimers();
     _outputSubscription?.cancel();
     _outputSubscription = null;
     _onProcessStarted = null;
     _onProcessExited = null;
     _transport?.close();
     _transport = null;
-    _running = false;
-    _starting = false;
+    _startupExecutable = null;
     terminal.write('\r\n$message\r\n');
     _onProcessFailed?.call();
     _onProcessFailed = null;
   }
 
   void _teardownPtyState() {
-    _spawnWatchdogTimer?.cancel();
-    _spawnWatchdogTimer = null;
-    _startConfirmationTimer?.cancel();
-    _startConfirmationTimer = null;
+    _cancelStartupTimers();
     _outputSubscription?.cancel();
     _outputSubscription = null;
-    _running = false;
-    _starting = false;
+    _launchPhase = _LaunchPhase.idle;
+    _startupExecutable = null;
     _onProcessStarted = null;
   }
 
   void write(String text) {
-    if (_running && _transport != null) {
+    if (_transportReadyForIo && _transport != null) {
       _transport!.write(Uint8List.fromList(utf8.encode(text)));
     }
   }

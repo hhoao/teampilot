@@ -55,6 +55,153 @@ String get _ptyTestExecutable {
 }
 
 void main() {
+  test('confirms on first pty output before fallback timer', () async {
+    final handle = _FakeTransport();
+    var started = false;
+    final session = TerminalSession(
+      executable: _ptyTestExecutable,
+      confirmFallback: const Duration(seconds: 5),
+      transportStarter:
+          (
+            executable, {
+            required arguments,
+            required workingDirectory,
+            required columns,
+            required rows,
+            environment,
+          }) {
+            return Future.value(handle);
+          },
+    );
+    addTearDown(() async {
+      session.dispose();
+      await handle.outputController.close();
+    });
+
+    session.connect(
+      workingDirectory: Directory.systemTemp.path,
+      onProcessStarted: () => started = true,
+    );
+    session.terminal.onResize?.call(80, 24, 0, 0);
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+    expect(started, isFalse);
+
+    handle.outputController.add(Uint8List.fromList(utf8.encode('ready\r\n')));
+    await Future<void>.delayed(Duration.zero);
+
+    expect(started, isTrue);
+    expect(session.isRunning, isTrue);
+  });
+
+  test('silent startup confirms on fallback timer', () async {
+    final handle = _FakeTransport();
+    var started = false;
+    final session = TerminalSession(
+      executable: _ptyTestExecutable,
+      confirmFallback: const Duration(milliseconds: 50),
+      transportStarter:
+          (
+            executable, {
+            required arguments,
+            required workingDirectory,
+            required columns,
+            required rows,
+            environment,
+          }) {
+            return Future.value(handle);
+          },
+    );
+    addTearDown(() async {
+      session.dispose();
+      await handle.outputController.close();
+    });
+
+    session.connect(
+      workingDirectory: Directory.systemTemp.path,
+      onProcessStarted: () => started = true,
+    );
+    session.terminal.onResize?.call(80, 24, 0, 0);
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+    expect(started, isFalse);
+
+    await Future<void>.delayed(const Duration(milliseconds: 60));
+    expect(started, isTrue);
+  });
+
+  test('process exit during startup reports failure', () async {
+    final handle = _FakeTransport();
+    var failed = false;
+    final session = TerminalSession(
+      executable: _ptyTestExecutable,
+      confirmFallback: const Duration(seconds: 5),
+      transportStarter:
+          (
+            executable, {
+            required arguments,
+            required workingDirectory,
+            required columns,
+            required rows,
+            environment,
+          }) {
+            return Future.value(handle);
+          },
+    );
+    addTearDown(() async {
+      session.dispose();
+      await handle.outputController.close();
+    });
+
+    session.connect(
+      workingDirectory: Directory.systemTemp.path,
+      onProcessStarted: () {},
+      onProcessFailed: () => failed = true,
+    );
+    session.terminal.onResize?.call(80, 24, 0, 0);
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+
+    handle.doneCompleter.complete(127);
+    await Future<void>.delayed(Duration.zero);
+
+    expect(failed, isTrue);
+    expect(session.isRunning, isFalse);
+    expect(
+      session.terminal.buffer.getText(),
+      contains('exited with code 127 during startup'),
+    );
+  });
+
+  test('spawn timeout reports failure when transport never attaches', () async {
+    final starter = Completer<TerminalTransport>();
+    var failed = false;
+    final session = TerminalSession(
+      executable: _ptyTestExecutable,
+      startupDeadline: const Duration(milliseconds: 80),
+      transportStarter:
+          (
+            executable, {
+            required arguments,
+            required workingDirectory,
+            required columns,
+            required rows,
+            environment,
+          }) {
+            return starter.future;
+          },
+    );
+    addTearDown(session.dispose);
+
+    session.connect(
+      workingDirectory: Directory.systemTemp.path,
+      onProcessFailed: () => failed = true,
+    );
+    session.terminal.onResize?.call(80, 24, 0, 0);
+    await Future<void>.delayed(const Duration(milliseconds: 120));
+
+    expect(failed, isTrue);
+    expect(session.isRunning, isFalse);
+    expect(session.terminal.buffer.getText(), contains('spawn timed out'));
+  });
+
   test('missing absolute executable fails fast without starting pty', () {
     var started = false;
     final session = TerminalSession(
@@ -200,11 +347,12 @@ void main() {
     );
   });
 
-  test('early pty exit reports failure and stops running', () async {
+  test('exec failure output during confirming reports failure', () async {
     final handle = _FakeTransport();
     var failed = false;
     final session = TerminalSession(
       executable: _ptyTestExecutable,
+      confirmFallback: const Duration(seconds: 5),
       transportStarter:
           (
             executable, {
@@ -227,7 +375,7 @@ void main() {
       onProcessFailed: () => failed = true,
     );
     session.terminal.onResize?.call(80, 24, 0, 0);
-    await Future<void>.delayed(const Duration(milliseconds: 300));
+    await Future<void>.delayed(const Duration(milliseconds: 20));
     handle.outputController.add(
       Uint8List.fromList(utf8.encode('execvp: No such file or directory\r\n')),
     );
