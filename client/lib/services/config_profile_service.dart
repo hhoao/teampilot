@@ -5,7 +5,6 @@ import 'package:path/path.dart' as p;
 
 import '../models/claude_credential_link_result.dart';
 import '../models/team_config.dart';
-import '../utils/logger.dart';
 import '../utils/project_path_utils.dart';
 import '../utils/team_member_naming.dart';
 import 'app_storage.dart';

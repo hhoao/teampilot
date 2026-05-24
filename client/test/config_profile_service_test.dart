@@ -191,6 +191,8 @@ void main() {
     final projectConfig =
         projects['/workspace/project'] as Map<String, Object?>;
     expect(projectConfig['hasTrustDialogAccepted'], isTrue);
+    expect(projectConfig['hasClaudeMdExternalIncludesApproved'], isTrue);
+    expect(projectConfig['hasClaudeMdExternalIncludesWarningShown'], isTrue);
 
     final members = decoded['members'] as List<Object?>;
     expect(members, hasLength(2));
@@ -411,6 +413,14 @@ void main() {
       );
       expect(
         (projects['/workspace/extra'] as Map)['hasTrustDialogAccepted'],
+        isTrue,
+      );
+      expect(
+        (projects['/workspace/new'] as Map)['hasClaudeMdExternalIncludesApproved'],
+        isTrue,
+      );
+      expect(
+        (projects['/workspace/new'] as Map)['hasClaudeMdExternalIncludesWarningShown'],
         isTrue,
       );
     },
