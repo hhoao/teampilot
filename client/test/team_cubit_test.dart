@@ -585,4 +585,65 @@ void main() {
     await cubit.close();
     await base.delete(recursive: true);
   });
+
+  test('bindClaudeProviderForTeamsWithoutBinding sets claude team provider', () async {
+    final dir = await Directory.systemTemp.createTemp('team-bind-provider-');
+    final repo = _repo(dir);
+    final cubit = TeamCubit(
+      repository: repo,
+      executableResolver: () => 'claude',
+      pluginLinker: _RecordingPluginLinker(),
+    );
+
+    const team = TeamConfig(
+      id: 'Default Team',
+      name: 'Default Team',
+      cli: TeamCli.claude,
+      members: [TeamMemberConfig(id: 'team-lead', name: 'team-lead')],
+    );
+    await repo.saveTeams([team]);
+    await cubit.load();
+
+    await cubit.bindClaudeProviderForTeamsWithoutBinding('deepseek');
+
+    expect(
+      cubit.state.selectedTeam!.providerIdsByTool['claude'],
+      'deepseek',
+    );
+    final reloaded = await repo.loadTeams();
+    expect(reloaded.single.providerIdsByTool['claude'], 'deepseek');
+
+    await cubit.close();
+    await dir.delete(recursive: true);
+  });
+
+  test('bindClaudeProviderForTeamsWithoutBinding keeps existing binding', () async {
+    final dir = await Directory.systemTemp.createTemp('team-bind-existing-');
+    final repo = _repo(dir);
+    final cubit = TeamCubit(
+      repository: repo,
+      executableResolver: () => 'claude',
+      pluginLinker: _RecordingPluginLinker(),
+    );
+
+    const team = TeamConfig(
+      id: 'Default Team',
+      name: 'Default Team',
+      cli: TeamCli.claude,
+      members: [TeamMemberConfig(id: 'team-lead', name: 'team-lead')],
+      providerIdsByTool: {'claude': 'official'},
+    );
+    await repo.saveTeams([team]);
+    await cubit.load();
+
+    await cubit.bindClaudeProviderForTeamsWithoutBinding('deepseek');
+
+    expect(
+      cubit.state.selectedTeam!.providerIdsByTool['claude'],
+      'official',
+    );
+
+    await cubit.close();
+    await dir.delete(recursive: true);
+  });
 }

@@ -4,7 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../cubits/app_provider_cubit.dart';
+import '../../../cubits/team_cubit.dart';
 import '../../../l10n/l10n_extensions.dart';
+import '../../../services/onboarding_service.dart';
 import '../../../models/app_provider_config.dart';
 import '../../../services/claude_official_provider.dart';
 import '../../../utils/app_provider_model_candidates.dart';
@@ -115,6 +117,11 @@ class _OnboardingDefaultProviderStepState
           if (env.isNotEmpty) 'env': env,
         },
       ),
+    );
+    if (!mounted) return;
+    await OnboardingService.applyDefaultClaudeProviderBinding(
+      appProviderCubit: cubit,
+      teamCubit: context.read<TeamCubit>(),
     );
   }
 

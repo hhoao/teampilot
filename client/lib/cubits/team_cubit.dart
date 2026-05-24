@@ -574,6 +574,40 @@ class TeamCubit extends Cubit<TeamState> {
     return true;
   }
 
+  /// Sets [providerIdsByTool]['claude'] on Claude teams that do not already
+  /// have a team-level provider binding.
+  Future<void> bindClaudeProviderForTeamsWithoutBinding(String providerId) async {
+    final trimmed = providerId.trim();
+    if (trimmed.isEmpty) return;
+
+    var changed = false;
+    final teams = <TeamConfig>[];
+    for (final team in state.teams) {
+      if (team.cli != TeamCli.claude) {
+        teams.add(team);
+        continue;
+      }
+      final existing = team.providerIdsByTool['claude']?.trim() ?? '';
+      if (existing.isNotEmpty) {
+        teams.add(team);
+        continue;
+      }
+      changed = true;
+      teams.add(
+        team.copyWith(
+          providerIdsByTool: {
+            ...team.providerIdsByTool,
+            'claude': trimmed,
+          },
+        ),
+      );
+    }
+    if (!changed) return;
+
+    emit(state.copyWith(teams: teams));
+    await _repository.saveTeams(teams);
+  }
+
   Future<void> updateSelected(TeamConfig updated) async {
     final selected = state.selectedTeam;
     if (selected == null) return;

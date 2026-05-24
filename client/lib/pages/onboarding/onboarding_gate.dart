@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../cubits/app_provider_cubit.dart';
+import '../../cubits/team_cubit.dart';
 import '../../repositories/app_settings_repository.dart';
 import '../../services/onboarding_service.dart';
 import '../../theme/workspace_surface_layers.dart';
@@ -41,6 +43,10 @@ class OnboardingGateState extends State<OnboardingGate> {
   }
 
   Future<void> _completeOnboarding() async {
+    await OnboardingService.applyDefaultClaudeProviderBinding(
+      appProviderCubit: context.read<AppProviderCubit>(),
+      teamCubit: context.read<TeamCubit>(),
+    );
     await context.read<AppSettingsRepository>().saveHasCompletedOnboarding(true);
     if (!mounted) return;
     setState(() => _showWizard = false);

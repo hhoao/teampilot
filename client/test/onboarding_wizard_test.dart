@@ -1,8 +1,21 @@
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
+import 'package:path/path.dart' as p;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:teampilot/cubits/app_provider_cubit.dart';
+import 'package:teampilot/cubits/team_cubit.dart';
+import 'package:teampilot/models/app_provider_config.dart';
+import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/pages/onboarding/onboarding_wizard.dart';
 import 'package:teampilot/repositories/app_settings_repository.dart';
+import 'package:teampilot/repositories/team_repository.dart';
 import 'package:teampilot/services/onboarding_service.dart';
+import 'package:teampilot/services/team_plugin_linker_service.dart';
+
+class _NoopPluginLinker extends TeamPluginLinkerService {
+  _NoopPluginLinker() : super(appPluginsRoot: '/tmp');
+}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -49,6 +62,54 @@ void main() {
       );
 
       expect(await service.shouldShowOnboarding(), isFalse);
+    });
+  });
+
+  group('OnboardingService.applyDefaultClaudeProviderBinding', () {
+    test('binds selected claude provider to teams without team binding', () async {
+      final dir = await Directory.systemTemp.createTemp('onboarding-provider-bind_');
+      final teamRepo = TeamRepository(rootDir: p.join(dir.path, 'teams'));
+      const team = TeamConfig(
+        id: 'Default Team',
+        name: 'Default Team',
+        cli: TeamCli.claude,
+        members: [TeamMemberConfig(id: 'team-lead', name: 'team-lead')],
+      );
+      await teamRepo.saveTeams([team]);
+
+      final teamCubit = TeamCubit(
+        repository: teamRepo,
+        executableResolver: () => 'claude',
+        pluginLinker: _NoopPluginLinker(),
+      );
+      await teamCubit.load();
+
+      final appProviderCubit = AppProviderCubit(basePath: dir.path);
+      await appProviderCubit.load();
+      await appProviderCubit.upsertProvider(
+        const AppProviderConfig(
+          id: 'deepseek',
+          cli: AppProviderCli.claude,
+          name: 'DeepSeek',
+          baseUrl: 'https://api.deepseek.com/anthropic',
+          defaultModel: 'deepseek-chat',
+        ),
+      );
+      appProviderCubit.selectProvider('deepseek');
+
+      await OnboardingService.applyDefaultClaudeProviderBinding(
+        appProviderCubit: appProviderCubit,
+        teamCubit: teamCubit,
+      );
+
+      expect(
+        teamCubit.state.selectedTeam!.providerIdsByTool['claude'],
+        'deepseek',
+      );
+
+      await appProviderCubit.close();
+      await teamCubit.close();
+      await dir.delete(recursive: true);
     });
   });
 }
