@@ -50,9 +50,9 @@ class _AboutConfigWorkspaceState extends State<AboutConfigWorkspace> {
           child: BlocConsumer<AppUpdateCubit, AppUpdateState>(
             listener: (context, state) {
               if (state.status == AppUpdateStatus.upToDate) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text(l10n.appUpdateUpToDate)),
-                );
+                ScaffoldMessenger.of(
+                  context,
+                ).showSnackBar(SnackBar(content: Text(l10n.appUpdateUpToDate)));
               }
             },
             builder: (context, state) {
@@ -111,8 +111,9 @@ class _AboutConfigWorkspaceState extends State<AboutConfigWorkspace> {
                           padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
                           child: Text(
                             state.errorMessage!,
-                            style: Theme.of(context).textTheme.bodySmall
-                                ?.copyWith(color: cs.error),
+                            style: Theme.of(
+                              context,
+                            ).textTheme.bodySmall?.copyWith(color: cs.error),
                           ),
                         ),
                       Padding(

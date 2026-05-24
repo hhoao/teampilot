@@ -476,7 +476,10 @@ class _AppUpdateDialogState extends State<AppUpdateDialog> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).hideCurrentSnackBar();
 
-      final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      final launched = await launchUrl(
+        uri,
+        mode: LaunchMode.externalApplication,
+      );
       if (!mounted) return;
       if (launched) {
         _showSnackBar(l10n.appUpdateBrowserOpened);
@@ -491,7 +494,11 @@ class _AppUpdateDialogState extends State<AppUpdateDialog> {
     }
   }
 
-  void _showSnackBar(String message, {bool isError = false, bool long = false}) {
+  void _showSnackBar(
+    String message, {
+    bool isError = false,
+    bool long = false,
+  }) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(

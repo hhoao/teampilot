@@ -367,11 +367,8 @@ class _ProjectGroupState extends State<_ProjectGroup> {
           onToggle: () => setState(() => _expanded = !_expanded),
           onNewSession: () => _createSession(context, p.projectId),
           onViewDetails: p.projectId.isNotEmpty
-              ? () => showProjectDetailsDialog(
-                  context,
-                  p,
-                  widget.sessions.length,
-                )
+              ? () =>
+                    showProjectDetailsDialog(context, p, widget.sessions.length)
               : null,
           onAddDirectory: p.projectId.isNotEmpty
               ? () => _addProjectDirectory(context, p)
@@ -433,7 +430,10 @@ class _ProjectGroupState extends State<_ProjectGroup> {
     return 'xdg-open';
   }
 
-  Future<void> _addProjectDirectory(BuildContext context, AppProject project) async {
+  Future<void> _addProjectDirectory(
+    BuildContext context,
+    AppProject project,
+  ) async {
     final path = await pickProjectDirectoryPath(context);
     if (path == null || path.trim().isEmpty || !context.mounted) return;
     final l10n = context.l10n;
@@ -453,9 +453,9 @@ class _ProjectGroupState extends State<_ProjectGroup> {
     final repo = context.read<SessionRepository>();
     await context.read<ChatCubit>().addProjectDirectory(repo, project, trimmed);
     if (!context.mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(l10n.projectDirectoryAdded)),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(l10n.projectDirectoryAdded)));
   }
 
   void _copyPath(BuildContext context, String path) {
