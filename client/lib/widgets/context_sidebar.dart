@@ -305,10 +305,6 @@ class _ContextSidebarState extends State<ContextSidebar> {
                 ),
                 const Divider(height: 1),
                 const SizedBox(height: 8),
-                _SkillTile(onTap: () => goFromSidebar(context, '/skills')),
-                const SizedBox(height: 8),
-                _PluginTile(onTap: () => goFromSidebar(context, '/plugins')),
-                const SizedBox(height: 8),
                 _SettingsTile(
                   onTap: () => goFromSidebar(
                     context,
@@ -1084,72 +1080,6 @@ class _SettingsTile extends StatelessWidget {
               const SizedBox(width: 10),
               Text(
                 'Settings',
-                style: TextStyle(fontWeight: FontWeight.w700, color: textBase),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _SkillTile extends StatelessWidget {
-  const _SkillTile({required this.onTap});
-
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textBase = isDark ? Colors.white : const Color(0xFF111827);
-    return Material(
-      color: Colors.transparent,
-      borderRadius: BorderRadius.circular(8),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(8),
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.all(10),
-          child: Row(
-            children: [
-              Icon(Icons.auto_awesome_outlined, size: 18, color: textBase),
-              const SizedBox(width: 10),
-              Text(
-                context.l10n.skillsSidebarLabel,
-                style: TextStyle(fontWeight: FontWeight.w700, color: textBase),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _PluginTile extends StatelessWidget {
-  const _PluginTile({required this.onTap});
-
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textBase = isDark ? Colors.white : const Color(0xFF111827);
-    return Material(
-      color: Colors.transparent,
-      borderRadius: BorderRadius.circular(8),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(8),
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.all(10),
-          child: Row(
-            children: [
-              Icon(Icons.widgets_outlined, size: 18, color: textBase),
-              const SizedBox(width: 10),
-              Text(
-                context.l10n.pluginsSidebarLabel,
                 style: TextStyle(fontWeight: FontWeight.w700, color: textBase),
               ),
             ],

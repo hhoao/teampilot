@@ -11,7 +11,6 @@ import '../cubits/llm_config_cubit.dart';
 import '../cubits/session_preferences_cubit.dart';
 import '../repositories/session_repository.dart';
 import '../services/app_storage.dart';
-import '../services/cli_invocation.dart';
 import '../services/flashskyai_storage_roots.dart';
 import '../cubits/plugin_cubit.dart';
 import '../cubits/skill_cubit.dart';
@@ -248,24 +247,6 @@ class _SessionControlsState extends State<_SessionControls> {
     await _reloadAfterStorageBackendChange();
   }
 
-  String? _storageCliMismatchMessage(AppLocalizations l10n) {
-    if (!Platform.isWindows || !RuntimeStorageContext.isInstalled) {
-      return null;
-    }
-    final usesWslCli = CliInvocation.fromExecutable(
-      widget.cubit.resolveExecutable(),
-    ).usesWsl;
-    final storageIsWsl =
-        RuntimeStorageContext.current.mode == StorageBackendMode.wsl;
-    if (usesWslCli && !storageIsWsl) {
-      return l10n.windowsStorageCliMismatchNativeCli;
-    }
-    if (!usesWslCli && storageIsWsl) {
-      return l10n.windowsStorageCliMismatchWslCli;
-    }
-    return null;
-  }
-
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
@@ -283,52 +264,22 @@ class _SessionControlsState extends State<_SessionControls> {
                 SettingsLabeledStackedRow(
                   title: l10n.windowsStorageBackendTitle,
                   subtitle: l10n.windowsStorageBackendDescription,
-                  body: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      SegmentedButton<WindowsStorageBackend>(
-                        segments: [
-                          ButtonSegment(
-                            value: WindowsStorageBackend.native,
-                            label: Text(l10n.windowsStorageBackendNative),
-                            icon: const Icon(Icons.folder_outlined),
-                          ),
-                          ButtonSegment(
-                            value: WindowsStorageBackend.wsl,
-                            label: Text(l10n.windowsStorageBackendWsl),
-                            icon: const Icon(Icons.terminal),
-                          ),
-                        ],
-                        selected: {state.preferences.windowsStorageBackend},
-                        onSelectionChanged: (selected) =>
-                            _onWindowsStorageBackendChanged(selected.first),
+                  body: SegmentedButton<WindowsStorageBackend>(
+                    segments: [
+                      ButtonSegment(
+                        value: WindowsStorageBackend.native,
+                        label: Text(l10n.windowsStorageBackendNative),
+                        icon: const Icon(Icons.folder_outlined),
                       ),
-                      if (RuntimeStorageContext.isInstalled) ...[
-                        const SizedBox(height: 8),
-                        Text(
-                          l10n.windowsStorageBackendCurrentRoot(
-                            RuntimeStorageContext.current.appDataRoot,
-                          ),
-                          style: Theme.of(context).textTheme.bodySmall,
-                        ),
-                      ],
-                      if (_storageCliMismatchMessage(l10n) case final msg?) ...[
-                        const SizedBox(height: 8),
-                        Text(
-                          msg,
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: Theme.of(context).colorScheme.error,
-                          ),
-                        ),
-                      ],
-                      const SizedBox(height: 4),
-                      Text(
-                        l10n.windowsStorageSwitchReloadHint,
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
+                      ButtonSegment(
+                        value: WindowsStorageBackend.wsl,
+                        label: Text(l10n.windowsStorageBackendWsl),
+                        icon: const Icon(Icons.terminal),
                       ),
                     ],
+                    selected: {state.preferences.windowsStorageBackend},
+                    onSelectionChanged: (selected) =>
+                        _onWindowsStorageBackendChanged(selected.first),
                   ),
                   showDividerBelow: true,
                 ),
