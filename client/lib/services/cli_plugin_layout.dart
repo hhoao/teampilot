@@ -96,6 +96,17 @@ class CliPluginLayout {
     await _ensureFlashskyaiPluginManifest(fs, pluginRoot);
   }
 
+  /// Removes FlashskyAI-only manifest paths from a physical member bundle copy.
+  static Future<void> stripFlashskyaiManifest(Filesystem fs, String pluginRoot) async {
+    final flashDir = fs.pathContext.join(
+      pluginRoot,
+      flashskyaiManifestDirName,
+    );
+    if ((await fs.stat(flashDir)).exists) {
+      await fs.removeRecursive(flashDir);
+    }
+  }
+
   static Future<void> _ensureFlashskyaiPluginManifest(
     Filesystem fs,
     String pluginRoot,
@@ -200,17 +211,24 @@ class CliPluginLayout {
         if (root == null) return null;
         final dirName = await bundleDirName(fs, root, flavor: flavor);
         final dest = ctx.join(memberPluginsDir, dirName);
-        final linked = await linkOrCopyTree(
+        var linked = await linkOrCopyTree(
           fs: fs,
           source: root,
           destination: dest,
         );
-        // Symlinked member bundles share the team plugin root. FlashskyAI manifest
-        // mirroring is a cheap symlink on the team root (also done at team install).
-        if (linked) {
-          if (flavor == CliPluginManifestFlavor.flashskyai) {
-            await normalizeBundleForFlavor(fs, root, flavor);
+        // Claude members must not inherit `.flashskyai-plugin` added on the team
+        // root for symlinked FlashskyAI sessions — use an isolated copy instead.
+        if (flavor == CliPluginManifestFlavor.claude) {
+          if (linked) {
+            await fs.removeRecursive(dest);
+            linked = false;
+            await fs.copyTree(source: root, destination: dest);
           }
+          await stripFlashskyaiManifest(fs, dest);
+        } else if (linked) {
+          // Symlinked member bundles share the team plugin root. FlashskyAI manifest
+          // mirroring is a cheap symlink on the team root (also done at team install).
+          await normalizeBundleForFlavor(fs, root, flavor);
         } else {
           await normalizeBundleForFlavor(fs, dest, flavor);
         }

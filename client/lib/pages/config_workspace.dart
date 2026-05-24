@@ -80,14 +80,6 @@ class ConfigSettingsHubPage extends StatelessWidget {
             context.push('/config/about');
           },
         ),
-        WorkspaceHubEntry(
-          title: l10n.logViewerTitle,
-          icon: Icons.article_outlined,
-          onTap: () {
-            context.read<ConfigCubit>().selectSection(ConfigSection.logs);
-            context.push('/config/logs');
-          },
-        ),
       ],
     );
   }
@@ -450,7 +442,7 @@ class _RtkSettingsSectionState extends State<_RtkSettingsSection> {
   Future<void> _load() async {
     final settings = context.read<AppSettingsRepository>();
     final enabled = await settings.loadRtkEnabled();
-    final probe = await const RtkDetector().probe();
+    final probe = await RtkDetector().probe();
     if (!mounted) return;
     setState(() {
       _rtkEnabled = enabled;
@@ -464,7 +456,7 @@ class _RtkSettingsSectionState extends State<_RtkSettingsSection> {
     if (!probe.found) return l10n.rtkStatusNotFound;
     if (!probe.jqFound) return l10n.rtkStatusJqMissing;
     if (probe.version != null &&
-        !const RtkDetector().isVersionSupported(probe.version!)) {
+        !RtkDetector().isVersionSupported(probe.version!)) {
       return l10n.rtkStatusVersionTooOld(probe.version!);
     }
     final version = probe.version?.trim();
@@ -788,13 +780,6 @@ class _ConfigNavPanel extends StatelessWidget {
           icon: Icons.terminal_outlined,
           selected: section == ConfigSection.session,
           onTap: () => onSelectSection(ConfigSection.session),
-        ),
-        WorkspaceHubEntry(
-          key: AppKeys.configLogsSectionButton,
-          title: l10n.logViewerTitle,
-          icon: Icons.article_outlined,
-          selected: section == ConfigSection.logs,
-          onTap: () => onSelectSection(ConfigSection.logs),
         ),
         WorkspaceHubEntry(
           key: AppKeys.configAboutSectionButton,

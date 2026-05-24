@@ -345,7 +345,13 @@ void main() {
     expect(find.text(AppLocalizations.of(sidebarCtx).projects), findsOneWidget);
     expect(find.text('team-lead'), findsWidgets);
     expect(chatCubit.state.tabs.length, 0);
-    expect(find.text('Terminal not connected'), findsOneWidget);
+    final workbenchCtx = tester.element(find.byKey(AppKeys.chatWorkspace));
+    final l10n = AppLocalizations.of(workbenchCtx);
+    expect(find.text(l10n.sessionReadyTitle), findsOneWidget);
+    expect(
+      find.text(l10n.sessionReadySubtitle('team-lead')),
+      findsOneWidget,
+    );
 
     final selectedTeam = teamCubit.state.selectedTeam;
     expect(selectedTeam, isNotNull);

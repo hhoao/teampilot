@@ -17,7 +17,7 @@ class RtkProbeResult {
   bool get isReady =>
       found &&
       jqFound &&
-      (version == null || const RtkDetector().isVersionSupported(version!));
+      (version == null || RtkDetector().isVersionSupported(version!));
 }
 
 typedef RtkProcessRunner =
@@ -29,14 +29,24 @@ typedef RtkProcessRunner =
 
 /// Locates `rtk` and `jq` on PATH for hook provisioning.
 class RtkDetector {
-  const RtkDetector({RtkProcessRunner? processRunner})
-    : _processRunner = processRunner ?? Process.run;
+  RtkDetector({RtkProcessRunner? processRunner, bool? probeHost})
+    : _processRunner = processRunner ?? Process.run,
+      _probeHost =
+          probeHost ??
+          (processRunner != null ||
+              Platform.environment['FLUTTER_TEST'] != 'true');
 
   final RtkProcessRunner _processRunner;
+  final bool _probeHost;
 
   static final _versionPattern = RegExp(r'(\d+)\.(\d+)\.(\d+)');
 
   Future<RtkProbeResult> probe({Map<String, String>? environment}) async {
+    // Widget tests use fake async; default [Process.run] leaves pending timers.
+    if (!_probeHost) {
+      return const RtkProbeResult(found: false);
+    }
+
     final locator = Platform.isWindows ? 'where' : 'which';
     final rtkPath = await _resolveExecutable(locator, 'rtk', environment);
     if (rtkPath == null) {

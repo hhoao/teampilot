@@ -91,7 +91,7 @@ void main() {
           fs: LocalFilesystem(),
         ),
         loadRtkEnabled: () async => true,
-        rtkDetector: const RtkDetector(processRunner: _alwaysMissing),
+        rtkDetector: RtkDetector(processRunner: _alwaysMissing),
       );
 
       final outcome = await service.prepareTeamLaunch(

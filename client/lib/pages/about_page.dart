@@ -165,6 +165,7 @@ class _AboutConfigWorkspaceState extends State<AboutConfigWorkspace> {
                               child: Text(l10n.onboardingRerunSetup),
                             ),
                             OutlinedButton.icon(
+                              key: AppKeys.configLogsSectionButton,
                               onPressed: () {
                                 context.read<ConfigCubit>().selectSection(
                                   ConfigSection.logs,

@@ -3,7 +3,7 @@ import 'package:teampilot/services/rtk_detector.dart';
 
 void main() {
   group('RtkDetector', () {
-    const detector = RtkDetector();
+    final detector = RtkDetector();
 
     test('isVersionSupported requires >= 0.23.0', () {
       expect(detector.isVersionSupported('0.41.0'), isTrue);

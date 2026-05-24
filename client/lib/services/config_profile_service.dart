@@ -83,7 +83,7 @@ class ConfigProfileService {
            CliDataLayout(teampilotRoot: basePath, fs: fs ?? AppStorage.fs),
        _claudeCredentialsService = claudeCredentialsService,
        _loadRtkEnabled = loadRtkEnabled,
-       _rtkDetector = rtkDetector ?? const RtkDetector(),
+       _rtkDetector = rtkDetector ?? RtkDetector(),
        _rtkHookProvisioner = rtkHookProvisioner,
        _loadRtkHookScript = loadRtkHookScript;
 
