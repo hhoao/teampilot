@@ -297,26 +297,26 @@ class SessionLifecycleService {
         );
       }
 
-      if (probeHistoryFiles) {
-        final historyFiles = ['history.jsonl', 'history.json'];
-        for (final historyFile in historyFiles) {
-          final history = path.join(root, historyFile);
-          if ((await fs.stat(history)).isFile) {
-            final historyText = await fs.readString(history);
-            final historyLines = historyText?.split('\n') ?? [];
-            for (final line in historyLines) {
-              final historyEntry = jsonDecode(line);
-              if (historyEntry['sessionId'].toString().trim() == sessionId) {
-                return _CliStateProbeResult(
-                  exists: true,
-                  rootsTried: rootsTried,
-                  matchedPath: history,
-                );
-              }
-            }
-          }
-        }
-      }
+      // if (probeHistoryFiles) {
+      //   final historyFiles = ['history.jsonl', 'history.json'];
+      //   for (final historyFile in historyFiles) {
+      //     final history = path.join(root, historyFile);
+      //     if ((await fs.stat(history)).isFile) {
+      //       final historyText = await fs.readString(history);
+      //       final historyLines = historyText?.split('\n') ?? [];
+      //       for (final line in historyLines) {
+      //         final historyEntry = jsonDecode(line);
+      //         if (historyEntry['sessionId'].toString().trim() == sessionId) {
+      //           return _CliStateProbeResult(
+      //             exists: true,
+      //             rootsTried: rootsTried,
+      //             matchedPath: history,
+      //           );
+      //         }
+      //       }
+      //     }
+      //   }
+      // }
 
       final projectsDir = path.join(root, 'projects');
       if (bucket.isNotEmpty) {
