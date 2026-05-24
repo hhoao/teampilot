@@ -130,7 +130,14 @@ void main() {
       expect(plan.resume, isFalse);
       expect(plan.sessionIdArg, 'session-1');
       expect(plan.memberConfigDir, memberDir);
-      expect(plan.env['FLASHSKYAI_CONFIG_DIR'], memberDir);
+      expect(
+        plan.env[ConfigProfileService.flashskyaiConfigDirEnvKey],
+        memberDir,
+      );
+      expect(
+        plan.env[ConfigProfileService.flashskyaiSessionHomeDirEnvKey],
+        memberDir,
+      );
       expect(
         plan.env['LLM_CONFIG_PATH'],
         p.join(base.path, 'config-profiles', 'flashskyai', 'llm_config.json'),

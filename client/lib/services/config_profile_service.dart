@@ -43,6 +43,9 @@ const configProfileAdhocSessionId = '_adhoc';
 class ConfigProfileService {
   static const flashskyaiMetadataFileName = '.flashskyai.json';
   static const flashskyaiSettingsFileName = 'settings.json';
+  static const flashskyaiConfigDirEnvKey = 'FLASHSKYAI_CONFIG_DIR';
+  /// Transcript root (`projects/*.jsonl`); must match [flashskyaiConfigDirEnvKey].
+  static const flashskyaiSessionHomeDirEnvKey = 'FLASHSKYAI_SESSION_HOME_DIR';
   static const claudeMetadataFileName = '.claude.json';
   static const claudeSettingsFileEnvKey = 'TEAMPILOT_CLAUDE_SETTINGS_FILE';
 
@@ -382,14 +385,7 @@ class ConfigProfileService {
     _logLaunchTiming('prepareTeamLaunch.total', total.elapsedMilliseconds);
     return TeamLaunchOutcome(
       environment: switch (cli) {
-      TeamCli.flashskyai => {
-        'FLASHSKYAI_CONFIG_DIR': sessionToolDir(
-          scope.teamId,
-          scope.sessionId,
-          'flashskyai',
-        ),
-        'LLM_CONFIG_PATH': appFlashskyaiLlmConfigFile,
-      },
+      TeamCli.flashskyai => _flashskyaiTeamLaunchEnvironment(scope),
       TeamCli.codex => {
         'CODEX_HOME': sessionToolDir(scope.teamId, scope.sessionId, 'codex'),
       },
@@ -410,6 +406,19 @@ class ConfigProfileService {
     },
       warnings: warnings,
     );
+  }
+
+  Map<String, String> _flashskyaiTeamLaunchEnvironment(_LaunchProfileScope scope) {
+    final memberDir = sessionToolDir(
+      scope.teamId,
+      scope.sessionId,
+      'flashskyai',
+    );
+    return {
+      flashskyaiConfigDirEnvKey: memberDir,
+      flashskyaiSessionHomeDirEnvKey: memberDir,
+      'LLM_CONFIG_PATH': appFlashskyaiLlmConfigFile,
+    };
   }
 
   static _LaunchProfileScope _resolveLaunchScope({

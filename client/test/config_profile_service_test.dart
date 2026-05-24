@@ -73,8 +73,22 @@ void main() {
 
     expect(await Directory(_appFlashskyaiDirPath(base.path)).exists(), isTrue);
     expect(await Directory(memberFlashskyaiDir).exists(), isTrue);
-    expect(env.keys, ['FLASHSKYAI_CONFIG_DIR', 'LLM_CONFIG_PATH']);
-    expect(env['FLASHSKYAI_CONFIG_DIR'], memberFlashskyaiDir);
+    expect(
+      env.keys,
+      [
+        ConfigProfileService.flashskyaiConfigDirEnvKey,
+        ConfigProfileService.flashskyaiSessionHomeDirEnvKey,
+        'LLM_CONFIG_PATH',
+      ],
+    );
+    expect(
+      env[ConfigProfileService.flashskyaiConfigDirEnvKey],
+      memberFlashskyaiDir,
+    );
+    expect(
+      env[ConfigProfileService.flashskyaiSessionHomeDirEnvKey],
+      memberFlashskyaiDir,
+    );
     expect(
       env['LLM_CONFIG_PATH'],
       p.join(base.path, 'config-profiles', 'flashskyai', 'llm_config.json'),

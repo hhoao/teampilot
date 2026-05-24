@@ -319,14 +319,14 @@ class SessionLifecycleService {
     final rootsTried = <String>[];
     for (final root in toolRoots) {
       rootsTried.add(root);
-      final sessionFile = path.join(root, 'sessions', '$sessionId.json');
-      if ((await fs.stat(sessionFile)).isFile) {
-        return _CliStateProbeResult(
-          exists: true,
-          rootsTried: rootsTried,
-          matchedPath: sessionFile,
-        );
-      }
+      // final sessionFile = path.join(root, 'sessions', '$sessionId.json');
+      // if ((await fs.stat(sessionFile)).isFile) {
+      //   return _CliStateProbeResult(
+      //     exists: true,
+      //     rootsTried: rootsTried,
+      //     matchedPath: sessionFile,
+      //   );
+      // }
       // final sessionEnvFile = path.join(root, 'session-env', sessionId);
       // if ((await fs.stat(sessionEnvFile)).isDirectory) {
       //   return _CliStateProbeResult(
@@ -451,7 +451,8 @@ class SessionLifecycleService {
 
   String _memberConfigDirFromEnv(Map<String, String> env) {
     return env['CLAUDE_CONFIG_DIR'] ??
-        env['FLASHSKYAI_CONFIG_DIR'] ??
+        env[ConfigProfileService.flashskyaiConfigDirEnvKey] ??
+        env[ConfigProfileService.flashskyaiSessionHomeDirEnvKey] ??
         env['CODEX_HOME'] ??
         '';
   }
