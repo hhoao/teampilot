@@ -271,4 +271,72 @@ class RemoteFileStore {
   Future<void> disconnect() async {
     _clientFactory.disconnectProfile(_profile.id);
   }
+
+  Future<void> copyFile(String source, String destination) async {
+    final posix = p.Context(style: p.Style.posix);
+    final parent = posix.dirname(destination);
+    if (parent.isNotEmpty && parent != '.' && parent != '/') {
+      await ensureDirectory(parent);
+    }
+    final client = await _clientFactory.clientFor(_profile);
+    final result = await client.runWithResult(
+      'cp -- ${shellSingleQuote(source)} ${shellSingleQuote(destination)}',
+      stderr: false,
+    );
+    if (result.exitCode != 0) {
+      throw StateError(
+        'cp failed (${result.exitCode}): ${utf8.decode(result.stderr, allowMalformed: true)}',
+      );
+    }
+  }
+
+  Future<List<RemoteDirEntry>> listDirectoryEntriesRecursive(String path) async {
+    final client = await _clientFactory.clientFor(_profile);
+    final result = await client.runWithResult(
+      'find ${shellSingleQuote(path)} -mindepth 1 -printf "%P\\t%y\\n"',
+      stderr: false,
+    );
+    if (result.exitCode != 0) return const [];
+    final out = utf8.decode(result.stdout, allowMalformed: true);
+    final entries = <RemoteDirEntry>[];
+    for (final line in out.split('\n')) {
+      if (line.trim().isEmpty) continue;
+      final parts = line.split('\t');
+      if (parts.length < 2) continue;
+      entries.add(RemoteDirEntry(
+        name: parts.first,
+        isDirectory: parts.last == 'd',
+      ));
+    }
+    return entries;
+  }
+
+  Future<String> createTempDir({String? prefix, String? parent}) async {
+    final client = await _clientFactory.clientFor(_profile);
+    final template = '${prefix ?? 'tmp'}XXXXXX';
+    final cmd = parent != null
+        ? 'mktemp -d -p ${shellSingleQuote(parent)} $template'
+        : 'mktemp -d $template';
+    final result = await client.runWithResult(cmd, stderr: false);
+    if (result.exitCode != 0) {
+      throw StateError(
+        'mktemp failed (${result.exitCode}): ${utf8.decode(result.stderr, allowMalformed: true)}',
+      );
+    }
+    return utf8.decode(result.stdout, allowMalformed: true).trim();
+  }
+
+  Future<void> appendToFile(String path, String content) async {
+    final encoded = base64.encode(utf8.encode(content));
+    final client = await _clientFactory.clientFor(_profile);
+    final result = await client.runWithResult(
+      'printf \'%s\' ${shellSingleQuote(encoded)} | base64 -d >> ${shellSingleQuote(path)}',
+      stderr: false,
+    );
+    if (result.exitCode != 0) {
+      throw StateError(
+        'append failed (${result.exitCode}): ${utf8.decode(result.stderr, allowMalformed: true)}',
+      );
+    }
+  }
 }

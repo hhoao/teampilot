@@ -5,6 +5,7 @@ import 'package:path/path.dart' as p;
 import '../models/plugin_external_source.dart';
 import 'app_storage.dart';
 import 'flashskyai_storage_roots.dart';
+import 'io/filesystem.dart';
 import 'plugin_exceptions.dart';
 import 'plugin_repo_git_service.dart';
 
@@ -13,11 +14,16 @@ class PluginExternalFetchService {
   PluginExternalFetchService({
     PluginRepoGitService? gitService,
     FlashskyaiStorageRoots? storageRoots,
+    Filesystem? filesystem,
   })  : _git = gitService ?? PluginRepoGitService(),
-        _storageRoots = storageRoots;
+        _storageRoots = storageRoots,
+        _fsOverride = filesystem;
 
   final PluginRepoGitService _git;
   final FlashskyaiStorageRoots? _storageRoots;
+  final Filesystem? _fsOverride;
+
+  Filesystem get _fs => _fsOverride ?? AppStorage.fs;
 
   Future<String> _cacheRoot() async {
     if (_storageRoots != null) {
@@ -36,8 +42,8 @@ class PluginExternalFetchService {
     }
 
     final root = await _cacheRoot();
-    final repoDir = Directory(p.join(root, spec.cacheKey));
-    final head = await _git.readHeadSha(repoDir);
+    final dirPath = p.join(root, spec.cacheKey);
+    final head = await _git.readHeadSha(_fs, dirPath);
     final needsSync = head == null ||
         (spec.sha != null &&
             spec.sha!.isNotEmpty &&
@@ -48,21 +54,22 @@ class PluginExternalFetchService {
     if (needsSync) {
       await _git.syncCheckoutFromUrl(
         spec.cloneUrl,
-        repoDir,
+        _fs,
+        dirPath,
         ref: spec.ref,
         sha: spec.sha,
       );
     }
 
-    final pluginDir = spec.subPath.isEmpty
-        ? repoDir
-        : Directory(p.join(repoDir.path, spec.subPath));
-    if (!pluginDir.existsSync()) {
+    final pluginDirPath = spec.subPath.isEmpty
+        ? dirPath
+        : p.join(dirPath, spec.subPath);
+    if (!(await _fs.stat(pluginDirPath)).exists) {
       throw PluginInstallException(
         spec.cloneUrl,
         'Plugin path missing after fetch: ${spec.subPath}',
       );
     }
-    return pluginDir;
+    return Directory(pluginDirPath);
   }
 }

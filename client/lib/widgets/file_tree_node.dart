@@ -1,16 +1,17 @@
-import 'dart:io';
+import 'dart:io' show Platform, Process;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../cubits/file_tree_cubit.dart';
+import '../services/io/filesystem.dart';
 
 const _indentWidth = 16.0;
 
 class FileTreeNode extends StatelessWidget {
   const FileTreeNode({
     required this.path,
-    required this.entity,
+    required this.entry,
     required this.depth,
     required this.cubit,
     required this.textColor,
@@ -19,7 +20,7 @@ class FileTreeNode extends StatelessWidget {
   });
 
   final String path;
-  final FileSystemEntity entity;
+  final FsDirEntry entry;
   final int depth;
   final FileTreeCubit cubit;
   final Color textColor;
@@ -27,9 +28,8 @@ class FileTreeNode extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDir = entity is Directory;
-    final name = entity.uri.pathSegments.where((s) => s.isNotEmpty).last;
-    final isExpanded = cubit.state.expandedPaths.contains(entity.path);
+    final isDir = entry.isDirectory;
+    final isExpanded = cubit.state.expandedPaths.contains(path);
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -38,13 +38,13 @@ class FileTreeNode extends StatelessWidget {
         GestureDetector(
           onTap: () {
             if (isDir) {
-              cubit.toggleExpand(entity.path);
+              cubit.toggleExpand(path);
             } else {
-              _openFile(entity.path);
+              _openFile(path);
             }
           },
           onSecondaryTapDown: (details) =>
-              _showContextMenu(context, details.globalPosition, entity.path),
+              _showContextMenu(context, details.globalPosition, path, entry.name),
           child: Container(
             height: 28,
             padding: EdgeInsets.only(left: depth * _indentWidth + 4, right: 8),
@@ -69,7 +69,7 @@ class FileTreeNode extends StatelessWidget {
                 Icon(
                   isDir
                       ? (isExpanded ? Icons.folder_open : Icons.folder_outlined)
-                      : _fileIcon(name),
+                      : _fileIcon(entry.name),
                   size: 18,
                   color: isDir
                       ? const Color(0xFFE5B143)
@@ -78,7 +78,7 @@ class FileTreeNode extends StatelessWidget {
                 const SizedBox(width: 6),
                 Expanded(
                   child: Text(
-                    name,
+                    entry.name,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
@@ -97,7 +97,7 @@ class FileTreeNode extends StatelessWidget {
   }
 
   Widget _buildChildren(BuildContext context) {
-    final entries = cubit.entriesFor(entity.path);
+    final entries = cubit.entriesFor(path);
     if (entries.isEmpty) {
       return Padding(
         padding: EdgeInsets.only(left: (depth + 1) * _indentWidth + 22),
@@ -116,8 +116,8 @@ class FileTreeNode extends StatelessWidget {
       children: [
         for (var i = 0; i < entries.length; i++)
           FileTreeNode(
-            path: entries[i].path,
-            entity: entries[i],
+            path: cubit.fs.pathContext.join(path, entries[i].name),
+            entry: entries[i],
             depth: depth + 1,
             cubit: cubit,
             textColor: textColor,
@@ -169,6 +169,7 @@ class FileTreeNode extends StatelessWidget {
     BuildContext context,
     Offset position,
     String targetPath,
+    String targetName,
   ) async {
     final value = await showMenu<String>(
       context: context,
@@ -186,17 +187,16 @@ class FileTreeNode extends StatelessWidget {
     if (value == 'copy') {
       Clipboard.setData(ClipboardData(text: targetPath));
     } else if (value == 'delete' && context.mounted) {
-      _confirmDelete(context, targetPath);
+      _confirmDelete(context, targetPath, targetName);
     }
   }
 
-  void _confirmDelete(BuildContext context, String targetPath) {
-    final name = targetPath.split(Platform.pathSeparator).last;
+  void _confirmDelete(BuildContext context, String targetPath, String targetName) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Delete'),
-        content: Text('Delete "$name"?'),
+        content: Text('Delete "$targetName"?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
@@ -205,24 +205,12 @@ class FileTreeNode extends StatelessWidget {
           TextButton(
             onPressed: () {
               Navigator.pop(ctx);
-              _delete(targetPath);
+              cubit.deletePath(targetPath);
             },
             child: const Text('Delete'),
           ),
         ],
       ),
     );
-  }
-
-  void _delete(String targetPath) {
-    try {
-      final entity = FileSystemEntity.typeSync(targetPath);
-      if (entity == FileSystemEntityType.directory) {
-        Directory(targetPath).deleteSync(recursive: true);
-      } else {
-        File(targetPath).deleteSync();
-      }
-      cubit.refresh();
-    } catch (_) {}
   }
 }

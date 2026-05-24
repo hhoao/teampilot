@@ -6,6 +6,7 @@ import 'package:path/path.dart' as p;
 import '../models/skill.dart';
 import '../utils/logger.dart';
 import 'cli_tool_locator.dart';
+import 'io/filesystem.dart';
 import 'skill_fetch_service.dart';
 
 /// Uses local `git` for repo SHA checks and shallow clones (no GitHub REST API).
@@ -73,12 +74,12 @@ class SkillRepoGitService {
     return null;
   }
 
-  /// Shallow clone or fetch into [workDir]; returns file entries + resolved branch + HEAD sha.
+  /// Shallow clone or fetch into [workDirPath]; returns file entries + resolved branch + HEAD sha.
   Future<({
     Map<String, Uint8List> entries,
     String branch,
     String commitSha,
-  })> syncCheckout(SkillRepo repo, Directory workDir) async {
+  })> syncCheckout(SkillRepo repo, Filesystem fs, String workDirPath) async {
     final git = await _git;
     if (git == null) {
       throw StateError('git executable not found on PATH');
@@ -89,9 +90,9 @@ class SkillRepoGitService {
 
     for (final branch in skillRepoBranchCandidates(repo.branch)) {
       try {
-        await _cloneOrUpdate(git, url, workDir, branch);
-        final sha = await _headSha(git, workDir.path);
-        final entries = await _collectRepoFiles(workDir);
+        await _cloneOrUpdate(git, url, fs, workDirPath, branch);
+        final sha = await _headSha(git, workDirPath);
+        final entries = await _collectRepoFiles(fs, workDirPath);
         return (entries: entries, branch: branch, commitSha: sha);
       } catch (e) {
         lastError = e;
@@ -108,14 +109,15 @@ class SkillRepoGitService {
   Future<void> _cloneOrUpdate(
     String git,
     String url,
-    Directory workDir,
+    Filesystem fs,
+    String workDirPath,
     String branch,
   ) async {
-    final gitDir = Directory(p.join(workDir.path, '.git'));
-    if (gitDir.existsSync()) {
+    final gitDirStat = await fs.stat(fs.pathContext.join(workDirPath, '.git'));
+    if (gitDirStat.isDirectory) {
       var result = await _runner(git, [
         '-C',
-        workDir.path,
+        workDirPath,
         'fetch',
         '--depth',
         '1',
@@ -129,7 +131,7 @@ class SkillRepoGitService {
       }
       result = await _runner(git, [
         '-C',
-        workDir.path,
+        workDirPath,
         'checkout',
         '-f',
         'FETCH_HEAD',
@@ -142,10 +144,10 @@ class SkillRepoGitService {
       return;
     }
 
-    if (workDir.existsSync()) {
-      await workDir.delete(recursive: true);
+    if ((await fs.stat(workDirPath)).exists) {
+      await fs.removeRecursive(workDirPath);
     }
-    await workDir.create(recursive: true);
+    await fs.ensureDir(workDirPath);
 
     final result = await _runner(git, [
       'clone',
@@ -154,7 +156,7 @@ class SkillRepoGitService {
       '--branch',
       branch,
       url,
-      workDir.path,
+      workDirPath,
     ]);
     if (result.exitCode != 0) {
       throw SkillFetchException(
@@ -163,13 +165,13 @@ class SkillRepoGitService {
     }
   }
 
-  /// HEAD commit in an existing checkout under [workDir].
-  Future<String?> readHeadSha(Directory workDir) async {
+  /// HEAD commit in an existing checkout under [workDirPath].
+  Future<String?> readHeadSha(Filesystem fs, String workDirPath) async {
     final git = await _git;
     if (git == null) return null;
-    if (!Directory(p.join(workDir.path, '.git')).existsSync()) return null;
+    if (!(await fs.stat(fs.pathContext.join(workDirPath, '.git'))).isDirectory) return null;
     try {
-      return await _headSha(git, workDir.path);
+      return await _headSha(git, workDirPath);
     } catch (e) {
       appLogger.d('[SkillRepoGit] rev-parse HEAD: $e');
       return null;
@@ -191,15 +193,20 @@ class SkillRepoGitService {
     return _firstStdoutLine(result.stdout)?.trim() ?? '';
   }
 
-  Future<Map<String, Uint8List>> _collectRepoFiles(Directory root) async {
+  Future<Map<String, Uint8List>> _collectRepoFiles(Filesystem fs, String rootPath) async {
     final out = <String, Uint8List>{};
-    if (!root.existsSync()) return out;
+    if (!(await fs.stat(rootPath)).exists) return out;
 
-    await for (final entity in root.list(recursive: true, followLinks: false)) {
-      if (entity is! File) continue;
-      final rel = p.relative(entity.path, from: root.path).replaceAll('\\', '/');
+    final entries = await fs.listDirRecursive(rootPath);
+    for (final entry in entries) {
+      if (entry.isDirectory) continue;
+      final rel = entry.name.replaceAll('\\', '/');
       if (rel.startsWith('..') || _shouldSkipRelativePath(rel)) continue;
-      out[rel] = await entity.readAsBytes();
+      final fullPath = fs.pathContext.join(rootPath, entry.name);
+      final bytes = await fs.readBytes(fullPath);
+      if (bytes != null) {
+        out[rel] = bytes is Uint8List ? bytes : Uint8List.fromList(bytes);
+      }
     }
     return out;
   }

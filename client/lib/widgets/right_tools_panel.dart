@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -33,11 +32,11 @@ class RightToolsPanel extends StatelessWidget {
     final index = chatCubit.state.activeTabIndex;
     if (index >= 0 && index < tabs.length) {
       final cwd = tabs[index].subtitle;
-      if (cwd.isNotEmpty && Directory(cwd).existsSync()) {
+      if (cwd.isNotEmpty) {
         return cwd;
       }
     }
-    return Directory.current.path;
+    return '';
   }
 
   @override
@@ -310,9 +309,6 @@ class _FileTreePanelState extends State<_FileTreePanel> {
       value: _cubit,
       child: BlocBuilder<FileTreeCubit, FileTreeState>(
         builder: (context, state) {
-          final rootExists =
-              state.rootPath.isNotEmpty &&
-              Directory(state.rootPath).existsSync();
           return Container(
             key: AppKeys.fileTreePanel,
             padding: const EdgeInsets.all(13),
@@ -400,7 +396,7 @@ class _FileTreePanelState extends State<_FileTreePanel> {
                         },
                       ),
                       const SizedBox(height: 10),
-                      if (rootExists)
+                      if (state.rootExists)
                         Text(
                           state.rootPath,
                           maxLines: 1,
@@ -421,29 +417,8 @@ class _FileTreePanelState extends State<_FileTreePanel> {
                         ),
                       const SizedBox(height: 10),
                       Expanded(
-                        child: rootExists
-                            ? ListView(
-                                children: [
-                                  for (final entry in _cubit.entriesFor(
-                                    state.rootPath,
-                                  ))
-                                    FileTreeNode(
-                                      path: entry.path,
-                                      entity: entry,
-                                      depth: 0,
-                                      cubit: _cubit,
-                                      textColor: textBase,
-                                    ),
-                                  if (_cubit.entriesFor(state.rootPath).isEmpty)
-                                    Text(
-                                      '(empty)',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: textBase.withValues(alpha: 0.35),
-                                      ),
-                                    ),
-                                ],
-                              )
+                        child: state.rootExists
+                            ? _buildFileList(state.rootPath, textBase)
                             : const SizedBox.shrink(),
                       ),
                     ],
@@ -454,6 +429,31 @@ class _FileTreePanelState extends State<_FileTreePanel> {
           );
         },
       ),
+    );
+  }
+
+  Widget _buildFileList(String rootPath, Color textColor) {
+    final entries = _cubit.entriesFor(rootPath);
+    if (entries.isEmpty) {
+      return Text(
+        '(empty)',
+        style: TextStyle(
+          fontSize: 12,
+          color: textColor.withValues(alpha: 0.35),
+        ),
+      );
+    }
+    return ListView(
+      children: [
+        for (final entry in entries)
+          FileTreeNode(
+            path: _cubit.fs.pathContext.join(rootPath, entry.name),
+            entry: entry,
+            depth: 0,
+            cubit: _cubit,
+            textColor: textColor,
+          ),
+      ],
     );
   }
 }

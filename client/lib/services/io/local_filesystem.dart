@@ -211,4 +211,39 @@ class LocalFilesystem implements Filesystem {
       }
     }
   }
+
+  @override
+  Future<void> copyFile(String source, String destination) async {
+    await ensureDir(pathContext.dirname(destination));
+    await File(source).copy(destination);
+  }
+
+  @override
+  Future<List<FsDirEntry>> listDirRecursive(String path) async {
+    final dir = Directory(path);
+    if (!await dir.exists()) return const [];
+    final entries = <FsDirEntry>[];
+    await for (final entity in dir.list(recursive: true, followLinks: false)) {
+      entries.add(
+        FsDirEntry(
+          name: pathContext.relative(entity.path, from: path),
+          isDirectory: entity is Directory,
+        ),
+      );
+    }
+    return entries;
+  }
+
+  @override
+  Future<String> createTempDir({String? prefix, String? parent}) async {
+    final base = parent != null ? Directory(parent) : Directory.systemTemp;
+    final dir = await base.createTemp(prefix ?? '');
+    return dir.path;
+  }
+
+  @override
+  Future<void> appendString(String path, String content) async {
+    await ensureDir(pathContext.dirname(path));
+    await File(path).writeAsString(content, mode: FileMode.append);
+  }
 }

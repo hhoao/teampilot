@@ -42,5 +42,16 @@ abstract interface class Filesystem {
     required String linkPath,
   });
 
+  /// Resolved target path when [linkPath] is a symlink; otherwise `null`.
+  Future<String?> readSymlinkTarget(String linkPath);
+
   Future<void> copyTree({required String source, required String destination});
+
+  Future<void> copyFile(String source, String destination);
+
+  Future<List<FsDirEntry>> listDirRecursive(String path);
+
+  Future<String> createTempDir({String? prefix, String? parent});
+
+  Future<void> appendString(String path, String content);
 }

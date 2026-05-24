@@ -1,7 +1,7 @@
 import 'dart:convert';
-import 'dart:io';
-import 'package:path/path.dart' as p;
 import '../models/plugin.dart';
+import 'io/filesystem.dart';
+import 'io/local_filesystem.dart';
 import 'plugin_exceptions.dart';
 
 class ParsedPlugin {
@@ -20,13 +20,22 @@ class ParsedPlugin {
 }
 
 class PluginManifestService {
+  PluginManifestService({Filesystem? filesystem})
+      : _fs = filesystem ?? LocalFilesystem();
+
+  final Filesystem _fs;
+
   Future<ParsedPlugin> parseDirectory(String pluginDir) async {
-    final manifestPath = p.join(pluginDir, '.claude-plugin', 'plugin.json');
+    final manifestPath =
+        _fs.pathContext.join(pluginDir, '.claude-plugin', 'plugin.json');
     Map<String, Object?>? manifest;
-    final manifestFile = File(manifestPath);
-    if (manifestFile.existsSync()) {
+    if ((await _fs.stat(manifestPath)).isFile) {
       try {
-        manifest = (jsonDecode(manifestFile.readAsStringSync()) as Map).cast<String, Object?>();
+        final content = await _fs.readString(manifestPath);
+        if (content != null) {
+          manifest =
+              (jsonDecode(content) as Map).cast<String, Object?>();
+        }
       } catch (e) {
         throw PluginManifestException(manifestPath, cause: e);
       }
@@ -34,7 +43,7 @@ class PluginManifestService {
 
     final name = (manifest?['name'] as String?)?.trim().isNotEmpty == true
         ? manifest!['name'] as String
-        : p.basename(pluginDir);
+        : _fs.pathContext.basename(pluginDir);
     final version = (manifest?['version'] as String?) ??
         (manifest == null ? '0.0.0+local' : '0.0.0');
     final description = (manifest?['description'] as String?) ?? '';
@@ -52,55 +61,69 @@ class PluginManifestService {
 
   Future<PluginCapabilities> _scanCapabilities(String dir) async {
     return PluginCapabilities(
-      commands: _scanMdDir(p.join(dir, 'commands'),
-          mapper: (name, fm) => PluginCommand(name: name, description: fm['description'])),
-      agents: _scanMdDir(p.join(dir, 'agents'),
-          mapper: (name, fm) => PluginAgent(name: name, description: fm['description'])),
-      skills: _scanSkillsDir(p.join(dir, 'skills')),
-      hooks: _scanHooks(p.join(dir, 'hooks', 'hooks.json')),
-      mcpServers: _scanMcp(p.join(dir, '.mcp.json')),
+      commands: await _scanMdDir(
+        _fs.pathContext.join(dir, 'commands'),
+        mapper: (name, fm) =>
+            PluginCommand(name: name, description: fm['description']),
+      ),
+      agents: await _scanMdDir(
+        _fs.pathContext.join(dir, 'agents'),
+        mapper: (name, fm) =>
+            PluginAgent(name: name, description: fm['description']),
+      ),
+      skills: await _scanSkillsDir(_fs.pathContext.join(dir, 'skills')),
+      hooks: await _scanHooks(
+          _fs.pathContext.join(dir, 'hooks', 'hooks.json')),
+      mcpServers: await _scanMcp(_fs.pathContext.join(dir, '.mcp.json')),
     );
   }
 
-  List<T> _scanMdDir<T>(
+  Future<List<T>> _scanMdDir<T>(
     String dir, {
-    required T Function(String name, Map<String, String?> frontmatter) mapper,
-  }) {
-    final d = Directory(dir);
-    if (!d.existsSync()) return const [];
+    required T Function(String name, Map<String, String?> frontmatter)
+        mapper,
+  }) async {
+    if (!(await _fs.stat(dir)).isDirectory) return const [];
     final out = <T>[];
-    for (final entry in d.listSync()) {
-      if (entry is! File || !entry.path.endsWith('.md')) continue;
-      final name = p.basenameWithoutExtension(entry.path);
-      final fm = _parseFrontmatter(entry.readAsStringSync());
+    for (final entry in await _fs.listDir(dir)) {
+      if (entry.isDirectory || !entry.name.endsWith('.md')) continue;
+      final name =
+          _fs.pathContext.basenameWithoutExtension(entry.name);
+      final content =
+          await _fs.readString(_fs.pathContext.join(dir, entry.name));
+      final fm = _parseFrontmatter(content ?? '');
       out.add(mapper(name, fm));
     }
     return out;
   }
 
-  List<PluginSkillRef> _scanSkillsDir(String dir) {
-    final d = Directory(dir);
-    if (!d.existsSync()) return const [];
+  Future<List<PluginSkillRef>> _scanSkillsDir(String dir) async {
+    if (!(await _fs.stat(dir)).isDirectory) return const [];
     final out = <PluginSkillRef>[];
-    for (final entry in d.listSync()) {
-      if (entry is! Directory) continue;
-      final skillMd = File(p.join(entry.path, 'SKILL.md'));
-      if (!skillMd.existsSync()) continue;
-      final fm = _parseFrontmatter(skillMd.readAsStringSync());
+    for (final entry in await _fs.listDir(dir)) {
+      if (!entry.isDirectory) continue;
+      final skillPath =
+          _fs.pathContext.join(dir, entry.name, 'SKILL.md');
+      if (!(await _fs.stat(skillPath)).isFile) continue;
+      final content = await _fs.readString(skillPath);
+      final fm = _parseFrontmatter(content ?? '');
       out.add(PluginSkillRef(
-        name: fm['name'] ?? p.basename(entry.path),
+        name: fm['name'] ?? entry.name,
         description: fm['description'],
       ));
     }
     return out;
   }
 
-  List<PluginHook> _scanHooks(String path) {
-    final f = File(path);
-    if (!f.existsSync()) return const [];
+  Future<List<PluginHook>> _scanHooks(String path) async {
+    if (!(await _fs.stat(path)).isFile) return const [];
     try {
-      final json = jsonDecode(f.readAsStringSync()) as Map;
-      final hooks = (json['hooks'] as Map?)?.cast<String, Object?>() ?? const {};
+      final content = await _fs.readString(path);
+      if (content == null) return const [];
+      final json = jsonDecode(content) as Map;
+      final hooks = (json['hooks'] as Map?)
+              ?.cast<String, Object?>() ??
+          const {};
       final out = <PluginHook>[];
       hooks.forEach((event, value) {
         if (value is List) {
@@ -120,15 +143,20 @@ class PluginManifestService {
     }
   }
 
-  List<PluginMcpServer> _scanMcp(String path) {
-    final f = File(path);
-    if (!f.existsSync()) return const [];
+  Future<List<PluginMcpServer>> _scanMcp(String path) async {
+    if (!(await _fs.stat(path)).isFile) return const [];
     try {
-      final json = jsonDecode(f.readAsStringSync()) as Map;
-      final servers = (json['mcpServers'] as Map?)?.cast<String, Object?>() ?? const {};
+      final content = await _fs.readString(path);
+      if (content == null) return const [];
+      final json = jsonDecode(content) as Map;
+      final servers = (json['mcpServers'] as Map?)
+              ?.cast<String, Object?>() ??
+          const {};
       return servers.entries.map((e) {
-        final v = (e.value as Map?)?.cast<String, Object?>() ?? const {};
-        return PluginMcpServer(name: e.key, type: (v['type'] as String?) ?? 'stdio');
+        final v =
+            (e.value as Map?)?.cast<String, Object?>() ?? const {};
+        return PluginMcpServer(
+            name: e.key, type: (v['type'] as String?) ?? 'stdio');
       }).toList();
     } catch (_) {
       return const [];

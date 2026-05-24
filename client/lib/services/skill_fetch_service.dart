@@ -8,6 +8,7 @@ import 'package:path/path.dart' as p;
 
 import '../models/skill.dart';
 import '../utils/logger.dart';
+import 'io/filesystem.dart';
 import 'skill_repo_git_service.dart';
 
 /// GitHub REST API rejects requests without a valid User-Agent (HTTP fallback).
@@ -230,18 +231,19 @@ class SkillFetchService {
     }
   }
 
-  /// Sync via local git when [persistentGitDir] is set; otherwise HTTP tarball/zip.
+  /// Sync via local git when [persistentGitPath] is set; otherwise HTTP tarball/zip.
   Future<({
     Map<String, Uint8List> entries,
     String branch,
     String commitSha,
   })> downloadRepoEntries(
     SkillRepo repo, {
-    Directory? persistentGitDir,
+    Filesystem? fs,
+    String? persistentGitPath,
   }) async {
-    if (persistentGitDir != null && await _git.isAvailable) {
+    if (persistentGitPath != null && fs != null && await _git.isAvailable) {
       try {
-        final synced = await _git.syncCheckout(repo, persistentGitDir);
+        final synced = await _git.syncCheckout(repo, fs, persistentGitPath);
         return (
           entries: synced.entries,
           branch: synced.branch,

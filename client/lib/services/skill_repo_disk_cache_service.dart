@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:io';
 import 'dart:typed_data';
 
 import '../models/skill.dart';
@@ -223,9 +222,10 @@ class SkillRepoDiskCacheService {
       final sourceDirPath = _fs.pathContext.join(dirPath, 'source');
       final downloaded = await _fetch.downloadRepoEntries(
         repo,
-        persistentGitDir: AppStorage.usesPosixPaths
+        fs: _fs,
+        persistentGitPath: AppStorage.usesPosixPaths
             ? null
-            : Directory(sourceDirPath),
+            : sourceDirPath,
       );
       final commitSha = downloaded.commitSha;
       final skills = discoverSkillsInTarballEntries(

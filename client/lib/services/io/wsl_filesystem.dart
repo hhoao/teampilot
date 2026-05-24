@@ -98,12 +98,14 @@ class WslFilesystem implements Filesystem {
         .join();
   }
 
-  Future<void> _pipeBase64ToFile(String path, String encoded) async {
+  Future<void> _pipeBase64ToFile(String path, String encoded,
+      {bool append = false}) async {
     await ensureDir(pathContext.dirname(path));
     final quotedPath = RemoteFileStore.shellSingleQuote(path);
+    final op = append ? '>>' : '>';
     final process = await Process.start(
       'wsl.exe',
-      _args(['sh', '-lc', 'base64 -d > $quotedPath']),
+      _args(['sh', '-lc', 'base64 -d $op $quotedPath']),
     );
     final stderrFuture = _collectStreamText(process.stderr);
     unawaited(process.stdout.drain());
@@ -200,5 +202,56 @@ class WslFilesystem implements Filesystem {
       'cp -R -- ${RemoteFileStore.shellSingleQuote('$source/.')} '
           '${RemoteFileStore.shellSingleQuote(destination)}',
     ]);
+  }
+
+  @override
+  Future<void> copyFile(String source, String destination) async {
+    await ensureDir(pathContext.dirname(destination));
+    await _checked(['cp', '--', source, destination]);
+  }
+
+  @override
+  Future<List<FsDirEntry>> listDirRecursive(String path) async {
+    final result = await _run([
+      'find',
+      path,
+      '-mindepth',
+      '1',
+      '-printf',
+      r'%P\t%y\n',
+    ]);
+    if (result.exitCode != 0) return const [];
+    final lines = (result.stdout as String).split('\n');
+    return [
+      for (final line in lines)
+        if (line.trim().isNotEmpty)
+          FsDirEntry(
+            name: line.split('\t').first,
+            isDirectory: line.split('\t').last == 'd',
+          ),
+    ];
+  }
+
+  @override
+  Future<String> createTempDir({String? prefix, String? parent}) async {
+    final template = '${prefix ?? 'tmp'}XXXXXX';
+    final args = <String>['mktemp', '-d'];
+    if (parent != null) {
+      args.addAll(['-p', parent]);
+    }
+    args.add(template);
+    final result = await _run(args);
+    if (result.exitCode != 0) {
+      throw StateError(
+        'mktemp failed (${result.exitCode}): ${result.stderr}',
+      );
+    }
+    return (result.stdout as String).trim();
+  }
+
+  @override
+  Future<void> appendString(String path, String content) async {
+    final encoded = base64.encode(utf8.encode(content));
+    await _pipeBase64ToFile(path, encoded, append: true);
   }
 }

@@ -95,4 +95,29 @@ class SftpFilesystem implements Filesystem {
     await store.ensureDirectory(destination);
     await store.copyTree(source: source, destination: destination);
   }
+
+  @override
+  Future<void> copyFile(String source, String destination) =>
+      store.copyFile(source, destination);
+
+  @override
+  Future<List<FsDirEntry>> listDirRecursive(String path) async {
+    try {
+      final entries = await store.listDirectoryEntriesRecursive(path);
+      return [
+        for (final entry in entries)
+          FsDirEntry(name: entry.name, isDirectory: entry.isDirectory),
+      ];
+    } on Object {
+      return const [];
+    }
+  }
+
+  @override
+  Future<String> createTempDir({String? prefix, String? parent}) =>
+      store.createTempDir(prefix: prefix, parent: parent);
+
+  @override
+  Future<void> appendString(String path, String content) =>
+      store.appendToFile(path, content);
 }

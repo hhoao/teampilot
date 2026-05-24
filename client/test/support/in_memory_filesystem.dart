@@ -132,6 +132,10 @@ class InMemoryFilesystem implements Filesystem {
   }
 
   @override
+  Future<String?> readSymlinkTarget(String linkPath) async =>
+      symlinks[linkPath];
+
+  @override
   Future<void> copyTree({
     required String source,
     required String destination,
@@ -143,5 +147,59 @@ class InMemoryFilesystem implements Filesystem {
         files[pathContext.join(destination, rel)] = entry.value;
       }
     }
+  }
+
+  @override
+  Future<void> copyFile(String source, String destination) async {
+    final text = files[source];
+    final bytes = byteFiles[source];
+    await ensureDir(pathContext.dirname(destination));
+    if (text != null) {
+      files[destination] = text;
+    } else if (bytes != null) {
+      byteFiles[destination] = List<int>.from(bytes);
+    }
+  }
+
+  @override
+  Future<List<FsDirEntry>> listDirRecursive(String path) async {
+    final entries = <String, bool>{};
+    for (final key in files.keys) {
+      if (key == path || pathContext.isWithin(path, key)) {
+        entries[pathContext.relative(key, from: path)] = false;
+      }
+    }
+    for (final key in byteFiles.keys) {
+      if (key == path || pathContext.isWithin(path, key)) {
+        entries[pathContext.relative(key, from: path)] = false;
+      }
+    }
+    for (final key in directories) {
+      if (key != path && pathContext.isWithin(path, key)) {
+        entries[pathContext.relative(key, from: path)] = true;
+      }
+    }
+    return [
+      for (final e in entries.entries)
+        FsDirEntry(name: e.key, isDirectory: e.value),
+    ];
+  }
+
+  static int _tmpDirCounter = 0;
+
+  @override
+  Future<String> createTempDir({String? prefix, String? parent}) async {
+    final base = parent ?? '/tmp';
+    final name = '${prefix ?? ''}${DateTime.now().microsecondsSinceEpoch}_${_tmpDirCounter++}';
+    final fullPath = pathContext.join(base, name);
+    directories.add(fullPath);
+    return fullPath;
+  }
+
+  @override
+  Future<void> appendString(String path, String content) async {
+    final existing = files[path];
+    files[path] = (existing ?? '') + content;
+    byteFiles.remove(path);
   }
 }

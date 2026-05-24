@@ -1,10 +1,12 @@
-import 'dart:io';
-
 import 'package:flutter_bloc/flutter_bloc.dart';
+
+import '../services/io/filesystem.dart';
+import '../services/io/local_filesystem.dart';
 
 class FileTreeState {
   const FileTreeState({
     this.rootPath = '',
+    this.rootExists = false,
     this.expandedPaths = const {},
     this.filterText = '',
     this.showHiddenFiles = false,
@@ -12,20 +14,23 @@ class FileTreeState {
   });
 
   final String rootPath;
+  final bool rootExists;
   final Set<String> expandedPaths;
   final String filterText;
   final bool showHiddenFiles;
-  final Map<String, List<FileSystemEntity>> dirCache;
+  final Map<String, List<FsDirEntry>> dirCache;
 
   FileTreeState copyWith({
     String? rootPath,
+    bool? rootExists,
     Set<String>? expandedPaths,
     String? filterText,
     bool? showHiddenFiles,
-    Map<String, List<FileSystemEntity>>? dirCache,
+    Map<String, List<FsDirEntry>>? dirCache,
   }) {
     return FileTreeState(
       rootPath: rootPath ?? this.rootPath,
+      rootExists: rootExists ?? this.rootExists,
       expandedPaths: expandedPaths ?? this.expandedPaths,
       filterText: filterText ?? this.filterText,
       showHiddenFiles: showHiddenFiles ?? this.showHiddenFiles,
@@ -35,12 +40,24 @@ class FileTreeState {
 }
 
 class FileTreeCubit extends Cubit<FileTreeState> {
-  FileTreeCubit() : super(const FileTreeState());
+  FileTreeCubit({Filesystem? fs})
+    : fs = fs ?? LocalFilesystem(),
+      super(const FileTreeState());
 
-  void setRoot(String path) {
+  final Filesystem fs;
+
+  Future<void> setRoot(String path) async {
     if (path == state.rootPath) return;
-    emit(FileTreeState(rootPath: path));
-    _loadDirectory(path);
+    if (path.isEmpty) {
+      emit(const FileTreeState());
+      return;
+    }
+    final stat = await fs.stat(path);
+    final exists = stat.exists && stat.isDirectory;
+    emit(FileTreeState(rootPath: path, rootExists: exists));
+    if (exists) {
+      await _loadDirectory(path);
+    }
   }
 
   void toggleExpand(String path) {
@@ -60,7 +77,7 @@ class FileTreeCubit extends Cubit<FileTreeState> {
 
   void toggleShowHidden() {
     final show = !state.showHiddenFiles;
-    final cache = Map<String, List<FileSystemEntity>>.from(state.dirCache);
+    final cache = Map<String, List<FsDirEntry>>.from(state.dirCache);
     for (final key in cache.keys.toList()) {
       cache.remove(key);
     }
@@ -74,7 +91,7 @@ class FileTreeCubit extends Cubit<FileTreeState> {
   }
 
   void refresh() {
-    final cache = Map<String, List<FileSystemEntity>>.from(state.dirCache);
+    final cache = Map<String, List<FsDirEntry>>.from(state.dirCache);
     cache.clear();
     emit(state.copyWith(dirCache: cache));
     if (state.rootPath.isNotEmpty) {
@@ -85,13 +102,14 @@ class FileTreeCubit extends Cubit<FileTreeState> {
     }
   }
 
-  void _loadDirectory(String path) {
+  Future<void> _loadDirectory(String path) async {
     try {
-      final dir = Directory(path);
-      if (!dir.existsSync()) return;
-      final entries = dir.listSync().where((e) => _matchesFilter(e)).toList()
+      final stat = await fs.stat(path);
+      if (!stat.exists || !stat.isDirectory) return;
+      final allEntries = await fs.listDir(path);
+      final entries = allEntries.where(_matchesFilter).toList()
         ..sort(_compareEntries);
-      final cache = Map<String, List<FileSystemEntity>>.from(state.dirCache);
+      final cache = Map<String, List<FsDirEntry>>.from(state.dirCache);
       cache[path] = entries;
       emit(state.copyWith(dirCache: cache));
     } catch (_) {
@@ -99,29 +117,28 @@ class FileTreeCubit extends Cubit<FileTreeState> {
     }
   }
 
-  List<FileSystemEntity> entriesFor(String path) {
+  List<FsDirEntry> entriesFor(String path) {
     return state.dirCache[path] ?? [];
   }
 
-  bool _matchesFilter(FileSystemEntity entity) {
-    final name = _entityName(entity);
-    if (!state.showHiddenFiles && name.startsWith('.')) return false;
+  bool _matchesFilter(FsDirEntry entry) {
+    if (!state.showHiddenFiles && entry.name.startsWith('.')) return false;
     if (state.filterText.isNotEmpty &&
-        !name.toLowerCase().contains(state.filterText.toLowerCase())) {
+        !entry.name.toLowerCase().contains(state.filterText.toLowerCase())) {
       return false;
     }
     return true;
   }
 
-  static int _compareEntries(FileSystemEntity a, FileSystemEntity b) {
-    final aIsDir = a is Directory;
-    final bIsDir = b is Directory;
-    if (aIsDir && !bIsDir) return -1;
-    if (!aIsDir && bIsDir) return 1;
-    return _entityName(a).toLowerCase().compareTo(_entityName(b).toLowerCase());
+  static int _compareEntries(FsDirEntry a, FsDirEntry b) {
+    if (a.isDirectory && !b.isDirectory) return -1;
+    if (!a.isDirectory && b.isDirectory) return 1;
+    return a.name.toLowerCase().compareTo(b.name.toLowerCase());
   }
 
-  static String _entityName(FileSystemEntity entity) {
-    return entity.uri.pathSegments.where((s) => s.isNotEmpty).last;
+  /// Deletes a file or directory at [path] and refreshes the tree.
+  Future<void> deletePath(String path) async {
+    await fs.removeRecursive(path);
+    refresh();
   }
 }

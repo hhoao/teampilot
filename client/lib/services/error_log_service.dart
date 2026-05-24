@@ -4,19 +4,23 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:package_info_plus/package_info_plus.dart';
-import 'package:path/path.dart' as p;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../utils/app_error_utils.dart';
 import '../utils/logger_utils.dart';
+import 'app_storage.dart';
+import 'io/filesystem.dart';
 
 /// Persists noteworthy errors locally under `{appDataRoot}/logs/errors.jsonl`.
 ///
 /// TeamPilot has no remote error-reporting API; this file is for support/debug.
 class ErrorLogService {
-  ErrorLogService._();
+  ErrorLogService({Filesystem? fs})
+    : _fs = fs ?? AppStorage.fs;
 
-  static final ErrorLogService instance = ErrorLogService._();
+  static final ErrorLogService instance = ErrorLogService();
+
+  final Filesystem _fs;
 
   static const _lastRecordedDateKey = 'error_log_last_recorded_date';
   static const _recordedErrorsKey = 'error_log_recorded_errors';
@@ -75,10 +79,8 @@ class ErrorLogService {
     }
 
     try {
-      final logDir = Directory(p.join(root, 'logs'));
-      if (!await logDir.exists()) {
-        await logDir.create(recursive: true);
-      }
+      final logDir = _fs.pathContext.join(root, 'logs');
+      await _fs.ensureDir(logDir);
 
       final record = <String, Object?>{
         'timestamp': DateTime.now().toUtc().toIso8601String(),
@@ -93,12 +95,8 @@ class ErrorLogService {
         'buildNumber': _packageInfo?.buildNumber,
       };
 
-      final file = File(p.join(logDir.path, 'errors.jsonl'));
-      await file.writeAsString(
-        '${jsonEncode(record)}\n',
-        mode: FileMode.append,
-        flush: true,
-      );
+      final filePath = _fs.pathContext.join(logDir, 'errors.jsonl');
+      await _fs.appendString(filePath, '${jsonEncode(record)}\n');
 
       await _markAsRecorded(errorKey);
     } on Object catch (e, st) {
