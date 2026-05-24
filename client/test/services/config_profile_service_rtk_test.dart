@@ -27,10 +27,13 @@ void main() {
         loadRtkEnabled: () async => true,
         rtkDetector: RtkDetector(
           processRunner: (executable, arguments, {environment}) async {
-            if (executable == 'which' && arguments.first == 'rtk') {
+            // RtkDetector locates binaries via `which` on POSIX and `where`
+            // on Windows, so match on the queried name rather than the locator.
+            const locators = {'which', 'where'};
+            if (locators.contains(executable) && arguments.first == 'rtk') {
               return ProcessResult(0, 0, '/usr/bin/rtk\n', '');
             }
-            if (executable == 'which' && arguments.first == 'jq') {
+            if (locators.contains(executable) && arguments.first == 'jq') {
               return ProcessResult(0, 0, '/usr/bin/jq\n', '');
             }
             if (arguments.contains('--version')) {
@@ -74,7 +77,8 @@ void main() {
       expect(File(hookPath).existsSync(), isTrue);
 
       final settings =
-          jsonDecode(File(settingsPath).readAsStringSync()) as Map<String, dynamic>;
+          jsonDecode(File(settingsPath).readAsStringSync())
+              as Map<String, dynamic>;
       final pre = (settings['hooks'] as Map)['PreToolUse'] as List;
       expect(pre, isNotEmpty);
       final command =
@@ -86,10 +90,7 @@ void main() {
       service = ConfigProfileService(
         basePath: base.path,
         fs: LocalFilesystem(),
-        layout: CliDataLayout(
-          teampilotRoot: base.path,
-          fs: LocalFilesystem(),
-        ),
+        layout: CliDataLayout(teampilotRoot: base.path, fs: LocalFilesystem()),
         loadRtkEnabled: () async => true,
         rtkDetector: RtkDetector(processRunner: _alwaysMissing),
       );

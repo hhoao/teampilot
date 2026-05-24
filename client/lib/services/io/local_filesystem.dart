@@ -137,7 +137,32 @@ class LocalFilesystem implements Filesystem {
     final tmp =
         '$path.tmp.${DateTime.now().microsecondsSinceEpoch}.${_tmpWriteCounter++}';
     await File(tmp).writeAsString(content, flush: true);
-    await File(tmp).rename(path);
+    try {
+      await _renameReplacing(tmp, path);
+    } on Object {
+      // The rename never made it; drop the temp file so we don't leak it.
+      await _deleteIfStillPresent(File(tmp));
+      rethrow;
+    }
+  }
+
+  /// Renames [from] onto [to], overwriting any existing destination.
+  ///
+  /// POSIX rename is an atomic replace, but on Windows `MoveFile` over an
+  /// existing target transiently fails with ACCESS_DENIED (errno 5) while
+  /// another rename to the same path is in flight (or AV/indexing briefly
+  /// holds it). Retry a handful of times so concurrent atomic writes settle.
+  Future<void> _renameReplacing(String from, String to) async {
+    const maxAttempts = 20;
+    for (var attempt = 1; ; attempt++) {
+      try {
+        await File(from).rename(to);
+        return;
+      } on PathAccessException {
+        if (!Platform.isWindows || attempt >= maxAttempts) rethrow;
+        await Future<void>.delayed(Duration(milliseconds: 5 * attempt));
+      }
+    }
   }
 
   @override

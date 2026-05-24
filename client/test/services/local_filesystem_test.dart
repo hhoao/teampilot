@@ -35,13 +35,20 @@ void main() {
     final to = p.join(root.path, 'repo.bak');
     await fs.ensureDir(p.join(from, 'files', 'skill-a'));
     await fs.writeString(p.join(from, 'meta.json'), '{}');
-    await fs.writeBytes(p.join(from, 'files', 'skill-a', 'SKILL.md'), [1, 2, 3]);
+    await fs.writeBytes(p.join(from, 'files', 'skill-a', 'SKILL.md'), [
+      1,
+      2,
+      3,
+    ]);
 
     await fs.rename(from, to);
 
     expect(await Directory(from).exists(), isFalse);
     expect((await fs.stat(p.join(to, 'meta.json'))).isFile, isTrue);
-    expect((await fs.stat(p.join(to, 'files', 'skill-a', 'SKILL.md'))).isFile, isTrue);
+    expect(
+      (await fs.stat(p.join(to, 'files', 'skill-a', 'SKILL.md'))).isFile,
+      isTrue,
+    );
   });
 
   test('rename replaces an existing destination directory', () async {
