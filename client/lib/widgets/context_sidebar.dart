@@ -277,10 +277,6 @@ class _ContextSidebarState extends State<ContextSidebar> {
           : Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                _SkillTile(onTap: () => goFromSidebar(context, '/skills')),
-                const SizedBox(height: 8),
-                _PluginTile(onTap: () => goFromSidebar(context, '/plugins')),
-                const SizedBox(height: 14),
                 _TeamSelector(
                   teams: teamCubit.state.teams,
                   selected: selected,
@@ -308,6 +304,10 @@ class _ContextSidebarState extends State<ContextSidebar> {
                       : const SizedBox.shrink(),
                 ),
                 const Divider(height: 1),
+                const SizedBox(height: 8),
+                _SkillTile(onTap: () => goFromSidebar(context, '/skills')),
+                const SizedBox(height: 8),
+                _PluginTile(onTap: () => goFromSidebar(context, '/plugins')),
                 const SizedBox(height: 8),
                 _SettingsTile(
                   onTap: () => goFromSidebar(
