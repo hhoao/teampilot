@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:path/path.dart' as p;
 
 import '../models/claude_credential_link_result.dart';
@@ -14,6 +15,9 @@ import 'claude_team_roster_service.dart';
 import 'cli_data_layout.dart';
 import 'cli_plugin_registry_service.dart';
 import 'io/filesystem.dart';
+import 'rtk_detector.dart';
+import 'rtk_hook_provisioner.dart';
+import 'rtk_settings_merge.dart';
 
 /// Launch-time environment for tool-isolated team profiles.
 typedef TeamLaunchEnvironment = Map<String, String>;
@@ -30,6 +34,11 @@ class TeamLaunchOutcome {
 
 /// Profile directory key when launching without a chat [AppSession].
 const configProfileAdhocSessionId = '_adhoc';
+
+/// [TeamLaunchOutcome.warnings] when RTK is enabled but dependencies are missing.
+const rtkWarningEnabledNotFound = 'rtk_enabled_not_found';
+const rtkWarningEnabledJqMissing = 'rtk_enabled_jq_missing';
+const rtkWarningEnabledVersionTooOld = 'rtk_enabled_version_too_old';
 
 /// Ensures team runtime isolation directories and returns launch env vars.
 ///
@@ -54,6 +63,8 @@ class ConfigProfileService {
   static const Map<String, Object?> defaultTrustedProjectConfig = {
     'hasTrustDialogAccepted': true,
     'projectOnboardingSeenCount': 1,
+    'hasClaudeMdExternalIncludesApproved': true,
+    'hasClaudeMdExternalIncludesWarningShown': true,
     'allowedTools': <Object?>[],
     'mcpServers': <String, Object?>{},
   };
@@ -63,16 +74,28 @@ class ConfigProfileService {
     Filesystem? fs,
     CliDataLayout? layout,
     ClaudeProviderCredentialsService? claudeCredentialsService,
+    Future<bool> Function()? loadRtkEnabled,
+    RtkDetector? rtkDetector,
+    RtkHookProvisioner? rtkHookProvisioner,
+    Future<String> Function()? loadRtkHookScript,
   }) : _fs = fs ?? AppStorage.fs,
        layout =
            layout ??
            CliDataLayout(teampilotRoot: basePath, fs: fs ?? AppStorage.fs),
-       _claudeCredentialsService = claudeCredentialsService;
+       _claudeCredentialsService = claudeCredentialsService,
+       _loadRtkEnabled = loadRtkEnabled,
+       _rtkDetector = rtkDetector ?? const RtkDetector(),
+       _rtkHookProvisioner = rtkHookProvisioner,
+       _loadRtkHookScript = loadRtkHookScript;
 
   final String basePath;
   final Filesystem _fs;
   final CliDataLayout layout;
   final ClaudeProviderCredentialsService? _claudeCredentialsService;
+  final Future<bool> Function()? _loadRtkEnabled;
+  final RtkDetector _rtkDetector;
+  final RtkHookProvisioner? _rtkHookProvisioner;
+  final Future<String> Function()? _loadRtkHookScript;
 
   ClaudeProviderCredentialsService get _claudeCredentials =>
       _claudeCredentialsService ??
@@ -242,6 +265,7 @@ class ConfigProfileService {
     }
 
     final warnings = <String>[];
+    await _collectRtkWarnings(warnings);
 
     final scope = _resolveLaunchScope(
       teamId: trimmedTeamId,
@@ -381,7 +405,11 @@ class ConfigProfileService {
       effortLevel: effortLevel,
       teammateMode: teammateMode,
     );
-    await _writeSettingsFile(file, settings);
+    await _writeSettingsFile(
+      file,
+      settings,
+      memberToolDir: sessionToolDir(scope.teamId, scope.sessionId, 'claude'),
+    );
   }
 
   Future<void> _writeClaudeMetadata(
@@ -454,11 +482,14 @@ class ConfigProfileService {
       sessionToolDir(scope.teamId, scope.sessionId, 'flashskyai'),
       flashskyaiSettingsFileName,
     );
+    final memberToolDir = sessionToolDir(scope.teamId, scope.sessionId, 'flashskyai');
     final teamDefaults = _flashskyaiTeamSettings();
-    if (await _flashskyaiSettingsAlreadyCurrent(file, teamDefaults)) {
+    if (await _flashskyaiSettingsAlreadyCurrent(file, teamDefaults) &&
+        !await _isRtkEnabled()) {
       return;
     }
-    final merged = await _flashskyaiTeamSettingsMerged(file);
+    var merged = await _flashskyaiTeamSettingsMerged(file);
+    merged = await _maybeApplyRtk(merged, memberToolDir);
     await _writeJsonIfChanged(file, merged);
   }
 
@@ -500,17 +531,72 @@ class ConfigProfileService {
   /// Writes team defaults without dropping [enabledPlugins] from plugin registry.
   Future<void> _writeSettingsFile(
     String path,
-    Map<String, Object?> settings,
-  ) async {
+    Map<String, Object?> settings, {
+    String? memberToolDir,
+  }) async {
     final existing = await _readSettingsFile(path);
     final enabledPlugins = existing['enabledPlugins'];
-    final merged = Map<String, Object?>.from(settings);
+    var merged = Map<String, Object?>.from(settings);
     if (enabledPlugins is Map && enabledPlugins.isNotEmpty) {
       merged['enabledPlugins'] = enabledPlugins;
     }
+    merged = await _maybeApplyRtk(merged, memberToolDir);
     await _fs.atomicWrite(
       path,
       const JsonEncoder.withIndent('  ').convert(merged),
+    );
+  }
+
+  Future<bool> _isRtkEnabled() async {
+    final loader = _loadRtkEnabled;
+    if (loader == null) return false;
+    return loader();
+  }
+
+  RtkHookProvisioner _resolveRtkProvisioner() {
+    return _rtkHookProvisioner ??
+        RtkHookProvisioner(
+          fs: _fs,
+          loadHookScript:
+              _loadRtkHookScript ??
+              () => rootBundle.loadString('assets/rtk/rtk-rewrite.sh'),
+        );
+  }
+
+  Future<void> _collectRtkWarnings(List<String> warnings) async {
+    if (!await _isRtkEnabled()) return;
+    final probe = await _rtkDetector.probe();
+    if (!probe.found) {
+      warnings.add(rtkWarningEnabledNotFound);
+      return;
+    }
+    if (!probe.jqFound) {
+      warnings.add(rtkWarningEnabledJqMissing);
+      return;
+    }
+    final version = probe.version;
+    if (version != null && !_rtkDetector.isVersionSupported(version)) {
+      warnings.add(rtkWarningEnabledVersionTooOld);
+    }
+  }
+
+  Future<Map<String, Object?>> _maybeApplyRtk(
+    Map<String, Object?> settings,
+    String? memberToolDir,
+  ) async {
+    final toolDir = memberToolDir?.trim() ?? '';
+    if (toolDir.isEmpty) return settings;
+    if (!await _isRtkEnabled()) return settings;
+
+    final probe = await _rtkDetector.probe();
+    if (!probe.isReady) return settings;
+
+    final provisioner = _resolveRtkProvisioner();
+    final scriptPath = await provisioner.provisionMemberToolDir(toolDir);
+    final hookCommand = provisioner.hookCommandForPath(scriptPath);
+    return const RtkSettingsMerge().mergeIntoSettings(
+      base: settings,
+      hookCommand: hookCommand,
     );
   }
 
@@ -590,6 +676,8 @@ class ConfigProfileService {
         projectConfig.putIfAbsent(entry.key, () => entry.value);
       }
       projectConfig['hasTrustDialogAccepted'] = true;
+      projectConfig['hasClaudeMdExternalIncludesApproved'] = true;
+      projectConfig['hasClaudeMdExternalIncludesWarningShown'] = true;
       projects[key] = projectConfig;
     }
     metadata['projects'] = projects;
@@ -687,9 +775,10 @@ class ConfigProfileService {
       member,
     );
     final settings = _claudeMemberSettings(providerSettings, member);
-    await _fs.atomicWrite(
+    await _writeSettingsFile(
       file,
-      const JsonEncoder.withIndent('  ').convert(settings),
+      settings,
+      memberToolDir: sessionToolDir(scope.teamId, scope.sessionId, 'claude'),
     );
   }
 

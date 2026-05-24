@@ -8,6 +8,9 @@ abstract class AppSettingsRepository {
 
   Future<bool> loadHasCompletedOnboarding();
   Future<void> saveHasCompletedOnboarding(bool value);
+
+  Future<bool> loadRtkEnabled();
+  Future<void> saveRtkEnabled(bool value);
 }
 
 class SharedPrefsAppSettingsRepository implements AppSettingsRepository {
@@ -16,6 +19,7 @@ class SharedPrefsAppSettingsRepository implements AppSettingsRepository {
   static const storageKey = 'flashskyai.app_settings.v1';
   static const _llmConfigPathKey = 'llmConfigPath';
   static const _hasCompletedOnboardingKey = 'hasCompletedOnboarding';
+  static const _rtkEnabledKey = 'rtkEnabled';
 
   final SharedPreferences _preferences;
 
@@ -60,6 +64,22 @@ class SharedPrefsAppSettingsRepository implements AppSettingsRepository {
     await _writeMap(current);
   }
 
+  @override
+  Future<bool> loadRtkEnabled() async {
+    return _readMap()[_rtkEnabledKey] == true;
+  }
+
+  @override
+  Future<void> saveRtkEnabled(bool value) async {
+    final current = _readMap();
+    if (value) {
+      current[_rtkEnabledKey] = true;
+    } else {
+      current.remove(_rtkEnabledKey);
+    }
+    await _writeMap(current);
+  }
+
   Future<void> _writeMap(Map<String, Object?> current) async {
     if (current.isEmpty) {
       await _preferences.remove(storageKey);
@@ -86,11 +106,14 @@ class InMemoryAppSettingsRepository implements AppSettingsRepository {
   InMemoryAppSettingsRepository({
     String? llmConfigPathOverride,
     bool hasCompletedOnboarding = false,
+    bool rtkEnabled = false,
   }) : _llmConfigPathOverride = llmConfigPathOverride,
-       _hasCompletedOnboarding = hasCompletedOnboarding;
+       _hasCompletedOnboarding = hasCompletedOnboarding,
+       _rtkEnabled = rtkEnabled;
 
   String? _llmConfigPathOverride;
   bool _hasCompletedOnboarding;
+  bool _rtkEnabled;
 
   @override
   Future<String?> loadLlmConfigPathOverride() async => _llmConfigPathOverride;
@@ -109,5 +132,13 @@ class InMemoryAppSettingsRepository implements AppSettingsRepository {
   @override
   Future<void> saveHasCompletedOnboarding(bool value) async {
     _hasCompletedOnboarding = value;
+  }
+
+  @override
+  Future<bool> loadRtkEnabled() async => _rtkEnabled;
+
+  @override
+  Future<void> saveRtkEnabled(bool value) async {
+    _rtkEnabled = value;
   }
 }

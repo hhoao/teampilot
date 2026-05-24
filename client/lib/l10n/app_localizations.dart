@@ -260,6 +260,72 @@ abstract class AppLocalizations {
   /// **'Show the project file tree for quick navigation.'**
   String get visibilityFileTreeHint;
 
+  /// No description provided for @rtkSettingsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'RTK token savings'**
+  String get rtkSettingsTitle;
+
+  /// No description provided for @rtkSettingsEnableTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable RTK'**
+  String get rtkSettingsEnableTitle;
+
+  /// No description provided for @rtkSettingsDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Compress Agent Bash command output before it reaches the model (requires rtk and jq on PATH).'**
+  String get rtkSettingsDescription;
+
+  /// No description provided for @rtkSettingsStatusTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Host status'**
+  String get rtkSettingsStatusTitle;
+
+  /// No description provided for @rtkSettingsInstallLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Install guide'**
+  String get rtkSettingsInstallLink;
+
+  /// No description provided for @rtkStatusNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'rtk not found on PATH'**
+  String get rtkStatusNotFound;
+
+  /// No description provided for @rtkStatusJqMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'jq not found on PATH'**
+  String get rtkStatusJqMissing;
+
+  /// No description provided for @rtkStatusInstalledGeneric.
+  ///
+  /// In en, this message translates to:
+  /// **'rtk ready'**
+  String get rtkStatusInstalledGeneric;
+
+  /// No description provided for @rtkStatusInstalled.
+  ///
+  /// In en, this message translates to:
+  /// **'rtk {version} ready'**
+  String rtkStatusInstalled(String version);
+
+  /// No description provided for @rtkStatusVersionTooOld.
+  ///
+  /// In en, this message translates to:
+  /// **'rtk {version} is too old (need >= 0.23.0)'**
+  String rtkStatusVersionTooOld(String version);
+
+  /// No description provided for @rtkBashOnlyHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Only applies to Agent Bash tool calls. Built-in Read, Grep, and Glob are not rewritten.'**
+  String get rtkBashOnlyHint;
+
   /// No description provided for @themeModeTitle.
   ///
   /// In en, this message translates to:

@@ -96,6 +96,45 @@ class AppLocalizationsEn extends AppLocalizations {
       'Show the project file tree for quick navigation.';
 
   @override
+  String get rtkSettingsTitle => 'RTK token savings';
+
+  @override
+  String get rtkSettingsEnableTitle => 'Enable RTK';
+
+  @override
+  String get rtkSettingsDescription =>
+      'Compress Agent Bash command output before it reaches the model (requires rtk and jq on PATH).';
+
+  @override
+  String get rtkSettingsStatusTitle => 'Host status';
+
+  @override
+  String get rtkSettingsInstallLink => 'Install guide';
+
+  @override
+  String get rtkStatusNotFound => 'rtk not found on PATH';
+
+  @override
+  String get rtkStatusJqMissing => 'jq not found on PATH';
+
+  @override
+  String get rtkStatusInstalledGeneric => 'rtk ready';
+
+  @override
+  String rtkStatusInstalled(String version) {
+    return 'rtk $version ready';
+  }
+
+  @override
+  String rtkStatusVersionTooOld(String version) {
+    return 'rtk $version is too old (need >= 0.23.0)';
+  }
+
+  @override
+  String get rtkBashOnlyHint =>
+      'Only applies to Agent Bash tool calls. Built-in Read, Grep, and Glob are not rewritten.';
+
+  @override
   String get themeModeTitle => 'Theme mode';
 
   @override

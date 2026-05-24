@@ -66,6 +66,7 @@ flutter:
   assets:
     - google_fonts/
     - assets/fonts/terminal/
+    - assets/rtk/rtk-rewrite.sh
 
 flutter_launcher_icons:
   android: true

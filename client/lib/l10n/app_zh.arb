@@ -27,6 +27,31 @@
   "visibilityTeamSessionsHint": "在左侧边栏显示团队会话列表。",
   "visibilityMembersHint": "在工具或终端旁显示成员列表。",
   "visibilityFileTreeHint": "显示项目文件树以便快速浏览。",
+  "rtkSettingsTitle": "RTK 省 token",
+  "rtkSettingsEnableTitle": "启用 RTK",
+  "rtkSettingsDescription": "在命令输出进入模型前压缩 Agent Bash 结果（需本机 PATH 中有 rtk 与 jq）。",
+  "rtkSettingsStatusTitle": "本机状态",
+  "rtkSettingsInstallLink": "安装说明",
+  "rtkStatusNotFound": "PATH 中未找到 rtk",
+  "rtkStatusJqMissing": "PATH 中未找到 jq",
+  "rtkStatusInstalledGeneric": "rtk 已就绪",
+  "rtkStatusInstalled": "rtk {version} 已就绪",
+  "@rtkStatusInstalled": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "rtkStatusVersionTooOld": "rtk {version} 版本过低（需要 >= 0.23.0）",
+  "@rtkStatusVersionTooOld": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "rtkBashOnlyHint": "仅作用于 Agent 的 Bash 工具调用；内置 Read、Grep、Glob 不会自动改写。",
   "themeModeTitle": "主题模式",
   "themeModeDescription": "浅色、深色，或与系统外观一致。",
   "themeColorPresetTitle": "主题色",
