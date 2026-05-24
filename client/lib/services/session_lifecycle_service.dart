@@ -288,14 +288,14 @@ class SessionLifecycleService {
           matchedPath: sessionFile,
         );
       }
-      final sessionEnvFile = path.join(root, 'session-env', sessionId);
-      if ((await fs.stat(sessionEnvFile)).isDirectory) {
-        return _CliStateProbeResult(
-          exists: true,
-          rootsTried: rootsTried,
-          matchedPath: sessionEnvFile,
-        );
-      }
+      // final sessionEnvFile = path.join(root, 'session-env', sessionId);
+      // if ((await fs.stat(sessionEnvFile)).isDirectory) {
+      //   return _CliStateProbeResult(
+      //     exists: true,
+      //     rootsTried: rootsTried,
+      //     matchedPath: sessionEnvFile,
+      //   );
+      // }
 
       // if (probeHistoryFiles) {
       //   final historyFiles = ['history.jsonl', 'history.json'];
