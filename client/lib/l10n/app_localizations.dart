@@ -554,6 +554,12 @@ abstract class AppLocalizations {
   /// **'New Chat'**
   String get defaultNewChatSessionTitle;
 
+  /// No description provided for @sessionStarting.
+  ///
+  /// In en, this message translates to:
+  /// **'Starting session…'**
+  String get sessionStarting;
+
   /// No description provided for @openFolder.
   ///
   /// In en, this message translates to:

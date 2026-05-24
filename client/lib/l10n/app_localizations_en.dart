@@ -251,6 +251,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get defaultNewChatSessionTitle => 'New Chat';
 
   @override
+  String get sessionStarting => 'Starting session…';
+
+  @override
   String get openFolder => 'Open Folder';
 
   @override

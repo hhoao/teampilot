@@ -86,6 +86,7 @@ class ChatState extends Equatable {
     this.selectedMemberId = '',
     this.stateVersion = 0,
     this.snackbarMessage,
+    this.sessionConnectingId,
   });
 
   final List<ChatTabInfo> tabs;
@@ -98,6 +99,9 @@ class ChatState extends Equatable {
   final String selectedMemberId;
   final int stateVersion;
   final String? snackbarMessage;
+
+  /// Session id while prepareLaunch / terminal spawn is in progress.
+  final String? sessionConnectingId;
 
   ChatState copyWith({
     List<ChatTabInfo>? tabs,
@@ -112,6 +116,8 @@ class ChatState extends Equatable {
     int? stateVersion,
     String? snackbarMessage,
     bool clearSnackbarMessage = false,
+    String? sessionConnectingId,
+    bool clearSessionConnectingId = false,
   }) {
     return ChatState(
       tabs: tabs ?? this.tabs,
@@ -128,7 +134,19 @@ class ChatState extends Equatable {
       snackbarMessage: clearSnackbarMessage
           ? null
           : (snackbarMessage ?? this.snackbarMessage),
+      sessionConnectingId: clearSessionConnectingId
+          ? null
+          : (sessionConnectingId ?? this.sessionConnectingId),
     );
+  }
+
+  bool get isActiveSessionConnecting {
+    final id = sessionConnectingId;
+    final active = activeSessionId;
+    if (id == null || id.isEmpty) return false;
+    if (id == 'pending') return true;
+    if (active == null || active.isEmpty) return true;
+    return id == active;
   }
 
   @override
@@ -143,6 +161,7 @@ class ChatState extends Equatable {
     selectedMemberId,
     stateVersion,
     snackbarMessage,
+    sessionConnectingId,
   ];
 }
 
@@ -437,6 +456,7 @@ class ChatCubit extends Cubit<ChatState> {
       ),
     );
     if (connectImmediately) {
+      _beginSessionConnect(info.id);
       _postFrameScheduler(() async {
         try {
           final plan = await _lifecycle.prepareLaunch(
@@ -455,42 +475,42 @@ class ChatCubit extends Cubit<ChatState> {
             member: member,
             sessionTeam: cliTeamName,
             extraEnvironment: plan.env.isEmpty ? null : plan.env,
-            onProcessFailed: () => _updateTabRunning(info.id),
-            onProcessStarted: repo == null
-                ? null
-                : () {
-                    unawaited(
-                      repo
-                          .markSessionLaunched(
-                            session.sessionId,
-                            launchTeam: cliTeamName,
-                          )
-                          .then((_) {
-                            if (isClosed) return;
-                            final sessions = state.sessions.map((s) {
-                              if (s.sessionId != session.sessionId) {
-                                return s;
-                              }
-                              final lt = cliTeamName.trim();
-                              return s.copyWith(
-                                launchState: AppSessionLaunchState.started,
-                                launchTeam: lt.isNotEmpty ? lt : s.launchTeam,
-                                updatedAt:
-                                    DateTime.now().millisecondsSinceEpoch,
-                              );
-                            }).toList();
-                            _emitWithDerivedSessionsAndProjects(
-                              state.copyWith(sessions: sessions),
-                            );
-                          })
-                          .catchError((Object error, StackTrace stackTrace) {
-                            appLogger.w(
-                              'markSessionLaunched failed: $error',
-                              stackTrace: stackTrace,
-                            );
-                          }),
-                    );
-                  },
+            onProcessFailed: () => _finishSessionConnect(info.id),
+            onProcessStarted: () {
+              _finishSessionConnect(info.id);
+              if (repo == null) return;
+              unawaited(
+                repo
+                    .markSessionLaunched(
+                      session.sessionId,
+                      launchTeam: cliTeamName,
+                    )
+                    .then((_) {
+                      if (isClosed) return;
+                      final sessions = state.sessions.map((s) {
+                        if (s.sessionId != session.sessionId) {
+                          return s;
+                        }
+                        final lt = cliTeamName.trim();
+                        return s.copyWith(
+                          launchState: AppSessionLaunchState.started,
+                          launchTeam: lt.isNotEmpty ? lt : s.launchTeam,
+                          updatedAt:
+                              DateTime.now().millisecondsSinceEpoch,
+                        );
+                      }).toList();
+                      _emitWithDerivedSessionsAndProjects(
+                        state.copyWith(sessions: sessions),
+                      );
+                    })
+                    .catchError((Object error, StackTrace stackTrace) {
+                      appLogger.w(
+                        'markSessionLaunched failed: $error',
+                        stackTrace: stackTrace,
+                      );
+                    }),
+              );
+            },
           );
           _updateTabRunning(info.id);
           if (_autoLaunchAllMembersOnConnect?.call() == true &&
@@ -500,7 +520,7 @@ class ChatCubit extends Cubit<ChatState> {
           }
         } on Object catch (e) {
           ts.terminal.write('\r\n[Failed to resume session: $e]\r\n');
-          _updateTabRunning(info.id);
+          _finishSessionConnect(info.id);
         }
       });
     } else {
@@ -553,6 +573,7 @@ class ChatCubit extends Cubit<ChatState> {
   }) async {
     final r = repo ?? _sessionRepository;
     if (_internalTabs.isEmpty && r != null) {
+      _beginSessionConnect('pending');
       try {
         await _materializeDefaultWorkspaceSession(
           team,
@@ -564,6 +585,12 @@ class ChatCubit extends Cubit<ChatState> {
         appLogger.e(
           'openMemberTab: default session failed: $e',
           stackTrace: st,
+        );
+        emit(
+          state.copyWith(
+            clearSessionConnectingId: true,
+            stateVersion: state.stateVersion + 1,
+          ),
         );
       }
       return;
@@ -594,10 +621,11 @@ class ChatCubit extends Cubit<ChatState> {
       return;
     }
     final launch = _workingDirectoryAndAddDirsForTab(tab);
+    _beginSessionConnect(tab.info.id);
     _postFrameScheduler(() async {
       try {
         if (shell.isRunning) {
-          _updateTabRunning(tab.info.id);
+          _finishSessionConnect(tab.info.id);
           return;
         }
         final plan = await _lifecycle.prepareLaunch(
@@ -619,13 +647,13 @@ class ChatCubit extends Cubit<ChatState> {
           member: member,
           sessionTeam: tab.cliTeamName,
           extraEnvironment: plan.env.isEmpty ? null : plan.env,
-          onProcessStarted: () => _updateTabRunning(tab.info.id),
-          onProcessFailed: () => _updateTabRunning(tab.info.id),
+          onProcessStarted: () => _finishSessionConnect(tab.info.id),
+          onProcessFailed: () => _finishSessionConnect(tab.info.id),
         );
         _updateTabRunning(tab.info.id);
       } on Object catch (e) {
         shell.terminal.write('\r\n[Failed to start session: $e]\r\n');
-        _updateTabRunning(tab.info.id);
+        _finishSessionConnect(tab.info.id);
       }
     });
   }
@@ -799,6 +827,12 @@ class ChatCubit extends Cubit<ChatState> {
       if (keepId.isEmpty) {
         final session = ensureSession(team);
         session?.terminal.write('\r\n[No member selected]\r\n');
+        emit(
+          state.copyWith(
+            clearSessionConnectingId: true,
+            stateVersion: state.stateVersion + 1,
+          ),
+        );
         return;
       }
       await launchAllMembers(team, repo: r);
@@ -815,6 +849,12 @@ class ChatCubit extends Cubit<ChatState> {
     if (memberId.isEmpty || team.members.isEmpty) {
       final session = ensureSession(team);
       session?.terminal.write('\r\n[No member selected]\r\n');
+      emit(
+        state.copyWith(
+          clearSessionConnectingId: true,
+          stateVersion: state.stateVersion + 1,
+        ),
+      );
       return;
     }
     final member = team.members.firstWhere(
@@ -836,6 +876,8 @@ class ChatCubit extends Cubit<ChatState> {
     SessionRepository? repo,
   }) async {
     final r = repo ?? _sessionRepository;
+    final activeId = _activeTab?.info.id ?? state.activeSessionId ?? 'pending';
+    _beginSessionConnect(activeId);
     if (_autoLaunchAllMembersOnConnect?.call() == true) {
       final keepId = state.selectedMemberId.isNotEmpty
           ? state.selectedMemberId
@@ -967,6 +1009,27 @@ class ChatCubit extends Cubit<ChatState> {
     emit(
       state.copyWith(
         tabs: _visibleTabs(),
+        stateVersion: state.stateVersion + 1,
+      ),
+    );
+  }
+
+  void _beginSessionConnect(String sessionId) {
+    if (state.sessionConnectingId == sessionId) return;
+    emit(
+      state.copyWith(
+        sessionConnectingId: sessionId,
+        stateVersion: state.stateVersion + 1,
+      ),
+    );
+  }
+
+  void _finishSessionConnect(String sessionId) {
+    _updateTabRunning(sessionId);
+    if (state.sessionConnectingId != sessionId) return;
+    emit(
+      state.copyWith(
+        clearSessionConnectingId: true,
         stateVersion: state.stateVersion + 1,
       ),
     );

@@ -345,8 +345,9 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
       mode: terminalThemeMode,
     );
     final teamCubit = context.watch<TeamCubit>();
-    final chatCubit = context.read<ChatCubit>();
+    final chatCubit = context.watch<ChatCubit>();
     final team = teamCubit.state.selectedTeam;
+    final sessionConnectInProgress = chatCubit.state.isActiveSessionConnecting;
 
     if (team == null) {
       return const Center(child: CircularProgressIndicator());
@@ -377,7 +378,11 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
             Expanded(
               child: Container(
                 color: terminalTheme.background,
-                child: _TerminalPlaceholder(onConnect: onConnect),
+                child: sessionConnectInProgress
+                    ? _SessionLoadingView(
+                        message: context.l10n.sessionStarting,
+                      )
+                    : _TerminalPlaceholder(onConnect: onConnect),
               ),
             ),
           ],
@@ -422,7 +427,11 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
           Expanded(
             child: Container(
               color: terminalTheme.background,
-              child: session.isRunning
+              child: sessionConnectInProgress
+                  ? _SessionLoadingView(
+                      message: context.l10n.sessionStarting,
+                    )
+                  : session.isRunning
                   ? TerminalView(
                       session.terminal,
                       controller: _terminalController,
@@ -635,6 +644,38 @@ class _TerminalToolbar extends StatelessWidget {
                 ),
               ),
             ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SessionLoadingView extends StatelessWidget {
+  const _SessionLoadingView({required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textBase = isDark ? Colors.white : const Color(0xFF111827);
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const SizedBox(
+            width: 36,
+            height: 36,
+            child: CircularProgressIndicator(strokeWidth: 2.5),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            message,
+            style: TextStyle(
+              color: textBase.withValues(alpha: 0.68),
+              fontSize: 14,
+            ),
+          ),
         ],
       ),
     );

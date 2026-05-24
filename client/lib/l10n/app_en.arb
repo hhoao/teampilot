@@ -83,6 +83,7 @@
   "projectDirectoryAdded": "Directory added to project",
   "newSessionTooltip": "New session",
   "defaultNewChatSessionTitle": "New Chat",
+  "sessionStarting": "Starting session…",
   "openFolder": "Open Folder",
   "copyFolderPath": "Copy Folder Path",
   "pathCopied": "Path copied: {path}",

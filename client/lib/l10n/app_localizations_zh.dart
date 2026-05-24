@@ -239,6 +239,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get defaultNewChatSessionTitle => '新对话';
 
   @override
+  String get sessionStarting => '正在启动会话…';
+
+  @override
   String get openFolder => '打开文件夹';
 
   @override

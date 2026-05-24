@@ -76,6 +76,7 @@
   "projectDirectoryAdded": "已添加目录到项目",
   "newSessionTooltip": "新建会话",
   "defaultNewChatSessionTitle": "新对话",
+  "sessionStarting": "正在启动会话…",
   "openFolder": "打开文件夹",
   "copyFolderPath": "复制文件夹路径",
   "pathCopied": "已复制路径：{path}",
