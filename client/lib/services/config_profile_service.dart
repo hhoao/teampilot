@@ -11,6 +11,7 @@ import 'claude_official_provider.dart';
 import 'claude_provider_credentials_service.dart';
 import 'claude_team_roster_service.dart';
 import 'cli_data_layout.dart';
+import 'cli_plugin_registry_service.dart';
 import 'io/filesystem.dart';
 
 /// Launch-time environment for tool-isolated team profiles.
@@ -140,6 +141,7 @@ class ConfigProfileService {
     String teamId,
     String sessionId, {
     TeamCli cli = TeamCli.flashskyai,
+    TeamConfig? team,
   }) async {
     final trimmedTeamId = teamId.trim();
     final trimmedSessionId = sessionId.trim();
@@ -151,6 +153,23 @@ class ConfigProfileService {
       trimmedSessionId,
       cli.value,
     );
+    await layout.provisionMemberPluginsFromTeam(
+      trimmedTeamId,
+      trimmedSessionId,
+      cli.value,
+    );
+    if (cli == TeamCli.flashskyai || cli == TeamCli.claude) {
+      await CliPluginRegistryService(
+        fs: _fs,
+        teampilotRoot: basePath,
+        layout: layout,
+      ).writeForSession(
+        teamId: trimmedTeamId,
+        sessionId: trimmedSessionId,
+        tool: cli.value,
+        team: team,
+      );
+    }
     switch (cli) {
       case TeamCli.flashskyai:
         await layout.ensureAppToolLayout('flashskyai');
@@ -219,7 +238,12 @@ class ConfigProfileService {
       runtimeTeamId: runtimeTeamId,
     );
 
-    await ensureSessionProfile(scope.teamId, scope.sessionId, cli: cli);
+    await ensureSessionProfile(
+      scope.teamId,
+      scope.sessionId,
+      cli: cli,
+      team: team,
+    );
     switch (cli) {
       case TeamCli.flashskyai:
         await _writeFlashskyaiMetadata(
@@ -341,10 +365,7 @@ class ConfigProfileService {
       effortLevel: effortLevel,
       teammateMode: teammateMode,
     );
-    await _fs.atomicWrite(
-      file,
-      const JsonEncoder.withIndent('  ').convert(settings),
-    );
+    await _writeSettingsFile(file, settings);
   }
 
   Future<void> _writeClaudeMetadata(
@@ -392,10 +413,41 @@ class ConfigProfileService {
       sessionToolDir(scope.teamId, scope.sessionId, 'flashskyai'),
       flashskyaiSettingsFileName,
     );
+    await _writeSettingsFile(file, _flashskyaiTeamSettings());
+  }
+
+  /// Writes team defaults without dropping [enabledPlugins] from plugin registry.
+  Future<void> _writeSettingsFile(
+    String path,
+    Map<String, Object?> settings,
+  ) async {
+    final existing = await _readSettingsFile(path);
+    final enabledPlugins = existing['enabledPlugins'];
+    final merged = Map<String, Object?>.from(settings);
+    if (enabledPlugins is Map && enabledPlugins.isNotEmpty) {
+      merged['enabledPlugins'] = enabledPlugins;
+    }
     await _fs.atomicWrite(
-      file,
-      const JsonEncoder.withIndent('  ').convert(_flashskyaiTeamSettings()),
+      path,
+      const JsonEncoder.withIndent('  ').convert(merged),
     );
+  }
+
+  Future<Map<String, Object?>> _readSettingsFile(String path) async {
+    if (!(await _fs.stat(path)).exists) return {};
+    final raw = await _fs.readString(path);
+    if (raw == null || raw.trim().isEmpty) return {};
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is Map) {
+        return Map<String, Object?>.from(
+          decoded.map((key, value) => MapEntry(key.toString(), value)),
+        );
+      }
+    } on Object {
+      return {};
+    }
+    return {};
   }
 
   Future<Map<String, Object?>> _readMetadataFile(

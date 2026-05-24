@@ -2,6 +2,8 @@ import '../models/plugin.dart';
 import '../utils/logger.dart';
 import 'app_storage.dart';
 import 'cli_data_layout.dart';
+import 'cli_plugin_layout.dart';
+import 'cli_plugin_manifest_flavor.dart';
 import 'flashskyai_storage_roots.dart';
 import 'io/filesystem.dart';
 
@@ -21,12 +23,11 @@ class TeamPluginSyncResult {
   bool get ok => errors.isEmpty;
 }
 
-/// Provisions team-scope plugin links under
-/// `config-profiles/teams/<teamId>/flashskyai/plugins/<plugin-dir>`.
+/// Provisions team-scope plugin bundles under
+/// `config-profiles/teams/<teamId>/flashskyai/plugins/<manifest-name>/`.
 ///
-/// Mirrors [TeamSkillLinkerService] for plugins. Source plugins live under
-/// [appPluginsDir]; each enabled plugin is linked (or copied on Windows/SFTP)
-/// into the team's CLI layout.
+/// Each entry is a full Claude Code plugin root (`.claude-plugin/plugin.json`,
+/// `commands/`, `.mcp.json`, …), copied from [appPluginsDir].
 class TeamPluginLinkerService {
   TeamPluginLinkerService({
     String? appPluginsRoot,
@@ -121,29 +122,44 @@ class TeamPluginLinkerService {
     }
 
     for (final plugin in toLink) {
-      String targetName = plugin.name;
-      if (usedNames.contains(targetName)) {
-        final owner = plugin.marketplaceOwner ?? 'local';
-        final fallback = '${owner}__${plugin.name}';
-        resolutions.add((plugin.id, fallback));
-        targetName = fallback;
-      }
-      usedNames.add(targetName);
-
-      final source = path.join(sourceRoot, plugin.directory);
-      final target = path.join(teamPluginsDir, targetName);
+      final rawSource = path.join(sourceRoot, plugin.directory);
       try {
-        if (!(await fs.stat(source)).isDirectory) {
-          errors.add('${plugin.name}: source missing at $source');
+        if (!(await fs.stat(rawSource)).isDirectory) {
+          errors.add('${plugin.name}: source missing at $rawSource');
           continue;
         }
-        final linkedOk = await fs.createSymlink(
-          target: source,
-          linkPath: target,
+        const flavor = CliPluginManifestFlavor.flashskyai;
+        final pluginRoot = await CliPluginLayout.resolvePluginRoot(
+          fs,
+          rawSource,
+          flavor: flavor,
         );
-        if (!linkedOk) {
-          await fs.copyTree(source: source, destination: target);
+        if (pluginRoot == null) {
+          errors.add(
+            '${plugin.name}: no plugin manifest under $rawSource '
+            '(expected ${flavor.manifestRelativePath})',
+          );
+          continue;
         }
+        var targetName = await CliPluginLayout.bundleDirName(
+          fs,
+          pluginRoot,
+          flavor: flavor,
+        );
+        if (usedNames.contains(targetName)) {
+          final owner = plugin.marketplaceOwner ?? 'local';
+          final fallback = '${owner}__$targetName';
+          resolutions.add((plugin.id, fallback));
+          targetName = fallback;
+        }
+        usedNames.add(targetName);
+
+        final target = path.join(teamPluginsDir, targetName);
+        if ((await fs.stat(target)).exists) {
+          await fs.removeRecursive(target);
+        }
+        await fs.copyTree(source: pluginRoot, destination: target);
+        await CliPluginLayout.normalizeBundleForFlavor(fs, target, flavor);
         linked.add(targetName);
       } catch (e) {
         errors.add('${plugin.name}: $e');

@@ -29,12 +29,14 @@ void main() {
     tmp.deleteSync(recursive: true);
   });
 
-  test('syncForTeam creates links under team plugin dir for each enabled plugin',
-      () async {
+  test('syncForTeam copies CLI bundles under team plugin dir', () async {
     final pluginsRoot = Directory(p.join(tmp.path, 'plugins'))..createSync();
     final pluginDir = Directory(p.join(pluginsRoot.path, 'acme__market__p1'))
       ..createSync();
-    File(p.join(pluginDir.path, 'plugin.json')).writeAsStringSync('{}');
+    Directory(p.join(pluginDir.path, '.claude-plugin')).createSync();
+    File(
+      p.join(pluginDir.path, '.claude-plugin', 'plugin.json'),
+    ).writeAsStringSync('{"name":"p1","version":"1.0.0"}');
 
     final svc = TeamPluginLinkerService(appPluginsRoot: pluginsRoot.path);
     final result = await svc.syncForTeam(
@@ -56,6 +58,20 @@ void main() {
 
     expect(result.errors, isEmpty);
     expect(result.linked, ['p1']);
+    final teamBundle = Directory(
+      p.join(tmp.path, 'config-profiles', 'teams', 't1', 'flashskyai', 'plugins', 'p1'),
+    );
+    expect(teamBundle.existsSync(), isTrue);
+    expect(Link(teamBundle.path).existsSync(), isFalse);
+    expect(
+      File(p.join(teamBundle.path, '.claude-plugin', 'plugin.json')).existsSync(),
+      isTrue,
+    );
+    expect(
+      File(p.join(teamBundle.path, '.flashskyai-plugin', 'plugin.json'))
+          .existsSync(),
+      isTrue,
+    );
   });
 
   test('syncForTeam removes stale links not in pluginIds', () async {
@@ -91,12 +107,19 @@ void main() {
   test('syncForTeam resolves plugin-name collision with owner__name fallback',
       () async {
     final pluginsRoot = Directory(p.join(tmp.path, 'plugins'))..createSync();
+    void writeBundle(Directory dir, String name) {
+      Directory(p.join(dir.path, '.claude-plugin')).createSync();
+      File(p.join(dir.path, '.claude-plugin', 'plugin.json')).writeAsStringSync(
+        '{"name":"$name","version":"1.0.0"}',
+      );
+    }
+
     final dirA = Directory(p.join(pluginsRoot.path, 'acmeA__market__shared'))
       ..createSync();
-    File(p.join(dirA.path, 'plugin.json')).writeAsStringSync('{}');
+    writeBundle(dirA, 'shared');
     final dirB = Directory(p.join(pluginsRoot.path, 'acmeB__market__shared'))
       ..createSync();
-    File(p.join(dirB.path, 'plugin.json')).writeAsStringSync('{}');
+    writeBundle(dirB, 'shared');
 
     final svc = TeamPluginLinkerService(appPluginsRoot: pluginsRoot.path);
     final result = await svc.syncForTeam(

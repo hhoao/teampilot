@@ -88,17 +88,28 @@ class PluginInstallService {
   Future<Plugin> installFromDirectory(
     Directory source, {
     PluginMarketplace? marketplace,
-  }) => _installFromStaged(source, marketplace: marketplace);
+    /// Marketplace catalog `plugins[].name` (may differ from bundle `plugin.json` name).
+    String? marketplaceEntryName,
+  }) => _installFromStaged(
+    source,
+    marketplace: marketplace,
+    marketplaceEntryName: marketplaceEntryName,
+  );
 
   Future<Plugin> _installFromStaged(
     Directory source, {
     PluginMarketplace? marketplace,
+    String? marketplaceEntryName,
   }) async {
     final storage = await _storage();
     final parsed = await _manifest.parseDirectory(source.path);
+    final catalogName = marketplaceEntryName?.trim();
+    final registeredName = catalogName != null && catalogName.isNotEmpty
+        ? catalogName
+        : parsed.name;
     final id = marketplace == null
-        ? 'local/${_sanitize(parsed.name)}'
-        : '${marketplace.owner}/${marketplace.name}/${parsed.name}';
+        ? 'local/${_sanitize(registeredName)}'
+        : '${marketplace.owner}/${marketplace.name}/$registeredName';
     final dirName = id.replaceAll('/', '__');
     final installDir = storage.ctx.join(storage.pluginsRoot, dirName);
 
@@ -115,7 +126,7 @@ class PluginInstallService {
         : parsed.version;
     final plugin = Plugin(
       id: id,
-      name: parsed.name,
+      name: registeredName,
       description: parsed.description,
       version: version,
       directory: dirName,

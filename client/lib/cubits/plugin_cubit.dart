@@ -270,6 +270,7 @@ class PluginCubit extends Cubit<PluginState> {
       await installService.installFromDirectory(
         sourceDir,
         marketplace: marketplace,
+        marketplaceEntryName: d.name,
       );
       final installed = await repository.loadAll();
       emit(state.copyWith(installed: installed));

@@ -205,6 +205,77 @@ void main() {
       },
     );
 
+    test(
+      'provisionMemberPluginsFromTeam copies team bundles into member CONFIG_DIR',
+      () async {
+        final layout = CliDataLayout(
+          teampilotRoot: base.path,
+          fs: LocalFilesystem(),
+        );
+        final teamPlugins = Directory(
+          p.join(layout.teamPluginsDir('team-a')),
+        )..createSync(recursive: true);
+        final pluginRoot = Directory(p.join(teamPlugins.path, 'demo-plugin'))
+          ..createSync();
+        Directory(p.join(pluginRoot.path, '.claude-plugin')).createSync();
+        await File(
+          p.join(pluginRoot.path, '.claude-plugin', 'plugin.json'),
+        ).writeAsString('{"name":"demo-plugin","version":"1.0.0"}');
+        await File(p.join(pluginRoot.path, '.mcp.json')).writeAsString('{}');
+
+        await layout.provisionMemberPluginsFromTeam(
+          'team-a',
+          'sess-1',
+          'flashskyai',
+        );
+        // flashskyai session mirrors marketplace manifest for FlashskyAI CLI
+        final memberPlugins = p.join(
+          layout.memberToolDir('team-a', 'sess-1', 'flashskyai'),
+          'plugins',
+        );
+        expect(Link(memberPlugins).existsSync(), isFalse);
+        final copied = Directory(p.join(memberPlugins, 'demo-plugin'));
+        expect(copied.existsSync(), isTrue);
+        expect(
+          File(
+            p.join(copied.path, '.claude-plugin', 'plugin.json'),
+          ).existsSync(),
+          isTrue,
+        );
+        expect(File(p.join(copied.path, '.mcp.json')).existsSync(), isTrue);
+        expect(
+          File(p.join(copied.path, '.flashskyai-plugin', 'plugin.json'))
+              .existsSync(),
+          isTrue,
+        );
+
+        await layout.provisionMemberPluginsFromTeam(
+          'team-a',
+          'sess-2',
+          'claude',
+        );
+        final claudeCopied = Directory(
+          p.join(
+            layout.memberToolDir('team-a', 'sess-2', 'claude'),
+            'plugins',
+            'demo-plugin',
+          ),
+        );
+        expect(claudeCopied.existsSync(), isTrue);
+        expect(
+          File(
+            p.join(claudeCopied.path, '.claude-plugin', 'plugin.json'),
+          ).existsSync(),
+          isTrue,
+        );
+        expect(
+          File(p.join(claudeCopied.path, '.flashskyai-plugin', 'plugin.json'))
+              .existsSync(),
+          isFalse,
+        );
+      },
+    );
+
     test('symlink failure falls back to copy', () async {
       final fs = _NoSymlinkFilesystem();
       final layout = CliDataLayout(teampilotRoot: '/tp', fs: fs);

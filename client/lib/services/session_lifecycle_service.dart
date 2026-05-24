@@ -62,18 +62,21 @@ class SessionLifecycleService {
     final sessionId = session.sessionId.trim();
     final teamId = (team?.id ?? session.sessionTeam).trim();
     final runtimeTeamId = session.effectiveCliTeamDirectory;
+    final cli = team?.cli;
     final cliState = session.launchState == AppSessionLaunchState.started
         ? await _findCliState(
             roots: roots,
             session: session,
             teamId: teamId,
             runtimeSessionId: runtimeTeamId,
+            cli: cli,
           )
         : _CliStateProbeResult(
             exists: false,
             rootsTried: roots.layout.transcriptSearchRoots(
               teamId: teamId,
               runtimeSessionId: runtimeTeamId,
+              tools: cli != null ? [cli.value] : cliLayoutDefaultTools,
             ),
           );
 
@@ -103,13 +106,18 @@ class SessionLifecycleService {
     return plan;
   }
 
-  Future<bool> hasCliState(AppSession session, {String? teamId}) async {
+  Future<bool> hasCliState(
+    AppSession session, {
+    String? teamId,
+    TeamCli? cli,
+  }) async {
     final roots = await _resolveRoots();
     final probe = await _findCliState(
       roots: roots,
       session: session,
       teamId: (teamId ?? session.sessionTeam).trim(),
       runtimeSessionId: session.effectiveCliTeamDirectory,
+      cli: cli,
     );
     return probe.exists;
   }
@@ -237,6 +245,7 @@ class SessionLifecycleService {
     required AppSession session,
     required String teamId,
     required String runtimeSessionId,
+    TeamCli? cli,
   }) async {
     final id = session.sessionId.trim();
     if (id.isEmpty) {
@@ -246,6 +255,7 @@ class SessionLifecycleService {
     final toolRoots = roots.layout.transcriptSearchRoots(
       teamId: teamId,
       runtimeSessionId: runtimeSessionId,
+      tools: cli != null ? [cli.value] : cliLayoutDefaultTools,
     );
     final bucket = CliDataLayout.projectBucketForPrimaryPath(
       session.primaryPath,
@@ -255,6 +265,7 @@ class SessionLifecycleService {
       toolRoots: toolRoots,
       sessionId: id,
       bucket: bucket,
+      probeHistoryFiles: cli == TeamCli.claude,
     );
   }
 
@@ -263,6 +274,7 @@ class SessionLifecycleService {
     required Iterable<String> toolRoots,
     required String sessionId,
     required String bucket,
+    required bool probeHistoryFiles,
   }) async {
     final path = fs.pathContext;
     final rootsTried = <String>[];
@@ -285,21 +297,22 @@ class SessionLifecycleService {
         );
       }
 
-      final historyFiles = ['history.jsonl', 'history.json'];
-
-      for (final historyFile in historyFiles) {
-        final history = path.join(root, historyFile);
-        if ((await fs.stat(history)).isFile) {
-          final historyText = await fs.readString(history);
-          final historyLines = historyText?.split('\n') ?? [];
-          for (final line in historyLines) {
-            final historyEntry = jsonDecode(line);
-            if (historyEntry['sessionId'].toString().trim() == sessionId) {
-              return _CliStateProbeResult(
-                exists: true,
-                rootsTried: rootsTried,
-                matchedPath: history,
-              );
+      if (probeHistoryFiles) {
+        final historyFiles = ['history.jsonl', 'history.json'];
+        for (final historyFile in historyFiles) {
+          final history = path.join(root, historyFile);
+          if ((await fs.stat(history)).isFile) {
+            final historyText = await fs.readString(history);
+            final historyLines = historyText?.split('\n') ?? [];
+            for (final line in historyLines) {
+              final historyEntry = jsonDecode(line);
+              if (historyEntry['sessionId'].toString().trim() == sessionId) {
+                return _CliStateProbeResult(
+                  exists: true,
+                  rootsTried: rootsTried,
+                  matchedPath: history,
+                );
+              }
             }
           }
         }

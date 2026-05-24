@@ -1,6 +1,8 @@
 import 'package:path/path.dart' as p;
 
 import 'app_storage.dart';
+import 'cli_plugin_layout.dart';
+import 'cli_plugin_manifest_flavor.dart';
 import 'io/filesystem.dart';
 import 'launch_command_builder.dart';
 
@@ -126,6 +128,9 @@ class CliDataLayout {
   }
 
   /// Creates member root and symlinks `agents/` + `skills/` to team level.
+  ///
+  /// Team plugins are copied into the member CONFIG_DIR by
+  /// [provisionMemberPluginsFromTeam] (session launch).
   Future<void> ensureMemberInheritsTeam(
     String teamId,
     String sessionId,
@@ -150,6 +155,38 @@ class CliDataLayout {
       childName: 'skills',
       parentToolRoot: teamRoot,
       ownToolRoot: memberRoot,
+    );
+  }
+
+  /// Member `plugins/` dir for a tool CONFIG_DIR.
+  String memberPluginsDir(String teamId, String sessionId, String tool) =>
+      _pathContext.join(
+        memberToolDir(teamId, sessionId, tool),
+        'plugins',
+      );
+
+  /// Copies formatted team plugin bundles into the session tool root.
+  ///
+  /// Source: [teamPluginsDir] (`flashskyai/plugins/<name>/` per bundle).
+  /// Dest: `members/<session>/<tool>/plugins/<name>/` (real directories, not symlinks).
+  Future<void> provisionMemberPluginsFromTeam(
+    String teamId,
+    String sessionId,
+    String tool,
+  ) async {
+    final trimmedTeam = teamId.trim();
+    final trimmedSession = sessionId.trim();
+    final trimmedTool = tool.trim();
+    if (trimmedTeam.isEmpty || trimmedSession.isEmpty || trimmedTool.isEmpty) {
+      return;
+    }
+    final flavor = cliPluginManifestFlavorForTool(trimmedTool) ??
+        CliPluginManifestFlavor.claude;
+    await CliPluginLayout.copyBundlesToMember(
+      fs: _fs,
+      teamPluginsDir: teamPluginsDir(trimmedTeam),
+      memberPluginsDir: memberPluginsDir(trimmedTeam, trimmedSession, trimmedTool),
+      flavor: flavor,
     );
   }
 

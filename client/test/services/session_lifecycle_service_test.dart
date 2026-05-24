@@ -167,10 +167,21 @@ void main() {
     await transcript.parent.create(recursive: true);
     await transcript.writeAsString('{}\n');
 
-    expect(await service().hasCliState(session, teamId: 'team-a'), isTrue);
+    expect(
+      await service().hasCliState(
+        session,
+        teamId: 'team-a',
+        cli: TeamCli.flashskyai,
+      ),
+      isTrue,
+    );
     final plan = await service().prepareLaunch(
       session: session,
-      team: const TeamConfig(id: 'team-a', name: 'Team A'),
+      team: const TeamConfig(
+        id: 'team-a',
+        name: 'Team A',
+        cli: TeamCli.flashskyai,
+      ),
     );
     expect(plan.resume, isTrue);
   });
@@ -193,10 +204,21 @@ void main() {
     await transcript.parent.create(recursive: true);
     await transcript.writeAsString('{}\n');
 
-    expect(await service().hasCliState(session, teamId: 'team-a'), isTrue);
+    expect(
+      await service().hasCliState(
+        session,
+        teamId: 'team-a',
+        cli: TeamCli.flashskyai,
+      ),
+      isTrue,
+    );
     final plan = await service().prepareLaunch(
       session: session,
-      team: const TeamConfig(id: 'team-a', name: 'Team A'),
+      team: const TeamConfig(
+        id: 'team-a',
+        name: 'Team A',
+        cli: TeamCli.flashskyai,
+      ),
     );
     expect(plan.resume, isTrue);
   });
