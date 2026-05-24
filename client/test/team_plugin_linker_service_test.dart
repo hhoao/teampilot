@@ -29,7 +29,7 @@ void main() {
     tmp.deleteSync(recursive: true);
   });
 
-  test('syncForTeam copies CLI bundles under team plugin dir', () async {
+  test('syncForTeam links CLI bundles under team plugin dir on Unix', () async {
     final pluginsRoot = Directory(p.join(tmp.path, 'plugins'))..createSync();
     final pluginDir = Directory(p.join(pluginsRoot.path, 'acme__market__p1'))
       ..createSync();
@@ -62,7 +62,9 @@ void main() {
       p.join(tmp.path, 'config-profiles', 'teams', 't1', 'flashskyai', 'plugins', 'p1'),
     );
     expect(teamBundle.existsSync(), isTrue);
-    expect(Link(teamBundle.path).existsSync(), isFalse);
+    if (Platform.isLinux || Platform.isMacOS) {
+      expect(Link(teamBundle.path).existsSync(), isTrue);
+    }
     expect(
       File(p.join(teamBundle.path, '.claude-plugin', 'plugin.json')).existsSync(),
       isTrue,

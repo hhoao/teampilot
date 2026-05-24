@@ -6,8 +6,10 @@ import 'app_storage.dart';
 import 'cli_data_layout.dart';
 import 'cli_plugin_layout.dart';
 import 'cli_plugin_manifest_flavor.dart';
+import 'cli_plugin_provision_cache.dart';
 import 'io/filesystem.dart';
 import 'plugin_repo_service.dart';
+import '../utils/logger.dart';
 
 /// Writes Claude-compatible plugin registration under a session CONFIG_DIR.
 ///
@@ -55,13 +57,39 @@ class CliPluginRegistryService {
         if (enabledIds.isEmpty || enabledIds.contains(p.id)) p.id: p,
     };
 
+    final pluginsDir = fs.pathContext.join(configDir, 'plugins');
+    final memberProvisionJson =
+        await CliPluginProvisionCache.memberProvisionStampJson(
+          fs: fs,
+          memberPluginsDir: memberPluginsDir,
+        );
+    final marketplaceSourceStamps = await _marketplaceSourceStampInputs(
+      catalog: catalog,
+      enabledIds: enabledIds,
+    );
+    if (await CliPluginProvisionCache.isRegistryCurrent(
+      fs: fs,
+      pluginsDir: pluginsDir,
+      configDir: configDir,
+      tool: tool,
+      flavor: flavor,
+      memberProvisionStampJson: memberProvisionJson,
+      enabledPluginIds: enabledIds,
+      catalog: catalog,
+      marketplaceSourceStamps: marketplaceSourceStamps,
+    )) {
+      appLogger.i('[launch-timing] writeForSession: skipped (registry current)');
+      return;
+    }
+
     final enabledPlugins = <String, bool>{};
     final installedV2 = <String, List<Map<String, Object?>>>{};
     final localMarketplacePlugins = <Map<String, Object?>>[];
 
     for (final entry in await fs.listDir(memberPluginsDir)) {
-      if (!entry.isDirectory) continue;
+      if (entry.name.startsWith('.')) continue;
       final bundlePath = fs.pathContext.join(memberPluginsDir, entry.name);
+      if (!await CliPluginLayout.isPluginBundleEntry(fs, bundlePath)) continue;
       final root = await CliPluginLayout.resolvePluginRoot(
         fs,
         bundlePath,
@@ -110,7 +138,6 @@ class CliPluginRegistryService {
 
     if (enabledPlugins.isEmpty) return;
 
-    final pluginsDir = fs.pathContext.join(configDir, 'plugins');
     await fs.ensureDir(pluginsDir);
     await fs.atomicWrite(
       fs.pathContext.join(pluginsDir, _installedPluginsFileName),
@@ -120,7 +147,7 @@ class CliPluginRegistryService {
       }),
     );
 
-    await _writeKnownMarketplaces(
+    final materializedMarketplaceStamps = await _writeKnownMarketplaces(
       pluginsDir: pluginsDir,
       flavor: flavor,
       catalog: catalog,
@@ -132,6 +159,17 @@ class CliPluginRegistryService {
       configDir: configDir,
       tool: tool,
       enabledPlugins: enabledPlugins,
+    );
+
+    await CliPluginProvisionCache.writeRegistryStamp(
+      fs: fs,
+      pluginsDir: pluginsDir,
+      tool: tool,
+      flavor: flavor,
+      memberProvisionStampJson: memberProvisionJson,
+      enabledPluginIds: enabledIds,
+      catalog: catalog,
+      marketplaceSourceStamps: materializedMarketplaceStamps,
     );
   }
 
@@ -299,7 +337,7 @@ class CliPluginRegistryService {
     return null;
   }
 
-  Future<void> _writeKnownMarketplaces({
+  Future<List<Map<String, Object?>>> _writeKnownMarketplaces({
     required String pluginsDir,
     required CliPluginManifestFlavor flavor,
     required List<Plugin> catalog,
@@ -310,6 +348,7 @@ class CliPluginRegistryService {
     final byName = {for (final m in marketplaces) m.name: m};
     final now = _isoNow();
     final known = <String, Map<String, Object?>>{};
+    final sourceStamps = <Map<String, Object?>>[];
 
     final enabled = enabledIds.isEmpty
         ? catalog
@@ -328,6 +367,15 @@ class CliPluginRegistryService {
         '${marketplace.name}@${marketplace.branch}',
       );
       if (!(await fs.stat(teampilotCache)).isDirectory) continue;
+
+      final cacheStat = await fs.stat(teampilotCache);
+      sourceStamps.add(
+        CliPluginProvisionCache.marketplaceSourceStampEntry(
+          name: name,
+          teampilotCacheDir: teampilotCache,
+          sourceMtimeMs: cacheStat.mtime?.millisecondsSinceEpoch ?? 0,
+        ),
+      );
 
       final cliInstallLocation = await _materializeMarketplaceForCli(
         pluginsDir: pluginsDir,
@@ -364,18 +412,56 @@ class CliPluginRegistryService {
       };
     }
 
-    if (known.isEmpty) return;
+    if (known.isEmpty) return sourceStamps;
 
     await fs.atomicWrite(
       fs.pathContext.join(pluginsDir, _knownMarketplacesFileName),
       const JsonEncoder.withIndent('  ').convert(known),
     );
+    return sourceStamps;
   }
 
-  /// Copies TeamPilot's git cache into `{CONFIG_DIR}/plugins/marketplaces/<name>/`.
+  Future<List<Map<String, Object?>>> _marketplaceSourceStampInputs({
+    required List<Plugin> catalog,
+    required List<String> enabledIds,
+  }) async {
+    final marketplaces = await _marketplaceCatalog.loadMarketplaces();
+    final byName = {for (final m in marketplaces) m.name: m};
+    final stamps = <Map<String, Object?>>[];
+    final enabled = enabledIds.isEmpty
+        ? catalog
+        : catalog.where((p) => enabledIds.contains(p.id));
+    final seen = <String>{};
+    for (final plugin in enabled) {
+      final name = plugin.marketplaceName;
+      if (name == null || name.isEmpty || seen.contains(name)) continue;
+      seen.add(name);
+      final marketplace = byName[name];
+      if (marketplace == null) continue;
+      final teampilotCache = fs.pathContext.join(
+        teampilotRoot,
+        'plugin-marketplace-cache',
+        marketplace.owner,
+        '${marketplace.name}@${marketplace.branch}',
+      );
+      final cacheStat = await fs.stat(teampilotCache);
+      if (!cacheStat.isDirectory) continue;
+      stamps.add(
+        CliPluginProvisionCache.marketplaceSourceStampEntry(
+          name: name,
+          teampilotCacheDir: teampilotCache,
+          sourceMtimeMs: cacheStat.mtime?.millisecondsSinceEpoch ?? 0,
+        ),
+      );
+    }
+    return stamps;
+  }
+
+  /// Links TeamPilot's git cache into `{CONFIG_DIR}/plugins/marketplaces/<name>/`.
   ///
-  /// Claude Code expects marketplace data under the session plugins tree, not
-  /// under `plugin-marketplace-cache`. FlashskyAI additionally needs
+  /// Symlink preferred; copy fallback when symlinks are unavailable. Claude Code
+  /// expects marketplace data under the session plugins tree, not under
+  /// `plugin-marketplace-cache`. FlashskyAI additionally needs
   /// `.flashskyai-plugin/marketplace.json` beside `.claude-plugin/`.
   Future<String?> _materializeMarketplaceForCli({
     required String pluginsDir,
@@ -385,10 +471,19 @@ class CliPluginRegistryService {
   }) async {
     final ctx = fs.pathContext;
     final dest = ctx.join(pluginsDir, 'marketplaces', marketplaceName);
-    if ((await fs.stat(dest)).exists) {
-      await fs.removeRecursive(dest);
+    if (await CliPluginProvisionCache.isMarketplaceMaterializationCurrent(
+      fs: fs,
+      dest: dest,
+      teampilotCacheDir: teampilotCacheDir,
+    )) {
+      return dest;
     }
-    await fs.copyTree(source: teampilotCacheDir, destination: dest);
+
+    await CliPluginLayout.linkOrCopyTree(
+      fs: fs,
+      source: teampilotCacheDir,
+      destination: dest,
+    );
     await CliPluginLayout.normalizeBundleForFlavor(fs, dest, flavor);
     final manifestPath = ctx.join(
       dest,
@@ -399,6 +494,11 @@ class CliPluginRegistryService {
       await fs.removeRecursive(dest);
       return null;
     }
+    await CliPluginProvisionCache.writeMarketplaceSourceStamp(
+      fs: fs,
+      dest: dest,
+      teampilotCacheDir: teampilotCacheDir,
+    );
     return dest;
   }
 

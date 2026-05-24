@@ -165,10 +165,10 @@ class CliDataLayout {
         'plugins',
       );
 
-  /// Copies formatted team plugin bundles into the session tool root.
+  /// Links (or copies) formatted team plugin bundles into the session tool root.
   ///
   /// Source: [teamPluginsDir] (`flashskyai/plugins/<name>/` per bundle).
-  /// Dest: `members/<session>/<tool>/plugins/<name>/` (real directories, not symlinks).
+  /// Dest: `members/<session>/<tool>/plugins/<name>/` (symlink preferred).
   Future<void> provisionMemberPluginsFromTeam(
     String teamId,
     String sessionId,

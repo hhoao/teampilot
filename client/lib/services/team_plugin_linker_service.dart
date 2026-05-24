@@ -26,8 +26,7 @@ class TeamPluginSyncResult {
 /// Provisions team-scope plugin bundles under
 /// `config-profiles/teams/<teamId>/flashskyai/plugins/<manifest-name>/`.
 ///
-/// Each entry is a full Claude Code plugin root (`.claude-plugin/plugin.json`,
-/// `commands/`, `.mcp.json`, …), copied from [appPluginsDir].
+/// Each entry is a symlink (or copy fallback) to the app-level plugin root.
 class TeamPluginLinkerService {
   TeamPluginLinkerService({
     String? appPluginsRoot,
@@ -155,10 +154,11 @@ class TeamPluginLinkerService {
         usedNames.add(targetName);
 
         final target = path.join(teamPluginsDir, targetName);
-        if ((await fs.stat(target)).exists) {
-          await fs.removeRecursive(target);
-        }
-        await fs.copyTree(source: pluginRoot, destination: target);
+        await CliPluginLayout.linkOrCopyTree(
+          fs: fs,
+          source: pluginRoot,
+          destination: target,
+        );
         await CliPluginLayout.normalizeBundleForFlavor(fs, target, flavor);
         linked.add(targetName);
       } catch (e) {

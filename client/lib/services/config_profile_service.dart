@@ -4,6 +4,7 @@ import 'package:path/path.dart' as p;
 
 import '../models/claude_credential_link_result.dart';
 import '../models/team_config.dart';
+import '../utils/logger.dart';
 import '../utils/project_path_utils.dart';
 import '../utils/team_member_naming.dart';
 import 'app_storage.dart';
@@ -16,6 +17,10 @@ import 'io/filesystem.dart';
 
 /// Launch-time environment for tool-isolated team profiles.
 typedef TeamLaunchEnvironment = Map<String, String>;
+
+void _logLaunchTiming(String label, int elapsedMs) {
+  appLogger.i('[launch-timing] $label: ${elapsedMs}ms');
+}
 
 class TeamLaunchOutcome {
   const TeamLaunchOutcome({
@@ -143,22 +148,36 @@ class ConfigProfileService {
     TeamCli cli = TeamCli.flashskyai,
     TeamConfig? team,
   }) async {
+    final total = Stopwatch()..start();
     final trimmedTeamId = teamId.trim();
     final trimmedSessionId = sessionId.trim();
     if (trimmedTeamId.isEmpty || trimmedSessionId.isEmpty) return;
 
+    var step = Stopwatch()..start();
     await ensureTeamProfile(trimmedTeamId, cli: cli);
+    _logLaunchTiming('ensureSessionProfile.ensureTeamProfile', step.elapsedMilliseconds);
+    step = Stopwatch()..start();
     await layout.ensureMemberInheritsTeam(
       trimmedTeamId,
       trimmedSessionId,
       cli.value,
     );
+    _logLaunchTiming(
+      'ensureSessionProfile.ensureMemberInheritsTeam',
+      step.elapsedMilliseconds,
+    );
+    step = Stopwatch()..start();
     await layout.provisionMemberPluginsFromTeam(
       trimmedTeamId,
       trimmedSessionId,
       cli.value,
     );
+    _logLaunchTiming(
+      'ensureSessionProfile.provisionMemberPluginsFromTeam',
+      step.elapsedMilliseconds,
+    );
     if (cli == TeamCli.flashskyai || cli == TeamCli.claude) {
+      step = Stopwatch()..start();
       await CliPluginRegistryService(
         fs: _fs,
         teampilotRoot: basePath,
@@ -169,17 +188,37 @@ class ConfigProfileService {
         tool: cli.value,
         team: team,
       );
+      _logLaunchTiming(
+        'ensureSessionProfile.writeForSession',
+        step.elapsedMilliseconds,
+      );
     }
     switch (cli) {
       case TeamCli.flashskyai:
+        step = Stopwatch()..start();
         await layout.ensureAppToolLayout('flashskyai');
+        _logLaunchTiming(
+          'ensureSessionProfile.ensureAppToolLayout',
+          step.elapsedMilliseconds,
+        );
+        step = Stopwatch()..start();
         await ensureSessionFlashskyaiDefaults(trimmedTeamId, trimmedSessionId);
+        _logLaunchTiming(
+          'ensureSessionProfile.ensureSessionFlashskyaiDefaults',
+          step.elapsedMilliseconds,
+        );
       case TeamCli.codex:
         break;
       case TeamCli.claude:
+        step = Stopwatch()..start();
         await ensureSessionClaudeDefaults(trimmedTeamId, trimmedSessionId);
+        _logLaunchTiming(
+          'ensureSessionProfile.ensureSessionClaudeDefaults',
+          step.elapsedMilliseconds,
+        );
         break;
     }
+    _logLaunchTiming('ensureSessionProfile.total', total.elapsedMilliseconds);
   }
 
   Future<void> ensureSessionFlashskyaiDefaults(
@@ -226,6 +265,7 @@ class ConfigProfileService {
     String? leadSessionId,
     String? claudeProviderId,
   }) async {
+    final total = Stopwatch()..start();
     final trimmedTeamId = teamId.trim();
     if (trimmedTeamId.isEmpty) {
       return const TeamLaunchOutcome(environment: {});
@@ -238,33 +278,56 @@ class ConfigProfileService {
       runtimeTeamId: runtimeTeamId,
     );
 
+    var step = Stopwatch()..start();
     await ensureSessionProfile(
       scope.teamId,
       scope.sessionId,
       cli: cli,
       team: team,
     );
+    _logLaunchTiming('prepareTeamLaunch.ensureSessionProfile', step.elapsedMilliseconds);
     switch (cli) {
       case TeamCli.flashskyai:
+        step = Stopwatch()..start();
         await _writeFlashskyaiMetadata(
           scope,
           workingDirectory,
           additionalDirectories: additionalDirectories,
         );
+        _logLaunchTiming(
+          'prepareTeamLaunch.writeFlashskyaiMetadata',
+          step.elapsedMilliseconds,
+        );
+        step = Stopwatch()..start();
         await _writeFlashskyaiSettings(scope);
+        _logLaunchTiming(
+          'prepareTeamLaunch.writeFlashskyaiSettings',
+          step.elapsedMilliseconds,
+        );
         break;
       case TeamCli.claude:
+        step = Stopwatch()..start();
         await _writeClaudeMetadata(
           scope,
           workingDirectory,
           additionalDirectories: additionalDirectories,
         );
+        _logLaunchTiming(
+          'prepareTeamLaunch.writeClaudeMetadata',
+          step.elapsedMilliseconds,
+        );
+        step = Stopwatch()..start();
         await _writeClaudeSettings(
           scope,
           claudeSettings,
           effortLevel: team?.claudeEffortLevel ?? 'xhigh',
           teammateMode: team?.claudeTeammateMode ?? 'in-process',
         );
+        _logLaunchTiming(
+          'prepareTeamLaunch.writeClaudeSettings',
+          step.elapsedMilliseconds,
+        );
+        step = Stopwatch()..start();
         await _writeClaudeRoster(
           scope: scope,
           members: members,
@@ -273,12 +336,21 @@ class ConfigProfileService {
           leadSessionId: leadSessionId,
           teammateMode: team?.claudeTeammateMode ?? 'in-process',
         );
+        _logLaunchTiming(
+          'prepareTeamLaunch.writeClaudeRoster',
+          step.elapsedMilliseconds,
+        );
+        step = Stopwatch()..start();
         await _writeClaudeMemberProfiles(
           scope: scope,
           members: members,
           launchedMember: member,
           providerSettings: claudeSettings,
           providerSettingsByMember: claudeSettingsByMember,
+        );
+        _logLaunchTiming(
+          'prepareTeamLaunch.writeClaudeMemberProfiles',
+          step.elapsedMilliseconds,
         );
         final providerId = claudeProviderId?.trim() ?? '';
         if (providerId.isNotEmpty &&
@@ -289,9 +361,14 @@ class ConfigProfileService {
             scope.sessionId,
             'claude',
           );
+          step = Stopwatch()..start();
           final link = await _claudeCredentials.ensureLinked(
             sessionClaudeDir,
             providerId,
+          );
+          _logLaunchTiming(
+            'prepareTeamLaunch.ensureLinked',
+            step.elapsedMilliseconds,
           );
           if (link == CredentialLinkResult.missing) {
             warnings.add('claude_credentials_missing');
@@ -302,6 +379,7 @@ class ConfigProfileService {
         break;
     }
 
+    _logLaunchTiming('prepareTeamLaunch.total', total.elapsedMilliseconds);
     return TeamLaunchOutcome(
       environment: switch (cli) {
       TeamCli.flashskyai => {

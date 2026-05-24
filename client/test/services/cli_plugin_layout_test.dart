@@ -128,5 +128,63 @@ void main() {
         isTrue,
       );
     });
+
+    test('links team bundles into member dir when symlinks are available', () async {
+      final fs = LocalFilesystem();
+      final teamPlugins = Directory(p.join(base.path, 'team', 'plugins'))
+        ..createSync(recursive: true);
+      final bundle = Directory(p.join(teamPlugins.path, 'demo'))..createSync();
+      Directory(p.join(bundle.path, '.claude-plugin')).createSync();
+      File(p.join(bundle.path, '.claude-plugin', 'plugin.json')).writeAsStringSync(
+        '{"name":"demo","version":"1.0.0"}',
+      );
+      await CliPluginLayout.normalizeBundleForFlavor(
+        fs,
+        bundle.path,
+        CliPluginManifestFlavor.flashskyai,
+      );
+
+      final memberPlugins = p.join(base.path, 'member', 'plugins');
+      await CliPluginLayout.copyBundlesToMember(
+        fs: fs,
+        teamPluginsDir: teamPlugins.path,
+        memberPluginsDir: memberPlugins,
+        flavor: CliPluginManifestFlavor.flashskyai,
+      );
+
+      final memberBundle = p.join(memberPlugins, 'demo');
+      expect(Directory(memberBundle).existsSync(), isTrue);
+      if (Platform.isLinux || Platform.isMacOS) {
+        expect(Link(memberBundle).existsSync(), isTrue);
+      }
+      expect(
+        File(p.join(memberBundle, '.claude-plugin', 'plugin.json')).existsSync(),
+        isTrue,
+      );
+    });
+
+    test('falls back to copy when symlinks are unavailable', () async {
+      final fs = _NoSymlinkFilesystem();
+      const teamPlugins = '/team/plugins';
+      const memberPlugins = '/member/plugins';
+      await fs.ensureDir('$teamPlugins/demo/.claude-plugin');
+      await fs.writeString(
+        '$teamPlugins/demo/.claude-plugin/plugin.json',
+        '{"name":"demo","version":"1.0.0"}',
+      );
+
+      await CliPluginLayout.copyBundlesToMember(
+        fs: fs,
+        teamPluginsDir: teamPlugins,
+        memberPluginsDir: memberPlugins,
+        flavor: CliPluginManifestFlavor.claude,
+      );
+
+      expect(fs.symlinks.containsKey('$memberPlugins/demo'), isFalse);
+      expect(
+        await fs.readString('$memberPlugins/demo/.claude-plugin/plugin.json'),
+        isNotNull,
+      );
+    });
   });
 }

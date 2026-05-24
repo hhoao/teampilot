@@ -1,0 +1,132 @@
+import 'dart:convert';
+import 'dart:io';
+
+import 'package:flutter_test/flutter_test.dart';
+import 'package:path/path.dart' as p;
+import 'package:teampilot/services/cli_plugin_layout.dart';
+import 'package:teampilot/services/cli_plugin_manifest_flavor.dart';
+import 'package:teampilot/services/cli_plugin_provision_cache.dart';
+import 'package:teampilot/services/io/local_filesystem.dart';
+
+void main() {
+  group('CliPluginProvisionCache', () {
+    late Directory base;
+    late LocalFilesystem fs;
+
+    setUp(() async {
+      base = await Directory.systemTemp.createTemp('cli_plugin_cache_');
+      fs = LocalFilesystem();
+    });
+
+    tearDown(() async {
+      if (await base.exists()) {
+        await base.delete(recursive: true);
+      }
+    });
+
+    test('copyBundlesToMember skips when team bundles unchanged', () async {
+      final teamPlugins = Directory(p.join(base.path, 'team', 'plugins'))
+        ..createSync(recursive: true);
+      final bundle = Directory(p.join(teamPlugins.path, 'demo'))..createSync();
+      Directory(p.join(bundle.path, '.claude-plugin')).createSync();
+      File(p.join(bundle.path, '.claude-plugin', 'plugin.json')).writeAsStringSync(
+        '{"name":"demo","version":"1.0.0"}',
+      );
+
+      final memberPlugins = p.join(base.path, 'member', 'plugins');
+      await CliPluginLayout.copyBundlesToMember(
+        fs: fs,
+        teamPluginsDir: teamPlugins.path,
+        memberPluginsDir: memberPlugins,
+        flavor: CliPluginManifestFlavor.flashskyai,
+      );
+      final firstCopy = File(
+        p.join(memberPlugins, 'demo', '.claude-plugin', 'plugin.json'),
+      ).readAsStringSync();
+
+      await CliPluginLayout.copyBundlesToMember(
+        fs: fs,
+        teamPluginsDir: teamPlugins.path,
+        memberPluginsDir: memberPlugins,
+        flavor: CliPluginManifestFlavor.flashskyai,
+      );
+      final secondCopy = File(
+        p.join(memberPlugins, 'demo', '.claude-plugin', 'plugin.json'),
+      ).readAsStringSync();
+
+      expect(firstCopy, secondCopy);
+      expect(
+        await CliPluginProvisionCache.isMemberProvisionCurrent(
+          fs: fs,
+          teamPluginsDir: teamPlugins.path,
+          memberPluginsDir: memberPlugins,
+          flavor: CliPluginManifestFlavor.flashskyai,
+        ),
+        isTrue,
+      );
+    });
+
+    test('copyBundlesToMember recopies when team plugin version changes', () async {
+      final teamPlugins = Directory(p.join(base.path, 'team', 'plugins'))
+        ..createSync(recursive: true);
+      final bundle = Directory(p.join(teamPlugins.path, 'demo'))..createSync();
+      Directory(p.join(bundle.path, '.claude-plugin')).createSync();
+      final manifestPath = p.join(bundle.path, '.claude-plugin', 'plugin.json');
+      File(manifestPath).writeAsStringSync(
+        '{"name":"demo","version":"1.0.0"}',
+      );
+
+      final memberPlugins = p.join(base.path, 'member', 'plugins');
+      await CliPluginLayout.copyBundlesToMember(
+        fs: fs,
+        teamPluginsDir: teamPlugins.path,
+        memberPluginsDir: memberPlugins,
+        flavor: CliPluginManifestFlavor.flashskyai,
+      );
+
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+      File(manifestPath).writeAsStringSync(
+        '{"name":"demo","version":"2.0.0"}',
+      );
+
+      expect(
+        await CliPluginProvisionCache.isMemberProvisionCurrent(
+          fs: fs,
+          teamPluginsDir: teamPlugins.path,
+          memberPluginsDir: memberPlugins,
+          flavor: CliPluginManifestFlavor.flashskyai,
+        ),
+        isFalse,
+      );
+    });
+
+    test('marketplace materialization skips when cache unchanged', () async {
+      const marketplaceName = 'demo-marketplace';
+      final cacheDir = Directory(
+        p.join(base.path, 'plugin-marketplace-cache', 'owner', '$marketplaceName@main'),
+      )..createSync(recursive: true);
+      Directory(p.join(cacheDir.path, '.claude-plugin')).createSync();
+      File(
+        p.join(cacheDir.path, '.claude-plugin', 'marketplace.json'),
+      ).writeAsStringSync(jsonEncode({'name': marketplaceName, 'plugins': []}));
+
+      final dest = p.join(base.path, 'session', 'plugins', 'marketplaces', marketplaceName);
+      await fs.ensureDir(dest);
+      await fs.copyTree(source: cacheDir.path, destination: dest);
+      await CliPluginProvisionCache.writeMarketplaceSourceStamp(
+        fs: fs,
+        dest: dest,
+        teampilotCacheDir: cacheDir.path,
+      );
+
+      expect(
+        await CliPluginProvisionCache.isMarketplaceMaterializationCurrent(
+          fs: fs,
+          dest: dest,
+          teampilotCacheDir: cacheDir.path,
+        ),
+        isTrue,
+      );
+    });
+  });
+}

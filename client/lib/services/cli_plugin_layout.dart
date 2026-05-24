@@ -1,7 +1,9 @@
 import 'dart:convert';
 
-import 'io/filesystem.dart';
+import '../utils/logger.dart';
 import 'cli_plugin_manifest_flavor.dart';
+import 'cli_plugin_provision_cache.dart';
+import 'io/filesystem.dart';
 
 /// Claude / FlashskyAI plugin directory layout (one bundle per child under `plugins/`).
 class CliPluginLayout {
@@ -126,7 +128,33 @@ class CliPluginLayout {
     }
   }
 
-  /// Copies each CLI plugin bundle from [teamPluginsDir] into [memberPluginsDir].
+  static Future<bool> isPluginBundleEntry(Filesystem fs, String path) async {
+    final stat = await fs.stat(path);
+    return stat.isDirectory || stat.isSymlink;
+  }
+
+  /// Symlinks [source] at [destination], or copies when symlinks are unavailable.
+  ///
+  /// Returns `true` when a symlink was created.
+  static Future<bool> linkOrCopyTree({
+    required Filesystem fs,
+    required String source,
+    required String destination,
+  }) async {
+    if ((await fs.stat(destination)).exists) {
+      await fs.removeRecursive(destination);
+    }
+    final linked = await fs.createSymlink(target: source, linkPath: destination);
+    if (linked) return true;
+    await fs.copyTree(source: source, destination: destination);
+    return false;
+  }
+
+  /// Links (or copies) each CLI plugin bundle from [teamPluginsDir] into
+  /// [memberPluginsDir].
+  ///
+  /// Skips provisioning when [memberPluginsDir] already matches team bundles (see
+  /// [CliPluginProvisionCache]).
   static Future<void> copyBundlesToMember({
     required Filesystem fs,
     required String teamPluginsDir,
@@ -137,6 +165,24 @@ class CliPluginLayout {
     final teamStat = await fs.stat(teamPluginsDir);
     if (!teamStat.isDirectory) {
       await fs.ensureDir(memberPluginsDir);
+      await CliPluginProvisionCache.writeMemberProvisionStamp(
+        fs: fs,
+        teamPluginsDir: teamPluginsDir,
+        memberPluginsDir: memberPluginsDir,
+        flavor: flavor,
+      );
+      return;
+    }
+
+    if (await CliPluginProvisionCache.isMemberProvisionCurrent(
+      fs: fs,
+      teamPluginsDir: teamPluginsDir,
+      memberPluginsDir: memberPluginsDir,
+      flavor: flavor,
+    )) {
+      appLogger.i(
+        '[launch-timing] copyBundlesToMember: skipped (provision current)',
+      );
       return;
     }
 
@@ -146,17 +192,25 @@ class CliPluginLayout {
     await fs.ensureDir(memberPluginsDir);
 
     for (final entry in await fs.listDir(teamPluginsDir)) {
-      if (!entry.isDirectory) continue;
       final source = ctx.join(teamPluginsDir, entry.name);
+      if (!await isPluginBundleEntry(fs, source)) continue;
       final root = await resolvePluginRoot(fs, source, flavor: flavor);
       if (root == null) continue;
       final dirName = await bundleDirName(fs, root, flavor: flavor);
       final dest = ctx.join(memberPluginsDir, dirName);
-      if ((await fs.stat(dest)).exists) {
-        await fs.removeRecursive(dest);
-      }
-      await fs.copyTree(source: root, destination: dest);
-      await normalizeBundleForFlavor(fs, dest, flavor);
+      final linked = await linkOrCopyTree(
+        fs: fs,
+        source: root,
+        destination: dest,
+      );
+      await normalizeBundleForFlavor(fs, linked ? root : dest, flavor);
     }
+
+    await CliPluginProvisionCache.writeMemberProvisionStamp(
+      fs: fs,
+      teamPluginsDir: teamPluginsDir,
+      memberPluginsDir: memberPluginsDir,
+      flavor: flavor,
+    );
   }
 }
