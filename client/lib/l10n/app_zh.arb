@@ -16,6 +16,8 @@
   "bottom": "底部",
   "rightTools": "右侧工具栏",
   "openRightTools": "工具",
+  "rightToolsPanelVisible": "显示工具栏",
+  "rightToolsPanelHidden": "隐藏工具栏",
   "bottomTray": "底部托盘",
   "stacked": "堆叠",
   "tabs": "标签页",

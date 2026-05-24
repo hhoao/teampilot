@@ -30,6 +30,7 @@ import '../repositories/ssh_credential_store.dart';
 import '../repositories/ssh_known_host_repository.dart';
 import '../repositories/ssh_profile_repository.dart';
 import '../repositories/team_repository.dart';
+import '../services/app_storage.dart';
 import '../services/cli_tool_locator.dart';
 import '../services/connection_mode_service.dart';
 import '../services/flashskyai_cli_locator.dart';
@@ -149,6 +150,8 @@ Future<AppShell> buildAppShell({
     knownHostRepository: sshKnownHostRepo,
   );
 
+  boot('resolving default project directory');
+  final defaultProjectDirectory = await DefaultProjectDirectory.resolve();
   boot('installing RuntimeStorageContext');
   await RuntimeStorageContext.install(
     isSshMode:
@@ -160,7 +163,7 @@ Future<AppShell> buildAppShell({
     nativeAppDataPath: nativeAppDataPath,
     nativeHome:
         Platform.environment['HOME'] ?? Platform.environment['USERPROFILE'],
-    nativeCwd: Directory.current.path,
+    nativeCwd: defaultProjectDirectory,
     wslDistro: RuntimeStorageContext.parseWslDistro(cliLocated),
     windowsStorageBackend: windowsStorageBackend(),
   );
@@ -237,7 +240,7 @@ Future<AppShell> buildAppShell({
     nativeAppDataPath: nativeAppDataPath,
     nativeHome:
         Platform.environment['HOME'] ?? Platform.environment['USERPROFILE'],
-    nativeCwd: Directory.current.path,
+    nativeCwd: defaultProjectDirectory,
     wslDistro: wslDistroFromPrefs(),
     windowsStorageBackend: windowsStorageBackend(),
   );

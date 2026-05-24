@@ -71,6 +71,9 @@ class LayoutCubit extends Cubit<LayoutState> {
   Future<void> setRightToolsWidth(double width) =>
       _save(state.preferences.copyWith(rightToolsWidth: width));
 
+  Future<void> setRightToolsVisible(bool visible) =>
+      _save(state.preferences.copyWith(rightToolsVisible: visible));
+
   Future<void> setSidebarWidth(double width) =>
       _save(state.preferences.copyWith(sidebarWidth: width));
 

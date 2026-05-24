@@ -11,6 +11,7 @@ import '../models/app_project.dart';
 import '../models/app_session.dart';
 import '../models/team_config.dart';
 import '../repositories/session_repository.dart';
+import '../services/app_storage.dart';
 import '../services/platform_utils.dart';
 import '../utils/app_keys.dart';
 import '../utils/project_path_picker.dart';
@@ -57,6 +58,71 @@ void _navigateToSessionInChat(BuildContext context, AppSession session) {
   }
 
   goFromSidebar(context, '/chat');
+}
+
+Future<void> _createSessionAndOpenChat(
+  BuildContext context,
+  String projectId,
+) async {
+  final repo = context.read<SessionRepository>();
+  final teamId = context.read<TeamCubit>().state.selectedTeam?.id ?? '';
+  final session = await context.read<ChatCubit>().createSession(
+    projectId,
+    repo,
+    sessionTeamId: teamId,
+  );
+  if (!context.mounted) return;
+  _navigateToSessionInChat(context, session);
+}
+
+AppProject? _mostRecentProject(
+  List<AppProject> projects,
+  List<AppSession> sessions,
+) {
+  if (projects.isEmpty) return null;
+  final sorted = List<AppProject>.from(projects)
+    ..sort(
+      (a, b) =>
+          _projectRecency(b, sessions).compareTo(_projectRecency(a, sessions)),
+    );
+  return sorted.first;
+}
+
+Future<void> _startNewChat(BuildContext context) async {
+  closeAndroidDrawerIfOpen(context);
+  final chatCubit = context.read<ChatCubit>();
+  final repo = context.read<SessionRepository>();
+  final teamId = context.read<TeamCubit>().state.selectedTeam?.id ?? '';
+  final projects = chatCubit.state.visibleProjects;
+  final sessions = chatCubit.state.visibleSessions;
+
+  final project = _mostRecentProject(projects, sessions);
+  if (project != null) {
+    await _createSessionAndOpenChat(context, project.projectId);
+    return;
+  }
+
+  try {
+    await chatCubit.createProjectWithFirstSession(
+      AppStorage.cwd,
+      repo,
+      sessionTeamId: teamId,
+    );
+  } on Object catch (error) {
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('${context.l10n.defaultNewChatSessionTitle}: $error')),
+    );
+    return;
+  }
+  if (!context.mounted) return;
+
+  final created = context.read<ChatCubit>().state.visibleSessions;
+  if (created.isEmpty) return;
+  final newest = created.reduce(
+    (a, b) => a.createdAt >= b.createdAt ? a : b,
+  );
+  _navigateToSessionInChat(context, newest);
 }
 
 String _teamCliDisplayLabel(dynamic l10n, TeamCli cli) {
@@ -224,6 +290,10 @@ class _ContextSidebarState extends State<ContextSidebar> {
                 const SizedBox(height: 14),
                 _TeamConfigTile(
                   onTap: () => goFromSidebar(context, '/team-config'),
+                ),
+                const SizedBox(height: 8),
+                _NewChatTile(
+                  onTap: () => unawaited(_startNewChat(context)),
                 ),
                 const SizedBox(height: 14),
                 _SidebarSectionTitle(
@@ -403,21 +473,6 @@ class _ProjectGroupState extends State<_ProjectGroup> {
 
   void _createSession(BuildContext context, String projectId) {
     unawaited(_createSessionAndOpenChat(context, projectId));
-  }
-
-  Future<void> _createSessionAndOpenChat(
-    BuildContext context,
-    String projectId,
-  ) async {
-    final repo = context.read<SessionRepository>();
-    final teamId = context.read<TeamCubit>().state.selectedTeam?.id ?? '';
-    final session = await context.read<ChatCubit>().createSession(
-      projectId,
-      repo,
-      sessionTeamId: teamId,
-    );
-    if (!context.mounted) return;
-    _navigateToSessionInChat(context, session);
   }
 
   void _openFolder(String path) {
@@ -1128,6 +1183,40 @@ class _TeamConfigTile extends StatelessWidget {
               const SizedBox(width: 10),
               Text(
                 context.l10n.teamConfig,
+                style: TextStyle(fontWeight: FontWeight.w700, color: textBase),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _NewChatTile extends StatelessWidget {
+  const _NewChatTile({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textBase = isDark ? Colors.white : const Color(0xFF111827);
+    return Material(
+      key: AppKeys.newChatSidebarTile,
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(8),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(8),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.all(10),
+          child: Row(
+            children: [
+              Icon(Icons.add_comment_outlined, size: 18, color: textBase),
+              const SizedBox(width: 10),
+              Text(
+                context.l10n.defaultNewChatSessionTitle,
                 style: TextStyle(fontWeight: FontWeight.w700, color: textBase),
               ),
             ],

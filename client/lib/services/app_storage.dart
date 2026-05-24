@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
@@ -21,6 +23,7 @@ class AppStorage {
 
   static String get home => RuntimeStorageContext.current.home;
 
+  /// Default workspace for new projects and CLI sessions (native: app Documents).
   static String get cwd => RuntimeStorageContext.current.cwd;
 
   static String get appDataRoot => RuntimeStorageContext.current.appDataRoot;
@@ -141,6 +144,32 @@ class AppPaths {
 
   String codexProviderDir(String providerId) =>
       providerToolDir('codex', providerId);
+}
+
+/// Resolves the platform Documents directory for default project [primaryPath].
+class DefaultProjectDirectory {
+  DefaultProjectDirectory._();
+
+  static String? _cachedPath;
+
+  static Future<String> resolve() async {
+    final cached = _cachedPath;
+    if (cached != null && cached.isNotEmpty) return cached;
+    final dir = await getApplicationDocumentsDirectory();
+    await Directory(dir.path).create(recursive: true);
+    _cachedPath = dir.path;
+    return dir.path;
+  }
+
+  @visibleForTesting
+  static void setForTesting(String path) {
+    _cachedPath = path;
+  }
+
+  @visibleForTesting
+  static void resetForTesting() {
+    _cachedPath = null;
+  }
 }
 
 class AppPathsBootstrapper {

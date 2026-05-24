@@ -16,6 +16,8 @@
   "bottom": "Bottom",
   "rightTools": "Right Tools",
   "openRightTools": "Tools",
+  "rightToolsPanelVisible": "Show tools panel",
+  "rightToolsPanelHidden": "Hide tools panel",
   "bottomTray": "Bottom Tray",
   "stacked": "Stacked",
   "tabs": "Tabs",

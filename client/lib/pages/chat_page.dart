@@ -62,6 +62,7 @@ class ChatPage extends StatelessWidget {
         onTabCloseRight: (index) =>
             context.read<ChatCubit>().closeRightTabs(index),
         layoutPreferences: preferences,
+        showRightToolsVisibilityToggle: true,
         onRightToolsWidthChanged: toolsAsDrawer
             ? null
             : (w) => context.read<LayoutCubit>().setRightToolsWidth(w),
@@ -78,12 +79,14 @@ class ChatPage extends StatelessWidget {
       return _chatLaunchListener(
         context,
         buildShell(
-          rightTools: RightToolsPanel(
-            preferences: preferences,
-            panelKey: preferences.toolPlacement == ToolPanelPlacement.right
-                ? AppKeys.rightToolsPanel
-                : AppKeys.bottomToolsPanel,
-          ),
+          rightTools: preferences.rightToolsVisible
+              ? RightToolsPanel(
+                  preferences: preferences,
+                  panelKey: preferences.toolPlacement == ToolPanelPlacement.right
+                      ? AppKeys.rightToolsPanel
+                      : AppKeys.bottomToolsPanel,
+                )
+              : null,
         ),
       );
     }
@@ -91,10 +94,12 @@ class ChatPage extends StatelessWidget {
     return _chatLaunchListener(
       context,
       Scaffold(
-        endDrawer: Drawer(
-          width: rightToolsDrawerWidth(context, preferences),
-          child: SafeArea(child: rightToolsPanel),
-        ),
+        endDrawer: preferences.rightToolsVisible
+            ? Drawer(
+                width: rightToolsDrawerWidth(context, preferences),
+                child: SafeArea(child: rightToolsPanel),
+              )
+            : null,
         body: buildShell(rightTools: null),
       ),
     );

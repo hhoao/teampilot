@@ -1,7 +1,9 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../cubits/layout_cubit.dart';
 import '../theme/workspace_surface_layers.dart';
 
 import '../l10n/l10n_extensions.dart';
@@ -35,6 +37,7 @@ class WorkspaceShell extends StatelessWidget {
     this.layoutPreferences = const LayoutPreferences(),
     this.onRightToolsWidthChanged,
     this.rightTools,
+    this.showRightToolsVisibilityToggle = false,
     this.childAnimationKey,
     super.key,
   });
@@ -54,6 +57,7 @@ class WorkspaceShell extends StatelessWidget {
   final LayoutPreferences layoutPreferences;
   final ValueChanged<double>? onRightToolsWidthChanged;
   final Widget? rightTools;
+  final bool showRightToolsVisibilityToggle;
   final Key? childAnimationKey;
 
   @override
@@ -133,12 +137,15 @@ class WorkspaceShell extends StatelessWidget {
             onTabClosed: onTabClosed,
             onTabCloseOthers: onTabCloseOthers,
             onTabCloseRight: onTabCloseRight,
-            trailing: actions.isNotEmpty && showHeader
-                ? Padding(
-                    padding: const EdgeInsets.only(left: 8),
-                    child: Wrap(spacing: 6, children: actions),
-                  )
-                : null,
+            trailing: _TabRowTrailing(
+              actions: actions.isNotEmpty && showHeader
+                  ? Padding(
+                      padding: const EdgeInsets.only(left: 8),
+                      child: Wrap(spacing: 6, children: actions),
+                    )
+                  : null,
+              showRightToolsToggle: showRightToolsVisibilityToggle,
+            ),
           ),
         if (tabs.isEmpty && actions.isNotEmpty && showHeader)
           _ActionsBar(actions: actions),
@@ -177,7 +184,7 @@ class _WorkspaceBody extends StatelessWidget {
         ? child
         : _FadeSlideIn(key: childAnimationKey, child: child);
 
-    if (rightTools == null) {
+    if (rightTools == null || !preferences.rightToolsVisible) {
       return animatedChild;
     }
     if (preferences.toolPlacement == ToolPanelPlacement.bottom) {
@@ -230,6 +237,71 @@ class _FadeSlideIn extends StatelessWidget {
             translation: Offset(0.025 * (1 - value), 0),
             child: child,
           ),
+        );
+      },
+    );
+  }
+}
+
+class _TabRowTrailing extends StatelessWidget {
+  const _TabRowTrailing({
+    this.actions,
+    required this.showRightToolsToggle,
+  });
+
+  final Widget? actions;
+  final bool showRightToolsToggle;
+
+  @override
+  Widget build(BuildContext context) {
+    if (actions == null && !showRightToolsToggle) {
+      return const SizedBox.shrink();
+    }
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (actions != null) actions!,
+        if (showRightToolsToggle) ...[
+          if (actions != null) const SizedBox(width: 4),
+          const _RightToolsVisibilityToggle(),
+        ],
+      ],
+    );
+  }
+}
+
+class _RightToolsVisibilityToggle extends StatelessWidget {
+  const _RightToolsVisibilityToggle();
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final cs = Theme.of(context).colorScheme;
+    return BlocBuilder<LayoutCubit, LayoutState>(
+      builder: (context, state) {
+        final prefs = state.preferences;
+        final visible = prefs.rightToolsVisible;
+        final icon = prefs.toolPlacement == ToolPanelPlacement.bottom
+            ? Icons.splitscreen_outlined
+            : Icons.vertical_split_outlined;
+        return IconButton(
+          key: AppKeys.rightToolsVisibilityButton,
+          tooltip: visible
+              ? l10n.rightToolsPanelHidden
+              : l10n.rightToolsPanelVisible,
+          visualDensity: VisualDensity.compact,
+          padding: const EdgeInsets.all(6),
+          constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+          iconSize: 18,
+          style: IconButton.styleFrom(
+            foregroundColor: visible ? cs.primary : cs.onSurfaceVariant,
+            backgroundColor: visible
+                ? cs.primaryContainer.withValues(alpha: 0.45)
+                : Colors.transparent,
+          ),
+          onPressed: () =>
+              context.read<LayoutCubit>().setRightToolsVisible(!visible),
+          icon: Icon(icon),
         );
       },
     );

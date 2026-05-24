@@ -57,6 +57,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get openRightTools => '工具';
 
   @override
+  String get rightToolsPanelVisible => '显示工具栏';
+
+  @override
+  String get rightToolsPanelHidden => '隐藏工具栏';
+
+  @override
   String get bottomTray => '底部托盘';
 
   @override

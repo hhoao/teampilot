@@ -14,6 +14,7 @@ import 'launch_command_builder.dart';
 import 'local_pty_transport.dart';
 import 'terminal_transport.dart';
 import '../models/team_config.dart';
+import '../utils/first_user_line_capture.dart';
 
 typedef TransportStarter =
     Future<TerminalTransport> Function(
@@ -64,6 +65,7 @@ class TerminalSession {
   VoidCallback? _onProcessFailed;
   VoidCallback? _onProcessExited;
   StreamSubscription<String>? _outputSubscription;
+  FirstUserLineCapture? _firstUserLineCapture;
   Timer? _confirmFallbackTimer;
   Timer? _startupDeadlineTimer;
   Timer? _ptyGeometryTimer;
@@ -105,6 +107,7 @@ class TerminalSession {
     VoidCallback? onProcessStarted,
     VoidCallback? onProcessFailed,
     VoidCallback? onProcessExited,
+    void Function(String line)? onFirstUserLineSubmitted,
   }) {
     if (_running || _starting) {
       disconnect();
@@ -180,7 +183,12 @@ class TerminalSession {
 
     _attachTerminalViewportListener();
 
+    _firstUserLineCapture = onFirstUserLineSubmitted == null
+        ? null
+        : FirstUserLineCapture(onFirstUserLineSubmitted);
+
     terminal.onOutput = (String data) {
+      _firstUserLineCapture?.feed(data);
       if (_transportReadyForIo && _transport != null) {
         _transport!.write(Uint8List.fromList(utf8.encode(data)));
       }
@@ -538,6 +546,7 @@ class TerminalSession {
     _onProcessFailed = null;
     _onProcessExited = null;
     _ptyEnvironment = null;
+    _firstUserLineCapture = null;
     terminal.onOutput = null;
     terminal.onResize = null;
     _transport?.close();

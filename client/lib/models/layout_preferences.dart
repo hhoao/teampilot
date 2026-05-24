@@ -15,6 +15,7 @@ class LayoutPreferences {
     this.contextSidebarVisible = true,
     this.membersVisible = true,
     this.fileTreeVisible = true,
+    this.rightToolsVisible = true,
     this.rightToolsWidth = defaultRightToolsWidth,
     this.bottomToolsHeight = defaultBottomToolsHeight,
     this.sidebarWidth = defaultSidebarWidth,
@@ -40,6 +41,7 @@ class LayoutPreferences {
       contextSidebarVisible: json['contextSidebarVisible'] as bool? ?? true,
       membersVisible: json['membersVisible'] as bool? ?? true,
       fileTreeVisible: json['fileTreeVisible'] as bool? ?? true,
+      rightToolsVisible: json['rightToolsVisible'] as bool? ?? true,
       rightToolsWidth: _doubleValue(
         json['rightToolsWidth'],
       ).clamp(minRightToolsWidth, maxRightToolsWidth),
@@ -82,6 +84,7 @@ class LayoutPreferences {
   final bool contextSidebarVisible;
   final bool membersVisible;
   final bool fileTreeVisible;
+  final bool rightToolsVisible;
   final double rightToolsWidth;
   final double bottomToolsHeight;
   final double sidebarWidth;
@@ -99,6 +102,7 @@ class LayoutPreferences {
     bool? contextSidebarVisible,
     bool? membersVisible,
     bool? fileTreeVisible,
+    bool? rightToolsVisible,
     double? rightToolsWidth,
     double? bottomToolsHeight,
     double? sidebarWidth,
@@ -117,6 +121,7 @@ class LayoutPreferences {
           contextSidebarVisible ?? this.contextSidebarVisible,
       membersVisible: membersVisible ?? this.membersVisible,
       fileTreeVisible: fileTreeVisible ?? this.fileTreeVisible,
+      rightToolsVisible: rightToolsVisible ?? this.rightToolsVisible,
       rightToolsWidth: (rightToolsWidth ?? this.rightToolsWidth).clamp(
         minRightToolsWidth,
         maxRightToolsWidth,
@@ -151,6 +156,7 @@ class LayoutPreferences {
       contextSidebarVisible: contextSidebarVisible,
       membersVisible: true,
       fileTreeVisible: false,
+      rightToolsVisible: rightToolsVisible,
       rightToolsWidth: rightToolsWidth,
       bottomToolsHeight: bottomToolsHeight,
       sidebarWidth: sidebarWidth,
@@ -171,6 +177,7 @@ class LayoutPreferences {
       'contextSidebarVisible': contextSidebarVisible,
       'membersVisible': membersVisible,
       'fileTreeVisible': fileTreeVisible,
+      'rightToolsVisible': rightToolsVisible,
       'rightToolsWidth': rightToolsWidth,
       'bottomToolsHeight': bottomToolsHeight,
       'sidebarWidth': sidebarWidth,

@@ -26,6 +26,7 @@ void setUpTestAppStorage() {
 void tearDownTestAppStorage() {
   RuntimeStorageContext.resetForTesting();
   AppPathsBootstrapper.resetForTesting();
+  DefaultProjectDirectory.resetForTesting();
   final dir = _testAppDataDir;
   _testAppDataDir = null;
   if (dir != null && dir.existsSync()) {

@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:io';
 
 import 'package:equatable/equatable.dart';
 import 'package:flutter/widgets.dart';
@@ -13,11 +12,13 @@ import '../models/launch_target.dart';
 import '../models/ssh_profile.dart';
 import '../models/team_config.dart';
 import '../repositories/session_repository.dart';
+import '../services/app_storage.dart';
 import '../services/session_lifecycle_service.dart';
 import '../services/terminal_session.dart';
 import '../services/terminal_transport_factory.dart';
 import '../utils/logger.dart';
 import '../utils/project_path_utils.dart';
+import '../utils/session_display_title.dart';
 
 typedef TerminalSessionFactory =
     TerminalSession Function({required String executable});
@@ -475,6 +476,7 @@ class ChatCubit extends Cubit<ChatState> {
             member: member,
             sessionTeam: cliTeamName,
             extraEnvironment: plan.env.isEmpty ? null : plan.env,
+            onFirstUserLineSubmitted: _autoRenameOnFirstPrompt(session.sessionId),
             onProcessFailed: () => _finishSessionConnect(info.id),
             onProcessExited: () => _updateTabRunning(info.id),
             onProcessStarted: () {
@@ -550,7 +552,7 @@ class ChatCubit extends Cubit<ChatState> {
     required TeamMemberConfig memberForInitialShell,
   }) async {
     if (_internalTabs.isNotEmpty) return;
-    final cwd = Directory.current.path.trim();
+    final cwd = AppStorage.cwd.trim();
     final project = await repo.createProject(cwd);
     final session = await repo.createSession(
       project.projectId,
@@ -648,6 +650,7 @@ class ChatCubit extends Cubit<ChatState> {
           member: member,
           sessionTeam: tab.cliTeamName,
           extraEnvironment: plan.env.isEmpty ? null : plan.env,
+          onFirstUserLineSubmitted: _autoRenameOnFirstPrompt(tab.info.id),
           onProcessStarted: () => _finishSessionConnect(tab.info.id),
           onProcessFailed: () => _finishSessionConnect(tab.info.id),
           onProcessExited: () => _updateTabRunning(tab.info.id),
@@ -901,6 +904,34 @@ class ChatCubit extends Cubit<ChatState> {
     await connectSession(team, repo: r);
   }
 
+  void Function(String line)? _autoRenameOnFirstPrompt(String sessionId) {
+    if (sessionId.startsWith('local-')) return null;
+    final repo = _sessionRepository;
+    if (repo == null) return null;
+    return (line) {
+      unawaited(_maybeAutoRenameSessionFromFirstPrompt(repo, sessionId, line));
+    };
+  }
+
+  Future<void> _maybeAutoRenameSessionFromFirstPrompt(
+    SessionRepository repo,
+    String sessionId,
+    String firstPrompt,
+  ) async {
+    if (isClosed) return;
+    AppSession? session;
+    for (final s in state.sessions) {
+      if (s.sessionId == sessionId) {
+        session = s;
+        break;
+      }
+    }
+    if (session == null || session.display.trim().isNotEmpty) return;
+    final title = deriveSessionTitleFromFirstPrompt(firstPrompt);
+    if (title.isEmpty) return;
+    await renameSession(repo, sessionId, title);
+  }
+
   Future<void> renameSession(
     SessionRepository repo,
     String sessionId,
@@ -1042,7 +1073,7 @@ class ChatCubit extends Cubit<ChatState> {
   (String, List<String>) _workingDirectoryAndAddDirsForTab(_InternalTab tab) {
     final tabId = tab.info.id;
     if (tabId.startsWith('local-')) {
-      return (Directory.current.path, const <String>[]);
+      return (AppStorage.cwd, const <String>[]);
     }
     for (final s in state.sessions) {
       if (s.sessionId != tabId) continue;
@@ -1054,9 +1085,9 @@ class ChatCubit extends Cubit<ChatState> {
       if (wd.isNotEmpty) {
         return (wd, addl);
       }
-      return (Directory.current.path, addl);
+      return (AppStorage.cwd, addl);
     }
-    return (Directory.current.path, const <String>[]);
+    return (AppStorage.cwd, const <String>[]);
   }
 
   _InternalTab _appendLocalTab(TeamConfig team, {required bool emitChange}) {

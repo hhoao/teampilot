@@ -194,6 +194,18 @@ abstract class AppLocalizations {
   /// **'Tools'**
   String get openRightTools;
 
+  /// No description provided for @rightToolsPanelVisible.
+  ///
+  /// In en, this message translates to:
+  /// **'Show tools panel'**
+  String get rightToolsPanelVisible;
+
+  /// No description provided for @rightToolsPanelHidden.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide tools panel'**
+  String get rightToolsPanelHidden;
+
   /// No description provided for @bottomTray.
   ///
   /// In en, this message translates to:

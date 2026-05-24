@@ -48,6 +48,7 @@ class _FakeTerminalSession extends TerminalSession {
     void Function()? onProcessStarted,
     void Function()? onProcessFailed,
     void Function()? onProcessExited,
+    void Function(String line)? onFirstUserLineSubmitted,
   }) {
     if (member != null) {
       connectedMembers.add(member.id);

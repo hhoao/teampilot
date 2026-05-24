@@ -84,6 +84,7 @@ class AppKeys {
   static const llmConfigOpenSessionSettingsButton = Key(
     'llm-config-open-session-settings-button',
   );
+  static const newChatSidebarTile = Key('new-chat-sidebar-tile');
   static const teamConfigHub = Key('team-config-hub');
   static const teamConfigWorkspace = Key('team-config-workspace');
   static const skillsHub = Key('skills-hub');
@@ -113,6 +114,7 @@ class AppKeys {
   static const openTeamLeadButton = Key('open-team-lead-button');
   static const openTeamButton = Key('open-team-button');
   static const openRightToolsButton = Key('open-right-tools-button');
+  static const rightToolsVisibilityButton = Key('right-tools-visibility-button');
 
   static const teamNameField = Key('team-name-field');
   static const teamNameDialogField = Key('team-name-dialog-field');
