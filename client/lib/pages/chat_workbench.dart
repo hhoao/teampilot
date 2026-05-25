@@ -16,6 +16,7 @@ import '../models/app_session.dart';
 import '../models/team_config.dart';
 import '../repositories/session_repository.dart';
 import '../services/terminal_export.dart';
+import '../services/terminal_uri_opener.dart';
 import '../services/terminal_fonts.dart';
 import '../utils/app_keys.dart';
 import '../widgets/terminal_find_bar.dart';
@@ -258,10 +259,7 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
         setState(() => _findVisible = true);
       case 'openLink':
         if (linkUri != null) {
-          final uri = Uri.tryParse(linkUri);
-          if (uri != null) {
-            await launchUrl(uri, mode: LaunchMode.externalApplication);
-          }
+          await TerminalUriOpener.open(linkUri);
         }
       case 'export':
         await _exportTerminalScrollback(menuContext, terminal);
@@ -318,11 +316,7 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
   Future<void> _openLinkAt(Terminal terminal, CellOffset offset) async {
     final link = terminal.linkUriAt(offset);
     if (link == null) return;
-    final trimmed = link.replaceAll(RegExp(r'[)\],.;:]+$'), '');
-    final uri = Uri.tryParse(trimmed);
-    if (uri == null) return;
-    if (!await canLaunchUrl(uri)) return;
-    await launchUrl(uri, mode: LaunchMode.externalApplication);
+    await TerminalUriOpener.open(link);
   }
 
   void _onChatState(ChatState state) {
