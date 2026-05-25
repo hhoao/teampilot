@@ -138,9 +138,10 @@ void main() {
 
     await repo.deleteProject(project.projectId);
 
+    // createSession prepends sessionIds, so deleteProject destroys newest first.
     expect(lifecycle.destroyed, [
-      (teamId: 'T', sessionId: s1.sessionId),
       (teamId: 'T', sessionId: s2.sessionId),
+      (teamId: 'T', sessionId: s1.sessionId),
     ]);
   });
 
