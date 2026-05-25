@@ -381,21 +381,13 @@ class _ProjectList extends StatelessWidget {
       );
     }
 
-    final sorted = List<AppProject>.from(projects)
-      ..sort(
-        (a, b) => _projectRecency(
-          b,
-          sessions,
-        ).compareTo(_projectRecency(a, sessions)),
-      );
-
     return ListView.builder(
-      itemCount: sorted.length,
+      itemCount: projects.length,
       itemBuilder: (context, index) {
-        final project = sorted[index];
+        final project = projects[index];
         final list = _sessionsForProject(project, sessions);
         return Padding(
-          padding: EdgeInsets.only(bottom: index == sorted.length - 1 ? 0 : 10),
+          padding: EdgeInsets.only(bottom: index == projects.length - 1 ? 0 : 10),
           child: _ProjectGroup(project: project, sessions: list),
         );
       },

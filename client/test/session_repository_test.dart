@@ -63,6 +63,21 @@ void main() {
     },
   );
 
+  test('createSession prepends sessionId without bumping project updatedAt', () async {
+    final tmp = await Directory.systemTemp.createTemp('fs_session_repo_');
+    addTearDown(() => tmp.deleteSync(recursive: true));
+
+    final repo = SessionRepository(rootDir: tmp.path);
+    final project = await repo.createProject('/a');
+    final s1 = await repo.createSession(project.projectId);
+    final afterFirst = (await repo.loadProjects()).single;
+    final s2 = await repo.createSession(project.projectId);
+    final afterSecond = (await repo.loadProjects()).single;
+
+    expect(afterSecond.sessionIds, [s2.sessionId, s1.sessionId]);
+    expect(afterSecond.updatedAt, afterFirst.updatedAt);
+  });
+
   test('deleteProject removes project and session files', () async {
     final tmp = await Directory.systemTemp.createTemp('fs_session_repo_');
     addTearDown(() => tmp.deleteSync(recursive: true));

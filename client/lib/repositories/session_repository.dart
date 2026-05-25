@@ -269,10 +269,7 @@ class SessionRepository {
 
     final nextProjects = index.projects.map((p) {
       if (p.projectId != projectId) return p;
-      return p.copyWith(
-        sessionIds: [...p.sessionIds, sessionId],
-        updatedAt: now,
-      );
+      return p.copyWith(sessionIds: [sessionId, ...p.sessionIds]);
     }).toList();
     await _saveIndex(
       fs,
