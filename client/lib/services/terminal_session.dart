@@ -12,6 +12,7 @@ import 'cli_invocation.dart';
 import 'cli_tool_locator.dart';
 import 'launch_command_builder.dart';
 import 'local_pty_transport.dart';
+import 'pty_launch_environment.dart';
 import 'terminal_transport.dart';
 import '../models/team_config.dart';
 import '../utils/first_user_line_capture.dart';
@@ -558,19 +559,20 @@ class TerminalSession {
     disconnect();
   }
 
-  static Map<String, String>? buildPtyEnvironment(
+  /// Full process environment for [Pty.start], including OSC 8 identity hints.
+  static Map<String, String> buildPtyEnvironment(
     Map<String, String>? environment,
   ) {
-    if (!Platform.isWindows) {
-      return environment;
-    }
-    final merged = <String, String>{...Platform.environment};
-    final path = merged['Path'] ?? merged['PATH'];
-    if (path != null && path.isNotEmpty) {
-      merged['PATH'] = path;
-    }
-    if (environment != null) {
-      merged.addAll(environment);
+    final merged = <String, String>{
+      ...Platform.environment,
+      if (environment != null) ...environment,
+    };
+    PtyLaunchEnvironment.applyHyperlinkIdentity(merged);
+    if (Platform.isWindows) {
+      final path = merged['Path'] ?? merged['PATH'];
+      if (path != null && path.isNotEmpty) {
+        merged['PATH'] = path;
+      }
     }
     return merged;
   }

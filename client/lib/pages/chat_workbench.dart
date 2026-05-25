@@ -318,8 +318,10 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
   Future<void> _openLinkAt(Terminal terminal, CellOffset offset) async {
     final link = terminal.linkUriAt(offset);
     if (link == null) return;
-    final uri = Uri.tryParse(link);
+    final trimmed = link.replaceAll(RegExp(r'[)\],.;:]+$'), '');
+    final uri = Uri.tryParse(trimmed);
     if (uri == null) return;
+    if (!await canLaunchUrl(uri)) return;
     await launchUrl(uri, mode: LaunchMode.externalApplication);
   }
 
@@ -477,9 +479,12 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
                       textStyle: _terminalTextStyle,
                       autofocus: !_findVisible,
                       onTapUp: (details, offset) {
+                        // Plain click selects text; Ctrl/⌘+click opens links.
                         if (HardwareKeyboard.instance.isControlPressed ||
                             HardwareKeyboard.instance.isMetaPressed) {
                           unawaited(_openLinkAt(session.terminal, offset));
+                        } else {
+                          _terminalController.clearSelection();
                         }
                       },
                       onSecondaryTapUp: (details, offset) {
