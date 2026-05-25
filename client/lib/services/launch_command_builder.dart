@@ -385,15 +385,14 @@ class LaunchCommandBuilder {
   static String? appendSystemPromptFileFromEnvironment(
     Map<String, String>? environment,
   ) {
-    final value = environment?[MemberRoleProvision
-            .claudeAppendSystemPromptFileEnvKey]
-        ?.trim();
+    final value =
+        environment?[MemberRoleProvision.appendSystemPromptFileEnvKey]?.trim();
     return value == null || value.isEmpty ? null : value;
   }
 
   static const _launchOnlyEnvKeys = {
     ConfigProfileService.claudeSettingsFileEnvKey,
-    MemberRoleProvision.claudeAppendSystemPromptFileEnvKey,
+    MemberRoleProvision.appendSystemPromptFileEnvKey,
   };
 
   static Map<String, String>? launchEnvironmentForProcess(

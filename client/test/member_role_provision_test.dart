@@ -16,7 +16,7 @@ void main() {
       );
       final path = await MemberRoleProvision.syncRolePromptFile(
         fs: fs,
-        memberClaudeToolDir: root,
+        memberToolDir: root,
         member: member,
       );
       expect(path, isNotNull);
@@ -28,7 +28,7 @@ void main() {
 
       await MemberRoleProvision.syncRolePromptFile(
         fs: fs,
-        memberClaudeToolDir: root,
+        memberToolDir: root,
         member: member.copyWith(prompt: ''),
       );
       expect((await fs.stat(path!)).exists, isFalse);
@@ -44,7 +44,7 @@ void main() {
       const lead = TeamMemberConfig(id: 'lead', name: 'team-lead', prompt: '');
       final path = await MemberRoleProvision.syncRolePromptFile(
         fs: fs,
-        memberClaudeToolDir: root,
+        memberToolDir: root,
         member: lead,
       );
       expect(path, isNotNull);
@@ -64,7 +64,7 @@ void main() {
       const lead = TeamMemberConfig(id: 'lead', name: 'team-lead', prompt: '');
       await MemberRoleProvision.syncRolePromptFile(
         fs: fs,
-        memberClaudeToolDir: root,
+        memberToolDir: root,
         member: lead,
         forceTeamLeadDelegateMode: true,
       );

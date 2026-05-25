@@ -85,6 +85,11 @@ class FlashskyaiCliToolAdapter implements CliToolAdapter {
     _addExtraArgs(args, context.team.extraArgs);
     _addExtraArgs(args, member.extraArgs);
 
+    final appendFile = context.appendSystemPromptFile?.trim() ?? '';
+    if (appendFile.isNotEmpty) {
+      args.addAll(['--append-system-prompt-file', appendFile]);
+    }
+
     return args;
   }
 }

@@ -25,6 +25,17 @@ String _sessionClaudeDir(String base, String teamId, String sessionId) =>
       'claude',
     );
 
+String _sessionFlashskyaiDir(String base, String teamId, String sessionId) =>
+    p.join(
+      base,
+      'config-profiles',
+      'teams',
+      teamId,
+      'members',
+      sessionId,
+      'flashskyai',
+    );
+
 String _appFlashskyaiDirPath(String base) =>
     p.join(base, 'config-profiles', 'flashskyai');
 
@@ -184,7 +195,7 @@ void main() {
     expect(await File(roleFile).readAsString(), contains('Coordinate only'));
 
     final appendPath =
-        env[MemberRoleProvision.claudeAppendSystemPromptFileEnvKey];
+        env[MemberRoleProvision.appendSystemPromptFileEnvKey];
     expect(appendPath, roleFile);
 
     final settingsPath = env[ConfigProfileService.claudeSettingsFileEnvKey]!;
@@ -260,6 +271,113 @@ void main() {
       isTrue,
     );
   });
+
+  test('prepareTeamLaunch flashskyai writes role prompt and append env', () async {
+    const sessionId = 'sess-fs-role';
+    const lead = TeamMemberConfig(
+      id: 'lead',
+      name: 'team-lead',
+      prompt: 'Coordinate flashskyai teammates.',
+    );
+    final env = (await service.prepareTeamLaunch(
+      teamId: 'team-a',
+      runtimeTeamId: sessionId,
+      cli: TeamCli.flashskyai,
+      members: const [lead],
+      member: lead,
+      workingDirectory: '/workspace',
+    )).environment;
+
+    final flashskyaiDir = _sessionFlashskyaiDir(base.path, 'team-a', sessionId);
+    final roleFile = p.join(flashskyaiDir, 'prompts', 'team-lead', 'role.md');
+    expect(await File(roleFile).exists(), isTrue);
+    expect(
+      await File(roleFile).readAsString(),
+      contains('Coordinate flashskyai'),
+    );
+    expect(
+      env[MemberRoleProvision.appendSystemPromptFileEnvKey],
+      roleFile,
+    );
+
+    final settings =
+        jsonDecode(
+              await File(
+                p.join(
+                  flashskyaiDir,
+                  ConfigProfileService.flashskyaiSettingsFileName,
+                ),
+              ).readAsString(),
+            )
+            as Map<String, Object?>;
+    final deny = (settings['permissions'] as Map)['deny'] as List;
+    expect(deny, contains('TeamCreate'));
+
+    final hookPath = p.join(
+      flashskyaiDir,
+      'hooks',
+      TeamLeadHookProvisioner.shFileName,
+    );
+    expect(await File(hookPath).exists(), isTrue);
+    final pre = (settings['hooks'] as Map)['PreToolUse'] as List;
+    for (final matcher in TeamLeadSettingsMerge.guardedTools) {
+      final entry = pre.cast<Map>().firstWhere(
+        (e) => e['matcher'] == matcher,
+      );
+      final command =
+          ((entry['hooks'] as List).first as Map)['command'] as String;
+      expect(command, contains(TeamLeadHookProvisioner.shFileName));
+    }
+  });
+
+  test(
+    'prepareTeamLaunch flashskyai adds delegate-only hook when team flag is on',
+    () async {
+      const sessionId = 'sess-fs-delegate';
+      const lead = TeamMemberConfig(id: 'lead', name: 'team-lead');
+      const team = TeamConfig(
+        id: 'team-a',
+        name: 'agent',
+        cli: TeamCli.flashskyai,
+        forceTeamLeadDelegateMode: true,
+      );
+      await service.prepareTeamLaunch(
+        teamId: team.id,
+        runtimeTeamId: sessionId,
+        cli: team.cli,
+        members: const [lead],
+        member: lead,
+        team: team,
+      );
+
+      final flashskyaiDir =
+          _sessionFlashskyaiDir(base.path, team.id, sessionId);
+      final roleText = await File(
+        p.join(flashskyaiDir, 'prompts', 'team-lead', 'role.md'),
+      ).readAsString();
+      expect(roleText, contains('Delegate-only mode'));
+
+      final settings =
+          jsonDecode(
+                await File(
+                  p.join(
+                    flashskyaiDir,
+                    ConfigProfileService.flashskyaiSettingsFileName,
+                  ),
+                ).readAsString(),
+              )
+              as Map<String, Object?>;
+      final pre = (settings['hooks'] as Map)['PreToolUse'] as List;
+      final delegateEntry = pre.cast<Map>().firstWhere(
+        (e) =>
+            (e['matcher'] as String?) ==
+            TeamLeadDelegateSettingsMerge.blockedToolsMatcher,
+      );
+      final command =
+          ((delegateEntry['hooks'] as List).first as Map)['command'] as String;
+      expect(command, contains(TeamLeadDelegateHookProvisioner.shFileName));
+    },
+  );
 
   test('team-lead SendMessage hook is not added for non-lead members', () async {
     const sessionId = 'sess-dev-only-hook';

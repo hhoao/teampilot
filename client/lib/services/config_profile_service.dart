@@ -306,7 +306,13 @@ class ConfigProfileService {
           workingDirectory,
           additionalDirectories: additionalDirectories,
         );
-        await _writeFlashskyaiSettings(scope);
+        await _writeFlashskyaiMemberProfiles(
+          scope: scope,
+          members: members,
+          launchedMember: member,
+          forceTeamLeadDelegateMode:
+              team?.forceTeamLeadDelegateMode ?? false,
+        );
         break;
       case TeamCli.claude:
         await _writeClaudeMetadata(
@@ -373,19 +379,32 @@ class ConfigProfileService {
       'CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS': '1',
     };
     if (cli == TeamCli.claude && member != null && member.isValid) {
-      final appendPath = await _resolveClaudeAppendSystemPromptPath(
+      final appendPath = await _resolveAppendSystemPromptPath(
         scope: scope,
+        tool: 'claude',
         member: member,
       );
       if (appendPath != null) {
-        claudeEnv[MemberRoleProvision.claudeAppendSystemPromptFileEnvKey] =
+        claudeEnv[MemberRoleProvision.appendSystemPromptFileEnvKey] = appendPath;
+      }
+    }
+
+    final flashskyaiEnv = _flashskyaiTeamLaunchEnvironment(scope);
+    if (cli == TeamCli.flashskyai && member != null && member.isValid) {
+      final appendPath = await _resolveAppendSystemPromptPath(
+        scope: scope,
+        tool: 'flashskyai',
+        member: member,
+      );
+      if (appendPath != null) {
+        flashskyaiEnv[MemberRoleProvision.appendSystemPromptFileEnvKey] =
             appendPath;
       }
     }
 
     return TeamLaunchOutcome(
       environment: switch (cli) {
-        TeamCli.flashskyai => _flashskyaiTeamLaunchEnvironment(scope),
+        TeamCli.flashskyai => flashskyaiEnv,
         TeamCli.codex => {
           'CODEX_HOME': sessionToolDir(scope.teamId, scope.sessionId, 'codex'),
         },
@@ -859,7 +878,7 @@ class ConfigProfileService {
     final isLead = member.name.trim() == TeamMemberNaming.teamLeadName;
     await MemberRoleProvision.syncRolePromptFile(
       fs: _fs,
-      memberClaudeToolDir: memberToolDir,
+      memberToolDir: memberToolDir,
       member: member,
       forceTeamLeadDelegateMode: isLead && forceTeamLeadDelegateMode,
     );
@@ -919,12 +938,71 @@ class ConfigProfileService {
     return merged;
   }
 
-  Future<String?> _resolveClaudeAppendSystemPromptPath({
+  Future<void> _writeFlashskyaiMemberProfiles({
     required _LaunchProfileScope scope,
+    required List<TeamMemberConfig> members,
+    required TeamMemberConfig? launchedMember,
+    required bool forceTeamLeadDelegateMode,
+  }) async {
+    final selected = launchedMember;
+    if (selected == null || !selected.isValid) {
+      await _writeFlashskyaiSettings(scope);
+      return;
+    }
+    await _writeFlashskyaiMemberProfile(
+      scope: scope,
+      member: selected,
+      forceTeamLeadDelegateMode: forceTeamLeadDelegateMode,
+    );
+  }
+
+  Future<void> _writeFlashskyaiMemberProfile({
+    required _LaunchProfileScope scope,
+    required TeamMemberConfig member,
+    required bool forceTeamLeadDelegateMode,
+  }) async {
+    final memberToolDir = sessionToolDir(
+      scope.teamId,
+      scope.sessionId,
+      'flashskyai',
+    );
+    final isLead = member.name.trim() == TeamMemberNaming.teamLeadName;
+    await MemberRoleProvision.syncRolePromptFile(
+      fs: _fs,
+      memberToolDir: memberToolDir,
+      member: member,
+      forceTeamLeadDelegateMode: isLead && forceTeamLeadDelegateMode,
+    );
+    final settingsFile = _pathContext.join(
+      memberToolDir,
+      flashskyaiSettingsFileName,
+    );
+    var settings = _flashskyaiMemberSettings(member);
+    settings = MemberRoleProvision.applyTeamSessionPolicy(settings);
+    settings = await _maybeApplyTeamLeadHooks(
+      settings,
+      member,
+      memberToolDir,
+      forceTeamLeadDelegateMode: isLead && forceTeamLeadDelegateMode,
+    );
+    await _writeSettingsFile(
+      settingsFile,
+      settings,
+      memberToolDir: memberToolDir,
+    );
+  }
+
+  static Map<String, Object?> _flashskyaiMemberSettings(TeamMemberConfig member) {
+    return Map<String, Object?>.from(_flashskyaiTeamSettings());
+  }
+
+  Future<String?> _resolveAppendSystemPromptPath({
+    required _LaunchProfileScope scope,
+    required String tool,
     required TeamMemberConfig member,
   }) async {
     final path = MemberRoleProvision.rolePromptPath(
-      sessionToolDir(scope.teamId, scope.sessionId, 'claude'),
+      sessionToolDir(scope.teamId, scope.sessionId, tool),
       member,
     );
     final stat = await _fs.stat(path);

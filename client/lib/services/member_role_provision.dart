@@ -10,8 +10,11 @@ abstract final class MemberRoleProvision {
   MemberRoleProvision._();
 
   /// Passed to [LaunchCommandBuilder]; stripped before spawning the PTY.
-  static const claudeAppendSystemPromptFileEnvKey =
-      'TEAMPILOT_CLAUDE_APPEND_SYSTEM_PROMPT_FILE';
+  static const appendSystemPromptFileEnvKey =
+      'TEAMPILOT_APPEND_SYSTEM_PROMPT_FILE';
+
+  /// Back-compat alias (Claude + FlashskyAI).
+  static const claudeAppendSystemPromptFileEnvKey = appendSystemPromptFileEnvKey;
 
   static const rolePromptsDirName = 'prompts';
   static const rolePromptFileName = 'role.md';
@@ -58,12 +61,9 @@ This tab is **plan-and-assign only**: Bash, Read, Edit, Write, Glob, Grep, Noteb
     );
   }
 
-  static String rolePromptPath(
-    String memberClaudeToolDir,
-    TeamMemberConfig member,
-  ) {
+  static String rolePromptPath(String memberToolDir, TeamMemberConfig member) {
     return p.join(
-      memberClaudeToolDir,
+      memberToolDir,
       rolePromptsDirName,
       memberSlug(member),
       rolePromptFileName,
@@ -74,11 +74,11 @@ This tab is **plan-and-assign only**: Bash, Read, Edit, Write, Glob, Grep, Noteb
   /// Removes the file when prompt is empty. Returns the path when non-empty.
   static Future<String?> syncRolePromptFile({
     required Filesystem fs,
-    required String memberClaudeToolDir,
+    required String memberToolDir,
     required TeamMemberConfig member,
     bool forceTeamLeadDelegateMode = false,
   }) async {
-    final path = rolePromptPath(memberClaudeToolDir, member);
+    final path = rolePromptPath(memberToolDir, member);
     final text = member.prompt.trim();
     final stat = await fs.stat(path);
     final isLead = member.name.trim() == TeamMemberNaming.teamLeadName;

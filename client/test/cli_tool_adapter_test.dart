@@ -134,6 +134,25 @@ void main() {
     );
   });
 
+  test('flashskyai adapter appends role system prompt file when set', () {
+    final args = FlashskyaiCliToolAdapter().buildArguments(
+      CliLaunchContext(
+        team: flashskyaiTeam,
+        member: member,
+        appendSystemPromptFile:
+            '/tmp/team/flashskyai/prompts/team-lead/role.md',
+      ),
+    );
+
+    expect(
+      args,
+      containsAllInOrder([
+        '--append-system-prompt-file',
+        '/tmp/team/flashskyai/prompts/team-lead/role.md',
+      ]),
+    );
+  });
+
   test('claude adapter appends role system prompt file when set', () {
     final args = ClaudeCodeCliToolAdapter().buildArguments(
       CliLaunchContext(
