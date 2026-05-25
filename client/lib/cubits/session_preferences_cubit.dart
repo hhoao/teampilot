@@ -103,6 +103,13 @@ class SessionPreferencesCubit extends Cubit<SessionPreferencesState> {
     );
   }
 
+  Future<void> setTerminalScrollbackLines(int value) {
+    final clamped = value.clamp(1000, 200000);
+    return _save(
+      state.preferences.copyWith(terminalScrollbackLines: clamped),
+    );
+  }
+
   Future<void> setWindowsStorageBackend(WindowsStorageBackend backend) {
     return _save(state.preferences.copyWith(windowsStorageBackend: backend));
   }

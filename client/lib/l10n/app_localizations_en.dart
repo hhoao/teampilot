@@ -501,6 +501,25 @@ class AppLocalizationsEn extends AppLocalizations {
   String get shellSession => 'Shell session';
 
   @override
+  String get terminalFind => 'Find in terminal';
+
+  @override
+  String get terminalFindNoResults => 'No results';
+
+  @override
+  String get terminalOpenLink => 'Open link';
+
+  @override
+  String get terminalExportScrollback => 'Export scrollback…';
+
+  @override
+  String get terminalScrollbackLinesTitle => 'Terminal scrollback lines';
+
+  @override
+  String get terminalScrollbackLinesDescription =>
+      'Maximum lines kept in each session terminal buffer (1000–200000).';
+
+  @override
   String get autoLaunchAllMembersTitle => 'Start all members on connect';
 
   @override

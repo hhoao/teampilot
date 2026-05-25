@@ -192,7 +192,10 @@ Future<TeamCubit> createTeamCubitInTest(
 }
 
 class FakeTerminalSession extends TerminalSession {
-  FakeTerminalSession({super.executable = 'flashskyai'});
+  FakeTerminalSession({
+    super.executable = 'flashskyai',
+    super.scrollbackLines = 10000,
+  });
 
   var _running = false;
   final connectedMembers = <String>[];
@@ -278,7 +281,12 @@ class TestChatCubit extends ChatCubit {
   TestChatCubit._(this.postFrame)
     : super(
         executableResolver: _testExecutable,
-        terminalSessionFactory: FakeTerminalSession.new,
+        terminalSessionFactory:
+            ({required String executable, int scrollbackLines = 10000}) =>
+                FakeTerminalSession(
+                  executable: executable,
+                  scrollbackLines: scrollbackLines,
+                ),
         postFrameScheduler: postFrame.scheduler,
       );
 
@@ -328,7 +336,12 @@ void main() {
     final postFrame = PostFrameTestHarness();
     final chatCubit = ChatCubit(
       executableResolver: _testExecutable,
-      terminalSessionFactory: FakeTerminalSession.new,
+      terminalSessionFactory:
+            ({required String executable, int scrollbackLines = 10000}) =>
+                FakeTerminalSession(
+                  executable: executable,
+                  scrollbackLines: scrollbackLines,
+                ),
       postFrameScheduler: postFrame.scheduler,
       sessionRepository: _widgetTestSessionRepo,
     );
@@ -593,7 +606,12 @@ void main() {
     final postFrame = PostFrameTestHarness();
     final cubit = ChatCubit(
       executableResolver: _testExecutable,
-      terminalSessionFactory: FakeTerminalSession.new,
+      terminalSessionFactory:
+            ({required String executable, int scrollbackLines = 10000}) =>
+                FakeTerminalSession(
+                  executable: executable,
+                  scrollbackLines: scrollbackLines,
+                ),
       postFrameScheduler: postFrame.scheduler,
     );
     final team = TeamConfig(
@@ -625,7 +643,8 @@ void main() {
       final postFrame = PostFrameTestHarness();
       final cubit = ChatCubit(
         executableResolver: () => 'claude',
-        terminalSessionFactory: ({required String executable}) {
+        terminalSessionFactory:
+            ({required String executable, int scrollbackLines = 10000}) {
           final session = FakeTerminalSession(executable: executable);
           sessions.add(session);
           return session;
@@ -713,7 +732,12 @@ void main() {
       final postFrame = PostFrameTestHarness();
       final cubit = ChatCubit(
         executableResolver: _testExecutable,
-        terminalSessionFactory: FakeTerminalSession.new,
+        terminalSessionFactory:
+            ({required String executable, int scrollbackLines = 10000}) =>
+                FakeTerminalSession(
+                  executable: executable,
+                  scrollbackLines: scrollbackLines,
+                ),
         postFrameScheduler: postFrame.scheduler,
         autoLaunchAllMembersOnConnect: () => true,
       );
@@ -743,7 +767,12 @@ void main() {
       final postFrame = PostFrameTestHarness();
       final cubit = ChatCubit(
         executableResolver: _testExecutable,
-        terminalSessionFactory: FakeTerminalSession.new,
+        terminalSessionFactory:
+            ({required String executable, int scrollbackLines = 10000}) =>
+                FakeTerminalSession(
+                  executable: executable,
+                  scrollbackLines: scrollbackLines,
+                ),
         postFrameScheduler: postFrame.scheduler,
       );
       final team = TeamConfig(
@@ -772,7 +801,12 @@ void main() {
       final postFrame = PostFrameTestHarness();
       final cubit = ChatCubit(
         executableResolver: _testExecutable,
-        terminalSessionFactory: FakeTerminalSession.new,
+        terminalSessionFactory:
+            ({required String executable, int scrollbackLines = 10000}) =>
+                FakeTerminalSession(
+                  executable: executable,
+                  scrollbackLines: scrollbackLines,
+                ),
         postFrameScheduler: postFrame.scheduler,
       );
       const projectId = 'proj-test-2';
@@ -817,7 +851,8 @@ void main() {
     final postFrame = PostFrameTestHarness();
     final cubit = ChatCubit(
       executableResolver: _testExecutable,
-      terminalSessionFactory: ({required String executable}) {
+      terminalSessionFactory:
+          ({required String executable, int scrollbackLines = 10000}) {
         captured = FakeTerminalSession(executable: executable);
         return captured!;
       },
@@ -853,7 +888,8 @@ void main() {
     final postFrame = PostFrameTestHarness();
     final cubit = ChatCubit(
       executableResolver: _testExecutable,
-      terminalSessionFactory: ({required String executable}) {
+      terminalSessionFactory:
+          ({required String executable, int scrollbackLines = 10000}) {
         captured = FakeTerminalSession(executable: executable);
         return captured!;
       },
@@ -892,7 +928,8 @@ void main() {
       final postFrame = PostFrameTestHarness();
       final cubit = ChatCubit(
         executableResolver: _testExecutable,
-        terminalSessionFactory: ({required String executable}) {
+        terminalSessionFactory:
+            ({required String executable, int scrollbackLines = 10000}) {
           captured = FakeTerminalSession(executable: executable);
           return captured!;
         },
@@ -933,7 +970,8 @@ void main() {
       final postFrame = PostFrameTestHarness();
       final cubit = ChatCubit(
         executableResolver: _testExecutable,
-        terminalSessionFactory: ({required String executable}) {
+        terminalSessionFactory:
+            ({required String executable, int scrollbackLines = 10000}) {
           captured = FakeTerminalSession(executable: executable);
           return captured!;
         },

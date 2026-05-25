@@ -20,8 +20,21 @@ import '../utils/logger.dart';
 import '../utils/project_path_utils.dart';
 import '../utils/session_display_title.dart';
 
-typedef TerminalSessionFactory =
-    TerminalSession Function({required String executable});
+typedef TerminalSessionFactory = TerminalSession Function({
+  required String executable,
+  int scrollbackLines,
+});
+
+TerminalSession defaultTerminalSessionFactory({
+  required String executable,
+  int scrollbackLines = 10000,
+}) {
+  return TerminalSession(
+    executable: executable,
+    scrollbackLines: scrollbackLines,
+  );
+}
+
 typedef PostFrameScheduler = void Function(VoidCallback callback);
 typedef SshActiveProfileResolver = SshProfile? Function();
 typedef CliExecutableResolver = String Function(TeamCli cli);
@@ -170,7 +183,8 @@ class ChatCubit extends Cubit<ChatState> {
   ChatCubit({
     required String Function() executableResolver,
     CliExecutableResolver? cliExecutableResolver,
-    TerminalSessionFactory terminalSessionFactory = TerminalSession.new,
+    TerminalSessionFactory terminalSessionFactory =
+        defaultTerminalSessionFactory,
     PostFrameScheduler? postFrameScheduler,
     bool Function()? autoLaunchAllMembersOnConnect,
     SessionLifecycleService? lifecycleService,
@@ -180,6 +194,7 @@ class ChatCubit extends Cubit<ChatState> {
     String Function()? sshDefaultWorkingDirectoryResolver,
     bool Function()? sshUseLoginShellResolver,
     ConnectionMode Function()? connectionModeResolver,
+    int Function()? terminalScrollbackLinesResolver,
   }) : _terminalSessionFactory = terminalSessionFactory,
        _postFrameScheduler = postFrameScheduler ?? _defaultPostFrameScheduler,
        _autoLaunchAllMembersOnConnect = autoLaunchAllMembersOnConnect,
@@ -192,6 +207,7 @@ class ChatCubit extends Cubit<ChatState> {
        _sshDefaultWorkingDirectoryResolver = sshDefaultWorkingDirectoryResolver,
        _sshUseLoginShellResolver = sshUseLoginShellResolver,
        _connectionModeResolver = connectionModeResolver,
+       _terminalScrollbackLinesResolver = terminalScrollbackLinesResolver,
        super(const ChatState());
 
   final List<_InternalTab> _internalTabs = [];
@@ -209,6 +225,7 @@ class ChatCubit extends Cubit<ChatState> {
   final String Function()? _sshDefaultWorkingDirectoryResolver;
   final bool Function()? _sshUseLoginShellResolver;
   final ConnectionMode Function()? _connectionModeResolver;
+  final int Function()? _terminalScrollbackLinesResolver;
 
   ConnectionMode get _connectionMode =>
       _connectionModeResolver?.call() ?? ConnectionMode.localPty;
@@ -223,15 +240,22 @@ class ChatCubit extends Cubit<ChatState> {
     return _cliExecutableResolver?.call(cli) ?? _executableResolver();
   }
 
+  int get _scrollbackLines => _terminalScrollbackLinesResolver?.call() ?? 10000;
+
   TerminalSession _newSession([TeamCli cli = TeamCli.flashskyai]) {
     final executable = _resolveExecutableFor(cli);
+    final scrollback = _scrollbackLines;
     if (_useSsh) {
       final profile = _sshProfileResolver?.call();
       if (profile == null) {
-        return _terminalSessionFactory(executable: executable);
+        return _terminalSessionFactory(
+          executable: executable,
+          scrollbackLines: scrollback,
+        );
       }
       return TerminalSession(
         executable: executable,
+        scrollbackLines: scrollback,
         validateLaunch: false,
         parseExecutable: false,
         transportStarter:
@@ -264,7 +288,10 @@ class ChatCubit extends Cubit<ChatState> {
             },
       );
     }
-    return _terminalSessionFactory(executable: executable);
+    return _terminalSessionFactory(
+      executable: executable,
+      scrollbackLines: scrollback,
+    );
   }
 
   static const _uuid = Uuid();

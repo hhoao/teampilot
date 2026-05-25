@@ -1,8 +1,11 @@
 import 'dart:async';
+import 'dart:io';
 
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:xterm/xterm.dart';
 
 import '../cubits/chat_cubit.dart';
@@ -12,8 +15,10 @@ import '../l10n/l10n_extensions.dart';
 import '../models/app_session.dart';
 import '../models/team_config.dart';
 import '../repositories/session_repository.dart';
+import '../services/terminal_export.dart';
 import '../services/terminal_fonts.dart';
 import '../utils/app_keys.dart';
+import '../widgets/terminal_find_bar.dart';
 
 const _terminalTextStyle = TerminalStyle(
   fontSize: 13,
@@ -145,6 +150,7 @@ class ChatWorkbench extends StatefulWidget {
 class _ChatWorkbenchState extends State<ChatWorkbench> {
   final _terminalController = TerminalController();
 
+  var _findVisible = false;
   var _handledRouteSession = false;
   StreamSubscription<ChatState>? _chatSub;
   int _lastWorkbenchStateVersion = -1;
@@ -189,13 +195,27 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
     required BuildContext menuContext,
     required Offset globalPosition,
     required Terminal terminal,
+    required CellOffset? cellOffset,
     required bool sessionRunning,
     required VoidCallback onDisconnect,
     required Future<void> Function() onRestart,
   }) async {
     final mloc = MaterialLocalizations.of(menuContext);
     final hasSelection = _terminalController.selection != null;
+    final linkUri =
+        cellOffset != null ? terminal.linkUriAt(cellOffset) : null;
     final entries = <PopupMenuEntry<String>>[
+      PopupMenuItem(value: 'find', child: Text(context.l10n.terminalFind)),
+      if (linkUri != null)
+        PopupMenuItem(
+          value: 'openLink',
+          child: Text(context.l10n.terminalOpenLink),
+        ),
+      PopupMenuItem(
+        value: 'export',
+        child: Text(context.l10n.terminalExportScrollback),
+      ),
+      const PopupMenuDivider(),
       PopupMenuItem(value: 'paste', child: Text(mloc.pasteButtonLabel)),
       PopupMenuItem(
         value: 'copy',
@@ -234,6 +254,17 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
     );
     if (!menuContext.mounted) return;
     switch (selected) {
+      case 'find':
+        setState(() => _findVisible = true);
+      case 'openLink':
+        if (linkUri != null) {
+          final uri = Uri.tryParse(linkUri);
+          if (uri != null) {
+            await launchUrl(uri, mode: LaunchMode.externalApplication);
+          }
+        }
+      case 'export':
+        await _exportTerminalScrollback(menuContext, terminal);
       case 'paste':
         final data = await Clipboard.getData(Clipboard.kTextPlain);
         final text = data?.text;
@@ -268,6 +299,28 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
       default:
         break;
     }
+  }
+
+  Future<void> _exportTerminalScrollback(
+    BuildContext context,
+    Terminal terminal,
+  ) async {
+    final path = await FilePicker.platform.saveFile(
+      dialogTitle: context.l10n.terminalExportScrollback,
+      fileName: 'terminal-scrollback.txt',
+      type: FileType.custom,
+      allowedExtensions: ['txt'],
+    );
+    if (path == null || !context.mounted) return;
+    await File(path).writeAsString(exportTerminalScrollback(terminal));
+  }
+
+  Future<void> _openLinkAt(Terminal terminal, CellOffset offset) async {
+    final link = terminal.linkUriAt(offset);
+    if (link == null) return;
+    final uri = Uri.tryParse(link);
+    if (uri == null) return;
+    await launchUrl(uri, mode: LaunchMode.externalApplication);
   }
 
   void _onChatState(ChatState state) {
@@ -391,32 +444,83 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
         child: sessionConnectInProgress
             ? _SessionLoadingView(message: context.l10n.sessionStarting)
             : session.isRunning
-            ? TerminalView(
-                session.terminal,
-                controller: _terminalController,
-                theme: terminalTheme,
-                backgroundOpacity: 0.98,
-                padding: const EdgeInsets.all(16),
-                textStyle: _terminalTextStyle,
-                autofocus: true,
-                onSecondaryTapUp: (details, _) {
-                  unawaited(
-                    _showTerminalContextMenu(
-                      menuContext: context,
-                      globalPosition: details.globalPosition,
-                      terminal: session.terminal,
-                      sessionRunning: session.isRunning,
-                      onDisconnect: () {
-                        chatCubit.disconnectSession();
-                        setState(() {});
-                      },
-                      onRestart: () async {
-                        await chatCubit.restartSession(team);
-                        if (mounted) setState(() {});
-                      },
-                    ),
+            ? TerminalFindShortcuts(
+                findVisible: _findVisible,
+                onToggleFind: () => setState(() => _findVisible = true),
+                onFindNext: () {
+                  session.terminal.search.next();
+                  _terminalController.setSearchResults(
+                    session.terminal.search.hits,
+                    activeIndex: session.terminal.search.currentIndex,
                   );
                 },
+                onFindPrevious: () {
+                  session.terminal.search.previous();
+                  _terminalController.setSearchResults(
+                    session.terminal.search.hits,
+                    activeIndex: session.terminal.search.currentIndex,
+                  );
+                },
+                onCloseFind: () {
+                  session.terminal.search.clear();
+                  _terminalController.clearSearch();
+                  setState(() => _findVisible = false);
+                },
+                child: Stack(
+                  children: [
+                    TerminalView(
+                      session.terminal,
+                      controller: _terminalController,
+                      theme: terminalTheme,
+                      backgroundOpacity: 0.98,
+                      padding: const EdgeInsets.all(16),
+                      textStyle: _terminalTextStyle,
+                      autofocus: !_findVisible,
+                      onTapUp: (details, offset) {
+                        if (HardwareKeyboard.instance.isControlPressed ||
+                            HardwareKeyboard.instance.isMetaPressed) {
+                          unawaited(_openLinkAt(session.terminal, offset));
+                        }
+                      },
+                      onSecondaryTapUp: (details, offset) {
+                        unawaited(
+                          _showTerminalContextMenu(
+                            menuContext: context,
+                            globalPosition: details.globalPosition,
+                            terminal: session.terminal,
+                            cellOffset: offset,
+                            sessionRunning: session.isRunning,
+                            onDisconnect: () {
+                              chatCubit.disconnectSession();
+                              setState(() {});
+                            },
+                            onRestart: () async {
+                              await chatCubit.restartSession(team);
+                              if (mounted) setState(() {});
+                            },
+                          ),
+                        );
+                      },
+                    ),
+                    if (_findVisible)
+                      Positioned(
+                        left: 8,
+                        right: 8,
+                        top: 8,
+                        child: TerminalFindBar(
+                          terminal: session.terminal,
+                          controller: _terminalController,
+                          searchLabel: context.l10n.terminalFind,
+                          noResultsLabel: context.l10n.terminalFindNoResults,
+                          onClose: () {
+                            session.terminal.search.clear();
+                            _terminalController.clearSearch();
+                            setState(() => _findVisible = false);
+                          },
+                        ),
+                      ),
+                  ],
+                ),
               )
             : _TerminalPlaceholder(
                 onConnect: () {

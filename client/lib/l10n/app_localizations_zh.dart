@@ -483,6 +483,25 @@ class AppLocalizationsZh extends AppLocalizations {
   String get shellSession => 'Shell 会话';
 
   @override
+  String get terminalFind => '在终端中查找';
+
+  @override
+  String get terminalFindNoResults => '无匹配';
+
+  @override
+  String get terminalOpenLink => '打开链接';
+
+  @override
+  String get terminalExportScrollback => '导出滚动缓冲…';
+
+  @override
+  String get terminalScrollbackLinesTitle => '终端滚动缓冲行数';
+
+  @override
+  String get terminalScrollbackLinesDescription =>
+      '每个会话终端保留的最大行数（1000–200000）。';
+
+  @override
   String get autoLaunchAllMembersTitle => '连接时启动全部成员';
 
   @override

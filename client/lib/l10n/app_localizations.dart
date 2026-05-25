@@ -1004,6 +1004,42 @@ abstract class AppLocalizations {
   /// **'Shell session'**
   String get shellSession;
 
+  /// No description provided for @terminalFind.
+  ///
+  /// In en, this message translates to:
+  /// **'Find in terminal'**
+  String get terminalFind;
+
+  /// No description provided for @terminalFindNoResults.
+  ///
+  /// In en, this message translates to:
+  /// **'No results'**
+  String get terminalFindNoResults;
+
+  /// No description provided for @terminalOpenLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Open link'**
+  String get terminalOpenLink;
+
+  /// No description provided for @terminalExportScrollback.
+  ///
+  /// In en, this message translates to:
+  /// **'Export scrollback…'**
+  String get terminalExportScrollback;
+
+  /// No description provided for @terminalScrollbackLinesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Terminal scrollback lines'**
+  String get terminalScrollbackLinesTitle;
+
+  /// No description provided for @terminalScrollbackLinesDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Maximum lines kept in each session terminal buffer (1000–200000).'**
+  String get terminalScrollbackLinesDescription;
+
   /// No description provided for @autoLaunchAllMembersTitle.
   ///
   /// In en, this message translates to:

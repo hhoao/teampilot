@@ -274,8 +274,9 @@ void main() {
         executableResolver: () => 'true',
         sessionRepository: repo,
         postFrameScheduler: postFrame.scheduler,
-        terminalSessionFactory: ({required String executable}) =>
-            _FakeTerminalSession(executable: executable),
+        terminalSessionFactory:
+            ({required String executable, int scrollbackLines = 10000}) =>
+                _FakeTerminalSession(executable: executable),
       );
     });
 
@@ -303,7 +304,8 @@ void main() {
         executableResolver: () => 'flashskyai',
         cliExecutableResolver: (cli) =>
             cli == TeamCli.claude ? '/opt/bin/claude' : 'flashskyai',
-        terminalSessionFactory: ({required String executable}) {
+        terminalSessionFactory:
+            ({required String executable, int scrollbackLines = 10000}) {
           executables.add(executable);
           return _FakeTerminalSession(executable: executable);
         },
@@ -344,7 +346,8 @@ void main() {
         final postFrame = PostFrameTestHarness();
         final cubit = ChatCubit(
           executableResolver: () => 'true',
-          terminalSessionFactory: ({required String executable}) {
+          terminalSessionFactory:
+            ({required String executable, int scrollbackLines = 10000}) {
             final fake = _FakeTerminalSession(executable: executable);
             fakeSessions.add(fake);
             return fake;
@@ -382,7 +385,8 @@ void main() {
         final cubit = ChatCubit(
           executableResolver: () => 'true',
           sessionRepository: repo,
-          terminalSessionFactory: ({required String executable}) {
+          terminalSessionFactory:
+            ({required String executable, int scrollbackLines = 10000}) {
             final fake = _FakeTerminalSession(executable: executable);
             fakeSessions.add(fake);
             return fake;

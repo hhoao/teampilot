@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
@@ -399,6 +400,28 @@ class _SessionControlsState extends State<_SessionControls> {
                 ),
               ],
               if (_kShowLlmConfigPathSetting) const _LlmConfigPathSettingsRow(),
+              SettingsLabeledRow(
+                title: l10n.terminalScrollbackLinesTitle,
+                subtitle: l10n.terminalScrollbackLinesDescription,
+                trailing: SizedBox(
+                  width: 120,
+                  child: TextFormField(
+                    initialValue:
+                        '${state.preferences.terminalScrollbackLines}',
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(isDense: true),
+                    onFieldSubmitted: (value) {
+                      final parsed = int.tryParse(value.trim());
+                      if (parsed != null) {
+                        unawaited(
+                          widget.cubit.setTerminalScrollbackLines(parsed),
+                        );
+                      }
+                    },
+                  ),
+                ),
+                showDividerBelow: true,
+              ),
               SettingsLabeledRow(
                 title: l10n.autoLaunchAllMembersTitle,
                 subtitle: l10n.autoLaunchAllMembersDescription,

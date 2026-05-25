@@ -37,10 +37,11 @@ class TerminalSession {
     this.startupDeadline = const Duration(seconds: 15),
     this.confirmFallback = const Duration(milliseconds: 150),
     TransportStarter? transportStarter,
+    int scrollbackLines = 10000,
     @Deprecated('Use transportStarter instead') dynamic ptyStarter,
   }) : _transportStarter = transportStarter ?? _defaultTransportStarter,
        terminal = Terminal(
-         maxLines: 10000,
+         maxLines: scrollbackLines,
          platform: switch (defaultTargetPlatform) {
            TargetPlatform.macOS => TerminalTargetPlatform.macos,
            TargetPlatform.windows => TerminalTargetPlatform.windows,

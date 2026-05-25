@@ -355,6 +355,8 @@ Future<AppShell> buildAppShell({
     sshUseLoginShellResolver: () =>
         sessionPreferencesCubit.state.preferences.sshUseLoginShell,
     connectionModeResolver: () => connectionModeService.effectiveMode,
+    terminalScrollbackLinesResolver: () =>
+        sessionPreferencesCubit.state.preferences.terminalScrollbackLines,
   );
 
   boot('loading layout');

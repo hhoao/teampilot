@@ -11,6 +11,7 @@ class SessionPreferences {
     this.sshUseLoginShell = false,
     this.autoLaunchAllMembersOnConnect = true,
     this.scopeSessionsToSelectedTeam = true,
+    this.terminalScrollbackLines = 10000,
     WindowsStorageBackend? windowsStorageBackend,
   }) : connectionMode = connectionMode ?? defaultConnectionMode(),
        windowsStorageBackend =
@@ -36,6 +37,8 @@ class SessionPreferences {
           json['autoLaunchAllMembersOnConnect'] as bool? ?? true,
       scopeSessionsToSelectedTeam:
           json['scopeSessionsToSelectedTeam'] as bool? ?? true,
+      terminalScrollbackLines:
+          (json['terminalScrollbackLines'] as num?)?.toInt() ?? 10000,
       windowsStorageBackend: WindowsStorageBackendJson.fromJson(
         json['windowsStorageBackend'] as String?,
       ),
@@ -74,6 +77,9 @@ class SessionPreferences {
   /// matches the selected team id.
   final bool scopeSessionsToSelectedTeam;
 
+  /// Maximum scrollback lines retained per embedded terminal session.
+  final int terminalScrollbackLines;
+
   /// Windows-only: business file I/O via native AppData or WSL home.
   final WindowsStorageBackend windowsStorageBackend;
 
@@ -85,6 +91,7 @@ class SessionPreferences {
     bool? sshUseLoginShell,
     bool? autoLaunchAllMembersOnConnect,
     bool? scopeSessionsToSelectedTeam,
+    int? terminalScrollbackLines,
     WindowsStorageBackend? windowsStorageBackend,
   }) {
     return SessionPreferences(
@@ -98,6 +105,8 @@ class SessionPreferences {
           autoLaunchAllMembersOnConnect ?? this.autoLaunchAllMembersOnConnect,
       scopeSessionsToSelectedTeam:
           scopeSessionsToSelectedTeam ?? this.scopeSessionsToSelectedTeam,
+      terminalScrollbackLines:
+          terminalScrollbackLines ?? this.terminalScrollbackLines,
       windowsStorageBackend:
           windowsStorageBackend ?? this.windowsStorageBackend,
     );
@@ -111,6 +120,7 @@ class SessionPreferences {
       'sshUseLoginShell': sshUseLoginShell,
       'autoLaunchAllMembersOnConnect': autoLaunchAllMembersOnConnect,
       'scopeSessionsToSelectedTeam': scopeSessionsToSelectedTeam,
+      'terminalScrollbackLines': terminalScrollbackLines,
       'windowsStorageBackend': windowsStorageBackend.toJson(),
     };
     if (cliExecutablePaths.isNotEmpty) {
