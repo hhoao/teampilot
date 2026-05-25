@@ -14,6 +14,7 @@ import '../repositories/session_repository.dart';
 import '../services/app_storage.dart';
 import '../services/platform_utils.dart';
 import '../utils/app_keys.dart';
+import '../utils/debounce/debounce.dart';
 import '../utils/project_path_picker.dart';
 import '../utils/project_path_utils.dart';
 import '../widgets/app_outline_text_field.dart';
@@ -285,11 +286,17 @@ class _ContextSidebarState extends State<ContextSidebar> {
                 ),
                 const SizedBox(height: 14),
                 _TeamConfigTile(
-                  onTap: () => goFromSidebar(context, '/team-config'),
+                  onTap: throttledTap(
+                    'context_sidebar_team_config',
+                    () => goFromSidebar(context, '/team-config'),
+                  ),
                 ),
                 const SizedBox(height: 8),
                 _NewChatTile(
-                  onTap: () => unawaited(_startNewChat(context)),
+                  onTap: throttledAsync(
+                    'context_sidebar_new_chat',
+                    () => _startNewChat(context),
+                  ),
                 ),
                 const SizedBox(height: 14),
                 _SidebarSectionTitle(
@@ -306,9 +313,12 @@ class _ContextSidebarState extends State<ContextSidebar> {
                 const Divider(height: 1),
                 const SizedBox(height: 8),
                 _SettingsTile(
-                  onTap: () => goFromSidebar(
-                    context,
-                    Platform.isAndroid ? '/config' : '/config/layout',
+                  onTap: throttledTap(
+                    'context_sidebar_settings',
+                    () => goFromSidebar(
+                      context,
+                      Platform.isAndroid ? '/config' : '/config/layout',
+                    ),
                   ),
                 ),
               ],
@@ -431,7 +441,10 @@ class _ProjectGroupState extends State<_ProjectGroup> {
           sessionCount: widget.sessions.length,
           expanded: _expanded,
           onToggle: () => setState(() => _expanded = !_expanded),
-          onNewSession: () => _createSession(context, p.projectId),
+          onNewSession: throttledAsync(
+            'context_sidebar_new_session_${p.projectId}',
+            () => _createSessionAndOpenChat(context, p.projectId),
+          ),
           onViewDetails: p.projectId.isNotEmpty
               ? () =>
                     showProjectDetailsDialog(context, p, widget.sessions.length)
@@ -465,10 +478,6 @@ class _ProjectGroupState extends State<_ProjectGroup> {
         const SizedBox(height: 2),
       ],
     );
-  }
-
-  void _createSession(BuildContext context, String projectId) {
-    unawaited(_createSessionAndOpenChat(context, projectId));
   }
 
   void _openFolder(String path) {
@@ -540,15 +549,13 @@ class _ProjectGroupState extends State<_ProjectGroup> {
             style: FilledButton.styleFrom(
               backgroundColor: Theme.of(context).colorScheme.error,
             ),
-            onPressed: () {
-              unawaited(
-                context.read<ChatCubit>().deleteProject(
-                  repo,
-                  project.projectId,
-                ),
+            onPressed: throttledAsync('context_sidebar_delete_project', () async {
+              await context.read<ChatCubit>().deleteProject(
+                repo,
+                project.projectId,
               );
-              Navigator.of(ctx).pop();
-            },
+              if (ctx.mounted) Navigator.of(ctx).pop();
+            }),
             child: Text(l10n.delete),
           ),
         ],
@@ -926,7 +933,10 @@ class _SessionTileEntryState extends State<_SessionTileEntry> {
         selected: selected,
         rowHovered: _hovered || _menuOpen,
         contentLeftInset: _kSidebarTreeTextInset,
-        onTap: () => _navigateToSessionInChat(context, session),
+        onTap: throttledTap(
+          'context_sidebar_session_${session.sessionId}',
+          () => _navigateToSessionInChat(context, session),
+        ),
         onSecondaryTapUp: (details) =>
             _showSessionContextMenu(details.globalPosition),
         onLongPress: Platform.isAndroid
@@ -998,19 +1008,17 @@ class _SessionTileEntryState extends State<_SessionTileEntry> {
             child: Text(l10n.cancel),
           ),
           FilledButton(
-            onPressed: () {
+            onPressed: throttledAsync('context_sidebar_rename_session', () async {
               final value = controller.text.trim();
               if (value.isNotEmpty) {
-                unawaited(
-                  context.read<ChatCubit>().renameSession(
-                    repo,
-                    session.sessionId,
-                    value,
-                  ),
+                await context.read<ChatCubit>().renameSession(
+                  repo,
+                  session.sessionId,
+                  value,
                 );
               }
-              Navigator.of(ctx).pop();
-            },
+              if (ctx.mounted) Navigator.of(ctx).pop();
+            }),
             child: Text(l10n.save),
           ),
         ],
@@ -1039,15 +1047,13 @@ class _SessionTileEntryState extends State<_SessionTileEntry> {
             style: FilledButton.styleFrom(
               backgroundColor: Theme.of(context).colorScheme.error,
             ),
-            onPressed: () {
-              unawaited(
-                context.read<ChatCubit>().deleteSession(
-                  repo,
-                  session.sessionId,
-                ),
+            onPressed: throttledAsync('context_sidebar_delete_session', () async {
+              await context.read<ChatCubit>().deleteSession(
+                repo,
+                session.sessionId,
               );
-              Navigator.of(ctx).pop();
-            },
+              if (ctx.mounted) Navigator.of(ctx).pop();
+            }),
             child: Text(l10n.delete),
           ),
         ],

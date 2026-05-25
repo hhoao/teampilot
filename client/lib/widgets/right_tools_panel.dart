@@ -12,6 +12,7 @@ import '../models/layout_preferences.dart';
 import '../models/team_config.dart';
 import '../theme/workspace_surface_layers.dart';
 import '../utils/app_keys.dart';
+import '../utils/debounce/debounce.dart';
 import 'app_outline_text_field.dart';
 import 'file_tree_node.dart';
 
@@ -74,10 +75,10 @@ class RightToolsPanel extends StatelessWidget {
             unawaited(context.read<ChatCubit>().openMemberTab(team, member));
             maybeDismissDrawer();
           },
-          onLaunchAll: () {
-            unawaited(context.read<ChatCubit>().launchAllMembers(team));
+          onLaunchAll: throttledAsync('right_tools_launch_all', () async {
+            await context.read<ChatCubit>().launchAllMembers(team);
             maybeDismissDrawer();
-          },
+          }),
           isMemberRunning: (id) =>
               context.read<ChatCubit>().isMemberRunning(id),
         ),

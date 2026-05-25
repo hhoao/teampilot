@@ -14,6 +14,7 @@ import '../services/platform_utils.dart';
 import '../services/rtk_detector.dart';
 import '../theme/app_theme.dart';
 import '../utils/app_keys.dart';
+import '../utils/debounce/debounce.dart';
 import '../widgets/settings/workspace_hub_shell.dart';
 import '../widgets/settings/workspace_settings_toggle_strip.dart';
 import '../widgets/settings/workspace_settings_widgets.dart';
@@ -42,43 +43,46 @@ class ConfigSettingsHubPage extends StatelessWidget {
           key: AppKeys.configLlmSectionButton,
           title: l10n.llmConfig,
           icon: Icons.memory_outlined,
-          onTap: () {
+          onTap: throttledTap('config_hub_llm', () {
             context.read<ConfigCubit>().selectSection(ConfigSection.llm);
             context.push('/config/llm');
-          },
+          }),
         ),
         WorkspaceHubEntry(
           key: AppKeys.configLayoutSectionButton,
           title: l10n.layout,
           icon: Icons.dashboard_customize_outlined,
-          onTap: () {
+          onTap: throttledTap('config_hub_layout', () {
             context.read<ConfigCubit>().selectSection(ConfigSection.layout);
             context.push('/config/layout');
-          },
+          }),
         ),
         WorkspaceHubEntry(
           key: AppKeys.configSessionSectionButton,
           title: l10n.session,
           icon: Icons.terminal_outlined,
-          onTap: () {
+          onTap: throttledTap('config_hub_session', () {
             context.read<ConfigCubit>().selectSection(ConfigSection.session);
             context.push('/config/session');
-          },
+          }),
         ),
         WorkspaceHubEntry(
           key: AppKeys.configSshProfilesSectionButton,
           title: l10n.sshProfilesSettingsTitle,
           icon: Icons.dns_outlined,
-          onTap: () => context.push('/config/ssh-profiles'),
+          onTap: throttledTap(
+            'config_hub_ssh_profiles',
+            () => context.push('/config/ssh-profiles'),
+          ),
         ),
         WorkspaceHubEntry(
           key: AppKeys.configAboutSectionButton,
           title: l10n.aboutTitle,
           icon: Icons.info_outline,
-          onTap: () {
+          onTap: throttledTap('config_hub_about', () {
             context.read<ConfigCubit>().selectSection(ConfigSection.about);
             context.push('/config/about');
-          },
+          }),
         ),
       ],
     );
@@ -767,28 +771,40 @@ class _ConfigNavPanel extends StatelessWidget {
           title: l10n.layout,
           icon: Icons.dashboard_customize_outlined,
           selected: section == ConfigSection.layout,
-          onTap: () => onSelectSection(ConfigSection.layout),
+          onTap: throttledTap(
+            'config_nav_layout',
+            () => onSelectSection(ConfigSection.layout),
+          ),
         ),
         WorkspaceHubEntry(
           key: AppKeys.configLlmSectionButton,
           title: l10n.llmConfig,
           icon: Icons.memory_outlined,
           selected: section == ConfigSection.llm,
-          onTap: () => onSelectSection(ConfigSection.llm),
+          onTap: throttledTap(
+            'config_nav_llm',
+            () => onSelectSection(ConfigSection.llm),
+          ),
         ),
         WorkspaceHubEntry(
           key: AppKeys.configSessionSectionButton,
           title: l10n.session,
           icon: Icons.terminal_outlined,
           selected: section == ConfigSection.session,
-          onTap: () => onSelectSection(ConfigSection.session),
+          onTap: throttledTap(
+            'config_nav_session',
+            () => onSelectSection(ConfigSection.session),
+          ),
         ),
         WorkspaceHubEntry(
           key: AppKeys.configAboutSectionButton,
           title: l10n.aboutTitle,
           icon: Icons.info_outline,
           selected: section == ConfigSection.about,
-          onTap: () => onSelectSection(ConfigSection.about),
+          onTap: throttledTap(
+            'config_nav_about',
+            () => onSelectSection(ConfigSection.about),
+          ),
         ),
       ],
     );

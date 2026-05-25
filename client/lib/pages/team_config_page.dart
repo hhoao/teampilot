@@ -20,6 +20,7 @@ import '../services/claude_official_provider.dart';
 import '../services/platform_utils.dart';
 import '../utils/app_keys.dart';
 import '../utils/app_provider_model_candidates.dart';
+import '../utils/debounce/debounce.dart';
 import '../widgets/app_outline_text_field.dart';
 import '../widgets/app_provider/team_tool_provider_selectors.dart';
 import '../widgets/dropdown/flashsky_dropdown_field.dart';
@@ -108,35 +109,47 @@ class TeamConfigHubPage extends StatelessWidget {
       WorkspaceHubEntry(
         title: l10n.teamSettings,
         icon: Icons.groups_outlined,
-        onTap: () => context.push('/team-config/team'),
+        onTap: throttledTap(
+          'team_config_hub_team',
+          () => context.push('/team-config/team'),
+        ),
       ),
       WorkspaceHubEntry(
         title: l10n.teamSkillsNav,
         icon: Icons.extension_outlined,
-        onTap: () => context.push('/team-config/skills'),
+        onTap: throttledTap(
+          'team_config_hub_skills',
+          () => context.push('/team-config/skills'),
+        ),
       ),
       WorkspaceHubEntry(
         title: l10n.teamPluginsNav,
         icon: Icons.widgets_outlined,
-        onTap: () => context.push('/team-config/plugins'),
+        onTap: throttledTap(
+          'team_config_hub_plugins',
+          () => context.push('/team-config/plugins'),
+        ),
       ),
       for (final member in team.members)
         WorkspaceHubEntry(
           title: member.name.trim().isEmpty ? l10n.memberName : member.name,
           icon: Icons.person_outline,
-          onTap: () => context.push('/team-config/members/${member.id}'),
+          onTap: throttledTap(
+            'team_config_hub_member_${member.id}',
+            () => context.push('/team-config/members/${member.id}'),
+          ),
         ),
       WorkspaceHubEntry(
         title: '${l10n.add} ${l10n.memberName}',
         icon: Icons.person_add_outlined,
-        onTap: () async {
+        onTap: throttledAsync('team_config_hub_add_member', () async {
           await teamCubit.addMember();
           final updated = teamCubit.state.selectedTeam;
           if (!context.mounted || updated == null || updated.members.isEmpty) {
             return;
           }
           context.push('/team-config/members/${updated.members.last.id}');
-        },
+        }),
       ),
     ];
 
@@ -282,25 +295,37 @@ class _NavPanel extends StatelessWidget {
             title: l10n.teamSettings,
             icon: Icons.groups_outlined,
             selected: section == TeamConfigSection.team,
-            onTap: () => onSelect(TeamConfigSection.team),
+            onTap: throttledTap(
+              'team_config_nav_team',
+              () => onSelect(TeamConfigSection.team),
+            ),
           ),
           _NavItem(
             title: l10n.teamSkillsNav,
             icon: Icons.extension_outlined,
             selected: section == TeamConfigSection.skills,
-            onTap: () => onSelect(TeamConfigSection.skills),
+            onTap: throttledTap(
+              'team_config_nav_skills',
+              () => onSelect(TeamConfigSection.skills),
+            ),
           ),
           _NavItem(
             title: l10n.teamPluginsNav,
             icon: Icons.widgets_outlined,
             selected: section == TeamConfigSection.plugins,
-            onTap: () => onSelect(TeamConfigSection.plugins),
+            onTap: throttledTap(
+              'team_config_nav_plugins',
+              () => onSelect(TeamConfigSection.plugins),
+            ),
           ),
           _NavItem(
             title: l10n.members,
             icon: Icons.person_outline,
             selected: section == TeamConfigSection.members,
-            onTap: () => onSelect(TeamConfigSection.members),
+            onTap: throttledTap(
+              'team_config_nav_members',
+              () => onSelect(TeamConfigSection.members),
+            ),
           ),
           const SizedBox(height: 4),
           Expanded(
@@ -313,7 +338,10 @@ class _NavPanel extends StatelessWidget {
                     selected:
                         section == TeamConfigSection.members &&
                         m.id == selectedMemberId,
-                    onTap: () => onSelectMember(m.id),
+                    onTap: throttledTap(
+                      'team_config_nav_member_${m.id}',
+                      () => onSelectMember(m.id),
+                    ),
                   ),
                 _MemberNavAddTile(l10n: l10n, onTap: onAddMember),
               ],
@@ -1410,6 +1438,38 @@ class _FieldLabel extends StatelessWidget {
   }
 }
 
+Future<void> _confirmDeleteMember(
+  BuildContext context,
+  TeamCubit cubit,
+  TeamMemberConfig member,
+  AppLocalizations l10n,
+) async {
+  final name = member.name.trim().isEmpty ? l10n.memberName : member.name;
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: Text(l10n.delete),
+      content: Text(name),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(ctx).pop(false),
+          child: Text(l10n.cancel),
+        ),
+        FilledButton(
+          style: FilledButton.styleFrom(
+            backgroundColor: Theme.of(ctx).colorScheme.error,
+          ),
+          onPressed: () => Navigator.of(ctx).pop(true),
+          child: Text(l10n.delete),
+        ),
+      ],
+    ),
+  );
+  if (confirmed == true) {
+    await cubit.deleteMember(member.id);
+  }
+}
+
 class _MemberDetailSection extends StatelessWidget {
   const _MemberDetailSection({
     required this.team,
@@ -1474,9 +1534,17 @@ class _MemberDetailSection extends StatelessWidget {
                 ),
                 IconButton(
                   tooltip: l10n.delete,
-                  onPressed: canDelete
-                      ? () => cubit.deleteMember(member.id)
-                      : null,
+                  onPressed: !canDelete
+                      ? null
+                      : throttledAsync(
+                          'team_delete_member_${member.id}',
+                          () => _confirmDeleteMember(
+                            context,
+                            cubit,
+                            member,
+                            l10n,
+                          ),
+                        ),
                   icon: const Icon(Icons.delete_outline, size: 20),
                 ),
               ],

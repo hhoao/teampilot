@@ -81,9 +81,9 @@ class TerminalSession {
   int _lastSyncedCols = 0;
   int _lastSyncedRows = 0;
 
-  static const _layoutGeometryDebounceMs = 150;
+  /// Trailing settle after layout resize (apps may react to SIGWINCH in two phases).
+  static const _layoutGeometrySettleMs = 80;
   static const _outputGeometryDebounceMs = 80;
-  static const _geometrySettleDelayMs = 120;
 
   bool get isRunning =>
       (_launchPhase == _LaunchPhase.running ||
@@ -198,7 +198,11 @@ class TerminalSession {
 
     terminal.onResize = (int width, int height, int pw, int ph) {
       if (width <= 0 || height <= 0) return;
-      _schedulePtyGeometry(cols: width, rows: height, fromLayout: true);
+      _pendingViewportCols = width;
+      _pendingViewportRows = height;
+      _hasPendingLayoutGeometry = true;
+      _syncPtyGeometryNow(width, height);
+      _scheduleLayoutPtyGeometrySettle();
     };
 
     // Spawn immediately with this connect()'s args so concurrent member shells
@@ -233,33 +237,67 @@ class TerminalSession {
   }
 
   void _schedulePtyViewportSync() {
-    _schedulePtyGeometry(fromLayout: false);
+    _schedulePtyGeometry();
   }
 
-  void _schedulePtyGeometry({int? cols, int? rows, bool fromLayout = false}) {
+  void _schedulePtyGeometry({int? cols, int? rows}) {
     if (cols != null && rows != null) {
       _pendingViewportCols = cols;
       _pendingViewportRows = rows;
       _hasPendingLayoutGeometry = true;
+      _syncPtyGeometryNow(cols, rows);
+      _scheduleLayoutPtyGeometrySettle();
+      return;
     }
     if (_transport == null) {
-      if (!_starting || cols == null) return;
-      // Layout while transport is starting; applied when attach completes.
       return;
     }
     if (!_transportReadyForIo) return;
 
     _ptyGeometryTimer?.cancel();
-    final debounceMs = fromLayout || cols != null
-        ? _layoutGeometryDebounceMs
-        : _outputGeometryDebounceMs;
-    _ptyGeometryTimer = Timer(Duration(milliseconds: debounceMs), () {
-      _ptyGeometryTimer = null;
-      _applyPtyGeometry();
-    });
+    _ptyGeometryTimer = Timer(
+      Duration(milliseconds: _outputGeometryDebounceMs),
+      () {
+        _ptyGeometryTimer = null;
+        _applyOutputPtyGeometry();
+      },
+    );
   }
 
-  void _applyPtyGeometry() {
+  /// Layout-driven resize: SIGWINCH immediately so the shell reflows with the UI.
+  void _syncPtyGeometryNow(int cols, int rows) {
+    if (cols <= 0 || rows <= 0) return;
+    if (_transport == null) {
+      return;
+    }
+    if (!_transportReadyForIo) return;
+    if (cols == _lastSyncedCols && rows == _lastSyncedRows) return;
+    _lastSyncedCols = cols;
+    _lastSyncedRows = rows;
+    _transport!.resize(rows, cols);
+  }
+
+  void _scheduleLayoutPtyGeometrySettle() {
+    if (_transport == null || !_transportReadyForIo) return;
+    _ptyGeometrySettleTimer?.cancel();
+    _ptyGeometrySettleTimer = Timer(
+      const Duration(milliseconds: _layoutGeometrySettleMs),
+      () {
+        _ptyGeometrySettleTimer = null;
+        if (_transport == null || !_transportReadyForIo) return;
+        final cols = _hasPendingLayoutGeometry
+            ? _pendingViewportCols
+            : terminal.viewWidth;
+        final rows = _hasPendingLayoutGeometry
+            ? _pendingViewportRows
+            : terminal.viewHeight;
+        _hasPendingLayoutGeometry = false;
+        _syncPtyGeometryNow(cols, rows);
+      },
+    );
+  }
+
+  void _applyOutputPtyGeometry() {
     final cols = _hasPendingLayoutGeometry
         ? _pendingViewportCols
         : terminal.viewWidth;
@@ -269,28 +307,9 @@ class TerminalSession {
     _hasPendingLayoutGeometry = false;
 
     if (cols <= 0 || rows <= 0) return;
-
     if (_transport == null) return;
-
     if (!_transportReadyForIo) return;
-    _lastSyncedCols = cols;
-    _lastSyncedRows = rows;
-    _transport!.resize(rows, cols);
-    _schedulePtyGeometrySettle();
-  }
-
-  void _schedulePtyGeometrySettle() {
-    if (!_transportReadyForIo || _transport == null) return;
-    if (_lastSyncedCols <= 0 || _lastSyncedRows <= 0) return;
-    _ptyGeometrySettleTimer?.cancel();
-    _ptyGeometrySettleTimer = Timer(
-      const Duration(milliseconds: _geometrySettleDelayMs),
-      () {
-        _ptyGeometrySettleTimer = null;
-        if (!_transportReadyForIo || _transport == null) return;
-        _transport!.resize(_lastSyncedRows, _lastSyncedCols);
-      },
-    );
+    _syncPtyGeometryNow(cols, rows);
   }
 
   void _spawnTransport({

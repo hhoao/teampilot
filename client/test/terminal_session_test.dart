@@ -736,9 +736,17 @@ void main() {
     });
 
     session.connect(workingDirectory: Directory.systemTemp.path);
-    session.terminal.resize(100, 40);
+    session.terminal.onResize?.call(80, 24, 0, 0);
     await Future<void>.delayed(const Duration(milliseconds: 300));
     handle.resizeCalls.clear();
+
+    // Resize viewport without immediate PTY sync so output path can sync later.
+    final savedOnResize = session.terminal.onResize;
+    session.terminal.onResize = null;
+    session.terminal.resize(100, 40);
+    session.terminal.onResize = savedOnResize;
+    expect(session.terminal.viewWidth, 100);
+    expect(session.terminal.viewHeight, 40);
 
     handle.outputController.add(Uint8List.fromList(utf8.encode('draw\r\n')));
     await Future<void>.delayed(const Duration(milliseconds: 250));

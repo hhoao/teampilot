@@ -12,6 +12,7 @@ import '../l10n/l10n_extensions.dart';
 import '../models/skill.dart';
 import '../services/platform_utils.dart';
 import '../utils/app_keys.dart';
+import '../utils/debounce/debounce.dart';
 import '../utils/skill_repo_parse.dart';
 import '../widgets/app_outline_text_field.dart';
 import '../widgets/dropdown/flashsky_dropdown_field.dart';
@@ -45,7 +46,10 @@ class SkillManagementHubPage extends StatelessWidget {
           WorkspaceHubEntry(
             title: section.title(l10n),
             icon: _skillSectionIcon(section),
-            onTap: () => context.push('/skills/${section.routeSegment()}'),
+            onTap: throttledTap(
+              'skill_hub_${section.name}',
+              () => context.push('/skills/${section.routeSegment()}'),
+            ),
           ),
       ],
     );
@@ -156,7 +160,10 @@ class _SkillsNavPanel extends StatelessWidget {
             title: value.title(l10n),
             icon: _skillSectionIcon(value),
             selected: section == value,
-            onTap: () => onSelect(value),
+            onTap: throttledTap(
+              'skill_nav_${value.name}',
+              () => onSelect(value),
+            ),
           ),
       ],
     );
@@ -303,26 +310,44 @@ class _InstalledSection extends StatelessWidget {
                     children: [
                       if (state.updates.isNotEmpty)
                         FilledButton.tonalIcon(
-                          onPressed: cubit.updateAll,
+                          onPressed: state.toolbarBusy
+                              ? null
+                              : throttledOnPressed(
+                                  'skill_update_all',
+                                  cubit.updateAll,
+                                ),
                           icon: const Icon(Icons.upgrade, size: 16),
                           label: Text(
                             l10n.skillsUpdateAll(state.updates.length),
                           ),
                         ),
                       OutlinedButton.icon(
-                        onPressed: () => _onImportFromDisk(context),
+                        onPressed: state.toolbarBusy
+                            ? null
+                            : throttledAsync(
+                                'skill_import_disk',
+                                () => _onImportFromDisk(context),
+                              ),
                         icon: const Icon(Icons.folder_open_outlined, size: 16),
                         label: Text(l10n.skillsImportFromDisk),
                       ),
                       OutlinedButton.icon(
-                        onPressed: () => _onInstallZip(context),
+                        onPressed: state.toolbarBusy
+                            ? null
+                            : throttledAsync(
+                                'skill_install_zip',
+                                () => _onInstallZip(context),
+                              ),
                         icon: const Icon(Icons.archive_outlined, size: 16),
                         label: Text(l10n.skillsInstallFromZip),
                       ),
                       OutlinedButton.icon(
-                        onPressed: state.updatesLoading
+                        onPressed: state.toolbarBusy || state.updatesLoading
                             ? null
-                            : cubit.checkUpdates,
+                            : throttledOnPressed(
+                                'skill_check_updates',
+                                cubit.checkUpdates,
+                              ),
                         icon: state.updatesLoading
                             ? const SizedBox(
                                 width: 14,
@@ -1348,7 +1373,7 @@ class _ReposSectionState extends State<_ReposSection> {
                 Align(
                   alignment: Alignment.centerRight,
                   child: FilledButton.icon(
-                    onPressed: () async {
+                    onPressed: throttledAsync('skill_add_repo', () async {
                       final url = _urlCtl.text.trim();
                       var branch = _branchCtl.text.trim();
                       if (url.isEmpty) return;
@@ -1369,7 +1394,7 @@ class _ReposSectionState extends State<_ReposSection> {
                       );
                       _urlCtl.clear();
                       _branchCtl.text = 'main';
-                    },
+                    }),
                     icon: const Icon(Icons.add, size: 16),
                     label: Text(l10n.skillsAdd),
                   ),

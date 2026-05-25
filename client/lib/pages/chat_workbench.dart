@@ -19,6 +19,7 @@ import '../services/terminal_export.dart';
 import '../services/terminal_uri_opener.dart';
 import '../services/terminal_fonts.dart';
 import '../utils/app_keys.dart';
+import '../utils/debounce/debounce.dart';
 import '../widgets/terminal_find_bar.dart';
 
 const _terminalTextStyle = TerminalStyle(
@@ -67,7 +68,9 @@ TerminalTheme _terminalThemeFor(
     final bg = isDark ? const Color(0xFF000000) : const Color(0xFFFFFFFF);
     final fg = isDark ? const Color(0xFFF5F7FA) : const Color(0xFF111111);
     final primary = isDark ? const Color(0xFF69B3FF) : const Color(0xFF005FCC);
-    final secondary = isDark ? const Color(0xFF4EE2A8) : const Color(0xFF007A4B);
+    final secondary = isDark
+        ? const Color(0xFF4EE2A8)
+        : const Color(0xFF007A4B);
     return TerminalTheme(
       cursor: primary,
       selection: primary.withValues(alpha: 0.35),
@@ -96,8 +99,14 @@ TerminalTheme _terminalThemeFor(
   }
 
   final baseBackground = isDark
-      ? Color.alphaBlend(cs.surface.withValues(alpha: 0.88), const Color(0xFF06080C))
-      : Color.alphaBlend(cs.surface.withValues(alpha: 0.96), const Color(0xFFF7F9FC));
+      ? Color.alphaBlend(
+          cs.surface.withValues(alpha: 0.88),
+          const Color(0xFF06080C),
+        )
+      : Color.alphaBlend(
+          cs.surface.withValues(alpha: 0.96),
+          const Color(0xFFF7F9FC),
+        );
   final foreground = isDark ? const Color(0xFFC8CCD4) : const Color(0xFF1F2937);
   final weak = isDark ? const Color(0xFF59606A) : const Color(0xFF9AA3B2);
   return TerminalTheme(
@@ -203,8 +212,7 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
   }) async {
     final mloc = MaterialLocalizations.of(menuContext);
     final hasSelection = _terminalController.selection != null;
-    final linkUri =
-        cellOffset != null ? terminal.linkUriAt(cellOffset) : null;
+    final linkUri = cellOffset != null ? terminal.linkUriAt(cellOffset) : null;
     final entries = <PopupMenuEntry<String>>[
       PopupMenuItem(value: 'find', child: Text(context.l10n.terminalFind)),
       if (linkUri != null)
@@ -421,6 +429,7 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
               ? _SessionLoadingView(message: context.l10n.sessionStarting)
               : _TerminalPlaceholder(
                   onConnect: onConnect,
+                  connectDisabled: sessionConnectInProgress,
                   memberName: chatCubit.selectedMemberName(team),
                 ),
         ),
@@ -528,6 +537,7 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
                     if (mounted) setState(() {});
                   }());
                 },
+                connectDisabled: sessionConnectInProgress,
                 memberName: chatCubit.selectedMemberName(team),
               ),
       ),
@@ -570,10 +580,12 @@ class _SessionLoadingView extends StatelessWidget {
 class _TerminalPlaceholder extends StatelessWidget {
   const _TerminalPlaceholder({
     required this.onConnect,
+    this.connectDisabled = false,
     this.memberName,
   });
 
   final VoidCallback onConnect;
+  final bool connectDisabled;
   final String? memberName;
 
   @override
@@ -639,7 +651,12 @@ class _TerminalPlaceholder extends StatelessWidget {
               ),
               const SizedBox(height: 28),
               FilledButton.icon(
-                onPressed: onConnect,
+                onPressed: connectDisabled
+                    ? null
+                    : throttledOnPressed(
+                        'chat_workbench_session_start',
+                        onConnect,
+                      ),
                 icon: const Icon(Icons.play_arrow_rounded, size: 22),
                 label: Text(l10n.sessionStartButton),
                 style: FilledButton.styleFrom(

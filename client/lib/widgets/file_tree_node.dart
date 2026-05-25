@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 
 import '../cubits/file_tree_cubit.dart';
 import '../services/io/filesystem.dart';
+import '../utils/debounce/debounce.dart';
 
 const _indentWidth = 16.0;
 
@@ -203,10 +204,10 @@ class FileTreeNode extends StatelessWidget {
             child: const Text('Cancel'),
           ),
           TextButton(
-            onPressed: () {
+            onPressed: throttledOnPressed('file_tree_delete', () {
               Navigator.pop(ctx);
               cubit.deletePath(targetPath);
-            },
+            }),
             child: const Text('Delete'),
           ),
         ],

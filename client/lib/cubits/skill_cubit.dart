@@ -58,6 +58,7 @@ class SkillState extends Equatable {
     this.discoveryLoading = false,
     this.updatesLoading = false,
     this.repoSyncingKeys = const {},
+    this.toolbarBusy = false,
   });
 
   final List<Skill> installed;
@@ -71,6 +72,7 @@ class SkillState extends Equatable {
   final bool discoveryLoading;
   final bool updatesLoading;
   final Set<String> repoSyncingKeys;
+  final bool toolbarBusy;
 
   SkillState copyWith({
     List<Skill>? installed,
@@ -85,6 +87,7 @@ class SkillState extends Equatable {
     bool? discoveryLoading,
     bool? updatesLoading,
     Set<String>? repoSyncingKeys,
+    bool? toolbarBusy,
   }) => SkillState(
     installed: installed ?? this.installed,
     repos: repos ?? this.repos,
@@ -97,6 +100,7 @@ class SkillState extends Equatable {
     discoveryLoading: discoveryLoading ?? this.discoveryLoading,
     updatesLoading: updatesLoading ?? this.updatesLoading,
     repoSyncingKeys: repoSyncingKeys ?? this.repoSyncingKeys,
+    toolbarBusy: toolbarBusy ?? this.toolbarBusy,
   );
 
   @override
@@ -112,6 +116,7 @@ class SkillState extends Equatable {
     discoveryLoading,
     updatesLoading,
     repoSyncingKeys,
+    toolbarBusy,
   ];
 }
 
@@ -347,13 +352,16 @@ class SkillCubit extends Cubit<SkillState> {
   }
 
   Future<void> installFromZip(File zip) async {
-    emit(state.copyWith(clearError: true));
+    if (state.toolbarBusy) return;
+    emit(state.copyWith(toolbarBusy: true, clearError: true));
     try {
       await _repo.installFromZip(zip);
       final installed = await _repo.loadInstalled();
       emit(state.copyWith(installed: installed));
     } catch (e) {
       emit(state.copyWith(errorMessage: '$e'));
+    } finally {
+      emit(state.copyWith(toolbarBusy: false));
     }
   }
 
@@ -375,7 +383,8 @@ class SkillCubit extends Cubit<SkillState> {
   }
 
   Future<void> uninstall(Skill s) async {
-    emit(state.copyWith(clearError: true));
+    if (state.busyIds.contains(s.id)) return;
+    emit(state.copyWith(busyIds: {...state.busyIds, s.id}, clearError: true));
     try {
       await _repo.uninstall(s);
       final installed = await _repo.loadInstalled();
@@ -383,6 +392,9 @@ class SkillCubit extends Cubit<SkillState> {
       await _onSkillUninstalled?.call(s.id);
     } catch (e) {
       emit(state.copyWith(errorMessage: '$e'));
+    } finally {
+      final next = {...state.busyIds}..remove(s.id);
+      emit(state.copyWith(busyIds: next));
     }
   }
 
@@ -422,12 +434,18 @@ class SkillCubit extends Cubit<SkillState> {
   }
 
   Future<void> updateAll() async {
-    for (final u in List<SkillUpdateInfo>.from(state.updates)) {
-      final match = state.installed.where((s) => s.id == u.id).toList();
-      if (match.isEmpty) continue;
-      final skill = match.first;
-      if (skill.repoOwner == null) continue;
-      await updateSkill(skill);
+    if (state.toolbarBusy) return;
+    emit(state.copyWith(toolbarBusy: true, clearError: true));
+    try {
+      for (final u in List<SkillUpdateInfo>.from(state.updates)) {
+        final match = state.installed.where((s) => s.id == u.id).toList();
+        if (match.isEmpty) continue;
+        final skill = match.first;
+        if (skill.repoOwner == null) continue;
+        await updateSkill(skill);
+      }
+    } finally {
+      emit(state.copyWith(toolbarBusy: false));
     }
   }
 
@@ -441,12 +459,16 @@ class SkillCubit extends Cubit<SkillState> {
   }
 
   Future<void> importUnmanaged(List<UnmanagedSkill> sel) async {
+    if (state.toolbarBusy) return;
+    emit(state.copyWith(toolbarBusy: true, clearError: true));
     try {
       await _repo.importUnmanaged(sel);
       final installed = await _repo.loadInstalled();
       emit(state.copyWith(installed: installed));
     } catch (e) {
       emit(state.copyWith(errorMessage: '$e'));
+    } finally {
+      emit(state.copyWith(toolbarBusy: false));
     }
   }
 

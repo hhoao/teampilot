@@ -9,6 +9,7 @@ import '../../models/provider_presets/claude_provider_presets.dart';
 import '../../models/provider_presets/codex_provider_presets.dart';
 import '../../models/provider_presets/flashskyai_provider_presets.dart';
 import '../../theme/workspace_surface_layers.dart';
+import '../../utils/debounce/debounce.dart';
 import '../app_outline_text_field.dart';
 import '../dropdown/flashsky_dropdown_field.dart';
 import '../dropdown/flashskyai_dropdown_decoration.dart';
@@ -412,16 +413,19 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: FilledButton.icon(
-                      onPressed: () {
-                        final result = _buildResult();
-                        if (result == null) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text(l10n.invalidJson)),
-                          );
-                          return;
-                        }
-                        widget.onSaved(result);
-                      },
+                      onPressed: throttledOnPressed(
+                        'app_provider_form_save',
+                        () {
+                          final result = _buildResult();
+                          if (result == null) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text(l10n.invalidJson)),
+                            );
+                            return;
+                          }
+                          widget.onSaved(result);
+                        },
+                      ),
                       icon: const Icon(Icons.check),
                       label: Text(l10n.save),
                     ),

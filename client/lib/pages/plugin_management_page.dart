@@ -12,6 +12,7 @@ import '../l10n/l10n_extensions.dart';
 import '../models/plugin.dart';
 import '../services/platform_utils.dart';
 import '../utils/app_keys.dart';
+import '../utils/debounce/debounce.dart';
 import '../utils/skill_repo_parse.dart';
 import '../widgets/app_outline_text_field.dart';
 import '../widgets/dropdown/flashsky_dropdown_field.dart';
@@ -45,7 +46,10 @@ class PluginManagementHubPage extends StatelessWidget {
           WorkspaceHubEntry(
             title: section.title(l10n),
             icon: _pluginSectionIcon(section),
-            onTap: () => context.push('/plugins/${section.routeSegment()}'),
+            onTap: throttledTap(
+              'plugin_hub_${section.name}',
+              () => context.push('/plugins/${section.routeSegment()}'),
+            ),
           ),
       ],
     );
@@ -156,7 +160,10 @@ class _PluginNavPanel extends StatelessWidget {
             title: value.title(l10n),
             icon: _pluginSectionIcon(value),
             selected: section == value,
-            onTap: () => onSelect(value),
+            onTap: throttledTap(
+              'plugin_nav_${value.name}',
+              () => onSelect(value),
+            ),
           ),
       ],
     );
@@ -305,22 +312,42 @@ class _InstalledSection extends StatelessWidget {
                     children: [
                       if (state.updates.isNotEmpty)
                         FilledButton.tonalIcon(
-                          onPressed: cubit.updateAll,
+                          onPressed: state.toolbarBusy
+                              ? null
+                              : throttledOnPressed(
+                                  'plugin_update_all',
+                                  cubit.updateAll,
+                                ),
                           icon: const Icon(Icons.upgrade, size: 16),
                           label: Text(l10n.pluginsUpdateAll(state.updates.length)),
                         ),
                       OutlinedButton.icon(
-                        onPressed: () => _onImportFromDisk(context),
+                        onPressed: state.toolbarBusy
+                            ? null
+                            : throttledAsync(
+                                'plugin_import_disk',
+                                () => _onImportFromDisk(context),
+                              ),
                         icon: const Icon(Icons.folder_open_outlined, size: 16),
                         label: Text(l10n.pluginsImportFromDisk),
                       ),
                       OutlinedButton.icon(
-                        onPressed: () => _onInstallZip(context),
+                        onPressed: state.toolbarBusy
+                            ? null
+                            : throttledAsync(
+                                'plugin_install_zip',
+                                () => _onInstallZip(context),
+                              ),
                         icon: const Icon(Icons.archive_outlined, size: 16),
                         label: Text(l10n.pluginsInstallFromZip),
                       ),
                       OutlinedButton.icon(
-                        onPressed: state.updatesLoading ? null : cubit.checkUpdates,
+                        onPressed: state.toolbarBusy || state.updatesLoading
+                            ? null
+                            : throttledOnPressed(
+                                'plugin_check_updates',
+                                cubit.checkUpdates,
+                              ),
                         icon: state.updatesLoading
                             ? const SizedBox(
                                 width: 14, height: 14,

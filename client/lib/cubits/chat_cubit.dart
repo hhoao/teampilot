@@ -847,6 +847,8 @@ class ChatCubit extends Cubit<ChatState> {
     TeamConfig team, {
     SessionRepository? repo,
   }) async {
+    if (state.isActiveSessionConnecting) return;
+
     final r = repo ?? _sessionRepository;
     if (_internalTabs.isEmpty && r == null) {
       _appendLocalTab(team, emitChange: true);

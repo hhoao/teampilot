@@ -15,6 +15,7 @@ import '../widgets/app_provider/app_provider_detail_panel.dart';
 import '../widgets/app_provider/app_provider_form_sheet.dart';
 import '../widgets/app_provider/app_provider_list_panel.dart';
 import '../utils/app_keys.dart';
+import '../utils/debounce/debounce.dart';
 import '../widgets/app_outline_text_field.dart';
 import '../widgets/dropdown/flashsky_dropdown_field.dart';
 import '../widgets/dropdown/flashskyai_dropdown_decoration.dart';
@@ -720,7 +721,10 @@ class _ProviderListPanelState extends State<_ProviderListPanel> {
                   isSelected: widget.hubStyle ? false : isSelected,
                   hubStyle: widget.hubStyle,
                   modelCount: modelCount,
-                  onTap: () => widget.onSelect(provider.name),
+                  onTap: throttledTap(
+                    'llm_select_provider_${provider.name}',
+                    () => widget.onSelect(provider.name),
+                  ),
                   onRename: () => widget.onRename(provider.name),
                   onDelete: () => widget.onDelete(provider.name),
                 );
@@ -1152,7 +1156,10 @@ class _ProviderDetailPanelState extends State<_ProviderDetailPanel> {
                     foregroundColor: theme.colorScheme.error,
                   ),
                   icon: const Icon(Icons.delete_outline, size: 20),
-                  onPressed: () => widget.onDelete(provider.name),
+                  onPressed: throttledOnPressed(
+                    'llm_delete_provider_${provider.name}',
+                    () => widget.onDelete(provider.name),
+                  ),
                 ),
               ],
             ),

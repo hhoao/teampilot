@@ -28,6 +28,7 @@ class PluginState extends Equatable {
     this.discoveryLoading = false,
     this.updatesLoading = false,
     this.marketplaceSyncingKeys = const {},
+    this.toolbarBusy = false,
   });
 
   final List<Plugin> installed;
@@ -40,6 +41,7 @@ class PluginState extends Equatable {
   final bool discoveryLoading;
   final bool updatesLoading;
   final Set<String> marketplaceSyncingKeys;
+  final bool toolbarBusy;
 
   PluginState copyWith({
     List<Plugin>? installed,
@@ -53,6 +55,7 @@ class PluginState extends Equatable {
     bool? discoveryLoading,
     bool? updatesLoading,
     Set<String>? marketplaceSyncingKeys,
+    bool? toolbarBusy,
   }) => PluginState(
     installed: installed ?? this.installed,
     marketplaces: marketplaces ?? this.marketplaces,
@@ -64,12 +67,14 @@ class PluginState extends Equatable {
     discoveryLoading: discoveryLoading ?? this.discoveryLoading,
     updatesLoading: updatesLoading ?? this.updatesLoading,
     marketplaceSyncingKeys: marketplaceSyncingKeys ?? this.marketplaceSyncingKeys,
+    toolbarBusy: toolbarBusy ?? this.toolbarBusy,
   );
 
   @override
   List<Object?> get props => [
     installed, marketplaces, discoverable, updates, status, errorMessage,
     busyIds, discoveryLoading, updatesLoading, marketplaceSyncingKeys,
+    toolbarBusy,
   ];
 }
 
@@ -283,13 +288,16 @@ class PluginCubit extends Cubit<PluginState> {
   }
 
   Future<void> installFromZip(File zip) async {
-    emit(state.copyWith(clearError: true));
+    if (state.toolbarBusy) return;
+    emit(state.copyWith(toolbarBusy: true, clearError: true));
     try {
       await installService.installFromZip(zip);
       final installed = await repository.loadAll();
       emit(state.copyWith(installed: installed));
     } catch (e) {
       emit(state.copyWith(errorMessage: '$e'));
+    } finally {
+      emit(state.copyWith(toolbarBusy: false));
     }
   }
 
@@ -367,21 +375,30 @@ class PluginCubit extends Cubit<PluginState> {
   }
 
   Future<void> importUnmanaged(List<UnmanagedPlugin> selected) async {
-    emit(state.copyWith(clearError: true));
+    if (state.toolbarBusy) return;
+    emit(state.copyWith(toolbarBusy: true, clearError: true));
     try {
       await repository.importUnmanaged(selected);
       final installed = await repository.loadAll();
       emit(state.copyWith(installed: installed));
     } catch (e) {
       emit(state.copyWith(errorMessage: '$e'));
+    } finally {
+      emit(state.copyWith(toolbarBusy: false));
     }
   }
 
   Future<void> updateAll() async {
-    for (final u in List<PluginUpdateInfo>.from(state.updates)) {
-      final match = state.installed.where((p) => p.id == u.id).toList();
-      if (match.isEmpty) continue;
-      await updatePlugin(match.first);
+    if (state.toolbarBusy) return;
+    emit(state.copyWith(toolbarBusy: true, clearError: true));
+    try {
+      for (final u in List<PluginUpdateInfo>.from(state.updates)) {
+        final match = state.installed.where((p) => p.id == u.id).toList();
+        if (match.isEmpty) continue;
+        await updatePlugin(match.first);
+      }
+    } finally {
+      emit(state.copyWith(toolbarBusy: false));
     }
   }
 

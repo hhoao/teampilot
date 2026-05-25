@@ -6,14 +6,26 @@ import '../../cubits/app_provider_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/app_provider_config.dart';
 import '../../services/claude_official_provider.dart';
+import '../../utils/debounce/debounce.dart';
 
-class ClaudeOfficialCredentialActions extends StatelessWidget {
+class ClaudeOfficialCredentialActions extends StatefulWidget {
   const ClaudeOfficialCredentialActions({
     required this.provider,
     super.key,
   });
 
   final AppProviderConfig provider;
+
+  @override
+  State<ClaudeOfficialCredentialActions> createState() =>
+      _ClaudeOfficialCredentialActionsState();
+}
+
+class _ClaudeOfficialCredentialActionsState
+    extends State<ClaudeOfficialCredentialActions> {
+  var _running = false;
+
+  AppProviderConfig get provider => widget.provider;
 
   @override
   Widget build(BuildContext context) {
@@ -24,14 +36,20 @@ class ClaudeOfficialCredentialActions extends StatelessWidget {
     final l10n = context.l10n;
     final cubit = context.read<AppProviderCubit>();
     final ready = provider.hasClaudeCredentialsReady;
+    final disabled = _running;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(l10n.claudeOfficialCredentialsTitle, style: Theme.of(context).textTheme.titleSmall),
+        Text(
+          l10n.claudeOfficialCredentialsTitle,
+          style: Theme.of(context).textTheme.titleSmall,
+        ),
         const SizedBox(height: 8),
         Text(
-          ready ? l10n.claudeOfficialCredentialsReady : l10n.claudeOfficialCredentialsMissing,
+          ready
+              ? l10n.claudeOfficialCredentialsReady
+              : l10n.claudeOfficialCredentialsMissing,
           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
             color: ready
                 ? Theme.of(context).colorScheme.primary
@@ -44,23 +62,47 @@ class ClaudeOfficialCredentialActions extends StatelessWidget {
           runSpacing: 8,
           children: [
             FilledButton.tonal(
-              onPressed: () => _run(context, () => cubit.loginClaudeOfficialProvider(provider.id)),
+              onPressed: disabled
+                  ? null
+                  : throttledOnPressed(
+                      'claude_official_login_${provider.id}',
+                      () => _run(
+                        () => cubit.loginClaudeOfficialProvider(provider.id),
+                      ),
+                    ),
               child: Text(l10n.claudeOfficialCredentialsLogin),
             ),
             OutlinedButton(
-              onPressed: () => _run(
-                context,
-                () => cubit.importClaudeCredentialsFromGlobal(provider.id, replace: ready),
-              ),
+              onPressed: disabled
+                  ? null
+                  : throttledOnPressed(
+                      'claude_official_import_global_${provider.id}',
+                      () => _run(
+                        () => cubit.importClaudeCredentialsFromGlobal(
+                          provider.id,
+                          replace: ready,
+                        ),
+                      ),
+                    ),
               child: Text(l10n.claudeOfficialCredentialsImportGlobal),
             ),
             OutlinedButton(
-              onPressed: () => _importFromFile(context, cubit),
+              onPressed: disabled
+                  ? null
+                  : throttledOnPressed(
+                      'claude_official_import_file_${provider.id}',
+                      () => _importFromFile(cubit),
+                    ),
               child: Text(l10n.claudeOfficialCredentialsImportFile),
             ),
             if (ready)
               TextButton(
-                onPressed: () => _confirmRevoke(context, cubit),
+                onPressed: disabled
+                    ? null
+                    : throttledOnPressed(
+                        'claude_official_revoke_${provider.id}',
+                        () => _confirmRevoke(cubit),
+                      ),
                 child: Text(l10n.claudeOfficialCredentialsRevoke),
               ),
           ],
@@ -69,20 +111,28 @@ class ClaudeOfficialCredentialActions extends StatelessWidget {
     );
   }
 
-  Future<void> _run(BuildContext context, Future<bool> Function() action) async {
+  Future<void> _run(Future<bool> Function() action) async {
+    if (_running) return;
+    setState(() => _running = true);
     final l10n = context.l10n;
-    final ok = await action();
-    if (!context.mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          ok ? l10n.claudeOfficialCredentialsActionSuccess : l10n.claudeOfficialCredentialsActionFailed,
+    try {
+      final ok = await action();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            ok
+                ? l10n.claudeOfficialCredentialsActionSuccess
+                : l10n.claudeOfficialCredentialsActionFailed,
+          ),
         ),
-      ),
-    );
+      );
+    } finally {
+      if (mounted) setState(() => _running = false);
+    }
   }
 
-  Future<void> _importFromFile(BuildContext context, AppProviderCubit cubit) async {
+  Future<void> _importFromFile(AppProviderCubit cubit) async {
     final l10n = context.l10n;
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
@@ -90,9 +140,8 @@ class ClaudeOfficialCredentialActions extends StatelessWidget {
       dialogTitle: l10n.claudeOfficialCredentialsImportFile,
     );
     final path = result?.files.single.path;
-    if (path == null || path.trim().isEmpty || !context.mounted) return;
+    if (path == null || path.trim().isEmpty || !mounted) return;
     await _run(
-      context,
       () => cubit.importClaudeCredentialsFromFile(
         provider.id,
         path,
@@ -101,21 +150,27 @@ class ClaudeOfficialCredentialActions extends StatelessWidget {
     );
   }
 
-  Future<void> _confirmRevoke(BuildContext context, AppProviderCubit cubit) async {
+  Future<void> _confirmRevoke(AppProviderCubit cubit) async {
     final l10n = context.l10n;
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: Text(l10n.claudeOfficialCredentialsRevoke),
         content: Text(l10n.claudeOfficialCredentialsRevokeConfirm(provider.name)),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: Text(l10n.cancel)),
-          FilledButton(onPressed: () => Navigator.pop(context, true), child: Text(l10n.delete)),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: Text(l10n.cancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: Text(l10n.delete),
+          ),
         ],
       ),
     );
-    if (confirmed == true && context.mounted) {
-      await _run(context, () => cubit.revokeClaudeOfficialProvider(provider.id));
+    if (confirmed == true && mounted) {
+      await _run(() => cubit.revokeClaudeOfficialProvider(provider.id));
     }
   }
 }

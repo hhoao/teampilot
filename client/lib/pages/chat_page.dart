@@ -11,6 +11,7 @@ import '../models/layout_preferences.dart';
 import '../models/team_config.dart';
 import '../services/platform_utils.dart';
 import '../utils/app_keys.dart';
+import '../utils/debounce/debounce.dart';
 import '../widgets/right_tools_panel.dart';
 import 'chat_workbench.dart';
 import 'workspace_shell.dart';
@@ -130,7 +131,7 @@ class ChatPage extends StatelessWidget {
       IconButton.filledTonal(
         key: AppKeys.openTeamLeadButton,
         tooltip: 'Open team-lead',
-        onPressed: () {
+        onPressed: throttledOnPressed('chat_open_team_lead', () {
           final lead = team.members.where((m) => m.name == 'team-lead');
           if (lead.isEmpty) {
             context.read<ChatCubit>().addSystemMessage(
@@ -139,15 +140,16 @@ class ChatPage extends StatelessWidget {
             return;
           }
           unawaited(context.read<ChatCubit>().openMemberTab(team, lead.first));
-        },
+        }),
         icon: const Icon(Icons.person_outline),
       ),
       IconButton.filled(
         key: AppKeys.openTeamButton,
         tooltip: 'Open Team',
-        onPressed: () {
-          unawaited(context.read<ChatCubit>().launchAllMembers(team));
-        },
+        onPressed: throttledAsync(
+          'chat_launch_all_members',
+          () => context.read<ChatCubit>().launchAllMembers(team),
+        ),
         icon: const Icon(Icons.groups_outlined),
       ),
     ];
