@@ -73,10 +73,7 @@ class CliToolLocator {
     if (isWindows) {
       return _locateInWsl(runner);
     }
-    if (Platform.isLinux || Platform.isMacOS) {
-      return _locateInLoginShell(runner);
-    }
-    return null;
+    return _locateInLoginShell(runner);
   }
 
   Future<String?> _locateInLoginShell(ProcessRunner runner) async {

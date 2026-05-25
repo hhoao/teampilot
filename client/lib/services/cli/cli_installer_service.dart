@@ -254,7 +254,13 @@ class CliInstallerService {
         );
       },
       isWindowsOverride: _isWindows,
-    ).then((located) => located ?? _firstExistingUnixNpmPath());
+    ).then((located) {
+      if (located != null) return located;
+      // Tests inject [localRunner]; skip macOS well-known-path probe so CI
+      // runners with Homebrew npm do not bypass mocked command flows.
+      if (!identical(_localRunner, _runLocal)) return null;
+      return _firstExistingUnixNpmPath();
+    });
   }
 
   Future<String?> _locateRemoteNpm(SshProfile profile) async {

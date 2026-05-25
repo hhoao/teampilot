@@ -16,6 +16,36 @@ void main() {
   });
 
   test(
+    'locate falls back to bash login shell when isWindowsOverride is false',
+    () async {
+      final calls = <String>[];
+      final located = await const CliToolLocator('claude').locate(
+        isWindowsOverride: false,
+        runner:
+            (executable, arguments, {stdoutEncoding, stderrEncoding}) async {
+              calls.add('$executable ${arguments.join(' ')}');
+              if (executable == 'which') {
+                return ProcessResult(1, 1, '', '');
+              }
+              if (executable == 'bash') {
+                expect(arguments, ['-ilc', 'command -v claude']);
+                return ProcessResult(
+                  2,
+                  0,
+                  '/opt/homebrew/bin/claude\n',
+                  '',
+                );
+              }
+              fail('unexpected runner call: $executable');
+            },
+      );
+
+      expect(calls, ['which claude', 'bash -ilc command -v claude']);
+      expect(located, '/opt/homebrew/bin/claude');
+    },
+  );
+
+  test(
     'locate falls back to bash login shell when PATH lookup misses on Unix',
     () async {
       if (Platform.isWindows) return;
