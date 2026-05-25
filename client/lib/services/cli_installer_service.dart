@@ -147,12 +147,10 @@ class CliInstallerService {
   }
 
   Future<CliInstallResult> _installLocal() async {
-    final npmProbe = await _runLocalTracked(
-      _localNpmProbeCommand(),
-      phase: CliInstallPhase.checkingNpm,
-    );
+    _report(CliInstallPhase.checkingNpm);
+    final npmPath = await _locateLocalNpm();
     late final CliInstallerCommand installCommand;
-    if (npmProbe.exitCode != 0) {
+    if (npmPath == null) {
       final bootstrap = await _runLocalTracked(
         _localNodeBootstrapCommand(),
         phase: CliInstallPhase.bootstrappingNode,
@@ -166,7 +164,7 @@ class CliInstallerService {
       }
       installCommand = _bootstrappedLocalInstallCommand();
     } else {
-      installCommand = _localNpmInstallCommand(npmProbe);
+      installCommand = _localNpmInstallCommand(npmPath);
     }
 
     final install = await _runLocalTracked(
@@ -198,17 +196,13 @@ class CliInstallerService {
       );
     }
 
-    var npmCommand = 'npm';
     _report(CliInstallPhase.checkingNpm);
-    final npmProbe = await _sshRunner(
-      profile,
-      const CliInstallerCommand('command', ['-v', 'npm']),
-    );
-    if (npmProbe.exitCode != 0) {
+    var npmCommand = await _locateRemoteNpm(profile);
+    if (npmCommand == null) {
       _report(CliInstallPhase.bootstrappingNode);
       final bootstrap = await _sshRunner(
         profile,
-        CliInstallerCommand('sh', ['-lc', _unixNodeBootstrapScript()]),
+        CliInstallerCommand('sh', ['-c', _unixNodeBootstrapScript()]),
       );
       if (bootstrap.exitCode != 0) {
         return CliInstallResult(
@@ -244,11 +238,57 @@ class CliInstallerService {
     );
   }
 
-  CliInstallerCommand _localNpmProbeCommand() {
-    if (_isWindows) {
-      return const CliInstallerCommand('where', ['npm']);
+  /// Resolves npm on the host. GUI-launched apps often have a sparse PATH, so
+  /// [CliToolLocator] login-shell fallback and well-known paths are tried
+  /// before bootstrapping Node from nodejs.org.
+  Future<String?> _locateLocalNpm() async {
+    return const CliToolLocator('npm').locate(
+      runner: (executable, arguments, {stdoutEncoding, stderrEncoding}) async {
+        final result = await _localRunner(
+          CliInstallerCommand(executable, arguments),
+        );
+        return ProcessResult(
+          -1,
+          result.exitCode,
+          result.stdout,
+          result.stderr,
+        );
+      },
+      isWindowsOverride: _isWindows,
+    ).then((located) => located ?? _firstExistingUnixNpmPath());
+  }
+
+  Future<String?> _locateRemoteNpm(SshProfile profile) async {
+    final direct = await _sshRunner(
+      profile,
+      const CliInstallerCommand('command', ['-v', 'npm']),
+    );
+    final fromDirect = _firstOutputLine(direct);
+    if (fromDirect != null) return fromDirect;
+
+    for (final shell in const ['bash', 'zsh']) {
+      final viaShell = await _sshRunner(
+        profile,
+        CliInstallerCommand(shell, ['-ilc', 'command -v npm']),
+      );
+      final fromShell = _firstOutputLine(viaShell);
+      if (fromShell != null) return fromShell;
     }
-    return const CliInstallerCommand('command', ['-v', 'npm']);
+    return null;
+  }
+
+  static String? _firstExistingUnixNpmPath() {
+    if (Platform.isWindows || !Platform.isMacOS) return null;
+    final home = Platform.environment['HOME'];
+    final candidates = <String>[
+      '/opt/homebrew/bin/npm',
+      '/usr/local/bin/npm',
+      if (home != null) '$home/.local/bin/npm',
+    ];
+    for (final path in candidates) {
+      if (File(path).existsSync()) return path;
+    }
+    return null;
   }
 
   CliInstallerCommand _localNodeBootstrapCommand() {
@@ -258,20 +298,19 @@ class CliInstallerService {
         ['-NoProfile', '-Command', _windowsNodeBootstrapScript()],
       );
     }
-    return CliInstallerCommand('sh', ['-lc', _unixNodeBootstrapScript()]);
+    // Non-login shell: avoid sourcing /etc/profile (blocked for some GUI apps).
+    return CliInstallerCommand('sh', ['-c', _unixNodeBootstrapScript()]);
   }
 
-  CliInstallerCommand _localNpmInstallCommand(
-    CliInstallerCommandResult npmProbe,
-  ) {
+  CliInstallerCommand _localNpmInstallCommand(String npmPath) {
     if (_isWindows) {
-      final npmPath = _firstOutputLine(npmProbe);
-      if (npmPath != null && npmPath.isNotEmpty) {
+      final spawnPath = CliToolLocator.resolveSpawnExecutable(npmPath);
+      if (spawnPath.contains(r'\') || spawnPath.contains(':')) {
         // Windows npm is a .cmd shim; invoke through cmd.exe so Process.run
         // can execute it reliably from a GUI-launched app.
         return CliInstallerCommand('cmd', [
           '/c',
-          npmPath,
+          spawnPath,
           'install',
           '-g',
           _claudePackage,
@@ -285,7 +324,7 @@ class CliInstallerService {
         _claudePackage,
       ]);
     }
-    return const CliInstallerCommand('npm', ['install', '-g', _claudePackage]);
+    return CliInstallerCommand(npmPath, ['install', '-g', _claudePackage]);
   }
 
   CliInstallerCommand _bootstrappedLocalInstallCommand() {
@@ -297,7 +336,7 @@ class CliInstallerService {
       ]);
     }
     return CliInstallerCommand('sh', [
-      '-lc',
+      '-c',
       '\$HOME/.local/share/teampilot/node/$nodeVersion/bin/npm install -g $_claudePackage',
     ]);
   }

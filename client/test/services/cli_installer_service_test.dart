@@ -10,13 +10,13 @@ void main() {
       isWindowsOverride: false,
       localRunner: (command) async {
         commands.add(command.commandLine);
-        if (command.commandLine == 'command -v npm') {
+        if (command.commandLine == 'which npm') {
           return const CliInstallerCommandResult(
             exitCode: 0,
             stdout: '/usr/bin/npm\n',
           );
         }
-        if (command.commandLine == 'npm install -g @anthropic-ai/claude-code') {
+        if (command.commandLine == '/usr/bin/npm install -g @anthropic-ai/claude-code') {
           return const CliInstallerCommandResult(exitCode: 0);
         }
         if (command.commandLine == 'which claude') {
@@ -37,8 +37,8 @@ void main() {
     expect(result.success, isTrue);
     expect(result.executablePath, '/usr/local/bin/claude');
     expect(commands, [
-      'command -v npm',
-      'npm install -g @anthropic-ai/claude-code',
+      'which npm',
+      '/usr/bin/npm install -g @anthropic-ai/claude-code',
       'which claude',
     ]);
   });
@@ -50,13 +50,13 @@ void main() {
       isWindowsOverride: false,
       localRunner: (command) async {
         commands.add(command.commandLine);
-        if (command.commandLine == 'command -v npm') {
+        if (command.commandLine == 'which npm') {
           return const CliInstallerCommandResult(
             exitCode: 0,
             stdout: '/usr/bin/npm\n',
           );
         }
-        if (command.commandLine == 'npm install -g @anthropic-ai/claude-code') {
+        if (command.commandLine == '/usr/bin/npm install -g @anthropic-ai/claude-code') {
           return const CliInstallerCommandResult(exitCode: 0);
         }
         if (command.commandLine == 'which claude') {
@@ -77,8 +77,8 @@ void main() {
 
     expect(result.success, isTrue, reason: result.message);
     expect(commands, [
-      'command -v npm',
-      'npm install -g @anthropic-ai/claude-code',
+      'which npm',
+      '/usr/bin/npm install -g @anthropic-ai/claude-code',
       'which claude',
     ]);
     expect(phases, [
@@ -178,7 +178,13 @@ void main() {
       isWindowsOverride: false,
       localRunner: (command) async {
         commands.add(command.commandLine);
-        if (command.commandLine == 'command -v npm') {
+        if (command.commandLine == 'which npm') {
+          return const CliInstallerCommandResult(exitCode: 1);
+        }
+        if (command.commandLine == "bash -ilc 'command -v npm'") {
+          return const CliInstallerCommandResult(exitCode: 1);
+        }
+        if (command.commandLine == "zsh -ilc 'command -v npm'") {
           return const CliInstallerCommandResult(exitCode: 1);
         }
         if (command.commandLine.contains('nodejs.org/dist/')) {
@@ -209,16 +215,66 @@ void main() {
 
     expect(result.success, isTrue);
     expect(result.executablePath, '/home/alice/.local/bin/claude');
-    expect(commands[0], 'command -v npm');
-    expect(commands[1], contains('nodejs.org/dist/'));
-    expect(commands[2], contains('npm install -g @anthropic-ai/claude-code'));
+    expect(commands[0], 'which npm');
+    expect(commands.any((line) => line.contains('nodejs.org/dist/')), isTrue);
+    expect(
+      commands.any(
+        (line) => line.contains('npm install -g @anthropic-ai/claude-code'),
+      ),
+      isTrue,
+    );
+  });
+
+  test('uses login-shell npm on Unix when bare which misses', () async {
+    final commands = <String>[];
+    final installer = CliInstallerService(
+      isWindowsOverride: false,
+      localRunner: (command) async {
+        commands.add(command.commandLine);
+        if (command.commandLine == 'which npm') {
+          return const CliInstallerCommandResult(exitCode: 1);
+        }
+        if (command.commandLine == "bash -ilc 'command -v npm'") {
+          return const CliInstallerCommandResult(
+            exitCode: 0,
+            stdout: '/opt/homebrew/bin/npm\n',
+          );
+        }
+        if (command.commandLine ==
+            '/opt/homebrew/bin/npm install -g @anthropic-ai/claude-code') {
+          return const CliInstallerCommandResult(exitCode: 0);
+        }
+        if (command.commandLine == 'which claude') {
+          return const CliInstallerCommandResult(
+            exitCode: 0,
+            stdout: '/opt/homebrew/bin/claude\n',
+          );
+        }
+        return const CliInstallerCommandResult(exitCode: 127);
+      },
+    );
+
+    final result = await installer.install(
+      cli: TeamCli.claude,
+      mode: CliInstallMode.local,
+    );
+
+    expect(result.success, isTrue, reason: result.message);
+    expect(result.executablePath, '/opt/homebrew/bin/claude');
+    expect(commands, [
+      'which npm',
+      "bash -ilc 'command -v npm'",
+      '/opt/homebrew/bin/npm install -g @anthropic-ai/claude-code',
+      'which claude',
+    ]);
+    expect(commands.any((line) => line.contains('nodejs.org')), isFalse);
   });
 
   test('reports local npm install failure', () async {
     final installer = CliInstallerService(
       isWindowsOverride: false,
       localRunner: (command) async {
-        if (command.commandLine == 'command -v npm') {
+        if (command.commandLine == 'which npm') {
           return const CliInstallerCommandResult(
             exitCode: 0,
             stdout: '/usr/bin/npm\n',
@@ -251,7 +307,7 @@ void main() {
             stdout: '/usr/bin/npm\n',
           );
         }
-        if (command.commandLine == 'npm install -g @anthropic-ai/claude-code') {
+        if (command.commandLine == '/usr/bin/npm install -g @anthropic-ai/claude-code') {
           return const CliInstallerCommandResult(exitCode: 0);
         }
         if (command.commandLine == 'command -v claude') {
@@ -274,7 +330,7 @@ void main() {
     expect(result.executablePath, '/home/alice/.npm-global/bin/claude');
     expect(commands, [
       'command -v npm',
-      'npm install -g @anthropic-ai/claude-code',
+      '/usr/bin/npm install -g @anthropic-ai/claude-code',
       'command -v claude',
     ]);
   });
@@ -285,6 +341,12 @@ void main() {
       sshRunner: (profile, command) async {
         commands.add(command.commandLine);
         if (command.commandLine == 'command -v npm') {
+          return const CliInstallerCommandResult(exitCode: 1);
+        }
+        if (command.commandLine == "bash -ilc 'command -v npm'") {
+          return const CliInstallerCommandResult(exitCode: 1);
+        }
+        if (command.commandLine == "zsh -ilc 'command -v npm'") {
           return const CliInstallerCommandResult(exitCode: 1);
         }
         if (command.commandLine.contains('nodejs.org/dist/')) {
@@ -317,8 +379,57 @@ void main() {
     expect(result.success, isTrue);
     expect(result.executablePath, '/home/alice/.local/bin/claude');
     expect(commands[0], 'command -v npm');
-    expect(commands[1], contains('nodejs.org/dist/'));
-    expect(commands[2], contains('npm install -g @anthropic-ai/claude-code'));
+    expect(commands.any((line) => line.contains('nodejs.org/dist/')), isTrue);
+    expect(
+      commands.any(
+        (line) => line.contains('npm install -g @anthropic-ai/claude-code'),
+      ),
+      isTrue,
+    );
+  });
+
+  test('uses login-shell npm on SSH host when bare command -v misses', () async {
+    final commands = <String>[];
+    final installer = CliInstallerService(
+      sshRunner: (profile, command) async {
+        commands.add(command.commandLine);
+        if (command.commandLine == 'command -v npm') {
+          return const CliInstallerCommandResult(exitCode: 1);
+        }
+        if (command.commandLine == "bash -ilc 'command -v npm'") {
+          return const CliInstallerCommandResult(
+            exitCode: 0,
+            stdout: '/opt/homebrew/bin/npm\n',
+          );
+        }
+        if (command.commandLine ==
+            '/opt/homebrew/bin/npm install -g @anthropic-ai/claude-code') {
+          return const CliInstallerCommandResult(exitCode: 0);
+        }
+        if (command.commandLine == 'command -v claude') {
+          return const CliInstallerCommandResult(
+            exitCode: 0,
+            stdout: '/opt/homebrew/bin/claude\n',
+          );
+        }
+        return const CliInstallerCommandResult(exitCode: 127);
+      },
+    );
+
+    final result = await installer.install(
+      cli: TeamCli.claude,
+      mode: CliInstallMode.ssh,
+      sshProfile: _profile,
+    );
+
+    expect(result.success, isTrue, reason: result.message);
+    expect(result.executablePath, '/opt/homebrew/bin/claude');
+    expect(commands, [
+      'command -v npm',
+      "bash -ilc 'command -v npm'",
+      '/opt/homebrew/bin/npm install -g @anthropic-ai/claude-code',
+      'command -v claude',
+    ]);
   });
 
   test('requires an SSH profile for SSH install', () async {
