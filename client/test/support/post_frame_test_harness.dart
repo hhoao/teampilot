@@ -11,6 +11,7 @@ Directory? _testAppDataDir;
 
 /// Initializes app paths and [RuntimeStorageContext] for cubit tests.
 void setUpTestAppStorage() {
+  TestWidgetsFlutterBinding.ensureInitialized();
   _testAppDataDir = Directory.systemTemp.createTempSync('test_app_data_');
   final paths = AppPaths(_testAppDataDir!.path);
   RuntimeStorageContext.installForTesting(

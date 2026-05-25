@@ -101,6 +101,7 @@ void main() {
   late Directory appDataRoot;
 
   setUp(() async {
+    TestWidgetsFlutterBinding.ensureInitialized();
     appDataRoot = await Directory.systemTemp.createTemp('teampilot_app_data_');
     final paths = AppPaths(appDataRoot.path);
     RuntimeStorageContext.installForTesting(
