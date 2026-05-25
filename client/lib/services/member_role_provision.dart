@@ -19,16 +19,33 @@ abstract final class MemberRoleProvision {
   /// Denied for every Claude team member — roster is provisioned by TeamPilot.
   static const teamSessionDenyTools = <String>['TeamCreate'];
 
-  /// Appended to every team-lead role prompt file (prevents self-messaging loops).
-  static const teamLeadAntiSelfLoopAddendum = '''
-## Do not message or task yourself
+  /// Appended to every team-lead [role.md] (identity and team layout).
+  static const teamLeadRoleAddendum = '''
+# Team Leader (Swarm)
+You are the **team lead** (display name: `team-lead`). You run in the leader session; teammates are separate agents sharing the same task list and team config.
 
-You are the team lead in this terminal. The user talks to you here — reply in the conversation; do not SendMessage to "team-lead" or to your own name.
+## Identity
+- **Role**: Team Leader — orchestration, synthesis, user-facing communication
+- **Not a teammate**: you do not claim tasks meant for workers unless no teammate is available
+- Teammates report to you; the user primarily interacts with you
 
-- Never `SendMessage` with `to: "team-lead"` (or `to: "*"` unless truly needed).
-- Never `TaskUpdate` with `owner: "team-lead"` — assign tasks to other member names only.
-- Never `Agent` with `name: "team-lead"` — spawn other teammates (developer, reviewer, …) or omit `name` for a one-off subagent, not a second lead.
-- Read `~/.claude/teams/<team>/config.json` for teammate names; only message names listed there except team-lead.
+## Core duties
+1. **Decompose** the user's request into tasks on the shared task list (create, prioritize, unblock)
+2. **Assign** work via clear briefs; **SendMessage** teammates by **name** (e.g. `researcher`, `implementer`) — do not use `Agent` (subagents are not teammate tabs)
+3. **Coordinate** parallel research; serialize edits to the same paths
+4. **Synthesize** teammate results into one coherent reply—include file paths, decisions, and next steps
+5. **Govern** permissions: approve/deny teammate tool, sandbox, and plan requests promptly
+6. **Integrate** idle notifications and mailbox messages; do not treat them as user chat
+7. **Communicate** with teammates via SendMessage; normal text is invisible to other members
+
+''';
+
+  /// When [TeamConfig.forceTeamLeadDelegateMode] is on (also enforced via PreToolUse hook).
+  static const teamLeadDelegateModeAddendum = '''
+## Delegate-only mode (enforced)
+
+This tab is **plan-and-assign only**: Bash, Read, Edit, Write, Glob, Grep, NotebookEdit, PowerShell, and Agent are blocked here. Use SendMessage and the task list (TaskCreate/TaskUpdate) so teammate tabs execute local work.
+
 ''';
 
   static String memberSlug(TeamMemberConfig member) {
@@ -41,7 +58,10 @@ You are the team lead in this terminal. The user talks to you here — reply in 
     );
   }
 
-  static String rolePromptPath(String memberClaudeToolDir, TeamMemberConfig member) {
+  static String rolePromptPath(
+    String memberClaudeToolDir,
+    TeamMemberConfig member,
+  ) {
     return p.join(
       memberClaudeToolDir,
       rolePromptsDirName,
@@ -56,6 +76,7 @@ You are the team lead in this terminal. The user talks to you here — reply in 
     required Filesystem fs,
     required String memberClaudeToolDir,
     required TeamMemberConfig member,
+    bool forceTeamLeadDelegateMode = false,
   }) async {
     final path = rolePromptPath(memberClaudeToolDir, member);
     final text = member.prompt.trim();
@@ -74,8 +95,12 @@ You are the team lead in this terminal. The user talks to you here — reply in 
       body.writeln();
     }
     if (isLead) {
-      body.writeln(teamLeadAntiSelfLoopAddendum.trim());
+      body.writeln(teamLeadRoleAddendum.trim());
       body.writeln();
+      if (forceTeamLeadDelegateMode) {
+        body.writeln(teamLeadDelegateModeAddendum.trim());
+        body.writeln();
+      }
     }
     await fs.atomicWrite(path, body.toString());
     return path;

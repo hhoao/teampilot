@@ -4,11 +4,15 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:teampilot/models/team_config.dart';
+import 'package:teampilot/services/claude_hook_shell.dart';
 import 'package:teampilot/services/cli_data_layout.dart';
 import 'package:teampilot/services/config_profile_service.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/member_role_provision.dart';
+import 'package:teampilot/services/team_lead_delegate_hook_provisioner.dart';
+import 'package:teampilot/services/team_lead_delegate_settings_merge.dart';
 import 'package:teampilot/services/team_lead_hook_provisioner.dart';
+import 'package:teampilot/services/team_lead_settings_merge.dart';
 
 String _sessionClaudeDir(String base, String teamId, String sessionId) =>
     p.join(
@@ -35,9 +39,16 @@ void main() {
       basePath: base.path,
       fs: fs,
       layout: CliDataLayout(teampilotRoot: base.path, fs: fs),
+      resolveHookShell: () => ClaudeHookShell.bash,
       teamLeadHookProvisioner: TeamLeadHookProvisioner(
         fs: fs,
-        loadHookScript: () async => '#!/usr/bin/env bash\n# teampilot-deny-team-lead-self-message\n',
+        loadHookScript: (_) async =>
+            '#!/usr/bin/env bash\n# teampilot-deny-team-lead-self-message\n',
+      ),
+      teamLeadDelegateHookProvisioner: TeamLeadDelegateHookProvisioner(
+        fs: fs,
+        loadHookScript: (_) async =>
+            '#!/usr/bin/env bash\n# teampilot-team-lead-delegate-only\n',
       ),
     );
   });
@@ -189,18 +200,65 @@ void main() {
     final hookPath = p.join(
       claudeDir,
       'hooks',
-      TeamLeadHookProvisioner.hookFileName,
+      TeamLeadHookProvisioner.shFileName,
     );
     expect(await File(hookPath).exists(), isTrue);
 
     final pre = (settings['hooks'] as Map)['PreToolUse'] as List;
-    final sendMessageMatcher = pre.cast<Map>().firstWhere(
-      (entry) => entry['matcher'] == 'SendMessage',
+    for (final matcher in TeamLeadSettingsMerge.guardedTools) {
+      final entry = pre.cast<Map>().firstWhere(
+        (e) => e['matcher'] == matcher,
+      );
+      final command =
+          ((entry['hooks'] as List).first as Map)['command'] as String;
+      expect(command, contains(TeamLeadHookProvisioner.shFileName));
+    }
+  });
+
+  test('prepareTeamLaunch adds delegate-only hook when team flag is on', () async {
+    const sessionId = 'sess-delegate-only';
+    const lead = TeamMemberConfig(id: 'lead', name: 'team-lead');
+    const team = TeamConfig(
+      id: 'team-a',
+      name: 'agent',
+      cli: TeamCli.claude,
+      forceTeamLeadDelegateMode: true,
+    );
+    final env = (await service.prepareTeamLaunch(
+      teamId: team.id,
+      runtimeTeamId: sessionId,
+      cli: team.cli,
+      members: const [lead],
+      member: lead,
+      team: team,
+    )).environment;
+
+    final claudeDir = _sessionClaudeDir(base.path, team.id, sessionId);
+    final roleText = await File(
+      p.join(claudeDir, 'prompts', 'team-lead', 'role.md'),
+    ).readAsString();
+    expect(roleText, contains('Delegate-only mode'));
+
+    final settingsPath = env[ConfigProfileService.claudeSettingsFileEnvKey]!;
+    final settings =
+        jsonDecode(await File(settingsPath).readAsString())
+            as Map<String, Object?>;
+    final pre = (settings['hooks'] as Map)['PreToolUse'] as List;
+    final delegateEntry = pre.cast<Map>().firstWhere(
+      (e) =>
+          (e['matcher'] as String?) ==
+          TeamLeadDelegateSettingsMerge.blockedToolsMatcher,
     );
     final command =
-        ((sendMessageMatcher['hooks'] as List).first as Map)['command']
-            as String;
-    expect(command, contains(TeamLeadHookProvisioner.hookFileName));
+        ((delegateEntry['hooks'] as List).first as Map)['command'] as String;
+    expect(command, contains(TeamLeadDelegateHookProvisioner.shFileName));
+
+    expect(
+      await File(
+        p.join(claudeDir, 'hooks', TeamLeadDelegateHookProvisioner.shFileName),
+      ).exists(),
+      isTrue,
+    );
   });
 
   test('team-lead SendMessage hook is not added for non-lead members', () async {

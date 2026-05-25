@@ -2486,6 +2486,18 @@ abstract class AppLocalizations {
   /// **'false — confirm each phase'**
   String get teamLoopFalse;
 
+  /// No description provided for @teamLeadDelegateOnlyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Team lead: plan and delegate only'**
+  String get teamLeadDelegateOnlyTitle;
+
+  /// No description provided for @teamLeadDelegateOnlySubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'When enabled, the team-lead tab cannot use Bash, Read, Edit, Write, Glob, Grep, NotebookEdit, or PowerShell (enforced via PreToolUse hooks with a denial reason). Use TaskUpdate, SendMessage, and Agent to assign work to teammates.'**
+  String get teamLeadDelegateOnlySubtitle;
+
   /// No description provided for @memberLaunchOrder.
   ///
   /// In en, this message translates to:

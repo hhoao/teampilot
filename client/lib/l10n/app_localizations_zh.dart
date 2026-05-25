@@ -1298,6 +1298,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get teamLoopFalse => 'false — 每阶段确认';
 
   @override
+  String get teamLeadDelegateOnlyTitle => '队长仅规划分派';
+
+  @override
+  String get teamLeadDelegateOnlySubtitle =>
+      '开启后，队长终端禁止使用 Bash、Read、Edit、Write、Glob、Grep、NotebookEdit、PowerShell（由 PreToolUse hook 拦截并给出拒绝原因）。请通过 TaskUpdate、SendMessage、Agent 向队友分派执行类工作。';
+
+  @override
   String get memberLaunchOrder => '成员启动顺序';
 
   @override

@@ -1333,6 +1333,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get teamLoopFalse => 'false — confirm each phase';
 
   @override
+  String get teamLeadDelegateOnlyTitle => 'Team lead: plan and delegate only';
+
+  @override
+  String get teamLeadDelegateOnlySubtitle =>
+      'When enabled, the team-lead tab cannot use Bash, Read, Edit, Write, Glob, Grep, NotebookEdit, or PowerShell (enforced via PreToolUse hooks with a denial reason). Use TaskUpdate, SendMessage, and Agent to assign work to teammates.';
+
+  @override
   String get memberLaunchOrder => 'Member launch order';
 
   @override

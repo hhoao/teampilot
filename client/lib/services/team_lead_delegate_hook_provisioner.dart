@@ -1,9 +1,9 @@
 import 'claude_hook_shell.dart';
 import 'io/filesystem.dart';
 
-/// Deploys the team-lead self-target guard hook into a member Claude config dir.
-class TeamLeadHookProvisioner {
-  TeamLeadHookProvisioner({
+/// Deploys the team-lead delegate-only guard hook into a member Claude config dir.
+class TeamLeadDelegateHookProvisioner {
+  TeamLeadDelegateHookProvisioner({
     required Filesystem fs,
     required Future<String> Function(ClaudeHookShell shell) loadHookScript,
   }) : _fs = fs,
@@ -12,8 +12,8 @@ class TeamLeadHookProvisioner {
   final Filesystem _fs;
   final Future<String> Function(ClaudeHookShell shell) _loadHookScript;
 
-  static const shFileName = 'teampilot-deny-team-lead-self-message.sh';
-  static const ps1FileName = 'teampilot-deny-team-lead-self-message.ps1';
+  static const shFileName = 'teampilot-team-lead-delegate-only.sh';
+  static const ps1FileName = 'teampilot-team-lead-delegate-only.ps1';
 
   static String fileNameFor(ClaudeHookShell shell) => switch (shell) {
     ClaudeHookShell.bash => shFileName,

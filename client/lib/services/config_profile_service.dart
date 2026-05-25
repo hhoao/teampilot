@@ -8,6 +8,7 @@ import '../models/team_config.dart';
 import '../utils/project_path_utils.dart';
 import '../utils/team_member_naming.dart';
 import 'app_storage.dart';
+import 'claude_hook_shell.dart';
 import 'claude_official_provider.dart';
 import 'claude_provider_credentials_service.dart';
 import 'claude_team_roster_service.dart';
@@ -18,6 +19,8 @@ import 'member_role_provision.dart';
 import 'rtk_detector.dart';
 import 'rtk_hook_provisioner.dart';
 import 'rtk_settings_merge.dart';
+import 'team_lead_delegate_hook_provisioner.dart';
+import 'team_lead_delegate_settings_merge.dart';
 import 'team_lead_hook_provisioner.dart';
 import 'team_lead_settings_merge.dart';
 
@@ -51,6 +54,7 @@ class ConfigProfileService {
   static const flashskyaiMetadataFileName = '.flashskyai.json';
   static const flashskyaiSettingsFileName = 'settings.json';
   static const flashskyaiConfigDirEnvKey = 'FLASHSKYAI_CONFIG_DIR';
+
   /// Transcript root (`projects/*.jsonl`); must match [flashskyaiConfigDirEnvKey].
   static const flashskyaiSessionHomeDirEnvKey = 'FLASHSKYAI_SESSION_HOME_DIR';
   static const claudeMetadataFileName = '.claude.json';
@@ -82,6 +86,9 @@ class ConfigProfileService {
     Future<String> Function()? loadRtkHookScript,
     TeamLeadHookProvisioner? teamLeadHookProvisioner,
     Future<String> Function()? loadTeamLeadHookScript,
+    TeamLeadDelegateHookProvisioner? teamLeadDelegateHookProvisioner,
+    Future<String> Function()? loadTeamLeadDelegateHookScript,
+    ClaudeHookShell Function()? resolveHookShell,
   }) : _fs = fs ?? AppStorage.fs,
        layout =
            layout ??
@@ -92,7 +99,10 @@ class ConfigProfileService {
        _rtkHookProvisioner = rtkHookProvisioner,
        _loadRtkHookScript = loadRtkHookScript,
        _teamLeadHookProvisioner = teamLeadHookProvisioner,
-       _loadTeamLeadHookScript = loadTeamLeadHookScript;
+       _loadTeamLeadHookScript = loadTeamLeadHookScript,
+       _teamLeadDelegateHookProvisioner = teamLeadDelegateHookProvisioner,
+       _loadTeamLeadDelegateHookScript = loadTeamLeadDelegateHookScript,
+       _resolveHookShell = resolveHookShell;
 
   final String basePath;
   final Filesystem _fs;
@@ -104,6 +114,9 @@ class ConfigProfileService {
   final Future<String> Function()? _loadRtkHookScript;
   final TeamLeadHookProvisioner? _teamLeadHookProvisioner;
   final Future<String> Function()? _loadTeamLeadHookScript;
+  final TeamLeadDelegateHookProvisioner? _teamLeadDelegateHookProvisioner;
+  final Future<String> Function()? _loadTeamLeadDelegateHookScript;
+  final ClaudeHookShell Function()? _resolveHookShell;
 
   ClaudeProviderCredentialsService get _claudeCredentials =>
       _claudeCredentialsService ??
@@ -321,6 +334,7 @@ class ConfigProfileService {
           launchedMember: member,
           providerSettings: claudeSettings,
           providerSettingsByMember: claudeSettingsByMember,
+          forceTeamLeadDelegateMode: team?.forceTeamLeadDelegateMode ?? false,
         );
         final providerId = claudeProviderId?.trim() ?? '';
         if (providerId.isNotEmpty &&
@@ -371,17 +385,19 @@ class ConfigProfileService {
 
     return TeamLaunchOutcome(
       environment: switch (cli) {
-      TeamCli.flashskyai => _flashskyaiTeamLaunchEnvironment(scope),
-      TeamCli.codex => {
-        'CODEX_HOME': sessionToolDir(scope.teamId, scope.sessionId, 'codex'),
+        TeamCli.flashskyai => _flashskyaiTeamLaunchEnvironment(scope),
+        TeamCli.codex => {
+          'CODEX_HOME': sessionToolDir(scope.teamId, scope.sessionId, 'codex'),
+        },
+        TeamCli.claude => claudeEnv,
       },
-      TeamCli.claude => claudeEnv,
-    },
       warnings: warnings,
     );
   }
 
-  Map<String, String> _flashskyaiTeamLaunchEnvironment(_LaunchProfileScope scope) {
+  Map<String, String> _flashskyaiTeamLaunchEnvironment(
+    _LaunchProfileScope scope,
+  ) {
     final memberDir = sessionToolDir(
       scope.teamId,
       scope.sessionId,
@@ -502,7 +518,11 @@ class ConfigProfileService {
       sessionToolDir(scope.teamId, scope.sessionId, 'flashskyai'),
       flashskyaiSettingsFileName,
     );
-    final memberToolDir = sessionToolDir(scope.teamId, scope.sessionId, 'flashskyai');
+    final memberToolDir = sessionToolDir(
+      scope.teamId,
+      scope.sessionId,
+      'flashskyai',
+    );
     final teamDefaults = _flashskyaiTeamSettings();
     if (await _flashskyaiSettingsAlreadyCurrent(file, teamDefaults) &&
         !await _isRtkEnabled()) {
@@ -526,7 +546,9 @@ class ConfigProfileService {
     return true;
   }
 
-  Future<Map<String, Object?>> _flashskyaiTeamSettingsMerged(String path) async {
+  Future<Map<String, Object?>> _flashskyaiTeamSettingsMerged(
+    String path,
+  ) async {
     final existing = await _readSettingsFile(path);
     final merged = Map<String, Object?>.from(_flashskyaiTeamSettings());
     final enabledPlugins = existing['enabledPlugins'];
@@ -583,15 +605,40 @@ class ConfigProfileService {
         );
   }
 
+  ClaudeHookShell _hookShellForProvision() =>
+      _resolveHookShell?.call() ?? ClaudeHookShellResolver.resolve();
+
   TeamLeadHookProvisioner _resolveTeamLeadHookProvisioner() {
     return _teamLeadHookProvisioner ??
         TeamLeadHookProvisioner(
           fs: _fs,
-          loadHookScript:
-              _loadTeamLeadHookScript ??
-              () => rootBundle.loadString(
-                'assets/hooks/teampilot-deny-team-lead-self-message.sh',
-              ),
+          loadHookScript: _loadTeamLeadHookScript != null
+              ? (shell) => _loadTeamLeadHookScript!()
+              : (shell) => rootBundle.loadString(
+                  switch (shell) {
+                    ClaudeHookShell.bash =>
+                      'assets/hooks/teampilot-deny-team-lead-self-message.sh',
+                    ClaudeHookShell.powershell =>
+                      'assets/hooks/teampilot-deny-team-lead-self-message.ps1',
+                  },
+                ),
+        );
+  }
+
+  TeamLeadDelegateHookProvisioner _resolveTeamLeadDelegateHookProvisioner() {
+    return _teamLeadDelegateHookProvisioner ??
+        TeamLeadDelegateHookProvisioner(
+          fs: _fs,
+          loadHookScript: _loadTeamLeadDelegateHookScript != null
+              ? (shell) => _loadTeamLeadDelegateHookScript!()
+              : (shell) => rootBundle.loadString(
+                  switch (shell) {
+                    ClaudeHookShell.bash =>
+                      'assets/hooks/teampilot-team-lead-delegate-only.sh',
+                    ClaudeHookShell.powershell =>
+                      'assets/hooks/teampilot-team-lead-delegate-only.ps1',
+                  },
+                ),
         );
   }
 
@@ -774,6 +821,7 @@ class ConfigProfileService {
     required TeamMemberConfig? launchedMember,
     required Map<String, Object?>? providerSettings,
     required Map<String, Map<String, Object?>> providerSettingsByMember,
+    required bool forceTeamLeadDelegateMode,
   }) async {
     final uniqueMembers = <String, TeamMemberConfig>{};
     for (final member in members.where((member) => member.isValid)) {
@@ -792,6 +840,7 @@ class ConfigProfileService {
             providerSettingsByMember[member.id] ??
             providerSettingsByMember[member.name] ??
             providerSettings,
+        forceTeamLeadDelegateMode: forceTeamLeadDelegateMode,
       );
     }
   }
@@ -800,12 +849,19 @@ class ConfigProfileService {
     required _LaunchProfileScope scope,
     required TeamMemberConfig member,
     required Map<String, Object?>? providerSettings,
+    required bool forceTeamLeadDelegateMode,
   }) async {
-    final memberToolDir = sessionToolDir(scope.teamId, scope.sessionId, 'claude');
+    final memberToolDir = sessionToolDir(
+      scope.teamId,
+      scope.sessionId,
+      'claude',
+    );
+    final isLead = member.name.trim() == TeamMemberNaming.teamLeadName;
     await MemberRoleProvision.syncRolePromptFile(
       fs: _fs,
       memberClaudeToolDir: memberToolDir,
       member: member,
+      forceTeamLeadDelegateMode: isLead && forceTeamLeadDelegateMode,
     );
     final file = sessionClaudeMemberSettingsFile(
       scope.teamId,
@@ -814,32 +870,53 @@ class ConfigProfileService {
     );
     var settings = _claudeMemberSettings(providerSettings, member);
     settings = MemberRoleProvision.applyTeamSessionPolicy(settings);
-    settings = await _maybeApplyTeamLeadHook(
+    settings = await _maybeApplyTeamLeadHooks(
       settings,
       member,
       memberToolDir,
+      forceTeamLeadDelegateMode: isLead && forceTeamLeadDelegateMode,
     );
-    await _writeSettingsFile(
-      file,
-      settings,
-      memberToolDir: memberToolDir,
-    );
+    await _writeSettingsFile(file, settings, memberToolDir: memberToolDir);
   }
 
-  Future<Map<String, Object?>> _maybeApplyTeamLeadHook(
+  Future<Map<String, Object?>> _maybeApplyTeamLeadHooks(
     Map<String, Object?> settings,
     TeamMemberConfig member,
-    String memberToolDir,
-  ) async {
+    String memberToolDir, {
+    required bool forceTeamLeadDelegateMode,
+  }) async {
     if (member.name.trim() != TeamMemberNaming.teamLeadName) {
       return settings;
     }
-    final provisioner = _resolveTeamLeadHookProvisioner();
-    final scriptPath = await provisioner.provisionMemberToolDir(memberToolDir);
-    return const TeamLeadSettingsMerge().mergeIntoSettings(
-      base: settings,
-      hookCommand: provisioner.hookCommandForPath(scriptPath),
+    final shell = _hookShellForProvision();
+    final selfTargetProvisioner = _resolveTeamLeadHookProvisioner();
+    final selfScriptPath = await selfTargetProvisioner.provisionMemberToolDir(
+      memberToolDir,
+      shell,
     );
+    var merged = const TeamLeadSettingsMerge().mergeIntoSettings(
+      base: settings,
+      hookCommand: selfTargetProvisioner.hookCommandForPath(
+        selfScriptPath,
+        shell,
+      ),
+    );
+    merged = const TeamLeadDelegateSettingsMerge().stripFromSettings(merged);
+    if (forceTeamLeadDelegateMode) {
+      final delegateProvisioner = _resolveTeamLeadDelegateHookProvisioner();
+      final delegateScriptPath = await delegateProvisioner.provisionMemberToolDir(
+        memberToolDir,
+        shell,
+      );
+      merged = const TeamLeadDelegateSettingsMerge().mergeIntoSettings(
+        base: merged,
+        hookCommand: delegateProvisioner.hookCommandForPath(
+          delegateScriptPath,
+          shell,
+        ),
+      );
+    }
+    return merged;
   }
 
   Future<String?> _resolveClaudeAppendSystemPromptPath({

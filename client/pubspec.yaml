@@ -68,6 +68,9 @@ flutter:
     - assets/fonts/terminal/
     - assets/rtk/rtk-rewrite.sh
     - assets/hooks/teampilot-deny-team-lead-self-message.sh
+    - assets/hooks/teampilot-deny-team-lead-self-message.ps1
+    - assets/hooks/teampilot-team-lead-delegate-only.sh
+    - assets/hooks/teampilot-team-lead-delegate-only.ps1
 
 flutter_launcher_icons:
   android: true

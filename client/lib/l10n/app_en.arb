@@ -675,6 +675,8 @@
   "teamLoopDefault": "Default",
   "teamLoopTrue": "true — auto-advance",
   "teamLoopFalse": "false — confirm each phase",
+  "teamLeadDelegateOnlyTitle": "Team lead: plan and delegate only",
+  "teamLeadDelegateOnlySubtitle": "When enabled, the team-lead tab cannot use Bash, Read, Edit, Write, Glob, Grep, NotebookEdit, or PowerShell (enforced via PreToolUse hooks with a denial reason). Use TaskUpdate, SendMessage, and Agent to assign work to teammates.",
   "memberLaunchOrder": "Member launch order",
   "saveMember": "Save Member",
   "editTeamSubtitle": "Edit team identity, working directory, and launch order.",

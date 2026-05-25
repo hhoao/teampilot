@@ -176,7 +176,17 @@ class TeamConfig {
     this.claudeTeammateMode = 'in-process',
     this.claudeEffortLevel = 'xhigh',
     this.autoLaunchMembers,
+    this.forceTeamLeadDelegateMode = false,
   });
+
+  static bool decodeForceTeamLeadDelegateMode(Object? raw) {
+    if (raw == null) return false;
+    if (raw is bool) return raw;
+    if (raw is String) {
+      return raw.trim().toLowerCase() == 'true';
+    }
+    return false;
+  }
 
   static List<String> decodeSkillIds(Object? raw) {
     if (raw is! List) return const [];
@@ -235,6 +245,9 @@ class TeamConfig {
           json['claudeTeammateMode'] as String? ?? 'in-process',
       claudeEffortLevel: json['claudeEffortLevel'] as String? ?? 'xhigh',
       autoLaunchMembers: json['autoLaunchMembers'] as bool?,
+      forceTeamLeadDelegateMode: decodeForceTeamLeadDelegateMode(
+        json['forceTeamLeadDelegateMode'],
+      ),
     );
   }
 
@@ -280,6 +293,9 @@ class TeamConfig {
   /// When non-null, overrides global session pref for auto-launching members.
   final bool? autoLaunchMembers;
 
+  /// When true, team-lead tab blocks Bash/Read/Edit/Write/etc. via PreToolUse hooks.
+  final bool forceTeamLeadDelegateMode;
+
   bool get isValid => name.trim().isNotEmpty;
 
   TeamConfig copyWith({
@@ -299,6 +315,8 @@ class TeamConfig {
     String? claudeEffortLevel,
     bool? autoLaunchMembers,
     bool updateAutoLaunchMembers = false,
+    bool? forceTeamLeadDelegateMode,
+    bool updateForceTeamLeadDelegateMode = false,
   }) {
     return TeamConfig(
       id: id ?? this.id,
@@ -317,6 +335,9 @@ class TeamConfig {
       autoLaunchMembers: updateAutoLaunchMembers
           ? autoLaunchMembers
           : this.autoLaunchMembers,
+      forceTeamLeadDelegateMode: updateForceTeamLeadDelegateMode
+          ? (forceTeamLeadDelegateMode ?? false)
+          : this.forceTeamLeadDelegateMode,
     );
   }
 
@@ -337,6 +358,8 @@ class TeamConfig {
         'claudeTeammateMode': claudeTeammateMode,
       if (claudeEffortLevel != 'xhigh') 'claudeEffortLevel': claudeEffortLevel,
       if (autoLaunchMembers != null) 'autoLaunchMembers': autoLaunchMembers!,
+      if (forceTeamLeadDelegateMode)
+        'forceTeamLeadDelegateMode': forceTeamLeadDelegateMode,
     };
   }
 
@@ -358,7 +381,8 @@ class TeamConfig {
             loop == other.loop &&
             claudeTeammateMode == other.claudeTeammateMode &&
             claudeEffortLevel == other.claudeEffortLevel &&
-            autoLaunchMembers == other.autoLaunchMembers;
+            autoLaunchMembers == other.autoLaunchMembers &&
+            forceTeamLeadDelegateMode == other.forceTeamLeadDelegateMode;
   }
 
   @override
@@ -377,5 +401,6 @@ class TeamConfig {
     claudeTeammateMode,
     claudeEffortLevel,
     autoLaunchMembers,
+    forceTeamLeadDelegateMode,
   );
 }

@@ -3,24 +3,50 @@ import 'package:teampilot/services/team_lead_settings_merge.dart';
 
 void main() {
   group('TeamLeadSettingsMerge', () {
-    test('adds SendMessage PreToolUse hook when absent', () {
+    const hookCommand =
+        'bash "/tmp/hooks/teampilot-deny-team-lead-self-message.sh"';
+
+    test('adds PreToolUse hooks for SendMessage, TaskUpdate, and Agent', () {
       const merge = TeamLeadSettingsMerge();
       final out = merge.mergeIntoSettings(
         base: const {'permissions': {'deny': ['Bash']}},
-        hookCommand:
-            'bash "/tmp/hooks/teampilot-deny-team-lead-self-message.sh"',
+        hookCommand: hookCommand,
       );
-      final hooks = out['hooks'] as Map;
-      final pre = hooks['PreToolUse'] as List;
-      expect(pre, hasLength(1));
-      expect((pre.first as Map)['matcher'], 'SendMessage');
-      final command =
-          (((pre.first as Map)['hooks'] as List).first as Map)['command']
-              as String;
-      expect(command, contains('teampilot-deny-team-lead-self-message'));
+      final pre = (out['hooks'] as Map)['PreToolUse'] as List;
+      expect(pre, hasLength(3));
+      for (final matcher in TeamLeadSettingsMerge.guardedTools) {
+        final entry = pre.cast<Map>().firstWhere(
+          (e) => e['matcher'] == matcher,
+        );
+        final command =
+            ((entry['hooks'] as List).first as Map)['command'] as String;
+        expect(command, contains('teampilot-deny-team-lead-self-message'));
+      }
     });
 
-    test('is idempotent when hook already present', () {
+    test('is idempotent when all guarded hooks already present', () {
+      const merge = TeamLeadSettingsMerge();
+      final base = {
+        'hooks': {
+          'PreToolUse': [
+            for (final matcher in TeamLeadSettingsMerge.guardedTools)
+              {
+                'matcher': matcher,
+                'hooks': [
+                  {'type': 'command', 'command': hookCommand},
+                ],
+              },
+          ],
+        },
+      };
+      final out = merge.mergeIntoSettings(
+        base: base,
+        hookCommand: hookCommand,
+      );
+      expect(out, base);
+    });
+
+    test('backfills TaskUpdate and Agent when only SendMessage hook exists', () {
       const merge = TeamLeadSettingsMerge();
       final base = {
         'hooks': {
@@ -28,11 +54,7 @@ void main() {
             {
               'matcher': 'SendMessage',
               'hooks': [
-                {
-                  'type': 'command',
-                  'command':
-                      'bash "/tmp/hooks/teampilot-deny-team-lead-self-message.sh"',
-                },
+                {'type': 'command', 'command': hookCommand},
               ],
             },
           ],
@@ -40,10 +62,14 @@ void main() {
       };
       final out = merge.mergeIntoSettings(
         base: base,
-        hookCommand:
-            'bash "/tmp/hooks/teampilot-deny-team-lead-self-message.sh"',
+        hookCommand: hookCommand,
       );
-      expect(out, base);
+      final pre = (out['hooks'] as Map)['PreToolUse'] as List;
+      expect(pre, hasLength(3));
+      expect(
+        pre.map((e) => (e as Map)['matcher']),
+        ['SendMessage', 'TaskUpdate', 'Agent'],
+      );
     });
 
     test('appends after existing PreToolUse matchers', () {
@@ -62,11 +88,14 @@ void main() {
       };
       final out = merge.mergeIntoSettings(
         base: base,
-        hookCommand: 'bash "/tmp/teampilot-deny-team-lead-self-message.sh"',
+        hookCommand: hookCommand,
       );
       final pre = (out['hooks'] as Map)['PreToolUse'] as List;
-      expect(pre, hasLength(2));
-      expect((pre.last as Map)['matcher'], 'SendMessage');
+      expect(pre, hasLength(4));
+      expect(
+        pre.skip(1).map((e) => (e as Map)['matcher']),
+        TeamLeadSettingsMerge.guardedTools,
+      );
     });
   });
 }

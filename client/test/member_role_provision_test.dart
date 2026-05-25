@@ -37,7 +37,7 @@ void main() {
     }
   });
 
-  test('syncRolePromptFile writes anti-self-loop addendum for team-lead', () async {
+  test('syncRolePromptFile writes team-lead role addendum', () async {
     final fs = LocalFilesystem();
     final root = await fs.createTempDir(prefix: 'role_lead_');
     try {
@@ -49,8 +49,28 @@ void main() {
       );
       expect(path, isNotNull);
       final text = await fs.readString(path!);
-      expect(text, contains('SendMessage'));
       expect(text, contains('team-lead'));
+      expect(text, contains('Team Leader'));
+      expect(text, isNot(contains('Delegate-only mode')));
+    } finally {
+      await fs.removeRecursive(root);
+    }
+  });
+
+  test('syncRolePromptFile adds delegate addendum when flag is on', () async {
+    final fs = LocalFilesystem();
+    final root = await fs.createTempDir(prefix: 'role_delegate_');
+    try {
+      const lead = TeamMemberConfig(id: 'lead', name: 'team-lead', prompt: '');
+      await MemberRoleProvision.syncRolePromptFile(
+        fs: fs,
+        memberClaudeToolDir: root,
+        member: lead,
+        forceTeamLeadDelegateMode: true,
+      );
+      final path = MemberRoleProvision.rolePromptPath(root, lead);
+      final text = await fs.readString(path);
+      expect(text, contains('Delegate-only mode'));
     } finally {
       await fs.removeRecursive(root);
     }

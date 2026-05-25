@@ -1339,6 +1339,26 @@ class _TeamInfoSectionState extends State<_TeamInfoSection> {
                   ),
                 ),
                 if (widget.team.cli == TeamCli.claude) ...[
+                  const SizedBox(height: 14),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(l10n.teamLeadDelegateOnlyTitle),
+                    subtitle: Text(
+                      l10n.teamLeadDelegateOnlySubtitle,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: textBase.withValues(alpha: 0.58),
+                        height: 1.35,
+                      ),
+                    ),
+                    value: widget.team.forceTeamLeadDelegateMode,
+                    onChanged: (value) => widget.cubit.updateSelected(
+                      widget.team.copyWith(
+                        forceTeamLeadDelegateMode: value,
+                        updateForceTeamLeadDelegateMode: true,
+                      ),
+                    ),
+                  ),
                   const SizedBox(height: 18),
                   TeamToolProviderSelectors(
                     team: widget.team,
