@@ -1,6 +1,6 @@
 import 'dart:io';
-import 'package:teampilot/services/plugin_exceptions.dart';
-import 'package:teampilot/services/plugin_manifest_service.dart';
+import 'package:teampilot/services/plugin/plugin_exceptions.dart';
+import 'package:teampilot/services/plugin/plugin_manifest_service.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 

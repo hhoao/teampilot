@@ -3,9 +3,9 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
-import 'package:teampilot/services/cli_plugin_layout.dart';
-import 'package:teampilot/services/cli_plugin_manifest_flavor.dart';
-import 'package:teampilot/services/cli_plugin_provision_cache.dart';
+import 'package:teampilot/services/plugin/cli_plugin_layout.dart';
+import 'package:teampilot/services/plugin/cli_plugin_manifest_flavor.dart';
+import 'package:teampilot/services/plugin/cli_plugin_provision_cache.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 
 void main() {

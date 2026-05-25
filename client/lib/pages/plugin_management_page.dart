@@ -10,7 +10,7 @@ import '../cubits/plugin_cubit.dart';
 import '../cubits/team_cubit.dart';
 import '../l10n/l10n_extensions.dart';
 import '../models/plugin.dart';
-import '../services/platform_utils.dart';
+import '../services/app/platform_utils.dart';
 import '../utils/app_keys.dart';
 import '../utils/debounce/debounce.dart';
 import '../utils/github_source_url.dart';

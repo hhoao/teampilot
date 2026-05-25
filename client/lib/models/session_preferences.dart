@@ -1,6 +1,6 @@
 import 'connection_mode.dart';
 import 'windows_storage_backend.dart';
-import '../services/platform_utils.dart';
+import '../services/app/platform_utils.dart';
 
 class SessionPreferences {
   SessionPreferences({

@@ -2,8 +2,8 @@ import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/terminal_session.dart';
-import 'package:teampilot/services/terminal_transport.dart';
+import 'package:teampilot/services/terminal/terminal_session.dart';
+import 'package:teampilot/services/terminal/terminal_transport.dart';
 
 class _FakeTransport implements TerminalTransport {
   final outputController = StreamController<Uint8List>();

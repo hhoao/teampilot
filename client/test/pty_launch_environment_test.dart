@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/pty_launch_environment.dart';
-import 'package:teampilot/services/terminal_session.dart';
+import 'package:teampilot/services/terminal/pty_launch_environment.dart';
+import 'package:teampilot/services/terminal/terminal_session.dart';
 
 void main() {
   test('buildPtyEnvironment injects TERM_PROGRAM and VTE_VERSION', () {

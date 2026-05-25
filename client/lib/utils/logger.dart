@@ -3,7 +3,7 @@ import 'dart:ui';
 
 import 'package:flutter/foundation.dart';
 
-import '../services/error_log_service.dart';
+import '../services/app/error_log_service.dart';
 import 'app_error_utils.dart';
 import 'logger_utils.dart';
 

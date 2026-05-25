@@ -2,9 +2,9 @@ import 'dart:io';
 
 import 'package:path/path.dart' as p;
 
-import '../services/app_storage.dart';
-import '../services/launch_command_builder.dart';
-import '../services/runtime_storage_context.dart';
+import '../services/storage/app_storage.dart';
+import '../services/session/launch_command_builder.dart';
+import '../services/storage/runtime_storage_context.dart';
 
 /// Normalizes a filesystem path for stable comparison and storage.
 ///

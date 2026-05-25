@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/flashskyai_cli_locator.dart';
+import 'package:teampilot/services/cli/flashskyai_cli_locator.dart';
 
 void main() {
   test('locate returns native path from PATH lookup', () async {

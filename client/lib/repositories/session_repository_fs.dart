@@ -2,7 +2,7 @@ import 'dart:convert';
 
 import 'package:path/path.dart' as p;
 
-import '../services/app_storage.dart';
+import '../services/storage/app_storage.dart';
 import '../services/io/filesystem.dart';
 
 /// Local or remote file access for [SessionRepository].

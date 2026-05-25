@@ -7,9 +7,9 @@ import 'package:teampilot/cubits/plugin_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/plugin.dart';
 import 'package:teampilot/pages/plugin_management_page.dart';
-import 'package:teampilot/services/app_storage.dart';
+import 'package:teampilot/services/storage/app_storage.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
-import 'package:teampilot/services/runtime_storage_context.dart';
+import 'package:teampilot/services/storage/runtime_storage_context.dart';
 
 void main() {
   late Directory tmp;

@@ -2,14 +2,14 @@ import 'dart:convert';
 import 'dart:io';
 
 import '../models/plugin.dart';
-import '../services/app_storage.dart';
-import '../services/flashskyai_storage_roots.dart';
-import '../services/plugin_fetch_service.dart';
-import '../services/plugin_install_service.dart';
-import '../services/plugin_manifest_service.dart';
-import '../services/plugin_repo_disk_cache_service.dart';
-import '../services/plugin_repo_git_service.dart';
-import '../services/plugin_repo_service.dart';
+import '../services/storage/app_storage.dart';
+import '../services/storage/flashskyai_storage_roots.dart';
+import '../services/plugin/plugin_fetch_service.dart';
+import '../services/plugin/plugin_install_service.dart';
+import '../services/plugin/plugin_manifest_service.dart';
+import '../services/plugin/plugin_repo_disk_cache_service.dart';
+import '../services/plugin/plugin_repo_git_service.dart';
+import '../services/plugin/plugin_repo_service.dart';
 
 class PluginRepository {
   factory PluginRepository({

@@ -6,8 +6,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../models/app_release_info.dart';
-import '../services/app_update_installer.dart';
-import '../services/app_update_service.dart';
+import '../services/app/app_update_installer.dart';
+import '../services/app/app_update_service.dart';
 
 enum AppUpdateStatus {
   idle,

@@ -54,11 +54,11 @@ main.dart
 | Local PTY | Desktop default | `flutter_pty` → `LocalPtyTransport` |
 | SSH | Android always; desktop optional | `dartssh2` → `SshPtyTransport`; remote CLI via `RemoteFlashskyaiCommandBuilder` |
 
-`client/lib/services/terminal_transport_factory.dart`, `terminal_session.dart`.
+`client/lib/services/terminal/terminal_transport_factory.dart`, `terminal_session.dart`.
 
 ### Storage backends
 
-`RuntimeStorageContext` (`client/lib/services/runtime_storage_context.dart`):
+`RuntimeStorageContext` (`client/lib/services/storage/runtime_storage_context.dart`):
 
 | Backend | Filesystem | `cwd` / data root |
 |---------|------------|-------------------|
@@ -66,7 +66,7 @@ main.dart
 | `wsl` | `WslFilesystem` | WSL `$HOME`; app data at `~/.local/share/com.hhoa.teampilot` in distro |
 | `ssh` | `SftpFilesystem` | Remote home + remote TeamPilot app dir |
 
-Access paths via `AppStorage` (`client/lib/services/app_storage.dart`): `AppStorage.paths`, `AppStorage.cwd`, `AppStorage.fs`.
+Access paths via `AppStorage` (`client/lib/services/storage/app_storage.dart`): `AppStorage.paths`, `AppStorage.cwd`, `AppStorage.fs`.
 
 **Default project workspace (`primaryPath`):** `DefaultProjectDirectory.resolve()` → `getApplicationDocumentsDirectory()`. Not `Directory.current`. Set at bootstrap in `app_shell.dart` as `nativeCwd` for `RuntimeStorageContext`.
 
@@ -80,7 +80,7 @@ Access paths via `AppStorage` (`client/lib/services/app_storage.dart`): `AppStor
 | `claude` | yes | `providers/claude/providers.json` |
 | `codex` | no | `providers/codex/providers.json` |
 
-CLI config isolation uses three layers (app → team → member). See `client/lib/services/cli_data_layout.dart` and `SessionLifecycleService`.
+CLI config isolation uses three layers (app → team → member). See `client/lib/services/cli/cli_data_layout.dart` and `SessionLifecycleService`.
 
 ## App data directory layout
 

@@ -5,7 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/repositories/team_repository.dart';
-import 'package:teampilot/services/session_lifecycle_service.dart';
+import 'package:teampilot/services/session/session_lifecycle_service.dart';
 
 class _RecordingLifecycleService extends SessionLifecycleService {
   _RecordingLifecycleService()

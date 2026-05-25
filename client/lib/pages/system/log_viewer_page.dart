@@ -5,8 +5,8 @@ import 'package:flutter/services.dart';
 import 'package:path/path.dart' as p;
 
 import '../../l10n/l10n_extensions.dart';
-import '../../services/app_storage.dart';
-import '../../services/terminal_fonts.dart';
+import '../../services/storage/app_storage.dart';
+import '../../services/terminal/terminal_fonts.dart';
 import '../../utils/debounce/debounce.dart';
 import '../../utils/logger_utils.dart';
 import '../../widgets/dropdown/flashsky_dropdown_field.dart';

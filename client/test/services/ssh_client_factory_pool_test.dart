@@ -6,7 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/ssh_profile.dart';
 import 'package:teampilot/repositories/ssh_credential_store.dart';
 import 'package:teampilot/repositories/ssh_known_host_repository.dart';
-import 'package:teampilot/services/ssh_client_factory.dart';
+import 'package:teampilot/services/ssh/ssh_client_factory.dart';
 
 void main() {
   test('clientFor reuses the same pooled client for one profile', () async {

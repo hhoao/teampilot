@@ -6,9 +6,9 @@ import 'package:uuid/uuid.dart';
 
 import '../models/app_project.dart';
 import '../models/app_session.dart';
-import '../services/app_storage.dart';
-import '../services/flashskyai_storage_roots.dart';
-import '../services/session_lifecycle_service.dart';
+import '../services/storage/app_storage.dart';
+import '../services/storage/flashskyai_storage_roots.dart';
+import '../services/session/session_lifecycle_service.dart';
 import '../utils/project_path_utils.dart';
 import 'session_repository_fs.dart';
 

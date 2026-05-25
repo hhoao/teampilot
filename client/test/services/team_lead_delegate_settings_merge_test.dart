@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/team_lead_delegate_settings_merge.dart';
+import 'package:teampilot/services/team/team_lead_delegate_settings_merge.dart';
 
 void main() {
   group('TeamLeadDelegateSettingsMerge', () {

@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/team_config.dart';
-import 'package:teampilot/services/claude_team_roster_service.dart';
+import 'package:teampilot/services/team/claude_team_roster_service.dart';
 import 'package:teampilot/utils/team_member_naming.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 

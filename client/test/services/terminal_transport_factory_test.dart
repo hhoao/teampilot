@@ -8,9 +8,9 @@ import 'package:teampilot/models/ssh_profile.dart';
 import 'package:teampilot/repositories/ssh_credential_store.dart';
 import 'package:teampilot/repositories/ssh_known_host_repository.dart';
 import 'package:teampilot/repositories/ssh_profile_repository.dart';
-import 'package:teampilot/services/ssh_client_factory.dart';
-import 'package:teampilot/services/terminal_transport.dart';
-import 'package:teampilot/services/terminal_transport_factory.dart';
+import 'package:teampilot/services/ssh/ssh_client_factory.dart';
+import 'package:teampilot/services/terminal/terminal_transport.dart';
+import 'package:teampilot/services/terminal/terminal_transport_factory.dart';
 
 class _FakeTransport implements TerminalTransport {
   final doneCompleter = Completer<int>();

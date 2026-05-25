@@ -1,4 +1,4 @@
-import 'package:teampilot/services/flashskyai_agent_catalog_service.dart';
+import 'package:teampilot/services/app/flashskyai_agent_catalog_service.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

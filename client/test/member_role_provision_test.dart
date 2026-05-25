@@ -2,7 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
-import 'package:teampilot/services/member_role_provision.dart';
+import 'package:teampilot/services/session/member_role_provision.dart';
 
 void main() {
   test('syncRolePromptFile writes and removes role.md', () async {

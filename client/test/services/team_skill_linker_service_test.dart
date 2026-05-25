@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:teampilot/models/skill.dart';
-import 'package:teampilot/services/team_skill_linker_service.dart';
+import 'package:teampilot/services/skill/team_skill_linker_service.dart';
 
 Skill _skill(String id, String directory) => Skill(
   id: id,

@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/repositories/session_repository.dart';
-import 'package:teampilot/services/session_lifecycle_service.dart';
+import 'package:teampilot/services/session/session_lifecycle_service.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 class _RecordingLifecycleService extends SessionLifecycleService {

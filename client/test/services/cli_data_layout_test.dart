@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
-import 'package:teampilot/services/cli_data_layout.dart';
+import 'package:teampilot/services/cli/cli_data_layout.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 
 import '../support/in_memory_filesystem.dart';

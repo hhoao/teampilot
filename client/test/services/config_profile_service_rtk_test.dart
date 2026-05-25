@@ -4,12 +4,12 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:teampilot/models/team_config.dart';
-import 'package:teampilot/services/app_storage.dart';
-import 'package:teampilot/services/cli_data_layout.dart';
-import 'package:teampilot/services/config_profile_service.dart';
+import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/cli/cli_data_layout.dart';
+import 'package:teampilot/services/provider/config_profile_service.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
-import 'package:teampilot/services/rtk_detector.dart';
-import 'package:teampilot/services/rtk_hook_provisioner.dart';
+import 'package:teampilot/services/team/rtk_detector.dart';
+import 'package:teampilot/services/team/rtk_hook_provisioner.dart';
 
 void main() {
   group('ConfigProfileService RTK', () {

@@ -7,11 +7,11 @@ import '../models/llm_config.dart';
 import '../models/ssh_profile.dart';
 import '../repositories/app_settings_repository.dart';
 import '../repositories/llm_config_store.dart';
-import '../services/app_storage.dart';
-import '../services/llm_config_path_resolver.dart';
-import '../services/remote_file_store.dart';
-import '../services/remote_home_resolver.dart';
-import '../services/ssh_client_factory.dart';
+import '../services/storage/app_storage.dart';
+import '../services/provider/llm_config_path_resolver.dart';
+import '../services/storage/remote_file_store.dart';
+import '../services/storage/remote_home_resolver.dart';
+import '../services/ssh/ssh_client_factory.dart';
 import '../utils/logger.dart';
 
 class LlmConfigState extends Equatable {

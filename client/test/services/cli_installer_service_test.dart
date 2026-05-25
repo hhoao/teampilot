@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/ssh_profile.dart';
 import 'package:teampilot/models/team_config.dart';
-import 'package:teampilot/services/cli_installer_service.dart';
+import 'package:teampilot/services/cli/cli_installer_service.dart';
 
 void main() {
   test('installs Claude Code locally with npm and resolves the executable', () async {

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../l10n/l10n_extensions.dart';
-import '../services/cli_installer_service.dart';
+import '../services/cli/cli_installer_service.dart';
 import 'settings/workspace_settings_widgets.dart';
 
 class CliInstallProgressPanel extends StatelessWidget {

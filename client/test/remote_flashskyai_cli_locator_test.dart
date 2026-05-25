@@ -1,8 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/repositories/ssh_credential_store.dart';
 import 'package:teampilot/repositories/ssh_known_host_repository.dart';
-import 'package:teampilot/services/remote_flashskyai_cli_locator.dart';
-import 'package:teampilot/services/ssh_client_factory.dart';
+import 'package:teampilot/services/cli/remote_flashskyai_cli_locator.dart';
+import 'package:teampilot/services/ssh/ssh_client_factory.dart';
 
 void main() {
   final locator = RemoteFlashskyaiCliLocator(

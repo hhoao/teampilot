@@ -1,8 +1,8 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/cli_tool_locator.dart';
-import 'package:teampilot/services/skill_repo_git_service.dart';
+import 'package:teampilot/services/cli/cli_tool_locator.dart';
+import 'package:teampilot/services/skill/skill_repo_git_service.dart';
 
 void main() {
   group('SkillRepoGitService', () {

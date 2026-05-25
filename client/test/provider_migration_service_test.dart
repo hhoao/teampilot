@@ -6,11 +6,11 @@ import 'package:path/path.dart' as p;
 import 'package:sqlite3/sqlite3.dart';
 import 'package:teampilot/models/app_provider_config.dart';
 import 'package:teampilot/repositories/app_provider_repository.dart';
-import 'package:teampilot/services/app_storage.dart';
+import 'package:teampilot/services/storage/app_storage.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
-import 'package:teampilot/services/provider_import_service.dart';
-import 'package:teampilot/services/provider_migration_service.dart';
-import 'package:teampilot/services/runtime_storage_context.dart';
+import 'package:teampilot/services/provider/provider_import_service.dart';
+import 'package:teampilot/services/provider/provider_migration_service.dart';
+import 'package:teampilot/services/storage/runtime_storage_context.dart';
 
 void main() {
   late Directory root;

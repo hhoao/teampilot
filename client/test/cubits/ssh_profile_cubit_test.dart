@@ -5,8 +5,8 @@ import 'package:teampilot/cubits/ssh_profile_cubit.dart';
 import 'package:teampilot/models/ssh_profile.dart';
 import 'package:teampilot/repositories/ssh_credential_store.dart';
 import 'package:teampilot/repositories/ssh_profile_repository.dart';
-import 'package:teampilot/services/app_storage.dart';
-import 'package:teampilot/services/runtime_storage_context.dart';
+import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/storage/runtime_storage_context.dart';
 
 void main() {
   test('selected SSH profile persists across cubit reloads', () async {

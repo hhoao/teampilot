@@ -5,11 +5,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:teampilot/models/plugin.dart';
 import 'package:teampilot/models/team_config.dart';
-import 'package:teampilot/services/app_storage.dart';
-import 'package:teampilot/services/cli_data_layout.dart';
-import 'package:teampilot/services/cli_plugin_registry_service.dart';
+import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/cli/cli_data_layout.dart';
+import 'package:teampilot/services/plugin/cli_plugin_registry_service.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
-import 'package:teampilot/services/runtime_storage_context.dart';
+import 'package:teampilot/services/storage/runtime_storage_context.dart';
 
 void main() {
   late Directory base;

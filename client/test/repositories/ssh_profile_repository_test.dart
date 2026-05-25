@@ -3,8 +3,8 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/ssh_profile.dart';
 import 'package:teampilot/repositories/ssh_profile_repository.dart';
-import 'package:teampilot/services/app_storage.dart';
-import 'package:teampilot/services/runtime_storage_context.dart';
+import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/storage/runtime_storage_context.dart';
 
 void main() {
   test('load follows RuntimeStorageContext when rootDir is not overridden', () async {

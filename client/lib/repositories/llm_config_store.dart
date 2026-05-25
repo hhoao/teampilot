@@ -3,9 +3,9 @@ import 'dart:convert';
 import 'package:path/path.dart' as p;
 
 import '../models/llm_config.dart';
-import '../services/app_storage.dart';
+import '../services/storage/app_storage.dart';
 import '../services/io/filesystem.dart';
-import '../services/remote_file_store.dart';
+import '../services/storage/remote_file_store.dart';
 
 /// Reads and writes [LlmConfig] from a local file or a remote path over SFTP.
 abstract class LlmConfigStore {

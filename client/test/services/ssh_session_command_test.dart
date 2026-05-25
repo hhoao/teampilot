@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/remote_flashskyai_command_builder.dart';
-import 'package:teampilot/services/ssh_pty_transport.dart';
+import 'package:teampilot/services/session/remote_flashskyai_command_builder.dart';
+import 'package:teampilot/services/terminal/ssh_pty_transport.dart';
 
 void main() {
   test('remote resume command uses flashskyai resume argument shape', () {

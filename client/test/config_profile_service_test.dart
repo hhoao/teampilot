@@ -4,15 +4,15 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:teampilot/models/team_config.dart';
-import 'package:teampilot/services/claude_hook_shell.dart';
-import 'package:teampilot/services/cli_data_layout.dart';
-import 'package:teampilot/services/config_profile_service.dart';
+import 'package:teampilot/services/team/claude_hook_shell.dart';
+import 'package:teampilot/services/cli/cli_data_layout.dart';
+import 'package:teampilot/services/provider/config_profile_service.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
-import 'package:teampilot/services/member_role_provision.dart';
-import 'package:teampilot/services/team_lead_delegate_hook_provisioner.dart';
-import 'package:teampilot/services/team_lead_delegate_settings_merge.dart';
-import 'package:teampilot/services/team_lead_hook_provisioner.dart';
-import 'package:teampilot/services/team_lead_settings_merge.dart';
+import 'package:teampilot/services/session/member_role_provision.dart';
+import 'package:teampilot/services/team/team_lead_delegate_hook_provisioner.dart';
+import 'package:teampilot/services/team/team_lead_delegate_settings_merge.dart';
+import 'package:teampilot/services/team/team_lead_hook_provisioner.dart';
+import 'package:teampilot/services/team/team_lead_settings_merge.dart';
 
 String _sessionClaudeDir(String base, String teamId, String sessionId) =>
     p.join(

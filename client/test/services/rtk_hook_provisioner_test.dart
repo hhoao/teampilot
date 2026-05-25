@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/rtk_hook_provisioner.dart';
+import 'package:teampilot/services/team/rtk_hook_provisioner.dart';
 import '../support/in_memory_filesystem.dart';
 
 void main() {

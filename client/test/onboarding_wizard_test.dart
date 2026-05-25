@@ -10,8 +10,8 @@ import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/pages/onboarding/onboarding_wizard.dart';
 import 'package:teampilot/repositories/app_settings_repository.dart';
 import 'package:teampilot/repositories/team_repository.dart';
-import 'package:teampilot/services/onboarding_service.dart';
-import 'package:teampilot/services/team_plugin_linker_service.dart';
+import 'package:teampilot/services/app/onboarding_service.dart';
+import 'package:teampilot/services/plugin/team_plugin_linker_service.dart';
 
 class _NoopPluginLinker extends TeamPluginLinkerService {
   _NoopPluginLinker() : super(appPluginsRoot: '/tmp');

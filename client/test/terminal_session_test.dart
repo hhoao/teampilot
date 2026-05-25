@@ -3,8 +3,8 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
-import 'package:teampilot/services/terminal_session.dart';
-import 'package:teampilot/services/terminal_transport.dart';
+import 'package:teampilot/services/terminal/terminal_session.dart';
+import 'package:teampilot/services/terminal/terminal_transport.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:flutter_test/flutter_test.dart';
 

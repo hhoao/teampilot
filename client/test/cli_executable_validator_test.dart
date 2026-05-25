@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/cli_executable_validator.dart';
+import 'package:teampilot/services/cli/cli_executable_validator.dart';
 
 void main() {
   test('returns null for bare executable name on PATH', () {

@@ -483,7 +483,7 @@
   "appProviderToolFlashskyai": "FlashskyAI",
   "appProviderToolCodex": "Codex",
   "appProviderToolClaude": "Claude Code",
-  "appProviderTeamToolSection": "团队工具服务商",
+  "appProviderTeamToolSection": "团队默认服务商",
   "appProviderTeamToolSubtitle": "选择本团队启动时，各工具使用的统一服务商。",
   "appProviderTeamNone": "无",
   "appProviderClaudeApiFormat": "API 格式",

@@ -6,7 +6,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../cubits/app_provider_cubit.dart';
 import '../../cubits/team_cubit.dart';
 import '../../repositories/app_settings_repository.dart';
-import '../../services/onboarding_service.dart';
+import '../../services/app/onboarding_service.dart';
 import '../../theme/workspace_surface_layers.dart';
 import 'onboarding_wizard.dart';
 

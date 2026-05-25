@@ -1,8 +1,7 @@
 import 'dart:typed_data';
-
 import 'package:path/path.dart' as p;
 
-import '../remote_file_store.dart';
+import '../storage/remote_file_store.dart';
 import 'filesystem.dart';
 
 class SftpFilesystem implements Filesystem {

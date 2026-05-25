@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/rtk_detector.dart';
+import 'package:teampilot/services/team/rtk_detector.dart';
 
 void main() {
   group('RtkDetector', () {

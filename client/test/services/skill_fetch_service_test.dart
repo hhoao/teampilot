@@ -2,7 +2,7 @@ import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/skill.dart';
-import 'package:teampilot/services/skill_fetch_service.dart';
+import 'package:teampilot/services/skill/skill_fetch_service.dart';
 
 void main() {
   group('parseSkillFrontmatter', () {

@@ -2,7 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/provider_presets/claude_provider_presets.dart';
 import 'package:teampilot/models/provider_presets/codex_provider_presets.dart';
 import 'package:teampilot/models/provider_presets/flashskyai_provider_presets.dart';
-import 'package:teampilot/services/tool_config_generator.dart';
+import 'package:teampilot/services/provider/tool_config_generator.dart';
 
 void main() {
   test('CCSwitch claude and codex preset counts are preserved', () {

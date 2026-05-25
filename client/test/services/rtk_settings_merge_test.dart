@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/rtk_settings_merge.dart';
+import 'package:teampilot/services/team/rtk_settings_merge.dart';
 
 void main() {
   group('RtkSettingsMerge', () {

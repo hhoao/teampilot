@@ -1,10 +1,9 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
-
 import 'package:path/path.dart' as p;
 
-import '../remote_file_store.dart';
+import '../storage/remote_file_store.dart';
 import 'filesystem.dart';
 
 typedef ProcessRunner =

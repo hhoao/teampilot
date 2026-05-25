@@ -1,10 +1,10 @@
 import 'dart:convert';
 
 import '../models/team_config.dart';
-import '../services/app_storage.dart';
-import '../services/flashskyai_storage_roots.dart';
+import '../services/storage/app_storage.dart';
+import '../services/storage/flashskyai_storage_roots.dart';
 import '../services/io/filesystem.dart';
-import '../services/session_lifecycle_service.dart';
+import '../services/session/session_lifecycle_service.dart';
 
 /// Persists [TeamConfig] objects in TeamPilot's own metadata directory.
 ///

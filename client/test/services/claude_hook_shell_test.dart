@@ -1,8 +1,8 @@
 import 'dart:io' show Platform;
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/claude_hook_shell.dart';
-import 'package:teampilot/services/runtime_storage_context.dart';
+import 'package:teampilot/services/team/claude_hook_shell.dart';
+import 'package:teampilot/services/storage/runtime_storage_context.dart';
 
 void main() {
   test('hookCommandForPath uses bash or powershell', () {

@@ -1,12 +1,12 @@
 import 'dart:io';
 
 import '../models/skill.dart';
-import '../services/skill_fetch_service.dart';
-import '../services/skill_install_service.dart';
-import '../services/skill_manifest_service.dart';
-import '../services/skill_repo_disk_cache_service.dart';
-import '../services/skill_repo_service.dart';
-import '../services/skills_sh_service.dart';
+import '../services/skill/skill_fetch_service.dart';
+import '../services/skill/skill_install_service.dart';
+import '../services/skill/skill_manifest_service.dart';
+import '../services/skill/skill_repo_disk_cache_service.dart';
+import '../services/skill/skill_repo_service.dart';
+import '../services/skill/skills_sh_service.dart';
 
 class SkillRepository {
   factory SkillRepository({

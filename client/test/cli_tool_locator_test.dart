@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/cli_tool_locator.dart';
+import 'package:teampilot/services/cli/cli_tool_locator.dart';
 
 void main() {
   test('locate returns native path from PATH lookup', () async {

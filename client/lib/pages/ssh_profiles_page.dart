@@ -5,8 +5,8 @@ import '../cubits/ssh_profile_cubit.dart';
 import '../models/ssh_profile.dart';
 import '../repositories/ssh_credential_store.dart';
 import '../repositories/ssh_profile_repository.dart';
-import '../services/ssh_profile_connection_tester.dart';
-import '../services/terminal_transport_factory.dart';
+import '../services/ssh/ssh_profile_connection_tester.dart';
+import '../services/terminal/terminal_transport_factory.dart';
 import 'ssh_profile_setup_page.dart';
 
 class SshProfilesPage extends StatelessWidget {

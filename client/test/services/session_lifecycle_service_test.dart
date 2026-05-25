@@ -6,10 +6,10 @@ import 'package:path/path.dart' as p;
 import 'package:teampilot/models/app_provider_config.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/team_config.dart';
-import 'package:teampilot/services/cli_data_layout.dart';
-import 'package:teampilot/services/config_profile_service.dart';
-import 'package:teampilot/services/flashskyai_storage_roots.dart';
-import 'package:teampilot/services/session_lifecycle_service.dart';
+import 'package:teampilot/services/cli/cli_data_layout.dart';
+import 'package:teampilot/services/provider/config_profile_service.dart';
+import 'package:teampilot/services/storage/flashskyai_storage_roots.dart';
+import 'package:teampilot/services/session/session_lifecycle_service.dart';
 
 import '../support/post_frame_test_harness.dart';
 

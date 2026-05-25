@@ -1,6 +1,6 @@
 import 'dart:io';
 import 'package:teampilot/models/plugin.dart';
-import 'package:teampilot/services/plugin_repo_disk_cache_service.dart';
+import 'package:teampilot/services/plugin/plugin_repo_disk_cache_service.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 

@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import 'package:teampilot/models/skill.dart';
-import 'package:teampilot/services/skill_manifest_service.dart';
+import 'package:teampilot/services/skill/skill_manifest_service.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

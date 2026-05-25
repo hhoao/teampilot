@@ -1,5 +1,6 @@
 import 'package:path/path.dart' as p;
 
+
 enum FsEntityKind { file, directory, symlink, notFound }
 
 class FsStat {

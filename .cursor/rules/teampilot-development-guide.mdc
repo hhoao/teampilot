@@ -76,12 +76,12 @@ CI: `.github/workflows/client-verify.yml` (analyze + unit tests on Linux/Windows
 | Chat / sessions | `client/lib/cubits/chat_cubit.dart` |
 | Sessions persistence | `client/lib/repositories/session_repository.dart` |
 | Teams | `client/lib/repositories/team_repository.dart`, `client/lib/cubits/team_cubit.dart` |
-| Launch plan | `client/lib/services/session_lifecycle_service.dart` |
-| PTY + xterm | `client/lib/services/terminal_session.dart` |
-| Launch args / WSL paths | `client/lib/services/launch_command_builder.dart` |
-| Paths / Documents default | `client/lib/services/app_storage.dart` |
-| Storage backend switch | `client/lib/services/runtime_storage_context.dart` |
-| CLI directory layout | `client/lib/services/cli_data_layout.dart` |
+| Launch plan | `client/lib/services/session/session_lifecycle_service.dart` |
+| PTY + xterm | `client/lib/services/terminal/terminal_session.dart` |
+| Launch args / WSL paths | `client/lib/services/session/launch_command_builder.dart` |
+| Paths / Documents default | `client/lib/services/storage/app_storage.dart` |
+| Storage backend switch | `client/lib/services/storage/runtime_storage_context.dart` |
+| CLI directory layout | `client/lib/services/cli/cli_data_layout.dart` |
 | Session title from prompt | `client/lib/utils/first_user_line_capture.dart`, `session_display_title.dart` |
 
 ## Routes (summary)

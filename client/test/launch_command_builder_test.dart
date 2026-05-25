@@ -1,8 +1,8 @@
 import 'dart:io';
 
-import 'package:teampilot/services/launch_command_builder.dart';
-import 'package:teampilot/services/config_profile_service.dart';
-import 'package:teampilot/services/member_role_provision.dart';
+import 'package:teampilot/services/session/launch_command_builder.dart';
+import 'package:teampilot/services/provider/config_profile_service.dart';
+import 'package:teampilot/services/session/member_role_provision.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:flutter_test/flutter_test.dart';
 

@@ -6,9 +6,9 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../models/skill.dart';
 import '../repositories/skill_repository.dart';
-import '../services/skill_fetch_service.dart';
-import '../services/skill_install_service.dart';
-import '../services/skill_repo_disk_cache_service.dart';
+import '../services/skill/skill_fetch_service.dart';
+import '../services/skill/skill_install_service.dart';
+import '../services/skill/skill_repo_disk_cache_service.dart';
 import '../utils/logger.dart';
 
 enum SkillLoadStatus { idle, loading, ready, error }

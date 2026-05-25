@@ -7,8 +7,8 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_pty/flutter_pty.dart';
-import 'package:teampilot/services/pty_launch_environment.dart';
-import 'package:teampilot/services/terminal_session.dart';
+import 'package:teampilot/services/terminal/pty_launch_environment.dart';
+import 'package:teampilot/services/terminal/terminal_session.dart';
 
 /// Probes Claude Code link output under [TerminalSession.buildPtyEnvironment].
 ///

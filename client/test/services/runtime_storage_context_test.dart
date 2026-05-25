@@ -2,8 +2,8 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/windows_storage_backend.dart';
-import 'package:teampilot/services/app_storage.dart';
-import 'package:teampilot/services/runtime_storage_context.dart';
+import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/storage/runtime_storage_context.dart';
 
 void main() {
   group('WindowsStorageBackendJson', () {

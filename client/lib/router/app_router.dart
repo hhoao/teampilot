@@ -21,7 +21,7 @@ import '../pages/ssh_profiles_page.dart';
 import '../pages/team_config_page.dart';
 import '../widgets/android_ssh_profile_selector.dart';
 import '../repositories/session_repository.dart';
-import '../services/platform_utils.dart';
+import '../services/app/platform_utils.dart';
 import 'android_shell_chrome.dart';
 import '../widgets/context_sidebar.dart';
 import '../widgets/create_project_dialog.dart';

@@ -7,9 +7,9 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:teampilot/l10n/l10n_extensions.dart';
 import 'package:teampilot/models/app_models.dart';
 import 'package:teampilot/router/app_router.dart';
-import 'package:teampilot/services/app_update_installer.dart';
-import 'package:teampilot/services/app_update_service.dart';
-import 'package:teampilot/services/backend_app_update_service.dart';
+import 'package:teampilot/services/app/app_update_installer.dart';
+import 'package:teampilot/services/app/app_update_service.dart';
+import 'package:teampilot/services/app/backend_app_update_service.dart';
 import 'package:teampilot/utils/changelog_parser.dart';
 import 'package:url_launcher/url_launcher.dart';
 

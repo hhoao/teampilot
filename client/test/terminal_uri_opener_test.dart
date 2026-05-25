@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/terminal_uri_opener.dart';
+import 'package:teampilot/services/terminal/terminal_uri_opener.dart';
 
 void main() {
   group('TerminalUriOpener.fixup', () {

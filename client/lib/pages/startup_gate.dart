@@ -3,11 +3,11 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../cubits/session_preferences_cubit.dart';
 import '../cubits/ssh_profile_cubit.dart';
-import '../services/connection_mode_service.dart';
+import '../services/app/connection_mode_service.dart';
 import '../repositories/ssh_credential_store.dart';
 import '../repositories/ssh_profile_repository.dart';
-import '../services/ssh_profile_connection_tester.dart';
-import '../services/terminal_transport_factory.dart';
+import '../services/ssh/ssh_profile_connection_tester.dart';
+import '../services/terminal/terminal_transport_factory.dart';
 import 'ssh_profile_setup_page.dart';
 
 class StartupGate extends StatelessWidget {

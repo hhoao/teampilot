@@ -1474,7 +1474,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get appProviderToolClaude => 'Claude Code';
 
   @override
-  String get appProviderTeamToolSection => '团队工具服务商';
+  String get appProviderTeamToolSection => '团队默认服务商';
 
   @override
   String get appProviderTeamToolSubtitle => '选择本团队启动时，各工具使用的统一服务商。';

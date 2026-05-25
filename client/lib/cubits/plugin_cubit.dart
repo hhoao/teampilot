@@ -7,11 +7,11 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../models/plugin.dart';
 import '../repositories/plugin_repository.dart';
-import '../services/plugin_install_service.dart';
-import '../services/flashskyai_storage_roots.dart';
-import '../services/plugin_external_fetch_service.dart';
-import '../services/plugin_repo_disk_cache_service.dart';
-import '../services/plugin_repo_service.dart';
+import '../services/plugin/plugin_install_service.dart';
+import '../services/storage/flashskyai_storage_roots.dart';
+import '../services/plugin/plugin_external_fetch_service.dart';
+import '../services/plugin/plugin_repo_disk_cache_service.dart';
+import '../services/plugin/plugin_repo_service.dart';
 import '../utils/logger.dart';
 
 enum PluginLoadStatus { idle, loading, ready, error }

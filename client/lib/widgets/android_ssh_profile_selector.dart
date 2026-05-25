@@ -6,7 +6,7 @@ import '../cubits/session_preferences_cubit.dart';
 import '../cubits/ssh_profile_cubit.dart';
 import '../l10n/l10n_extensions.dart';
 import '../models/ssh_profile.dart';
-import '../services/connection_mode_service.dart';
+import '../services/app/connection_mode_service.dart';
 
 /// Android app-bar control: shows the active SSH server and switches profiles.
 class AndroidSshProfileSelector extends StatelessWidget {

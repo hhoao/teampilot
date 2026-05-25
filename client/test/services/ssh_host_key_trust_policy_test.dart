@@ -3,7 +3,7 @@ import 'dart:typed_data';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/ssh_profile.dart';
 import 'package:teampilot/repositories/ssh_known_host_repository.dart';
-import 'package:teampilot/services/ssh_client_factory.dart';
+import 'package:teampilot/services/ssh/ssh_client_factory.dart';
 
 void main() {
   const profile = SshProfile(

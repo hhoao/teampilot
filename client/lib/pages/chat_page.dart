@@ -9,7 +9,7 @@ import '../cubits/team_cubit.dart';
 import '../l10n/l10n_extensions.dart';
 import '../models/layout_preferences.dart';
 import '../models/team_config.dart';
-import '../services/platform_utils.dart';
+import '../services/app/platform_utils.dart';
 import '../utils/app_keys.dart';
 import '../utils/debounce/debounce.dart';
 import '../widgets/right_tools_panel.dart';

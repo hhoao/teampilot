@@ -7,7 +7,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_pty/flutter_pty.dart';
-import 'package:teampilot/services/terminal_session.dart';
+import 'package:teampilot/services/terminal/terminal_session.dart';
 
 /// Fixed ConPTY probes. Compare with TeamPilot app spawn (uses [TerminalSession.buildPtyEnvironment]).
 ///

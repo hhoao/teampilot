@@ -9,7 +9,7 @@ import '../models/llm_config.dart';
 import '../cubits/app_provider_cubit.dart';
 import '../cubits/llm_config_cubit.dart';
 import '../models/app_provider_config.dart';
-import '../services/platform_utils.dart';
+import '../services/app/platform_utils.dart';
 import '../theme/workspace_surface_layers.dart';
 import '../widgets/app_provider/app_provider_detail_panel.dart';
 import '../widgets/app_provider/app_provider_form_sheet.dart';

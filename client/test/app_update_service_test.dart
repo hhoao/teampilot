@@ -7,8 +7,8 @@ import 'package:http/testing.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:pub_semver/pub_semver.dart';
 import 'package:teampilot/models/app_release_info.dart';
-import 'package:teampilot/services/app_update_asset_selector.dart';
-import 'package:teampilot/services/app_update_service.dart';
+import 'package:teampilot/services/app/app_update_asset_selector.dart';
+import 'package:teampilot/services/app/app_update_service.dart';
 
 void main() {
   group('parseReleaseVersionFromTag', () {

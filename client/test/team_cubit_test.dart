@@ -7,13 +7,13 @@ import 'package:teampilot/models/plugin.dart';
 import 'package:teampilot/models/skill.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/repositories/team_repository.dart';
-import 'package:teampilot/services/app_storage.dart';
-import 'package:teampilot/services/config_profile_service.dart';
+import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/provider/config_profile_service.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
-import 'package:teampilot/services/runtime_storage_context.dart';
-import 'package:teampilot/services/session_lifecycle_service.dart';
-import 'package:teampilot/services/team_plugin_linker_service.dart';
-import 'package:teampilot/services/team_skill_linker_service.dart';
+import 'package:teampilot/services/storage/runtime_storage_context.dart';
+import 'package:teampilot/services/session/session_lifecycle_service.dart';
+import 'package:teampilot/services/plugin/team_plugin_linker_service.dart';
+import 'package:teampilot/services/skill/team_skill_linker_service.dart';
 
 Skill _skill(String id) => Skill(
   id: id,

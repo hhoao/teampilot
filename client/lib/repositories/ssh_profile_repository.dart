@@ -1,7 +1,7 @@
 import 'dart:convert';
 
 import '../models/ssh_profile.dart';
-import '../services/app_storage.dart';
+import '../services/storage/app_storage.dart';
 import '../services/io/filesystem.dart';
 
 class SshProfileRepository {

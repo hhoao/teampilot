@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/app_models.dart';
-import 'package:teampilot/services/backend_app_update_service.dart';
+import 'package:teampilot/services/app/backend_app_update_service.dart';
 
 void main() {
   group('BackendAppUpdateService.suggestedPackageFileName', () {

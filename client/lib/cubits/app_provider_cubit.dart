@@ -5,10 +5,10 @@ import '../models/app_provider_config.dart';
 import '../models/claude_credential_link_result.dart';
 import '../models/llm_config.dart';
 import '../repositories/app_provider_repository.dart';
-import '../services/app_storage.dart';
-import '../services/claude_provider_credentials_service.dart';
-import '../services/provider_import_service.dart';
-import '../services/tool_config_generator.dart';
+import '../services/storage/app_storage.dart';
+import '../services/provider/claude_provider_credentials_service.dart';
+import '../services/provider/provider_import_service.dart';
+import '../services/provider/tool_config_generator.dart';
 
 class AppProviderState extends Equatable {
   const AppProviderState({

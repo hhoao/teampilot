@@ -1,9 +1,9 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/app_update_asset_selector.dart';
-import 'package:teampilot/services/app_update_installer.dart';
-import 'package:teampilot/services/app_update_service.dart';
+import 'package:teampilot/services/app/app_update_asset_selector.dart';
+import 'package:teampilot/services/app/app_update_installer.dart';
+import 'package:teampilot/services/app/app_update_service.dart';
 
 void main() {
   group('AppUpdateInstaller', () {

@@ -4,7 +4,7 @@ import 'package:uuid/uuid.dart';
 import '../models/ssh_profile.dart';
 import '../repositories/ssh_credential_store.dart';
 import '../repositories/ssh_profile_repository.dart';
-import '../services/ssh_profile_connection_tester.dart';
+import '../services/ssh/ssh_profile_connection_tester.dart';
 
 class SshProfileSetupPage extends StatefulWidget {
   const SshProfileSetupPage({

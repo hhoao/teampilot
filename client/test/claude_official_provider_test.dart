@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/app_provider_config.dart';
-import 'package:teampilot/services/claude_official_provider.dart';
+import 'package:teampilot/services/provider/claude_official_provider.dart';
 
 void main() {
   test('official provider with empty env', () {
