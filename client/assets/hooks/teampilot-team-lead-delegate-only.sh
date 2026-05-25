@@ -11,14 +11,14 @@ INPUT=$(cat)
 TOOL=$(jq -r '.tool_name // empty' <<<"$INPUT")
 
 # Keep in sync with TeamLeadDelegateSettingsMerge.blockedToolsMatcher in Dart.
-BLOCKED_RE='^(Bash|Read|Edit|Write|Glob|Grep|NotebookEdit|PowerShell)$'
+BLOCKED_RE='^(Bash|Edit|Write|NotebookEdit|PowerShell|Skill|ExecuteExtraTool|REPL|workflow|EnterWorktree|ExitWorktree|RemoteTrigger|CronCreate)$'
 
 if [[ "$TOOL" =~ $BLOCKED_RE ]]; then
   jq -nc --arg tool "$TOOL" '{
     "hookSpecificOutput": {
       "hookEventName": "PreToolUse",
       "permissionDecision": "deny",
-      "permissionDecisionReason": ("Team lead delegate-only mode is on: " + $tool + " is disabled in this tab. Plan here; assign via SendMessage to roster teammate names and the shared task list (TaskCreate/TaskUpdate). Teammates run Bash/Read/Edit/Write.")
+      "permissionDecisionReason": ("Team lead delegate-only mode is on: " + $tool + " is disabled in this tab. Plan here; assign via SendMessage to roster teammate names and the shared task list (TaskCreate/TaskUpdate).")
     }
   }'
   exit 0

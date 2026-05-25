@@ -176,11 +176,11 @@ class TeamConfig {
     this.claudeTeammateMode = 'in-process',
     this.claudeEffortLevel = 'xhigh',
     this.autoLaunchMembers,
-    this.forceTeamLeadDelegateMode = false,
+    this.forceTeamLeadDelegateMode = true,
   });
 
   static bool decodeForceTeamLeadDelegateMode(Object? raw) {
-    if (raw == null) return false;
+    if (raw == null) return true;
     if (raw is bool) return raw;
     if (raw is String) {
       return raw.trim().toLowerCase() == 'true';
@@ -336,7 +336,7 @@ class TeamConfig {
           ? autoLaunchMembers
           : this.autoLaunchMembers,
       forceTeamLeadDelegateMode: updateForceTeamLeadDelegateMode
-          ? (forceTeamLeadDelegateMode ?? false)
+          ? (forceTeamLeadDelegateMode ?? true)
           : this.forceTeamLeadDelegateMode,
     );
   }

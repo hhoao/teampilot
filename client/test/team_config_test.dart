@@ -69,16 +69,16 @@ void main() {
   });
 
   test('decodeForceTeamLeadDelegateMode accepts bool and string', () {
-    expect(TeamConfig.decodeForceTeamLeadDelegateMode(null), isFalse);
+    expect(TeamConfig.decodeForceTeamLeadDelegateMode(null), isTrue);
     expect(TeamConfig.decodeForceTeamLeadDelegateMode(true), isTrue);
     expect(TeamConfig.decodeForceTeamLeadDelegateMode('true'), isTrue);
     expect(TeamConfig.decodeForceTeamLeadDelegateMode(false), isFalse);
   });
 
   test('toJson omits forceTeamLeadDelegateMode when false', () {
-    const team = TeamConfig(id: 't', name: 'n', forceTeamLeadDelegateMode: true);
+    const team = TeamConfig(id: 't', name: 'n');
     expect(team.toJson()['forceTeamLeadDelegateMode'], isTrue);
-    const off = TeamConfig(id: 't', name: 'n');
+    const off = TeamConfig(id: 't', name: 'n', forceTeamLeadDelegateMode: false);
     expect(off.toJson().containsKey('forceTeamLeadDelegateMode'), isFalse);
   });
 

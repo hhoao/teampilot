@@ -76,10 +76,11 @@ void main() {
     }
   });
 
-  test('applyTeamSessionPolicy denies TeamCreate for all members', () {
+  test('applyTeamSessionPolicy denies TeamCreate and TeamDelete for all members', () {
     final settings = MemberRoleProvision.applyTeamSessionPolicy(const {});
     final deny = settings['permissions']! as Map;
     expect(deny['deny'], contains('TeamCreate'));
+    expect(deny['deny'], contains('TeamDelete'));
     expect(deny['deny'], isNot(contains('Bash')));
     expect(deny['deny'], isNot(contains('Edit')));
   });

@@ -8,7 +8,7 @@ class TeamLeadDelegateSettingsMerge {
 
   /// Pipe-separated PreToolUse matcher (Claude Code hook syntax).
   static const blockedToolsMatcher =
-      'Bash|Read|Edit|Write|Glob|Grep|NotebookEdit|PowerShell';
+      'Bash|Edit|Write|NotebookEdit|PowerShell|Skill|ExecuteExtraTool|REPL|workflow|EnterWorktree|ExitWorktree|RemoteTrigger|CronCreate';
 
   Map<String, Object?> mergeIntoSettings({
     required Map<String, Object?> base,

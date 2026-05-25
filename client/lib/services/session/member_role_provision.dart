@@ -20,7 +20,7 @@ abstract final class MemberRoleProvision {
   static const rolePromptFileName = 'role.md';
 
   /// Denied for every Claude team member — roster is provisioned by TeamPilot.
-  static const teamSessionDenyTools = <String>['TeamCreate'];
+  static const teamSessionDenyTools = <String>['TeamCreate', 'TeamDelete'];
 
   /// Appended to every team-lead [role.md] (identity and team layout).
   static const teamLeadRoleAddendum = '''
@@ -47,7 +47,7 @@ You are the **team lead** (display name: `team-lead`). You run in the leader ses
   static const teamLeadDelegateModeAddendum = '''
 ## Delegate-only mode (enforced)
 
-This tab is **plan-and-assign only**: Bash, Read, Edit, Write, Glob, Grep, NotebookEdit, PowerShell, and Agent are blocked here. Use SendMessage and the task list (TaskCreate/TaskUpdate) so teammate tabs execute local work.
+This tab is **plan-and-assign only**: Bash, PowerShell, Edit, Write, NotebookEdit, Skill, ExecuteExtraTool, REPL, workflow, EnterWorktree, ExitWorktree, RemoteTrigger, CronCreate, and Agent are blocked here. Use Read/Glob/Grep to inspect the repo; use SendMessage and the task list (TaskCreate/TaskUpdate) so teammate tabs execute local work.
 
 ''';
 
