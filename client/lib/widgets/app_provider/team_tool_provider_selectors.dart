@@ -7,6 +7,7 @@ import '../../models/app_provider_config.dart';
 import '../../models/team_config.dart';
 import '../dropdown/flashsky_dropdown_field.dart';
 import '../dropdown/flashskyai_dropdown_decoration.dart';
+import '../settings/workspace_settings_widgets.dart';
 
 class TeamToolProviderSelectors extends StatelessWidget {
   const TeamToolProviderSelectors({
@@ -25,40 +26,41 @@ class TeamToolProviderSelectors extends StatelessWidget {
     final providers = context.watch<AppProviderCubit>().state.providersFor(
       providerCli,
     );
+    final eligible = providers
+        .where((p) => p.cli == providerCli)
+        .toList(growable: false);
+    final items = <String>['', ...eligible.map((p) => p.id)];
+    final selectedId = team.providerIdsByTool[providerCli.value] ?? '';
+    final effectiveSelectedId = items.contains(selectedId) ? selectedId : '';
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Text(
-          l10n.appProviderTeamToolSection,
-          style: Theme.of(
-            context,
-          ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
-        ),
-        const SizedBox(height: 6),
-        Text(
-          l10n.appProviderTeamToolSubtitle,
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
-          ),
-        ),
-        const SizedBox(height: 12),
-        _CliProviderRow(
-          label: l10n.appProviderCliLabel(providerCli),
-          cli: providerCli,
-          providers: providers,
-          selectedId: team.providerIdsByTool[providerCli.value] ?? '',
-          onSelected: (id) {
-            final next = Map<String, String>.from(team.providerIdsByTool);
-            if (id == null || id.isEmpty) {
-              next.remove(providerCli.value);
-            } else {
-              next[providerCli.value] = id;
-            }
-            onChanged(team.copyWith(providerIdsByTool: next));
-          },
-        ),
-      ],
+    return SettingsLabeledStackedRow(
+      title: l10n.appProviderTeamToolSection,
+      subtitle: l10n.appProviderTeamToolSubtitle,
+      body: FlashskyDropdownField<String>(
+        key: ValueKey('team-tool-provider-$effectiveSelectedId'),
+        items: items,
+        initialItem: effectiveSelectedId,
+        hintText: l10n.appProviderTeamNone,
+        decoration: FlashskyDropdownDecorations.settingsCompact(context),
+        itemLabel: (id) {
+          if (id.isEmpty) return l10n.appProviderTeamNone;
+          return eligible
+                  .where((p) => p.id == id)
+                  .map((p) => p.name)
+                  .firstOrNull ??
+              id;
+        },
+        onChanged: (id) {
+          final next = Map<String, String>.from(team.providerIdsByTool);
+          if (id == null || id.isEmpty) {
+            next.remove(providerCli.value);
+          } else {
+            next[providerCli.value] = id;
+          }
+          onChanged(team.copyWith(providerIdsByTool: next));
+        },
+      ),
+      showDividerBelow: false,
     );
   }
 
@@ -68,56 +70,5 @@ class TeamToolProviderSelectors extends StatelessWidget {
       TeamCli.codex => AppProviderCli.codex,
       TeamCli.claude => AppProviderCli.claude,
     };
-  }
-
-}
-
-class _CliProviderRow extends StatelessWidget {
-  const _CliProviderRow({
-    required this.label,
-    required this.cli,
-    required this.providers,
-    required this.selectedId,
-    required this.onSelected,
-  });
-
-  final String label;
-  final AppProviderCli cli;
-  final List<AppProviderConfig> providers;
-  final String selectedId;
-  final ValueChanged<String?> onSelected;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = context.l10n;
-    final eligible = providers
-        .where((p) => p.cli == cli)
-        .toList(growable: false);
-    final items = <String>['', ...eligible.map((p) => p.id)];
-    final effectiveSelectedId = items.contains(selectedId) ? selectedId : '';
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: Theme.of(context).textTheme.labelLarge),
-        const SizedBox(height: 6),
-        FlashskyDropdownField<String>(
-          key: ValueKey('team-tool-$label-$effectiveSelectedId'),
-          items: items,
-          initialItem: effectiveSelectedId,
-          hintText: l10n.appProviderTeamNone,
-          decoration: FlashskyDropdownDecorations.denseField(context),
-          itemLabel: (id) {
-            if (id.isEmpty) return l10n.appProviderTeamNone;
-            return eligible
-                    .where((p) => p.id == id)
-                    .map((p) => p.name)
-                    .firstOrNull ??
-                id;
-          },
-          onChanged: onSelected,
-        ),
-      ],
-    );
   }
 }

@@ -1337,7 +1337,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get teamLeadDelegateOnlySubtitle =>
-      'When enabled, the team-lead tab cannot use Bash, Read, Edit, Write, Glob, Grep, NotebookEdit, or PowerShell (enforced via PreToolUse hooks with a denial reason). Use TaskUpdate, SendMessage, and Agent to assign work to teammates.';
+      'When enabled, the team lead is blocked from using some tools.';
 
   @override
   String get memberLaunchOrder => 'Member launch order';
@@ -1351,6 +1351,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get memberName => 'Member name';
+
+  @override
+  String get memberNameSubtitle =>
+      'Shown in the sidebar and when assigning work.';
 
   @override
   String get provider => 'Provider';
@@ -1372,13 +1376,17 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get agentBuiltInSubtitle =>
-      'Built-in presets and agents from ~/.flashskyai/agents.';
+      'Which agent role this member uses; shapes behavior and capabilities.';
 
   @override
   String get agentCustomIdHint => 'Custom agent id';
 
   @override
   String get memberExtraArgs => 'Member extra CLI arguments';
+
+  @override
+  String get memberExtraArgsSubtitle =>
+      'Extra flags applied only when this member starts.';
 
   @override
   String get memberDangerouslySkipPermissions => 'Skip all permission checks';
@@ -1389,6 +1397,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get prompt => 'Prompt';
+
+  @override
+  String get memberPromptSubtitle =>
+      'Brief duty boundaries and role notes for the team lead.';
 
   @override
   String get memberPromptPresetsLabel => 'Presets';

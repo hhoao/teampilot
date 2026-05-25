@@ -10,7 +10,11 @@ const _settingCardBorderRadius = 14.0;
 const _settingRowPadding = EdgeInsets.fromLTRB(20, 16, 20, 16);
 const _settingGroupHeaderPadding = EdgeInsets.fromLTRB(20, 20, 20, 8);
 const _titleSubtitleGap = 4.0;
+const _titleOnlyBodyGap = 8.0;
 const _labelTrailingGap = 24.0;
+
+bool _hasSettingsSubtitle(String? subtitle) =>
+    subtitle != null && subtitle.trim().isNotEmpty;
 
 const _dropdownMinWidth = 140.0;
 
@@ -66,7 +70,7 @@ class SettingsLabeledStackedRow extends StatelessWidget {
   const SettingsLabeledStackedRow({
     super.key,
     required this.title,
-    required this.subtitle,
+    this.subtitle,
     required this.body,
     this.helper,
     this.showDividerBelow = true,
@@ -74,7 +78,7 @@ class SettingsLabeledStackedRow extends StatelessWidget {
   });
 
   final String title;
-  final String subtitle;
+  final String? subtitle;
   final Widget body;
 
   /// Muted caption below [body], inside the same padded block as the labels.
@@ -89,6 +93,12 @@ class SettingsLabeledStackedRow extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
     final onSurface = cs.onSurface;
+    final hasSubtitle = _hasSettingsSubtitle(subtitle);
+    final subtitleStyle = tt.bodySmall?.copyWith(
+      color: cs.onSurfaceVariant,
+      fontWeight: FontWeight.w500,
+      height: 1.35,
+    );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -106,16 +116,13 @@ class SettingsLabeledStackedRow extends StatelessWidget {
                   color: onSurface,
                 ),
               ),
-              SizedBox(height: _titleSubtitleGap),
-              Text(
-                subtitle,
-                style: tt.bodySmall?.copyWith(
-                  color: cs.onSurfaceVariant,
-                  fontWeight: FontWeight.w500,
-                  height: 1.35,
-                ),
+              if (hasSubtitle) ...[
+                SizedBox(height: _titleSubtitleGap),
+                Text(subtitle!.trim(), style: subtitleStyle),
+              ],
+              SizedBox(
+                height: hasSubtitle ? afterTitleBodyGap : _titleOnlyBodyGap,
               ),
-              SizedBox(height: afterTitleBodyGap),
               body,
               if (helper != null) ...[const SizedBox(height: 10), helper!],
             ],
@@ -137,13 +144,13 @@ class SettingsLabeledRow extends StatelessWidget {
   const SettingsLabeledRow({
     super.key,
     required this.title,
-    required this.subtitle,
+    this.subtitle,
     required this.trailing,
     this.showDividerBelow = true,
   });
 
   final String title;
-  final String subtitle;
+  final String? subtitle;
   final Widget trailing;
   final bool showDividerBelow;
 
@@ -152,6 +159,12 @@ class SettingsLabeledRow extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
     final onSurface = cs.onSurface;
+    final hasSubtitle = _hasSettingsSubtitle(subtitle);
+    final subtitleStyle = tt.bodySmall?.copyWith(
+      color: cs.onSurfaceVariant,
+      fontWeight: FontWeight.w500,
+      height: 1.35,
+    );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -173,15 +186,10 @@ class SettingsLabeledRow extends StatelessWidget {
                         color: onSurface,
                       ),
                     ),
-                    SizedBox(height: _titleSubtitleGap),
-                    Text(
-                      subtitle,
-                      style: tt.bodySmall?.copyWith(
-                        color: cs.onSurfaceVariant,
-                        fontWeight: FontWeight.w500,
-                        height: 1.35,
-                      ),
-                    ),
+                    if (hasSubtitle) ...[
+                      SizedBox(height: _titleSubtitleGap),
+                      Text(subtitle!.trim(), style: subtitleStyle),
+                    ],
                   ],
                 ),
               ),

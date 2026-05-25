@@ -1301,8 +1301,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get teamLeadDelegateOnlyTitle => '队长仅规划分派';
 
   @override
-  String get teamLeadDelegateOnlySubtitle =>
-      '开启后，队长终端禁止使用 Bash、Read、Edit、Write、Glob、Grep、NotebookEdit、PowerShell（由 PreToolUse hook 拦截并给出拒绝原因）。请通过 TaskUpdate、SendMessage、Agent 向队友分派执行类工作。';
+  String get teamLeadDelegateOnlySubtitle => '开启后将禁止队长使用一些工具。';
 
   @override
   String get memberLaunchOrder => '成员启动顺序';
@@ -1315,6 +1314,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get memberName => '成员名称';
+
+  @override
+  String get memberNameSubtitle => '侧栏与任务分配中显示的名称。';
 
   @override
   String get provider => '提供商';
@@ -1335,13 +1337,16 @@ class AppLocalizationsZh extends AppLocalizations {
   String get agentBuiltInCustom => '自定义…';
 
   @override
-  String get agentBuiltInSubtitle => '内置预设及 ~/.flashskyai/agents 下的用户 Agent。';
+  String get agentBuiltInSubtitle => '指定该成员以哪种 Agent 身份协作，影响其行为与可用能力。';
 
   @override
   String get agentCustomIdHint => '自定义 Agent 标识';
 
   @override
   String get memberExtraArgs => '成员额外 CLI 参数';
+
+  @override
+  String get memberExtraArgsSubtitle => '仅附加在该成员的 CLI 启动参数。';
 
   @override
   String get memberDangerouslySkipPermissions => '跳过所有权限检查';
@@ -1351,6 +1356,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get prompt => '提示词';
+
+  @override
+  String get memberPromptSubtitle => '简要写明职责边界与角色备注，方便队长识别分工。';
 
   @override
   String get memberPromptPresetsLabel => '预设';

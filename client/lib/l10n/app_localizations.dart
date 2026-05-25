@@ -2495,7 +2495,7 @@ abstract class AppLocalizations {
   /// No description provided for @teamLeadDelegateOnlySubtitle.
   ///
   /// In en, this message translates to:
-  /// **'When enabled, the team-lead tab cannot use Bash, Read, Edit, Write, Glob, Grep, NotebookEdit, or PowerShell (enforced via PreToolUse hooks with a denial reason). Use TaskUpdate, SendMessage, and Agent to assign work to teammates.'**
+  /// **'When enabled, the team lead is blocked from using some tools.'**
   String get teamLeadDelegateOnlySubtitle;
 
   /// No description provided for @memberLaunchOrder.
@@ -2521,6 +2521,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Member name'**
   String get memberName;
+
+  /// No description provided for @memberNameSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Shown in the sidebar and when assigning work.'**
+  String get memberNameSubtitle;
 
   /// No description provided for @provider.
   ///
@@ -2561,7 +2567,7 @@ abstract class AppLocalizations {
   /// No description provided for @agentBuiltInSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Built-in presets and agents from ~/.flashskyai/agents.'**
+  /// **'Which agent role this member uses; shapes behavior and capabilities.'**
   String get agentBuiltInSubtitle;
 
   /// No description provided for @agentCustomIdHint.
@@ -2575,6 +2581,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Member extra CLI arguments'**
   String get memberExtraArgs;
+
+  /// No description provided for @memberExtraArgsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Extra flags applied only when this member starts.'**
+  String get memberExtraArgsSubtitle;
 
   /// No description provided for @memberDangerouslySkipPermissions.
   ///
@@ -2593,6 +2605,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Prompt'**
   String get prompt;
+
+  /// No description provided for @memberPromptSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Brief duty boundaries and role notes for the team lead.'**
+  String get memberPromptSubtitle;
 
   /// No description provided for @memberPromptPresetsLabel.
   ///

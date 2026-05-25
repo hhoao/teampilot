@@ -24,6 +24,7 @@ import '../utils/app_provider_model_candidates.dart';
 import '../utils/debounce/debounce.dart';
 import '../widgets/app_outline_text_field.dart';
 import '../widgets/app_provider/team_tool_provider_selectors.dart';
+import '../widgets/settings/workspace_settings_widgets.dart';
 import '../widgets/dropdown/flashsky_dropdown_field.dart';
 import '../widgets/dropdown/flashskyai_dropdown_decoration.dart';
 import '../widgets/settings/workspace_hub_shell.dart';
@@ -54,18 +55,6 @@ String _teamCliDisplayLabel(AppLocalizations l10n, TeamCli cli) {
     TeamCli.codex => l10n.appProviderToolCodex,
     TeamCli.claude => l10n.appProviderToolClaude,
   };
-}
-
-String _teamLoopChoiceLabel(AppLocalizations l10n, String? key) {
-  switch (key) {
-    case 'true':
-      return l10n.teamLoopTrue;
-    case 'false':
-      return l10n.teamLoopFalse;
-    case '__default__':
-    default:
-      return l10n.teamLoopDefault;
-  }
 }
 
 String _memberAgentDropdownItemLabel(
@@ -1192,7 +1181,6 @@ class _TeamInfoSection extends StatefulWidget {
 }
 
 class _TeamInfoSectionState extends State<_TeamInfoSection> {
-  late TextEditingController _nameCtl;
   late TextEditingController _descCtl;
   late TextEditingController _argsCtl;
   late String _trackedTeamId;
@@ -1200,7 +1188,6 @@ class _TeamInfoSectionState extends State<_TeamInfoSection> {
   @override
   void initState() {
     super.initState();
-    _nameCtl = TextEditingController(text: widget.team.name);
     _descCtl = TextEditingController(text: widget.team.description);
     _argsCtl = TextEditingController(text: widget.team.extraArgs);
     _trackedTeamId = widget.team.id;
@@ -1211,11 +1198,8 @@ class _TeamInfoSectionState extends State<_TeamInfoSection> {
     super.didUpdateWidget(oldWidget);
     if (widget.team.id != _trackedTeamId) {
       _trackedTeamId = widget.team.id;
-      _nameCtl.text = widget.team.name;
       _descCtl.text = widget.team.description;
       _argsCtl.text = widget.team.extraArgs;
-    } else if (widget.team.name != _nameCtl.text) {
-      _nameCtl.text = widget.team.name;
     }
     if (widget.team.description != _descCtl.text) {
       _descCtl.text = widget.team.description;
@@ -1224,150 +1208,123 @@ class _TeamInfoSectionState extends State<_TeamInfoSection> {
 
   @override
   void dispose() {
-    unawaited(_commitName());
-    _nameCtl.dispose();
     _descCtl.dispose();
     _argsCtl.dispose();
     super.dispose();
   }
 
-  Future<void> _commitName() async {
-    final trimmed = _nameCtl.text.trim();
-    if (trimmed == widget.team.name) return;
-    final ok = await widget.cubit.renameSelectedTeamName(trimmed);
-    if (!mounted) return;
-    if (!ok) {
-      _nameCtl.text = widget.team.name;
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textBase = isDark ? Colors.white : const Color(0xFF111827);
+    final loopKey = widget.team.loop == null
+        ? '__default__'
+        : (widget.team.loop! ? 'true' : 'false');
+    final showDelegateRow =
+        widget.team.cli == TeamCli.claude ||
+        widget.team.cli == TeamCli.flashskyai;
+    final showToolProviders = widget.team.cli == TeamCli.claude;
+
     return SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _Card(
+          SettingsSurfaceCard(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                _CardHeader(
-                  title: l10n.teamSettings,
-                  subtitle: l10n.editTeamSubtitle,
-                ),
-                const SizedBox(height: 18),
-                _FieldLabel(text: l10n.teamName),
-                const SizedBox(height: 6),
-                AppOutlineTextField(
-                  key: AppKeys.teamNameField,
-                  controller: _nameCtl,
-                  onSubmitted: (_) => unawaited(_commitName()),
-                ),
-                const SizedBox(height: 14),
-                _FieldLabel(text: l10n.teamDescription),
-                const SizedBox(height: 6),
-                AppOutlineTextField(
-                  controller: _descCtl,
-                  maxLines: 3,
-                  hintText: l10n.teamDescriptionHint,
-                  onChanged: (v) => widget.cubit.updateSelected(
-                    widget.team.copyWith(description: v),
-                  ),
-                ),
-                const SizedBox(height: 14),
-                _FieldLabel(text: l10n.teamLoop),
-                const SizedBox(height: 6),
-                FlashskyDropdownField<String>(
-                  key: ValueKey(
-                    'team-loop-${widget.team.id}-${widget.team.loop ?? 'nil'}',
-                  ),
-                  items: const ['__default__', 'true', 'false'],
-                  initialItem: widget.team.loop == null
-                      ? '__default__'
-                      : (widget.team.loop! ? 'true' : 'false'),
-                  hintText: l10n.teamLoopDefault,
-                  decoration: FlashskyDropdownDecorations.denseField(context),
-                  overlayHeight: 200,
-                  listItemMaxLines: 2,
-                  itemLabel: (k) => _teamLoopChoiceLabel(l10n, k),
-                  onChanged: (value) {
-                    final key = value ?? '__default__';
-                    final bool? next = key == '__default__'
-                        ? null
-                        : key == 'true';
-                    widget.cubit.updateSelected(
-                      widget.team.copyWith(loop: next, updateLoop: true),
-                    );
-                  },
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  l10n.teamLoopSubtitle,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: textBase.withValues(alpha: 0.58),
-                    height: 1.35,
-                  ),
-                ),
-                const SizedBox(height: 18),
-                _FieldLabel(text: l10n.teamCliLabel),
-                const SizedBox(height: 6),
-                Text(
-                  _teamCliDisplayLabel(l10n, widget.team.cli),
-                  style: Theme.of(context).textTheme.bodyLarge,
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  l10n.teamCliLockedSubtitle,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: textBase.withValues(alpha: 0.58),
-                    height: 1.35,
-                  ),
-                ),
-                const SizedBox(height: 14),
-                _FieldLabel(text: l10n.teamExtraArgs),
-                const SizedBox(height: 6),
-                AppOutlineTextField(
-                  controller: _argsCtl,
-                  hintText: l10n.teamExtraArgsHint,
-                  onChanged: (v) => widget.cubit.updateSelected(
-                    widget.team.copyWith(extraArgs: v),
-                  ),
-                ),
-                if (widget.team.cli == TeamCli.claude) ...[
-                  const SizedBox(height: 14),
-                  SwitchListTile(
-                    contentPadding: EdgeInsets.zero,
-                    title: Text(l10n.teamLeadDelegateOnlyTitle),
-                    subtitle: Text(
-                      l10n.teamLeadDelegateOnlySubtitle,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: textBase.withValues(alpha: 0.58),
-                        height: 1.35,
-                      ),
-                    ),
-                    value: widget.team.forceTeamLeadDelegateMode,
-                    onChanged: (value) => widget.cubit.updateSelected(
-                      widget.team.copyWith(
-                        forceTeamLeadDelegateMode: value,
-                        updateForceTeamLeadDelegateMode: true,
-                      ),
+                SettingsLabeledStackedRow(
+                  title: l10n.teamName,
+                  body: Text(
+                    key: AppKeys.teamNameField,
+                    widget.team.name,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w500,
+                      color: Theme.of(context).colorScheme.onSurface,
                     ),
                   ),
-                  const SizedBox(height: 18),
+                  showDividerBelow: true,
+                ),
+                SettingsLabeledStackedRow(
+                  title: l10n.teamDescription,
+                  subtitle: l10n.teamDescriptionHint,
+                  body: AppOutlineTextField(
+                    controller: _descCtl,
+                    maxLines: 3,
+                    onChanged: (v) => widget.cubit.updateSelected(
+                      widget.team.copyWith(description: v),
+                    ),
+                  ),
+                  showDividerBelow: true,
+                ),
+                SettingsLabeledStackedRow(
+                  title: l10n.teamLoop,
+                  subtitle: l10n.teamLoopSubtitle,
+                  body: SettingsCompactDropdown<String>(
+                    value: loopKey,
+                    entries: [
+                      ('__default__', l10n.teamLoopDefault),
+                      ('true', l10n.teamLoopTrue),
+                      ('false', l10n.teamLoopFalse),
+                    ],
+                    onChanged: (value) {
+                      final key = value ?? '__default__';
+                      final bool? next = key == '__default__'
+                          ? null
+                          : key == 'true';
+                      widget.cubit.updateSelected(
+                        widget.team.copyWith(loop: next, updateLoop: true),
+                      );
+                    },
+                  ),
+                  showDividerBelow: true,
+                ),
+                SettingsLabeledStackedRow(
+                  title: l10n.teamCliLabel,
+                  subtitle: l10n.teamCliLockedSubtitle,
+                  body: Text(
+                    _teamCliDisplayLabel(l10n, widget.team.cli),
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w500,
+                      color: Theme.of(context).colorScheme.onSurface,
+                    ),
+                  ),
+                  showDividerBelow: true,
+                ),
+                SettingsLabeledStackedRow(
+                  title: l10n.teamExtraArgs,
+                  subtitle: l10n.teamExtraArgsHint,
+                  body: AppOutlineTextField(
+                    controller: _argsCtl,
+                    onChanged: (v) => widget.cubit.updateSelected(
+                      widget.team.copyWith(extraArgs: v),
+                    ),
+                  ),
+                  showDividerBelow: showDelegateRow || showToolProviders,
+                ),
+                if (showDelegateRow)
+                  SettingsLabeledRow(
+                    title: l10n.teamLeadDelegateOnlyTitle,
+                    subtitle: l10n.teamLeadDelegateOnlySubtitle,
+                    trailing: Switch(
+                      value: widget.team.forceTeamLeadDelegateMode,
+                      onChanged: (value) => widget.cubit.updateSelected(
+                        widget.team.copyWith(
+                          forceTeamLeadDelegateMode: value,
+                          updateForceTeamLeadDelegateMode: true,
+                        ),
+                      ),
+                    ),
+                    showDividerBelow: showToolProviders,
+                  ),
+                if (showToolProviders)
                   TeamToolProviderSelectors(
                     team: widget.team,
                     onChanged: widget.cubit.updateSelected,
                   ),
-                ],
               ],
             ),
           ),
+          const SizedBox(height: 12),
           _DangerZone(team: widget.team, cubit: widget.cubit),
         ],
       ),
@@ -1412,48 +1369,23 @@ class _DangerZone extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final errorColor = Theme.of(context).colorScheme.error;
-    return _Card(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _CardHeader(
-            title: l10n.dangerZone,
-            subtitle: l10n.deleteTeamSubtitle,
-          ),
-          const SizedBox(height: 14),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: OutlinedButton.icon(
-              key: AppKeys.deleteButton,
-              onPressed: () => _confirmDelete(context),
-              icon: Icon(Icons.delete_outline, size: 18, color: errorColor),
-              label: Text(l10n.deleteTeam, style: TextStyle(color: errorColor)),
-              style: OutlinedButton.styleFrom(
-                side: BorderSide(color: errorColor.withValues(alpha: 0.4)),
-              ),
+    return SettingsSurfaceCard(
+      child: SettingsLabeledStackedRow(
+        title: l10n.dangerZone,
+        subtitle: l10n.deleteTeamSubtitle,
+        body: Align(
+          alignment: Alignment.centerLeft,
+          child: OutlinedButton.icon(
+            key: AppKeys.deleteButton,
+            onPressed: () => _confirmDelete(context),
+            icon: Icon(Icons.delete_outline, size: 18, color: errorColor),
+            label: Text(l10n.deleteTeam, style: TextStyle(color: errorColor)),
+            style: OutlinedButton.styleFrom(
+              side: BorderSide(color: errorColor.withValues(alpha: 0.4)),
             ),
           ),
-        ],
-      ),
-    );
-  }
-}
-
-class _FieldLabel extends StatelessWidget {
-  const _FieldLabel({required this.text});
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textBase = isDark ? Colors.white : const Color(0xFF111827);
-    return Text(
-      text,
-      style: TextStyle(
-        fontSize: 12,
-        fontWeight: FontWeight.w600,
-        color: textBase.withValues(alpha: 0.7),
+        ),
+        showDividerBelow: false,
       ),
     );
   }
@@ -1571,13 +1503,11 @@ class _MemberDetailSection extends StatelessWidget {
               ],
             ),
           ),
-          _Card(
-            child: _MemberConfigForm(
-              key: ValueKey(member.id),
-              team: team,
-              member: member,
-              cubit: cubit,
-            ),
+          _MemberConfigForm(
+            key: ValueKey(member.id),
+            team: team,
+            member: member,
+            cubit: cubit,
           ),
         ],
       ),
@@ -1673,8 +1603,7 @@ class _MemberConfigFormState extends State<_MemberConfigForm> {
     final l10n = context.l10n;
     final m = widget.member;
     final memberCatalogCli = _appCatalogCliForTeam(widget.team.cli);
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textBase = isDark ? Colors.white : const Color(0xFF111827);
+    final dropdownDeco = FlashskyDropdownDecorations.settingsCompact(context);
 
     final prov = m.provider;
     final appProviders = context
@@ -1717,91 +1646,16 @@ class _MemberConfigFormState extends State<_MemberConfigForm> {
         selectedAppProvider != null &&
         isOfficialClaudeProvider(selectedAppProvider);
 
-    final dropdownDeco = FlashskyDropdownDecorations.denseField(context);
+    final showCustomAgentField =
+        FlashskyaiAgentCatalog.activeDropdownValue(
+          m.agent,
+          userAgentIds: _userAgentIds,
+        ) ==
+        FlashskyaiAgentCatalog.customDropdownValue;
 
-    return Column(
+    Widget agentBody() => Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _CardHeader(title: l10n.configure, subtitle: l10n.editMemberSubtitle),
-        const SizedBox(height: 18),
-        _FieldLabel(text: l10n.memberName),
-        const SizedBox(height: 6),
-        AppOutlineTextField(
-          controller: _nameCtl,
-          onChanged: (v) => _update(m.copyWith(name: v)),
-        ),
-        const SizedBox(height: 12),
-        _FieldLabel(text: l10n.provider),
-        const SizedBox(height: 6),
-        FlashskyDropdownField<String>(
-          items: providerIds,
-          initialItem: prov.isEmpty ? null : prov,
-          hintText: l10n.selectProvider,
-          decoration: dropdownDeco,
-          onChanged: (value) {
-            final newProv = value ?? '';
-            var newModel = m.model;
-            AppProviderConfig? nextProvider;
-            for (final p in context.read<AppProviderCubit>().state.providersFor(
-              memberCatalogCli,
-            )) {
-              if (p.id == newProv) {
-                nextProvider = p;
-                break;
-              }
-            }
-            if (nextProvider != null && isOfficialClaudeProvider(nextProvider)) {
-              newModel = '';
-            } else {
-              final defaultModel = nextProvider?.defaultModel.trim() ?? '';
-              final names = _modelNamesForClaudeProvider(
-                providerId: newProv,
-                appProvider: nextProvider,
-                currentModel: m.model,
-              );
-              final stillValid = names.contains(newModel);
-              if (!stillValid) {
-                newModel = defaultModel.isNotEmpty ? defaultModel : '';
-              }
-            }
-            _update(m.copyWith(provider: newProv, model: newModel));
-          },
-          itemLabel: (value) => providerLabels[value] ?? value,
-        ),
-        const SizedBox(height: 12),
-        if (hideModelPicker) ...[
-          Text(
-            l10n.memberOfficialClaudeModelHint,
-            style: TextStyle(
-              fontSize: 12,
-              height: 1.35,
-              color: textBase.withValues(alpha: 0.58),
-            ),
-          ),
-        ] else ...[
-          _FieldLabel(text: l10n.model),
-          const SizedBox(height: 6),
-          FlashskyDropdownField<String>(
-            items: modelNames,
-            initialItem: model.isEmpty ? null : model,
-            hintText: l10n.selectModel,
-            decoration: dropdownDeco,
-            onChanged: (value) => _update(m.copyWith(model: value ?? '')),
-            itemLabel: (value) => value,
-          ),
-        ],
-        const SizedBox(height: 12),
-        _FieldLabel(text: l10n.agent),
-        const SizedBox(height: 4),
-        Text(
-          l10n.agentBuiltInSubtitle,
-          style: TextStyle(
-            fontSize: 12,
-            height: 1.35,
-            color: textBase.withValues(alpha: 0.58),
-          ),
-        ),
-        const SizedBox(height: 8),
         FlashskyDropdownField<String>(
           key: ValueKey(
             'member-agent-dd-${widget.member.id}-${m.agent}-${_userAgentIds.join(",")}',
@@ -1845,11 +1699,7 @@ class _MemberConfigFormState extends State<_MemberConfigForm> {
             }
           },
         ),
-        if (FlashskyaiAgentCatalog.activeDropdownValue(
-              m.agent,
-              userAgentIds: _userAgentIds,
-            ) ==
-            FlashskyaiAgentCatalog.customDropdownValue) ...[
+        if (showCustomAgentField) ...[
           const SizedBox(height: 8),
           AppOutlineTextField(
             controller: _agentCtl,
@@ -1857,75 +1707,133 @@ class _MemberConfigFormState extends State<_MemberConfigForm> {
             onChanged: (v) => _update(m.copyWith(agent: v)),
           ),
         ],
-        const SizedBox(height: 12),
-        SwitchListTile.adaptive(
-          contentPadding: EdgeInsets.zero,
-          title: Text(
-            l10n.memberDangerouslySkipPermissions,
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: textBase,
-            ),
-          ),
-          subtitle: Text(
-            l10n.memberDangerouslySkipPermissionsHint,
-            style: TextStyle(
-              fontSize: 12,
-              height: 1.35,
-              color: textBase.withValues(alpha: 0.62),
-            ),
-          ),
-          value: m.dangerouslySkipPermissions,
-          onChanged: (v) => _update(m.copyWith(dangerouslySkipPermissions: v)),
-        ),
-        const SizedBox(height: 12),
-        _FieldLabel(text: l10n.memberExtraArgs),
-        const SizedBox(height: 6),
-        AppOutlineTextField(
-          controller: _argsCtl,
-          onChanged: (v) => _update(m.copyWith(extraArgs: v)),
-        ),
-        const SizedBox(height: 12),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Expanded(child: _FieldLabel(text: l10n.prompt)),
-            Text(
-              l10n.memberPromptPresetsLabel,
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w500,
-                color: textBase.withValues(alpha: 0.55),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 6),
-        Wrap(
-          spacing: 6,
-          runSpacing: 6,
-          children: [
-            for (final preset in TeamMemberPromptPreset.all)
-              ActionChip(
-                label: Text(
-                  teamMemberPromptPresetLabel(l10n, preset.id),
-                  style: const TextStyle(fontSize: 12),
-                ),
-                visualDensity: VisualDensity.compact,
-                padding: const EdgeInsets.symmetric(horizontal: 4),
-                onPressed: () => _applyPromptPreset(preset.id),
-              ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        AppOutlineTextField(
-          controller: _promptCtl,
-          minLines: 3,
-          maxLines: 6,
-          onChanged: (v) => _update(m.copyWith(prompt: v)),
-        ),
       ],
+    );
+
+    return SettingsSurfaceCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SettingsLabeledStackedRow(
+            title: l10n.memberName,
+            body: AppOutlineTextField(
+              controller: _nameCtl,
+              onChanged: (v) => _update(m.copyWith(name: v)),
+            ),
+            showDividerBelow: true,
+          ),
+          SettingsLabeledStackedRow(
+            title: l10n.provider,
+            body: FlashskyDropdownField<String>(
+              items: providerIds,
+              initialItem: prov.isEmpty ? null : prov,
+              hintText: l10n.selectProvider,
+              decoration: dropdownDeco,
+              onChanged: (value) {
+                final newProv = value ?? '';
+                var newModel = m.model;
+                AppProviderConfig? nextProvider;
+                for (final p in context
+                    .read<AppProviderCubit>()
+                    .state
+                    .providersFor(memberCatalogCli)) {
+                  if (p.id == newProv) {
+                    nextProvider = p;
+                    break;
+                  }
+                }
+                if (nextProvider != null &&
+                    isOfficialClaudeProvider(nextProvider)) {
+                  newModel = '';
+                } else {
+                  final defaultModel = nextProvider?.defaultModel.trim() ?? '';
+                  final names = _modelNamesForClaudeProvider(
+                    providerId: newProv,
+                    appProvider: nextProvider,
+                    currentModel: m.model,
+                  );
+                  final stillValid = names.contains(newModel);
+                  if (!stillValid) {
+                    newModel = defaultModel.isNotEmpty ? defaultModel : '';
+                  }
+                }
+                _update(m.copyWith(provider: newProv, model: newModel));
+              },
+              itemLabel: (value) => providerLabels[value] ?? value,
+            ),
+            showDividerBelow: true,
+          ),
+          if (!hideModelPicker)
+            SettingsLabeledStackedRow(
+              title: l10n.model,
+              body: FlashskyDropdownField<String>(
+                items: modelNames,
+                initialItem: model.isEmpty ? null : model,
+                hintText: l10n.selectModel,
+                decoration: dropdownDeco,
+                onChanged: (value) => _update(m.copyWith(model: value ?? '')),
+                itemLabel: (value) => value,
+              ),
+              showDividerBelow: true,
+            ),
+          SettingsLabeledStackedRow(
+            title: l10n.agent,
+            subtitle: l10n.agentBuiltInSubtitle,
+            body: agentBody(),
+            showDividerBelow: true,
+          ),
+          SettingsLabeledRow(
+            title: l10n.memberDangerouslySkipPermissions,
+            subtitle: l10n.memberDangerouslySkipPermissionsHint,
+            trailing: Switch(
+              value: m.dangerouslySkipPermissions,
+              onChanged: (v) => _update(m.copyWith(dangerouslySkipPermissions: v)),
+            ),
+            showDividerBelow: true,
+          ),
+          SettingsLabeledStackedRow(
+            title: l10n.memberExtraArgs,
+            body: AppOutlineTextField(
+              controller: _argsCtl,
+              onChanged: (v) => _update(m.copyWith(extraArgs: v)),
+            ),
+            showDividerBelow: true,
+          ),
+          SettingsLabeledStackedRow(
+            title: l10n.prompt,
+            subtitle: l10n.memberPromptSubtitle,
+            body: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: [
+                    for (final preset in TeamMemberPromptPreset.all)
+                      ActionChip(
+                        label: Text(
+                          teamMemberPromptPresetLabel(l10n, preset.id),
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                        visualDensity: VisualDensity.compact,
+                        padding: const EdgeInsets.symmetric(horizontal: 4),
+                        onPressed: () => _applyPromptPreset(preset.id),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                AppOutlineTextField(
+                  controller: _promptCtl,
+                  minLines: 3,
+                  maxLines: 6,
+                  onChanged: (v) => _update(m.copyWith(prompt: v)),
+                ),
+              ],
+            ),
+            showDividerBelow: false,
+          ),
+        ],
+      ),
     );
   }
 }
