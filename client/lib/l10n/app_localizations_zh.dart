@@ -1346,6 +1346,37 @@ class AppLocalizationsZh extends AppLocalizations {
   String get prompt => '提示词';
 
   @override
+  String get memberPromptPresetsLabel => '预设';
+
+  @override
+  String get memberPromptPresetTeamLead => '队长';
+
+  @override
+  String get memberPromptPresetTeamLeadText =>
+      '协调团队。先把工作拆成有明确验收范围的任务，再安排实现。\n除非阻塞，不要亲自做大块实现。';
+
+  @override
+  String get memberPromptPresetDeveloper => '开发';
+
+  @override
+  String get memberPromptPresetDeveloperText =>
+      '只在约定范围内实现分配的任务。\n优先小 diff，跑相关测试，并简要说明改了哪些文件及原因。';
+
+  @override
+  String get memberPromptPresetReviewer => '审查';
+
+  @override
+  String get memberPromptPresetReviewerText =>
+      '只做代码审查，除非被要求否则不要改文件。\n每条意见需包含：文件路径、行号、问题、建议改法。';
+
+  @override
+  String get memberPromptPresetResearcher => '调研';
+
+  @override
+  String get memberPromptPresetResearcherText =>
+      '只调研并汇报，除非被要求否则不要改生产代码。\n输出需含文件路径、相关符号与建议的下一步。';
+
+  @override
   String get selectModel => '选择一个模型';
 
   @override

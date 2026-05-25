@@ -2582,6 +2582,60 @@ abstract class AppLocalizations {
   /// **'Prompt'**
   String get prompt;
 
+  /// No description provided for @memberPromptPresetsLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Presets'**
+  String get memberPromptPresetsLabel;
+
+  /// No description provided for @memberPromptPresetTeamLead.
+  ///
+  /// In en, this message translates to:
+  /// **'Team lead'**
+  String get memberPromptPresetTeamLead;
+
+  /// No description provided for @memberPromptPresetTeamLeadText.
+  ///
+  /// In en, this message translates to:
+  /// **'Coordinate the team. Break work into scoped tasks with clear done criteria before implementation.\nDo not implement large changes yourself unless blocking.'**
+  String get memberPromptPresetTeamLeadText;
+
+  /// No description provided for @memberPromptPresetDeveloper.
+  ///
+  /// In en, this message translates to:
+  /// **'Developer'**
+  String get memberPromptPresetDeveloper;
+
+  /// No description provided for @memberPromptPresetDeveloperText.
+  ///
+  /// In en, this message translates to:
+  /// **'Implement assigned tasks only within the agreed scope.\nPrefer minimal diffs, run relevant tests, and report changed files with brief rationale.'**
+  String get memberPromptPresetDeveloperText;
+
+  /// No description provided for @memberPromptPresetReviewer.
+  ///
+  /// In en, this message translates to:
+  /// **'Reviewer'**
+  String get memberPromptPresetReviewer;
+
+  /// No description provided for @memberPromptPresetReviewerText.
+  ///
+  /// In en, this message translates to:
+  /// **'Review code only; do not modify files unless asked.\nEach finding must include file path, line, issue, and suggested fix.'**
+  String get memberPromptPresetReviewerText;
+
+  /// No description provided for @memberPromptPresetResearcher.
+  ///
+  /// In en, this message translates to:
+  /// **'Researcher'**
+  String get memberPromptPresetResearcher;
+
+  /// No description provided for @memberPromptPresetResearcherText.
+  ///
+  /// In en, this message translates to:
+  /// **'Investigate and report only; do not change production code unless asked.\nOutput findings with file paths, relevant symbols, and recommended next steps.'**
+  String get memberPromptPresetResearcherText;
+
   /// No description provided for @selectModel.
   ///
   /// In en, this message translates to:

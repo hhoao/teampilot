@@ -14,6 +14,7 @@ import '../l10n/l10n_extensions.dart';
 import '../models/plugin.dart';
 import '../models/skill.dart';
 import '../models/team_config.dart';
+import '../models/team_member_prompt_presets.dart';
 import '../services/flashskyai_agent_catalog_service.dart';
 import '../services/flashskyai_storage_roots.dart';
 import '../services/claude_official_provider.dart';
@@ -1623,6 +1624,15 @@ class _MemberConfigFormState extends State<_MemberConfigForm> {
     widget.cubit.updateMember(widget.member.id, next);
   }
 
+  void _applyPromptPreset(String presetId) {
+    final l10n = context.l10n;
+    final text = teamMemberPromptPresetText(l10n, presetId);
+    if (text.isEmpty) return;
+    _promptCtl.text = text;
+    _promptCtl.selection = TextSelection.collapsed(offset: text.length);
+    _update(widget.member.copyWith(prompt: text));
+  }
+
   List<String> _modelNamesForClaudeProvider({
     required String providerId,
     required AppProviderConfig? appProvider,
@@ -1857,8 +1867,38 @@ class _MemberConfigFormState extends State<_MemberConfigForm> {
           onChanged: (v) => _update(m.copyWith(extraArgs: v)),
         ),
         const SizedBox(height: 12),
-        _FieldLabel(text: l10n.prompt),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Expanded(child: _FieldLabel(text: l10n.prompt)),
+            Text(
+              l10n.memberPromptPresetsLabel,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w500,
+                color: textBase.withValues(alpha: 0.55),
+              ),
+            ),
+          ],
+        ),
         const SizedBox(height: 6),
+        Wrap(
+          spacing: 6,
+          runSpacing: 6,
+          children: [
+            for (final preset in TeamMemberPromptPreset.all)
+              ActionChip(
+                label: Text(
+                  teamMemberPromptPresetLabel(l10n, preset.id),
+                  style: const TextStyle(fontSize: 12),
+                ),
+                visualDensity: VisualDensity.compact,
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                onPressed: () => _applyPromptPreset(preset.id),
+              ),
+          ],
+        ),
+        const SizedBox(height: 8),
         AppOutlineTextField(
           controller: _promptCtl,
           minLines: 3,

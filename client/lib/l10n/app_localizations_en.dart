@@ -1384,6 +1384,37 @@ class AppLocalizationsEn extends AppLocalizations {
   String get prompt => 'Prompt';
 
   @override
+  String get memberPromptPresetsLabel => 'Presets';
+
+  @override
+  String get memberPromptPresetTeamLead => 'Team lead';
+
+  @override
+  String get memberPromptPresetTeamLeadText =>
+      'Coordinate the team. Break work into scoped tasks with clear done criteria before implementation.\nDo not implement large changes yourself unless blocking.';
+
+  @override
+  String get memberPromptPresetDeveloper => 'Developer';
+
+  @override
+  String get memberPromptPresetDeveloperText =>
+      'Implement assigned tasks only within the agreed scope.\nPrefer minimal diffs, run relevant tests, and report changed files with brief rationale.';
+
+  @override
+  String get memberPromptPresetReviewer => 'Reviewer';
+
+  @override
+  String get memberPromptPresetReviewerText =>
+      'Review code only; do not modify files unless asked.\nEach finding must include file path, line, issue, and suggested fix.';
+
+  @override
+  String get memberPromptPresetResearcher => 'Researcher';
+
+  @override
+  String get memberPromptPresetResearcherText =>
+      'Investigate and report only; do not change production code unless asked.\nOutput findings with file paths, relevant symbols, and recommended next steps.';
+
+  @override
   String get selectModel => 'Select a model';
 
   @override
