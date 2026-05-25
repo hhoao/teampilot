@@ -351,8 +351,7 @@ class CliPluginRegistryService {
     if (owner != null && owner.isNotEmpty) {
       candidates.add(
         fs.pathContext.join(
-          teampilotRoot,
-          'plugin-marketplace-cache',
+          AppPaths.pluginMarketplaceCacheDirForTeampilotRoot(teampilotRoot),
           owner,
           '$marketplaceKey@$branch',
           CliPluginManifestFlavor.claude.manifestDirName,
@@ -516,8 +515,7 @@ class CliPluginRegistryService {
           ? plugin.marketplaceBranch!.trim()
           : 'main';
       final cacheDir = fs.pathContext.join(
-        teampilotRoot,
-        'plugin-marketplace-cache',
+        AppPaths.pluginMarketplaceCacheDirForTeampilotRoot(teampilotRoot),
         owner,
         '$name@$branch',
       );
@@ -536,7 +534,7 @@ class CliPluginRegistryService {
   ///
   /// Symlink preferred; copy fallback when symlinks are unavailable. Claude Code
   /// expects marketplace data under the session plugins tree, not under
-  /// `plugin-marketplace-cache`. FlashskyAI additionally needs
+  /// `plugins/marketplace-cache`. FlashskyAI additionally needs
   /// `.flashskyai-plugin/marketplace.json` beside `.claude-plugin/`.
   Future<String?> _materializeMarketplaceForCli({
     required String pluginsDir,
@@ -719,8 +717,7 @@ class _MarketplaceLaunchContext {
           ? plugin.marketplaceBranch!.trim()
           : 'main';
       final teampilotCache = fs.pathContext.join(
-        teampilotRoot,
-        'plugin-marketplace-cache',
+        AppPaths.pluginMarketplaceCacheDirForTeampilotRoot(teampilotRoot),
         owner,
         '$name@$branch',
       );
@@ -768,8 +765,7 @@ class _MarketplaceLaunchContext {
       final marketplace = byName[name];
       if (marketplace == null) continue;
       final teampilotCache = fs.pathContext.join(
-        teampilotRoot,
-        'plugin-marketplace-cache',
+        AppPaths.pluginMarketplaceCacheDirForTeampilotRoot(teampilotRoot),
         marketplace.owner,
         '${marketplace.name}@${marketplace.branch}',
       );

@@ -66,7 +66,7 @@ void main() {
 
     // 5. Sync plugins via linker
     final linker = TeamPluginLinkerService(
-      appPluginsRoot: p.join(tmp.path, 'plugins'),
+      appPluginsRoot: p.join(tmp.path, 'plugins', 'installed'),
     );
     final result = await linker.syncForTeam(
       teamId: 'integ-team',

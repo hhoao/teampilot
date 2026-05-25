@@ -104,7 +104,7 @@ class SkillRepoService {
         return (json.decode(text) as Map<String, dynamic>)
             .cast<String, Object?>();
       } on FormatException catch (e) {
-        appLogger.w('[SkillRepoService] Corrupt skills.json, resetting: $e');
+        appLogger.w('[SkillRepoService] Corrupt skills/repos.json, resetting: $e');
         return {};
       }
     }
@@ -117,10 +117,10 @@ class SkillRepoService {
       return (json.decode(content) as Map<String, dynamic>)
           .cast<String, Object?>();
     } on FormatException catch (e) {
-      appLogger.w('[SkillRepoService] Corrupt skills.json, resetting: $e');
+      appLogger.w('[SkillRepoService] Corrupt skills/repos.json, resetting: $e');
       return {};
     } catch (e) {
-      appLogger.w('[SkillRepoService] Cannot read skills.json: $e');
+      appLogger.w('[SkillRepoService] Cannot read skills/repos.json: $e');
       return {};
     }
   }

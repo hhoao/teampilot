@@ -54,23 +54,22 @@ class SkillManifestService {
       }
     }
     final root = _rootDir ?? AppStorage.paths.basePath;
-    final ctx = AppStorage.fs.pathContext;
-    final skillsDir = ctx.join(root, 'skills');
+    final skillsDir = AppPaths.skillsDirForTeampilotRoot(root);
     return _SkillPaths(
       skillsDir: skillsDir,
-      backupsDir: ctx.join(root, 'skill-backups'),
-      manifestPath: ctx.join(skillsDir, 'manifest.json'),
+      backupsDir: AppPaths.skillBackupsDirForTeampilotRoot(root),
+      manifestPath: AppStorage.fs.pathContext.join(skillsDir, 'manifest.json'),
     );
   }
 
   String get skillsDir {
     final root = _rootDir ?? AppStorage.paths.basePath;
-    return AppStorage.fs.pathContext.join(root, 'skills');
+    return AppPaths.skillsDirForTeampilotRoot(root);
   }
 
   String get backupsDir {
     final root = _rootDir ?? AppStorage.paths.basePath;
-    return AppStorage.fs.pathContext.join(root, 'skill-backups');
+    return AppPaths.skillBackupsDirForTeampilotRoot(root);
   }
 
   Future<List<Skill>> loadSkills() async {

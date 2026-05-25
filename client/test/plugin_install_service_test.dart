@@ -48,22 +48,24 @@ void main() {
     expect(installed.name, 'my-plugin');
     expect(installed.id, startsWith('local/'));
     expect(installed.marketplaceOwner, isNull);
-    final installedDir = Directory(p.join(tmp.path, 'plugins', installed.directory));
+    final installedDir =
+        Directory(p.join(tmp.path, 'plugins', 'installed', installed.directory));
     expect(installedDir.existsSync(), isTrue);
 
-    final jsonFile = File(p.join(tmp.path, 'plugins.json'));
+    final jsonFile = File(p.join(tmp.path, 'plugins', 'plugins.json'));
     expect(jsonFile.existsSync(), isTrue);
   });
 
   test('uninstall removes directory and updates plugins.json', () async {
     final svc = PluginInstallService(manifestService: PluginManifestService());
     final installed = await _installMinimal(svc, tmp);
-    final dir = Directory(p.join(tmp.path, 'plugins', installed.directory));
+    final dir =
+        Directory(p.join(tmp.path, 'plugins', 'installed', installed.directory));
     expect(dir.existsSync(), isTrue);
 
     await svc.uninstall(installed);
     expect(dir.existsSync(), isFalse);
-    final backups = Directory(p.join(tmp.path, 'plugin-backups'));
+    final backups = Directory(p.join(tmp.path, 'plugins', 'backups'));
     expect(backups.existsSync(), isTrue);
     expect(backups.listSync(), isNotEmpty);
   });

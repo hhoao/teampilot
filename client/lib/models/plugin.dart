@@ -334,7 +334,7 @@ class DiscoverablePlugin {
 
   String get marketplaceFullName => '$marketplaceOwner/$marketplaceName';
 
-  /// Id written to `plugins.json` when installed from this discovery entry.
+  /// Id written to `plugins/plugins.json` when installed from this discovery entry.
   String get installedPluginId => '$marketplaceOwner/$marketplaceName/$name';
 
   bool get canInstall => localInstall || externalSource != null;

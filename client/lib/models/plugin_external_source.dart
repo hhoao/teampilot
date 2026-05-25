@@ -14,7 +14,7 @@ class PluginExternalSource {
   final String? ref;
   final String? sha;
 
-  /// Stable cache folder name under `plugin-external-cache/`.
+  /// Stable cache folder name under `plugins/external-cache/`.
   String get cacheKey {
     final payload = '$cloneUrl|${ref ?? ''}|${sha ?? ''}';
     return sha256.convert(payload.codeUnits).toString().substring(0, 16);

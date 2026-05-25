@@ -65,7 +65,7 @@ class StorageRootsSnapshot {
   /// `projects.json` + `sessions/` (app session index).
   final String appProjectsDir;
 
-  /// Skill marketplace repo list (`skills.json`).
+  /// Skill marketplace repo list (`skills/repos.json`).
   final String skillReposConfigPath;
 
   final String pluginsRoot;

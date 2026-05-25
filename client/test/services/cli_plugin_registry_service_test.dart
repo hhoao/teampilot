@@ -138,7 +138,8 @@ void main() {
     final cacheDir = Directory(
       p.join(
         base.path,
-        'plugin-marketplace-cache',
+        'plugins',
+        'marketplace-cache',
         'anthropics',
         '$marketplaceName@main',
       ),
@@ -214,7 +215,8 @@ void main() {
     final cacheDir = Directory(
       p.join(
         base.path,
-        'plugin-marketplace-cache',
+        'plugins',
+        'marketplace-cache',
         'anthropics',
         '$marketplaceName@main',
       ),

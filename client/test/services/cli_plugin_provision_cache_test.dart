@@ -136,7 +136,7 @@ void main() {
     test('marketplace materialization skips when cache unchanged', () async {
       const marketplaceName = 'demo-marketplace';
       final cacheDir = Directory(
-        p.join(base.path, 'plugin-marketplace-cache', 'owner', '$marketplaceName@main'),
+        p.join(base.path, 'plugins', 'marketplace-cache', 'owner', '$marketplaceName@main'),
       )..createSync(recursive: true);
       Directory(p.join(cacheDir.path, '.claude-plugin')).createSync();
       File(

@@ -30,7 +30,8 @@ void main() {
   });
 
   test('syncForTeam links CLI bundles under team plugin dir on Unix', () async {
-    final pluginsRoot = Directory(p.join(tmp.path, 'plugins'))..createSync();
+    final pluginsRoot = Directory(p.join(tmp.path, 'plugins', 'installed'))
+      ..createSync(recursive: true);
     final pluginDir = Directory(p.join(pluginsRoot.path, 'acme__market__p1'))
       ..createSync();
     Directory(p.join(pluginDir.path, '.claude-plugin')).createSync();
@@ -82,7 +83,9 @@ void main() {
     )..createSync(recursive: true);
     Directory(p.join(teamPluginsDir.path, 'old-plugin')).createSync();
 
-    final svc = TeamPluginLinkerService(appPluginsRoot: p.join(tmp.path, 'plugins'));
+    final svc = TeamPluginLinkerService(
+      appPluginsRoot: p.join(tmp.path, 'plugins', 'installed'),
+    );
     final result = await svc.syncForTeam(
       teamId: 't1',
       pluginIds: const [],
@@ -97,7 +100,9 @@ void main() {
 
   test('syncForTeam reports skippedMissingIds when plugin source is missing',
       () async {
-    final svc = TeamPluginLinkerService(appPluginsRoot: p.join(tmp.path, 'plugins'));
+    final svc = TeamPluginLinkerService(
+      appPluginsRoot: p.join(tmp.path, 'plugins', 'installed'),
+    );
     final result = await svc.syncForTeam(
       teamId: 't1',
       pluginIds: ['gone/market/p'],
@@ -108,7 +113,8 @@ void main() {
 
   test('syncForTeam resolves plugin-name collision with owner__name fallback',
       () async {
-    final pluginsRoot = Directory(p.join(tmp.path, 'plugins'))..createSync();
+    final pluginsRoot = Directory(p.join(tmp.path, 'plugins', 'installed'))
+      ..createSync(recursive: true);
     void writeBundle(Directory dir, String name) {
       Directory(p.join(dir.path, '.claude-plugin')).createSync();
       File(p.join(dir.path, '.claude-plugin', 'plugin.json')).writeAsStringSync(

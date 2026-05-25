@@ -67,6 +67,19 @@ class AppPaths {
     return p.context;
   }
 
+  /// Parent of `skills/installed` or `plugins/installed`.
+  static String teampilotRootFromInstalledScopeDir(String installedScopeDir) {
+    final ctx = pathContextForDataRoot(installedScopeDir);
+    if (ctx.basename(installedScopeDir) != 'installed') {
+      throw ArgumentError.value(
+        installedScopeDir,
+        'installedScopeDir',
+        'must be a skills/installed or plugins/installed directory',
+      );
+    }
+    return ctx.dirname(ctx.dirname(installedScopeDir));
+  }
+
   /// Joins under [root], using POSIX separators when [root] is a remote path.
   static String _pathUnderTeampilotRoot(String teampilotRoot, String segment) {
     if (teampilotRoot.startsWith('/')) {
@@ -79,39 +92,42 @@ class AppPaths {
   static String teamsUiDirForTeampilotRoot(String teampilotRoot) =>
       _pathUnderTeampilotRoot(teampilotRoot, 'teams');
 
+  /// Installed skill packages (`manifest.json` + per-skill dirs).
   static String skillsDirForTeampilotRoot(String teampilotRoot) =>
-      _pathUnderTeampilotRoot(teampilotRoot, 'skills');
+      _pathUnderTeampilotRoot(teampilotRoot, 'skills/installed');
 
   static String skillBackupsDirForTeampilotRoot(String teampilotRoot) =>
-      _pathUnderTeampilotRoot(teampilotRoot, 'skill-backups');
+      _pathUnderTeampilotRoot(teampilotRoot, 'skills/backups');
 
   static String appProjectsDirForTeampilotRoot(String teampilotRoot) =>
       _pathUnderTeampilotRoot(teampilotRoot, 'projects');
 
+  /// Skill marketplace repo list.
   static String skillReposConfigPathForTeampilotRoot(String teampilotRoot) =>
-      _pathUnderTeampilotRoot(teampilotRoot, 'skills.json');
+      _pathUnderTeampilotRoot(teampilotRoot, 'skills/repos.json');
 
   /// Local disk cache for GitHub skill repos (tarball files + discovered skills).
   static String skillRepoCacheDirForTeampilotRoot(String teampilotRoot) =>
-      _pathUnderTeampilotRoot(teampilotRoot, 'skill-repo-cache');
+      _pathUnderTeampilotRoot(teampilotRoot, 'skills/repo-cache');
 
+  /// Installed plugin bundles.
   static String pluginsDirForTeampilotRoot(String teampilotRoot) =>
-      _pathUnderTeampilotRoot(teampilotRoot, 'plugins');
+      _pathUnderTeampilotRoot(teampilotRoot, 'plugins/installed');
 
   static String pluginBackupsDirForTeampilotRoot(String teampilotRoot) =>
-      _pathUnderTeampilotRoot(teampilotRoot, 'plugin-backups');
+      _pathUnderTeampilotRoot(teampilotRoot, 'plugins/backups');
 
   static String pluginsJsonForTeampilotRoot(String teampilotRoot) =>
-      _pathUnderTeampilotRoot(teampilotRoot, 'plugins.json');
+      _pathUnderTeampilotRoot(teampilotRoot, 'plugins/plugins.json');
 
   static String pluginMarketplacesConfigPathForTeampilotRoot(String teampilotRoot) =>
-      _pathUnderTeampilotRoot(teampilotRoot, 'plugin-marketplaces.json');
+      _pathUnderTeampilotRoot(teampilotRoot, 'plugins/marketplaces.json');
 
   static String pluginMarketplaceCacheDirForTeampilotRoot(String teampilotRoot) =>
-      _pathUnderTeampilotRoot(teampilotRoot, 'plugin-marketplace-cache');
+      _pathUnderTeampilotRoot(teampilotRoot, 'plugins/marketplace-cache');
 
   static String pluginExternalCacheDirForTeampilotRoot(String teampilotRoot) =>
-      _pathUnderTeampilotRoot(teampilotRoot, 'plugin-external-cache');
+      _pathUnderTeampilotRoot(teampilotRoot, 'plugins/external-cache');
 
   String get skillRepoCacheDir => skillRepoCacheDirForTeampilotRoot(basePath);
 
@@ -121,13 +137,14 @@ class AppPaths {
   String get pluginExternalCacheDir =>
       pluginExternalCacheDirForTeampilotRoot(basePath);
 
-  String get pluginsJson => _ctx.join(basePath, 'plugins.json');
-  String get pluginMarketplacesConfigPath => _ctx.join(basePath, 'plugin-marketplaces.json');
+  String get pluginsJson => pluginsJsonForTeampilotRoot(basePath);
+  String get pluginMarketplacesConfigPath =>
+      pluginMarketplacesConfigPathForTeampilotRoot(basePath);
 
   /// App-owned project/session metadata (`projects.json` + `sessions/`).
   String get appProjectsDir => _ctx.join(basePath, 'projects');
 
-  String get skillReposConfigPath => _ctx.join(basePath, 'skills.json');
+  String get skillReposConfigPath => skillReposConfigPathForTeampilotRoot(basePath);
 
   /// Application-level unified provider catalog (`providers/providers.json`).
   String get providerConfigDir => _ctx.join(basePath, 'providers');

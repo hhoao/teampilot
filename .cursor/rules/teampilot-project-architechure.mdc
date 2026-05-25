@@ -99,16 +99,18 @@ Root: `AppPaths.basePath` / `RuntimeStorageContext.appDataRoot` (`<teampilotRoot
 ├── projects/
 │   ├── projects.json              # project index
 │   └── sessions/*.json            # session metadata (display, paths, launch state)
-├── skills/                        # installed skill packages
-├── skill-backups/
-├── skills.json                    # skill repo sources
-├── skill-repo-cache/
+├── skills/
+│   ├── installed/                 # installed skill packages + manifest.json
+│   ├── backups/
+│   ├── repos.json                 # skill repo sources
+│   └── repo-cache/
 ├── plugins/
-├── plugin-backups/
-├── plugins.json
-├── plugin-marketplaces.json
-├── plugin-marketplace-cache/
-├── plugin-external-cache/
+│   ├── installed/                 # installed plugin bundles
+│   ├── backups/
+│   ├── plugins.json               # installed plugin index
+│   ├── marketplaces.json
+│   ├── marketplace-cache/
+│   └── external-cache/
 ├── providers/
 │   ├── flashskyai/providers.json
 │   ├── claude/providers.json

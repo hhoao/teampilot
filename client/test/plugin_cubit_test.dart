@@ -69,7 +69,8 @@ void main() {
   });
 
   test('scanUnmanaged finds plugin dir without manifest row', () async {
-    final pluginsRoot = Directory(p.join(tmp.path, 'plugins'))..createSync();
+    final pluginsRoot = Directory(p.join(tmp.path, 'plugins', 'installed'))
+      ..createSync(recursive: true);
     final orphan = Directory(p.join(pluginsRoot.path, 'orphan'))..createSync();
     Directory(p.join(orphan.path, '.claude-plugin')).createSync();
     File(p.join(orphan.path, '.claude-plugin', 'plugin.json')).writeAsStringSync(

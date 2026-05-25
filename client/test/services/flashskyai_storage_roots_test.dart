@@ -78,9 +78,12 @@ void main() {
     final posix = AppPaths.posixPathContext;
     expect(snap.teampilotRoot, teampilotRoot);
     expect(snap.teamsUiDir, posix.join(teampilotRoot, 'teams'));
-    expect(snap.skillsRoot, posix.join(teampilotRoot, 'skills'));
+    expect(snap.skillsRoot, posix.join(teampilotRoot, 'skills', 'installed'));
     expect(snap.appProjectsDir, posix.join(teampilotRoot, 'projects'));
-    expect(snap.skillReposConfigPath, posix.join(teampilotRoot, 'skills.json'));
+    expect(
+      snap.skillReposConfigPath,
+      posix.join(teampilotRoot, 'skills', 'repos.json'),
+    );
     expect(
       snap.appFlashskyaiDir,
       posix.join(teampilotRoot, 'config-profiles', 'flashskyai'),

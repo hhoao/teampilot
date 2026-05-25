@@ -83,7 +83,7 @@ class PluginRepoService {
       try {
         return (json.decode(text) as Map<String, dynamic>).cast<String, Object?>();
       } on FormatException catch (e) {
-        appLogger.w('[PluginRepoService] Corrupt plugin-marketplaces.json, resetting: $e');
+        appLogger.w('[PluginRepoService] Corrupt plugins/marketplaces.json, resetting: $e');
         return {};
       }
     }
@@ -95,10 +95,10 @@ class PluginRepoService {
       if (content == null) return {};
       return (json.decode(content) as Map<String, dynamic>).cast<String, Object?>();
     } on FormatException catch (e) {
-      appLogger.w('[PluginRepoService] Corrupt plugin-marketplaces.json, resetting: $e');
+      appLogger.w('[PluginRepoService] Corrupt plugins/marketplaces.json, resetting: $e');
       return {};
     } catch (e) {
-      appLogger.w('[PluginRepoService] Cannot read plugin-marketplaces.json: $e');
+      appLogger.w('[PluginRepoService] Cannot read plugins/marketplaces.json: $e');
       return {};
     }
   }

@@ -45,7 +45,19 @@ void main() {
     test('teamPilot teampilotRoot helpers join under root', () {
       const root = '/remote/.local/share/com.hhoa.teampilot';
       expect(AppPaths.teamsUiDirForTeampilotRoot(root), '$root/teams');
-      expect(AppPaths.skillsDirForTeampilotRoot(root), '$root/skills');
+      expect(AppPaths.skillsDirForTeampilotRoot(root), '$root/skills/installed');
+      expect(
+        AppPaths.skillBackupsDirForTeampilotRoot(root),
+        '$root/skills/backups',
+      );
+      expect(
+        AppPaths.skillReposConfigPathForTeampilotRoot(root),
+        '$root/skills/repos.json',
+      );
+      expect(
+        AppPaths.skillRepoCacheDirForTeampilotRoot(root),
+        '$root/skills/repo-cache',
+      );
       expect(AppPaths.appProjectsDirForTeampilotRoot(root), '$root/projects');
     });
 
@@ -62,13 +74,15 @@ void main() {
 
     test('AppPaths exposes plugin paths under teampilotRoot', () {
       final root = '/tmp/tp';
-      expect(AppPaths.pluginsDirForTeampilotRoot(root), '/tmp/tp/plugins');
-      expect(AppPaths.pluginBackupsDirForTeampilotRoot(root), '/tmp/tp/plugin-backups');
-      expect(AppPaths.pluginsJsonForTeampilotRoot(root), '/tmp/tp/plugins.json');
+      expect(AppPaths.pluginsDirForTeampilotRoot(root), '/tmp/tp/plugins/installed');
+      expect(AppPaths.pluginBackupsDirForTeampilotRoot(root), '/tmp/tp/plugins/backups');
+      expect(AppPaths.pluginsJsonForTeampilotRoot(root), '/tmp/tp/plugins/plugins.json');
       expect(AppPaths.pluginMarketplacesConfigPathForTeampilotRoot(root),
-        '/tmp/tp/plugin-marketplaces.json');
+        '/tmp/tp/plugins/marketplaces.json');
       expect(AppPaths.pluginMarketplaceCacheDirForTeampilotRoot(root),
-        '/tmp/tp/plugin-marketplace-cache');
+        '/tmp/tp/plugins/marketplace-cache');
+      expect(AppPaths.pluginExternalCacheDirForTeampilotRoot(root),
+        '/tmp/tp/plugins/external-cache');
     });
   });
 }

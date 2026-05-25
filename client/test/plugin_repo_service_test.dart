@@ -17,7 +17,10 @@ void main() {
     final svc = PluginRepoService();
     final list = await svc.loadMarketplaces();
     expect(list, isNotEmpty);
-    expect(File(p.join(tmp.path, 'plugin-marketplaces.json')).existsSync(), isTrue);
+    expect(
+      File(p.join(tmp.path, 'plugins', 'marketplaces.json')).existsSync(),
+      isTrue,
+    );
   });
 
   test('addMarketplace / removeMarketplace / setEnabled', () async {

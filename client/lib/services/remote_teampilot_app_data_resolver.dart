@@ -61,9 +61,9 @@ printf '%s' "${TEAMPILOT_APP_DATA_DIR:-${XDG_DATA_HOME:-$HOME/.local/share}/com.
   ) async {
     final posix = p.Context(style: p.Style.posix);
     final markers = [
-      posix.join(root, 'skills.json'),
+      posix.join(root, 'skills', 'repos.json'),
       posix.join(root, 'projects', 'projects.json'),
-      posix.join(root, 'skills', 'manifest.json'),
+      posix.join(root, 'skills', 'installed', 'manifest.json'),
       posix.join(root, 'teams'),
     ];
     final found = await Future.wait(markers.map(fileExists));

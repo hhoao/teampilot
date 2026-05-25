@@ -105,7 +105,7 @@ class TeamSkillLinkerService {
   String _appSkillsRootParent() {
     final root = _appSkillsRoot;
     if (root == null || root.isEmpty) return '';
-    return p.dirname(root);
+    return AppPaths.teampilotRootFromInstalledScopeDir(root);
   }
 
   Future<TeamSkillSyncResult> _syncWithFilesystem({

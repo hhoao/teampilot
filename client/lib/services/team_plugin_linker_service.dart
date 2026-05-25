@@ -91,8 +91,7 @@ class TeamPluginLinkerService {
   String _appPluginsRootParent() {
     final root = _appPluginsRoot;
     if (root == null || root.isEmpty) return '';
-    final ctx = AppStorage.fs.pathContext;
-    return ctx.dirname(root);
+    return AppPaths.teampilotRootFromInstalledScopeDir(root);
   }
 
   Future<TeamPluginSyncResult> _syncWithFilesystem({
