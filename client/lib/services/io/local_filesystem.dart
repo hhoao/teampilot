@@ -192,6 +192,9 @@ class LocalFilesystem implements Filesystem {
       await Link(linkPath).create(target);
       return true;
     } on FileSystemException catch (e) {
+      if (_symlinkAlreadyPointsTo(target: target, linkPath: linkPath)) {
+        return true;
+      }
       if (!Platform.isWindows) rethrow;
       final result = await Process.run('cmd', [
         '/c',
@@ -201,7 +204,24 @@ class LocalFilesystem implements Filesystem {
         target,
       ]);
       if (result.exitCode == 0) return true;
+      if (_symlinkAlreadyPointsTo(target: target, linkPath: linkPath)) {
+        return true;
+      }
       throw FileSystemException('junction failed', linkPath, e.osError);
+    }
+  }
+
+  bool _symlinkAlreadyPointsTo({
+    required String target,
+    required String linkPath,
+  }) {
+    try {
+      if (!Link(linkPath).existsSync()) return false;
+      final existing = Link(linkPath).targetSync();
+      return pathContext.normalize(existing) ==
+          pathContext.normalize(target);
+    } on FileSystemException {
+      return false;
     }
   }
 

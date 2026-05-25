@@ -30,6 +30,10 @@ class CliDataLayout {
   final String teampilotRoot;
   final Filesystem _fs;
 
+  /// Serializes [ensureTeamInheritsApp] per `(teamId, tool)` so concurrent
+  /// member launches do not race on the shared team-level `agents/` / `skills/`.
+  static final Map<String, Future<void>> _teamInheritChains = {};
+
   p.Context get _pathContext => _fs.pathContext;
 
   String get configProfilesDir =>
@@ -112,21 +116,42 @@ class CliDataLayout {
     final trimmedTeam = teamId.trim();
     final trimmedTool = tool.trim();
     if (trimmedTeam.isEmpty || trimmedTool.isEmpty) return;
-    await ensureAppToolLayout(trimmedTool);
-    final teamRoot = teamToolDir(trimmedTeam, trimmedTool);
-    await _fs.ensureDir(teamRoot);
-    await Future.wait([
-      _ensureInheritedChild(
-        childName: 'agents',
-        parentToolRoot: appToolRoot(trimmedTool),
-        ownToolRoot: teamRoot,
-      ),
-      _ensureInheritedChild(
-        childName: 'skills',
-        parentToolRoot: appToolRoot(trimmedTool),
-        ownToolRoot: teamRoot,
-      ),
-    ]);
+    await _runExclusiveTeamInherit('$trimmedTeam|$trimmedTool', () async {
+      await ensureAppToolLayout(trimmedTool);
+      final teamRoot = teamToolDir(trimmedTeam, trimmedTool);
+      await _fs.ensureDir(teamRoot);
+      await Future.wait([
+        _ensureInheritedChild(
+          childName: 'agents',
+          parentToolRoot: appToolRoot(trimmedTool),
+          ownToolRoot: teamRoot,
+        ),
+        _ensureInheritedChild(
+          childName: 'skills',
+          parentToolRoot: appToolRoot(trimmedTool),
+          ownToolRoot: teamRoot,
+          preservePopulatedDirectory: true,
+        ),
+      ]);
+    });
+  }
+
+  Future<void> _runExclusiveTeamInherit(
+    String key,
+    Future<void> Function() action,
+  ) async {
+    final previous = _teamInheritChains[key] ?? Future<void>.value();
+    late final Future<void> current;
+    current = previous.then((_) => action());
+    final tail = current.whenComplete(() {});
+    _teamInheritChains[key] = tail;
+    try {
+      await current;
+    } finally {
+      if (_teamInheritChains[key] == tail) {
+        _teamInheritChains.remove(key);
+      }
+    }
   }
 
   /// Creates member root and symlinks `agents/` + `skills/` to team level.
@@ -199,10 +224,15 @@ class CliDataLayout {
     required String childName,
     required String parentToolRoot,
     required String ownToolRoot,
+    bool preservePopulatedDirectory = false,
   }) async {
     final source = _pathContext.join(parentToolRoot, childName);
     final target = _pathContext.join(ownToolRoot, childName);
     await _fs.ensureDir(source);
+    final targetStat = await _fs.stat(target);
+    if (preservePopulatedDirectory && targetStat.isDirectory) {
+      return;
+    }
     if (await _inheritLinkCurrent(source: source, target: target)) {
       return;
     }

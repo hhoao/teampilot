@@ -301,5 +301,77 @@ void main() {
         'hello',
       );
     });
+
+    test(
+      'ensureTeamInheritsApp keeps populated team skills dir from linker',
+      () async {
+        final layout = CliDataLayout(
+          teampilotRoot: base.path,
+          fs: LocalFilesystem(),
+        );
+        await layout.ensureAppToolLayout('flashskyai');
+        final teamSkills = Directory(
+          p.join(layout.teamToolDir('team-a', 'flashskyai'), 'skills'),
+        );
+        await teamSkills.create(recursive: true);
+        await Directory(p.join(teamSkills.path, 'alpha')).create();
+
+        await layout.ensureTeamInheritsApp('team-a', 'flashskyai');
+
+        expect(Link(teamSkills.path).existsSync(), isFalse);
+        expect(
+          Directory(p.join(teamSkills.path, 'alpha')).existsSync(),
+          isTrue,
+        );
+      },
+    );
+
+    test(
+      'concurrent ensureTeamInheritsApp does not throw PathExistsException',
+      () async {
+        final layout = CliDataLayout(
+          teampilotRoot: base.path,
+          fs: LocalFilesystem(),
+        );
+        await layout.ensureAppToolLayout('flashskyai');
+
+        await Future.wait([
+          layout.ensureTeamInheritsApp('team-a', 'flashskyai'),
+          layout.ensureTeamInheritsApp('team-a', 'flashskyai'),
+          layout.ensureTeamInheritsApp('team-a', 'flashskyai'),
+        ]);
+
+        final teamSkills = p.join(
+          layout.teamToolDir('team-a', 'flashskyai'),
+          'skills',
+        );
+        expect(Link(teamSkills).existsSync(), isTrue);
+      },
+    );
+
+    test(
+      'concurrent ensureMemberInheritsTeam for multiple members succeeds',
+      () async {
+        final layout = CliDataLayout(
+          teampilotRoot: base.path,
+          fs: LocalFilesystem(),
+        );
+        await layout.ensureAppToolLayout('flashskyai');
+
+        await Future.wait([
+          layout.ensureMemberInheritsTeam('team-a', 'member-1', 'flashskyai'),
+          layout.ensureMemberInheritsTeam('team-a', 'member-2', 'flashskyai'),
+          layout.ensureMemberInheritsTeam('team-a', 'member-3', 'flashskyai'),
+        ]);
+
+        for (final sessionId in ['member-1', 'member-2', 'member-3']) {
+          final memberSkills = p.join(
+            layout.memberToolDir('team-a', sessionId, 'flashskyai'),
+            'skills',
+          );
+          expect(Link(memberSkills).existsSync(), isTrue);
+        }
+      },
+    );
   });
 }
