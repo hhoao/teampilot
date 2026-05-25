@@ -1,9 +1,8 @@
 name: teampilot
-description: "A new Flutter project."
+description: "A team-oriented and easy-to-use desktop client packaged based on the terminal AI Agent"
 publish_to: 'none'
 
-
-version: 1.5.0
+version: 1.8.0
 
 environment:
   sdk: ^3.8.1

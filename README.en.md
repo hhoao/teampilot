@@ -2,7 +2,7 @@
 
 [简体中文](README.md) · [Development guide](docs/DEVELOPMENT.en.md) · Architecture & AI: [CLAUDE.md](CLAUDE.md)
 
-**TeamPilot** is the Flutter desktop and mobile client for the [Agent Toolkit](https://github.com/hhoa). Its centerpiece is **team capabilities**: assign **a model per member** for tiered collaboration (save tokens, implement fast, review accurately), plus roles, prompts, skills, and plugins in the GUI—then launch **one embedded terminal per member** that talks to agents through the **`flashskyai`** or **`claude`** CLI locally or over SSH. Projects and sessions attach that team to a repo and conversation.
+**TeamPilot** is a desktop client based on terminal AI Agent Team. Its centerpiece is **team capabilities**: assign **a model per member** for tiered collaboration (save tokens, implement fast, review accurately), plus roles, prompts, skills, and plugins in the GUI—then launch **one embedded terminal per member** that talks to agents through the **`flashskyai`** or **`claude`** CLI locally or over SSH. Projects and sessions attach that team to a repo and conversation.
 
 | Name | Meaning |
 |------|---------|

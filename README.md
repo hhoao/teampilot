@@ -2,7 +2,7 @@
 
 [English](README.en.md) · [开发指南](docs/DEVELOPMENT.md) · 架构与 AI 约定见 [CLAUDE.md](CLAUDE.md)
 
-**TeamPilot** 是 [Agent Toolkit](https://github.com/hhoa) 的图形客户端。它的核心是 **团队能力**：在 GUI 里为每位成员单独指定模型与提示词，按角色分档协作（省 Token、快实现、准验收），并一键为每个成员启动独立内嵌终端，通过本机或远程的 **`flashskyai` / `claude` CLI** 与 Agent 协作；项目与会话则负责把这套团队绑定到具体仓库与对话上。
+**TeamPilot** 是基于终端 AI Agent 封装的面向团队易用的桌面客户端。它的核心是 **团队能力**：在 GUI 里为每位成员单独指定模型与提示词，按角色分档协作（省 Token、快实现、准验收），并一键为每个成员启动独立内嵌终端，通过本机或远程的 **`flashskyai` / `claude` CLI** 与 Agent 协作；项目与会话则负责把这套团队绑定到具体仓库与对话上。
 
 ![应用预览](assets/image.png)
 
