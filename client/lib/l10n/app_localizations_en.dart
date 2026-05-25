@@ -959,6 +959,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get skillsCardInstall => 'Install';
 
   @override
+  String get skillsCardDetails => 'Details';
+
+  @override
   String get skillsCardInstalled => 'Installed';
 
   @override
@@ -1137,6 +1140,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get pluginsCardInstall => 'Install';
+
+  @override
+  String get pluginsCardDetails => 'Details';
 
   @override
   String get pluginsCardInstalled => 'Installed';

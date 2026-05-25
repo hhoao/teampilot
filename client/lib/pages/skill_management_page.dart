@@ -4,8 +4,6 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:url_launcher/url_launcher.dart';
-
 import '../cubits/skill_cubit.dart';
 import '../services/skill_repo_disk_cache_service.dart';
 import '../l10n/l10n_extensions.dart';
@@ -13,8 +11,10 @@ import '../models/skill.dart';
 import '../services/platform_utils.dart';
 import '../utils/app_keys.dart';
 import '../utils/debounce/debounce.dart';
+import '../utils/github_source_url.dart';
 import '../utils/skill_repo_parse.dart';
 import '../widgets/app_outline_text_field.dart';
+import '../widgets/github_details_button.dart';
 import '../widgets/dropdown/flashsky_dropdown_field.dart';
 import '../widgets/settings/workspace_hub_shell.dart';
 import '../theme/workspace_surface_layers.dart';
@@ -272,14 +272,6 @@ void _showSnack(BuildContext context, String message) {
   );
 }
 
-Future<void> _openUrl(String url) async {
-  final uri = Uri.tryParse(url);
-  if (uri == null) return;
-  if (await canLaunchUrl(uri)) {
-    await launchUrl(uri, mode: LaunchMode.externalApplication);
-  }
-}
-
 // ============================================================================
 // Installed section
 // ============================================================================
@@ -473,17 +465,6 @@ class _InstalledSkillRow extends StatelessWidget {
                           ),
                         ),
                       ),
-                      if (skill.readmeUrl != null) ...[
-                        const SizedBox(width: 4),
-                        InkWell(
-                          onTap: () => _openUrl(skill.readmeUrl!),
-                          child: Icon(
-                            Icons.open_in_new,
-                            size: 14,
-                            color: textBase.withValues(alpha: 0.5),
-                          ),
-                        ),
-                      ],
                       const SizedBox(width: 8),
                       Text(
                         sourceLabel,
@@ -530,7 +511,11 @@ class _InstalledSkillRow extends StatelessWidget {
                 ],
               ),
             ),
-            const SizedBox(width: 12),
+            GithubDetailsButton(
+              url: skill.githubBrowseUrl,
+              label: l10n.skillsCardDetails,
+            ),
+            const SizedBox(width: 8),
             Switch(
               value: skill.enabled,
               onChanged: (v) => cubit.toggleSkillEnabled(skill, v),
@@ -1027,7 +1012,7 @@ class _DiscoverySectionState extends State<_DiscoverySection> {
             name: d.name,
             description: d.description,
             source: '${d.repoOwner}/${d.repoName}',
-            readmeUrl: d.readmeUrl,
+            githubUrl: d.githubBrowseUrl,
             installed: installedKeys.contains(installKey),
             busy: state.busyIds.contains(d.key),
             onInstall: () => context.read<SkillCubit>().installFromDiscovery(d),
@@ -1095,7 +1080,7 @@ class _DiscoverySectionState extends State<_DiscoverySection> {
                   name: e.name,
                   description: l10n.skillsInstalls(e.installs),
                   source: '${e.repoOwner}/${e.repoName}',
-                  readmeUrl: e.readmeUrl,
+                  githubUrl: e.githubBrowseUrl,
                   installed: installedKeys.contains(installKey),
                   busy: state.busyIds.contains(e.key),
                   onInstall: () => cubit.installSkillsShEntry(e),
@@ -1181,7 +1166,7 @@ class _SkillCard extends StatelessWidget {
     required this.name,
     required this.description,
     required this.source,
-    this.readmeUrl,
+    this.githubUrl,
     required this.installed,
     required this.busy,
     required this.onInstall,
@@ -1190,7 +1175,7 @@ class _SkillCard extends StatelessWidget {
   final String name;
   final String description;
   final String source;
-  final String? readmeUrl;
+  final String? githubUrl;
   final bool installed;
   final bool busy;
   final VoidCallback onInstall;
@@ -1221,15 +1206,6 @@ class _SkillCard extends StatelessWidget {
                   ),
                 ),
               ),
-              if (readmeUrl != null)
-                InkWell(
-                  onTap: () => _openUrl(readmeUrl!),
-                  child: Icon(
-                    Icons.open_in_new,
-                    size: 14,
-                    color: textBase.withValues(alpha: 0.5),
-                  ),
-                ),
             ],
           ),
           const SizedBox(height: 4),
@@ -1254,8 +1230,17 @@ class _SkillCard extends StatelessWidget {
           ),
           Align(
             alignment: Alignment.centerRight,
-            child: installed
-                ? Container(
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 4,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                GithubDetailsButton(
+                  url: githubUrl,
+                  label: l10n.skillsCardDetails,
+                ),
+                if (installed)
+                  Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 10,
                       vertical: 4,
@@ -1273,7 +1258,8 @@ class _SkillCard extends StatelessWidget {
                       ),
                     ),
                   )
-                : FilledButton(
+                else
+                  FilledButton(
                     onPressed: busy ? null : onInstall,
                     style: FilledButton.styleFrom(
                       visualDensity: VisualDensity.compact,
@@ -1286,6 +1272,8 @@ class _SkillCard extends StatelessWidget {
                           )
                         : Text(l10n.skillsCardInstall),
                   ),
+              ],
+            ),
           ),
         ],
       ),

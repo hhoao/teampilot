@@ -1832,6 +1832,12 @@ abstract class AppLocalizations {
   /// **'Install'**
   String get skillsCardInstall;
 
+  /// No description provided for @skillsCardDetails.
+  ///
+  /// In en, this message translates to:
+  /// **'Details'**
+  String get skillsCardDetails;
+
   /// No description provided for @skillsCardInstalled.
   ///
   /// In en, this message translates to:
@@ -2143,6 +2149,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Install'**
   String get pluginsCardInstall;
+
+  /// No description provided for @pluginsCardDetails.
+  ///
+  /// In en, this message translates to:
+  /// **'Details'**
+  String get pluginsCardDetails;
 
   /// No description provided for @pluginsCardInstalled.
   ///

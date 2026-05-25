@@ -13,8 +13,10 @@ import '../models/plugin.dart';
 import '../services/platform_utils.dart';
 import '../utils/app_keys.dart';
 import '../utils/debounce/debounce.dart';
+import '../utils/github_source_url.dart';
 import '../utils/skill_repo_parse.dart';
 import '../widgets/app_outline_text_field.dart';
+import '../widgets/github_details_button.dart';
 import '../widgets/dropdown/flashsky_dropdown_field.dart';
 import '../widgets/settings/workspace_hub_shell.dart';
 import '../theme/workspace_surface_layers.dart';
@@ -614,6 +616,10 @@ class _InstalledPluginRow extends StatelessWidget {
           if (busy)
             const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
           else ...[
+            GithubDetailsButton(
+              url: plugin.githubBrowseUrl,
+              label: l10n.pluginsCardDetails,
+            ),
             if (updateInfo != null)
               TextButton.icon(
                 onPressed: () => cubit.updatePlugin(plugin),
@@ -985,17 +991,28 @@ class _DiscoverablePluginCard extends StatelessWidget {
           const SizedBox(width: 12),
           if (busy)
             const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
-          else if (installed)
-            OutlinedButton(
-              onPressed: null,
-              child: Text(l10n.pluginsCardInstalled),
-            )
           else
-            FilledButton.tonal(
-              onPressed: plugin.canInstall
-                  ? () => cubit.installFromDiscovery(plugin)
-                  : null,
-              child: Text(l10n.pluginsCardInstall),
+            Wrap(
+              spacing: 8,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                GithubDetailsButton(
+                  url: plugin.githubBrowseUrl,
+                  label: l10n.pluginsCardDetails,
+                ),
+                if (installed)
+                  OutlinedButton(
+                    onPressed: null,
+                    child: Text(l10n.pluginsCardInstalled),
+                  )
+                else
+                  FilledButton.tonal(
+                    onPressed: plugin.canInstall
+                        ? () => cubit.installFromDiscovery(plugin)
+                        : null,
+                    child: Text(l10n.pluginsCardInstall),
+                  ),
+              ],
             ),
         ],
       ),

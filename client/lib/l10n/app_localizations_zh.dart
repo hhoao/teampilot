@@ -932,6 +932,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get skillsCardInstall => '安装';
 
   @override
+  String get skillsCardDetails => '详情';
+
+  @override
   String get skillsCardInstalled => '已安装';
 
   @override
@@ -1108,6 +1111,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get pluginsCardInstall => '安装';
+
+  @override
+  String get pluginsCardDetails => '详情';
 
   @override
   String get pluginsCardInstalled => '已安装';

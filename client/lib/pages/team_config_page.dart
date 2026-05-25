@@ -3,8 +3,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:url_launcher/url_launcher.dart';
-
 import '../cubits/app_provider_cubit.dart';
 import '../cubits/plugin_cubit.dart';
 import '../cubits/skill_cubit.dart';
@@ -22,7 +20,9 @@ import '../services/platform_utils.dart';
 import '../utils/app_keys.dart';
 import '../utils/app_provider_model_candidates.dart';
 import '../utils/debounce/debounce.dart';
+import '../utils/github_source_url.dart';
 import '../widgets/app_outline_text_field.dart';
+import '../widgets/github_details_button.dart';
 import '../widgets/app_provider/team_tool_provider_selectors.dart';
 import '../widgets/settings/workspace_settings_widgets.dart';
 import '../widgets/dropdown/flashsky_dropdown_field.dart';
@@ -748,17 +748,6 @@ class _TeamSkillRow extends StatelessWidget {
                           ),
                         ),
                       ),
-                      if (skill.readmeUrl != null) ...[
-                        const SizedBox(width: 4),
-                        InkWell(
-                          onTap: () => _openSkillUrl(skill.readmeUrl!),
-                          child: Icon(
-                            Icons.open_in_new,
-                            size: 14,
-                            color: textBase.withValues(alpha: 0.5),
-                          ),
-                        ),
-                      ],
                       const SizedBox(width: 8),
                       Text(
                         sourceLabel,
@@ -784,7 +773,11 @@ class _TeamSkillRow extends StatelessWidget {
                 ],
               ),
             ),
-            const SizedBox(width: 12),
+            GithubDetailsButton(
+              url: skill.githubBrowseUrl,
+              label: l10n.skillsCardDetails,
+            ),
+            const SizedBox(width: 8),
             Switch(value: assigned, onChanged: onAssignedChanged),
           ],
         ),
@@ -1034,17 +1027,6 @@ class _TeamPluginRow extends StatelessWidget {
                           ),
                         ),
                       ],
-                      if (plugin.readmeUrl != null) ...[
-                        const SizedBox(width: 4),
-                        InkWell(
-                          onTap: () => _openSkillUrl(plugin.readmeUrl!),
-                          child: Icon(
-                            Icons.open_in_new,
-                            size: 14,
-                            color: textBase.withValues(alpha: 0.5),
-                          ),
-                        ),
-                      ],
                       const SizedBox(width: 8),
                       Text(
                         sourceLabel,
@@ -1092,7 +1074,11 @@ class _TeamPluginRow extends StatelessWidget {
                 ],
               ),
             ),
-            const SizedBox(width: 12),
+            GithubDetailsButton(
+              url: plugin.githubBrowseUrl,
+              label: l10n.pluginsCardDetails,
+            ),
+            const SizedBox(width: 8),
             Switch(value: assigned, onChanged: onAssignedChanged),
           ],
         ),
@@ -1159,14 +1145,6 @@ class _TeamMissingPluginRow extends StatelessWidget {
         ),
       ),
     );
-  }
-}
-
-Future<void> _openSkillUrl(String url) async {
-  final uri = Uri.tryParse(url);
-  if (uri == null) return;
-  if (await canLaunchUrl(uri)) {
-    await launchUrl(uri, mode: LaunchMode.externalApplication);
   }
 }
 
