@@ -1353,7 +1353,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get memberPromptPresetTeamLeadText =>
-      '协调团队。先把工作拆成有明确验收范围的任务，再安排实现。\n除非阻塞，不要亲自做大块实现。';
+      '协调团队。先把工作拆成有明确验收范围的任务，再安排实现。\n除非阻塞，不要亲自做大块实现。\n与用户在本终端直接对话；不要 SendMessage 给 team-lead。TaskUpdate 的 owner 和 Agent 的 name 只能填其他成员名。';
 
   @override
   String get memberPromptPresetDeveloper => '开发';

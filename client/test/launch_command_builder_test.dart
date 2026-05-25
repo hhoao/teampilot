@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:teampilot/services/launch_command_builder.dart';
 import 'package:teampilot/services/config_profile_service.dart';
+import 'package:teampilot/services/member_role_provision.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -235,6 +236,60 @@ void main() {
       expect(capturedEnv?['CLAUDE_CONFIG_DIR'], '/tmp/team/claude');
       expect(
         capturedEnv?.containsKey(ConfigProfileService.claudeSettingsFileEnvKey),
+        isFalse,
+      );
+    },
+  );
+
+  test(
+    'launch passes append-system-prompt-file and strips internal env',
+    () async {
+      const team = TeamConfig(id: '1', name: 'agent', cli: TeamCli.claude);
+      List<String>? capturedArgs;
+      Map<String, String>? capturedEnv;
+
+      try {
+        await LaunchCommandBuilder.launch(
+          team,
+          member: member,
+          executable: 'claude',
+          launchInExternalTerminal: false,
+          extraEnvironment: const {
+            'CLAUDE_CONFIG_DIR': '/tmp/team/claude',
+            MemberRoleProvision.claudeAppendSystemPromptFileEnvKey:
+                '/tmp/team/claude/prompts/team-lead/role.md',
+          },
+          starter:
+              (
+                executable,
+                arguments, {
+                workingDirectory,
+                runInShell = false,
+                environment,
+                includeParentEnvironment = true,
+              }) async {
+                capturedArgs ??= List<String>.from(arguments);
+                capturedEnv ??= environment == null
+                    ? null
+                    : Map<String, String>.from(environment);
+                throw const ProcessException('stop', []);
+              },
+        );
+      } on ProcessException {
+        // Expected.
+      }
+
+      expect(
+        capturedArgs,
+        containsAllInOrder([
+          '--append-system-prompt-file',
+          '/tmp/team/claude/prompts/team-lead/role.md',
+        ]),
+      );
+      expect(
+        capturedEnv?.containsKey(
+          MemberRoleProvision.claudeAppendSystemPromptFileEnvKey,
+        ),
         isFalse,
       );
     },

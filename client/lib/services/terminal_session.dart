@@ -128,6 +128,10 @@ class TerminalSession {
     final settingsPath = LaunchCommandBuilder.settingsPathFromEnvironment(
       _extraEnvironment,
     );
+    final appendSystemPromptFile =
+        LaunchCommandBuilder.appendSystemPromptFileFromEnvironment(
+          _extraEnvironment,
+        );
     _extraEnvironment = LaunchCommandBuilder.launchEnvironmentForProcess(
       _extraEnvironment,
     );
@@ -149,6 +153,7 @@ class TerminalSession {
           fixedSessionId: fixedSessionId,
           resumeSessionId: resumeSessionId,
           settingsPath: settingsPath,
+          appendSystemPromptFile: appendSystemPromptFile,
           useWslPaths: invocation.usesWsl,
         ),
       );

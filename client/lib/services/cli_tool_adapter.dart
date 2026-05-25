@@ -10,6 +10,7 @@ class CliLaunchContext {
     this.fixedSessionId,
     this.resumeSessionId,
     this.settingsPath,
+    this.appendSystemPromptFile,
     this.useWslPaths = false,
   });
 
@@ -21,6 +22,7 @@ class CliLaunchContext {
   final String? fixedSessionId;
   final String? resumeSessionId;
   final String? settingsPath;
+  final String? appendSystemPromptFile;
   final bool useWslPaths;
 
   String get teamName => sessionTeam ?? team.name.trim();
@@ -108,6 +110,10 @@ class ClaudeCodeCliToolAdapter implements CliToolAdapter {
     final settings = context.settingsPath?.trim() ?? '';
     if (settings.isNotEmpty) {
       args.addAll(['--settings', settings]);
+    }
+    final appendFile = context.appendSystemPromptFile?.trim() ?? '';
+    if (appendFile.isNotEmpty) {
+      args.addAll(['--append-system-prompt-file', appendFile]);
     }
     if (member.dangerouslySkipPermissions) {
       args.add('--dangerously-skip-permissions');

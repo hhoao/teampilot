@@ -5,6 +5,7 @@ import '../models/team_config.dart';
 import 'cli_tool_adapter.dart';
 import 'cli_invocation.dart';
 import 'config_profile_service.dart';
+import 'member_role_provision.dart';
 
 typedef ProcessStarter =
     Future<Process> Function(
@@ -61,6 +62,7 @@ class LaunchCommandBuilder {
     String? fixedSessionId,
     String? resumeSessionId,
     String? settingsPath,
+    String? appendSystemPromptFile,
     bool useWslPaths = false,
   }) {
     return const CliToolAdapterRegistry()
@@ -75,6 +77,7 @@ class LaunchCommandBuilder {
             fixedSessionId: fixedSessionId,
             resumeSessionId: resumeSessionId,
             settingsPath: settingsPath,
+            appendSystemPromptFile: appendSystemPromptFile,
             useWslPaths: useWslPaths,
           ),
         );
@@ -177,6 +180,8 @@ class LaunchCommandBuilder {
         ? normalizeEnvironmentForCli(extraEnvironment, useWslPaths: true)
         : extraEnvironment;
     final settingsPath = settingsPathFromEnvironment(normalizedEnvironment);
+    final appendSystemPromptFile =
+        appendSystemPromptFileFromEnvironment(normalizedEnvironment);
     final env = launchEnvironmentForProcess(normalizedEnvironment);
     final args = buildArguments(
       team,
@@ -187,6 +192,7 @@ class LaunchCommandBuilder {
       fixedSessionId: fixedSessionId,
       resumeSessionId: resumeSessionId,
       settingsPath: settingsPath,
+      appendSystemPromptFile: appendSystemPromptFile,
       useWslPaths: invocation.usesWsl,
     );
     final launchArgs = invocation.withArgs(args, environment: env);
@@ -376,19 +382,30 @@ class LaunchCommandBuilder {
     return value == null || value.isEmpty ? null : value;
   }
 
+  static String? appendSystemPromptFileFromEnvironment(
+    Map<String, String>? environment,
+  ) {
+    final value = environment?[MemberRoleProvision
+            .claudeAppendSystemPromptFileEnvKey]
+        ?.trim();
+    return value == null || value.isEmpty ? null : value;
+  }
+
+  static const _launchOnlyEnvKeys = {
+    ConfigProfileService.claudeSettingsFileEnvKey,
+    MemberRoleProvision.claudeAppendSystemPromptFileEnvKey,
+  };
+
   static Map<String, String>? launchEnvironmentForProcess(
     Map<String, String>? environment,
   ) {
-    if (environment == null ||
-        !environment.containsKey(
-          ConfigProfileService.claudeSettingsFileEnvKey,
-        )) {
+    if (environment == null) return null;
+    if (!_launchOnlyEnvKeys.any(environment.containsKey)) {
       return environment;
     }
     return {
       for (final entry in environment.entries)
-        if (entry.key != ConfigProfileService.claudeSettingsFileEnvKey)
-          entry.key: entry.value,
+        if (!_launchOnlyEnvKeys.contains(entry.key)) entry.key: entry.value,
     };
   }
 }

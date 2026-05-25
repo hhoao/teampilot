@@ -7,6 +7,8 @@ import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/cli_data_layout.dart';
 import 'package:teampilot/services/config_profile_service.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
+import 'package:teampilot/services/member_role_provision.dart';
+import 'package:teampilot/services/team_lead_hook_provisioner.dart';
 
 String _sessionClaudeDir(String base, String teamId, String sessionId) =>
     p.join(
@@ -33,6 +35,10 @@ void main() {
       basePath: base.path,
       fs: fs,
       layout: CliDataLayout(teampilotRoot: base.path, fs: fs),
+      teamLeadHookProvisioner: TeamLeadHookProvisioner(
+        fs: fs,
+        loadHookScript: () async => '#!/usr/bin/env bash\n# teampilot-deny-team-lead-self-message\n',
+      ),
     );
   });
 
@@ -138,6 +144,98 @@ void main() {
     expect(env.keys, ['CODEX_HOME']);
     expect(env['CODEX_HOME'], codexDir);
     expect(File(p.join(codexDir, 'auth.json')).existsSync(), isFalse);
+  });
+
+  test('prepareTeamLaunch writes role prompt and injects append env', () async {
+    const sessionId = 'sess-role-prompt';
+    const lead = TeamMemberConfig(
+      id: 'lead',
+      name: 'team-lead',
+      prompt: 'Coordinate only; delegate implementation.',
+    );
+    final env = (await service.prepareTeamLaunch(
+      teamId: 'team-a',
+      runtimeTeamId: sessionId,
+      cli: TeamCli.claude,
+      members: const [lead],
+      member: lead,
+      workingDirectory: '/workspace',
+    )).environment;
+
+    final claudeDir = _sessionClaudeDir(base.path, 'team-a', sessionId);
+    final roleFile = p.join(
+      claudeDir,
+      'prompts',
+      'team-lead',
+      'role.md',
+    );
+    expect(await File(roleFile).exists(), isTrue);
+    expect(await File(roleFile).readAsString(), contains('Coordinate only'));
+
+    final appendPath =
+        env[MemberRoleProvision.claudeAppendSystemPromptFileEnvKey];
+    expect(appendPath, roleFile);
+
+    final settingsPath = env[ConfigProfileService.claudeSettingsFileEnvKey]!;
+    final settings =
+        jsonDecode(await File(settingsPath).readAsString())
+            as Map<String, Object?>;
+    final deny =
+        (settings['permissions'] as Map)['deny'] as List;
+    expect(deny, contains('TeamCreate'));
+    expect(deny, isNot(contains('Bash')));
+    expect(deny, isNot(contains('Edit')));
+
+    final hookPath = p.join(
+      claudeDir,
+      'hooks',
+      TeamLeadHookProvisioner.hookFileName,
+    );
+    expect(await File(hookPath).exists(), isTrue);
+
+    final pre = (settings['hooks'] as Map)['PreToolUse'] as List;
+    final sendMessageMatcher = pre.cast<Map>().firstWhere(
+      (entry) => entry['matcher'] == 'SendMessage',
+    );
+    final command =
+        ((sendMessageMatcher['hooks'] as List).first as Map)['command']
+            as String;
+    expect(command, contains(TeamLeadHookProvisioner.hookFileName));
+  });
+
+  test('team-lead SendMessage hook is not added for non-lead members', () async {
+    const sessionId = 'sess-dev-only-hook';
+    const dev = TeamMemberConfig(id: 'dev', name: 'developer');
+    await service.prepareTeamLaunch(
+      teamId: 'team-a',
+      runtimeTeamId: sessionId,
+      cli: TeamCli.claude,
+      members: const [
+        TeamMemberConfig(id: 'lead', name: 'team-lead'),
+        dev,
+      ],
+      member: dev,
+    );
+
+    final claudeDir = _sessionClaudeDir(base.path, 'team-a', sessionId);
+    final devSettingsPath = p.join(claudeDir, 'settings', 'developer.json');
+    final settings =
+        jsonDecode(await File(devSettingsPath).readAsString())
+            as Map<String, Object?>;
+    final devDeny =
+        (settings['permissions'] as Map?)?['deny'] as List? ?? const [];
+    expect(devDeny, contains('TeamCreate'));
+    expect(settings['hooks'], isNull);
+
+    final leadSettingsPath = p.join(claudeDir, 'settings', 'team-lead.json');
+    final leadSettings =
+        jsonDecode(await File(leadSettingsPath).readAsString())
+            as Map<String, Object?>;
+    final pre = (leadSettings['hooks'] as Map)['PreToolUse'] as List;
+    expect(
+      pre.cast<Map>().any((entry) => entry['matcher'] == 'SendMessage'),
+      isTrue,
+    );
   });
 
   test('prepareTeamLaunch for claude returns env and writes roster', () async {

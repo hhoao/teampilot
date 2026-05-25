@@ -104,6 +104,28 @@ void main() {
     );
   });
 
+  test('claude adapter appends role system prompt file when set', () {
+    final args = ClaudeCodeCliToolAdapter().buildArguments(
+      CliLaunchContext(
+        team: const TeamConfig(
+          id: 'team-1',
+          name: 'agent',
+          cli: TeamCli.claude,
+        ),
+        member: member,
+        appendSystemPromptFile: '/tmp/team/claude/prompts/team-lead/role.md',
+      ),
+    );
+
+    expect(
+      args,
+      containsAllInOrder([
+        '--append-system-prompt-file',
+        '/tmp/team/claude/prompts/team-lead/role.md',
+      ]),
+    );
+  });
+
   test('claude adapter appends member settings file argument', () {
     final args = ClaudeCodeCliToolAdapter().buildArguments(
       CliLaunchContext(

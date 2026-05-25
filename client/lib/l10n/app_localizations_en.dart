@@ -1391,7 +1391,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get memberPromptPresetTeamLeadText =>
-      'Coordinate the team. Break work into scoped tasks with clear done criteria before implementation.\nDo not implement large changes yourself unless blocking.';
+      'Coordinate the team. Break work into scoped tasks with clear done criteria before implementation.\nDo not implement large changes yourself unless blocking.\nReply to the user in this chat; never SendMessage to team-lead. Assign tasks and spawn Agent only for other member names.';
 
   @override
   String get memberPromptPresetDeveloper => 'Developer';

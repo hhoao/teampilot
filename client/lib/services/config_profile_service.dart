@@ -14,9 +14,12 @@ import 'claude_team_roster_service.dart';
 import 'cli_data_layout.dart';
 import 'cli_plugin_registry_service.dart';
 import 'io/filesystem.dart';
+import 'member_role_provision.dart';
 import 'rtk_detector.dart';
 import 'rtk_hook_provisioner.dart';
 import 'rtk_settings_merge.dart';
+import 'team_lead_hook_provisioner.dart';
+import 'team_lead_settings_merge.dart';
 
 /// Launch-time environment for tool-isolated team profiles.
 typedef TeamLaunchEnvironment = Map<String, String>;
@@ -77,6 +80,8 @@ class ConfigProfileService {
     RtkDetector? rtkDetector,
     RtkHookProvisioner? rtkHookProvisioner,
     Future<String> Function()? loadRtkHookScript,
+    TeamLeadHookProvisioner? teamLeadHookProvisioner,
+    Future<String> Function()? loadTeamLeadHookScript,
   }) : _fs = fs ?? AppStorage.fs,
        layout =
            layout ??
@@ -85,7 +90,9 @@ class ConfigProfileService {
        _loadRtkEnabled = loadRtkEnabled,
        _rtkDetector = rtkDetector ?? RtkDetector(),
        _rtkHookProvisioner = rtkHookProvisioner,
-       _loadRtkHookScript = loadRtkHookScript;
+       _loadRtkHookScript = loadRtkHookScript,
+       _teamLeadHookProvisioner = teamLeadHookProvisioner,
+       _loadTeamLeadHookScript = loadTeamLeadHookScript;
 
   final String basePath;
   final Filesystem _fs;
@@ -95,6 +102,8 @@ class ConfigProfileService {
   final RtkDetector _rtkDetector;
   final RtkHookProvisioner? _rtkHookProvisioner;
   final Future<String> Function()? _loadRtkHookScript;
+  final TeamLeadHookProvisioner? _teamLeadHookProvisioner;
+  final Future<String> Function()? _loadTeamLeadHookScript;
 
   ClaudeProviderCredentialsService get _claudeCredentials =>
       _claudeCredentialsService ??
@@ -335,26 +344,38 @@ class ConfigProfileService {
         break;
     }
 
+    final claudeEnv = <String, String>{
+      'CLAUDE_CONFIG_DIR': sessionToolDir(
+        scope.teamId,
+        scope.sessionId,
+        'claude',
+      ),
+      if (member != null && member.isValid)
+        claudeSettingsFileEnvKey: sessionClaudeMemberSettingsFile(
+          scope.teamId,
+          scope.sessionId,
+          member,
+        ),
+      'CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS': '1',
+    };
+    if (cli == TeamCli.claude && member != null && member.isValid) {
+      final appendPath = await _resolveClaudeAppendSystemPromptPath(
+        scope: scope,
+        member: member,
+      );
+      if (appendPath != null) {
+        claudeEnv[MemberRoleProvision.claudeAppendSystemPromptFileEnvKey] =
+            appendPath;
+      }
+    }
+
     return TeamLaunchOutcome(
       environment: switch (cli) {
       TeamCli.flashskyai => _flashskyaiTeamLaunchEnvironment(scope),
       TeamCli.codex => {
         'CODEX_HOME': sessionToolDir(scope.teamId, scope.sessionId, 'codex'),
       },
-      TeamCli.claude => {
-        'CLAUDE_CONFIG_DIR': sessionToolDir(
-          scope.teamId,
-          scope.sessionId,
-          'claude',
-        ),
-        if (member != null && member.isValid)
-          claudeSettingsFileEnvKey: sessionClaudeMemberSettingsFile(
-            scope.teamId,
-            scope.sessionId,
-            member,
-          ),
-        'CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS': '1',
-      },
+      TeamCli.claude => claudeEnv,
     },
       warnings: warnings,
     );
@@ -559,6 +580,18 @@ class ConfigProfileService {
           loadHookScript:
               _loadRtkHookScript ??
               () => rootBundle.loadString('assets/rtk/rtk-rewrite.sh'),
+        );
+  }
+
+  TeamLeadHookProvisioner _resolveTeamLeadHookProvisioner() {
+    return _teamLeadHookProvisioner ??
+        TeamLeadHookProvisioner(
+          fs: _fs,
+          loadHookScript:
+              _loadTeamLeadHookScript ??
+              () => rootBundle.loadString(
+                'assets/hooks/teampilot-deny-team-lead-self-message.sh',
+              ),
         );
   }
 
@@ -768,17 +801,60 @@ class ConfigProfileService {
     required TeamMemberConfig member,
     required Map<String, Object?>? providerSettings,
   }) async {
+    final memberToolDir = sessionToolDir(scope.teamId, scope.sessionId, 'claude');
+    await MemberRoleProvision.syncRolePromptFile(
+      fs: _fs,
+      memberClaudeToolDir: memberToolDir,
+      member: member,
+    );
     final file = sessionClaudeMemberSettingsFile(
       scope.teamId,
       scope.sessionId,
       member,
     );
-    final settings = _claudeMemberSettings(providerSettings, member);
+    var settings = _claudeMemberSettings(providerSettings, member);
+    settings = MemberRoleProvision.applyTeamSessionPolicy(settings);
+    settings = await _maybeApplyTeamLeadHook(
+      settings,
+      member,
+      memberToolDir,
+    );
     await _writeSettingsFile(
       file,
       settings,
-      memberToolDir: sessionToolDir(scope.teamId, scope.sessionId, 'claude'),
+      memberToolDir: memberToolDir,
     );
+  }
+
+  Future<Map<String, Object?>> _maybeApplyTeamLeadHook(
+    Map<String, Object?> settings,
+    TeamMemberConfig member,
+    String memberToolDir,
+  ) async {
+    if (member.name.trim() != TeamMemberNaming.teamLeadName) {
+      return settings;
+    }
+    final provisioner = _resolveTeamLeadHookProvisioner();
+    final scriptPath = await provisioner.provisionMemberToolDir(memberToolDir);
+    return const TeamLeadSettingsMerge().mergeIntoSettings(
+      base: settings,
+      hookCommand: provisioner.hookCommandForPath(scriptPath),
+    );
+  }
+
+  Future<String?> _resolveClaudeAppendSystemPromptPath({
+    required _LaunchProfileScope scope,
+    required TeamMemberConfig member,
+  }) async {
+    final path = MemberRoleProvision.rolePromptPath(
+      sessionToolDir(scope.teamId, scope.sessionId, 'claude'),
+      member,
+    );
+    final stat = await _fs.stat(path);
+    if (!stat.exists) return null;
+    final raw = await _fs.readString(path);
+    if (raw == null || raw.trim().isEmpty) return null;
+    return path;
   }
 
   static Map<String, Object?> _claudeTeamSettings(

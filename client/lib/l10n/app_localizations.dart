@@ -2597,7 +2597,7 @@ abstract class AppLocalizations {
   /// No description provided for @memberPromptPresetTeamLeadText.
   ///
   /// In en, this message translates to:
-  /// **'Coordinate the team. Break work into scoped tasks with clear done criteria before implementation.\nDo not implement large changes yourself unless blocking.'**
+  /// **'Coordinate the team. Break work into scoped tasks with clear done criteria before implementation.\nDo not implement large changes yourself unless blocking.\nReply to the user in this chat; never SendMessage to team-lead. Assign tasks and spawn Agent only for other member names.'**
   String get memberPromptPresetTeamLeadText;
 
   /// No description provided for @memberPromptPresetDeveloper.
