@@ -7,11 +7,13 @@ on:
       - "client/**"
       - ".github/workflows/client-verify.yml"
       - ".github/workflows/release.yml"
+      - ".github/workflows/auto-tag.yml"
   pull_request:
     paths:
       - "client/**"
       - ".github/workflows/client-verify.yml"
       - ".github/workflows/release.yml"
+      - ".github/workflows/auto-tag.yml"
 
 concurrency:
   group: client-verify-${{ github.workflow }}-${{ github.ref }}
