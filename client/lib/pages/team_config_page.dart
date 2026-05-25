@@ -21,6 +21,7 @@ import '../utils/app_keys.dart';
 import '../utils/app_provider_model_candidates.dart';
 import '../utils/debounce/debounce.dart';
 import '../utils/github_source_url.dart';
+import '../utils/team_member_naming.dart';
 import '../widgets/app_outline_text_field.dart';
 import '../widgets/github_details_button.dart';
 import '../widgets/app_provider/team_tool_provider_selectors.dart';
@@ -1440,7 +1441,8 @@ class _MemberDetailSection extends StatelessWidget {
       );
     }
 
-    final canDelete = team.members.length > 1;
+    final canDelete =
+        team.members.length > 1 && !TeamMemberNaming.isTeamLead(member);
 
     return SingleChildScrollView(
       child: Column(

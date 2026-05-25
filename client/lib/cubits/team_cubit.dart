@@ -514,15 +514,12 @@ class TeamCubit extends Cubit<TeamState> {
       return false;
     }
     final now = DateTime.now().millisecondsSinceEpoch;
-    const memberName = TeamMemberNaming.teamLeadName;
     final team = TeamConfig(
       id: trimmed,
       name: trimmed,
       cli: cli,
       createdAt: now,
-      members: [
-        TeamMemberConfig(id: memberName, name: memberName, joinedAt: now),
-      ],
+      members: TeamMemberNaming.defaultRoster(joinedAt: now),
     );
     final teams = [...state.teams, team];
     emit(
@@ -616,7 +613,9 @@ class TeamCubit extends Cubit<TeamState> {
         !listEquals(selected.pluginIds, updated.pluginIds);
     final normalized = _normalizeTeam(
       updated.members.isEmpty
-          ? updated.copyWith(members: [_defaultMember()])
+          ? updated.copyWith(
+              members: TeamMemberNaming.defaultRoster(),
+            )
           : updated,
     );
     final teams = [
@@ -728,7 +727,7 @@ class TeamCubit extends Cubit<TeamState> {
         break;
       }
     }
-    if (target != null && target.name == TeamMemberNaming.teamLeadName) {
+    if (target != null && TeamMemberNaming.isTeamLead(target)) {
       emit(
         state.copyWith(
           statusMessage: 'Cannot remove team-lead from the roster.',
@@ -838,14 +837,13 @@ class TeamCubit extends Cubit<TeamState> {
       id: name,
       name: name,
       createdAt: now,
-      members: [_defaultMember(now: now)],
+      members: TeamMemberNaming.defaultRoster(joinedAt: now),
     );
   }
 
   TeamMemberConfig _defaultMember({int? now}) {
     final ts = now ?? DateTime.now().millisecondsSinceEpoch;
-    const name = TeamMemberNaming.teamLeadName;
-    return TeamMemberConfig(id: name, name: name, joinedAt: ts);
+    return TeamMemberNaming.defaultRoster(joinedAt: ts).first;
   }
 
   TeamConfig _normalizeTeam(TeamConfig team) {

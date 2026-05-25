@@ -546,12 +546,17 @@ void main() {
 
     expect(cubit.state.selectedTeam?.name, 'Default Team');
     expect(cubit.state.teams.length, 1);
+    expect(cubit.state.selectedTeam?.members.length, 2);
+    expect(
+      cubit.state.selectedTeam?.members.map((m) => m.name).toList(),
+      ['team-lead', 'member'],
+    );
 
     cubit.selectTeam('Default Team');
     expect(cubit.state.selectedTeam?.name, 'Default Team');
 
     await cubit.addMember();
-    expect(cubit.state.selectedTeam?.members.length, 2);
+    expect(cubit.state.selectedTeam?.members.length, 3);
     expect(cubit.state.statusMessage, contains('Added'));
   });
 

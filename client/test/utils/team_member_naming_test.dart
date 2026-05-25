@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/utils/team_member_naming.dart';
 
 void main() {
@@ -21,6 +22,27 @@ void main() {
 
   test('leadAgentId stays bare team-lead for Claude leader detection', () {
     expect(TeamMemberNaming.leadAgentId('my-team'), 'team-lead');
+  });
+
+  test('defaultRoster creates team-lead and member', () {
+    final roster = TeamMemberNaming.defaultRoster(joinedAt: 42);
+    expect(roster.map((m) => m.name).toList(), ['team-lead', 'member']);
+    expect(roster.every((m) => m.joinedAt == 42), isTrue);
+  });
+
+  test('isTeamLead detects team-lead member', () {
+    expect(
+      TeamMemberNaming.isTeamLead(
+        const TeamMemberConfig(id: 'lead', name: 'team-lead'),
+      ),
+      isTrue,
+    );
+    expect(
+      TeamMemberNaming.isTeamLead(
+        const TeamMemberConfig(id: 'member', name: 'member'),
+      ),
+      isFalse,
+    );
   });
 
   test('cliAgentId uses bare id for team-lead only', () {

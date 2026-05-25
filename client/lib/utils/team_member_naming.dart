@@ -1,6 +1,26 @@
+import '../models/team_config.dart';
+
 /// Claude team member naming aligned with agentId / inbox / CLI `--agent-name`.
 abstract final class TeamMemberNaming {
   static const teamLeadName = 'team-lead';
+  static const defaultWorkerName = 'member';
+
+  /// Default roster for a newly created team: leader + one worker tab.
+  static List<TeamMemberConfig> defaultRoster({int? joinedAt}) {
+    final ts = joinedAt ?? DateTime.now().millisecondsSinceEpoch;
+    return [
+      TeamMemberConfig(id: teamLeadName, name: teamLeadName, joinedAt: ts),
+      TeamMemberConfig(
+        id: defaultWorkerName,
+        name: defaultWorkerName,
+        joinedAt: ts,
+      ),
+    ];
+  }
+
+  static bool isTeamLeadName(String raw) => raw.trim() == teamLeadName;
+
+  static bool isTeamLead(TeamMemberConfig member) => isTeamLeadName(member.name);
 
   /// Strips `@` (invalid in agentId); does not slug spaces.
   static String sanitizeAgentName(String raw) =>

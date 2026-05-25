@@ -14,6 +14,7 @@ import 'package:teampilot/services/storage/runtime_storage_context.dart';
 import 'package:teampilot/services/session/session_lifecycle_service.dart';
 import 'package:teampilot/services/plugin/team_plugin_linker_service.dart';
 import 'package:teampilot/services/skill/team_skill_linker_service.dart';
+import 'package:teampilot/utils/team_member_naming.dart';
 
 Skill _skill(String id) => Skill(
   id: id,
@@ -338,7 +339,31 @@ void main() {
     expect(await cubit.addTeam(''), isFalse);
     expect(await cubit.addTeam('Alpha'), isTrue);
     expect(cubit.state.selectedTeam?.name, 'Alpha');
+    expect(
+      cubit.state.selectedTeam?.members.map((m) => m.name).toList(),
+      ['team-lead', 'member'],
+    );
     expect(await cubit.addTeam('Alpha'), isFalse);
+
+    await dir.delete(recursive: true);
+  });
+
+  test('deleteMember cannot remove team-lead', () async {
+    final dir = await Directory.systemTemp.createTemp('team-cubit-');
+    final cubit = TeamCubit(
+      repository: _repo(dir),
+      executableResolver: () => 'flashskyai',
+      pluginLinker: _RecordingPluginLinker(),
+    );
+    await cubit.load();
+
+    expect(await cubit.addTeam('Alpha'), isTrue);
+    final lead = cubit.state.selectedTeam!.members.firstWhere(
+      TeamMemberNaming.isTeamLead,
+    );
+    await cubit.deleteMember(lead.id);
+    expect(cubit.state.selectedTeam?.members.length, 2);
+    expect(cubit.state.statusMessage, contains('team-lead'));
 
     await dir.delete(recursive: true);
   });
