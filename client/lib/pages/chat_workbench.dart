@@ -431,6 +431,7 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
                   onConnect: onConnect,
                   connectDisabled: sessionConnectInProgress,
                   memberName: chatCubit.selectedMemberName(team),
+                  launchError: chatCubit.activeLaunchError,
                 ),
         ),
       );
@@ -539,6 +540,7 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
                 },
                 connectDisabled: sessionConnectInProgress,
                 memberName: chatCubit.selectedMemberName(team),
+                launchError: chatCubit.activeLaunchError,
               ),
       ),
     );
@@ -582,11 +584,13 @@ class _TerminalPlaceholder extends StatelessWidget {
     required this.onConnect,
     this.connectDisabled = false,
     this.memberName,
+    this.launchError,
   });
 
   final VoidCallback onConnect;
   final bool connectDisabled;
   final String? memberName;
+  final String? launchError;
 
   @override
   Widget build(BuildContext context) {
@@ -594,6 +598,8 @@ class _TerminalPlaceholder extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
     final member = memberName?.trim();
+    final error = launchError?.trim();
+    final hasError = error != null && error.isNotEmpty;
     final subtitle = member != null && member.isNotEmpty
         ? l10n.sessionReadySubtitle(member)
         : l10n.sessionReadySubtitleGeneric;
@@ -625,9 +631,10 @@ class _TerminalPlaceholder extends StatelessWidget {
               ),
               const SizedBox(height: 24),
               Text(
-                l10n.sessionReadyTitle,
+                hasError ? l10n.sessionFailedTitle : l10n.sessionReadyTitle,
                 style: textTheme.titleMedium?.copyWith(
                   fontWeight: FontWeight.w600,
+                  color: hasError ? cs.error : null,
                 ),
                 textAlign: TextAlign.center,
               ),
@@ -640,15 +647,41 @@ class _TerminalPlaceholder extends StatelessWidget {
                 ),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 12),
-              Text(
-                l10n.sessionReadyHint,
-                style: textTheme.bodySmall?.copyWith(
-                  color: cs.onSurfaceVariant.withValues(alpha: 0.8),
-                  height: 1.5,
+              if (hasError) ...[
+                const SizedBox(height: 16),
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: cs.errorContainer.withValues(alpha: 0.35),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: cs.error.withValues(alpha: 0.35)),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
+                    child: Text(
+                      error,
+                      style: textTheme.bodySmall?.copyWith(
+                        color: cs.onErrorContainer,
+                        height: 1.5,
+                      ),
+                      textAlign: TextAlign.start,
+                    ),
+                  ),
                 ),
-                textAlign: TextAlign.center,
-              ),
+              ],
+              if (!hasError) ...[
+                const SizedBox(height: 12),
+                Text(
+                  l10n.sessionReadyHint,
+                  style: textTheme.bodySmall?.copyWith(
+                    color: cs.onSurfaceVariant.withValues(alpha: 0.8),
+                    height: 1.5,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ],
               const SizedBox(height: 28),
               FilledButton.icon(
                 onPressed: connectDisabled
@@ -657,8 +690,13 @@ class _TerminalPlaceholder extends StatelessWidget {
                         'chat_workbench_session_start',
                         onConnect,
                       ),
-                icon: const Icon(Icons.play_arrow_rounded, size: 22),
-                label: Text(l10n.sessionStartButton),
+                icon: Icon(
+                  hasError ? Icons.refresh_rounded : Icons.play_arrow_rounded,
+                  size: 22,
+                ),
+                label: Text(
+                  hasError ? l10n.sessionRetryButton : l10n.sessionStartButton,
+                ),
                 style: FilledButton.styleFrom(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 28,

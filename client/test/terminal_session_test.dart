@@ -154,7 +154,7 @@ void main() {
     session.connect(
       workingDirectory: Directory.systemTemp.path,
       onProcessStarted: () {},
-      onProcessFailed: () => failed = true,
+      onProcessFailed: (_) => failed = true,
     );
     session.terminal.onResize?.call(80, 24, 0, 0);
     await Future<void>.delayed(const Duration(milliseconds: 20));
@@ -192,7 +192,7 @@ void main() {
 
     session.connect(
       workingDirectory: Directory.systemTemp.path,
-      onProcessFailed: () => failed = true,
+      onProcessFailed: (_) => failed = true,
     );
     session.terminal.onResize?.call(80, 24, 0, 0);
     await Future<void>.delayed(const Duration(milliseconds: 120));
@@ -372,7 +372,7 @@ void main() {
 
     session.connect(
       workingDirectory: Directory.current.path,
-      onProcessFailed: () => failed = true,
+      onProcessFailed: (_) => failed = true,
     );
     session.terminal.onResize?.call(80, 24, 0, 0);
     await Future<void>.delayed(const Duration(milliseconds: 20));

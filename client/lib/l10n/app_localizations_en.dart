@@ -318,6 +318,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionStartButton => 'Start conversation';
 
   @override
+  String get sessionFailedTitle => 'Couldn\'t start session';
+
+  @override
+  String get sessionRetryButton => 'Try again';
+
+  @override
   String get openFolder => 'Open Folder';
 
   @override

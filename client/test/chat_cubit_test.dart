@@ -46,7 +46,7 @@ class _FakeTerminalSession extends TerminalSession {
     String? sessionTeam,
     Map<String, String>? extraEnvironment,
     void Function()? onProcessStarted,
-    void Function()? onProcessFailed,
+    void Function(String message)? onProcessFailed,
     void Function()? onProcessExited,
     void Function(String line)? onFirstUserLineSubmitted,
   }) {

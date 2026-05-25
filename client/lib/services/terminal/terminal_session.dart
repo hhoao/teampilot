@@ -62,7 +62,7 @@ class TerminalSession {
   Map<String, String>? _extraEnvironment;
   Map<String, String>? _ptyEnvironment;
   VoidCallback? _onProcessStarted;
-  VoidCallback? _onProcessFailed;
+  void Function(String message)? _onProcessFailed;
   VoidCallback? _onProcessExited;
   StreamSubscription<String>? _outputSubscription;
   FirstUserLineCapture? _firstUserLineCapture;
@@ -105,7 +105,7 @@ class TerminalSession {
     String? sessionTeam,
     Map<String, String>? extraEnvironment,
     VoidCallback? onProcessStarted,
-    VoidCallback? onProcessFailed,
+    void Function(String message)? onProcessFailed,
     VoidCallback? onProcessExited,
     void Function(String line)? onFirstUserLineSubmitted,
   }) {
@@ -521,7 +521,7 @@ class TerminalSession {
       stackTrace: stackTrace,
     );
     terminal.write('\r\n$message\r\n');
-    _onProcessFailed?.call();
+    _onProcessFailed?.call(message);
     _onProcessFailed = null;
   }
 

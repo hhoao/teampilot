@@ -304,6 +304,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get sessionStartButton => '开始对话';
 
   @override
+  String get sessionFailedTitle => '未能启动会话';
+
+  @override
+  String get sessionRetryButton => '重试';
+
+  @override
   String get openFolder => '打开文件夹';
 
   @override

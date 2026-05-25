@@ -19,6 +19,7 @@ import '../services/terminal/terminal_transport_factory.dart';
 import '../utils/logger.dart';
 import '../utils/project_path_utils.dart';
 import '../utils/session_display_title.dart';
+import '../utils/session_launch_error.dart';
 
 typedef TerminalSessionFactory = TerminalSession Function({
   required String executable,
@@ -45,6 +46,7 @@ class ChatTabInfo extends Equatable {
     required this.title,
     required this.subtitle,
     this.isRunning = false,
+    this.launchError,
   });
 
   final String id;
@@ -52,17 +54,29 @@ class ChatTabInfo extends Equatable {
   final String subtitle;
   final bool isRunning;
 
-  ChatTabInfo copyWith({String? title, String? subtitle, bool? isRunning}) {
+  /// User-facing summary when the last connect attempt failed (placeholder P0).
+  final String? launchError;
+
+  ChatTabInfo copyWith({
+    String? title,
+    String? subtitle,
+    bool? isRunning,
+    String? launchError,
+    bool clearLaunchError = false,
+  }) {
     return ChatTabInfo(
       id: id,
       title: title ?? this.title,
       subtitle: subtitle ?? this.subtitle,
       isRunning: isRunning ?? this.isRunning,
+      launchError: clearLaunchError
+          ? null
+          : (launchError ?? this.launchError),
     );
   }
 
   @override
-  List<Object?> get props => [id, title, subtitle, isRunning];
+  List<Object?> get props => [id, title, subtitle, isRunning, launchError];
 }
 
 class _InternalTab {
@@ -101,6 +115,7 @@ class ChatState extends Equatable {
     this.stateVersion = 0,
     this.snackbarMessage,
     this.sessionConnectingId,
+    this.sessionLaunchError,
   });
 
   final List<ChatTabInfo> tabs;
@@ -117,6 +132,9 @@ class ChatState extends Equatable {
   /// Session id while prepareLaunch / terminal spawn is in progress.
   final String? sessionConnectingId;
 
+  /// Launch error when connect fails before a tab exists (empty workbench).
+  final String? sessionLaunchError;
+
   ChatState copyWith({
     List<ChatTabInfo>? tabs,
     int? activeTabIndex,
@@ -132,6 +150,8 @@ class ChatState extends Equatable {
     bool clearSnackbarMessage = false,
     String? sessionConnectingId,
     bool clearSessionConnectingId = false,
+    String? sessionLaunchError,
+    bool clearSessionLaunchError = false,
   }) {
     return ChatState(
       tabs: tabs ?? this.tabs,
@@ -151,6 +171,9 @@ class ChatState extends Equatable {
       sessionConnectingId: clearSessionConnectingId
           ? null
           : (sessionConnectingId ?? this.sessionConnectingId),
+      sessionLaunchError: clearSessionLaunchError
+          ? null
+          : (sessionLaunchError ?? this.sessionLaunchError),
     );
   }
 
@@ -176,6 +199,7 @@ class ChatState extends Equatable {
     stateVersion,
     snackbarMessage,
     sessionConnectingId,
+    sessionLaunchError,
   ];
 }
 
@@ -362,6 +386,18 @@ class ChatCubit extends Cubit<ChatState> {
     return memberShell ?? tab.resumeSession;
   }
 
+  /// Last launch failure for the active tab, or [ChatState.sessionLaunchError].
+  String? get activeLaunchError {
+    if (_internalTabs.isNotEmpty) {
+      final index = state.activeTabIndex.clamp(0, _internalTabs.length - 1);
+      final error = _internalTabs[index].info.launchError;
+      if (error != null && error.isNotEmpty) return error;
+    }
+    final pending = state.sessionLaunchError;
+    if (pending != null && pending.isNotEmpty) return pending;
+    return null;
+  }
+
   Future<void> loadProjectData(SessionRepository repo) async {
     final projects = await repo.loadProjects();
     final sessions = await repo.loadSessions();
@@ -504,9 +540,11 @@ class ChatCubit extends Cubit<ChatState> {
             sessionTeam: cliTeamName,
             extraEnvironment: plan.env.isEmpty ? null : plan.env,
             onFirstUserLineSubmitted: _autoRenameOnFirstPrompt(session.sessionId),
-            onProcessFailed: () => _finishSessionConnect(info.id),
+            onProcessFailed: (message) =>
+                _failSessionConnect(info.id, message),
             onProcessExited: () => _updateTabRunning(info.id),
             onProcessStarted: () {
+              _clearLaunchError(info.id);
               _finishSessionConnect(info.id);
               if (repo == null) return;
               unawaited(
@@ -554,8 +592,9 @@ class ChatCubit extends Cubit<ChatState> {
             error: e,
             stackTrace: st,
           );
-          ts.terminal.write('\r\n[Failed to resume session: $e]\r\n');
-          _finishSessionConnect(info.id);
+          final message = 'Failed to resume session: $e';
+          ts.terminal.write('\r\n[$message]\r\n');
+          _failSessionConnect(info.id, message);
         }
       });
     } else {
@@ -621,11 +660,9 @@ class ChatCubit extends Cubit<ChatState> {
           'openMemberTab: default session failed: $e',
           stackTrace: st,
         );
-        emit(
-          state.copyWith(
-            clearSessionConnectingId: true,
-            stateVersion: state.stateVersion + 1,
-          ),
+        _failSessionConnect(
+          'pending',
+          'Failed to create session: $e',
         );
       }
       return;
@@ -683,8 +720,12 @@ class ChatCubit extends Cubit<ChatState> {
           sessionTeam: tab.cliTeamName,
           extraEnvironment: plan.env.isEmpty ? null : plan.env,
           onFirstUserLineSubmitted: _autoRenameOnFirstPrompt(tab.info.id),
-          onProcessStarted: () => _finishSessionConnect(tab.info.id),
-          onProcessFailed: () => _finishSessionConnect(tab.info.id),
+          onProcessStarted: () {
+            _clearLaunchError(tab.info.id);
+            _finishSessionConnect(tab.info.id);
+          },
+          onProcessFailed: (message) =>
+              _failSessionConnect(tab.info.id, message),
           onProcessExited: () => _updateTabRunning(tab.info.id),
         );
         _updateTabRunning(tab.info.id);
@@ -694,8 +735,9 @@ class ChatCubit extends Cubit<ChatState> {
           error: e,
           stackTrace: st,
         );
-        shell.terminal.write('\r\n[Failed to start session: $e]\r\n');
-        _finishSessionConnect(tab.info.id);
+        final message = 'Failed to start session: $e';
+        shell.terminal.write('\r\n[$message]\r\n');
+        _failSessionConnect(tab.info.id, message);
       }
     });
   }
@@ -870,13 +912,10 @@ class ChatCubit extends Cubit<ChatState> {
           : _defaultMemberId(team);
       if (keepId.isEmpty) {
         final session = ensureSession(team);
-        session?.terminal.write('\r\n[No member selected]\r\n');
-        emit(
-          state.copyWith(
-            clearSessionConnectingId: true,
-            stateVersion: state.stateVersion + 1,
-          ),
-        );
+        const message =
+            'No member selected. Choose a team member and try again.';
+        session?.terminal.write('\r\n[$message]\r\n');
+        _failSessionConnect(_activeTab?.info.id ?? 'pending', message);
         return;
       }
       await launchAllMembers(team, repo: r);
@@ -892,13 +931,10 @@ class ChatCubit extends Cubit<ChatState> {
     }
     if (memberId.isEmpty || team.members.isEmpty) {
       final session = ensureSession(team);
-      session?.terminal.write('\r\n[No member selected]\r\n');
-      emit(
-        state.copyWith(
-          clearSessionConnectingId: true,
-          stateVersion: state.stateVersion + 1,
-        ),
-      );
+      const message =
+          'No member selected. Choose a team member and try again.';
+      session?.terminal.write('\r\n[$message]\r\n');
+      _failSessionConnect(_activeTab?.info.id ?? 'pending', message);
       return;
     }
     final member = team.members.firstWhere(
@@ -912,6 +948,7 @@ class ChatCubit extends Cubit<ChatState> {
     final tab = _activeTab;
     if (tab == null) return;
     tab.memberShells[tab.selectedMemberId]?.disconnect();
+    _clearLaunchError(tab.info.id);
     _updateTabRunning(tab.info.id);
   }
 
@@ -1087,6 +1124,7 @@ class ChatCubit extends Cubit<ChatState> {
   }
 
   void _beginSessionConnect(String sessionId) {
+    _clearLaunchError(sessionId);
     if (state.sessionConnectingId == sessionId) return;
     emit(
       state.copyWith(
@@ -1094,6 +1132,55 @@ class ChatCubit extends Cubit<ChatState> {
         stateVersion: state.stateVersion + 1,
       ),
     );
+  }
+
+  void _setLaunchError(String sessionId, String rawMessage) {
+    final message = formatSessionLaunchError(rawMessage);
+    if (message.isEmpty) return;
+    final idx = _internalTabs.indexWhere((t) => t.info.id == sessionId);
+    if (idx != -1) {
+      _internalTabs[idx].info = _internalTabs[idx].info.copyWith(
+        launchError: message,
+      );
+      emit(
+        state.copyWith(
+          tabs: _visibleTabs(),
+          clearSessionLaunchError: true,
+          stateVersion: state.stateVersion + 1,
+        ),
+      );
+      return;
+    }
+    emit(
+      state.copyWith(
+        sessionLaunchError: message,
+        stateVersion: state.stateVersion + 1,
+      ),
+    );
+  }
+
+  void _clearLaunchError(String sessionId) {
+    var tabChanged = false;
+    final idx = _internalTabs.indexWhere((t) => t.info.id == sessionId);
+    if (idx != -1 && _internalTabs[idx].info.launchError != null) {
+      _internalTabs[idx].info = _internalTabs[idx].info.copyWith(
+        clearLaunchError: true,
+      );
+      tabChanged = true;
+    }
+    if (!tabChanged && state.sessionLaunchError == null) return;
+    emit(
+      state.copyWith(
+        tabs: tabChanged ? _visibleTabs() : state.tabs,
+        clearSessionLaunchError: true,
+        stateVersion: state.stateVersion + 1,
+      ),
+    );
+  }
+
+  void _failSessionConnect(String sessionId, String rawMessage) {
+    _setLaunchError(sessionId, rawMessage);
+    _finishSessionConnect(sessionId);
   }
 
   void _finishSessionConnect(String sessionId) {

@@ -116,6 +116,8 @@
   "sessionReadySubtitleGeneric": "在此工作区开始新对话",
   "sessionReadyHint": "用日常语言描述你想做的事即可，无需输入命令。",
   "sessionStartButton": "开始对话",
+  "sessionFailedTitle": "未能启动会话",
+  "sessionRetryButton": "重试",
   "openFolder": "打开文件夹",
   "copyFolderPath": "复制文件夹路径",
   "pathCopied": "已复制路径：{path}",

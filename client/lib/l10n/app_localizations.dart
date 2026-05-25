@@ -668,6 +668,18 @@ abstract class AppLocalizations {
   /// **'Start conversation'**
   String get sessionStartButton;
 
+  /// No description provided for @sessionFailedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t start session'**
+  String get sessionFailedTitle;
+
+  /// No description provided for @sessionRetryButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Try again'**
+  String get sessionRetryButton;
+
   /// No description provided for @openFolder.
   ///
   /// In en, this message translates to:
