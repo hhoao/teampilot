@@ -112,7 +112,9 @@ Future<void> _startNewChat(BuildContext context) async {
   } on Object catch (error) {
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('${context.l10n.defaultNewChatSessionTitle}: $error')),
+      SnackBar(
+        content: Text('${context.l10n.defaultNewChatSessionTitle}: $error'),
+      ),
     );
     return;
   }
@@ -120,9 +122,7 @@ Future<void> _startNewChat(BuildContext context) async {
 
   final created = context.read<ChatCubit>().state.visibleSessions;
   if (created.isEmpty) return;
-  final newest = created.reduce(
-    (a, b) => a.createdAt >= b.createdAt ? a : b,
-  );
+  final newest = created.reduce((a, b) => a.createdAt >= b.createdAt ? a : b);
   _navigateToSessionInChat(context, newest);
 }
 
@@ -387,7 +387,9 @@ class _ProjectList extends StatelessWidget {
         final project = projects[index];
         final list = _sessionsForProject(project, sessions);
         return Padding(
-          padding: EdgeInsets.only(bottom: index == projects.length - 1 ? 0 : 10),
+          padding: EdgeInsets.only(
+            bottom: index == projects.length - 1 ? 0 : 10,
+          ),
           child: _ProjectGroup(project: project, sessions: list),
         );
       },
@@ -541,13 +543,16 @@ class _ProjectGroupState extends State<_ProjectGroup> {
             style: FilledButton.styleFrom(
               backgroundColor: Theme.of(context).colorScheme.error,
             ),
-            onPressed: throttledAsync('context_sidebar_delete_project', () async {
-              await context.read<ChatCubit>().deleteProject(
-                repo,
-                project.projectId,
-              );
-              if (ctx.mounted) Navigator.of(ctx).pop();
-            }),
+            onPressed: throttledAsync(
+              'context_sidebar_delete_project',
+              () async {
+                await context.read<ChatCubit>().deleteProject(
+                  repo,
+                  project.projectId,
+                );
+                if (ctx.mounted) Navigator.of(ctx).pop();
+              },
+            ),
             child: Text(l10n.delete),
           ),
         ],
@@ -1000,17 +1005,20 @@ class _SessionTileEntryState extends State<_SessionTileEntry> {
             child: Text(l10n.cancel),
           ),
           FilledButton(
-            onPressed: throttledAsync('context_sidebar_rename_session', () async {
-              final value = controller.text.trim();
-              if (value.isNotEmpty) {
-                await context.read<ChatCubit>().renameSession(
-                  repo,
-                  session.sessionId,
-                  value,
-                );
-              }
-              if (ctx.mounted) Navigator.of(ctx).pop();
-            }),
+            onPressed: throttledAsync(
+              'context_sidebar_rename_session',
+              () async {
+                final value = controller.text.trim();
+                if (value.isNotEmpty) {
+                  await context.read<ChatCubit>().renameSession(
+                    repo,
+                    session.sessionId,
+                    value,
+                  );
+                }
+                if (ctx.mounted) Navigator.of(ctx).pop();
+              },
+            ),
             child: Text(l10n.save),
           ),
         ],
@@ -1039,13 +1047,16 @@ class _SessionTileEntryState extends State<_SessionTileEntry> {
             style: FilledButton.styleFrom(
               backgroundColor: Theme.of(context).colorScheme.error,
             ),
-            onPressed: throttledAsync('context_sidebar_delete_session', () async {
-              await context.read<ChatCubit>().deleteSession(
-                repo,
-                session.sessionId,
-              );
-              if (ctx.mounted) Navigator.of(ctx).pop();
-            }),
+            onPressed: throttledAsync(
+              'context_sidebar_delete_session',
+              () async {
+                await context.read<ChatCubit>().deleteSession(
+                  repo,
+                  session.sessionId,
+                );
+                if (ctx.mounted) Navigator.of(ctx).pop();
+              },
+            ),
             child: Text(l10n.delete),
           ),
         ],
@@ -1174,47 +1185,50 @@ class _TeamSelector extends StatelessWidget {
     final l10n = context.l10n;
     final decoration = FlashskyDropdownDecorations.sidebarTeam(context);
 
-    return Row(
-      children: [
-        Expanded(
-          child: FlashskyDropdownField<TeamConfig>(
-            items: teams,
-            initialItem: selected,
-            hintText: l10n.selectTeam,
-            decoration: decoration,
-            itemLabel: (team) => team.name,
-            onChanged: (team) {
-              if (team != null && team.id != selected.id) {
-                onSelect(team.id);
-              }
-            },
+    return Container(
+      margin: const EdgeInsets.only(top: 14),
+      child: Row(
+        children: [
+          Expanded(
+            child: FlashskyDropdownField<TeamConfig>(
+              items: teams,
+              initialItem: selected,
+              hintText: l10n.selectTeam,
+              decoration: decoration,
+              itemLabel: (team) => team.name,
+              onChanged: (team) {
+                if (team != null && team.id != selected.id) {
+                  onSelect(team.id);
+                }
+              },
+            ),
           ),
-        ),
-        if (onAddTeam != null) ...[
-          const SizedBox(width: 6),
-          Material(
-            color: Colors.transparent,
-            borderRadius: BorderRadius.circular(6),
-            child: InkWell(
+          if (onAddTeam != null) ...[
+            const SizedBox(width: 6),
+            Material(
+              color: Colors.transparent,
               borderRadius: BorderRadius.circular(6),
-              onTap: onAddTeam,
-              child: Tooltip(
-                message: l10n.addTeamTooltip,
-                child: Container(
-                  width: 32,
-                  height: 32,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(6),
-                    border: Border.all(color: cs.outlineVariant),
-                    color: cs.surfaceContainer,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(6),
+                onTap: onAddTeam,
+                child: Tooltip(
+                  message: l10n.addTeamTooltip,
+                  child: Container(
+                    width: 32,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: cs.outlineVariant),
+                      color: cs.surfaceContainer,
+                    ),
+                    child: Icon(Icons.add, size: 18, color: cs.onSurface),
                   ),
-                  child: Icon(Icons.add, size: 18, color: cs.onSurface),
                 ),
               ),
             ),
-          ),
+          ],
         ],
-      ],
+      ),
     );
   }
 }

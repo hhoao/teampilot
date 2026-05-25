@@ -128,6 +128,15 @@ class PluginCubit extends Cubit<PluginState> {
   final PluginUpdatedHandler? _onPluginUpdated;
   int _discoveryGeneration = 0;
 
+  /// Loads discovery when the Discovery tab opens: disk cache first, then git sync.
+  /// Skips work when the list is already populated unless [force] is true.
+  Future<void> ensureDiscoveryLoaded({bool force = false}) async {
+    if (!force && state.discoveryLoading) return;
+    if (!force && state.marketplaceSyncingKeys.isNotEmpty) return;
+    if (!force && state.discoverable.isNotEmpty) return;
+    await refreshDiscoverable(force: force);
+  }
+
   Future<void> load() async {
     emit(state.copyWith(status: PluginLoadStatus.loading, clearError: true));
     try {
@@ -142,7 +151,6 @@ class PluginCubit extends Cubit<PluginState> {
         marketplaces: marketplaces,
         status: PluginLoadStatus.ready,
       ));
-      unawaited(refreshDiscoverable());
     } catch (e) {
       appLogger.e('[plugins] load failed: $e');
       emit(state.copyWith(status: PluginLoadStatus.error, errorMessage: '$e'));
@@ -237,7 +245,7 @@ class PluginCubit extends Cubit<PluginState> {
     final out = <DiscoverablePlugin>[];
     for (final m in enabled) {
       try {
-        for (final d in await _diskCache.discoverablePlugins(m)) {
+        for (final d in await _diskCache.discoverablePluginsCached(m)) {
           if (seen.add(d.key)) out.add(d);
         }
       } catch (e) {
@@ -321,6 +329,12 @@ class PluginCubit extends Cubit<PluginState> {
     await repoService.addMarketplace(m);
     final marketplaces = await repoService.loadMarketplaces();
     emit(state.copyWith(marketplaces: marketplaces));
+    if (m.enabled) {
+      final added = marketplaces.firstWhere(
+        (x) => x.owner == m.owner && x.name == m.name,
+      );
+      unawaited(_syncMarketplacesInBackground([added], force: true));
+    }
   }
 
   Future<void> removeMarketplace(String owner, String name) async {
@@ -335,7 +349,21 @@ class PluginCubit extends Cubit<PluginState> {
   Future<void> toggleMarketplaceEnabled(PluginMarketplace m, bool enabled) async {
     await repoService.setEnabled(m.owner, m.name, enabled);
     final marketplaces = await repoService.loadMarketplaces();
+    if (!enabled) {
+      final discoverable = state.discoverable
+          .where(
+            (d) =>
+                d.marketplaceOwner != m.owner || d.marketplaceName != m.name,
+          )
+          .toList();
+      emit(state.copyWith(marketplaces: marketplaces, discoverable: discoverable));
+      return;
+    }
     emit(state.copyWith(marketplaces: marketplaces));
+    final updated = marketplaces.firstWhere(
+      (x) => x.owner == m.owner && x.name == m.name,
+    );
+    unawaited(_syncMarketplacesInBackground([updated], force: false));
   }
 
   Future<void> checkUpdates() async {

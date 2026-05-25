@@ -2252,6 +2252,12 @@ abstract class AppLocalizations {
   /// **'No matching plugins'**
   String get pluginsDiscoveryEmpty;
 
+  /// No description provided for @pluginsDiscoverySyncing.
+  ///
+  /// In en, this message translates to:
+  /// **'Checking marketplaces for updates and syncing plugins in the background…'**
+  String get pluginsDiscoverySyncing;
+
   /// No description provided for @pluginsUninstallConfirm.
   ///
   /// In en, this message translates to:

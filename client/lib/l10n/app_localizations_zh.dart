@@ -1167,6 +1167,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get pluginsDiscoveryEmpty => '无匹配的插件';
 
   @override
+  String get pluginsDiscoverySyncing => '正在后台检查 marketplace 更新并同步插件…';
+
+  @override
   String pluginsUninstallConfirm(String name, int n) {
     return '确认卸载 $name？将影响 $n 个团队。';
   }

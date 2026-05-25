@@ -1197,6 +1197,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get pluginsDiscoveryEmpty => 'No matching plugins';
 
   @override
+  String get pluginsDiscoverySyncing =>
+      'Checking marketplaces for updates and syncing plugins in the background…';
+
+  @override
   String pluginsUninstallConfirm(String name, int n) {
     return 'Uninstall $name? This may affect $n team(s).';
   }

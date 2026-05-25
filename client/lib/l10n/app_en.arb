@@ -578,6 +578,7 @@
   "pluginsFilterInstalled": "Installed",
   "pluginsFilterUninstalled": "Not installed",
   "pluginsDiscoveryEmpty": "No matching plugins",
+  "pluginsDiscoverySyncing": "Checking marketplaces for updates and syncing plugins in the background…",
   "pluginsUninstallConfirm": "Uninstall {name}? This may affect {n} team(s).",
   "@pluginsUninstallConfirm": {
     "placeholders": {

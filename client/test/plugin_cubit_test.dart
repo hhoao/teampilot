@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:teampilot/cubits/plugin_cubit.dart';
+import 'package:teampilot/models/plugin.dart';
 import 'package:teampilot/repositories/plugin_repository.dart';
 import 'package:teampilot/services/app_storage.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
@@ -40,6 +41,35 @@ void main() {
     expect(cubit.state.status, PluginLoadStatus.ready);
     expect(cubit.state.marketplaces, isNotEmpty);
     expect(cubit.state.installed, isEmpty);
+    expect(cubit.state.discoverable, isEmpty);
+    expect(cubit.state.discoveryLoading, isFalse);
+  });
+
+  test('ensureDiscoveryLoaded does not re-sync when list is populated', () async {
+    final repo = PluginRepository();
+    final cubit = PluginCubit(
+      repository: repo,
+      installService: repo.install,
+      repoService: PluginRepoService(),
+    );
+    cubit.emit(
+      cubit.state.copyWith(
+        discoverable: const [
+          DiscoverablePlugin(
+            key: 'a:b:c',
+            name: 'c',
+            description: '',
+            version: '1',
+            source: '.',
+            marketplaceOwner: 'o',
+            marketplaceName: 'n',
+            marketplaceBranch: 'main',
+          ),
+        ],
+      ),
+    );
+    await cubit.ensureDiscoveryLoaded();
+    expect(cubit.state.discoveryLoading, isFalse);
   });
 
   test('uninstall calls team cleanup before removing plugin files', () async {

@@ -653,23 +653,31 @@ class _InstalledPluginRow extends StatelessWidget {
 // Discovery section
 // ============================================================================
 
-class _DiscoverySection extends StatelessWidget {
+class _DiscoverySection extends StatefulWidget {
   const _DiscoverySection({required this.state, required this.onGoMarketplaces});
   final PluginState state;
   final VoidCallback onGoMarketplaces;
 
   @override
-  Widget build(BuildContext context) {
-    final marketplaceNames = {
-      for (final m in state.marketplaces) m.fullName: m,
-    };
-    final all = marketplaceNames.keys.toList();
+  State<_DiscoverySection> createState() => _DiscoverySectionState();
+}
 
+class _DiscoverySectionState extends State<_DiscoverySection> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      context.read<PluginCubit>().ensureDiscoveryLoaded();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return _DiscoveryBody(
-      state: state,
-      installed: state.installed,
-      marketplaceNames: all,
-      onGoMarketplaces: onGoMarketplaces,
+      state: widget.state,
+      installed: widget.state.installed,
+      onGoMarketplaces: widget.onGoMarketplaces,
     );
   }
 }
@@ -678,13 +686,11 @@ class _DiscoveryBody extends StatefulWidget {
   const _DiscoveryBody({
     required this.state,
     required this.installed,
-    required this.marketplaceNames,
     required this.onGoMarketplaces,
   });
 
   final PluginState state;
   final List<Plugin> installed;
-  final List<String> marketplaceNames;
   final VoidCallback onGoMarketplaces;
 
   @override
@@ -702,13 +708,8 @@ class _DiscoveryBodyState extends State<_DiscoveryBody> {
     super.dispose();
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final l10n = context.l10n;
-
-    final marketplaces = widget.state.marketplaces;
-
-    var filtered = widget.state.discoverable.where((d) {
+  List<DiscoverablePlugin> _filtered() {
+    return widget.state.discoverable.where((d) {
       if (_marketplaceFilter != null) {
         final full = '${d.marketplaceOwner}/${d.marketplaceName}';
         if (full != _marketplaceFilter) {
@@ -734,82 +735,137 @@ class _DiscoveryBodyState extends State<_DiscoveryBody> {
       }
       return true;
     }).toList();
+  }
 
-    return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          if (marketplaces.isEmpty)
-            _PluginCard(
-              child: _EmptyPluginBlock(
-                icon: Icons.store_outlined,
-                title: l10n.pluginsMarketplacesEmpty,
-                hint: l10n.pluginsNoInstalledHint,
-                actionLabel: l10n.pluginsGoDiscovery,
-                onAction: widget.onGoMarketplaces,
-              ),
-            )
-          else ...[
-            _PluginCard(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final cubit = context.read<PluginCubit>();
+    final marketplaces = widget.state.marketplaces;
+
+    if (marketplaces.isEmpty) {
+      return SingleChildScrollView(
+        child: _PluginCard(
+          child: _EmptyPluginBlock(
+            icon: Icons.store_outlined,
+            title: l10n.pluginsMarketplacesEmpty,
+            hint: l10n.pluginsNoInstalledHint,
+            actionLabel: l10n.pluginsGoDiscovery,
+            onAction: widget.onGoMarketplaces,
+          ),
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _PluginCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
                 children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: AppOutlineTextField(
-                          controller: _searchCtrl,
-                          hintText: l10n.pluginsSearchPlaceholder,
-                          prefixIcon: const Icon(Icons.search, size: 18),
-                          onChanged: (_) => setState(() {}),
-                        ),
-                      ),
-                    ],
+                  Expanded(
+                    child: AppOutlineTextField(
+                      controller: _searchCtrl,
+                      hintText: l10n.pluginsSearchPlaceholder,
+                      prefixIcon: const Icon(Icons.search, size: 18),
+                      onChanged: (_) => setState(() {}),
+                    ),
                   ),
-                  const SizedBox(height: 10),
-                  Wrap(
-                    spacing: 8,
-                    children: [
-                      _MarketplaceDropdown(
-                        marketplaces: marketplaces,
-                        value: _marketplaceFilter,
-                        l10n: l10n,
-                        onChanged: (v) => setState(() => _marketplaceFilter = v),
-                      ),
-                      _StatusDropdown(
-                        value: _statusFilter,
-                        l10n: l10n,
-                        onChanged: (v) => setState(() => _statusFilter = v ?? 'all'),
-                      ),
-                    ],
+                  const SizedBox(width: 8),
+                  IconButton(
+                    tooltip: l10n.pluginsCheckUpdates,
+                    onPressed: widget.state.discoveryLoading
+                        ? null
+                        : () => cubit.ensureDiscoveryLoaded(force: true),
+                    icon: widget.state.discoveryLoading ||
+                            widget.state.marketplaceSyncingKeys.isNotEmpty
+                        ? const SizedBox(
+                            width: 14,
+                            height: 14,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.refresh, size: 18),
                   ),
                 ],
               ),
-            ),
-            if (widget.state.discoveryLoading)
-              const Padding(
-                padding: EdgeInsets.all(32),
-                child: Center(child: CircularProgressIndicator()),
-              )
-            else if (filtered.isEmpty && !widget.state.discoveryLoading)
-              _PluginCard(
-                child: _EmptyPluginBlock(
-                  icon: Icons.travel_explore_outlined,
-                  title: l10n.pluginsDiscoveryEmpty,
-                  hint: '',
-                  actionLabel: l10n.pluginsGoDiscovery,
-                  onAction: widget.onGoMarketplaces,
+              if (widget.state.marketplaceSyncingKeys.isNotEmpty) ...[
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    const SizedBox(
+                      width: 14,
+                      height: 14,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        l10n.pluginsDiscoverySyncing,
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ),
+                  ],
                 ),
-              )
-            else
-              for (final d in filtered) _DiscoverablePluginCard(
-                plugin: d,
-                installed: d.isInstalledAmong(widget.installed),
-                busy: widget.state.busyIds.contains(d.key),
+              ],
+              const SizedBox(height: 10),
+              Wrap(
+                spacing: 8,
+                children: [
+                  _MarketplaceDropdown(
+                    marketplaces: marketplaces,
+                    value: _marketplaceFilter,
+                    l10n: l10n,
+                    onChanged: (v) => setState(() => _marketplaceFilter = v),
+                  ),
+                  _StatusDropdown(
+                    value: _statusFilter,
+                    l10n: l10n,
+                    onChanged: (v) => setState(() => _statusFilter = v ?? 'all'),
+                  ),
+                ],
               ),
-          ],
-        ],
-      ),
+            ],
+          ),
+        ),
+        Expanded(child: _buildDiscoveryList(context, l10n)),
+      ],
+    );
+  }
+
+  Widget _buildDiscoveryList(BuildContext context, AppLocalizations l10n) {
+    if (widget.state.discoveryLoading && widget.state.discoverable.isEmpty) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    final filtered = _filtered();
+    if (!widget.state.discoveryLoading && filtered.isEmpty) {
+      return SingleChildScrollView(
+        child: _PluginCard(
+          child: _EmptyPluginBlock(
+            icon: Icons.travel_explore_outlined,
+            title: l10n.pluginsDiscoveryEmpty,
+            hint: '',
+            actionLabel: l10n.pluginsGoDiscovery,
+            onAction: widget.onGoMarketplaces,
+          ),
+        ),
+      );
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.only(bottom: 8),
+      itemCount: filtered.length,
+      itemBuilder: (context, index) {
+        final d = filtered[index];
+        return _DiscoverablePluginCard(
+          plugin: d,
+          installed: d.isInstalledAmong(widget.installed),
+          busy: widget.state.busyIds.contains(d.key),
+        );
+      },
     );
   }
 }

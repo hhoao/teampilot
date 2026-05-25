@@ -80,4 +80,49 @@ void main() {
       findsAtLeastNWidgets(1),
     );
   });
+
+  testWidgets('Discovery section uses lazy list for plugins', (tester) async {
+    tester.view.physicalSize = const Size(2400, 1800);
+    tester.view.devicePixelRatio = 1.0;
+    const plugins = [
+      DiscoverablePlugin(
+        key: 'anthropics:claude-plugins-official:p0',
+        name: 'plugin-0',
+        description: 'd0',
+        version: '1',
+        source: '.',
+        marketplaceOwner: 'anthropics',
+        marketplaceName: 'claude-plugins-official',
+        marketplaceBranch: 'main',
+      ),
+      DiscoverablePlugin(
+        key: 'anthropics:claude-plugins-official:p1',
+        name: 'plugin-1',
+        description: 'd1',
+        version: '1',
+        source: '.',
+        marketplaceOwner: 'anthropics',
+        marketplaceName: 'claude-plugins-official',
+        marketplaceBranch: 'main',
+      ),
+    ];
+    await tester.pumpWidget(wrap(
+      const PluginState(
+        installed: [],
+        marketplaces: [
+          PluginMarketplace(
+            owner: 'anthropics',
+            name: 'claude-plugins-official',
+          ),
+        ],
+        discoverable: plugins,
+        status: PluginLoadStatus.ready,
+      ),
+      const PluginManagementPage(section: PluginSection.discovery),
+    ));
+    await tester.pumpAndSettle();
+    expect(find.byType(ListView), findsOneWidget);
+    expect(find.text('plugin-0'), findsOneWidget);
+    expect(find.text('plugin-1'), findsOneWidget);
+  });
 }

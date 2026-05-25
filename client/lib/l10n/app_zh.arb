@@ -387,6 +387,7 @@
   "pluginsFilterInstalled": "已安装",
   "pluginsFilterUninstalled": "未安装",
   "pluginsDiscoveryEmpty": "无匹配的插件",
+  "pluginsDiscoverySyncing": "正在后台检查 marketplace 更新并同步插件…",
   "pluginsUninstallConfirm": "确认卸载 {name}？将影响 {n} 个团队。",
   "pluginsUninstallImpactList": "受影响的团队：",
   "pluginsUninstallSuccess": "已卸载 {name}",

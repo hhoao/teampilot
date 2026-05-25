@@ -187,6 +187,15 @@ class PluginRepoDiskCacheService {
     );
   }
 
+  /// Reads cached marketplace manifest without triggering git sync.
+  Future<List<DiscoverablePlugin>> discoverablePluginsCached(
+    PluginMarketplace m,
+  ) async {
+    final dirPath = await _repoDirPath(m);
+    if (!(await _fs.stat(dirPath)).exists) return const [];
+    return parseMarketplaceManifest(directory: dirPath, marketplace: m);
+  }
+
   /// Sync + parse → list of [DiscoverablePlugin].
   Future<List<DiscoverablePlugin>> discoverablePlugins(PluginMarketplace m) async {
     final dirPath = await syncMarketplace(m);
