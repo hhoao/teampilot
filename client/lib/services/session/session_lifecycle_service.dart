@@ -59,52 +59,72 @@ class SessionLifecycleService {
     TeamMemberConfig? member,
     String? llmConfigPathOverride,
   }) async {
-    final roots = await _resolveRoots();
-    final service = await _configProfileServiceFor(roots);
     final sessionId = session.sessionId.trim();
     final teamId = (team?.id ?? session.sessionTeam).trim();
-    final runtimeTeamId = session.effectiveCliTeamDirectory;
-    final cli = team?.cli;
-    final cliState = session.launchState == AppSessionLaunchState.started
-        ? await _findCliState(
-            roots: roots,
-            session: session,
-            teamId: teamId,
-            runtimeSessionId: runtimeTeamId,
-            cli: cli,
-          )
-        : _CliStateProbeResult(
-            exists: false,
-            rootsTried: roots.layout.transcriptSearchRoots(
+    final memberName = member?.name.trim() ?? '';
+    appLogger.i(
+      '[session-lifecycle] prepareLaunch start '
+      'session=$sessionId team=$teamId member=$memberName',
+    );
+    try {
+      final roots = await _resolveRoots();
+      final service = await _configProfileServiceFor(roots);
+      final runtimeTeamId = session.effectiveCliTeamDirectory;
+      final cli = team?.cli;
+      final cliState = session.launchState == AppSessionLaunchState.started
+          ? await _findCliState(
+              roots: roots,
+              session: session,
               teamId: teamId,
               runtimeSessionId: runtimeTeamId,
-              tools: cli != null ? [cli.value] : cliLayoutDefaultTools,
-            ),
-          );
-    final prepared = await _prepareEnv(
-      service: service,
-      session: session,
-      team: team,
-      member: member,
-      runtimeTeamId: runtimeTeamId,
-      workingDirectory: session.primaryPath,
-      llmConfigPathOverride: llmConfigPathOverride,
-    );
-    final memberConfigDir = _memberConfigDirFromEnv(prepared.env);
-    final resolvedRoots = <String>{
-      ...cliState.rootsTried,
-      if (memberConfigDir.isNotEmpty) memberConfigDir,
-    }.toList(growable: false);
+              cli: cli,
+            )
+          : _CliStateProbeResult(
+              exists: false,
+              rootsTried: roots.layout.transcriptSearchRoots(
+                teamId: teamId,
+                runtimeSessionId: runtimeTeamId,
+                tools: cli != null ? [cli.value] : cliLayoutDefaultTools,
+              ),
+            );
+      final prepared = await _prepareEnv(
+        service: service,
+        session: session,
+        team: team,
+        member: member,
+        runtimeTeamId: runtimeTeamId,
+        workingDirectory: session.primaryPath,
+        llmConfigPathOverride: llmConfigPathOverride,
+      );
+      final memberConfigDir = _memberConfigDirFromEnv(prepared.env);
+      final resolvedRoots = <String>{
+        ...cliState.rootsTried,
+        if (memberConfigDir.isNotEmpty) memberConfigDir,
+      }.toList(growable: false);
 
-    final plan = LaunchPlan(
-      env: prepared.env,
-      resume: cliState.exists,
-      sessionIdArg: sessionId,
-      memberConfigDir: memberConfigDir,
-      resolvedRoots: resolvedRoots,
-      warnings: prepared.warnings,
-    );
-    return plan;
+      final plan = LaunchPlan(
+        env: prepared.env,
+        resume: cliState.exists,
+        sessionIdArg: sessionId,
+        memberConfigDir: memberConfigDir,
+        resolvedRoots: resolvedRoots,
+        warnings: prepared.warnings,
+      );
+      appLogger.i(
+        '[session-lifecycle] prepareLaunch ready '
+        'session=$sessionId resume=${plan.resume} '
+        'warnings=${plan.warnings.length}',
+      );
+      return plan;
+    } on Object catch (e, st) {
+      appLogger.e(
+        '[session-lifecycle] prepareLaunch failed '
+        'session=$sessionId team=$teamId member=$memberName: $e',
+        error: e,
+        stackTrace: st,
+      );
+      rethrow;
+    }
   }
 
   Future<bool> hasCliState(

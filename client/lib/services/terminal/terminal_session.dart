@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_pty/flutter_pty.dart';
-import 'package:logger/logger.dart';
 import 'package:xterm/xterm.dart';
 import '../cli/cli_executable_validator.dart';
 import '../cli/cli_invocation.dart';
@@ -14,6 +13,7 @@ import 'pty_launch_environment.dart';
 import 'terminal_transport.dart';
 import '../../models/team_config.dart';
 import '../../utils/first_user_line_capture.dart';
+import '../../utils/logger.dart';
 
 typedef TransportStarter =
     Future<TerminalTransport> Function(
@@ -474,8 +474,11 @@ class TerminalSession {
         return;
       }
       final cliName = CliExecutableValidator.cliDisplayName(executable);
-      Logger().e('Failed to start $cliName: $error', stackTrace: stackTrace);
-      _handleStartFailure('[Failed to start $cliName: $error]');
+      _handleStartFailure(
+        '[Failed to start $cliName: $error]',
+        error: error,
+        stackTrace: stackTrace,
+      );
     }
   }
 
@@ -487,12 +490,20 @@ class TerminalSession {
     }
     _launchPhase = _LaunchPhase.running;
     _cancelStartupTimers();
+    final cliExecutable = _startupExecutable ?? this.executable;
+    appLogger.i(
+      '[terminal] started ${CliExecutableValidator.cliDisplayName(cliExecutable)}',
+    );
     final callback = _onProcessStarted;
     _onProcessStarted = null;
     callback?.call();
   }
 
-  void _handleStartFailure(String message) {
+  void _handleStartFailure(
+    String message, {
+    Object? error,
+    StackTrace? stackTrace,
+  }) {
     if (_startFailed) return;
     _startFailed = true;
     _launchPhase = _LaunchPhase.failed;
@@ -504,6 +515,11 @@ class TerminalSession {
     _transport?.close();
     _transport = null;
     _startupExecutable = null;
+    appLogger.e(
+      '[terminal] $message',
+      error: error,
+      stackTrace: stackTrace,
+    );
     terminal.write('\r\n$message\r\n');
     _onProcessFailed?.call();
     _onProcessFailed = null;
@@ -608,15 +624,11 @@ class TerminalSession {
     Map<String, String>? environment,
   }) async {
     final spawnExecutable = CliToolLocator.resolveSpawnExecutable(executable);
-    Logger().i(
-      '--------------------------------\n'
-      'Starting transport:\n'
-      '--------------------------------\n'
-      'Executable: $spawnExecutable,\n'
-      'Arguments: ${arguments.join(' ')},\n'
-      'WorkingDirectory: $workingDirectory,\n'
-      'Environment: ${environment?.entries.map((e) => '${e.key}=${e.value}').join(', ')}\n'
-      '--------------------------------\n',
+    appLogger.i(
+      '[terminal] starting transport: '
+      'executable=$spawnExecutable '
+      'args=${arguments.join(' ')} '
+      'cwd=$workingDirectory',
     );
     final pty = Pty.start(
       spawnExecutable,

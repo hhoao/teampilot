@@ -548,7 +548,12 @@ class ChatCubit extends Cubit<ChatState> {
               member != null) {
             _launchRemainingMembersForTab(team, member.id, internalTab);
           }
-        } on Object catch (e) {
+        } on Object catch (e, st) {
+          appLogger.e(
+            '[session] prepareLaunch/connect failed for ${info.id}: $e',
+            error: e,
+            stackTrace: st,
+          );
           ts.terminal.write('\r\n[Failed to resume session: $e]\r\n');
           _finishSessionConnect(info.id);
         }
@@ -683,7 +688,12 @@ class ChatCubit extends Cubit<ChatState> {
           onProcessExited: () => _updateTabRunning(tab.info.id),
         );
         _updateTabRunning(tab.info.id);
-      } on Object catch (e) {
+      } on Object catch (e, st) {
+        appLogger.e(
+          '[session] prepareLaunch/connect failed for member ${member.name}: $e',
+          error: e,
+          stackTrace: st,
+        );
         shell.terminal.write('\r\n[Failed to start session: $e]\r\n');
         _finishSessionConnect(tab.info.id);
       }
