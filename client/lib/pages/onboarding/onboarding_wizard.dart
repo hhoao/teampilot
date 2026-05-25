@@ -77,7 +77,6 @@ class _OnboardingWizardState extends State<OnboardingWizard> {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final cs = Theme.of(context).colorScheme;
-    final tt = Theme.of(context).textTheme;
 
     return Scaffold(
       backgroundColor: cs.workspacePage,
@@ -99,29 +98,6 @@ class _OnboardingWizardState extends State<OnboardingWizard> {
                         mainAxisSize: MainAxisSize.min,
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          Row(
-                            children: [
-                              Container(
-                                width: 28,
-                                height: 28,
-                                decoration: BoxDecoration(
-                                  color: cs.primary,
-                                  borderRadius: BorderRadius.circular(7),
-                                ),
-                                alignment: Alignment.center,
-                                child: Text(
-                                  'TP',
-                                  style: tt.labelSmall?.copyWith(
-                                    color: cs.onPrimary,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 10),
-                              Text(l10n.onboardingTitle, style: tt.titleMedium),
-                            ],
-                          ),
-                          const SizedBox(height: 20),
                           AnimatedSwitcher(
                             duration: const Duration(milliseconds: 240),
                             switchInCurve: Curves.easeOutCubic,
