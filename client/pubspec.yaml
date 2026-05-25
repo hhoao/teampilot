@@ -67,6 +67,7 @@ flutter:
     - google_fonts/
     - assets/fonts/terminal/
     - assets/rtk/rtk-rewrite.sh
+    - assets/hooks/teampilot-deny-team-lead-self-message.sh
 
 flutter_launcher_icons:
   android: true

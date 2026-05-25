@@ -276,7 +276,7 @@ void main() {
     final decoded =
         jsonDecode(await roster.readAsString()) as Map<String, Object?>;
     expect(decoded['name'], sessionId);
-    expect(decoded['leadAgentId'], 'team-lead@$sessionId');
+    expect(decoded['leadAgentId'], 'team-lead');
 
     final metadata =
         jsonDecode(
@@ -294,7 +294,7 @@ void main() {
 
     final members = decoded['members'] as List<Object?>;
     expect(members, hasLength(2));
-    expect((members.first as Map)['agentId'], 'team-lead@$sessionId');
+    expect((members.first as Map)['agentId'], 'team-lead');
     expect((members.first as Map)['agentType'], 'team-lead');
     expect((members.first as Map)['backendType'], isNull);
     final dev = members.last as Map;
@@ -435,7 +435,7 @@ void main() {
       final decoded =
           jsonDecode(await roster.readAsString()) as Map<String, Object?>;
       expect(decoded['name'], 'team-a');
-      expect(decoded['leadAgentId'], 'team-lead@team-a');
+      expect(decoded['leadAgentId'], 'team-lead');
     },
   );
 

@@ -104,6 +104,36 @@ void main() {
     );
   });
 
+  test('claude adapter uses bare team-lead agent id for leader tab', () {
+    final args = ClaudeCodeCliToolAdapter().buildArguments(
+      CliLaunchContext(
+        team: const TeamConfig(
+          id: 'team-1',
+          name: 'agent',
+          cli: TeamCli.claude,
+        ),
+        member: const TeamMemberConfig(
+          id: 'lead-1',
+          name: 'team-lead',
+          provider: 'anthropic',
+          model: 'sonnet',
+        ),
+      ),
+    );
+
+    expect(
+      args,
+      containsAllInOrder([
+        '--team-name',
+        'agent',
+        '--agent-name',
+        'team-lead',
+        '--agent-id',
+        'team-lead',
+      ]),
+    );
+  });
+
   test('claude adapter appends role system prompt file when set', () {
     final args = ClaudeCodeCliToolAdapter().buildArguments(
       CliLaunchContext(

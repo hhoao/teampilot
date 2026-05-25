@@ -36,10 +36,7 @@ class ClaudeTeamRosterService {
     final prior = existing ?? const <String, Object?>{};
     final createdAt = (prior['createdAt'] as num?)?.toInt() ?? now;
 
-    final leadAgentId = TeamMemberNaming.formatAgentId(
-      TeamMemberNaming.teamLeadName,
-      cliTeamName,
-    );
+    final leadAgentId = TeamMemberNaming.leadAgentId(cliTeamName);
 
     final priorLeadSession = prior['leadSessionId']?.toString().trim() ?? '';
     final nextLeadSession = leadSessionId?.trim() ?? '';
@@ -84,7 +81,9 @@ class ClaudeTeamRosterService {
     final rosterName = member.name == TeamMemberNaming.teamLeadName
         ? TeamMemberNaming.teamLeadName
         : TeamMemberNaming.slugMemberName(member.name);
-    final agentId = TeamMemberNaming.formatAgentId(rosterName, cliTeamName);
+    final agentId = rosterName == TeamMemberNaming.teamLeadName
+        ? TeamMemberNaming.leadAgentId(cliTeamName)
+        : TeamMemberNaming.formatAgentId(rosterName, cliTeamName);
     final joinedAt = member.joinedAt > 0
         ? member.joinedAt
         : DateTime.now().millisecondsSinceEpoch;

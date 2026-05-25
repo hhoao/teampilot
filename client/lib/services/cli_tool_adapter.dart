@@ -1,4 +1,5 @@
 import '../models/team_config.dart';
+import '../utils/team_member_naming.dart';
 
 class CliLaunchContext {
   const CliLaunchContext({
@@ -101,7 +102,10 @@ class ClaudeCodeCliToolAdapter implements CliToolAdapter {
       '--agent-name',
       context.memberName,
       '--agent-id',
-      '${context.memberName}@${context.teamName}',
+      TeamMemberNaming.cliAgentId(
+        memberName: context.memberName,
+        cliTeamName: context.teamName,
+      ),
     ];
 
     if (member.model.trim().isNotEmpty) {

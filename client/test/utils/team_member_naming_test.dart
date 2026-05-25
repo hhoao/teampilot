@@ -18,4 +18,25 @@ void main() {
     expect(TeamMemberNaming.validateMemberName('a@b'), 'at_sign');
     expect(TeamMemberNaming.validateMemberName('ok'), isNull);
   });
+
+  test('leadAgentId stays bare team-lead for Claude leader detection', () {
+    expect(TeamMemberNaming.leadAgentId('my-team'), 'team-lead');
+  });
+
+  test('cliAgentId uses bare id for team-lead only', () {
+    expect(
+      TeamMemberNaming.cliAgentId(
+        memberName: 'team-lead',
+        cliTeamName: 'my-team',
+      ),
+      'team-lead',
+    );
+    expect(
+      TeamMemberNaming.cliAgentId(
+        memberName: 'developer',
+        cliTeamName: 'my-team',
+      ),
+      'developer@my-team',
+    );
+  });
 }

@@ -9,6 +9,24 @@ abstract final class TeamMemberNaming {
   static String formatAgentId(String agentName, String teamName) =>
       '${sanitizeAgentName(agentName)}@${teamName.trim()}';
 
+  /// Leader agent id for CLI + roster `leadAgentId`.
+  ///
+  /// Must stay the bare name `team-lead` (not `team-lead@<team>`) so stock
+  /// Claude Code treats this session as leader (`isTeamLeader`, `isTeamLead`)
+  /// while still accepting `--agent-id` for inbox polling (`isTeammate`).
+  static String leadAgentId(String cliTeamName) => teamLeadName;
+
+  /// `--agent-id` for a member launch.
+  static String cliAgentId({
+    required String memberName,
+    required String cliTeamName,
+  }) {
+    if (memberName.trim() == teamLeadName) {
+      return leadAgentId(cliTeamName);
+    }
+    return formatAgentId(slugMemberName(memberName), cliTeamName);
+  }
+
   /// Slug for roster `name`, inbox paths, and CLI `--agent-name` (non-lead).
   static String slugMemberName(String raw) {
     if (raw.trim() == teamLeadName) return teamLeadName;
