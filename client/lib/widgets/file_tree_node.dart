@@ -34,10 +34,28 @@ class FileTreeNode extends StatelessWidget {
   final Color textColor;
   final bool isLast;
 
+  bool _isActiveEditorFile(BuildContext context) {
+    if (entry.isDirectory) return false;
+    final active = context.select<EditorCubit, String?>(
+      (c) => c.state.activePath,
+    );
+    if (active == null) return false;
+    final ctx = cubit.fs.pathContext;
+    return ctx.equals(ctx.normalize(active), ctx.normalize(path));
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDir = entry.isDirectory;
     final isExpanded = cubit.state.expandedPaths.contains(path);
+    final isActive = _isActiveEditorFile(context);
+    final cs = Theme.of(context).colorScheme;
+    final labelColor = isActive
+        ? cs.onSecondaryContainer
+        : textColor.withValues(alpha: 0.8);
+    final iconMuted = isActive
+        ? cs.onSecondaryContainer.withValues(alpha: 0.7)
+        : textColor.withValues(alpha: 0.6);
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -60,6 +78,13 @@ class FileTreeNode extends StatelessWidget {
           ),
           child: Container(
             height: 28,
+            margin: const EdgeInsets.symmetric(vertical: 1),
+            decoration: isActive
+                ? BoxDecoration(
+                    color: cs.secondaryContainer,
+                    borderRadius: BorderRadius.circular(6),
+                  )
+                : null,
             padding: EdgeInsets.only(left: depth * _indentWidth + 4, right: 8),
             child: Row(
               children: [
@@ -73,7 +98,9 @@ class FileTreeNode extends StatelessWidget {
                       child: Icon(
                         Icons.chevron_right,
                         size: 16,
-                        color: textColor.withValues(alpha: 0.55),
+                        color: isActive
+                            ? iconMuted
+                            : textColor.withValues(alpha: 0.55),
                       ),
                     ),
                   )
@@ -84,9 +111,7 @@ class FileTreeNode extends StatelessWidget {
                       ? (isExpanded ? Icons.folder_open : Icons.folder_outlined)
                       : _fileIcon(entry.name),
                   size: 18,
-                  color: isDir
-                      ? const Color(0xFFE5B143)
-                      : textColor.withValues(alpha: 0.6),
+                  color: isDir ? const Color(0xFFE5B143) : iconMuted,
                 ),
                 const SizedBox(width: 6),
                 Expanded(
@@ -96,7 +121,8 @@ class FileTreeNode extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       fontSize: 12,
-                      color: textColor.withValues(alpha: 0.8),
+                      fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
+                      color: labelColor,
                     ),
                   ),
                 ),
