@@ -250,18 +250,19 @@ class _FloatingEditorWindowState extends State<_FloatingEditorWindow> {
   void _applyResizePan({
     required _ResizeEdges edges,
     required Offset delta,
-    required Size size,
-    required Offset position,
     required double maxW,
     required double maxH,
   }) {
     final limitW = _maxWidth(maxW);
     final limitH = _maxHeight(maxH);
+    final defaultSize = _defaultSize(maxW, maxH);
+    final currentSize = _size ?? defaultSize;
+    final currentPos = _position ?? _defaultPosition(maxW, currentSize);
 
-    var w = size.width;
-    var h = size.height;
-    var x = position.dx;
-    var y = position.dy;
+    var w = currentSize.width;
+    var h = currentSize.height;
+    var x = currentPos.dx;
+    var y = currentPos.dy;
 
     if (edges.left) {
       final newW = (w - delta.dx).clamp(0.0, limitW);
@@ -300,27 +301,19 @@ class _FloatingEditorWindowState extends State<_FloatingEditorWindow> {
     final limitH = _maxHeight(maxH);
     final defaultSize = _defaultSize(maxW, maxH);
 
-    var size = _size ?? defaultSize;
-    // Drop stale geometry from older floating layouts (small box / left pane).
-    if (_size != null &&
-        (_size!.height < limitH * 0.85 ||
-            _size!.width < limitW * _defaultWidthFraction * 0.85)) {
-      size = defaultSize;
-      _size = null;
-      _position = null;
-    } else if (_position != null && _position!.dx < maxW * 0.35) {
-      _position = null;
-    }
-
-    var position = _position ?? _defaultPosition(maxW, size);
-
-    size = Size(
-      size.width.clamp(0.0, limitW),
-      size.height.clamp(0.0, limitH),
+    final size = Size(
+      (_size ?? defaultSize).width.clamp(0.0, limitW),
+      (_size ?? defaultSize).height.clamp(0.0, limitH),
     );
-    position = Offset(
-      position.dx.clamp(_margin, maxW - size.width - _margin),
-      position.dy.clamp(_margin, maxH - size.height - _margin),
+    final position = Offset(
+      (_position ?? _defaultPosition(maxW, size)).dx.clamp(
+        _margin,
+        maxW - size.width - _margin,
+      ),
+      (_position ?? _defaultPosition(maxW, size)).dy.clamp(
+        _margin,
+        maxH - size.height - _margin,
+      ),
     );
 
     return Positioned(
@@ -345,7 +338,18 @@ class _FloatingEditorWindowState extends State<_FloatingEditorWindow> {
                   path: activePath,
                   onDragUpdate: (delta) {
                     setState(() {
-                      _position = position + delta;
+                      final base = _position ?? _defaultPosition(maxW, size);
+                      _size = size;
+                      _position = Offset(
+                        (base.dx + delta.dx).clamp(
+                          _margin,
+                          maxW - size.width - _margin,
+                        ),
+                        (base.dy + delta.dy).clamp(
+                          _margin,
+                          maxH - size.height - _margin,
+                        ),
+                      );
                     });
                   },
                   onClose: () => _closeFloatingWindow(context),
@@ -357,8 +361,6 @@ class _FloatingEditorWindowState extends State<_FloatingEditorWindow> {
               onPanUpdate: (edges, delta) => _applyResizePan(
                 edges: edges,
                 delta: delta,
-                size: size,
-                position: position,
                 maxW: maxW,
                 maxH: maxH,
               ),
