@@ -482,13 +482,17 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
                       padding: const EdgeInsets.all(16),
                       textStyle: _terminalTextStyle,
                       autofocus: !_findVisible,
+                      onTapDown: (_, offset) {
+                        // Match VTE/gnome-terminal: clear on press, not release.
+                        if (!HardwareKeyboard.instance.isControlPressed &&
+                            !HardwareKeyboard.instance.isMetaPressed) {
+                          _terminalController.clearSelection();
+                        }
+                      },
                       onTapUp: (details, offset) {
-                        // Plain click selects text; Ctrl/⌘+click opens links.
                         if (HardwareKeyboard.instance.isControlPressed ||
                             HardwareKeyboard.instance.isMetaPressed) {
                           unawaited(_openLinkAt(session.terminal, offset));
-                        } else {
-                          _terminalController.clearSelection();
                         }
                       },
                       onSecondaryTapUp: (details, offset) {
