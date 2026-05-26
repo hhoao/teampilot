@@ -9,7 +9,7 @@ Guidance for Claude Code and other AI assistants working in this repository.
 | [README.md](README.md) / [README.en.md](README.en.md) | User-facing |
 | [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) / [DEVELOPMENT.en.md](docs/DEVELOPMENT.en.md) | Clone, commands, tests, packaging, CI |
 
-All app code lives under `client/lib/` (cubits, pages, repositories, services). Vendored deps: `client/packages/` (git submodules: xterm, flutter_pty, dartssh2).
+All app code lives under `client/lib/` (cubits, pages, repositories, services). Vendored deps: `client/packages/` (git submodules: xterm, flutter_pty, dartssh2, re-editor).
 
 ## Architecture
 

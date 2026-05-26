@@ -9,3 +9,7 @@
 [submodule "client/packages/flutter_pty"]
 	path = client/packages/flutter_pty
 	url = https://github.com/hhoao/flutter_pty.git
+
+[submodule "client/packages/re-editor"]
+	path = client/packages/re-editor
+	url = https://github.com/hhoao/re-editor.git
