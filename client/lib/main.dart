@@ -69,10 +69,19 @@ class _AppShutdownScopeState extends State<_AppShutdownScope> {
   Widget build(BuildContext context) => widget.child;
 }
 
+Future<void> _preloadBundledUiFonts() async {
+  try {
+    await GoogleFonts.pendingFonts([GoogleFonts.notoSansSc()]);
+  } on Object {
+    // Run `dart run tool/sync_bundled_google_fonts.dart` from client/, then rebuild.
+  }
+}
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   GoogleFonts.config.allowRuntimeFetching = false;
   await loadBundledTerminalFonts();
+  await _preloadBundledUiFonts();
 
   if (!Platform.isAndroid) {
     await windowManager.ensureInitialized();

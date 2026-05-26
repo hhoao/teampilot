@@ -189,21 +189,21 @@ class _VersionUpdateActions extends StatelessWidget {
     final l10n = context.l10n;
     final checking = state.status == AppUpdateStatus.checking;
 
-    return Row(
-      mainAxisSize: MainAxisSize.min,
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      alignment: WrapAlignment.end,
       children: [
         TextButton(
           key: AppKeys.aboutGitHubButton,
           onPressed: () => _openUrl(appUpdateGitHubRepoPageUrl()),
           child: Text(l10n.aboutGitHub),
         ),
-        const SizedBox(width: 8),
         TextButton(
           key: AppKeys.aboutViewReleasesButton,
           onPressed: () => _openUrl(appUpdateGitHubReleasesPageUrl()),
           child: Text(l10n.appUpdateViewReleases),
         ),
-        const SizedBox(width: 8),
         FilledButton(
           key: AppKeys.aboutCheckUpdatesButton,
           onPressed: state.isBusy

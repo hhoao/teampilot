@@ -1,4 +1,5 @@
 import 'package:flutter/services.dart';
+import 'package:teampilot/utils/logger.dart';
 
 /// Active terminal font ([TerminalStyle.fontFamily]).
 const kTerminalFontFamily = 'JetBrainsMono NFM';
@@ -10,29 +11,38 @@ const kUbuntuSansMonoFontFamily = 'Ubuntu Sans Mono';
 ///
 /// JetBrainsMono NFM is the default face. Ubuntu Sans Mono is preloaded for
 /// fallback / future switching (change [kTerminalFontFamily] + Regular asset).
-Future<void> loadBundledTerminalFonts() async {
+Future<void> _loadFontAsset(FontLoader loader, String assetPath) async {
   try {
-    final jetbrains = FontLoader(kTerminalFontFamily)
-      ..addFont(
-        rootBundle.load(
-          'assets/fonts/terminal/JetBrainsMonoNerdFontMono-Regular.ttf',
-        ),
-      );
-    await jetbrains.load();
+    loader.addFont(rootBundle.load(assetPath));
+    await loader.load();
   } on Object {
-    // Font not available; terminal will use system monospace fallback.
+    appLogger.w('Failed to load font asset: $assetPath');
   }
+}
 
+Future<void> loadBundledTerminalFonts() async {
+  await _loadFontAsset(
+    FontLoader(kTerminalFontFamily),
+    'assets/fonts/terminal/JetBrainsMonoNerdFontMono-Regular.ttf',
+  );
+
+  final ubuntu = FontLoader(kUbuntuSansMonoFontFamily);
+  var hasUbuntuFont = false;
+  for (final asset in const [
+    'assets/fonts/terminal/UbuntuSansMono-Regular.ttf',
+    'assets/fonts/terminal/UbuntuSansMono-Bold.ttf',
+  ]) {
+    try {
+      ubuntu.addFont(rootBundle.load(asset));
+      hasUbuntuFont = true;
+    } on Object {
+      appLogger.w('Failed to load Ubuntu font asset: $asset');
+    }
+  }
+  if (!hasUbuntuFont) return;
   try {
-    final ubuntu = FontLoader(kUbuntuSansMonoFontFamily)
-      ..addFont(
-        rootBundle.load('assets/fonts/terminal/UbuntuSansMono-Regular.ttf'),
-      )
-      ..addFont(
-        rootBundle.load('assets/fonts/terminal/UbuntuSansMono-Bold.ttf'),
-      );
     await ubuntu.load();
   } on Object {
-    // Font not available; terminal will use system monospace fallback.
+    // No Ubuntu files in bundle; terminal uses JetBrains or system monospace.
   }
 }

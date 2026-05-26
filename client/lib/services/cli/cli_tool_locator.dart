@@ -35,11 +35,23 @@ class CliToolLocator {
 
   String get lookupCommand => 'command -v $executableName';
 
+  /// macOS `/usr/bin/git` is an Xcode shim that invokes `xcrun` and fails in
+  /// App Sandbox; prefer a real git binary when present.
+  static const _macOsGitCandidates = [
+    '/opt/homebrew/bin/git',
+    '/usr/local/bin/git',
+    '/Library/Developer/CommandLineTools/usr/bin/git',
+  ];
+
   Future<String?> locate({
     ProcessRunner runner = cliToolDefaultProcessRun,
     bool? isWindowsOverride,
   }) async {
     final isWindows = isWindowsOverride ?? Platform.isWindows;
+    if (!isWindows && Platform.isMacOS && executableName == 'git') {
+      final direct = await _locateMacOsGit(runner);
+      if (direct != null) return direct;
+    }
     final cmd = isWindows ? 'where' : 'which';
     try {
       final result = await runner(cmd, [executableName]);
@@ -64,6 +76,19 @@ class CliToolLocator {
       );
       return null;
     }
+  }
+
+  Future<String?> _locateMacOsGit(ProcessRunner runner) async {
+    for (final path in _macOsGitCandidates) {
+      if (!File(path).existsSync()) continue;
+      try {
+        final result = await runner(path, ['--version']);
+        if (result.exitCode == 0) return path;
+      } on Object {
+        continue;
+      }
+    }
+    return null;
   }
 
   Future<String?> _locateWithShellFallback(

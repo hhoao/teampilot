@@ -441,91 +441,102 @@ class _LogViewerPanelState extends State<_LogViewerPanel> {
               ),
             ),
             const SizedBox(width: 8),
-            _toolbarFlashskyDropdown<String>(
-              context: context,
-              width: 108,
-              items: _levels,
-              value: _selectedLevel,
-              itemLabel: (l) => l,
-              onChanged: (v) {
-                if (v == null) return;
-                setState(() => _selectedLevel = v);
-                _applyFilters();
-              },
-            ),
-            const SizedBox(width: 4),
-            _toolbarIconToggle(
-              context: context,
-              tooltip: l10n.logViewerCompactView,
-              onIcon: Icons.filter_alt,
-              offIcon: Icons.filter_alt_outlined,
-              value: _compactView,
-              onPressed: () {
-                setState(() => _compactView = !_compactView);
-                _applyFilters();
-              },
-            ),
-            _toolbarIconToggle(
-              context: context,
-              tooltip: l10n.logViewerWrapLines,
-              onIcon: Icons.wrap_text,
-              offIcon: Icons.wrap_text_outlined,
-              value: _wrapLines,
-              onPressed: () => setState(() => _wrapLines = !_wrapLines),
-            ),
-            PopupMenuButton<String>(
-              tooltip: l10n.logViewerActionsMenu,
-              padding: EdgeInsets.zero,
-              icon: Icon(Icons.more_horiz, color: cs.onSurfaceVariant),
-              onSelected: (action) async {
-                switch (action) {
-                  case 'refresh':
-                    await _loadLogFiles();
-                  case 'copy':
-                    await _copyLogPath();
-                  case 'clear':
-                    await _clearOldLogs();
-                  case 'reverse':
-                    setState(() => _reverseOrder = !_reverseOrder);
-                    final file = _selectedFile;
-                    if (file != null) await _loadLogContent(file);
-                }
-              },
-              itemBuilder: (context) => [
-                PopupMenuItem(
-                  value: 'refresh',
-                  child: _menuRow(Icons.refresh, l10n.logViewerRefresh),
-                ),
-                PopupMenuItem(
-                  value: 'copy',
-                  child: _menuRow(Icons.copy_outlined, l10n.logViewerCopyPath),
-                ),
-                PopupMenuItem(
-                  value: 'clear',
-                  child: _menuRow(
-                    Icons.cleaning_services_outlined,
-                    l10n.logViewerClearOld,
-                  ),
-                ),
-                CheckedPopupMenuItem(
-                  value: 'reverse',
-                  checked: _reverseOrder,
-                  child: _menuRow(Icons.swap_vert, l10n.logViewerReverseOrder),
-                ),
-              ],
-            ),
-            const SizedBox(width: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(
-                color: cs.primaryContainer.withValues(alpha: 0.65),
-                borderRadius: BorderRadius.circular(999),
-              ),
-              child: Text(
-                l10n.logViewerLineCount(lineCount),
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: cs.onPrimaryContainer,
-                  fontWeight: FontWeight.w600,
+            Flexible(
+              fit: FlexFit.loose,
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _toolbarFlashskyDropdown<String>(
+                      context: context,
+                      width: 108,
+                      items: _levels,
+                      value: _selectedLevel,
+                      itemLabel: (l) => l,
+                      onChanged: (v) {
+                        if (v == null) return;
+                        setState(() => _selectedLevel = v);
+                        _applyFilters();
+                      },
+                    ),
+                    const SizedBox(width: 4),
+                    _toolbarIconToggle(
+                      context: context,
+                      tooltip: l10n.logViewerCompactView,
+                      onIcon: Icons.filter_alt,
+                      offIcon: Icons.filter_alt_outlined,
+                      value: _compactView,
+                      onPressed: () {
+                        setState(() => _compactView = !_compactView);
+                        _applyFilters();
+                      },
+                    ),
+                    _toolbarIconToggle(
+                      context: context,
+                      tooltip: l10n.logViewerWrapLines,
+                      onIcon: Icons.wrap_text,
+                      offIcon: Icons.wrap_text_outlined,
+                      value: _wrapLines,
+                      onPressed: () => setState(() => _wrapLines = !_wrapLines),
+                    ),
+                    PopupMenuButton<String>(
+                      tooltip: l10n.logViewerActionsMenu,
+                      padding: EdgeInsets.zero,
+                      icon: Icon(Icons.more_horiz, color: cs.onSurfaceVariant),
+                      onSelected: (action) async {
+                        switch (action) {
+                          case 'refresh':
+                            await _loadLogFiles();
+                          case 'copy':
+                            await _copyLogPath();
+                          case 'clear':
+                            await _clearOldLogs();
+                          case 'reverse':
+                            setState(() => _reverseOrder = !_reverseOrder);
+                            final file = _selectedFile;
+                            if (file != null) await _loadLogContent(file);
+                        }
+                      },
+                      itemBuilder: (context) => [
+                        PopupMenuItem(
+                          value: 'refresh',
+                          child: _menuRow(Icons.refresh, l10n.logViewerRefresh),
+                        ),
+                        PopupMenuItem(
+                          value: 'copy',
+                          child: _menuRow(Icons.copy_outlined, l10n.logViewerCopyPath),
+                        ),
+                        PopupMenuItem(
+                          value: 'clear',
+                          child: _menuRow(
+                            Icons.cleaning_services_outlined,
+                            l10n.logViewerClearOld,
+                          ),
+                        ),
+                        CheckedPopupMenuItem(
+                          value: 'reverse',
+                          checked: _reverseOrder,
+                          child: _menuRow(Icons.swap_vert, l10n.logViewerReverseOrder),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: cs.primaryContainer.withValues(alpha: 0.65),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Text(
+                        l10n.logViewerLineCount(lineCount),
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: cs.onPrimaryContainer,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
