@@ -26,6 +26,7 @@ import 'package:teampilot/services/app/connection_mode_service.dart';
 import 'package:teampilot/services/storage/flashskyai_storage_roots.dart';
 import 'package:teampilot/services/session/session_lifecycle_service.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
+import 'package:teampilot/theme/app_theme.dart';
 import 'package:teampilot/utils/app_keys.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -408,7 +409,7 @@ void main() {
     final settingsCtx = tester.element(find.byKey(AppKeys.configWorkspace));
     final settingsTheme = Theme.of(settingsCtx);
     final cs = settingsTheme.colorScheme;
-    expect(cs.primary, const Color(0xFF8B939E));
+    expect(cs.primary, themePresetSwatchPrimary(kDefaultThemeColorPreset));
     expect(settingsTheme.filledButtonTheme.style, isNotNull);
 
     await tester.tap(find.byKey(AppKeys.configLlmSectionButton));
