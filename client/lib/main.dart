@@ -155,6 +155,7 @@ void main() async {
               providers: [
                 BlocProvider.value(value: shell.teamCubit),
                 BlocProvider.value(value: shell.chatCubit),
+                BlocProvider.value(value: shell.editorCubit),
                 BlocProvider.value(value: shell.configCubit),
                 BlocProvider.value(value: shell.appProviderCubit),
                 BlocProvider.value(value: shell.llmConfigCubit),

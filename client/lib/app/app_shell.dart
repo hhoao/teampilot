@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../cubits/app_provider_cubit.dart';
 import '../cubits/app_update_cubit.dart';
 import '../cubits/chat_cubit.dart';
+import '../cubits/editor_cubit.dart';
 import '../cubits/config_cubit.dart';
 import '../cubits/layout_cubit.dart';
 import '../cubits/llm_config_cubit.dart';
@@ -56,6 +57,7 @@ import '../utils/logger.dart';
 class AppShell {
   AppShell({
     required this.chatCubit,
+    required this.editorCubit,
     required this.sessionRepo,
     required this.sshProfileRepo,
     required this.sshCredentialStore,
@@ -80,6 +82,7 @@ class AppShell {
   });
 
   final ChatCubit chatCubit;
+  final EditorCubit editorCubit;
   final SessionRepository sessionRepo;
   final SshProfileRepository sshProfileRepo;
   final SshCredentialStore sshCredentialStore;
@@ -194,6 +197,7 @@ Future<AppShell> buildAppShell({
   late final SkillCubit skillCubit;
   late final SessionRepository sessionRepo;
   late final ChatCubit chatCubit;
+  late final EditorCubit editorCubit;
   late final FlashskyaiStorageRoots storageRoots;
   late final SessionLifecycleService sessionLifecycleService;
   late final ConnectionModeService connectionModeService;
@@ -383,8 +387,11 @@ Future<AppShell> buildAppShell({
     );
   }
 
+  editorCubit = EditorCubit();
+
   return AppShell(
     chatCubit: chatCubit,
+    editorCubit: editorCubit,
     sessionRepo: sessionRepo,
     sshProfileRepo: sshProfileRepo,
     sshCredentialStore: sshCredentialStore,

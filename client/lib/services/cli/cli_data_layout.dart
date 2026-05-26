@@ -6,23 +6,77 @@ import '../plugin/cli_plugin_manifest_flavor.dart';
 import '../io/filesystem.dart';
 import '../session/launch_command_builder.dart';
 
-/// Three tools whose runtime config we provision under `config-profiles/`.
+/// Tools with a `config-profiles/{tool}/` tree (see [CliDataLayout]).
 const List<String> cliLayoutDefaultTools = ['claude', 'flashskyai', 'codex'];
 
-/// Sole source of CLI runtime directory paths under TeamPilot's app-data root.
+/// Canonical paths for CLI **runtime config** under TeamPilot app data.
 ///
-/// Layout (all paths relative to [teampilotRoot]):
+/// [teampilotRoot] is `AppPaths.basePath` / `RuntimeStorageContext.appDataRoot`
+/// (e.g. `~/.local/share/com.hhoa.teampilot`). This class only models
+/// `{teampilotRoot}/config-profiles/`. Other app-data dirs are separate:
+///
+/// | Path under [teampilotRoot] | Role |
+/// |----------------------------|------|
+/// | `providers/{tool}/providers.json` | UI provider catalog (not CONFIG_DIR) |
+/// | `skills/installed/` | Global skill packages (source for team links) |
+/// | `plugins/installed/` | Global plugin bundles (source for team links) |
+/// | `projects/` | TeamPilot session index (`projects.json`, `sessions/*.json`) |
+/// | `config-profiles/` | **This layout** — per-tool trees the CLIs read at launch |
+///
+/// ## Three isolation layers
+///
+/// Each layer has one directory per tool (`claude`, `flashskyai`, `codex`):
 ///
 /// ```
-/// config-profiles/
-///   {tool}/                                          # app level
-///   teams/{teamId}/{tool}/                           # team level
-///   teams/{teamId}/members/{sessionId}/{tool}/       # member level (PTY CONFIG_DIR)
+/// {teampilotRoot}/config-profiles/
+/// ├── {tool}/                                    # app — shared defaults
+/// │   ├── agents/                                # optional app-wide agents
+/// │   ├── skills/                                # optional app-wide skills
+/// │   ├── projects/                              # transcripts (see below)
+/// │   └── …                                      # tool-specific files (e.g. llm_config.json)
+/// └── teams/
+///     └── {teamId}/
+///         ├── {tool}/                            # team — inherits app via symlinks
+///         │   ├── agents/   → symlink to app …/agents/
+///         │   ├── skills/   → symlink (or populated dir; see [ensureTeamInheritsApp])
+///         │   └── plugins/  → team bundles (flashskyai only; [teamPluginsDir])
+///         └── members/
+///             └── {sessionId}/                   # chat session id (runtime team id)
+///                 └── {tool}/                    # member — PTY CONFIG_DIR
+///                     ├── agents/   → symlink to team …/agents/
+///                     ├── skills/   → symlink to team …/skills/
+///                     ├── plugins/  → copies/symlinks from team at launch
+///                     ├── projects/ …              # CLI session transcripts
+///                     └── settings/, metadata, hooks …  # written by [ConfigProfileService]
 /// ```
 ///
-/// The CLI writes session transcripts to the **member** root, so
-/// [transcriptSearchRoots] returns app + team + member tool roots to support
-/// `--resume` lookups across all three layers.
+/// **Inheritance:** [ensureTeamInheritsApp] links `agents/` and `skills/` from app
+/// → team. [ensureMemberInheritsTeam] links the same names from team → member.
+/// Symlink preferred; copy tree if the filesystem cannot link. Team scope also
+/// gets explicit skill/plugin trees under `teams/{teamId}/flashskyai/` via
+/// [TeamSkillLinkerService] / [TeamPluginLinkerService] (sources:
+/// `skills/installed/`, `plugins/installed/`). [provisionMemberPluginsFromTeam]
+/// materializes team plugins into the member CONFIG_DIR at session launch.
+///
+/// **PTY env (member root):** [ConfigProfileService.prepareTeamLaunch] sets
+/// `CLAUDE_CONFIG_DIR` / `FLASHSKYAI_CONFIG_DIR` (and `FLASHSKYAI_SESSION_HOME_DIR`)
+/// to [memberToolDir]. FlashskyAI also uses app-level [appFlashskyaiLlmConfigFile]
+/// via `LLM_CONFIG_PATH`.
+///
+/// ## Transcripts (`projects/` under each tool root)
+///
+/// CLIs store conversation state under `{toolRoot}/projects/`, not under
+/// TeamPilot's top-level `projects/` index. Layout per workspace [primaryPath]:
+///
+/// ```
+/// {toolRoot}/projects/{bucket}/{sessionId}.jsonl
+/// {toolRoot}/projects/{bucket}/{sessionId}/   # directory form (some tools)
+/// ```
+///
+/// [projectBucketForPrimaryPath] encodes [primaryPath] as `{bucket}` (e.g.
+/// `/home/user/repo` → `-home-user-repo`). [transcriptSearchRoots] lists app,
+/// then team, then member tool roots (broad → narrow) so `--resume` and session
+/// probes can find transcripts written at any layer.
 class CliDataLayout {
   CliDataLayout({required this.teampilotRoot, Filesystem? fs})
     : _fs = fs ?? AppStorage.fs;
@@ -36,18 +90,23 @@ class CliDataLayout {
 
   p.Context get _pathContext => _fs.pathContext;
 
+  /// `{teampilotRoot}/config-profiles`.
   String get configProfilesDir =>
       _pathContext.join(teampilotRoot, 'config-profiles');
 
-  /// App-level tool root: `config-profiles/{tool}/`.
+  /// App layer: `config-profiles/{tool}/`.
   String appToolRoot(String tool) =>
       _pathContext.join(configProfilesDir, tool.trim());
 
-  /// Team-level tool root: `config-profiles/teams/{teamId}/{tool}/`.
+  /// Team layer: `config-profiles/teams/{teamId}/{tool}/`.
   String teamToolDir(String teamId, String tool) =>
       _pathContext.join(configProfilesDir, 'teams', teamId.trim(), tool.trim());
 
-  /// Member-level tool root: `config-profiles/teams/{teamId}/members/{sessionId}/{tool}/`.
+  /// Member layer (PTY CONFIG_DIR):
+  /// `config-profiles/teams/{teamId}/members/{sessionId}/{tool}/`.
+  ///
+  /// [sessionId] is the runtime chat session id ([ConfigProfileService] scope),
+  /// or `_adhoc` for launches without a persisted session.
   String memberToolDir(String teamId, String sessionId, String tool) =>
       _pathContext.join(
         configProfilesDir,
@@ -58,22 +117,32 @@ class CliDataLayout {
         tool.trim(),
       );
 
-  /// Team-scope skills dir: `config-profiles/teams/{teamId}/flashskyai/skills/`.
+  /// Team flashskyai skills link target:
+  /// `config-profiles/teams/{teamId}/flashskyai/skills/`.
+  ///
+  /// Populated by [TeamSkillLinkerService] from `{teampilotRoot}/skills/installed/`.
   String teamSkillsDir(String teamId) =>
       _pathContext.join(teamToolDir(teamId, 'flashskyai'), 'skills');
 
-  /// Team-scope plugins dir: `config-profiles/teams/{teamId}/flashskyai/plugins/`.
+  /// Team flashskyai plugin bundles:
+  /// `config-profiles/teams/{teamId}/flashskyai/plugins/<name>/`.
+  ///
+  /// Populated by [TeamPluginLinkerService] from `{teampilotRoot}/plugins/installed/`.
   String teamPluginsDir(String teamId) =>
       _pathContext.join(teamToolDir(teamId, 'flashskyai'), 'plugins');
 
-  /// Convenience accessor for the FlashskyAI provider catalog file.
+  /// App-level FlashskyAI LLM catalog (not per-session):
+  /// `config-profiles/flashskyai/llm_config.json`.
+  ///
+  /// Passed to the CLI as `LLM_CONFIG_PATH` while CONFIG_DIR stays at member root.
   String get appFlashskyaiLlmConfigFile =>
       _pathContext.join(appToolRoot('flashskyai'), 'llm_config.json');
 
-  /// All tool roots to scan for `--resume` lookups: app + team + member.
+  /// Tool roots to search for transcripts, in order: app → team → member.
   ///
-  /// Caller appends `projects/<bucket>/<id>.jsonl` or `sessions/<id>.json` per
-  /// the CLI's transcript layout. Order is broad → narrow (app, team, member).
+  /// For each root, look under `projects/{bucket}/` where [projectBucketForPrimaryPath]
+  /// derives `{bucket}` from the workspace [primaryPath]. Typical files:
+  /// `{sessionId}.jsonl` or a `{sessionId}/` directory (see session lifecycle probes).
   List<String> transcriptSearchRoots({
     required String teamId,
     required String runtimeSessionId,
@@ -91,8 +160,11 @@ class CliDataLayout {
     ];
   }
 
-  /// CLI bucket folder name under `projects/` for a workspace path
-  /// (e.g. `/home/hhoa/agent` → `-home-hhoa-agent`, `D:\repo` → `-mnt-d-repo`).
+  /// Encodes a workspace [primaryPath] as the `projects/` subdirectory name.
+  ///
+  /// Examples: `/home/user/agent` → `-home-user-agent`;
+  /// Windows `D:\repo` (WSL launch) → WSL path then `-mnt-d-repo`.
+  /// Empty when path is `.` or `/`.
   static String projectBucketForPrimaryPath(String primaryPath) {
     var s = primaryPath.trim().replaceAll('\\', '/');
     if (s.isEmpty) return '';
@@ -106,12 +178,15 @@ class CliDataLayout {
     return s.replaceAll('/', '-');
   }
 
-  /// Creates the app-level tool root.
+  /// Ensures `config-profiles/{tool}/` exists (app layer only; no symlinks).
   Future<void> ensureAppToolLayout(String tool) async {
     await _fs.ensureDir(appToolRoot(tool));
   }
 
-  /// Creates team root and symlinks `agents/` + `skills/` to app level.
+  /// Ensures team `{tool}/` exists and inherits app `agents/` + `skills/`.
+  ///
+  /// If team `skills/` already has content, it is left unchanged
+  /// ([preservePopulatedDirectory]) so [TeamSkillLinkerService] links are not wiped.
   Future<void> ensureTeamInheritsApp(String teamId, String tool) async {
     final trimmedTeam = teamId.trim();
     final trimmedTool = tool.trim();
@@ -154,10 +229,9 @@ class CliDataLayout {
     }
   }
 
-  /// Creates member root and symlinks `agents/` + `skills/` to team level.
+  /// Ensures member `{tool}/` exists and inherits team `agents/` + `skills/`.
   ///
-  /// Team plugins are copied into the member CONFIG_DIR by
-  /// [provisionMemberPluginsFromTeam] (session launch).
+  /// Call [provisionMemberPluginsFromTeam] separately (session launch) for `plugins/`.
   Future<void> ensureMemberInheritsTeam(
     String teamId,
     String sessionId,
@@ -194,11 +268,11 @@ class CliDataLayout {
         'plugins',
       );
 
-  /// Links (or copies) formatted team plugin bundles into the session tool root.
+  /// Copies or symlinks team plugin bundles into the member CONFIG_DIR.
   ///
-  /// Source: [teamPluginsDir] (`flashskyai/plugins/<name>/` per bundle).
-  /// Dest: `members/<session>/<tool>/plugins/<name>/` (symlink preferred).
-  /// Returns member provision stamp JSON (for registry skip inputs).
+  /// Source: [teamPluginsDir] (`…/flashskyai/plugins/<bundle>/`).
+  /// Dest: [memberPluginsDir] (`…/members/{session}/{tool}/plugins/<bundle>/`).
+  /// Returns optional provision-stamp JSON for [CliPluginRegistryService].
   Future<String?> provisionMemberPluginsFromTeam(
     String teamId,
     String sessionId,

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../cubits/chat_cubit.dart';
+import '../cubits/editor_cubit.dart';
 import '../cubits/layout_cubit.dart';
 import '../cubits/team_cubit.dart';
 import '../l10n/l10n_extensions.dart';
@@ -122,7 +123,20 @@ class ChatPage extends StatelessWidget {
         );
         listenerContext.read<ChatCubit>().clearSnackbarMessage();
       },
-      child: child,
+      child: BlocListener<EditorCubit, EditorState>(
+        listenWhen: (previous, next) =>
+            previous.snackbarMessage != next.snackbarMessage &&
+            next.snackbarMessage != null,
+        listener: (listenerContext, state) {
+          final message = state.snackbarMessage;
+          if (message == null) return;
+          ScaffoldMessenger.of(listenerContext).showSnackBar(
+            SnackBar(content: Text(message)),
+          );
+          listenerContext.read<EditorCubit>().clearSnackbarMessage();
+        },
+        child: child,
+      ),
     );
   }
 

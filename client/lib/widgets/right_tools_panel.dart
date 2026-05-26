@@ -6,6 +6,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../cubits/chat_cubit.dart';
 import '../cubits/file_tree_cubit.dart';
+import '../services/storage/app_storage.dart';
 import '../cubits/team_cubit.dart';
 import '../l10n/l10n_extensions.dart';
 import '../models/layout_preferences.dart';
@@ -272,7 +273,7 @@ class _FileTreePanel extends StatefulWidget {
 }
 
 class _FileTreePanelState extends State<_FileTreePanel> {
-  final _cubit = FileTreeCubit();
+  final _cubit = FileTreeCubit(fs: AppStorage.fs);
   final _filterController = TextEditingController();
 
   @override

@@ -1,9 +1,14 @@
+import 'dart:async';
 import 'dart:io' show Platform, Process;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:path/path.dart' as p;
 
+import '../cubits/editor_cubit.dart';
 import '../cubits/file_tree_cubit.dart';
+import '../services/editor/file_editor_theme.dart';
 import '../services/io/filesystem.dart';
 import '../utils/debounce/debounce.dart';
 
@@ -41,11 +46,16 @@ class FileTreeNode extends StatelessWidget {
             if (isDir) {
               cubit.toggleExpand(path);
             } else {
-              _openFile(path);
+              _openFile(context, path);
             }
           },
-          onSecondaryTapDown: (details) =>
-              _showContextMenu(context, details.globalPosition, path, entry.name),
+          onSecondaryTapDown: (details) => _showContextMenu(
+            context,
+            details.globalPosition,
+            path,
+            entry.name,
+            isDirectory: isDir,
+          ),
           child: Container(
             height: 28,
             padding: EdgeInsets.only(left: depth * _indentWidth + 4, right: 8),
@@ -154,7 +164,16 @@ class FileTreeNode extends StatelessWidget {
     }
   }
 
-  void _openFile(String filePath) {
+  void _openFile(BuildContext context, String filePath) {
+    final ext = p.extension(filePath).replaceFirst('.', '').toLowerCase();
+    if (kEditorBinaryExtensions.contains(ext)) {
+      _openFileExternally(filePath);
+      return;
+    }
+    unawaited(context.read<EditorCubit>().openFile(filePath));
+  }
+
+  void _openFileExternally(String filePath) {
     try {
       if (Platform.isLinux) {
         Process.run('xdg-open', [filePath]);
@@ -170,8 +189,9 @@ class FileTreeNode extends StatelessWidget {
     BuildContext context,
     Offset position,
     String targetPath,
-    String targetName,
-  ) async {
+    String targetName, {
+    required bool isDirectory,
+  }) async {
     final value = await showMenu<String>(
       context: context,
       position: RelativeRect.fromLTRB(
@@ -181,11 +201,18 @@ class FileTreeNode extends StatelessWidget {
         position.dy + 1,
       ),
       items: [
+        if (!isDirectory)
+          const PopupMenuItem(
+            value: 'external',
+            child: Text('Open with system app'),
+          ),
         const PopupMenuItem(value: 'copy', child: Text('Copy path')),
         const PopupMenuItem(value: 'delete', child: Text('Delete')),
       ],
     );
-    if (value == 'copy') {
+    if (value == 'external' && !isDirectory) {
+      _openFileExternally(targetPath);
+    } else if (value == 'copy') {
       Clipboard.setData(ClipboardData(text: targetPath));
     } else if (value == 'delete' && context.mounted) {
       _confirmDelete(context, targetPath, targetName);

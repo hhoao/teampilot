@@ -5,7 +5,6 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:xterm/xterm.dart';
 
 import '../cubits/chat_cubit.dart';
@@ -20,6 +19,7 @@ import '../services/terminal/terminal_uri_opener.dart';
 import '../services/terminal/terminal_fonts.dart';
 import '../utils/app_keys.dart';
 import '../utils/debounce/debounce.dart';
+import '../widgets/file_editor_panel.dart';
 import '../widgets/terminal_find_bar.dart';
 
 const _terminalTextStyle = TerminalStyle(
@@ -423,16 +423,18 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
       return Container(
         key: AppKeys.chatWorkspace,
         color: cs.surface,
-        child: Container(
-          color: terminalTheme.background,
-          child: sessionConnectInProgress
-              ? _SessionLoadingView(message: context.l10n.sessionStarting)
-              : _TerminalPlaceholder(
-                  onConnect: onConnect,
-                  connectDisabled: sessionConnectInProgress,
-                  memberName: chatCubit.selectedMemberName(team),
-                  launchError: chatCubit.activeLaunchError,
-                ),
+        child: WorkspaceEditorOverlay(
+          terminalChild: Container(
+            color: terminalTheme.background,
+            child: sessionConnectInProgress
+                ? _SessionLoadingView(message: context.l10n.sessionStarting)
+                : _TerminalPlaceholder(
+                    onConnect: onConnect,
+                    connectDisabled: sessionConnectInProgress,
+                    memberName: chatCubit.selectedMemberName(team),
+                    launchError: chatCubit.activeLaunchError,
+                  ),
+          ),
         ),
       );
     }
@@ -445,12 +447,13 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
     return Container(
       key: AppKeys.chatWorkspace,
       color: cs.surface,
-      child: Container(
-        color: terminalTheme.background,
-        child: sessionConnectInProgress
-            ? _SessionLoadingView(message: context.l10n.sessionStarting)
-            : session.isRunning
-            ? TerminalFindShortcuts(
+      child: WorkspaceEditorOverlay(
+        terminalChild: Container(
+          color: terminalTheme.background,
+          child: sessionConnectInProgress
+              ? _SessionLoadingView(message: context.l10n.sessionStarting)
+              : session.isRunning
+              ? TerminalFindShortcuts(
                 findVisible: _findVisible,
                 onToggleFind: () => setState(() => _findVisible = true),
                 onFindNext: () {
@@ -535,17 +538,18 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
                   ],
                 ),
               )
-            : _TerminalPlaceholder(
-                onConnect: () {
-                  unawaited(() async {
-                    await chatCubit.connectSession(team);
-                    if (mounted) setState(() {});
-                  }());
-                },
-                connectDisabled: sessionConnectInProgress,
-                memberName: chatCubit.selectedMemberName(team),
-                launchError: chatCubit.activeLaunchError,
-              ),
+              : _TerminalPlaceholder(
+                  onConnect: () {
+                    unawaited(() async {
+                      await chatCubit.connectSession(team);
+                      if (mounted) setState(() {});
+                    }());
+                  },
+                  connectDisabled: sessionConnectInProgress,
+                  memberName: chatCubit.selectedMemberName(team),
+                  launchError: chatCubit.activeLaunchError,
+                ),
+        ),
       ),
     );
   }
