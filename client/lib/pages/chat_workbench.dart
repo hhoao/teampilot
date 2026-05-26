@@ -8,6 +8,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:xterm/xterm.dart';
 
 import '../cubits/chat_cubit.dart';
+import '../cubits/editor_cubit.dart';
 import '../cubits/layout_cubit.dart';
 import '../cubits/team_cubit.dart';
 import '../l10n/l10n_extensions.dart';
@@ -267,7 +268,7 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
         setState(() => _findVisible = true);
       case 'openLink':
         if (linkUri != null) {
-          await TerminalUriOpener.open(linkUri);
+          await _openTerminalLink(linkUri);
         }
       case 'export':
         await _exportTerminalScrollback(menuContext, terminal);
@@ -324,7 +325,19 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
   Future<void> _openLinkAt(Terminal terminal, CellOffset offset) async {
     final link = terminal.linkUriAt(offset);
     if (link == null) return;
-    await TerminalUriOpener.open(link);
+    await _openTerminalLink(link);
+  }
+
+  Future<void> _openTerminalLink(String link) async {
+    if (!mounted) return;
+    final workingDirectory = context.read<ChatCubit>().activeTabWorkingDirectory;
+    await TerminalUriOpener.open(
+      link,
+      workingDirectory: workingDirectory,
+      openInEditor: (path) async {
+        await context.read<EditorCubit>().openFile(path);
+      },
+    );
   }
 
   void _onChatState(ChatState state) {

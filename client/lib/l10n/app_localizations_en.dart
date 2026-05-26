@@ -590,6 +590,12 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get fileTreeRevealActiveFile => 'Reveal active file';
+
+  @override
+  String get fileTreeRevealFailed => 'Cannot reveal this file in the file tree';
+
+  @override
   String get fileTreeOpenWithSystemApp => 'Open with system app';
 
   @override

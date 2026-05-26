@@ -1166,6 +1166,18 @@ abstract class AppLocalizations {
   /// **'Save failed: {error}'**
   String editorSaveFailed(String error);
 
+  /// No description provided for @fileTreeRevealActiveFile.
+  ///
+  /// In en, this message translates to:
+  /// **'Reveal active file'**
+  String get fileTreeRevealActiveFile;
+
+  /// No description provided for @fileTreeRevealFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Cannot reveal this file in the file tree'**
+  String get fileTreeRevealFailed;
+
   /// No description provided for @fileTreeOpenWithSystemApp.
   ///
   /// In en, this message translates to:

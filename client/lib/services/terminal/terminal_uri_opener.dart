@@ -1,9 +1,22 @@
 import 'dart:io';
+
+import 'package:path/path.dart' as p;
 import 'package:url_launcher/url_launcher.dart';
+
+import '../editor/file_editor_theme.dart';
+import '../io/filesystem.dart';
+import '../storage/app_storage.dart';
 
 /// Opens terminal hyperlinks like gnome-terminal ([gtk_show_uri] semantics).
 abstract final class TerminalUriOpener {
-  static Future<bool> open(String raw) async {
+  /// When set, existing local files are opened in the in-app editor before
+  /// falling back to the OS handler.
+  static Future<bool> open(
+    String raw, {
+    String? workingDirectory,
+    Filesystem? fs,
+    Future<void> Function(String absolutePath)? openInEditor,
+  }) async {
     final uriString = fixup(raw);
     if (uriString == null) return false;
 
@@ -11,7 +24,23 @@ abstract final class TerminalUriOpener {
     if (uri == null) return false;
 
     if (uri.scheme == 'file') {
-      return _openFile(uri);
+      final path = resolveLocalFilePath(
+        raw,
+        workingDirectory: workingDirectory,
+      );
+      if (path != null &&
+          openInEditor != null &&
+          _shouldOpenInEditor(path)) {
+        final filesystem = fs ?? AppStorage.fs;
+        final stat = await filesystem.stat(path);
+        if (stat.exists && stat.isFile) {
+          await openInEditor(path);
+          return true;
+        }
+      }
+      return _openFilePath(
+        path ?? uri.toFilePath(windows: Platform.isWindows),
+      );
     }
 
     if (uri.scheme == 'mailto') {
@@ -21,6 +50,42 @@ abstract final class TerminalUriOpener {
 
     if (!await canLaunchUrl(uri)) return false;
     return launchUrl(uri, mode: LaunchMode.externalApplication);
+  }
+
+  /// Resolves a terminal [file:] URI to an absolute path, using [workingDirectory]
+  /// for relative targets when provided.
+  static String? resolveLocalFilePath(
+    String raw, {
+    String? workingDirectory,
+  }) {
+    final uriString = fixup(raw);
+    if (uriString == null) return null;
+
+    final uri = Uri.tryParse(uriString);
+    if (uri == null || uri.scheme != 'file') return null;
+
+    var path = uri.toFilePath(windows: Platform.isWindows);
+    if (path.isEmpty) return null;
+
+    final wd = workingDirectory?.trim() ?? '';
+    if (wd.isNotEmpty && _shouldJoinWithWorkingDirectory(path)) {
+      final relative = path.replaceFirst(RegExp(r'^[\\/]+'), '');
+      path = p.normalize(p.join(wd, relative));
+    } else {
+      path = p.normalize(path);
+    }
+    return path;
+  }
+
+  /// `file:/foo` yields `\foo` on Windows or `/foo` on POSIX — root-relative, not
+  /// a full path; join with the session working directory when possible.
+  static bool _shouldJoinWithWorkingDirectory(String path) {
+    if (path.isEmpty) return false;
+    if (!p.isAbsolute(path)) return true;
+    if (Platform.isWindows) {
+      return !path.contains(':');
+    }
+    return false;
   }
 
   /// gnome-terminal [terminal_util_uri_fixup]: normalize file:// host, trim punctuation.
@@ -47,8 +112,12 @@ abstract final class TerminalUriOpener {
     return null;
   }
 
-  static Future<bool> _openFile(Uri uri) async {
-    final path = uri.toFilePath(windows: Platform.isWindows);
+  static bool _shouldOpenInEditor(String path) {
+    final ext = p.extension(path).replaceFirst('.', '').toLowerCase();
+    return !kEditorBinaryExtensions.contains(ext);
+  }
+
+  static Future<bool> _openFilePath(String path) async {
     if (path.isEmpty) return false;
 
     if (Platform.isLinux) {
@@ -68,6 +137,7 @@ abstract final class TerminalUriOpener {
       return result.exitCode == 0;
     }
 
+    final uri = Uri.file(path);
     if (await canLaunchUrl(uri)) {
       return launchUrl(uri, mode: LaunchMode.externalApplication);
     }

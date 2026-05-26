@@ -1,4 +1,5 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:path/path.dart' as p;
 
 import '../services/io/filesystem.dart';
 import '../services/io/local_filesystem.dart';
@@ -11,6 +12,7 @@ class FileTreeState {
     this.filterText = '',
     this.showHiddenFiles = false,
     this.dirCache = const {},
+    this.revealPath,
   });
 
   final String rootPath;
@@ -20,6 +22,9 @@ class FileTreeState {
   final bool showHiddenFiles;
   final Map<String, List<FsDirEntry>> dirCache;
 
+  /// Set by [FileTreeCubit.revealPath]; cleared after scroll-into-view.
+  final String? revealPath;
+
   FileTreeState copyWith({
     String? rootPath,
     bool? rootExists,
@@ -27,14 +32,18 @@ class FileTreeState {
     String? filterText,
     bool? showHiddenFiles,
     Map<String, List<FsDirEntry>>? dirCache,
+    String? revealPath,
+    bool clearRevealPath = false,
+    bool clearFilter = false,
   }) {
     return FileTreeState(
       rootPath: rootPath ?? this.rootPath,
       rootExists: rootExists ?? this.rootExists,
       expandedPaths: expandedPaths ?? this.expandedPaths,
-      filterText: filterText ?? this.filterText,
+      filterText: clearFilter ? '' : (filterText ?? this.filterText),
       showHiddenFiles: showHiddenFiles ?? this.showHiddenFiles,
       dirCache: dirCache ?? this.dirCache,
+      revealPath: clearRevealPath ? null : (revealPath ?? this.revealPath),
     );
   }
 }
@@ -102,6 +111,51 @@ class FileTreeCubit extends Cubit<FileTreeState> {
     }
   }
 
+  void clearRevealPath() {
+    if (state.revealPath == null) return;
+    emit(state.copyWith(clearRevealPath: true));
+  }
+
+  /// Expands ancestor folders and scrolls [filePath] into view in the tree.
+  Future<bool> revealPath(
+    String filePath, {
+    bool clearFilter = true,
+  }) async {
+    final ctx = fs.pathContext;
+    final normalized = ctx.normalize(filePath.trim());
+    if (normalized.isEmpty) return false;
+
+    final root = state.rootPath;
+    if (root.isEmpty || !state.rootExists) return false;
+
+    final rootNorm = ctx.normalize(root);
+    if (!_isPathUnderRoot(ctx, rootNorm, normalized)) {
+      return false;
+    }
+
+    final stat = await fs.stat(normalized);
+    if (!stat.exists || stat.isDirectory) return false;
+
+    final expanded = Set<String>.from(state.expandedPaths);
+    var parent = ctx.dirname(normalized);
+    while (!_pathsEqual(ctx, parent, rootNorm) &&
+        _isPathUnderRoot(ctx, rootNorm, parent)) {
+      expanded.add(parent);
+      await _loadDirectory(parent);
+      parent = ctx.dirname(parent);
+    }
+    await _loadDirectory(rootNorm);
+
+    emit(
+      state.copyWith(
+        expandedPaths: expanded,
+        revealPath: normalized,
+        clearFilter: clearFilter,
+      ),
+    );
+    return true;
+  }
+
   Future<void> _loadDirectory(String path) async {
     try {
       final stat = await fs.stat(path);
@@ -140,5 +194,24 @@ class FileTreeCubit extends Cubit<FileTreeState> {
   Future<void> deletePath(String path) async {
     await fs.removeRecursive(path);
     refresh();
+  }
+}
+
+bool _pathsEqual(p.Context ctx, String a, String b) {
+  final left = ctx.normalize(a);
+  final right = ctx.normalize(b);
+  if (ctx.equals(left, right)) return true;
+  return left.toLowerCase() == right.toLowerCase();
+}
+
+bool _isPathUnderRoot(p.Context ctx, String root, String path) {
+  if (_pathsEqual(ctx, path, root)) return true;
+  try {
+    return ctx.isWithin(root, path);
+  } catch (_) {
+    final normalizedRoot = root.toLowerCase();
+    final normalizedPath = path.toLowerCase();
+    final sep = ctx.separator;
+    return normalizedPath.startsWith('$normalizedRoot$sep');
   }
 }

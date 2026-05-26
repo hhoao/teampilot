@@ -10,12 +10,14 @@ import '../cubits/editor_cubit.dart';
 import '../cubits/file_tree_cubit.dart';
 import '../l10n/l10n_extensions.dart';
 import '../services/editor/file_editor_theme.dart';
+import '../services/file_tree/file_tree_visible_rows.dart';
 import '../services/io/filesystem.dart';
 import '../utils/context_menu_position.dart';
 import '../utils/debounce/debounce.dart';
 
 const _indentWidth = 16.0;
 
+/// Single row in the flattened file tree (no nested children).
 class FileTreeNode extends StatelessWidget {
   const FileTreeNode({
     required this.path,
@@ -23,7 +25,6 @@ class FileTreeNode extends StatelessWidget {
     required this.depth,
     required this.cubit,
     required this.textColor,
-    this.isLast = true,
     super.key,
   });
 
@@ -32,7 +33,6 @@ class FileTreeNode extends StatelessWidget {
   final int depth;
   final FileTreeCubit cubit;
   final Color textColor;
-  final bool isLast;
 
   bool _isActiveEditorFile(BuildContext context) {
     if (entry.isDirectory) return false;
@@ -40,8 +40,7 @@ class FileTreeNode extends StatelessWidget {
       (c) => c.state.activePath,
     );
     if (active == null) return false;
-    final ctx = cubit.fs.pathContext;
-    return ctx.equals(ctx.normalize(active), ctx.normalize(path));
+    return fileTreePathsEqual(cubit.fs.pathContext, path, active);
   }
 
   @override
@@ -57,112 +56,74 @@ class FileTreeNode extends StatelessWidget {
         ? cs.onSecondaryContainer.withValues(alpha: 0.7)
         : textColor.withValues(alpha: 0.6);
 
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        GestureDetector(
-          onTap: () {
-            if (isDir) {
-              cubit.toggleExpand(path);
-            } else {
-              _openFile(context, path);
-            }
-          },
-          onSecondaryTapDown: (details) => _showContextMenu(
-            context,
-            details.globalPosition,
-            path,
-            entry.name,
-            isDirectory: isDir,
-          ),
-          child: Container(
-            height: 28,
-            margin: const EdgeInsets.symmetric(vertical: 1),
-            decoration: isActive
-                ? BoxDecoration(
-                    color: cs.secondaryContainer,
-                    borderRadius: BorderRadius.circular(6),
-                  )
-                : null,
-            padding: EdgeInsets.only(left: depth * _indentWidth + 4, right: 8),
-            child: Row(
-              children: [
-                if (isDir)
-                  SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: AnimatedRotation(
-                      turns: isExpanded ? 0.25 : 0.0,
-                      duration: const Duration(milliseconds: 150),
-                      child: Icon(
-                        Icons.chevron_right,
-                        size: 16,
-                        color: isActive
-                            ? iconMuted
-                            : textColor.withValues(alpha: 0.55),
-                      ),
-                    ),
-                  )
-                else
-                  const SizedBox(width: 18),
-                Icon(
-                  isDir
-                      ? (isExpanded ? Icons.folder_open : Icons.folder_outlined)
-                      : _fileIcon(entry.name),
-                  size: 18,
-                  color: isDir ? const Color(0xFFE5B143) : iconMuted,
-                ),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    entry.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
-                      color: labelColor,
-                    ),
+    return GestureDetector(
+      onTap: () {
+        if (isDir) {
+          cubit.toggleExpand(path);
+        } else {
+          _openFile(context, path);
+        }
+      },
+      onSecondaryTapDown: (details) => _showContextMenu(
+        context,
+        details.globalPosition,
+        path,
+        entry.name,
+        isDirectory: isDir,
+      ),
+      child: Container(
+        height: 28,
+        margin: const EdgeInsets.symmetric(vertical: 1),
+        decoration: isActive
+            ? BoxDecoration(
+                color: cs.secondaryContainer,
+                borderRadius: BorderRadius.circular(6),
+              )
+            : null,
+        padding: EdgeInsets.only(left: depth * _indentWidth + 4, right: 8),
+        child: Row(
+          children: [
+            if (isDir)
+              SizedBox(
+                width: 18,
+                height: 18,
+                child: AnimatedRotation(
+                  turns: isExpanded ? 0.25 : 0.0,
+                  duration: const Duration(milliseconds: 150),
+                  child: Icon(
+                    Icons.chevron_right,
+                    size: 16,
+                    color: isActive
+                        ? iconMuted
+                        : textColor.withValues(alpha: 0.55),
                   ),
                 ),
-              ],
+              )
+            else
+              const SizedBox(width: 18),
+            Icon(
+              isDir
+                  ? (isExpanded ? Icons.folder_open : Icons.folder_outlined)
+                  : _fileIcon(entry.name),
+              size: 18,
+              color: isDir ? const Color(0xFFE5B143) : iconMuted,
             ),
-          ),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text(
+                entry.name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
+                  color: labelColor,
+                ),
+              ),
+            ),
+          ],
         ),
-        if (isDir && isExpanded) _buildChildren(context),
-      ],
-    );
-  }
-
-  Widget _buildChildren(BuildContext context) {
-    final entries = cubit.entriesFor(path);
-    if (entries.isEmpty) {
-      return Padding(
-        padding: EdgeInsets.only(left: (depth + 1) * _indentWidth + 22),
-        child: Text(
-          '(empty)',
-          style: TextStyle(
-            fontSize: 11,
-            color: textColor.withValues(alpha: 0.35),
-          ),
-        ),
-      );
-    }
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        for (var i = 0; i < entries.length; i++)
-          FileTreeNode(
-            path: cubit.fs.pathContext.join(path, entries[i].name),
-            entry: entries[i],
-            depth: depth + 1,
-            cubit: cubit,
-            textColor: textColor,
-            isLast: i == entries.length - 1,
-          ),
-      ],
+      ),
     );
   }
 
@@ -232,7 +193,10 @@ class FileTreeNode extends StatelessWidget {
             child: Text(l10n.fileTreeOpenWithSystemApp),
           ),
         PopupMenuItem(value: 'copy', child: Text(l10n.fileTreeCopyPath)),
-        PopupMenuItem(value: 'delete', child: Text(l10n.fileTreeDeleteItemTitle)),
+        PopupMenuItem(
+          value: 'delete',
+          child: Text(l10n.fileTreeDeleteItemTitle),
+        ),
       ],
     );
     if (value == 'external' && !isDirectory) {
@@ -244,7 +208,11 @@ class FileTreeNode extends StatelessWidget {
     }
   }
 
-  void _confirmDelete(BuildContext context, String targetPath, String targetName) {
+  void _confirmDelete(
+    BuildContext context,
+    String targetPath,
+    String targetName,
+  ) {
     final l10n = context.l10n;
     showDialog(
       context: context,

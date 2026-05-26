@@ -386,6 +386,13 @@ class ChatCubit extends Cubit<ChatState> {
     return memberShell ?? tab.resumeSession;
   }
 
+  /// Session project path for the active tab (used to resolve relative file links).
+  String get activeTabWorkingDirectory {
+    final tab = _activeTab;
+    if (tab == null) return AppStorage.cwd;
+    return _workingDirectoryAndAddDirsForTab(tab).$1;
+  }
+
   /// Last launch failure for the active tab, or [ChatState.sessionLaunchError].
   String? get activeLaunchError {
     if (_internalTabs.isNotEmpty) {

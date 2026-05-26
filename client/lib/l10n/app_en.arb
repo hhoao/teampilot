@@ -248,6 +248,8 @@
       }
     }
   },
+  "fileTreeRevealActiveFile": "Reveal active file",
+  "fileTreeRevealFailed": "Cannot reveal this file in the file tree",
   "fileTreeOpenWithSystemApp": "Open with system app",
   "fileTreeCopyPath": "Copy path",
   "fileTreeDeleteItemTitle": "Delete",

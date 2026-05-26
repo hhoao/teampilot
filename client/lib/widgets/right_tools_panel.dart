@@ -5,7 +5,9 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../cubits/chat_cubit.dart';
+import '../cubits/editor_cubit.dart';
 import '../cubits/file_tree_cubit.dart';
+import '../services/file_tree/file_tree_visible_rows.dart';
 import '../services/storage/app_storage.dart';
 import '../cubits/team_cubit.dart';
 import '../l10n/l10n_extensions.dart';
@@ -275,6 +277,7 @@ class _FileTreePanel extends StatefulWidget {
 class _FileTreePanelState extends State<_FileTreePanel> {
   final _cubit = FileTreeCubit(fs: AppStorage.fs);
   final _filterController = TextEditingController();
+  final _listScrollController = ScrollController();
 
   @override
   void initState() {
@@ -294,9 +297,75 @@ class _FileTreePanelState extends State<_FileTreePanel> {
     _cubit.setRoot(widget.cwd);
   }
 
+  Future<void> _revealActiveEditorFile() async {
+    final active = context.read<EditorCubit>().state.activePath;
+    if (active == null) return;
+
+    _filterController.clear();
+    final ok = await _cubit.revealPath(active);
+    if (!mounted) return;
+    if (!ok) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.l10n.fileTreeRevealFailed)),
+      );
+      return;
+    }
+    _scheduleRevealScroll();
+  }
+
+  void _scheduleRevealScroll([int attempt = 0]) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      final target = _cubit.state.revealPath;
+      if (target == null) return;
+
+      if (!_listScrollController.hasClients) {
+        if (attempt < 12) {
+          _scheduleRevealScroll(attempt + 1);
+        }
+        return;
+      }
+
+      final rows = visibleFileTreeRows(
+        state: _cubit.state,
+        pathContext: _cubit.fs.pathContext,
+      );
+      final index = visibleRowIndexForPath(
+        rows,
+        target,
+        _cubit.fs.pathContext,
+      );
+      if (index == null) {
+        if (attempt < 12) {
+          _scheduleRevealScroll(attempt + 1);
+        } else if (mounted) {
+          _cubit.clearRevealPath();
+        }
+        return;
+      }
+
+      final position = _listScrollController.position;
+      final viewport = position.viewportDimension;
+      final rowTop = index * kFileTreeRowExtent;
+      final targetOffset = (rowTop - viewport * 0.35).clamp(
+        0.0,
+        position.maxScrollExtent,
+      );
+      await _listScrollController.animateTo(
+        targetOffset,
+        duration: const Duration(milliseconds: 280),
+        curve: Curves.easeOutCubic,
+      );
+      if (mounted) {
+        _cubit.clearRevealPath();
+      }
+    });
+  }
+
   @override
   void dispose() {
     _filterController.dispose();
+    _listScrollController.dispose();
     _cubit.close();
     super.dispose();
   }
@@ -327,6 +396,23 @@ class _FileTreePanelState extends State<_FileTreePanel> {
                           fontSize: 11,
                           fontWeight: FontWeight.w700,
                           letterSpacing: 0.8,
+                        ),
+                      ),
+                    ),
+                    SizedBox(
+                      height: 22,
+                      width: 28,
+                      child: IconButton(
+                        tooltip: l10n.fileTreeRevealActiveFile,
+                        onPressed: () => unawaited(_revealActiveEditorFile()),
+                        icon: const Icon(
+                          Icons.my_location_outlined,
+                          size: 16,
+                        ),
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(
+                          minWidth: 28,
+                          minHeight: 22,
                         ),
                       ),
                     ),
@@ -420,7 +506,7 @@ class _FileTreePanelState extends State<_FileTreePanel> {
                       const SizedBox(height: 10),
                       Expanded(
                         child: state.rootExists
-                            ? _buildFileList(state.rootPath, textBase)
+                            ? _buildFileList(state, textBase)
                             : const SizedBox.shrink(),
                       ),
                     ],
@@ -434,9 +520,12 @@ class _FileTreePanelState extends State<_FileTreePanel> {
     );
   }
 
-  Widget _buildFileList(String rootPath, Color textColor) {
-    final entries = _cubit.entriesFor(rootPath);
-    if (entries.isEmpty) {
+  Widget _buildFileList(FileTreeState state, Color textColor) {
+    final rows = visibleFileTreeRows(
+      state: state,
+      pathContext: _cubit.fs.pathContext,
+    );
+    if (rows.isEmpty) {
       return Text(
         '(empty)',
         style: TextStyle(
@@ -445,17 +534,38 @@ class _FileTreePanelState extends State<_FileTreePanel> {
         ),
       );
     }
-    return ListView(
-      children: [
-        for (final entry in entries)
-          FileTreeNode(
-            path: _cubit.fs.pathContext.join(rootPath, entry.name),
-            entry: entry,
-            depth: 0,
-            cubit: _cubit,
-            textColor: textColor,
-          ),
-      ],
+    return ListView.builder(
+      controller: _listScrollController,
+      itemCount: rows.length,
+      itemExtent: kFileTreeRowExtent,
+      itemBuilder: (context, index) {
+        final row = rows[index];
+        if (row.isEmptyPlaceholder) {
+          return SizedBox(
+            height: kFileTreeRowExtent,
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Padding(
+                padding: EdgeInsets.only(left: row.depth * 16 + 22),
+                child: Text(
+                  '(empty)',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: textColor.withValues(alpha: 0.35),
+                  ),
+                ),
+              ),
+            ),
+          );
+        }
+        return FileTreeNode(
+          path: row.path,
+          entry: row.entry,
+          depth: row.depth,
+          cubit: _cubit,
+          textColor: textColor,
+        );
+      },
     );
   }
 }
