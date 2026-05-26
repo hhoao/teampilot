@@ -228,7 +228,8 @@ class _FloatingEditorWindow extends StatefulWidget {
 }
 
 class _FloatingEditorWindowState extends State<_FloatingEditorWindow> {
-  static const _margin = 12.0;
+  /// Gap between the floating panel and the terminal/workbench edges.
+  static const _margin = 2.0;
 
   /// Initial open only — not a resize cap.
   static const _defaultWidthFraction = 0.5;
