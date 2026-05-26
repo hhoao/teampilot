@@ -519,6 +519,27 @@ class AppLocalizationsEn extends AppLocalizations {
   String get editorSave => 'Save';
 
   @override
+  String get editorCut => 'Cut';
+
+  @override
+  String get editorCopy => 'Copy';
+
+  @override
+  String get editorCopyAsAiContext => 'Copy as AI context';
+
+  @override
+  String get editorPaste => 'Paste';
+
+  @override
+  String get editorSelectAll => 'Select all';
+
+  @override
+  String get editorUndoEdit => 'Undo';
+
+  @override
+  String get editorRedoEdit => 'Redo';
+
+  @override
   String get editorRevertChanges => 'Revert changes';
 
   @override

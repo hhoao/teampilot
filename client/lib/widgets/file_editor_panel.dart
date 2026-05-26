@@ -6,6 +6,7 @@ import 'package:re_editor/re_editor.dart';
 import '../cubits/editor_cubit.dart';
 import '../l10n/l10n_extensions.dart';
 import '../services/editor/file_editor_theme.dart';
+import '../services/editor/file_editor_toolbar.dart';
 import '../theme/workspace_surface_layers.dart';
 import '../utils/debounce/debounce.dart';
 
@@ -171,6 +172,7 @@ class _FileEditorBody extends StatelessWidget {
       key: ValueKey(path),
       controller: controller,
       readOnly: readOnly,
+      toolbarController: const FileEditorContextMenuController(),
       style: codeEditorStyleFor(context, path),
       wordWrap: false,
       indicatorBuilder: (context, editingController, chunkController, notifier) {

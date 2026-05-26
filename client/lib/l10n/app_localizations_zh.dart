@@ -501,6 +501,27 @@ class AppLocalizationsZh extends AppLocalizations {
   String get editorSave => '保存';
 
   @override
+  String get editorCut => '剪切';
+
+  @override
+  String get editorCopy => '复制';
+
+  @override
+  String get editorCopyAsAiContext => '复制为 AI 上下文';
+
+  @override
+  String get editorPaste => '粘贴';
+
+  @override
+  String get editorSelectAll => '全选';
+
+  @override
+  String get editorUndoEdit => '撤销';
+
+  @override
+  String get editorRedoEdit => '重做';
+
+  @override
   String get editorRevertChanges => '撤销修改';
 
   @override

@@ -11,6 +11,7 @@ import '../cubits/file_tree_cubit.dart';
 import '../l10n/l10n_extensions.dart';
 import '../services/editor/file_editor_theme.dart';
 import '../services/io/filesystem.dart';
+import '../utils/context_menu_position.dart';
 import '../utils/debounce/debounce.dart';
 
 const _indentWidth = 16.0;
@@ -196,12 +197,8 @@ class FileTreeNode extends StatelessWidget {
     final l10n = context.l10n;
     final value = await showMenu<String>(
       context: context,
-      position: RelativeRect.fromLTRB(
-        position.dx,
-        position.dy,
-        position.dx + 1,
-        position.dy + 1,
-      ),
+      position: contextMenuPositionForGlobal(context, position),
+      useRootNavigator: true,
       items: [
         if (!isDirectory)
           PopupMenuItem(

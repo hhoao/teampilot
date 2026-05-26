@@ -1040,6 +1040,48 @@ abstract class AppLocalizations {
   /// **'Save'**
   String get editorSave;
 
+  /// No description provided for @editorCut.
+  ///
+  /// In en, this message translates to:
+  /// **'Cut'**
+  String get editorCut;
+
+  /// No description provided for @editorCopy.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy'**
+  String get editorCopy;
+
+  /// No description provided for @editorCopyAsAiContext.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy as AI context'**
+  String get editorCopyAsAiContext;
+
+  /// No description provided for @editorPaste.
+  ///
+  /// In en, this message translates to:
+  /// **'Paste'**
+  String get editorPaste;
+
+  /// No description provided for @editorSelectAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Select all'**
+  String get editorSelectAll;
+
+  /// No description provided for @editorUndoEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Undo'**
+  String get editorUndoEdit;
+
+  /// No description provided for @editorRedoEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Redo'**
+  String get editorRedoEdit;
+
   /// No description provided for @editorRevertChanges.
   ///
   /// In en, this message translates to:
