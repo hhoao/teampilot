@@ -21,7 +21,7 @@ class LayoutPreferences {
     this.sidebarWidth = defaultSidebarWidth,
     this.membersSplit = 0.42,
     this.themeMode = 'system',
-    this.themeColorPreset = 'graphite',
+    this.themeColorPreset = kDefaultThemeColorPreset,
     this.terminalThemeMode = 'adaptive',
     this.locale = '',
   });
