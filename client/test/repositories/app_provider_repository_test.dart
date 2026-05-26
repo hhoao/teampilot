@@ -9,7 +9,7 @@ import 'package:teampilot/repositories/app_provider_repository.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
 import 'package:teampilot/services/storage/runtime_storage_context.dart';
 
-import 'support/post_frame_test_harness.dart';
+import '../support/post_frame_test_harness.dart';
 
 void main() {
   late Directory root;

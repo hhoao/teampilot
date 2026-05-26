@@ -11,7 +11,7 @@ import 'package:teampilot/services/provider/config_profile_service.dart';
 import 'package:teampilot/services/storage/flashskyai_storage_roots.dart';
 import 'package:teampilot/services/session/session_lifecycle_service.dart';
 
-import '../support/post_frame_test_harness.dart';
+import '../../support/post_frame_test_harness.dart';
 
 StorageRootsSnapshot _roots(String basePath) => StorageRootsSnapshot(
   storageIsRemote: false,

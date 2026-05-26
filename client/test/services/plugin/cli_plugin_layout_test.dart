@@ -6,7 +6,7 @@ import 'package:teampilot/services/plugin/cli_plugin_layout.dart';
 import 'package:teampilot/services/plugin/cli_plugin_manifest_flavor.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 
-import '../support/in_memory_filesystem.dart';
+import '../../support/in_memory_filesystem.dart';
 
 class _NoSymlinkFilesystem extends InMemoryFilesystem {
   @override

@@ -1,4 +1,4 @@
-// client/test/plugin_model_test.dart
+// client/test/models/plugin_model_test.dart
 import 'package:teampilot/models/plugin.dart';
 import 'package:flutter_test/flutter_test.dart';
 

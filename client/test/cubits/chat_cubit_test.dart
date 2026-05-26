@@ -8,7 +8,7 @@ import 'package:teampilot/repositories/session_repository.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'support/post_frame_test_harness.dart';
+import '../support/post_frame_test_harness.dart';
 
 String _executable() => 'flashskyai';
 

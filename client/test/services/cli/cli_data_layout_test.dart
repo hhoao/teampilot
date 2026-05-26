@@ -5,7 +5,7 @@ import 'package:path/path.dart' as p;
 import 'package:teampilot/services/cli/cli_data_layout.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 
-import '../support/in_memory_filesystem.dart';
+import '../../support/in_memory_filesystem.dart';
 
 final _posixPath = p.Context(style: p.Style.posix);
 

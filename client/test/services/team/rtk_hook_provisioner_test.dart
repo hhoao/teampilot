@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/team/rtk_hook_provisioner.dart';
-import '../support/in_memory_filesystem.dart';
+import '../../support/in_memory_filesystem.dart';
 
 void main() {
   test('provisionMemberToolDir writes hook script', () async {
