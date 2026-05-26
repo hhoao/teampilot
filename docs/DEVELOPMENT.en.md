@@ -1,6 +1,6 @@
 # Development guide
 
-For contributors and maintainers. End-user overview: [README.en.md](../README.en.md). Architecture and AI conventions: [CLAUDE.md](../CLAUDE.md). 简体中文：[DEVELOPMENT.md](DEVELOPMENT.md).
+For contributors and maintainers. End-user overview: [README.en.md](../README.en.md). Architecture and AI conventions: [AGENTS.md](../AGENTS.md). 简体中文：[DEVELOPMENT.md](DEVELOPMENT.md).
 
 ## Requirements
 
@@ -120,7 +120,8 @@ OS-specific tooling matches the CI workflows. See [`client/linux/packaging/READM
 
 | Doc | Topic |
 |-----|--------|
-| [CLAUDE.md](../CLAUDE.md) | Repo layout, data dirs, architecture, conventions (contributors / AI) |
+| [AGENTS.md](../AGENTS.md) | AI guide: architecture, key paths, change conventions |
+| [CLAUDE.md](../CLAUDE.md) | Claude Code entry point (links to AGENTS.md) |
 | [Plugin management design](superpowers/specs/2026-05-23-plugin-management-design.md) | Plugin architecture & storage |
 | [RTK integration design](superpowers/specs/2026-05-24-rtk-integration-design.md) | Token compression hooks |
 | [Linux packaging](../client/linux/packaging/README.md) | fastforge / deb / AppImage |

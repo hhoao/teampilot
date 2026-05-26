@@ -1,6 +1,6 @@
 # 开发指南
 
-面向贡献者与维护者。用户使用说明见 [README.md](../README.md)；仓库架构与 AI 协作约定见 [CLAUDE.md](../CLAUDE.md)。英文版：[DEVELOPMENT.en.md](DEVELOPMENT.en.md)。
+面向贡献者与维护者。用户使用说明见 [README.md](../README.md)；仓库架构与 AI 协作约定见 [AGENTS.md](../AGENTS.md)。英文版：[DEVELOPMENT.en.md](DEVELOPMENT.en.md)。
 
 ## 环境要求
 
@@ -120,7 +120,8 @@ flutter build windows --release
 
 | 文档 | 内容 |
 |------|------|
-| [CLAUDE.md](../CLAUDE.md) | 仓库结构、数据目录、架构与开发约定（面向 AI / 贡献者） |
+| [AGENTS.md](../AGENTS.md) | AI 协作指南：架构、关键路径与改代码约定 |
+| [CLAUDE.md](../CLAUDE.md) | Claude Code 入口（指向 AGENTS.md） |
 | [插件管理设计](superpowers/specs/2026-05-23-plugin-management-design.md) | 插件架构与存储 |
 | [RTK 集成设计](superpowers/specs/2026-05-24-rtk-integration-design.md) | Token 压缩钩子 |
 | [Linux 打包](../client/linux/packaging/README.md) | fastforge / deb / AppImage |
