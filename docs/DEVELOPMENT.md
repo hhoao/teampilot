@@ -82,9 +82,9 @@ CI 使用 [fastforge](https://pub.dev/packages/fastforge) 在 `client/dist/` 产
 | Windows | `.msix`、`.exe`（Inno Setup）、`.zip` |
 | Android | `teampilot-<version>-armeabi-v7a.apk`、`…-arm64-v8a.apk` |
 
-**发版（推荐）**：合并到 `main` 前在 `client/pubspec.yaml` 中递增 `version:`。[Auto Tag on Version Bump](../.github/workflows/auto-tag.yml) 会检测版本变更并自动推送 **`v*`** 标签，继而触发 [Release Packages](../.github/workflows/release.yml) 构建各平台并创建 **GitHub Release**。Release 说明仍由 [git-cliff](https://git-cliff.org/) 根据**自上一版 tag 以来**的 Conventional Commits 生成，与手动打 tag 时相同。
+**发版（推荐）**：合并到 `main` 前在 `client/pubspec.yaml` 中递增 `version:`。[Auto Tag on Version Bump](../.github/workflows/auto-tag.yml) 会检测版本变更、自动推送 **`v*`** 标签，并通过 `workflow_dispatch` 触发 [Release Packages](../.github/workflows/release.yml)（Actions 用 `GITHUB_TOKEN` 推 tag 不会连锁触发其它 workflow）。Release 说明仍由 [git-cliff](https://git-cliff.org/) 根据**自上一版 tag 以来**的 Conventional Commits 生成，与手动打 tag 时相同。
 
-也可手动 `git tag vX.Y.Z && git push origin vX.Y.Z`，或在 Release Packages 的 **workflow_dispatch** 中指定任意 `ref` 构建（不创建 Release，除非当前 ref 已是 tag）。
+也可手动 `git tag vX.Y.Z && git push origin vX.Y.Z`（本地 push 会走 `release.yml` 的 `on.push.tags`），或在 Release Packages 的 **workflow_dispatch** 中指定任意 `ref` 构建（不创建 Release，除非当前 ref 已是 tag）。
 
 对 `client/` 的变更在 [Client Build Verify](../.github/workflows/client-verify.yml) 中于 **Linux / Windows / macOS / Android** 上执行：`flutter analyze` 与 `flutter test`（不含 integration 标签）。
 
