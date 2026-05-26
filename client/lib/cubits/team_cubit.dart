@@ -159,6 +159,11 @@ class TeamCubit extends Cubit<TeamState> {
   final PluginRepository _pluginRepository;
   final InstalledPluginsLoader? _installedPluginsLoader;
 
+  /// Fire-and-forget skill/plugin sync can finish after [close]; skip emit.
+  void _safeEmit(TeamState newState) {
+    if (!isClosed) emit(newState);
+  }
+
   Future<Map<String, String>?> _buildLaunchEnvironment(
     TeamConfig team, {
     TeamMemberConfig? member,
@@ -337,7 +342,7 @@ class TeamCubit extends Cubit<TeamState> {
     final team = state.selectedTeam;
     if (team == null) return;
 
-    emit(state.copyWith(isSyncingSkills: true));
+    _safeEmit(state.copyWith(isSyncingSkills: true));
     try {
       final List<Skill> catalog;
       if (installed != null) {
@@ -365,7 +370,7 @@ class TeamCubit extends Cubit<TeamState> {
             for (final t in state.teams)
               if (t.id == team.id) prunedTeam else t,
           ];
-          emit(state.copyWith(teams: teams));
+          _safeEmit(state.copyWith(teams: teams));
           await _repository.saveTeams(teams);
           result = await _skillLinker.syncForTeam(
             teamId: team.id,
@@ -389,12 +394,12 @@ class TeamCubit extends Cubit<TeamState> {
         status = result.errors.first;
         appLogger.w('[team-skills] sync errors: ${result.errors}');
       }
-      emit(state.copyWith(statusMessage: status));
+      _safeEmit(state.copyWith(statusMessage: status));
     } catch (e) {
       appLogger.e('[team-skills] sync failed: $e');
-      emit(state.copyWith(statusMessage: 'Skill sync failed: $e'));
+      _safeEmit(state.copyWith(statusMessage: 'Skill sync failed: $e'));
     } finally {
-      emit(state.copyWith(isSyncingSkills: false));
+      _safeEmit(state.copyWith(isSyncingSkills: false));
     }
   }
 
@@ -411,7 +416,7 @@ class TeamCubit extends Cubit<TeamState> {
     final ids = teamIds.toList(growable: false);
     if (ids.isEmpty) return;
 
-    emit(state.copyWith(isSyncingPlugins: true));
+    _safeEmit(state.copyWith(isSyncingPlugins: true));
     try {
       final catalog = installed ??
           await (_installedPluginsLoader?.call() ??
@@ -446,7 +451,7 @@ class TeamCubit extends Cubit<TeamState> {
             '[team-plugins] sync errors for ${team.id}: ${result.errors}',
           );
           if (team.id == state.selectedTeamId) {
-            emit(
+            _safeEmit(
               state.copyWith(
                 statusMessage:
                     'Plugin sync had ${result.errors.length} error(s): '
@@ -464,11 +469,11 @@ class TeamCubit extends Cubit<TeamState> {
         }
       }
 
-      emit(state.copyWith(pluginSyncConflicts: conflicts));
+      _safeEmit(state.copyWith(pluginSyncConflicts: conflicts));
     } catch (e) {
       appLogger.e('[team-plugins] sync failed: $e');
     } finally {
-      emit(state.copyWith(isSyncingPlugins: false));
+      _safeEmit(state.copyWith(isSyncingPlugins: false));
     }
   }
 

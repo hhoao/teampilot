@@ -98,6 +98,16 @@ Future<void> _deleteTempDirBestEffort(Directory dir) async {
   }
 }
 
+/// [TeamCubit.addTeam] / [TeamCubit.deleteSelected] schedule skill/plugin sync
+/// with [unawaited]; drain microtasks before [TeamCubit.close].
+Future<void> _drainAndCloseTeamCubit(TeamCubit cubit) async {
+  await Future<void>.delayed(Duration.zero);
+  await Future<void>.delayed(Duration.zero);
+  if (!cubit.isClosed) {
+    await cubit.close();
+  }
+}
+
 void main() {
   late Directory appDataRoot;
 
@@ -345,6 +355,7 @@ void main() {
     );
     expect(await cubit.addTeam('Alpha'), isFalse);
 
+    await _drainAndCloseTeamCubit(cubit);
     await dir.delete(recursive: true);
   });
 
@@ -365,6 +376,7 @@ void main() {
     expect(cubit.state.selectedTeam?.members.length, 2);
     expect(cubit.state.statusMessage, contains('team-lead'));
 
+    await _drainAndCloseTeamCubit(cubit);
     await dir.delete(recursive: true);
   });
 
@@ -400,6 +412,7 @@ void main() {
       expect(lifecycle.destroyedTeams, ['Old']);
       expect(File(p.join(dir.path, 'teams', 'New.json')).existsSync(), isFalse);
 
+      await _drainAndCloseTeamCubit(cubit);
       await dir.delete(recursive: true);
     },
   );
@@ -410,6 +423,7 @@ void main() {
       repository: _repo(base),
       executableResolver: () => 'flashskyai',
       pluginLinker: _RecordingPluginLinker(),
+      skillLinker: _RecordingLinker(),
       appDataBasePath: base.path,
       configProfileService: ConfigProfileService(basePath: base.path),
     );
@@ -421,7 +435,7 @@ void main() {
     expect(await Directory(p.join(teamRoot, 'flashskyai')).exists(), isFalse);
     expect(cubit.state.teams.single.cli, TeamCli.flashskyai);
 
-    await cubit.close();
+    await _drainAndCloseTeamCubit(cubit);
     await base.delete(recursive: true);
   });
 
@@ -438,7 +452,7 @@ void main() {
     expect(await cubit.addTeam('beta', cli: TeamCli.codex), isFalse);
     expect(cubit.state.teams, isEmpty);
 
-    await cubit.close();
+    await _drainAndCloseTeamCubit(cubit);
     await base.delete(recursive: true);
   });
 
@@ -465,7 +479,7 @@ void main() {
 
     expect(cubit.previewFor(member), startsWith('/opt/bin/claude '));
 
-    await cubit.close();
+    await _drainAndCloseTeamCubit(cubit);
     await base.delete(recursive: true);
   });
 
@@ -527,7 +541,7 @@ void main() {
       isTrue,
     );
 
-    await cubit.close();
+    await _drainAndCloseTeamCubit(cubit);
     await base.delete(recursive: true);
   });
 
@@ -583,7 +597,7 @@ void main() {
     );
     expect(await rosterFile.exists(), isTrue);
 
-    await cubit.close();
+    await _drainAndCloseTeamCubit(cubit);
     await base.delete(recursive: true);
   });
 
@@ -608,7 +622,7 @@ void main() {
     expect(await Directory(teamRoot).exists(), isTrue);
     expect(await Directory(p.join(teamRoot, 'flashskyai')).exists(), isFalse);
 
-    await cubit.close();
+    await _drainAndCloseTeamCubit(cubit);
     await base.delete(recursive: true);
   });
 
@@ -639,7 +653,7 @@ void main() {
     final reloaded = await repo.loadTeams();
     expect(reloaded.single.providerIdsByTool['claude'], 'deepseek');
 
-    await cubit.close();
+    await _drainAndCloseTeamCubit(cubit);
     await dir.delete(recursive: true);
   });
 
@@ -669,7 +683,7 @@ void main() {
       'official',
     );
 
-    await cubit.close();
+    await _drainAndCloseTeamCubit(cubit);
     await dir.delete(recursive: true);
   });
 }
