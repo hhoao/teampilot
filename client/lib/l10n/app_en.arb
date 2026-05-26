@@ -204,6 +204,54 @@
   "shellSession": "Shell session",
   "terminalFind": "Find in terminal",
   "terminalFindNoResults": "No results",
+  "editorTitle": "Editor",
+  "editorSave": "Save",
+  "editorRevertChanges": "Revert changes",
+  "editorClose": "Close editor",
+  "editorUnsavedChangesTitle": "Unsaved changes",
+  "editorUnsavedChangesDiscardFile": "Discard unsaved changes to \"{fileName}\"?",
+  "@editorUnsavedChangesDiscardFile": {
+    "placeholders": {
+      "fileName": {
+        "type": "String"
+      }
+    }
+  },
+  "editorUnsavedChangesDiscardMultiple": "Discard unsaved changes in {count} file(s)?",
+  "@editorUnsavedChangesDiscardMultiple": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "editorDiscard": "Discard",
+  "editorNotReady": "Editor not ready",
+  "editorNoFileOpen": "No file open",
+  "editorBinaryFileHint": "Binary files open with the system default app.",
+  "editorFileNotFound": "File not found",
+  "editorFileTooLarge": "File is too large to edit in TeamPilot (max 2 MB).",
+  "editorCouldNotReadFile": "Could not read file",
+  "editorFileReadOnly": "File is read-only",
+  "editorSaveFailed": "Save failed: {error}",
+  "@editorSaveFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "fileTreeOpenWithSystemApp": "Open with system app",
+  "fileTreeCopyPath": "Copy path",
+  "fileTreeDeleteItemTitle": "Delete",
+  "fileTreeDeleteItemConfirm": "Delete \"{name}\"?",
+  "@fileTreeDeleteItemConfirm": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "terminalOpenLink": "Open link",
   "terminalExportScrollback": "Export scrollback…",
   "terminalScrollbackLinesTitle": "Terminal scrollback lines",

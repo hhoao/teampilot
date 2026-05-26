@@ -8,6 +8,7 @@ import 'package:path/path.dart' as p;
 
 import '../cubits/editor_cubit.dart';
 import '../cubits/file_tree_cubit.dart';
+import '../l10n/l10n_extensions.dart';
 import '../services/editor/file_editor_theme.dart';
 import '../services/io/filesystem.dart';
 import '../utils/debounce/debounce.dart';
@@ -192,6 +193,7 @@ class FileTreeNode extends StatelessWidget {
     String targetName, {
     required bool isDirectory,
   }) async {
+    final l10n = context.l10n;
     final value = await showMenu<String>(
       context: context,
       position: RelativeRect.fromLTRB(
@@ -202,12 +204,12 @@ class FileTreeNode extends StatelessWidget {
       ),
       items: [
         if (!isDirectory)
-          const PopupMenuItem(
+          PopupMenuItem(
             value: 'external',
-            child: Text('Open with system app'),
+            child: Text(l10n.fileTreeOpenWithSystemApp),
           ),
-        const PopupMenuItem(value: 'copy', child: Text('Copy path')),
-        const PopupMenuItem(value: 'delete', child: Text('Delete')),
+        PopupMenuItem(value: 'copy', child: Text(l10n.fileTreeCopyPath)),
+        PopupMenuItem(value: 'delete', child: Text(l10n.fileTreeDeleteItemTitle)),
       ],
     );
     if (value == 'external' && !isDirectory) {
@@ -220,22 +222,23 @@ class FileTreeNode extends StatelessWidget {
   }
 
   void _confirmDelete(BuildContext context, String targetPath, String targetName) {
+    final l10n = context.l10n;
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Delete'),
-        content: Text('Delete "$targetName"?'),
+        title: Text(l10n.fileTreeDeleteItemTitle),
+        content: Text(l10n.fileTreeDeleteItemConfirm(targetName)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
+            child: Text(l10n.cancel),
           ),
           TextButton(
             onPressed: throttledOnPressed('file_tree_delete', () {
               Navigator.pop(ctx);
               cubit.deletePath(targetPath);
             }),
-            child: const Text('Delete'),
+            child: Text(l10n.delete),
           ),
         ],
       ),

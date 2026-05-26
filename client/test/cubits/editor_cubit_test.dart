@@ -27,6 +27,14 @@ void main() {
     expect(cubit.state.isDirty(file.path), isFalse);
     expect(await file.readAsString(), 'hello world');
 
+    cubit.controllerFor(file.path)!.text = 'changed again';
+    await Future<void>.delayed(Duration.zero);
+    expect(cubit.state.isDirty(file.path), isTrue);
+
+    cubit.revertActive();
+    expect(cubit.state.isDirty(file.path), isFalse);
+    expect(cubit.controllerFor(file.path)?.text, 'hello world');
+
     await dir.delete(recursive: true);
   });
 }

@@ -4,6 +4,7 @@
 import 'package:flutter/widgets.dart';
 
 import '../models/app_provider_config.dart';
+import '../services/editor/editor_messages.dart';
 import 'app_localizations.dart';
 
 export 'app_localizations.dart';
@@ -61,4 +62,23 @@ extension AppLocalizationsX on AppLocalizations {
 
 extension BuildContextL10n on BuildContext {
   AppLocalizations get l10n => AppLocalizations.of(this);
+}
+
+extension EditorL10n on AppLocalizations {
+  String editorSnackbarMessage(String code) {
+    if (code.startsWith(EditorMessage.saveFailedPrefix)) {
+      final detail = code.substring(EditorMessage.saveFailedPrefix.length);
+      return editorSaveFailed(detail);
+    }
+    return switch (code) {
+      EditorMessage.binaryFile => editorBinaryFileHint,
+      EditorMessage.readOnly => editorFileReadOnly,
+      EditorMessage.fileNotFound => editorFileNotFound,
+      EditorMessage.fileTooLarge => editorFileTooLarge,
+      EditorMessage.couldNotRead => editorCouldNotReadFile,
+      _ => code,
+    };
+  }
+
+  String editorPanelErrorMessage(String code) => editorSnackbarMessage(code);
 }

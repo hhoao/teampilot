@@ -495,6 +495,74 @@ class AppLocalizationsZh extends AppLocalizations {
   String get terminalFindNoResults => '无匹配';
 
   @override
+  String get editorTitle => '编辑器';
+
+  @override
+  String get editorSave => '保存';
+
+  @override
+  String get editorRevertChanges => '撤销修改';
+
+  @override
+  String get editorClose => '关闭编辑器';
+
+  @override
+  String get editorUnsavedChangesTitle => '未保存的更改';
+
+  @override
+  String editorUnsavedChangesDiscardFile(String fileName) {
+    return '放弃对「$fileName」的未保存修改？';
+  }
+
+  @override
+  String editorUnsavedChangesDiscardMultiple(int count) {
+    return '放弃 $count 个文件中的未保存修改？';
+  }
+
+  @override
+  String get editorDiscard => '放弃';
+
+  @override
+  String get editorNotReady => '编辑器未就绪';
+
+  @override
+  String get editorNoFileOpen => '未打开文件';
+
+  @override
+  String get editorBinaryFileHint => '二进制文件将使用系统默认应用打开。';
+
+  @override
+  String get editorFileNotFound => '找不到文件';
+
+  @override
+  String get editorFileTooLarge => '文件过大，无法在 TeamPilot 中编辑（上限 2 MB）。';
+
+  @override
+  String get editorCouldNotReadFile => '无法读取文件';
+
+  @override
+  String get editorFileReadOnly => '文件为只读';
+
+  @override
+  String editorSaveFailed(String error) {
+    return '保存失败：$error';
+  }
+
+  @override
+  String get fileTreeOpenWithSystemApp => '用系统应用打开';
+
+  @override
+  String get fileTreeCopyPath => '复制路径';
+
+  @override
+  String get fileTreeDeleteItemTitle => '删除';
+
+  @override
+  String fileTreeDeleteItemConfirm(String name) {
+    return '删除「$name」？';
+  }
+
+  @override
   String get terminalOpenLink => '打开链接';
 
   @override

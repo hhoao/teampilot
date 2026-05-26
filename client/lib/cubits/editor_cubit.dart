@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:path/path.dart' as p;
 import 'package:re_editor/re_editor.dart';
 
+import '../services/editor/editor_messages.dart';
 import '../services/editor/file_editor_theme.dart';
 import '../services/io/filesystem.dart';
 import '../services/storage/app_storage.dart';
@@ -131,7 +132,7 @@ class EditorCubit extends Cubit<EditorState> {
     if (kEditorBinaryExtensions.contains(ext)) {
       emit(
         state.copyWith(
-          snackbarMessage: 'Binary files open with the system default app.',
+          snackbarMessage: EditorMessage.binaryFile,
         ),
       );
       return;
@@ -143,7 +144,7 @@ class EditorCubit extends Cubit<EditorState> {
     try {
       final stat = await _fs.stat(normalized);
       if (!stat.exists || !stat.isFile) {
-        emit(_clearLoading(normalized, error: 'File not found'));
+        emit(_clearLoading(normalized, error: EditorMessage.fileNotFound));
         return;
       }
       final size = stat.size ?? 0;
@@ -151,7 +152,7 @@ class EditorCubit extends Cubit<EditorState> {
         emit(
           _clearLoading(
             normalized,
-            error: 'File is too large to edit in TeamPilot (max 2 MB).',
+            error: EditorMessage.fileTooLarge,
           ),
         );
         return;
@@ -159,7 +160,7 @@ class EditorCubit extends Cubit<EditorState> {
 
       final content = await _fs.readString(normalized);
       if (content == null) {
-        emit(_clearLoading(normalized, error: 'Could not read file'));
+        emit(_clearLoading(normalized, error: EditorMessage.couldNotRead));
         return;
       }
 
@@ -260,12 +261,26 @@ class EditorCubit extends Cubit<EditorState> {
     return saveFile(path);
   }
 
+  /// Discards unsaved edits and restores the last loaded/saved buffer.
+  void revertActive() {
+    final path = state.activePath;
+    if (path == null || !state.dirtyPaths.contains(path)) return;
+    final handle = _handles[path];
+    final saved = handle?.savedText;
+    if (handle == null || saved == null) return;
+    handle.controller.text = saved;
+    if (state.dirtyPaths.contains(path)) {
+      final dirty = Set<String>.from(state.dirtyPaths)..remove(path);
+      emit(state.copyWith(dirtyPaths: dirty));
+    }
+  }
+
   Future<bool> saveFile(String path) async {
     final handle = _handles[path];
     if (handle == null) return false;
     if (state.readOnlyPaths.contains(path)) {
       emit(
-        state.copyWith(snackbarMessage: 'File is read-only'),
+        state.copyWith(snackbarMessage: EditorMessage.readOnly),
       );
       return false;
     }
@@ -276,7 +291,7 @@ class EditorCubit extends Cubit<EditorState> {
       emit(state.copyWith(dirtyPaths: dirty, clearSnackbar: true));
       return true;
     } on Object catch (e) {
-      emit(state.copyWith(snackbarMessage: 'Save failed: $e'));
+      emit(state.copyWith(snackbarMessage: EditorMessage.saveFailed(e)));
       return false;
     }
   }

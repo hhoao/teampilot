@@ -1028,6 +1028,126 @@ abstract class AppLocalizations {
   /// **'No results'**
   String get terminalFindNoResults;
 
+  /// No description provided for @editorTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Editor'**
+  String get editorTitle;
+
+  /// No description provided for @editorSave.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get editorSave;
+
+  /// No description provided for @editorRevertChanges.
+  ///
+  /// In en, this message translates to:
+  /// **'Revert changes'**
+  String get editorRevertChanges;
+
+  /// No description provided for @editorClose.
+  ///
+  /// In en, this message translates to:
+  /// **'Close editor'**
+  String get editorClose;
+
+  /// No description provided for @editorUnsavedChangesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Unsaved changes'**
+  String get editorUnsavedChangesTitle;
+
+  /// No description provided for @editorUnsavedChangesDiscardFile.
+  ///
+  /// In en, this message translates to:
+  /// **'Discard unsaved changes to \"{fileName}\"?'**
+  String editorUnsavedChangesDiscardFile(String fileName);
+
+  /// No description provided for @editorUnsavedChangesDiscardMultiple.
+  ///
+  /// In en, this message translates to:
+  /// **'Discard unsaved changes in {count} file(s)?'**
+  String editorUnsavedChangesDiscardMultiple(int count);
+
+  /// No description provided for @editorDiscard.
+  ///
+  /// In en, this message translates to:
+  /// **'Discard'**
+  String get editorDiscard;
+
+  /// No description provided for @editorNotReady.
+  ///
+  /// In en, this message translates to:
+  /// **'Editor not ready'**
+  String get editorNotReady;
+
+  /// No description provided for @editorNoFileOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'No file open'**
+  String get editorNoFileOpen;
+
+  /// No description provided for @editorBinaryFileHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Binary files open with the system default app.'**
+  String get editorBinaryFileHint;
+
+  /// No description provided for @editorFileNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'File not found'**
+  String get editorFileNotFound;
+
+  /// No description provided for @editorFileTooLarge.
+  ///
+  /// In en, this message translates to:
+  /// **'File is too large to edit in TeamPilot (max 2 MB).'**
+  String get editorFileTooLarge;
+
+  /// No description provided for @editorCouldNotReadFile.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not read file'**
+  String get editorCouldNotReadFile;
+
+  /// No description provided for @editorFileReadOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'File is read-only'**
+  String get editorFileReadOnly;
+
+  /// No description provided for @editorSaveFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Save failed: {error}'**
+  String editorSaveFailed(String error);
+
+  /// No description provided for @fileTreeOpenWithSystemApp.
+  ///
+  /// In en, this message translates to:
+  /// **'Open with system app'**
+  String get fileTreeOpenWithSystemApp;
+
+  /// No description provided for @fileTreeCopyPath.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy path'**
+  String get fileTreeCopyPath;
+
+  /// No description provided for @fileTreeDeleteItemTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get fileTreeDeleteItemTitle;
+
+  /// No description provided for @fileTreeDeleteItemConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete \"{name}\"?'**
+  String fileTreeDeleteItemConfirm(String name);
+
   /// No description provided for @terminalOpenLink.
   ///
   /// In en, this message translates to:

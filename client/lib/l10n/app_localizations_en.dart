@@ -513,6 +513,76 @@ class AppLocalizationsEn extends AppLocalizations {
   String get terminalFindNoResults => 'No results';
 
   @override
+  String get editorTitle => 'Editor';
+
+  @override
+  String get editorSave => 'Save';
+
+  @override
+  String get editorRevertChanges => 'Revert changes';
+
+  @override
+  String get editorClose => 'Close editor';
+
+  @override
+  String get editorUnsavedChangesTitle => 'Unsaved changes';
+
+  @override
+  String editorUnsavedChangesDiscardFile(String fileName) {
+    return 'Discard unsaved changes to \"$fileName\"?';
+  }
+
+  @override
+  String editorUnsavedChangesDiscardMultiple(int count) {
+    return 'Discard unsaved changes in $count file(s)?';
+  }
+
+  @override
+  String get editorDiscard => 'Discard';
+
+  @override
+  String get editorNotReady => 'Editor not ready';
+
+  @override
+  String get editorNoFileOpen => 'No file open';
+
+  @override
+  String get editorBinaryFileHint =>
+      'Binary files open with the system default app.';
+
+  @override
+  String get editorFileNotFound => 'File not found';
+
+  @override
+  String get editorFileTooLarge =>
+      'File is too large to edit in TeamPilot (max 2 MB).';
+
+  @override
+  String get editorCouldNotReadFile => 'Could not read file';
+
+  @override
+  String get editorFileReadOnly => 'File is read-only';
+
+  @override
+  String editorSaveFailed(String error) {
+    return 'Save failed: $error';
+  }
+
+  @override
+  String get fileTreeOpenWithSystemApp => 'Open with system app';
+
+  @override
+  String get fileTreeCopyPath => 'Copy path';
+
+  @override
+  String get fileTreeDeleteItemTitle => 'Delete';
+
+  @override
+  String fileTreeDeleteItemConfirm(String name) {
+    return 'Delete \"$name\"?';
+  }
+
+  @override
   String get terminalOpenLink => 'Open link';
 
   @override

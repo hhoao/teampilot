@@ -4,6 +4,7 @@ import 'package:path/path.dart' as p;
 import 'package:re_editor/re_editor.dart';
 
 import '../cubits/editor_cubit.dart';
+import '../l10n/l10n_extensions.dart';
 import '../services/editor/file_editor_theme.dart';
 import '../theme/workspace_surface_layers.dart';
 import '../utils/debounce/debounce.dart';
@@ -22,7 +23,6 @@ class FileEditorPanel extends StatelessWidget {
           const _FileEditorTabBar(),
           const Divider(height: 1),
           const Expanded(child: _FileEditorBody()),
-          const _FileEditorActionBar(),
         ],
       ),
     );
@@ -94,24 +94,25 @@ class _FileEditorTabBar extends StatelessWidget {
   }
 
   Future<void> _closeTab(BuildContext context, int index) async {
+    final l10n = context.l10n;
     final editor = context.read<EditorCubit>();
     final path = editor.state.openPaths[index];
     if (editor.state.isDirty(path)) {
       final discard = await showDialog<bool>(
         context: context,
         builder: (ctx) => AlertDialog(
-          title: const Text('Unsaved changes'),
+          title: Text(l10n.editorUnsavedChangesTitle),
           content: Text(
-            'Discard unsaved changes to "${editor.state.fileNameFor(path)}"?',
+            l10n.editorUnsavedChangesDiscardFile(editor.state.fileNameFor(path)),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Cancel'),
+              child: Text(l10n.cancel),
             ),
             TextButton(
               onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Discard'),
+              child: Text(l10n.editorDiscard),
             ),
           ],
         ),
@@ -131,8 +132,10 @@ class _FileEditorBody extends StatelessWidget {
     final state = editor.state;
     final path = state.activePath;
 
+    final l10n = context.l10n;
+
     if (path == null) {
-      return const Center(child: Text('No file open'));
+      return Center(child: Text(l10n.editorNoFileOpen));
     }
 
     if (state.loadingPaths.contains(path)) {
@@ -150,14 +153,17 @@ class _FileEditorBody extends StatelessWidget {
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(16),
-          child: Text(loadError, textAlign: TextAlign.center),
+          child: Text(
+            l10n.editorPanelErrorMessage(loadError),
+            textAlign: TextAlign.center,
+          ),
         ),
       );
     }
 
     final controller = editor.controllerFor(path);
     if (controller == null) {
-      return const Center(child: Text('Editor not ready'));
+      return Center(child: Text(l10n.editorNotReady));
     }
 
     final readOnly = editor.isReadOnly(path);
@@ -173,41 +179,6 @@ class _FileEditorBody extends StatelessWidget {
           notifier: notifier,
         );
       },
-    );
-  }
-}
-
-class _FileEditorActionBar extends StatelessWidget {
-  const _FileEditorActionBar();
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final editor = context.watch<EditorCubit>();
-    final state = editor.state;
-    final path = state.activePath;
-    final canSave =
-        path != null &&
-        state.isDirty(path) &&
-        !state.readOnlyPaths.contains(path);
-
-    return Container(
-      height: 32,
-      padding: const EdgeInsets.symmetric(horizontal: 8),
-      decoration: BoxDecoration(
-        border: Border(top: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.4))),
-      ),
-      child: Row(
-        children: [
-          TextButton.icon(
-            onPressed: canSave
-                ? throttledAsync('file_editor_save', () => editor.saveActive())
-                : null,
-            icon: const Icon(Icons.save_outlined, size: 16),
-            label: const Text('Save'),
-          ),
-        ],
-      ),
     );
   }
 }
@@ -399,24 +370,23 @@ class _FloatingEditorWindowState extends State<_FloatingEditorWindow> {
   }
 
   Future<void> _closeFloatingWindow(BuildContext context) async {
+    final l10n = context.l10n;
     final editor = context.read<EditorCubit>();
     final dirty = editor.state.openPaths.where(editor.state.isDirty).toList();
     if (dirty.isNotEmpty) {
       final discard = await showDialog<bool>(
         context: context,
         builder: (ctx) => AlertDialog(
-          title: const Text('Unsaved changes'),
-          content: Text(
-            'Discard unsaved changes in ${dirty.length} file(s)?',
-          ),
+          title: Text(l10n.editorUnsavedChangesTitle),
+          content: Text(l10n.editorUnsavedChangesDiscardMultiple(dirty.length)),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Cancel'),
+              child: Text(l10n.cancel),
             ),
             TextButton(
               onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Discard'),
+              child: Text(l10n.editorDiscard),
             ),
           ],
         ),
@@ -593,7 +563,14 @@ class _FloatingTitleBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final title = path ?? '';
+    final l10n = context.l10n;
+    final editor = context.watch<EditorCubit>();
+    final activePath = path;
+    final dirty = activePath != null && editor.state.isDirty(activePath);
+    final readOnly =
+        activePath != null && editor.state.readOnlyPaths.contains(activePath);
+    final showDirtyActions = dirty && !readOnly;
+    final title = activePath ?? '';
 
     return GestureDetector(
       onPanUpdate: (details) => onDragUpdate(details.delta),
@@ -616,7 +593,7 @@ class _FloatingTitleBar extends StatelessWidget {
             const SizedBox(width: 6),
             Expanded(
               child: Text(
-                title.isEmpty ? 'Editor' : p.basename(title),
+                title.isEmpty ? l10n.editorTitle : p.basename(title),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
@@ -626,16 +603,33 @@ class _FloatingTitleBar extends StatelessWidget {
                 ),
               ),
             ),
-            Tooltip(
-              message: title,
-              child: Icon(
-                Icons.info_outline,
-                size: 16,
-                color: cs.onSurfaceVariant.withValues(alpha: 0.75),
+            if (showDirtyActions) ...[
+              IconButton(
+                tooltip: l10n.editorSave,
+                iconSize: 18,
+                visualDensity: VisualDensity.compact,
+                onPressed: throttledAsync(
+                  'file_editor_save',
+                  () => editor.saveActive(),
+                ),
+                icon: Icon(Icons.check, color: cs.secondary),
               ),
-            ),
+              IconButton(
+                tooltip: l10n.editorRevertChanges,
+                iconSize: 18,
+                visualDensity: VisualDensity.compact,
+                onPressed: throttledOnPressed(
+                  'file_editor_revert',
+                  editor.revertActive,
+                ),
+                icon: Icon(
+                  Icons.undo,
+                  color: cs.onSurfaceVariant.withValues(alpha: 0.9),
+                ),
+              ),
+            ],
             IconButton(
-              tooltip: 'Close editor',
+              tooltip: l10n.editorClose,
               iconSize: 18,
               visualDensity: VisualDensity.compact,
               onPressed: onClose,

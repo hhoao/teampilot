@@ -128,8 +128,10 @@ class ChatPage extends StatelessWidget {
             previous.snackbarMessage != next.snackbarMessage &&
             next.snackbarMessage != null,
         listener: (listenerContext, state) {
-          final message = state.snackbarMessage;
-          if (message == null) return;
+          final code = state.snackbarMessage;
+          if (code == null) return;
+          final message =
+              listenerContext.l10n.editorSnackbarMessage(code);
           ScaffoldMessenger.of(listenerContext).showSnackBar(
             SnackBar(content: Text(message)),
           );
