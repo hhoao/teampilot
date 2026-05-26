@@ -386,78 +386,50 @@ class _FileTreePanelState extends State<_FileTreePanel> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        l10n.fileTree,
-                        style: TextStyle(
-                          color: textBase.withValues(alpha: 0.58),
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 0.8,
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    const actionSlotWidth = 28.0;
+                    final showInlineActions =
+                        constraints.maxWidth >= actionSlotWidth * 3;
+                    return Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            l10n.fileTree,
+                            style: TextStyle(
+                              color: textBase.withValues(alpha: 0.58),
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 0.8,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
+                          ),
                         ),
-                      ),
-                    ),
-                    SizedBox(
-                      height: 22,
-                      width: 28,
-                      child: IconButton(
-                        tooltip: l10n.fileTreeRevealActiveFile,
-                        onPressed: () => unawaited(_revealActiveEditorFile()),
-                        icon: const Icon(
-                          Icons.my_location_outlined,
-                          size: 16,
-                        ),
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(
-                          minWidth: 28,
-                          minHeight: 22,
-                        ),
-                      ),
-                    ),
-                    SizedBox(
-                      height: 22,
-                      width: 28,
-                      child: IconButton(
-                        tooltip: state.showHiddenFiles
-                            ? 'Hide hidden files'
-                            : 'Show hidden files',
-                        onPressed: () => _cubit.toggleShowHidden(),
-                        icon: Icon(
-                          state.showHiddenFiles
-                              ? Icons.visibility_off_outlined
-                              : Icons.visibility_outlined,
-                          size: 16,
-                        ),
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(
-                          minWidth: 28,
-                          minHeight: 22,
-                        ),
-                      ),
-                    ),
-                    SizedBox(
-                      height: 22,
-                      width: 28,
-                      child: IconButton(
-                        tooltip: l10n.copy,
-                        onPressed: () {
-                          if (state.rootPath.isNotEmpty) {
-                            Clipboard.setData(
-                              ClipboardData(text: state.rootPath),
-                            );
-                          }
-                        },
-                        icon: const Icon(Icons.copy, size: 14),
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(
-                          minWidth: 28,
-                          minHeight: 22,
-                        ),
-                      ),
-                    ),
-                  ],
+                        if (showInlineActions)
+                          ..._buildFileTreeHeaderActions(
+                            l10n: l10n,
+                            state: state,
+                          )
+                        else
+                          _FileTreeHeaderOverflowMenu(
+                            l10n: l10n,
+                            showHiddenFiles: state.showHiddenFiles,
+                            canCopy: state.rootPath.isNotEmpty,
+                            onReveal: () =>
+                                unawaited(_revealActiveEditorFile()),
+                            onToggleHidden: _cubit.toggleShowHidden,
+                            onCopy: () {
+                              if (state.rootPath.isNotEmpty) {
+                                Clipboard.setData(
+                                  ClipboardData(text: state.rootPath),
+                                );
+                              }
+                            },
+                          ),
+                      ],
+                    );
+                  },
                 ),
                 const SizedBox(height: 8),
                 Expanded(
@@ -520,6 +492,40 @@ class _FileTreePanelState extends State<_FileTreePanel> {
     );
   }
 
+  List<Widget> _buildFileTreeHeaderActions({
+    required AppLocalizations l10n,
+    required FileTreeState state,
+  }) {
+    return [
+      _fileTreeHeaderIconButton(
+        tooltip: l10n.fileTreeRevealActiveFile,
+        onPressed: () => unawaited(_revealActiveEditorFile()),
+        icon: const Icon(Icons.my_location_outlined, size: 16),
+      ),
+      _fileTreeHeaderIconButton(
+        tooltip: state.showHiddenFiles
+            ? 'Hide hidden files'
+            : 'Show hidden files',
+        onPressed: _cubit.toggleShowHidden,
+        icon: Icon(
+          state.showHiddenFiles
+              ? Icons.visibility_off_outlined
+              : Icons.visibility_outlined,
+          size: 16,
+        ),
+      ),
+      _fileTreeHeaderIconButton(
+        tooltip: l10n.copy,
+        onPressed: () {
+          if (state.rootPath.isNotEmpty) {
+            Clipboard.setData(ClipboardData(text: state.rootPath));
+          }
+        },
+        icon: const Icon(Icons.copy, size: 14),
+      ),
+    ];
+  }
+
   Widget _buildFileList(FileTreeState state, Color textColor) {
     final rows = visibleFileTreeRows(
       state: state,
@@ -566,6 +572,110 @@ class _FileTreePanelState extends State<_FileTreePanel> {
           textColor: textColor,
         );
       },
+    );
+  }
+}
+
+const _fileTreeHeaderButtonConstraints = BoxConstraints(
+  minWidth: 28,
+  minHeight: 22,
+);
+
+Widget _fileTreeHeaderIconButton({
+  required String tooltip,
+  required VoidCallback onPressed,
+  required Widget icon,
+}) {
+  return SizedBox(
+    height: 22,
+    width: 28,
+    child: IconButton(
+      tooltip: tooltip,
+      onPressed: onPressed,
+      icon: icon,
+      padding: EdgeInsets.zero,
+      constraints: _fileTreeHeaderButtonConstraints,
+    ),
+  );
+}
+
+enum _FileTreeHeaderAction { reveal, toggleHidden, copy }
+
+class _FileTreeHeaderOverflowMenu extends StatelessWidget {
+  const _FileTreeHeaderOverflowMenu({
+    required this.l10n,
+    required this.showHiddenFiles,
+    required this.canCopy,
+    required this.onReveal,
+    required this.onToggleHidden,
+    required this.onCopy,
+  });
+
+  final AppLocalizations l10n;
+  final bool showHiddenFiles;
+  final bool canCopy;
+  final VoidCallback onReveal;
+  final VoidCallback onToggleHidden;
+  final VoidCallback onCopy;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 22,
+      width: 28,
+      child: PopupMenuButton<_FileTreeHeaderAction>(
+        tooltip: l10n.fileTree,
+        padding: EdgeInsets.zero,
+        constraints: _fileTreeHeaderButtonConstraints,
+        icon: const Icon(Icons.more_vert, size: 16),
+        onSelected: (action) {
+          switch (action) {
+            case _FileTreeHeaderAction.reveal:
+              onReveal();
+            case _FileTreeHeaderAction.toggleHidden:
+              onToggleHidden();
+            case _FileTreeHeaderAction.copy:
+              onCopy();
+          }
+        },
+        itemBuilder: (context) => [
+          PopupMenuItem(
+            value: _FileTreeHeaderAction.reveal,
+            child: ListTile(
+              dense: true,
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.my_location_outlined, size: 18),
+              title: Text(l10n.fileTreeRevealActiveFile),
+            ),
+          ),
+          PopupMenuItem(
+            value: _FileTreeHeaderAction.toggleHidden,
+            child: ListTile(
+              dense: true,
+              contentPadding: EdgeInsets.zero,
+              leading: Icon(
+                showHiddenFiles
+                    ? Icons.visibility_off_outlined
+                    : Icons.visibility_outlined,
+                size: 18,
+              ),
+              title: Text(
+                showHiddenFiles ? 'Hide hidden files' : 'Show hidden files',
+              ),
+            ),
+          ),
+          PopupMenuItem(
+            value: _FileTreeHeaderAction.copy,
+            enabled: canCopy,
+            child: ListTile(
+              dense: true,
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.copy, size: 18),
+              title: Text(l10n.copy),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
