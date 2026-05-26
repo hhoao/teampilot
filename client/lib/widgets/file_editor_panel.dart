@@ -255,18 +255,20 @@ class _FloatingEditorWindow extends StatefulWidget {
 }
 
 class _FloatingEditorWindowState extends State<_FloatingEditorWindow> {
-  static const _minWidth = 300.0;
-  static const _minHeight = 180.0;
   static const _margin = 12.0;
 
-  /// Half width; full height (minus margins) — right pane over the terminal.
-  static const _widthFraction = 0.5;
+  /// Initial open only — not a resize cap.
+  static const _defaultWidthFraction = 0.5;
 
   Offset? _position;
   Size? _size;
 
-  Size _defaultSize(double maxAllowedW, double maxAllowedH) {
-    return Size(maxAllowedW, maxAllowedH);
+  double _maxWidth(double maxW) => maxW - _margin * 2;
+
+  double _maxHeight(double maxH) => maxH - _margin * 2;
+
+  Size _defaultSize(double maxW, double maxH) {
+    return Size(_maxWidth(maxW) * _defaultWidthFraction, _maxHeight(maxH));
   }
 
   Offset _defaultPosition(double maxW, Size size) {
@@ -281,28 +283,29 @@ class _FloatingEditorWindowState extends State<_FloatingEditorWindow> {
     required Offset position,
     required double maxW,
     required double maxH,
-    required double maxAllowedW,
-    required double maxAllowedH,
   }) {
+    final limitW = _maxWidth(maxW);
+    final limitH = _maxHeight(maxH);
+
     var w = size.width;
     var h = size.height;
     var x = position.dx;
     var y = position.dy;
 
     if (edges.left) {
-      final newW = (w - delta.dx).clamp(_minWidth, maxAllowedW);
+      final newW = (w - delta.dx).clamp(0.0, limitW);
       x += w - newW;
       w = newW;
     } else if (edges.right) {
-      w = (w + delta.dx).clamp(_minWidth, maxAllowedW);
+      w = (w + delta.dx).clamp(0.0, limitW);
     }
 
     if (edges.top) {
-      final newH = (h - delta.dy).clamp(_minHeight, maxAllowedH);
+      final newH = (h - delta.dy).clamp(0.0, limitH);
       y += h - newH;
       h = newH;
     } else if (edges.bottom) {
-      h = (h + delta.dy).clamp(_minHeight, maxAllowedH);
+      h = (h + delta.dy).clamp(0.0, limitH);
     }
 
     setState(() {
@@ -322,20 +325,15 @@ class _FloatingEditorWindowState extends State<_FloatingEditorWindow> {
 
     final maxW = widget.areaWidth;
     final maxH = widget.areaHeight;
-    final maxAllowedW = (maxW * _widthFraction - _margin).clamp(
-      _minWidth,
-      maxW - _margin * 2,
-    );
-    final maxAllowedH = (maxH - _margin * 2).clamp(
-      _minHeight,
-      maxH - _margin * 2,
-    );
-    final defaultSize = _defaultSize(maxAllowedW, maxAllowedH);
+    final limitW = _maxWidth(maxW);
+    final limitH = _maxHeight(maxH);
+    final defaultSize = _defaultSize(maxW, maxH);
 
     var size = _size ?? defaultSize;
     // Drop stale geometry from older floating layouts (small box / left pane).
     if (_size != null &&
-        (_size!.height < maxAllowedH * 0.85 || _size!.width < maxAllowedW * 0.85)) {
+        (_size!.height < limitH * 0.85 ||
+            _size!.width < limitW * _defaultWidthFraction * 0.85)) {
       size = defaultSize;
       _size = null;
       _position = null;
@@ -346,8 +344,8 @@ class _FloatingEditorWindowState extends State<_FloatingEditorWindow> {
     var position = _position ?? _defaultPosition(maxW, size);
 
     size = Size(
-      size.width.clamp(_minWidth, maxAllowedW),
-      size.height.clamp(_minHeight, maxAllowedH),
+      size.width.clamp(0.0, limitW),
+      size.height.clamp(0.0, limitH),
     );
     position = Offset(
       position.dx.clamp(_margin, maxW - size.width - _margin),
@@ -392,8 +390,6 @@ class _FloatingEditorWindowState extends State<_FloatingEditorWindow> {
                 position: position,
                 maxW: maxW,
                 maxH: maxH,
-                maxAllowedW: maxAllowedW,
-                maxAllowedH: maxAllowedH,
               ),
             ),
           ],
