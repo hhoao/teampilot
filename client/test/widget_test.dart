@@ -4,6 +4,7 @@ import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/cubits/app_provider_cubit.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
 import 'package:teampilot/cubits/config_cubit.dart';
+import 'package:teampilot/cubits/editor_cubit.dart';
 import 'package:teampilot/cubits/layout_cubit.dart';
 import 'package:teampilot/cubits/llm_config_cubit.dart';
 import 'package:teampilot/cubits/session_preferences_cubit.dart';
@@ -23,6 +24,7 @@ import 'package:teampilot/repositories/team_repository.dart';
 import 'package:teampilot/models/connection_mode.dart';
 import 'package:teampilot/services/provider/config_profile_service.dart';
 import 'package:teampilot/services/app/connection_mode_service.dart';
+import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/storage/flashskyai_storage_roots.dart';
 import 'package:teampilot/services/session/session_lifecycle_service.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
@@ -93,6 +95,7 @@ Widget buildTestApp({
         BlocProvider.value(value: appProviderCubit!),
         BlocProvider.value(value: layoutCubit ?? LayoutCubit()),
         BlocProvider.value(value: sessionPreferencesCubit),
+        BlocProvider(create: (_) => EditorCubit(fs: LocalFilesystem())),
       ],
       child: const TeamPilotApp(),
     ),

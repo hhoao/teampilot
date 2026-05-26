@@ -68,7 +68,7 @@ abstract final class TerminalUriOpener {
     if (path.isEmpty) return null;
 
     final wd = workingDirectory?.trim() ?? '';
-    if (wd.isNotEmpty && _shouldJoinWithWorkingDirectory(path)) {
+    if (wd.isNotEmpty && _shouldJoinWithWorkingDirectory(uriString, path)) {
       final relative = path.replaceFirst(RegExp(r'^[\\/]+'), '');
       path = p.normalize(p.join(wd, relative));
     } else {
@@ -79,13 +79,15 @@ abstract final class TerminalUriOpener {
 
   /// `file:/foo` yields `\foo` on Windows or `/foo` on POSIX — root-relative, not
   /// a full path; join with the session working directory when possible.
-  static bool _shouldJoinWithWorkingDirectory(String path) {
+  static bool _shouldJoinWithWorkingDirectory(String uriString, String path) {
     if (path.isEmpty) return false;
     if (!p.isAbsolute(path)) return true;
     if (Platform.isWindows) {
       return !path.contains(':');
     }
-    return false;
+    // POSIX: `file:/path` (two slashes) is cwd-relative; `file:///path` is absolute.
+    final trimmed = uriString.trim();
+    return trimmed.startsWith('file:/') && !trimmed.startsWith('file:///');
   }
 
   /// gnome-terminal [terminal_util_uri_fixup]: normalize file:// host, trim punctuation.
