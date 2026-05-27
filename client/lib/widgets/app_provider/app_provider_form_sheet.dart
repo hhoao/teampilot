@@ -263,7 +263,7 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
                 Expanded(
                   child: Text(
                     _isEditing ? l10n.editProvider : l10n.addProvider,
-                    style: Theme.of(context).textTheme.titleLarge,
+                    style: Theme.of(context).textTheme.bodyLarge,
                   ),
                 ),
                 if (!_isEditing && widget.onCliChanged != null)
@@ -506,102 +506,102 @@ class _ClaudeAdvancedOptions extends StatelessWidget {
           style: theme.textTheme.titleSmall,
         ),
         children: [
-        const SizedBox(height: 8),
-        _FieldLabel(l10n.appProviderClaudeApiFormat),
-        const SizedBox(height: 6),
-        FlashskyDropdownField<String>(
-          items: _claudeApiFormats,
-          initialItem: _effectiveItem(apiFormat, _claudeApiFormats),
-          decoration: FlashskyDropdownDecorations.denseField(context),
-          itemLabel: l10n.appProviderClaudeApiFormatOption,
-          onChanged: (value) {
-            if (value != null) onApiFormatChanged(value);
-          },
-        ),
-        const SizedBox(height: 6),
-        Text(
-          l10n.appProviderClaudeApiFormatHint,
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: cs.onSurfaceVariant,
+          const SizedBox(height: 8),
+          _FieldLabel(l10n.appProviderClaudeApiFormat),
+          const SizedBox(height: 6),
+          FlashskyDropdownField<String>(
+            items: _claudeApiFormats,
+            initialItem: _effectiveItem(apiFormat, _claudeApiFormats),
+            decoration: FlashskyDropdownDecorations.denseField(context),
+            itemLabel: l10n.appProviderClaudeApiFormatOption,
+            onChanged: (value) {
+              if (value != null) onApiFormatChanged(value);
+            },
           ),
-        ),
-        const SizedBox(height: 16),
-        _FieldLabel(l10n.appProviderClaudeAuthField),
-        const SizedBox(height: 6),
-        FlashskyDropdownField<String>(
-          items: _claudeApiKeyFields,
-          initialItem: _effectiveItem(apiKeyField, _claudeApiKeyFields),
-          decoration: FlashskyDropdownDecorations.denseField(context),
-          itemLabel: l10n.appProviderClaudeAuthFieldOption,
-          onChanged: (value) {
-            if (value != null) onApiKeyFieldChanged(value);
-          },
-        ),
-        const SizedBox(height: 6),
-        Text(
-          l10n.appProviderClaudeAuthFieldHint,
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: cs.onSurfaceVariant,
+          const SizedBox(height: 6),
+          Text(
+            l10n.appProviderClaudeApiFormatHint,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: cs.onSurfaceVariant,
+            ),
           ),
-        ),
-        const SizedBox(height: 16),
-        Divider(color: cs.outlineVariant),
-        const SizedBox(height: 12),
-        Text(
-          l10n.appProviderClaudeModelMapping,
-          style: theme.textTheme.titleSmall,
-        ),
-        const SizedBox(height: 6),
-        Text(
-          l10n.appProviderClaudeModelMappingHint,
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: cs.onSurfaceVariant,
+          const SizedBox(height: 16),
+          _FieldLabel(l10n.appProviderClaudeAuthField),
+          const SizedBox(height: 6),
+          FlashskyDropdownField<String>(
+            items: _claudeApiKeyFields,
+            initialItem: _effectiveItem(apiKeyField, _claudeApiKeyFields),
+            decoration: FlashskyDropdownDecorations.denseField(context),
+            itemLabel: l10n.appProviderClaudeAuthFieldOption,
+            onChanged: (value) {
+              if (value != null) onApiKeyFieldChanged(value);
+            },
           ),
-        ),
-        const SizedBox(height: 12),
-        LayoutBuilder(
-          builder: (context, constraints) {
-            final twoColumns = constraints.maxWidth >= 680;
-            final fields = [
-              AppOutlineTextField(
-                controller: haikuModelCtl,
-                labelText: l10n.appProviderClaudeHaikuModel,
-              ),
-              AppOutlineTextField(
-                controller: sonnetModelCtl,
-                labelText: l10n.appProviderClaudeSonnetModel,
-              ),
-              AppOutlineTextField(
-                controller: opusModelCtl,
-                labelText: l10n.appProviderClaudeOpusModel,
-              ),
-            ];
-            if (!twoColumns) {
+          const SizedBox(height: 6),
+          Text(
+            l10n.appProviderClaudeAuthFieldHint,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: cs.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Divider(color: cs.outlineVariant),
+          const SizedBox(height: 12),
+          Text(
+            l10n.appProviderClaudeModelMapping,
+            style: theme.textTheme.titleSmall,
+          ),
+          const SizedBox(height: 6),
+          Text(
+            l10n.appProviderClaudeModelMappingHint,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: cs.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 12),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final twoColumns = constraints.maxWidth >= 680;
+              final fields = [
+                AppOutlineTextField(
+                  controller: haikuModelCtl,
+                  labelText: l10n.appProviderClaudeHaikuModel,
+                ),
+                AppOutlineTextField(
+                  controller: sonnetModelCtl,
+                  labelText: l10n.appProviderClaudeSonnetModel,
+                ),
+                AppOutlineTextField(
+                  controller: opusModelCtl,
+                  labelText: l10n.appProviderClaudeOpusModel,
+                ),
+              ];
+              if (!twoColumns) {
+                return Column(
+                  children: [
+                    for (final field in fields) ...[
+                      field,
+                      const SizedBox(height: 12),
+                    ],
+                  ],
+                );
+              }
               return Column(
                 children: [
-                  for (final field in fields) ...[
-                    field,
-                    const SizedBox(height: 12),
-                  ],
+                  Row(
+                    children: [
+                      Expanded(child: fields[0]),
+                      const SizedBox(width: 12),
+                      Expanded(child: fields[1]),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  fields[2],
                 ],
               );
-            }
-            return Column(
-              children: [
-                Row(
-                  children: [
-                    Expanded(child: fields[0]),
-                    const SizedBox(width: 12),
-                    Expanded(child: fields[1]),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                fields[2],
-              ],
-            );
-          },
-        ),
-      ],
+            },
+          ),
+        ],
       ),
     );
   }

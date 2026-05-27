@@ -620,7 +620,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get terminalScrollbackLinesDescription =>
-      'Maximum lines kept in each session terminal buffer (1000–200000).';
+      'Maximum lines kept in each session terminal buffer';
 
   @override
   String get autoLaunchAllMembersTitle => 'Start all members on connect';
@@ -866,6 +866,12 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get claudeOfficialCredentialsMissing =>
       'No credentials saved for this provider';
+
+  @override
+  String get claudeOfficialCredentialsAuthenticated => 'Authenticated';
+
+  @override
+  String get claudeOfficialCredentialsUnauthenticated => 'Unauthenticated';
 
   @override
   String get claudeOfficialCredentialsLogin => 'Sign in with Claude';

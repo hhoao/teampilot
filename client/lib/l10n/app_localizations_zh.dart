@@ -599,8 +599,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get terminalScrollbackLinesTitle => '终端滚动缓冲行数';
 
   @override
-  String get terminalScrollbackLinesDescription =>
-      '每个会话终端保留的最大行数（1000–200000）。';
+  String get terminalScrollbackLinesDescription => '每个会话终端保留的最大行数';
 
   @override
   String get autoLaunchAllMembersTitle => '连接时启动全部成员';
@@ -839,6 +838,12 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get claudeOfficialCredentialsMissing => '该 Provider 尚未保存凭据';
+
+  @override
+  String get claudeOfficialCredentialsAuthenticated => '已认证';
+
+  @override
+  String get claudeOfficialCredentialsUnauthenticated => '未认证';
 
   @override
   String get claudeOfficialCredentialsLogin => 'Claude 登录';

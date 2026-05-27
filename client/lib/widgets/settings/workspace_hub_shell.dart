@@ -58,9 +58,9 @@ class WorkspaceHubTitleBar extends StatelessWidget {
             title,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: TextStyle(
+            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
               color: textBase,
-              fontSize: 22,
+              fontSize: Theme.of(context).textTheme.titleMedium?.fontSize,
               fontWeight: FontWeight.w800,
               height: 1.05,
             ),
@@ -70,10 +70,8 @@ class WorkspaceHubTitleBar extends StatelessWidget {
             subtitle,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
-            style: TextStyle(
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
               color: textBase.withValues(alpha: 0.66),
-              fontSize: 14,
-              height: 1.25,
             ),
           ),
         ],

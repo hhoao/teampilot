@@ -7,6 +7,7 @@ import '../../cubits/app_provider_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/app_provider_config.dart';
 import '../../models/llm_config.dart';
+import '../../services/provider/claude_official_provider.dart';
 import '../../services/provider/tool_config_generator.dart';
 import '../../theme/workspace_surface_layers.dart';
 import 'claude_official_credential_actions.dart';
@@ -37,11 +38,25 @@ class AppProviderDetailPanel extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Expanded(
-                child: Text(
-                  provider.name,
-                  style: Theme.of(context).textTheme.headlineSmall,
+                child: Wrap(
+                  spacing: 8,
+                  runSpacing: 4,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    Text(
+                      provider.name,
+                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    if (isOfficialClaudeProvider(provider))
+                      ClaudeOfficialCredentialStatusBadge(
+                        ready: provider.hasClaudeCredentialsReady,
+                      ),
+                  ],
                 ),
               ),
               if (provider.cli == AppProviderCli.flashskyai)
@@ -80,11 +95,6 @@ class AppProviderDetailPanel extends StatelessWidget {
             _InfoRow(label: l10n.baseUrl, value: provider.baseUrl),
           if (provider.defaultModel.isNotEmpty)
             _InfoRow(label: l10n.defaultModel, value: provider.defaultModel),
-          const SizedBox(height: 12),
-          _InfoRow(
-            label: l10n.appProviderEnabledTools,
-            value: l10n.appProviderCliLabel(provider.cli),
-          ),
           const SizedBox(height: 24),
           ClaudeOfficialCredentialActions(provider: provider),
           const SizedBox(height: 24),
@@ -184,11 +194,9 @@ class _InfoRow extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 8),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
+        textBaseline: TextBaseline.ideographic,
         children: [
-          SizedBox(
-            width: 110,
-            child: Text(label, style: Theme.of(context).textTheme.labelMedium),
-          ),
+          SizedBox(width: 110, child: Text(label)),
           Expanded(child: SelectableText(value)),
         ],
       ),

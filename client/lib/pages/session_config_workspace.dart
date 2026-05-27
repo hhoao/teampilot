@@ -604,9 +604,9 @@ class _CliExecutablePathSettingsRowState
         await widget.cubit.setCliExecutablePathFor(widget.cli, path);
       }
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(result.message)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(result.message)));
     } finally {
       if (mounted) {
         setState(() {
@@ -658,7 +658,7 @@ class _CliExecutablePathSettingsRowState
                   controller: _controller,
                   focusNode: _focusNode,
                   hintText: hint,
-                  hintMaxLines: 3,
+                  hintMaxLines: 1,
                   onChanged: (_) => _scheduleDebouncedPersist(),
                   onSubmitted: (_) => _flushPersist(),
                 ),

@@ -49,6 +49,7 @@ class _AppProviderListPanelState extends State<AppProviderListPanel> {
     final l10n = context.l10n;
     final cs = Theme.of(context).colorScheme;
     final appCubit = context.watch<AppProviderCubit>();
+    final headerBg = widget.hubStyle ? cs.workspacePage : cs.workspaceCard;
     final providers = appCubit.state.providers
         .where(
           (p) =>
@@ -67,157 +68,49 @@ class _AppProviderListPanelState extends State<AppProviderListPanel> {
               borderRadius: BorderRadius.circular(10),
               side: BorderSide(color: cs.outlineVariant),
             ),
-      clipBehavior: widget.hubStyle ? Clip.none : Clip.antiAlias,
+      clipBehavior: Clip.antiAlias,
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(12, 10, 8, 8),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Expanded(
-                      child: Text(
-                        l10n.providerList,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        TextButton(
-                          onPressed: appCubit.state.isLoading
-                              ? null
-                              : () => widget.onImport(),
-                          style: TextButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(horizontal: 8),
-                            minimumSize: Size.zero,
-                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                            visualDensity: VisualDensity.compact,
-                          ),
-                          child: Text(l10n.appProviderImport),
-                        ),
-                        TextButton(
-                          onPressed: widget.onAdd,
-                          style: TextButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(horizontal: 8),
-                            minimumSize: Size.zero,
-                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                            visualDensity: VisualDensity.compact,
-                          ),
-                          child: Text('+ ${l10n.add}'),
-                        ),
-                      ],
-                    ),
-                  ],
+          DecoratedBox(
+            decoration: BoxDecoration(
+              color: headerBg,
+              border: Border(
+                bottom: BorderSide(
+                  color: cs.outlineVariant.withValues(alpha: 0.5),
                 ),
-                const SizedBox(height: 8),
-                Padding(
-                  padding: const EdgeInsets.only(right: 4),
-                  child: FlashskyDropdownField<AppProviderCli>(
-                    items: AppProviderCli.values,
-                    initialItem: appCubit.state.selectedCli,
-                    decoration: FlashskyDropdownDecorations.denseField(context),
-                    itemLabel: l10n.appProviderCliLabel,
-                    onChanged: (cli) {
-                      if (cli != null) appCubit.setSelectedCli(cli);
-                    },
-                  ),
-                ),
-              ],
+              ),
             ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
-            child: AppOutlineTextField(
-              controller: _search,
-              hintText: l10n.filterProviders,
-              onChanged: (v) => setState(() => _query = v.trim()),
+            child: _ProviderListControls(
+              search: _search,
+              onQueryChanged: (value) => setState(() => _query = value),
+              onAdd: widget.onAdd,
+              onImport: widget.onImport,
+              isLoading: appCubit.state.isLoading,
+              selectedCli: appCubit.state.selectedCli,
+              onCliChanged: appCubit.setSelectedCli,
             ),
           ),
           Expanded(
             child: providers.isEmpty
                 ? Center(child: Text(l10n.selectProvider))
                 : ListView.separated(
-                    padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+                    padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
                     itemCount: providers.length,
                     separatorBuilder: (_, __) => const SizedBox(height: 8),
                     itemBuilder: (context, index) {
                       final p = providers[index];
-                      final selected =
-                          !widget.hubStyle && p.id == widget.selectedId;
-                      final subtitle = p.cli == AppProviderCli.flashskyai
-                          ? l10n.providerListModelCount(
-                              appCubit.flashskyaiLlmConfigFor(p).models.length,
-                            )
-                          : l10n.appProviderCliLabel(p.cli);
-                      final titleColor = selected
-                          ? cs.onPrimaryContainer
-                          : cs.onSurface;
-                      final subtitleColor = selected
-                          ? cs.onPrimaryContainer.withValues(alpha: 0.74)
-                          : cs.onSurfaceVariant;
-                      final tileColor = selected
-                          ? cs.primaryContainer
-                          : widget.hubStyle
-                          ? cs.workspaceSubtleSurface
-                          : cs.workspaceInset;
-                      return ListTile(
-                        dense: true,
-                        selected: selected,
-                        tileColor: tileColor,
-                        selectedTileColor: cs.primaryContainer,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        iconColor: titleColor,
-                        textColor: titleColor,
-                        title: Text(
-                          p.name,
-                          style: TextStyle(
-                            color: titleColor,
-                            fontWeight: selected
-                                ? FontWeight.w600
-                                : FontWeight.w500,
-                          ),
-                        ),
-                        subtitle: Text(
-                          subtitle,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(color: subtitleColor),
-                        ),
-                        trailing: widget.hubStyle
-                            ? Icon(Icons.chevron_right, color: titleColor)
-                            : PopupMenuButton<String>(
-                                iconColor: titleColor,
-                                itemBuilder: (_) => [
-                                  PopupMenuItem(
-                                    value: 'edit',
-                                    child: Text(l10n.edit),
-                                  ),
-                                  PopupMenuItem(
-                                    value: 'delete',
-                                    child: Text(l10n.delete),
-                                  ),
-                                ],
-                                onSelected: (action) {
-                                  switch (action) {
-                                    case 'edit':
-                                      widget.onEdit(p);
-                                    case 'delete':
-                                      widget.onDelete(p.id);
-                                  }
-                                },
-                              ),
+                      return _ProviderListTile(
+                        provider: p,
+                        selected: !widget.hubStyle && p.id == widget.selectedId,
+                        hubStyle: widget.hubStyle,
+                        modelCount: appCubit
+                            .flashskyaiLlmConfigFor(p)
+                            .models
+                            .length,
                         onTap: () => widget.onSelect(p.id),
-                        onLongPress: () => widget.onEdit(p),
+                        onEdit: () => widget.onEdit(p),
+                        onDelete: () => widget.onDelete(p.id),
                       );
                     },
                   ),
@@ -226,5 +119,177 @@ class _AppProviderListPanelState extends State<AppProviderListPanel> {
       ),
     );
   }
+}
 
+class _ProviderListControls extends StatelessWidget {
+  const _ProviderListControls({
+    required this.search,
+    required this.onQueryChanged,
+    required this.onAdd,
+    required this.onImport,
+    required this.isLoading,
+    required this.selectedCli,
+    required this.onCliChanged,
+  });
+
+  final TextEditingController search;
+  final ValueChanged<String> onQueryChanged;
+  final VoidCallback onAdd;
+  final Future<void> Function() onImport;
+  final bool isLoading;
+  final AppProviderCli selectedCli;
+  final ValueChanged<AppProviderCli> onCliChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(12, 10, 8, 0),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Expanded(
+                child: Text(
+                  l10n.providerList,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
+              ),
+              PopupMenuButton<String>(
+                tooltip: l10n.add,
+                icon: const Icon(Icons.add),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                onSelected: (action) {
+                  switch (action) {
+                    case 'add':
+                      onAdd();
+                    case 'import':
+                      onImport();
+                  }
+                },
+                itemBuilder: (_) => [
+                  PopupMenuItem(
+                    value: 'add',
+                    child: Text(l10n.addProvider),
+                  ),
+                  PopupMenuItem(
+                    value: 'import',
+                    enabled: !isLoading,
+                    child: Text(l10n.appProviderImport),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+          child: FlashskyDropdownField<AppProviderCli>(
+            items: AppProviderCli.values,
+            initialItem: selectedCli,
+            decoration: FlashskyDropdownDecorations.denseField(context),
+            itemLabel: l10n.appProviderCliLabel,
+            onChanged: (cli) {
+              if (cli != null) onCliChanged(cli);
+            },
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
+          child: AppOutlineTextField(
+            controller: search,
+            hintText: l10n.filterProviders,
+            onChanged: (v) => onQueryChanged(v.trim()),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ProviderListTile extends StatelessWidget {
+  const _ProviderListTile({
+    required this.provider,
+    required this.selected,
+    required this.hubStyle,
+    required this.modelCount,
+    required this.onTap,
+    required this.onEdit,
+    required this.onDelete,
+  });
+
+  final AppProviderConfig provider;
+  final bool selected;
+  final bool hubStyle;
+  final int modelCount;
+  final VoidCallback onTap;
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final cs = Theme.of(context).colorScheme;
+    final subtitle = provider.cli == AppProviderCli.flashskyai
+        ? l10n.providerListModelCount(modelCount)
+        : l10n.appProviderCliLabel(provider.cli);
+    final titleColor = selected ? cs.onPrimaryContainer : cs.onSurface;
+    final subtitleColor = selected
+        ? cs.onPrimaryContainer.withValues(alpha: 0.74)
+        : cs.onSurfaceVariant;
+    final tileColor = selected
+        ? cs.primaryContainer
+        : hubStyle
+        ? cs.workspaceSubtleSurface
+        : cs.workspaceInset;
+
+    return ListTile(
+      dense: true,
+      selected: selected,
+      tileColor: tileColor,
+      selectedTileColor: cs.primaryContainer,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      iconColor: titleColor,
+      textColor: titleColor,
+      title: Text(
+        provider.name,
+        style: TextStyle(
+          color: titleColor,
+          fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+        ),
+      ),
+      subtitle: Text(
+        subtitle,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: TextStyle(color: subtitleColor),
+      ),
+      trailing: hubStyle
+          ? Icon(Icons.chevron_right, color: titleColor)
+          : PopupMenuButton<String>(
+              iconColor: titleColor,
+              itemBuilder: (_) => [
+                PopupMenuItem(value: 'edit', child: Text(l10n.edit)),
+                PopupMenuItem(value: 'delete', child: Text(l10n.delete)),
+              ],
+              onSelected: (action) {
+                switch (action) {
+                  case 'edit':
+                    onEdit();
+                  case 'delete':
+                    onDelete();
+                }
+              },
+            ),
+      onTap: onTap,
+      onLongPress: onEdit,
+    );
+  }
 }

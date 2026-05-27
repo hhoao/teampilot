@@ -1223,7 +1223,7 @@ abstract class AppLocalizations {
   /// No description provided for @terminalScrollbackLinesDescription.
   ///
   /// In en, this message translates to:
-  /// **'Maximum lines kept in each session terminal buffer (1000–200000).'**
+  /// **'Maximum lines kept in each session terminal buffer'**
   String get terminalScrollbackLinesDescription;
 
   /// No description provided for @autoLaunchAllMembersTitle.
@@ -1651,6 +1651,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No credentials saved for this provider'**
   String get claudeOfficialCredentialsMissing;
+
+  /// No description provided for @claudeOfficialCredentialsAuthenticated.
+  ///
+  /// In en, this message translates to:
+  /// **'Authenticated'**
+  String get claudeOfficialCredentialsAuthenticated;
+
+  /// No description provided for @claudeOfficialCredentialsUnauthenticated.
+  ///
+  /// In en, this message translates to:
+  /// **'Unauthenticated'**
+  String get claudeOfficialCredentialsUnauthenticated;
 
   /// No description provided for @claudeOfficialCredentialsLogin.
   ///
