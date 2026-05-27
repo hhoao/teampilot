@@ -13,7 +13,6 @@ import '../utils/app_keys.dart';
 import '../utils/debounce/debounce.dart';
 import '../utils/github_source_url.dart';
 import '../utils/skill_repo_parse.dart';
-import '../widgets/app_outline_text_field.dart';
 import '../widgets/github_details_button.dart';
 import '../widgets/dropdown/flashsky_dropdown_field.dart';
 import '../widgets/settings/workspace_hub_shell.dart';
@@ -906,10 +905,12 @@ class _DiscoverySectionState extends State<_DiscoverySection> {
       children: [
         SizedBox(
           width: 260,
-          child: AppOutlineTextField(
-            prefixIcon: const Icon(Icons.search, size: 18),
-            hintText: l10n.skillsSearchPlaceholder,
-            contentPadding: const EdgeInsets.symmetric(vertical: 4),
+          child: TextField(
+            decoration: InputDecoration(
+              hintText: l10n.skillsSearchPlaceholder,
+              prefixIcon: const Icon(Icons.search, size: 18),
+              floatingLabelBehavior: FloatingLabelBehavior.never,
+            ),
             onChanged: (v) => setState(() => _searchQuery = v),
           ),
         ),
@@ -948,11 +949,13 @@ class _DiscoverySectionState extends State<_DiscoverySection> {
     return Row(
       children: [
         Expanded(
-          child: AppOutlineTextField(
+          child: TextField(
             controller: _skillsShCtl,
-            prefixIcon: const Icon(Icons.search, size: 18),
-            hintText: l10n.skillsSkillsShPlaceholder,
-            contentPadding: const EdgeInsets.symmetric(vertical: 4),
+            decoration: InputDecoration(
+              hintText: l10n.skillsSkillsShPlaceholder,
+              prefixIcon: const Icon(Icons.search, size: 18),
+              floatingLabelBehavior: FloatingLabelBehavior.never,
+            ),
             onSubmitted: (v) {
               if (v.trim().length >= 2) cubit.searchSkillsSh(v.trim());
             },
@@ -1348,15 +1351,21 @@ class _ReposSectionState extends State<_ReposSection> {
                 const SizedBox(height: 12),
                 _FieldLabel(text: l10n.skillsRepoUrl),
                 const SizedBox(height: 4),
-                AppOutlineTextField(
+                TextField(
                   controller: _urlCtl,
-                  hintText: l10n.skillsRepoUrlHint,
-                  hintMaxLines: 2,
+                  decoration: InputDecoration(
+                    hintText: l10n.skillsRepoUrlHint,
+                    hintMaxLines: 2,
+                    floatingLabelBehavior: FloatingLabelBehavior.never,
+                  ),
                 ),
                 const SizedBox(height: 10),
                 _FieldLabel(text: l10n.skillsRepoBranch),
                 const SizedBox(height: 4),
-                AppOutlineTextField(controller: _branchCtl),
+                TextField(
+                  controller: _branchCtl,
+                  decoration: const InputDecoration(),
+                ),
                 const SizedBox(height: 14),
                 Align(
                   alignment: Alignment.centerRight,

@@ -15,7 +15,6 @@ import '../../../services/cli/remote_flashskyai_cli_locator.dart';
 import '../../../services/ssh/ssh_client_factory.dart';
 import '../../../utils/app_keys.dart';
 import '../../../widgets/cli_install_progress_panel.dart';
-import '../../../widgets/app_outline_text_field.dart';
 import '../../../widgets/settings/workspace_settings_widgets.dart';
 
 class OnboardingCliStep extends StatefulWidget {
@@ -131,9 +130,9 @@ class _OnboardingCliStepState extends State<OnboardingCliStep> {
         await _detect();
       }
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(result.message)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(result.message)));
     } finally {
       if (mounted) {
         setState(() {
@@ -212,11 +211,14 @@ class _OnboardingCliStepState extends State<OnboardingCliStep> {
           child: SettingsLabeledStackedRow(
             title: l10n.claudeCliExecutablePathLabel,
             subtitle: subtitle,
-            body: AppOutlineTextField(
+            body: TextField(
               key: AppKeys.claudeCliExecutablePathField,
               controller: _controller,
-              hintText: pathHint,
-              hintMaxLines: 2,
+              decoration: InputDecoration(
+                hintText: pathHint,
+                hintMaxLines: 2,
+                floatingLabelBehavior: FloatingLabelBehavior.never,
+              ),
               onChanged: (value) {
                 setState(() {
                   _detectError = null;
@@ -255,10 +257,7 @@ class _OnboardingCliStepState extends State<OnboardingCliStep> {
         ),
         if (_installing && _installPhase != null) ...[
           const SizedBox(height: 12),
-          CliInstallProgressPanel(
-            phase: _installPhase!,
-            logLines: _installLog,
-          ),
+          CliInstallProgressPanel(phase: _installPhase!, logLines: _installLog),
         ],
       ],
     );

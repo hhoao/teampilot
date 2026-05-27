@@ -107,15 +107,7 @@ class SettingsLabeledStackedRow extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text(
-                title,
-                style: tt.titleSmall?.copyWith(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  height: 1.25,
-                  color: onSurface,
-                ),
-              ),
+              Text(title),
               if (hasSubtitle) ...[
                 SizedBox(height: _titleSubtitleGap),
                 Text(subtitle!.trim(), style: subtitleStyle),
@@ -177,15 +169,7 @@ class SettingsLabeledRow extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      title,
-                      style: tt.titleSmall?.copyWith(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        height: 1.25,
-                        color: onSurface,
-                      ),
-                    ),
+                    Text(title),
                     if (hasSubtitle) ...[
                       SizedBox(height: _titleSubtitleGap),
                       Text(subtitle!.trim(), style: subtitleStyle),

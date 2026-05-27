@@ -42,6 +42,4 @@ class SearchFieldDecoration {
     this.border,
     this.focusedBorder,
   });
-
-  static const _defaultFillColor = Color(0xFFFAFAFA);
 }

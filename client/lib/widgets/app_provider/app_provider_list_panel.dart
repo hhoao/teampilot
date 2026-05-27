@@ -6,7 +6,6 @@ import '../../l10n/l10n_extensions.dart';
 import '../../models/app_provider_config.dart';
 import '../../theme/workspace_surface_layers.dart';
 import '../../utils/app_keys.dart';
-import '../app_outline_text_field.dart';
 import '../dropdown/flashsky_dropdown_field.dart';
 import '../dropdown/flashskyai_dropdown_decoration.dart';
 
@@ -175,10 +174,7 @@ class _ProviderListControls extends StatelessWidget {
                   }
                 },
                 itemBuilder: (_) => [
-                  PopupMenuItem(
-                    value: 'add',
-                    child: Text(l10n.addProvider),
-                  ),
+                  PopupMenuItem(value: 'add', child: Text(l10n.addProvider)),
                   PopupMenuItem(
                     value: 'import',
                     enabled: !isLoading,
@@ -203,9 +199,12 @@ class _ProviderListControls extends StatelessWidget {
         ),
         Padding(
           padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
-          child: AppOutlineTextField(
+          child: TextField(
             controller: search,
-            hintText: l10n.filterProviders,
+            decoration: InputDecoration(
+              hintText: l10n.filterProviders,
+              floatingLabelBehavior: FloatingLabelBehavior.never,
+            ),
             onChanged: (v) => onQueryChanged(v.trim()),
           ),
         ),

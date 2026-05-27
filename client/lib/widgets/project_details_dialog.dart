@@ -8,7 +8,6 @@ import '../models/app_project.dart';
 import '../repositories/session_repository.dart';
 import '../utils/project_path_picker.dart';
 import '../utils/project_path_utils.dart';
-import 'app_outline_text_field.dart';
 
 Future<void> showProjectDetailsDialog(
   BuildContext context,
@@ -17,10 +16,8 @@ Future<void> showProjectDetailsDialog(
 ) {
   return showDialog<void>(
     context: context,
-    builder: (ctx) => _ProjectDetailsDialog(
-      project: project,
-      sessionCount: sessionCount,
-    ),
+    builder: (ctx) =>
+        _ProjectDetailsDialog(project: project, sessionCount: sessionCount),
   );
 }
 
@@ -45,9 +42,7 @@ class _ProjectDetailsDialogState extends State<_ProjectDetailsDialog> {
   @override
   void initState() {
     super.initState();
-    _displayController = TextEditingController(
-      text: widget.project.display,
-    );
+    _displayController = TextEditingController(text: widget.project.display);
     _additionalPaths = List<String>.from(widget.project.additionalPaths);
   }
 
@@ -130,9 +125,9 @@ class _ProjectDetailsDialogState extends State<_ProjectDetailsDialog> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              AppOutlineTextField(
+              TextField(
                 controller: _displayController,
-                labelText: l10n.projectDisplayName,
+                decoration: InputDecoration(labelText: l10n.projectDisplayName),
               ),
               const SizedBox(height: 16),
               _DetailRow(
@@ -241,11 +236,7 @@ class _ProjectDetailsDialogState extends State<_ProjectDetailsDialog> {
 }
 
 class _DetailRow extends StatelessWidget {
-  const _DetailRow({
-    required this.label,
-    required this.value,
-    this.onCopy,
-  });
+  const _DetailRow({required this.label, required this.value, this.onCopy});
 
   final String label;
   final String value;

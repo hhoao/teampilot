@@ -16,7 +16,6 @@ import '../widgets/app_provider/app_provider_form_sheet.dart';
 import '../widgets/app_provider/app_provider_list_panel.dart';
 import '../utils/app_keys.dart';
 import '../utils/debounce/debounce.dart';
-import '../widgets/app_outline_text_field.dart';
 import '../widgets/dropdown/flashsky_dropdown_field.dart';
 import '../widgets/dropdown/flashskyai_dropdown_decoration.dart';
 import '../widgets/resizable_split_view.dart';
@@ -697,10 +696,13 @@ class _ProviderListPanelState extends State<_ProviderListPanel> {
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
-            child: AppOutlineTextField(
+            child: TextField(
               key: AppKeys.llmProviderSearch,
               controller: _searchController,
-              hintText: l10n.filterProviders,
+              decoration: InputDecoration(
+                hintText: l10n.filterProviders,
+                floatingLabelBehavior: FloatingLabelBehavior.never,
+              ),
               onChanged: (value) => setState(() => _searchQuery = value),
             ),
           ),
@@ -1227,9 +1229,10 @@ class _ProviderDetailPanelState extends State<_ProviderDetailPanel> {
                       if (_proxy) ...[
                         _SettingFieldBlock(
                           title: l10n.proxyUrl,
-                          child: AppOutlineTextField(
+                          child: TextField(
                             key: AppKeys.proxyUrlField,
                             controller: _proxyUrlController,
+                            decoration: const InputDecoration(),
                             onChanged: (_) => _persistDebounced(),
                             onSubmitted: (_) => _flushPersistDebounce(),
                           ),
@@ -1238,19 +1241,24 @@ class _ProviderDetailPanelState extends State<_ProviderDetailPanel> {
                       if (_type == 'api') ...[
                         _SettingFieldBlock(
                           title: l10n.providerType,
-                          child: AppOutlineTextField(
+                          child: TextField(
                             key: AppKeys.providerTypeField,
                             controller: _providerTypeController,
-                            hintText: l10n.providerTypeHint,
+                            decoration: InputDecoration(
+                              hintText: l10n.providerTypeHint,
+                              floatingLabelBehavior:
+                                  FloatingLabelBehavior.never,
+                            ),
                             onChanged: (_) => _persistDebounced(),
                             onSubmitted: (_) => _flushPersistDebounce(),
                           ),
                         ),
                         _SettingFieldBlock(
                           title: l10n.baseUrl,
-                          child: AppOutlineTextField(
+                          child: TextField(
                             key: AppKeys.baseUrlField,
                             controller: _baseUrlController,
+                            decoration: const InputDecoration(),
                             onChanged: (_) => _persistDebounced(),
                             onSubmitted: (_) => _flushPersistDebounce(),
                           ),
@@ -1261,36 +1269,41 @@ class _ProviderDetailPanelState extends State<_ProviderDetailPanel> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Expanded(
-                                child: AppOutlineTextField(
+                                child: TextField(
                                   key: AppKeys.apiKeyField,
                                   controller: _apiKeyController,
                                   obscureText:
                                       !_apiKeyRevealed && _apiKey.isNotEmpty,
-                                  suffixIcon: _apiKey.isNotEmpty
-                                      ? IconButton(
-                                          key: AppKeys.revealApiKeyButton,
-                                          icon: Icon(
-                                            _apiKeyRevealed
-                                                ? Icons.visibility_off
-                                                : Icons.visibility,
-                                          ),
-                                          tooltip: _apiKeyRevealed
-                                              ? l10n.hide
-                                              : l10n.reveal,
-                                          onPressed: () => setState(() {
-                                            _apiKeyRevealed = !_apiKeyRevealed;
-                                            if (_apiKeyRevealed &&
-                                                !_apiKeyReplaced) {
-                                              _apiKeyController.text = widget
-                                                  .controller
-                                                  .revealApiKey(provider.name);
-                                            } else if (!_apiKeyRevealed) {
-                                              _apiKeyController.text =
-                                                  LlmConfig.maskedSecret;
-                                            }
-                                          }),
-                                        )
-                                      : null,
+                                  decoration: InputDecoration(
+                                    suffixIcon: _apiKey.isNotEmpty
+                                        ? IconButton(
+                                            key: AppKeys.revealApiKeyButton,
+                                            icon: Icon(
+                                              _apiKeyRevealed
+                                                  ? Icons.visibility_off
+                                                  : Icons.visibility,
+                                            ),
+                                            tooltip: _apiKeyRevealed
+                                                ? l10n.hide
+                                                : l10n.reveal,
+                                            onPressed: () => setState(() {
+                                              _apiKeyRevealed =
+                                                  !_apiKeyRevealed;
+                                              if (_apiKeyRevealed &&
+                                                  !_apiKeyReplaced) {
+                                                _apiKeyController.text = widget
+                                                    .controller
+                                                    .revealApiKey(
+                                                      provider.name,
+                                                    );
+                                              } else if (!_apiKeyRevealed) {
+                                                _apiKeyController.text =
+                                                    LlmConfig.maskedSecret;
+                                              }
+                                            }),
+                                          )
+                                        : null,
+                                  ),
                                   onChanged: (value) {
                                     if (value != LlmConfig.maskedSecret) {
                                       _apiKey = value;
@@ -1329,12 +1342,16 @@ class _ProviderDetailPanelState extends State<_ProviderDetailPanel> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Expanded(
-                                  child: AppOutlineTextField(
+                                  child: TextField(
                                     key: index == 0
                                         ? AppKeys.accountPathField
                                         : null,
                                     controller: _accountControllers[index],
-                                    hintText: l10n.accountCredentialPath,
+                                    decoration: InputDecoration(
+                                      hintText: l10n.accountCredentialPath,
+                                      floatingLabelBehavior:
+                                          FloatingLabelBehavior.never,
+                                    ),
                                     onChanged: (_) => _persistDebounced(),
                                     onSubmitted: (_) => _flushPersistDebounce(),
                                   ),
@@ -2065,11 +2082,11 @@ class _ModelEditDialogState extends State<_ModelEditDialog> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            AppOutlineTextField(
+            TextField(
               key: AppKeys.modelNameDialogField,
               controller: _nameController,
               autofocus: true,
-              labelText: l10n.modelName,
+              decoration: InputDecoration(labelText: l10n.modelName),
             ),
             const SizedBox(height: 14),
             Column(
@@ -2093,10 +2110,10 @@ class _ModelEditDialogState extends State<_ModelEditDialog> {
               ],
             ),
             const SizedBox(height: 14),
-            AppOutlineTextField(
+            TextField(
               key: AppKeys.modelModelIdField,
               controller: _modelController,
-              labelText: l10n.modelId,
+              decoration: InputDecoration(labelText: l10n.modelId),
             ),
             const SizedBox(height: 14),
             SwitchListTile(

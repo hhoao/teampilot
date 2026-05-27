@@ -4,6 +4,8 @@ import 'package:flex_color_scheme/flex_color_scheme.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import 'app_outline_input_theme.dart';
+
 /// Persisted preset ids (order = settings UI order).
 const List<String> kThemeColorPresetIds = [
   'graphite',
@@ -153,8 +155,35 @@ ThemeData buildDarkTheme([String? themeColorPreset]) => _applyTypography(
 
 ThemeData _applyTypography(ThemeData flexTheme) {
   final useRuntimeGoogleFonts = _googleFontsNetworkAllowed();
+  final compactOutlinedButton = OutlinedButtonThemeData(
+    style: OutlinedButton.styleFrom(
+      visualDensity: VisualDensity.compact,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      minimumSize: const Size(64, 36),
+      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+    ),
+  );
+
   if (!useRuntimeGoogleFonts) {
-    return flexTheme;
+    // Tests: Flex [TextTheme] may omit explicit font sizes; Material seed has them.
+    final seed = ThemeData(
+      brightness: flexTheme.brightness,
+      colorScheme: flexTheme.colorScheme,
+      useMaterial3: true,
+    );
+    final textTheme = applyAppInputTextStyles(
+      materializeM3TextThemeSizes(seed.textTheme),
+    );
+    return flexTheme.copyWith(
+      visualDensity: VisualDensity.compact,
+      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      textTheme: textTheme,
+      inputDecorationTheme: buildAppOutlineInputDecorationTheme(
+        colorScheme: flexTheme.colorScheme,
+        textTheme: textTheme,
+      ),
+      outlinedButtonTheme: compactOutlinedButton,
+    );
   }
   final typographySeed = ThemeData(
     brightness: flexTheme.brightness,
@@ -166,14 +195,27 @@ ThemeData _applyTypography(ThemeData flexTheme) {
     typographySeed.primaryTextTheme,
   );
   final appUiFont = GoogleFonts.notoSansSc();
-  return flexTheme.copyWith(
-    textTheme: textTheme.apply(
-      fontFamily: appUiFont.fontFamily,
-      fontFamilyFallback: appUiFont.fontFamilyFallback,
+  final mergedTextTheme = applyAppInputTextStyles(
+    materializeM3TextThemeSizes(
+      textTheme.apply(
+        fontFamily: appUiFont.fontFamily,
+        fontFamilyFallback: appUiFont.fontFamilyFallback,
+      ),
     ),
+  );
+
+  return flexTheme.copyWith(
+    visualDensity: VisualDensity.compact,
+    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+    textTheme: mergedTextTheme,
     primaryTextTheme: primaryTextTheme.apply(
       fontFamily: appUiFont.fontFamily,
       fontFamilyFallback: appUiFont.fontFamilyFallback,
     ),
+    inputDecorationTheme: buildAppOutlineInputDecorationTheme(
+      colorScheme: flexTheme.colorScheme,
+      textTheme: mergedTextTheme,
+    ),
+    outlinedButtonTheme: compactOutlinedButton,
   );
 }

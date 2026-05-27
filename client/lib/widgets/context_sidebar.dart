@@ -17,7 +17,6 @@ import '../utils/app_keys.dart';
 import '../utils/debounce/debounce.dart';
 import '../utils/project_path_picker.dart';
 import '../utils/project_path_utils.dart';
-import '../widgets/app_outline_text_field.dart';
 import '../widgets/dropdown/flashsky_dropdown_field.dart';
 import '../widgets/dropdown/flashskyai_dropdown_decoration.dart';
 import 'project_details_dialog.dart';
@@ -183,11 +182,11 @@ class _AddTeamDialogState extends State<_AddTeamDialog> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          AppOutlineTextField(
+          TextField(
             key: AppKeys.teamNameDialogField,
             controller: _nameController,
             autofocus: true,
-            labelText: l10n.teamName,
+            decoration: InputDecoration(labelText: l10n.teamName),
           ),
           const SizedBox(height: 16),
           Text(
@@ -982,10 +981,10 @@ class _SessionTileEntryState extends State<_SessionTileEntry> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text(l10n.renameConversationTitle),
-        content: AppOutlineTextField(
+        content: TextField(
           controller: controller,
           autofocus: true,
-          labelText: l10n.conversationName,
+          decoration: InputDecoration(labelText: l10n.conversationName),
           onSubmitted: (value) {
             if (value.trim().isNotEmpty) {
               unawaited(
@@ -1120,10 +1119,7 @@ class _TeamConfigTile extends StatelessWidget {
             children: [
               Icon(Icons.groups_2_outlined, size: 18, color: textBase),
               const SizedBox(width: 10),
-              Text(
-                context.l10n.teamConfig,
-                style: TextStyle(fontWeight: FontWeight.w700, color: textBase),
-              ),
+              Text(context.l10n.teamConfig),
             ],
           ),
         ),
@@ -1154,10 +1150,7 @@ class _NewChatTile extends StatelessWidget {
             children: [
               Icon(Icons.add_comment_outlined, size: 18, color: textBase),
               const SizedBox(width: 10),
-              Text(
-                context.l10n.defaultNewChatSessionTitle,
-                style: TextStyle(fontWeight: FontWeight.w700, color: textBase),
-              ),
+              Text(context.l10n.defaultNewChatSessionTitle),
             ],
           ),
         ),

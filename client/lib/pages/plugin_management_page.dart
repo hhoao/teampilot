@@ -15,7 +15,6 @@ import '../utils/app_keys.dart';
 import '../utils/debounce/debounce.dart';
 import '../utils/github_source_url.dart';
 import '../utils/skill_repo_parse.dart';
-import '../widgets/app_outline_text_field.dart';
 import '../widgets/github_details_button.dart';
 import '../widgets/dropdown/flashsky_dropdown_field.dart';
 import '../widgets/settings/workspace_hub_shell.dart';
@@ -93,7 +92,8 @@ class PluginManagementPage extends StatelessWidget {
           ),
           PluginSection.discovery => _DiscoverySection(
             state: state,
-            onGoMarketplaces: () => _goSection(context, PluginSection.marketplaces),
+            onGoMarketplaces: () =>
+                _goSection(context, PluginSection.marketplaces),
           ),
           PluginSection.marketplaces => _MarketplacesSection(state: state),
         };
@@ -321,7 +321,9 @@ class _InstalledSection extends StatelessWidget {
                                   cubit.updateAll,
                                 ),
                           icon: const Icon(Icons.upgrade, size: 16),
-                          label: Text(l10n.pluginsUpdateAll(state.updates.length)),
+                          label: Text(
+                            l10n.pluginsUpdateAll(state.updates.length),
+                          ),
                         ),
                       OutlinedButton.icon(
                         onPressed: state.toolbarBusy
@@ -352,8 +354,11 @@ class _InstalledSection extends StatelessWidget {
                               ),
                         icon: state.updatesLoading
                             ? const SizedBox(
-                                width: 14, height: 14,
-                                child: CircularProgressIndicator(strokeWidth: 2),
+                                width: 14,
+                                height: 14,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
                               )
                             : const Icon(Icons.refresh, size: 16),
                         label: Text(
@@ -545,12 +550,23 @@ class _EmptyPluginBlock extends StatelessWidget {
         const SizedBox(height: 10),
         Icon(icon, size: 40, color: cs.primary.withValues(alpha: 0.6)),
         const SizedBox(height: 12),
-        Text(title,
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: textBase)),
+        Text(
+          title,
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+            color: textBase,
+          ),
+        ),
         const SizedBox(height: 8),
-        Text(hint,
-            textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 13, color: textBase.withValues(alpha: 0.55))),
+        Text(
+          hint,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 13,
+            color: textBase.withValues(alpha: 0.55),
+          ),
+        ),
         const SizedBox(height: 16),
         FilledButton.tonal(onPressed: onAction, child: Text(actionLabel)),
         const SizedBox(height: 10),
@@ -593,28 +609,48 @@ class _InstalledPluginRow extends StatelessWidget {
                 Row(
                   children: [
                     Flexible(
-                      child: Text(plugin.name,
-                          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: textBase)),
+                      child: Text(
+                        plugin.name,
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: textBase,
+                        ),
+                      ),
                     ),
                     if (plugin.version.isNotEmpty) ...[
                       const SizedBox(width: 8),
-                      Text('v${plugin.version}',
-                          style: TextStyle(fontSize: 11, color: textBase.withValues(alpha: 0.45))),
+                      Text(
+                        'v${plugin.version}',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: textBase.withValues(alpha: 0.45),
+                        ),
+                      ),
                     ],
                   ],
                 ),
                 if (plugin.description.isNotEmpty) ...[
                   const SizedBox(height: 4),
-                  Text(plugin.description,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(fontSize: 12, color: textBase.withValues(alpha: 0.55))),
+                  Text(
+                    plugin.description,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: textBase.withValues(alpha: 0.55),
+                    ),
+                  ),
                 ],
               ],
             ),
           ),
           if (busy)
-            const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
+            const SizedBox(
+              width: 14,
+              height: 14,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
           else ...[
             GithubDetailsButton(
               url: plugin.githubBrowseUrl,
@@ -637,19 +673,27 @@ class _InstalledPluginRow extends StatelessWidget {
     );
   }
 
-  Future<void> _uninstall(BuildContext context, Plugin plugin,
-      AppLocalizations l10n, PluginCubit cubit) async {
+  Future<void> _uninstall(
+    BuildContext context,
+    Plugin plugin,
+    AppLocalizations l10n,
+    PluginCubit cubit,
+  ) async {
     final teams = context.read<TeamCubit>().state.teams;
-    final impacted =
-        teams.where((t) => t.pluginIds.contains(plugin.id)).toList();
-    final ok = await _pluginConfirm(context,
-        title: plugin.name,
-        message: l10n.pluginsUninstallConfirm(plugin.name, impacted.length),
-        detailHeading:
-            impacted.isNotEmpty ? l10n.pluginsUninstallImpactList : null,
-        detailLines: impacted.map((t) => t.name).toList(growable: false),
-        confirmLabel: l10n.pluginsCardUninstall,
-        destructive: true);
+    final impacted = teams
+        .where((t) => t.pluginIds.contains(plugin.id))
+        .toList();
+    final ok = await _pluginConfirm(
+      context,
+      title: plugin.name,
+      message: l10n.pluginsUninstallConfirm(plugin.name, impacted.length),
+      detailHeading: impacted.isNotEmpty
+          ? l10n.pluginsUninstallImpactList
+          : null,
+      detailLines: impacted.map((t) => t.name).toList(growable: false),
+      confirmLabel: l10n.pluginsCardUninstall,
+      destructive: true,
+    );
     if (!ok || !context.mounted) return;
     await cubit.uninstall(plugin);
   }
@@ -660,7 +704,10 @@ class _InstalledPluginRow extends StatelessWidget {
 // ============================================================================
 
 class _DiscoverySection extends StatefulWidget {
-  const _DiscoverySection({required this.state, required this.onGoMarketplaces});
+  const _DiscoverySection({
+    required this.state,
+    required this.onGoMarketplaces,
+  });
   final PluginState state;
   final VoidCallback onGoMarketplaces;
 
@@ -773,10 +820,13 @@ class _DiscoveryBodyState extends State<_DiscoveryBody> {
               Row(
                 children: [
                   Expanded(
-                    child: AppOutlineTextField(
+                    child: TextField(
                       controller: _searchCtrl,
-                      hintText: l10n.pluginsSearchPlaceholder,
-                      prefixIcon: const Icon(Icons.search, size: 18),
+                      decoration: InputDecoration(
+                        hintText: l10n.pluginsSearchPlaceholder,
+                        prefixIcon: const Icon(Icons.search, size: 18),
+                        floatingLabelBehavior: FloatingLabelBehavior.never,
+                      ),
                       onChanged: (_) => setState(() {}),
                     ),
                   ),
@@ -786,7 +836,8 @@ class _DiscoveryBodyState extends State<_DiscoveryBody> {
                     onPressed: widget.state.discoveryLoading
                         ? null
                         : () => cubit.ensureDiscoveryLoaded(force: true),
-                    icon: widget.state.discoveryLoading ||
+                    icon:
+                        widget.state.discoveryLoading ||
                             widget.state.marketplaceSyncingKeys.isNotEmpty
                         ? const SizedBox(
                             width: 14,
@@ -829,7 +880,8 @@ class _DiscoveryBodyState extends State<_DiscoveryBody> {
                   _StatusDropdown(
                     value: _statusFilter,
                     l10n: l10n,
-                    onChanged: (v) => setState(() => _statusFilter = v ?? 'all'),
+                    onChanged: (v) =>
+                        setState(() => _statusFilter = v ?? 'all'),
                   ),
                 ],
               ),
@@ -963,34 +1015,59 @@ class _DiscoverablePluginCard extends StatelessWidget {
                 Row(
                   children: [
                     Flexible(
-                      child: Text(plugin.name,
-                          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: textBase)),
+                      child: Text(
+                        plugin.name,
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: textBase,
+                        ),
+                      ),
                     ),
                     if (plugin.version.isNotEmpty) ...[
                       const SizedBox(width: 8),
-                      Text('v${plugin.version}',
-                          style: TextStyle(fontSize: 11, color: textBase.withValues(alpha: 0.45))),
+                      Text(
+                        'v${plugin.version}',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: textBase.withValues(alpha: 0.45),
+                        ),
+                      ),
                     ],
                   ],
                 ),
                 if (plugin.description.isNotEmpty) ...[
                   const SizedBox(height: 4),
-                  Text(plugin.description,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(fontSize: 12, color: textBase.withValues(alpha: 0.55))),
+                  Text(
+                    plugin.description,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: textBase.withValues(alpha: 0.55),
+                    ),
+                  ),
                 ],
                 if (plugin.marketplaceFullName.isNotEmpty) ...[
                   const SizedBox(height: 4),
-                  Text(plugin.marketplaceFullName,
-                      style: TextStyle(fontSize: 11, color: textBase.withValues(alpha: 0.35))),
+                  Text(
+                    plugin.marketplaceFullName,
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: textBase.withValues(alpha: 0.35),
+                    ),
+                  ),
                 ],
               ],
             ),
           ),
           const SizedBox(width: 12),
           if (busy)
-            const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
+            const SizedBox(
+              width: 14,
+              height: 14,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
           else
             Wrap(
               spacing: 8,
@@ -1047,7 +1124,10 @@ class _MarketplacesSection extends StatelessWidget {
                     Expanded(
                       child: Text(
                         l10n.pluginsNavMarketplaces,
-                        style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                        ),
                       ),
                     ),
                     FilledButton.tonalIcon(
@@ -1093,15 +1173,19 @@ class _MarketplacesSection extends StatelessWidget {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            AppOutlineTextField(
+            TextField(
               controller: urlCtrl,
-              hintText: l10n.pluginsMarketplaceUrlHint,
-              labelText: l10n.pluginsMarketplaceUrl,
+              decoration: InputDecoration(
+                hintText: l10n.pluginsMarketplaceUrlHint,
+                labelText: l10n.pluginsMarketplaceUrl,
+              ),
             ),
             const SizedBox(height: 12),
-            AppOutlineTextField(
+            TextField(
               controller: branchCtrl,
-              labelText: l10n.pluginsMarketplaceBranch,
+              decoration: InputDecoration(
+                labelText: l10n.pluginsMarketplaceBranch,
+              ),
             ),
           ],
         ),
@@ -1127,11 +1211,15 @@ class _MarketplacesSection extends StatelessWidget {
       return;
     }
     if (!context.mounted) return;
-    await cubit.addMarketplace(PluginMarketplace(
-      owner: parsed.owner,
-      name: parsed.name,
-      branch: branchCtrl.text.trim().isNotEmpty ? branchCtrl.text.trim() : 'main',
-    ));
+    await cubit.addMarketplace(
+      PluginMarketplace(
+        owner: parsed.owner,
+        name: parsed.name,
+        branch: branchCtrl.text.trim().isNotEmpty
+            ? branchCtrl.text.trim()
+            : 'main',
+      ),
+    );
   }
 }
 
@@ -1164,16 +1252,30 @@ class _MarketplaceRow extends StatelessWidget {
                     Flexible(
                       child: Text(
                         marketplace.displayName ?? marketplace.fullName,
-                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: textBase),
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: textBase,
+                        ),
                       ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 2),
-                Text(marketplace.githubUrl,
-                    style: TextStyle(fontSize: 11, color: textBase.withValues(alpha: 0.4))),
-                Text('branch: ${marketplace.branch}',
-                    style: TextStyle(fontSize: 11, color: textBase.withValues(alpha: 0.35))),
+                Text(
+                  marketplace.githubUrl,
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: textBase.withValues(alpha: 0.4),
+                  ),
+                ),
+                Text(
+                  'branch: ${marketplace.branch}',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: textBase.withValues(alpha: 0.35),
+                  ),
+                ),
               ],
             ),
           ),
@@ -1197,12 +1299,17 @@ class _MarketplaceRow extends StatelessWidget {
   }
 
   Future<void> _remove(
-      BuildContext context, AppLocalizations l10n, PluginCubit cubit) async {
-    final ok = await _pluginConfirm(context,
-        title: l10n.pluginsMarketplaceRemove,
-        message: l10n.pluginsMarketplaceRemoveConfirm(marketplace.githubUrl),
-        confirmLabel: l10n.pluginsMarketplaceRemove,
-        destructive: true);
+    BuildContext context,
+    AppLocalizations l10n,
+    PluginCubit cubit,
+  ) async {
+    final ok = await _pluginConfirm(
+      context,
+      title: l10n.pluginsMarketplaceRemove,
+      message: l10n.pluginsMarketplaceRemoveConfirm(marketplace.githubUrl),
+      confirmLabel: l10n.pluginsMarketplaceRemove,
+      destructive: true,
+    );
     if (!ok || !context.mounted) return;
     await cubit.removeMarketplace(marketplace.owner, marketplace.name);
   }

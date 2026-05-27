@@ -16,7 +16,6 @@ import '../models/team_config.dart';
 import '../theme/workspace_surface_layers.dart';
 import '../utils/app_keys.dart';
 import '../utils/debounce/debounce.dart';
-import 'app_outline_text_field.dart';
 import 'file_tree_node.dart';
 
 class RightToolsPanel extends StatelessWidget {
@@ -436,20 +435,22 @@ class _FileTreePanelState extends State<_FileTreePanel> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      AppOutlineTextField(
+                      TextField(
                         controller: _filterController,
-                        hintText: l10n.filterFiles,
-                        prefixIcon: const Icon(Icons.search, size: 18),
-                        suffixIcon: _filterController.text.isNotEmpty
-                            ? IconButton(
-                                icon: const Icon(Icons.clear, size: 16),
-                                onPressed: () {
-                                  _filterController.clear();
-                                  _cubit.setFilter('');
-                                },
-                              )
-                            : null,
-                        contentPadding: const EdgeInsets.symmetric(vertical: 4),
+                        decoration: InputDecoration(
+                          hintText: l10n.filterFiles,
+                          prefixIcon: const Icon(Icons.search, size: 18),
+                          floatingLabelBehavior: FloatingLabelBehavior.never,
+                          suffixIcon: _filterController.text.isNotEmpty
+                              ? IconButton(
+                                  icon: const Icon(Icons.clear, size: 16),
+                                  onPressed: () {
+                                    _filterController.clear();
+                                    _cubit.setFilter('');
+                                  },
+                                )
+                              : null,
+                        ),
                         onChanged: (v) {
                           _cubit.setFilter(v);
                           setState(() {});

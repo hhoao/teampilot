@@ -22,7 +22,6 @@ import '../utils/app_provider_model_candidates.dart';
 import '../utils/debounce/debounce.dart';
 import '../utils/github_source_url.dart';
 import '../utils/team_member_naming.dart';
-import '../widgets/app_outline_text_field.dart';
 import '../widgets/github_details_button.dart';
 import '../widgets/app_provider/team_tool_provider_selectors.dart';
 import '../widgets/settings/workspace_settings_widgets.dart';
@@ -853,10 +852,9 @@ class _TeamPluginsSection extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: Theme.of(context)
-                          .colorScheme
-                          .errorContainer
-                          .withValues(alpha: 0.35),
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.errorContainer.withValues(alpha: 0.35),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
@@ -890,9 +888,7 @@ class _TeamPluginsSection extends StatelessWidget {
                             } else {
                               ids.remove(plugin.id);
                             }
-                            cubit.updateSelected(
-                              team.copyWith(pluginIds: ids),
-                            );
+                            cubit.updateSelected(team.copyWith(pluginIds: ids));
                           },
                         ),
                       for (final id in missingIds)
@@ -901,9 +897,7 @@ class _TeamPluginsSection extends StatelessWidget {
                           onRemove: () {
                             final ids = List<String>.from(team.pluginIds)
                               ..remove(id);
-                            cubit.updateSelected(
-                              team.copyWith(pluginIds: ids),
-                            );
+                            cubit.updateSelected(team.copyWith(pluginIds: ids));
                           },
                         ),
                     ],
@@ -987,8 +981,8 @@ class _TeamPluginRow extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textBase = isDark ? Colors.white : const Color(0xFF111827);
-    final sourceLabel = plugin.marketplaceOwner != null &&
-            plugin.marketplaceName != null
+    final sourceLabel =
+        plugin.marketplaceOwner != null && plugin.marketplaceName != null
         ? '${plugin.marketplaceOwner}/${plugin.marketplaceName}'
         : 'local';
 
@@ -1089,10 +1083,7 @@ class _TeamPluginRow extends StatelessWidget {
 }
 
 class _TeamMissingPluginRow extends StatelessWidget {
-  const _TeamMissingPluginRow({
-    required this.pluginId,
-    required this.onRemove,
-  });
+  const _TeamMissingPluginRow({required this.pluginId, required this.onRemove});
 
   final String pluginId;
   final VoidCallback onRemove;
@@ -1108,9 +1099,10 @@ class _TeamMissingPluginRow extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        decoration: workspaceInsetDecoration(cs, radius: 10).copyWith(
-          color: cs.surfaceContainerHighest.withValues(alpha: 0.35),
-        ),
+        decoration: workspaceInsetDecoration(
+          cs,
+          radius: 10,
+        ).copyWith(color: cs.surfaceContainerHighest.withValues(alpha: 0.35)),
         child: Row(
           children: [
             Expanded(
@@ -1226,9 +1218,10 @@ class _TeamInfoSectionState extends State<_TeamInfoSection> {
                 SettingsLabeledStackedRow(
                   title: l10n.teamDescription,
                   subtitle: l10n.teamDescriptionHint,
-                  body: AppOutlineTextField(
+                  body: TextField(
                     controller: _descCtl,
                     maxLines: 3,
+                    decoration: const InputDecoration(),
                     onChanged: (v) => widget.cubit.updateSelected(
                       widget.team.copyWith(description: v),
                     ),
@@ -1272,8 +1265,9 @@ class _TeamInfoSectionState extends State<_TeamInfoSection> {
                 SettingsLabeledStackedRow(
                   title: l10n.teamExtraArgs,
                   subtitle: l10n.teamExtraArgsHint,
-                  body: AppOutlineTextField(
+                  body: TextField(
                     controller: _argsCtl,
+                    decoration: const InputDecoration(),
                     onChanged: (v) => widget.cubit.updateSelected(
                       widget.team.copyWith(extraArgs: v),
                     ),
@@ -1681,9 +1675,12 @@ class _MemberConfigFormState extends State<_MemberConfigForm> {
         ),
         if (showCustomAgentField) ...[
           const SizedBox(height: 8),
-          AppOutlineTextField(
+          TextField(
             controller: _agentCtl,
-            hintText: l10n.agentCustomIdHint,
+            decoration: InputDecoration(
+              hintText: l10n.agentCustomIdHint,
+              floatingLabelBehavior: FloatingLabelBehavior.never,
+            ),
             onChanged: (v) => _update(m.copyWith(agent: v)),
           ),
         ],
@@ -1696,8 +1693,9 @@ class _MemberConfigFormState extends State<_MemberConfigForm> {
         children: [
           SettingsLabeledStackedRow(
             title: l10n.memberName,
-            body: AppOutlineTextField(
+            body: TextField(
               controller: _nameCtl,
+              decoration: const InputDecoration(),
               onChanged: (v) => _update(m.copyWith(name: v)),
             ),
             showDividerBelow: true,
@@ -1713,10 +1711,10 @@ class _MemberConfigFormState extends State<_MemberConfigForm> {
                 final newProv = value ?? '';
                 var newModel = m.model;
                 AppProviderConfig? nextProvider;
-                for (final p in context
-                    .read<AppProviderCubit>()
-                    .state
-                    .providersFor(memberCatalogCli)) {
+                for (final p
+                    in context.read<AppProviderCubit>().state.providersFor(
+                      memberCatalogCli,
+                    )) {
                   if (p.id == newProv) {
                     nextProvider = p;
                     break;
@@ -1767,14 +1765,16 @@ class _MemberConfigFormState extends State<_MemberConfigForm> {
             subtitle: l10n.memberDangerouslySkipPermissionsHint,
             trailing: Switch(
               value: m.dangerouslySkipPermissions,
-              onChanged: (v) => _update(m.copyWith(dangerouslySkipPermissions: v)),
+              onChanged: (v) =>
+                  _update(m.copyWith(dangerouslySkipPermissions: v)),
             ),
             showDividerBelow: true,
           ),
           SettingsLabeledStackedRow(
             title: l10n.memberExtraArgs,
-            body: AppOutlineTextField(
+            body: TextField(
               controller: _argsCtl,
+              decoration: const InputDecoration(),
               onChanged: (v) => _update(m.copyWith(extraArgs: v)),
             ),
             showDividerBelow: true,
@@ -1802,10 +1802,11 @@ class _MemberConfigFormState extends State<_MemberConfigForm> {
                   ],
                 ),
                 const SizedBox(height: 8),
-                AppOutlineTextField(
+                TextField(
                   controller: _promptCtl,
                   minLines: 3,
                   maxLines: 6,
+                  decoration: const InputDecoration(),
                   onChanged: (v) => _update(m.copyWith(prompt: v)),
                 ),
               ],

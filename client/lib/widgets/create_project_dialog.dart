@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import '../l10n/l10n_extensions.dart';
 import '../utils/project_path_picker.dart';
 import '../utils/project_path_utils.dart';
-import 'app_outline_text_field.dart';
 
 typedef CreateProjectDraft = ({
   String primaryPath,
@@ -65,9 +64,9 @@ class _CreateProjectDialogState extends State<_CreateProjectDialog> {
   void _create() {
     final l10n = context.l10n;
     if (_primaryPath.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l10n.projectPrimaryPathRequired)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l10n.projectPrimaryPathRequired)));
       return;
     }
     Navigator.of(context).pop((
@@ -91,9 +90,9 @@ class _CreateProjectDialogState extends State<_CreateProjectDialog> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              AppOutlineTextField(
+              TextField(
                 controller: _displayController,
-                labelText: l10n.projectDisplayName,
+                decoration: InputDecoration(labelText: l10n.projectDisplayName),
               ),
               const SizedBox(height: 16),
               Text(l10n.projectPrimaryPath, style: theme.textTheme.labelLarge),

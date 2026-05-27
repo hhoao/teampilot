@@ -27,7 +27,6 @@ import '../services/storage/runtime_storage_context.dart';
 import '../services/ssh/ssh_client_factory.dart';
 import '../utils/app_keys.dart';
 import '../utils/debounce/debounce.dart';
-import '../widgets/app_outline_text_field.dart';
 import '../widgets/cli_install_progress_panel.dart';
 import '../widgets/settings/workspace_settings_widgets.dart';
 
@@ -366,11 +365,14 @@ class _SessionControlsState extends State<_SessionControls> {
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       Expanded(
-                        child: AppOutlineTextField(
+                        child: TextField(
                           controller: _sshCwdController,
                           focusNode: _sshCwdFocus,
-                          hintText: '~/work/project',
-                          hintMaxLines: 2,
+                          decoration: InputDecoration(
+                            hintText: '~/work/project',
+                            hintMaxLines: 1,
+                            floatingLabelBehavior: FloatingLabelBehavior.never,
+                          ),
                           onChanged: (_) => _scheduleDebouncedSshCwdPersist(),
                           onSubmitted: (_) => _flushSshCwdPersist(),
                         ),
@@ -409,7 +411,6 @@ class _SessionControlsState extends State<_SessionControls> {
                     initialValue:
                         '${state.preferences.terminalScrollbackLines}',
                     keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(isDense: true),
                     onFieldSubmitted: (value) {
                       final parsed = int.tryParse(value.trim());
                       if (parsed != null) {
@@ -653,12 +654,15 @@ class _CliExecutablePathSettingsRowState
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Expanded(
-                child: AppOutlineTextField(
+                child: TextField(
                   key: widget.fieldKey,
                   controller: _controller,
                   focusNode: _focusNode,
-                  hintText: hint,
-                  hintMaxLines: 1,
+                  decoration: InputDecoration(
+                    hintText: hint,
+                    hintMaxLines: 1,
+                    floatingLabelBehavior: FloatingLabelBehavior.never,
+                  ),
                   onChanged: (_) => _scheduleDebouncedPersist(),
                   onSubmitted: (_) => _flushPersist(),
                 ),
@@ -838,13 +842,16 @@ class _LlmConfigPathSettingsRowState extends State<_LlmConfigPathSettingsRow> {
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Expanded(
-            child: AppOutlineTextField(
+            child: TextField(
               key: AppKeys.llmConfigPathOverrideField,
               controller: _textController,
               focusNode: _llmPathFocus,
-              hintText: llmHint,
-              hintMaxLines: 3,
               enabled: !state.isLoading,
+              decoration: InputDecoration(
+                hintText: llmHint,
+                hintMaxLines: 1,
+                floatingLabelBehavior: FloatingLabelBehavior.never,
+              ),
               onChanged: state.isLoading
                   ? null
                   : (_) => _scheduleDebouncedLlmPathPersist(),

@@ -10,7 +10,6 @@ import '../../models/provider_presets/codex_provider_presets.dart';
 import '../../models/provider_presets/flashskyai_provider_presets.dart';
 import '../../theme/workspace_surface_layers.dart';
 import '../../utils/debounce/debounce.dart';
-import '../app_outline_text_field.dart';
 import '../dropdown/flashsky_dropdown_field.dart';
 import '../dropdown/flashskyai_dropdown_decoration.dart';
 
@@ -337,46 +336,51 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
                   ),
                 ),
                 if (_showAdvancedJson)
-                  AppOutlineTextField(
+                  TextField(
                     controller: _jsonCtl,
                     minLines: 16,
                     maxLines: 28,
+                    decoration: const InputDecoration(),
                   )
                 else ...[
-                  AppOutlineTextField(
+                  TextField(
                     controller: _nameCtl,
-                    labelText: l10n.providerName,
+                    decoration: InputDecoration(labelText: l10n.providerName),
                   ),
                   const SizedBox(height: 12),
-                  AppOutlineTextField(
+                  TextField(
                     controller: _websiteCtl,
-                    labelText: l10n.appProviderWebsite,
+                    decoration: InputDecoration(
+                      labelText: l10n.appProviderWebsite,
+                    ),
                   ),
                   const SizedBox(height: 12),
-                  AppOutlineTextField(
+                  TextField(
                     controller: _notesCtl,
-                    labelText: l10n.notes,
                     minLines: 2,
                     maxLines: 4,
+                    decoration: InputDecoration(labelText: l10n.notes),
                   ),
                   const SizedBox(height: 12),
-                  AppOutlineTextField(
+                  TextField(
                     controller: _apiKeyCtl,
-                    labelText: l10n.apiKey,
-                    hintText: _isEditing
-                        ? l10n.appProviderApiKeyEditHint
-                        : null,
                     obscureText: true,
+                    decoration: InputDecoration(
+                      labelText: l10n.apiKey,
+                      hintText: _isEditing
+                          ? l10n.appProviderApiKeyEditHint
+                          : null,
+                    ),
                   ),
                   const SizedBox(height: 12),
-                  AppOutlineTextField(
+                  TextField(
                     controller: _baseUrlCtl,
-                    labelText: l10n.baseUrl,
+                    decoration: InputDecoration(labelText: l10n.baseUrl),
                   ),
                   const SizedBox(height: 12),
-                  AppOutlineTextField(
+                  TextField(
                     controller: _defaultModelCtl,
-                    labelText: l10n.defaultModel,
+                    decoration: InputDecoration(labelText: l10n.defaultModel),
                   ),
                   if (widget.cli == AppProviderCli.claude) ...[
                     const SizedBox(height: 16),
@@ -563,17 +567,23 @@ class _ClaudeAdvancedOptions extends StatelessWidget {
             builder: (context, constraints) {
               final twoColumns = constraints.maxWidth >= 680;
               final fields = [
-                AppOutlineTextField(
+                TextField(
                   controller: haikuModelCtl,
-                  labelText: l10n.appProviderClaudeHaikuModel,
+                  decoration: InputDecoration(
+                    labelText: l10n.appProviderClaudeHaikuModel,
+                  ),
                 ),
-                AppOutlineTextField(
+                TextField(
                   controller: sonnetModelCtl,
-                  labelText: l10n.appProviderClaudeSonnetModel,
+                  decoration: InputDecoration(
+                    labelText: l10n.appProviderClaudeSonnetModel,
+                  ),
                 ),
-                AppOutlineTextField(
+                TextField(
                   controller: opusModelCtl,
-                  labelText: l10n.appProviderClaudeOpusModel,
+                  decoration: InputDecoration(
+                    labelText: l10n.appProviderClaudeOpusModel,
+                  ),
                 ),
               ];
               if (!twoColumns) {
