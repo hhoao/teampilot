@@ -51,7 +51,7 @@ class AndroidShellChrome {
     if (path.startsWith('/mcp/')) {
       final segment = path.replaceFirst('/mcp/', '').split('/').first;
       for (final section in McpSection.values) {
-        if (section.routeSegment() == segment) {
+        if (section.routeSegment == segment) {
           return section.title(l10n);
         }
       }

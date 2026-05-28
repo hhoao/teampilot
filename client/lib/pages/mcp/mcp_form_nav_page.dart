@@ -7,7 +7,7 @@ import '../../l10n/l10n_extensions.dart';
 import '../../models/mcp_server.dart';
 import '../../services/app/platform_utils.dart';
 import '../../utils/app_keys.dart';
-import '../../widgets/settings/workspace_hub_shell.dart';
+import '../../widgets/settings/workspace_section_host.dart';
 import 'mcp_form_page.dart';
 import '../mcp_management_page.dart';
 import 'mcp_routes.dart';
@@ -38,17 +38,18 @@ class McpFormNavPage extends StatelessWidget {
         final existing = _resolveExisting(state);
         final form = _buildForm(context, existing);
 
-        if (useAndroidHubNavigation(context)) {
-          return WorkspaceSectionPage(
-            pageKey: AppKeys.mcpFormDetail,
-            child: form,
-          );
-        }
-
-        return McpWorkspaceShell(
-          section: McpSection.installed,
+        return WorkspaceAdaptiveSectionPage(
+          pageKey: AppKeys.mcpFormDetail,
+          title: context.l10n.mcpNavTitle,
+          subtitle: context.l10n.mcpSubtitle,
           bodyAnimationKey: ValueKey(serverId ?? 'mcp-add'),
-          onSelectSection: (target) => _goSection(context, target),
+          nav: WorkspaceEnumNavPanel<McpSection>(
+            sections: McpSection.values,
+            current: McpSection.installed,
+            basePath: '/mcp',
+            descriptor: (s) => s,
+            onSelect: (target) => _goSection(context, target),
+          ),
           body: form,
         );
       },

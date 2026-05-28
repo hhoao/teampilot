@@ -5,7 +5,6 @@ import 'package:go_router/go_router.dart';
 import '../cubits/mcp_cubit.dart';
 import '../cubits/mcp_discovery_cubit.dart';
 import '../l10n/l10n_extensions.dart';
-import '../theme/workspace_surface_layers.dart';
 import '../models/mcp_catalog_listing.dart';
 import '../models/mcp_server.dart';
 import '../services/app/platform_utils.dart';
@@ -13,30 +12,44 @@ import '../services/mcp/mcp_listing_install_service.dart';
 import '../utils/app_keys.dart';
 import '../utils/debounce/debounce.dart';
 import '../widgets/settings/workspace_hub_shell.dart';
+import '../widgets/settings/workspace_section_host.dart';
+import '../widgets/settings/workspace_section_navigation.dart';
 import 'mcp/mcp_discovery_section.dart';
 import 'mcp/mcp_installed_section.dart';
 import 'mcp/mcp_registries_section.dart';
 import 'mcp/mcp_routes.dart';
-
-enum McpSection { installed, discovery, registries }
-
-extension McpSectionRoute on McpSection {
-  String routeSegment() => name;
-
-  String routePath() => '/mcp/${routeSegment()}';
-
-  String title(AppLocalizations l10n) => switch (this) {
-    McpSection.installed => l10n.mcpNavInstalled,
-    McpSection.discovery => l10n.mcpNavDiscovery,
-    McpSection.registries => l10n.mcpNavRegistries,
-  };
-}
 
 IconData mcpSectionIcon(McpSection section) => switch (section) {
   McpSection.installed => Icons.dns_outlined,
   McpSection.discovery => Icons.travel_explore_outlined,
   McpSection.registries => Icons.source_outlined,
 };
+
+enum McpSection implements WorkspaceSectionDescriptor {
+  installed,
+  discovery,
+  registries;
+
+  @override
+  String get routeSegment => name;
+
+  @override
+  String routePath(String basePath) => '$basePath/$routeSegment';
+
+  @override
+  String title(AppLocalizations l10n) => switch (this) {
+    McpSection.installed => l10n.mcpNavInstalled,
+    McpSection.discovery => l10n.mcpNavDiscovery,
+    McpSection.registries => l10n.mcpNavRegistries,
+  };
+
+  @override
+  IconData get icon => mcpSectionIcon(this);
+}
+
+extension McpSectionRoute on McpSection {
+  String routePath() => '/mcp/$routeSegment';
+}
 
 void navigateMcpAdd(BuildContext context) {
   navigateWorkspaceRoute(context, mcpAddRoute());
@@ -47,85 +60,7 @@ void navigateMcpEdit(BuildContext context, McpServer server) {
 }
 
 void navigateMcpSection(BuildContext context, McpSection target) {
-  navigateWorkspaceRoute(context, target.routePath());
-}
-
-/// Desktop MCP shell: title bar + section nav + body.
-class McpWorkspaceShell extends StatelessWidget {
-  const McpWorkspaceShell({
-    required this.section,
-    required this.body,
-    required this.onSelectSection,
-    this.bodyAnimationKey,
-    super.key,
-  });
-
-  final McpSection section;
-  final Widget body;
-  final ValueChanged<McpSection> onSelectSection;
-  final Key? bodyAnimationKey;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final l10n = context.l10n;
-
-    return Container(
-      color: cs.workspacePage,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          WorkspaceHubTitleBar(
-            title: l10n.mcpNavTitle,
-            subtitle: l10n.mcpSubtitle,
-          ),
-          Expanded(
-            child: WorkspaceSplitShell(
-              bodyAnimationKey: bodyAnimationKey,
-              nav: McpNavPanel(
-                section: section,
-                l10n: l10n,
-                onSelect: onSelectSection,
-              ),
-              body: body,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class McpNavPanel extends StatelessWidget {
-  const McpNavPanel({
-    required this.section,
-    required this.l10n,
-    required this.onSelect,
-    super.key,
-  });
-
-  final McpSection section;
-  final AppLocalizations l10n;
-  final ValueChanged<McpSection> onSelect;
-
-  @override
-  Widget build(BuildContext context) {
-    return WorkspaceHubNavList(
-      sidebarStyle: true,
-      entries: [
-        for (final value in McpSection.values)
-          WorkspaceHubEntry(
-            title: value.title(l10n),
-            icon: mcpSectionIcon(value),
-            selected: section == value,
-            onTap: throttledTap(
-              'mcp_nav_${value.name}',
-              () => onSelect(value),
-            ),
-          ),
-      ],
-    );
-  }
+  navigateWorkspaceRoute(context, McpSectionRoute(target).routePath());
 }
 
 class McpManagementHubPage extends StatelessWidget {
@@ -145,7 +80,7 @@ class McpManagementHubPage extends StatelessWidget {
             icon: mcpSectionIcon(section),
             onTap: throttledTap(
               'mcp_hub_${section.name}',
-              () => context.push(section.routePath()),
+              () => context.push(McpSectionRoute(section).routePath()),
             ),
           ),
       ],
@@ -319,17 +254,18 @@ class _McpManagementPageState extends State<McpManagementPage> {
           McpSection.registries => const McpRegistriesSection(),
         };
 
-        if (useAndroidHubNavigation(context)) {
-          return WorkspaceSectionPage(
-            pageKey: AppKeys.mcpWorkspace,
-            child: sectionBody,
-          );
-        }
-
-        return McpWorkspaceShell(
-          section: widget.section,
+        return WorkspaceAdaptiveSectionPage(
+          pageKey: AppKeys.mcpWorkspace,
+          title: context.l10n.mcpNavTitle,
+          subtitle: context.l10n.mcpSubtitle,
           bodyAnimationKey: ValueKey('mcp-body-${widget.section.name}'),
-          onSelectSection: (target) => navigateMcpSection(context, target),
+          nav: WorkspaceEnumNavPanel<McpSection>(
+            sections: McpSection.values,
+            current: widget.section,
+            basePath: '/mcp',
+            descriptor: (s) => s,
+            onSelect: (target) => navigateMcpSection(context, target),
+          ),
           body: sectionBody,
         );
       },
