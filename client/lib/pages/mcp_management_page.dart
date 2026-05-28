@@ -3,16 +3,13 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../cubits/mcp_cubit.dart';
+import '../cubits/mcp_discovery_cubit.dart';
 import '../l10n/l10n_extensions.dart';
 import '../theme/workspace_surface_layers.dart';
 import '../models/mcp_catalog_listing.dart';
 import '../models/mcp_server.dart';
 import '../services/app/platform_utils.dart';
-import '../models/mcp_registry_source.dart';
-import '../services/mcp/mcp_catalog_mapper.dart';
-import '../services/mcp/mcp_registry_config_service.dart';
-import '../services/mcp/smithery_mcp_auth.dart';
-import '../services/mcp/smithery_mcp_service.dart';
+import '../services/mcp/mcp_listing_install_service.dart';
 import '../utils/app_keys.dart';
 import '../utils/debounce/debounce.dart';
 import '../widgets/settings/workspace_hub_shell.dart';
@@ -179,35 +176,22 @@ class McpManagementPage extends StatefulWidget {
 }
 
 class _McpManagementPageState extends State<McpManagementPage> {
+  late final McpDiscoveryCubit _discoveryCubit;
+  late final McpListingInstallService _listingInstall;
+
   @override
   void initState() {
     super.initState();
+    _discoveryCubit = McpDiscoveryCubit();
+    _listingInstall = McpListingInstallService();
     context.read<McpCubit>().loadAll();
   }
 
-  Future<McpCatalogListing> _resolveSmitheryListing(
-    McpCatalogListing listing,
-  ) async {
-    final qn = listing.smitheryQualifiedName;
-    if (qn == null || qn.isEmpty) return listing;
-    try {
-      final config = await McpRegistryConfigService().load();
-      final baseUrl =
-          config.byKind(McpRegistrySourceKind.smithery)?.baseUrl ??
-          McpRegistrySourceConfig.defaultBaseUrl(McpRegistrySourceKind.smithery);
-      final smithery = config.byKind(McpRegistrySourceKind.smithery);
-      final detail = await SmitheryMcpService().fetchServerDetail(
-        qn,
-        baseUrl: baseUrl,
-        apiToken: smithery?.apiToken,
-      );
-      if (detail != null) {
-        return McpCatalogMapper.applySmitheryDetail(listing, detail);
-      }
-    } catch (_) {
-      // Keep gateway URL from list row.
-    }
-    return listing;
+  @override
+  void dispose() {
+    _discoveryCubit.close();
+    _listingInstall.close();
+    super.dispose();
   }
 
   Future<void> _addFromListing(McpCatalogListing listing) async {
@@ -217,19 +201,9 @@ class _McpManagementPageState extends State<McpManagementPage> {
       navigateMcpEdit(context, existing.first);
       return;
     }
-    final resolved = listing.source == McpCatalogSource.smithery
-        ? await _resolveSmitheryListing(listing)
-        : listing;
-    if (!mounted) return;
     final now = DateTime.now().millisecondsSinceEpoch;
-    var draft = McpCatalogMapper.draftFromListing(resolved, now: now);
-    if (resolved.source == McpCatalogSource.smithery) {
-      final config = await McpRegistryConfigService().load();
-      final token = config.byKind(McpRegistrySourceKind.smithery)?.apiToken;
-      draft = draft.copyWith(
-        server: SmitheryMcpAuth.applyCatalogBearer(draft.server, token),
-      );
-    }
+    final draft = await _listingInstall.draftFromListing(listing, now: now);
+    if (!mounted) return;
     final ok = await cubit.upsert(draft);
     if (!mounted) return;
     if (ok) {
@@ -332,7 +306,7 @@ class _McpManagementPageState extends State<McpManagementPage> {
         context.read<McpCubit>().clearError();
       },
       builder: (context, state) {
-        final body = switch (widget.section) {
+        final sectionBody = switch (widget.section) {
           McpSection.installed => McpInstalledSection(
             state: state,
             onImport: _importFromMachine,
@@ -345,11 +319,14 @@ class _McpManagementPageState extends State<McpManagementPage> {
             ),
             onOAuthConnected: () {},
           ),
-          McpSection.discovery => McpDiscoverySection(
-            onAddListing: _addFromListing,
-            onGoRegistries: () => navigateMcpSection(
-              context,
-              McpSection.registries,
+          McpSection.discovery => BlocProvider.value(
+            value: _discoveryCubit,
+            child: McpDiscoverySection(
+              onAddListing: _addFromListing,
+              onGoRegistries: () => navigateMcpSection(
+                context,
+                McpSection.registries,
+              ),
             ),
           ),
           McpSection.registries => const McpRegistriesSection(),
@@ -358,7 +335,7 @@ class _McpManagementPageState extends State<McpManagementPage> {
         if (useAndroidHubNavigation(context)) {
           return WorkspaceSectionPage(
             pageKey: AppKeys.mcpWorkspace,
-            child: body,
+            child: sectionBody,
           );
         }
 
@@ -366,7 +343,7 @@ class _McpManagementPageState extends State<McpManagementPage> {
           section: widget.section,
           bodyAnimationKey: ValueKey('mcp-body-${widget.section.name}'),
           onSelectSection: (target) => navigateMcpSection(context, target),
-          body: body,
+          body: sectionBody,
         );
       },
     );

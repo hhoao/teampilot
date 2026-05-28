@@ -17,6 +17,10 @@ class McpRepository {
   final McpCatalogService? _catalog;
   final McpServerValidator _validator;
 
+  List<McpServer>? _cache;
+
+  void invalidateCache() => _cache = null;
+
   Future<McpCatalogService> _resolveCatalog() async {
     final injected = _catalog;
     if (injected != null) return injected;
@@ -27,9 +31,11 @@ class McpRepository {
     return McpCatalogService(catalogPath: AppStorage.paths.mcpServersJson);
   }
 
-  Future<List<McpServer>> loadAll() async {
+  Future<List<McpServer>> loadAll({bool forceReload = false}) async {
+    if (!forceReload && _cache != null) return _cache!;
     final catalog = await _resolveCatalog();
-    return catalog.loadAll();
+    _cache = await catalog.loadAll();
+    return _cache!;
   }
 
   Future<McpServer?> findById(String id) async {
@@ -58,12 +64,20 @@ class McpRepository {
     }
     final catalog = await _resolveCatalog();
     await catalog.upsert(server);
+    if (_cache != null) {
+      _cache = [..._cache!.where((s) => s.id != server.id), server];
+    } else {
+      _cache = await catalog.loadAll();
+    }
     return server;
   }
 
   Future<void> deleteById(String id) async {
     final catalog = await _resolveCatalog();
     await catalog.deleteById(id);
+    if (_cache != null) {
+      _cache = _cache!.where((s) => s.id != id).toList();
+    }
   }
 
   Future<McpCatalogService> catalogService() => _resolveCatalog();

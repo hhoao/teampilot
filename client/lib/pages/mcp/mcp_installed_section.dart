@@ -94,82 +94,78 @@ class _McpInstalledSectionState extends State<McpInstalledSection> {
     final toolbarBusy = state.busyIds.isNotEmpty;
     final loading = state.status == McpLoadStatus.loading && servers.isEmpty;
 
-    return SingleChildScrollView(
+    return McpWorkspaceCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          McpWorkspaceCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
+          McpCardHeader(
+            title: l10n.mcpInstalledCount(servers.length),
+            trailing: Wrap(
+              spacing: 8,
               children: [
-                McpCardHeader(
-                  title: l10n.mcpInstalledCount(servers.length),
-                  trailing: Wrap(
-                    spacing: 8,
-                    children: [
-                      OutlinedButton.icon(
-                        onPressed: toolbarBusy ? null : widget.onImport,
-                        icon: const Icon(Icons.download_outlined, size: 16),
-                        label: Text(l10n.mcpImportExisting),
-                      ),
-                      OutlinedButton.icon(
-                        onPressed: toolbarBusy ? null : widget.onAdd,
-                        icon: const Icon(Icons.add, size: 16),
-                        label: Text(l10n.mcpAddButton),
-                      ),
-                    ],
-                  ),
+                OutlinedButton.icon(
+                  onPressed: toolbarBusy ? null : widget.onImport,
+                  icon: const Icon(Icons.download_outlined, size: 16),
+                  label: Text(l10n.mcpImportExisting),
                 ),
-                const SizedBox(height: 14),
-                if (loading)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 32),
-                    child: Center(child: CircularProgressIndicator()),
-                  )
-                else if (state.status == McpLoadStatus.error)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    child: Text(
-                      state.errorMessage ?? 'Error',
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.error,
-                      ),
-                    ),
-                  )
-                else if (servers.isEmpty)
-                  McpEmptyBlock(
-                    icon: Icons.dns_outlined,
-                    title: l10n.mcpNoInstalled,
-                    hint: l10n.mcpNoInstalledHint,
-                    actionLabel: l10n.mcpEmptyGoDiscovery,
-                    onAction: widget.onGoDiscovery,
-                  )
-                else
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      for (final server in servers)
-                        McpInstalledServerRow(
-                          server: server,
-                          busy: state.busyIds.contains(server.id),
-                          onEdit: () => widget.onEdit(server),
-                          onDelete: () => widget.onDelete(server),
-                          onToggleEnabled: (enabled) =>
-                              cubit.toggleEnabled(server, enabled),
-                          oauthAuthenticated: mcpServerShowsOAuthConnect(server)
-                              ? (_oauthStatus == null
-                                  ? null
-                                  : (_oauthStatus![server.id] ?? false))
-                              : null,
-                          onOAuthConnect: mcpServerShowsOAuthConnect(server)
-                              ? () => _connectOAuth(server)
-                              : null,
-                        ),
-                    ],
-                  ),
+                OutlinedButton.icon(
+                  onPressed: toolbarBusy ? null : widget.onAdd,
+                  icon: const Icon(Icons.add, size: 16),
+                  label: Text(l10n.mcpAddButton),
+                ),
               ],
             ),
           ),
+          const SizedBox(height: 14),
+          if (loading)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 32),
+              child: Center(child: CircularProgressIndicator()),
+            )
+          else if (state.status == McpLoadStatus.error)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              child: Text(
+                state.errorMessage ?? 'Error',
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.error,
+                ),
+              ),
+            )
+          else if (servers.isEmpty)
+            McpEmptyBlock(
+              icon: Icons.dns_outlined,
+              title: l10n.mcpNoInstalled,
+              hint: l10n.mcpNoInstalledHint,
+              actionLabel: l10n.mcpEmptyGoDiscovery,
+              onAction: widget.onGoDiscovery,
+            )
+          else
+            Expanded(
+              child: ListView.builder(
+                padding: EdgeInsets.zero,
+                itemCount: servers.length,
+                itemBuilder: (context, index) {
+                  final server = servers[index];
+                  return McpInstalledServerRow(
+                    server: server,
+                    busy: state.busyIds.contains(server.id),
+                    onEdit: () => widget.onEdit(server),
+                    onDelete: () => widget.onDelete(server),
+                    onToggleEnabled: (enabled) =>
+                        cubit.toggleEnabled(server, enabled),
+                    oauthAuthenticated: mcpServerShowsOAuthConnect(server)
+                        ? (_oauthStatus == null
+                            ? null
+                            : (_oauthStatus![server.id] ?? false))
+                        : null,
+                    onOAuthConnect: mcpServerShowsOAuthConnect(server)
+                        ? () => _connectOAuth(server)
+                        : null,
+                  );
+                },
+              ),
+            ),
         ],
       ),
     );
