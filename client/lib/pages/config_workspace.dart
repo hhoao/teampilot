@@ -10,7 +10,6 @@ import '../l10n/l10n_extensions.dart';
 import '../models/app_provider_config.dart';
 import '../models/layout_preferences.dart';
 import '../repositories/app_settings_repository.dart';
-import '../services/app/platform_utils.dart';
 import '../services/team/rtk_detector.dart';
 import '../theme/app_text_styles.dart';
 import '../theme/app_theme.dart';
@@ -18,6 +17,7 @@ import '../theme/app_typography_scale.dart';
 import '../utils/app_keys.dart';
 import '../utils/debounce/debounce.dart';
 import '../widgets/settings/workspace_hub_shell.dart';
+import '../widgets/settings/workspace_section_host.dart';
 import '../widgets/settings/typography_scale_setting.dart';
 import '../widgets/settings/workspace_settings_toggle_strip.dart';
 import '../widgets/settings/workspace_settings_widgets.dart';
@@ -108,6 +108,7 @@ class ConfigWorkspace extends StatelessWidget {
   Widget build(BuildContext context) {
     final configCubit = context.watch<ConfigCubit>();
     final team = context.watch<TeamCubit>().state.selectedTeam;
+    final l10n = context.l10n;
 
     if (configCubit.state.section != section) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -119,48 +120,28 @@ class ConfigWorkspace extends StatelessWidget {
       return const Center(child: CircularProgressIndicator());
     }
 
-    if (useAndroidHubNavigation(context)) {
-      return _AndroidConfigSectionPage(
-        section: section,
-        initialProviderCli: initialProviderCli,
-        showAddProviderOnOpen: showAddProviderOnOpen,
-      );
-    }
-
-    return _DesktopConfigWorkspace(
-      section: configCubit.state.section,
-      onSelectSection: (selected) {
-        context.read<ConfigCubit>().selectSection(selected);
-        context.go('/config/${selected.name}');
-      },
-      initialProviderCli: initialProviderCli,
-      showAddProviderOnOpen: showAddProviderOnOpen,
-    );
-  }
-}
-
-class _AndroidConfigSectionPage extends StatelessWidget {
-  const _AndroidConfigSectionPage({
-    required this.section,
-    this.initialProviderCli,
-    this.showAddProviderOnOpen = false,
-  });
-
-  final ConfigSection section;
-  final AppProviderCli? initialProviderCli;
-  final bool showAddProviderOnOpen;
-
-  @override
-  Widget build(BuildContext context) {
     const showHeading = false;
+    final currentSection = configCubit.state.section;
 
-    return WorkspaceSectionPage(
+    return WorkspaceAdaptiveSectionPage(
       pageKey: AppKeys.configWorkspace,
-      child: switch (section) {
+      title: l10n.settings,
+      subtitle: l10n.settingsPageSubtitle,
+      bodyAnimationKey: ValueKey('settings-body-${section.name}'),
+      nav: _ConfigNavPanel(
+        section: currentSection,
+        onSelectSection: (selected) {
+          context.read<ConfigCubit>().selectSection(selected);
+          context.go('/config/${selected.name}');
+        },
+        l10n: l10n,
+      ),
+      body: switch (currentSection) {
         ConfigSection.layout => LayoutConfigWorkspace(showHeading: showHeading),
         ConfigSection.llm => LlmConfigWorkspace(
           initialCli: initialProviderCli,
           showAddProviderOnOpen: showAddProviderOnOpen,
+          showHeading: showHeading,
         ),
         ConfigSection.session => SessionConfigWorkspace(
           showHeading: showHeading,
@@ -168,70 +149,6 @@ class _AndroidConfigSectionPage extends StatelessWidget {
         ConfigSection.about => AboutConfigWorkspace(showHeading: showHeading),
         ConfigSection.logs => LogConfigWorkspace(showHeading: showHeading),
       },
-    );
-  }
-}
-
-class _DesktopConfigWorkspace extends StatelessWidget {
-  const _DesktopConfigWorkspace({
-    required this.section,
-    required this.onSelectSection,
-    this.initialProviderCli,
-    this.showAddProviderOnOpen = false,
-  });
-
-  final ConfigSection section;
-  final ValueChanged<ConfigSection> onSelectSection;
-  final AppProviderCli? initialProviderCli;
-  final bool showAddProviderOnOpen;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final l10n = context.l10n;
-    const showHeading = false;
-
-    return Container(
-      key: AppKeys.configWorkspace,
-      color: cs.workspacePage,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          WorkspaceHubTitleBar(
-            title: l10n.settings,
-            subtitle: l10n.settingsPageSubtitle,
-          ),
-          Expanded(
-            child: WorkspaceSplitShell(
-              bodyAnimationKey: ValueKey('settings-body-${section.name}'),
-              nav: _ConfigNavPanel(
-                section: section,
-                onSelectSection: onSelectSection,
-                l10n: l10n,
-              ),
-              body: switch (section) {
-                ConfigSection.layout => LayoutConfigWorkspace(
-                  showHeading: showHeading,
-                ),
-                ConfigSection.llm => LlmConfigWorkspace(
-                  initialCli: initialProviderCli,
-                  showAddProviderOnOpen: showAddProviderOnOpen,
-                  showHeading: showHeading,
-                ),
-                ConfigSection.session => SessionConfigWorkspace(
-                  showHeading: showHeading,
-                ),
-                ConfigSection.about => AboutConfigWorkspace(
-                  showHeading: showHeading,
-                ),
-                ConfigSection.logs => LogConfigWorkspace(
-                  showHeading: showHeading,
-                ),
-              },
-            ),
-          ),
-        ],
-      ),
     );
   }
 }
