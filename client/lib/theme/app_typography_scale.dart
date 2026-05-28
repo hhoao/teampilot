@@ -8,22 +8,52 @@ import 'package:flutter/material.dart';
 ///
 /// Exceptions: terminal [TerminalStyle] uses [terminal]; see `chat_workbench.dart`.
 
-/// Persisted scale ids (settings UI order: compact → standard → comfortable).
-const List<String> kTypographyScaleIds = ['compact', 'standard', 'comfortable'];
+/// Persisted scale ids (settings UI order).
+const List<String> kTypographyScaleIds = [
+  'compact',
+  'standard',
+  'comfortable',
+  'custom',
+];
 
 const String kDefaultTypographyScaleId = 'standard';
+
+/// Allowed custom multiplier (× standard).
+const double kTypographyCustomMultiplierMin = 0.75;
+const double kTypographyCustomMultiplierMax = 1.35;
+const double kDefaultTypographyCustomMultiplier = 1.0;
 
 String normalizeTypographyScale(String? raw) {
   if (raw != null && kTypographyScaleIds.contains(raw)) return raw;
   return kDefaultTypographyScaleId;
 }
 
+double clampTypographyCustomMultiplier(double value) => value.clamp(
+  kTypographyCustomMultiplierMin,
+  kTypographyCustomMultiplierMax,
+);
+
 AppTypographyScale typographyScaleForId(String id) =>
     switch (normalizeTypographyScale(id)) {
       'compact' => AppTypographyScale.compact,
       'comfortable' => AppTypographyScale.comfortable,
+      'custom' => AppTypographyScale(
+        multiplier: kDefaultTypographyCustomMultiplier,
+      ),
       _ => AppTypographyScale.standard,
     };
+
+AppTypographyScale typographyScaleForPreferences({
+  required String scaleId,
+  required double customMultiplier,
+}) {
+  if (normalizeTypographyScale(scaleId) == 'custom') {
+    return AppTypographyScale(
+      multiplier: clampTypographyCustomMultiplier(customMultiplier),
+    );
+  }
+  return typographyScaleForId(scaleId);
+}
 
 @immutable
 final class AppTypographyScale {

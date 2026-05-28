@@ -17,7 +17,10 @@ Future<ThemeData> resolveFatalAppTheme() async {
       'dark' => Brightness.dark,
       _ => WidgetsBinding.instance.platformDispatcher.platformBrightness,
     };
-    final typography = typographyScaleForId(layout.typographyScale);
+    final typography = typographyScaleForPreferences(
+      scaleId: layout.typographyScale,
+      customMultiplier: layout.typographyScaleCustomMultiplier,
+    );
     return brightness == Brightness.dark
         ? buildDarkTheme(preset, typography)
         : buildLightTheme(preset, typography);

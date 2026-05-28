@@ -162,6 +162,15 @@ class AppLocalizationsZh extends AppLocalizations {
   String get typographyScaleComfortable => '宽松';
 
   @override
+  String get typographyScaleCustom => '自定义';
+
+  @override
+  String get typographyScaleCustomLabel => '缩放比例';
+
+  @override
+  String get typographyScaleCustomHint => '75–135';
+
+  @override
   String get themePresetGraphite => '石墨';
 
   @override

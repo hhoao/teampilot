@@ -24,6 +24,7 @@ class LayoutPreferences {
     this.themeMode = 'system',
     this.themeColorPreset = kDefaultThemeColorPreset,
     this.typographyScale = kDefaultTypographyScaleId,
+    this.typographyScaleCustomMultiplier = kDefaultTypographyCustomMultiplier,
     this.terminalThemeMode = 'adaptive',
     this.locale = '',
   });
@@ -65,6 +66,12 @@ class LayoutPreferences {
       typographyScale: normalizeTypographyScale(
         json['typographyScale'] as String?,
       ),
+      typographyScaleCustomMultiplier: clampTypographyCustomMultiplier(
+        _doubleValue(
+          json['typographyScaleCustomMultiplier'],
+          fallback: kDefaultTypographyCustomMultiplier,
+        ),
+      ),
       terminalThemeMode: _terminalThemeModeValue(
         json['terminalThemeMode'] as String?,
       ),
@@ -97,6 +104,7 @@ class LayoutPreferences {
   final String themeMode;
   final String themeColorPreset;
   final String typographyScale;
+  final double typographyScaleCustomMultiplier;
   final String terminalThemeMode;
   final String locale;
 
@@ -116,6 +124,7 @@ class LayoutPreferences {
     String? themeMode,
     String? themeColorPreset,
     String? typographyScale,
+    double? typographyScaleCustomMultiplier,
     String? terminalThemeMode,
     String? locale,
   }) {
@@ -147,6 +156,9 @@ class LayoutPreferences {
       typographyScale: typographyScale == null
           ? this.typographyScale
           : normalizeTypographyScale(typographyScale),
+      typographyScaleCustomMultiplier: typographyScaleCustomMultiplier == null
+          ? this.typographyScaleCustomMultiplier
+          : clampTypographyCustomMultiplier(typographyScaleCustomMultiplier),
       terminalThemeMode: terminalThemeMode == null
           ? this.terminalThemeMode
           : _terminalThemeModeValue(terminalThemeMode),
@@ -174,6 +186,7 @@ class LayoutPreferences {
       themeMode: themeMode,
       themeColorPreset: themeColorPreset,
       typographyScale: typographyScale,
+      typographyScaleCustomMultiplier: typographyScaleCustomMultiplier,
       terminalThemeMode: terminalThemeMode,
       locale: locale,
     );
@@ -196,6 +209,7 @@ class LayoutPreferences {
       'themeMode': themeMode,
       'themeColorPreset': themeColorPreset,
       'typographyScale': typographyScale,
+      'typographyScaleCustomMultiplier': typographyScaleCustomMultiplier,
       'terminalThemeMode': terminalThemeMode,
       'locale': locale,
     };

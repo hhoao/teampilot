@@ -392,6 +392,24 @@ abstract class AppLocalizations {
   /// **'Large'**
   String get typographyScaleComfortable;
 
+  /// No description provided for @typographyScaleCustom.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom'**
+  String get typographyScaleCustom;
+
+  /// No description provided for @typographyScaleCustomLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Scale'**
+  String get typographyScaleCustomLabel;
+
+  /// No description provided for @typographyScaleCustomHint.
+  ///
+  /// In en, this message translates to:
+  /// **'75–135'**
+  String get typographyScaleCustomHint;
+
   /// No description provided for @themePresetGraphite.
   ///
   /// In en, this message translates to:

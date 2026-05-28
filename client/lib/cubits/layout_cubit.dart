@@ -99,6 +99,15 @@ class LayoutCubit extends Cubit<LayoutState> {
     ),
   );
 
+  Future<void> setTypographyScaleCustom(double multiplier) => _save(
+    state.preferences.copyWith(
+      typographyScale: 'custom',
+      typographyScaleCustomMultiplier: clampTypographyCustomMultiplier(
+        multiplier,
+      ),
+    ),
+  );
+
   Future<void> setTerminalThemeMode(String mode) =>
       _save(state.preferences.copyWith(terminalThemeMode: mode));
 

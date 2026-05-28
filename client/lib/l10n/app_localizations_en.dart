@@ -171,6 +171,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get typographyScaleComfortable => 'Large';
 
   @override
+  String get typographyScaleCustom => 'Custom';
+
+  @override
+  String get typographyScaleCustomLabel => 'Scale';
+
+  @override
+  String get typographyScaleCustomHint => '75–135';
+
+  @override
   String get themePresetGraphite => 'Graphite';
 
   @override

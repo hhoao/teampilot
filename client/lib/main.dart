@@ -194,7 +194,13 @@ class TeamPilotApp extends StatelessWidget {
     return BlocSelector<
       LayoutCubit,
       LayoutState,
-      (String themeMode, String colorPreset, String typographyScale, String locale)
+      (
+        String themeMode,
+        String colorPreset,
+        String typographyScale,
+        double typographyCustomMultiplier,
+        String locale,
+      )
     >(
       selector: (state) {
         final prefs = state.preferences;
@@ -208,13 +214,22 @@ class TeamPilotApp extends StatelessWidget {
           themeMode,
           normalizeThemeColorPreset(prefs.themeColorPreset),
           normalizeTypographyScale(prefs.typographyScale),
+          prefs.typographyScaleCustomMultiplier,
           prefs.locale,
         );
       },
       builder: (context, themePrefs) {
-        final (themeMode, colorPreset, typographyScaleId, savedLocale) =
-            themePrefs;
-        final typographyScale = typographyScaleForId(typographyScaleId);
+        final (
+          themeMode,
+          colorPreset,
+          typographyScaleId,
+          typographyCustomMultiplier,
+          savedLocale,
+        ) = themePrefs;
+        final typographyScale = typographyScaleForPreferences(
+          scaleId: typographyScaleId,
+          customMultiplier: typographyCustomMultiplier,
+        );
 
         ThemeMode themeModeFromPrefs(String mode) => switch (mode) {
           'light' => ThemeMode.light,

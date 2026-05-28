@@ -18,6 +18,7 @@ import '../theme/app_typography_scale.dart';
 import '../utils/app_keys.dart';
 import '../utils/debounce/debounce.dart';
 import '../widgets/settings/workspace_hub_shell.dart';
+import '../widgets/settings/typography_scale_setting.dart';
 import '../widgets/settings/workspace_settings_toggle_strip.dart';
 import '../widgets/settings/workspace_settings_widgets.dart';
 import 'about_page.dart';
@@ -537,7 +538,7 @@ class _AppearanceSettingsSection extends StatelessWidget {
     return BlocSelector<
       LayoutCubit,
       LayoutState,
-      (String, String, String, String, String)
+      (String, String, String, double, String, String)
     >(
       selector: (state) {
         var themeMode = state.preferences.themeMode;
@@ -556,13 +557,20 @@ class _AppearanceSettingsSection extends StatelessWidget {
           themeMode,
           normalizeThemeColorPreset(state.preferences.themeColorPreset),
           normalizeTypographyScale(state.preferences.typographyScale),
+          state.preferences.typographyScaleCustomMultiplier,
           state.preferences.terminalThemeMode,
           langValue,
         );
       },
       builder: (context, appearance) {
-        final (themeMode, colorPreset, typographyScale, terminalThemeMode, langValue) =
-            appearance;
+        final (
+          themeMode,
+          colorPreset,
+          typographyScale,
+          typographyCustomMultiplier,
+          terminalThemeMode,
+          langValue,
+        ) = appearance;
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -605,26 +613,11 @@ class _AppearanceSettingsSection extends StatelessWidget {
             SettingsLabeledRow(
               title: l10n.typographyScaleTitle,
               subtitle: l10n.typographyScaleDescription,
-              trailing: WorkspaceSettingsToggleStrip<String>(
-                segments: [
-                  WorkspaceToggleSegment<String>(
-                    value: 'compact',
-                    label: l10n.typographyScaleCompact,
-                    icon: Icons.density_small_outlined,
-                  ),
-                  WorkspaceToggleSegment<String>(
-                    value: 'standard',
-                    label: l10n.typographyScaleStandard,
-                    icon: Icons.density_medium_outlined,
-                  ),
-                  WorkspaceToggleSegment<String>(
-                    value: 'comfortable',
-                    label: l10n.typographyScaleComfortable,
-                    icon: Icons.density_large_outlined,
-                  ),
-                ],
-                selected: typographyScale,
-                onChanged: controller.setTypographyScale,
+              trailing: TypographyScaleSetting(
+                scaleId: typographyScale,
+                customMultiplier: typographyCustomMultiplier,
+                onScaleIdChanged: controller.setTypographyScale,
+                onCustomMultiplierChanged: controller.setTypographyScaleCustom,
               ),
               showDividerBelow: true,
             ),
