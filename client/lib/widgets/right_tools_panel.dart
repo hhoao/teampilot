@@ -4,9 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../cubits/app_provider_cubit.dart';
 import '../cubits/chat_cubit.dart';
 import '../cubits/editor_cubit.dart';
 import '../cubits/file_tree_cubit.dart';
+import '../models/app_provider_config.dart';
 import '../services/file_tree/file_tree_visible_rows.dart';
 import '../services/storage/app_storage.dart';
 import '../cubits/team_cubit.dart';
@@ -101,6 +103,7 @@ class _RightToolsPanelState extends State<RightToolsPanel> {
     final panels = <Widget>[
       if (widget.preferences.membersVisible)
         _MembersPanel(
+          teamCli: team.cli,
           members: members,
           memberPresence: chatCubit.state.memberPresence,
           selectedMemberId: chatCubit.state.selectedMemberId,
@@ -126,14 +129,8 @@ class _RightToolsPanelState extends State<RightToolsPanel> {
       key: widget.panelKey,
       color: cs.workspaceSubtleSurface,
       child: widget.preferences.toolsArrangement == ToolsArrangement.tabs
-          ? _TabbedToolsPanel(
-              panels: panels,
-              preferences: widget.preferences,
-            )
-          : _StackedToolsPanel(
-              panels: panels,
-              preferences: widget.preferences,
-            ),
+          ? _TabbedToolsPanel(panels: panels, preferences: widget.preferences)
+          : _StackedToolsPanel(panels: panels, preferences: widget.preferences),
     );
   }
 }
@@ -191,6 +188,7 @@ class _TabbedToolsPanel extends StatelessWidget {
 
 class _MembersPanel extends StatelessWidget {
   const _MembersPanel({
+    required this.teamCli,
     required this.members,
     required this.memberPresence,
     required this.selectedMemberId,
@@ -199,6 +197,7 @@ class _MembersPanel extends StatelessWidget {
     required this.onLaunchAll,
   });
 
+  final TeamCli teamCli;
   final List<TeamMemberConfig> members;
   final Map<String, MemberPresence> memberPresence;
   final String selectedMemberId;
@@ -210,6 +209,17 @@ class _MembersPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final l10n = context.l10n;
+    final catalogCli = switch (teamCli) {
+      TeamCli.flashskyai => AppProviderCli.flashskyai,
+      TeamCli.codex => AppProviderCli.codex,
+      TeamCli.claude => AppProviderCli.claude,
+    };
+    final providerLabels = {
+      for (final p in context.watch<AppProviderCubit>().state.providersFor(
+        catalogCli,
+      ))
+        p.id: p.name,
+    };
     return Container(
       key: AppKeys.membersPanel,
       padding: const EdgeInsets.all(13),
@@ -243,6 +253,7 @@ class _MembersPanel extends StatelessWidget {
               ),
             ],
           ),
+          const SizedBox(height: 10),
           Expanded(
             child: ListView.builder(
               itemCount: members.length,
@@ -252,8 +263,12 @@ class _MembersPanel extends StatelessWidget {
                 final presence =
                     memberPresence[member.id] ?? const MemberPresence.offline();
                 final statusLabel = memberPresenceStatusLabel(l10n, presence);
+                final providerId = member.provider.trim();
+                final providerLabel = providerId.isEmpty
+                    ? ''
+                    : (providerLabels[providerId] ?? providerId);
                 final meta = [
-                  member.provider,
+                  providerLabel,
                   member.model,
                 ].where((v) => v.isNotEmpty).join(' / ');
                 final subtitle = meta.isEmpty
@@ -366,11 +381,7 @@ class _FileTreePanelState extends State<_FileTreePanel> {
         state: _cubit.state,
         pathContext: _cubit.fs.pathContext,
       );
-      final index = visibleRowIndexForPath(
-        rows,
-        target,
-        _cubit.fs.pathContext,
-      );
+      final index = visibleRowIndexForPath(rows, target, _cubit.fs.pathContext);
       if (index == null) {
         if (attempt < 12) {
           _scheduleRevealScroll(attempt + 1);
