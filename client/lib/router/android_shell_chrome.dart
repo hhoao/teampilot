@@ -64,7 +64,7 @@ class AndroidShellChrome {
     if (path.startsWith('/skills/')) {
       final segment = path.replaceFirst('/skills/', '');
       for (final section in SkillSection.values) {
-        if (section.routeSegment() == segment) {
+        if (section.routeSegment == segment) {
           return section.title(l10n);
         }
       }

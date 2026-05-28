@@ -16,19 +16,35 @@ import '../utils/skill_repo_parse.dart';
 import '../widgets/github_details_button.dart';
 import '../widgets/dropdown/flashsky_dropdown_field.dart';
 import '../widgets/settings/workspace_hub_shell.dart';
+import '../widgets/settings/workspace_section_host.dart';
+import '../widgets/settings/workspace_section_navigation.dart';
 import '../theme/app_text_styles.dart';
 import '../theme/workspace_surface_layers.dart';
 
-enum SkillSection { installed, discovery, repos }
+enum SkillSection implements WorkspaceSectionDescriptor {
+  installed,
+  discovery,
+  repos;
 
-extension SkillSectionRoute on SkillSection {
-  String routeSegment() => name;
+  @override
+  String get routeSegment => name;
 
+  @override
+  String routePath(String basePath) => '$basePath/$routeSegment';
+
+  @override
   String title(AppLocalizations l10n) => switch (this) {
     SkillSection.installed => l10n.skillsNavInstalled,
     SkillSection.discovery => l10n.skillsNavDiscovery,
     SkillSection.repos => l10n.skillsNavRepos,
   };
+
+  @override
+  IconData get icon => _skillSectionIcon(this);
+}
+
+void navigateSkillSection(BuildContext context, SkillSection target) {
+  navigateWorkspaceRoute(context, target.routePath('/skills'));
 }
 
 class SkillManagementHubPage extends StatelessWidget {
@@ -48,7 +64,7 @@ class SkillManagementHubPage extends StatelessWidget {
             icon: _skillSectionIcon(section),
             onTap: throttledTap(
               'skill_hub_${section.name}',
-              () => context.push('/skills/${section.routeSegment()}'),
+              () => context.push(section.routePath('/skills')),
             ),
           ),
       ],
@@ -69,8 +85,6 @@ class SkillManagementPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final l10n = context.l10n;
     return BlocConsumer<SkillCubit, SkillState>(
       listenWhen: (a, b) =>
           a.errorMessage != b.errorMessage && b.errorMessage != null,
@@ -84,88 +98,34 @@ class SkillManagementPage extends StatelessWidget {
         context.read<SkillCubit>().clearError();
       },
       builder: (context, state) {
-        final body = switch (section) {
+        final sectionBody = switch (section) {
           SkillSection.installed => _InstalledSection(
             state: state,
-            onGoDiscovery: () => _goSection(context, SkillSection.discovery),
+            onGoDiscovery: () =>
+                navigateSkillSection(context, SkillSection.discovery),
           ),
           SkillSection.discovery => _DiscoverySection(
             state: state,
-            onGoRepos: () => _goSection(context, SkillSection.repos),
+            onGoRepos: () => navigateSkillSection(context, SkillSection.repos),
           ),
           SkillSection.repos => _ReposSection(state: state),
         };
 
-        if (useAndroidHubNavigation(context)) {
-          return WorkspaceSectionPage(
-            pageKey: AppKeys.skillsWorkspace,
-            child: body,
-          );
-        }
-
-        return Container(
-          color: cs.workspacePage,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              WorkspaceHubTitleBar(
-                title: l10n.skillsTitle,
-                subtitle: l10n.skillsSubtitle,
-              ),
-              Expanded(
-                child: WorkspaceSplitShell(
-                  bodyAnimationKey: ValueKey('skills-body-${section.name}'),
-                  nav: _SkillsNavPanel(
-                    section: section,
-                    l10n: l10n,
-                    onSelect: (s) => _goSection(context, s),
-                  ),
-                  body: body,
-                ),
-              ),
-            ],
+        return WorkspaceAdaptiveSectionPage(
+          pageKey: AppKeys.skillsWorkspace,
+          title: context.l10n.skillsTitle,
+          subtitle: context.l10n.skillsSubtitle,
+          bodyAnimationKey: ValueKey('skills-body-${section.name}'),
+          nav: WorkspaceEnumNavPanel<SkillSection>(
+            sections: SkillSection.values,
+            current: section,
+            basePath: '/skills',
+            descriptor: (s) => s,
+            onSelect: (target) => navigateSkillSection(context, target),
           ),
+          body: sectionBody,
         );
       },
-    );
-  }
-
-  void _goSection(BuildContext context, SkillSection target) {
-    if (useAndroidHubNavigation(context)) {
-      context.push('/skills/${target.routeSegment()}');
-    } else {
-      context.go('/skills/${target.routeSegment()}');
-    }
-  }
-}
-
-class _SkillsNavPanel extends StatelessWidget {
-  const _SkillsNavPanel({
-    required this.section,
-    required this.l10n,
-    required this.onSelect,
-  });
-
-  final SkillSection section;
-  final AppLocalizations l10n;
-  final ValueChanged<SkillSection> onSelect;
-
-  @override
-  Widget build(BuildContext context) {
-    return WorkspaceHubNavList(
-      sidebarStyle: true,
-      entries: [
-        for (final value in SkillSection.values)
-          WorkspaceHubEntry(
-            title: value.title(l10n),
-            icon: _skillSectionIcon(value),
-            selected: section == value,
-            onTap: throttledTap(
-              'skill_nav_${value.name}',
-              () => onSelect(value),
-            ),
-          ),
-      ],
     );
   }
 }

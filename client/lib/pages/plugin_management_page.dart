@@ -18,19 +18,35 @@ import '../utils/skill_repo_parse.dart';
 import '../widgets/github_details_button.dart';
 import '../widgets/dropdown/flashsky_dropdown_field.dart';
 import '../widgets/settings/workspace_hub_shell.dart';
+import '../widgets/settings/workspace_section_host.dart';
+import '../widgets/settings/workspace_section_navigation.dart';
 import '../theme/app_text_styles.dart';
 import '../theme/workspace_surface_layers.dart';
 
-enum PluginSection { installed, discovery, marketplaces }
+enum PluginSection implements WorkspaceSectionDescriptor {
+  installed,
+  discovery,
+  marketplaces;
 
-extension PluginSectionRoute on PluginSection {
-  String routeSegment() => name;
+  @override
+  String get routeSegment => name;
 
+  @override
+  String routePath(String basePath) => '$basePath/$routeSegment';
+
+  @override
   String title(AppLocalizations l10n) => switch (this) {
     PluginSection.installed => l10n.pluginsNavInstalled,
     PluginSection.discovery => l10n.pluginsNavDiscovery,
     PluginSection.marketplaces => l10n.pluginsNavMarketplaces,
   };
+
+  @override
+  IconData get icon => _pluginSectionIcon(this);
+}
+
+void navigatePluginSection(BuildContext context, PluginSection target) {
+  navigateWorkspaceRoute(context, target.routePath('/plugins'));
 }
 
 class PluginManagementHubPage extends StatelessWidget {
@@ -50,7 +66,7 @@ class PluginManagementHubPage extends StatelessWidget {
             icon: _pluginSectionIcon(section),
             onTap: throttledTap(
               'plugin_hub_${section.name}',
-              () => context.push('/plugins/${section.routeSegment()}'),
+              () => context.push(section.routePath('/plugins')),
             ),
           ),
       ],
@@ -71,8 +87,6 @@ class PluginManagementPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final l10n = context.l10n;
     return BlocConsumer<PluginCubit, PluginState>(
       listenWhen: (a, b) =>
           a.errorMessage != b.errorMessage && b.errorMessage != null,
@@ -86,89 +100,35 @@ class PluginManagementPage extends StatelessWidget {
         context.read<PluginCubit>().clearError();
       },
       builder: (context, state) {
-        final body = switch (section) {
+        final sectionBody = switch (section) {
           PluginSection.installed => _InstalledSection(
             state: state,
-            onGoDiscovery: () => _goSection(context, PluginSection.discovery),
+            onGoDiscovery: () =>
+                navigatePluginSection(context, PluginSection.discovery),
           ),
           PluginSection.discovery => _DiscoverySection(
             state: state,
             onGoMarketplaces: () =>
-                _goSection(context, PluginSection.marketplaces),
+                navigatePluginSection(context, PluginSection.marketplaces),
           ),
           PluginSection.marketplaces => _MarketplacesSection(state: state),
         };
 
-        if (useAndroidHubNavigation(context)) {
-          return WorkspaceSectionPage(
-            pageKey: AppKeys.pluginsWorkspace,
-            child: body,
-          );
-        }
-
-        return Container(
-          color: cs.workspacePage,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              WorkspaceHubTitleBar(
-                title: l10n.pluginsTitle,
-                subtitle: l10n.pluginsSubtitle,
-              ),
-              Expanded(
-                child: WorkspaceSplitShell(
-                  bodyAnimationKey: ValueKey('plugins-body-${section.name}'),
-                  nav: _PluginNavPanel(
-                    section: section,
-                    l10n: l10n,
-                    onSelect: (s) => _goSection(context, s),
-                  ),
-                  body: body,
-                ),
-              ),
-            ],
+        return WorkspaceAdaptiveSectionPage(
+          pageKey: AppKeys.pluginsWorkspace,
+          title: context.l10n.pluginsTitle,
+          subtitle: context.l10n.pluginsSubtitle,
+          bodyAnimationKey: ValueKey('plugins-body-${section.name}'),
+          nav: WorkspaceEnumNavPanel<PluginSection>(
+            sections: PluginSection.values,
+            current: section,
+            basePath: '/plugins',
+            descriptor: (s) => s,
+            onSelect: (target) => navigatePluginSection(context, target),
           ),
+          body: sectionBody,
         );
       },
-    );
-  }
-
-  void _goSection(BuildContext context, PluginSection target) {
-    if (useAndroidHubNavigation(context)) {
-      context.push('/plugins/${target.routeSegment()}');
-    } else {
-      context.go('/plugins/${target.routeSegment()}');
-    }
-  }
-}
-
-class _PluginNavPanel extends StatelessWidget {
-  const _PluginNavPanel({
-    required this.section,
-    required this.l10n,
-    required this.onSelect,
-  });
-
-  final PluginSection section;
-  final AppLocalizations l10n;
-  final ValueChanged<PluginSection> onSelect;
-
-  @override
-  Widget build(BuildContext context) {
-    return WorkspaceHubNavList(
-      sidebarStyle: true,
-      entries: [
-        for (final value in PluginSection.values)
-          WorkspaceHubEntry(
-            title: value.title(l10n),
-            icon: _pluginSectionIcon(value),
-            selected: section == value,
-            onTap: throttledTap(
-              'plugin_nav_${value.name}',
-              () => onSelect(value),
-            ),
-          ),
-      ],
     );
   }
 }
