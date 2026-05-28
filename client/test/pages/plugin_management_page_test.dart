@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:teampilot/cubits/layout_cubit.dart';
 import 'package:teampilot/cubits/plugin_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/plugin.dart';
@@ -35,10 +36,13 @@ void main() {
   Widget wrap(PluginState state, Widget child) => MaterialApp(
     localizationsDelegates: AppLocalizations.localizationsDelegates,
     supportedLocales: AppLocalizations.supportedLocales,
-    home: Scaffold(
-      body: BlocProvider.value(
-        value: PluginCubit.test(state),
-        child: child,
+    home: BlocProvider(
+      create: (_) => LayoutCubit(),
+      child: Scaffold(
+        body: BlocProvider.value(
+          value: PluginCubit.test(state),
+          child: child,
+        ),
       ),
     ),
   );
