@@ -12,18 +12,6 @@ import '../support/post_frame_test_harness.dart';
 
 String _executable() => 'flashskyai';
 
-Future<void> _deleteTempDir(Directory dir) async {
-  for (var attempt = 0; attempt < 8; attempt++) {
-    try {
-      if (dir.existsSync()) {
-        await dir.delete(recursive: true);
-      }
-      return;
-    } on PathAccessException {
-      await Future<void>.delayed(Duration(milliseconds: 40 * (attempt + 1)));
-    }
-  }
-}
 
 class _FakeTerminalSession extends TerminalSession {
   _FakeTerminalSession({required super.executable});
@@ -281,8 +269,11 @@ void main() {
     });
 
     tearDown(() async {
+      await postFrame.flush();
+      await drainPendingAsyncWork();
       await cubit.close();
-      await _deleteTempDir(tmp);
+      await drainPendingAsyncWork();
+      await deleteTempDirBestEffort(tmp);
     });
 
     test('materializes tab when selectedMemberId is empty', () async {
@@ -294,6 +285,7 @@ void main() {
       expect(cubit.state.selectedMemberId, '');
       await cubit.connectSession(team);
       await postFrame.flush();
+      await drainPendingAsyncWork();
       expect(cubit.state.tabs.length, 1);
       expect(cubit.state.selectedMemberId, 'm-lead');
     });

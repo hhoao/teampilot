@@ -66,3 +66,26 @@ Future<void> drainPostFrameQueue(List<VoidCallback> queue) async {
     await runScheduledCallback(queue.removeAt(0));
   }
 }
+
+/// Drains microtasks after tests (e.g. [ChatCubit] `unawaited` session persist).
+Future<void> drainPendingAsyncWork({int rounds = 5}) async {
+  for (var i = 0; i < rounds; i++) {
+    await pumpEventQueue();
+    await Future<void>.delayed(Duration.zero);
+  }
+}
+
+/// Best-effort temp dir cleanup (Windows CI may still hold profile files briefly).
+Future<void> deleteTempDirBestEffort(Directory dir) async {
+  for (var attempt = 0; attempt < 12; attempt++) {
+    try {
+      if (await dir.exists()) {
+        await dir.delete(recursive: true);
+      }
+      return;
+    } on FileSystemException {
+      await drainPendingAsyncWork(rounds: 2);
+      await Future<void>.delayed(Duration(milliseconds: 30 * (attempt + 1)));
+    }
+  }
+}

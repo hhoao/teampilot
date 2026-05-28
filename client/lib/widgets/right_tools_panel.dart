@@ -12,13 +12,15 @@ import '../services/storage/app_storage.dart';
 import '../cubits/team_cubit.dart';
 import '../l10n/l10n_extensions.dart';
 import '../models/layout_preferences.dart';
+import '../models/member_presence.dart';
 import '../models/team_config.dart';
 import '../theme/workspace_surface_layers.dart';
 import '../utils/app_keys.dart';
 import '../utils/debounce/debounce.dart';
 import 'file_tree_node.dart';
+import 'member_presence_indicator.dart';
 
-class RightToolsPanel extends StatelessWidget {
+class RightToolsPanel extends StatefulWidget {
   const RightToolsPanel({
     this.preferences = const LayoutPreferences(),
     this.panelKey = AppKeys.rightToolsPanel,
@@ -29,6 +31,26 @@ class RightToolsPanel extends StatelessWidget {
   final LayoutPreferences preferences;
   final Key panelKey;
   final bool dismissDrawerOnAction;
+
+  @override
+  State<RightToolsPanel> createState() => _RightToolsPanelState();
+}
+
+class _RightToolsPanelState extends State<RightToolsPanel> {
+  String? _syncedPresenceTeamId;
+  ChatCubit? _chatCubit;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _chatCubit = context.read<ChatCubit>();
+  }
+
+  @override
+  void dispose() {
+    _chatCubit?.stopPresencePolling();
+    super.dispose();
+  }
 
   static String _sessionCwd(ChatCubit chatCubit) {
     final tabs = chatCubit.state.tabs;
@@ -48,6 +70,15 @@ class RightToolsPanel extends StatelessWidget {
     final teamCubit = context.watch<TeamCubit>();
     final chatCubit = context.watch<ChatCubit>();
     final team = teamCubit.state.selectedTeam;
+    final teamId = team?.id;
+    if (teamId != _syncedPresenceTeamId) {
+      _syncedPresenceTeamId = teamId;
+      final cubit = _chatCubit;
+      final teamSnapshot = team;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        cubit?.syncPresenceTeam(teamSnapshot);
+      });
+    }
     if (team == null) return const SizedBox.shrink();
 
     final members = [...team.members]
@@ -57,15 +88,16 @@ class RightToolsPanel extends StatelessWidget {
         return 0;
       });
     void maybeDismissDrawer() {
-      if (dismissDrawerOnAction) {
+      if (widget.dismissDrawerOnAction) {
         Navigator.of(context).maybePop();
       }
     }
 
     final panels = <Widget>[
-      if (preferences.membersVisible)
+      if (widget.preferences.membersVisible)
         _MembersPanel(
           members: members,
+          memberPresence: chatCubit.state.memberPresence,
           selectedMemberId: chatCubit.state.selectedMemberId,
           onSelected: (id) {
             final member = team.members.firstWhere((m) => m.id == id);
@@ -81,18 +113,22 @@ class RightToolsPanel extends StatelessWidget {
             await context.read<ChatCubit>().launchAllMembers(team);
             maybeDismissDrawer();
           }),
-          isMemberRunning: (id) =>
-              context.read<ChatCubit>().isMemberRunning(id),
         ),
-      if (preferences.fileTreeVisible)
+      if (widget.preferences.fileTreeVisible)
         _FileTreePanel(team: team, cwd: _sessionCwd(chatCubit)),
     ];
     return Container(
-      key: panelKey,
+      key: widget.panelKey,
       color: cs.workspaceSubtleSurface,
-      child: preferences.toolsArrangement == ToolsArrangement.tabs
-          ? _TabbedToolsPanel(panels: panels, preferences: preferences)
-          : _StackedToolsPanel(panels: panels, preferences: preferences),
+      child: widget.preferences.toolsArrangement == ToolsArrangement.tabs
+          ? _TabbedToolsPanel(
+              panels: panels,
+              preferences: widget.preferences,
+            )
+          : _StackedToolsPanel(
+              panels: panels,
+              preferences: widget.preferences,
+            ),
     );
   }
 }
@@ -151,26 +187,24 @@ class _TabbedToolsPanel extends StatelessWidget {
 class _MembersPanel extends StatelessWidget {
   const _MembersPanel({
     required this.members,
+    required this.memberPresence,
     required this.selectedMemberId,
     required this.onSelected,
     required this.onOpen,
     required this.onLaunchAll,
-    required this.isMemberRunning,
   });
 
   final List<TeamMemberConfig> members;
+  final Map<String, MemberPresence> memberPresence;
   final String selectedMemberId;
   final ValueChanged<String> onSelected;
   final ValueChanged<String> onOpen;
   final VoidCallback onLaunchAll;
-  final bool Function(String memberId) isMemberRunning;
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final l10n = context.l10n;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textBase = isDark ? Colors.white : const Color(0xFF111827);
     return Container(
       key: AppKeys.membersPanel,
       padding: const EdgeInsets.all(13),
@@ -182,9 +216,8 @@ class _MembersPanel extends StatelessWidget {
               Expanded(
                 child: Text(
                   l10n.members,
-                  style: TextStyle(
-                    color: textBase.withValues(alpha: 0.58),
-                    fontSize: 11,
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: cs.onSurfaceVariant,
                     fontWeight: FontWeight.w700,
                     letterSpacing: 0.8,
                   ),
@@ -211,7 +244,16 @@ class _MembersPanel extends StatelessWidget {
               itemBuilder: (context, index) {
                 final member = members[index];
                 final selected = member.id == selectedMemberId;
-                final running = isMemberRunning(member.id);
+                final presence =
+                    memberPresence[member.id] ?? const MemberPresence.offline();
+                final statusLabel = memberPresenceStatusLabel(l10n, presence);
+                final meta = [
+                  member.provider,
+                  member.model,
+                ].where((v) => v.isNotEmpty).join(' / ');
+                final subtitle = meta.isEmpty
+                    ? statusLabel
+                    : '$statusLabel · $meta';
                 final titleColor = selected
                     ? cs.onSecondaryContainer
                     : cs.onSurface;
@@ -224,33 +266,23 @@ class _MembersPanel extends StatelessWidget {
                   child: Material(
                     color: selected ? cs.secondaryContainer : cs.workspaceInset,
                     borderRadius: BorderRadius.circular(8),
-                    child: ListTile(
-                      dense: true,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      title: Text(member.name),
-                      textColor: titleColor,
-                      iconColor: titleColor,
-                      subtitle: Text(
-                        [
-                          member.provider,
-                          member.model,
-                        ].where((v) => v.isNotEmpty).join(' / '),
-                        style: TextStyle(color: subtitleColor),
-                      ),
-                      trailing: Container(
-                        key: AppKeys.memberOpenButton(member.id),
-                        width: 12,
-                        height: 12,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: running
-                              ? cs.secondary
-                              : const Color(0xFFEF4444),
+                    child: Tooltip(
+                      message: '$statusLabel · ${member.name}',
+                      child: ListTile(
+                        dense: true,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
                         ),
+                        title: Text(member.name),
+                        textColor: titleColor,
+                        iconColor: titleColor,
+                        subtitle: Text(
+                          subtitle,
+                          style: TextStyle(color: subtitleColor),
+                        ),
+                        trailing: MemberPresenceIndicator(presence: presence),
+                        onTap: () => onSelected(member.id),
                       ),
-                      onTap: () => onSelected(member.id),
                     ),
                   ),
                 );
@@ -372,8 +404,7 @@ class _FileTreePanelState extends State<_FileTreePanel> {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textBase = isDark ? Colors.white : const Color(0xFF111827);
+    final cs = Theme.of(context).colorScheme;
 
     return BlocProvider.value(
       value: _cubit,
@@ -395,12 +426,12 @@ class _FileTreePanelState extends State<_FileTreePanel> {
                         Expanded(
                           child: Text(
                             l10n.fileTree,
-                            style: TextStyle(
-                              color: textBase.withValues(alpha: 0.58),
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: 0.8,
-                            ),
+                            style: Theme.of(context).textTheme.labelSmall
+                                ?.copyWith(
+                                  color: cs.onSurfaceVariant,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: 0.8,
+                                ),
                             overflow: TextOverflow.ellipsis,
                             maxLines: 1,
                           ),
@@ -463,7 +494,7 @@ class _FileTreePanelState extends State<_FileTreePanel> {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
-                            color: textBase.withValues(alpha: 0.56),
+                            color: cs.onSurfaceVariant,
                             fontSize: 12,
                           ),
                         )
@@ -471,7 +502,7 @@ class _FileTreePanelState extends State<_FileTreePanel> {
                         Text(
                           'Directory unavailable',
                           style: TextStyle(
-                            color: textBase.withValues(alpha: 0.4),
+                            color: cs.onSurfaceVariant.withValues(alpha: 0.7),
                             fontSize: 12,
                             fontStyle: FontStyle.italic,
                           ),
@@ -479,7 +510,7 @@ class _FileTreePanelState extends State<_FileTreePanel> {
                       const SizedBox(height: 10),
                       Expanded(
                         child: state.rootExists
-                            ? _buildFileList(state, textBase)
+                            ? _buildFileList(state, cs.onSurface)
                             : const SizedBox.shrink(),
                       ),
                     ],

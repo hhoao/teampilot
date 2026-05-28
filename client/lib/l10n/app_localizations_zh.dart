@@ -222,6 +222,18 @@ class AppLocalizationsZh extends AppLocalizations {
   String get openMember => '打开成员';
 
   @override
+  String get memberPresenceOffline => '未连接';
+
+  @override
+  String get memberPresenceConnecting => '连接中…';
+
+  @override
+  String get memberPresenceIdle => '空闲';
+
+  @override
+  String get memberPresenceWorking => '工作中';
+
+  @override
   String get filterFiles => '筛选文件';
 
   @override

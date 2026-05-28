@@ -36,4 +36,37 @@ void main() {
     expect(config['leadSessionId'], 'old-lead');
     expect(config.containsKey('env'), isFalse);
   });
+
+  test('buildMemberEntry omits isActive; merge preserves prior', () {
+    final service = ClaudeTeamRosterService(fs: LocalFilesystem());
+    final entry = service.buildMemberEntry(
+      member: const TeamMemberConfig(id: 'dev', name: 'researcher'),
+      cliTeamName: 'runtime-team',
+      cwd: '/workspace',
+      teammateMode: 'in-process',
+    );
+    expect(entry.containsKey('isActive'), isFalse);
+
+    final config = service.mergeConfig(
+      cliTeamName: 'runtime-team',
+      members: const [
+        TeamMemberConfig(id: 'dev', name: 'researcher'),
+      ],
+      cwd: '/workspace',
+      teammateMode: 'in-process',
+      existing: {
+        'createdAt': 1,
+        'members': [
+          {
+            'agentId': 'dev@runtime-team',
+            'name': 'dev',
+            'isActive': true,
+          },
+        ],
+      },
+    );
+    final members = config['members'] as List;
+    final dev = members.last as Map;
+    expect(dev['isActive'], isTrue);
+  });
 }

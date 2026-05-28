@@ -895,7 +895,7 @@ void main() {
         '--team',
         'default-team-0',
         '--member',
-        'team-lead',
+        'member',
       ]);
     }
   });

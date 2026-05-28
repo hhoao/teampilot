@@ -941,12 +941,14 @@ void main() {
       repo: repo,
     );
     await postFrame.flush();
+    await drainPendingAsyncWork();
     expect(captured, isNotNull);
     expect(captured!.lastResumeSessionIds.last, isNull);
     expect(
       captured!.lastFixedSessionIds.last,
       rel.members.single.taskId,
     );
+    await drainPendingAsyncWork();
   });
 
   test('openSessionTab started session uses resume not session-id', () async {

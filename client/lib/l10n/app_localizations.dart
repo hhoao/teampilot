@@ -512,6 +512,30 @@ abstract class AppLocalizations {
   /// **'Open member'**
   String get openMember;
 
+  /// No description provided for @memberPresenceOffline.
+  ///
+  /// In en, this message translates to:
+  /// **'Offline'**
+  String get memberPresenceOffline;
+
+  /// No description provided for @memberPresenceConnecting.
+  ///
+  /// In en, this message translates to:
+  /// **'Connecting…'**
+  String get memberPresenceConnecting;
+
+  /// No description provided for @memberPresenceIdle.
+  ///
+  /// In en, this message translates to:
+  /// **'Idle'**
+  String get memberPresenceIdle;
+
+  /// No description provided for @memberPresenceWorking.
+  ///
+  /// In en, this message translates to:
+  /// **'Working'**
+  String get memberPresenceWorking;
+
   /// No description provided for @filterFiles.
   ///
   /// In en, this message translates to:

@@ -232,6 +232,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get openMember => 'Open member';
 
   @override
+  String get memberPresenceOffline => 'Offline';
+
+  @override
+  String get memberPresenceConnecting => 'Connecting…';
+
+  @override
+  String get memberPresenceIdle => 'Idle';
+
+  @override
+  String get memberPresenceWorking => 'Working';
+
+  @override
   String get filterFiles => 'Filter files';
 
   @override

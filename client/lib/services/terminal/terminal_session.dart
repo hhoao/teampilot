@@ -12,6 +12,7 @@ import 'local_pty_transport.dart';
 import 'pty_launch_environment.dart';
 import 'terminal_transport.dart';
 import '../../models/team_config.dart';
+import '../team/terminal_activity_tracker.dart';
 import '../../utils/first_user_line_capture.dart';
 import '../../utils/logger.dart';
 
@@ -55,6 +56,7 @@ class TerminalSession {
   final Duration confirmFallback;
   final TransportStarter _transportStarter;
   final Terminal terminal;
+  final TerminalActivityTracker activityTracker = TerminalActivityTracker();
   TerminalTransport? _transport;
   var _launchPhase = _LaunchPhase.idle;
   var _startFailed = false;
@@ -88,6 +90,16 @@ class TerminalSession {
           _launchPhase == _LaunchPhase.confirming ||
           _launchPhase == _LaunchPhase.spawning) &&
       !_startFailed;
+
+  /// Spawning or awaiting first output confirmation.
+  bool get isConnecting =>
+      !_startFailed &&
+      (_launchPhase == _LaunchPhase.spawning ||
+          _launchPhase == _LaunchPhase.confirming);
+
+  /// PTY confirmed running (agent may still be idle).
+  bool get isConnected =>
+      !_startFailed && _launchPhase == _LaunchPhase.running;
 
   bool get _starting =>
       _launchPhase == _LaunchPhase.spawning ||
@@ -500,6 +512,7 @@ class TerminalSession {
       return;
     }
     _launchPhase = _LaunchPhase.running;
+    activityTracker.reset();
     _cancelStartupTimers();
     final cliExecutable = _startupExecutable ?? this.executable;
     appLogger.i(
@@ -539,6 +552,7 @@ class TerminalSession {
     _launchPhase = _LaunchPhase.idle;
     _startupExecutable = null;
     _onProcessStarted = null;
+    activityTracker.reset();
   }
 
   void write(String text) {
@@ -552,6 +566,9 @@ class TerminalSession {
   }
 
   void _writeOutput(String text) {
+    if (text.isNotEmpty && isConnected) {
+      activityTracker.markActive();
+    }
     terminal.write(text);
     _schedulePtyViewportSync();
   }

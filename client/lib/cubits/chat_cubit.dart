@@ -1,6 +1,8 @@
 import 'dart:async';
 
 import 'package:equatable/equatable.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:uuid/uuid.dart';
@@ -11,8 +13,10 @@ import '../models/app_session.dart';
 import '../models/session_member_binding.dart';
 import '../models/launch_target.dart';
 import '../models/ssh_profile.dart';
+import '../models/member_presence.dart';
 import '../models/team_config.dart';
 import '../repositories/session_repository.dart';
+import '../services/team/member_presence_service.dart';
 import '../services/storage/app_storage.dart';
 import '../services/session/session_lifecycle_service.dart';
 import '../services/terminal/terminal_session.dart';
@@ -96,6 +100,10 @@ class _InternalTab {
 
   /// Persisted session for team member connect (may be absent before index load).
   AppSession? persistedSession;
+
+  /// Shared [LaunchPlan.memberConfigDir] from first successful member connect.
+  String? memberToolConfigDir;
+
   final Map<String, TerminalSession> memberShells = {};
 
   Iterable<TerminalSession> get sessions sync* {
@@ -120,6 +128,7 @@ class ChatState extends Equatable {
     this.snackbarMessage,
     this.sessionConnectingId,
     this.sessionLaunchError,
+    this.memberPresence = const {},
   });
 
   final List<ChatTabInfo> tabs;
@@ -139,6 +148,9 @@ class ChatState extends Equatable {
   /// Launch error when connect fails before a tab exists (empty workbench).
   final String? sessionLaunchError;
 
+  /// Per [TeamMemberConfig.id] for the members panel (active team session).
+  final Map<String, MemberPresence> memberPresence;
+
   ChatState copyWith({
     List<ChatTabInfo>? tabs,
     int? activeTabIndex,
@@ -156,6 +168,7 @@ class ChatState extends Equatable {
     bool clearSessionConnectingId = false,
     String? sessionLaunchError,
     bool clearSessionLaunchError = false,
+    Map<String, MemberPresence>? memberPresence,
   }) {
     return ChatState(
       tabs: tabs ?? this.tabs,
@@ -178,6 +191,7 @@ class ChatState extends Equatable {
       sessionLaunchError: clearSessionLaunchError
           ? null
           : (sessionLaunchError ?? this.sessionLaunchError),
+      memberPresence: memberPresence ?? this.memberPresence,
     );
   }
 
@@ -204,6 +218,7 @@ class ChatState extends Equatable {
     snackbarMessage,
     sessionConnectingId,
     sessionLaunchError,
+    memberPresence,
   ];
 }
 
@@ -223,6 +238,7 @@ class ChatCubit extends Cubit<ChatState> {
     bool Function()? sshUseLoginShellResolver,
     ConnectionMode Function()? connectionModeResolver,
     int Function()? terminalScrollbackLinesResolver,
+    MemberPresenceService? memberPresenceService,
   }) : _terminalSessionFactory = terminalSessionFactory,
        _postFrameScheduler = postFrameScheduler ?? _defaultPostFrameScheduler,
        _autoLaunchAllMembersOnConnect = autoLaunchAllMembersOnConnect,
@@ -236,9 +252,14 @@ class ChatCubit extends Cubit<ChatState> {
        _sshUseLoginShellResolver = sshUseLoginShellResolver,
        _connectionModeResolver = connectionModeResolver,
        _terminalScrollbackLinesResolver = terminalScrollbackLinesResolver,
+       _memberPresenceService =
+           memberPresenceService ?? MemberPresenceService(),
        super(const ChatState());
 
   final List<_InternalTab> _internalTabs = [];
+  final MemberPresenceService _memberPresenceService;
+  Timer? _presencePollTimer;
+  TeamConfig? _presenceTeam;
   var _scopeSessionsToSelectedTeam = false;
   String? _selectedTeamId;
   final TerminalSessionFactory _terminalSessionFactory;
@@ -536,6 +557,10 @@ class ChatCubit extends Cubit<ChatState> {
         selectedMemberId: internalTab.selectedMemberId,
       ),
     );
+    if (team != null) {
+      _presenceTeam = team;
+      refreshPresencePolling();
+    }
     if (connectImmediately) {
       _beginSessionConnect(info.id);
       _postFrameScheduler(() async {
@@ -559,6 +584,10 @@ class ChatCubit extends Cubit<ChatState> {
               team: team,
               member: member,
             );
+            final configDir = plan.memberConfigDir.trim();
+            if (configDir.isNotEmpty) {
+              internalTab.memberToolConfigDir = configDir;
+            }
             _emitLaunchWarnings(plan.warnings);
             final useResume = launched && plan.resume;
             ts.connect(
@@ -779,6 +808,10 @@ class ChatCubit extends Cubit<ChatState> {
       member: member,
       memberBinding: binding,
     );
+    final configDir = plan.memberConfigDir.trim();
+    if (configDir.isNotEmpty) {
+      tab.memberToolConfigDir = configDir;
+    }
     _emitLaunchWarnings(plan.warnings);
     final useResume = launched && plan.resume;
     shell.connect(
@@ -957,9 +990,112 @@ class ChatCubit extends Cubit<ChatState> {
     emit(state.copyWith(selectedMemberId: memberId));
   }
 
+  /// Whether the member's PTY is up (spawning through running).
   bool isMemberRunning(String memberId) {
     final shell = _activeTab?.memberShells[memberId];
     return shell?.isRunning ?? false;
+  }
+
+  MemberPresence memberPresenceFor(String memberId) {
+    return state.memberPresence[memberId] ?? const MemberPresence.offline();
+  }
+
+  /// Stops polling and clears presence (safe from widget [dispose]).
+  void stopPresencePolling() {
+    _presencePollTimer?.cancel();
+    _presencePollTimer = null;
+    _presenceTeam = null;
+    if (state.memberPresence.isNotEmpty) {
+      _emitMemberPresence(const {});
+    }
+  }
+
+  /// Stores the roster to poll; starts the 1s timer only when the active tab
+  /// is a team session ([_tabEligibleForPresencePoll]).
+  void syncPresenceTeam(TeamConfig? team) {
+    if (_samePresenceTeam(_presenceTeam, team)) {
+      return;
+    }
+    _presenceTeam = team;
+    _schedulePresencePollingRestart();
+  }
+
+  /// Re-evaluate whether polling should run (e.g. after opening a session tab).
+  void refreshPresencePolling() {
+    _schedulePresencePollingRestart();
+  }
+
+  /// Avoid emit / timer setup during build or semantics traversal.
+  void _schedulePresencePollingRestart() {
+    SchedulerBinding.instance.addPostFrameCallback((_) {
+      if (isClosed) return;
+      _restartPresencePolling();
+    });
+  }
+
+  void _emitMemberPresence(Map<String, MemberPresence> next) {
+    if (isClosed || mapEquals(next, state.memberPresence)) return;
+    SchedulerBinding.instance.addPostFrameCallback((_) {
+      if (isClosed || mapEquals(next, state.memberPresence)) return;
+      emit(
+        state.copyWith(
+          memberPresence: next,
+          stateVersion: state.stateVersion + 1,
+        ),
+      );
+    });
+  }
+
+  bool _tabEligibleForPresencePoll(_InternalTab tab) {
+    if (tab.memberShells.isNotEmpty) return true;
+    if (!tab.info.id.startsWith('local-')) return true;
+    return false;
+  }
+
+  static bool _samePresenceTeam(TeamConfig? a, TeamConfig? b) {
+    if (a == null || b == null) return a == b;
+    if (a.id != b.id || a.cli != b.cli) return false;
+    if (a.members.length != b.members.length) return false;
+    for (var i = 0; i < a.members.length; i++) {
+      if (a.members[i].id != b.members[i].id) return false;
+    }
+    return true;
+  }
+
+  void _restartPresencePolling() {
+    _presencePollTimer?.cancel();
+    _presencePollTimer = null;
+    final team = _presenceTeam;
+    if (team == null || team.members.isEmpty) {
+      if (state.memberPresence.isNotEmpty) {
+        _emitMemberPresence(const {});
+      }
+      return;
+    }
+    final tab = _activeTab;
+    if (tab == null || !_tabEligibleForPresencePoll(tab)) {
+      return;
+    }
+    _presencePollTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      unawaited(_tickMemberPresence(team));
+    });
+    unawaited(_tickMemberPresence(team));
+  }
+
+  Future<void> _tickMemberPresence(TeamConfig team) async {
+    if (isClosed) return;
+    final tab = _activeTab;
+    if (tab == null) return;
+
+    final next = await _memberPresenceService.compute(
+      teamCli: team.cli,
+      members: team.members,
+      cliTeamName: tab.cliTeamName,
+      memberToolConfigDir: tab.memberToolConfigDir,
+      memberShells: tab.memberShells,
+    );
+    if (isClosed) return;
+    _emitMemberPresence(next);
   }
 
   Future<void> launchAllMembers(
@@ -1242,6 +1378,7 @@ class ChatCubit extends Cubit<ChatState> {
         stateVersion: state.stateVersion + 1,
       ),
     );
+    refreshPresencePolling();
   }
 
   void _beginSessionConnect(String sessionId) {
@@ -1403,6 +1540,8 @@ class ChatCubit extends Cubit<ChatState> {
   @override
   Future<void> close() async {
     if (isClosed) return;
+    _presencePollTimer?.cancel();
+    _presencePollTimer = null;
     for (final tab in _internalTabs) {
       for (final session in tab.sessions) {
         session.dispose();

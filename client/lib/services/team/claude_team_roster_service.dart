@@ -97,7 +97,7 @@ class ClaudeTeamRosterService {
           : (inProcess ? 'in-process' : ''),
       'cwd': cwd,
       'subscriptions': <Object?>[],
-      'isActive': true,
+      // Omit isActive here — Claude sets true/false per turn; default is idle.
       'agentType': TeamMemberNaming.resolveAgentType(
         memberId: rosterName,
         agent: member.agent,
@@ -180,6 +180,9 @@ class ClaudeTeamRosterService {
         final joinedAt = (prior['joinedAt'] as num?)?.toInt();
         if (joinedAt != null && joinedAt > 0) {
           entry['joinedAt'] = joinedAt;
+        }
+        if (prior.containsKey('isActive')) {
+          entry['isActive'] = prior['isActive'];
         }
       }
       merged.add(entry);

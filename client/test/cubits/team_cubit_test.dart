@@ -16,6 +16,8 @@ import 'package:teampilot/services/plugin/team_plugin_linker_service.dart';
 import 'package:teampilot/services/skill/team_skill_linker_service.dart';
 import 'package:teampilot/utils/team_member_naming.dart';
 
+import '../support/post_frame_test_harness.dart';
+
 Skill _skill(String id) => Skill(
   id: id,
   name: id,
@@ -476,12 +478,13 @@ void main() {
       members: [member],
     );
     await _repo(base).saveTeams([team]);
-    await cubit.load();
+    await cubit.load(awaitProfiles: true);
 
     expect(cubit.previewFor(member), startsWith('/opt/bin/claude '));
 
     await _drainAndCloseTeamCubit(cubit);
-    await base.delete(recursive: true);
+    await drainPendingAsyncWork();
+    await deleteTempDirBestEffort(base);
   });
 
   test('updateMember only saves Claude member metadata', () async {

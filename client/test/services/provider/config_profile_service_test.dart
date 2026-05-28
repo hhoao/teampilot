@@ -483,7 +483,7 @@ void main() {
     expect(dev['agentType'], 'developer-one');
     expect(dev['backendType'], 'in-process');
     expect(dev['tmuxPaneId'], 'in-process');
-    expect(dev['isActive'], true);
+    expect(dev.containsKey('isActive'), isFalse);
     expect(dev['cwd'], '/workspace/project');
     expect(decoded.containsKey('env'), isFalse);
 
