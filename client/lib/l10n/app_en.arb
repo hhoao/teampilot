@@ -114,7 +114,7 @@
   },
   "projects": "Projects",
   "newProject": "New Project",
-  "newProjectTooltip": "Create a project with one or more directories",
+  "newProjectTooltip": "Create a project",
   "create": "Create",
   "pickPrimaryDirectory": "Pick primary directory",
   "projectPrimaryPathRequired": "Select a primary directory first.",

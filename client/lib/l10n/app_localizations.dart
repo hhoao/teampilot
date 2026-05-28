@@ -659,7 +659,7 @@ abstract class AppLocalizations {
   /// No description provided for @newProjectTooltip.
   ///
   /// In en, this message translates to:
-  /// **'Create a project with one or more directories'**
+  /// **'Create a project'**
   String get newProjectTooltip;
 
   /// No description provided for @create.

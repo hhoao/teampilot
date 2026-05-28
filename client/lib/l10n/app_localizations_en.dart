@@ -308,8 +308,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get newProject => 'New Project';
 
   @override
-  String get newProjectTooltip =>
-      'Create a project with one or more directories';
+  String get newProjectTooltip => 'Create a project';
 
   @override
   String get create => 'Create';

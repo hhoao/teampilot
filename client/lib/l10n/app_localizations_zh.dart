@@ -296,7 +296,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get newProject => '新建项目';
 
   @override
-  String get newProjectTooltip => '创建项目，可添加主目录与附加目录';
+  String get newProjectTooltip => '创建项目';
 
   @override
   String get create => '创建';

@@ -107,7 +107,7 @@
   "teamNameAlreadyExists": "已存在名为「{name}」的团队。",
   "projects": "项目",
   "newProject": "新建项目",
-  "newProjectTooltip": "创建项目，可添加主目录与附加目录",
+  "newProjectTooltip": "创建项目",
   "create": "创建",
   "pickPrimaryDirectory": "选择主目录",
   "projectPrimaryPathRequired": "请先选择主目录。",
