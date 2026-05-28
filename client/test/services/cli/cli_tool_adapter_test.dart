@@ -43,7 +43,7 @@ void main() {
         '--team',
         'agent',
         '--member',
-        'planner',
+        'member-1',
         '--loop',
         'false',
         '--provider',
@@ -62,7 +62,7 @@ void main() {
     );
   });
 
-  test('claude adapter slugifies spaced member name for --agent-name', () {
+  test('claude adapter uses member id for --agent-name', () {
     final args = ClaudeCodeCliToolAdapter().buildArguments(
       CliLaunchContext(
         team: const TeamConfig(
@@ -79,7 +79,7 @@ void main() {
       ),
     );
 
-    expect(args, containsAllInOrder(['--agent-name', 'my-planner']));
+    expect(args, containsAllInOrder(['--agent-name', 'm1', '--agent-id', 'm1@agent']));
   });
 
   test('claude adapter builds Claude Code team arguments', () {
@@ -109,9 +109,9 @@ void main() {
         '--team-name',
         'agent',
         '--agent-name',
-        'planner',
+        'member-1',
         '--agent-id',
-        'planner@agent',
+        'member-1@agent',
         '--model',
         'sonnet',
         '--dangerously-skip-permissions',
@@ -133,7 +133,7 @@ void main() {
           cli: TeamCli.claude,
         ),
         member: const TeamMemberConfig(
-          id: 'lead-1',
+          id: 'team-lead',
           name: 'team-lead',
           provider: 'anthropic',
           model: 'sonnet',

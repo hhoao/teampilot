@@ -30,7 +30,7 @@ void main() {
         '--team',
         'agent',
         '--member',
-        'planner',
+        'member-1',
         '--provider',
         'anthropic',
         '--model',
@@ -48,7 +48,7 @@ void main() {
       '--team',
       'agent',
       '--member',
-      'planner',
+      'member-1',
       '--provider',
       'anthropic',
       '--model',
@@ -70,7 +70,7 @@ void main() {
       '--team',
       'agent',
       '--member',
-      'planner',
+      'member-1',
       '--loop',
       'false',
       '--provider',
@@ -97,7 +97,7 @@ void main() {
       '--team',
       'agent',
       '--member',
-      'planner',
+      'member-1',
       '--provider',
       'anthropic',
       '--model',
@@ -133,7 +133,7 @@ void main() {
         '--team',
         'agent',
         '--member',
-        'reviewer',
+        'member-2',
         '--permission-mode',
         'acceptEdits',
         '--continue',
@@ -153,7 +153,7 @@ void main() {
 
     expect(
       LaunchCommandBuilder.preview(team, reviewer, executable: 'flashskyai'),
-      "flashskyai --team 'hello team' --member 'code reviewer'",
+      "flashskyai --team 'hello team' --member member-2",
     );
   });
 
@@ -167,7 +167,7 @@ void main() {
         planner,
         executable: '/opt/custom/flashskyai',
       ),
-      '/opt/custom/flashskyai --team agent --member planner',
+      '/opt/custom/flashskyai --team agent --member m',
     );
   });
 
@@ -183,8 +183,8 @@ void main() {
 
     expect(
       LaunchCommandBuilder.preview(team, planner, executable: 'claude'),
-      'claude --team-name agent --agent-name planner '
-      '--agent-id planner@agent --model sonnet',
+      'claude --team-name agent --agent-name m '
+      '--agent-id m@agent --model sonnet',
     );
   });
 

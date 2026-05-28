@@ -114,7 +114,7 @@ void main() {
         home: Scaffold(
           body: SizedBox(
             width: 1000,
-            height: 800,
+            height: 1400,
             child: AppProviderFormPage(
               cli: AppProviderCli.claude,
               existing: const AppProviderConfig(
@@ -129,8 +129,14 @@ void main() {
         ),
       ),
     );
+    await tester.pumpAndSettle();
 
     await tester.enterText(_fieldWithLabel('Base URL'), 'https://api.test');
+    await tester.scrollUntilVisible(
+      _fieldWithLabel('Default model'),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
     await tester.enterText(_fieldWithLabel('Default model'), 'main-model');
     await tester.scrollUntilVisible(
       find.text('Advanced options'),

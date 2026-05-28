@@ -443,7 +443,7 @@ void main() {
     );
     expect(
       startedArgs.any(
-        (args) => args.contains('--agent-name') && args.contains('developer'),
+        (args) => args.contains('--agent-name') && args.contains('dev'),
       ),
       isTrue,
     );
@@ -509,7 +509,7 @@ void main() {
     );
     expect(
       startedArgs.any(
-        (args) => args.contains('--member') && args.contains('developer'),
+        (args) => args.contains('--member') && args.contains('dev'),
       ),
       isTrue,
     );

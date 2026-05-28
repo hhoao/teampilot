@@ -282,7 +282,7 @@ void main() {
       final developerSettings = p.join(
         plan.memberConfigDir,
         'settings',
-        'developer.json',
+        'dev.json',
       );
       expect(plan.env['CLAUDE_CONFIG_DIR'], plan.memberConfigDir);
       expect(

@@ -448,11 +448,18 @@ void main() {
     await tester.tap(find.byKey(AppKeys.configLlmSectionButton));
     await pumpPhaseTransitions(tester);
 
-    await tester.tap(find.widgetWithText(TextButton, '+ Add').first);
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(AppKeys.llmProviderList),
+        matching: find.byIcon(Icons.add),
+      ),
+    );
+    await pumpPhaseTransitions(tester);
+    await tester.tap(find.text('Add Provider').last);
     await pumpPhaseTransitions(tester);
 
     expect(find.byKey(AppKeys.llmProviderList), findsOneWidget);
-    expect(find.text('Add Provider'), findsOneWidget);
+    expect(find.text('Add Provider'), findsWidgets);
     expect(find.text('Provider name'), findsOneWidget);
     expect(find.byType(BottomSheet), findsNothing);
     expect(find.byType(DraggableScrollableSheet), findsNothing);
@@ -620,7 +627,7 @@ void main() {
     );
 
     cubit.syncTeam(team);
-    expect(cubit.state.selectedMemberId, 'lead');
+    expect(cubit.state.selectedMemberId, 'team-lead');
 
     cubit.selectMember('dev');
     expect(cubit.state.selectedMemberId, 'dev');
@@ -654,7 +661,7 @@ void main() {
     expect(cubit.state.tabs.length, 1);
     expect(cubit.state.tabs.single.id, 'local-test-team');
     expect(cubit.state.selectedMemberId, 'dev');
-    expect(cubit.isMemberRunning('lead'), isTrue);
+    expect(cubit.isMemberRunning('team-lead'), isTrue);
     expect(cubit.isMemberRunning('dev'), isTrue);
   });
 
@@ -747,7 +754,7 @@ void main() {
           sessionId,
           'claude',
           'settings',
-          'developer.json',
+          'dev.json',
         ),
       );
     },
@@ -793,9 +800,9 @@ void main() {
       await postFrame.flush();
 
       expect(cubit.state.tabs.length, 1);
-      expect(cubit.isMemberRunning('lead'), isTrue);
+      expect(cubit.isMemberRunning('team-lead'), isTrue);
       expect(cubit.isMemberRunning('dev'), isTrue);
-      expect(cubit.state.selectedMemberId, 'lead');
+      expect(cubit.state.selectedMemberId, 'team-lead');
     },
   );
 
@@ -838,9 +845,9 @@ void main() {
       await postFrame.flush();
 
       expect(cubit.state.tabs.length, 1);
-      expect(cubit.isMemberRunning('lead'), isTrue);
+      expect(cubit.isMemberRunning('team-lead'), isTrue);
       expect(cubit.isMemberRunning('dev'), isFalse);
-      expect(cubit.state.selectedMemberId, 'lead');
+      expect(cubit.state.selectedMemberId, 'team-lead');
     },
   );
 
@@ -874,7 +881,7 @@ void main() {
         sessionTeam: 'test-team',
         cliTeamName: 'test-team-1',
         members: const [
-          SessionMemberBinding(rosterMemberId: 'lead', taskId: 'task-lead'),
+          SessionMemberBinding(rosterMemberId: 'team-lead', taskId: 'task-lead'),
           SessionMemberBinding(rosterMemberId: 'dev', taskId: 'task-dev'),
         ],
         createdAt: 1,
@@ -894,7 +901,7 @@ void main() {
       expect(cubit.state.tabs.single.id, 'session-1');
       expect(cubit.state.activeSessionId, 'session-1');
       expect(cubit.state.selectedMemberId, 'dev');
-      expect(cubit.isMemberRunning('lead'), isTrue);
+      expect(cubit.isMemberRunning('team-lead'), isTrue);
       expect(cubit.isMemberRunning('dev'), isTrue);
     },
   );
