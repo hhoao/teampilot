@@ -36,6 +36,15 @@ void goFromSidebar(BuildContext context, String path) {
   context.go(path);
 }
 
+/// Hub section navigation: push on Android hub flow, go on desktop split shell.
+void navigateWorkspaceRoute(BuildContext context, String path) {
+  if (useAndroidHubNavigation(context)) {
+    context.push(path);
+  } else {
+    context.go(path);
+  }
+}
+
 @Deprecated('Use useAndroidHubNavigation')
 bool useAndroidConfigNavigation(BuildContext context) =>
     useAndroidHubNavigation(context);

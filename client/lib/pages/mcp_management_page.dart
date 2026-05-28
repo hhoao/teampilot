@@ -39,28 +39,15 @@ IconData mcpSectionIcon(McpSection section) => switch (section) {
 };
 
 void navigateMcpAdd(BuildContext context) {
-  if (useAndroidHubNavigation(context)) {
-    context.push(mcpAddRoute());
-  } else {
-    context.go(mcpAddRoute());
-  }
+  navigateWorkspaceRoute(context, mcpAddRoute());
 }
 
 void navigateMcpEdit(BuildContext context, McpServer server) {
-  final route = mcpEditRoute(server.id);
-  if (useAndroidHubNavigation(context)) {
-    context.push(route);
-  } else {
-    context.go(route);
-  }
+  navigateWorkspaceRoute(context, mcpEditRoute(server.id));
 }
 
 void navigateMcpSection(BuildContext context, McpSection target) {
-  if (useAndroidHubNavigation(context)) {
-    context.push(target.routePath());
-  } else {
-    context.go(target.routePath());
-  }
+  navigateWorkspaceRoute(context, target.routePath());
 }
 
 /// Desktop MCP shell: title bar + section nav + body.
