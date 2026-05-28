@@ -3,6 +3,27 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/widgets/settings/workspace_hub_shell.dart';
 import 'package:teampilot/widgets/settings/workspace_section_host.dart';
+import 'package:teampilot/widgets/settings/workspace_section_navigation.dart';
+
+enum _TestSection { alpha, beta }
+
+class _TestSectionDescriptor implements WorkspaceSectionDescriptor {
+  _TestSectionDescriptor(this.section);
+
+  final _TestSection section;
+
+  @override
+  String get routeSegment => section.name;
+
+  @override
+  String routePath(String basePath) => '$basePath/${section.name}';
+
+  @override
+  String title(AppLocalizations l10n) => section.name;
+
+  @override
+  IconData get icon => Icons.star_outline;
+}
 
 void main() {
   Widget wrap(Widget child) {
@@ -47,5 +68,29 @@ void main() {
     );
     expect(find.byType(WorkspaceSplitShell), findsOneWidget);
     expect(find.text('Plugins'), findsOneWidget);
+  });
+
+  testWidgets('enum nav panel invokes onSelect when entry tapped', (
+    tester,
+  ) async {
+    _TestSection? selected;
+    await tester.pumpWidget(
+      wrap(
+        SizedBox(
+          width: 240,
+          height: 400,
+          child: WorkspaceEnumNavPanel<_TestSection>(
+            sections: _TestSection.values,
+            current: _TestSection.beta,
+            basePath: '/test',
+            descriptor: (s) => _TestSectionDescriptor(s),
+            onSelect: (s) => selected = s,
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('alpha'));
+    expect(selected, _TestSection.alpha);
   });
 }
