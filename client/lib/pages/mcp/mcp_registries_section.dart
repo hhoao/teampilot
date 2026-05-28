@@ -383,7 +383,7 @@ class _RegistryRow extends StatelessWidget {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        '@$label',
+                        label,
                         style: TextStyle(
                           fontSize: 11,
                           color: textBase.withValues(alpha: 0.55),

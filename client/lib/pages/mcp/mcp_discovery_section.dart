@@ -214,69 +214,63 @@ class _McpDiscoverySectionState extends State<McpDiscoverySection> {
         (remoteSource == null || !remoteSource.enabled);
     final items = _displayItems;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        McpWorkspaceCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+    return McpWorkspaceCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          McpCardHeader(
+            title: l10n.mcpDiscoverySectionTitle,
+            trailing: IconButton(
+              onPressed: _source == _DiscoverySource.builtin || _loading
+                  ? null
+                  : () => _loadRemote(),
+              icon: _loading && _source != _DiscoverySource.builtin
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.refresh, size: 20),
+            ),
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
             children: [
-              McpCardHeader(
-                title: l10n.mcpDiscoverySectionTitle,
-                trailing: IconButton(
-                  onPressed: _source == _DiscoverySource.builtin || _loading
-                      ? null
-                      : () => _loadRemote(),
-                  icon: _loading && _source != _DiscoverySource.builtin
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.refresh, size: 20),
-                ),
+              ChoiceChip(
+                label: Text(l10n.mcpDiscoverySourceBuiltin),
+                selected: _source == _DiscoverySource.builtin,
+                onSelected: (_) => _onSourceChanged(_DiscoverySource.builtin),
               ),
-              const SizedBox(height: 10),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  ChoiceChip(
-                    label: Text(l10n.mcpDiscoverySourceBuiltin),
-                    selected: _source == _DiscoverySource.builtin,
-                    onSelected: (_) => _onSourceChanged(_DiscoverySource.builtin),
-                  ),
-                  ChoiceChip(
-                    label: Text(l10n.mcpRegistrySmithery),
-                    selected: _source == _DiscoverySource.smithery,
-                    onSelected: (_) => _onSourceChanged(_DiscoverySource.smithery),
-                  ),
-                  ChoiceChip(
-                    label: Text(l10n.mcpRegistryOfficial),
-                    selected: _source == _DiscoverySource.official,
-                    onSelected: (_) => _onSourceChanged(_DiscoverySource.official),
-                  ),
-                ],
+              ChoiceChip(
+                label: Text(l10n.mcpRegistrySmithery),
+                selected: _source == _DiscoverySource.smithery,
+                onSelected: (_) => _onSourceChanged(_DiscoverySource.smithery),
               ),
-              if (_source != _DiscoverySource.builtin) ...[
-                const SizedBox(height: 12),
-                TextField(
-                  controller: _searchCtl,
-                  onChanged: _onSearchChanged,
-                  onSubmitted: _onSearchChanged,
-                  decoration: InputDecoration(
-                    hintText: l10n.mcpRegistrySearchHint,
-                    prefixIcon: const Icon(Icons.search, size: 20),
-                    isDense: true,
-                  ),
-                ),
-              ],
+              ChoiceChip(
+                label: Text(l10n.mcpRegistryOfficial),
+                selected: _source == _DiscoverySource.official,
+                onSelected: (_) => _onSourceChanged(_DiscoverySource.official),
+              ),
             ],
           ),
-        ),
-        if (remoteDisabled)
-          McpWorkspaceCard(
-            child: Column(
+          if (_source != _DiscoverySource.builtin) ...[
+            const SizedBox(height: 12),
+            TextField(
+              controller: _searchCtl,
+              onChanged: _onSearchChanged,
+              onSubmitted: _onSearchChanged,
+              decoration: InputDecoration(
+                hintText: l10n.mcpRegistrySearchHint,
+                prefixIcon: const Icon(Icons.search, size: 20),
+                isDense: true,
+              ),
+            ),
+          ],
+          const SizedBox(height: 14),
+          if (remoteDisabled)
+            Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Text(l10n.mcpRepoDisabledHint),
@@ -290,53 +284,57 @@ class _McpDiscoverySectionState extends State<McpDiscoverySection> {
                   ),
                 ),
               ],
-            ),
-          )
-        else ...[
-          if (_error != null)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: Text(
-                _error!,
-                style: TextStyle(color: Theme.of(context).colorScheme.error),
+            )
+          else ...[
+            if (_error != null)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Text(
+                  _error!,
+                  style: TextStyle(color: Theme.of(context).colorScheme.error),
+                ),
               ),
-            ),
-          Expanded(
-            child: _loading && items.isEmpty && _source != _DiscoverySource.builtin
-                ? const Center(child: CircularProgressIndicator())
-                : items.isEmpty
-                ? Center(child: Text(l10n.mcpCatalogEmpty))
-                : ListView.builder(
-                    padding: EdgeInsets.zero,
-                    itemCount: items.length +
-                        (_source != _DiscoverySource.builtin && _hasMore ? 1 : 0),
-                    itemBuilder: (context, index) {
-                      if (index >= items.length) {
-                        return Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          child: Center(
-                            child: OutlinedButton(
-                              onPressed: _loading ? null : _loadMore,
-                              child: Text(l10n.mcpRegistryLoadMore),
+            Expanded(
+              child: _loading &&
+                      items.isEmpty &&
+                      _source != _DiscoverySource.builtin
+                  ? const Center(child: CircularProgressIndicator())
+                  : items.isEmpty
+                  ? Center(child: Text(l10n.mcpCatalogEmpty))
+                  : ListView.builder(
+                      padding: EdgeInsets.zero,
+                      itemCount: items.length +
+                          (_source != _DiscoverySource.builtin && _hasMore
+                              ? 1
+                              : 0),
+                      itemBuilder: (context, index) {
+                        if (index >= items.length) {
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            child: Center(
+                              child: OutlinedButton(
+                                onPressed: _loading ? null : _loadMore,
+                                child: Text(l10n.mcpRegistryLoadMore),
+                              ),
                             ),
-                          ),
+                          );
+                        }
+                        final listing = items[index];
+                        return McpCatalogListingTile(
+                          listing: listing,
+                          installed: installedIds.contains(listing.id),
+                          busy: state.busyIds.contains(listing.id),
+                          onAdd: () => widget.onAddListing(listing),
+                          onOpenHomepage: listing.homepage == null
+                              ? null
+                              : () => _openUrl(listing.homepage!),
                         );
-                      }
-                      final listing = items[index];
-                      return McpCatalogListingTile(
-                        listing: listing,
-                        installed: installedIds.contains(listing.id),
-                        busy: state.busyIds.contains(listing.id),
-                        onAdd: () => widget.onAddListing(listing),
-                        onOpenHomepage: listing.homepage == null
-                            ? null
-                            : () => _openUrl(listing.homepage!),
-                      );
-                    },
-                  ),
-          ),
+                      },
+                    ),
+            ),
+          ],
         ],
-      ],
+      ),
     );
   }
 }

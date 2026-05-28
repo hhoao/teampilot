@@ -235,37 +235,6 @@ class McpInstalledServerRow extends StatelessWidget {
                 ],
               ),
             ),
-            if (onOAuthConnect != null && oauthAuthenticated != true)
-              Padding(
-                padding: const EdgeInsets.only(right: 4),
-                child: OutlinedButton(
-                  onPressed: busy ? null : onOAuthConnect,
-                  child: Text(l10n.mcpOAuthConnectAction),
-                ),
-              ),
-            GithubDetailsButton(
-              url: server.homepage.trim().isEmpty ? null : server.homepage,
-              label: l10n.mcpOpenHomepage,
-            ),
-            const SizedBox(width: 4),
-            Switch(
-              value: server.enabled,
-              onChanged: busy ? null : onToggleEnabled,
-            ),
-            IconButton(
-              tooltip: l10n.mcpEdit,
-              onPressed: busy ? null : onEdit,
-              icon: const Icon(Icons.edit_outlined, size: 18),
-            ),
-            IconButton(
-              tooltip: l10n.delete,
-              onPressed: busy ? null : onDelete,
-              icon: Icon(
-                Icons.delete_outline,
-                size: 18,
-                color: cs.error,
-              ),
-            ),
             if (busy)
               const Padding(
                 padding: EdgeInsets.only(left: 4),
@@ -275,6 +244,40 @@ class McpInstalledServerRow extends StatelessWidget {
                   child: CircularProgressIndicator(strokeWidth: 2),
                 ),
               ),
+            if (onOAuthConnect != null && oauthAuthenticated != true)
+              Padding(
+                padding: const EdgeInsets.only(right: 4),
+                child: OutlinedButton(
+                  onPressed: busy ? null : onOAuthConnect,
+                  child: Text(l10n.mcpOAuthConnectAction),
+                ),
+              ),
+            if (server.homepage.trim().isNotEmpty)
+              IconButton(
+                tooltip: l10n.mcpOpenHomepage,
+                visualDensity: VisualDensity.compact,
+                iconSize: 18,
+                onPressed: busy
+                    ? null
+                    : () => openGithubBrowseUrl(server.homepage.trim()),
+                icon: const Icon(Icons.open_in_new),
+              ),
+            const SizedBox(width: 4),
+
+            IconButton(
+              tooltip: l10n.mcpEdit,
+              onPressed: busy ? null : onEdit,
+              icon: const Icon(Icons.edit_outlined, size: 18),
+            ),
+            IconButton(
+              tooltip: l10n.delete,
+              onPressed: busy ? null : onDelete,
+              icon: Icon(Icons.delete_outline, size: 18, color: cs.error),
+            ),
+            Switch(
+              value: server.enabled,
+              onChanged: busy ? null : onToggleEnabled,
+            ),
           ],
         ),
       ),
@@ -310,15 +313,13 @@ class McpCatalogListingTile extends StatelessWidget {
     ];
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Material(
-        color: cs.surfaceContainerHighest.withValues(alpha: 0.3),
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(12, 10, 8, 10),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: workspaceInsetDecoration(cs, radius: 10),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
               if (listing.iconUrl != null && listing.iconUrl!.isNotEmpty)
                 Padding(
                   padding: const EdgeInsets.only(right: 10),
@@ -344,7 +345,7 @@ class McpCatalogListingTile extends StatelessWidget {
                   children: [
                     Row(
                       children: [
-                        Expanded(
+                        Flexible(
                           child: Text(
                             listing.title,
                             style: const TextStyle(
@@ -357,8 +358,14 @@ class McpCatalogListingTile extends StatelessWidget {
                         ),
                         if (onOpenHomepage != null)
                           IconButton(
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(
+                              minWidth: 32,
+                              minHeight: 32,
+                            ),
                             visualDensity: VisualDensity.compact,
-                            iconSize: 18,
+                            iconSize: 16,
+                            tooltip: l10n.mcpOpenHomepage,
                             onPressed: onOpenHomepage,
                             icon: const Icon(Icons.open_in_new),
                           ),
@@ -418,7 +425,6 @@ class McpCatalogListingTile extends StatelessWidget {
                   child: Text(l10n.mcpCatalogAdd),
                 ),
             ],
-          ),
         ),
       ),
     );
