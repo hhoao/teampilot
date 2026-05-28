@@ -42,18 +42,19 @@ import 'support/post_frame_test_harness.dart';
 
 String _testExecutable() => 'flashskyai';
 
-Future<void> _deleteTempDirBestEffort(Directory dir) async {
-  for (var attempt = 0; attempt < 8; attempt++) {
-    try {
-      if (await dir.exists()) {
-        await dir.delete(recursive: true);
-      }
-      return;
-    } on FileSystemException {
-      if (attempt == 7) rethrow;
-      await Future<void>.delayed(Duration(milliseconds: 25 * (attempt + 1)));
-    }
+Future<void> _deleteTempDirBestEffort(Directory dir) =>
+    deleteTempDirBestEffort(dir);
+
+Future<void> _tearDownChatCubitWithSessionPersist(
+  ChatCubit cubit,
+  PostFrameTestHarness postFrame,
+) async {
+  await postFrame.flush();
+  await drainPendingAsyncWork(rounds: 15);
+  if (!cubit.isClosed) {
+    await cubit.close();
   }
+  await drainPendingAsyncWork(rounds: 15);
 }
 
 late Directory _widgetTestSessionRepoDir;
@@ -932,6 +933,7 @@ void main() {
       },
       postFrameScheduler: postFrame.scheduler,
     );
+    addTearDown(() => _tearDownChatCubitWithSessionPersist(cubit, postFrame));
     await cubit.loadProjectData(repo);
     final rel = cubit.state.sessions.single;
     await cubit.openSessionTab(
@@ -948,7 +950,6 @@ void main() {
       captured!.lastFixedSessionIds.last,
       rel.members.single.taskId,
     );
-    await drainPendingAsyncWork();
   });
 
   test('openSessionTab started session uses resume not session-id', () async {
@@ -980,6 +981,7 @@ void main() {
       postFrameScheduler: postFrame.scheduler,
       lifecycleService: _FixedResumeLifecycleService(resume: true),
     );
+    addTearDown(() => _tearDownChatCubitWithSessionPersist(cubit, postFrame));
     await cubit.loadProjectData(repo);
     final rel = cubit.state.sessions.single;
     await cubit.openSessionTab(
@@ -1024,6 +1026,7 @@ void main() {
         postFrameScheduler: postFrame.scheduler,
         lifecycleService: _FixedResumeLifecycleService(resume: false),
       );
+      addTearDown(() => _tearDownChatCubitWithSessionPersist(cubit, postFrame));
       await cubit.loadProjectData(repo);
       final rel = cubit.state.sessions.single;
       await cubit.openSessionTab(
@@ -1069,6 +1072,7 @@ void main() {
         },
         postFrameScheduler: postFrame.scheduler,
       );
+      addTearDown(() => _tearDownChatCubitWithSessionPersist(cubit, postFrame));
       await cubit.loadProjectData(repo);
       final rel = cubit.state.sessions.single;
       await cubit.openSessionTab(
