@@ -242,6 +242,7 @@ class McpCatalogMapper {
       createdAt: now,
       updatedAt: now,
       source: McpServerSource.catalog,
+      smitheryHosted: listing.source == McpCatalogSource.smithery,
     );
   }
 }

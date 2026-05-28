@@ -1,19 +1,30 @@
 import 'dart:convert';
 
+import '../../models/mcp_registry_source.dart';
 import '../cli/cli_data_layout.dart';
 import '../io/filesystem.dart';
 import '../io/local_filesystem.dart';
 import '../provider/config_profile_service.dart';
+import 'mcp_credentials_store.dart';
+import 'mcp_registry_config_service.dart';
+import 'smithery_mcp_auth.dart';
 
 /// Merges team MCP catalog into member CLI global metadata files.
 class McpRegistryService {
   McpRegistryService({
     required this.layout,
     Filesystem? fs,
-  }) : _fs = fs ?? LocalFilesystem();
+    McpRegistryConfigService? registryConfigService,
+  }) : _fs = fs ?? LocalFilesystem(),
+       _registryConfigService = registryConfigService ??
+           McpRegistryConfigService(
+             fs: fs,
+             teampilotRoot: layout.teampilotRoot,
+           );
 
   final CliDataLayout layout;
   final Filesystem _fs;
+  final McpRegistryConfigService _registryConfigService;
 
   Future<void> writeForSession({
     required String teamId,
@@ -41,19 +52,31 @@ class McpRegistryService {
         );
     if (catalogServers == null || catalogServers.isEmpty) return;
 
+    final registry = await _registryConfigService.load();
+    final smitheryToken = registry.byKind(McpRegistrySourceKind.smithery)?.apiToken;
+    final serversForSession = SmitheryMcpAuth.applyToCatalogServers(
+      catalogServers,
+      smitheryToken,
+    );
+
     await _mergeForTool(
       teamId: trimmedTeamId,
       sessionId: trimmedSessionId,
       tool: 'claude',
       metadataFileName: ConfigProfileService.claudeMetadataFileName,
-      catalogServers: catalogServers,
+      catalogServers: serversForSession,
     );
     await _mergeForTool(
       teamId: trimmedTeamId,
       sessionId: trimmedSessionId,
       tool: 'flashskyai',
       metadataFileName: ConfigProfileService.flashskyaiMetadataFileName,
-      catalogServers: catalogServers,
+      catalogServers: serversForSession,
+    );
+
+    await McpCredentialsStore(fs: _fs).mergeInto(
+      fromConfigDir: layout.appToolRoot('claude'),
+      toConfigDir: layout.memberToolDir(trimmedTeamId, trimmedSessionId, 'claude'),
     );
   }
 

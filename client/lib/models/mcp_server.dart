@@ -37,6 +37,7 @@ class McpServer {
     this.homepage = '',
     this.docs = '',
     this.source = McpServerSource.catalog,
+    this.smitheryHosted = false,
     this.importedFrom,
     this.createdAt = 0,
     this.updatedAt = 0,
@@ -51,6 +52,10 @@ class McpServer {
   final String homepage;
   final String docs;
   final McpServerSource source;
+
+  /// Installed from Smithery; session merge may attach registry Bearer token.
+  final bool smitheryHosted;
+
   final String? importedFrom;
   final int createdAt;
   final int updatedAt;
@@ -77,6 +82,7 @@ class McpServer {
     String? homepage,
     String? docs,
     McpServerSource? source,
+    bool? smitheryHosted,
     String? importedFrom,
     int? createdAt,
     int? updatedAt,
@@ -92,6 +98,7 @@ class McpServer {
       homepage: homepage ?? this.homepage,
       docs: docs ?? this.docs,
       source: source ?? this.source,
+      smitheryHosted: smitheryHosted ?? this.smitheryHosted,
       importedFrom: clearImportedFrom
           ? null
           : (importedFrom ?? this.importedFrom),
@@ -110,6 +117,7 @@ class McpServer {
     if (homepage.isNotEmpty) 'homepage': homepage,
     if (docs.isNotEmpty) 'docs': docs,
     'source': source.wireValue,
+    if (smitheryHosted) 'smitheryHosted': true,
     if (importedFrom != null && importedFrom!.isNotEmpty)
       'importedFrom': importedFrom,
     'createdAt': createdAt,
@@ -119,6 +127,9 @@ class McpServer {
   factory McpServer.fromJson(Map<String, Object?> json) {
     final serverRaw = json['server'];
     final tagsRaw = json['tags'];
+    final tags = tagsRaw is List
+        ? tagsRaw.map((e) => e.toString()).where((t) => t.isNotEmpty).toList()
+        : const <String>[];
     return McpServer(
       id: json['id'] as String? ?? '',
       name: json['name'] as String? ?? '',
@@ -127,12 +138,12 @@ class McpServer {
           : const <String, Object?>{},
       enabled: json['enabled'] as bool? ?? true,
       description: json['description'] as String? ?? '',
-      tags: tagsRaw is List
-          ? tagsRaw.map((e) => e.toString()).where((t) => t.isNotEmpty).toList()
-          : const [],
+      tags: tags,
       homepage: json['homepage'] as String? ?? '',
       docs: json['docs'] as String? ?? '',
       source: McpServerSource.decode(json['source']),
+      smitheryHosted:
+          json['smitheryHosted'] as bool? ?? tags.contains('smithery'),
       importedFrom: json['importedFrom'] as String?,
       createdAt: (json['createdAt'] as num?)?.toInt() ?? 0,
       updatedAt: (json['updatedAt'] as num?)?.toInt() ?? 0,
@@ -153,6 +164,7 @@ class McpServer {
           homepage == other.homepage &&
           docs == other.docs &&
           source == other.source &&
+          smitheryHosted == other.smitheryHosted &&
           importedFrom == other.importedFrom &&
           createdAt == other.createdAt &&
           updatedAt == other.updatedAt;
@@ -168,6 +180,7 @@ class McpServer {
     homepage,
     docs,
     source,
+    smitheryHosted,
     importedFrom,
     createdAt,
     updatedAt,

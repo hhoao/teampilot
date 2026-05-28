@@ -2876,6 +2876,78 @@ abstract class AppLocalizations {
   /// **'{count} MCP server(s) configured'**
   String mcpConfiguredCount(int count);
 
+  /// No description provided for @mcpOAuthConnectTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect {name}'**
+  String mcpOAuthConnectTitle(String name);
+
+  /// No description provided for @mcpOAuthConnectHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in with the MCP provider in your browser. Tokens are stored in Claude Code format under app config (same as /mcp → Authenticate).'**
+  String get mcpOAuthConnectHint;
+
+  /// No description provided for @mcpOAuthDiscovering.
+  ///
+  /// In en, this message translates to:
+  /// **'Discovering authorization server…'**
+  String get mcpOAuthDiscovering;
+
+  /// No description provided for @mcpOAuthOpenBrowser.
+  ///
+  /// In en, this message translates to:
+  /// **'Open browser'**
+  String get mcpOAuthOpenBrowser;
+
+  /// No description provided for @mcpOAuthCallbackUrlLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Redirect URL'**
+  String get mcpOAuthCallbackUrlLabel;
+
+  /// No description provided for @mcpOAuthCallbackUrlHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Paste the full URL after sign-in (contains ?code=)'**
+  String get mcpOAuthCallbackUrlHint;
+
+  /// No description provided for @mcpOAuthSubmitCallback.
+  ///
+  /// In en, this message translates to:
+  /// **'Submit URL'**
+  String get mcpOAuthSubmitCallback;
+
+  /// No description provided for @mcpOAuthStartConnect.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect'**
+  String get mcpOAuthStartConnect;
+
+  /// No description provided for @mcpOAuthConnectAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect'**
+  String get mcpOAuthConnectAction;
+
+  /// No description provided for @mcpOAuthConnectSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'MCP OAuth connected'**
+  String get mcpOAuthConnectSuccess;
+
+  /// No description provided for @mcpOAuthStatusConnected.
+  ///
+  /// In en, this message translates to:
+  /// **'OAuth connected'**
+  String get mcpOAuthStatusConnected;
+
+  /// No description provided for @mcpOAuthStatusNeedsAuth.
+  ///
+  /// In en, this message translates to:
+  /// **'Needs OAuth'**
+  String get mcpOAuthStatusNeedsAuth;
+
   /// No description provided for @mcpFormTypeLabel.
   ///
   /// In en, this message translates to:

@@ -9,16 +9,25 @@ import '../storage/app_storage.dart';
 import '../storage/flashskyai_storage_roots.dart';
 
 class McpRegistryConfigService {
-  McpRegistryConfigService({FlashskyaiStorageRoots? storageRoots, Filesystem? fs})
-    : _storageRoots = storageRoots,
-      _fs = fs ?? LocalFilesystem();
+  McpRegistryConfigService({
+    FlashskyaiStorageRoots? storageRoots,
+    Filesystem? fs,
+    String? teampilotRoot,
+  }) : _storageRoots = storageRoots,
+       _teampilotRoot = teampilotRoot?.trim(),
+       _fs = fs ?? LocalFilesystem();
 
   final FlashskyaiStorageRoots? _storageRoots;
+  final String? _teampilotRoot;
   final Filesystem _fs;
 
   Future<String> _configPath() async {
     if (_storageRoots != null) {
       return (await _storageRoots.resolve()).mcpRegistrySourcesConfigPath;
+    }
+    final root = _teampilotRoot;
+    if (root != null && root.isNotEmpty) {
+      return AppPaths.mcpRegistrySourcesConfigPathForTeampilotRoot(root);
     }
     return AppStorage.paths.mcpRegistrySourcesConfigPath;
   }

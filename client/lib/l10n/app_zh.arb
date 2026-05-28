@@ -518,6 +518,23 @@
       "count": {"type": "int"}
     }
   },
+  "mcpOAuthConnectTitle": "连接 {name}",
+  "@mcpOAuthConnectTitle": {
+    "placeholders": {
+      "name": {"type": "String"}
+    }
+  },
+  "mcpOAuthConnectHint": "在浏览器中完成 MCP 提供商登录。令牌按 Claude Code 格式写入应用配置目录（等同终端 /mcp → Authenticate）。",
+  "mcpOAuthDiscovering": "正在发现授权服务器…",
+  "mcpOAuthOpenBrowser": "打开浏览器",
+  "mcpOAuthCallbackUrlLabel": "回调地址",
+  "mcpOAuthCallbackUrlHint": "登录后粘贴完整 URL（含 ?code=）",
+  "mcpOAuthSubmitCallback": "提交地址",
+  "mcpOAuthStartConnect": "连接",
+  "mcpOAuthConnectAction": "连接",
+  "mcpOAuthConnectSuccess": "MCP OAuth 已连接",
+  "mcpOAuthStatusConnected": "OAuth 已连接",
+  "mcpOAuthStatusNeedsAuth": "需要 OAuth",
   "mcpFormTypeLabel": "选择 MCP 类型",
   "mcpPresetCustom": "自定义",
   "mcpPresetDescFetch": "抓取网页并将 HTML 转为 Markdown，供模型使用。",

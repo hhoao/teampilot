@@ -764,6 +764,23 @@
       "count": {"type": "int"}
     }
   },
+  "mcpOAuthConnectTitle": "Connect {name}",
+  "@mcpOAuthConnectTitle": {
+    "placeholders": {
+      "name": {"type": "String"}
+    }
+  },
+  "mcpOAuthConnectHint": "Sign in with the MCP provider in your browser. Tokens are stored in Claude Code format under app config (same as /mcp → Authenticate).",
+  "mcpOAuthDiscovering": "Discovering authorization server…",
+  "mcpOAuthOpenBrowser": "Open browser",
+  "mcpOAuthCallbackUrlLabel": "Redirect URL",
+  "mcpOAuthCallbackUrlHint": "Paste the full URL after sign-in (contains ?code=)",
+  "mcpOAuthSubmitCallback": "Submit URL",
+  "mcpOAuthStartConnect": "Connect",
+  "mcpOAuthConnectAction": "Connect",
+  "mcpOAuthConnectSuccess": "MCP OAuth connected",
+  "mcpOAuthStatusConnected": "OAuth connected",
+  "mcpOAuthStatusNeedsAuth": "Needs OAuth",
   "mcpFormTypeLabel": "MCP type",
   "mcpPresetCustom": "Custom",
   "mcpPresetDescFetch": "Fetch web pages and convert HTML to markdown for LLMs.",

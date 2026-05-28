@@ -41,6 +41,7 @@ class TeamMcpLinkerService {
     final linked = <String>[];
     final skipped = <String>[];
     final mcpServers = <String, Object?>{};
+    final smitheryServerKeys = <String>[];
 
     for (final id in mcpServerIds) {
       final server = byId[id];
@@ -49,7 +50,11 @@ class TeamMcpLinkerService {
         continue;
       }
       if (!server.enabled) continue;
-      mcpServers[server.configKey] = Map<String, Object?>.from(server.server);
+      final key = server.configKey;
+      mcpServers[key] = Map<String, Object?>.from(server.server);
+      if (server.smitheryHosted) {
+        smitheryServerKeys.add(key);
+      }
       linked.add(id);
     }
 
@@ -58,7 +63,11 @@ class TeamMcpLinkerService {
       await _fs.ensureDir(layout.teamMcpDir(trimmedTeamId));
       await _fs.atomicWrite(
         outPath,
-        const JsonEncoder.withIndent('  ').convert({'mcpServers': mcpServers}),
+        const JsonEncoder.withIndent('  ').convert({
+          'mcpServers': mcpServers,
+          if (smitheryServerKeys.isNotEmpty)
+            'smitheryServerKeys': smitheryServerKeys,
+        }),
       );
       return TeamMcpSyncResult(linked: linked, skippedMissingIds: skipped);
     } catch (e) {

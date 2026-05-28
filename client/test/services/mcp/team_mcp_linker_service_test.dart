@@ -44,6 +44,31 @@ void main() {
     final json = jsonDecode(await file.readAsString()) as Map<String, Object?>;
     final servers = json['mcpServers'] as Map<String, Object?>;
     expect(servers.keys, contains('fetch'));
+    expect(json.containsKey('smitheryServerKeys'), isFalse);
+  });
+
+  test('records smitheryServerKeys for smithery catalog entries', () async {
+    final server = McpServer(
+      id: 'github',
+      name: 'GitHub',
+      server: const {
+        'type': 'http',
+        'url': 'https://github.run.tools',
+      },
+      smitheryHosted: true,
+      createdAt: 1,
+      updatedAt: 1,
+    );
+    await linker.syncForTeam(
+      teamId: 'team-a',
+      mcpServerIds: const ['github'],
+      catalog: [server],
+      layout: layout,
+    );
+    final json = jsonDecode(
+      await File(layout.teamMcpServersFile('team-a')).readAsString(),
+    ) as Map<String, Object?>;
+    expect(json['smitheryServerKeys'], ['GitHub']);
   });
 
   test('disabled servers are excluded', () async {

@@ -4,8 +4,10 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/cli/cli_data_layout.dart';
 import 'package:teampilot/services/mcp/mcp_registry_service.dart';
-import 'package:teampilot/services/mcp/team_mcp_linker_service.dart';
+import 'package:teampilot/models/mcp_registry_source.dart';
 import 'package:teampilot/models/mcp_server.dart';
+import 'package:teampilot/services/mcp/team_mcp_linker_service.dart';
+import 'package:path/path.dart' as p;
 
 void main() {
   late Directory root;
@@ -102,5 +104,77 @@ void main() {
         jsonDecode(await metaFile.readAsString()) as Map<String, Object?>;
     expect(meta['hasCompletedOnboarding'], isTrue);
     expect((meta['mcpServers'] as Map)['fetch'], isNotNull);
+  });
+
+  test('session merge injects Smithery Bearer only for gateway URLs', () async {
+    const teamId = 'team-a';
+    const sessionId = 'sess-auth';
+    final memberDir = layout.memberToolDir(teamId, sessionId, 'claude');
+    await Directory(memberDir).create(recursive: true);
+
+    await Directory(p.join(root.path, 'mcp')).create(recursive: true);
+    await File(p.join(root.path, 'mcp', 'registry_sources.json')).writeAsString(
+      jsonEncode(
+        McpRegistrySourcesConfig(
+          sources: [
+            McpRegistrySourceConfig(
+              kind: McpRegistrySourceKind.smithery,
+              baseUrl: McpRegistrySourceConfig.defaultBaseUrl(
+                McpRegistrySourceKind.smithery,
+              ),
+              apiToken: 'registry-secret',
+            ),
+          ],
+        ).toJson(),
+      ),
+    );
+
+    await TeamMcpLinkerService().syncForTeam(
+      teamId: teamId,
+      mcpServerIds: const ['ctx', 'deploy'],
+      catalog: [
+        McpServer(
+          id: 'ctx',
+          name: 'ctx-gw',
+          server: const {
+            'type': 'http',
+            'url': 'https://server.smithery.ai/@context7',
+          },
+          createdAt: 1,
+          updatedAt: 1,
+        ),
+        McpServer(
+          id: 'deploy',
+          name: 'Context7',
+          server: const {
+            'type': 'http',
+            'url': 'https://context7-mcp--upstash.run.tools',
+          },
+          smitheryHosted: true,
+          createdAt: 1,
+          updatedAt: 1,
+        ),
+      ],
+      layout: layout,
+    );
+
+    await McpRegistryService(layout: layout).writeForSession(
+      teamId: teamId,
+      sessionId: sessionId,
+    );
+
+    final meta = jsonDecode(
+      await File('$memberDir/.claude.json').readAsString(),
+    ) as Map<String, Object?>;
+    final servers = meta['mcpServers'] as Map;
+    expect(
+      (servers['ctx-gw'] as Map)['headers'],
+      isNotNull,
+    );
+    expect(
+      (servers['ctx-gw'] as Map)['headers']['Authorization'],
+      'Bearer registry-secret',
+    );
+    expect((servers['Context7'] as Map).containsKey('headers'), isFalse);
   });
 }

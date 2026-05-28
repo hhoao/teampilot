@@ -1541,6 +1541,46 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String mcpOAuthConnectTitle(String name) {
+    return 'Connect $name';
+  }
+
+  @override
+  String get mcpOAuthConnectHint =>
+      'Sign in with the MCP provider in your browser. Tokens are stored in Claude Code format under app config (same as /mcp → Authenticate).';
+
+  @override
+  String get mcpOAuthDiscovering => 'Discovering authorization server…';
+
+  @override
+  String get mcpOAuthOpenBrowser => 'Open browser';
+
+  @override
+  String get mcpOAuthCallbackUrlLabel => 'Redirect URL';
+
+  @override
+  String get mcpOAuthCallbackUrlHint =>
+      'Paste the full URL after sign-in (contains ?code=)';
+
+  @override
+  String get mcpOAuthSubmitCallback => 'Submit URL';
+
+  @override
+  String get mcpOAuthStartConnect => 'Connect';
+
+  @override
+  String get mcpOAuthConnectAction => 'Connect';
+
+  @override
+  String get mcpOAuthConnectSuccess => 'MCP OAuth connected';
+
+  @override
+  String get mcpOAuthStatusConnected => 'OAuth connected';
+
+  @override
+  String get mcpOAuthStatusNeedsAuth => 'Needs OAuth';
+
+  @override
   String get mcpFormTypeLabel => 'MCP type';
 
   @override

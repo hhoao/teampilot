@@ -1503,6 +1503,45 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String mcpOAuthConnectTitle(String name) {
+    return '连接 $name';
+  }
+
+  @override
+  String get mcpOAuthConnectHint =>
+      '在浏览器中完成 MCP 提供商登录。令牌按 Claude Code 格式写入应用配置目录（等同终端 /mcp → Authenticate）。';
+
+  @override
+  String get mcpOAuthDiscovering => '正在发现授权服务器…';
+
+  @override
+  String get mcpOAuthOpenBrowser => '打开浏览器';
+
+  @override
+  String get mcpOAuthCallbackUrlLabel => '回调地址';
+
+  @override
+  String get mcpOAuthCallbackUrlHint => '登录后粘贴完整 URL（含 ?code=）';
+
+  @override
+  String get mcpOAuthSubmitCallback => '提交地址';
+
+  @override
+  String get mcpOAuthStartConnect => '连接';
+
+  @override
+  String get mcpOAuthConnectAction => '连接';
+
+  @override
+  String get mcpOAuthConnectSuccess => 'MCP OAuth 已连接';
+
+  @override
+  String get mcpOAuthStatusConnected => 'OAuth 已连接';
+
+  @override
+  String get mcpOAuthStatusNeedsAuth => '需要 OAuth';
+
+  @override
   String get mcpFormTypeLabel => '选择 MCP 类型';
 
   @override

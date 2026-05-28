@@ -58,6 +58,8 @@ class McpInstalledServerCard extends StatelessWidget {
     required this.busy,
     required this.onEdit,
     required this.onDelete,
+    this.oauthAuthenticated,
+    this.onOAuthConnect,
     super.key,
   });
 
@@ -65,6 +67,8 @@ class McpInstalledServerCard extends StatelessWidget {
   final bool busy;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
+  final bool? oauthAuthenticated;
+  final VoidCallback? onOAuthConnect;
 
   @override
   Widget build(BuildContext context) {
@@ -143,9 +147,45 @@ class McpInstalledServerCard extends StatelessWidget {
                         height: 1.35,
                       ),
                     ),
+                    if (oauthAuthenticated != null) ...[
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          Icon(
+                            oauthAuthenticated!
+                                ? Icons.verified_user_outlined
+                                : Icons.lock_outline,
+                            size: 14,
+                            color: oauthAuthenticated!
+                                ? cs.primary
+                                : cs.onSurface.withValues(alpha: 0.55),
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            oauthAuthenticated!
+                                ? context.l10n.mcpOAuthStatusConnected
+                                : context.l10n.mcpOAuthStatusNeedsAuth,
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: oauthAuthenticated!
+                                  ? cs.primary
+                                  : cs.onSurface.withValues(alpha: 0.65),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ],
                 ),
               ),
+              if (onOAuthConnect != null &&
+                  oauthAuthenticated != true &&
+                  !busy)
+                TextButton(
+                  onPressed: onOAuthConnect,
+                  child: Text(context.l10n.mcpOAuthConnectAction),
+                ),
               if (busy)
                 const SizedBox(
                   width: 22,

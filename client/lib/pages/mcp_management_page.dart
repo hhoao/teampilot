@@ -11,6 +11,7 @@ import '../services/app/platform_utils.dart';
 import '../models/mcp_registry_source.dart';
 import '../services/mcp/mcp_catalog_mapper.dart';
 import '../services/mcp/mcp_registry_config_service.dart';
+import '../services/mcp/smithery_mcp_auth.dart';
 import '../services/mcp/smithery_mcp_service.dart';
 import '../utils/app_keys.dart';
 import '../utils/debounce/debounce.dart';
@@ -138,7 +139,14 @@ class _McpManagementPageState extends State<McpManagementPage> {
         : listing;
     if (!mounted) return;
     final now = DateTime.now().millisecondsSinceEpoch;
-    final draft = McpCatalogMapper.draftFromListing(resolved, now: now);
+    var draft = McpCatalogMapper.draftFromListing(resolved, now: now);
+    if (resolved.source == McpCatalogSource.smithery) {
+      final config = await McpRegistryConfigService().load();
+      final token = config.byKind(McpRegistrySourceKind.smithery)?.apiToken;
+      draft = draft.copyWith(
+        server: SmitheryMcpAuth.applyCatalogBearer(draft.server, token),
+      );
+    }
     final ok = await cubit.upsert(draft);
     if (!mounted) return;
     if (ok) {
@@ -251,6 +259,7 @@ class _McpManagementPageState extends State<McpManagementPage> {
             onEdit: (s) => _openForm(existing: s),
             onDelete: _confirmDelete,
             onGoDiscovery: () => _goSection(McpSection.discovery),
+            onOAuthConnected: () {},
           ),
           McpSection.discovery => McpDiscoverySection(
             onAddListing: _addFromListing,
