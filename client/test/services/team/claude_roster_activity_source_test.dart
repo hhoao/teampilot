@@ -50,6 +50,32 @@ void main() {
     );
   });
 
+  test('readMemberWorking reuses cache when mtime unchanged', () async {
+    final claudeDir = Directory('${tmp.path}/claude-cache');
+    final rosterDir = Directory('${claudeDir.path}/teams/cache-team');
+    await rosterDir.create(recursive: true);
+    final configFile = File('${rosterDir.path}/config.json');
+    await configFile.writeAsString(
+      jsonEncode({
+        'members': [
+          {'name': 'dev', 'isActive': true},
+        ],
+      }),
+    );
+
+    final first = await source.readMemberWorking(
+      claudeConfigDir: claudeDir.path,
+      cliTeamName: 'cache-team',
+    );
+    final second = await source.readMemberWorking(
+      claudeConfigDir: claudeDir.path,
+      cliTeamName: 'cache-team',
+    );
+
+    expect(first['dev'], isTrue);
+    expect(second, same(first));
+  });
+
   test('readMemberWorking treats missing isActive as idle', () async {
     final claudeDir = Directory('${tmp.path}/claude2');
     final rosterDir = Directory('${claudeDir.path}/teams/my-team-2');

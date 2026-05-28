@@ -10,6 +10,10 @@ class ClaudeRosterActivitySource {
 
   final Filesystem fs;
 
+  String? _cachePath;
+  DateTime? _cacheMtime;
+  Map<String, bool>? _cacheWorking;
+
   String rosterConfigPath({
     required String claudeConfigDir,
     required String cliTeamName,
@@ -28,16 +32,36 @@ class ClaudeRosterActivitySource {
       cliTeamName: cliTeamName,
     );
     final stat = await fs.stat(path);
-    if (!stat.exists) return const {};
+    if (!stat.exists) {
+      _clearCache();
+      return const {};
+    }
+
+    final mtime = stat.mtime;
+    if (_cachePath == path &&
+        mtime != null &&
+        mtime == _cacheMtime &&
+        _cacheWorking != null) {
+      return _cacheWorking!;
+    }
 
     final raw = await fs.readString(path);
-    if (raw == null || raw.trim().isEmpty) return const {};
+    if (raw == null || raw.trim().isEmpty) {
+      _clearCache();
+      return const {};
+    }
 
     final decoded = jsonDecode(raw);
-    if (decoded is! Map) return const {};
+    if (decoded is! Map) {
+      _clearCache();
+      return const {};
+    }
 
     final members = decoded['members'];
-    if (members is! List) return const {};
+    if (members is! List) {
+      _clearCache();
+      return const {};
+    }
 
     final out = <String, bool>{};
     for (final entry in members) {
@@ -48,7 +72,16 @@ class ClaudeRosterActivitySource {
       final isActive = entry['isActive'];
       out[name] = isActive == true;
     }
+    _cachePath = path;
+    _cacheMtime = mtime;
+    _cacheWorking = out;
     return out;
+  }
+
+  void _clearCache() {
+    _cachePath = null;
+    _cacheMtime = null;
+    _cacheWorking = null;
   }
 
   MemberWorkload workloadForMember({

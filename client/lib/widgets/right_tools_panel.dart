@@ -43,12 +43,17 @@ class _RightToolsPanelState extends State<RightToolsPanel> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    _chatCubit = context.read<ChatCubit>();
+    final cubit = context.read<ChatCubit>();
+    if (!identical(_chatCubit, cubit)) {
+      _chatCubit?.detachPresenceUi();
+      _chatCubit = cubit;
+      cubit.attachPresenceUi();
+    }
   }
 
   @override
   void dispose() {
-    _chatCubit?.stopPresencePolling();
+    _chatCubit?.detachPresenceUi();
     super.dispose();
   }
 

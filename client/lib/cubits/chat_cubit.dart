@@ -260,6 +260,9 @@ class ChatCubit extends Cubit<ChatState> {
   final MemberPresenceService _memberPresenceService;
   Timer? _presencePollTimer;
   TeamConfig? _presenceTeam;
+  int _presencePollGeneration = 0;
+  bool _presenceUiAttached = false;
+  bool _presenceTickInFlight = false;
   var _scopeSessionsToSelectedTeam = false;
   String? _selectedTeamId;
   final TerminalSessionFactory _terminalSessionFactory;
@@ -920,6 +923,7 @@ class ChatCubit extends Cubit<ChatState> {
         ),
       );
     }
+    refreshPresencePolling();
   }
 
   void closeOtherTabs(int index) {
@@ -940,6 +944,7 @@ class ChatCubit extends Cubit<ChatState> {
         selectedMemberId: kept.selectedMemberId,
       ),
     );
+    refreshPresencePolling();
   }
 
   void closeRightTabs(int index) {
@@ -959,6 +964,7 @@ class ChatCubit extends Cubit<ChatState> {
         selectedMemberId: active?.selectedMemberId ?? '',
       ),
     );
+    refreshPresencePolling();
   }
 
   void selectTab(int index) {
@@ -971,6 +977,7 @@ class ChatCubit extends Cubit<ChatState> {
         selectedMemberId: tab.selectedMemberId,
       ),
     );
+    refreshPresencePolling();
   }
 
   void syncTeam(TeamConfig team) {
@@ -1000,14 +1007,37 @@ class ChatCubit extends Cubit<ChatState> {
     return state.memberPresence[memberId] ?? const MemberPresence.offline();
   }
 
-  /// Stops polling and clears presence (safe from widget [dispose]).
-  void stopPresencePolling() {
-    _presencePollTimer?.cancel();
-    _presencePollTimer = null;
-    _presenceTeam = null;
+  /// Members panel mounted — polling may run when tab is eligible.
+  void attachPresenceUi() {
+    if (_presenceUiAttached) return;
+    _presenceUiAttached = true;
+    _schedulePresencePollingRestart();
+  }
+
+  /// Members panel unmounted — stop timer and clear displayed presence.
+  void detachPresenceUi() {
+    if (!_presenceUiAttached) return;
+    _presenceUiAttached = false;
+    _invalidatePresencePolls();
     if (state.memberPresence.isNotEmpty) {
       _emitMemberPresence(const {});
     }
+  }
+
+  /// Stops polling, clears team binding, and invalidates in-flight ticks.
+  void stopPresencePolling() {
+    _presenceTeam = null;
+    _presenceUiAttached = false;
+    _invalidatePresencePolls();
+    if (state.memberPresence.isNotEmpty) {
+      _emitMemberPresence(const {});
+    }
+  }
+
+  void _invalidatePresencePolls() {
+    _presencePollGeneration++;
+    _presencePollTimer?.cancel();
+    _presencePollTimer = null;
   }
 
   /// Stores the roster to poll; starts the 1s timer only when the active tab
@@ -1037,19 +1067,21 @@ class ChatCubit extends Cubit<ChatState> {
     if (isClosed || mapEquals(next, state.memberPresence)) return;
     SchedulerBinding.instance.addPostFrameCallback((_) {
       if (isClosed || mapEquals(next, state.memberPresence)) return;
-      emit(
-        state.copyWith(
-          memberPresence: next,
-          stateVersion: state.stateVersion + 1,
-        ),
-      );
+      emit(state.copyWith(memberPresence: next));
     });
+  }
+
+  bool _shouldPollPresence() {
+    if (!_presenceUiAttached || _presenceTeam == null) return false;
+    final tab = _activeTab;
+    if (tab == null) return false;
+    return _tabEligibleForPresencePoll(tab);
   }
 
   bool _tabEligibleForPresencePoll(_InternalTab tab) {
     if (tab.memberShells.isNotEmpty) return true;
-    if (!tab.info.id.startsWith('local-')) return true;
-    return false;
+    final configDir = tab.memberToolConfigDir?.trim() ?? '';
+    return configDir.isNotEmpty;
   }
 
   static bool _samePresenceTeam(TeamConfig? a, TeamConfig? b) {
@@ -1072,30 +1104,45 @@ class ChatCubit extends Cubit<ChatState> {
       }
       return;
     }
-    final tab = _activeTab;
-    if (tab == null || !_tabEligibleForPresencePoll(tab)) {
+    if (!_shouldPollPresence()) {
+      if (state.memberPresence.isNotEmpty) {
+        _emitMemberPresence(const {});
+      }
       return;
     }
+    final generation = _presencePollGeneration;
     _presencePollTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-      unawaited(_tickMemberPresence(team));
+      unawaited(_tickMemberPresence(team, generation));
     });
-    unawaited(_tickMemberPresence(team));
+    unawaited(_tickMemberPresence(team, generation));
   }
 
-  Future<void> _tickMemberPresence(TeamConfig team) async {
-    if (isClosed) return;
+  Future<void> _tickMemberPresence(TeamConfig team, int generation) async {
+    if (isClosed || generation != _presencePollGeneration) return;
+    if (!_shouldPollPresence()) return;
+    if (_presenceTickInFlight) return;
+
     final tab = _activeTab;
     if (tab == null) return;
 
-    final next = await _memberPresenceService.compute(
-      teamCli: team.cli,
-      members: team.members,
-      cliTeamName: tab.cliTeamName,
-      memberToolConfigDir: tab.memberToolConfigDir,
-      memberShells: tab.memberShells,
-    );
-    if (isClosed) return;
-    _emitMemberPresence(next);
+    _presenceTickInFlight = true;
+    try {
+      final next = await _memberPresenceService.compute(
+        teamCli: team.cli,
+        members: team.members,
+        cliTeamName: tab.cliTeamName,
+        memberToolConfigDir: tab.memberToolConfigDir,
+        memberShells: tab.memberShells,
+      );
+      if (isClosed ||
+          generation != _presencePollGeneration ||
+          !_shouldPollPresence()) {
+        return;
+      }
+      _emitMemberPresence(next);
+    } finally {
+      _presenceTickInFlight = false;
+    }
   }
 
   Future<void> launchAllMembers(
@@ -1540,8 +1587,7 @@ class ChatCubit extends Cubit<ChatState> {
   @override
   Future<void> close() async {
     if (isClosed) return;
-    _presencePollTimer?.cancel();
-    _presencePollTimer = null;
+    _invalidatePresencePolls();
     for (final tab in _internalTabs) {
       for (final session in tab.sessions) {
         session.dispose();
