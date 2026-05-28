@@ -372,7 +372,7 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
     chatCubit.selectSession(session.sessionId);
 
     final lead = team != null
-        ? team.members.where((m) => m.name == 'team-lead').toList()
+        ? team.members.where((m) => m.id == 'team-lead').toList()
         : <TeamMemberConfig>[];
     if (team != null && lead.isNotEmpty) {
       unawaited(

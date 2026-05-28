@@ -144,7 +144,7 @@ void main() {
     );
 
     const team = TeamConfig(
-      id: 'T',
+      id: 't',
       name: 'T',
       members: [TeamMemberConfig(id: 'm', name: 'm')],
       skillIds: ['a:foo'],
@@ -154,7 +154,7 @@ void main() {
     expect(cubit.state.teams.length, 1);
 
     linker.syncs.clear();
-    await cubit.selectTeam('T');
+    await cubit.selectTeam('t');
 
     expect(linker.syncs, hasLength(1));
     expect(linker.syncs.single.skillIds, ['a:foo']);
@@ -175,7 +175,7 @@ void main() {
     );
 
     const team = TeamConfig(
-      id: 'T',
+      id: 't',
       name: 'T',
       members: [TeamMemberConfig(id: 'm', name: 'm')],
     );
@@ -206,7 +206,7 @@ void main() {
     );
 
     const team = TeamConfig(
-      id: 'T',
+      id: 't',
       name: 'T',
       members: [TeamMemberConfig(id: 'm', name: 'm')],
       skillIds: ['gone'],
@@ -236,20 +236,20 @@ void main() {
     );
 
     const teamA = TeamConfig(
-      id: 'A',
+      id: 'a',
       name: 'A',
       members: [TeamMemberConfig(id: 'm', name: 'm')],
       pluginIds: ['acme/market/p1'],
     );
     const teamB = TeamConfig(
-      id: 'B',
+      id: 'b',
       name: 'B',
       members: [TeamMemberConfig(id: 'm', name: 'm')],
       pluginIds: ['acme/market/p1'],
     );
     await repo.saveTeams([teamA, teamB]);
     await cubit.load();
-    await cubit.selectTeam('B');
+    await cubit.selectTeam('b');
     linker.syncs.clear();
 
     await cubit.removePluginFromAllTeams('acme/market/p1');
@@ -258,7 +258,7 @@ void main() {
       cubit.state.teams.every((t) => !t.pluginIds.contains('acme/market/p1')),
       isTrue,
     );
-    expect(linker.syncs.map((s) => s.teamId).toSet(), {'A', 'B'});
+    expect(linker.syncs.map((s) => s.teamId).toSet(), {'a', 'b'});
 
     await dir.delete(recursive: true);
   });
@@ -285,7 +285,7 @@ void main() {
     );
 
     const team = TeamConfig(
-      id: 'T',
+      id: 't',
       name: 'T',
       members: [TeamMemberConfig(id: 'm', name: 'm')],
     );
@@ -315,13 +315,13 @@ void main() {
     );
 
     const teamA = TeamConfig(
-      id: 'A',
+      id: 'a',
       name: 'A',
       members: [TeamMemberConfig(id: 'm', name: 'm')],
       pluginIds: ['acme/market/p1'],
     );
     const teamB = TeamConfig(
-      id: 'B',
+      id: 'b',
       name: 'B',
       members: [TeamMemberConfig(id: 'm', name: 'm')],
       pluginIds: ['acme/market/p1', 'other/p2'],
@@ -332,7 +332,7 @@ void main() {
 
     await cubit.syncTeamsUsingPlugin('acme/market/p1');
 
-    expect(linker.syncs.map((s) => s.teamId).toSet(), {'A', 'B'});
+    expect(linker.syncs.map((s) => s.teamId).toSet(), {'a', 'b'});
     await dir.delete(recursive: true);
   });
 
@@ -348,6 +348,7 @@ void main() {
 
     expect(await cubit.addTeam(''), isFalse);
     expect(await cubit.addTeam('Alpha'), isTrue);
+    expect(cubit.state.selectedTeam?.id, 'alpha');
     expect(cubit.state.selectedTeam?.name, 'Alpha');
     expect(
       cubit.state.selectedTeam?.members.map((m) => m.name).toList(),
@@ -395,7 +396,7 @@ void main() {
       pluginLinker: _RecordingPluginLinker(),
       );
       const team = TeamConfig(
-        id: 'Old',
+        id: 'old',
         name: 'Old',
         members: [TeamMemberConfig(id: 'team-lead', name: 'team-lead')],
       );
@@ -409,7 +410,7 @@ void main() {
       expect(lifecycle.destroyedTeams, isEmpty);
 
       await cubit.deleteSelected();
-      expect(lifecycle.destroyedTeams, ['Old']);
+      expect(lifecycle.destroyedTeams, ['old']);
       expect(File(p.join(dir.path, 'teams', 'New.json')).existsSync(), isFalse);
 
       await _drainAndCloseTeamCubit(cubit);
@@ -467,9 +468,9 @@ void main() {
       appDataBasePath: base.path,
       configProfileService: ConfigProfileService(basePath: base.path),
     );
-    const member = TeamMemberConfig(id: 'lead', name: 'lead');
+    const member = TeamMemberConfig(id: 'team-lead', name: 'team-lead');
     const team = TeamConfig(
-      id: 'Claude Team',
+      id: 'claude-team',
       name: 'Claude Team',
       cli: TeamCli.claude,
       members: [member],
@@ -503,7 +504,7 @@ void main() {
       model: 'deepseek-chat',
     );
     const team = TeamConfig(
-      id: 'Claude Team',
+      id: 'claude-team',
       name: 'Claude Team',
       cli: TeamCli.claude,
       members: [member],
@@ -536,7 +537,7 @@ void main() {
     expect(dev.model, 'kimi-k2');
     expect(
       cubit.state.selectedTeam!.members.any(
-        (m) => m.name == 'team-lead',
+        (m) => m.id == 'team-lead',
       ),
       isTrue,
     );
@@ -561,7 +562,7 @@ void main() {
     );
 
     const team = TeamConfig(
-      id: 'Claude Team',
+      id: 'claude-team',
       name: 'Claude Team',
       cli: TeamCli.claude,
       members: [
@@ -576,19 +577,19 @@ void main() {
 
     expect(launched, ['team-lead', 'developer']);
     final memberRoot = Directory(
-      p.join(base.path, 'config-profiles', 'teams', 'Claude Team', 'members'),
+      p.join(base.path, 'config-profiles', 'teams', 'claude-team', 'members'),
     );
     final memberDirs = await memberRoot
         .list()
         .where((entry) => entry is Directory)
         .map((entry) => p.basename(entry.path))
         .toList();
-    expect(memberDirs, ['Claude Team']);
+    expect(memberDirs, ['claude-team']);
 
     final rosterFile = File(
       p.join(
         memberRoot.path,
-        'Claude Team',
+        'claude-team',
         'claude',
         'teams',
         'claude-team',
@@ -617,7 +618,7 @@ void main() {
       base.path,
       'config-profiles',
       'teams',
-      'Default Team',
+      'default-team',
     );
     expect(await Directory(teamRoot).exists(), isTrue);
     expect(await Directory(p.join(teamRoot, 'flashskyai')).exists(), isFalse);
@@ -636,7 +637,7 @@ void main() {
     );
 
     const team = TeamConfig(
-      id: 'Default Team',
+      id: 'default-team',
       name: 'Default Team',
       cli: TeamCli.claude,
       members: [TeamMemberConfig(id: 'team-lead', name: 'team-lead')],
@@ -667,7 +668,7 @@ void main() {
     );
 
     const team = TeamConfig(
-      id: 'Default Team',
+      id: 'default-team',
       name: 'Default Team',
       cli: TeamCli.claude,
       members: [TeamMemberConfig(id: 'team-lead', name: 'team-lead')],

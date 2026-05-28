@@ -8,6 +8,7 @@ import 'package:uuid/uuid.dart';
 import '../models/app_project.dart';
 import '../models/connection_mode.dart';
 import '../models/app_session.dart';
+import '../models/session_member_binding.dart';
 import '../models/launch_target.dart';
 import '../models/ssh_profile.dart';
 import '../models/team_config.dart';
@@ -90,8 +91,11 @@ class _InternalTab {
   TerminalSession? resumeSession;
   String selectedMemberId;
 
-  /// CLI `--team-name` and config-profiles runtime id (usually [AppSession.sessionId]).
+  /// CLI `--team-name` and config-profiles runtime id ([AppSession.cliTeamName]).
   final String cliTeamName;
+
+  /// Persisted session for team member connect (may be absent before index load).
+  AppSession? persistedSession;
   final Map<String, TerminalSession> memberShells = {};
 
   Iterable<TerminalSession> get sessions sync* {
@@ -320,10 +324,6 @@ class ChatCubit extends Cubit<ChatState> {
 
   static const _uuid = Uuid();
 
-  /// CLI `--team-name` and config-profiles runtime directory for a session.
-  static String _cliTeamNameForSession(AppSession session) =>
-      session.effectiveCliTeamDirectory;
-
   static void _defaultPostFrameScheduler(VoidCallback callback) {
     WidgetsBinding.instance.addPostFrameCallback((_) => callback());
   }
@@ -427,10 +427,12 @@ class ChatCubit extends Cubit<ChatState> {
     String projectId,
     SessionRepository repo, {
     String sessionTeamId = '',
+    List<TeamMemberConfig> rosterMembers = const [],
   }) async {
     final session = await repo.createSession(
       projectId,
       sessionTeam: sessionTeamId,
+      rosterMembers: rosterMembers,
     );
     await loadProjectData(repo);
     return session;
@@ -440,6 +442,7 @@ class ChatCubit extends Cubit<ChatState> {
     String primaryPath,
     SessionRepository repo, {
     String sessionTeamId = '',
+    List<TeamMemberConfig> rosterMembers = const [],
     List<String> additionalPaths = const [],
     String display = '',
   }) async {
@@ -448,7 +451,11 @@ class ChatCubit extends Cubit<ChatState> {
       additionalPaths: additionalPaths,
       display: display,
     );
-    await repo.createSession(project.projectId, sessionTeam: sessionTeamId);
+    await repo.createSession(
+      project.projectId,
+      sessionTeam: sessionTeamId,
+      rosterMembers: rosterMembers,
+    );
     await loadProjectData(repo);
   }
 
@@ -509,8 +516,11 @@ class ChatCubit extends Cubit<ChatState> {
       subtitle: session.primaryPath,
     );
     final launched = session.launchState == AppSessionLaunchState.started;
-    final cliTeamName = _cliTeamNameForSession(session);
-    final internalTab = _InternalTab(info: info, cliTeamName: cliTeamName);
+    final cliTeamName = session.cliTeamName;
+    final internalTab = _InternalTab(
+      info: info,
+      cliTeamName: cliTeamName,
+    )..persistedSession = session;
     if (team != null && member != null) {
       internalTab.memberShells[member.id] = ts;
       internalTab.selectedMemberId = member.id;
@@ -530,69 +540,51 @@ class ChatCubit extends Cubit<ChatState> {
       _beginSessionConnect(info.id);
       _postFrameScheduler(() async {
         try {
-          final plan = await _lifecycle.prepareLaunch(
-            session: session,
-            team: team,
-            member: member,
-          );
-          _emitLaunchWarnings(plan.warnings);
-          final useResume = launched && plan.resume;
-          ts.connect(
-            workingDirectory: session.primaryPath,
-            additionalDirectories: session.additionalPaths,
-            fixedSessionId: useResume ? null : plan.sessionIdArg,
-            resumeSessionId: useResume ? plan.sessionIdArg : null,
-            team: team,
-            member: member,
-            sessionTeam: cliTeamName,
-            extraEnvironment: plan.env.isEmpty ? null : plan.env,
-            onFirstUserLineSubmitted: _autoRenameOnFirstPrompt(session.sessionId),
-            onProcessFailed: (message) =>
-                _failSessionConnect(info.id, message),
-            onProcessExited: () => _updateTabRunning(info.id),
-            onProcessStarted: () {
-              _clearLaunchError(info.id);
-              _finishSessionConnect(info.id);
-              if (repo == null) return;
-              unawaited(
-                repo
-                    .markSessionLaunched(
-                      session.sessionId,
-                      launchTeam: cliTeamName,
-                    )
-                    .then((_) {
-                      if (isClosed) return;
-                      final sessions = state.sessions.map((s) {
-                        if (s.sessionId != session.sessionId) {
-                          return s;
-                        }
-                        final lt = cliTeamName.trim();
-                        return s.copyWith(
-                          launchState: AppSessionLaunchState.started,
-                          launchTeam: lt.isNotEmpty ? lt : s.launchTeam,
-                          updatedAt:
-                              DateTime.now().millisecondsSinceEpoch,
-                        );
-                      }).toList();
-                      _emitWithDerivedSessionsAndProjects(
-                        state.copyWith(sessions: sessions),
-                      );
-                    })
-                    .catchError((Object error, StackTrace stackTrace) {
-                      appLogger.w(
-                        'markSessionLaunched failed: $error',
-                        stackTrace: stackTrace,
-                      );
-                    }),
-              );
-            },
-          );
-          _updateTabRunning(info.id);
-          if (_autoLaunchAllMembersOnConnect?.call() == true &&
-              team != null &&
-              member != null) {
-            _launchRemainingMembersForTab(team, member.id, internalTab);
+          if (team != null && member != null) {
+            await _connectMemberShell(
+              tab: internalTab,
+              session: session,
+              team: team,
+              member: member,
+              shell: ts,
+              repo: repo,
+              launched: launched,
+            );
+            if (_autoLaunchAllMembersOnConnect?.call() == true) {
+              _launchRemainingMembersForTab(team, member.id, internalTab);
+            }
+          } else {
+            final plan = await _lifecycle.prepareLaunch(
+              session: session,
+              team: team,
+              member: member,
+            );
+            _emitLaunchWarnings(plan.warnings);
+            final useResume = launched && plan.resume;
+            ts.connect(
+              workingDirectory: session.primaryPath,
+              additionalDirectories: session.additionalPaths,
+              fixedSessionId: useResume ? null : plan.taskId,
+              resumeSessionId: useResume ? plan.taskId : null,
+              team: team,
+              member: member,
+              sessionTeam: cliTeamName.isNotEmpty ? cliTeamName : null,
+              extraEnvironment: plan.env.isEmpty ? null : plan.env,
+              onFirstUserLineSubmitted: _autoRenameOnFirstPrompt(
+                session.sessionId,
+              ),
+              onProcessFailed: (message) =>
+                  _failSessionConnect(info.id, message),
+              onProcessExited: () => _updateTabRunning(info.id),
+              onProcessStarted: () {
+                _clearLaunchError(info.id);
+                _finishSessionConnect(info.id);
+                if (repo == null) return;
+                unawaited(_persistSessionStarted(repo, session.sessionId));
+              },
+            );
           }
+          _updateTabRunning(info.id);
         } on Object catch (e, st) {
           appLogger.e(
             '[session] prepareLaunch/connect failed for ${info.id}: $e',
@@ -635,6 +627,7 @@ class ChatCubit extends Cubit<ChatState> {
     final session = await repo.createSession(
       project.projectId,
       sessionTeam: team.id,
+      rosterMembers: team.members,
     );
     await loadProjectData(repo);
     if (isClosed) return;
@@ -678,6 +671,139 @@ class ChatCubit extends Cubit<ChatState> {
     _scheduleMemberConnect(team, member, tab);
   }
 
+  AppSession? _sessionForTab(_InternalTab tab) {
+    final cached = tab.persistedSession;
+    if (cached != null) return cached;
+    final tabId = tab.info.id;
+    if (tabId.startsWith('local-')) return null;
+    for (final s in state.sessions) {
+      if (s.sessionId == tabId) return s;
+    }
+    return null;
+  }
+
+  Future<void> _persistSessionStarted(
+    SessionRepository repo,
+    String sessionId,
+  ) async {
+    await repo.markSessionLaunched(sessionId);
+    if (isClosed) return;
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final sessions = state.sessions.map((s) {
+      if (s.sessionId != sessionId) return s;
+      return s.copyWith(
+        launchState: AppSessionLaunchState.started,
+        updatedAt: now,
+      );
+    }).toList();
+    _emitWithDerivedSessionsAndProjects(state.copyWith(sessions: sessions));
+  }
+
+  Future<SessionMemberBinding> _resolveMemberBinding({
+    required AppSession session,
+    required TeamMemberConfig member,
+    required _InternalTab tab,
+    SessionRepository? repo,
+  }) async {
+    final r = repo ?? _sessionRepository;
+    final isLocal = session.sessionId.startsWith('local-');
+    if (r != null && !isLocal) {
+      return r.ensureMemberBinding(session.sessionId, member.id);
+    }
+    final existing = session.bindingFor(member.id);
+    if (existing != null) return existing;
+    final binding = SessionMemberBinding(
+      rosterMemberId: member.id,
+      taskId: _uuid.v4(),
+    );
+    tab.persistedSession = session.copyWith(
+      members: [...session.members, binding],
+    );
+    return binding;
+  }
+
+  AppSession? _sessionForMemberConnect(_InternalTab tab, TeamConfig team) {
+    final cached = _sessionForTab(tab);
+    if (cached != null) return cached;
+    if (!tab.info.id.startsWith('local-')) return null;
+    final launch = _workingDirectoryAndAddDirsForTab(tab);
+    final session =
+        tab.persistedSession ??
+        AppSession(
+          sessionId: tab.info.id,
+          projectId: '',
+          primaryPath: launch.$1,
+          additionalPaths: launch.$2,
+          sessionTeam: team.id,
+          cliTeamName: tab.cliTeamName,
+          createdAt: DateTime.now().millisecondsSinceEpoch,
+        );
+    tab.persistedSession = session;
+    return session;
+  }
+
+  Future<void> _connectMemberShell({
+    required _InternalTab tab,
+    required AppSession session,
+    required TeamConfig team,
+    required TeamMemberConfig member,
+    required TerminalSession shell,
+    SessionRepository? repo,
+    required bool launched,
+  }) async {
+    if (session.cliTeamName.isEmpty) {
+      _failSessionConnect(
+        tab.info.id,
+        'Session is missing CLI team identity (cliTeamName). '
+        'Create a new team session.',
+      );
+      return;
+    }
+    if (!session.sessionId.startsWith('local-') && session.members.isEmpty) {
+      _failSessionConnect(
+        tab.info.id,
+        'Session is missing member task bindings. Create a new team session.',
+      );
+      return;
+    }
+    final binding = await _resolveMemberBinding(
+      session: session,
+      member: member,
+      tab: tab,
+      repo: repo,
+    );
+    final activeSession = tab.persistedSession ?? session;
+    final plan = await _lifecycle.prepareLaunch(
+      session: activeSession,
+      team: team,
+      member: member,
+      memberBinding: binding,
+    );
+    _emitLaunchWarnings(plan.warnings);
+    final useResume = launched && plan.resume;
+    shell.connect(
+      workingDirectory: activeSession.primaryPath,
+      additionalDirectories: activeSession.additionalPaths,
+      fixedSessionId: useResume ? null : plan.taskId,
+      resumeSessionId: useResume ? plan.taskId : null,
+      team: team,
+      member: member,
+      sessionTeam: activeSession.cliTeamName,
+      extraEnvironment: plan.env.isEmpty ? null : plan.env,
+      onFirstUserLineSubmitted: _autoRenameOnFirstPrompt(activeSession.sessionId),
+      onProcessFailed: (message) => _failSessionConnect(tab.info.id, message),
+      onProcessExited: () => _updateTabRunning(tab.info.id),
+      onProcessStarted: () {
+        _clearLaunchError(tab.info.id);
+        _finishSessionConnect(tab.info.id);
+        final r = repo ?? _sessionRepository;
+        if (r != null && !activeSession.sessionId.startsWith('local-')) {
+          unawaited(_persistSessionStarted(r, activeSession.sessionId));
+        }
+      },
+    );
+  }
+
   void _scheduleMemberConnect(
     TeamConfig team,
     TeamMemberConfig member,
@@ -707,33 +833,21 @@ class ChatCubit extends Cubit<ChatState> {
           _finishSessionConnect(tab.info.id);
           return;
         }
-        final plan = await _lifecycle.prepareLaunch(
-          session: AppSession(
-            sessionId: tab.cliTeamName,
-            projectId: '',
-            primaryPath: launch.$1,
-            sessionTeam: team.id,
-            createdAt: DateTime.now().millisecondsSinceEpoch,
-          ),
+        final session = _sessionForMemberConnect(tab, team);
+        if (session == null) {
+          _failSessionConnect(
+            tab.info.id,
+            'No persisted session for this tab. Create a team session first.',
+          );
+          return;
+        }
+        await _connectMemberShell(
+          tab: tab,
+          session: session,
           team: team,
           member: member,
-        );
-        _emitLaunchWarnings(plan.warnings);
-        shell.connect(
-          workingDirectory: launch.$1,
-          additionalDirectories: launch.$2,
-          team: team,
-          member: member,
-          sessionTeam: tab.cliTeamName,
-          extraEnvironment: plan.env.isEmpty ? null : plan.env,
-          onFirstUserLineSubmitted: _autoRenameOnFirstPrompt(tab.info.id),
-          onProcessStarted: () {
-            _clearLaunchError(tab.info.id);
-            _finishSessionConnect(tab.info.id);
-          },
-          onProcessFailed: (message) =>
-              _failSessionConnect(tab.info.id, message),
-          onProcessExited: () => _updateTabRunning(tab.info.id),
+          shell: shell,
+          launched: session.launchState == AppSessionLaunchState.started,
         );
         _updateTabRunning(tab.info.id);
       } on Object catch (e, st) {
@@ -1263,7 +1377,7 @@ class ChatCubit extends Cubit<ChatState> {
 
   String _defaultMemberId(TeamConfig team) {
     if (team.members.isEmpty) return '';
-    final lead = team.members.where((m) => m.name == 'team-lead');
+    final lead = team.members.where((m) => m.id == 'team-lead');
     return lead.isEmpty ? team.members.first.id : lead.first.id;
   }
 

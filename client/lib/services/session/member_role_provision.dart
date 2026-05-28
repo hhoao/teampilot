@@ -52,13 +52,7 @@ This tab is **plan-and-assign only**: Bash, PowerShell, Edit, Write, NotebookEdi
 ''';
 
   static String memberSlug(TeamMemberConfig member) {
-    final name = member.name.trim();
-    if (name == TeamMemberNaming.teamLeadName) {
-      return TeamMemberNaming.teamLeadName;
-    }
-    return ClaudeTeamRosterService.safeClaudePathSegment(
-      TeamMemberNaming.slugMemberName(name),
-    );
+    return ClaudeTeamRosterService.safeClaudePathSegment(member.id);
   }
 
   static String rolePromptPath(String memberToolDir, TeamMemberConfig member) {
@@ -81,7 +75,7 @@ This tab is **plan-and-assign only**: Bash, PowerShell, Edit, Write, NotebookEdi
     final path = rolePromptPath(memberToolDir, member);
     final text = member.prompt.trim();
     final stat = await fs.stat(path);
-    final isLead = member.name.trim() == TeamMemberNaming.teamLeadName;
+    final isLead = TeamMemberNaming.isTeamLead(member);
     if (text.isEmpty && !isLead) {
       if (stat.exists) {
         await fs.removeRecursive(path);

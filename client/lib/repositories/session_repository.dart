@@ -6,6 +6,11 @@ import 'package:uuid/uuid.dart';
 
 import '../models/app_project.dart';
 import '../models/app_session.dart';
+import '../models/session_member_binding.dart';
+import '../models/team_config.dart';
+import '../services/cli/cli_data_layout.dart';
+import '../services/io/filesystem.dart';
+import '../services/session/session_team_counter.dart';
 import '../services/storage/app_storage.dart';
 import '../services/storage/flashskyai_storage_roots.dart';
 import '../services/session/session_lifecycle_service.dart';
@@ -234,9 +239,23 @@ class SessionRepository {
     );
   }
 
+  Future<({Filesystem fs, CliDataLayout layout})> _counterContext() async {
+    if (_storageRoots != null) {
+      final snap = await _storageRoots!.resolve();
+      return (fs: snap.fs, layout: snap.layout);
+    }
+    final teampilotRoot = _rootOverride ?? AppStorage.paths.basePath;
+    final fs = AppStorage.fs;
+    return (
+      fs: fs,
+      layout: CliDataLayout(teampilotRoot: teampilotRoot, fs: fs),
+    );
+  }
+
   Future<AppSession> createSession(
     String projectId, {
     String sessionTeam = '',
+    List<TeamMemberConfig> rosterMembers = const [],
   }) async {
     final fs = await _fs();
     final index = await _loadIndex(fs);
@@ -250,6 +269,31 @@ class SessionRepository {
     if (project == null) {
       throw StateError('Unknown projectId: $projectId');
     }
+    final trimmedTeam = sessionTeam.trim();
+    var cliTeamName = '';
+    var members = const <SessionMemberBinding>[];
+    if (trimmedTeam.isNotEmpty) {
+      final valid = rosterMembers.where((m) => m.isValid).toList();
+      if (valid.isEmpty) {
+        throw ArgumentError(
+          'Team session requires at least one valid roster member',
+        );
+      }
+      final counterCtx = await _counterContext();
+      final counter = SessionTeamCounter(
+        fs: counterCtx.fs,
+        layout: counterCtx.layout,
+      );
+      cliTeamName = await counter.nextCliTeamName(trimmedTeam);
+      members = [
+        for (final m in valid)
+          SessionMemberBinding(
+            rosterMemberId: m.id,
+            taskId: const Uuid().v4(),
+          ),
+      ];
+    }
+
     final sessionId = const Uuid().v4();
     final now = DateTime.now().millisecondsSinceEpoch;
     final session = AppSession(
@@ -259,7 +303,8 @@ class SessionRepository {
       additionalPaths: List<String>.from(project.additionalPaths),
       display: '',
       sessionTeam: sessionTeam,
-      launchTeam: '',
+      cliTeamName: cliTeamName,
+      members: members,
       launchState: AppSessionLaunchState.created,
       createdAt: now,
       updatedAt: now,
@@ -305,28 +350,45 @@ class SessionRepository {
     );
   }
 
-  /// Single read/write after the PTY process is up: persists [launchTeam] (when
-  /// non-empty) and [AppSessionLaunchState.started] together without overwriting
-  /// [AppSession.sessionTeam] (stable UI team id).
-  Future<void> markSessionLaunched(
-    String sessionId, {
-    required String launchTeam,
-  }) {
+  /// Persists [AppSessionLaunchState.started] after the PTY process is up.
+  Future<void> markSessionLaunched(String sessionId) {
+    return markSessionStarted(sessionId);
+  }
+
+  Future<SessionMemberBinding> ensureMemberBinding(
+    String sessionId,
+    String rosterMemberId,
+  ) {
     return _withSessionFile(sessionId, () async {
       final fs = await _fs();
       final existing = await _readSession(fs, sessionId);
-      if (existing == null) return;
-      final now = DateTime.now().millisecondsSinceEpoch;
-      final trimmed = launchTeam.trim();
-      var next = existing.copyWith(
-        launchState: AppSessionLaunchState.started,
-        updatedAt: now,
-      );
-      if (trimmed.isNotEmpty) {
-        next = next.copyWith(launchTeam: trimmed, updatedAt: now);
+      if (existing == null) {
+        throw StateError('Unknown sessionId: $sessionId');
       }
-      if (next == existing) return;
-      await _writeSession(fs, next);
+      final trimmedMemberId = rosterMemberId.trim();
+      if (trimmedMemberId.isEmpty) {
+        throw ArgumentError.value(
+          rosterMemberId,
+          'rosterMemberId',
+          'must not be empty',
+        );
+      }
+      final found = existing.bindingFor(trimmedMemberId);
+      if (found != null) return found;
+
+      final now = DateTime.now().millisecondsSinceEpoch;
+      final binding = SessionMemberBinding(
+        rosterMemberId: trimmedMemberId,
+        taskId: const Uuid().v4(),
+      );
+      await _writeSession(
+        fs,
+        existing.copyWith(
+          members: [...existing.members, binding],
+          updatedAt: now,
+        ),
+      );
+      return binding;
     });
   }
 
@@ -387,7 +449,8 @@ class SessionRepository {
             innerFs,
             fresh.copyWith(
               sessionTeam: '',
-              launchTeam: '',
+              cliTeamName: '',
+              members: const [],
               updatedAt: DateTime.now().millisecondsSinceEpoch,
             ),
           );
@@ -407,7 +470,7 @@ class SessionRepository {
         await _lifecycleService?.destroyCliState(
           teamId: teamId,
           sessionId: sessionId,
-          runtimeSessionId: existing?.effectiveCliTeamDirectory,
+          runtimeSessionId: existing?.cliTeamName,
         );
       }
       final index = await _loadIndex(fs);

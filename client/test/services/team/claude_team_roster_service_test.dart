@@ -27,7 +27,7 @@ void main() {
     final service = ClaudeTeamRosterService(fs: LocalFilesystem());
     final config = service.mergeConfig(
       cliTeamName: 't',
-      members: const [TeamMemberConfig(id: 'lead', name: 'team-lead')],
+      members: const [TeamMemberConfig(id: 'team-lead', name: 'team-lead')],
       cwd: '/ws',
       teammateMode: 'in-process',
       existing: {'createdAt': 42, 'leadSessionId': 'old-lead'},

@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:equatable/equatable.dart';
+import 'package:uuid/uuid.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -181,14 +182,13 @@ class TeamCubit extends Cubit<TeamState> {
     TeamConfig team, {
     TeamMemberConfig? member,
   }) async {
-    final runtimeTeamName = team.name.trim();
     final plan = await _lifecycle.prepareLaunch(
       session: AppSession(
-        sessionId: runtimeTeamName,
+        sessionId: const Uuid().v4(),
         projectId: '',
         primaryPath: AppStorage.cwd,
         sessionTeam: team.id,
-        launchTeam: runtimeTeamName,
+        cliTeamName: team.id,
         createdAt: DateTime.now().millisecondsSinceEpoch,
       ),
       team: team,
@@ -618,8 +618,12 @@ class TeamCubit extends Cubit<TeamState> {
       return false;
     }
     final now = DateTime.now().millisecondsSinceEpoch;
+    final teamId = TeamMemberNaming.uniqueTeamId(
+      trimmed,
+      state.teams.map((t) => t.id),
+    );
     final team = TeamConfig(
-      id: trimmed,
+      id: teamId,
       name: trimmed,
       cli: cli,
       createdAt: now,
@@ -769,9 +773,13 @@ class TeamCubit extends Cubit<TeamState> {
   Future<void> addMember() async {
     final team = state.selectedTeam;
     if (team == null) return;
-    final slug = _uniqueMemberSlug(team, 'member');
+    final id = _uniqueMemberSlug(team, TeamMemberNaming.defaultWorkerName);
     final now = DateTime.now().millisecondsSinceEpoch;
-    final member = TeamMemberConfig(id: slug, name: slug, joinedAt: now);
+    final member = TeamMemberConfig(
+      id: id,
+      name: TeamMemberNaming.defaultWorkerName,
+      joinedAt: now,
+    );
     await updateSelected(team.copyWith(members: [...team.members, member]));
     emit(state.copyWith(statusMessage: 'Added ${member.name}.'));
   }
@@ -942,7 +950,7 @@ class TeamCubit extends Cubit<TeamState> {
     const name = 'Default Team';
     final now = DateTime.now().millisecondsSinceEpoch;
     return TeamConfig(
-      id: name,
+      id: TeamMemberNaming.slugTeamId(name),
       name: name,
       createdAt: now,
       members: TeamMemberNaming.defaultRoster(joinedAt: now),
@@ -955,9 +963,7 @@ class TeamCubit extends Cubit<TeamState> {
   }
 
   TeamConfig _normalizeTeam(TeamConfig team) {
-    final hasLead = team.members.any(
-      (m) => m.name == TeamMemberNaming.teamLeadName,
-    );
+    final hasLead = team.members.any(TeamMemberNaming.isTeamLead);
     if (hasLead) return team;
     final now = DateTime.now().millisecondsSinceEpoch;
     return team.copyWith(
@@ -965,14 +971,10 @@ class TeamCubit extends Cubit<TeamState> {
     );
   }
 
-  TeamMemberConfig _normalizeMember(TeamMemberConfig member) {
-    if (member.name == TeamMemberNaming.teamLeadName) return member;
-    final slug = TeamMemberNaming.slugMemberName(member.name);
-    return member.copyWith(name: slug);
-  }
+  TeamMemberConfig _normalizeMember(TeamMemberConfig member) => member;
 
   String _uniqueMemberSlug(TeamConfig team, String base) {
-    final existing = team.members.map((m) => m.name).toSet();
+    final existing = team.members.map((m) => m.id).toSet();
     final first = TeamMemberNaming.slugMemberName(base);
     if (!existing.contains(first)) return first;
     var i = 2;

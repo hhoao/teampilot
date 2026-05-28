@@ -20,7 +20,7 @@ abstract final class TeamMemberNaming {
 
   static bool isTeamLeadName(String raw) => raw.trim() == teamLeadName;
 
-  static bool isTeamLead(TeamMemberConfig member) => isTeamLeadName(member.name);
+  static bool isTeamLead(TeamMemberConfig member) => isTeamLeadName(member.id);
 
   /// Strips `@` (invalid in agentId); does not slug spaces.
   static String sanitizeAgentName(String raw) =>
@@ -36,18 +36,42 @@ abstract final class TeamMemberNaming {
   /// while still accepting `--agent-id` for inbox polling (`isTeammate`).
   static String leadAgentId(String cliTeamName) => teamLeadName;
 
-  /// `--agent-id` for a member launch.
+  /// `--agent-id` for a member launch ([TeamMemberConfig.id] + [cliTeamName]).
   static String cliAgentId({
-    required String memberName,
+    required String memberId,
     required String cliTeamName,
   }) {
-    if (memberName.trim() == teamLeadName) {
+    if (memberId.trim() == teamLeadName) {
       return leadAgentId(cliTeamName);
     }
-    return formatAgentId(slugMemberName(memberName), cliTeamName);
+    return formatAgentId(memberId, cliTeamName);
   }
 
-  /// Slug for roster `name`, inbox paths, and CLI `--agent-name` (non-lead).
+  /// Stable key for [TeamConfig.id], config paths, and `sessionTeam` / `cliTeamName` prefix.
+  static String slugTeamId(String raw) {
+    var s = sanitizeAgentName(raw);
+    s = s.replaceAll(RegExp(r'\s+'), '-');
+    s = s.replaceAll(RegExp(r'[^a-zA-Z0-9_-]'), '');
+    if (s.isEmpty) return 'team';
+    return s.toLowerCase();
+  }
+
+  /// [slugTeamId] with `-2`, `-3`, … when [existingIds] already contains the base slug.
+  static String uniqueTeamId(String displayName, Iterable<String> existingIds) {
+    final taken = existingIds
+        .map((id) => id.trim())
+        .where((id) => id.isNotEmpty)
+        .toSet();
+    final base = slugTeamId(displayName);
+    if (!taken.contains(base)) return base;
+    var n = 2;
+    while (taken.contains('$base-$n')) {
+      n++;
+    }
+    return '$base-$n';
+  }
+
+  /// Slug for [TeamMemberConfig.id] at create/load (non-lead).
   static String slugMemberName(String raw) {
     if (raw.trim() == teamLeadName) return teamLeadName;
     var s = sanitizeAgentName(raw);
@@ -65,15 +89,15 @@ abstract final class TeamMemberNaming {
   }
 
   static String resolveAgentType({
-    required String memberName,
+    required String memberId,
     required String agent,
     required String agentType,
   }) {
-    if (memberName == teamLeadName) return teamLeadName;
+    if (memberId == teamLeadName) return teamLeadName;
     final role = agentType.trim();
     if (role.isNotEmpty) return role;
     final fromAgent = agent.trim();
     if (fromAgent.isNotEmpty) return fromAgent;
-    return slugMemberName(memberName);
+    return memberId;
   }
 }

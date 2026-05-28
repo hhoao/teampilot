@@ -329,12 +329,6 @@ void main() {
       'openSessionTab starts all members when auto-launch enabled',
       () async {
         final fakeSessions = <_FakeTerminalSession>[];
-        const session = AppSession(
-          sessionId: 'session-1',
-          projectId: 'project-1',
-          primaryPath: '/tmp',
-          createdAt: 1,
-        );
         const team = TeamConfig(
           id: 'team-a',
           name: 'A',
@@ -343,9 +337,19 @@ void main() {
             TeamMemberConfig(id: 'm-dev', name: 'developer'),
           ],
         );
+        final tmp = await Directory.systemTemp.createTemp('chat_cubit_');
+        addTearDown(() => tmp.deleteSync(recursive: true));
+        final repo = SessionRepository(rootDir: tmp.path);
+        final project = await repo.createProject('/tmp');
+        final session = await repo.createSession(
+          project.projectId,
+          sessionTeam: team.id,
+          rosterMembers: team.members,
+        );
         final postFrame = PostFrameTestHarness();
         final cubit = ChatCubit(
           executableResolver: () => 'true',
+          sessionRepository: repo,
           terminalSessionFactory:
             ({required String executable, int scrollbackLines = 10000}) {
             final fake = _FakeTerminalSession(executable: executable);
@@ -361,6 +365,7 @@ void main() {
           session,
           team: team,
           member: team.members.first,
+          repo: repo,
         );
         await postFrame.flush();
 
@@ -370,10 +375,9 @@ void main() {
         expect(cubit.state.selectedMemberId, 'm-lead');
         expect(fakeSessions, hasLength(2));
         expect(
-          fakeSessions.map((session) => session.connectedSessionTeams.single),
-          everyElement(fakeSessions.first.connectedSessionTeams.single),
+          fakeSessions.map((shell) => shell.connectedSessionTeams.single),
+          everyElement('team-a-1'),
         );
-        expect(fakeSessions.first.connectedSessionTeams.single, isNotEmpty);
       },
     );
 

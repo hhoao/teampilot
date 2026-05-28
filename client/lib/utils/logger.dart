@@ -40,7 +40,8 @@ class TeamPilotLogger {
     bool recordError = true,
   }) {
     final resolvedError = error;
-    final resolvedStack = stackTrace ?? (resolvedError != null ? StackTrace.current : null);
+    final resolvedStack =
+        stackTrace ?? (resolvedError != null ? StackTrace.current : null);
 
     if (recordError && resolvedError != null) {
       final decision = AppErrorUtils.classify(resolvedError);

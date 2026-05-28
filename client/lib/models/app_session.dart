@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
 
+import 'session_member_binding.dart';
+
 enum AppSessionLaunchState { created, started }
 
 @immutable
@@ -11,7 +13,8 @@ class AppSession {
     this.additionalPaths = const [],
     this.display = '',
     this.sessionTeam = '',
-    this.launchTeam = '',
+    this.cliTeamName = '',
+    this.members = const [],
     this.launchState = AppSessionLaunchState.created,
     required this.createdAt,
     this.updatedAt = 0,
@@ -27,6 +30,17 @@ class AppSession {
     final paths = add is List
         ? add.map((e) => '$e').where((s) => s.isNotEmpty).toList()
         : const <String>[];
+    final membersRaw = json['members'];
+    final members = membersRaw is List
+        ? membersRaw
+              .whereType<Map>()
+              .map(
+                (e) => SessionMemberBinding.fromJson(
+                  Map<String, Object?>.from(e),
+                ),
+              )
+              .toList()
+        : const <SessionMemberBinding>[];
     return AppSession(
       sessionId: json['sessionId'] as String? ?? '',
       projectId: json['projectId'] as String? ?? '',
@@ -34,7 +48,8 @@ class AppSession {
       additionalPaths: paths,
       display: json['display'] as String? ?? '',
       sessionTeam: json['sessionTeam'] as String? ?? '',
-      launchTeam: json['launchTeam'] as String? ?? '',
+      cliTeamName: json['cliTeamName'] as String? ?? '',
+      members: members,
       launchState: launch,
       createdAt: json['createdAt'] as int? ?? 0,
       updatedAt: json['updatedAt'] as int? ?? 0,
@@ -47,11 +62,15 @@ class AppSession {
   final List<String> additionalPaths;
   final String display;
 
-  /// Stable UI team id ([TeamConfig.id]) for filtering; not the CLI temp dir name.
+  /// Stable UI team id ([TeamConfig.id]) for filtering; not the CLI runtime name.
   final String sessionTeam;
 
-  /// CLI `--team-name` used at first launch; normally equals [sessionId].
-  final String launchTeam;
+  /// CLI `--team-name` / config-profiles member dir (`{teamId}-{seq}`).
+  final String cliTeamName;
+
+  /// Per-roster-member CLI `--session-id` / `--resume` task ids.
+  final List<SessionMemberBinding> members;
+
   final AppSessionLaunchState launchState;
   final int createdAt;
   final int updatedAt;
@@ -59,12 +78,16 @@ class AppSession {
   String resolveDisplayTitle(String whenDisplayEmpty) =>
       display.isNotEmpty ? display : whenDisplayEmpty;
 
-  /// CLI `--team-name` for this session: [launchTeam] when set, otherwise [sessionId].
-  String get effectiveCliTeamDirectory {
-    final lt = launchTeam.trim();
-    if (lt.isNotEmpty) return lt;
-    return sessionId.trim();
+  SessionMemberBinding? bindingFor(String rosterMemberId) {
+    for (final binding in members) {
+      if (binding.rosterMemberId == rosterMemberId) return binding;
+    }
+    return null;
   }
+
+  SessionMemberBinding requireBinding(String rosterMemberId) =>
+      bindingFor(rosterMemberId) ??
+      (throw StateError('No task binding for roster member $rosterMemberId'));
 
   AppSession copyWith({
     String? sessionId,
@@ -73,7 +96,8 @@ class AppSession {
     List<String>? additionalPaths,
     String? display,
     String? sessionTeam,
-    String? launchTeam,
+    String? cliTeamName,
+    List<SessionMemberBinding>? members,
     AppSessionLaunchState? launchState,
     int? createdAt,
     int? updatedAt,
@@ -85,7 +109,8 @@ class AppSession {
       additionalPaths: additionalPaths ?? this.additionalPaths,
       display: display ?? this.display,
       sessionTeam: sessionTeam ?? this.sessionTeam,
-      launchTeam: launchTeam ?? this.launchTeam,
+      cliTeamName: cliTeamName ?? this.cliTeamName,
+      members: members ?? this.members,
       launchState: launchState ?? this.launchState,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -101,7 +126,9 @@ class AppSession {
       'additionalPaths': additionalPaths,
       'display': display,
       'sessionTeam': sessionTeam,
-      if (launchTeam.isNotEmpty) 'launchTeam': launchTeam,
+      if (cliTeamName.isNotEmpty) 'cliTeamName': cliTeamName,
+      if (members.isNotEmpty)
+        'members': members.map((m) => m.toJson()).toList(),
       'launchState': launchState.name,
       'createdAt': createdAt,
       'updatedAt': updatedAt,
@@ -119,7 +146,8 @@ class AppSession {
             listEquals(additionalPaths, other.additionalPaths) &&
             display == other.display &&
             sessionTeam == other.sessionTeam &&
-            launchTeam == other.launchTeam &&
+            cliTeamName == other.cliTeamName &&
+            listEquals(members, other.members) &&
             launchState == other.launchState &&
             createdAt == other.createdAt &&
             updatedAt == other.updatedAt;
@@ -133,7 +161,8 @@ class AppSession {
     Object.hashAll(additionalPaths),
     display,
     sessionTeam,
-    launchTeam,
+    cliTeamName,
+    Object.hashAll(members),
     launchState,
     createdAt,
     updatedAt,

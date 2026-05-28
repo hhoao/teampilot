@@ -34,7 +34,7 @@ void _navigateToSessionInChat(BuildContext context, AppSession session) {
   final matchingTeam = teamCubit.state.selectedTeam;
   if (matchingTeam == null) return;
 
-  final lead = matchingTeam.members.where((m) => m.name == 'team-lead');
+  final lead = matchingTeam.members.where((m) => m.id == 'team-lead');
   final repo = context.read<SessionRepository>();
   if (lead.isNotEmpty) {
     unawaited(
@@ -65,11 +65,13 @@ Future<void> _createSessionAndOpenChat(
   String projectId,
 ) async {
   final repo = context.read<SessionRepository>();
-  final teamId = context.read<TeamCubit>().state.selectedTeam?.id ?? '';
+  final team = context.read<TeamCubit>().state.selectedTeam;
+  final teamId = team?.id ?? '';
   final session = await context.read<ChatCubit>().createSession(
     projectId,
     repo,
     sessionTeamId: teamId,
+    rosterMembers: team?.members ?? const [],
   );
   if (!context.mounted) return;
   _navigateToSessionInChat(context, session);
@@ -103,10 +105,12 @@ Future<void> _startNewChat(BuildContext context) async {
   }
 
   try {
+    final team = context.read<TeamCubit>().state.selectedTeam;
     await chatCubit.createProjectWithFirstSession(
       AppStorage.cwd,
       repo,
       sessionTeamId: teamId,
+      rosterMembers: team?.members ?? const [],
     );
   } on Object catch (error) {
     if (!context.mounted) return;

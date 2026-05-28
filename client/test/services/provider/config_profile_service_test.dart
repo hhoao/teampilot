@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:teampilot/models/team_config.dart';
+import 'package:teampilot/services/team/claude_team_roster_service.dart';
 import 'package:teampilot/services/team/claude_hook_shell.dart';
 import 'package:teampilot/services/cli/cli_data_layout.dart';
 import 'package:teampilot/services/provider/config_profile_service.dart';
@@ -35,6 +36,9 @@ String _sessionFlashskyaiDir(String base, String teamId, String sessionId) =>
       sessionId,
       'flashskyai',
     );
+
+String _rosterDirName(String cliTeamName) =>
+    ClaudeTeamRosterService.safeClaudePathSegment(cliTeamName);
 
 String _appFlashskyaiDirPath(String base) =>
     p.join(base, 'config-profiles', 'flashskyai');
@@ -171,7 +175,7 @@ void main() {
   test('prepareTeamLaunch writes role prompt and injects append env', () async {
     const sessionId = 'sess-role-prompt';
     const lead = TeamMemberConfig(
-      id: 'lead',
+      id: 'team-lead',
       name: 'team-lead',
       prompt: 'Coordinate only; delegate implementation.',
     );
@@ -228,7 +232,7 @@ void main() {
 
   test('prepareTeamLaunch adds delegate-only hook when team flag is on', () async {
     const sessionId = 'sess-delegate-only';
-    const lead = TeamMemberConfig(id: 'lead', name: 'team-lead');
+    const lead = TeamMemberConfig(id: 'team-lead', name: 'team-lead');
     const team = TeamConfig(
       id: 'team-a',
       name: 'agent',
@@ -275,7 +279,7 @@ void main() {
   test('prepareTeamLaunch flashskyai writes role prompt and append env', () async {
     const sessionId = 'sess-fs-role';
     const lead = TeamMemberConfig(
-      id: 'lead',
+      id: 'team-lead',
       name: 'team-lead',
       prompt: 'Coordinate flashskyai teammates.',
     );
@@ -334,7 +338,7 @@ void main() {
     'prepareTeamLaunch flashskyai adds delegate-only hook when team flag is on',
     () async {
       const sessionId = 'sess-fs-delegate';
-      const lead = TeamMemberConfig(id: 'lead', name: 'team-lead');
+      const lead = TeamMemberConfig(id: 'team-lead', name: 'team-lead');
       const team = TeamConfig(
         id: 'team-a',
         name: 'agent',
@@ -381,13 +385,13 @@ void main() {
 
   test('team-lead SendMessage hook is not added for non-lead members', () async {
     const sessionId = 'sess-dev-only-hook';
-    const dev = TeamMemberConfig(id: 'dev', name: 'developer');
+    const dev = TeamMemberConfig(id: 'developer', name: 'developer');
     await service.prepareTeamLaunch(
       teamId: 'team-a',
       runtimeTeamId: sessionId,
       cli: TeamCli.claude,
       members: const [
-        TeamMemberConfig(id: 'lead', name: 'team-lead'),
+        TeamMemberConfig(id: 'team-lead', name: 'team-lead'),
         dev,
       ],
       member: dev,
@@ -417,18 +421,18 @@ void main() {
   test('prepareTeamLaunch for claude returns env and writes roster', () async {
     const sessionId = '00000000-0000-4000-8000-000000000099';
     final env = (await service.prepareTeamLaunch(
-      teamId: 'Team A!',
+      teamId: 'team-a',
       runtimeTeamId: sessionId,
       cli: TeamCli.claude,
       members: const [
         TeamMemberConfig(
-          id: 'lead',
-          name: 'team-lead',
+          id: 'team-lead',
+          name: 'Team Lead',
           model: 'opus',
           joinedAt: 100,
         ),
         TeamMemberConfig(
-          id: 'dev',
+          id: 'developer-one',
           name: 'Developer One',
           model: 'sonnet',
           joinedAt: 200,
@@ -437,7 +441,7 @@ void main() {
       workingDirectory: '/workspace/project',
     )).environment;
 
-    final claudeDir = _sessionClaudeDir(base.path, 'Team A!', sessionId);
+    final claudeDir = _sessionClaudeDir(base.path, 'team-a', sessionId);
     expect(env.keys, [
       'CLAUDE_CONFIG_DIR',
       'CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS',
@@ -445,7 +449,7 @@ void main() {
     expect(env['CLAUDE_CONFIG_DIR'], claudeDir);
 
     final roster = File(
-      p.join(claudeDir, 'teams', sessionId.toLowerCase(), 'config.json'),
+      p.join(claudeDir, 'teams', _rosterDirName(sessionId), 'config.json'),
     );
     expect(await roster.exists(), isTrue);
 
@@ -483,7 +487,9 @@ void main() {
     expect(dev['cwd'], '/workspace/project');
     expect(decoded.containsKey('env'), isFalse);
 
-    final inboxDir = Directory(p.join(claudeDir, 'teams', sessionId.toLowerCase(), 'inboxes'));
+    final inboxDir = Directory(
+      p.join(claudeDir, 'teams', _rosterDirName(sessionId), 'inboxes'),
+    );
     expect(await inboxDir.exists(), isTrue);
     expect(
       await File(p.join(inboxDir.path, 'team-lead.json')).exists(),
@@ -498,8 +504,8 @@ void main() {
   test('claude roster merge preserves createdAt across launches', () async {
     const sessionId = 'sess-merge';
     const members = [
-      TeamMemberConfig(id: 'lead', name: 'team-lead', joinedAt: 100),
-      TeamMemberConfig(id: 'dev', name: 'researcher', joinedAt: 200),
+      TeamMemberConfig(id: 'team-lead', name: 'team-lead', joinedAt: 100),
+      TeamMemberConfig(id: 'developer', name: 'researcher', joinedAt: 200),
     ];
     await service.prepareTeamLaunch(
       teamId: 'team-a',
@@ -511,7 +517,7 @@ void main() {
     final rosterPath = p.join(
       _sessionClaudeDir(base.path, 'team-a', sessionId),
       'teams',
-      sessionId,
+      _rosterDirName(sessionId),
       'config.json',
     );
     final first =
@@ -547,11 +553,11 @@ void main() {
         runtimeTeamId: sessionId,
         cli: TeamCli.claude,
         members: const [
-          TeamMemberConfig(id: 'lead', name: 'team-lead', model: 'opus'),
-          TeamMemberConfig(id: 'dev', name: 'developer', model: 'sonnet'),
+          TeamMemberConfig(id: 'team-lead', name: 'team-lead', model: 'opus'),
+          TeamMemberConfig(id: 'developer', name: 'developer', model: 'sonnet'),
         ],
         member: const TeamMemberConfig(
-          id: 'dev',
+          id: 'developer',
           name: 'developer',
           model: 'sonnet',
         ),
@@ -599,7 +605,7 @@ void main() {
       await service.prepareTeamLaunch(
         teamId: 'team-a',
         cli: TeamCli.claude,
-        members: const [TeamMemberConfig(id: 'dev', name: 'developer')],
+        members: const [TeamMemberConfig(id: 'developer', name: 'developer')],
       );
 
       final claudeDir = _sessionClaudeDir(
@@ -620,7 +626,7 @@ void main() {
       teamId: 'team-a',
       runtimeTeamId: 'sess-1',
       cli: TeamCli.claude,
-      members: const [TeamMemberConfig(id: 'dev', name: 'developer')],
+      members: const [TeamMemberConfig(id: 'developer', name: 'developer')],
     );
 
     final roster = File(

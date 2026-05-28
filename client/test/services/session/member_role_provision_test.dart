@@ -10,7 +10,7 @@ void main() {
     final root = await fs.createTempDir(prefix: 'role_prompt_');
     try {
       const member = TeamMemberConfig(
-        id: 'dev',
+        id: 'developer-one',
         name: 'Developer One',
         prompt: 'Implement only assigned tasks.',
       );
@@ -41,7 +41,7 @@ void main() {
     final fs = LocalFilesystem();
     final root = await fs.createTempDir(prefix: 'role_lead_');
     try {
-      const lead = TeamMemberConfig(id: 'lead', name: 'team-lead', prompt: '');
+      const lead = TeamMemberConfig(id: 'team-lead', name: 'team-lead', prompt: '');
       final path = await MemberRoleProvision.syncRolePromptFile(
         fs: fs,
         memberToolDir: root,
@@ -61,7 +61,7 @@ void main() {
     final fs = LocalFilesystem();
     final root = await fs.createTempDir(prefix: 'role_delegate_');
     try {
-      const lead = TeamMemberConfig(id: 'lead', name: 'team-lead', prompt: '');
+      const lead = TeamMemberConfig(id: 'team-lead', name: 'team-lead', prompt: '');
       await MemberRoleProvision.syncRolePromptFile(
         fs: fs,
         memberToolDir: root,

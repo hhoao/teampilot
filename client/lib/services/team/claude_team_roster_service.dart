@@ -8,8 +8,9 @@ class ClaudeTeamRosterService {
 
   final Filesystem fs;
 
+  /// Matches Claude Code `sanitizeName` (`teamHelpers.ts`).
   static String safeClaudePathSegment(String value) {
-    final safe = value.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '-');
+    final safe = value.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '-').toLowerCase();
     return safe.isEmpty ? 'default' : safe;
   }
 
@@ -78,9 +79,7 @@ class ClaudeTeamRosterService {
     required String cwd,
     required String teammateMode,
   }) {
-    final rosterName = member.name == TeamMemberNaming.teamLeadName
-        ? TeamMemberNaming.teamLeadName
-        : TeamMemberNaming.slugMemberName(member.name);
+    final rosterName = member.id;
     final agentId = rosterName == TeamMemberNaming.teamLeadName
         ? TeamMemberNaming.leadAgentId(cliTeamName)
         : TeamMemberNaming.formatAgentId(rosterName, cliTeamName);
@@ -100,7 +99,7 @@ class ClaudeTeamRosterService {
       'subscriptions': <Object?>[],
       'isActive': true,
       'agentType': TeamMemberNaming.resolveAgentType(
-        memberName: rosterName,
+        memberId: rosterName,
         agent: member.agent,
         agentType: member.agentType,
       ),
@@ -132,12 +131,9 @@ class ClaudeTeamRosterService {
     final inboxDir = fs.pathContext.join(rosterDir, 'inboxes');
     await fs.ensureDir(inboxDir);
     for (final member in members.where((m) => m.isValid)) {
-      final name = member.name == TeamMemberNaming.teamLeadName
-          ? TeamMemberNaming.teamLeadName
-          : TeamMemberNaming.slugMemberName(member.name);
       final file = fs.pathContext.join(
         inboxDir,
-        '${safeClaudePathSegment(name)}.json',
+        '${safeClaudePathSegment(member.id)}.json',
       );
       final stat = await fs.stat(file);
       if (stat.exists) continue;
@@ -153,10 +149,7 @@ class ClaudeTeamRosterService {
     required List<Map<String, Object?>> existingMembers,
   }) {
     final valid = members.where((m) => m.isValid).toList();
-    final hasLead = valid.any(
-      (m) => TeamMemberNaming.slugMemberName(m.name) == TeamMemberNaming.teamLeadName ||
-          m.name == TeamMemberNaming.teamLeadName,
-    );
+    final hasLead = valid.any(TeamMemberNaming.isTeamLead);
     final effective = hasLead
         ? valid
         : [

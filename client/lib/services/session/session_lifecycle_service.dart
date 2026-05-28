@@ -1,5 +1,5 @@
-import 'dart:convert';
 import '../../models/app_session.dart';
+import '../../models/session_member_binding.dart';
 import '../../models/team_config.dart';
 import '../../utils/team_member_naming.dart';
 import '../../utils/logger.dart';
@@ -17,7 +17,8 @@ class LaunchPlan {
   const LaunchPlan({
     required this.env,
     required this.resume,
-    required this.sessionIdArg,
+    required this.taskId,
+    required this.cliTeamName,
     required this.memberConfigDir,
     required this.resolvedRoots,
     this.warnings = const [],
@@ -25,7 +26,12 @@ class LaunchPlan {
 
   final Map<String, String> env;
   final bool resume;
-  final String sessionIdArg;
+
+  /// CLI `--session-id` / `--resume` id (member [SessionMemberBinding.taskId]).
+  final String taskId;
+
+  /// CLI `--team-name` and config-profiles member runtime directory.
+  final String cliTeamName;
   final String memberConfigDir;
   final List<String> resolvedRoots;
   final List<String> warnings;
@@ -57,19 +63,23 @@ class SessionLifecycleService {
     required AppSession session,
     TeamConfig? team,
     TeamMemberConfig? member,
+    SessionMemberBinding? memberBinding,
     String? llmConfigPathOverride,
   }) async {
     final sessionId = session.sessionId.trim();
     final teamId = (team?.id ?? session.sessionTeam).trim();
     final memberName = member?.name.trim() ?? '';
+    final cliTeamName = session.cliTeamName.trim();
+    final taskId = memberBinding?.taskId.trim() ?? sessionId;
     appLogger.i(
       '[session-lifecycle] prepareLaunch start '
-      'session=$sessionId team=$teamId member=$memberName',
+      'session=$sessionId team=$teamId member=$memberName '
+      'cliTeam=$cliTeamName task=$taskId',
     );
     try {
       final roots = await _resolveRoots();
       final service = await _configProfileServiceFor(roots);
-      final runtimeTeamId = session.effectiveCliTeamDirectory;
+      final runtimeTeamId = cliTeamName.isNotEmpty ? cliTeamName : sessionId;
       final cli = team?.cli;
       final cliState = session.launchState == AppSessionLaunchState.started
           ? await _findCliState(
@@ -77,6 +87,7 @@ class SessionLifecycleService {
               session: session,
               teamId: teamId,
               runtimeSessionId: runtimeTeamId,
+              cliSessionId: taskId,
               cli: cli,
             )
           : _CliStateProbeResult(
@@ -92,6 +103,7 @@ class SessionLifecycleService {
         session: session,
         team: team,
         member: member,
+        memberBinding: memberBinding,
         runtimeTeamId: runtimeTeamId,
         workingDirectory: session.primaryPath,
         llmConfigPathOverride: llmConfigPathOverride,
@@ -105,7 +117,8 @@ class SessionLifecycleService {
       final plan = LaunchPlan(
         env: prepared.env,
         resume: cliState.exists,
-        sessionIdArg: sessionId,
+        taskId: taskId,
+        cliTeamName: runtimeTeamId,
         memberConfigDir: memberConfigDir,
         resolvedRoots: resolvedRoots,
         warnings: prepared.warnings,
@@ -131,13 +144,20 @@ class SessionLifecycleService {
     AppSession session, {
     String? teamId,
     TeamCli? cli,
+    SessionMemberBinding? memberBinding,
   }) async {
     final roots = await _resolveRoots();
+    final runtimeTeamId = session.cliTeamName.trim().isNotEmpty
+        ? session.cliTeamName.trim()
+        : session.sessionId.trim();
+    final cliSessionId =
+        memberBinding?.taskId.trim() ?? session.sessionId.trim();
     final probe = await _findCliState(
       roots: roots,
       session: session,
       teamId: (teamId ?? session.sessionTeam).trim(),
-      runtimeSessionId: session.effectiveCliTeamDirectory,
+      runtimeSessionId: runtimeTeamId,
+      cliSessionId: cliSessionId,
       cli: cli,
     );
     return probe.exists;
@@ -183,6 +203,7 @@ class SessionLifecycleService {
     required AppSession session,
     required TeamConfig? team,
     required TeamMemberConfig? member,
+    SessionMemberBinding? memberBinding,
     required String runtimeTeamId,
     required String workingDirectory,
     required String? llmConfigPathOverride,
@@ -206,10 +227,12 @@ class SessionLifecycleService {
               launchedMember: member,
             )
           : const <String, Map<String, Object?>>{};
+      final leadTaskId = memberBinding?.taskId.trim() ?? '';
       final leadSessionId =
-          member?.name == TeamMemberNaming.teamLeadName &&
-              session.sessionId.trim().isNotEmpty
-          ? session.sessionId.trim()
+          member != null &&
+              TeamMemberNaming.isTeamLead(member) &&
+              leadTaskId.isNotEmpty
+          ? leadTaskId
           : null;
       final outcome = await service.prepareTeamLaunch(
         teamId: teamId,
@@ -267,9 +290,10 @@ class SessionLifecycleService {
     required AppSession session,
     required String teamId,
     required String runtimeSessionId,
+    required String cliSessionId,
     TeamCli? cli,
   }) async {
-    final id = session.sessionId.trim();
+    final id = cliSessionId.trim();
     if (id.isEmpty) {
       return const _CliStateProbeResult(exists: false);
     }
@@ -433,7 +457,6 @@ class SessionLifecycleService {
       );
       if (settings != null) {
         settingsByMember[member.id] = settings;
-        settingsByMember[member.name] = settings;
       }
     }
     return settingsByMember;

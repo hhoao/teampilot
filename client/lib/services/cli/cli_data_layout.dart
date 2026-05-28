@@ -5,7 +5,6 @@ import '../plugin/cli_plugin_layout.dart';
 import '../plugin/cli_plugin_manifest_flavor.dart';
 import '../io/filesystem.dart';
 import '../session/launch_command_builder.dart';
-
 /// Tools with a `config-profiles/{tool}/` tree (see [CliDataLayout]).
 const List<String> cliLayoutDefaultTools = ['claude', 'flashskyai', 'codex'];
 
@@ -35,20 +34,25 @@ const List<String> cliLayoutDefaultTools = ['claude', 'flashskyai', 'codex'];
 /// │   ├── projects/                              # transcripts (see below)
 /// │   └── …                                      # tool-specific files (e.g. llm_config.json)
 /// └── teams/
-///     └── {teamId}/
+///     └── {teamId}/                              # canonical [TeamConfig.id] (slug at create/load)
+///         ├── session-counter.json               # allocates cliTeamName ({teamId}-{n})
 ///         ├── {tool}/                            # team — inherits app via symlinks
 ///         │   ├── agents/   → symlink to app …/agents/
 ///         │   ├── skills/   → symlink (or populated dir; see [ensureTeamInheritsApp])
 ///         │   └── plugins/  → team bundles (flashskyai only; [teamPluginsDir])
 ///         └── members/
-///             └── {sessionId}/                   # chat session id (runtime team id)
+///             └── {cliTeamName}/                 # e.g. my-team-3 or _adhoc
 ///                 └── {tool}/                    # member — PTY CONFIG_DIR
 ///                     ├── agents/   → symlink to team …/agents/
 ///                     ├── skills/   → symlink to team …/skills/
 ///                     ├── plugins/  → copies/symlinks from team at launch
-///                     ├── projects/ …              # CLI session transcripts
-///                     └── settings/, metadata, hooks …  # written by [ConfigProfileService]
+///                     ├── projects/ …              # CLI transcripts (--session-id / taskId)
+///                     ├── teams/…/config.json      # Claude agent-team roster only
+///                     └── settings/, metadata, hooks …  # [ConfigProfileService]
 /// ```
+///
+/// UI chat [AppSession.sessionId] (UUID) lives under `{teampilotRoot}/projects/sessions/`,
+/// not under `members/{cliTeamName}/`.
 ///
 /// **Inheritance:** [ensureTeamInheritsApp] links `agents/` and `skills/` from app
 /// → team. [ensureMemberInheritsTeam] links the same names from team → member.
@@ -99,14 +103,27 @@ class CliDataLayout {
       _pathContext.join(configProfilesDir, tool.trim());
 
   /// Team layer: `config-profiles/teams/{teamId}/{tool}/`.
-  String teamToolDir(String teamId, String tool) =>
-      _pathContext.join(configProfilesDir, 'teams', teamId.trim(), tool.trim());
+  ///
+  /// [teamId] must be canonical [TeamConfig.id] (slug assigned at create/load).
+  String teamToolDir(String teamId, String tool) => _pathContext.join(
+    configProfilesDir,
+    'teams',
+    teamId.trim(),
+    tool.trim(),
+  );
+
+  /// `config-profiles/teams/{teamId}/session-counter.json` — CLI team name seq.
+  String teamSessionCounterFile(String teamId) => _pathContext.join(
+    configProfilesDir,
+    'teams',
+    teamId.trim(),
+    'session-counter.json',
+  );
 
   /// Member layer (PTY CONFIG_DIR):
-  /// `config-profiles/teams/{teamId}/members/{sessionId}/{tool}/`.
+  /// `config-profiles/teams/{teamId}/members/{cliTeamName}/{tool}/`.
   ///
-  /// [sessionId] is the runtime chat session id ([ConfigProfileService] scope),
-  /// or `_adhoc` for launches without a persisted session.
+  /// [sessionId] is [AppSession.cliTeamName] or [configProfileAdhocSessionId].
   String memberToolDir(String teamId, String sessionId, String tool) =>
       _pathContext.join(
         configProfilesDir,

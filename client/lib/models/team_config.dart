@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
 
+import '../utils/team_member_naming.dart';
+
 /// Backend CLI for a team session (`flashskyai`, `codex`, or `claude`).
 enum TeamCli {
   flashskyai('flashskyai'),
@@ -29,7 +31,9 @@ enum TeamCli {
 @immutable
 class TeamMemberConfig {
   const TeamMemberConfig({
+    /// CLI / roster key ([TeamMemberNaming.slugMemberName]); stable after create.
     required this.id,
+    /// Sidebar and forms; may contain spaces; not passed to CLI flags.
     required this.name,
     this.provider = '',
     this.model = '',
@@ -52,9 +56,15 @@ class TeamMemberConfig {
 
   factory TeamMemberConfig.fromJson(Map<String, Object?> json) {
     final name = json['name'] as String? ?? '';
+    final rawId = json['id'] as String? ?? name;
+    final id = TeamMemberNaming.isTeamLeadName(rawId) ||
+            TeamMemberNaming.isTeamLeadName(name)
+        ? TeamMemberNaming.teamLeadName
+        : TeamMemberNaming.slugMemberName(rawId);
+    final displayName = name.trim().isEmpty ? id : name;
     return TeamMemberConfig(
-      id: json['id'] as String? ?? name,
-      name: name,
+      id: id,
+      name: displayName,
       provider: json['provider'] as String? ?? '',
       model: json['model'] as String? ?? '',
       agent: json['agent'] as String? ?? '',
@@ -239,7 +249,7 @@ class TeamConfig {
 
     final name = json['name'] as String? ?? '';
     return TeamConfig(
-      id: json['id'] as String? ?? name,
+      id: TeamMemberNaming.slugTeamId(json['id'] as String? ?? name),
       name: name,
       description: json['description'] as String? ?? '',
       extraArgs: json['extraArgs'] as String? ?? '',
@@ -272,6 +282,7 @@ class TeamConfig {
     };
   }
 
+  /// Canonical slug ([TeamMemberNaming.slugTeamId]); used for paths and [AppSession.sessionTeam].
   final String id;
   final String name;
   final String description;

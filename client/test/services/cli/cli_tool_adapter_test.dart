@@ -62,6 +62,26 @@ void main() {
     );
   });
 
+  test('claude adapter slugifies spaced member name for --agent-name', () {
+    final args = ClaudeCodeCliToolAdapter().buildArguments(
+      CliLaunchContext(
+        team: const TeamConfig(
+          id: 'team-1',
+          name: 'agent',
+          cli: TeamCli.claude,
+        ),
+        member: const TeamMemberConfig(
+          id: 'm1',
+          name: 'My Planner',
+          provider: 'anthropic',
+          model: 'sonnet',
+        ),
+      ),
+    );
+
+    expect(args, containsAllInOrder(['--agent-name', 'my-planner']));
+  });
+
   test('claude adapter builds Claude Code team arguments', () {
     final adapter = ClaudeCodeCliToolAdapter();
 

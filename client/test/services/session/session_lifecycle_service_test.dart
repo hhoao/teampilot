@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:teampilot/models/app_provider_config.dart';
 import 'package:teampilot/models/app_session.dart';
+import 'package:teampilot/models/session_member_binding.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/cli/cli_data_layout.dart';
 import 'package:teampilot/services/provider/config_profile_service.dart';
@@ -28,6 +29,7 @@ StorageRootsSnapshot _roots(String basePath) => StorageRootsSnapshot(
   pluginMarketplaceCacheDir: p.join(basePath, 'plugins', 'marketplace-cache'),
   pluginExternalCacheDir: p.join(basePath, 'plugins', 'external-cache'),
   mcpServersJsonPath: p.join(basePath, 'mcp', 'mcp_servers.json'),
+  mcpRegistrySourcesConfigPath: p.join(basePath, 'mcp', 'registry_sources.json'),
 );
 
 AppSession _session({
@@ -89,9 +91,9 @@ void main() {
           id: 'team-a',
           name: 'Team A',
           cli: TeamCli.claude,
-          members: [TeamMemberConfig(id: 'lead', name: 'team-lead')],
+          members: [TeamMemberConfig(id: 'team-lead', name: 'team-lead')],
         ),
-        member: const TeamMemberConfig(id: 'lead', name: 'team-lead'),
+        member: const TeamMemberConfig(id: 'team-lead', name: 'team-lead'),
       );
 
       final memberDir = layout.memberToolDir(
@@ -100,7 +102,8 @@ void main() {
         'claude',
       );
       expect(plan.resume, isFalse);
-      expect(plan.sessionIdArg, 'session-1');
+      expect(plan.taskId, 'session-1');
+      expect(plan.cliTeamName, 'session-1');
       expect(plan.memberConfigDir, memberDir);
       expect(plan.env['CLAUDE_CONFIG_DIR'], memberDir);
       expect(plan.env['CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS'], '1');
@@ -118,9 +121,9 @@ void main() {
           id: 'team-a',
           name: 'Team A',
           cli: TeamCli.flashskyai,
-          members: [TeamMemberConfig(id: 'lead', name: 'team-lead')],
+          members: [TeamMemberConfig(id: 'team-lead', name: 'team-lead')],
         ),
-        member: const TeamMemberConfig(id: 'lead', name: 'team-lead'),
+        member: const TeamMemberConfig(id: 'team-lead', name: 'team-lead'),
       );
 
       final memberDir = layout.memberToolDir(
@@ -129,7 +132,8 @@ void main() {
         'flashskyai',
       );
       expect(plan.resume, isFalse);
-      expect(plan.sessionIdArg, 'session-1');
+      expect(plan.taskId, 'session-1');
+      expect(plan.cliTeamName, 'session-1');
       expect(plan.memberConfigDir, memberDir);
       expect(
         plan.env[ConfigProfileService.flashskyaiConfigDirEnvKey],
@@ -194,42 +198,54 @@ void main() {
     expect(plan.resume, isTrue);
   });
 
-  test('hasCliState uses launchTeam as the runtime member directory', () async {
-    final session = _session(
-      launchState: AppSessionLaunchState.started,
-    ).copyWith(launchTeam: 'legacy-runtime');
-    final bucket = CliDataLayout.projectBucketForPrimaryPath(
-      session.primaryPath,
-    );
-    final transcript = File(
-      p.join(
-        layout.memberToolDir('team-a', 'legacy-runtime', 'flashskyai'),
-        'projects',
-        bucket,
-        '${session.sessionId}.jsonl',
-      ),
-    );
-    await transcript.parent.create(recursive: true);
-    await transcript.writeAsString('{}\n');
+  test(
+    'hasCliState probes taskId transcript under cliTeamName runtime dir',
+    () async {
+      const taskId = '11111111-1111-1111-1111-111111111111';
+      final session = _session(
+        launchState: AppSessionLaunchState.started,
+      ).copyWith(cliTeamName: 'team-a-3');
+      final bucket = CliDataLayout.projectBucketForPrimaryPath(
+        session.primaryPath,
+      );
+      final transcript = File(
+        p.join(
+          layout.memberToolDir('team-a', 'team-a-3', 'flashskyai'),
+          'projects',
+          bucket,
+          '$taskId.jsonl',
+        ),
+      );
+      await transcript.parent.create(recursive: true);
+      await transcript.writeAsString('{}\n');
 
-    expect(
-      await service().hasCliState(
-        session,
-        teamId: 'team-a',
-        cli: TeamCli.flashskyai,
-      ),
-      isTrue,
-    );
-    final plan = await service().prepareLaunch(
-      session: session,
-      team: const TeamConfig(
-        id: 'team-a',
-        name: 'Team A',
-        cli: TeamCli.flashskyai,
-      ),
-    );
-    expect(plan.resume, isTrue);
-  });
+      final binding = const SessionMemberBinding(
+        rosterMemberId: 'lead',
+        taskId: taskId,
+      );
+      expect(
+        await service().hasCliState(
+          session,
+          teamId: 'team-a',
+          cli: TeamCli.flashskyai,
+          memberBinding: binding,
+        ),
+        isTrue,
+      );
+      final plan = await service().prepareLaunch(
+        session: session,
+        team: const TeamConfig(
+          id: 'team-a',
+          name: 'Team A',
+          cli: TeamCli.flashskyai,
+        ),
+        memberBinding: binding,
+      );
+      expect(plan.resume, isTrue);
+      expect(plan.taskId, taskId);
+      expect(plan.cliTeamName, 'team-a-3');
+    },
+  );
 
   test(
     'prepareLaunch writes Claude provider settings for launched member',
@@ -252,7 +268,7 @@ void main() {
           cli: TeamCli.claude,
           providerIdsByTool: {'claude': 'deepseek'},
           members: [
-            TeamMemberConfig(id: 'lead', name: 'team-lead', model: 'opus'),
+            TeamMemberConfig(id: 'team-lead', name: 'team-lead', model: 'opus'),
             TeamMemberConfig(id: 'dev', name: 'developer', model: 'sonnet'),
           ],
         ),

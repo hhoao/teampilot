@@ -147,13 +147,10 @@ class ConfigProfileService {
     String sessionId,
     TeamMemberConfig member,
   ) {
-    final safeName = member.name == TeamMemberNaming.teamLeadName
-        ? TeamMemberNaming.teamLeadName
-        : TeamMemberNaming.slugMemberName(member.name);
     return _pathContext.join(
       sessionToolDir(teamId, sessionId, 'claude'),
       'settings',
-      '${ClaudeTeamRosterService.safeClaudePathSegment(safeName)}.json',
+      '${ClaudeTeamRosterService.safeClaudePathSegment(member.id)}.json',
     );
   }
 
@@ -846,11 +843,11 @@ class ConfigProfileService {
   }) async {
     final uniqueMembers = <String, TeamMemberConfig>{};
     for (final member in members.where((member) => member.isValid)) {
-      uniqueMembers[member.name] = member;
+      uniqueMembers[member.id] = member;
     }
     final selected = launchedMember;
     if (selected != null && selected.isValid) {
-      uniqueMembers[selected.name] = selected;
+      uniqueMembers[selected.id] = selected;
     }
 
     for (final member in uniqueMembers.values) {
@@ -858,9 +855,7 @@ class ConfigProfileService {
         scope: scope,
         member: member,
         providerSettings:
-            providerSettingsByMember[member.id] ??
-            providerSettingsByMember[member.name] ??
-            providerSettings,
+            providerSettingsByMember[member.id] ?? providerSettings,
         forceTeamLeadDelegateMode: forceTeamLeadDelegateMode,
       );
     }
@@ -877,7 +872,7 @@ class ConfigProfileService {
       scope.sessionId,
       'claude',
     );
-    final isLead = member.name.trim() == TeamMemberNaming.teamLeadName;
+    final isLead = TeamMemberNaming.isTeamLead(member);
     await MemberRoleProvision.syncRolePromptFile(
       fs: _fs,
       memberToolDir: memberToolDir,
@@ -906,7 +901,7 @@ class ConfigProfileService {
     String memberToolDir, {
     required bool forceTeamLeadDelegateMode,
   }) async {
-    if (member.name.trim() != TeamMemberNaming.teamLeadName) {
+    if (!TeamMemberNaming.isTeamLead(member)) {
       return settings;
     }
     final shell = _hookShellForProvision();
@@ -968,7 +963,7 @@ class ConfigProfileService {
       scope.sessionId,
       'flashskyai',
     );
-    final isLead = member.name.trim() == TeamMemberNaming.teamLeadName;
+    final isLead = TeamMemberNaming.isTeamLead(member);
     await MemberRoleProvision.syncRolePromptFile(
       fs: _fs,
       memberToolDir: memberToolDir,

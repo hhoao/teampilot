@@ -181,7 +181,7 @@ class _SettingsWarmup extends StatelessWidget {
                   return _WarmupLaunchRow(
                     index: index,
                     name: member.name,
-                    command: '$executable --member ${member.name}',
+                    command: '$executable --member ${member.id}',
                   );
                 },
               ),

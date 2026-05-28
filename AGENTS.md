@@ -74,6 +74,18 @@ Top-level under `<teampilotRoot>`: `teams/`, `projects/` (+ `sessions/*.json`), 
 
 Config isolation: **app → team → member** (member `CONFIG_DIR` for PTY). See `client/lib/services/cli/cli_data_layout.dart` and `SessionLifecycleService`.
 
+### Team session CLI identity
+
+Team chat sessions persist:
+
+| Field | Role |
+|-------|------|
+| `AppSession.sessionId` | UI / routing UUID (unchanged) |
+| `AppSession.cliTeamName` | CLI `--team-name` / config-profiles runtime dir (`{teamId}-{seq}`) |
+| `AppSession.members[]` | Per-roster `taskId` for CLI `--session-id` / `--resume` |
+
+Allocated in `SessionRepository.createSession` via `SessionTeamCounter` (`config-profiles/teams/{teamId}/session-counter.json`). **No backward compatibility** with old `launchTeam` / chat-UUID runtime paths — users must create new team sessions after upgrade.
+
 ## Where to change code
 
 | Area | Path |

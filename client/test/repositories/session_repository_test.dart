@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:teampilot/models/app_session.dart';
+import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/repositories/session_repository.dart';
 import 'package:teampilot/services/session/session_lifecycle_service.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -114,6 +115,9 @@ void main() {
       final session = await repo.createSession(
         project.projectId,
         sessionTeam: 'team-a',
+        rosterMembers: const [
+          TeamMemberConfig(id: 'team-lead', name: 'team-lead'),
+        ],
       );
 
       await repo.deleteSession(session.sessionId);
@@ -133,8 +137,17 @@ void main() {
       lifecycleService: lifecycle,
     );
     final project = await repo.createProject('/a');
-    final s1 = await repo.createSession(project.projectId, sessionTeam: 'T');
-    final s2 = await repo.createSession(project.projectId, sessionTeam: 'T');
+    const roster = [TeamMemberConfig(id: 'team-lead', name: 'team-lead')];
+    final s1 = await repo.createSession(
+      project.projectId,
+      sessionTeam: 'T',
+      rosterMembers: roster,
+    );
+    final s2 = await repo.createSession(
+      project.projectId,
+      sessionTeam: 'T',
+      rosterMembers: roster,
+    );
 
     await repo.deleteProject(project.projectId);
 
@@ -234,26 +247,20 @@ void main() {
     expect(list.single.sessionId, good.sessionId);
   });
 
-  test(
-    'markSessionLaunched writes launchTeam and started without changing empty sessionTeam',
-    () async {
-      final tmp = await Directory.systemTemp.createTemp('fs_session_repo_');
-      addTearDown(() => tmp.deleteSync(recursive: true));
+  test('markSessionLaunched sets started without changing sessionTeam', () async {
+    final tmp = await Directory.systemTemp.createTemp('fs_session_repo_');
+    addTearDown(() => tmp.deleteSync(recursive: true));
 
-      final repo = SessionRepository(rootDir: tmp.path);
-      final project = await repo.createProject('/w');
-      final session = await repo.createSession(project.projectId);
-      await repo.markSessionLaunched(
-        session.sessionId,
-        launchTeam: 'my-cli-team',
-      );
+    final repo = SessionRepository(rootDir: tmp.path);
+    final project = await repo.createProject('/w');
+    final session = await repo.createSession(project.projectId);
+    await repo.markSessionLaunched(session.sessionId);
 
-      final disk = (await repo.loadSessions()).single;
-      expect(disk.launchState, AppSessionLaunchState.started);
-      expect(disk.launchTeam, 'my-cli-team');
-      expect(disk.sessionTeam, '');
-    },
-  );
+    final disk = (await repo.loadSessions()).single;
+    expect(disk.launchState, AppSessionLaunchState.started);
+    expect(disk.sessionTeam, '');
+    expect(disk.cliTeamName, '');
+  });
 
   test('createSession persists sessionTeam when provided', () async {
     final tmp = await Directory.systemTemp.createTemp('fs_session_repo_');
@@ -264,14 +271,42 @@ void main() {
     final session = await repo.createSession(
       project.projectId,
       sessionTeam: 'team-config-id-1',
+      rosterMembers: const [
+        TeamMemberConfig(id: 'team-lead', name: 'team-lead'),
+      ],
     );
     expect(session.sessionTeam, 'team-config-id-1');
+    expect(session.cliTeamName, 'team-config-id-1-1');
+    expect(session.members.length, 1);
     final disk = (await repo.loadSessions()).single;
     expect(disk.sessionTeam, 'team-config-id-1');
-    expect(disk.launchTeam, '');
+    expect(disk.cliTeamName, 'team-config-id-1-1');
   });
 
-  test('markSessionLaunched keeps sessionTeam and sets launchTeam', () async {
+  test(
+    'team session gets cliTeamName and per-member taskIds',
+    () async {
+      final tmp = await Directory.systemTemp.createTemp('fs_session_repo_');
+      addTearDown(() => tmp.deleteSync(recursive: true));
+
+      final repo = SessionRepository(rootDir: tmp.path);
+      final project = await repo.createProject('/w');
+      const roster = [
+        TeamMemberConfig(id: 'team-lead', name: 'team-lead'),
+        TeamMemberConfig(id: 'worker', name: 'worker'),
+      ];
+      final s = await repo.createSession(
+        project.projectId,
+        sessionTeam: 'team-a',
+        rosterMembers: roster,
+      );
+      expect(s.cliTeamName, 'team-a-1');
+      expect(s.members.length, 2);
+      expect(s.members.map((b) => b.taskId).toSet().length, 2);
+    },
+  );
+
+  test('ensureMemberBinding appends binding for new roster member', () async {
     final tmp = await Directory.systemTemp.createTemp('fs_session_repo_');
     addTearDown(() => tmp.deleteSync(recursive: true));
 
@@ -279,14 +314,20 @@ void main() {
     final project = await repo.createProject('/w');
     final session = await repo.createSession(
       project.projectId,
-      sessionTeam: 'ui-team-id',
+      sessionTeam: 'team-a',
+      rosterMembers: const [
+        TeamMemberConfig(id: 'team-lead', name: 'team-lead'),
+      ],
     );
-    await repo.markSessionLaunched(session.sessionId, launchTeam: 'cli-dir');
-
+    final binding = await repo.ensureMemberBinding(
+      session.sessionId,
+      'new-member',
+    );
+    expect(binding.rosterMemberId, 'new-member');
+    expect(binding.taskId, isNotEmpty);
     final disk = (await repo.loadSessions()).single;
-    expect(disk.sessionTeam, 'ui-team-id');
-    expect(disk.launchTeam, 'cli-dir');
-    expect(disk.launchState, AppSessionLaunchState.started);
+    expect(disk.members.length, 2);
+    expect(disk.bindingFor('new-member')?.taskId, binding.taskId);
   });
 
   test(

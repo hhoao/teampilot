@@ -70,7 +70,7 @@ void main() {
       final dir = await Directory.systemTemp.createTemp('onboarding-provider-bind_');
       final teamRepo = TeamRepository(rootDir: p.join(dir.path, 'teams'));
       const team = TeamConfig(
-        id: 'Default Team',
+        id: 'default-team',
         name: 'Default Team',
         cli: TeamCli.claude,
         members: [TeamMemberConfig(id: 'team-lead', name: 'team-lead')],

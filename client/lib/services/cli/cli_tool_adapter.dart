@@ -27,7 +27,10 @@ class CliLaunchContext {
   final bool useWslPaths;
 
   String get teamName => sessionTeam ?? team.name.trim();
-  String get memberName => member.name.trim();
+  String get memberDisplayName => member.name.trim();
+
+  /// CLI roster / `--agent-name` key ([TeamMemberConfig.id]).
+  String get memberCliId => member.id.trim();
 }
 
 abstract interface class CliToolAdapter {
@@ -61,7 +64,7 @@ class FlashskyaiCliToolAdapter implements CliToolAdapter {
       '--team',
       context.teamName,
       '--member',
-      context.memberName,
+      context.memberCliId,
     ];
 
     final loop = context.team.loop;
@@ -105,10 +108,10 @@ class ClaudeCodeCliToolAdapter implements CliToolAdapter {
       '--team-name',
       context.teamName,
       '--agent-name',
-      context.memberName,
+      context.memberCliId,
       '--agent-id',
       TeamMemberNaming.cliAgentId(
-        memberName: context.memberName,
+        memberId: context.memberCliId,
         cliTeamName: context.teamName,
       ),
     ];

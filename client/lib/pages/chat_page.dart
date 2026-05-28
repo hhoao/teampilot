@@ -148,7 +148,7 @@ class ChatPage extends StatelessWidget {
         key: AppKeys.openTeamLeadButton,
         tooltip: 'Open team-lead',
         onPressed: throttledOnPressed('chat_open_team_lead', () {
-          final lead = team.members.where((m) => m.name == 'team-lead');
+          final lead = team.members.where((m) => m.id == 'team-lead');
           if (lead.isEmpty) {
             context.read<ChatCubit>().addSystemMessage(
               'FlashskyAI requires a member named team-lead.',

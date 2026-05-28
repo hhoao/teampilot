@@ -184,6 +184,17 @@ class TerminalSession {
       }
     }
 
+    appLogger.i(
+      '--------------------------------\n'
+      'Starting transport:\n'
+      '--------------------------------\n'
+      'Executable: $invocation.executable,\n'
+      'Arguments: ${launchArgs.join(' ')},\n'
+      'WorkingDirectory: $ptyWorkingDirectory,\n'
+      'Environment: ${_extraEnvironment?.entries.map((e) => '${e.key}=${e.value}').join(', ')}\n'
+      '--------------------------------\n',
+    );
+
     _beginStartup(invocation.executable);
 
     _attachTerminalViewportListener();
@@ -515,11 +526,7 @@ class TerminalSession {
     _transport?.close();
     _transport = null;
     _startupExecutable = null;
-    appLogger.e(
-      '[terminal] $message',
-      error: error,
-      stackTrace: stackTrace,
-    );
+    appLogger.e('[terminal] $message', error: error, stackTrace: stackTrace);
     terminal.write('\r\n$message\r\n');
     _onProcessFailed?.call(message);
     _onProcessFailed = null;
@@ -624,12 +631,6 @@ class TerminalSession {
     Map<String, String>? environment,
   }) async {
     final spawnExecutable = CliToolLocator.resolveSpawnExecutable(executable);
-    appLogger.i(
-      '[terminal] starting transport: '
-      'executable=$spawnExecutable '
-      'args=${arguments.join(' ')} '
-      'cwd=$workingDirectory',
-    );
     final pty = Pty.start(
       spawnExecutable,
       arguments: arguments,
@@ -638,6 +639,7 @@ class TerminalSession {
       rows: rows,
       environment: environment,
     );
+    appLogger.i("Pty started");
     return LocalPtyTransport(pty);
   }
 }

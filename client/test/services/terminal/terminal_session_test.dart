@@ -393,7 +393,7 @@ void main() {
       name: 'default-team-0',
       cli: TeamCli.claude,
     );
-    const lead = TeamMemberConfig(id: 'lead', name: 'team-lead');
+    const lead = TeamMemberConfig(id: 'team-lead', name: 'team-lead');
     const dev = TeamMemberConfig(id: 'dev', name: 'developer');
     final startedArgs = <List<String>>[];
 
@@ -459,7 +459,7 @@ void main() {
       name: 'default-team-0',
       cli: TeamCli.flashskyai,
     );
-    const lead = TeamMemberConfig(id: 'lead', name: 'team-lead');
+    const lead = TeamMemberConfig(id: 'team-lead', name: 'team-lead');
     const dev = TeamMemberConfig(id: 'dev', name: 'developer');
     final startedArgs = <List<String>>[];
 
