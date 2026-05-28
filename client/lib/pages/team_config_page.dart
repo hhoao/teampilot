@@ -30,20 +30,56 @@ import '../widgets/settings/workspace_settings_widgets.dart';
 import '../widgets/dropdown/flashsky_dropdown_field.dart';
 import '../widgets/dropdown/flashskyai_dropdown_decoration.dart';
 import '../widgets/settings/workspace_hub_shell.dart';
+import '../widgets/settings/workspace_section_navigation.dart';
+import '../widgets/settings/workspace_section_host.dart';
 import '../theme/app_text_styles.dart';
 import '../theme/workspace_surface_layers.dart';
 
-enum TeamConfigSection { team, skills, plugins, mcp, members }
+enum TeamConfigSection implements WorkspaceSectionDescriptor {
+  team,
+  skills,
+  plugins,
+  mcp,
+  members;
 
-extension TeamConfigSectionRoute on TeamConfigSection {
-  String routeSegment() => switch (this) {
+  @override
+  String get routeSegment => switch (this) {
     TeamConfigSection.team => 'team',
     TeamConfigSection.skills => 'skills',
     TeamConfigSection.plugins => 'plugins',
     TeamConfigSection.mcp => 'mcp',
     TeamConfigSection.members => 'members',
   };
+
+  @override
+  String routePath(String basePath) => switch (this) {
+    TeamConfigSection.members => '$basePath/members',
+    _ => '$basePath/$routeSegment',
+  };
+
+  @override
+  String title(AppLocalizations l10n) => switch (this) {
+    TeamConfigSection.team => l10n.teamSettings,
+    TeamConfigSection.skills => l10n.teamSkillsNav,
+    TeamConfigSection.plugins => l10n.teamPluginsNav,
+    TeamConfigSection.mcp => l10n.teamMcpNav,
+    TeamConfigSection.members => l10n.members,
+  };
+
+  @override
+  IconData get icon => _teamConfigSectionIcon(this);
 }
+
+IconData _teamConfigSectionIcon(TeamConfigSection section) => switch (section) {
+  TeamConfigSection.team => Icons.groups_outlined,
+  TeamConfigSection.skills => Icons.extension_outlined,
+  TeamConfigSection.plugins => Icons.widgets_outlined,
+  TeamConfigSection.mcp => Icons.hub_outlined,
+  TeamConfigSection.members => Icons.person_outline,
+};
+
+String memberRoutePath(String basePath, String memberId) =>
+    '$basePath/members/$memberId';
 
 /// Same mapping as [TeamToolProviderSelectors]: member provider catalog is
 /// `<appData>/providers/<cli>/providers.json` per [AppProviderRepository].
@@ -212,62 +248,53 @@ class TeamConfigPage extends StatelessWidget {
       ),
     };
 
-    if (useAndroidHubNavigation(context)) {
-      return WorkspaceSectionPage(
-        pageKey: AppKeys.teamConfigWorkspace,
-        child: body,
-      );
-    }
-
-    return Container(
-      color: Theme.of(context).colorScheme.workspacePage,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          WorkspaceHubTitleBar(
-            title: l10n.teamConfig,
-            subtitle: l10n.teamSettingsSubtitle,
-          ),
-          Expanded(
-            child: WorkspaceSplitShell(
-              bodyAnimationKey: ValueKey(
-                'team-config-body-${section.name}-${resolvedMemberId ?? ''}',
-              ),
-              nav: _NavPanel(
-                team: team,
-                section: section,
-                selectedMemberId: resolvedMemberId,
-                onSelect: (s) {
-                  if (s == TeamConfigSection.members) {
-                    final id = _memberRouteId(team, preferred: memberId);
-                    if (id != null) {
-                      context.go('/team-config/members/$id');
-                    }
-                    return;
-                  }
-                  context.go('/team-config/${s.routeSegment()}');
-                },
-                onSelectMember: (id) => context.go('/team-config/members/$id'),
-                onAddMember: () async {
-                  await teamCubit.addMember();
-                  final t = teamCubit.state.selectedTeam;
-                  if (t != null && t.members.isNotEmpty && context.mounted) {
-                    context.go('/team-config/members/${t.members.last.id}');
-                  }
-                },
-                l10n: l10n,
-              ),
-              body: body,
-            ),
-          ),
-        ],
+    return WorkspaceAdaptiveSectionPage(
+      pageKey: AppKeys.teamConfigWorkspace,
+      title: l10n.teamConfig,
+      subtitle: l10n.teamSettingsSubtitle,
+      bodyAnimationKey: ValueKey(
+        'team-config-body-${section.name}-${resolvedMemberId ?? ''}',
       ),
+      nav: _TeamConfigNavPanel(
+        team: team,
+        section: section,
+        selectedMemberId: resolvedMemberId,
+        onSelect: (s) {
+          if (s == TeamConfigSection.members) {
+            final id = _memberRouteId(team, preferred: memberId);
+            if (id != null) {
+              navigateWorkspaceRoute(
+                context,
+                memberRoutePath('/team-config', id),
+              );
+            }
+            return;
+          }
+          navigateWorkspaceRoute(context, s.routePath('/team-config'));
+        },
+        onSelectMember: (id) => navigateWorkspaceRoute(
+          context,
+          memberRoutePath('/team-config', id),
+        ),
+        onAddMember: () async {
+          await teamCubit.addMember();
+          final t = teamCubit.state.selectedTeam;
+          if (t != null && t.members.isNotEmpty && context.mounted) {
+            navigateWorkspaceRoute(
+              context,
+              memberRoutePath('/team-config', t.members.last.id),
+            );
+          }
+        },
+        l10n: l10n,
+      ),
+      body: body,
     );
   }
 }
 
-class _NavPanel extends StatelessWidget {
-  const _NavPanel({
+class _TeamConfigNavPanel extends StatelessWidget {
+  const _TeamConfigNavPanel({
     required this.team,
     required this.section,
     required this.selectedMemberId,
@@ -287,143 +314,39 @@ class _NavPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Container(
-      color: cs.workspacePage,
-      padding: const EdgeInsets.fromLTRB(24, 28, 18, 24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+    const primarySections = TeamConfigSection.values;
+    return WorkspaceCompositeNavPanel(
+      primaryEntries: [
+        for (final s in primarySections)
+          WorkspaceHubEntry(
+            title: s.title(l10n),
+            icon: s.icon,
+            selected: section == s,
+            density: WorkspaceHubNavDensity.relaxed,
+            onTap: throttledTap(
+              'team_config_nav_${s.name}',
+              () => onSelect(s),
+            ),
+          ),
+      ],
+      footer: ListView(
+        padding: const EdgeInsets.only(left: 14, right: 2),
         children: [
-          _NavItem(
-            title: l10n.teamSettings,
-            icon: Icons.groups_outlined,
-            selected: section == TeamConfigSection.team,
-            onTap: throttledTap(
-              'team_config_nav_team',
-              () => onSelect(TeamConfigSection.team),
-            ),
-          ),
-          _NavItem(
-            title: l10n.teamSkillsNav,
-            icon: Icons.extension_outlined,
-            selected: section == TeamConfigSection.skills,
-            onTap: throttledTap(
-              'team_config_nav_skills',
-              () => onSelect(TeamConfigSection.skills),
-            ),
-          ),
-          _NavItem(
-            title: l10n.teamPluginsNav,
-            icon: Icons.widgets_outlined,
-            selected: section == TeamConfigSection.plugins,
-            onTap: throttledTap(
-              'team_config_nav_plugins',
-              () => onSelect(TeamConfigSection.plugins),
-            ),
-          ),
-          _NavItem(
-            title: l10n.teamMcpNav,
-            icon: Icons.hub_outlined,
-            selected: section == TeamConfigSection.mcp,
-            onTap: throttledTap(
-              'team_config_nav_mcp',
-              () => onSelect(TeamConfigSection.mcp),
-            ),
-          ),
-          _NavItem(
-            title: l10n.members,
-            icon: Icons.person_outline,
-            selected: section == TeamConfigSection.members,
-            onTap: throttledTap(
-              'team_config_nav_members',
-              () => onSelect(TeamConfigSection.members),
-            ),
-          ),
-          const SizedBox(height: 4),
-          Expanded(
-            child: ListView(
-              padding: const EdgeInsets.only(left: 14, right: 2),
-              children: [
-                for (final m in team.members)
-                  _MemberNavSubItem(
-                    member: m,
-                    selected:
-                        section == TeamConfigSection.members &&
-                        m.id == selectedMemberId,
-                    onTap: throttledTap(
-                      'team_config_nav_member_${m.id}',
-                      () => onSelectMember(m.id),
-                    ),
-                  ),
-                _MemberNavAddTile(l10n: l10n, onTap: onAddMember),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _MemberNavSubItem extends StatelessWidget {
-  const _MemberNavSubItem({
-    required this.member,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final TeamMemberConfig member;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final l10n = context.l10n;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textBase = isDark ? Colors.white : const Color(0xFF111827);
-    final muted = textBase.withValues(alpha: 0.64);
-    final label = member.name.trim().isEmpty
-        ? l10n.memberName
-        : member.name.trim();
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 6),
-      child: Material(
-        color: selected ? cs.primaryContainer : Colors.transparent,
-        borderRadius: BorderRadius.circular(10),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(10),
-          onTap: onTap,
-          child: SizedBox(
-            height: 44,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 14),
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.person_outline,
-                    size: 19,
-                    color: selected ? textBase : muted,
-                  ),
-                  SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      label,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: AppTextStyles.of(context).body.copyWith(
-                        fontWeight: selected
-                            ? FontWeight.w700
-                            : FontWeight.w600,
-                        color: selected ? textBase : muted,
-                      ),
-                    ),
-                  ),
-                ],
+          for (final m in team.members)
+            WorkspaceHubNavItem(
+              title: m.name.trim().isEmpty ? l10n.memberName : m.name.trim(),
+              icon: Icons.person_outline,
+              density: WorkspaceHubNavDensity.subItem,
+              selected:
+                  section == TeamConfigSection.members &&
+                  m.id == selectedMemberId,
+              onTap: throttledTap(
+                'team_config_nav_member_${m.id}',
+                () => onSelectMember(m.id),
               ),
             ),
-          ),
-        ),
+          _MemberNavAddTile(l10n: l10n, onTap: onAddMember),
+        ],
       ),
     );
   }
@@ -469,58 +392,6 @@ class _MemberNavAddTile extends StatelessWidget {
                     ),
                   ],
                 ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _NavItem extends StatelessWidget {
-  const _NavItem({
-    required this.title,
-    required this.icon,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final String title;
-  final IconData icon;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textBase = isDark ? Colors.white : const Color(0xFF111827);
-    final muted = textBase.withValues(alpha: 0.64);
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Material(
-        color: selected ? cs.primaryContainer : Colors.transparent,
-        borderRadius: BorderRadius.circular(12),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(12),
-          onTap: onTap,
-          child: SizedBox(
-            height: 54,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 18),
-              child: Row(
-                children: [
-                  Icon(icon, color: selected ? textBase : muted, size: 21),
-                  SizedBox(width: 16),
-                  Expanded(
-                    child: Text(
-                      title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
               ),
             ),
           ),
