@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../cubits/team_cubit.dart';
 import '../l10n/l10n_extensions.dart';
+import '../pages/mcp_management_page.dart';
 import '../pages/skill_management_page.dart';
 
 /// Resolves Android [Scaffold] title, back affordance, and drawer visibility
@@ -16,6 +17,7 @@ class AndroidShellChrome {
     if (_isLlmProviderDetail(path)) return true;
     if (_isTeamConfigDetail(path)) return true;
     if (_isSkillsDetail(path)) return true;
+    if (_isMcpDetail(path)) return true;
     return false;
   }
 
@@ -41,6 +43,16 @@ class AndroidShellChrome {
     if (path == '/team-config') return l10n.teamConfig;
     if (path == '/team-config/team') return l10n.teamSettings;
     if (path == '/team-config/skills') return l10n.teamSkillsNav;
+    if (path == '/team-config/mcp') return l10n.teamMcpNav;
+    if (path == '/mcp') return l10n.mcpNavTitle;
+    if (path.startsWith('/mcp/')) {
+      final segment = path.replaceFirst('/mcp/', '');
+      for (final section in McpSection.values) {
+        if (section.routeSegment() == segment) {
+          return section.title(l10n);
+        }
+      }
+    }
     if (path.startsWith('/team-config/members/')) {
       return _memberTitle(context, path) ?? l10n.members;
     }
@@ -81,6 +93,10 @@ class AndroidShellChrome {
     }
     if (_isSkillsDetail(path) || path == '/skills') {
       context.go('/skills');
+      return;
+    }
+    if (_isMcpDetail(path) || path == '/mcp') {
+      context.go('/mcp');
     }
   }
 
@@ -124,6 +140,9 @@ class AndroidShellChrome {
 
   static bool _isSkillsDetail(String path) =>
       path.startsWith('/skills/') && path.length > '/skills/'.length;
+
+  static bool _isMcpDetail(String path) =>
+      path.startsWith('/mcp/') && path.length > '/mcp/'.length;
 
   static String? _memberTitle(BuildContext context, String path) {
     final id = path.split('/').last;

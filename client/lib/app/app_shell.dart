@@ -13,8 +13,11 @@ import '../cubits/config_cubit.dart';
 import '../cubits/layout_cubit.dart';
 import '../cubits/llm_config_cubit.dart';
 import '../cubits/session_preferences_cubit.dart';
+import '../cubits/mcp_cubit.dart';
 import '../cubits/plugin_cubit.dart';
 import '../cubits/skill_cubit.dart';
+import '../repositories/mcp_repository.dart';
+import '../services/mcp/team_mcp_linker_service.dart';
 import '../cubits/ssh_profile_cubit.dart';
 import '../cubits/team_cubit.dart';
 import '../models/connection_mode.dart';
@@ -74,6 +77,7 @@ class AppShell {
     required this.sessionPreferencesCubit,
     required this.pluginCubit,
     required this.skillCubit,
+    required this.mcpCubit,
     required this.appUpdateCubit,
     required this.sshProfileCubit,
     required this.appSettings,
@@ -99,6 +103,7 @@ class AppShell {
   final SessionPreferencesCubit sessionPreferencesCubit;
   final PluginCubit pluginCubit;
   final SkillCubit skillCubit;
+  final McpCubit mcpCubit;
   final AppUpdateCubit appUpdateCubit;
   final SshProfileCubit sshProfileCubit;
   final AppSettingsRepository appSettings;
@@ -195,6 +200,7 @@ Future<AppShell> buildAppShell({
   late final TeamCubit teamCubit;
   late final PluginCubit pluginCubit;
   late final SkillCubit skillCubit;
+  late final McpCubit mcpCubit;
   late final SessionRepository sessionRepo;
   late final ChatCubit chatCubit;
   late final EditorCubit editorCubit;
@@ -224,6 +230,7 @@ Future<AppShell> buildAppShell({
         teamCubit: teamCubit,
         pluginCubit: pluginCubit,
         skillCubit: skillCubit,
+        mcpCubit: mcpCubit,
         chatCubit: chatCubit,
         sessionRepo: sessionRepo,
         sshProfileCubit: sshProfileCubit,
@@ -308,6 +315,7 @@ Future<AppShell> buildAppShell({
   );
 
   final pluginRepository = PluginRepository(storageRoots: storageRoots);
+  final mcpRepository = McpRepository(storageRoots: storageRoots);
   teamCubit = TeamCubit(
     repository: teamRepo,
     executableResolver: () => sessionPreferencesCubit.resolveExecutable(),
@@ -320,6 +328,9 @@ Future<AppShell> buildAppShell({
     pluginLinker: TeamPluginLinkerService(storageRoots: storageRoots),
     pluginRepository: pluginRepository,
     installedPluginsLoader: () => pluginRepository.loadAll(),
+    mcpLinker: TeamMcpLinkerService(),
+    mcpRepository: mcpRepository,
+    installedMcpLoader: () => mcpRepository.loadAll(),
   );
   skillCubit = SkillCubit(
     skillRepo,
@@ -333,6 +344,10 @@ Future<AppShell> buildAppShell({
     storageRoots: storageRoots,
     onPluginUninstalled: teamCubit.removePluginFromAllTeams,
     onPluginUpdated: teamCubit.syncTeamsUsingPlugin,
+  );
+  mcpCubit = McpCubit(
+    mcpRepository,
+    onMcpDeleted: teamCubit.removeMcpFromAllTeams,
   );
   final appUpdateCubit = AppUpdateCubit();
   final layoutCubit = LayoutCubit(repository: LayoutRepository(preferences));
@@ -381,6 +396,7 @@ Future<AppShell> buildAppShell({
       teamCubit: teamCubit,
       pluginCubit: pluginCubit,
       skillCubit: skillCubit,
+      mcpCubit: mcpCubit,
       chatCubit: chatCubit,
       sessionRepo: sessionRepo,
       sshProfileCubit: sshProfileCubit,
@@ -408,6 +424,7 @@ Future<AppShell> buildAppShell({
     sessionPreferencesCubit: sessionPreferencesCubit,
     pluginCubit: pluginCubit,
     skillCubit: skillCubit,
+    mcpCubit: mcpCubit,
     appUpdateCubit: appUpdateCubit,
     sshProfileCubit: sshProfileCubit,
     appSettings: appSettings,
@@ -423,6 +440,7 @@ Future<void> reloadRemoteBackedAppData({
   required TeamCubit teamCubit,
   required PluginCubit pluginCubit,
   required SkillCubit skillCubit,
+  required McpCubit mcpCubit,
   required ChatCubit chatCubit,
   required SessionRepository sessionRepo,
   required SshProfileCubit sshProfileCubit,
@@ -434,11 +452,13 @@ Future<void> reloadRemoteBackedAppData({
     teamCubit.load(),
     pluginCubit.load(),
     skillCubit.loadAll(),
+    mcpCubit.loadAll(),
     chatCubit.loadProjectData(sessionRepo),
     sshProfileCubit.load(notifyActiveProfileChanged: false),
   ]);
   await teamCubit.syncSelectedTeamSkills(installed: skillCubit.state.installed);
   await teamCubit.syncSelectedTeamPlugins(installed: pluginCubit.state.installed);
+  await teamCubit.syncSelectedTeamMcp(installed: mcpCubit.state.servers);
 }
 
 class TeamPilotBootstrap extends StatefulWidget {

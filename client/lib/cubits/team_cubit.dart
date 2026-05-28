@@ -5,8 +5,10 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../models/app_session.dart';
+import '../models/mcp_server.dart';
 import '../models/plugin.dart';
 import '../models/skill.dart';
+import '../repositories/mcp_repository.dart';
 import '../models/team_config.dart';
 import '../repositories/plugin_repository.dart';
 import '../repositories/team_repository.dart';
@@ -15,6 +17,7 @@ import '../services/cli/cli_data_layout.dart';
 import '../services/provider/config_profile_service.dart';
 import '../services/session/launch_command_builder.dart';
 import '../services/session/session_lifecycle_service.dart';
+import '../services/mcp/team_mcp_linker_service.dart';
 import '../services/plugin/team_plugin_linker_service.dart';
 import '../services/skill/team_skill_linker_service.dart';
 import '../utils/logger.dart';
@@ -93,6 +96,7 @@ typedef StringProvider = String Function();
 typedef CliExecutableResolver = String Function(TeamCli cli);
 typedef InstalledSkillsLoader = Future<List<Skill>> Function();
 typedef InstalledPluginsLoader = Future<List<Plugin>> Function();
+typedef InstalledMcpLoader = Future<List<McpServer>> Function();
 
 class TeamCubit extends Cubit<TeamState> {
   TeamCubit({
@@ -110,6 +114,9 @@ class TeamCubit extends Cubit<TeamState> {
     TeamPluginLinkerService? pluginLinker,
     PluginRepository? pluginRepository,
     InstalledPluginsLoader? installedPluginsLoader,
+    TeamMcpLinkerService? mcpLinker,
+    McpRepository? mcpRepository,
+    InstalledMcpLoader? installedMcpLoader,
   }) : _repository = repository,
        _executableResolver = executableResolver,
        _cliExecutableResolver = cliExecutableResolver,
@@ -133,6 +140,9 @@ class TeamCubit extends Cubit<TeamState> {
        _pluginLinker = pluginLinker ?? TeamPluginLinkerService(),
        _pluginRepository = pluginRepository ?? PluginRepository(),
        _installedPluginsLoader = installedPluginsLoader,
+       _mcpLinker = mcpLinker ?? TeamMcpLinkerService(),
+       _mcpRepository = mcpRepository ?? McpRepository(),
+       _installedMcpLoader = installedMcpLoader,
        _launcher = launcher,
        super(const TeamState());
 
@@ -158,6 +168,9 @@ class TeamCubit extends Cubit<TeamState> {
   final TeamPluginLinkerService _pluginLinker;
   final PluginRepository _pluginRepository;
   final InstalledPluginsLoader? _installedPluginsLoader;
+  final TeamMcpLinkerService _mcpLinker;
+  final McpRepository _mcpRepository;
+  final InstalledMcpLoader? _installedMcpLoader;
 
   /// Fire-and-forget skill/plugin sync can finish after [close]; skip emit.
   void _safeEmit(TeamState newState) {
@@ -290,6 +303,7 @@ class TeamCubit extends Cubit<TeamState> {
     await Future.wait([
       _syncSkillsForSelected(),
       _syncPluginsForSelected(),
+      _syncMcpForSelected(),
     ]);
   }
 
@@ -301,6 +315,10 @@ class TeamCubit extends Cubit<TeamState> {
     await _syncPluginsForSelected(installed: installed);
   }
 
+  Future<void> syncSelectedTeamMcp({List<McpServer>? installed}) async {
+    await _syncMcpForSelected(installed: installed);
+  }
+
   Future<void> syncTeamsUsingPlugin(
     String pluginId, {
     List<Plugin>? installed,
@@ -310,6 +328,32 @@ class TeamCubit extends Cubit<TeamState> {
         if (team.pluginIds.contains(pluginId)) team.id,
     ];
     await _syncPluginsForTeamIds(teamIds, installed: installed);
+  }
+
+  Future<void> removeMcpFromAllTeams(String mcpId) async {
+    final selected = state.selectedTeam;
+    final syncNeeded = selected != null && selected.mcpServerIds.contains(mcpId);
+    var changed = false;
+    final teams = [
+      for (final team in state.teams)
+        if (team.mcpServerIds.contains(mcpId))
+          () {
+            changed = true;
+            return team.copyWith(
+              mcpServerIds: team.mcpServerIds
+                  .where((id) => id != mcpId)
+                  .toList(growable: false),
+            );
+          }()
+        else
+          team,
+    ];
+    if (!changed) return;
+    emit(state.copyWith(teams: teams));
+    await _repository.saveTeams(teams);
+    if (syncNeeded) {
+      await _syncMcpForSelected();
+    }
   }
 
   Future<void> removeSkillFromAllTeams(String skillId) async {
@@ -400,6 +444,61 @@ class TeamCubit extends Cubit<TeamState> {
       _safeEmit(state.copyWith(statusMessage: 'Skill sync failed: $e'));
     } finally {
       _safeEmit(state.copyWith(isSyncingSkills: false));
+    }
+  }
+
+  Future<void> _syncMcpForSelected({List<McpServer>? installed}) async {
+    final team = state.selectedTeam;
+    if (team == null) return;
+
+    try {
+      final List<McpServer> catalog;
+      if (installed != null) {
+        catalog = installed;
+      } else {
+        catalog =
+            await (_installedMcpLoader?.call() ?? _mcpRepository.loadAll());
+      }
+      final enabled = catalog.where((s) => s.enabled).toList(growable: false);
+      final layout = (await _profileService()).layout;
+
+      var result = await _mcpLinker.syncForTeam(
+        teamId: team.id,
+        mcpServerIds: team.mcpServerIds,
+        catalog: enabled,
+        layout: layout,
+      );
+
+      if (result.skippedMissingIds.isNotEmpty) {
+        final prunedIds = team.mcpServerIds
+            .where((id) => !result.skippedMissingIds.contains(id))
+            .toList(growable: false);
+        if (prunedIds.length != team.mcpServerIds.length) {
+          final prunedTeam = team.copyWith(mcpServerIds: prunedIds);
+          final teams = [
+            for (final t in state.teams)
+              if (t.id == team.id) prunedTeam else t,
+          ];
+          _safeEmit(state.copyWith(teams: teams));
+          await _repository.saveTeams(teams);
+          result = await _mcpLinker.syncForTeam(
+            teamId: team.id,
+            mcpServerIds: prunedIds,
+            catalog: enabled,
+            layout: layout,
+          );
+        }
+      }
+
+      if (result.errors.isNotEmpty) {
+        appLogger.w('[team-mcp] sync errors: ${result.errors}');
+        _safeEmit(
+          state.copyWith(statusMessage: result.errors.first),
+        );
+      }
+    } catch (e) {
+      appLogger.e('[team-mcp] sync failed: $e');
+      _safeEmit(state.copyWith(statusMessage: 'MCP sync failed: $e'));
     }
   }
 
@@ -616,6 +715,7 @@ class TeamCubit extends Cubit<TeamState> {
     final skillsChanged = !listEquals(selected.skillIds, updated.skillIds);
     final pluginsChanged =
         !listEquals(selected.pluginIds, updated.pluginIds);
+    final mcpChanged = !listEquals(selected.mcpServerIds, updated.mcpServerIds);
     final normalized = _normalizeTeam(
       updated.members.isEmpty
           ? updated.copyWith(
@@ -642,6 +742,9 @@ class TeamCubit extends Cubit<TeamState> {
     }
     if (pluginsChanged) {
       await _syncPluginsForSelected();
+    }
+    if (mcpChanged) {
+      await _syncMcpForSelected();
     }
   }
 

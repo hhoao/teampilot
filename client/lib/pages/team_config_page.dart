@@ -4,11 +4,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import '../cubits/app_provider_cubit.dart';
+import '../cubits/mcp_cubit.dart';
 import '../cubits/plugin_cubit.dart';
 import '../cubits/skill_cubit.dart';
 import '../cubits/team_cubit.dart';
 import '../models/app_provider_config.dart';
 import '../l10n/l10n_extensions.dart';
+import '../models/mcp_server.dart';
 import '../models/plugin.dart';
 import '../models/skill.dart';
 import '../models/team_config.dart';
@@ -30,13 +32,14 @@ import '../widgets/dropdown/flashskyai_dropdown_decoration.dart';
 import '../widgets/settings/workspace_hub_shell.dart';
 import '../theme/workspace_surface_layers.dart';
 
-enum TeamConfigSection { team, skills, plugins, members }
+enum TeamConfigSection { team, skills, plugins, mcp, members }
 
 extension TeamConfigSectionRoute on TeamConfigSection {
   String routeSegment() => switch (this) {
     TeamConfigSection.team => 'team',
     TeamConfigSection.skills => 'skills',
     TeamConfigSection.plugins => 'plugins',
+    TeamConfigSection.mcp => 'mcp',
     TeamConfigSection.members => 'members',
   };
 }
@@ -120,6 +123,14 @@ class TeamConfigHubPage extends StatelessWidget {
           () => context.push('/team-config/plugins'),
         ),
       ),
+      WorkspaceHubEntry(
+        title: l10n.teamMcpNav,
+        icon: Icons.hub_outlined,
+        onTap: throttledTap(
+          'team_config_hub_mcp',
+          () => context.push('/team-config/mcp'),
+        ),
+      ),
       for (final member in team.members)
         WorkspaceHubEntry(
           title: member.name.trim().isEmpty ? l10n.memberName : member.name,
@@ -192,6 +203,7 @@ class TeamConfigPage extends StatelessWidget {
         team: team,
         cubit: teamCubit,
       ),
+      TeamConfigSection.mcp => _TeamMcpSection(team: team, cubit: teamCubit),
       TeamConfigSection.members => _MemberDetailSection(
         team: team,
         cubit: teamCubit,
@@ -306,6 +318,15 @@ class _NavPanel extends StatelessWidget {
             onTap: throttledTap(
               'team_config_nav_plugins',
               () => onSelect(TeamConfigSection.plugins),
+            ),
+          ),
+          _NavItem(
+            title: l10n.teamMcpNav,
+            icon: Icons.hub_outlined,
+            selected: section == TeamConfigSection.mcp,
+            onTap: throttledTap(
+              'team_config_nav_mcp',
+              () => onSelect(TeamConfigSection.mcp),
             ),
           ),
           _NavItem(
@@ -778,6 +799,126 @@ class _TeamSkillRow extends StatelessWidget {
               label: l10n.skillsCardDetails,
             ),
             const SizedBox(width: 8),
+            Switch(value: assigned, onChanged: onAssignedChanged),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _TeamMcpSection extends StatelessWidget {
+  const _TeamMcpSection({required this.team, required this.cubit});
+
+  final TeamConfig team;
+  final TeamCubit cubit;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textBase = isDark ? Colors.white : const Color(0xFF111827);
+    final mcpState = context.watch<McpCubit>().state;
+    final enabled = mcpState.servers.where((s) => s.enabled).toList();
+    final assignedCount =
+        enabled.where((s) => team.mcpServerIds.contains(s.id)).length;
+
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _Card(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _CardHeader(
+                  title: l10n.teamMcpAssignedCount(
+                    assignedCount,
+                    enabled.length,
+                  ),
+                  trailing: OutlinedButton.icon(
+                    onPressed: () => context.go('/mcp'),
+                    icon: const Icon(Icons.hub_outlined, size: 16),
+                    label: Text(l10n.teamMcpManage),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                if (enabled.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 24),
+                    child: Center(
+                      child: Text(
+                        l10n.mcpEmpty,
+                        style: TextStyle(color: textBase.withValues(alpha: 0.6)),
+                      ),
+                    ),
+                  )
+                else
+                  for (final server in enabled)
+                    _TeamMcpRow(
+                      server: server,
+                      assigned: team.mcpServerIds.contains(server.id),
+                      onAssignedChanged: (assigned) {
+                        final ids = List<String>.from(team.mcpServerIds);
+                        if (assigned) {
+                          if (!ids.contains(server.id)) ids.add(server.id);
+                        } else {
+                          ids.remove(server.id);
+                        }
+                        cubit.updateSelected(team.copyWith(mcpServerIds: ids));
+                      },
+                    ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TeamMcpRow extends StatelessWidget {
+  const _TeamMcpRow({
+    required this.server,
+    required this.assigned,
+    required this.onAssignedChanged,
+  });
+
+  final McpServer server;
+  final bool assigned;
+  final ValueChanged<bool> onAssignedChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: workspaceInsetDecoration(cs, radius: 10),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    server.name,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  Text(
+                    server.server['type']?.toString() ?? 'stdio',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: cs.onSurface.withValues(alpha: 0.6),
+                    ),
+                  ),
+                ],
+              ),
+            ),
             Switch(value: assigned, onChanged: onAssignedChanged),
           ],
         ),

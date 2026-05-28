@@ -2552,6 +2552,462 @@ abstract class AppLocalizations {
   /// **'Plugins'**
   String get teamPluginsNav;
 
+  /// No description provided for @teamMcpNav.
+  ///
+  /// In en, this message translates to:
+  /// **'MCP'**
+  String get teamMcpNav;
+
+  /// No description provided for @teamMcpAssignedCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{assigned} of {total} enabled'**
+  String teamMcpAssignedCount(int assigned, int total);
+
+  /// No description provided for @teamMcpManage.
+  ///
+  /// In en, this message translates to:
+  /// **'All MCP servers'**
+  String get teamMcpManage;
+
+  /// No description provided for @mcpNavTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'MCP Servers'**
+  String get mcpNavTitle;
+
+  /// No description provided for @mcpSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage MCP servers for Claude and FlashskyAI sessions.'**
+  String get mcpSubtitle;
+
+  /// No description provided for @mcpNavInstalled.
+  ///
+  /// In en, this message translates to:
+  /// **'Installed'**
+  String get mcpNavInstalled;
+
+  /// No description provided for @mcpNavDiscovery.
+  ///
+  /// In en, this message translates to:
+  /// **'Discovery'**
+  String get mcpNavDiscovery;
+
+  /// No description provided for @mcpNavRegistries.
+  ///
+  /// In en, this message translates to:
+  /// **'Registry'**
+  String get mcpNavRegistries;
+
+  /// No description provided for @mcpInstalledSectionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Installed MCP servers'**
+  String get mcpInstalledSectionTitle;
+
+  /// No description provided for @mcpDiscoverySectionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Discover MCP servers'**
+  String get mcpDiscoverySectionTitle;
+
+  /// No description provided for @mcpDiscoverySectionHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Browse built-in templates and remote catalogs configured under Registries.'**
+  String get mcpDiscoverySectionHint;
+
+  /// No description provided for @mcpDiscoverySourceBuiltin.
+  ///
+  /// In en, this message translates to:
+  /// **'Built-in'**
+  String get mcpDiscoverySourceBuiltin;
+
+  /// No description provided for @mcpSmitheryApiTokenLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'API token'**
+  String get mcpSmitheryApiTokenLabel;
+
+  /// No description provided for @mcpSmitheryApiTokenHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Smithery API key (Bearer)'**
+  String get mcpSmitheryApiTokenHint;
+
+  /// No description provided for @mcpSmitheryApiTokenSet.
+  ///
+  /// In en, this message translates to:
+  /// **'token set'**
+  String get mcpSmitheryApiTokenSet;
+
+  /// No description provided for @mcpRegistryEditTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit API URL'**
+  String get mcpRegistryEditTitle;
+
+  /// No description provided for @mcpRegistryResetTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset to default'**
+  String get mcpRegistryResetTitle;
+
+  /// No description provided for @mcpRegistryResetConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset \"{name}\" to the default API URL?'**
+  String mcpRegistryResetConfirm(String name);
+
+  /// No description provided for @mcpRepoApiUrlLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'API base URL'**
+  String get mcpRepoApiUrlLabel;
+
+  /// No description provided for @mcpRepoTestConnection.
+  ///
+  /// In en, this message translates to:
+  /// **'Test connection'**
+  String get mcpRepoTestConnection;
+
+  /// No description provided for @mcpRepoResetDefault.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset default'**
+  String get mcpRepoResetDefault;
+
+  /// No description provided for @mcpRepoConfigSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Registry API settings saved'**
+  String get mcpRepoConfigSaved;
+
+  /// No description provided for @mcpRepoTestOk.
+  ///
+  /// In en, this message translates to:
+  /// **'Connection successful'**
+  String get mcpRepoTestOk;
+
+  /// No description provided for @mcpRepoTestFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Connection failed: {error}'**
+  String mcpRepoTestFailed(String error);
+
+  /// No description provided for @mcpRepoDisabledHint.
+  ///
+  /// In en, this message translates to:
+  /// **'This catalog source is disabled. Enable it under Registries.'**
+  String get mcpRepoDisabledHint;
+
+  /// No description provided for @mcpRegistrySmithery.
+  ///
+  /// In en, this message translates to:
+  /// **'Smithery'**
+  String get mcpRegistrySmithery;
+
+  /// No description provided for @mcpRegistryOfficial.
+  ///
+  /// In en, this message translates to:
+  /// **'Official registry'**
+  String get mcpRegistryOfficial;
+
+  /// No description provided for @mcpRegistrySmitheryHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Smithery — https://api.smithery.ai'**
+  String get mcpRegistrySmitheryHint;
+
+  /// No description provided for @mcpRegistryOfficialHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Official MCP Registry — https://registry.modelcontextprotocol.io'**
+  String get mcpRegistryOfficialHint;
+
+  /// No description provided for @mcpRegistrySearchHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search servers (e.g. github)'**
+  String get mcpRegistrySearchHint;
+
+  /// No description provided for @mcpRegistryLoadMore.
+  ///
+  /// In en, this message translates to:
+  /// **'Load more'**
+  String get mcpRegistryLoadMore;
+
+  /// No description provided for @mcpCatalogAdd.
+  ///
+  /// In en, this message translates to:
+  /// **'Add'**
+  String get mcpCatalogAdd;
+
+  /// No description provided for @mcpCatalogInstalled.
+  ///
+  /// In en, this message translates to:
+  /// **'Installed'**
+  String get mcpCatalogInstalled;
+
+  /// No description provided for @mcpCatalogAdded.
+  ///
+  /// In en, this message translates to:
+  /// **'MCP server added to catalog'**
+  String get mcpCatalogAdded;
+
+  /// No description provided for @mcpCatalogEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No servers found'**
+  String get mcpCatalogEmpty;
+
+  /// No description provided for @mcpCatalogVerified.
+  ///
+  /// In en, this message translates to:
+  /// **'Verified'**
+  String get mcpCatalogVerified;
+
+  /// No description provided for @mcpEmptyGoDiscovery.
+  ///
+  /// In en, this message translates to:
+  /// **'Browse built-in templates'**
+  String get mcpEmptyGoDiscovery;
+
+  /// No description provided for @mcpEmptyGoRegistries.
+  ///
+  /// In en, this message translates to:
+  /// **'Open registry settings'**
+  String get mcpEmptyGoRegistries;
+
+  /// No description provided for @mcpAdd.
+  ///
+  /// In en, this message translates to:
+  /// **'Add MCP server'**
+  String get mcpAdd;
+
+  /// No description provided for @mcpEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit MCP server'**
+  String get mcpEdit;
+
+  /// No description provided for @mcpImport.
+  ///
+  /// In en, this message translates to:
+  /// **'Import from machine'**
+  String get mcpImport;
+
+  /// No description provided for @mcpImportEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No MCP servers found in ~/.claude.json or ~/.flashskyai.json'**
+  String get mcpImportEmpty;
+
+  /// No description provided for @mcpImportSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'{added} new, {conflicts} conflicts'**
+  String mcpImportSummary(int added, int conflicts);
+
+  /// No description provided for @mcpImportOverwrite.
+  ///
+  /// In en, this message translates to:
+  /// **'Overwrite conflicts'**
+  String get mcpImportOverwrite;
+
+  /// No description provided for @mcpImportDone.
+  ///
+  /// In en, this message translates to:
+  /// **'MCP catalog updated'**
+  String get mcpImportDone;
+
+  /// No description provided for @mcpEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No MCP servers in catalog'**
+  String get mcpEmpty;
+
+  /// No description provided for @mcpDeleteConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete MCP server?'**
+  String get mcpDeleteConfirm;
+
+  /// No description provided for @mcpFieldName.
+  ///
+  /// In en, this message translates to:
+  /// **'Name'**
+  String get mcpFieldName;
+
+  /// No description provided for @mcpFieldCommand.
+  ///
+  /// In en, this message translates to:
+  /// **'Command'**
+  String get mcpFieldCommand;
+
+  /// No description provided for @mcpFieldArgs.
+  ///
+  /// In en, this message translates to:
+  /// **'Arguments (space-separated)'**
+  String get mcpFieldArgs;
+
+  /// No description provided for @mcpAddTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Add MCP'**
+  String get mcpAddTitle;
+
+  /// No description provided for @mcpAddButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Add MCP'**
+  String get mcpAddButton;
+
+  /// No description provided for @mcpImportExisting.
+  ///
+  /// In en, this message translates to:
+  /// **'Import existing'**
+  String get mcpImportExisting;
+
+  /// No description provided for @mcpConfiguredCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} MCP server(s) configured'**
+  String mcpConfiguredCount(int count);
+
+  /// No description provided for @mcpFormTypeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'MCP type'**
+  String get mcpFormTypeLabel;
+
+  /// No description provided for @mcpPresetCustom.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom'**
+  String get mcpPresetCustom;
+
+  /// No description provided for @mcpPresetDescFetch.
+  ///
+  /// In en, this message translates to:
+  /// **'Fetch web pages and convert HTML to markdown for LLMs.'**
+  String get mcpPresetDescFetch;
+
+  /// No description provided for @mcpPresetDescTime.
+  ///
+  /// In en, this message translates to:
+  /// **'Current time, timezone conversion, and date calculations.'**
+  String get mcpPresetDescTime;
+
+  /// No description provided for @mcpPresetDescMemory.
+  ///
+  /// In en, this message translates to:
+  /// **'Persistent memory graph for knowledge across sessions.'**
+  String get mcpPresetDescMemory;
+
+  /// No description provided for @mcpPresetDescSequentialThinking.
+  ///
+  /// In en, this message translates to:
+  /// **'Structured step-by-step reasoning for complex problems.'**
+  String get mcpPresetDescSequentialThinking;
+
+  /// No description provided for @mcpPresetDescContext7.
+  ///
+  /// In en, this message translates to:
+  /// **'Up-to-date library documentation via Context7.'**
+  String get mcpPresetDescContext7;
+
+  /// No description provided for @mcpFormIdLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'MCP ID (unique) *'**
+  String get mcpFormIdLabel;
+
+  /// No description provided for @mcpFormDisplayNameLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Display name'**
+  String get mcpFormDisplayNameLabel;
+
+  /// No description provided for @mcpFormDisplayNameHint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. @modelcontextprotocol/server-time'**
+  String get mcpFormDisplayNameHint;
+
+  /// No description provided for @mcpFormMetadata.
+  ///
+  /// In en, this message translates to:
+  /// **'Additional info'**
+  String get mcpFormMetadata;
+
+  /// No description provided for @mcpFormDescriptionLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Description'**
+  String get mcpFormDescriptionLabel;
+
+  /// No description provided for @mcpFormDescriptionHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Optional description'**
+  String get mcpFormDescriptionHint;
+
+  /// No description provided for @mcpFormTagsLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Tags (comma-separated)'**
+  String get mcpFormTagsLabel;
+
+  /// No description provided for @mcpFormTagsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'stdio, time, utility'**
+  String get mcpFormTagsHint;
+
+  /// No description provided for @mcpFormHomepageLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Homepage'**
+  String get mcpFormHomepageLabel;
+
+  /// No description provided for @mcpFormDocsLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Documentation'**
+  String get mcpFormDocsLabel;
+
+  /// No description provided for @mcpFormJsonLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Full JSON configuration'**
+  String get mcpFormJsonLabel;
+
+  /// No description provided for @mcpFormFormatJson.
+  ///
+  /// In en, this message translates to:
+  /// **'Format'**
+  String get mcpFormFormatJson;
+
+  /// No description provided for @mcpFormRequiredFields.
+  ///
+  /// In en, this message translates to:
+  /// **'MCP ID and display name are required.'**
+  String get mcpFormRequiredFields;
+
+  /// No description provided for @mcpFormSubmitAdd.
+  ///
+  /// In en, this message translates to:
+  /// **'Add'**
+  String get mcpFormSubmitAdd;
+
+  /// No description provided for @confirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm'**
+  String get confirm;
+
   /// No description provided for @teamPluginsAssignedCount.
   ///
   /// In en, this message translates to:

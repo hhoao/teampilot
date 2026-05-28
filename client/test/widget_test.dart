@@ -676,6 +676,7 @@ void main() {
             pluginMarketplaceCacheDir:
                 p.join(tmp.path, 'plugins', 'marketplace-cache'),
             pluginExternalCacheDir: p.join(tmp.path, 'plugins', 'external-cache'),
+            mcpServersJsonPath: p.join(tmp.path, 'mcp', 'mcp_servers.json'),
           ),
         ),
       );

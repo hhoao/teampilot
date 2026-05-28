@@ -131,6 +131,18 @@ class CliDataLayout {
   String teamPluginsDir(String teamId) =>
       _pathContext.join(teamToolDir(teamId, 'flashskyai'), 'plugins');
 
+  /// Team MCP snapshot directory:
+  /// `config-profiles/teams/{teamId}/mcp/`.
+  ///
+  /// Populated by [TeamMcpLinkerService] from `{teampilotRoot}/mcp/mcp_servers.json`.
+  String teamMcpDir(String teamId) =>
+      _pathContext.join(configProfilesDir, 'teams', teamId.trim(), 'mcp');
+
+  /// Aggregated MCP servers for a team:
+  /// `config-profiles/teams/{teamId}/mcp/servers.json`.
+  String teamMcpServersFile(String teamId) =>
+      _pathContext.join(teamMcpDir(teamId), 'servers.json');
+
   /// App-level FlashskyAI LLM catalog (not per-session):
   /// `config-profiles/flashskyai/llm_config.json`.
   ///

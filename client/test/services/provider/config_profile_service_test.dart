@@ -736,4 +736,28 @@ void main() {
       expect(forwardSlash['mcpServers'], isA<Map<String, Object?>>());
     },
   );
+
+  test('ensureSessionClaudeDefaults backfills mcp-only metadata', () async {
+    const sessionId = 'sess-mcp-only';
+    final metadataPath = p.join(
+      _sessionClaudeDir(base.path, 'team-a', sessionId),
+      ConfigProfileService.claudeMetadataFileName,
+    );
+    await Directory(p.dirname(metadataPath)).create(recursive: true);
+    await File(metadataPath).writeAsString(
+      jsonEncode({
+        'mcpServers': {
+          'github': {'type': 'http', 'url': 'https://github.run.tools'},
+        },
+      }),
+    );
+
+    await service.ensureSessionClaudeDefaults('team-a', sessionId);
+
+    final metadata =
+        jsonDecode(await File(metadataPath).readAsString())
+            as Map<String, Object?>;
+    expect(metadata['hasCompletedOnboarding'], isTrue);
+    expect((metadata['mcpServers'] as Map)['github'], isNotNull);
+  });
 }

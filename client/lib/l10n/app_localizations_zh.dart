@@ -1330,6 +1330,245 @@ class AppLocalizationsZh extends AppLocalizations {
   String get teamPluginsNav => '插件';
 
   @override
+  String get teamMcpNav => 'MCP';
+
+  @override
+  String teamMcpAssignedCount(int assigned, int total) {
+    return '已启用 $assigned/$total';
+  }
+
+  @override
+  String get teamMcpManage => '管理 MCP';
+
+  @override
+  String get mcpNavTitle => 'MCP 服务器';
+
+  @override
+  String get mcpSubtitle => '为 Claude 与 FlashskyAI 会话管理 MCP 服务器配置。';
+
+  @override
+  String get mcpNavInstalled => '已安装';
+
+  @override
+  String get mcpNavDiscovery => '发现';
+
+  @override
+  String get mcpNavRegistries => '注册中心';
+
+  @override
+  String get mcpInstalledSectionTitle => '已安装的 MCP';
+
+  @override
+  String get mcpDiscoverySectionTitle => '发现 MCP 服务器';
+
+  @override
+  String get mcpDiscoverySectionHint => '浏览内置模板，以及「仓库」中配置的远程目录。';
+
+  @override
+  String get mcpDiscoverySourceBuiltin => '内置';
+
+  @override
+  String get mcpSmitheryApiTokenLabel => 'API Token';
+
+  @override
+  String get mcpSmitheryApiTokenHint => 'Smithery API 密钥（Bearer）';
+
+  @override
+  String get mcpSmitheryApiTokenSet => '已配置 Token';
+
+  @override
+  String get mcpRegistryEditTitle => '编辑 API 地址';
+
+  @override
+  String get mcpRegistryResetTitle => '恢复默认';
+
+  @override
+  String mcpRegistryResetConfirm(String name) {
+    return '将「$name」恢复为默认 API 地址？';
+  }
+
+  @override
+  String get mcpRepoApiUrlLabel => 'API 基础地址';
+
+  @override
+  String get mcpRepoTestConnection => '测试连接';
+
+  @override
+  String get mcpRepoResetDefault => '恢复默认';
+
+  @override
+  String get mcpRepoConfigSaved => '目录 API 设置已保存';
+
+  @override
+  String get mcpRepoTestOk => '连接成功';
+
+  @override
+  String mcpRepoTestFailed(String error) {
+    return '连接失败：$error';
+  }
+
+  @override
+  String get mcpRepoDisabledHint => '该目录源已禁用，请在「仓库」中启用。';
+
+  @override
+  String get mcpRegistrySmithery => 'Smithery';
+
+  @override
+  String get mcpRegistryOfficial => '官方注册表';
+
+  @override
+  String get mcpRegistrySmitheryHint => 'Smithery — https://api.smithery.ai';
+
+  @override
+  String get mcpRegistryOfficialHint =>
+      '官方 MCP Registry — https://registry.modelcontextprotocol.io';
+
+  @override
+  String get mcpRegistrySearchHint => '搜索服务器（如 github）';
+
+  @override
+  String get mcpRegistryLoadMore => '加载更多';
+
+  @override
+  String get mcpCatalogAdd => '添加';
+
+  @override
+  String get mcpCatalogInstalled => '已安装';
+
+  @override
+  String get mcpCatalogAdded => '已加入 MCP 目录';
+
+  @override
+  String get mcpCatalogEmpty => '未找到服务器';
+
+  @override
+  String get mcpCatalogVerified => '已认证';
+
+  @override
+  String get mcpEmptyGoDiscovery => '浏览内置模板';
+
+  @override
+  String get mcpEmptyGoRegistries => '打开注册中心';
+
+  @override
+  String get mcpAdd => '添加 MCP';
+
+  @override
+  String get mcpEdit => '编辑 MCP';
+
+  @override
+  String get mcpImport => '从本机导入';
+
+  @override
+  String get mcpImportEmpty => '在 ~/.claude.json 与 ~/.flashskyai.json 中未找到 MCP';
+
+  @override
+  String mcpImportSummary(int added, int conflicts) {
+    return '新增 $added 个，冲突 $conflicts 个';
+  }
+
+  @override
+  String get mcpImportOverwrite => '覆盖冲突项';
+
+  @override
+  String get mcpImportDone => 'MCP 目录已更新';
+
+  @override
+  String get mcpEmpty => '目录中暂无 MCP 服务器';
+
+  @override
+  String get mcpDeleteConfirm => '删除该 MCP 服务器？';
+
+  @override
+  String get mcpFieldName => '名称';
+
+  @override
+  String get mcpFieldCommand => '命令';
+
+  @override
+  String get mcpFieldArgs => '参数（空格分隔）';
+
+  @override
+  String get mcpAddTitle => '新增 MCP';
+
+  @override
+  String get mcpAddButton => '添加 MCP';
+
+  @override
+  String get mcpImportExisting => '导入已有';
+
+  @override
+  String mcpConfiguredCount(int count) {
+    return '已配置 $count 个 MCP 服务器';
+  }
+
+  @override
+  String get mcpFormTypeLabel => '选择 MCP 类型';
+
+  @override
+  String get mcpPresetCustom => '自定义';
+
+  @override
+  String get mcpPresetDescFetch => '抓取网页并将 HTML 转为 Markdown，供模型使用。';
+
+  @override
+  String get mcpPresetDescTime => '时间查询：当前时间、时区转换、日期计算等。';
+
+  @override
+  String get mcpPresetDescMemory => '跨会话的持久化记忆图谱。';
+
+  @override
+  String get mcpPresetDescSequentialThinking => '结构化分步推理，适合复杂问题。';
+
+  @override
+  String get mcpPresetDescContext7 => '通过 Context7 获取最新库文档。';
+
+  @override
+  String get mcpFormIdLabel => 'MCP 标题（唯一）*';
+
+  @override
+  String get mcpFormDisplayNameLabel => '显示名称';
+
+  @override
+  String get mcpFormDisplayNameHint => '例如 @modelcontextprotocol/server-time';
+
+  @override
+  String get mcpFormMetadata => '附加信息';
+
+  @override
+  String get mcpFormDescriptionLabel => '描述';
+
+  @override
+  String get mcpFormDescriptionHint => '可选的描述信息';
+
+  @override
+  String get mcpFormTagsLabel => '标签（逗号分隔）';
+
+  @override
+  String get mcpFormTagsHint => 'stdio, time, utility';
+
+  @override
+  String get mcpFormHomepageLabel => '主页链接';
+
+  @override
+  String get mcpFormDocsLabel => '文档链接';
+
+  @override
+  String get mcpFormJsonLabel => '完整的 JSON 配置';
+
+  @override
+  String get mcpFormFormatJson => '格式化';
+
+  @override
+  String get mcpFormRequiredFields => '请填写 MCP 标题与显示名称。';
+
+  @override
+  String get mcpFormSubmitAdd => '添加';
+
+  @override
+  String get confirm => '确认';
+
+  @override
   String teamPluginsAssignedCount(int assigned, int total) {
     return '已安装 $assigned/$total';
   }

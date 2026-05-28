@@ -12,6 +12,7 @@ import 'claude_official_provider.dart';
 import 'claude_provider_credentials_service.dart';
 import '../team/claude_team_roster_service.dart';
 import '../cli/cli_data_layout.dart';
+import '../mcp/mcp_registry_service.dart';
 import '../plugin/cli_plugin_registry_service.dart';
 import '../io/filesystem.dart';
 import '../session/member_role_provision.dart';
@@ -233,6 +234,10 @@ class ConfigProfileService {
         await ensureSessionClaudeDefaults(trimmedTeamId, trimmedSessionId);
         break;
     }
+    await McpRegistryService(fs: _fs, layout: layout).writeForSession(
+      teamId: trimmedTeamId,
+      sessionId: trimmedSessionId,
+    );
   }
 
   Future<void> ensureSessionFlashskyaiDefaults(
@@ -240,12 +245,11 @@ class ConfigProfileService {
     String sessionId,
   ) async {
     final file = sessionFlashskyaiMetadataFile(teamId, sessionId);
-    if ((await _fs.stat(file)).exists) return;
-
-    await _fs.atomicWrite(
-      file,
-      const JsonEncoder.withIndent('  ').convert(defaultFlashskyaiMetadata),
-    );
+    final existing = await _readMetadataFile(file, defaultFlashskyaiMetadata);
+    await _writeJsonIfChanged(file, {
+      ...defaultFlashskyaiMetadata,
+      ...existing,
+    });
   }
 
   Future<void> ensureSessionClaudeDefaults(
@@ -253,12 +257,11 @@ class ConfigProfileService {
     String sessionId,
   ) async {
     final file = sessionClaudeMetadataFile(teamId, sessionId);
-    if ((await _fs.stat(file)).exists) return;
-
-    await _fs.atomicWrite(
-      file,
-      const JsonEncoder.withIndent('  ').convert(defaultClaudeMetadata),
-    );
+    final existing = await _readMetadataFile(file, defaultClaudeMetadata);
+    await _writeJsonIfChanged(file, {
+      ...defaultClaudeMetadata,
+      ...existing,
+    });
   }
 
   /// Creates dirs for [cli] and returns launch env vars for that CLI only.

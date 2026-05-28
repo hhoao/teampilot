@@ -32,6 +32,16 @@ void main() {
     expect(decoded, team);
   });
 
+  test('round trips mcpServerIds', () {
+    const team = TeamConfig(
+      id: 'team-1',
+      name: 'hello',
+      mcpServerIds: ['fetch', 'github'],
+    );
+    final decoded = TeamConfig.fromJson(team.toJson());
+    expect(decoded.mcpServerIds, ['fetch', 'github']);
+  });
+
   test(
     'round trips providerIdsByTool and defaults to empty for legacy json',
     () {

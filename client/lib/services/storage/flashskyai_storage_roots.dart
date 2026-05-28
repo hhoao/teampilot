@@ -24,6 +24,8 @@ class StorageRootsSnapshot {
     required this.pluginMarketplacesConfigPath,
     required this.pluginMarketplaceCacheDir,
     required this.pluginExternalCacheDir,
+    required this.mcpServersJsonPath,
+    required this.mcpRegistrySourcesConfigPath,
   }) : fs = fs ?? AppStorage.fs,
        layout =
            layout ??
@@ -51,6 +53,9 @@ class StorageRootsSnapshot {
       pluginMarketplacesConfigPath: AppPaths.pluginMarketplacesConfigPathForTeampilotRoot(root),
       pluginMarketplaceCacheDir: AppPaths.pluginMarketplaceCacheDirForTeampilotRoot(root),
       pluginExternalCacheDir: AppPaths.pluginExternalCacheDirForTeampilotRoot(root),
+      mcpServersJsonPath: AppPaths.mcpServersJsonForTeampilotRoot(root),
+      mcpRegistrySourcesConfigPath:
+          AppPaths.mcpRegistrySourcesConfigPathForTeampilotRoot(root),
     );
   }
 
@@ -74,6 +79,12 @@ class StorageRootsSnapshot {
   final String pluginMarketplacesConfigPath;
   final String pluginMarketplaceCacheDir;
   final String pluginExternalCacheDir;
+
+  /// Global MCP catalog (`mcp/mcp_servers.json`).
+  final String mcpServersJsonPath;
+
+  /// Remote registry API sources (`mcp/registry_sources.json`).
+  final String mcpRegistrySourcesConfigPath;
 
   /// CLI runtime layout under `<teampilotRoot>/config-profiles/`.
   final CliDataLayout layout;

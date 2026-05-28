@@ -127,6 +127,17 @@ class AppPaths {
   static String pluginExternalCacheDirForTeampilotRoot(String teampilotRoot) =>
       _pathUnderTeampilotRoot(teampilotRoot, 'plugins/external-cache');
 
+  /// Global MCP server catalog (`mcp/mcp_servers.json`).
+  static String mcpServersJsonForTeampilotRoot(String teampilotRoot) =>
+      _pathUnderTeampilotRoot(teampilotRoot, 'mcp/mcp_servers.json');
+
+  static String mcpRegistrySourcesConfigPathForTeampilotRoot(
+    String teampilotRoot,
+  ) => _pathUnderTeampilotRoot(teampilotRoot, 'mcp/registry_sources.json');
+
+  static String mcpBackupsDirForTeampilotRoot(String teampilotRoot) =>
+      _pathUnderTeampilotRoot(teampilotRoot, 'mcp/backups');
+
   String get skillRepoCacheDir => skillRepoCacheDirForTeampilotRoot(basePath);
 
   String get pluginMarketplaceCacheDir =>
@@ -136,6 +147,11 @@ class AppPaths {
       pluginExternalCacheDirForTeampilotRoot(basePath);
 
   String get pluginsJson => pluginsJsonForTeampilotRoot(basePath);
+  String get mcpServersJson => mcpServersJsonForTeampilotRoot(basePath);
+
+  String get mcpRegistrySourcesConfigPath =>
+      mcpRegistrySourcesConfigPathForTeampilotRoot(basePath);
+  String get mcpBackupsDir => mcpBackupsDirForTeampilotRoot(basePath);
   String get pluginMarketplacesConfigPath =>
       pluginMarketplacesConfigPathForTeampilotRoot(basePath);
 

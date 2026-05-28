@@ -169,6 +169,7 @@ class TeamConfig {
     this.members = const [],
     this.skillIds = const [],
     this.pluginIds = const [],
+    this.mcpServerIds = const [],
     this.providerIdsByTool = const {},
     this.cli = TeamCli.claude,
     this.createdAt = 0,
@@ -197,6 +198,14 @@ class TeamConfig {
   }
 
   static List<String> decodePluginIds(Object? raw) {
+    if (raw is! List) return const [];
+    return raw
+        .map((e) => e?.toString().trim() ?? '')
+        .where((s) => s.isNotEmpty)
+        .toList(growable: false);
+  }
+
+  static List<String> decodeMcpServerIds(Object? raw) {
     if (raw is! List) return const [];
     return raw
         .map((e) => e?.toString().trim() ?? '')
@@ -237,6 +246,7 @@ class TeamConfig {
       members: members,
       skillIds: decodeSkillIds(json['skillIds']),
       pluginIds: decodePluginIds(json['pluginIds']),
+      mcpServerIds: decodeMcpServerIds(json['mcpServerIds']),
       providerIdsByTool: _decodeProviderIdsByTool(json['providerIdsByTool']),
       cli: TeamCli.decode(json['cli']),
       createdAt: (json['createdAt'] as num?)?.toInt() ?? 0,
@@ -274,6 +284,9 @@ class TeamConfig {
   /// `Plugin.id` values enabled for this team (mirrors [skillIds]).
   final List<String> pluginIds;
 
+  /// [McpServer.id] values enabled for this team.
+  final List<String> mcpServerIds;
+
   /// App-level provider id per tool (`flashskyai`, `codex`, `claude`).
   final Map<String, String> providerIdsByTool;
 
@@ -306,6 +319,7 @@ class TeamConfig {
     List<TeamMemberConfig>? members,
     List<String>? skillIds,
     List<String>? pluginIds,
+    List<String>? mcpServerIds,
     Map<String, String>? providerIdsByTool,
     TeamCli? cli,
     int? createdAt,
@@ -326,6 +340,7 @@ class TeamConfig {
       members: members ?? this.members,
       skillIds: skillIds ?? this.skillIds,
       pluginIds: pluginIds ?? this.pluginIds,
+      mcpServerIds: mcpServerIds ?? this.mcpServerIds,
       providerIdsByTool: providerIdsByTool ?? this.providerIdsByTool,
       cli: cli ?? this.cli,
       createdAt: createdAt ?? this.createdAt,
@@ -350,6 +365,7 @@ class TeamConfig {
       'members': members.map((member) => member.toJson()).toList(),
       if (skillIds.isNotEmpty) 'skillIds': skillIds,
       if (pluginIds.isNotEmpty) 'pluginIds': pluginIds,
+      if (mcpServerIds.isNotEmpty) 'mcpServerIds': mcpServerIds,
       if (providerIdsByTool.isNotEmpty) 'providerIdsByTool': providerIdsByTool,
       if (cli != TeamCli.flashskyai) 'cli': cli.value,
       'createdAt': createdAt,
@@ -375,6 +391,7 @@ class TeamConfig {
             listEquals(members, other.members) &&
             listEquals(skillIds, other.skillIds) &&
             listEquals(pluginIds, other.pluginIds) &&
+            listEquals(mcpServerIds, other.mcpServerIds) &&
             mapEquals(providerIdsByTool, other.providerIdsByTool) &&
             cli == other.cli &&
             createdAt == other.createdAt &&
@@ -394,6 +411,7 @@ class TeamConfig {
     Object.hashAll(members),
     Object.hashAll(skillIds),
     Object.hashAll(pluginIds),
+    Object.hashAll(mcpServerIds),
     Object.hashAll(providerIdsByTool.entries),
     cli,
     createdAt,

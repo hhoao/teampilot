@@ -13,6 +13,7 @@ import '../cubits/session_preferences_cubit.dart';
 import '../repositories/session_repository.dart';
 import '../services/storage/app_storage.dart';
 import '../services/storage/flashskyai_storage_roots.dart';
+import '../cubits/mcp_cubit.dart';
 import '../cubits/plugin_cubit.dart';
 import '../cubits/skill_cubit.dart';
 import '../cubits/team_cubit.dart';
@@ -183,6 +184,7 @@ class _SessionControlsState extends State<_SessionControls> {
     final llmCubit = context.read<LlmConfigCubit>();
     final teamCubit = context.read<TeamCubit>();
     final skillCubit = context.read<SkillCubit>();
+    final mcpCubit = context.read<McpCubit>();
     final chatCubit = context.read<ChatCubit>();
     final sessionRepo = context.read<SessionRepository>();
     storageRoots.invalidate();
@@ -194,6 +196,7 @@ class _SessionControlsState extends State<_SessionControls> {
       teamCubit: teamCubit,
       pluginCubit: context.read<PluginCubit>(),
       skillCubit: skillCubit,
+      mcpCubit: mcpCubit,
       chatCubit: chatCubit,
       sessionRepo: sessionRepo,
       sshProfileCubit: context.read<SshProfileCubit>(),
@@ -306,6 +309,7 @@ class _SessionControlsState extends State<_SessionControls> {
                       final llmCubit = context.read<LlmConfigCubit>();
                       final teamCubit = context.read<TeamCubit>();
                       final skillCubit = context.read<SkillCubit>();
+                      final mcpCubit = context.read<McpCubit>();
                       final chatCubit = context.read<ChatCubit>();
                       final sessionRepo = context.read<SessionRepository>();
                       final storageRoots = context
@@ -318,6 +322,7 @@ class _SessionControlsState extends State<_SessionControls> {
                         llmCubit.load(),
                         teamCubit.load(),
                         skillCubit.loadAll(),
+                        mcpCubit.loadAll(),
                         chatCubit.loadProjectData(sessionRepo),
                       ]);
                       await teamCubit.syncSelectedTeamSkills(
@@ -325,6 +330,9 @@ class _SessionControlsState extends State<_SessionControls> {
                       );
                       await teamCubit.syncSelectedTeamPlugins(
                         installed: context.read<PluginCubit>().state.installed,
+                      );
+                      await teamCubit.syncSelectedTeamMcp(
+                        installed: mcpCubit.state.servers,
                       );
                     },
                   ),

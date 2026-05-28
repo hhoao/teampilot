@@ -83,6 +83,8 @@ void main() {
         '/tmp/tp/plugins/marketplace-cache');
       expect(AppPaths.pluginExternalCacheDirForTeampilotRoot(root),
         '/tmp/tp/plugins/external-cache');
+      expect(AppPaths.mcpServersJsonForTeampilotRoot(root), '/tmp/tp/mcp/mcp_servers.json');
+      expect(AppPaths.mcpBackupsDirForTeampilotRoot(root), '/tmp/tp/mcp/backups');
     });
   });
 }

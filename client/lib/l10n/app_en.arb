@@ -683,6 +683,109 @@
   },
   "teamSkillsManage": "All skills",
   "teamPluginsNav": "Plugins",
+  "teamMcpNav": "MCP",
+  "teamMcpAssignedCount": "{assigned} of {total} enabled",
+  "@teamMcpAssignedCount": {
+    "placeholders": {
+      "assigned": {"type": "int"},
+      "total": {"type": "int"}
+    }
+  },
+  "teamMcpManage": "All MCP servers",
+  "mcpNavTitle": "MCP Servers",
+  "mcpSubtitle": "Manage MCP servers for Claude and FlashskyAI sessions.",
+  "mcpNavInstalled": "Installed",
+  "mcpNavDiscovery": "Discovery",
+  "mcpNavRegistries": "Registry",
+  "mcpInstalledSectionTitle": "Installed MCP servers",
+  "mcpDiscoverySectionTitle": "Discover MCP servers",
+  "mcpDiscoverySectionHint": "Browse built-in templates and remote catalogs configured under Registries.",
+  "mcpDiscoverySourceBuiltin": "Built-in",
+  "mcpSmitheryApiTokenLabel": "API token",
+  "mcpSmitheryApiTokenHint": "Smithery API key (Bearer)",
+  "mcpSmitheryApiTokenSet": "token set",
+  "mcpRegistryEditTitle": "Edit API URL",
+  "mcpRegistryResetTitle": "Reset to default",
+  "mcpRegistryResetConfirm": "Reset \"{name}\" to the default API URL?",
+  "@mcpRegistryResetConfirm": {
+    "placeholders": {
+      "name": {"type": "String"}
+    }
+  },
+  "mcpRepoApiUrlLabel": "API base URL",
+  "mcpRepoTestConnection": "Test connection",
+  "mcpRepoResetDefault": "Reset default",
+  "mcpRepoConfigSaved": "Registry API settings saved",
+  "mcpRepoTestOk": "Connection successful",
+  "mcpRepoTestFailed": "Connection failed: {error}",
+  "@mcpRepoTestFailed": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "mcpRepoDisabledHint": "This catalog source is disabled. Enable it under Registries.",
+  "mcpRegistrySmithery": "Smithery",
+  "mcpRegistryOfficial": "Official registry",
+  "mcpRegistrySmitheryHint": "Smithery — https://api.smithery.ai",
+  "mcpRegistryOfficialHint": "Official MCP Registry — https://registry.modelcontextprotocol.io",
+  "mcpRegistrySearchHint": "Search servers (e.g. github)",
+  "mcpRegistryLoadMore": "Load more",
+  "mcpCatalogAdd": "Add",
+  "mcpCatalogInstalled": "Installed",
+  "mcpCatalogAdded": "MCP server added to catalog",
+  "mcpCatalogEmpty": "No servers found",
+  "mcpCatalogVerified": "Verified",
+  "mcpEmptyGoDiscovery": "Browse built-in templates",
+  "mcpEmptyGoRegistries": "Open registry settings",
+  "mcpAdd": "Add MCP server",
+  "mcpEdit": "Edit MCP server",
+  "mcpImport": "Import from machine",
+  "mcpImportEmpty": "No MCP servers found in ~/.claude.json or ~/.flashskyai.json",
+  "mcpImportSummary": "{added} new, {conflicts} conflicts",
+  "@mcpImportSummary": {
+    "placeholders": {
+      "added": {"type": "int"},
+      "conflicts": {"type": "int"}
+    }
+  },
+  "mcpImportOverwrite": "Overwrite conflicts",
+  "mcpImportDone": "MCP catalog updated",
+  "mcpEmpty": "No MCP servers in catalog",
+  "mcpDeleteConfirm": "Delete MCP server?",
+  "mcpFieldName": "Name",
+  "mcpFieldCommand": "Command",
+  "mcpFieldArgs": "Arguments (space-separated)",
+  "mcpAddTitle": "Add MCP",
+  "mcpAddButton": "Add MCP",
+  "mcpImportExisting": "Import existing",
+  "mcpConfiguredCount": "{count} MCP server(s) configured",
+  "@mcpConfiguredCount": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "mcpFormTypeLabel": "MCP type",
+  "mcpPresetCustom": "Custom",
+  "mcpPresetDescFetch": "Fetch web pages and convert HTML to markdown for LLMs.",
+  "mcpPresetDescTime": "Current time, timezone conversion, and date calculations.",
+  "mcpPresetDescMemory": "Persistent memory graph for knowledge across sessions.",
+  "mcpPresetDescSequentialThinking": "Structured step-by-step reasoning for complex problems.",
+  "mcpPresetDescContext7": "Up-to-date library documentation via Context7.",
+  "mcpFormIdLabel": "MCP ID (unique) *",
+  "mcpFormDisplayNameLabel": "Display name",
+  "mcpFormDisplayNameHint": "e.g. @modelcontextprotocol/server-time",
+  "mcpFormMetadata": "Additional info",
+  "mcpFormDescriptionLabel": "Description",
+  "mcpFormDescriptionHint": "Optional description",
+  "mcpFormTagsLabel": "Tags (comma-separated)",
+  "mcpFormTagsHint": "stdio, time, utility",
+  "mcpFormHomepageLabel": "Homepage",
+  "mcpFormDocsLabel": "Documentation",
+  "mcpFormJsonLabel": "Full JSON configuration",
+  "mcpFormFormatJson": "Format",
+  "mcpFormRequiredFields": "MCP ID and display name are required.",
+  "mcpFormSubmitAdd": "Add",
+  "confirm": "Confirm",
   "teamPluginsAssignedCount": "{assigned} of {total} installed",
   "@teamPluginsAssignedCount": {
     "placeholders": {

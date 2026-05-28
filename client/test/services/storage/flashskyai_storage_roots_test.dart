@@ -74,6 +74,7 @@ void main() {
           AppPaths.pluginMarketplaceCacheDirForTeampilotRoot(teampilotRoot),
       pluginExternalCacheDir:
           AppPaths.pluginExternalCacheDirForTeampilotRoot(teampilotRoot),
+      mcpServersJsonPath: AppPaths.mcpServersJsonForTeampilotRoot(teampilotRoot),
     );
     final posix = AppPaths.posixPathContext;
     expect(snap.teampilotRoot, teampilotRoot);

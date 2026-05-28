@@ -15,6 +15,7 @@ import '../pages/config_workspace.dart';
 import '../pages/llm_config_workspace.dart';
 import '../pages/skill_management_page.dart';
 import '../pages/plugin_management_page.dart';
+import '../pages/mcp_management_page.dart';
 import '../pages/onboarding/onboarding_gate.dart';
 import '../pages/startup_gate.dart';
 import '../pages/ssh_profiles_page.dart';
@@ -238,6 +239,12 @@ final appRouter = GoRouter(
           ),
         ),
         GoRoute(
+          path: '/team-config/mcp',
+          pageBuilder: (context, state) => const NoTransitionPage(
+            child: TeamConfigPage(section: TeamConfigSection.mcp),
+          ),
+        ),
+        GoRoute(
           path: '/team-config/members/:memberId',
           pageBuilder: (context, state) => NoTransitionPage(
             child: TeamConfigPage(
@@ -298,6 +305,33 @@ final appRouter = GoRouter(
           path: '/plugins/marketplaces',
           pageBuilder: (context, state) => const NoTransitionPage(
             child: PluginManagementPage(section: PluginSection.marketplaces),
+          ),
+        ),
+        GoRoute(
+          path: '/mcp',
+          redirect: (context, state) {
+            if (Platform.isAndroid) return null;
+            return '/mcp/installed';
+          },
+          pageBuilder: (context, state) =>
+              const NoTransitionPage(child: McpManagementHubPage()),
+        ),
+        GoRoute(
+          path: '/mcp/installed',
+          pageBuilder: (context, state) => const NoTransitionPage(
+            child: McpManagementPage(section: McpSection.installed),
+          ),
+        ),
+        GoRoute(
+          path: '/mcp/discovery',
+          pageBuilder: (context, state) => const NoTransitionPage(
+            child: McpManagementPage(section: McpSection.discovery),
+          ),
+        ),
+        GoRoute(
+          path: '/mcp/registries',
+          pageBuilder: (context, state) => const NoTransitionPage(
+            child: McpManagementPage(section: McpSection.registries),
           ),
         ),
         GoRoute(

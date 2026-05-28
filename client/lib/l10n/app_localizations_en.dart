@@ -1364,6 +1364,254 @@ class AppLocalizationsEn extends AppLocalizations {
   String get teamPluginsNav => 'Plugins';
 
   @override
+  String get teamMcpNav => 'MCP';
+
+  @override
+  String teamMcpAssignedCount(int assigned, int total) {
+    return '$assigned of $total enabled';
+  }
+
+  @override
+  String get teamMcpManage => 'All MCP servers';
+
+  @override
+  String get mcpNavTitle => 'MCP Servers';
+
+  @override
+  String get mcpSubtitle =>
+      'Manage MCP servers for Claude and FlashskyAI sessions.';
+
+  @override
+  String get mcpNavInstalled => 'Installed';
+
+  @override
+  String get mcpNavDiscovery => 'Discovery';
+
+  @override
+  String get mcpNavRegistries => 'Registry';
+
+  @override
+  String get mcpInstalledSectionTitle => 'Installed MCP servers';
+
+  @override
+  String get mcpDiscoverySectionTitle => 'Discover MCP servers';
+
+  @override
+  String get mcpDiscoverySectionHint =>
+      'Browse built-in templates and remote catalogs configured under Registries.';
+
+  @override
+  String get mcpDiscoverySourceBuiltin => 'Built-in';
+
+  @override
+  String get mcpSmitheryApiTokenLabel => 'API token';
+
+  @override
+  String get mcpSmitheryApiTokenHint => 'Smithery API key (Bearer)';
+
+  @override
+  String get mcpSmitheryApiTokenSet => 'token set';
+
+  @override
+  String get mcpRegistryEditTitle => 'Edit API URL';
+
+  @override
+  String get mcpRegistryResetTitle => 'Reset to default';
+
+  @override
+  String mcpRegistryResetConfirm(String name) {
+    return 'Reset \"$name\" to the default API URL?';
+  }
+
+  @override
+  String get mcpRepoApiUrlLabel => 'API base URL';
+
+  @override
+  String get mcpRepoTestConnection => 'Test connection';
+
+  @override
+  String get mcpRepoResetDefault => 'Reset default';
+
+  @override
+  String get mcpRepoConfigSaved => 'Registry API settings saved';
+
+  @override
+  String get mcpRepoTestOk => 'Connection successful';
+
+  @override
+  String mcpRepoTestFailed(String error) {
+    return 'Connection failed: $error';
+  }
+
+  @override
+  String get mcpRepoDisabledHint =>
+      'This catalog source is disabled. Enable it under Registries.';
+
+  @override
+  String get mcpRegistrySmithery => 'Smithery';
+
+  @override
+  String get mcpRegistryOfficial => 'Official registry';
+
+  @override
+  String get mcpRegistrySmitheryHint => 'Smithery — https://api.smithery.ai';
+
+  @override
+  String get mcpRegistryOfficialHint =>
+      'Official MCP Registry — https://registry.modelcontextprotocol.io';
+
+  @override
+  String get mcpRegistrySearchHint => 'Search servers (e.g. github)';
+
+  @override
+  String get mcpRegistryLoadMore => 'Load more';
+
+  @override
+  String get mcpCatalogAdd => 'Add';
+
+  @override
+  String get mcpCatalogInstalled => 'Installed';
+
+  @override
+  String get mcpCatalogAdded => 'MCP server added to catalog';
+
+  @override
+  String get mcpCatalogEmpty => 'No servers found';
+
+  @override
+  String get mcpCatalogVerified => 'Verified';
+
+  @override
+  String get mcpEmptyGoDiscovery => 'Browse built-in templates';
+
+  @override
+  String get mcpEmptyGoRegistries => 'Open registry settings';
+
+  @override
+  String get mcpAdd => 'Add MCP server';
+
+  @override
+  String get mcpEdit => 'Edit MCP server';
+
+  @override
+  String get mcpImport => 'Import from machine';
+
+  @override
+  String get mcpImportEmpty =>
+      'No MCP servers found in ~/.claude.json or ~/.flashskyai.json';
+
+  @override
+  String mcpImportSummary(int added, int conflicts) {
+    return '$added new, $conflicts conflicts';
+  }
+
+  @override
+  String get mcpImportOverwrite => 'Overwrite conflicts';
+
+  @override
+  String get mcpImportDone => 'MCP catalog updated';
+
+  @override
+  String get mcpEmpty => 'No MCP servers in catalog';
+
+  @override
+  String get mcpDeleteConfirm => 'Delete MCP server?';
+
+  @override
+  String get mcpFieldName => 'Name';
+
+  @override
+  String get mcpFieldCommand => 'Command';
+
+  @override
+  String get mcpFieldArgs => 'Arguments (space-separated)';
+
+  @override
+  String get mcpAddTitle => 'Add MCP';
+
+  @override
+  String get mcpAddButton => 'Add MCP';
+
+  @override
+  String get mcpImportExisting => 'Import existing';
+
+  @override
+  String mcpConfiguredCount(int count) {
+    return '$count MCP server(s) configured';
+  }
+
+  @override
+  String get mcpFormTypeLabel => 'MCP type';
+
+  @override
+  String get mcpPresetCustom => 'Custom';
+
+  @override
+  String get mcpPresetDescFetch =>
+      'Fetch web pages and convert HTML to markdown for LLMs.';
+
+  @override
+  String get mcpPresetDescTime =>
+      'Current time, timezone conversion, and date calculations.';
+
+  @override
+  String get mcpPresetDescMemory =>
+      'Persistent memory graph for knowledge across sessions.';
+
+  @override
+  String get mcpPresetDescSequentialThinking =>
+      'Structured step-by-step reasoning for complex problems.';
+
+  @override
+  String get mcpPresetDescContext7 =>
+      'Up-to-date library documentation via Context7.';
+
+  @override
+  String get mcpFormIdLabel => 'MCP ID (unique) *';
+
+  @override
+  String get mcpFormDisplayNameLabel => 'Display name';
+
+  @override
+  String get mcpFormDisplayNameHint => 'e.g. @modelcontextprotocol/server-time';
+
+  @override
+  String get mcpFormMetadata => 'Additional info';
+
+  @override
+  String get mcpFormDescriptionLabel => 'Description';
+
+  @override
+  String get mcpFormDescriptionHint => 'Optional description';
+
+  @override
+  String get mcpFormTagsLabel => 'Tags (comma-separated)';
+
+  @override
+  String get mcpFormTagsHint => 'stdio, time, utility';
+
+  @override
+  String get mcpFormHomepageLabel => 'Homepage';
+
+  @override
+  String get mcpFormDocsLabel => 'Documentation';
+
+  @override
+  String get mcpFormJsonLabel => 'Full JSON configuration';
+
+  @override
+  String get mcpFormFormatJson => 'Format';
+
+  @override
+  String get mcpFormRequiredFields => 'MCP ID and display name are required.';
+
+  @override
+  String get mcpFormSubmitAdd => 'Add';
+
+  @override
+  String get confirm => 'Confirm';
+
+  @override
   String teamPluginsAssignedCount(int assigned, int total) {
     return '$assigned of $total installed';
   }
