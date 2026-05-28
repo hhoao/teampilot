@@ -113,6 +113,9 @@ const _subThemes = FlexSubThemesData(
   menuRadius: 10,
   segmentedButtonRadius: 10,
   switchSchemeColor: SchemeColor.primary,
+  // primaryContainer == primary in our palettes; default M3 hover thumb
+  // would match the track. Keep thumb on onPrimary for contrast.
+  switchThumbSchemeColor: SchemeColor.onPrimary,
 );
 
 /// In `flutter test`, HTTP is stubbed so [google_fonts] cannot download files.
