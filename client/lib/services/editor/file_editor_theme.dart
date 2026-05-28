@@ -95,8 +95,8 @@ CodeHighlightTheme codeHighlightThemeFor(
 
 /// Editor monospace size: [TextTheme.bodySmall] minus 2pt (falls back to 10).
 double fileEditorFontSize(BuildContext context) {
-  final small = Theme.of(context).textTheme.bodySmall?.fontSize ?? 12;
-  return (small - 2).clamp(9, 16);
+  final small = Theme.of(context).textTheme.bodyMedium?.fontSize ?? 12;
+  return small;
 }
 
 CodeEditorStyle codeEditorStyleFor(BuildContext context, String filePath) {

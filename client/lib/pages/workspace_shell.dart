@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../cubits/layout_cubit.dart';
+import '../theme/app_text_styles.dart';
 import '../theme/workspace_surface_layers.dart';
 
 import '../l10n/l10n_extensions.dart';
@@ -92,9 +93,8 @@ class WorkspaceShell extends StatelessWidget {
                         breadcrumb,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
+                        style: AppTextStyles.of(context).caption.copyWith(
                           color: textBase.withValues(alpha: 0.52),
-                          fontSize: 11,
                         ),
                       ),
                       const SizedBox(height: 3),
@@ -102,8 +102,7 @@ class WorkspaceShell extends StatelessWidget {
                         title,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 16,
+                        style: AppTextStyles.of(context).body.copyWith(
                           fontWeight: FontWeight.w800,
                           color: textBase,
                         ),
@@ -113,9 +112,8 @@ class WorkspaceShell extends StatelessWidget {
                         subtitle,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
+                        style: AppTextStyles.of(context).caption.copyWith(
                           color: textBase.withValues(alpha: 0.58),
-                          fontSize: 11,
                         ),
                       ),
                     ],
@@ -530,8 +528,7 @@ class _TabChipState extends State<_TabChip> {
                           widget.title,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 11,
+                          style: AppTextStyles.of(context).caption.copyWith(
                             fontWeight: FontWeight.w600,
                             color: widget.textColor,
                           ),

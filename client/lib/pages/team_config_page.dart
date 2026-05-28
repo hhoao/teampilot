@@ -30,6 +30,7 @@ import '../widgets/settings/workspace_settings_widgets.dart';
 import '../widgets/dropdown/flashsky_dropdown_field.dart';
 import '../widgets/dropdown/flashskyai_dropdown_decoration.dart';
 import '../widgets/settings/workspace_hub_shell.dart';
+import '../theme/app_text_styles.dart';
 import '../theme/workspace_surface_layers.dart';
 
 enum TeamConfigSection { team, skills, plugins, mcp, members }
@@ -410,8 +411,7 @@ class _MemberNavSubItem extends StatelessWidget {
                       label,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 14,
+                      style: AppTextStyles.of(context).body.copyWith(
                         fontWeight: selected
                             ? FontWeight.w700
                             : FontWeight.w600,
@@ -565,8 +565,7 @@ class _CardHeader extends StatelessWidget {
       children: [
         Text(
           title,
-          style: TextStyle(
-            fontSize: 15,
+          style: AppTextStyles.of(context).sectionTitle.copyWith(
             fontWeight: FontWeight.w800,
             color: textBase,
           ),
@@ -575,8 +574,7 @@ class _CardHeader extends StatelessWidget {
           const SizedBox(height: 6),
           Text(
             subtitle!,
-            style: TextStyle(
-              fontSize: 13,
+            style: AppTextStyles.of(context).body.copyWith(
               color: textBase.withValues(alpha: 0.64),
             ),
           ),
@@ -696,8 +694,7 @@ class _TeamSkillsEmptyBlock extends StatelessWidget {
           const SizedBox(height: 12),
           Text(
             l10n.skillsNoInstalled,
-            style: TextStyle(
-              fontSize: 14,
+            style: AppTextStyles.of(context).body.copyWith(
               fontWeight: FontWeight.w700,
               color: textBase,
             ),
@@ -706,8 +703,7 @@ class _TeamSkillsEmptyBlock extends StatelessWidget {
           Text(
             l10n.skillsNoInstalledHint,
             textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 12,
+            style: AppTextStyles.of(context).bodySmall.copyWith(
               color: textBase.withValues(alpha: 0.55),
             ),
           ),
@@ -762,8 +758,7 @@ class _TeamSkillRow extends StatelessWidget {
                           skill.name,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 14,
+                          style: AppTextStyles.of(context).body.copyWith(
                             fontWeight: FontWeight.w700,
                             color: textBase,
                           ),
@@ -772,8 +767,7 @@ class _TeamSkillRow extends StatelessWidget {
                       const SizedBox(width: 8),
                       Text(
                         sourceLabel,
-                        style: TextStyle(
-                          fontSize: 11,
+                        style: AppTextStyles.of(context).caption.copyWith(
                           color: textBase.withValues(alpha: 0.5),
                         ),
                       ),
@@ -785,8 +779,7 @@ class _TeamSkillRow extends StatelessWidget {
                       skill.description,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 12,
+                      style: AppTextStyles.of(context).bodySmall.copyWith(
                         color: textBase.withValues(alpha: 0.6),
                       ),
                     ),
@@ -904,15 +897,13 @@ class _TeamMcpRow extends StatelessWidget {
                 children: [
                   Text(
                     server.name,
-                    style: const TextStyle(
-                      fontSize: 14,
+                    style: AppTextStyles.of(context).body.copyWith(
                       fontWeight: FontWeight.w700,
                     ),
                   ),
                   Text(
                     server.server['type']?.toString() ?? 'stdio',
-                    style: TextStyle(
-                      fontSize: 12,
+                    style: AppTextStyles.of(context).bodySmall.copyWith(
                       color: cs.onSurface.withValues(alpha: 0.6),
                     ),
                   ),
@@ -962,8 +953,7 @@ class _TeamPluginsSection extends StatelessWidget {
               child: _Card(
                 child: Text(
                   l10n.teamPluginsCliUnsupportedBanner,
-                  style: TextStyle(
-                    fontSize: 13,
+                  style: AppTextStyles.of(context).body.copyWith(
                     color: textBase.withValues(alpha: 0.6),
                   ),
                 ),
@@ -1000,8 +990,7 @@ class _TeamPluginsSection extends StatelessWidget {
                     ),
                     child: Text(
                       l10n.teamPluginsMissing(missingIds.length),
-                      style: TextStyle(
-                        fontSize: 12,
+                      style: AppTextStyles.of(context).bodySmall.copyWith(
                         color: textBase.withValues(alpha: 0.75),
                       ),
                     ),
@@ -1076,8 +1065,7 @@ class _TeamPluginsEmptyBlock extends StatelessWidget {
           const SizedBox(height: 12),
           Text(
             l10n.teamPluginsEmpty,
-            style: TextStyle(
-              fontSize: 14,
+            style: AppTextStyles.of(context).body.copyWith(
               fontWeight: FontWeight.w700,
               color: textBase,
             ),
@@ -1086,8 +1074,7 @@ class _TeamPluginsEmptyBlock extends StatelessWidget {
           Text(
             l10n.teamPluginsEmptyHint,
             textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 12,
+            style: AppTextStyles.of(context).bodySmall.copyWith(
               color: textBase.withValues(alpha: 0.55),
             ),
           ),
@@ -1145,8 +1132,7 @@ class _TeamPluginRow extends StatelessWidget {
                           plugin.name,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 14,
+                          style: AppTextStyles.of(context).body.copyWith(
                             fontWeight: FontWeight.w700,
                             color: textBase,
                           ),
@@ -1156,8 +1142,7 @@ class _TeamPluginRow extends StatelessWidget {
                         const SizedBox(width: 8),
                         Text(
                           'v${plugin.version}',
-                          style: TextStyle(
-                            fontSize: 11,
+                          style: AppTextStyles.of(context).caption.copyWith(
                             fontWeight: FontWeight.w600,
                             color: textBase.withValues(alpha: 0.55),
                           ),
@@ -1166,8 +1151,7 @@ class _TeamPluginRow extends StatelessWidget {
                       const SizedBox(width: 8),
                       Text(
                         sourceLabel,
-                        style: TextStyle(
-                          fontSize: 11,
+                        style: AppTextStyles.of(context).caption.copyWith(
                           color: textBase.withValues(alpha: 0.5),
                         ),
                       ),
@@ -1179,8 +1163,7 @@ class _TeamPluginRow extends StatelessWidget {
                       plugin.description,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 12,
+                      style: AppTextStyles.of(context).bodySmall.copyWith(
                         color: textBase.withValues(alpha: 0.6),
                       ),
                     ),
@@ -1198,8 +1181,7 @@ class _TeamPluginRow extends StatelessWidget {
                         Expanded(
                           child: Text(
                             l10n.teamPluginsNameConflict(conflictDir!),
-                            style: TextStyle(
-                              fontSize: 11,
+                            style: AppTextStyles.of(context).caption.copyWith(
                               color: textBase.withValues(alpha: 0.65),
                             ),
                           ),
@@ -1254,8 +1236,7 @@ class _TeamMissingPluginRow extends StatelessWidget {
                     pluginId,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 13,
+                    style: AppTextStyles.of(context).body.copyWith(
                       fontWeight: FontWeight.w600,
                       color: textBase.withValues(alpha: 0.55),
                     ),
@@ -1263,8 +1244,7 @@ class _TeamMissingPluginRow extends StatelessWidget {
                   const SizedBox(height: 4),
                   Text(
                     l10n.teamPluginsMissingLabel,
-                    style: TextStyle(
-                      fontSize: 11,
+                    style: AppTextStyles.of(context).caption.copyWith(
                       color: cs.error.withValues(alpha: 0.85),
                     ),
                   ),
@@ -1568,8 +1548,7 @@ class _MemberDetailSection extends StatelessWidget {
         child: Text(
           l10n.openMember,
           textAlign: TextAlign.center,
-          style: TextStyle(
-            fontSize: 14,
+          style: AppTextStyles.of(context).body.copyWith(
             color: textBase.withValues(alpha: 0.55),
           ),
         ),
@@ -1593,8 +1572,7 @@ class _MemberDetailSection extends StatelessWidget {
                     member.name.trim().isEmpty ? l10n.memberName : member.name,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 15,
+                    style: AppTextStyles.of(context).sectionTitle.copyWith(
                       fontWeight: FontWeight.w800,
                       color: textBase,
                     ),
@@ -1934,7 +1912,7 @@ class _MemberConfigFormState extends State<_MemberConfigForm> {
                       ActionChip(
                         label: Text(
                           teamMemberPromptPresetLabel(l10n, preset.id),
-                          style: const TextStyle(fontSize: 12),
+                          style: AppTextStyles.of(context).bodySmall,
                         ),
                         visualDensity: VisualDensity.compact,
                         padding: const EdgeInsets.symmetric(horizontal: 4),

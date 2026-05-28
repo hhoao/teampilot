@@ -18,6 +18,7 @@ import '../utils/skill_repo_parse.dart';
 import '../widgets/github_details_button.dart';
 import '../widgets/dropdown/flashsky_dropdown_field.dart';
 import '../widgets/settings/workspace_hub_shell.dart';
+import '../theme/app_text_styles.dart';
 import '../theme/workspace_surface_layers.dart';
 
 enum PluginSection { installed, discovery, marketplaces }
@@ -203,8 +204,7 @@ class _CardHeader extends StatelessWidget {
         Expanded(
           child: Text(
             title,
-            style: TextStyle(
-              fontSize: 15,
+            style: AppTextStyles.of(context).sectionTitle.copyWith(
               fontWeight: FontWeight.w800,
               color: textBase,
             ),
@@ -463,8 +463,7 @@ class _ImportUnmanagedPluginsDialogState
             children: [
               Text(
                 l10n.pluginsImportTitle,
-                style: const TextStyle(
-                  fontSize: 16,
+                style: AppTextStyles.of(context).body.copyWith(
                   fontWeight: FontWeight.w800,
                 ),
               ),
@@ -552,8 +551,7 @@ class _EmptyPluginBlock extends StatelessWidget {
         const SizedBox(height: 12),
         Text(
           title,
-          style: TextStyle(
-            fontSize: 18,
+          style: AppTextStyles.of(context).subtitle.copyWith(
             fontWeight: FontWeight.w700,
             color: textBase,
           ),
@@ -562,8 +560,7 @@ class _EmptyPluginBlock extends StatelessWidget {
         Text(
           hint,
           textAlign: TextAlign.center,
-          style: TextStyle(
-            fontSize: 13,
+          style: AppTextStyles.of(context).body.copyWith(
             color: textBase.withValues(alpha: 0.55),
           ),
         ),
@@ -611,9 +608,7 @@ class _InstalledPluginRow extends StatelessWidget {
                     Flexible(
                       child: Text(
                         plugin.name,
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
+                        style: AppTextStyles.of(context).bodyStrong.copyWith(
                           color: textBase,
                         ),
                       ),
@@ -622,8 +617,7 @@ class _InstalledPluginRow extends StatelessWidget {
                       const SizedBox(width: 8),
                       Text(
                         'v${plugin.version}',
-                        style: TextStyle(
-                          fontSize: 11,
+                        style: AppTextStyles.of(context).caption.copyWith(
                           color: textBase.withValues(alpha: 0.45),
                         ),
                       ),
@@ -636,8 +630,7 @@ class _InstalledPluginRow extends StatelessWidget {
                     plugin.description,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 12,
+                    style: AppTextStyles.of(context).bodySmall.copyWith(
                       color: textBase.withValues(alpha: 0.55),
                     ),
                   ),
@@ -1017,9 +1010,7 @@ class _DiscoverablePluginCard extends StatelessWidget {
                     Flexible(
                       child: Text(
                         plugin.name,
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
+                        style: AppTextStyles.of(context).bodyStrong.copyWith(
                           color: textBase,
                         ),
                       ),
@@ -1028,8 +1019,7 @@ class _DiscoverablePluginCard extends StatelessWidget {
                       const SizedBox(width: 8),
                       Text(
                         'v${plugin.version}',
-                        style: TextStyle(
-                          fontSize: 11,
+                        style: AppTextStyles.of(context).caption.copyWith(
                           color: textBase.withValues(alpha: 0.45),
                         ),
                       ),
@@ -1042,8 +1032,7 @@ class _DiscoverablePluginCard extends StatelessWidget {
                     plugin.description,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 12,
+                    style: AppTextStyles.of(context).bodySmall.copyWith(
                       color: textBase.withValues(alpha: 0.55),
                     ),
                   ),
@@ -1052,8 +1041,7 @@ class _DiscoverablePluginCard extends StatelessWidget {
                   const SizedBox(height: 4),
                   Text(
                     plugin.marketplaceFullName,
-                    style: TextStyle(
-                      fontSize: 11,
+                    style: AppTextStyles.of(context).caption.copyWith(
                       color: textBase.withValues(alpha: 0.35),
                     ),
                   ),
@@ -1124,8 +1112,7 @@ class _MarketplacesSection extends StatelessWidget {
                     Expanded(
                       child: Text(
                         l10n.pluginsNavMarketplaces,
-                        style: const TextStyle(
-                          fontSize: 15,
+                        style: AppTextStyles.of(context).sectionTitle.copyWith(
                           fontWeight: FontWeight.w800,
                         ),
                       ),
@@ -1252,9 +1239,7 @@ class _MarketplaceRow extends StatelessWidget {
                     Flexible(
                       child: Text(
                         marketplace.displayName ?? marketplace.fullName,
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
+                        style: AppTextStyles.of(context).bodyStrong.copyWith(
                           color: textBase,
                         ),
                       ),
@@ -1264,15 +1249,13 @@ class _MarketplaceRow extends StatelessWidget {
                 const SizedBox(height: 2),
                 Text(
                   marketplace.githubUrl,
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: textBase.withValues(alpha: 0.4),
-                  ),
+                    style: AppTextStyles.of(context).caption.copyWith(
+                      color: textBase.withValues(alpha: 0.4),
+                    ),
                 ),
                 Text(
                   'branch: ${marketplace.branch}',
-                  style: TextStyle(
-                    fontSize: 11,
+                  style: AppTextStyles.of(context).caption.copyWith(
                     color: textBase.withValues(alpha: 0.35),
                   ),
                 ),

@@ -16,6 +16,7 @@ import '../l10n/l10n_extensions.dart';
 import '../models/layout_preferences.dart';
 import '../models/member_presence.dart';
 import '../models/team_config.dart';
+import '../theme/app_text_styles.dart';
 import '../theme/workspace_surface_layers.dart';
 import '../utils/app_keys.dart';
 import '../utils/debounce/debounce.dart';
@@ -509,17 +510,15 @@ class _FileTreePanelState extends State<_FileTreePanel> {
                           state.rootPath,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
+                          style: AppTextStyles.of(context).bodySmall.copyWith(
                             color: cs.onSurfaceVariant,
-                            fontSize: 12,
                           ),
                         )
                       else
                         Text(
                           'Directory unavailable',
-                          style: TextStyle(
+                          style: AppTextStyles.of(context).bodySmall.copyWith(
                             color: cs.onSurfaceVariant.withValues(alpha: 0.7),
-                            fontSize: 12,
                             fontStyle: FontStyle.italic,
                           ),
                         ),
@@ -582,8 +581,7 @@ class _FileTreePanelState extends State<_FileTreePanel> {
     if (rows.isEmpty) {
       return Text(
         '(empty)',
-        style: TextStyle(
-          fontSize: 12,
+        style: AppTextStyles.of(context).bodySmall.copyWith(
           color: textColor.withValues(alpha: 0.35),
         ),
       );
@@ -603,8 +601,7 @@ class _FileTreePanelState extends State<_FileTreePanel> {
                 padding: EdgeInsets.only(left: row.depth * 16 + 22),
                 child: Text(
                   '(empty)',
-                  style: TextStyle(
-                    fontSize: 11,
+                  style: AppTextStyles.of(context).caption.copyWith(
                     color: textColor.withValues(alpha: 0.35),
                   ),
                 ),

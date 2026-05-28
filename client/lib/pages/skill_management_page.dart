@@ -16,6 +16,7 @@ import '../utils/skill_repo_parse.dart';
 import '../widgets/github_details_button.dart';
 import '../widgets/dropdown/flashsky_dropdown_field.dart';
 import '../widgets/settings/workspace_hub_shell.dart';
+import '../theme/app_text_styles.dart';
 import '../theme/workspace_surface_layers.dart';
 
 enum SkillSection { installed, discovery, repos }
@@ -200,8 +201,7 @@ class _CardHeader extends StatelessWidget {
         Expanded(
           child: Text(
             title,
-            style: TextStyle(
-              fontSize: 15,
+            style: AppTextStyles.of(context).sectionTitle.copyWith(
               fontWeight: FontWeight.w800,
               color: textBase,
             ),
@@ -223,8 +223,7 @@ class _FieldLabel extends StatelessWidget {
     final textBase = isDark ? Colors.white : const Color(0xFF111827);
     return Text(
       text,
-      style: TextStyle(
-        fontSize: 12,
+      style: AppTextStyles.of(context).bodySmall.copyWith(
         fontWeight: FontWeight.w600,
         color: textBase.withValues(alpha: 0.7),
       ),
@@ -457,9 +456,7 @@ class _InstalledSkillRow extends StatelessWidget {
                           skill.name,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
+                          style: AppTextStyles.of(context).bodyStrong.copyWith(
                             color: textBase,
                           ),
                         ),
@@ -467,8 +464,7 @@ class _InstalledSkillRow extends StatelessWidget {
                       const SizedBox(width: 8),
                       Text(
                         sourceLabel,
-                        style: TextStyle(
-                          fontSize: 11,
+                        style: AppTextStyles.of(context).caption.copyWith(
                           color: textBase.withValues(alpha: 0.5),
                         ),
                       ),
@@ -485,9 +481,8 @@ class _InstalledSkillRow extends StatelessWidget {
                           ),
                           child: Text(
                             l10n.skillsUpdateAvailable,
-                            style: const TextStyle(
-                              fontSize: 10,
-                              color: Color(0xFFB45309),
+                            style: AppTextStyles.of(context).caption.copyWith(
+                              color: const Color(0xFFB45309),
                               fontWeight: FontWeight.w700,
                             ),
                           ),
@@ -501,8 +496,7 @@ class _InstalledSkillRow extends StatelessWidget {
                       skill.description,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 12,
+                      style: AppTextStyles.of(context).bodySmall.copyWith(
                         color: textBase.withValues(alpha: 0.6),
                       ),
                     ),
@@ -588,9 +582,7 @@ class _EmptyBlock extends StatelessWidget {
           const SizedBox(height: 12),
           Text(
             title,
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w700,
+            style: AppTextStyles.of(context).bodyStrong.copyWith(
               color: textBase,
             ),
           ),
@@ -598,8 +590,7 @@ class _EmptyBlock extends StatelessWidget {
           Text(
             hint,
             textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 12,
+            style: AppTextStyles.of(context).bodySmall.copyWith(
               color: textBase.withValues(alpha: 0.55),
             ),
           ),
@@ -644,8 +635,7 @@ class _ImportUnmanagedDialogState extends State<_ImportUnmanagedDialog> {
             children: [
               Text(
                 l10n.skillsImportTitle,
-                style: const TextStyle(
-                  fontSize: 16,
+                style: AppTextStyles.of(context).body.copyWith(
                   fontWeight: FontWeight.w800,
                 ),
               ),
@@ -1111,8 +1101,7 @@ class _DiscoverySectionState extends State<_DiscoverySection> {
               const SizedBox(height: 6),
               Text(
                 l10n.skillsSkillsShPoweredBy,
-                style: TextStyle(
-                  fontSize: 11,
+                style: AppTextStyles.of(context).caption.copyWith(
                   color: Theme.of(context).hintColor,
                 ),
               ),
@@ -1153,9 +1142,8 @@ class _SourceToggle extends StatelessWidget {
           ),
           child: Text(
             label,
-            style: TextStyle(
+            style: AppTextStyles.of(context).body.copyWith(
               fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
-              fontSize: 13,
             ),
           ),
         ),
@@ -1202,8 +1190,7 @@ class _SkillCard extends StatelessWidget {
                   name,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 14,
+                  style: AppTextStyles.of(context).bodyStrong.copyWith(
                     fontWeight: FontWeight.w800,
                     color: textBase,
                   ),
@@ -1214,8 +1201,7 @@ class _SkillCard extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             source,
-            style: TextStyle(
-              fontSize: 11,
+            style: AppTextStyles.of(context).caption.copyWith(
               color: textBase.withValues(alpha: 0.55),
             ),
           ),
@@ -1225,8 +1211,7 @@ class _SkillCard extends StatelessWidget {
               description,
               maxLines: 3,
               overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: 12,
+              style: AppTextStyles.of(context).bodySmall.copyWith(
                 color: textBase.withValues(alpha: 0.7),
               ),
             ),
@@ -1254,9 +1239,8 @@ class _SkillCard extends StatelessWidget {
                     ),
                     child: Text(
                       l10n.skillsCardInstalled,
-                      style: const TextStyle(
-                        color: Color(0xFF15803D),
-                        fontSize: 12,
+                      style: AppTextStyles.of(context).bodySmall.copyWith(
+                        color: const Color(0xFF15803D),
                         fontWeight: FontWeight.w700,
                       ),
                     ),
@@ -1430,17 +1414,14 @@ class _RepoRow extends StatelessWidget {
                 children: [
                   Text(
                     repo.githubUrl,
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
+                    style: AppTextStyles.of(context).bodyStrong.copyWith(
                       color: textBase,
                     ),
                   ),
                   const SizedBox(height: 2),
                   Text(
                     '@${repo.branch}',
-                    style: TextStyle(
-                      fontSize: 11,
+                    style: AppTextStyles.of(context).caption.copyWith(
                       color: textBase.withValues(alpha: 0.55),
                     ),
                   ),

@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 import '../../l10n/l10n_extensions.dart';
+import '../../theme/app_text_styles.dart';
 import '../../widgets/settings/workspace_hub_shell.dart';
 import '../../widgets/settings/workspace_settings_widgets.dart';
 import '../../utils/logger_utils.dart';
@@ -268,9 +269,7 @@ class _ErrorBlock extends StatelessWidget {
                   Expanded(
                     child: Text(
                       title,
-                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
+                      style: AppTextStyles.of(context).bodyStrong.copyWith(
                         color: cs.onSurface,
                       ),
                     ),

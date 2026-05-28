@@ -5,9 +5,13 @@ import 'workspace_surface_layers.dart';
 /// Material 3 type-scale defaults when [TextStyle.fontSize] is null (`inherit`).
 /// Centralized here so input code does not scatter literal sizes.
 abstract final class AppM3FontSizes {
+  static const double titleLarge = 22;
+  static const double titleMedium = 16;
+  static const double titleSmall = 14;
   static const double bodyLarge = 16;
   static const double bodyMedium = 14;
   static const double bodySmall = 12;
+  static const double labelMedium = 12;
   static const double labelSmall = 11;
 }
 
@@ -32,9 +36,13 @@ TextTheme materializeM3TextThemeSizes(TextTheme textTheme) {
   }
 
   return textTheme.copyWith(
+    titleLarge: resolve(textTheme.titleLarge, AppM3FontSizes.titleLarge),
+    titleMedium: resolve(textTheme.titleMedium, AppM3FontSizes.titleMedium),
+    titleSmall: resolve(textTheme.titleSmall, AppM3FontSizes.titleSmall),
     bodyLarge: resolve(textTheme.bodyLarge, AppM3FontSizes.bodyLarge),
     bodyMedium: resolve(textTheme.bodyMedium, AppM3FontSizes.bodyMedium),
     bodySmall: resolve(textTheme.bodySmall, AppM3FontSizes.bodySmall),
+    labelMedium: resolve(textTheme.labelMedium, AppM3FontSizes.labelMedium),
     labelSmall: resolve(textTheme.labelSmall, AppM3FontSizes.labelSmall),
   );
 }

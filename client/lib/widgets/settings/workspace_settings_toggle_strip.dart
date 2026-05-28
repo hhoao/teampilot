@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:toggle_switch/toggle_switch.dart';
 
+import '../../theme/app_text_styles.dart';
 import '../../theme/workspace_surface_layers.dart';
 
 const _segmentedIconSize = 18.0;
-const _toggleStripFontSize = 13.0;
 
 /// One option in [WorkspaceSettingsToggleStrip].
 class WorkspaceToggleSegment<T extends Object> {
@@ -83,7 +83,9 @@ class _WorkspaceSettingsToggleStripState<T extends Object>
         minHeight: 38,
         minWidth: minW,
         customWidths: customWidths,
-        fontSize: _toggleStripFontSize,
+        fontSize:
+            Theme.of(context).textTheme.bodyMedium?.fontSize ??
+            AppTextStyles.of(context).body.fontSize!,
         iconSize: _segmentedIconSize,
         activeFgColor: Colors.white,
         inactiveFgColor: inactiveFg,

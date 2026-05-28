@@ -132,7 +132,8 @@ class _DropdownOverlayState<T> extends State<_DropdownOverlay<T>> {
               result.toString(),
               maxLines: widget.maxLines,
               overflow: TextOverflow.ellipsis,
-              style: widget.listItemStyle ?? const TextStyle(fontSize: 16),
+              style:
+                  widget.listItemStyle ?? dropdownFieldTextStyle(context),
             ),
           ),
         ),
@@ -164,7 +165,7 @@ class _DropdownOverlayState<T> extends State<_DropdownOverlay<T>> {
       overflow: TextOverflow.ellipsis,
       style:
           widget.headerStyle ??
-          const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+          dropdownFieldTextStyle(context),
     );
   }
 
@@ -173,9 +174,7 @@ class _DropdownOverlayState<T> extends State<_DropdownOverlay<T>> {
       hint,
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
-      style:
-          widget.hintStyle ??
-          const TextStyle(fontSize: 16, color: Color(0xFFA7A7A7)),
+      style: widget.hintStyle ?? dropdownHintTextStyle(context),
     );
   }
 
@@ -185,7 +184,9 @@ class _DropdownOverlayState<T> extends State<_DropdownOverlay<T>> {
         padding: const EdgeInsets.symmetric(vertical: 12.0),
         child: Text(
           text,
-          style: widget.noResultFoundStyle ?? const TextStyle(fontSize: 16),
+          style:
+              widget.noResultFoundStyle ??
+              dropdownFieldTextStyle(context, fontWeight: FontWeight.w400),
         ),
       ),
     );

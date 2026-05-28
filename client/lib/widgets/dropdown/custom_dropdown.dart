@@ -7,6 +7,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 
+import '../../theme/app_text_styles.dart';
+
 export 'custom_dropdown.dart';
 
 part 'models/controllers.dart';
@@ -39,11 +41,10 @@ final Border _defaultErrorBorder = Border.all(
   width: 1.5,
 );
 
-const _defaultErrorStyle = TextStyle(
-  color: _defaultErrorColor,
-  fontSize: 14,
-  height: 0.5,
-);
+TextStyle _defaultDropdownErrorStyle(BuildContext context) {
+  final base = Theme.of(context).textTheme.bodySmall ?? const TextStyle();
+  return base.copyWith(color: _defaultErrorColor, height: 0.5);
+}
 
 /// Prevents theme [InputDecorationTheme] borders from stacking on top of the
 /// custom-painted closed field inside [_DropDownField].
@@ -626,7 +627,8 @@ class _DropdownFlutterState<T> extends State<DropdownFlutter<T>> {
           _formFieldState = formFieldState;
           return InputDecorator(
             decoration: _dropdownFormFieldDecoration(
-              errorStyle: decoration?.errorStyle ?? _defaultErrorStyle,
+              errorStyle:
+                  decoration?.errorStyle ?? _defaultDropdownErrorStyle(context),
               errorText: formFieldState.errorText,
             ),
             child: _OverlayBuilder(

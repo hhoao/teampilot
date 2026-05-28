@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/mcp_catalog_listing.dart';
 import '../../models/mcp_server.dart';
+import '../../theme/app_text_styles.dart';
 import '../../theme/workspace_surface_layers.dart';
 import '../../widgets/github_details_button.dart';
 
@@ -39,8 +40,7 @@ class McpCardHeader extends StatelessWidget {
         Expanded(
           child: Text(
             title,
-            style: TextStyle(
-              fontSize: 15,
+            style: AppTextStyles.of(context).sectionTitle.copyWith(
               fontWeight: FontWeight.w800,
               color: textBase,
             ),
@@ -80,9 +80,7 @@ class McpEmptyBlock extends StatelessWidget {
           const SizedBox(height: 12),
           Text(
             title,
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w700,
+            style: AppTextStyles.of(context).bodyStrong.copyWith(
               color: textBase,
             ),
           ),
@@ -90,8 +88,7 @@ class McpEmptyBlock extends StatelessWidget {
           Text(
             hint,
             textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 12,
+            style: AppTextStyles.of(context).bodySmall.copyWith(
               color: textBase.withValues(alpha: 0.55),
             ),
           ),
@@ -157,9 +154,7 @@ class McpInstalledServerRow extends StatelessWidget {
                           server.name,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
+                          style: AppTextStyles.of(context).bodyStrong.copyWith(
                             color: textBase,
                           ),
                         ),
@@ -170,8 +165,7 @@ class McpInstalledServerRow extends StatelessWidget {
                           typeLabel,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 11,
+                          style: AppTextStyles.of(context).caption.copyWith(
                             color: textBase.withValues(alpha: 0.5),
                           ),
                         ),
@@ -189,9 +183,8 @@ class McpInstalledServerRow extends StatelessWidget {
                           ),
                           child: Text(
                             l10n.mcpOAuthStatusNeedsAuth,
-                            style: const TextStyle(
-                              fontSize: 10,
-                              color: Color(0xFFB45309),
+                            style: AppTextStyles.of(context).caption.copyWith(
+                              color: const Color(0xFFB45309),
                               fontWeight: FontWeight.w700,
                             ),
                           ),
@@ -210,8 +203,7 @@ class McpInstalledServerRow extends StatelessWidget {
                           ),
                           child: Text(
                             l10n.mcpOAuthStatusConnected,
-                            style: TextStyle(
-                              fontSize: 10,
+                            style: AppTextStyles.of(context).caption.copyWith(
                               color: cs.primary,
                               fontWeight: FontWeight.w700,
                             ),
@@ -226,8 +218,7 @@ class McpInstalledServerRow extends StatelessWidget {
                       description,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 12,
+                      style: AppTextStyles.of(context).bodySmall.copyWith(
                         color: textBase.withValues(alpha: 0.6),
                       ),
                     ),
@@ -348,10 +339,7 @@ class McpCatalogListingTile extends StatelessWidget {
                         Flexible(
                           child: Text(
                             listing.title,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w700,
-                              fontSize: 14,
-                            ),
+                            style: AppTextStyles.of(context).bodyStrong,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -377,10 +365,8 @@ class McpCatalogListingTile extends StatelessWidget {
                         listing.description,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 12,
+                        style: AppTextStyles.of(context).bodySmall.copyWith(
                           color: cs.onSurface.withValues(alpha: 0.65),
-                          height: 1.35,
                         ),
                       ),
                     ],
@@ -388,8 +374,7 @@ class McpCatalogListingTile extends StatelessWidget {
                       const SizedBox(height: 6),
                       Text(
                         meta.join(' · '),
-                        style: TextStyle(
-                          fontSize: 11,
+                        style: AppTextStyles.of(context).caption.copyWith(
                           color: cs.onSurface.withValues(alpha: 0.5),
                         ),
                       ),
@@ -412,8 +397,7 @@ class McpCatalogListingTile extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(horizontal: 8),
                   child: Text(
                     l10n.mcpCatalogInstalled,
-                    style: TextStyle(
-                      fontSize: 12,
+                    style: AppTextStyles.of(context).bodySmall.copyWith(
                       fontWeight: FontWeight.w600,
                       color: cs.primary,
                     ),

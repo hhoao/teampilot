@@ -20,6 +20,7 @@ import '../services/terminal/terminal_uri_opener.dart';
 import '../services/terminal/terminal_fonts.dart';
 import '../utils/app_keys.dart';
 import '../utils/debounce/debounce.dart';
+import '../theme/app_text_styles.dart';
 import '../widgets/file_editor_panel.dart';
 import '../widgets/terminal_find_bar.dart';
 
@@ -330,7 +331,9 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
 
   Future<void> _openTerminalLink(String link) async {
     if (!mounted) return;
-    final workingDirectory = context.read<ChatCubit>().activeTabWorkingDirectory;
+    final workingDirectory = context
+        .read<ChatCubit>()
+        .activeTabWorkingDirectory;
     await TerminalUriOpener.open(
       link,
       workingDirectory: workingDirectory,
@@ -467,90 +470,90 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
               ? _SessionLoadingView(message: context.l10n.sessionStarting)
               : session.isRunning
               ? TerminalFindShortcuts(
-                findVisible: _findVisible,
-                onToggleFind: () => setState(() => _findVisible = true),
-                onFindNext: () {
-                  session.terminal.search.next();
-                  _terminalController.setSearchResults(
-                    session.terminal.search.hits,
-                    activeIndex: session.terminal.search.currentIndex,
-                  );
-                },
-                onFindPrevious: () {
-                  session.terminal.search.previous();
-                  _terminalController.setSearchResults(
-                    session.terminal.search.hits,
-                    activeIndex: session.terminal.search.currentIndex,
-                  );
-                },
-                onCloseFind: () {
-                  session.terminal.search.clear();
-                  _terminalController.clearSearch();
-                  setState(() => _findVisible = false);
-                },
-                child: Stack(
-                  children: [
-                    TerminalView(
-                      session.terminal,
-                      controller: _terminalController,
-                      theme: terminalTheme,
-                      backgroundOpacity: 0.98,
-                      padding: const EdgeInsets.all(16),
-                      textStyle: _terminalTextStyle,
-                      autofocus: !_findVisible,
-                      onTapDown: (_, offset) {
-                        // Match VTE/gnome-terminal: clear on press, not release.
-                        if (!HardwareKeyboard.instance.isControlPressed &&
-                            !HardwareKeyboard.instance.isMetaPressed) {
-                          _terminalController.clearSelection();
-                        }
-                      },
-                      onTapUp: (details, offset) {
-                        if (HardwareKeyboard.instance.isControlPressed ||
-                            HardwareKeyboard.instance.isMetaPressed) {
-                          unawaited(_openLinkAt(session.terminal, offset));
-                        }
-                      },
-                      onSecondaryTapUp: (details, offset) {
-                        unawaited(
-                          _showTerminalContextMenu(
-                            menuContext: context,
-                            globalPosition: details.globalPosition,
+                  findVisible: _findVisible,
+                  onToggleFind: () => setState(() => _findVisible = true),
+                  onFindNext: () {
+                    session.terminal.search.next();
+                    _terminalController.setSearchResults(
+                      session.terminal.search.hits,
+                      activeIndex: session.terminal.search.currentIndex,
+                    );
+                  },
+                  onFindPrevious: () {
+                    session.terminal.search.previous();
+                    _terminalController.setSearchResults(
+                      session.terminal.search.hits,
+                      activeIndex: session.terminal.search.currentIndex,
+                    );
+                  },
+                  onCloseFind: () {
+                    session.terminal.search.clear();
+                    _terminalController.clearSearch();
+                    setState(() => _findVisible = false);
+                  },
+                  child: Stack(
+                    children: [
+                      TerminalView(
+                        session.terminal,
+                        controller: _terminalController,
+                        theme: terminalTheme,
+                        backgroundOpacity: 0.98,
+                        padding: const EdgeInsets.all(16),
+                        textStyle: _terminalTextStyle,
+                        autofocus: !_findVisible,
+                        onTapDown: (_, offset) {
+                          // Match VTE/gnome-terminal: clear on press, not release.
+                          if (!HardwareKeyboard.instance.isControlPressed &&
+                              !HardwareKeyboard.instance.isMetaPressed) {
+                            _terminalController.clearSelection();
+                          }
+                        },
+                        onTapUp: (details, offset) {
+                          if (HardwareKeyboard.instance.isControlPressed ||
+                              HardwareKeyboard.instance.isMetaPressed) {
+                            unawaited(_openLinkAt(session.terminal, offset));
+                          }
+                        },
+                        onSecondaryTapUp: (details, offset) {
+                          unawaited(
+                            _showTerminalContextMenu(
+                              menuContext: context,
+                              globalPosition: details.globalPosition,
+                              terminal: session.terminal,
+                              cellOffset: offset,
+                              sessionRunning: session.isRunning,
+                              onDisconnect: () {
+                                chatCubit.disconnectSession();
+                                setState(() {});
+                              },
+                              onRestart: () async {
+                                await chatCubit.restartSession(team);
+                                if (mounted) setState(() {});
+                              },
+                            ),
+                          );
+                        },
+                      ),
+                      if (_findVisible)
+                        Positioned(
+                          left: 8,
+                          right: 8,
+                          top: 8,
+                          child: TerminalFindBar(
                             terminal: session.terminal,
-                            cellOffset: offset,
-                            sessionRunning: session.isRunning,
-                            onDisconnect: () {
-                              chatCubit.disconnectSession();
-                              setState(() {});
-                            },
-                            onRestart: () async {
-                              await chatCubit.restartSession(team);
-                              if (mounted) setState(() {});
+                            controller: _terminalController,
+                            searchLabel: context.l10n.terminalFind,
+                            noResultsLabel: context.l10n.terminalFindNoResults,
+                            onClose: () {
+                              session.terminal.search.clear();
+                              _terminalController.clearSearch();
+                              setState(() => _findVisible = false);
                             },
                           ),
-                        );
-                      },
-                    ),
-                    if (_findVisible)
-                      Positioned(
-                        left: 8,
-                        right: 8,
-                        top: 8,
-                        child: TerminalFindBar(
-                          terminal: session.terminal,
-                          controller: _terminalController,
-                          searchLabel: context.l10n.terminalFind,
-                          noResultsLabel: context.l10n.terminalFindNoResults,
-                          onClose: () {
-                            session.terminal.search.clear();
-                            _terminalController.clearSearch();
-                            setState(() => _findVisible = false);
-                          },
                         ),
-                      ),
-                  ],
-                ),
-              )
+                    ],
+                  ),
+                )
               : _TerminalPlaceholder(
                   onConnect: () {
                     unawaited(() async {
@@ -589,10 +592,9 @@ class _SessionLoadingView extends StatelessWidget {
           const SizedBox(height: 16),
           Text(
             message,
-            style: TextStyle(
-              color: textBase.withValues(alpha: 0.68),
-              fontSize: 14,
-            ),
+            style: AppTextStyles.of(
+              context,
+            ).body.copyWith(color: textBase.withValues(alpha: 0.68)),
           ),
         ],
       ),

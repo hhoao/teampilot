@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+
+import '../theme/app_text_styles.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
@@ -41,7 +43,7 @@ class AndroidSshProfileSelector extends StatelessWidget {
       },
       itemBuilder: (context) => [
         ...sshState.profiles.map(
-          (profile) => _profileMenuItem(profile, selected.id),
+          (profile) => _profileMenuItem(context, profile, selected.id),
         ),
         const PopupMenuDivider(),
         PopupMenuItem(
@@ -79,6 +81,7 @@ class AndroidSshProfileSelector extends StatelessWidget {
   }
 
   PopupMenuItem<String> _profileMenuItem(
+    BuildContext context,
     SshProfile profile,
     String selectedId,
   ) {
@@ -95,7 +98,7 @@ class AndroidSshProfileSelector extends StatelessWidget {
                 Text(profile.name),
                 Text(
                   profile.hostIdentifier,
-                  style: const TextStyle(fontSize: 12),
+                  style: AppTextStyles.of(context).bodySmall,
                 ),
               ],
             ),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
+import '../../theme/app_text_styles.dart';
 import '../../theme/workspace_surface_layers.dart';
 
 /// One row in a hub list or desktop side nav.
@@ -58,9 +59,8 @@ class WorkspaceHubTitleBar extends StatelessWidget {
             title,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+            style: AppTextStyles.of(context).subtitle.copyWith(
               color: textBase,
-              fontSize: Theme.of(context).textTheme.titleMedium?.fontSize,
               fontWeight: FontWeight.w800,
               height: 1.05,
             ),
@@ -132,8 +132,10 @@ class WorkspaceHubNavItem extends StatelessWidget {
                       title,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: hubStyle ? 15 : 14,
+                      style: (hubStyle
+                              ? AppTextStyles.of(context).sectionTitle
+                              : AppTextStyles.of(context).body)
+                          .copyWith(
                         fontWeight: hubStyle
                             ? FontWeight.w600
                             : FontWeight.w500,

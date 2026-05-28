@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:io' show Platform, Process;
 
 import 'package:flutter/material.dart';
+
+import '../theme/app_text_styles.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:path/path.dart' as p;
@@ -114,8 +116,7 @@ class FileTreeNode extends StatelessWidget {
                 entry.name,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: 12,
+                style: AppTextStyles.of(context).bodySmall.copyWith(
                   fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
                   color: labelColor,
                 ),

@@ -10,6 +10,7 @@ import '../cubits/app_provider_cubit.dart';
 import '../cubits/llm_config_cubit.dart';
 import '../models/app_provider_config.dart';
 import '../services/app/platform_utils.dart';
+import '../theme/app_text_styles.dart';
 import '../theme/workspace_surface_layers.dart';
 import '../widgets/app_provider/app_provider_detail_panel.dart';
 import '../widgets/app_provider/app_provider_form_sheet.dart';
@@ -1461,48 +1462,33 @@ class _LlmWorkspaceText {
 
   final ThemeData theme;
 
-  TextTheme get _t => theme.textTheme;
-
-  TextStyle get _smallBase => _t.labelSmall ?? const TextStyle();
+  AppTextStyles get _tx => AppTextStyles(theme);
 
   /// 小：徽章、次要说明、紧凑链接。
-  TextStyle get small => _smallBase.copyWith(height: 1.35);
+  TextStyle get small => _tx.caption;
 
   TextStyle smallColored(Color color, {FontWeight? fontWeight}) =>
-      small.copyWith(color: color, fontWeight: fontWeight);
+      _tx.captionColored(color, fontWeight: fontWeight);
 
   /// 中：正文、只读值。
-  TextStyle get body {
-    final base = _t.bodyMedium ?? const TextStyle(fontSize: 14);
-    return base.copyWith(height: 1.35);
-  }
+  TextStyle get body => _tx.body;
 
-  TextStyle bodyColored(Color color) => body.copyWith(color: color);
+  TextStyle bodyColored(Color color) => _tx.bodyColored(color);
 
   /// 中强调：行标题、列表主名称。
-  TextStyle get bodyStrong =>
-      body.copyWith(fontWeight: FontWeight.w600, height: 1.25);
+  TextStyle get bodyStrong => _tx.bodyStrong;
 
-  TextStyle bodyStrongColored(Color color) => bodyStrong.copyWith(color: color);
+  TextStyle bodyStrongColored(Color color) => _tx.bodyStrongColored(color);
 
   /// 面板顶栏标题（不做更大字号档位）。
-  TextStyle get panelHeader {
-    final base = _t.titleSmall ?? _t.titleMedium ?? const TextStyle();
-    return base.copyWith(
-      fontWeight: FontWeight.w600,
-      letterSpacing: -0.15,
-      height: 1.25,
-    );
-  }
+  TextStyle get panelHeader => _tx.sectionTitle;
 
   TextStyle panelHeaderColored(Color color) =>
-      panelHeader.copyWith(color: color);
+      _tx.sectionTitleColored(color);
 
-  TextStyle get mutedBody =>
-      body.copyWith(color: theme.colorScheme.onSurfaceVariant);
+  TextStyle get mutedBody => _tx.mutedBody;
 
-  TextStyle get mutedSmall =>
-      small.copyWith(color: theme.colorScheme.onSurfaceVariant);
+  TextStyle get mutedSmall => _tx.mutedCaption;
 }
 
 /// Provider detail pane: typography and [ColorScheme] from app [ThemeData].

@@ -6,6 +6,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../cubits/mcp_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/mcp_server.dart';
+import '../../theme/app_text_styles.dart';
 import '../../theme/workspace_surface_layers.dart';
 
 /// Add/edit MCP server for the workspace detail pane (not full-screen).
@@ -162,8 +163,7 @@ class _McpFormPageState extends State<McpFormPage> {
               Expanded(
                 child: Text(
                   _isEditing ? l10n.mcpEdit : l10n.mcpAddTitle,
-                  style: TextStyle(
-                    fontSize: 16,
+                  style: AppTextStyles.of(context).body.copyWith(
                     fontWeight: FontWeight.w800,
                     color: textBase,
                   ),
@@ -296,9 +296,8 @@ class _McpFormPageState extends State<McpFormPage> {
               TextField(
                 controller: _jsonCtrl,
                 maxLines: 12,
-                style: const TextStyle(
+                style: AppTextStyles.of(context).body.copyWith(
                   fontFamily: 'monospace',
-                  fontSize: 13,
                   height: 1.45,
                 ),
                 decoration: InputDecoration(

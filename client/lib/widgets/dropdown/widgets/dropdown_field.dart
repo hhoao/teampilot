@@ -66,44 +66,45 @@ class _DropDownFieldState<T> extends State<_DropDownField<T>> {
   Widget hintBuilder(BuildContext context) {
     return widget.hintBuilder != null
         ? widget.hintBuilder!(context, widget.hintText, widget.enabled)
-        : defaultHintBuilder(widget.hintText, widget.enabled);
+        : defaultHintBuilder(context, widget.hintText, widget.enabled);
   }
 
   Widget headerBuilder(BuildContext context) {
     return widget.headerBuilder != null
         ? widget.headerBuilder!(context, selectedItem as T, widget.enabled)
-        : defaultHeaderBuilder(oneItem: selectedItem);
+        : defaultHeaderBuilder(context, oneItem: selectedItem);
   }
 
   Widget headerListBuilder(BuildContext context) {
     return widget.headerListBuilder != null
         ? widget.headerListBuilder!(context, selectedItems, widget.enabled)
-        : defaultHeaderBuilder(itemList: selectedItems);
+        : defaultHeaderBuilder(context, itemList: selectedItems);
   }
 
-  Widget defaultHeaderBuilder({T? oneItem, List<T>? itemList}) {
+  Widget defaultHeaderBuilder(
+    BuildContext context, {
+    T? oneItem,
+    List<T>? itemList,
+  }) {
     return Text(
       itemList != null ? itemList.join(', ') : oneItem.toString(),
       maxLines: widget.maxLines,
       overflow: TextOverflow.ellipsis,
       style:
           widget.headerStyle ??
-          TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w500,
-            color: widget.enabled ? null : Colors.black.withValues(alpha: 0.5),
+          dropdownFieldTextStyle(
+            context,
+            enabled: widget.enabled,
           ),
     );
   }
 
-  Widget defaultHintBuilder(String hint, bool enabled) {
+  Widget defaultHintBuilder(BuildContext context, String hint, bool enabled) {
     return Text(
       hint,
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
-      style:
-          widget.hintStyle ??
-          const TextStyle(fontSize: 16, color: Color(0xFFA7A7A7)),
+      style: widget.hintStyle ?? dropdownHintTextStyle(context, enabled: enabled),
     );
   }
 

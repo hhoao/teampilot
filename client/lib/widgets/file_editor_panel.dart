@@ -6,6 +6,7 @@ import 'package:re_editor/re_editor.dart';
 import '../cubits/editor_cubit.dart';
 import '../l10n/l10n_extensions.dart';
 import '../services/editor/file_editor_theme.dart';
+import '../theme/app_text_styles.dart';
 import '../services/editor/file_editor_toolbar.dart';
 import '../theme/workspace_surface_layers.dart';
 import '../utils/debounce/debounce.dart';
@@ -65,8 +66,7 @@ class _FileEditorTabBar extends StatelessWidget {
                   children: [
                     Text(
                       label,
-                      style: TextStyle(
-                        fontSize: 12,
+                      style: AppTextStyles.of(context).bodySmall.copyWith(
                         fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
                         color: selected
                             ? cs.onSecondaryContainer
@@ -601,8 +601,7 @@ class _FloatingTitleBar extends StatelessWidget {
                 title.isEmpty ? l10n.editorTitle : p.basename(title),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: 12,
+                style: AppTextStyles.of(context).bodySmall.copyWith(
                   fontWeight: FontWeight.w600,
                   color: cs.onSurface,
                 ),

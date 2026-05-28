@@ -10,6 +10,7 @@ import 'package:teampilot/router/app_router.dart';
 import 'package:teampilot/services/app/app_update_installer.dart';
 import 'package:teampilot/services/app/app_update_service.dart';
 import 'package:teampilot/services/app/backend_app_update_service.dart';
+import 'package:teampilot/theme/app_text_styles.dart';
 import 'package:teampilot/utils/changelog_parser.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -99,9 +100,8 @@ class _AppUpdateDialogState extends State<AppUpdateDialog> {
             Center(
               child: Text(
                 l10n.appUpdateDialogTitle,
-                style: const TextStyle(
+                style: AppTextStyles.of(context).dialogTitle.copyWith(
                   color: Colors.black,
-                  fontSize: 20,
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -148,13 +148,14 @@ class _AppUpdateDialogState extends State<AppUpdateDialog> {
                   children: [
                     Text(
                       l10n.aboutCurrentVersion,
-                      style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                      style: AppTextStyles.of(context).body.copyWith(
+                        color: Colors.grey[600],
+                      ),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       currentApp?.version ?? '—',
-                      style: const TextStyle(
-                        fontSize: 16,
+                      style: AppTextStyles.of(context).body.copyWith(
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -168,13 +169,14 @@ class _AppUpdateDialogState extends State<AppUpdateDialog> {
                   children: [
                     Text(
                       l10n.appUpdateLatestVersion,
-                      style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                      style: AppTextStyles.of(context).body.copyWith(
+                        color: Colors.grey[600],
+                      ),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       latestApp?.version ?? l10n.appUpdateUnknownVersion,
-                      style: const TextStyle(
-                        fontSize: 16,
+                      style: AppTextStyles.of(context).body.copyWith(
                         fontWeight: FontWeight.w500,
                         color: Colors.blue,
                       ),
@@ -199,7 +201,9 @@ class _AppUpdateDialogState extends State<AppUpdateDialog> {
                 collapsedBackgroundColor: Colors.transparent,
                 title: Text(
                   l10n.appUpdateChangelogTitle,
-                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                  style: AppTextStyles.of(context).bodySmall.copyWith(
+                    color: Colors.grey[600],
+                  ),
                 ),
                 collapsedIconColor: Colors.grey[600],
                 collapsedTextColor: Colors.grey[600],
@@ -252,14 +256,14 @@ class _AppUpdateDialogState extends State<AppUpdateDialog> {
               Expanded(
                 child: Text(
                   _downloadStatus,
-                  style: TextStyle(fontSize: 12, color: Colors.blue[700]),
+                  style: AppTextStyles.of(context).bodySmall.copyWith(
+                    color: Colors.blue[700],
+                  ),
                 ),
               ),
               Text(
                 '${(_downloadProgress * 100).toStringAsFixed(1)}%',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
+                style: AppTextStyles.of(context).bodyStrong.copyWith(
                   color: Colors.blue[800],
                 ),
               ),
@@ -526,7 +530,7 @@ class _AppUpdateDialogState extends State<AppUpdateDialog> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           if (prefix != null) prefix,
-          Text(text, style: const TextStyle(fontSize: 16)),
+          Text(text, style: AppTextStyles.of(context).body),
         ],
       ),
     );

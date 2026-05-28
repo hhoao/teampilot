@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 
+import '../../theme/app_text_styles.dart';
 import '../../theme/workspace_surface_layers.dart';
 import 'custom_dropdown.dart';
 
 const _dropdownBorderRadius = 10.0;
 const _dropdownIconOpacity = 0.55;
-const _dropdownLabelFontSize = 13.0;
 
 /// Themed [CustomDropdownDecoration] presets for FlashskyAI surfaces.
 abstract final class FlashskyDropdownDecorations {
@@ -36,19 +36,16 @@ abstract final class FlashskyDropdownDecorations {
           offset: const Offset(0, 8),
         ),
       ],
-      headerStyle: TextStyle(
-        fontSize: _dropdownLabelFontSize,
+      headerStyle: dropdownFieldTextStyle(
+        context,
+        color: onSurface,
         fontWeight: FontWeight.w600,
+      ),
+      hintStyle: dropdownHintTextStyle(context),
+      listItemStyle: dropdownFieldTextStyle(
+        context,
         color: onSurface,
-      ),
-      hintStyle: TextStyle(
-        fontSize: _dropdownLabelFontSize,
-        color: onSurface.withValues(alpha: 0.45),
-      ),
-      listItemStyle: TextStyle(
-        fontSize: _dropdownLabelFontSize,
         fontWeight: FontWeight.w500,
-        color: onSurface,
       ),
       closedSuffixIcon: Icon(
         Icons.expand_more_rounded,
@@ -95,19 +92,16 @@ abstract final class FlashskyDropdownDecorations {
           offset: const Offset(0, 10),
         ),
       ],
-      headerStyle: TextStyle(
-        fontSize: 13,
+      headerStyle: dropdownFieldTextStyle(
+        context,
+        color: onSurface,
         fontWeight: FontWeight.w700,
+      ),
+      hintStyle: dropdownHintTextStyle(context),
+      listItemStyle: dropdownFieldTextStyle(
+        context,
         color: onSurface,
-      ),
-      hintStyle: TextStyle(
-        fontSize: 13,
-        color: onSurface.withValues(alpha: 0.45),
-      ),
-      listItemStyle: TextStyle(
-        fontSize: 13,
         fontWeight: FontWeight.w600,
-        color: onSurface,
       ),
       closedSuffixIcon: Icon(
         Icons.expand_more_rounded,
@@ -158,16 +152,13 @@ abstract final class FlashskyDropdownDecorations {
           offset: const Offset(0, 8),
         ),
       ],
-      headerStyle: TextStyle(
-        fontSize: 14,
-        fontWeight: FontWeight.w500,
+      headerStyle: dropdownFieldTextStyle(
+        context,
         color: onSurface,
+        fontWeight: FontWeight.w500,
       ),
-      hintStyle: TextStyle(
-        fontSize: 14,
-        color: onSurface.withValues(alpha: 0.45),
-      ),
-      listItemStyle: TextStyle(fontSize: 14, color: onSurface),
+      hintStyle: dropdownHintTextStyle(context),
+      listItemStyle: dropdownFieldTextStyle(context, color: onSurface),
       closedSuffixIcon: Icon(
         Icons.expand_more_rounded,
         size: 20,

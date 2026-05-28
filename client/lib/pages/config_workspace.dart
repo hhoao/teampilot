@@ -12,6 +12,7 @@ import '../models/layout_preferences.dart';
 import '../repositories/app_settings_repository.dart';
 import '../services/app/platform_utils.dart';
 import '../services/team/rtk_detector.dart';
+import '../theme/app_text_styles.dart';
 import '../theme/app_theme.dart';
 import '../utils/app_keys.dart';
 import '../utils/debounce/debounce.dart';
@@ -735,8 +736,7 @@ class _ThemeColorPresetChip extends StatelessWidget {
               const SizedBox(width: 8),
               Text(
                 label,
-                style: TextStyle(
-                  fontSize: 12,
+                style: AppTextStyles.of(context).bodySmall.copyWith(
                   fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
                   color: textBase.withValues(alpha: selected ? 1 : 0.78),
                 ),

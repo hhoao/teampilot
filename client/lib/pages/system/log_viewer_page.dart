@@ -11,18 +11,16 @@ import '../../utils/debounce/debounce.dart';
 import '../../utils/logger_utils.dart';
 import '../../widgets/dropdown/flashsky_dropdown_field.dart';
 import '../../widgets/dropdown/flashskyai_dropdown_decoration.dart';
+import '../../theme/app_text_styles.dart';
 import '../../widgets/settings/workspace_hub_shell.dart';
 import '../../widgets/settings/workspace_settings_widgets.dart';
 
-const _logFontSize = 12.0;
-
 TextStyle logMonospaceStyle(BuildContext context, {Color? color}) {
   final cs = Theme.of(context).colorScheme;
-  final tt = Theme.of(context).textTheme;
-  return (tt.bodySmall ?? const TextStyle(fontSize: _logFontSize)).copyWith(
+  final base = Theme.of(context).textTheme.bodySmall ?? const TextStyle();
+  return base.copyWith(
     fontFamily: kTerminalFontFamily,
     fontFamilyFallback: const [kUbuntuSansMonoFontFamily, 'monospace'],
-    fontSize: _logFontSize,
     height: 1.45,
     color: color ?? cs.onSurface.withValues(alpha: 0.92),
   );
@@ -315,7 +313,9 @@ class _LogViewerPanelState extends State<_LogViewerPanel> {
     );
     return InputDecoration(
       hintText: hintText,
-      hintStyle: TextStyle(fontSize: 13, color: cs.onSurfaceVariant),
+      hintStyle: AppTextStyles.of(context).body.copyWith(
+        color: cs.onSurfaceVariant,
+      ),
       prefixIcon: prefixIcon,
       prefixIconConstraints: const BoxConstraints(minWidth: 34, minHeight: 34),
       isDense: true,
@@ -420,7 +420,7 @@ class _LogViewerPanelState extends State<_LogViewerPanel> {
             Expanded(
               child: TextField(
                 controller: _searchController,
-                style: const TextStyle(fontSize: 13),
+                style: AppTextStyles.of(context).body,
                 decoration: _toolbarFieldDecoration(
                   context,
                   hintText: l10n.logViewerSearchHint,

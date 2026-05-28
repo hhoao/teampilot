@@ -18,6 +18,7 @@ import '../utils/debounce/debounce.dart';
 import '../utils/project_path_picker.dart';
 import '../utils/project_path_utils.dart';
 import '../widgets/dropdown/flashsky_dropdown_field.dart';
+import '../theme/app_text_styles.dart';
 import '../widgets/dropdown/flashskyai_dropdown_decoration.dart';
 import 'project_details_dialog.dart';
 
@@ -374,11 +375,12 @@ class _ProjectList extends StatelessWidget {
         padding: const EdgeInsets.only(top: 16),
         child: Text(
           l10n.noSessions,
-          style: TextStyle(
-            color: Theme.of(
-              context,
-            ).textTheme.bodySmall?.color?.withValues(alpha: 0.5),
-            fontSize: 12,
+          style: AppTextStyles.of(context).bodySmall.copyWith(
+            color: Theme.of(context)
+                .textTheme
+                .bodySmall
+                ?.color
+                ?.withValues(alpha: 0.5),
           ),
         ),
       );
@@ -1255,9 +1257,8 @@ class _SidebarSectionTitle extends StatelessWidget {
           Expanded(
             child: Text(
               title,
-              style: TextStyle(
+              style: AppTextStyles.of(context).caption.copyWith(
                 color: textBase.withValues(alpha: 0.58),
-                fontSize: 11,
                 fontWeight: FontWeight.w700,
                 letterSpacing: 0.8,
               ),
@@ -1279,10 +1280,8 @@ class _SidebarSectionTitle extends StatelessWidget {
                       ),
                       child: Text(
                         actionLabel,
-                        style: TextStyle(
+                        style: AppTextStyles.of(context).bodyStrong.copyWith(
                           color: cs.primary,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 14,
                         ),
                       ),
                     ),
@@ -1397,9 +1396,8 @@ class _SidebarTile extends StatelessWidget {
                               subtitle,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
+                              style: AppTextStyles.of(context).caption.copyWith(
                                 color: textBase.withValues(alpha: 0.52),
-                                fontSize: 11,
                               ),
                             ),
                           ],
