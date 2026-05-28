@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
+import '../../models/layout_preferences.dart';
 import '../../theme/app_text_styles.dart';
 import '../../theme/workspace_surface_layers.dart';
+import '../resizable_split_view.dart';
 
 enum WorkspaceHubNavDensity { standard, relaxed, subItem }
 
@@ -283,12 +285,13 @@ class WorkspaceHubPage extends StatelessWidget {
   }
 }
 
-/// Desktop split: fixed-width nav column + divider + scrollable body.
+/// Desktop split: resizable nav column + scrollable body.
 class WorkspaceSplitShell extends StatelessWidget {
   const WorkspaceSplitShell({
     required this.nav,
     required this.body,
-    this.navWidth = 220,
+    this.navWidth = LayoutPreferences.defaultWorkspaceNavWidth,
+    this.onNavWidthChanged,
     this.bodyAnimationKey,
     super.key,
   });
@@ -296,24 +299,19 @@ class WorkspaceSplitShell extends StatelessWidget {
   final Widget nav;
   final Widget body;
   final double navWidth;
+  final ValueChanged<double>? onNavWidthChanged;
   final Key? bodyAnimationKey;
 
   static const compactBreakpoint = 820.0;
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
     return LayoutBuilder(
       builder: (context, constraints) {
         final compact = constraints.maxWidth < compactBreakpoint;
         final contentPadding = compact
             ? const EdgeInsets.fromLTRB(16, 20, 16, 16)
             : const EdgeInsets.fromLTRB(24, 28, 28, 24);
-        final bodyPaneWidth = constraints.maxWidth - navWidth - 1;
-        final bodyMaxWidth = (bodyPaneWidth - contentPadding.horizontal).clamp(
-          480.0,
-          3200.0,
-        );
 
         final animatedBody = bodyAnimationKey == null
             ? body
@@ -327,33 +325,31 @@ class WorkspaceSplitShell extends StatelessWidget {
                     curve: Curves.easeOutCubic,
                   );
 
-        return Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            SizedBox(width: navWidth, child: nav),
-            Container(
-              width: 1,
-              color: cs.outlineVariant.withValues(alpha: 0.5),
+        return ResizableSplitView(
+          initialLeftWidth: navWidth,
+          minLeftWidth: LayoutPreferences.minWorkspaceNavWidth,
+          maxLeftWidth: LayoutPreferences.maxWorkspaceNavWidth,
+          onWidthChanged: onNavWidthChanged,
+          left: nav,
+          right: Padding(
+            padding: contentPadding,
+            child: LayoutBuilder(
+              builder: (context, inner) {
+                final w = inner.maxWidth;
+                final bodyMaxWidth = w.isFinite
+                    ? w.clamp(480.0, 3200.0)
+                    : 3200.0;
+                final contentWidth = w.isFinite && w < bodyMaxWidth
+                    ? w
+                    : bodyMaxWidth;
+                return SizedBox(
+                  width: contentWidth,
+                  height: inner.maxHeight,
+                  child: animatedBody,
+                );
+              },
             ),
-            Expanded(
-              child: Padding(
-                padding: contentPadding,
-                child: LayoutBuilder(
-                  builder: (context, inner) {
-                    final w = inner.maxWidth;
-                    final contentWidth = w.isFinite
-                        ? (w < bodyMaxWidth ? w : bodyMaxWidth)
-                        : bodyMaxWidth;
-                    return SizedBox(
-                      width: contentWidth,
-                      height: inner.maxHeight,
-                      child: animatedBody,
-                    );
-                  },
-                ),
-              ),
-            ),
-          ],
+          ),
         );
       },
     );

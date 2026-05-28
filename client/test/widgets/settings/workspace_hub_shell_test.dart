@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:teampilot/widgets/resizable_split_view.dart';
 import 'package:teampilot/widgets/settings/workspace_hub_shell.dart';
 
 void main() {
@@ -27,6 +28,7 @@ void main() {
 
     await tester.pump(const Duration(milliseconds: 260));
 
+    expect(find.byType(ResizableSplitView), findsOneWidget);
     expect(
       find.ancestor(
         of: find.text('Body'),

@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:teampilot/cubits/layout_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
+import 'package:teampilot/widgets/resizable_split_view.dart';
 import 'package:teampilot/widgets/settings/workspace_hub_shell.dart';
 import 'package:teampilot/widgets/settings/workspace_section_host.dart';
 import 'package:teampilot/widgets/settings/workspace_section_navigation.dart';
@@ -30,7 +33,10 @@ void main() {
     return MaterialApp(
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
-      home: Scaffold(body: SizedBox(width: 900, height: 600, child: child)),
+      home: BlocProvider(
+        create: (_) => LayoutCubit(),
+        child: Scaffold(body: SizedBox(width: 900, height: 600, child: child)),
+      ),
     );
   }
 
@@ -50,6 +56,7 @@ void main() {
     expect(find.text('Nav'), findsOneWidget);
     expect(find.text('Body'), findsOneWidget);
     expect(find.byType(WorkspaceSplitShell), findsOneWidget);
+    expect(find.byType(ResizableSplitView), findsOneWidget);
   });
 
   testWidgets('adaptive section page renders desktop shell on non-Android', (

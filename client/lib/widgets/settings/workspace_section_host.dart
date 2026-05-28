@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../cubits/layout_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../services/app/platform_utils.dart';
 import '../../theme/workspace_surface_layers.dart';
@@ -35,10 +37,18 @@ class WorkspaceHubDesktopShell extends StatelessWidget {
         children: [
           WorkspaceHubTitleBar(title: title, subtitle: subtitle),
           Expanded(
-            child: WorkspaceSplitShell(
-              bodyAnimationKey: bodyAnimationKey,
-              nav: nav,
-              body: body,
+            child: BlocBuilder<LayoutCubit, LayoutState>(
+              builder: (context, layoutState) {
+                return WorkspaceSplitShell(
+                  bodyAnimationKey: bodyAnimationKey,
+                  navWidth: layoutState.preferences.workspaceNavWidth,
+                  onNavWidthChanged: (width) {
+                    context.read<LayoutCubit>().setWorkspaceNavWidth(width);
+                  },
+                  nav: nav,
+                  body: body,
+                );
+              },
             ),
           ),
         ],

@@ -20,6 +20,7 @@ class LayoutPreferences {
     this.rightToolsWidth = defaultRightToolsWidth,
     this.bottomToolsHeight = defaultBottomToolsHeight,
     this.sidebarWidth = defaultSidebarWidth,
+    this.workspaceNavWidth = defaultWorkspaceNavWidth,
     this.membersSplit = 0.42,
     this.themeMode = 'system',
     this.themeColorPreset = kDefaultThemeColorPreset,
@@ -55,6 +56,10 @@ class LayoutPreferences {
         json['sidebarWidth'],
         fallback: defaultSidebarWidth,
       ).clamp(minSidebarWidth, maxSidebarWidth),
+      workspaceNavWidth: _doubleValue(
+        json['workspaceNavWidth'],
+        fallback: defaultWorkspaceNavWidth,
+      ).clamp(minWorkspaceNavWidth, maxWorkspaceNavWidth),
       membersSplit: _doubleValue(
         json['membersSplit'],
         fallback: 0.42,
@@ -86,6 +91,9 @@ class LayoutPreferences {
   static const defaultSidebarWidth = 260.0;
   static const minSidebarWidth = 180.0;
   static const maxSidebarWidth = 420.0;
+  static const defaultWorkspaceNavWidth = 220.0;
+  static const minWorkspaceNavWidth = 200.0;
+  static const maxWorkspaceNavWidth = 360.0;
   static const minBottomToolsHeight = 180.0;
   static const maxBottomToolsHeight = 420.0;
 
@@ -100,6 +108,7 @@ class LayoutPreferences {
   final double rightToolsWidth;
   final double bottomToolsHeight;
   final double sidebarWidth;
+  final double workspaceNavWidth;
   final double membersSplit;
   final String themeMode;
   final String themeColorPreset;
@@ -120,6 +129,7 @@ class LayoutPreferences {
     double? rightToolsWidth,
     double? bottomToolsHeight,
     double? sidebarWidth,
+    double? workspaceNavWidth,
     double? membersSplit,
     String? themeMode,
     String? themeColorPreset,
@@ -149,6 +159,10 @@ class LayoutPreferences {
       sidebarWidth: (sidebarWidth ?? this.sidebarWidth).clamp(
         minSidebarWidth,
         maxSidebarWidth,
+      ),
+      workspaceNavWidth: (workspaceNavWidth ?? this.workspaceNavWidth).clamp(
+        minWorkspaceNavWidth,
+        maxWorkspaceNavWidth,
       ),
       membersSplit: (membersSplit ?? this.membersSplit).clamp(0.25, 0.75),
       themeMode: themeMode ?? this.themeMode,
@@ -182,6 +196,7 @@ class LayoutPreferences {
       rightToolsWidth: rightToolsWidth,
       bottomToolsHeight: bottomToolsHeight,
       sidebarWidth: sidebarWidth,
+      workspaceNavWidth: workspaceNavWidth,
       membersSplit: membersSplit,
       themeMode: themeMode,
       themeColorPreset: themeColorPreset,
@@ -205,6 +220,7 @@ class LayoutPreferences {
       'rightToolsWidth': rightToolsWidth,
       'bottomToolsHeight': bottomToolsHeight,
       'sidebarWidth': sidebarWidth,
+      'workspaceNavWidth': workspaceNavWidth,
       'membersSplit': membersSplit,
       'themeMode': themeMode,
       'themeColorPreset': themeColorPreset,
