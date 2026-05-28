@@ -115,4 +115,24 @@ void main() {
     expect(find.byType(Animate), findsNWidgets(2));
     expect(find.byKey(const ValueKey('layout-entry')), findsOneWidget);
   });
+
+  testWidgets('relaxed nav item uses taller tap target', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: WorkspaceHubNavItem(
+            title: 'Team',
+            icon: Icons.groups_outlined,
+            density: WorkspaceHubNavDensity.relaxed,
+            onTap: () {},
+          ),
+        ),
+      ),
+    );
+    // Find the SizedBox with height 54 inside the nav item
+    expect(
+      find.byWidgetPredicate((w) => w is SizedBox && w.height == 54),
+      findsOneWidget,
+    );
+  });
 }

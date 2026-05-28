@@ -4,6 +4,8 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '../../theme/app_text_styles.dart';
 import '../../theme/workspace_surface_layers.dart';
 
+enum WorkspaceHubNavDensity { standard, relaxed, subItem }
+
 /// One row in a hub list or desktop side nav.
 class WorkspaceHubEntry {
   const WorkspaceHubEntry({
@@ -13,6 +15,7 @@ class WorkspaceHubEntry {
     this.key,
     this.selected = false,
     this.trailingIcon,
+    this.density = WorkspaceHubNavDensity.standard,
   });
 
   final String title;
@@ -21,6 +24,7 @@ class WorkspaceHubEntry {
   final Key? key;
   final bool selected;
   final IconData? trailingIcon;
+  final WorkspaceHubNavDensity density;
 }
 
 /// Page header used on hub and desktop workspace shells.
@@ -88,6 +92,7 @@ class WorkspaceHubNavItem extends StatelessWidget {
     this.selected = false,
     this.hubStyle = false,
     this.trailingIcon,
+    this.density = WorkspaceHubNavDensity.standard,
     super.key,
   });
 
@@ -97,6 +102,7 @@ class WorkspaceHubNavItem extends StatelessWidget {
   final bool selected;
   final bool hubStyle;
   final IconData? trailingIcon;
+  final WorkspaceHubNavDensity density;
 
   @override
   Widget build(BuildContext context) {
@@ -107,25 +113,44 @@ class WorkspaceHubNavItem extends StatelessWidget {
     final selectedColor = cs.primaryContainer;
     final trailing = trailingIcon ?? (hubStyle ? Icons.chevron_right : null);
 
+    final (height, iconSize, horizontalPadding, leftIndent) = switch (density) {
+      WorkspaceHubNavDensity.standard => (
+        hubStyle ? 56.0 : 48.0,
+        18.0,
+        hubStyle ? 16.0 : 18.0,
+        0.0,
+      ),
+      WorkspaceHubNavDensity.relaxed => (54.0, 21.0, 18.0, 0.0),
+      WorkspaceHubNavDensity.subItem => (44.0, 19.0, 14.0, 14.0),
+    };
+
+    final borderRadius = density == WorkspaceHubNavDensity.subItem
+        ? BorderRadius.circular(10)
+        : BorderRadius.circular(12);
+
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
+      padding: EdgeInsets.only(left: leftIndent, bottom: 8),
       child: Material(
         color: selected
             ? selectedColor
             : hubStyle
             ? cs.workspaceSubtleSurface
             : Colors.transparent,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: borderRadius,
         child: InkWell(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: borderRadius,
           onTap: onTap,
           child: SizedBox(
-            height: hubStyle ? 56 : 48,
+            height: height,
             child: Padding(
-              padding: EdgeInsets.symmetric(horizontal: hubStyle ? 16 : 18),
+              padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
               child: Row(
                 children: [
-                  Icon(icon, color: selected ? selectedFg : muted, size: 18),
+                  Icon(
+                    icon,
+                    color: selected ? selectedFg : muted,
+                    size: iconSize,
+                  ),
                   const SizedBox(width: 16),
                   Expanded(
                     child: Text(
@@ -185,6 +210,7 @@ class WorkspaceHubNavList extends StatelessWidget {
         selected: entry.selected,
         hubStyle: hubStyle,
         trailingIcon: entry.trailingIcon,
+        density: entry.density,
         onTap: entry.onTap,
       );
 
