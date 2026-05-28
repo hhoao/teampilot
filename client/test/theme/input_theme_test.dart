@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/theme/app_outline_input_theme.dart';
 import 'package:teampilot/theme/app_theme.dart';
+import 'package:teampilot/theme/app_typography_scale.dart';
 
 void main() {
   test('input text uses bodyMedium scale from TextTheme', () {
@@ -12,8 +12,8 @@ void main() {
     );
     final hintSize = theme.inputDecorationTheme.hintStyle?.fontSize;
     final inputSize = theme.textTheme.bodyLarge?.fontSize;
-    expect(hintSize, AppM3FontSizes.bodySmall);
-    expect(inputSize, AppM3FontSizes.bodyMedium);
+    expect(hintSize, AppTypographyScale.standard.bodySmall);
+    expect(inputSize, AppTypographyScale.standard.bodyMedium);
     expect(hintSize!, lessThan(inputSize!));
   });
 

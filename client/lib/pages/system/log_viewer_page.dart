@@ -6,21 +6,20 @@ import 'package:path/path.dart' as p;
 
 import '../../l10n/l10n_extensions.dart';
 import '../../services/storage/app_storage.dart';
-import '../../services/terminal/terminal_fonts.dart';
 import '../../utils/debounce/debounce.dart';
 import '../../utils/logger_utils.dart';
 import '../../widgets/dropdown/flashsky_dropdown_field.dart';
 import '../../widgets/dropdown/flashskyai_dropdown_decoration.dart';
+import '../../theme/app_fonts.dart';
 import '../../theme/app_text_styles.dart';
 import '../../widgets/settings/workspace_hub_shell.dart';
 import '../../widgets/settings/workspace_settings_widgets.dart';
 
 TextStyle logMonospaceStyle(BuildContext context, {Color? color}) {
   final cs = Theme.of(context).colorScheme;
-  final base = Theme.of(context).textTheme.bodySmall ?? const TextStyle();
-  return base.copyWith(
-    fontFamily: kTerminalFontFamily,
-    fontFamilyFallback: const [kUbuntuSansMonoFontFamily, 'monospace'],
+  return appMonoTextStyle(
+    context,
+    base: Theme.of(context).textTheme.bodySmall,
     height: 1.45,
     color: color ?? cs.onSurface.withValues(alpha: 0.92),
   );

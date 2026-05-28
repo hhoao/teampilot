@@ -1,4 +1,5 @@
 import '../theme/app_theme.dart';
+import '../theme/app_typography_scale.dart';
 
 enum LayoutPreset { workbench, chatFocus, inspector }
 
@@ -22,6 +23,7 @@ class LayoutPreferences {
     this.membersSplit = 0.42,
     this.themeMode = 'system',
     this.themeColorPreset = kDefaultThemeColorPreset,
+    this.typographyScale = kDefaultTypographyScaleId,
     this.terminalThemeMode = 'adaptive',
     this.locale = '',
   });
@@ -60,6 +62,9 @@ class LayoutPreferences {
       themeColorPreset: normalizeThemeColorPreset(
         json['themeColorPreset'] as String?,
       ),
+      typographyScale: normalizeTypographyScale(
+        json['typographyScale'] as String?,
+      ),
       terminalThemeMode: _terminalThemeModeValue(
         json['terminalThemeMode'] as String?,
       ),
@@ -91,6 +96,7 @@ class LayoutPreferences {
   final double membersSplit;
   final String themeMode;
   final String themeColorPreset;
+  final String typographyScale;
   final String terminalThemeMode;
   final String locale;
 
@@ -109,6 +115,7 @@ class LayoutPreferences {
     double? membersSplit,
     String? themeMode,
     String? themeColorPreset,
+    String? typographyScale,
     String? terminalThemeMode,
     String? locale,
   }) {
@@ -137,6 +144,9 @@ class LayoutPreferences {
       membersSplit: (membersSplit ?? this.membersSplit).clamp(0.25, 0.75),
       themeMode: themeMode ?? this.themeMode,
       themeColorPreset: themeColorPreset ?? this.themeColorPreset,
+      typographyScale: typographyScale == null
+          ? this.typographyScale
+          : normalizeTypographyScale(typographyScale),
       terminalThemeMode: terminalThemeMode == null
           ? this.terminalThemeMode
           : _terminalThemeModeValue(terminalThemeMode),
@@ -163,6 +173,7 @@ class LayoutPreferences {
       membersSplit: membersSplit,
       themeMode: themeMode,
       themeColorPreset: themeColorPreset,
+      typographyScale: typographyScale,
       terminalThemeMode: terminalThemeMode,
       locale: locale,
     );
@@ -184,6 +195,7 @@ class LayoutPreferences {
       'membersSplit': membersSplit,
       'themeMode': themeMode,
       'themeColorPreset': themeColorPreset,
+      'typographyScale': typographyScale,
       'terminalThemeMode': terminalThemeMode,
       'locale': locale,
     };

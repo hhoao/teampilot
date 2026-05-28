@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../models/layout_preferences.dart';
 import '../theme/app_theme.dart';
+import '../theme/app_typography_scale.dart';
 import '../repositories/layout_repository.dart';
 
 class LayoutState extends Equatable {
@@ -89,6 +90,12 @@ class LayoutCubit extends Cubit<LayoutState> {
   Future<void> setThemeColorPreset(String presetId) => _save(
     state.preferences.copyWith(
       themeColorPreset: normalizeThemeColorPreset(presetId),
+    ),
+  );
+
+  Future<void> setTypographyScale(String scaleId) => _save(
+    state.preferences.copyWith(
+      typographyScale: normalizeTypographyScale(scaleId),
     ),
   );
 

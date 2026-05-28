@@ -14,8 +14,9 @@ import 'package:re_highlight/re_highlight.dart';
 import 'package:re_highlight/styles/atom-one-dark.dart';
 import 'package:re_highlight/styles/atom-one-light.dart';
 
+import '../../theme/app_fonts.dart';
+import '../../theme/app_typography_scale.dart';
 import '../../theme/workspace_surface_layers.dart';
-import '../terminal/terminal_fonts.dart';
 
 /// Extensions treated as non-text for in-app editing.
 const kEditorBinaryExtensions = {
@@ -93,19 +94,18 @@ CodeHighlightTheme codeHighlightThemeFor(
   );
 }
 
-/// Editor monospace size: [TextTheme.bodySmall] minus 2pt (falls back to 10).
-double fileEditorFontSize(BuildContext context) {
-  final small = Theme.of(context).textTheme.bodyMedium?.fontSize ?? 12;
-  return small;
-}
+/// Editor monospace size from [AppTypographyTheme.mono].
+double fileEditorFontSize(BuildContext context) =>
+    context.appTypography.mono;
 
 CodeEditorStyle codeEditorStyleFor(BuildContext context, String filePath) {
   final cs = Theme.of(context).colorScheme;
+  final fonts = context.appFonts;
   return CodeEditorStyle(
     fontSize: fileEditorFontSize(context),
     fontHeight: 1.35,
-    fontFamily: kTerminalFontFamily,
-    fontFamilyFallback: const [kUbuntuSansMonoFontFamily, 'monospace'],
+    fontFamily: fonts.monoFontFamily,
+    fontFamilyFallback: fonts.monoFontFamilyFallback,
     textColor: cs.onSurface,
     backgroundColor: cs.workspaceCode,
     selectionColor: cs.primary.withValues(alpha: 0.28),

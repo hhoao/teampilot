@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 
+import '../../theme/app_fonts.dart';
 import '../../theme/app_text_styles.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -170,8 +171,9 @@ class _ProviderJsonPreviewState extends State<_ProviderJsonPreview> {
             )
           : SelectableText(
               json,
-              style: AppTextStyles.of(context).bodySmall.copyWith(
-                fontFamily: 'monospace',
+              style: appMonoTextStyle(
+                context,
+                base: Theme.of(context).textTheme.bodySmall,
               ),
             ),
     );

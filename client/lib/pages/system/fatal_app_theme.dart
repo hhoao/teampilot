@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../l10n/app_localizations.dart';
 import '../../repositories/layout_repository.dart';
 import '../../theme/app_theme.dart';
+import '../../theme/app_typography_scale.dart';
 
 /// Resolves TeamPilot light/dark theme from saved layout prefs (or system).
 Future<ThemeData> resolveFatalAppTheme() async {
@@ -16,9 +17,10 @@ Future<ThemeData> resolveFatalAppTheme() async {
       'dark' => Brightness.dark,
       _ => WidgetsBinding.instance.platformDispatcher.platformBrightness,
     };
+    final typography = typographyScaleForId(layout.typographyScale);
     return brightness == Brightness.dark
-        ? buildDarkTheme(preset)
-        : buildLightTheme(preset);
+        ? buildDarkTheme(preset, typography)
+        : buildLightTheme(preset, typography);
   } on Object {
     final brightness =
         WidgetsBinding.instance.platformDispatcher.platformBrightness;

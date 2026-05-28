@@ -1,11 +1,28 @@
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:teampilot/theme/app_fonts.dart';
+import 'package:teampilot/theme/app_typography_scale.dart';
 import 'package:teampilot/utils/logger.dart';
+import 'package:xterm/xterm.dart';
 
 /// Active terminal font ([TerminalStyle.fontFamily]).
-const kTerminalFontFamily = 'JetBrainsMono NFM';
+const kTerminalFontFamily = AppFonts.monoFamily;
 
 /// Bundled alternate; listed in [TerminalStyle.fontFamilyFallback].
 const kUbuntuSansMonoFontFamily = 'Ubuntu Sans Mono';
+
+/// xterm face + size from [AppTypographyTheme.terminal].
+TerminalStyle appTerminalTextStyle(BuildContext context) {
+  final typography = context.appTypography;
+  final fonts = context.appFonts;
+  return TerminalStyle(
+    fontSize: typography.terminal,
+    fontFamily: fonts.monoFontFamily,
+    height: 1.3,
+    useBoldFontWeight: false,
+    fontFamilyFallback: fonts.monoFontFamilyFallback,
+  );
+}
 
 /// Loads terminal fonts from [assets/fonts/terminal/] (see sync script).
 ///

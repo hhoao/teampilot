@@ -24,15 +24,6 @@ import '../theme/app_text_styles.dart';
 import '../widgets/file_editor_panel.dart';
 import '../widgets/terminal_find_bar.dart';
 
-const _terminalTextStyle = TerminalStyle(
-  fontSize: 13,
-  fontFamily: kTerminalFontFamily,
-  height: 1.3,
-  // Match VTE: ANSI bold uses brighter colors, not a heavier font file.
-  useBoldFontWeight: false,
-  fontFamilyFallback: [kUbuntuSansMonoFontFamily, 'monospace'],
-);
-
 TerminalTheme _terminalThemeFor(
   ColorScheme cs, {
   required bool isDark,
@@ -499,7 +490,7 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
                         theme: terminalTheme,
                         backgroundOpacity: 0.98,
                         padding: const EdgeInsets.all(16),
-                        textStyle: _terminalTextStyle,
+                        textStyle: appTerminalTextStyle(context),
                         autofocus: !_findVisible,
                         onTapDown: (_, offset) {
                           // Match VTE/gnome-terminal: clear on press, not release.

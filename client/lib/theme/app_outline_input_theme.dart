@@ -1,23 +1,15 @@
 import 'package:flutter/material.dart';
 
+import 'app_typography_scale.dart';
 import 'workspace_surface_layers.dart';
 
-/// Material 3 type-scale defaults when [TextStyle.fontSize] is null (`inherit`).
-/// Centralized here so input code does not scatter literal sizes.
-abstract final class AppM3FontSizes {
-  static const double titleLarge = 22;
-  static const double titleMedium = 16;
-  static const double titleSmall = 14;
-  static const double bodyLarge = 16;
-  static const double bodyMedium = 14;
-  static const double bodySmall = 12;
-  static const double labelMedium = 12;
-  static const double labelSmall = 11;
-}
-
-/// Fills null [TextStyle.fontSize] from [AppM3FontSizes]; keeps explicit sizes
-/// (e.g. from Google Fonts).
-TextTheme materializeM3TextThemeSizes(TextTheme textTheme) {
+/// Fills null [TextStyle.fontSize] from [AppTypographyScale]; keeps explicit
+/// sizes (e.g. from Google Fonts).
+TextTheme materializeM3TextThemeSizes(
+  TextTheme textTheme, {
+  AppTypographyScale scale = AppTypographyScale.standard,
+}) {
+  final sizes = AppTypographyTheme.fromScale(scale);
   TextStyle resolve(TextStyle? style, double fallback) {
     final base = style ?? const TextStyle();
     if (base.fontSize != null) {
@@ -36,14 +28,14 @@ TextTheme materializeM3TextThemeSizes(TextTheme textTheme) {
   }
 
   return textTheme.copyWith(
-    titleLarge: resolve(textTheme.titleLarge, AppM3FontSizes.titleLarge),
-    titleMedium: resolve(textTheme.titleMedium, AppM3FontSizes.titleMedium),
-    titleSmall: resolve(textTheme.titleSmall, AppM3FontSizes.titleSmall),
-    bodyLarge: resolve(textTheme.bodyLarge, AppM3FontSizes.bodyLarge),
-    bodyMedium: resolve(textTheme.bodyMedium, AppM3FontSizes.bodyMedium),
-    bodySmall: resolve(textTheme.bodySmall, AppM3FontSizes.bodySmall),
-    labelMedium: resolve(textTheme.labelMedium, AppM3FontSizes.labelMedium),
-    labelSmall: resolve(textTheme.labelSmall, AppM3FontSizes.labelSmall),
+    titleLarge: resolve(textTheme.titleLarge, sizes.titleLarge),
+    titleMedium: resolve(textTheme.titleMedium, sizes.titleMedium),
+    titleSmall: resolve(textTheme.titleSmall, sizes.titleSmall),
+    bodyLarge: resolve(textTheme.bodyLarge, sizes.bodyLarge),
+    bodyMedium: resolve(textTheme.bodyMedium, sizes.bodyMedium),
+    bodySmall: resolve(textTheme.bodySmall, sizes.bodySmall),
+    labelMedium: resolve(textTheme.labelMedium, sizes.labelMedium),
+    labelSmall: resolve(textTheme.labelSmall, sizes.labelSmall),
   );
 }
 
@@ -52,9 +44,12 @@ TextTheme materializeM3TextThemeSizes(TextTheme textTheme) {
 TextStyle withResolvedFontSize(
   TextStyle style, {
   TextStyle? sizeFrom,
-  double fallback = AppM3FontSizes.bodySmall,
+  double? fallback,
+  AppTypographyScale scale = AppTypographyScale.standard,
 }) {
-  final size = style.fontSize ?? sizeFrom?.fontSize ?? fallback;
+  final resolvedFallback =
+      fallback ?? AppTypographyTheme.fromScale(scale).bodySmall;
+  final size = style.fontSize ?? sizeFrom?.fontSize ?? resolvedFallback;
   return style.copyWith(
     fontSize: size,
     inherit: false,
@@ -108,7 +103,7 @@ InputDecorationTheme buildAppOutlineInputDecorationTheme({
       fontWeight: FontWeight.w400,
     ),
     sizeFrom: textTheme.bodySmall ?? textTheme.bodyMedium,
-    fallback: AppM3FontSizes.bodySmall,
+    fallback: AppTypographyScale.standard.bodySmall,
   );
 
   return InputDecorationTheme(

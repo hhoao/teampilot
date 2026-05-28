@@ -24,6 +24,7 @@ import 'services/ssh/ssh_client_factory.dart';
 import 'services/terminal/terminal_transport_factory.dart';
 import 'services/terminal/terminal_fonts.dart';
 import 'theme/app_theme.dart';
+import 'theme/app_typography_scale.dart';
 import 'pages/system/error_page.dart';
 import 'utils/logger.dart';
 import 'widgets/ui_warmup.dart';
@@ -193,7 +194,7 @@ class TeamPilotApp extends StatelessWidget {
     return BlocSelector<
       LayoutCubit,
       LayoutState,
-      (String themeMode, String colorPreset, String locale)
+      (String themeMode, String colorPreset, String typographyScale, String locale)
     >(
       selector: (state) {
         final prefs = state.preferences;
@@ -206,11 +207,14 @@ class TeamPilotApp extends StatelessWidget {
         return (
           themeMode,
           normalizeThemeColorPreset(prefs.themeColorPreset),
+          normalizeTypographyScale(prefs.typographyScale),
           prefs.locale,
         );
       },
       builder: (context, themePrefs) {
-        final (themeMode, colorPreset, savedLocale) = themePrefs;
+        final (themeMode, colorPreset, typographyScaleId, savedLocale) =
+            themePrefs;
+        final typographyScale = typographyScaleForId(typographyScaleId);
 
         ThemeMode themeModeFromPrefs(String mode) => switch (mode) {
           'light' => ThemeMode.light,
@@ -221,8 +225,8 @@ class TeamPilotApp extends StatelessWidget {
         return MaterialApp.router(
           debugShowCheckedModeBanner: false,
           title: 'TeamPilot',
-          theme: buildLightTheme(colorPreset),
-          darkTheme: buildDarkTheme(colorPreset),
+          theme: buildLightTheme(colorPreset, typographyScale),
+          darkTheme: buildDarkTheme(colorPreset, typographyScale),
           themeMode: themeModeFromPrefs(themeMode),
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,

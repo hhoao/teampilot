@@ -362,6 +362,36 @@ abstract class AppLocalizations {
   /// **'Primary and accent colors for buttons, toggles, and highlights.'**
   String get themeColorPresetDescription;
 
+  /// No description provided for @typographyScaleTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Text size'**
+  String get typographyScaleTitle;
+
+  /// No description provided for @typographyScaleDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Overall UI text scale for menus, lists, forms, and the terminal.'**
+  String get typographyScaleDescription;
+
+  /// No description provided for @typographyScaleCompact.
+  ///
+  /// In en, this message translates to:
+  /// **'Small'**
+  String get typographyScaleCompact;
+
+  /// No description provided for @typographyScaleStandard.
+  ///
+  /// In en, this message translates to:
+  /// **'Standard'**
+  String get typographyScaleStandard;
+
+  /// No description provided for @typographyScaleComfortable.
+  ///
+  /// In en, this message translates to:
+  /// **'Large'**
+  String get typographyScaleComfortable;
+
   /// No description provided for @themePresetGraphite.
   ///
   /// In en, this message translates to:

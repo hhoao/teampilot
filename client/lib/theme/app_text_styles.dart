@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 
-/// Semantic text styles backed by [ThemeData.textTheme] (scales with
+import 'app_fonts.dart';
+
+/// Semantic text styles backed by [ThemeData.textTheme] (sizes from
+/// [AppTypographyScale] via [materializeM3TextThemeSizes]; also scales with
 /// [MediaQuery.textScaler]). Do not set [TextStyle.fontSize] in widgets.
 final class AppTextStyles {
   AppTextStyles(this.theme);
@@ -72,6 +75,18 @@ final class AppTextStyles {
 
   TextStyle get mutedBodySmall =>
       bodySmall.copyWith(color: _cs.onSurfaceVariant);
+
+  /// Monospace body (terminal / JSON); family from [AppFontTheme].
+  TextStyle get mono {
+    final fonts = theme.extension<AppFontTheme>() ?? AppFontTheme.fallback;
+    return (_t.bodyMedium ?? const TextStyle()).copyWith(
+      fontFamily: fonts.monoFontFamily,
+      fontFamilyFallback: fonts.monoFontFamilyFallback,
+      height: 1.35,
+    );
+  }
+
+  TextStyle monoColored(Color color) => mono.copyWith(color: color);
 }
 
 /// Dropdown / form field text: [TextTheme.bodyMedium] with optional weight.

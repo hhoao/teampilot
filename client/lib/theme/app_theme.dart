@@ -4,7 +4,9 @@ import 'package:flex_color_scheme/flex_color_scheme.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import 'app_fonts.dart';
 import 'app_outline_input_theme.dart';
+import 'app_typography_scale.dart';
 
 /// Persisted preset ids (order = settings UI order).
 const List<String> kThemeColorPresetIds = [
@@ -128,7 +130,10 @@ bool _googleFontsNetworkAllowed() {
   }
 }
 
-ThemeData buildLightTheme([String? themeColorPreset]) => _applyTypography(
+ThemeData buildLightTheme([
+  String? themeColorPreset,
+  AppTypographyScale typographyScale = AppTypographyScale.standard,
+]) => _applyTypography(
   FlexThemeData.light(
     colors: _flexSchemeColors(normalizeThemeColorPreset(themeColorPreset)),
     surfaceMode: FlexSurfaceMode.levelSurfacesLowScaffold,
@@ -139,9 +144,13 @@ ThemeData buildLightTheme([String? themeColorPreset]) => _applyTypography(
     subThemesData: _subThemes,
     useMaterial3: true,
   ),
+  typographyScale: typographyScale,
 );
 
-ThemeData buildDarkTheme([String? themeColorPreset]) => _applyTypography(
+ThemeData buildDarkTheme([
+  String? themeColorPreset,
+  AppTypographyScale typographyScale = AppTypographyScale.standard,
+]) => _applyTypography(
   FlexThemeData.dark(
     colors: _flexSchemeColors(normalizeThemeColorPreset(themeColorPreset)),
     surfaceMode: FlexSurfaceMode.levelSurfacesLowScaffold,
@@ -154,9 +163,14 @@ ThemeData buildDarkTheme([String? themeColorPreset]) => _applyTypography(
     subThemesData: _subThemes,
     useMaterial3: true,
   ),
+  typographyScale: typographyScale,
 );
 
-ThemeData _applyTypography(ThemeData flexTheme) {
+ThemeData _applyTypography(
+  ThemeData flexTheme, {
+  AppTypographyScale typographyScale = AppTypographyScale.standard,
+}) {
+  final typographyTheme = AppTypographyTheme.fromScale(typographyScale);
   final useRuntimeGoogleFonts = _googleFontsNetworkAllowed();
   final compactOutlinedButton = OutlinedButtonThemeData(
     style: OutlinedButton.styleFrom(
@@ -175,12 +189,13 @@ ThemeData _applyTypography(ThemeData flexTheme) {
       useMaterial3: true,
     );
     final textTheme = applyAppInputTextStyles(
-      materializeM3TextThemeSizes(seed.textTheme),
+      materializeM3TextThemeSizes(seed.textTheme, scale: typographyScale),
     );
     return flexTheme.copyWith(
       visualDensity: VisualDensity.compact,
       materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
       textTheme: textTheme,
+      extensions: [AppFontTheme.fallback, typographyTheme],
       inputDecorationTheme: buildAppOutlineInputDecorationTheme(
         colorScheme: flexTheme.colorScheme,
         textTheme: textTheme,
@@ -193,28 +208,21 @@ ThemeData _applyTypography(ThemeData flexTheme) {
     colorScheme: flexTheme.colorScheme,
     useMaterial3: true,
   );
-  final textTheme = GoogleFonts.notoSansScTextTheme(typographySeed.textTheme);
-  final primaryTextTheme = GoogleFonts.notoSansScTextTheme(
+  final textTheme = buildAppUiTextTheme(typographySeed.textTheme);
+  final primaryTextTheme = buildAppUiPrimaryTextTheme(
     typographySeed.primaryTextTheme,
   );
   final appUiFont = GoogleFonts.notoSansSc();
   final mergedTextTheme = applyAppInputTextStyles(
-    materializeM3TextThemeSizes(
-      textTheme.apply(
-        fontFamily: appUiFont.fontFamily,
-        fontFamilyFallback: appUiFont.fontFamilyFallback,
-      ),
-    ),
+    materializeM3TextThemeSizes(textTheme, scale: typographyScale),
   );
 
   return flexTheme.copyWith(
     visualDensity: VisualDensity.compact,
     materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
     textTheme: mergedTextTheme,
-    primaryTextTheme: primaryTextTheme.apply(
-      fontFamily: appUiFont.fontFamily,
-      fontFamilyFallback: appUiFont.fontFamilyFallback,
-    ),
+    primaryTextTheme: primaryTextTheme,
+    extensions: [buildAppFontTheme(uiFont: appUiFont), typographyTheme],
     inputDecorationTheme: buildAppOutlineInputDecorationTheme(
       colorScheme: flexTheme.colorScheme,
       textTheme: mergedTextTheme,
