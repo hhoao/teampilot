@@ -31,6 +31,7 @@ void main() {
 
     await AppLogger.instance.initFileLogging(temp.path);
     AppLogger.instance.i('hello from test');
+    await AppLogger.instance.flushFileLogging();
 
     final logDir = Directory('${temp.path}/logs');
     expect(await logDir.exists(), isTrue);

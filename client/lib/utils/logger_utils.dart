@@ -38,6 +38,7 @@ class AppLogger {
 
   Logger? _consoleLogger;
   Logger? _fileLogger;
+  _FlushingFileOutput? _fileLogOutput;
   File? _logFile;
   String? _logDirPath;
 
@@ -95,6 +96,8 @@ class AppLogger {
       await _cleanOldLogs(logDir);
       _logFile = await _resolveLogFile(logDir);
 
+      _fileLogOutput = _FlushingFileOutput(file: _logFile!);
+      await _fileLogOutput!.init();
       _fileLogger = Logger(
         printer: PrettyPrinter(
           methodCount: 0,
@@ -104,7 +107,7 @@ class AppLogger {
           printEmojis: false,
           dateTimeFormat: DateTimeFormat.dateAndTime,
         ),
-        output: FileOutput(file: _logFile!),
+        output: _fileLogOutput!,
         filter: _FileLogFilter(),
       );
 
@@ -261,7 +264,10 @@ class AppLogger {
       }
 
       final logDir = Directory(logDirPath);
+      await _fileLogOutput?.destroy();
       _logFile = await _resolveLogFile(logDir);
+      _fileLogOutput = _FlushingFileOutput(file: _logFile!);
+      await _fileLogOutput!.init();
       _fileLogger = Logger(
         printer: PrettyPrinter(
           methodCount: 0,
@@ -271,7 +277,7 @@ class AppLogger {
           printEmojis: false,
           dateTimeFormat: DateTimeFormat.dateAndTime,
         ),
-        output: FileOutput(file: _logFile!),
+        output: _fileLogOutput!,
         filter: _FileLogFilter(),
       );
     } on Object catch (e) {
@@ -315,7 +321,18 @@ class AppLogger {
     _fileLoggerInitialized = false;
     _fileLogger = null;
     _logFile = null;
+    final output = _fileLogOutput;
+    _fileLogOutput = null;
+    if (output != null) {
+      unawaited(output.destroy());
+    }
     _consoleLogger?.w(reason);
+  }
+
+  /// Ensures buffered file log lines are visible on disk (tests / log viewer).
+  @visibleForTesting
+  Future<void> flushFileLogging() async {
+    await _fileLogOutput?.flush();
   }
 
   /// Reads log text (tail of large files) with a timeout.
@@ -428,6 +445,31 @@ class AppLogger {
     }
     return buffer.toString();
   }
+}
+
+/// Append-only file output with `flush: true` so Windows readers see full lines.
+class _FlushingFileOutput extends LogOutput {
+  _FlushingFileOutput({required this.file});
+
+  final File file;
+
+  @override
+  Future<void> init() async {}
+
+  @override
+  void output(OutputEvent event) {
+    if (event.lines.isEmpty) return;
+    file.writeAsStringSync(
+      '${event.lines.join('\n')}\n',
+      mode: FileMode.append,
+      flush: true,
+    );
+  }
+
+  Future<void> flush() async {}
+
+  @override
+  Future<void> destroy() async {}
 }
 
 class _ConsoleLogFilter extends LogFilter {
