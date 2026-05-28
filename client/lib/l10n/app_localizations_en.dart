@@ -1394,6 +1394,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get mcpInstalledSectionTitle => 'Installed MCP servers';
 
   @override
+  String mcpInstalledCount(int count) {
+    return '$count installed';
+  }
+
+  @override
+  String get mcpNoInstalled => 'No MCP servers installed yet';
+
+  @override
+  String get mcpNoInstalledHint =>
+      'Open Discovery to add servers from built-in templates or registries.';
+
+  @override
   String get mcpDiscoverySectionTitle => 'Discover MCP servers';
 
   @override
@@ -1494,6 +1506,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get mcpEdit => 'Edit MCP server';
 
   @override
+  String get mcpOpenHomepage => 'Open link';
+
+  @override
+  String get mcpFormDetailHint =>
+      'Select a server to edit, or add a new MCP server.';
+
+  @override
+  String get mcpServerNotFound => 'MCP server not found';
+
+  @override
   String get mcpImport => 'Import from machine';
 
   @override
@@ -1579,12 +1601,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get mcpOAuthStatusNeedsAuth => 'Needs OAuth';
-
-  @override
-  String get mcpFormTypeLabel => 'MCP type';
-
-  @override
-  String get mcpPresetCustom => 'Custom';
 
   @override
   String get mcpPresetDescFetch =>

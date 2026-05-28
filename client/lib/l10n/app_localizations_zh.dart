@@ -1359,6 +1359,17 @@ class AppLocalizationsZh extends AppLocalizations {
   String get mcpInstalledSectionTitle => '已安装的 MCP';
 
   @override
+  String mcpInstalledCount(int count) {
+    return '已安装 $count';
+  }
+
+  @override
+  String get mcpNoInstalled => '还没有安装 MCP 服务器';
+
+  @override
+  String get mcpNoInstalledHint => '打开发现页，从内置模板或注册中心添加。';
+
+  @override
   String get mcpDiscoverySectionTitle => '发现 MCP 服务器';
 
   @override
@@ -1457,6 +1468,15 @@ class AppLocalizationsZh extends AppLocalizations {
   String get mcpEdit => '编辑 MCP';
 
   @override
+  String get mcpOpenHomepage => '打开链接';
+
+  @override
+  String get mcpFormDetailHint => '选择服务器进行编辑，或添加新的 MCP 服务器。';
+
+  @override
+  String get mcpServerNotFound => '未找到该 MCP 服务器';
+
+  @override
   String get mcpImport => '从本机导入';
 
   @override
@@ -1540,12 +1560,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get mcpOAuthStatusNeedsAuth => '需要 OAuth';
-
-  @override
-  String get mcpFormTypeLabel => '选择 MCP 类型';
-
-  @override
-  String get mcpPresetCustom => '自定义';
 
   @override
   String get mcpPresetDescFetch => '抓取网页并将 HTML 转为 Markdown，供模型使用。';

@@ -36,8 +36,6 @@ Map<String, Object?> _npxServer(String package, {List<String> extraArgs = const 
   };
 }
 
-const mcpPresetCustomId = 'custom';
-
 List<McpPreset> mcpPresets({required String Function(String id) descriptionFor}) {
   return [
     McpPreset(

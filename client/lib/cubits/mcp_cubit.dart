@@ -71,6 +71,10 @@ class McpCubit extends Cubit<McpState> {
     }
   }
 
+  Future<void> toggleEnabled(McpServer server, bool enabled) async {
+    await upsert(server.copyWith(enabled: enabled));
+  }
+
   Future<bool> upsert(McpServer server) async {
     final busy = {...state.busyIds, server.id};
     emit(state.copyWith(busyIds: busy));

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../cubits/team_cubit.dart';
 import '../l10n/l10n_extensions.dart';
+import '../pages/mcp/mcp_routes.dart';
 import '../pages/mcp_management_page.dart';
 import '../pages/skill_management_page.dart';
 
@@ -45,8 +46,10 @@ class AndroidShellChrome {
     if (path == '/team-config/skills') return l10n.teamSkillsNav;
     if (path == '/team-config/mcp') return l10n.teamMcpNav;
     if (path == '/mcp') return l10n.mcpNavTitle;
+    if (path == '/mcp/add') return l10n.mcpAddTitle;
+    if (path.startsWith('/mcp/edit/')) return l10n.mcpEdit;
     if (path.startsWith('/mcp/')) {
-      final segment = path.replaceFirst('/mcp/', '');
+      final segment = path.replaceFirst('/mcp/', '').split('/').first;
       for (final section in McpSection.values) {
         if (section.routeSegment() == segment) {
           return section.title(l10n);
@@ -93,6 +96,10 @@ class AndroidShellChrome {
     }
     if (_isSkillsDetail(path) || path == '/skills') {
       context.go('/skills');
+      return;
+    }
+    if (mcpPathIsForm(path)) {
+      context.go(mcpInstalledRoute);
       return;
     }
     if (_isMcpDetail(path) || path == '/mcp') {

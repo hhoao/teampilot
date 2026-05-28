@@ -6,12 +6,12 @@ import '../../l10n/l10n_extensions.dart';
 import '../../models/mcp_server.dart';
 import '../../services/mcp/mcp_credentials_store.dart';
 import '../../services/mcp/mcp_oauth_flow.dart';
-import '../../theme/workspace_surface_layers.dart';
 import 'mcp_oauth_connect_dialog.dart';
 import 'mcp_shared_widgets.dart';
 
 class McpInstalledSection extends StatefulWidget {
   const McpInstalledSection({
+    required this.state,
     required this.onImport,
     required this.onAdd,
     required this.onEdit,
@@ -21,6 +21,7 @@ class McpInstalledSection extends StatefulWidget {
     super.key,
   });
 
+  final McpState state;
   final VoidCallback onImport;
   final VoidCallback onAdd;
   final void Function(McpServer server) onEdit;
@@ -43,10 +44,17 @@ class _McpInstalledSectionState extends State<McpInstalledSection> {
     _reloadOAuthStatus();
   }
 
+  @override
+  void didUpdateWidget(covariant McpInstalledSection oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.state.servers != widget.state.servers) {
+      _reloadOAuthStatus();
+    }
+  }
+
   Future<void> _reloadOAuthStatus() async {
     final epoch = ++_oauthStatusEpoch;
-    final cubit = context.read<McpCubit>();
-    final servers = cubit.state.servers.where((s) => s.enabled).toList();
+    final servers = widget.state.servers;
     final configDir = McpOAuthFlow.claudeAppConfigDir();
     final data = await _credentials.read(configDir);
     final next = <String, bool>{};
@@ -72,110 +80,98 @@ class _McpInstalledSectionState extends State<McpInstalledSection> {
     await _reloadOAuthStatus();
     if (!mounted) return;
     widget.onOAuthConnected();
-    final messenger = ScaffoldMessenger.of(context);
-    final message = context.l10n.mcpOAuthConnectSuccess;
-    messenger.showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(context.l10n.mcpOAuthConnectSuccess)),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final state = context.watch<McpCubit>().state;
-    final cs = Theme.of(context).colorScheme;
-    final enabled = state.servers.where((s) => s.enabled).toList();
+    final state = widget.state;
+    final cubit = context.read<McpCubit>();
+    final servers = state.servers;
+    final toolbarBusy = state.busyIds.isNotEmpty;
+    final loading = state.status == McpLoadStatus.loading && servers.isEmpty;
 
-    if (state.status == McpLoadStatus.loading) {
-      return const Center(child: CircularProgressIndicator());
-    }
-    if (state.status == McpLoadStatus.error) {
-      return Center(child: Text(state.errorMessage ?? 'Error'));
-    }
-
-    if (_oauthStatus == null) {
-      return const Center(child: CircularProgressIndicator());
-    }
-
-    return BlocListener<McpCubit, McpState>(
-      listenWhen: (a, b) =>
-          a.status != b.status ||
-          a.servers.length != b.servers.length ||
-          a.servers != b.servers,
-      listener: (_, _) => _reloadOAuthStatus(),
+    return SingleChildScrollView(
       child: Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        McpWorkspaceCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              McpCardHeader(
-                title: l10n.mcpInstalledSectionTitle,
-                trailing: Wrap(
-                  spacing: 8,
-                  children: [
-                    OutlinedButton.icon(
-                      onPressed: widget.onImport,
-                      icon: const Icon(Icons.download_outlined, size: 18),
-                      label: Text(l10n.mcpImportExisting),
-                    ),
-                    FilledButton.icon(
-                      onPressed: widget.onAdd,
-                      icon: const Icon(Icons.add, size: 18),
-                      label: Text(l10n.mcpAddButton),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 12),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                decoration: workspaceInsetDecoration(cs, radius: 8),
-                child: Text(
-                  l10n.mcpConfiguredCount(enabled.length),
-                  style: const TextStyle(fontWeight: FontWeight.w600),
-                ),
-              ),
-            ],
-          ),
-        ),
-        Expanded(
-          child: enabled.isEmpty
-              ? McpWorkspaceCard(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          McpWorkspaceCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                McpCardHeader(
+                  title: l10n.mcpInstalledCount(servers.length),
+                  trailing: Wrap(
+                    spacing: 8,
                     children: [
-                      Text(l10n.mcpEmpty),
-                      const SizedBox(height: 12),
-                      TextButton(
-                        onPressed: widget.onGoDiscovery,
-                        child: Text(l10n.mcpEmptyGoDiscovery),
+                      OutlinedButton.icon(
+                        onPressed: toolbarBusy ? null : widget.onImport,
+                        icon: const Icon(Icons.download_outlined, size: 16),
+                        label: Text(l10n.mcpImportExisting),
+                      ),
+                      OutlinedButton.icon(
+                        onPressed: toolbarBusy ? null : widget.onAdd,
+                        icon: const Icon(Icons.add, size: 16),
+                        label: Text(l10n.mcpAddButton),
                       ),
                     ],
                   ),
-                )
-              : ListView.builder(
-                  padding: EdgeInsets.zero,
-                  itemCount: enabled.length,
-                  itemBuilder: (context, index) {
-                    final server = enabled[index];
-                    final showOAuth = mcpServerShowsOAuthConnect(server);
-                    return McpInstalledServerCard(
-                      server: server,
-                      busy: state.busyIds.contains(server.id),
-                      onEdit: () => widget.onEdit(server),
-                      onDelete: () => widget.onDelete(server),
-                      oauthAuthenticated: showOAuth
-                          ? (_oauthStatus![server.id] ?? false)
-                          : null,
-                      onOAuthConnect: showOAuth
-                          ? () => _connectOAuth(server)
-                          : null,
-                    );
-                  },
                 ),
-        ),
-      ],
-    ),
+                const SizedBox(height: 14),
+                if (loading)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 32),
+                    child: Center(child: CircularProgressIndicator()),
+                  )
+                else if (state.status == McpLoadStatus.error)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    child: Text(
+                      state.errorMessage ?? 'Error',
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.error,
+                      ),
+                    ),
+                  )
+                else if (servers.isEmpty)
+                  McpEmptyBlock(
+                    icon: Icons.dns_outlined,
+                    title: l10n.mcpNoInstalled,
+                    hint: l10n.mcpNoInstalledHint,
+                    actionLabel: l10n.mcpEmptyGoDiscovery,
+                    onAction: widget.onGoDiscovery,
+                  )
+                else
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      for (final server in servers)
+                        McpInstalledServerRow(
+                          server: server,
+                          busy: state.busyIds.contains(server.id),
+                          onEdit: () => widget.onEdit(server),
+                          onDelete: () => widget.onDelete(server),
+                          onToggleEnabled: (enabled) =>
+                              cubit.toggleEnabled(server, enabled),
+                          oauthAuthenticated: mcpServerShowsOAuthConnect(server)
+                              ? (_oauthStatus == null
+                                  ? null
+                                  : (_oauthStatus![server.id] ?? false))
+                              : null,
+                          onOAuthConnect: mcpServerShowsOAuthConnect(server)
+                              ? () => _connectOAuth(server)
+                              : null,
+                        ),
+                    ],
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

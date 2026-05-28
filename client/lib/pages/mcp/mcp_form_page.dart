@@ -3,17 +3,23 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../config/mcp_presets.dart';
 import '../../cubits/mcp_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/mcp_server.dart';
 import '../../theme/workspace_surface_layers.dart';
 
-/// Full-screen add/edit form (cc-switch [McpFormModal] style).
+/// Add/edit MCP server for the workspace detail pane (not full-screen).
 class McpFormPage extends StatefulWidget {
-  const McpFormPage({this.existing, super.key});
+  const McpFormPage({
+    required this.onCancel,
+    required this.onSaved,
+    this.existing,
+    super.key,
+  });
 
   final McpServer? existing;
+  final VoidCallback onCancel;
+  final ValueChanged<bool> onSaved;
 
   @override
   State<McpFormPage> createState() => _McpFormPageState();
@@ -28,7 +34,6 @@ class _McpFormPageState extends State<McpFormPage> {
   late final TextEditingController _docsCtrl;
   late final TextEditingController _jsonCtrl;
 
-  String? _selectedPresetId;
   bool _metadataExpanded = false;
   String? _jsonError;
   bool _saving = false;
@@ -55,9 +60,6 @@ class _McpFormPageState extends State<McpFormPage> {
             }),
     );
     _metadataExpanded = existing?.hasMetadata ?? false;
-    if (existing != null) {
-      _selectedPresetId = mcpPresetCustomId;
-    }
   }
 
   @override
@@ -70,23 +72,6 @@ class _McpFormPageState extends State<McpFormPage> {
     _docsCtrl.dispose();
     _jsonCtrl.dispose();
     super.dispose();
-  }
-
-  void _applyPreset(McpPreset preset) {
-    setState(() {
-      _selectedPresetId = preset.id;
-      if (!_isEditing) {
-        _idCtrl.text = preset.id;
-      }
-      _nameCtrl.text = preset.name;
-      _descriptionCtrl.text = preset.description;
-      _tagsCtrl.text = preset.tags.join(', ');
-      _homepageCtrl.text = preset.homepage;
-      _docsCtrl.text = preset.docs;
-      _jsonCtrl.text = const JsonEncoder.withIndent('  ').convert(preset.server);
-      _metadataExpanded = true;
-      _jsonError = null;
-    });
   }
 
   void _formatJson() {
@@ -147,12 +132,14 @@ class _McpFormPageState extends State<McpFormPage> {
     if (!mounted) return;
     setState(() => _saving = false);
     if (ok) {
-      Navigator.pop(context, true);
+      widget.onSaved(true);
       return;
     }
     final message = cubit.state.errorMessage;
     if (message != null) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
     }
   }
 
@@ -160,182 +147,171 @@ class _McpFormPageState extends State<McpFormPage> {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final cs = Theme.of(context).colorScheme;
-    final presets = mcpPresets(descriptionFor: (id) => _presetDescription(l10n, id));
 
-    return Scaffold(
-      appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.close),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: Text(_isEditing ? l10n.mcpEdit : l10n.mcpAddTitle),
-        actions: [
-          FilledButton.icon(
-            onPressed: _saving ? null : _save,
-            icon: _saving
-                ? const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.add, size: 18),
-            label: Text(_isEditing ? l10n.save : l10n.mcpFormSubmitAdd),
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textBase = isDark ? Colors.white : const Color(0xFF111827);
+
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(4, 4, 4, 24),
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(4, 0, 4, 0),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Expanded(
+                child: Text(
+                  _isEditing ? l10n.mcpEdit : l10n.mcpAddTitle,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                    color: textBase,
+                  ),
+                ),
+              ),
+              FilledButton.icon(
+                onPressed: _saving ? null : _save,
+                icon: _saving
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : Icon(_isEditing ? Icons.save : Icons.add, size: 18),
+                label: Text(_isEditing ? l10n.save : l10n.mcpFormSubmitAdd),
+              ),
+              IconButton(
+                tooltip: l10n.cancel,
+                onPressed: _saving ? null : widget.onCancel,
+                icon: const Icon(Icons.close),
+              ),
+            ],
           ),
-          const SizedBox(width: 12),
-        ],
-      ),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
-        children: [
-          _sectionCard(
-            cs,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(
-                  l10n.mcpFormTypeLabel,
-                  style: Theme.of(context).textTheme.titleSmall,
+        ),
+        const SizedBox(height: 16),
+        _sectionCard(
+          cs,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              TextField(
+                controller: _idCtrl,
+                enabled: !_isEditing,
+                decoration: InputDecoration(
+                  labelText: l10n.mcpFormIdLabel,
+                  hintText: 'my-mcp-server',
                 ),
-                const SizedBox(height: 10),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    ChoiceChip(
-                      label: Text(l10n.mcpPresetCustom),
-                      selected: _selectedPresetId == mcpPresetCustomId ||
-                          _selectedPresetId == null,
-                      onSelected: (_) => setState(() {
-                        _selectedPresetId = mcpPresetCustomId;
-                      }),
-                    ),
-                    for (final preset in presets)
-                      ChoiceChip(
-                        label: Text(preset.id),
-                        selected: _selectedPresetId == preset.id,
-                        onSelected: (_) => _applyPreset(preset),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _nameCtrl,
+                decoration: InputDecoration(
+                  labelText: l10n.mcpFormDisplayNameLabel,
+                  hintText: l10n.mcpFormDisplayNameHint,
+                ),
+              ),
+              const SizedBox(height: 8),
+              InkWell(
+                onTap: () =>
+                    setState(() => _metadataExpanded = !_metadataExpanded),
+                borderRadius: BorderRadius.circular(8),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  child: Row(
+                    children: [
+                      Text(
+                        l10n.mcpFormMetadata,
+                        style: Theme.of(context).textTheme.titleSmall,
                       ),
-                  ],
+                      const Spacer(),
+                      Icon(
+                        _metadataExpanded
+                            ? Icons.expand_less
+                            : Icons.expand_more,
+                      ),
+                    ],
+                  ),
                 ),
-                const SizedBox(height: 16),
+              ),
+              if (_metadataExpanded) ...[
+                const SizedBox(height: 8),
                 TextField(
-                  controller: _idCtrl,
-                  enabled: !_isEditing,
+                  controller: _descriptionCtrl,
+                  maxLines: 2,
                   decoration: InputDecoration(
-                    labelText: l10n.mcpFormIdLabel,
-                    hintText: 'my-mcp-server',
+                    labelText: l10n.mcpFormDescriptionLabel,
+                    hintText: l10n.mcpFormDescriptionHint,
                   ),
                 ),
                 const SizedBox(height: 12),
                 TextField(
-                  controller: _nameCtrl,
+                  controller: _tagsCtrl,
                   decoration: InputDecoration(
-                    labelText: l10n.mcpFormDisplayNameLabel,
-                    hintText: l10n.mcpFormDisplayNameHint,
+                    labelText: l10n.mcpFormTagsLabel,
+                    hintText: l10n.mcpFormTagsHint,
                   ),
                 ),
-                const SizedBox(height: 8),
-                InkWell(
-                  onTap: () => setState(() => _metadataExpanded = !_metadataExpanded),
-                  borderRadius: BorderRadius.circular(8),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    child: Row(
-                      children: [
-                        Text(
-                          l10n.mcpFormMetadata,
-                          style: Theme.of(context).textTheme.titleSmall,
-                        ),
-                        const Spacer(),
-                        Icon(
-                          _metadataExpanded
-                              ? Icons.expand_less
-                              : Icons.expand_more,
-                        ),
-                      ],
-                    ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _homepageCtrl,
+                  keyboardType: TextInputType.url,
+                  decoration: InputDecoration(
+                    labelText: l10n.mcpFormHomepageLabel,
+                    hintText: 'https://example.com',
                   ),
                 ),
-                if (_metadataExpanded) ...[
-                  const SizedBox(height: 8),
-                  TextField(
-                    controller: _descriptionCtrl,
-                    maxLines: 2,
-                    decoration: InputDecoration(
-                      labelText: l10n.mcpFormDescriptionLabel,
-                      hintText: l10n.mcpFormDescriptionHint,
-                    ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _docsCtrl,
+                  keyboardType: TextInputType.url,
+                  decoration: InputDecoration(
+                    labelText: l10n.mcpFormDocsLabel,
+                    hintText: 'https://example.com/docs',
                   ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: _tagsCtrl,
-                    decoration: InputDecoration(
-                      labelText: l10n.mcpFormTagsLabel,
-                      hintText: l10n.mcpFormTagsHint,
-                    ),
+                ),
+              ],
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        _sectionCard(
+          cs,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  Text(
+                    l10n.mcpFormJsonLabel,
+                    style: Theme.of(context).textTheme.titleSmall,
                   ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: _homepageCtrl,
-                    keyboardType: TextInputType.url,
-                    decoration: InputDecoration(
-                      labelText: l10n.mcpFormHomepageLabel,
-                      hintText: 'https://example.com',
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: _docsCtrl,
-                    keyboardType: TextInputType.url,
-                    decoration: InputDecoration(
-                      labelText: l10n.mcpFormDocsLabel,
-                      hintText: 'https://example.com/docs',
-                    ),
+                  const Spacer(),
+                  TextButton(
+                    onPressed: _formatJson,
+                    child: Text(l10n.mcpFormFormatJson),
                   ),
                 ],
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-          _sectionCard(
-            cs,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Row(
-                  children: [
-                    Text(
-                      l10n.mcpFormJsonLabel,
-                      style: Theme.of(context).textTheme.titleSmall,
-                    ),
-                    const Spacer(),
-                    TextButton(
-                      onPressed: _formatJson,
-                      child: Text(l10n.mcpFormFormatJson),
-                    ),
-                  ],
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: _jsonCtrl,
+                maxLines: 12,
+                style: const TextStyle(
+                  fontFamily: 'monospace',
+                  fontSize: 13,
+                  height: 1.45,
                 ),
-                const SizedBox(height: 8),
-                TextField(
-                  controller: _jsonCtrl,
-                  maxLines: 12,
-                  style: const TextStyle(
-                    fontFamily: 'monospace',
-                    fontSize: 13,
-                    height: 1.45,
-                  ),
-                  decoration: InputDecoration(
-                    errorText: _jsonError,
-                    filled: true,
-                    fillColor: cs.surfaceContainerHighest.withValues(alpha: 0.35),
-                    border: const OutlineInputBorder(),
-                  ),
+                decoration: InputDecoration(
+                  errorText: _jsonError,
+                  filled: true,
+                  fillColor: cs.surfaceContainerHighest.withValues(alpha: 0.35),
+                  border: const OutlineInputBorder(),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -347,12 +323,3 @@ class _McpFormPageState extends State<McpFormPage> {
     );
   }
 }
-
-String _presetDescription(dynamic l10n, String id) => switch (id) {
-  'fetch' => l10n.mcpPresetDescFetch,
-  'time' => l10n.mcpPresetDescTime,
-  'memory' => l10n.mcpPresetDescMemory,
-  'sequential-thinking' => l10n.mcpPresetDescSequentialThinking,
-  'context7' => l10n.mcpPresetDescContext7,
-  _ => '',
-};

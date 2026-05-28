@@ -452,6 +452,14 @@
   "mcpNavDiscovery": "发现",
   "mcpNavRegistries": "注册中心",
   "mcpInstalledSectionTitle": "已安装的 MCP",
+  "mcpInstalledCount": "已安装 {count}",
+  "@mcpInstalledCount": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "mcpNoInstalled": "还没有安装 MCP 服务器",
+  "mcpNoInstalledHint": "打开发现页，从内置模板或注册中心添加。",
   "mcpDiscoverySectionTitle": "发现 MCP 服务器",
   "mcpDiscoverySectionHint": "浏览内置模板，以及「仓库」中配置的远程目录。",
   "mcpDiscoverySourceBuiltin": "内置",
@@ -493,6 +501,9 @@
   "mcpEmptyGoRegistries": "打开注册中心",
   "mcpAdd": "添加 MCP",
   "mcpEdit": "编辑 MCP",
+  "mcpOpenHomepage": "打开链接",
+  "mcpFormDetailHint": "选择服务器进行编辑，或添加新的 MCP 服务器。",
+  "mcpServerNotFound": "未找到该 MCP 服务器",
   "mcpImport": "从本机导入",
   "mcpImportEmpty": "在 ~/.claude.json 与 ~/.flashskyai.json 中未找到 MCP",
   "mcpImportSummary": "新增 {added} 个，冲突 {conflicts} 个",
@@ -535,8 +546,6 @@
   "mcpOAuthConnectSuccess": "MCP OAuth 已连接",
   "mcpOAuthStatusConnected": "OAuth 已连接",
   "mcpOAuthStatusNeedsAuth": "需要 OAuth",
-  "mcpFormTypeLabel": "选择 MCP 类型",
-  "mcpPresetCustom": "自定义",
   "mcpPresetDescFetch": "抓取网页并将 HTML 转为 Markdown，供模型使用。",
   "mcpPresetDescTime": "时间查询：当前时间、时区转换、日期计算等。",
   "mcpPresetDescMemory": "跨会话的持久化记忆图谱。",

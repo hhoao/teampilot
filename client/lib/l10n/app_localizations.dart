@@ -2606,6 +2606,24 @@ abstract class AppLocalizations {
   /// **'Installed MCP servers'**
   String get mcpInstalledSectionTitle;
 
+  /// No description provided for @mcpInstalledCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} installed'**
+  String mcpInstalledCount(int count);
+
+  /// No description provided for @mcpNoInstalled.
+  ///
+  /// In en, this message translates to:
+  /// **'No MCP servers installed yet'**
+  String get mcpNoInstalled;
+
+  /// No description provided for @mcpNoInstalledHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Open Discovery to add servers from built-in templates or registries.'**
+  String get mcpNoInstalledHint;
+
   /// No description provided for @mcpDiscoverySectionTitle.
   ///
   /// In en, this message translates to:
@@ -2792,6 +2810,24 @@ abstract class AppLocalizations {
   /// **'Edit MCP server'**
   String get mcpEdit;
 
+  /// No description provided for @mcpOpenHomepage.
+  ///
+  /// In en, this message translates to:
+  /// **'Open link'**
+  String get mcpOpenHomepage;
+
+  /// No description provided for @mcpFormDetailHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Select a server to edit, or add a new MCP server.'**
+  String get mcpFormDetailHint;
+
+  /// No description provided for @mcpServerNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'MCP server not found'**
+  String get mcpServerNotFound;
+
   /// No description provided for @mcpImport.
   ///
   /// In en, this message translates to:
@@ -2947,18 +2983,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Needs OAuth'**
   String get mcpOAuthStatusNeedsAuth;
-
-  /// No description provided for @mcpFormTypeLabel.
-  ///
-  /// In en, this message translates to:
-  /// **'MCP type'**
-  String get mcpFormTypeLabel;
-
-  /// No description provided for @mcpPresetCustom.
-  ///
-  /// In en, this message translates to:
-  /// **'Custom'**
-  String get mcpPresetCustom;
 
   /// No description provided for @mcpPresetDescFetch.
   ///

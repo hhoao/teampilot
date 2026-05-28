@@ -698,6 +698,14 @@
   "mcpNavDiscovery": "Discovery",
   "mcpNavRegistries": "Registry",
   "mcpInstalledSectionTitle": "Installed MCP servers",
+  "mcpInstalledCount": "{count} installed",
+  "@mcpInstalledCount": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "mcpNoInstalled": "No MCP servers installed yet",
+  "mcpNoInstalledHint": "Open Discovery to add servers from built-in templates or registries.",
   "mcpDiscoverySectionTitle": "Discover MCP servers",
   "mcpDiscoverySectionHint": "Browse built-in templates and remote catalogs configured under Registries.",
   "mcpDiscoverySourceBuiltin": "Built-in",
@@ -739,6 +747,9 @@
   "mcpEmptyGoRegistries": "Open registry settings",
   "mcpAdd": "Add MCP server",
   "mcpEdit": "Edit MCP server",
+  "mcpOpenHomepage": "Open link",
+  "mcpFormDetailHint": "Select a server to edit, or add a new MCP server.",
+  "mcpServerNotFound": "MCP server not found",
   "mcpImport": "Import from machine",
   "mcpImportEmpty": "No MCP servers found in ~/.claude.json or ~/.flashskyai.json",
   "mcpImportSummary": "{added} new, {conflicts} conflicts",
@@ -781,8 +792,6 @@
   "mcpOAuthConnectSuccess": "MCP OAuth connected",
   "mcpOAuthStatusConnected": "OAuth connected",
   "mcpOAuthStatusNeedsAuth": "Needs OAuth",
-  "mcpFormTypeLabel": "MCP type",
-  "mcpPresetCustom": "Custom",
   "mcpPresetDescFetch": "Fetch web pages and convert HTML to markdown for LLMs.",
   "mcpPresetDescTime": "Current time, timezone conversion, and date calculations.",
   "mcpPresetDescMemory": "Persistent memory graph for knowledge across sessions.",

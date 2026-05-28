@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../l10n/l10n_extensions.dart';
 import '../../models/mcp_catalog_listing.dart';
 import '../../models/mcp_server.dart';
 import '../../theme/workspace_surface_layers.dart';
+import '../../widgets/github_details_button.dart';
 
 class McpWorkspaceCard extends StatelessWidget {
   const McpWorkspaceCard({required this.child, super.key});
@@ -34,7 +34,7 @@ class McpCardHeader extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textBase = isDark ? Colors.white : const Color(0xFF111827);
     return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Expanded(
           child: Text(
@@ -52,12 +52,66 @@ class McpCardHeader extends StatelessWidget {
   }
 }
 
-class McpInstalledServerCard extends StatelessWidget {
-  const McpInstalledServerCard({
+class McpEmptyBlock extends StatelessWidget {
+  const McpEmptyBlock({
+    required this.icon,
+    required this.title,
+    required this.hint,
+    this.actionLabel,
+    this.onAction,
+    super.key,
+  });
+
+  final IconData icon;
+  final String title;
+  final String hint;
+  final String? actionLabel;
+  final VoidCallback? onAction;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textBase = isDark ? Colors.white : const Color(0xFF111827);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 24),
+      child: Column(
+        children: [
+          Icon(icon, size: 36, color: textBase.withValues(alpha: 0.35)),
+          const SizedBox(height: 12),
+          Text(
+            title,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              color: textBase,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            hint,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 12,
+              color: textBase.withValues(alpha: 0.55),
+            ),
+          ),
+          if (actionLabel != null && onAction != null) ...[
+            const SizedBox(height: 10),
+            TextButton(onPressed: onAction, child: Text(actionLabel!)),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class McpInstalledServerRow extends StatelessWidget {
+  const McpInstalledServerRow({
     required this.server,
     required this.busy,
     required this.onEdit,
     required this.onDelete,
+    required this.onToggleEnabled,
     this.oauthAuthenticated,
     this.onOAuthConnect,
     super.key,
@@ -67,145 +121,161 @@ class McpInstalledServerCard extends StatelessWidget {
   final bool busy;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
+  final ValueChanged<bool> onToggleEnabled;
   final bool? oauthAuthenticated;
   final VoidCallback? onOAuthConnect;
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final l10n = context.l10n;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textBase = isDark ? Colors.white : const Color(0xFF111827);
     final type = server.server['type']?.toString() ?? 'stdio';
     final command = server.server['command']?.toString() ?? '';
     final url = server.server['url']?.toString() ?? '';
     final description = server.description.trim();
-    final homepage = server.homepage.trim();
-    final subtitle = description.isNotEmpty
-        ? description
-        : (server.tags.isNotEmpty
-            ? server.tags.join(', ')
-            : (url.isNotEmpty ? url : '$type · $command'));
+    final typeLabel = url.isNotEmpty ? url : '$type · $command';
 
-    return Material(
-      color: cs.surfaceContainerHighest.withValues(alpha: 0.35),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.6)),
-      ),
-      child: InkWell(
-        onTap: busy ? null : onEdit,
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Flexible(
-                          child: Text(
-                            server.name,
-                            style: const TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w700,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: workspaceInsetDecoration(cs, radius: 10),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          server.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: textBase,
                           ),
                         ),
-                        if (homepage.isNotEmpty) ...[
-                          const SizedBox(width: 6),
-                          InkWell(
-                            onTap: () async {
-                              final uri = Uri.tryParse(homepage);
-                              if (uri != null && await canLaunchUrl(uri)) {
-                                await launchUrl(
-                                  uri,
-                                  mode: LaunchMode.externalApplication,
-                                );
-                              }
-                            },
-                            child: Icon(
-                              Icons.open_in_new,
-                              size: 14,
-                              color: cs.primary.withValues(alpha: 0.85),
+                      ),
+                      const SizedBox(width: 8),
+                      Flexible(
+                        child: Text(
+                          typeLabel,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: textBase.withValues(alpha: 0.5),
+                          ),
+                        ),
+                      ),
+                      if (oauthAuthenticated == false) ...[
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.amber.withValues(alpha: 0.18),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            l10n.mcpOAuthStatusNeedsAuth,
+                            style: const TextStyle(
+                              fontSize: 10,
+                              color: Color(0xFFB45309),
+                              fontWeight: FontWeight.w700,
                             ),
                           ),
-                        ],
+                        ),
                       ],
-                    ),
+                      if (oauthAuthenticated == true) ...[
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: cs.primary.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            l10n.mcpOAuthStatusConnected,
+                            style: TextStyle(
+                              fontSize: 10,
+                              color: cs.primary,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                  if (description.isNotEmpty) ...[
                     const SizedBox(height: 4),
                     Text(
-                      subtitle,
+                      description,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         fontSize: 12,
-                        color: cs.onSurface.withValues(alpha: 0.65),
-                        height: 1.35,
+                        color: textBase.withValues(alpha: 0.6),
                       ),
                     ),
-                    if (oauthAuthenticated != null) ...[
-                      const SizedBox(height: 6),
-                      Row(
-                        children: [
-                          Icon(
-                            oauthAuthenticated!
-                                ? Icons.verified_user_outlined
-                                : Icons.lock_outline,
-                            size: 14,
-                            color: oauthAuthenticated!
-                                ? cs.primary
-                                : cs.onSurface.withValues(alpha: 0.55),
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            oauthAuthenticated!
-                                ? context.l10n.mcpOAuthStatusConnected
-                                : context.l10n.mcpOAuthStatusNeedsAuth,
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                              color: oauthAuthenticated!
-                                  ? cs.primary
-                                  : cs.onSurface.withValues(alpha: 0.65),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
                   ],
+                ],
+              ),
+            ),
+            if (onOAuthConnect != null && oauthAuthenticated != true)
+              Padding(
+                padding: const EdgeInsets.only(right: 4),
+                child: OutlinedButton(
+                  onPressed: busy ? null : onOAuthConnect,
+                  child: Text(l10n.mcpOAuthConnectAction),
                 ),
               ),
-              if (onOAuthConnect != null &&
-                  oauthAuthenticated != true &&
-                  !busy)
-                TextButton(
-                  onPressed: onOAuthConnect,
-                  child: Text(context.l10n.mcpOAuthConnectAction),
-                ),
-              if (busy)
-                const SizedBox(
-                  width: 22,
-                  height: 22,
+            GithubDetailsButton(
+              url: server.homepage.trim().isEmpty ? null : server.homepage,
+              label: l10n.mcpOpenHomepage,
+            ),
+            const SizedBox(width: 4),
+            Switch(
+              value: server.enabled,
+              onChanged: busy ? null : onToggleEnabled,
+            ),
+            IconButton(
+              tooltip: l10n.mcpEdit,
+              onPressed: busy ? null : onEdit,
+              icon: const Icon(Icons.edit_outlined, size: 18),
+            ),
+            IconButton(
+              tooltip: l10n.delete,
+              onPressed: busy ? null : onDelete,
+              icon: Icon(
+                Icons.delete_outline,
+                size: 18,
+                color: cs.error,
+              ),
+            ),
+            if (busy)
+              const Padding(
+                padding: EdgeInsets.only(left: 4),
+                child: SizedBox(
+                  width: 16,
+                  height: 16,
                   child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              else ...[
-                IconButton(
-                  tooltip: context.l10n.mcpEdit,
-                  icon: const Icon(Icons.edit_outlined, size: 20),
-                  onPressed: onEdit,
                 ),
-                IconButton(
-                  tooltip: context.l10n.delete,
-                  icon: Icon(Icons.delete_outline, size: 20, color: cs.error),
-                  onPressed: onDelete,
-                ),
-              ],
-            ],
-          ),
+              ),
+          ],
         ),
       ),
     );
@@ -247,11 +317,11 @@ class McpCatalogListingTile extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.fromLTRB(12, 10, 8, 10),
           child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               if (listing.iconUrl != null && listing.iconUrl!.isNotEmpty)
                 Padding(
-                  padding: const EdgeInsets.only(right: 10, top: 2),
+                  padding: const EdgeInsets.only(right: 10),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(8),
                     child: Image.network(
@@ -270,6 +340,7 @@ class McpCatalogListingTile extends StatelessWidget {
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Row(
                       children: [
@@ -331,7 +402,7 @@ class McpCatalogListingTile extends StatelessWidget {
                 )
               else if (installed)
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
                   child: Text(
                     l10n.mcpCatalogInstalled,
                     style: TextStyle(
