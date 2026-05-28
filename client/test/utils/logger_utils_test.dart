@@ -3,6 +3,19 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/utils/logger_utils.dart';
 
+Future<String> _readLogWhenContains(String path, String needle) async {
+  final file = File(path);
+  for (var attempt = 0; attempt < 40; attempt++) {
+    if (await file.exists()) {
+      final contents = await file.readAsString();
+      if (contents.contains(needle)) return contents;
+    }
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+  }
+  if (!await file.exists()) return '';
+  return file.readAsString();
+}
+
 void main() {
   test('initFileLogging creates app log under app data root', () async {
     final temp = await Directory.systemTemp.createTemp('tp_logs_');
@@ -18,15 +31,18 @@ void main() {
 
     await AppLogger.instance.initFileLogging(temp.path);
     AppLogger.instance.i('hello from test');
-    await Future<void>.delayed(const Duration(milliseconds: 200));
 
     final logDir = Directory('${temp.path}/logs');
     expect(await logDir.exists(), isTrue);
 
+    final logPath = AppLogger.instance.currentLogFilePath;
+    expect(logPath, isNotNull);
+
     final files = await AppLogger.instance.listLogFiles();
     expect(files, isNotEmpty);
+    expect(files.first, logPath);
 
-    final contents = await File(files.first).readAsString();
+    final contents = await _readLogWhenContains(logPath!, 'hello from test');
     expect(contents, contains('hello from test'));
   });
 }
