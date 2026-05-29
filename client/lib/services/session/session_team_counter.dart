@@ -1,20 +1,8 @@
-import 'dart:async';
 import 'dart:convert';
 
+import '../../utils/lock_pool.dart';
 import '../cli/cli_data_layout.dart';
 import '../io/filesystem.dart';
-class _AsyncLock {
-  Future<void> _tail = Future.value();
-
-  Future<T> synchronized<T>(Future<T> Function() fn) {
-    final completer = Completer<void>();
-    final previous = _tail;
-    _tail = completer.future;
-    return previous.then((_) => fn()).whenComplete(() {
-      if (!completer.isCompleted) completer.complete();
-    });
-  }
-}
 
 /// Allocates monotonic `{teamId}-{seq}` CLI runtime names per team.
 class SessionTeamCounter {
@@ -24,15 +12,14 @@ class SessionTeamCounter {
 
   final Filesystem _fs;
   final CliDataLayout _layout;
-  static final Map<String, _AsyncLock> _locks = {};
+  static final _locks = LockPool();
 
   Future<String> nextCliTeamName(String teamId) async {
     final trimmed = teamId.trim();
     if (trimmed.isEmpty) {
       throw ArgumentError.value(teamId, 'teamId', 'must not be empty');
     }
-    final lock = _locks.putIfAbsent(trimmed, () => _AsyncLock());
-    return lock.synchronized(() async {
+    return _locks.synchronized(trimmed, () async {
       final path = _layout.teamSessionCounterFile(trimmed);
       var nextSeq = 0;
       final raw = await _fs.readString(path);

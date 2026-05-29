@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:convert';
 
 import 'package:path/path.dart' as p;
@@ -14,21 +13,9 @@ import '../services/session/session_team_counter.dart';
 import '../services/storage/app_storage.dart';
 import '../services/storage/flashskyai_storage_roots.dart';
 import '../services/session/session_lifecycle_service.dart';
+import '../utils/lock_pool.dart';
 import '../utils/project_path_utils.dart';
 import 'session_repository_fs.dart';
-
-class _AsyncLock {
-  Future<void> _tail = Future.value();
-
-  Future<T> synchronized<T>(Future<T> Function() fn) {
-    final completer = Completer<void>();
-    final previous = _tail;
-    _tail = completer.future;
-    return previous.then((_) => fn()).whenComplete(() {
-      if (!completer.isCompleted) completer.complete();
-    });
-  }
-}
 
 class SessionRepository {
   SessionRepository({
@@ -42,11 +29,10 @@ class SessionRepository {
   final String? _rootOverride;
   final FlashskyaiStorageRoots? _storageRoots;
   final SessionLifecycleService? _lifecycleService;
-  final Map<String, _AsyncLock> _sessionFileLocks = {};
+  final _sessionFileLocks = LockPool();
 
   Future<T> _withSessionFile<T>(String sessionId, Future<T> Function() fn) {
-    final lock = _sessionFileLocks.putIfAbsent(sessionId, () => _AsyncLock());
-    return lock.synchronized(fn);
+    return _sessionFileLocks.synchronized(sessionId, fn);
   }
 
   Future<SessionRepositoryFs> _fs() async {

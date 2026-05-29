@@ -145,21 +145,36 @@ void main() {
       },
     );
 
+    final invocation = CliInvocation.fromExecutable(
+      'wsl.exe /home/user/.local/bin/claude',
+    );
+
     final ok = await wslService.runAuthLogin('work');
     expect(ok, isFalse);
     expect(capturedExecutable, 'wsl.exe');
     expect(capturedArgs, isNotNull);
-    expect(capturedArgs!.first, 'env');
-    expect(
-      capturedArgs,
-      contains(
-        'CLAUDE_CONFIG_DIR=/data/tp/providers/claude/work',
-      ),
-    );
-    expect(capturedArgs, contains('CCGUI_CLI_LOGIN_AUTHORIZED=1'));
-    expect(capturedArgs, contains('/home/user/.local/bin/claude'));
     expect(capturedArgs, containsAll(const ['auth', 'login']));
-    expect(capturedEnv, isNull);
+    expect(capturedArgs, contains('/home/user/.local/bin/claude'));
+
+    if (invocation.usesWsl) {
+      expect(capturedArgs!.first, 'env');
+      expect(
+        capturedArgs,
+        contains(
+          'CLAUDE_CONFIG_DIR=/data/tp/providers/claude/work',
+        ),
+      );
+      expect(capturedArgs, contains('CCGUI_CLI_LOGIN_AUTHORIZED=1'));
+      expect(capturedEnv, isNull);
+    } else {
+      expect(capturedArgs!.first, '/home/user/.local/bin/claude');
+      expect(capturedEnv, isNotNull);
+      expect(
+        capturedEnv!['CLAUDE_CONFIG_DIR'],
+        fs.pathContext.join(base, 'providers', 'claude', 'work'),
+      );
+      expect(capturedEnv!['CCGUI_CLI_LOGIN_AUTHORIZED'], '1');
+    }
   });
 
   test('resolveProcessLaunch keeps native spawn plan for bare claude', () {

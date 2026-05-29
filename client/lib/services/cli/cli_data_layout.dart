@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:path/path.dart' as p;
 
+import '../../utils/lock_pool.dart';
 import '../storage/app_storage.dart';
 import '../plugin/cli_plugin_layout.dart';
 import '../plugin/cli_plugin_manifest_flavor.dart';
@@ -92,7 +93,7 @@ class CliDataLayout {
 
   /// Serializes [ensureTeamInheritsApp] per `(teamId, tool)` so concurrent
   /// member launches do not race on the shared team-level `agents/` / `skills/`.
-  static final Map<String, Future<void>> _teamInheritChains = {};
+  static final _teamInheritLocks = LockPool();
 
   p.Context get _pathContext => _fs.pathContext;
 
@@ -222,7 +223,7 @@ class CliDataLayout {
     final trimmedTeam = teamId.trim();
     final trimmedTool = tool.trim();
     if (trimmedTeam.isEmpty || trimmedTool.isEmpty) return;
-    await _runExclusiveTeamInherit('$trimmedTeam|$trimmedTool', () async {
+    await _teamInheritLocks.synchronized('$trimmedTeam|$trimmedTool', () async {
       await ensureAppToolLayout(trimmedTool);
       final teamRoot = teamToolDir(trimmedTeam, trimmedTool);
       await _fs.ensureDir(teamRoot);
@@ -240,24 +241,6 @@ class CliDataLayout {
         ),
       ]);
     });
-  }
-
-  Future<void> _runExclusiveTeamInherit(
-    String key,
-    Future<void> Function() action,
-  ) async {
-    final previous = _teamInheritChains[key] ?? Future<void>.value();
-    late final Future<void> current;
-    current = previous.then((_) => action());
-    final tail = current.whenComplete(() {});
-    _teamInheritChains[key] = tail;
-    try {
-      await current;
-    } finally {
-      if (_teamInheritChains[key] == tail) {
-        _teamInheritChains.remove(key);
-      }
-    }
   }
 
   /// Ensures member `{tool}/` exists and inherits team `agents/` + `skills/`.
