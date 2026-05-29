@@ -215,6 +215,9 @@ class CliDataLayout {
     await _fs.ensureDir(appToolRoot(tool));
   }
 
+  static String _teamInheritLockKey(String teamId, String tool) =>
+      '${teamId.trim()}|${tool.trim()}';
+
   /// Ensures team `{tool}/` exists and inherits app `agents/` + `skills/`.
   ///
   /// If team `skills/` already has content, it is left unchanged
@@ -223,29 +226,40 @@ class CliDataLayout {
     final trimmedTeam = teamId.trim();
     final trimmedTool = tool.trim();
     if (trimmedTeam.isEmpty || trimmedTool.isEmpty) return;
-    await _teamInheritLocks.synchronized('$trimmedTeam|$trimmedTool', () async {
-      await ensureAppToolLayout(trimmedTool);
-      final teamRoot = teamToolDir(trimmedTeam, trimmedTool);
-      await _fs.ensureDir(teamRoot);
-      await Future.wait([
-        _ensureInheritedChild(
-          childName: 'agents',
-          parentToolRoot: appToolRoot(trimmedTool),
-          ownToolRoot: teamRoot,
-        ),
-        _ensureInheritedChild(
-          childName: 'skills',
-          parentToolRoot: appToolRoot(trimmedTool),
-          ownToolRoot: teamRoot,
-          preservePopulatedDirectory: true,
-        ),
-      ]);
-    });
+    await _teamInheritLocks.synchronized(
+      _teamInheritLockKey(trimmedTeam, trimmedTool),
+      () => _ensureTeamInheritsAppUnlocked(trimmedTeam, trimmedTool),
+    );
+  }
+
+  Future<void> _ensureTeamInheritsAppUnlocked(
+    String trimmedTeam,
+    String trimmedTool,
+  ) async {
+    await ensureAppToolLayout(trimmedTool);
+    final teamRoot = teamToolDir(trimmedTeam, trimmedTool);
+    await _fs.ensureDir(teamRoot);
+    await Future.wait([
+      _ensureInheritedChild(
+        childName: 'agents',
+        parentToolRoot: appToolRoot(trimmedTool),
+        ownToolRoot: teamRoot,
+      ),
+      _ensureInheritedChild(
+        childName: 'skills',
+        parentToolRoot: appToolRoot(trimmedTool),
+        ownToolRoot: teamRoot,
+        preservePopulatedDirectory: true,
+      ),
+    ]);
   }
 
   /// Ensures member `{tool}/` exists and inherits team `agents/` + `skills/`.
   ///
   /// Call [provisionMemberPluginsFromTeam] separately (session launch) for `plugins/`.
+  ///
+  /// Holds the same per-team lock through member symlinks so concurrent member
+  /// launches cannot re-enter team inherit while another member still links.
   Future<void> ensureMemberInheritsTeam(
     String teamId,
     String sessionId,
@@ -257,22 +271,27 @@ class CliDataLayout {
     if (trimmedTeam.isEmpty || trimmedSession.isEmpty || trimmedTool.isEmpty) {
       return;
     }
-    await ensureTeamInheritsApp(trimmedTeam, trimmedTool);
-    final memberRoot = memberToolDir(trimmedTeam, trimmedSession, trimmedTool);
-    await _fs.ensureDir(memberRoot);
-    final teamRoot = teamToolDir(trimmedTeam, trimmedTool);
-    await Future.wait([
-      _ensureInheritedChild(
-        childName: 'agents',
-        parentToolRoot: teamRoot,
-        ownToolRoot: memberRoot,
-      ),
-      _ensureInheritedChild(
-        childName: 'skills',
-        parentToolRoot: teamRoot,
-        ownToolRoot: memberRoot,
-      ),
-    ]);
+    await _teamInheritLocks.synchronized(
+      _teamInheritLockKey(trimmedTeam, trimmedTool),
+      () async {
+        await _ensureTeamInheritsAppUnlocked(trimmedTeam, trimmedTool);
+        final memberRoot = memberToolDir(trimmedTeam, trimmedSession, trimmedTool);
+        await _fs.ensureDir(memberRoot);
+        final teamRoot = teamToolDir(trimmedTeam, trimmedTool);
+        await Future.wait([
+          _ensureInheritedChild(
+            childName: 'agents',
+            parentToolRoot: teamRoot,
+            ownToolRoot: memberRoot,
+          ),
+          _ensureInheritedChild(
+            childName: 'skills',
+            parentToolRoot: teamRoot,
+            ownToolRoot: memberRoot,
+          ),
+        ]);
+      },
+    );
   }
 
   /// Member `plugins/` dir for a tool CONFIG_DIR.
