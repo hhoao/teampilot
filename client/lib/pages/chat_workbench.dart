@@ -49,6 +49,7 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
   int _lastTabCount = -1;
   int? _lastTerminalThemeFingerprint;
   TerminalSession? _themeSyncedSession;
+  String? _lastThemeSyncedMemberId;
 
   @override
   void initState() {
@@ -72,14 +73,21 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
 
   /// Engine palette must match [terminalTheme]; [TerminalView.theme] alone does not
   /// recolor PTY output (unlike the old xterm [Terminal] theme).
-  void _syncTerminalTheme(TerminalSession session, TerminalTheme theme) {
+  void _syncTerminalTheme(
+    TerminalSession session,
+    TerminalTheme theme,
+    String selectedMemberId,
+  ) {
     final fp = terminalThemeFingerprint(theme);
-    if (_themeSyncedSession == session && _lastTerminalThemeFingerprint == fp) {
+    if (_themeSyncedSession == session &&
+        _lastTerminalThemeFingerprint == fp &&
+        _lastThemeSyncedMemberId == selectedMemberId) {
       return;
     }
     session.applyTerminalTheme(theme);
     _themeSyncedSession = session;
     _lastTerminalThemeFingerprint = fp;
+    _lastThemeSyncedMemberId = selectedMemberId;
   }
 
   void _syncWorkbenchTracking(ChatState state) {
@@ -367,7 +375,7 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
     if (session == null) {
       return const Center(child: CircularProgressIndicator());
     }
-    _syncTerminalTheme(session, terminalTheme);
+    _syncTerminalTheme(session, terminalTheme, chatCubit.state.selectedMemberId);
 
     return Container(
       key: AppKeys.chatWorkspace,
