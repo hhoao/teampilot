@@ -794,11 +794,13 @@ void main() {
         postFrameScheduler: postFrame.scheduler,
         autoLaunchAllMembersOnConnect: () => true,
       );
+      addTearDown(() => _tearDownChatCubitWithSessionPersist(cubit, postFrame));
       await cubit.loadProjectData(repo);
 
       cubit.syncTeam(team);
       await cubit.connectSession(team, repo: repo);
       await postFrame.flush();
+      await drainPendingAsyncWork();
 
       expect(cubit.state.tabs.length, 1);
       expect(cubit.isMemberRunning('team-lead'), isTrue);
@@ -839,11 +841,13 @@ void main() {
                 ),
         postFrameScheduler: postFrame.scheduler,
       );
+      addTearDown(() => _tearDownChatCubitWithSessionPersist(cubit, postFrame));
       await cubit.loadProjectData(repo);
 
       cubit.syncTeam(team);
       await cubit.connectSession(team, repo: repo);
       await postFrame.flush();
+      await drainPendingAsyncWork();
 
       expect(cubit.state.tabs.length, 1);
       expect(cubit.isMemberRunning('team-lead'), isTrue);
