@@ -3,6 +3,54 @@ import 'package:flutter_alacritty/flutter_alacritty.dart';
 
 int _packColor(Color color) => color.value & 0xFFFFFF;
 
+/// Maps [TerminalTheme] into engine [TerminalColors] (PTY palette + defaults).
+TerminalColors terminalColorsFromTheme(TerminalTheme theme) {
+  return TerminalColors(
+    background: theme.background,
+    foreground: theme.foreground,
+    selection: theme.selection,
+    ansi: List<int>.from(theme.ansi),
+    searchMatchBg: theme.searchMatch.bg,
+    searchMatchFg: theme.searchMatch.fg,
+    searchFocusedBg: theme.searchFocused.bg,
+    searchFocusedFg: theme.searchFocused.fg,
+    hintStartFg: theme.hintStart.fg,
+    hintStartBg: theme.hintStart.bg,
+    cursorText: theme.cursorText,
+    cursorBody: theme.cursorColor,
+  );
+}
+
+/// TeamPilot terminal config: theme colors + scrollback, other fields from defaults.
+TerminalConfig terminalConfigFromTheme(
+  TerminalTheme theme, {
+  int scrollbackLines = 10000,
+}) {
+  return TerminalConfig.defaults().copyWith(
+    colors: terminalColorsFromTheme(theme),
+    scrolling: TerminalConfig.defaults().scrolling.copyWith(
+      history: scrollbackLines,
+    ),
+  );
+}
+
+/// Fingerprint for skipping redundant [TerminalEngine.reconfigure] calls.
+int terminalThemeFingerprint(TerminalTheme theme) => Object.hash(
+  theme.background,
+  theme.foreground,
+  theme.selection,
+  Object.hashAll(theme.ansi),
+  theme.searchMatch.bg,
+  theme.searchMatch.fg,
+  theme.searchFocused.bg,
+  theme.searchFocused.fg,
+  theme.hintStart.bg,
+  theme.hintStart.fg,
+  theme.cursorText,
+  theme.cursorColor,
+  theme.bellOverlay,
+);
+
 /// Maps TeamPilot layout theme modes to [TerminalTheme] (packed RGB).
 TerminalTheme teampilotTerminalTheme(
   ColorScheme cs, {

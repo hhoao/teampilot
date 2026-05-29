@@ -17,6 +17,7 @@ import '../../models/team_config.dart';
 import '../team/terminal_activity_tracker.dart';
 import '../../utils/first_user_line_capture.dart';
 import '../../utils/logger.dart';
+import 'terminal_theme_mapper.dart';
 
 typedef TransportStarter =
     Future<TerminalTransport> Function(
@@ -40,15 +41,27 @@ class TerminalSession {
     this.confirmFallback = const Duration(milliseconds: 150),
     TransportStarter? transportStarter,
     int scrollbackLines = 10000,
+    TerminalTheme? terminalTheme,
     @Deprecated('Use transportStarter instead') dynamic ptyStarter,
   }) : _transportStarter = transportStarter ?? _defaultTransportStarter,
+       _scrollbackLines = scrollbackLines,
        engine = TerminalEngine(
-         config: TerminalConfig.defaults().copyWith(
-           scrolling: TerminalConfig.defaults().scrolling.copyWith(
-             history: scrollbackLines,
-           ),
-         ),
-       );
+         config: terminalTheme == null
+             ? TerminalConfig.defaults().copyWith(
+                 scrolling: TerminalConfig.defaults().scrolling.copyWith(
+                   history: scrollbackLines,
+                 ),
+               )
+             : terminalConfigFromTheme(
+                 terminalTheme,
+                 scrollbackLines: scrollbackLines,
+               ),
+       ) {
+    _terminalTheme = terminalTheme;
+  }
+
+  final int _scrollbackLines;
+  TerminalTheme? _terminalTheme;
 
   final String executable;
   final bool validateLaunch;
@@ -116,6 +129,23 @@ class TerminalSession {
 
   /// Writes PTY output bytes into the display engine.
   void write(String text) => _writeOutput(text);
+
+  /// Push TeamPilot layout colors into the Rust engine palette (ANSI + default fg/bg).
+  ///
+  /// [TerminalView.theme] only affects selection/search chrome; cell colors come
+  /// from the engine until this is called (xterm parity).
+  void applyTerminalTheme(TerminalTheme theme) {
+    _terminalTheme = theme;
+    if (_running || _starting) {
+      _reconfigureEngineColors(theme);
+    }
+  }
+
+  void _reconfigureEngineColors(TerminalTheme theme) {
+    engine.reconfigure(
+      terminalConfigFromTheme(theme, scrollbackLines: _scrollbackLines),
+    );
+  }
 
   /// Called from [TerminalView.onViewportResize] when the cell grid changes.
   void onViewportResize(int columns, int rows) {
@@ -244,6 +274,10 @@ class TerminalSession {
 
     engine.resize(columns: viewWidth, rows: viewHeight);
     engine.initializeEmpty(viewHeight, viewWidth);
+    final theme = _terminalTheme;
+    if (theme != null) {
+      _reconfigureEngineColors(theme);
+    }
 
     _spawnTransport(
       executable: invocation.executable,

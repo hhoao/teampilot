@@ -28,10 +28,8 @@ String normalizeTypographyScale(String? raw) {
   return kDefaultTypographyScaleId;
 }
 
-double clampTypographyCustomMultiplier(double value) => value.clamp(
-  kTypographyCustomMultiplierMin,
-  kTypographyCustomMultiplierMax,
-);
+double clampTypographyCustomMultiplier(double value) =>
+    value.clamp(kTypographyCustomMultiplierMin, kTypographyCustomMultiplierMax);
 
 AppTypographyScale typographyScaleForId(String id) =>
     switch (normalizeTypographyScale(id)) {
@@ -83,7 +81,8 @@ final class AppTypographyScale {
   static const double labelSmallBase = 11;
 
   /// xterm / bundled terminal face (not [TextTheme]).
-  static const double terminalBase = 13;
+  static const double terminalBase = 14;
+  static const double terminalMultiplier = 1.4;
 
   /// Code editor & log viewer monospace (defaults to body medium).
   static const double monoBase = bodyMediumBase;
@@ -96,7 +95,7 @@ final class AppTypographyScale {
   double get bodySmall => bodySmallBase * multiplier;
   double get labelMedium => labelMediumBase * multiplier;
   double get labelSmall => labelSmallBase * multiplier;
-  double get terminal => terminalBase * multiplier;
+  double get terminal => terminalBase * multiplier * terminalMultiplier;
   double get mono => monoBase * multiplier;
 }
 

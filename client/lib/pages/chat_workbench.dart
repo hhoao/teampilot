@@ -17,6 +17,7 @@ import '../models/app_session.dart';
 import '../models/team_config.dart';
 import '../repositories/session_repository.dart';
 import '../services/terminal/terminal_export.dart';
+import '../services/terminal/terminal_session.dart';
 import '../services/terminal/terminal_theme_mapper.dart';
 import '../services/terminal/terminal_uri_opener.dart';
 import '../services/terminal/terminal_fonts.dart';
@@ -46,6 +47,8 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
   String _lastSelectedMemberId = '';
   int _lastActiveTabIndex = -1;
   int _lastTabCount = -1;
+  int? _lastTerminalThemeFingerprint;
+  TerminalSession? _themeSyncedSession;
 
   @override
   void initState() {
@@ -65,6 +68,18 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
       _terminalController = TerminalController();
     }
     _terminalController.attach(engine);
+  }
+
+  /// Engine palette must match [terminalTheme]; [TerminalView.theme] alone does not
+  /// recolor PTY output (unlike the old xterm [Terminal] theme).
+  void _syncTerminalTheme(TerminalSession session, TerminalTheme theme) {
+    final fp = terminalThemeFingerprint(theme);
+    if (_themeSyncedSession == session && _lastTerminalThemeFingerprint == fp) {
+      return;
+    }
+    session.applyTerminalTheme(theme);
+    _themeSyncedSession = session;
+    _lastTerminalThemeFingerprint = fp;
   }
 
   void _syncWorkbenchTracking(ChatState state) {
@@ -352,6 +367,7 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
     if (session == null) {
       return const Center(child: CircularProgressIndicator());
     }
+    _syncTerminalTheme(session, terminalTheme);
 
     return Container(
       key: AppKeys.chatWorkspace,
