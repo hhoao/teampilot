@@ -74,6 +74,7 @@ class AppProviderCubit extends Cubit<AppProviderState> {
     AppProviderRepository? repository,
     ProviderImportService? importService,
     String? Function()? flashskyaiExecutablePath,
+    String? Function()? claudeExecutablePath,
     ToolConfigGenerator? generator,
     ClaudeProviderCredentialsService? claudeCredentialsService,
     String? basePath,
@@ -86,6 +87,7 @@ class AppProviderCubit extends Cubit<AppProviderState> {
            ClaudeProviderCredentialsService(
              fs: AppStorage.fs,
              basePath: _resolveBasePath(basePath),
+             resolveClaudeExecutable: claudeExecutablePath,
            ),
        super(const AppProviderState());
 

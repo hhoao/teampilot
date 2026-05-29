@@ -1,21 +1,49 @@
 import 'dart:convert';
 import 'dart:io';
+
 import '../../models/claude_credential_link_result.dart';
+import '../cli/cli_invocation.dart';
 import '../io/filesystem.dart';
+import '../session/launch_command_builder.dart';
+
+typedef ClaudeCredentialProcessRunner =
+    Future<ProcessResult> Function(
+      String executable,
+      List<String> arguments, {
+      Map<String, String>? environment,
+    });
 
 class ClaudeProviderCredentialsService {
   ClaudeProviderCredentialsService({
     required Filesystem fs,
     required String basePath,
     this.claudeExecutable = 'claude',
+    String? Function()? resolveClaudeExecutable,
+    ClaudeCredentialProcessRunner? processRunner,
   }) : _fs = fs,
-       _basePath = basePath.trim();
+       _basePath = basePath.trim(),
+       _resolveClaudeExecutable = resolveClaudeExecutable,
+       _processRunner = processRunner ?? _defaultProcessRunner;
 
   static const credentialsFileName = '.credentials.json';
 
   final Filesystem _fs;
   final String _basePath;
   final String claudeExecutable;
+  final String? Function()? _resolveClaudeExecutable;
+  final ClaudeCredentialProcessRunner _processRunner;
+
+  static Future<ProcessResult> _defaultProcessRunner(
+    String executable,
+    List<String> arguments, {
+    Map<String, String>? environment,
+  }) {
+    return Process.run(
+      executable,
+      arguments,
+      environment: environment,
+    );
+  }
 
   String providerDir(String providerId) => _fs.pathContext.join(
     _basePath,
@@ -110,22 +138,67 @@ class ClaudeProviderCredentialsService {
     return CredentialLinkResult.copied;
   }
 
-  Map<String, String> loginEnvironment(String providerId) => {
-    'CLAUDE_CONFIG_DIR': providerDir(providerId),
-    'CCGUI_CLI_LOGIN_AUTHORIZED': '1',
-  };
+  Map<String, String> loginEnvironment(
+    String providerId, {
+    bool useWslPaths = false,
+  }) {
+    var configDir = providerDir(providerId);
+    if (useWslPaths) {
+      configDir = LaunchCommandBuilder.normalizePathForCli(
+        configDir,
+        useWslPaths: true,
+      );
+    }
+    return {
+      'CLAUDE_CONFIG_DIR': configDir,
+      'CCGUI_CLI_LOGIN_AUTHORIZED': '1',
+    };
+  }
+
+  String _resolvedClaudeExecutable() {
+    final resolved = _resolveClaudeExecutable?.call()?.trim();
+    if (resolved != null && resolved.isNotEmpty) return resolved;
+    return claudeExecutable;
+  }
+
+  Future<ProcessResult> _runClaude(
+    List<String> subcommand, {
+    required String providerId,
+    Map<String, String> platformEnv = const {},
+  }) async {
+    final executable = _resolvedClaudeExecutable();
+    final invocation = CliInvocation.fromExecutable(executable);
+    final env = {
+      ...platformEnv,
+      ...loginEnvironment(providerId, useWslPaths: invocation.usesWsl),
+    };
+    final launch = CliInvocation.resolveProcessLaunch(
+      executable: executable,
+      subcommand: subcommand,
+      environment: env,
+    );
+    return _processRunner(
+      launch.executable,
+      launch.arguments,
+      environment: launch.environment,
+    );
+  }
 
   Future<bool> runAuthLogin(
     String providerId, {
     Map<String, String> platformEnv = const {},
   }) async {
     await _fs.ensureDir(providerDir(providerId));
-    final result = await Process.run(
-      claudeExecutable,
-      ['auth', 'login'],
-      environment: {...platformEnv, ...loginEnvironment(providerId)},
-    );
-    return result.exitCode == 0 && (await probe(providerId)).isReady;
+    try {
+      final result = await _runClaude(
+        const ['auth', 'login'],
+        providerId: providerId,
+        platformEnv: platformEnv,
+      );
+      return result.exitCode == 0 && (await probe(providerId)).isReady;
+    } on ProcessException {
+      return false;
+    }
   }
 
   Future<bool> revokeCredentials(
@@ -133,12 +206,16 @@ class ClaudeProviderCredentialsService {
     Map<String, String> platformEnv = const {},
   }) async {
     if (!(await probe(providerId)).isReady) return false;
-    final result = await Process.run(
-      claudeExecutable,
-      ['auth', 'logout'],
-      environment: {...platformEnv, ...loginEnvironment(providerId)},
-    );
-    if (result.exitCode != 0) return false;
+    try {
+      final result = await _runClaude(
+        const ['auth', 'logout'],
+        providerId: providerId,
+        platformEnv: platformEnv,
+      );
+      if (result.exitCode != 0) return false;
+    } on ProcessException {
+      return false;
+    }
     final path = credentialPath(providerId);
     if ((await _fs.stat(path)).exists) {
       await _fs.removeRecursive(path);

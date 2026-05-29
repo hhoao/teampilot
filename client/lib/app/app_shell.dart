@@ -280,6 +280,8 @@ Future<AppShell> buildAppShell({
 
   appProviderCubit = AppProviderCubit(
     flashskyaiExecutablePath: sessionPreferencesCubit.resolveExecutable,
+    claudeExecutablePath: () =>
+        sessionPreferencesCubit.resolveExecutable(TeamCli.claude),
   );
 
   llmConfigCubit = LlmConfigCubit(

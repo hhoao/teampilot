@@ -1,5 +1,20 @@
 import 'dart:io';
 
+import 'cli_tool_locator.dart';
+
+/// Resolved executable + argv for [Process.run] / [Process.start].
+class ResolvedCliProcessLaunch {
+  const ResolvedCliProcessLaunch({
+    required this.executable,
+    required this.arguments,
+    this.environment,
+  });
+
+  final String executable;
+  final List<String> arguments;
+  final Map<String, String>? environment;
+}
+
 class CliInvocation {
   const CliInvocation({
     required this.executable,
@@ -119,5 +134,30 @@ class CliInvocation {
       args.add(buffer.toString());
     }
     return args;
+  }
+
+  /// Builds a process launch plan for [executable] + [subcommand], including WSL
+  /// `env` forwarding when [CliInvocation.usesWsl] is true.
+  static ResolvedCliProcessLaunch resolveProcessLaunch({
+    required String executable,
+    required List<String> subcommand,
+    Map<String, String> environment = const {},
+  }) {
+    final invocation = CliInvocation.fromExecutable(executable);
+    if (invocation.usesWsl) {
+      return ResolvedCliProcessLaunch(
+        executable: invocation.executable,
+        arguments: invocation.withArgs(
+          subcommand,
+          environment: environment,
+        ),
+      );
+    }
+
+    return ResolvedCliProcessLaunch(
+      executable: CliToolLocator.resolveSpawnExecutable(invocation.executable),
+      arguments: [...invocation.prefixArgs, ...subcommand],
+      environment: environment.isEmpty ? null : environment,
+    );
   }
 }
