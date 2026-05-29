@@ -1186,7 +1186,10 @@ class _TeamSelector extends StatelessWidget {
 
     return Container(
       margin: const EdgeInsets.only(top: 14),
+      // InputDecorator below the closed header adds invisible height; top-align
+      // a fixed-size add button with the visible field instead of stretching it.
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Expanded(
             child: FlashskyDropdownField<TeamConfig>(
@@ -1215,6 +1218,7 @@ class _TeamSelector extends StatelessWidget {
                   child: Container(
                     width: 32,
                     height: 32,
+                    alignment: Alignment.center,
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(6),
                       border: Border.all(color: cs.outlineVariant),

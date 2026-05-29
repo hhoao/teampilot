@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:path/path.dart' as p;
 
 import '../storage/app_storage.dart';
@@ -331,17 +333,31 @@ class CliDataLayout {
   }) async {
     final source = _pathContext.join(parentToolRoot, childName);
     final target = _pathContext.join(ownToolRoot, childName);
-    await _fs.ensureDir(source);
+    if (!(await _fs.stat(source)).exists) {
+      await _fs.ensureDir(source);
+    }
     final targetStat = await _fs.stat(target);
     if (preservePopulatedDirectory && targetStat.isDirectory) {
       return;
     }
     if (await _inheritLinkCurrent(source: source, target: target)) {
-      return;
+      if (await _inheritedPathIsAccessible(target)) return;
+      await _fs.removeRecursive(target);
     }
     final linked = await _fs.createSymlink(target: source, linkPath: target);
     if (linked) return;
     await _fs.copyTree(source: source, destination: target);
+  }
+
+  /// Whether [path] can be listed (symlink/junction targets are reachable).
+  Future<bool> _inheritedPathIsAccessible(String path) async {
+    try {
+      if (!(await _fs.stat(path)).exists) return false;
+      await Directory(path).list(followLinks: true).take(1).drain();
+      return true;
+    } on FileSystemException {
+      return false;
+    }
   }
 
   Future<bool> _inheritLinkCurrent({
@@ -350,11 +366,24 @@ class CliDataLayout {
   }) async {
     final targetStat = await _fs.stat(target);
     if (!targetStat.exists) return false;
+    final normalizedSource = _pathContext.normalize(
+      _pathContext.absolute(source),
+    );
     if (targetStat.isSymlink) {
       final linkTarget = await _fs.readSymlinkTarget(target);
       if (linkTarget == null) return false;
-      return _pathContext.normalize(linkTarget) ==
-          _pathContext.normalize(source);
+      return _pathContext.normalize(_pathContext.absolute(linkTarget)) ==
+          normalizedSource;
+    }
+    if (Platform.isWindows && targetStat.isDirectory) {
+      try {
+        final resolved = _pathContext.normalize(
+          await Directory(target).resolveSymbolicLinks(),
+        );
+        return resolved == normalizedSource;
+      } on FileSystemException {
+        return false;
+      }
     }
     return false;
   }

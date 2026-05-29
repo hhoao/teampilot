@@ -40,8 +40,23 @@ class LocalFilesystem implements Filesystem {
   }
 
   @override
-  Future<void> ensureDir(String path) {
-    return Directory(path).create(recursive: true);
+  Future<void> ensureDir(String path) async {
+    switch (FileSystemEntity.typeSync(path, followLinks: false)) {
+      case FileSystemEntityType.directory:
+      case FileSystemEntityType.link:
+        return;
+      case FileSystemEntityType.file:
+        throw FileSystemException(
+          'ensureDir failed: path is a file',
+          path,
+          const OSError('Not a directory', 20),
+        );
+      case FileSystemEntityType.notFound:
+        break;
+      default:
+        break;
+    }
+    await Directory(path).create(recursive: true);
   }
 
   @override
@@ -187,38 +202,76 @@ class LocalFilesystem implements Filesystem {
   }) async {
     await ensureDir(pathContext.dirname(linkPath));
     await removeRecursive(linkPath);
+    final normalizedTarget = pathContext.normalize(pathContext.absolute(target));
+    if (_linkAlreadyPointsTo(target: normalizedTarget, linkPath: linkPath)) {
+      return true;
+    }
+
+    // Directory junctions avoid Windows "untrusted mount point" (errno 448) when
+    // Dart symbolic links are traversed during Directory.create / list.
+    if (Platform.isWindows &&
+        FileSystemEntity.typeSync(normalizedTarget, followLinks: false) ==
+            FileSystemEntityType.directory) {
+      if (await _createWindowsJunction(
+        linkPath: linkPath,
+        target: normalizedTarget,
+      )) {
+        return true;
+      }
+    }
+
     try {
-      await Link(linkPath).create(target);
+      await Link(linkPath).create(normalizedTarget);
       return true;
     } on FileSystemException catch (e) {
-      if (_symlinkAlreadyPointsTo(target: target, linkPath: linkPath)) {
+      if (_linkAlreadyPointsTo(target: normalizedTarget, linkPath: linkPath)) {
         return true;
       }
       if (!Platform.isWindows) rethrow;
-      final result = await Process.run('cmd', [
-        '/c',
-        'mklink',
-        '/J',
-        linkPath,
-        target,
-      ]);
-      if (result.exitCode == 0) return true;
-      if (_symlinkAlreadyPointsTo(target: target, linkPath: linkPath)) {
+      if (await _createWindowsJunction(
+        linkPath: linkPath,
+        target: normalizedTarget,
+      )) {
         return true;
       }
       throw FileSystemException('junction failed', linkPath, e.osError);
     }
   }
 
-  bool _symlinkAlreadyPointsTo({
+  Future<bool> _createWindowsJunction({
+    required String linkPath,
+    required String target,
+  }) async {
+    final result = await Process.run('cmd', [
+      '/c',
+      'mklink',
+      '/J',
+      linkPath,
+      target,
+    ]);
+    if (result.exitCode == 0) return true;
+    return _linkAlreadyPointsTo(target: target, linkPath: linkPath);
+  }
+
+  bool _linkAlreadyPointsTo({
     required String target,
     required String linkPath,
   }) {
     try {
-      if (!Link(linkPath).existsSync()) return false;
-      final existing = Link(linkPath).targetSync();
-      return pathContext.normalize(existing) ==
-          pathContext.normalize(target);
+      final normalizedTarget = pathContext.normalize(target);
+      final type = FileSystemEntity.typeSync(linkPath, followLinks: false);
+      if (type == FileSystemEntityType.link) {
+        final existing = Link(linkPath).targetSync();
+        return pathContext.normalize(pathContext.absolute(existing)) ==
+            normalizedTarget;
+      }
+      if (Platform.isWindows && type == FileSystemEntityType.directory) {
+        final resolved = pathContext.normalize(
+          Directory(linkPath).resolveSymbolicLinksSync(),
+        );
+        return resolved == normalizedTarget;
+      }
+      return false;
     } on FileSystemException {
       return false;
     }

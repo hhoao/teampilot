@@ -51,6 +51,16 @@ void main() {
     );
   });
 
+  test('ensureDir is a no-op when path is an existing symlink', () async {
+    final target = p.join(root.path, 'target');
+    final link = p.join(root.path, 'link');
+    await fs.ensureDir(target);
+    await Link(link).create(target);
+
+    await expectLater(fs.ensureDir(link), completes);
+    expect(Link(link).existsSync(), isTrue);
+  });
+
   test('rename replaces an existing destination directory', () async {
     final from = p.join(root.path, 'next');
     final to = p.join(root.path, 'current');

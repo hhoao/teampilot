@@ -162,9 +162,11 @@ void main() {
           layout.teamToolDir('team-a', 'flashskyai'),
           'skills',
         );
-        expect(Link(teamAgents).existsSync(), isTrue);
-        expect(Link(teamSkills).existsSync(), isTrue);
-        expect(Link(teamAgents).targetSync(), appAgents.path);
+        expect(_inheritedPathExists(teamAgents), isTrue);
+        expect(_inheritedPathExists(teamSkills), isTrue);
+        if (Link(teamAgents).existsSync()) {
+          expect(Link(teamAgents).targetSync(), appAgents.path);
+        }
 
         // Reading through the symlink yields the app-level content.
         expect(
@@ -196,7 +198,7 @@ void main() {
           layout.memberToolDir('team-a', 'sess-1', 'flashskyai'),
           'skills',
         );
-        expect(Link(memberSkills).existsSync(), isTrue);
+        expect(_inheritedPathExists(memberSkills), isTrue);
         // Member -> team -> app: reading through both yields original file.
         expect(
           await File(p.join(memberSkills, 'README.md')).readAsString(),
@@ -345,7 +347,7 @@ void main() {
           layout.teamToolDir('team-a', 'flashskyai'),
           'skills',
         );
-        expect(Link(teamSkills).existsSync(), isTrue);
+        expect(_inheritedPathExists(teamSkills), isTrue);
       },
     );
 
@@ -369,9 +371,56 @@ void main() {
             layout.memberToolDir('team-a', sessionId, 'flashskyai'),
             'skills',
           );
-          expect(Link(memberSkills).existsSync(), isTrue);
+          expect(_inheritedPathExists(memberSkills), isTrue);
         }
       },
     );
+
+    test(
+      'ensureMemberInheritsTeam tolerates existing team skills symlinks on Windows',
+      () async {
+        if (!Platform.isWindows) return;
+
+        final fs = LocalFilesystem();
+        final layout = CliDataLayout(teampilotRoot: base.path, fs: fs);
+        await layout.ensureAppToolLayout('claude');
+        final appSkills = Directory(
+          p.join(layout.appToolRoot('claude'), 'skills'),
+        );
+        await appSkills.create(recursive: true);
+        await File(p.join(appSkills.path, 'probe.md')).writeAsString('ok');
+
+        final teamSkills = p.join(
+          layout.teamToolDir('team-a', 'claude'),
+          'skills',
+        );
+        await Directory(p.dirname(teamSkills)).create(recursive: true);
+        await Link(teamSkills).create(appSkills.path);
+        await expectLater(fs.ensureDir(teamSkills), completes);
+
+        await layout.ensureMemberInheritsTeam('team-a', 'sess-1', 'claude');
+
+        final memberSkills = p.join(
+          layout.memberToolDir('team-a', 'sess-1', 'claude'),
+          'skills',
+        );
+        expect(_inheritedPathExists(memberSkills), isTrue);
+        expect(
+          await File(p.join(memberSkills, 'probe.md')).readAsString(),
+          'ok',
+        );
+      },
+    );
   });
+}
+
+bool _inheritedPathExists(String path) {
+  switch (FileSystemEntity.typeSync(path, followLinks: false)) {
+    case FileSystemEntityType.link:
+      return true;
+    case FileSystemEntityType.directory:
+      return Platform.isWindows;
+    default:
+      return false;
+  }
 }
