@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:teampilot/services/terminal/terminal_export.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
 import 'package:teampilot/services/terminal/terminal_transport.dart';
 import 'package:teampilot/models/team_config.dart';
@@ -82,7 +83,7 @@ void main() {
       workingDirectory: Directory.systemTemp.path,
       onProcessStarted: () => started = true,
     );
-    session.terminal.onResize?.call(80, 24, 0, 0);
+    session.onViewportResize(80, 24);
     await Future<void>.delayed(const Duration(milliseconds: 20));
     expect(started, isFalse);
 
@@ -120,7 +121,7 @@ void main() {
       workingDirectory: Directory.systemTemp.path,
       onProcessStarted: () => started = true,
     );
-    session.terminal.onResize?.call(80, 24, 0, 0);
+    session.onViewportResize(80, 24);
     await Future<void>.delayed(const Duration(milliseconds: 20));
     expect(started, isFalse);
 
@@ -156,7 +157,7 @@ void main() {
       onProcessStarted: () {},
       onProcessFailed: (_) => failed = true,
     );
-    session.terminal.onResize?.call(80, 24, 0, 0);
+    session.onViewportResize(80, 24);
     await Future<void>.delayed(const Duration(milliseconds: 20));
 
     handle.doneCompleter.complete(127);
@@ -165,7 +166,7 @@ void main() {
     expect(failed, isTrue);
     expect(session.isRunning, isFalse);
     expect(
-      session.terminal.buffer.getText(),
+      exportTerminalScrollback(session.engine),
       contains('exited with code 127 during startup'),
     );
   });
@@ -194,12 +195,12 @@ void main() {
       workingDirectory: Directory.systemTemp.path,
       onProcessFailed: (_) => failed = true,
     );
-    session.terminal.onResize?.call(80, 24, 0, 0);
+    session.onViewportResize(80, 24);
     await Future<void>.delayed(const Duration(milliseconds: 120));
 
     expect(failed, isTrue);
     expect(session.isRunning, isFalse);
-    expect(session.terminal.buffer.getText(), contains('spawn timed out'));
+    expect(exportTerminalScrollback(session.engine), contains('spawn timed out'));
   });
 
   test('missing absolute executable fails fast without starting pty', () {
@@ -226,7 +227,7 @@ void main() {
     expect(started, isFalse);
     expect(session.isRunning, isFalse);
     expect(
-      session.terminal.buffer.getText(),
+      exportTerminalScrollback(session.engine),
       contains('not found'),
     );
   });
@@ -256,7 +257,7 @@ void main() {
     });
 
     session.connect(workingDirectory: Directory.systemTemp.path);
-    session.terminal.onResize?.call(80, 24, 0, 0);
+    session.onViewportResize(80, 24);
     await Future<void>.delayed(const Duration(milliseconds: 300));
     expect(session.isRunning, isTrue);
 
@@ -292,7 +293,7 @@ void main() {
       workingDirectory: Directory.systemTemp.path,
       onProcessExited: () => exited = true,
     );
-    session.terminal.onResize?.call(80, 24, 0, 0);
+    session.onViewportResize(80, 24);
     await Future<void>.delayed(const Duration(milliseconds: 300));
     expect(session.isRunning, isTrue);
 
@@ -304,7 +305,7 @@ void main() {
     expect(session.isRunning, isFalse);
     expect(handle.closed, isTrue);
     expect(
-      session.terminal.buffer.getText(),
+      exportTerminalScrollback(session.engine),
       isNot(contains('[process exited]')),
     );
   });
@@ -333,7 +334,7 @@ void main() {
     });
 
     session.connect(workingDirectory: Directory.systemTemp.path);
-    session.terminal.onResize?.call(80, 24, 0, 0);
+    session.onViewportResize(80, 24);
     await Future<void>.delayed(const Duration(milliseconds: 300));
 
     handle.doneCompleter.complete(1);
@@ -342,7 +343,7 @@ void main() {
 
     expect(session.isRunning, isTrue);
     expect(
-      session.terminal.buffer.getText(),
+      exportTerminalScrollback(session.engine),
       contains('[process exited with code 1]'),
     );
   });
@@ -374,7 +375,7 @@ void main() {
       workingDirectory: Directory.current.path,
       onProcessFailed: (_) => failed = true,
     );
-    session.terminal.onResize?.call(80, 24, 0, 0);
+    session.onViewportResize(80, 24);
     await Future<void>.delayed(const Duration(milliseconds: 20));
     handle.outputController.add(
       Uint8List.fromList(utf8.encode('execvp: No such file or directory\r\n')),
@@ -572,7 +573,7 @@ void main() {
     });
 
     session.connect(workingDirectory: Directory.systemTemp.path);
-    session.terminal.onResize?.call(80, 24, 0, 0);
+    session.onViewportResize(80, 24);
     await Future<void>.delayed(const Duration(milliseconds: 300));
 
     expect(starts, [(columns: 80, rows: 24)]);
@@ -603,9 +604,9 @@ void main() {
     });
 
     session.connect(workingDirectory: Directory.systemTemp.path);
-    session.terminal.onResize?.call(80, 24, 0, 0);
-    session.terminal.onResize?.call(100, 30, 0, 0);
-    session.terminal.onResize?.call(120, 32, 0, 0);
+    session.onViewportResize(80, 24);
+    session.onViewportResize(100, 30);
+    session.onViewportResize(120, 32);
     await Future<void>.delayed(const Duration(milliseconds: 300));
 
     expect(starts, [(columns: 80, rows: 24)]);
@@ -635,12 +636,12 @@ void main() {
     });
 
     session.connect(workingDirectory: Directory.systemTemp.path);
-    session.terminal.onResize?.call(80, 24, 0, 0);
+    session.onViewportResize(80, 24);
     await Future<void>.delayed(const Duration(milliseconds: 300));
     handle.resizeCalls.clear();
 
-    session.terminal.onResize?.call(80, 24, 0, 0);
-    session.terminal.onResize?.call(120, 32, 0, 0);
+    session.onViewportResize(80, 24);
+    session.onViewportResize(120, 32);
     await Future<void>.delayed(const Duration(milliseconds: 300));
 
     expect(handle.resizeCalls, contains((32, 120)));
@@ -669,12 +670,12 @@ void main() {
     });
 
     session.connect(workingDirectory: Directory.systemTemp.path);
-    session.terminal.onResize?.call(80, 24, 0, 0);
+    session.onViewportResize(80, 24);
     await Future<void>.delayed(const Duration(milliseconds: 300));
     handle.outputController.add(Uint8List.fromList(utf8.encode('hello\r\n')));
     await Future<void>.delayed(Duration.zero);
 
-    expect(session.terminal.buffer.getText(), contains('hello'));
+    expect(exportTerminalScrollback(session.engine), contains('hello'));
   });
 
   test('decodes pty output across utf8 chunk boundaries', () async {
@@ -699,7 +700,7 @@ void main() {
     });
 
     session.connect(workingDirectory: Directory.systemTemp.path);
-    session.terminal.onResize?.call(80, 24, 0, 0);
+    session.onViewportResize(80, 24);
     await Future<void>.delayed(const Duration(milliseconds: 300));
 
     final bytes = utf8.encode('╰────任务已经完成了────╯\r\n');
@@ -709,7 +710,7 @@ void main() {
       ..add(Uint8List.fromList(bytes.skip(split).toList()));
     await Future<void>.delayed(Duration.zero);
 
-    final text = session.terminal.buffer.getText();
+    final text = exportTerminalScrollback(session.engine);
     expect(text, contains('任务已经完成了'));
     expect(text, isNot(contains('\uFFFD')));
   });
@@ -736,17 +737,14 @@ void main() {
     });
 
     session.connect(workingDirectory: Directory.systemTemp.path);
-    session.terminal.onResize?.call(80, 24, 0, 0);
+    session.onViewportResize(80, 24);
     await Future<void>.delayed(const Duration(milliseconds: 300));
     handle.resizeCalls.clear();
 
     // Resize viewport without immediate PTY sync so output path can sync later.
-    final savedOnResize = session.terminal.onResize;
-    session.terminal.onResize = null;
-    session.terminal.resize(100, 40);
-    session.terminal.onResize = savedOnResize;
-    expect(session.terminal.viewWidth, 100);
-    expect(session.terminal.viewHeight, 40);
+    session.onViewportResize(100, 40);
+    expect(session.viewWidth, 100);
+    expect(session.viewHeight, 40);
 
     handle.outputController.add(Uint8List.fromList(utf8.encode('draw\r\n')));
     await Future<void>.delayed(const Duration(milliseconds: 250));
@@ -789,7 +787,7 @@ void main() {
       session.connect(
         workingDirectory: r'\\wsl.localhost\Ubuntu\home\hhoa\project',
       );
-      session.terminal.onResize?.call(80, 24, 0, 0);
+      session.onViewportResize(80, 24);
       await Future<void>.delayed(const Duration(milliseconds: 300));
 
       if (capturedExecutable == 'wsl.exe') {
@@ -831,7 +829,7 @@ void main() {
     });
 
     session.connect(workingDirectory: r'C:\Users\haung\git\teampilot\client');
-    session.terminal.onResize?.call(80, 24, 0, 0);
+    session.onViewportResize(80, 24);
     await Future<void>.delayed(const Duration(milliseconds: 300));
 
     if (capturedExecutable == 'wsl.exe') {
@@ -884,7 +882,7 @@ void main() {
       team: team,
       member: member,
     );
-    session.terminal.onResize?.call(80, 24, 0, 0);
+    session.onViewportResize(80, 24);
     await Future<void>.delayed(const Duration(milliseconds: 300));
 
     if (capturedExecutable == 'wsl.exe') {
@@ -931,7 +929,7 @@ void main() {
       workingDirectory: r'C:\Users\haung\git\teampilot\client',
       extraEnvironment: const {'LLM_CONFIG_PATH': r'C:\config.json'},
     );
-    session.terminal.onResize?.call(80, 24, 0, 0);
+    session.onViewportResize(80, 24);
     await Future<void>.delayed(const Duration(milliseconds: 300));
 
     expect(capturedEnvironment, isNotNull);

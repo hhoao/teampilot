@@ -1,26 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_alacritty/flutter_alacritty.dart';
 import 'package:teampilot/theme/app_fonts.dart';
 import 'package:teampilot/theme/app_typography_scale.dart';
 import 'package:teampilot/utils/logger.dart';
-import 'package:xterm/xterm.dart';
 
-/// Active terminal font ([TerminalStyle.fontFamily]).
+/// Active terminal font ([TerminalStyle.family]).
 const kTerminalFontFamily = AppFonts.monoFamily;
 
-/// Bundled alternate; listed in [TerminalStyle.fontFamilyFallback].
+/// Bundled alternate; listed in [TerminalStyle.fallback].
 const kUbuntuSansMonoFontFamily = 'Ubuntu Sans Mono';
 
-/// xterm face + size from [AppTypographyTheme.terminal].
+/// Terminal face + size from [AppTypographyTheme.terminal].
 TerminalStyle appTerminalTextStyle(BuildContext context) {
   final typography = context.appTypography;
   final fonts = context.appFonts;
   return TerminalStyle(
-    fontSize: typography.terminal,
-    fontFamily: fonts.monoFontFamily,
-    height: 1.3,
-    useBoldFontWeight: false,
-    fontFamilyFallback: fonts.monoFontFamilyFallback,
+    size: typography.terminal,
+    family: fonts.monoFontFamily,
+    lineHeight: 1.3,
+    fallback: fonts.monoFontFamilyFallback,
   );
 }
 

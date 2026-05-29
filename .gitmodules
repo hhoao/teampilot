@@ -1,6 +1,7 @@
-[submodule "client/packages/xterm"]
-	path = client/packages/xterm
-	url = https://github.com/hhoao/xterm.dart.git
+[submodule "client/packages/flutter_alacritty"]
+	path = client/packages/flutter_alacritty
+	url = https://github.com/hhoao/flutter_alacritty.git
+	branch = main
 
 [submodule "client/packages/dartssh2"]
 	path = client/packages/dartssh2

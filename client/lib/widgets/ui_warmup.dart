@@ -1,11 +1,10 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_alacritty/flutter_alacritty.dart';
 
 import '../theme/app_text_styles.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:xterm/xterm.dart';
 
 import '../cubits/session_preferences_cubit.dart';
 import '../cubits/team_cubit.dart';
@@ -21,12 +20,12 @@ class UiWarmup extends StatefulWidget {
 }
 
 class _UiWarmupState extends State<UiWarmup> {
-  final Terminal _terminal = Terminal(
-    maxLines: 100,
-    platform: defaultTargetPlatform == TargetPlatform.macOS
-        ? TerminalTargetPlatform.macos
-        : TerminalTargetPlatform.linux,
+  final TerminalEngine _engine = TerminalEngine(
+    config: TerminalConfig.defaults().copyWith(
+      scrolling: TerminalConfig.defaults().scrolling.copyWith(history: 100),
+    ),
   );
+  final TerminalController _controller = TerminalController();
 
   var _stage = 0;
   var _done = false;
@@ -35,6 +34,7 @@ class _UiWarmupState extends State<UiWarmup> {
   @override
   void initState() {
     super.initState();
+    _controller.attach(_engine);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _warmupTimer = Timer(const Duration(milliseconds: 80), _runWarmup);
     });
@@ -57,6 +57,8 @@ class _UiWarmupState extends State<UiWarmup> {
   @override
   void dispose() {
     _warmupTimer?.cancel();
+    _controller.dispose();
+    _engine.dispose();
     super.dispose();
   }
 
@@ -73,7 +75,11 @@ class _UiWarmupState extends State<UiWarmup> {
                   enabled: false,
                   child: Opacity(
                     opacity: 0,
-                    child: _WarmupStage(stage: _stage, terminal: _terminal),
+                    child: _WarmupStage(
+                      stage: _stage,
+                      engine: _engine,
+                      controller: _controller,
+                    ),
                   ),
                 ),
               ),
@@ -85,10 +91,15 @@ class _UiWarmupState extends State<UiWarmup> {
 }
 
 class _WarmupStage extends StatelessWidget {
-  const _WarmupStage({required this.stage, required this.terminal});
+  const _WarmupStage({
+    required this.stage,
+    required this.engine,
+    required this.controller,
+  });
 
   final int stage;
-  final Terminal terminal;
+  final TerminalEngine engine;
+  final TerminalController controller;
 
   @override
   Widget build(BuildContext context) {
@@ -103,7 +114,8 @@ class _WarmupStage extends StatelessWidget {
       child: switch (stage) {
         1 => _SettingsWarmup(team: team),
         2 => TerminalView(
-          terminal,
+          engine,
+          controller: controller,
           backgroundOpacity: 0.92,
           padding: const EdgeInsets.all(6),
         ),

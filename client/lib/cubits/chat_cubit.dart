@@ -624,7 +624,7 @@ class ChatCubit extends Cubit<ChatState> {
             stackTrace: st,
           );
           final message = 'Failed to resume session: $e';
-          ts.terminal.write('\r\n[$message]\r\n');
+          ts.write('\r\n[$message]\r\n');
           _failSessionConnect(info.id, message);
         }
       });
@@ -893,7 +893,7 @@ class ChatCubit extends Cubit<ChatState> {
           stackTrace: st,
         );
         final message = 'Failed to start session: $e';
-        shell.terminal.write('\r\n[$message]\r\n');
+        shell.write('\r\n[$message]\r\n');
         _failSessionConnect(tab.info.id, message);
       }
     });
@@ -1218,7 +1218,7 @@ class ChatCubit extends Cubit<ChatState> {
         final session = ensureSession(team);
         const message =
             'No member selected. Choose a team member and try again.';
-        session?.terminal.write('\r\n[$message]\r\n');
+        session?.write('\r\n[$message]\r\n');
         _failSessionConnect(_activeTab?.info.id ?? 'pending', message);
         return;
       }
@@ -1237,7 +1237,7 @@ class ChatCubit extends Cubit<ChatState> {
       final session = ensureSession(team);
       const message =
           'No member selected. Choose a team member and try again.';
-      session?.terminal.write('\r\n[$message]\r\n');
+      session?.write('\r\n[$message]\r\n');
       _failSessionConnect(_activeTab?.info.id ?? 'pending', message);
       return;
     }
@@ -1410,7 +1410,7 @@ class ChatCubit extends Cubit<ChatState> {
 
   void addSystemMessage(String content) {
     final target = currentSession;
-    target?.terminal.write('\r\n[system] $content\r\n');
+    target?.write('\r\n[system] $content\r\n');
   }
 
   void _updateTabRunning(String tabId) {

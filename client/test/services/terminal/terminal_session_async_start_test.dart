@@ -56,7 +56,7 @@ void main() {
       addTearDown(session.dispose);
 
       session.connect(workingDirectory: '/remote/path/that/is/not/local');
-      session.terminal.resize(80, 24, 0, 0);
+      session.onViewportResize(80, 24);
       await Future<void>.delayed(const Duration(milliseconds: 220));
 
       expect(started, isTrue);
@@ -87,7 +87,7 @@ void main() {
       addTearDown(session.dispose);
 
       session.connect(workingDirectory: '/tmp');
-      session.terminal.resize(80, 24, 0, 0);
+      session.onViewportResize(80, 24);
       await Future<void>.delayed(const Duration(milliseconds: 220));
 
       session.disconnect();

@@ -5,7 +5,8 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:xterm/xterm.dart';
+import 'package:flutter_alacritty/flutter_alacritty.dart';
+import 'package:flutter_alacritty/input/paste.dart' as alacritty_paste;
 
 import '../cubits/chat_cubit.dart';
 import '../cubits/editor_cubit.dart';
@@ -16,6 +17,7 @@ import '../models/app_session.dart';
 import '../models/team_config.dart';
 import '../repositories/session_repository.dart';
 import '../services/terminal/terminal_export.dart';
+import '../services/terminal/terminal_theme_mapper.dart';
 import '../services/terminal/terminal_uri_opener.dart';
 import '../services/terminal/terminal_fonts.dart';
 import '../utils/app_keys.dart';
@@ -23,123 +25,6 @@ import '../utils/debounce/debounce.dart';
 import '../theme/app_text_styles.dart';
 import '../widgets/file_editor_panel.dart';
 import '../widgets/terminal_find_bar.dart';
-
-TerminalTheme _terminalThemeFor(
-  ColorScheme cs, {
-  required bool isDark,
-  required String mode,
-}) {
-  if (mode == 'classicDark') {
-    return const TerminalTheme(
-      cursor: Color(0xFF9AA0A8),
-      selection: Color(0x409AA0A8),
-      foreground: Color(0xFFC8CCD4),
-      background: Color(0xFF0A0C10),
-      black: Color(0xFF1A1A1A),
-      red: Color(0xFFD04A62),
-      green: Color(0xFF52C07E),
-      yellow: Color(0xFFD4B85A),
-      blue: Color(0xFF5298D8),
-      magenta: Color(0xFFB87CD8),
-      cyan: Color(0xFF4EB8C4),
-      white: Color(0xFFD0D4DC),
-      brightBlack: Color(0xFF5A5A5A),
-      brightRed: Color(0xFFE86A7E),
-      brightGreen: Color(0xFF6CD898),
-      brightYellow: Color(0xFFE8CC70),
-      brightBlue: Color(0xFF72B0E8),
-      brightMagenta: Color(0xFFD098F0),
-      brightCyan: Color(0xFF72D0DC),
-      brightWhite: Color(0xFFE4E6EC),
-      searchHitBackground: Color(0xFFFFFF2B),
-      searchHitBackgroundCurrent: Color(0xFF31FF26),
-      searchHitForeground: Color(0xFF000000),
-    );
-  }
-
-  if (mode == 'highContrast') {
-    final bg = isDark ? const Color(0xFF000000) : const Color(0xFFFFFFFF);
-    final fg = isDark ? const Color(0xFFF5F7FA) : const Color(0xFF111111);
-    final primary = isDark ? const Color(0xFF69B3FF) : const Color(0xFF005FCC);
-    final secondary = isDark
-        ? const Color(0xFF4EE2A8)
-        : const Color(0xFF007A4B);
-    return TerminalTheme(
-      cursor: primary,
-      selection: primary.withValues(alpha: 0.35),
-      foreground: fg,
-      background: bg,
-      black: isDark ? const Color(0xFF1A1A1A) : const Color(0xFF2A2A2A),
-      red: isDark ? const Color(0xFFFF6B7A) : const Color(0xFFB00020),
-      green: secondary,
-      yellow: isDark ? const Color(0xFFFFD166) : const Color(0xFF8A6D00),
-      blue: primary,
-      magenta: isDark ? const Color(0xFFD79BFF) : const Color(0xFF7A3DB8),
-      cyan: isDark ? const Color(0xFF63E6FF) : const Color(0xFF006A85),
-      white: fg,
-      brightBlack: isDark ? const Color(0xFF8C8C8C) : const Color(0xFF666666),
-      brightRed: isDark ? const Color(0xFFFF98A3) : const Color(0xFFD32F2F),
-      brightGreen: isDark ? const Color(0xFF8AF0C6) : const Color(0xFF0A8F5A),
-      brightYellow: isDark ? const Color(0xFFFFE08A) : const Color(0xFFA88700),
-      brightBlue: isDark ? const Color(0xFF9CCEFF) : const Color(0xFF1976D2),
-      brightMagenta: isDark ? const Color(0xFFE7C0FF) : const Color(0xFF9C4DCC),
-      brightCyan: isDark ? const Color(0xFF9CEEFF) : const Color(0xFF008DB3),
-      brightWhite: isDark ? const Color(0xFFFFFFFF) : const Color(0xFF000000),
-      searchHitBackground: const Color(0xFFFFFF2B),
-      searchHitBackgroundCurrent: const Color(0xFF31FF26),
-      searchHitForeground: const Color(0xFF000000),
-    );
-  }
-
-  final baseBackground = isDark
-      ? Color.alphaBlend(
-          cs.surface.withValues(alpha: 0.88),
-          const Color(0xFF06080C),
-        )
-      : Color.alphaBlend(
-          cs.surface.withValues(alpha: 0.96),
-          const Color(0xFFF7F9FC),
-        );
-  final foreground = isDark ? const Color(0xFFC8CCD4) : const Color(0xFF1F2937);
-  final weak = isDark ? const Color(0xFF59606A) : const Color(0xFF9AA3B2);
-  return TerminalTheme(
-    cursor: cs.primary.withValues(alpha: isDark ? 0.95 : 0.9),
-    selection: cs.primary.withValues(alpha: isDark ? 0.28 : 0.2),
-    foreground: foreground,
-    background: baseBackground,
-    black: isDark ? const Color(0xFF161A21) : const Color(0xFF4B5563),
-    red: cs.error,
-    green: cs.secondary,
-    yellow: Color.lerp(cs.secondary, const Color(0xFFE5B95C), 0.5)!,
-    blue: cs.primary,
-    magenta: Color.lerp(cs.primary, cs.secondary, 0.45)!,
-    cyan: Color.lerp(cs.secondary, const Color(0xFF58C8D7), 0.55)!,
-    white: isDark ? const Color(0xFFD8DCE5) : const Color(0xFF374151),
-    brightBlack: weak,
-    brightRed: Color.lerp(cs.error, Colors.white, isDark ? 0.18 : 0.1)!,
-    brightGreen: Color.lerp(cs.secondary, Colors.white, isDark ? 0.16 : 0.08)!,
-    brightYellow: Color.lerp(
-      Color.lerp(cs.secondary, const Color(0xFFE5B95C), 0.5)!,
-      Colors.white,
-      isDark ? 0.2 : 0.1,
-    )!,
-    brightBlue: Color.lerp(cs.primary, Colors.white, isDark ? 0.16 : 0.08)!,
-    brightMagenta: Color.lerp(
-      Color.lerp(cs.primary, cs.secondary, 0.45)!,
-      Colors.white,
-      isDark ? 0.2 : 0.1,
-    )!,
-    brightCyan: Color.lerp(
-      Color.lerp(cs.secondary, const Color(0xFF58C8D7), 0.55)!,
-      Colors.white,
-      isDark ? 0.2 : 0.1,
-    )!,
-    brightWhite: isDark ? const Color(0xFFF2F4F8) : const Color(0xFF111827),
-    searchHitBackground: const Color(0xFFFFFF2B),
-    searchHitBackgroundCurrent: const Color(0xFF31FF26),
-    searchHitForeground: const Color(0xFF000000),
-  );
-}
 
 class ChatWorkbench extends StatefulWidget {
   const ChatWorkbench({this.sessionId, super.key});
@@ -151,7 +36,7 @@ class ChatWorkbench extends StatefulWidget {
 }
 
 class _ChatWorkbenchState extends State<ChatWorkbench> {
-  final _terminalController = TerminalController();
+  TerminalController _terminalController = TerminalController();
 
   var _findVisible = false;
   var _handledRouteSession = false;
@@ -169,6 +54,17 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
     _chatSub = chatCubit.stream.listen(_onChatState);
     _syncWorkbenchTracking(chatCubit.state);
     _consumeRouteSession(chatCubit.state);
+  }
+
+  /// [TerminalController.attach] is one-shot; re-bind when the active session's
+  /// [TerminalEngine] instance changes (tab switch, reconnect, new shell).
+  void _bindTerminalController(TerminalEngine engine) {
+    if (identical(_terminalController.engine, engine)) return;
+    if (_terminalController.engine != null) {
+      _terminalController.dispose();
+      _terminalController = TerminalController();
+    }
+    _terminalController.attach(engine);
   }
 
   void _syncWorkbenchTracking(ChatState state) {
@@ -197,15 +93,17 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
   Future<void> _showTerminalContextMenu({
     required BuildContext menuContext,
     required Offset globalPosition,
-    required Terminal terminal,
+    required TerminalEngine engine,
     required CellOffset? cellOffset,
     required bool sessionRunning,
     required VoidCallback onDisconnect,
     required Future<void> Function() onRestart,
   }) async {
     final mloc = MaterialLocalizations.of(menuContext);
-    final hasSelection = _terminalController.selection != null;
-    final linkUri = cellOffset != null ? terminal.linkUriAt(cellOffset) : null;
+    final hasSelection = _terminalController.selectionActive;
+    final linkUri = cellOffset != null
+        ? engine.hyperlinkAt(cellOffset.row, cellOffset.column)
+        : null;
     final entries = <PopupMenuEntry<String>>[
       PopupMenuItem(value: 'find', child: Text(context.l10n.terminalFind)),
       if (linkUri != null)
@@ -263,32 +161,35 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
           await _openTerminalLink(linkUri);
         }
       case 'export':
-        await _exportTerminalScrollback(menuContext, terminal);
+        await _exportTerminalScrollback(menuContext, engine);
       case 'paste':
         final data = await Clipboard.getData(Clipboard.kTextPlain);
         final text = data?.text;
         if (text != null && text.isNotEmpty) {
-          terminal.paste(text);
+          _terminalController.onTerminalInputStart();
+          engine.write(
+            alacritty_paste.pasteBytes(
+              text,
+              modeFlags: engine.grid.modeFlags,
+            ),
+          );
           _terminalController.clearSelection();
         }
       case 'copy':
-        final sel = _terminalController.selection;
-        if (sel != null) {
-          final text = terminal.buffer.getText(sel);
+        final text = _terminalController.readSelectionText();
+        if (text != null && text.isNotEmpty) {
           await Clipboard.setData(ClipboardData(text: text));
         }
       case 'selectAll':
-        _terminalController.setSelection(
-          terminal.buffer.createAnchor(
-            0,
-            terminal.buffer.height - terminal.viewHeight,
-          ),
-          terminal.buffer.createAnchor(
-            terminal.viewWidth,
-            terminal.buffer.height - 1,
-          ),
-          mode: SelectionMode.line,
-        );
+        final grid = engine.grid;
+        if (grid.rows > 0 && grid.columns > 0) {
+          _terminalController.selectionStart(0, 0, false, 0);
+          _terminalController.selectionUpdate(
+            grid.rows - 1,
+            grid.columns - 1,
+            false,
+          );
+        }
       case 'clearSelection':
         _terminalController.clearSelection();
       case 'disconnect':
@@ -302,7 +203,7 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
 
   Future<void> _exportTerminalScrollback(
     BuildContext context,
-    Terminal terminal,
+    TerminalEngine engine,
   ) async {
     final path = await FilePicker.platform.saveFile(
       dialogTitle: context.l10n.terminalExportScrollback,
@@ -311,11 +212,11 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
       allowedExtensions: ['txt'],
     );
     if (path == null || !context.mounted) return;
-    await File(path).writeAsString(exportTerminalScrollback(terminal));
+    await File(path).writeAsString(exportTerminalScrollback(engine));
   }
 
-  Future<void> _openLinkAt(Terminal terminal, CellOffset offset) async {
-    final link = terminal.linkUriAt(offset);
+  Future<void> _openLinkAt(TerminalEngine engine, CellOffset offset) async {
+    final link = engine.hyperlinkAt(offset.row, offset.column);
     if (link == null) return;
     await _openTerminalLink(link);
   }
@@ -401,11 +302,12 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
     final terminalThemeMode = context.select<LayoutCubit, String>(
       (cubit) => cubit.state.preferences.terminalThemeMode,
     );
-    final terminalTheme = _terminalThemeFor(
+    final terminalTheme = teampilotTerminalTheme(
       cs,
       isDark: isDark,
       mode: terminalThemeMode,
     );
+    final terminalBackground = Color(0xFF000000 | terminalTheme.background);
     final teamCubit = context.watch<TeamCubit>();
     final chatCubit = context.watch<ChatCubit>();
     final team = teamCubit.state.selectedTeam;
@@ -432,7 +334,7 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
         color: cs.surface,
         child: WorkspaceEditorOverlay(
           terminalChild: Container(
-            color: terminalTheme.background,
+            color: terminalBackground,
             child: sessionConnectInProgress
                 ? _SessionLoadingView(message: context.l10n.sessionStarting)
                 : _TerminalPlaceholder(
@@ -456,95 +358,93 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
       color: cs.surface,
       child: WorkspaceEditorOverlay(
         terminalChild: Container(
-          color: terminalTheme.background,
+          color: terminalBackground,
           child: sessionConnectInProgress
               ? _SessionLoadingView(message: context.l10n.sessionStarting)
               : session.isRunning
-              ? TerminalFindShortcuts(
-                  findVisible: _findVisible,
-                  onToggleFind: () => setState(() => _findVisible = true),
-                  onFindNext: () {
-                    session.terminal.search.next();
-                    _terminalController.setSearchResults(
-                      session.terminal.search.hits,
-                      activeIndex: session.terminal.search.currentIndex,
-                    );
-                  },
-                  onFindPrevious: () {
-                    session.terminal.search.previous();
-                    _terminalController.setSearchResults(
-                      session.terminal.search.hits,
-                      activeIndex: session.terminal.search.currentIndex,
-                    );
-                  },
-                  onCloseFind: () {
-                    session.terminal.search.clear();
-                    _terminalController.clearSearch();
-                    setState(() => _findVisible = false);
-                  },
-                  child: Stack(
-                    children: [
-                      TerminalView(
-                        session.terminal,
-                        controller: _terminalController,
-                        theme: terminalTheme,
-                        backgroundOpacity: 0.98,
-                        padding: const EdgeInsets.all(16),
-                        textStyle: appTerminalTextStyle(context),
-                        autofocus: !_findVisible,
-                        onTapDown: (_, offset) {
-                          // Match VTE/gnome-terminal: clear on press, not release.
-                          if (!HardwareKeyboard.instance.isControlPressed &&
-                              !HardwareKeyboard.instance.isMetaPressed) {
-                            _terminalController.clearSelection();
-                          }
-                        },
-                        onTapUp: (details, offset) {
-                          if (HardwareKeyboard.instance.isControlPressed ||
-                              HardwareKeyboard.instance.isMetaPressed) {
-                            unawaited(_openLinkAt(session.terminal, offset));
-                          }
-                        },
-                        onSecondaryTapUp: (details, offset) {
-                          unawaited(
-                            _showTerminalContextMenu(
-                              menuContext: context,
-                              globalPosition: details.globalPosition,
-                              terminal: session.terminal,
-                              cellOffset: offset,
-                              sessionRunning: session.isRunning,
-                              onDisconnect: () {
-                                chatCubit.disconnectSession();
-                                setState(() {});
-                              },
-                              onRestart: () async {
-                                await chatCubit.restartSession(team);
-                                if (mounted) setState(() {});
+              ? () {
+                  _bindTerminalController(session.engine);
+                  return TerminalFindShortcuts(
+                    findVisible: _findVisible,
+                    onToggleFind: () => setState(() => _findVisible = true),
+                    onFindNext: () {
+                      _terminalController.searchNext();
+                      setState(() {});
+                    },
+                    onFindPrevious: () {
+                      _terminalController.searchPrev();
+                      setState(() {});
+                    },
+                    onCloseFind: () {
+                      _terminalController.searchClear();
+                      setState(() => _findVisible = false);
+                    },
+                    child: Stack(
+                      children: [
+                        TerminalView(
+                          session.engine,
+                          controller: _terminalController,
+                          theme: terminalTheme,
+                          backgroundOpacity: 0.98,
+                          padding: const EdgeInsets.all(16),
+                          textStyle: appTerminalTextStyle(context),
+                          autofocus: !_findVisible,
+                          onViewportResize: session.onViewportResize,
+                          onTapDown: (_, offset) {
+                            if (!HardwareKeyboard.instance.isControlPressed &&
+                                !HardwareKeyboard.instance.isMetaPressed) {
+                              _terminalController.clearSelection();
+                            }
+                          },
+                          onTapUp: (details, offset) {
+                            if (HardwareKeyboard.instance.isControlPressed ||
+                                HardwareKeyboard.instance.isMetaPressed) {
+                              unawaited(
+                                _openLinkAt(session.engine, offset),
+                              );
+                            }
+                          },
+                          onSecondaryTapUp: (details, offset) {
+                            unawaited(
+                              _showTerminalContextMenu(
+                                menuContext: context,
+                                globalPosition: details.globalPosition,
+                                engine: session.engine,
+                                cellOffset: offset,
+                                sessionRunning: session.isRunning,
+                                onDisconnect: () {
+                                  chatCubit.disconnectSession();
+                                  setState(() {});
+                                },
+                                onRestart: () async {
+                                  await chatCubit.restartSession(team);
+                                  if (mounted) setState(() {});
+                                },
+                              ),
+                            );
+                          },
+                        ),
+                        if (_findVisible)
+                          Positioned(
+                            left: 8,
+                            right: 8,
+                            top: 8,
+                            child: TerminalFindBar(
+                              engine: session.engine,
+                              controller: _terminalController,
+                              searchLabel: context.l10n.terminalFind,
+                              noResultsLabel:
+                                  context.l10n.terminalFindNoResults,
+                              onClose: () {
+                                _terminalController.searchClear();
+                                setState(() => _findVisible = false);
                               },
                             ),
-                          );
-                        },
-                      ),
-                      if (_findVisible)
-                        Positioned(
-                          left: 8,
-                          right: 8,
-                          top: 8,
-                          child: TerminalFindBar(
-                            terminal: session.terminal,
-                            controller: _terminalController,
-                            searchLabel: context.l10n.terminalFind,
-                            noResultsLabel: context.l10n.terminalFindNoResults,
-                            onClose: () {
-                              session.terminal.search.clear();
-                              _terminalController.clearSearch();
-                              setState(() => _findVisible = false);
-                            },
                           ),
-                        ),
-                    ],
-                  ),
-                )
+                      ],
+                    ),
+                  );
+                }()
               : _TerminalPlaceholder(
                   onConnect: () {
                     unawaited(() async {

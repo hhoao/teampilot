@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:xterm/xterm.dart';
+import 'package:flutter_alacritty/flutter_alacritty.dart';
 
 /// Inline find bar for [TerminalView] scrollback search.
 class TerminalFindBar extends StatefulWidget {
   const TerminalFindBar({
-    required this.terminal,
+    required this.engine,
     required this.controller,
     required this.onClose,
     this.searchLabel = 'Find',
@@ -13,7 +13,7 @@ class TerminalFindBar extends StatefulWidget {
     super.key,
   });
 
-  final Terminal terminal;
+  final TerminalEngine engine;
   final TerminalController controller;
   final VoidCallback onClose;
   final String searchLabel;
@@ -25,8 +25,6 @@ class TerminalFindBar extends StatefulWidget {
 
 class _TerminalFindBarState extends State<TerminalFindBar> {
   final _queryController = TextEditingController();
-  var _matchCount = 0;
-  var _matchIndex = 0;
 
   @override
   void dispose() {
@@ -37,55 +35,38 @@ class _TerminalFindBarState extends State<TerminalFindBar> {
   void _runSearch() {
     final query = _queryController.text;
     if (query.isEmpty) {
-      widget.terminal.search.clear();
-      widget.controller.clearSearch();
-      setState(() {
-        _matchCount = 0;
-        _matchIndex = 0;
-      });
+      widget.controller.searchClear();
+      setState(() {});
       return;
     }
-
-    final count = widget.terminal.search.find(query);
-    widget.controller.setSearchResults(
-      widget.terminal.search.hits,
-      activeIndex: widget.terminal.search.currentIndex,
-    );
-    setState(() {
-      _matchCount = count;
-      _matchIndex = count == 0 ? 0 : widget.terminal.search.currentIndex + 1;
-    });
+    widget.controller.searchSet(query);
+    setState(() {});
   }
 
   void _step(bool forward) {
-    if (_matchCount == 0) return;
-    final hit = forward
-        ? widget.terminal.search.next()
-        : widget.terminal.search.previous();
-    if (hit == null) return;
-    widget.controller.setSearchResults(
-      widget.terminal.search.hits,
-      activeIndex: widget.terminal.search.currentIndex,
-    );
-    setState(() {
-      _matchIndex = widget.terminal.search.currentIndex + 1;
-    });
+    if (_queryController.text.isEmpty) return;
+    if (forward) {
+      widget.controller.searchNext();
+    } else {
+      widget.controller.searchPrev();
+    }
+    setState(() {});
   }
 
   void _close() {
-    widget.terminal.search.clear();
-    widget.controller.clearSearch();
+    widget.controller.searchClear();
     widget.onClose();
   }
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final status = _matchCount == 0 && _queryController.text.isNotEmpty
+    final query = _queryController.text;
+    final status = !widget.controller.searchValid && query.isNotEmpty
         ? widget.noResultsLabel
-        : _matchCount > 0
-        ? '$_matchIndex / $_matchCount'
-        : '';
+        : query.isEmpty
+        ? ''
+        : 'regex';
 
     return Material(
       elevation: 4,

@@ -1,9 +1,11 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
+
 import 'package:flutter/foundation.dart';
+import 'package:flutter_alacritty/flutter_alacritty.dart';
 import 'package:flutter_pty/flutter_pty.dart';
-import 'package:xterm/xterm.dart';
 import '../cli/cli_executable_validator.dart';
 import '../cli/cli_invocation.dart';
 import '../cli/cli_tool_locator.dart';
@@ -40,13 +42,12 @@ class TerminalSession {
     int scrollbackLines = 10000,
     @Deprecated('Use transportStarter instead') dynamic ptyStarter,
   }) : _transportStarter = transportStarter ?? _defaultTransportStarter,
-       terminal = Terminal(
-         maxLines: scrollbackLines,
-         platform: switch (defaultTargetPlatform) {
-           TargetPlatform.macOS => TerminalTargetPlatform.macos,
-           TargetPlatform.windows => TerminalTargetPlatform.windows,
-           _ => TerminalTargetPlatform.linux,
-         },
+       engine = TerminalEngine(
+         config: TerminalConfig.defaults().copyWith(
+           scrolling: TerminalConfig.defaults().scrolling.copyWith(
+             history: scrollbackLines,
+           ),
+         ),
        );
 
   final String executable;
@@ -55,7 +56,10 @@ class TerminalSession {
   final Duration startupDeadline;
   final Duration confirmFallback;
   final TransportStarter _transportStarter;
-  final Terminal terminal;
+
+  /// Alacritty-backed terminal engine (replaces xterm [Terminal]).
+  final TerminalEngine engine;
+
   final TerminalActivityTracker activityTracker = TerminalActivityTracker();
   TerminalTransport? _transport;
   var _launchPhase = _LaunchPhase.idle;
@@ -67,6 +71,7 @@ class TerminalSession {
   void Function(String message)? _onProcessFailed;
   VoidCallback? _onProcessExited;
   StreamSubscription<String>? _outputSubscription;
+  StreamSubscription<Uint8List>? _engineOutputSubscription;
   FirstUserLineCapture? _firstUserLineCapture;
   Timer? _confirmFallbackTimer;
   Timer? _startupDeadlineTimer;
@@ -74,12 +79,14 @@ class TerminalSession {
   Timer? _ptyGeometrySettleTimer;
   var _spawnRequested = false;
   var _transportStartGeneration = 0;
-  var _terminalListenerAttached = false;
   var _hasPendingLayoutGeometry = false;
-  int _pendingViewportCols = 0;
-  int _pendingViewportRows = 0;
+  int _pendingViewportCols = 80;
+  int _pendingViewportRows = 24;
   int _lastSyncedCols = 0;
   int _lastSyncedRows = 0;
+
+  int get viewWidth => _pendingViewportCols;
+  int get viewHeight => _pendingViewportRows;
 
   /// Trailing settle after layout resize (apps may react to SIGWINCH in two phases).
   static const _layoutGeometrySettleMs = 80;
@@ -106,6 +113,20 @@ class TerminalSession {
       _launchPhase == _LaunchPhase.confirming;
 
   bool get _running => _transport != null && _launchPhase != _LaunchPhase.idle;
+
+  /// Writes PTY output bytes into the display engine.
+  void write(String text) => _writeOutput(text);
+
+  /// Called from [TerminalView.onViewportResize] when the cell grid changes.
+  void onViewportResize(int columns, int rows) {
+    if (columns <= 0 || rows <= 0) return;
+    _pendingViewportCols = columns;
+    _pendingViewportRows = rows;
+    _hasPendingLayoutGeometry = true;
+    engine.resize(columns: columns, rows: rows);
+    _syncPtyGeometryNow(columns, rows);
+    _scheduleLayoutPtyGeometrySettle();
+  }
 
   void connect({
     required String workingDirectory,
@@ -209,70 +230,33 @@ class TerminalSession {
 
     _beginStartup(invocation.executable);
 
-    _attachTerminalViewportListener();
-
     _firstUserLineCapture = onFirstUserLineSubmitted == null
         ? null
         : FirstUserLineCapture(onFirstUserLineSubmitted);
 
-    terminal.onOutput = (String data) {
-      _firstUserLineCapture?.feed(data);
+    _engineOutputSubscription?.cancel();
+    _engineOutputSubscription = engine.output.listen((Uint8List data) {
+      _firstUserLineCapture?.feed(utf8.decode(data));
       if (_transportReadyForIo && _transport != null) {
-        _transport!.write(Uint8List.fromList(utf8.encode(data)));
+        _transport!.write(data);
       }
-    };
+    });
 
-    terminal.onResize = (int width, int height, int pw, int ph) {
-      if (width <= 0 || height <= 0) return;
-      _pendingViewportCols = width;
-      _pendingViewportRows = height;
-      _hasPendingLayoutGeometry = true;
-      _syncPtyGeometryNow(width, height);
-      _scheduleLayoutPtyGeometrySettle();
-    };
+    engine.resize(columns: viewWidth, rows: viewHeight);
+    engine.initializeEmpty(viewHeight, viewWidth);
 
-    // Spawn immediately with this connect()'s args so concurrent member shells
-    // (each with its own TerminalSession) are not racing on shared launch fields.
     _spawnTransport(
       executable: invocation.executable,
       args: launchArgs,
       cwd: ptyWorkingDirectory,
-      cols: terminal.viewWidth,
-      rows: terminal.viewHeight,
+      cols: viewWidth,
+      rows: viewHeight,
     );
-  }
-
-  void _attachTerminalViewportListener() {
-    if (_terminalListenerAttached) return;
-    terminal.addListener(_schedulePtyViewportSync);
-    _terminalListenerAttached = true;
-  }
-
-  void _detachTerminalViewportListener() {
-    if (!_terminalListenerAttached) return;
-    terminal.removeListener(_schedulePtyViewportSync);
-    _terminalListenerAttached = false;
-    _cancelPtyGeometryTimers();
-  }
-
-  void _cancelPtyGeometryTimers() {
-    _ptyGeometryTimer?.cancel();
-    _ptyGeometryTimer = null;
-    _ptyGeometrySettleTimer?.cancel();
-    _ptyGeometrySettleTimer = null;
-  }
-
-  void _schedulePtyViewportSync() {
-    _schedulePtyGeometry();
   }
 
   void _schedulePtyGeometry({int? cols, int? rows}) {
     if (cols != null && rows != null) {
-      _pendingViewportCols = cols;
-      _pendingViewportRows = rows;
-      _hasPendingLayoutGeometry = true;
-      _syncPtyGeometryNow(cols, rows);
-      _scheduleLayoutPtyGeometrySettle();
+      onViewportResize(cols, rows);
       return;
     }
     if (_transport == null) {
@@ -290,7 +274,6 @@ class TerminalSession {
     );
   }
 
-  /// Layout-driven resize: SIGWINCH immediately so the shell reflows with the UI.
   void _syncPtyGeometryNow(int cols, int rows) {
     if (cols <= 0 || rows <= 0) return;
     if (_transport == null) {
@@ -313,10 +296,10 @@ class TerminalSession {
         if (_transport == null || !_transportReadyForIo) return;
         final cols = _hasPendingLayoutGeometry
             ? _pendingViewportCols
-            : terminal.viewWidth;
+            : viewWidth;
         final rows = _hasPendingLayoutGeometry
             ? _pendingViewportRows
-            : terminal.viewHeight;
+            : viewHeight;
         _hasPendingLayoutGeometry = false;
         _syncPtyGeometryNow(cols, rows);
       },
@@ -326,10 +309,10 @@ class TerminalSession {
   void _applyOutputPtyGeometry() {
     final cols = _hasPendingLayoutGeometry
         ? _pendingViewportCols
-        : terminal.viewWidth;
+        : viewWidth;
     final rows = _hasPendingLayoutGeometry
         ? _pendingViewportRows
-        : terminal.viewHeight;
+        : viewHeight;
     _hasPendingLayoutGeometry = false;
 
     if (cols <= 0 || rows <= 0) return;
@@ -480,7 +463,7 @@ class TerminalSession {
           return;
         }
         if (code != 0) {
-          terminal.write('\r\n[process exited with code $code]\r\n');
+          write('\r\n[process exited with code $code]\r\n');
           return;
         }
         if (_transport == transport) {
@@ -540,13 +523,17 @@ class TerminalSession {
     _transport = null;
     _startupExecutable = null;
     appLogger.e('[terminal] $message', error: error, stackTrace: stackTrace);
-    terminal.write('\r\n$message\r\n');
+    write('\r\n$message\r\n');
     _onProcessFailed?.call(message);
     _onProcessFailed = null;
   }
 
   void _teardownPtyState() {
     _cancelStartupTimers();
+    _ptyGeometryTimer?.cancel();
+    _ptyGeometryTimer = null;
+    _ptyGeometrySettleTimer?.cancel();
+    _ptyGeometrySettleTimer = null;
     _outputSubscription?.cancel();
     _outputSubscription = null;
     _launchPhase = _LaunchPhase.idle;
@@ -555,22 +542,22 @@ class TerminalSession {
     activityTracker.reset();
   }
 
-  void write(String text) {
+  void writeToPty(String text) {
     if (_transportReadyForIo && _transport != null) {
       _transport!.write(Uint8List.fromList(utf8.encode(text)));
     }
   }
 
   void writeln(String text) {
-    write('$text\r');
+    writeToPty('$text\r');
   }
 
   void _writeOutput(String text) {
     if (text.isNotEmpty && isConnected) {
       activityTracker.markActive();
     }
-    terminal.write(text);
-    _schedulePtyViewportSync();
+    engine.feed(Uint8List.fromList(utf8.encode(text)));
+    _schedulePtyGeometry();
   }
 
   static bool _looksLikeExecFailure(String text) {
@@ -603,22 +590,21 @@ class TerminalSession {
     _transportStartGeneration++;
     _startFailed = false;
     _spawnRequested = false;
-    _cancelPtyGeometryTimers();
     _hasPendingLayoutGeometry = false;
-    _detachTerminalViewportListener();
     _teardownPtyState();
     _onProcessFailed = null;
     _onProcessExited = null;
     _ptyEnvironment = null;
     _firstUserLineCapture = null;
-    terminal.onOutput = null;
-    terminal.onResize = null;
+    _engineOutputSubscription?.cancel();
+    _engineOutputSubscription = null;
     _transport?.close();
     _transport = null;
   }
 
   void dispose() {
     disconnect();
+    engine.dispose();
   }
 
   /// Full process environment for [Pty.start], including OSC 8 identity hints.
