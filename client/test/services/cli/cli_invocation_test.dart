@@ -52,6 +52,15 @@ void main() {
     );
   });
 
+  test('converts WSL mount paths back to Windows drive paths', () {
+    expect(
+      LaunchCommandBuilder.wslPathToWindows('/mnt/c/Users/haung/Documents'),
+      r'C:\Users\haung\Documents',
+    );
+    expect(LaunchCommandBuilder.wslPathToWindows('/mnt/d'), r'D:\');
+    expect(LaunchCommandBuilder.wslPathToWindows('/tmp/work'), isNull);
+  });
+
   test('treats WSL UNC executable paths as wsl invocations on Windows', () {
     final invocation = CliInvocation.fromExecutable(
       r'\\wsl.localhost\Ubuntu\home\hhoa\flashskyai\dist\flashskyai',

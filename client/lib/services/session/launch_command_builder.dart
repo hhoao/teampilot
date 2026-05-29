@@ -1,5 +1,8 @@
 import 'dart:async';
 import 'dart:io';
+
+import 'package:path/path.dart' as p;
+
 import '../../models/team_config.dart';
 import '../cli/cli_tool_adapter.dart';
 import '../cli/cli_invocation.dart';
@@ -343,6 +346,23 @@ class LaunchCommandBuilder {
     final drive = match.group(1)!.toLowerCase();
     final rest = match.group(2)!.replaceAll('\\', '/');
     return rest.isEmpty ? '/mnt/$drive' : '/mnt/$drive/$rest';
+  }
+
+  /// Inverse of [windowsPathToWsl] for `/mnt/<drive>/...` paths.
+  static String? wslPathToWindows(String path) {
+    final trimmed = path.trim();
+    if (!trimmed.startsWith('/')) return null;
+
+    final normalized = p.Context(style: p.Style.posix).normalize(trimmed);
+    final match = RegExp(r'^/mnt/([a-zA-Z])(?:/(.*))?$').firstMatch(normalized);
+    if (match == null) return null;
+
+    final drive = match.group(1)!.toUpperCase();
+    final rest = match.group(2);
+    if (rest == null || rest.isEmpty) {
+      return '$drive:\\';
+    }
+    return p.normalize('$drive:\\${rest.replaceAll('/', r'\')}');
   }
 
   static String workingDirectoryForProcess(

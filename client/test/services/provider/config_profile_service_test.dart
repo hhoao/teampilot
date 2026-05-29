@@ -732,6 +732,7 @@ void main() {
         containsAll([
           p.normalize(r'C:\Users\haung\Documents'),
           'C:/Users/haung/Documents',
+          '/mnt/c/Users/haung/Documents',
         ]),
       );
       final forwardSlash =
@@ -740,6 +741,33 @@ void main() {
       expect(forwardSlash['projectOnboardingSeenCount'], 1);
       expect(forwardSlash['allowedTools'], isA<List<Object?>>());
       expect(forwardSlash['mcpServers'], isA<Map<String, Object?>>());
+    },
+  );
+
+  test(
+    'prepareTeamLaunch writes WSL path for flashskyai trusted projects',
+    () async {
+      if (!Platform.isWindows) return;
+
+      const sessionId = 'sess-flashsky-wsl-trust';
+      await service.prepareTeamLaunch(
+        teamId: 'team-a',
+        runtimeTeamId: sessionId,
+        cli: TeamCli.flashskyai,
+        workingDirectory: r'C:\Users\haung\Documents',
+      );
+
+      final metadataPath = p.join(
+        _sessionFlashskyaiDir(base.path, 'team-a', sessionId),
+        ConfigProfileService.flashskyaiMetadataFileName,
+      );
+      final metadata =
+          jsonDecode(await File(metadataPath).readAsString())
+              as Map<String, Object?>;
+      final projects = metadata['projects'] as Map<String, Object?>;
+      final wslPath = projects['/mnt/c/Users/haung/Documents'];
+      expect(wslPath, isA<Map>());
+      expect((wslPath! as Map)['hasTrustDialogAccepted'], isTrue);
     },
   );
 

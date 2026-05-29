@@ -44,16 +44,58 @@ bool projectPathsContains(Iterable<String> paths, String target) {
 
 /// All `projects` keys a CLI may use for [path] in metadata JSON.
 ///
-/// On Windows, Claude Code stores both `C:\foo` and `C:/foo` variants.
+/// On Windows, CLIs may run natively (`C:\foo`, `C:/foo`) or under WSL
+/// (`/mnt/c/foo`). Returns every common variant so workspace trust matches
+/// either runtime.
 Iterable<String> projectMetadataKeys(String path) {
-  final normalized = normalizeProjectPath(path);
-  if (normalized.isEmpty) return const [];
+  final trimmed = path.trim();
+  if (trimmed.isEmpty) return const [];
 
-  if (!Platform.isWindows || normalized.startsWith('/')) {
-    return [normalized];
+  if (!Platform.isWindows) {
+    return [normalizeProjectPath(path)];
   }
 
-  final forward = normalized.replaceAll(r'\', '/');
-  final backslash = forward.replaceAll('/', r'\');
-  return {normalized, forward, backslash};
+  return _windowsProjectMetadataKeys(trimmed, path);
+}
+
+Set<String> _windowsProjectMetadataKeys(String trimmed, String original) {
+  final keys = <String>{};
+
+  void addWindowsPathKeys(String windowsPath) {
+    final norm = p.normalize(windowsPath);
+    if (norm.isEmpty) return;
+    keys.add(norm);
+    final forward = norm.replaceAll(r'\', '/');
+    keys.add(forward);
+    keys.add(forward.replaceAll('/', r'\'));
+    final wsl = LaunchCommandBuilder.windowsPathToWsl(norm);
+    if (wsl != null) {
+      keys.add(p.Context(style: p.Style.posix).normalize(wsl));
+    }
+  }
+
+  void addPosixPathKeys(String posixPath) {
+    final norm = p.Context(style: p.Style.posix).normalize(posixPath);
+    if (norm.isEmpty) return;
+    keys.add(norm);
+    final windows = LaunchCommandBuilder.wslPathToWindows(norm);
+    if (windows != null) {
+      addWindowsPathKeys(windows);
+    }
+  }
+
+  if (trimmed.startsWith('/') && !trimmed.startsWith('//')) {
+    addPosixPathKeys(trimmed);
+  } else {
+    addWindowsPathKeys(trimmed);
+  }
+
+  final normalized = normalizeProjectPath(original);
+  if (normalized.startsWith('/')) {
+    addPosixPathKeys(normalized);
+  } else if (normalized.isNotEmpty) {
+    addWindowsPathKeys(normalized);
+  }
+
+  return keys;
 }

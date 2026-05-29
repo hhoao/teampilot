@@ -65,11 +65,31 @@ void main() {
       containsAll([
         p.normalize(r'C:\Users\haung\Documents'),
         'C:/Users/haung/Documents',
+        '/mnt/c/Users/haung/Documents',
       ]),
     );
   });
 
+  test(
+    'projectMetadataKeys includes Windows variants for WSL project paths',
+    () {
+      if (!Platform.isWindows) return;
+      RuntimeStorageContext.resetForTesting();
+
+      final keys = projectMetadataKeys('/mnt/c/Users/haung/Documents');
+      expect(keys, contains('/mnt/c/Users/haung/Documents'));
+      expect(
+        keys,
+        containsAll([
+          p.normalize(r'C:\Users\haung\Documents'),
+          'C:/Users/haung/Documents',
+        ]),
+      );
+    },
+  );
+
   test('projectMetadataKeys keeps single key for POSIX paths', () {
+    if (Platform.isWindows) return;
     expect(projectMetadataKeys('/tmp/work'), ['/tmp/work']);
   });
 }
