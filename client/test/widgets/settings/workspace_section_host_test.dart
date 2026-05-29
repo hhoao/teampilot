@@ -100,4 +100,52 @@ void main() {
     await tester.tap(find.text('alpha'));
     expect(selected, _TestSection.alpha);
   });
+
+  testWidgets('composite nav panel with footer lays out and scrolls', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      wrap(
+        SizedBox(
+          width: 240,
+          height: 320,
+          child: WorkspaceCompositeNavPanel(
+            primaryEntries: [
+              for (var i = 0; i < 6; i++)
+                WorkspaceHubEntry(
+                  title: 'section $i',
+                  icon: Icons.star_outline,
+                  density: WorkspaceHubNavDensity.relaxed,
+                  onTap: () {},
+                ),
+            ],
+            trailingChildren: [
+              for (var i = 0; i < 12; i++)
+                WorkspaceHubNavItem(
+                  title: 'member $i',
+                  icon: Icons.person_outline,
+                  density: WorkspaceHubNavDensity.subItem,
+                  onTap: () {},
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    expect(find.text('section 0'), findsOneWidget);
+    expect(find.text('member 0'), findsOneWidget);
+
+    await tester.scrollUntilVisible(
+      find.text('member 11'),
+      48,
+      scrollable: find.descendant(
+        of: find.byType(WorkspaceCompositeNavPanel),
+        matching: find.byType(Scrollable),
+      ),
+    );
+    expect(find.text('section 0'), findsNothing);
+    expect(find.text('member 11'), findsOneWidget);
+  });
 }

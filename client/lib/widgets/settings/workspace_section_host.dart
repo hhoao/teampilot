@@ -129,28 +129,33 @@ class WorkspaceEnumNavPanel<S extends Enum> extends StatelessWidget {
 class WorkspaceCompositeNavPanel extends StatelessWidget {
   const WorkspaceCompositeNavPanel({
     required this.primaryEntries,
-    this.footer,
+    this.trailingChildren = const [],
     super.key,
   });
 
   final List<WorkspaceHubEntry> primaryEntries;
-  final Widget? footer;
+
+  /// Sub-menu rows after [primaryEntries] (e.g. members under the Members section).
+  final List<Widget> trailingChildren;
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    return Container(
+    return ColoredBox(
       color: cs.workspacePage,
-      padding: const EdgeInsets.fromLTRB(24, 28, 18, 24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          WorkspaceHubNavList(entries: primaryEntries, animateEntries: true),
-          if (footer != null) ...[
-            const SizedBox(height: 4),
-            Expanded(child: footer!),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(24, 28, 18, 24),
+        child: WorkspaceHubNavList(
+          entries: primaryEntries,
+          animateEntries: true,
+          trailingChildren: [
+            for (final child in trailingChildren)
+              Padding(
+                padding: const EdgeInsets.only(left: 14, right: 2),
+                child: child,
+              ),
           ],
-        ],
+        ),
       ),
     );
   }

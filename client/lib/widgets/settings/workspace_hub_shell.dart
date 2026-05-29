@@ -192,6 +192,8 @@ class WorkspaceHubNavList extends StatelessWidget {
     this.hubStyle = false,
     this.sidebarStyle = false,
     this.animateEntries = false,
+    this.shrinkWrap = false,
+    this.trailingChildren = const [],
     super.key,
   });
 
@@ -199,6 +201,13 @@ class WorkspaceHubNavList extends StatelessWidget {
   final bool hubStyle;
   final bool sidebarStyle;
   final bool animateEntries;
+
+  /// When true, sizes to [entries] height. Use inside a [Column] with a
+  /// scrollable sibling (e.g. member list footer), not inside another scroll view.
+  final bool shrinkWrap;
+
+  /// Extra rows after [entries] in the same scroll view (e.g. member sub-items).
+  final List<Widget> trailingChildren;
 
   @override
   Widget build(BuildContext context) {
@@ -231,21 +240,30 @@ class WorkspaceHubNavList extends StatelessWidget {
           );
     }).toList();
 
+    final scrollPhysics = shrinkWrap
+        ? const NeverScrollableScrollPhysics()
+        : null;
+
+    final children = [...items, ...trailingChildren];
+
     if (hubStyle) {
       return ListView(
+        shrinkWrap: shrinkWrap,
+        physics: scrollPhysics,
         padding: const EdgeInsets.fromLTRB(12, 4, 12, 24),
-        children: items,
+        children: children,
       );
     }
 
     return Container(
       color: cs.workspacePage,
-      padding: sidebarStyle
-          ? const EdgeInsets.fromLTRB(24, 28, 18, 24)
-          : EdgeInsets.zero,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: items,
+      child: ListView(
+        shrinkWrap: shrinkWrap,
+        physics: scrollPhysics,
+        padding: sidebarStyle
+            ? const EdgeInsets.fromLTRB(24, 28, 18, 24)
+            : EdgeInsets.zero,
+        children: children,
       ),
     );
   }

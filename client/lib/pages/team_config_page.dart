@@ -329,25 +329,22 @@ class _TeamConfigNavPanel extends StatelessWidget {
             ),
           ),
       ],
-      footer: ListView(
-        padding: const EdgeInsets.only(left: 14, right: 2),
-        children: [
-          for (final m in team.members)
-            WorkspaceHubNavItem(
-              title: m.name.trim().isEmpty ? l10n.memberName : m.name.trim(),
-              icon: Icons.person_outline,
-              density: WorkspaceHubNavDensity.subItem,
-              selected:
-                  section == TeamConfigSection.members &&
-                  m.id == selectedMemberId,
-              onTap: throttledTap(
-                'team_config_nav_member_${m.id}',
-                () => onSelectMember(m.id),
-              ),
+      trailingChildren: [
+        for (final m in team.members)
+          WorkspaceHubNavItem(
+            title: m.name.trim().isEmpty ? l10n.memberName : m.name.trim(),
+            icon: Icons.person_outline,
+            density: WorkspaceHubNavDensity.subItem,
+            selected:
+                section == TeamConfigSection.members &&
+                m.id == selectedMemberId,
+            onTap: throttledTap(
+              'team_config_nav_member_${m.id}',
+              () => onSelectMember(m.id),
             ),
-          _MemberNavAddTile(l10n: l10n, onTap: onAddMember),
-        ],
-      ),
+          ),
+        _MemberNavAddTile(l10n: l10n, onTap: onAddMember),
+      ],
     );
   }
 }
