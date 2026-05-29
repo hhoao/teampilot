@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:path/path.dart' as p;
 
+import '../../utils/lock_pool.dart';
 import 'filesystem.dart';
 
 class LocalFilesystem implements Filesystem {
@@ -8,6 +9,7 @@ class LocalFilesystem implements Filesystem {
     : pathContext = pathContext ?? p.context;
 
   static int _tmpWriteCounter = 0;
+  static final _atomicWriteLocks = LockPool();
 
   @override
   final p.Context pathContext;
@@ -147,17 +149,19 @@ class LocalFilesystem implements Filesystem {
 
   @override
   Future<void> atomicWrite(String path, String content) async {
-    await ensureDir(pathContext.dirname(path));
-    final tmp =
-        '$path.tmp.${DateTime.now().microsecondsSinceEpoch}.${_tmpWriteCounter++}';
-    await File(tmp).writeAsString(content, flush: true);
-    try {
-      await _renameReplacing(tmp, path);
-    } on Object {
-      // The rename never made it; drop the temp file so we don't leak it.
-      await _deleteIfStillPresent(File(tmp));
-      rethrow;
-    }
+    await _atomicWriteLocks.synchronized(path, () async {
+      await ensureDir(pathContext.dirname(path));
+      final tmp =
+          '$path.tmp.${DateTime.now().microsecondsSinceEpoch}.${_tmpWriteCounter++}';
+      await File(tmp).writeAsString(content, flush: true);
+      try {
+        await _renameReplacing(tmp, path);
+      } on Object {
+        // The rename never made it; drop the temp file so we don't leak it.
+        await _deleteIfStillPresent(File(tmp));
+        rethrow;
+      }
+    });
   }
 
   /// Renames [from] onto [to], overwriting any existing destination.

@@ -125,7 +125,15 @@ void main() {
       const PluginManagementPage(section: PluginSection.discovery),
     ));
     await tester.pumpAndSettle();
-    expect(find.byType(ListView), findsOneWidget);
+    // Desktop layout also has a sidebar ListView; discovery uses bottom padding.
+    expect(
+      find.byWidgetPredicate(
+        (widget) =>
+            widget is ListView &&
+            widget.padding == const EdgeInsets.only(bottom: 8),
+      ),
+      findsOneWidget,
+    );
     expect(find.text('plugin-0'), findsOneWidget);
     expect(find.text('plugin-1'), findsOneWidget);
   });
