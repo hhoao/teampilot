@@ -1,6 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:teampilot/cubits/layout_cubit.dart';
 import 'package:teampilot/pages/workspace_shell.dart';
+
+Widget _wrapShell(Widget shell) {
+  return MaterialApp(
+    home: BlocProvider(
+      create: (_) => LayoutCubit(),
+      child: Scaffold(body: shell),
+    ),
+  );
+}
 
 void main() {
   testWidgets(
@@ -9,17 +20,15 @@ void main() {
       const animationKey = ValueKey('chat-workspace-body-session-1');
 
       await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: WorkspaceShell(
-              showHeader: false,
-              breadcrumb: 'Team / Chat',
-              title: 'Chat',
-              subtitle: 'Terminal',
-              actions: const [],
-              childAnimationKey: animationKey,
-              child: const Text('Terminal body'),
-            ),
+        _wrapShell(
+          WorkspaceShell(
+            showHeader: false,
+            breadcrumb: 'Team / Chat',
+            title: 'Chat',
+            subtitle: 'Terminal',
+            actions: const [],
+            childAnimationKey: animationKey,
+            child: const Text('Terminal body'),
           ),
         ),
       );
@@ -53,17 +62,15 @@ void main() {
     (tester) async {
       Future<void> pumpShell(String sessionId) {
         return tester.pumpWidget(
-          MaterialApp(
-            home: Scaffold(
-              body: WorkspaceShell(
-                showHeader: false,
-                breadcrumb: 'Team / Chat',
-                title: 'Chat',
-                subtitle: 'Terminal',
-                actions: const [],
-                childAnimationKey: ValueKey('chat-workspace-body-$sessionId'),
-                child: Text('Terminal body $sessionId'),
-              ),
+          _wrapShell(
+            WorkspaceShell(
+              showHeader: false,
+              breadcrumb: 'Team / Chat',
+              title: 'Chat',
+              subtitle: 'Terminal',
+              actions: const [],
+              childAnimationKey: ValueKey('chat-workspace-body-$sessionId'),
+              child: Text('Terminal body $sessionId'),
             ),
           ),
         );

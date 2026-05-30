@@ -91,7 +91,7 @@ abstract final class TerminalUriOpener {
 
     if (uri.scheme.isEmpty && _isBareFilePath(trimmed, uri)) {
       final path = _barePathFromUri(trimmed, uri);
-      return Uri.file(path, windows: Platform.isWindows).toString();
+      return _barePathToFileUri(path);
     }
 
     if (uri.scheme != 'file') return trimmed;
@@ -131,6 +131,22 @@ abstract final class TerminalUriOpener {
 
   static String _barePathFromUri(String trimmed, Uri uri) =>
       uri.path.isNotEmpty ? uri.path : trimmed;
+
+  /// [Uri.file] resolves relative paths against the process cwd; terminal links
+  /// should stay cwd-relative until [resolveLocalFilePath] joins session cwd.
+  static String _barePathToFileUri(String path) {
+    if (p.isAbsolute(path) ||
+        (Platform.isWindows && RegExp(r'^[A-Za-z]:[/\\]').hasMatch(path))) {
+      return Uri.file(path, windows: Platform.isWindows).toString();
+    }
+    final normalized = path.replaceAll(r'\', '/');
+    // Use `file:/relative` (two slashes) — [Uri] normalizes to `file:///`, which
+    // skips session cwd joining in [_shouldJoinWithWorkingDirectory].
+    if (normalized.startsWith('/')) {
+      return 'file:$normalized';
+    }
+    return 'file:/$normalized';
+  }
 
   static Future<bool> _openLocalFile(
     String raw, {
