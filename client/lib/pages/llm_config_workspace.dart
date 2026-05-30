@@ -19,7 +19,7 @@ import '../utils/app_keys.dart';
 import '../utils/debounce/debounce.dart';
 import '../widgets/dropdown/flashsky_dropdown_field.dart';
 import '../widgets/dropdown/flashskyai_dropdown_decoration.dart';
-import '../widgets/resizable_split_view.dart';
+import '../widgets/split_layout.dart';
 import '../widgets/settings/workspace_hub_shell.dart';
 
 // LLM 配置页统一留白（8dp 网格）。

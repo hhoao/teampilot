@@ -11,7 +11,7 @@ import '../theme/workspace_surface_layers.dart';
 import '../l10n/l10n_extensions.dart';
 import '../utils/app_keys.dart';
 import '../models/layout_preferences.dart';
-import '../widgets/resizable_split_view.dart';
+import '../widgets/split_layout.dart';
 import '../widgets/workspace_terminal_panel.dart';
 
 enum AppSection { chat, runs, config }
@@ -217,51 +217,17 @@ class _WorkspaceCenterColumnWithTerminal extends StatelessWidget {
           LayoutPreferences.minWorkspaceTerminalHeight,
           LayoutPreferences.maxWorkspaceTerminalHeight,
         );
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Expanded(child: child),
-            _WorkspaceTerminalResizeHandle(
-              onDrag: (delta) {
-                final layout = context.read<LayoutCubit>();
-                final next = (layout.state.preferences.workspaceTerminalHeight -
-                        delta)
-                    .clamp(
-                      LayoutPreferences.minWorkspaceTerminalHeight,
-                      LayoutPreferences.maxWorkspaceTerminalHeight,
-                    );
-                layout.setWorkspaceTerminalHeight(next);
-              },
-            ),
-            SizedBox(
-              height: terminalHeight,
-              child: WorkspaceTerminalPanel(workingDirectory: cwd),
-            ),
-          ],
+        return ResizableBottomPaneView(
+          top: child,
+          bottom: WorkspaceTerminalPanel(workingDirectory: cwd),
+          bottomHeight: terminalHeight,
+          minBottomHeight: LayoutPreferences.minWorkspaceTerminalHeight,
+          maxBottomHeight: LayoutPreferences.maxWorkspaceTerminalHeight,
+          onBottomHeightChanged: (height) {
+            context.read<LayoutCubit>().setWorkspaceTerminalHeight(height);
+          },
         );
       },
-    );
-  }
-}
-
-class _WorkspaceTerminalResizeHandle extends StatelessWidget {
-  const _WorkspaceTerminalResizeHandle({required this.onDrag});
-
-  final ValueChanged<double> onDrag;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onVerticalDragUpdate: (details) => onDrag(details.delta.dy),
-      child: MouseRegion(
-        cursor: SystemMouseCursors.resizeRow,
-        child: Container(
-          height: 4,
-          color: cs.outlineVariant.withValues(alpha: 0.45),
-        ),
-      ),
     );
   }
 }
@@ -285,11 +251,19 @@ class _WorkspaceBody extends StatelessWidget {
       return child;
     }
     if (preferences.toolPlacement == ToolPanelPlacement.bottom) {
-      return Column(
-        children: [
-          Expanded(child: child),
-          SizedBox(height: preferences.bottomToolsHeight, child: rightTools),
-        ],
+      final toolsHeight = preferences.bottomToolsHeight.clamp(
+        LayoutPreferences.minBottomToolsHeight,
+        LayoutPreferences.maxBottomToolsHeight,
+      );
+      return ResizableBottomPaneView(
+        top: child,
+        bottom: rightTools!,
+        bottomHeight: toolsHeight,
+        minBottomHeight: LayoutPreferences.minBottomToolsHeight,
+        maxBottomHeight: LayoutPreferences.maxBottomToolsHeight,
+        onBottomHeightChanged: (height) {
+          context.read<LayoutCubit>().setBottomToolsHeight(height);
+        },
       );
     }
     final rightWidth = preferences.rightToolsWidth;

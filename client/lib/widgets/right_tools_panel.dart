@@ -23,6 +23,7 @@ import '../theme/workspace_surface_layers.dart';
 import '../utils/app_keys.dart';
 import '../utils/debounce/debounce.dart';
 import 'file_tree_node.dart';
+import 'split_layout.dart';
 import 'member_presence_indicator.dart';
 
 class RightToolsPanel extends StatefulWidget {
@@ -146,20 +147,25 @@ class _StackedToolsPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
     if (panels.length == 1) return panels.single;
-    return Column(
-      children: [
-        Expanded(
-          flex: (preferences.membersSplit * 100).round(),
-          child: panels.first,
-        ),
-        Divider(height: 1, color: cs.outlineVariant.withValues(alpha: 0.5)),
-        Expanded(
-          flex: ((1 - preferences.membersSplit) * 100).round(),
-          child: panels.last,
-        ),
-      ],
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final totalHeight = constraints.maxHeight;
+        final minTop = totalHeight * 0.25;
+        final maxTop = totalHeight * 0.75;
+        return ResizableVerticalSplitView(
+          initialTopFraction: preferences.membersSplit,
+          minTopHeight: minTop,
+          maxTopHeight: maxTop,
+          top: panels.first,
+          bottom: panels.last,
+          onHeightChanged: (topHeight) {
+            context.read<LayoutCubit>().setMembersSplit(
+              (topHeight / totalHeight).clamp(0.25, 0.75),
+            );
+          },
+        );
+      },
     );
   }
 }

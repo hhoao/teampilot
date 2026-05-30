@@ -4,7 +4,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '../../models/layout_preferences.dart';
 import '../../theme/app_text_styles.dart';
 import '../../theme/workspace_surface_layers.dart';
-import '../resizable_split_view.dart';
+import '../split_layout.dart';
 
 enum WorkspaceHubNavDensity { standard, relaxed, subItem }
 

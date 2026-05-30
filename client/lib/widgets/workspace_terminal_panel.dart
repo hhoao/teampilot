@@ -19,6 +19,7 @@ import '../services/terminal/terminal_uri_opener.dart';
 import '../services/terminal/workspace_interactive_shell.dart';
 import '../utils/app_keys.dart';
 import '../utils/context_menu_position.dart';
+import 'split_layout.dart';
 
 const _uuid = Uuid();
 
@@ -268,92 +269,55 @@ class _WorkspaceTerminalPanelState extends State<WorkspaceTerminalPanel> {
           LayoutPreferences.maxWorkspaceTerminalSessionSidebarWidth,
         );
 
+  final terminalBody = active == null || cwd.isEmpty
+      ? Center(
+          child: Text(
+            l10n.workspaceTerminalNoWorkingDirectory,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: terminalForeground.withValues(alpha: 0.65),
+            ),
+          ),
+        )
+      : _WorkspaceTerminalView(
+          tab: active,
+          theme: theme,
+          onContextMenu: (position, cell) => _showContextMenu(
+            context,
+            active,
+            position,
+            cell,
+          ),
+        );
+
     return ColoredBox(
       key: AppKeys.workspaceTerminalPanel,
       color: terminalBackground,
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Expanded(
-            child: active == null || cwd.isEmpty
-                ? Center(
-                    child: Text(
-                      l10n.workspaceTerminalNoWorkingDirectory,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: terminalForeground.withValues(alpha: 0.65),
-                      ),
-                    ),
-                  )
-                : _WorkspaceTerminalView(
-                    tab: active,
-                    theme: theme,
-                    onContextMenu: (position, cell) => _showContextMenu(
-                      context,
-                      active,
-                      position,
-                      cell,
-                    ),
-                  ),
-          ),
-          _WorkspaceTerminalSessionSidebarResizeHandle(
-            onDrag: (delta) {
-              final layout = context.read<LayoutCubit>();
-              final next =
-                  (layout
-                              .state
-                              .preferences
-                              .workspaceTerminalSessionSidebarWidth +
-                          delta)
-                      .clamp(
-                        LayoutPreferences
-                            .minWorkspaceTerminalSessionSidebarWidth,
-                        LayoutPreferences
-                            .maxWorkspaceTerminalSessionSidebarWidth,
-                      );
-              layout.setWorkspaceTerminalSessionSidebarWidth(next);
-            },
-          ),
-          SizedBox(
-            width: sessionSidebarWidth,
-            child: _WorkspaceTerminalSessionSidebar(
-              theme: theme,
-              tabs: _tabs,
-              activeTabId: _activeTabId,
-              onSelect: (id) => setState(() => _activeTabId = id),
-              onCloseTab: _closeTab,
-              onNewTab: () {
-                final dir = widget.workingDirectory.trim();
-                if (dir.isEmpty) return;
-                _addTab(dir, select: true);
-              },
-              onClosePanel: () => context
-                  .read<LayoutCubit>()
-                  .setWorkspaceTerminalVisible(false),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _WorkspaceTerminalSessionSidebarResizeHandle extends StatelessWidget {
-  const _WorkspaceTerminalSessionSidebarResizeHandle({required this.onDrag});
-
-  final ValueChanged<double> onDrag;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onHorizontalDragUpdate: (details) => onDrag(details.delta.dx),
-      child: MouseRegion(
-        cursor: SystemMouseCursors.resizeColumn,
-        child: Container(
-          width: 4,
-          color: cs.outlineVariant.withValues(alpha: 0.45),
+      child: ResizableTrailingPaneView(
+        leading: terminalBody,
+        trailing: _WorkspaceTerminalSessionSidebar(
+          theme: theme,
+          tabs: _tabs,
+          activeTabId: _activeTabId,
+          onSelect: (id) => setState(() => _activeTabId = id),
+          onCloseTab: _closeTab,
+          onNewTab: () {
+            final dir = widget.workingDirectory.trim();
+            if (dir.isEmpty) return;
+            _addTab(dir, select: true);
+          },
+          onClosePanel: () =>
+              context.read<LayoutCubit>().setWorkspaceTerminalVisible(false),
         ),
+        trailingWidth: sessionSidebarWidth,
+        minTrailingWidth:
+            LayoutPreferences.minWorkspaceTerminalSessionSidebarWidth,
+        maxTrailingWidth:
+            LayoutPreferences.maxWorkspaceTerminalSessionSidebarWidth,
+        onTrailingWidthChanged: (width) {
+          context
+              .read<LayoutCubit>()
+              .setWorkspaceTerminalSessionSidebarWidth(width);
+        },
       ),
     );
   }

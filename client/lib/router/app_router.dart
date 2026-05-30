@@ -27,7 +27,7 @@ import '../services/app/platform_utils.dart';
 import 'android_shell_chrome.dart';
 import '../widgets/context_sidebar.dart';
 import '../widgets/create_project_dialog.dart';
-import '../widgets/resizable_split_view.dart';
+import '../widgets/split_layout.dart';
 import '../l10n/l10n_extensions.dart';
 
 final appRouter = GoRouter(
