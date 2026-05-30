@@ -236,6 +236,17 @@ class TerminalSession {
       environment: _extraEnvironment,
     );
 
+    if (validateLaunch) {
+      final validationError = CliExecutableValidator.validateLaunchSyncFast(
+        executable: invocation.executable,
+        workingDirectory: ptyWorkingDirectory,
+      );
+      if (validationError != null) {
+        _handleStartFailure(validationError);
+        return;
+      }
+    }
+
     appLogger.i(
       '--------------------------------\n'
       'Starting transport:\n'
@@ -298,6 +309,17 @@ class TerminalSession {
     _startFailed = false;
 
     final launchArgs = WorkspaceInteractiveShell.launchArguments(executable);
+
+    if (validateLaunch) {
+      final validationError = CliExecutableValidator.validateLaunchSyncFast(
+        executable: executable,
+        workingDirectory: ptyWorkingDirectory,
+      );
+      if (validationError != null) {
+        _handleStartFailure(validationError);
+        return;
+      }
+    }
 
     _beginStartup(executable);
 
@@ -474,10 +496,10 @@ class TerminalSession {
       }
 
       if (validateLaunch) {
-        final validationError = await CliExecutableValidator.validateLaunchAsync(
-          executable: executable,
-          workingDirectory: cwd,
-        );
+        final validationError =
+            await CliExecutableValidator.validateLaunchPathLookupAsync(
+              executable,
+            );
         if (validationError != null) {
           if (startGeneration == _transportStartGeneration && _starting) {
             _spawnRequested = false;

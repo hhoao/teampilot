@@ -1098,6 +1098,7 @@ void main() {
         repo: repo,
       );
       await postFrame.flush();
+      await drainPendingAsyncWork();
       expect(captured!.lastAdditionalDirectoriesLists.last, ['/extra']);
     },
   );
