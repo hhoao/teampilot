@@ -6,6 +6,7 @@ import '../capabilities/built_in_tool_capabilities.dart';
 import '../capabilities/config_profile_capability.dart';
 import '../capabilities/executable_resolver_capability.dart';
 import '../capabilities/installer_capability.dart';
+import '../capabilities/unsupported_installer_capability.dart';
 import '../capabilities/launch_args_capability.dart';
 import '../capabilities/presence_capability.dart';
 import '../capabilities/transcript_probe_capability.dart';
@@ -17,7 +18,7 @@ final class FlashskyaiCliTool implements CliToolDefinition {
     this.configProfile = const FlashskyaiConfigProfileCapability(),
     this.transcriptProbe = const FlashskyaiTranscriptProbe(),
     this.executableResolver = const FlashskyaiExecutableResolver(),
-    this.installer = const FlashskyaiInstaller(),
+    this.installer = const UnsupportedInstallerCapability(),
     this.presence = const FlashskyaiPresence(),
   });
 

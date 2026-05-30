@@ -1,5 +1,4 @@
 import 'executable_resolver_capability.dart';
-import 'installer_capability.dart';
 import 'presence_capability.dart';
 import 'transcript_probe_capability.dart';
 
@@ -43,24 +42,6 @@ final class CodexExecutableResolver implements ExecutableResolverCapability {
   String get defaultExecutableName => 'codex';
   @override
   String get preferencesPathKey => 'codex';
-}
-
-final class FlashskyaiInstaller implements InstallerCapability {
-  const FlashskyaiInstaller();
-  @override
-  bool get supportsInstaller => false;
-}
-
-final class ClaudeInstaller implements InstallerCapability {
-  const ClaudeInstaller();
-  @override
-  bool get supportsInstaller => true;
-}
-
-final class CodexInstaller implements InstallerCapability {
-  const CodexInstaller();
-  @override
-  bool get supportsInstaller => false;
 }
 
 final class FlashskyaiPresence implements PresenceCapability {

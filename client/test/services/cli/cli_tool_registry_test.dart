@@ -2,7 +2,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/app_provider_config.dart';
 import 'package:teampilot/services/cli/registry/built_in_cli_tools.dart';
 import 'package:teampilot/services/cli/registry/capabilities/config_profile_capability.dart';
+import 'package:teampilot/services/cli/registry/capabilities/installer_capability.dart';
 import 'package:teampilot/services/cli/registry/capabilities/launch_args_capability.dart';
+import 'package:teampilot/services/cli/registry/installer/claude_installer_capability.dart';
 import 'package:teampilot/services/cli/registry/cli_capability.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_definition.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_id.dart';
@@ -51,6 +53,14 @@ void main() {
     for (final def in registry.launchable) {
       expect(registry.capability<LaunchArgsCapability>(def.id), isNotNull);
     }
+  });
+
+  test('claude built-in has InstallerCapability with install support', () {
+    final registry = CliToolRegistry();
+    registerBuiltInCliTools(registry);
+    final installer = registry.capability<InstallerCapability>('claude');
+    expect(installer, isA<ClaudeInstallerCapability>());
+    expect(installer!.supportsInstaller, isTrue);
   });
 
   test('built-in launchable tools have ConfigProfileCapability', () {

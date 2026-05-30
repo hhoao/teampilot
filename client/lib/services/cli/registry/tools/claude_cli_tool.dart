@@ -10,6 +10,7 @@ import '../capabilities/launch_args_capability.dart';
 import '../capabilities/presence_capability.dart';
 import '../capabilities/transcript_probe_capability.dart';
 import '../config_profile/claude_config_profile_capability.dart';
+import '../installer/claude_installer_capability.dart';
 
 final class ClaudeCliTool implements CliToolDefinition {
   const ClaudeCliTool({
@@ -17,7 +18,7 @@ final class ClaudeCliTool implements CliToolDefinition {
     this.configProfile = const ClaudeConfigProfileCapability(),
     this.transcriptProbe = const ClaudeTranscriptProbe(),
     this.executableResolver = const ClaudeExecutableResolver(),
-    this.installer = const ClaudeInstaller(),
+    this.installer = const ClaudeInstallerCapability(),
     this.presence = const ClaudePresence(),
   });
 
