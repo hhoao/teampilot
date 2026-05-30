@@ -118,8 +118,7 @@ class TerminalSession {
           _launchPhase == _LaunchPhase.confirming);
 
   /// PTY confirmed running (agent may still be idle).
-  bool get isConnected =>
-      !_startFailed && _launchPhase == _LaunchPhase.running;
+  bool get isConnected => !_startFailed && _launchPhase == _LaunchPhase.running;
 
   bool get _starting =>
       _launchPhase == _LaunchPhase.spawning ||
@@ -341,12 +340,8 @@ class TerminalSession {
   }
 
   void _applyOutputPtyGeometry() {
-    final cols = _hasPendingLayoutGeometry
-        ? _pendingViewportCols
-        : viewWidth;
-    final rows = _hasPendingLayoutGeometry
-        ? _pendingViewportRows
-        : viewHeight;
+    final cols = _hasPendingLayoutGeometry ? _pendingViewportCols : viewWidth;
+    final rows = _hasPendingLayoutGeometry ? _pendingViewportRows : viewHeight;
     _hasPendingLayoutGeometry = false;
 
     if (cols <= 0 || rows <= 0) return;

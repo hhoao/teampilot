@@ -22,6 +22,7 @@ import '../services/terminal/terminal_theme_mapper.dart';
 import '../services/terminal/terminal_uri_opener.dart';
 import '../services/terminal/terminal_fonts.dart';
 import '../utils/app_keys.dart';
+import '../utils/context_menu_position.dart';
 import '../utils/debounce/debounce.dart';
 import '../theme/app_text_styles.dart';
 import '../widgets/file_editor_panel.dart';
@@ -161,18 +162,11 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
       );
     }
 
-    final overlayObject = Overlay.maybeOf(
-      menuContext,
-    )?.context.findRenderObject();
-    if (overlayObject is! RenderBox) return;
-
-    final anchor = overlayObject.globalToLocal(globalPosition);
     final selected = await showMenu<String>(
       context: menuContext,
-      position: RelativeRect.fromRect(
-        Rect.fromPoints(anchor, anchor),
-        Offset.zero & overlayObject.size,
-      ),
+      position: contextMenuPositionForGlobal(menuContext, globalPosition),
+      useRootNavigator: true,
+      popUpAnimationStyle: const AnimationStyle(duration: Duration.zero),
       items: entries,
     );
     if (!menuContext.mounted) return;
@@ -191,10 +185,7 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
         if (text != null && text.isNotEmpty) {
           _terminalController.onTerminalInputStart();
           engine.write(
-            alacritty_paste.pasteBytes(
-              text,
-              modeFlags: engine.grid.modeFlags,
-            ),
+            alacritty_paste.pasteBytes(text, modeFlags: engine.grid.modeFlags),
           );
           _terminalController.clearSelection();
         }
@@ -375,7 +366,11 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
     if (session == null) {
       return const Center(child: CircularProgressIndicator());
     }
-    _syncTerminalTheme(session, terminalTheme, chatCubit.state.selectedMemberId);
+    _syncTerminalTheme(
+      session,
+      terminalTheme,
+      chatCubit.state.selectedMemberId,
+    );
 
     return Container(
       key: AppKeys.chatWorkspace,
@@ -423,12 +418,10 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
                           onTapUp: (details, offset) {
                             if (HardwareKeyboard.instance.isControlPressed ||
                                 HardwareKeyboard.instance.isMetaPressed) {
-                              unawaited(
-                                _openLinkAt(session.engine, offset),
-                              );
+                              unawaited(_openLinkAt(session.engine, offset));
                             }
                           },
-                          onSecondaryTapUp: (details, offset) {
+                          onSecondaryTapDown: (details, offset) {
                             unawaited(
                               _showTerminalContextMenu(
                                 menuContext: context,
