@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../cubits/chat_cubit.dart';
 import '../cubits/layout_cubit.dart';
 import '../theme/app_text_styles.dart';
 import '../theme/workspace_surface_layers.dart';
@@ -11,6 +12,7 @@ import '../l10n/l10n_extensions.dart';
 import '../utils/app_keys.dart';
 import '../models/layout_preferences.dart';
 import '../widgets/resizable_split_view.dart';
+import '../widgets/workspace_terminal_panel.dart';
 
 enum AppSection { chat, runs, config }
 
@@ -148,7 +150,7 @@ class WorkspaceShell extends StatelessWidget {
         if (tabs.isEmpty && actions.isNotEmpty && showHeader)
           _ActionsBar(actions: actions),
         Expanded(
-          child: _WorkspaceBody(
+          child: _WorkspaceMainWithTerminal(
             preferences: layoutPreferences,
             rightTools: rightTools,
             onRightToolsWidthChanged: onRightToolsWidthChanged,
@@ -161,8 +163,8 @@ class WorkspaceShell extends StatelessWidget {
   }
 }
 
-class _WorkspaceBody extends StatelessWidget {
-  const _WorkspaceBody({
+class _WorkspaceMainWithTerminal extends StatelessWidget {
+  const _WorkspaceMainWithTerminal({
     required this.preferences,
     required this.child,
     required this.rightTools,
@@ -182,13 +184,110 @@ class _WorkspaceBody extends StatelessWidget {
         ? child
         : _FadeSlideIn(key: childAnimationKey, child: child);
 
+    return _WorkspaceBody(
+      preferences: preferences,
+      rightTools: rightTools,
+      onRightToolsWidthChanged: onRightToolsWidthChanged,
+      child: _WorkspaceCenterColumnWithTerminal(child: animatedChild),
+    );
+  }
+}
+
+/// Bottom terminal under the center workbench only (not under right tools).
+class _WorkspaceCenterColumnWithTerminal extends StatelessWidget {
+  const _WorkspaceCenterColumnWithTerminal({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<LayoutCubit, LayoutState>(
+      buildWhen: (previous, next) =>
+          previous.preferences.workspaceTerminalVisible !=
+              next.preferences.workspaceTerminalVisible ||
+          previous.preferences.workspaceTerminalHeight !=
+              next.preferences.workspaceTerminalHeight,
+      builder: (context, layoutState) {
+        final prefs = layoutState.preferences;
+        if (!prefs.workspaceTerminalVisible) {
+          return child;
+        }
+        final cwd = context.watch<ChatCubit>().activeTabWorkingDirectory;
+        final terminalHeight = prefs.workspaceTerminalHeight.clamp(
+          LayoutPreferences.minWorkspaceTerminalHeight,
+          LayoutPreferences.maxWorkspaceTerminalHeight,
+        );
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(child: child),
+            _WorkspaceTerminalResizeHandle(
+              onDrag: (delta) {
+                final layout = context.read<LayoutCubit>();
+                final next = (layout.state.preferences.workspaceTerminalHeight -
+                        delta)
+                    .clamp(
+                      LayoutPreferences.minWorkspaceTerminalHeight,
+                      LayoutPreferences.maxWorkspaceTerminalHeight,
+                    );
+                layout.setWorkspaceTerminalHeight(next);
+              },
+            ),
+            SizedBox(
+              height: terminalHeight,
+              child: WorkspaceTerminalPanel(workingDirectory: cwd),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _WorkspaceTerminalResizeHandle extends StatelessWidget {
+  const _WorkspaceTerminalResizeHandle({required this.onDrag});
+
+  final ValueChanged<double> onDrag;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onVerticalDragUpdate: (details) => onDrag(details.delta.dy),
+      child: MouseRegion(
+        cursor: SystemMouseCursors.resizeRow,
+        child: Container(
+          height: 4,
+          color: cs.outlineVariant.withValues(alpha: 0.45),
+        ),
+      ),
+    );
+  }
+}
+
+class _WorkspaceBody extends StatelessWidget {
+  const _WorkspaceBody({
+    required this.preferences,
+    required this.child,
+    required this.rightTools,
+    required this.onRightToolsWidthChanged,
+  });
+
+  final LayoutPreferences preferences;
+  final Widget child;
+  final Widget? rightTools;
+  final ValueChanged<double>? onRightToolsWidthChanged;
+
+  @override
+  Widget build(BuildContext context) {
     if (rightTools == null || !preferences.rightToolsVisible) {
-      return animatedChild;
+      return child;
     }
     if (preferences.toolPlacement == ToolPanelPlacement.bottom) {
       return Column(
         children: [
-          Expanded(child: animatedChild),
+          Expanded(child: child),
           SizedBox(height: preferences.bottomToolsHeight, child: rightTools),
         ],
       );
@@ -197,7 +296,7 @@ class _WorkspaceBody extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         return ResizableSplitView(
-          left: animatedChild,
+          left: child,
           right: rightTools!,
           initialLeftWidth: (constraints.maxWidth - rightWidth).clamp(
             150,

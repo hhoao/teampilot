@@ -16,6 +16,7 @@ class AppKeys {
   static const rightToolsDivider = Key('right-tools-divider');
   static const membersPanel = Key('members-panel');
   static const fileTreePanel = Key('file-tree-panel');
+  static const workspaceTerminalPanel = Key('workspace-terminal-panel');
   static const appRailVisibilitySwitch = Key('app-rail-visibility-switch');
   static const contextSidebarVisibilitySwitch = Key(
     'context-sidebar-visibility-switch',

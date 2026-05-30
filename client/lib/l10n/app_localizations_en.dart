@@ -652,6 +652,28 @@ class AppLocalizationsEn extends AppLocalizations {
   String get terminalExportScrollback => 'Export scrollback…';
 
   @override
+  String get workspaceTerminal => 'Terminal';
+
+  @override
+  String get workspaceTerminalShow => 'Show terminal';
+
+  @override
+  String get workspaceTerminalHide => 'Hide terminal';
+
+  @override
+  String get workspaceTerminalClose => 'Close terminal panel';
+
+  @override
+  String get workspaceTerminalNoWorkingDirectory =>
+      'Connect a session to open the shell terminal';
+
+  @override
+  String get workspaceTerminalNewSession => 'New terminal';
+
+  @override
+  String get workspaceTerminalCloseSession => 'Close terminal';
+
+  @override
   String get terminalScrollbackLinesTitle => 'Terminal scrollback lines';
 
   @override

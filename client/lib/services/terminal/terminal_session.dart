@@ -18,6 +18,7 @@ import '../team/terminal_activity_tracker.dart';
 import '../../utils/first_user_line_capture.dart';
 import '../../utils/logger.dart';
 import 'terminal_theme_mapper.dart';
+import 'workspace_interactive_shell.dart';
 
 typedef TransportStarter =
     Future<TerminalTransport> Function(
@@ -280,6 +281,62 @@ class TerminalSession {
 
     _spawnTransport(
       executable: invocation.executable,
+      args: launchArgs,
+      cwd: ptyWorkingDirectory,
+      cols: viewWidth,
+      rows: viewHeight,
+    );
+  }
+
+  /// Interactive login shell for the workspace terminal panel (no CLI flags).
+  void connectShell({
+    required String workingDirectory,
+    VoidCallback? onProcessStarted,
+    void Function(String message)? onProcessFailed,
+    VoidCallback? onProcessExited,
+  }) {
+    if (_running || _starting) {
+      disconnect();
+    }
+    final executable = WorkspaceInteractiveShell.executable();
+    final ptyWorkingDirectory = workingDirectory.trim().isNotEmpty
+        ? LaunchCommandBuilder.workingDirectoryForProcess(
+            workingDirectory,
+            useWslPaths: false,
+          )
+        : LaunchCommandBuilder.workingDirectoryForProcess(
+            Directory.current.path,
+            useWslPaths: false,
+          );
+    _extraEnvironment = null;
+    _ptyEnvironment = buildPtyEnvironment(null);
+    _onProcessStarted = onProcessStarted;
+    _onProcessFailed = onProcessFailed;
+    _onProcessExited = onProcessExited;
+    _startFailed = false;
+
+    final launchArgs = WorkspaceInteractiveShell.launchArguments(executable);
+
+    _beginStartup(executable);
+
+    _firstUserLineCapture = null;
+
+    _engineOutputSubscription?.cancel();
+    _engineOutputSubscription = engine.output.listen((Uint8List data) {
+      if (_transportReadyForIo && _transport != null) {
+        _transport!.write(data);
+      }
+    });
+
+    engine.resize(columns: viewWidth, rows: viewHeight);
+    engine.initializeEmpty(viewHeight, viewWidth);
+    final theme = _terminalTheme;
+    if (theme != null) {
+      _reconfigureEngineColors(theme);
+    }
+
+    _spawnTransport(
+      executable: executable,
       args: launchArgs,
       cwd: ptyWorkingDirectory,
       cols: viewWidth,

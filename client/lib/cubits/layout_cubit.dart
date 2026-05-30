@@ -36,12 +36,20 @@ class LayoutCubit extends Cubit<LayoutState> {
   Future<void> load() async {
     emit(state.copyWith(isLoading: true));
     final prefs = await _repository?.load() ?? const LayoutPreferences();
-    emit(state.copyWith(preferences: prefs, isLoading: false));
+    emit(
+      state.copyWith(
+        preferences: prefs.copyWith(workspaceTerminalVisible: false),
+        isLoading: false,
+      ),
+    );
   }
 
   Future<void> _save(LayoutPreferences preferences) async {
     emit(state.copyWith(preferences: preferences));
-    await _repository?.save(preferences);
+    // Bottom terminal starts hidden each launch; only height/sidebar width persist.
+    await _repository?.save(
+      preferences.copyWith(workspaceTerminalVisible: false),
+    );
   }
 
   Future<void> setPreset(LayoutPreset preset) =>
@@ -116,4 +124,19 @@ class LayoutCubit extends Cubit<LayoutState> {
 
   Future<void> setLocale(String locale) =>
       _save(state.preferences.copyWith(locale: locale));
+
+  Future<void> setWorkspaceTerminalVisible(bool visible) => _save(
+    state.preferences.copyWith(workspaceTerminalVisible: visible),
+  );
+
+  Future<void> setWorkspaceTerminalHeight(double height) => _save(
+    state.preferences.copyWith(workspaceTerminalHeight: height),
+  );
+
+  Future<void> setWorkspaceTerminalSessionSidebarWidth(double width) =>
+      _save(
+        state.preferences.copyWith(
+          workspaceTerminalSessionSidebarWidth: width,
+        ),
+      );
 }

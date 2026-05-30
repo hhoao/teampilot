@@ -632,6 +632,27 @@ class AppLocalizationsZh extends AppLocalizations {
   String get terminalExportScrollback => '导出滚动缓冲…';
 
   @override
+  String get workspaceTerminal => '终端';
+
+  @override
+  String get workspaceTerminalShow => '显示终端';
+
+  @override
+  String get workspaceTerminalHide => '隐藏终端';
+
+  @override
+  String get workspaceTerminalClose => '关闭终端面板';
+
+  @override
+  String get workspaceTerminalNoWorkingDirectory => '请先连接会话以打开 Shell 终端';
+
+  @override
+  String get workspaceTerminalNewSession => '新建终端';
+
+  @override
+  String get workspaceTerminalCloseSession => '关闭终端';
+
+  @override
   String get terminalScrollbackLinesTitle => '终端滚动缓冲行数';
 
   @override

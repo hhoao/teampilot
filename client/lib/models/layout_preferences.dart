@@ -28,6 +28,10 @@ class LayoutPreferences {
     this.typographyScaleCustomMultiplier = kDefaultTypographyCustomMultiplier,
     this.terminalThemeMode = 'adaptive',
     this.locale = '',
+    this.workspaceTerminalVisible = false,
+    this.workspaceTerminalHeight = defaultWorkspaceTerminalHeight,
+    this.workspaceTerminalSessionSidebarWidth =
+        defaultWorkspaceTerminalSessionSidebarWidth,
   });
 
   factory LayoutPreferences.fromJson(Map<String, Object?> json) {
@@ -81,6 +85,19 @@ class LayoutPreferences {
         json['terminalThemeMode'] as String?,
       ),
       locale: json['locale'] as String? ?? '',
+      workspaceTerminalVisible:
+          json['workspaceTerminalVisible'] as bool? ?? false,
+      workspaceTerminalHeight: _doubleValue(
+        json['workspaceTerminalHeight'],
+        fallback: defaultWorkspaceTerminalHeight,
+      ).clamp(minWorkspaceTerminalHeight, maxWorkspaceTerminalHeight),
+      workspaceTerminalSessionSidebarWidth: _doubleValue(
+        json['workspaceTerminalSessionSidebarWidth'],
+        fallback: defaultWorkspaceTerminalSessionSidebarWidth,
+      ).clamp(
+        minWorkspaceTerminalSessionSidebarWidth,
+        maxWorkspaceTerminalSessionSidebarWidth,
+      ),
     ).withAtLeastOneToolVisible();
   }
 
@@ -96,6 +113,12 @@ class LayoutPreferences {
   static const maxWorkspaceNavWidth = 360.0;
   static const minBottomToolsHeight = 180.0;
   static const maxBottomToolsHeight = 420.0;
+  static const defaultWorkspaceTerminalHeight = 220.0;
+  static const minWorkspaceTerminalHeight = 120.0;
+  static const maxWorkspaceTerminalHeight = 480.0;
+  static const defaultWorkspaceTerminalSessionSidebarWidth = 200.0;
+  static const minWorkspaceTerminalSessionSidebarWidth = 140.0;
+  static const maxWorkspaceTerminalSessionSidebarWidth = 420.0;
 
   final LayoutPreset preset;
   final ToolPanelPlacement toolPlacement;
@@ -116,6 +139,9 @@ class LayoutPreferences {
   final double typographyScaleCustomMultiplier;
   final String terminalThemeMode;
   final String locale;
+  final bool workspaceTerminalVisible;
+  final double workspaceTerminalHeight;
+  final double workspaceTerminalSessionSidebarWidth;
 
   LayoutPreferences copyWith({
     LayoutPreset? preset,
@@ -137,6 +163,9 @@ class LayoutPreferences {
     double? typographyScaleCustomMultiplier,
     String? terminalThemeMode,
     String? locale,
+    bool? workspaceTerminalVisible,
+    double? workspaceTerminalHeight,
+    double? workspaceTerminalSessionSidebarWidth,
   }) {
     return LayoutPreferences(
       preset: preset ?? this.preset,
@@ -177,6 +206,18 @@ class LayoutPreferences {
           ? this.terminalThemeMode
           : _terminalThemeModeValue(terminalThemeMode),
       locale: locale ?? this.locale,
+      workspaceTerminalVisible:
+          workspaceTerminalVisible ?? this.workspaceTerminalVisible,
+      workspaceTerminalHeight: (workspaceTerminalHeight ??
+              this.workspaceTerminalHeight)
+          .clamp(minWorkspaceTerminalHeight, maxWorkspaceTerminalHeight),
+      workspaceTerminalSessionSidebarWidth:
+          (workspaceTerminalSessionSidebarWidth ??
+                  this.workspaceTerminalSessionSidebarWidth)
+              .clamp(
+                minWorkspaceTerminalSessionSidebarWidth,
+                maxWorkspaceTerminalSessionSidebarWidth,
+              ),
     ).withAtLeastOneToolVisible();
   }
 
@@ -204,6 +245,10 @@ class LayoutPreferences {
       typographyScaleCustomMultiplier: typographyScaleCustomMultiplier,
       terminalThemeMode: terminalThemeMode,
       locale: locale,
+      workspaceTerminalVisible: workspaceTerminalVisible,
+      workspaceTerminalHeight: workspaceTerminalHeight,
+      workspaceTerminalSessionSidebarWidth:
+          workspaceTerminalSessionSidebarWidth,
     );
   }
 
@@ -228,6 +273,10 @@ class LayoutPreferences {
       'typographyScaleCustomMultiplier': typographyScaleCustomMultiplier,
       'terminalThemeMode': terminalThemeMode,
       'locale': locale,
+      'workspaceTerminalVisible': workspaceTerminalVisible,
+      'workspaceTerminalHeight': workspaceTerminalHeight,
+      'workspaceTerminalSessionSidebarWidth':
+          workspaceTerminalSessionSidebarWidth,
     };
   }
 }

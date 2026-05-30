@@ -1286,6 +1286,48 @@ abstract class AppLocalizations {
   /// **'Export scrollback…'**
   String get terminalExportScrollback;
 
+  /// No description provided for @workspaceTerminal.
+  ///
+  /// In en, this message translates to:
+  /// **'Terminal'**
+  String get workspaceTerminal;
+
+  /// No description provided for @workspaceTerminalShow.
+  ///
+  /// In en, this message translates to:
+  /// **'Show terminal'**
+  String get workspaceTerminalShow;
+
+  /// No description provided for @workspaceTerminalHide.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide terminal'**
+  String get workspaceTerminalHide;
+
+  /// No description provided for @workspaceTerminalClose.
+  ///
+  /// In en, this message translates to:
+  /// **'Close terminal panel'**
+  String get workspaceTerminalClose;
+
+  /// No description provided for @workspaceTerminalNoWorkingDirectory.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect a session to open the shell terminal'**
+  String get workspaceTerminalNoWorkingDirectory;
+
+  /// No description provided for @workspaceTerminalNewSession.
+  ///
+  /// In en, this message translates to:
+  /// **'New terminal'**
+  String get workspaceTerminalNewSession;
+
+  /// No description provided for @workspaceTerminalCloseSession.
+  ///
+  /// In en, this message translates to:
+  /// **'Close terminal'**
+  String get workspaceTerminalCloseSession;
+
   /// No description provided for @terminalScrollbackLinesTitle.
   ///
   /// In en, this message translates to:

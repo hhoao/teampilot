@@ -8,6 +8,7 @@ import '../cubits/app_provider_cubit.dart';
 import '../cubits/chat_cubit.dart';
 import '../cubits/editor_cubit.dart';
 import '../cubits/file_tree_cubit.dart';
+import '../cubits/layout_cubit.dart';
 import '../models/app_provider_config.dart';
 import '../services/file_tree/file_tree_visible_rows.dart';
 import '../services/storage/app_storage.dart';
@@ -212,9 +213,9 @@ class _MembersPanel extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final l10n = context.l10n;
     final catalogCli =
-        CliToolRegistryScope.maybeOf(context)
-            ?.tryGet(teamCli.value)
-            ?.providerCatalogCli ??
+        CliToolRegistryScope.maybeOf(
+          context,
+        )?.tryGet(teamCli.value)?.providerCatalogCli ??
         AppProviderCli.claude;
     final providerLabels = {
       for (final p in context.watch<AppProviderCubit>().state.providersFor(
@@ -460,19 +461,35 @@ class _FileTreePanelState extends State<_FileTreePanel> {
                             state: state,
                           )
                         else
-                          _FileTreeHeaderOverflowMenu(
-                            l10n: l10n,
-                            showHiddenFiles: state.showHiddenFiles,
-                            canCopy: state.rootPath.isNotEmpty,
-                            onReveal: () =>
-                                unawaited(_revealActiveEditorFile()),
-                            onToggleHidden: _cubit.toggleShowHidden,
-                            onCopy: () {
-                              if (state.rootPath.isNotEmpty) {
-                                Clipboard.setData(
-                                  ClipboardData(text: state.rootPath),
-                                );
-                              }
+                          BlocBuilder<LayoutCubit, LayoutState>(
+                            buildWhen: (previous, next) =>
+                                previous.preferences.workspaceTerminalVisible !=
+                                next.preferences.workspaceTerminalVisible,
+                            builder: (context, layoutState) {
+                              final terminalVisible = layoutState
+                                  .preferences
+                                  .workspaceTerminalVisible;
+                              return _FileTreeHeaderOverflowMenu(
+                                l10n: l10n,
+                                workspaceTerminalVisible: terminalVisible,
+                                showHiddenFiles: state.showHiddenFiles,
+                                canCopy: state.rootPath.isNotEmpty,
+                                onToggleTerminal: () => context
+                                    .read<LayoutCubit>()
+                                    .setWorkspaceTerminalVisible(
+                                      !terminalVisible,
+                                    ),
+                                onReveal: () =>
+                                    unawaited(_revealActiveEditorFile()),
+                                onToggleHidden: _cubit.toggleShowHidden,
+                                onCopy: () {
+                                  if (state.rootPath.isNotEmpty) {
+                                    Clipboard.setData(
+                                      ClipboardData(text: state.rootPath),
+                                    );
+                                  }
+                                },
+                              );
                             },
                           ),
                       ],
@@ -511,9 +528,9 @@ class _FileTreePanelState extends State<_FileTreePanel> {
                           state.rootPath,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: AppTextStyles.of(context).bodySmall.copyWith(
-                            color: cs.onSurfaceVariant,
-                          ),
+                          style: AppTextStyles.of(
+                            context,
+                          ).bodySmall.copyWith(color: cs.onSurfaceVariant),
                         )
                       else
                         Text(
@@ -545,6 +562,27 @@ class _FileTreePanelState extends State<_FileTreePanel> {
     required FileTreeState state,
   }) {
     return [
+      BlocBuilder<LayoutCubit, LayoutState>(
+        buildWhen: (previous, next) =>
+            previous.preferences.workspaceTerminalVisible !=
+            next.preferences.workspaceTerminalVisible,
+        builder: (context, layoutState) {
+          final visible =
+              layoutState.preferences.workspaceTerminalVisible;
+          return _fileTreeHeaderIconButton(
+            tooltip: visible
+                ? l10n.workspaceTerminalHide
+                : l10n.workspaceTerminalShow,
+            onPressed: () => context.read<LayoutCubit>().setWorkspaceTerminalVisible(
+              !visible,
+            ),
+            icon: Icon(
+              visible ? Icons.terminal : Icons.terminal_outlined,
+              size: 16,
+            ),
+          );
+        },
+      ),
       _fileTreeHeaderIconButton(
         tooltip: l10n.fileTreeRevealActiveFile,
         onPressed: () => unawaited(_revealActiveEditorFile()),
@@ -582,9 +620,9 @@ class _FileTreePanelState extends State<_FileTreePanel> {
     if (rows.isEmpty) {
       return Text(
         '(empty)',
-        style: AppTextStyles.of(context).bodySmall.copyWith(
-          color: textColor.withValues(alpha: 0.35),
-        ),
+        style: AppTextStyles.of(
+          context,
+        ).bodySmall.copyWith(color: textColor.withValues(alpha: 0.35)),
       );
     }
     return ListView.builder(
@@ -602,9 +640,9 @@ class _FileTreePanelState extends State<_FileTreePanel> {
                 padding: EdgeInsets.only(left: row.depth * 16 + 22),
                 child: Text(
                   '(empty)',
-                  style: AppTextStyles.of(context).caption.copyWith(
-                    color: textColor.withValues(alpha: 0.35),
-                  ),
+                  style: AppTextStyles.of(
+                    context,
+                  ).caption.copyWith(color: textColor.withValues(alpha: 0.35)),
                 ),
               ),
             ),
@@ -645,21 +683,25 @@ Widget _fileTreeHeaderIconButton({
   );
 }
 
-enum _FileTreeHeaderAction { reveal, toggleHidden, copy }
+enum _FileTreeHeaderAction { terminal, reveal, toggleHidden, copy }
 
 class _FileTreeHeaderOverflowMenu extends StatelessWidget {
   const _FileTreeHeaderOverflowMenu({
     required this.l10n,
+    required this.workspaceTerminalVisible,
     required this.showHiddenFiles,
     required this.canCopy,
+    required this.onToggleTerminal,
     required this.onReveal,
     required this.onToggleHidden,
     required this.onCopy,
   });
 
   final AppLocalizations l10n;
+  final bool workspaceTerminalVisible;
   final bool showHiddenFiles;
   final bool canCopy;
+  final VoidCallback onToggleTerminal;
   final VoidCallback onReveal;
   final VoidCallback onToggleHidden;
   final VoidCallback onCopy;
@@ -676,6 +718,8 @@ class _FileTreeHeaderOverflowMenu extends StatelessWidget {
         icon: const Icon(Icons.more_vert, size: 16),
         onSelected: (action) {
           switch (action) {
+            case _FileTreeHeaderAction.terminal:
+              onToggleTerminal();
             case _FileTreeHeaderAction.reveal:
               onReveal();
             case _FileTreeHeaderAction.toggleHidden:
@@ -685,6 +729,24 @@ class _FileTreeHeaderOverflowMenu extends StatelessWidget {
           }
         },
         itemBuilder: (context) => [
+          PopupMenuItem(
+            value: _FileTreeHeaderAction.terminal,
+            child: ListTile(
+              dense: true,
+              contentPadding: EdgeInsets.zero,
+              leading: Icon(
+                workspaceTerminalVisible
+                    ? Icons.terminal
+                    : Icons.terminal_outlined,
+                size: 18,
+              ),
+              title: Text(
+                workspaceTerminalVisible
+                    ? l10n.workspaceTerminalHide
+                    : l10n.workspaceTerminalShow,
+              ),
+            ),
+          ),
           PopupMenuItem(
             value: _FileTreeHeaderAction.reveal,
             child: ListTile(

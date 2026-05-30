@@ -35,6 +35,12 @@ TerminalConfig terminalConfigFromTheme(
     scrolling: TerminalConfig.defaults().scrolling.copyWith(
       history: scrollbackLines,
     ),
+    cursor: CursorConfig(
+      blinkInterval: 750,
+      defaultShape: 0,
+      defaultBlinking: true,
+      blinkTimeout: 0,
+    ),
   );
 }
 
