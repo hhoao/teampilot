@@ -4,6 +4,9 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../models/connection_mode.dart';
 import '../models/session_preferences.dart';
 import '../services/cli/cli_tool_locator.dart';
+import '../services/cli/registry/built_in_cli_tools.dart';
+import '../services/cli/registry/capabilities/executable_resolver_capability.dart';
+import '../services/cli/registry/cli_tool_registry.dart';
 import '../models/team_config.dart';
 import '../models/windows_storage_backend.dart';
 import '../repositories/session_preferences_repository.dart';
@@ -36,15 +39,24 @@ class SessionPreferencesCubit extends Cubit<SessionPreferencesState> {
     required SessionPreferencesRepository repository,
     String? locatedExecutable,
     Map<TeamCli, String> locatedExecutables = const {},
+    CliToolRegistry? cliToolRegistry,
   }) : _repository = repository,
        _locatedExecutables = _normalizeLocatedExecutables(
          locatedExecutable: locatedExecutable,
          locatedExecutables: locatedExecutables,
        ),
+       _cliToolRegistry = cliToolRegistry ?? _defaultCliRegistry,
        super(SessionPreferencesState());
+
+  static final _defaultCliRegistry = () {
+    final r = CliToolRegistry();
+    registerBuiltInCliTools(r);
+    return r;
+  }();
 
   final SessionPreferencesRepository _repository;
   final Map<TeamCli, String> _locatedExecutables;
+  final CliToolRegistry _cliToolRegistry;
 
   Future<void> load() async {
     emit(state.copyWith(isLoading: true));
@@ -68,15 +80,19 @@ class SessionPreferencesCubit extends Cubit<SessionPreferencesState> {
   }
 
   Future<void> setCliExecutablePathFor(TeamCli cli, String value) {
-    if (cli == TeamCli.flashskyai) {
+    final pathKey = _cliToolRegistry
+            .capability<ExecutableResolverCapability>(cli.value)
+            ?.preferencesPathKey ??
+        cli.value;
+    if (pathKey == 'flashskyai') {
       return setCliExecutablePath(value);
     }
     final next = Map<String, String>.of(state.preferences.cliExecutablePaths);
     final trimmed = value.trim();
     if (trimmed.isEmpty) {
-      next.remove(cli.value);
+      next.remove(pathKey);
     } else {
-      next[cli.value] = trimmed;
+      next[pathKey] = trimmed;
     }
     return _save(state.preferences.copyWith(cliExecutablePaths: next));
   }
@@ -127,14 +143,20 @@ class SessionPreferencesCubit extends Cubit<SessionPreferencesState> {
     if (located != null && located.isNotEmpty) {
       return CliToolLocator.resolveSpawnExecutable(located);
     }
-    return cli.value;
+    final resolver =
+        _cliToolRegistry.capability<ExecutableResolverCapability>(cli.value);
+    return resolver?.defaultExecutableName ?? cli.value;
   }
 
   String _userExecutableFor(TeamCli cli) {
-    if (cli == TeamCli.flashskyai) {
+    final pathKey = _cliToolRegistry
+            .capability<ExecutableResolverCapability>(cli.value)
+            ?.preferencesPathKey ??
+        cli.value;
+    if (pathKey == 'flashskyai') {
       return state.preferences.cliExecutablePath.trim();
     }
-    return state.preferences.cliExecutablePaths[cli.value]?.trim() ?? '';
+    return state.preferences.cliExecutablePaths[pathKey]?.trim() ?? '';
   }
 
   static Map<TeamCli, String> _normalizeLocatedExecutables({

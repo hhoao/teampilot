@@ -2,16 +2,20 @@ import 'dart:convert';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:path/path.dart' as p;
 
-import '../../models/claude_credential_link_result.dart';
 import '../../models/team_config.dart';
 import '../../utils/project_path_utils.dart';
 import '../../utils/team_member_naming.dart';
 import '../storage/app_storage.dart';
 import '../team/claude_hook_shell.dart';
-import 'claude_official_provider.dart';
 import 'claude_provider_credentials_service.dart';
 import '../team/claude_team_roster_service.dart';
 import '../cli/cli_data_layout.dart';
+import '../cli/registry/built_in_cli_tools.dart';
+import '../cli/registry/capabilities/config_profile_capability.dart';
+import '../cli/registry/config_profile/config_profile_context.dart';
+import '../cli/registry/cli_tool_registry.dart';
+import '../cli/registry/config_profile/claude_config_profile_capability.dart';
+import '../cli/registry/config_profile/flashskyai_config_profile_capability.dart';
 import '../mcp/mcp_registry_service.dart';
 import '../plugin/cli_plugin_registry_service.dart';
 import '../io/filesystem.dart';
@@ -50,7 +54,14 @@ const rtkWarningEnabledVersionTooOld = 'rtk_enabled_version_too_old';
 /// All paths are derived from [CliDataLayout]; this class is a thin wrapper
 /// that adds CLI-specific bootstrap files (Claude roster, member settings,
 /// metadata) on top of the canonical layout.
-class ConfigProfileService {
+class ConfigProfileService implements ConfigProfileDelegate {
+  static final _defaultCliRegistry = () {
+    final registry = CliToolRegistry();
+    registerBuiltInCliTools(registry);
+    return registry;
+  }();
+
+  static const _pluginRegistryCliIds = {'flashskyai', 'claude'};
   static const flashskyaiMetadataFileName = '.flashskyai.json';
   static const flashskyaiSettingsFileName = 'settings.json';
   static const flashskyaiConfigDirEnvKey = 'FLASHSKYAI_CONFIG_DIR';
@@ -89,7 +100,9 @@ class ConfigProfileService {
     TeamLeadDelegateHookProvisioner? teamLeadDelegateHookProvisioner,
     Future<String> Function()? loadTeamLeadDelegateHookScript,
     ClaudeHookShell Function()? resolveHookShell,
+    CliToolRegistry? cliRegistry,
   }) : _fs = fs ?? AppStorage.fs,
+       _cliRegistry = cliRegistry ?? _defaultCliRegistry,
        layout =
            layout ??
            CliDataLayout(teampilotRoot: basePath, fs: fs ?? AppStorage.fs),
@@ -117,12 +130,18 @@ class ConfigProfileService {
   final TeamLeadDelegateHookProvisioner? _teamLeadDelegateHookProvisioner;
   final Future<String> Function()? _loadTeamLeadDelegateHookScript;
   final ClaudeHookShell Function()? _resolveHookShell;
+  final CliToolRegistry _cliRegistry;
 
-  ClaudeProviderCredentialsService get _claudeCredentials =>
+  @override
+  ClaudeProviderCredentialsService get claudeCredentials =>
       _claudeCredentialsService ??
       ClaudeProviderCredentialsService(fs: _fs, basePath: basePath);
 
-  p.Context get _pathContext => _fs.pathContext;
+  @override
+  Filesystem get fs => _fs;
+
+  @override
+  p.Context get pathContext => _fs.pathContext;
 
   String get configProfilesDir => layout.configProfilesDir;
 
@@ -133,11 +152,11 @@ class ConfigProfileService {
 
   /// Team metadata scope: `config-profiles/teams/<teamId>/`.
   String teamScopeDir(String teamId) =>
-      _pathContext.join(configProfilesDir, 'teams', teamId.trim());
+      pathContext.join(configProfilesDir, 'teams', teamId.trim());
 
   /// Per-session member scope: `config-profiles/teams/<teamId>/members/<sessionId>/`.
   String sessionProfileDir(String teamId, String sessionId) =>
-      _pathContext.join(teamScopeDir(teamId), 'members', sessionId.trim());
+      pathContext.join(teamScopeDir(teamId), 'members', sessionId.trim());
 
   String sessionToolDir(String teamId, String sessionId, String tool) =>
       layout.memberToolDir(teamId, sessionId, tool);
@@ -147,7 +166,7 @@ class ConfigProfileService {
     String sessionId,
     TeamMemberConfig member,
   ) {
-    return _pathContext.join(
+    return pathContext.join(
       sessionToolDir(teamId, sessionId, 'claude'),
       'settings',
       '${ClaudeTeamRosterService.safeClaudePathSegment(member.id)}.json',
@@ -155,13 +174,13 @@ class ConfigProfileService {
   }
 
   String sessionFlashskyaiMetadataFile(String teamId, String sessionId) =>
-      _pathContext.join(
+      pathContext.join(
         sessionToolDir(teamId, sessionId, 'flashskyai'),
         flashskyaiMetadataFileName,
       );
 
   String sessionClaudeMetadataFile(String teamId, String sessionId) =>
-      _pathContext.join(
+      pathContext.join(
         sessionToolDir(teamId, sessionId, 'claude'),
         claudeMetadataFileName,
       );
@@ -208,7 +227,7 @@ class ConfigProfileService {
           )
           .then((json) => memberProvisionJson = json),
     ]);
-    if (cli == TeamCli.flashskyai || cli == TeamCli.claude) {
+    if (_pluginRegistryCliIds.contains(cli.value)) {
       await CliPluginRegistryService(
         fs: _fs,
         teampilotRoot: basePath,
@@ -221,15 +240,17 @@ class ConfigProfileService {
         memberProvisionJson: memberProvisionJson,
       );
     }
-    switch (cli) {
-      case TeamCli.flashskyai:
-        await layout.ensureAppToolLayout('flashskyai');
-        await ensureSessionFlashskyaiDefaults(trimmedTeamId, trimmedSessionId);
-      case TeamCli.codex:
-        break;
-      case TeamCli.claude:
-        await ensureSessionClaudeDefaults(trimmedTeamId, trimmedSessionId);
-        break;
+    final cap = _cliRegistry.capability<ConfigProfileCapability>(cli.value);
+    if (cap != null) {
+      await cap.ensureSessionProfile(
+        ConfigProfileSessionContext(
+          teamId: trimmedTeamId,
+          sessionId: trimmedSessionId,
+          members: team?.members ?? const [],
+          paths: this,
+          team: team,
+        ),
+      );
     }
     await McpRegistryService(fs: _fs, layout: layout).writeForSession(
       teamId: trimmedTeamId,
@@ -241,24 +262,30 @@ class ConfigProfileService {
     String teamId,
     String sessionId,
   ) async {
-    final file = sessionFlashskyaiMetadataFile(teamId, sessionId);
-    final existing = await _readMetadataFile(file, defaultFlashskyaiMetadata);
-    await _writeJsonIfChanged(file, {
-      ...defaultFlashskyaiMetadata,
-      ...existing,
-    });
+    const capability = FlashskyaiConfigProfileCapability();
+    await capability.ensureSessionProfile(
+      ConfigProfileSessionContext(
+        teamId: teamId,
+        sessionId: sessionId,
+        members: const [],
+        paths: this,
+      ),
+    );
   }
 
   Future<void> ensureSessionClaudeDefaults(
     String teamId,
     String sessionId,
   ) async {
-    final file = sessionClaudeMetadataFile(teamId, sessionId);
-    final existing = await _readMetadataFile(file, defaultClaudeMetadata);
-    await _writeJsonIfChanged(file, {
-      ...defaultClaudeMetadata,
-      ...existing,
-    });
+    const capability = ClaudeConfigProfileCapability();
+    await capability.ensureSessionProfile(
+      ConfigProfileSessionContext(
+        teamId: teamId,
+        sessionId: sessionId,
+        members: const [],
+        paths: this,
+      ),
+    );
   }
 
   /// Creates dirs for [cli] and returns launch env vars for that CLI only.
@@ -287,7 +314,7 @@ class ConfigProfileService {
     final warnings = <String>[];
     await _collectRtkWarnings(warnings);
 
-    final scope = _resolveLaunchScope(
+    final scope = resolveLaunchScope(
       teamId: trimmedTeamId,
       runtimeTeamId: runtimeTeamId,
     );
@@ -298,137 +325,59 @@ class ConfigProfileService {
       cli: cli,
       team: team,
     );
-    switch (cli) {
-      case TeamCli.flashskyai:
-        await _writeFlashskyaiMetadata(
-          scope,
-          workingDirectory,
-          additionalDirectories: additionalDirectories,
-        );
-        await _writeFlashskyaiMemberProfiles(
+
+    final cap = _cliRegistry.capability<ConfigProfileCapability>(cli.value);
+    if (cap == null) {
+      return TeamLaunchOutcome(
+        environment: const {},
+        warnings: [...warnings, 'unknown_cli_${cli.value}'],
+      );
+    }
+
+    final claudeExtras = claudeSettings != null ||
+            claudeProviderId != null ||
+            claudeSettingsByMember.isNotEmpty
+        ? ClaudeLaunchExtras(
+            settings: claudeSettings,
+            providerId: claudeProviderId,
+            settingsByMember: claudeSettingsByMember,
+          )
+        : null;
+
+    ConfigProfileLaunchContribution contribution;
+    try {
+      contribution = await cap.contributeLaunch(
+        ConfigProfileLaunchContext(
+          teamId: scope.teamId,
+          sessionId: scope.sessionId,
           scope: scope,
-          members: members,
-          launchedMember: member,
-          forceTeamLeadDelegateMode:
-              team?.forceTeamLeadDelegateMode ?? false,
-        );
-        break;
-      case TeamCli.claude:
-        await _writeClaudeMetadata(
-          scope,
-          workingDirectory,
-          additionalDirectories: additionalDirectories,
-        );
-        await _writeClaudeSettings(
-          scope,
-          claudeSettings,
-          effortLevel: team?.claudeEffortLevel ?? 'xhigh',
-          teammateMode: team?.claudeTeammateMode ?? 'in-process',
-        );
-        await _writeClaudeRoster(
-          scope: scope,
+          team: team,
+          member: member,
           members: members,
           workingDirectory: workingDirectory,
-          description: team?.description ?? '',
+          additionalDirectories: additionalDirectories,
+          paths: this,
+          claude: claudeExtras,
           leadSessionId: leadSessionId,
-          teammateMode: team?.claudeTeammateMode ?? 'in-process',
-        );
-        await _writeClaudeMemberProfiles(
-          scope: scope,
-          members: members,
-          launchedMember: member,
-          providerSettings: claudeSettings,
-          providerSettingsByMember: claudeSettingsByMember,
-          forceTeamLeadDelegateMode: team?.forceTeamLeadDelegateMode ?? false,
-        );
-        final providerId = claudeProviderId?.trim() ?? '';
-        if (providerId.isNotEmpty &&
-            claudeSettings != null &&
-            isOfficialClaudeSettings(claudeSettings)) {
-          final sessionClaudeDir = sessionToolDir(
-            scope.teamId,
-            scope.sessionId,
-            'claude',
-          );
-          final link = await _claudeCredentials.ensureLinked(
-            sessionClaudeDir,
-            providerId,
-          );
-          if (link == CredentialLinkResult.missing) {
-            warnings.add('claude_credentials_missing');
-          }
-        }
-        break;
-      case TeamCli.codex:
-        break;
-    }
-
-    final claudeEnv = <String, String>{
-      'CLAUDE_CONFIG_DIR': sessionToolDir(
-        scope.teamId,
-        scope.sessionId,
-        'claude',
-      ),
-      if (member != null && member.isValid)
-        claudeSettingsFileEnvKey: sessionClaudeMemberSettingsFile(
-          scope.teamId,
-          scope.sessionId,
-          member,
         ),
-      'CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS': '1',
-    };
-    if (cli == TeamCli.claude && member != null && member.isValid) {
-      final appendPath = await _resolveAppendSystemPromptPath(
-        scope: scope,
-        tool: 'claude',
-        member: member,
       );
-      if (appendPath != null) {
-        claudeEnv[MemberRoleProvision.appendSystemPromptFileEnvKey] = appendPath;
-      }
-    }
-
-    final flashskyaiEnv = _flashskyaiTeamLaunchEnvironment(scope);
-    if (cli == TeamCli.flashskyai && member != null && member.isValid) {
-      final appendPath = await _resolveAppendSystemPromptPath(
-        scope: scope,
-        tool: 'flashskyai',
-        member: member,
+    } on Object catch (e) {
+      return TeamLaunchOutcome(
+        environment: const {},
+        warnings: [
+          ...warnings,
+          'config_profile_${cli.value}: $e',
+        ],
       );
-      if (appendPath != null) {
-        flashskyaiEnv[MemberRoleProvision.appendSystemPromptFileEnvKey] =
-            appendPath;
-      }
     }
 
     return TeamLaunchOutcome(
-      environment: switch (cli) {
-        TeamCli.flashskyai => flashskyaiEnv,
-        TeamCli.codex => {
-          'CODEX_HOME': sessionToolDir(scope.teamId, scope.sessionId, 'codex'),
-        },
-        TeamCli.claude => claudeEnv,
-      },
-      warnings: warnings,
+      environment: contribution.environment,
+      warnings: [...warnings, ...contribution.warnings],
     );
   }
 
-  Map<String, String> _flashskyaiTeamLaunchEnvironment(
-    _LaunchProfileScope scope,
-  ) {
-    final memberDir = sessionToolDir(
-      scope.teamId,
-      scope.sessionId,
-      'flashskyai',
-    );
-    return {
-      flashskyaiConfigDirEnvKey: memberDir,
-      flashskyaiSessionHomeDirEnvKey: memberDir,
-      'LLM_CONFIG_PATH': appFlashskyaiLlmConfigFile,
-    };
-  }
-
-  static _LaunchProfileScope _resolveLaunchScope({
+  static LaunchProfileScope resolveLaunchScope({
     required String teamId,
     required String runtimeTeamId,
   }) {
@@ -437,75 +386,97 @@ class ConfigProfileService {
         ? runtime
         : configProfileAdhocSessionId;
     final cliTeamName = runtime.isNotEmpty ? runtime : teamId;
-    return _LaunchProfileScope(
+    return LaunchProfileScope(
       teamId: teamId,
       sessionId: sessionId,
       cliTeamName: cliTeamName,
     );
   }
 
-  Future<void> _writeClaudeSettings(
-    _LaunchProfileScope scope,
-    Map<String, Object?>? providerSettings, {
-    required String effortLevel,
-    required String teammateMode,
-  }) async {
-    final file = _pathContext.join(
-      sessionToolDir(scope.teamId, scope.sessionId, 'claude'),
-      'settings.json',
-    );
-    final settings = _claudeTeamSettings(
-      providerSettings,
-      effortLevel: effortLevel,
-      teammateMode: teammateMode,
-    );
-    await _writeSettingsFile(
-      file,
-      settings,
-      memberToolDir: sessionToolDir(scope.teamId, scope.sessionId, 'claude'),
-    );
-  }
+  @override
+  Future<Map<String, Object?>> readMetadataFile(
+    String path,
+    Map<String, Object?> defaults,
+  ) =>
+      _readMetadataFile(path, defaults);
 
-  Future<void> _writeClaudeMetadata(
-    _LaunchProfileScope scope,
-    String workingDirectory, {
-    List<String> additionalDirectories = const [],
-  }) async {
-    final metadataPath = sessionClaudeMetadataFile(
-      scope.teamId,
-      scope.sessionId,
-    );
-    final metadata = await _metadataWithTrustedProjects(
-      metadataPath: metadataPath,
-      defaultMetadata: defaultClaudeMetadata,
-      directories: [workingDirectory, ...additionalDirectories],
-    );
-    await _fs.atomicWrite(
-      metadataPath,
-      const JsonEncoder.withIndent('  ').convert(metadata),
-    );
-  }
+  @override
+  Future<void> writeJsonIfChanged(String path, Map<String, Object?> value) =>
+      _writeJsonIfChanged(path, value);
 
-  Future<void> _writeFlashskyaiMetadata(
-    _LaunchProfileScope scope,
-    String workingDirectory, {
-    List<String> additionalDirectories = const [],
-  }) async {
-    final metadataPath = sessionFlashskyaiMetadataFile(
-      scope.teamId,
-      scope.sessionId,
-    );
-    final directories = [workingDirectory, ...additionalDirectories];
-    if (await _trustedProjectsAlreadyCurrent(metadataPath, directories)) {
-      return;
-    }
-    final metadata = await _metadataWithTrustedProjects(
-      metadataPath: metadataPath,
-      defaultMetadata: defaultFlashskyaiMetadata,
-      directories: directories,
-    );
-    await _writeJsonIfChanged(metadataPath, metadata);
-  }
+  @override
+  Future<Map<String, Object?>> metadataWithTrustedProjects({
+    required String metadataPath,
+    required Map<String, Object?> defaultMetadata,
+    required Iterable<String> directories,
+  }) =>
+      _metadataWithTrustedProjects(
+        metadataPath: metadataPath,
+        defaultMetadata: defaultMetadata,
+        directories: directories,
+      );
+
+  @override
+  Future<bool> trustedProjectsAlreadyCurrent(
+    String metadataPath,
+    Iterable<String> directories,
+  ) =>
+      _trustedProjectsAlreadyCurrent(metadataPath, directories);
+
+  @override
+  Future<Map<String, Object?>> readSettingsFile(String path) =>
+      _readSettingsFile(path);
+
+  @override
+  Future<void> writeSettingsFile(
+    String path,
+    Map<String, Object?> settings, {
+    String? memberToolDir,
+  }) =>
+      _writeSettingsFile(path, settings, memberToolDir: memberToolDir);
+
+  @override
+  Future<bool> isRtkEnabled() => _isRtkEnabled();
+
+  @override
+  Future<Map<String, Object?>> maybeApplyRtk(
+    Map<String, Object?> settings,
+    String? memberToolDir,
+  ) =>
+      _maybeApplyRtk(settings, memberToolDir);
+
+  @override
+  Future<Map<String, Object?>> maybeApplyTeamLeadHooks(
+    Map<String, Object?> settings,
+    TeamMemberConfig member,
+    String memberToolDir, {
+    required bool forceTeamLeadDelegateMode,
+  }) =>
+      _maybeApplyTeamLeadHooks(
+        settings,
+        member,
+        memberToolDir,
+        forceTeamLeadDelegateMode: forceTeamLeadDelegateMode,
+      );
+
+  @override
+  Future<String?> resolveAppendSystemPromptPath({
+    required LaunchProfileScope scope,
+    required String tool,
+    required TeamMemberConfig member,
+  }) =>
+      _resolveAppendSystemPromptPath(scope: scope, tool: tool, member: member);
+
+  @override
+  ClaudeHookShell hookShellForProvision() => _hookShellForProvision();
+
+  @override
+  TeamLeadHookProvisioner resolveTeamLeadHookProvisioner() =>
+      _resolveTeamLeadHookProvisioner();
+
+  @override
+  TeamLeadDelegateHookProvisioner resolveTeamLeadDelegateHookProvisioner() =>
+      _resolveTeamLeadDelegateHookProvisioner();
 
   Future<bool> _trustedProjectsAlreadyCurrent(
     String metadataPath,
@@ -529,51 +500,6 @@ class ConfigProfileService {
       if (project['hasTrustDialogAccepted'] != true) return false;
     }
     return true;
-  }
-
-  Future<void> _writeFlashskyaiSettings(_LaunchProfileScope scope) async {
-    final file = _pathContext.join(
-      sessionToolDir(scope.teamId, scope.sessionId, 'flashskyai'),
-      flashskyaiSettingsFileName,
-    );
-    final memberToolDir = sessionToolDir(
-      scope.teamId,
-      scope.sessionId,
-      'flashskyai',
-    );
-    final teamDefaults = _flashskyaiTeamSettings();
-    if (await _flashskyaiSettingsAlreadyCurrent(file, teamDefaults) &&
-        !await _isRtkEnabled()) {
-      return;
-    }
-    var merged = await _flashskyaiTeamSettingsMerged(file);
-    merged = await _maybeApplyRtk(merged, memberToolDir);
-    await _writeJsonIfChanged(file, merged);
-  }
-
-  Future<bool> _flashskyaiSettingsAlreadyCurrent(
-    String path,
-    Map<String, Object?> teamDefaults,
-  ) async {
-    if (!(await _fs.stat(path)).isFile) return false;
-    final existing = await _readSettingsFile(path);
-    for (final entry in teamDefaults.entries) {
-      if (entry.key == 'enabledPlugins') continue;
-      if (existing[entry.key] != entry.value) return false;
-    }
-    return true;
-  }
-
-  Future<Map<String, Object?>> _flashskyaiTeamSettingsMerged(
-    String path,
-  ) async {
-    final existing = await _readSettingsFile(path);
-    final merged = Map<String, Object?>.from(_flashskyaiTeamSettings());
-    final enabledPlugins = existing['enabledPlugins'];
-    if (enabledPlugins is Map && enabledPlugins.isNotEmpty) {
-      merged['enabledPlugins'] = enabledPlugins;
-    }
-    return merged;
   }
 
   Future<void> _writeJsonIfChanged(
@@ -781,120 +707,6 @@ class ConfigProfileService {
     return metadata;
   }
 
-  Future<void> _writeClaudeRoster({
-    required _LaunchProfileScope scope,
-    required List<TeamMemberConfig> members,
-    required String workingDirectory,
-    required String description,
-    required String teammateMode,
-    String? leadSessionId,
-  }) async {
-    final claudeDir = sessionToolDir(scope.teamId, scope.sessionId, 'claude');
-    final rosterDir = _pathContext.join(
-      claudeDir,
-      'teams',
-      ClaudeTeamRosterService.safeClaudePathSegment(scope.cliTeamName),
-    );
-    final rosterPath = _pathContext.join(rosterDir, 'config.json');
-
-    final cwd = ClaudeTeamRosterService.resolveWorkingDirectory(
-      workingDirectory: workingDirectory,
-      fallback: '',
-    );
-
-    Map<String, Object?>? existing;
-    if ((await _fs.stat(rosterPath)).exists) {
-      final raw = await _fs.readString(rosterPath);
-      if (raw != null && raw.trim().isNotEmpty) {
-        final decoded = jsonDecode(raw);
-        if (decoded is Map) {
-          existing = Map<String, Object?>.from(
-            decoded.map((k, v) => MapEntry(k.toString(), v)),
-          );
-        }
-      }
-    }
-
-    final rosterService = ClaudeTeamRosterService(fs: _fs);
-    final config = rosterService.mergeConfig(
-      cliTeamName: scope.cliTeamName,
-      members: members,
-      cwd: cwd,
-      teammateMode: teammateMode,
-      description: description,
-      leadSessionId: leadSessionId,
-      existing: existing,
-    );
-
-    await _fs.atomicWrite(
-      rosterPath,
-      const JsonEncoder.withIndent('  ').convert(config),
-    );
-    await rosterService.ensureInboxes(rosterDir: rosterDir, members: members);
-  }
-
-  Future<void> _writeClaudeMemberProfiles({
-    required _LaunchProfileScope scope,
-    required List<TeamMemberConfig> members,
-    required TeamMemberConfig? launchedMember,
-    required Map<String, Object?>? providerSettings,
-    required Map<String, Map<String, Object?>> providerSettingsByMember,
-    required bool forceTeamLeadDelegateMode,
-  }) async {
-    final uniqueMembers = <String, TeamMemberConfig>{};
-    for (final member in members.where((member) => member.isValid)) {
-      uniqueMembers[member.id] = member;
-    }
-    final selected = launchedMember;
-    if (selected != null && selected.isValid) {
-      uniqueMembers[selected.id] = selected;
-    }
-
-    for (final member in uniqueMembers.values) {
-      await _writeClaudeMemberProfile(
-        scope: scope,
-        member: member,
-        providerSettings:
-            providerSettingsByMember[member.id] ?? providerSettings,
-        forceTeamLeadDelegateMode: forceTeamLeadDelegateMode,
-      );
-    }
-  }
-
-  Future<void> _writeClaudeMemberProfile({
-    required _LaunchProfileScope scope,
-    required TeamMemberConfig member,
-    required Map<String, Object?>? providerSettings,
-    required bool forceTeamLeadDelegateMode,
-  }) async {
-    final memberToolDir = sessionToolDir(
-      scope.teamId,
-      scope.sessionId,
-      'claude',
-    );
-    final isLead = TeamMemberNaming.isTeamLead(member);
-    await MemberRoleProvision.syncRolePromptFile(
-      fs: _fs,
-      memberToolDir: memberToolDir,
-      member: member,
-      forceTeamLeadDelegateMode: isLead && forceTeamLeadDelegateMode,
-    );
-    final file = sessionClaudeMemberSettingsFile(
-      scope.teamId,
-      scope.sessionId,
-      member,
-    );
-    var settings = _claudeMemberSettings(providerSettings, member);
-    settings = MemberRoleProvision.applyTeamSessionPolicy(settings);
-    settings = await _maybeApplyTeamLeadHooks(
-      settings,
-      member,
-      memberToolDir,
-      forceTeamLeadDelegateMode: isLead && forceTeamLeadDelegateMode,
-    );
-    await _writeSettingsFile(file, settings, memberToolDir: memberToolDir);
-  }
-
   Future<Map<String, Object?>> _maybeApplyTeamLeadHooks(
     Map<String, Object?> settings,
     TeamMemberConfig member,
@@ -935,66 +747,8 @@ class ConfigProfileService {
     return merged;
   }
 
-  Future<void> _writeFlashskyaiMemberProfiles({
-    required _LaunchProfileScope scope,
-    required List<TeamMemberConfig> members,
-    required TeamMemberConfig? launchedMember,
-    required bool forceTeamLeadDelegateMode,
-  }) async {
-    final selected = launchedMember;
-    if (selected == null || !selected.isValid) {
-      await _writeFlashskyaiSettings(scope);
-      return;
-    }
-    await _writeFlashskyaiMemberProfile(
-      scope: scope,
-      member: selected,
-      forceTeamLeadDelegateMode: forceTeamLeadDelegateMode,
-    );
-  }
-
-  Future<void> _writeFlashskyaiMemberProfile({
-    required _LaunchProfileScope scope,
-    required TeamMemberConfig member,
-    required bool forceTeamLeadDelegateMode,
-  }) async {
-    final memberToolDir = sessionToolDir(
-      scope.teamId,
-      scope.sessionId,
-      'flashskyai',
-    );
-    final isLead = TeamMemberNaming.isTeamLead(member);
-    await MemberRoleProvision.syncRolePromptFile(
-      fs: _fs,
-      memberToolDir: memberToolDir,
-      member: member,
-      forceTeamLeadDelegateMode: isLead && forceTeamLeadDelegateMode,
-    );
-    final settingsFile = _pathContext.join(
-      memberToolDir,
-      flashskyaiSettingsFileName,
-    );
-    var settings = _flashskyaiMemberSettings(member);
-    settings = MemberRoleProvision.applyTeamSessionPolicy(settings);
-    settings = await _maybeApplyTeamLeadHooks(
-      settings,
-      member,
-      memberToolDir,
-      forceTeamLeadDelegateMode: isLead && forceTeamLeadDelegateMode,
-    );
-    await _writeSettingsFile(
-      settingsFile,
-      settings,
-      memberToolDir: memberToolDir,
-    );
-  }
-
-  static Map<String, Object?> _flashskyaiMemberSettings(TeamMemberConfig member) {
-    return Map<String, Object?>.from(_flashskyaiTeamSettings());
-  }
-
   Future<String?> _resolveAppendSystemPromptPath({
-    required _LaunchProfileScope scope,
+    required LaunchProfileScope scope,
     required String tool,
     required TeamMemberConfig member,
   }) async {
@@ -1008,69 +762,4 @@ class ConfigProfileService {
     if (raw == null || raw.trim().isEmpty) return null;
     return path;
   }
-
-  static Map<String, Object?> _claudeTeamSettings(
-    Map<String, Object?>? providerSettings, {
-    required String effortLevel,
-    required String teammateMode,
-  }) {
-    final settings = <String, Object?>{
-      if (providerSettings != null) ...providerSettings,
-    };
-    final env = <String, Object?>{};
-    final existingEnv = settings['env'];
-    if (existingEnv is Map) {
-      for (final entry in existingEnv.entries) {
-        final key = entry.key;
-        if (key is String) {
-          env[key] = entry.value;
-        }
-      }
-    }
-    env['CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS'] = '1';
-    env.putIfAbsent('CCGUI_CLI_LOGIN_AUTHORIZED', () => '1');
-    env.putIfAbsent('CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC', () => '1');
-    settings['env'] = env;
-    settings['effortLevel'] = effortLevel;
-    settings['skipDangerousModePermissionPrompt'] = true;
-    settings['teammateMode'] = teammateMode;
-    return settings;
-  }
-
-  static Map<String, Object?> _claudeMemberSettings(
-    Map<String, Object?>? providerSettings,
-    TeamMemberConfig member,
-  ) {
-    final settings = _claudeTeamSettings(
-      providerSettings,
-      effortLevel: 'xhigh',
-      teammateMode: 'in-process',
-    );
-    final model = member.model.trim();
-    if (model.isNotEmpty) {
-      final env = Map<String, Object?>.from(settings['env'] as Map);
-      env['ANTHROPIC_MODEL'] = model;
-      env['ANTHROPIC_DEFAULT_HAIKU_MODEL'] = model;
-      env['ANTHROPIC_DEFAULT_SONNET_MODEL'] = model;
-      env['ANTHROPIC_DEFAULT_OPUS_MODEL'] = model;
-      settings['env'] = env;
-    }
-    return settings;
-  }
-
-  static Map<String, Object?> _flashskyaiTeamSettings() {
-    return <String, Object?>{'skipDangerousModePermissionPrompt': true};
-  }
-}
-
-class _LaunchProfileScope {
-  const _LaunchProfileScope({
-    required this.teamId,
-    required this.sessionId,
-    required this.cliTeamName,
-  });
-
-  final String teamId;
-  final String sessionId;
-  final String cliTeamName;
 }

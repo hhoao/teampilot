@@ -6,6 +6,10 @@ import '../../utils/logger.dart';
 import '../storage/app_storage.dart';
 import '../provider/claude_provider_settings_resolver.dart';
 import '../cli/cli_data_layout.dart';
+import '../cli/registry/built_in_cli_tools.dart';
+import '../cli/registry/capabilities/transcript_probe_capability.dart';
+import '../cli/registry/cli_tool_registry.dart';
+import '../cli/registry/config_profile/claude_config_profile_capability.dart';
 import '../provider/config_profile_service.dart';
 import '../storage/flashskyai_storage_roots.dart';
 import '../io/filesystem.dart';
@@ -38,6 +42,12 @@ class LaunchPlan {
 }
 
 class SessionLifecycleService {
+  static final _defaultCliRegistry = () {
+    final registry = CliToolRegistry();
+    registerBuiltInCliTools(registry);
+    return registry;
+  }();
+
   SessionLifecycleService({
     String? appDataBasePath,
     String? Function()? llmConfigPathOverride,
@@ -45,12 +55,14 @@ class SessionLifecycleService {
     StorageRootsResolver? storageRootsResolver,
     ClaudeProviderSettingsResolver? claudeSettingsResolver,
     Future<bool> Function()? loadRtkEnabled,
+    CliToolRegistry? cliToolRegistry,
   }) : _appDataBasePath = appDataBasePath,
        _llmConfigPathOverride = llmConfigPathOverride,
        _configProfileService = configProfileService,
        _storageRootsResolver = storageRootsResolver,
        _claudeSettingsResolver = claudeSettingsResolver,
-       _loadRtkEnabled = loadRtkEnabled;
+       _loadRtkEnabled = loadRtkEnabled,
+       _cliToolRegistry = cliToolRegistry ?? _defaultCliRegistry;
 
   final String? _appDataBasePath;
   final String? Function()? _llmConfigPathOverride;
@@ -58,6 +70,7 @@ class SessionLifecycleService {
   final StorageRootsResolver? _storageRootsResolver;
   final ClaudeProviderSettingsResolver? _claudeSettingsResolver;
   final Future<bool> Function()? _loadRtkEnabled;
+  final CliToolRegistry _cliToolRegistry;
 
   Future<LaunchPlan> prepareLaunch({
     required AppSession session,
@@ -213,20 +226,21 @@ class SessionLifecycleService {
       final resolver =
           _claudeSettingsResolver ??
           ClaudeProviderSettingsResolver(basePath: service.basePath);
-      final claudeSettings = team.cli == TeamCli.claude
-          ? await resolver.resolveTeamClaudeSettings(team)
-          : null;
-      final claudeProviderId = team.cli == TeamCli.claude
-          ? await resolver.resolveProviderId(team)
-          : null;
-      final claudeSettingsByMember = team.cli == TeamCli.claude
-          ? await _loadClaudeMemberProviderSettings(
-              resolver: resolver,
-              team: team,
-              teamClaudeSettings: claudeSettings,
-              launchedMember: member,
-            )
-          : const <String, Map<String, Object?>>{};
+      Map<String, Object?>? claudeSettings;
+      String? claudeProviderId;
+      var claudeSettingsByMember = const <String, Map<String, Object?>>{};
+      final claudeCap = _cliToolRegistry
+          .capability<ClaudeConfigProfileCapability>(team.cli.value);
+      if (claudeCap != null) {
+        final extras = await claudeCap.resolveLaunchExtras(
+          team: team,
+          member: member,
+          resolver: resolver,
+        );
+        claudeSettings = extras.settings;
+        claudeProviderId = extras.providerId;
+        claudeSettingsByMember = extras.settingsByMember;
+      }
       final leadTaskId = memberBinding?.taskId.trim() ?? '';
       final leadSessionId =
           member != null &&
@@ -272,6 +286,7 @@ class SessionLifecycleService {
       fs: roots.fs,
       layout: roots.layout,
       loadRtkEnabled: _loadRtkEnabled,
+      cliRegistry: _cliToolRegistry,
     );
   }
 
@@ -311,7 +326,10 @@ class SessionLifecycleService {
       toolRoots: toolRoots,
       sessionId: id,
       bucket: bucket,
-      probeHistoryFiles: cli == TeamCli.claude,
+      probeHistoryFiles: _cliToolRegistry
+              .capability<TranscriptProbeCapability>(cli?.value ?? '')
+              ?.probeHistoryFiles ??
+          false,
     );
   }
 
@@ -431,35 +449,6 @@ class SessionLifecycleService {
     } on Object catch (e, st) {
       appLogger.w('[session-lifecycle] cleanup failed: $e', stackTrace: st);
     }
-  }
-
-  Future<Map<String, Map<String, Object?>>> _loadClaudeMemberProviderSettings({
-    required ClaudeProviderSettingsResolver resolver,
-    required TeamConfig team,
-    required Map<String, Object?>? teamClaudeSettings,
-    required TeamMemberConfig? launchedMember,
-  }) async {
-    final members = <String, TeamMemberConfig>{};
-    for (final member in team.members.where((member) => member.isValid)) {
-      members[member.id] = member;
-    }
-    final selected = launchedMember;
-    if (selected != null && selected.isValid) {
-      members[selected.id] = selected;
-    }
-
-    final settingsByMember = <String, Map<String, Object?>>{};
-    for (final member in members.values) {
-      final settings = await resolver.resolveMemberClaudeSettings(
-        team: team,
-        member: member,
-        teamClaudeSettings: teamClaudeSettings,
-      );
-      if (settings != null) {
-        settingsByMember[member.id] = settings;
-      }
-    }
-    return settingsByMember;
   }
 
   String _memberConfigDirFromEnv(Map<String, String> env) {

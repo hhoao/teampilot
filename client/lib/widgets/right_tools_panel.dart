@@ -16,6 +16,7 @@ import '../l10n/l10n_extensions.dart';
 import '../models/layout_preferences.dart';
 import '../models/member_presence.dart';
 import '../models/team_config.dart';
+import '../services/cli/registry/cli_tool_registry_scope.dart';
 import '../theme/app_text_styles.dart';
 import '../theme/workspace_surface_layers.dart';
 import '../utils/app_keys.dart';
@@ -210,11 +211,11 @@ class _MembersPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final l10n = context.l10n;
-    final catalogCli = switch (teamCli) {
-      TeamCli.flashskyai => AppProviderCli.flashskyai,
-      TeamCli.codex => AppProviderCli.codex,
-      TeamCli.claude => AppProviderCli.claude,
-    };
+    final catalogCli =
+        CliToolRegistryScope.maybeOf(context)
+            ?.tryGet(teamCli.value)
+            ?.providerCatalogCli ??
+        AppProviderCli.claude;
     final providerLabels = {
       for (final p in context.watch<AppProviderCubit>().state.providersFor(
         catalogCli,

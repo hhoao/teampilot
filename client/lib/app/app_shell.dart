@@ -36,6 +36,8 @@ import '../repositories/ssh_profile_repository.dart';
 import '../repositories/team_repository.dart';
 import '../services/storage/app_storage.dart';
 import '../services/cli/cli_tool_locator.dart';
+import '../services/cli/registry/built_in_cli_tools.dart';
+import '../services/cli/registry/cli_tool_registry.dart';
 import '../services/app/connection_mode_service.dart';
 import '../services/cli/flashskyai_cli_locator.dart';
 import '../services/storage/flashskyai_storage_roots.dart';
@@ -83,8 +85,10 @@ class AppShell {
     required this.appSettings,
     required this.reinstallStorageContext,
     required this.bootstrapAppData,
+    required this.cliToolRegistry,
   });
 
+  final CliToolRegistry cliToolRegistry;
   final ChatCubit chatCubit;
   final EditorCubit editorCubit;
   final SessionRepository sessionRepo;
@@ -118,6 +122,8 @@ Future<AppShell> buildAppShell({
   void boot(String phase) => appLogger.i('[boot] $phase');
 
   boot('start');
+  final cliToolRegistry = CliToolRegistry();
+  registerBuiltInCliTools(cliToolRegistry);
   final locatedExecutables = <TeamCli, String>{};
   if (!Platform.isAndroid) {
     boot('locating CLI tools');
@@ -137,6 +143,7 @@ Future<AppShell> buildAppShell({
     repository: SessionPreferencesRepository(preferences),
     locatedExecutable: cliLocated,
     locatedExecutables: locatedExecutables,
+    cliToolRegistry: cliToolRegistry,
   );
   boot('loading session preferences');
   await sessionPreferencesCubit.load();
@@ -306,6 +313,7 @@ Future<AppShell> buildAppShell({
     llmConfigPathOverride: llmConfigPathOverrideForLaunch,
     storageRootsResolver: storageRoots.resolve,
     loadRtkEnabled: appSettings.loadRtkEnabled,
+    cliToolRegistry: cliToolRegistry,
   );
   sessionRepo = SessionRepository(
     storageRoots: storageRoots,
@@ -408,6 +416,7 @@ Future<AppShell> buildAppShell({
   editorCubit = EditorCubit();
 
   return AppShell(
+    cliToolRegistry: cliToolRegistry,
     chatCubit: chatCubit,
     editorCubit: editorCubit,
     sessionRepo: sessionRepo,

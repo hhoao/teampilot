@@ -5,6 +5,9 @@ import 'package:path/path.dart' as p;
 
 import '../../models/team_config.dart';
 import '../cli/cli_tool_adapter.dart';
+import '../cli/registry/built_in_cli_tools.dart';
+import '../cli/registry/capabilities/launch_args_capability.dart';
+import '../cli/registry/cli_tool_registry.dart';
 import '../cli/cli_invocation.dart';
 import '../provider/config_profile_service.dart';
 import 'member_role_provision.dart';
@@ -55,6 +58,12 @@ class LaunchCommandBuilder {
     return args;
   }
 
+  static final _defaultCliRegistry = () {
+    final r = CliToolRegistry();
+    registerBuiltInCliTools(r);
+    return r;
+  }();
+
   static List<String> buildArguments(
     TeamConfig team,
     TeamMemberConfig member, {
@@ -66,23 +75,27 @@ class LaunchCommandBuilder {
     String? settingsPath,
     String? appendSystemPromptFile,
     bool useWslPaths = false,
+    CliToolRegistry? cliRegistry,
   }) {
-    return const CliToolAdapterRegistry()
-        .forCli(team.cli)
-        .buildArguments(
-          CliLaunchContext(
-            team: team,
-            member: member,
-            sessionTeam: sessionTeam,
-            workingDirectory: workingDirectory,
-            additionalDirectories: additionalDirectories,
-            fixedSessionId: fixedSessionId,
-            resumeSessionId: resumeSessionId,
-            settingsPath: settingsPath,
-            appendSystemPromptFile: appendSystemPromptFile,
-            useWslPaths: useWslPaths,
-          ),
-        );
+    final registry = cliRegistry ?? _defaultCliRegistry;
+    final launch = registry.capability<LaunchArgsCapability>(team.cli.value);
+    if (launch == null) {
+      throw StateError('No LaunchArgsCapability for ${team.cli.value}');
+    }
+    return launch.buildArguments(
+      CliLaunchContext(
+        team: team,
+        member: member,
+        sessionTeam: sessionTeam,
+        workingDirectory: workingDirectory,
+        additionalDirectories: additionalDirectories,
+        fixedSessionId: fixedSessionId,
+        resumeSessionId: resumeSessionId,
+        settingsPath: settingsPath,
+        appendSystemPromptFile: appendSystemPromptFile,
+        useWslPaths: useWslPaths,
+      ),
+    );
   }
 
   static String preview(

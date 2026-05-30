@@ -1,0 +1,1 @@
+typedef CliToolId = String;

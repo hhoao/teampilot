@@ -1,6 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/cli/cli_tool_adapter.dart';
+import 'package:teampilot/services/cli/registry/built_in_cli_tools.dart';
+import 'package:teampilot/services/cli/registry/capabilities/launch_args_capability.dart';
+import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 
 void main() {
   const member = TeamMemberConfig(
@@ -269,14 +272,21 @@ void main() {
     expect(args, isNot(contains('--loop')));
   });
 
-  test('registry resolves supported adapters and falls back to flashskyai', () {
-    final registry = CliToolAdapterRegistry();
+  test('registry resolves launch adapters per tool id', () {
+    final registry = CliToolRegistry();
+    registerBuiltInCliTools(registry);
 
     expect(
-      registry.forCli(TeamCli.flashskyai),
+      registry.capability<LaunchArgsCapability>('flashskyai'),
       isA<FlashskyaiCliToolAdapter>(),
     );
-    expect(registry.forCli(TeamCli.claude), isA<ClaudeCodeCliToolAdapter>());
-    expect(registry.forCli(TeamCli.codex), isA<FlashskyaiCliToolAdapter>());
+    expect(
+      registry.capability<LaunchArgsCapability>('claude'),
+      isA<ClaudeCodeCliToolAdapter>(),
+    );
+    expect(
+      registry.capability<LaunchArgsCapability>('codex'),
+      isA<FlashskyaiCliToolAdapter>(),
+    );
   });
 }

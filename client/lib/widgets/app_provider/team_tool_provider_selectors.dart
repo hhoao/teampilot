@@ -5,6 +5,7 @@ import '../../cubits/app_provider_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/app_provider_config.dart';
 import '../../models/team_config.dart';
+import '../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../dropdown/flashsky_dropdown_field.dart';
 import '../dropdown/flashskyai_dropdown_decoration.dart';
 import '../settings/workspace_settings_widgets.dart';
@@ -22,7 +23,11 @@ class TeamToolProviderSelectors extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final providerCli = _providerCliForTeamCli(team.cli);
+    final providerCli =
+        CliToolRegistryScope.maybeOf(context)
+            ?.tryGet(team.cli.value)
+            ?.providerCatalogCli ??
+        AppProviderCli.claude;
     final providers = context.watch<AppProviderCubit>().state.providersFor(
       providerCli,
     );
@@ -64,11 +69,4 @@ class TeamToolProviderSelectors extends StatelessWidget {
     );
   }
 
-  AppProviderCli _providerCliForTeamCli(TeamCli cli) {
-    return switch (cli) {
-      TeamCli.flashskyai => AppProviderCli.flashskyai,
-      TeamCli.codex => AppProviderCli.codex,
-      TeamCli.claude => AppProviderCli.claude,
-    };
-  }
 }

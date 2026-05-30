@@ -4,6 +4,9 @@ import 'dart:typed_data';
 import '../../models/ssh_profile.dart';
 import '../../models/team_config.dart';
 import 'cli_tool_locator.dart';
+import 'registry/built_in_cli_tools.dart';
+import 'registry/capabilities/installer_capability.dart';
+import 'registry/cli_tool_registry.dart';
 import '../ssh/ssh_client_factory.dart';
 
 enum CliInstallMode { local, ssh }
@@ -87,9 +90,17 @@ class CliInstallerService {
     SshCliInstallRunner? sshRunner,
     SshClientFactory? sshClientFactory,
     bool? isWindowsOverride,
+    CliToolRegistry? cliToolRegistry,
   }) : _localRunner = localRunner ?? _runLocal,
        _sshRunner = sshRunner ?? _SshCommandRunner(sshClientFactory).run,
-       _isWindows = isWindowsOverride ?? Platform.isWindows;
+       _isWindows = isWindowsOverride ?? Platform.isWindows,
+       _cliToolRegistry = cliToolRegistry ?? _defaultCliRegistry;
+
+  static final _defaultCliRegistry = () {
+    final r = CliToolRegistry();
+    registerBuiltInCliTools(r);
+    return r;
+  }();
 
   static const nodeVersion = 'v24.15.0';
   static const _claudePackage = '@anthropic-ai/claude-code';
@@ -99,6 +110,7 @@ class CliInstallerService {
   final LocalCliInstallRunner _localRunner;
   final SshCliInstallRunner _sshRunner;
   final bool _isWindows;
+  final CliToolRegistry _cliToolRegistry;
   CliInstallProgressCallback? _onProgress;
 
   Future<CliInstallResult> install({
@@ -109,7 +121,9 @@ class CliInstallerService {
   }) async {
     _onProgress = onProgress;
     try {
-      if (cli != TeamCli.claude) {
+      final installer =
+          _cliToolRegistry.capability<InstallerCapability>(cli.value);
+      if (installer?.supportsInstaller != true) {
         return const CliInstallResult(
           success: false,
           message: 'Only Claude Code installation is supported.',

@@ -10,6 +10,8 @@ import '../l10n/l10n_extensions.dart';
 import '../models/app_project.dart';
 import '../models/app_session.dart';
 import '../models/team_config.dart';
+import '../services/cli/registry/cli_display_name.dart';
+import '../services/cli/registry/cli_tool_registry_scope.dart';
 import '../repositories/session_repository.dart';
 import '../services/storage/app_storage.dart';
 import '../services/app/platform_utils.dart';
@@ -130,14 +132,6 @@ Future<void> _startNewChat(BuildContext context) async {
   _navigateToSessionInChat(context, newest);
 }
 
-String _teamCliDisplayLabel(dynamic l10n, TeamCli cli) {
-  return switch (cli) {
-    TeamCli.flashskyai => l10n.appProviderToolFlashskyai,
-    TeamCli.codex => l10n.appProviderToolCodex,
-    TeamCli.claude => l10n.appProviderToolClaude,
-  };
-}
-
 Future<void> _promptAddTeam(BuildContext context, TeamCubit teamCubit) async {
   final l10n = context.l10n;
   final result = await showDialog<({String name, TeamCli cli})?>(
@@ -181,6 +175,8 @@ class _AddTeamDialogState extends State<_AddTeamDialog> {
   @override
   Widget build(BuildContext context) {
     final l10n = widget.l10n;
+    final launchable = CliToolRegistryScope.of(context).launchable.toList()
+      ..sort((a, b) => a.id.compareTo(b.id));
     return AlertDialog(
       title: Text(l10n.addTeamTitle),
       content: Column(
@@ -206,20 +202,15 @@ class _AddTeamDialogState extends State<_AddTeamDialog> {
             ),
           ),
           const SizedBox(height: 8),
-          for (final cli in TeamCli.values)
+          for (final def in launchable)
             RadioListTile<TeamCli>(
-              value: cli,
+              value: TeamCli.decode(def.id),
               groupValue: _selectedCli,
-              onChanged: cli.isLaunchSupported
-                  ? (value) {
-                      if (value == null) return;
-                      setState(() => _selectedCli = value);
-                    }
-                  : null,
-              title: Text(_teamCliDisplayLabel(l10n, cli)),
-              subtitle: cli.isLaunchSupported
-                  ? null
-                  : Text(l10n.teamCliComingSoon),
+              onChanged: (value) {
+                if (value == null) return;
+                setState(() => _selectedCli = value);
+              },
+              title: Text(cliDisplayName(def, l10n)),
               dense: true,
               contentPadding: EdgeInsets.zero,
             ),

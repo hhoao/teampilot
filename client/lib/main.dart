@@ -18,6 +18,7 @@ import 'repositories/ssh_credential_store.dart';
 import 'repositories/ssh_known_host_repository.dart';
 import 'repositories/ssh_profile_repository.dart';
 import 'router/app_router.dart';
+import 'services/cli/registry/cli_tool_registry_scope.dart';
 import 'services/storage/app_storage.dart';
 import 'services/app/connection_mode_service.dart';
 import 'services/storage/flashskyai_storage_roots.dart';
@@ -179,7 +180,10 @@ void main() async {
                 BlocProvider.value(value: shell.appUpdateCubit),
                 BlocProvider.value(value: shell.sshProfileCubit),
               ],
-              child: const TeamPilotApp(),
+              child: CliToolRegistryScope(
+                registry: shell.cliToolRegistry,
+                child: const TeamPilotApp(),
+              ),
             ),
           ),
         );

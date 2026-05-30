@@ -1,5 +1,6 @@
 import '../../models/team_config.dart';
 import '../../utils/team_member_naming.dart';
+import 'registry/capabilities/launch_args_capability.dart';
 
 class CliLaunchContext {
   const CliLaunchContext({
@@ -33,25 +34,9 @@ class CliLaunchContext {
   String get memberCliId => member.id.trim();
 }
 
-abstract interface class CliToolAdapter {
+abstract interface class CliToolAdapter implements LaunchArgsCapability {
+  @override
   List<String> buildArguments(CliLaunchContext context);
-}
-
-class CliToolAdapterRegistry {
-  const CliToolAdapterRegistry({
-    this.flashskyai = const FlashskyaiCliToolAdapter(),
-    this.claude = const ClaudeCodeCliToolAdapter(),
-  });
-
-  final CliToolAdapter flashskyai;
-  final CliToolAdapter claude;
-
-  CliToolAdapter forCli(TeamCli cli) {
-    return switch (cli) {
-      TeamCli.claude => claude,
-      TeamCli.flashskyai || TeamCli.codex => flashskyai,
-    };
-  }
 }
 
 class FlashskyaiCliToolAdapter implements CliToolAdapter {

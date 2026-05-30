@@ -14,6 +14,8 @@ import '../models/mcp_server.dart';
 import '../models/plugin.dart';
 import '../models/skill.dart';
 import '../models/team_config.dart';
+import '../services/cli/registry/cli_display_name.dart';
+import '../services/cli/registry/cli_tool_registry_scope.dart';
 import '../models/team_member_prompt_presets.dart';
 import '../services/app/flashskyai_agent_catalog_service.dart';
 import '../services/storage/flashskyai_storage_roots.dart';
@@ -81,20 +83,17 @@ IconData _teamConfigSectionIcon(TeamConfigSection section) => switch (section) {
 String memberRoutePath(String basePath, String memberId) =>
     '$basePath/members/$memberId';
 
-/// Same mapping as [TeamToolProviderSelectors]: member provider catalog is
-/// `<appData>/providers/<cli>/providers.json` per [AppProviderRepository].
-AppProviderCli _appCatalogCliForTeam(TeamCli cli) => switch (cli) {
-  TeamCli.flashskyai => AppProviderCli.flashskyai,
-  TeamCli.codex => AppProviderCli.codex,
-  TeamCli.claude => AppProviderCli.claude,
-};
+AppProviderCli? _catalogCliForTeam(BuildContext context, TeamCli cli) =>
+    CliToolRegistryScope.maybeOf(context)?.tryGet(cli.value)?.providerCatalogCli;
 
-String _teamCliDisplayLabel(AppLocalizations l10n, TeamCli cli) {
-  return switch (cli) {
-    TeamCli.flashskyai => l10n.appProviderToolFlashskyai,
-    TeamCli.codex => l10n.appProviderToolCodex,
-    TeamCli.claude => l10n.appProviderToolClaude,
-  };
+String _teamCliDisplayLabel(
+  BuildContext context,
+  AppLocalizations l10n,
+  TeamCli cli,
+) {
+  final def = CliToolRegistryScope.maybeOf(context)?.tryGet(cli.value);
+  if (def != null) return cliDisplayName(def, l10n);
+  return cli.value;
 }
 
 String _memberAgentDropdownItemLabel(
@@ -809,7 +808,9 @@ class _TeamPluginsSection extends StatelessWidget {
     final assignedCount = installed
         .where((p) => team.pluginIds.contains(p.id))
         .length;
-    final codexUnsupported = team.cli == TeamCli.codex;
+    final teamToolDef =
+        CliToolRegistryScope.maybeOf(context)?.tryGet(team.cli.value);
+    final codexUnsupported = teamToolDef?.isLaunchSupported == false;
 
     return SingleChildScrollView(
       child: Column(
@@ -1179,10 +1180,11 @@ class _TeamInfoSectionState extends State<_TeamInfoSection> {
     final loopKey = widget.team.loop == null
         ? '__default__'
         : (widget.team.loop! ? 'true' : 'false');
+    final catalogCli = _catalogCliForTeam(context, widget.team.cli);
     final showDelegateRow =
-        widget.team.cli == TeamCli.claude ||
-        widget.team.cli == TeamCli.flashskyai;
-    final showToolProviders = widget.team.cli == TeamCli.claude;
+        catalogCli == AppProviderCli.claude ||
+        catalogCli == AppProviderCli.flashskyai;
+    final showToolProviders = catalogCli == AppProviderCli.claude;
 
     return SingleChildScrollView(
       child: Column(
@@ -1243,7 +1245,7 @@ class _TeamInfoSectionState extends State<_TeamInfoSection> {
                   title: l10n.teamCliLabel,
                   subtitle: l10n.teamCliLockedSubtitle,
                   body: Text(
-                    _teamCliDisplayLabel(l10n, widget.team.cli),
+                    _teamCliDisplayLabel(context, l10n, widget.team.cli),
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       fontWeight: FontWeight.w500,
                       color: Theme.of(context).colorScheme.onSurface,
@@ -1563,7 +1565,8 @@ class _MemberConfigFormState extends State<_MemberConfigForm> {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final m = widget.member;
-    final memberCatalogCli = _appCatalogCliForTeam(widget.team.cli);
+    final memberCatalogCli =
+        _catalogCliForTeam(context, widget.team.cli) ?? AppProviderCli.claude;
     final dropdownDeco = FlashskyDropdownDecorations.settingsCompact(context);
 
     final prov = m.provider;
@@ -1603,7 +1606,7 @@ class _MemberConfigFormState extends State<_MemberConfigForm> {
     )..sort();
     final model = m.model;
     final hideModelPicker =
-        widget.team.cli == TeamCli.claude &&
+        _catalogCliForTeam(context, widget.team.cli) == AppProviderCli.claude &&
         selectedAppProvider != null &&
         isOfficialClaudeProvider(selectedAppProvider);
 

@@ -1,5 +1,8 @@
 import '../../models/member_presence.dart';
 import '../../models/team_config.dart';
+import '../cli/registry/built_in_cli_tools.dart';
+import '../cli/registry/capabilities/presence_capability.dart';
+import '../cli/registry/cli_tool_registry.dart';
 import '../io/filesystem.dart';
 import '../storage/app_storage.dart';
 import '../terminal/terminal_session.dart';
@@ -7,13 +10,24 @@ import 'claude_roster_activity_source.dart';
 
 /// Aggregates terminal connection + per-CLI workload into [MemberPresence].
 class MemberPresenceService {
-  MemberPresenceService({Filesystem? fs, ClaudeRosterActivitySource? claudeRoster})
-    : fs = fs ?? AppStorage.fs,
-      _claudeRoster = claudeRoster ??
-          ClaudeRosterActivitySource(fs: fs ?? AppStorage.fs);
+  MemberPresenceService({
+    Filesystem? fs,
+    ClaudeRosterActivitySource? claudeRoster,
+    CliToolRegistry? cliToolRegistry,
+  }) : fs = fs ?? AppStorage.fs,
+       _claudeRoster =
+           claudeRoster ?? ClaudeRosterActivitySource(fs: fs ?? AppStorage.fs),
+       _cliToolRegistry = cliToolRegistry ?? _defaultCliRegistry;
+
+  static final _defaultCliRegistry = () {
+    final r = CliToolRegistry();
+    registerBuiltInCliTools(r);
+    return r;
+  }();
 
   final Filesystem fs;
   final ClaudeRosterActivitySource _claudeRoster;
+  final CliToolRegistry _cliToolRegistry;
 
   Future<Map<String, MemberPresence>> compute({
     required TeamCli teamCli,
@@ -25,8 +39,10 @@ class MemberPresenceService {
     final valid = members.where((m) => m.isValid).toList();
     if (valid.isEmpty) return const {};
 
+    final presenceCap =
+        _cliToolRegistry.capability<PresenceCapability>(teamCli.value);
     var claudeWorking = const <String, bool>{};
-    if (teamCli == TeamCli.claude &&
+    if ((presenceCap?.usesClaudeRoster ?? false) &&
         memberToolConfigDir != null &&
         memberToolConfigDir.trim().isNotEmpty &&
         cliTeamName.trim().isNotEmpty) {
@@ -42,7 +58,7 @@ class MemberPresenceService {
       final connection = _connectionOf(shell);
       final workload = switch (connection) {
         MemberConnection.connected => _workloadFor(
-          teamCli: teamCli,
+          presenceCap: presenceCap,
           memberId: member.id,
           shell: shell!,
           claudeWorking: claudeWorking,
@@ -65,20 +81,22 @@ class MemberPresenceService {
   }
 
   MemberWorkload _workloadFor({
-    required TeamCli teamCli,
+    required PresenceCapability? presenceCap,
     required String memberId,
     required TerminalSession shell,
     required Map<String, bool> claudeWorking,
   }) {
-    return switch (teamCli) {
-      TeamCli.claude => _claudeRoster.workloadForMember(
+    if (presenceCap?.usesClaudeRoster ?? false) {
+      return _claudeRoster.workloadForMember(
         memberId: memberId,
         workingByName: claudeWorking,
-      ),
-      TeamCli.flashskyai => shell.activityTracker.isWorking
+      );
+    }
+    if (presenceCap?.usesShellActivity ?? false) {
+      return shell.activityTracker.isWorking
           ? MemberWorkload.working
-          : MemberWorkload.idle,
-      TeamCli.codex => MemberWorkload.idle,
-    };
+          : MemberWorkload.idle;
+    }
+    return MemberWorkload.idle;
   }
 }
