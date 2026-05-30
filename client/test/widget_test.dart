@@ -29,6 +29,7 @@ import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/storage/flashskyai_storage_roots.dart';
 import 'package:teampilot/services/session/session_lifecycle_service.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
+import 'package:teampilot/router/app_router.dart';
 import 'package:teampilot/theme/app_theme.dart';
 import 'package:teampilot/utils/app_keys.dart';
 import 'package:teampilot/utils/team_member_naming.dart';
@@ -103,6 +104,15 @@ Widget buildTestApp({
       child: const TeamPilotApp(),
     ),
   );
+}
+
+/// [TeamPilotApp] shares the process-wide [appRouter]. Widget tests that
+/// navigate to settings must reset the location so later tests see `/chat`.
+void resetAppRouterLocationForWidgetTests() {
+  final location = appRouter.routerDelegate.currentConfiguration.uri.path;
+  if (location != '/chat') {
+    appRouter.go('/chat');
+  }
 }
 
 /// Drives a few frames without [pumpAndSettle], which can time out when the
@@ -345,10 +355,12 @@ void main() {
   setUp(() {
     SharedPreferences.setMockInitialValues({});
     setUpTestAppStorage();
+    resetAppRouterLocationForWidgetTests();
   });
 
   tearDown(() {
     tearDownTestAppStorage();
+    resetAppRouterLocationForWidgetTests();
   });
 
   testWidgets('renders chat workbench shell on initial route', (tester) async {
