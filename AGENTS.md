@@ -106,6 +106,10 @@ Allocated in `SessionRepository.createSession` via `SessionTeamCounter` (`config
 
 **Routes** (`app_router.dart`): `/chat`, `/chat/session/:sessionId` (workbench); `/config/*` (settings); `/team-config/*` (team members, skills, plugins); `/skills/*`, `/plugins/*` (global).
 
+## Debugging
+
+See [docs/DEBUGGING.md](docs/DEBUGGING.md) for the systematic debugging process (search-first, root cause over workarounds, etc.).
+
 ## Conventions
 
 - Before claiming done: `cd client && flutter analyze --no-fatal-infos --no-fatal-warnings && flutter test --exclude-tags integration` (full setup: [DEVELOPMENT.md](docs/DEVELOPMENT.md)).
