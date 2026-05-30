@@ -1,5 +1,9 @@
 import 'dart:io';
 
+import '../host/host_executable_locator.dart';
+import '../host/host_execution_environment.dart';
+import '../storage/runtime_storage_context.dart';
+
 /// Result of probing the host for RTK CLI dependencies.
 class RtkProbeResult {
   const RtkProbeResult({
@@ -47,13 +51,19 @@ class RtkDetector {
       return const RtkProbeResult(found: false);
     }
 
-    final locator = Platform.isWindows ? 'where' : 'which';
-    final rtkPath = await _resolveExecutable(locator, 'rtk', environment);
+    final pathLocator = _pathLocator();
+    final rtkPath = await _resolveExecutable(
+      pathLocator.whichCommand,
+      'rtk',
+      environment,
+    );
     if (rtkPath == null) {
       return const RtkProbeResult(found: false);
     }
 
-    final jqFound = await _resolveExecutable(locator, 'jq', environment) != null;
+    final jqFound =
+        await _resolveExecutable(pathLocator.whichCommand, 'jq', environment) !=
+        null;
 
     String? version;
     try {
@@ -90,6 +100,13 @@ class RtkDetector {
     final match = _versionPattern.firstMatch(raw);
     if (match == null) return null;
     return '${match.group(1)}.${match.group(2)}.${match.group(3)}';
+  }
+
+  HostExecutableLocator _pathLocator() {
+    final env = RuntimeStorageContext.isInstalled
+        ? HostExecutionEnvironment.fromStorage(RuntimeStorageContext.current)
+        : HostExecutionEnvironment.resolve();
+    return HostExecutableLocator(env);
   }
 
   Future<String?> _resolveExecutable(

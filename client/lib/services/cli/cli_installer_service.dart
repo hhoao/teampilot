@@ -11,6 +11,11 @@ import 'registry/capabilities/installer_capability.dart';
 import 'registry/cli_tool_registry.dart';
 import 'registry/installer/installer_context.dart';
 import 'registry/installer/teampilot_node_install.dart';
+import '../host/host_execution_environment.dart';
+import '../host/host_login_shell_lookup.dart';
+import '../host/host_script_runner.dart';
+import '../host/macos_npm_path_candidates.dart';
+import '../storage/runtime_storage_context.dart';
 import '../ssh/ssh_client_factory.dart';
 
 export 'installer_types.dart';
@@ -21,10 +26,19 @@ class CliInstallerService {
     SshCliInstallRunner? sshRunner,
     SshClientFactory? sshClientFactory,
     bool? isWindowsOverride,
+    HostExecutionEnvironment? hostEnvironment,
     CliToolRegistry? cliToolRegistry,
   }) : _localRunner = localRunner ?? _runLocal,
        _sshRunner = sshRunner ?? _SshCommandRunner(sshClientFactory).run,
-       _isWindows = isWindowsOverride ?? Platform.isWindows,
+       _hostEnvironment =
+           hostEnvironment ??
+           (RuntimeStorageContext.isInstalled
+               ? HostExecutionEnvironment.fromStorage(
+                   RuntimeStorageContext.current,
+                 )
+               : HostExecutionEnvironment.resolve(
+                   isWindowsHost: isWindowsOverride ?? Platform.isWindows,
+                 )),
        _cliToolRegistry = cliToolRegistry ?? _defaultCliRegistry;
 
   static final _defaultCliRegistry = () {
@@ -35,7 +49,7 @@ class CliInstallerService {
 
   final LocalCliInstallRunner _localRunner;
   final SshCliInstallRunner _sshRunner;
-  final bool _isWindows;
+  final HostExecutionEnvironment _hostEnvironment;
   final CliToolRegistry _cliToolRegistry;
   CliInstallProgressCallback? _onProgress;
 
@@ -60,6 +74,7 @@ class CliInstallerService {
         CliInstallContext(
           mode: mode,
           host: _CliInstallerHost(this),
+          hostEnvironment: _hostEnvironment,
           sshProfile: sshProfile,
           node: TeampilotNodeInstall.standard,
         ),
@@ -103,45 +118,38 @@ class CliInstallerService {
           result.stderr,
         );
       },
-      isWindowsOverride: _isWindows,
+      isWindowsOverride: _hostEnvironment.isWindowsHost,
     ).then((located) {
       if (located != null) return located;
       if (!identical(_localRunner, _runLocal)) return null;
-      return _firstExistingUnixNpmPath();
+      return MacOsNpmPathCandidates.firstExisting();
     });
   }
 
   Future<String?> _locateRemoteNpm(SshProfile profile) async {
+    final npmLookup = HostLoginShellLookup.commandForExecutable('npm');
     final direct = await _sshRunner(
       profile,
-      const CliInstallerCommand('command', ['-v', 'npm']),
+      CliInstallerCommand('command', ['-v', 'npm']),
     );
     final fromDirect = firstInstallerOutputLine(direct);
     if (fromDirect != null) return fromDirect;
 
-    for (final shell in const ['bash', 'zsh']) {
-      final viaShell = await _sshRunner(
-        profile,
-        CliInstallerCommand(shell, ['-ilc', 'command -v npm']),
-      );
-      final fromShell = firstInstallerOutputLine(viaShell);
-      if (fromShell != null) return fromShell;
-    }
-    return null;
-  }
-
-  static String? _firstExistingUnixNpmPath() {
-    if (Platform.isWindows || !Platform.isMacOS) return null;
-    final home = Platform.environment['HOME'];
-    final candidates = <String>[
-      '/opt/homebrew/bin/npm',
-      '/usr/local/bin/npm',
-      if (home != null) '$home/.local/bin/npm',
-    ];
-    for (final path in candidates) {
-      if (File(path).existsSync()) return path;
-    }
-    return null;
+    return HostLoginShellLookup.locateViaLoginShells(
+      innerCommand: npmLookup,
+      runner: (executable, arguments, {stdoutEncoding, stderrEncoding}) async {
+        final result = await _sshRunner(
+          profile,
+          CliInstallerCommand(executable, arguments),
+        );
+        return ProcessResult(
+          -1,
+          result.exitCode,
+          result.stdout,
+          result.stderr,
+        );
+      },
+    );
   }
 
   Future<String?> _locateLocalExecutable(String name) {
@@ -157,7 +165,7 @@ class CliInstallerService {
           result.stderr,
         );
       },
-      isWindowsOverride: _isWindows,
+      isWindowsOverride: _hostEnvironment.isWindowsHost,
     );
   }
 
@@ -226,7 +234,13 @@ final class _CliInstallerHost implements CliInstallerHost {
   final CliInstallerService _service;
 
   @override
-  bool get isWindows => _service._isWindows;
+  HostExecutionEnvironment get hostEnvironment => _service._hostEnvironment;
+
+  @override
+  bool get isWindows => hostEnvironment.isWindowsHost;
+
+  @override
+  HostScriptRunner get scriptRunner => hostEnvironment.scriptRunner;
 
   @override
   void report(CliInstallPhase phase, {String? detail}) =>

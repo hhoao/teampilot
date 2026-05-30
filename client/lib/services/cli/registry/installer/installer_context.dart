@@ -1,10 +1,16 @@
 import '../../../../models/ssh_profile.dart';
+import '../../../host/host_execution_environment.dart';
+import '../../../host/host_script_runner.dart';
 import '../../installer_types.dart';
 import 'teampilot_node_install.dart';
 
 /// Runtime facade for [InstallerCapability] implementations.
 abstract interface class CliInstallerHost {
-  bool get isWindows;
+  HostExecutionEnvironment get hostEnvironment;
+
+  HostScriptRunner get scriptRunner;
+
+  bool get isWindows => hostEnvironment.isWindowsHost;
 
   void report(CliInstallPhase phase, {String? detail});
 
@@ -30,12 +36,14 @@ class CliInstallContext {
   const CliInstallContext({
     required this.mode,
     required this.host,
+    required this.hostEnvironment,
     this.sshProfile,
     this.node = TeampilotNodeInstall.standard,
   });
 
   final CliInstallMode mode;
   final CliInstallerHost host;
+  final HostExecutionEnvironment hostEnvironment;
   final SshProfile? sshProfile;
 
   /// Shared Node/npm bootstrap (version, scripts, resolve-or-bootstrap).

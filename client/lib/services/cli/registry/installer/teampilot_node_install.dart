@@ -1,4 +1,6 @@
 import '../../../../models/ssh_profile.dart';
+import '../../../host/host_script_dialect.dart';
+import '../../../host/host_script_runner.dart';
 import '../../cli_tool_locator.dart';
 import '../../installer_types.dart';
 import 'installer_context.dart';
@@ -26,7 +28,7 @@ final class TeampilotNodeInstall {
     }
 
     final bootstrap = await host.runLocal(
-      localBootstrapCommand(host.isWindows),
+      localBootstrapCommand(host.scriptRunner),
       phase: CliInstallPhase.bootstrappingNode,
       streamOutput: true,
     );
@@ -57,14 +59,12 @@ final class TeampilotNodeInstall {
     return const RemoteNpmFound(bootstrappedUnixNpmPath);
   }
 
-  CliInstallerCommand localBootstrapCommand(bool isWindows) {
-    if (isWindows) {
-      return CliInstallerCommand(
-        'powershell',
-        ['-NoProfile', '-Command', _windowsBootstrapScript()],
-      );
-    }
-    return CliInstallerCommand('sh', ['-c', _unixBootstrapScript()]);
+  CliInstallerCommand localBootstrapCommand(HostScriptRunner runner) {
+    final body = switch (runner.dialect) {
+      HostScriptDialect.bash => _unixBootstrapScript(),
+      HostScriptDialect.powershell => _windowsBootstrapScript(),
+    };
+    return runner.installerCommandForInline(body);
   }
 
   CliInstallerCommand sshBootstrapCommand() {
@@ -73,20 +73,16 @@ final class TeampilotNodeInstall {
 
   /// After [LocalNpmBootstrapped], install a global npm [package] locally.
   CliInstallerCommand bootstrappedLocalPackageInstall({
-    required bool isWindows,
+    required HostScriptRunner runner,
     required String package,
   }) {
-    if (isWindows) {
-      return CliInstallerCommand('powershell', [
-        '-NoProfile',
-        '-Command',
+    final body = switch (runner.dialect) {
+      HostScriptDialect.powershell =>
         "& (Join-Path \$env:LOCALAPPDATA 'teampilot\\node\\$version\\npm.cmd') install -g $package",
-      ]);
-    }
-    return CliInstallerCommand('sh', [
-      '-c',
-      '\$HOME/.local/share/teampilot/node/$version/bin/npm install -g $package',
-    ]);
+      HostScriptDialect.bash =>
+        '\$HOME/.local/share/teampilot/node/$version/bin/npm install -g $package',
+    };
+    return runner.installerCommandForInline(body);
   }
 
   /// Install [package] with an existing npm executable path.

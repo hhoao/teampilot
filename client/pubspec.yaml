@@ -76,6 +76,7 @@ flutter:
     - google_fonts/
     - assets/fonts/terminal/
     - assets/rtk/rtk-rewrite.sh
+    - assets/rtk/rtk-rewrite.ps1
     - assets/hooks/teampilot-deny-team-lead-self-message.sh
     - assets/hooks/teampilot-deny-team-lead-self-message.ps1
     - assets/hooks/teampilot-team-lead-delegate-only.sh

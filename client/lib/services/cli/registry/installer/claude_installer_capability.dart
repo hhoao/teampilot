@@ -45,7 +45,7 @@ final class ClaudeInstallerCapability implements InstallerCapability {
         package: npmPackage,
       ),
       LocalNpmBootstrapped() => node.bootstrappedLocalPackageInstall(
-        isWindows: host.isWindows,
+        runner: host.scriptRunner,
         package: npmPackage,
       ),
       LocalNpmBootstrapFailed() => throw StateError('handled above'),

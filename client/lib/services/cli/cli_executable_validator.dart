@@ -1,4 +1,8 @@
 import 'dart:io';
+
+import '../host/host_executable_locator.dart';
+import '../host/host_execution_environment.dart';
+import '../storage/runtime_storage_context.dart';
 import 'cli_invocation.dart';
 
 /// Pre-flight checks before spawning a PTY for a configured CLI.
@@ -41,7 +45,7 @@ class CliExecutableValidator {
       // Avoid Pty.start for a bare name that is not on PATH. flutter_pty can
       // hang when execvp fails and multiple shells are spawned (e.g. auto-launch
       // all members).
-      final cmd = Platform.isWindows ? 'where' : 'which';
+      final cmd = _pathLocator().whichCommand;
       try {
         final result = Process.runSync(cmd, [executable]);
         if (result.exitCode != 0) {
@@ -72,6 +76,13 @@ class CliExecutableValidator {
       );
     }
     return null;
+  }
+
+  static HostExecutableLocator _pathLocator() {
+    final env = RuntimeStorageContext.isInstalled
+        ? HostExecutionEnvironment.fromStorage(RuntimeStorageContext.current)
+        : HostExecutionEnvironment.resolve();
+    return HostExecutableLocator(env);
   }
 
   static String cliDisplayName(String executable) {

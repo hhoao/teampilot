@@ -2,9 +2,7 @@ import '../../cli_data_layout.dart';
 import '../../../../models/team_config.dart';
 import '../../../provider/claude_provider_credentials_service.dart';
 import '../../../io/filesystem.dart';
-import '../../../team/claude_hook_shell.dart';
-import '../../../team/team_lead_delegate_hook_provisioner.dart';
-import '../../../team/team_lead_hook_provisioner.dart';
+import '../../../host/host_execution_environment.dart';
 import 'package:path/path.dart' as p;
 
 /// Resolved launch path scope for a team session.
@@ -95,9 +93,5 @@ abstract interface class ConfigProfileDelegate implements ConfigProfilePaths {
 
   ClaudeProviderCredentialsService get claudeCredentials;
 
-  ClaudeHookShell hookShellForProvision();
-
-  TeamLeadHookProvisioner resolveTeamLeadHookProvisioner();
-
-  TeamLeadDelegateHookProvisioner resolveTeamLeadDelegateHookProvisioner();
+  HostExecutionEnvironment hostEnvironmentForProvision();
 }

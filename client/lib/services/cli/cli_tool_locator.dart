@@ -3,6 +3,11 @@ import 'dart:io';
 import 'package:logger/logger.dart';
 import 'package:path/path.dart' as p;
 
+import '../host/host_executable_locator.dart';
+import '../host/host_execution_environment.dart';
+import '../host/host_login_shell_lookup.dart';
+import '../storage/runtime_storage_context.dart';
+
 
 typedef ProcessRunner =
     Future<ProcessResult> Function(
@@ -33,7 +38,8 @@ class CliToolLocator {
 
   final String executableName;
 
-  String get lookupCommand => 'command -v $executableName';
+  String get lookupCommand =>
+      HostLoginShellLookup.commandForExecutable(executableName);
 
   /// macOS `/usr/bin/git` is an Xcode shim that invokes `xcrun` and fails in
   /// App Sandbox; prefer a real git binary when present.
@@ -52,11 +58,12 @@ class CliToolLocator {
       final direct = await _locateMacOsGit(runner);
       if (direct != null) return direct;
     }
-    final cmd = isWindows ? 'where' : 'which';
+    final hostLocator = _hostLocator(isWindows);
+    final cmd = hostLocator.whichCommand;
     try {
       final result = await runner(cmd, [executableName]);
       if (result.exitCode == 0) {
-        final located = parsePathLookupOutput(
+        final located = HostExecutableLocator.parsePathLookupOutput(
           result.stdout,
           isWindows: isWindows,
         );
@@ -101,94 +108,55 @@ class CliToolLocator {
     return _locateInLoginShell(runner);
   }
 
-  Future<String?> _locateInLoginShell(ProcessRunner runner) async {
-    for (final shell in const ['bash', 'zsh']) {
-      final located = await _tryLoginShellLookup(runner, shell);
-      if (located != null) return located;
-    }
-    return null;
-  }
-
-  Future<String?> _tryLoginShellLookup(
-    ProcessRunner runner,
-    String shell,
-  ) async {
-    try {
-      final result = await runner(
-        shell,
-        ['-ilc', lookupCommand],
-        stdoutEncoding: latin1,
-        stderrEncoding: latin1,
+  Future<String?> _locateInLoginShell(ProcessRunner runner) =>
+      HostLoginShellLookup.locateViaLoginShells(
+        runner: runner,
+        innerCommand: lookupCommand,
       );
-      if (result.exitCode != 0) return null;
-      return parseFirstStdoutLine(result.stdout);
-    } on Object catch (error, stackTrace) {
-      Logger().w(
-        'Failed to locate $executableName via $shell login shell: $error',
-        stackTrace: stackTrace,
-      );
-      return null;
-    }
-  }
 
   Future<String?> _locateInWsl(ProcessRunner runner) async {
-    try {
-      final result = await runner(
-        'wsl.exe',
-        ['bash', '-ilc', lookupCommand],
-        stdoutEncoding: latin1,
-        stderrEncoding: latin1,
-      );
-      if (result.exitCode != 0) return null;
-      final located = _wslStdoutExecutablePath(result.stdout);
-      if (located == null) return null;
-      return 'wsl.exe $located';
-    } on Object catch (error, stackTrace) {
-      Logger().w(
-        'Failed to locate $executableName in WSL: $error',
-        stackTrace: stackTrace,
-      );
-      return null;
-    }
+    final located = await HostLoginShellLookup.locateViaWsl(
+      runner: runner,
+      innerCommand: lookupCommand,
+      pickLine: (line) {
+        if (line.startsWith('/') && line.contains(executableName)) {
+          return line;
+        }
+        return null;
+      },
+    );
+    if (located == null) return null;
+    return 'wsl.exe $located';
   }
 
-  static List<String> parseStdoutLines(Object? stdoutValue) {
-    final text = _stdoutAsString(stdoutValue);
-    if (text == null) return const [];
-    return text
-        .split(RegExp(r'\r?\n'))
-        .map((line) => line.trim())
-        .where((line) => line.isNotEmpty)
-        .toList();
-  }
+  static List<String> parseStdoutLines(Object? stdoutValue) =>
+      HostExecutableLocator.parseStdoutLines(stdoutValue);
 
-  static String? parseFirstStdoutLine(Object? stdoutValue) {
-    final lines = parseStdoutLines(stdoutValue);
-    if (lines.isEmpty) return null;
-    return lines.first;
-  }
+  static String? parseFirstStdoutLine(Object? stdoutValue) =>
+      HostExecutableLocator.parseFirstStdoutLine(stdoutValue);
 
-  /// Picks a Windows-native executable from `where` output. npm global bins
-  /// list a shell shim before `.cmd`; flutter_pty cannot spawn the shim.
   static String? parsePathLookupOutput(
     Object? stdoutValue, {
     required bool isWindows,
-  }) {
-    final lines = parseStdoutLines(stdoutValue);
-    if (lines.isEmpty) return null;
-    if (!isWindows) return lines.first;
-    return preferWindowsNativeExecutable(lines) ?? lines.first;
-  }
+  }) =>
+      HostExecutableLocator.parsePathLookupOutput(
+        stdoutValue,
+        isWindows: isWindows,
+      );
 
-  static String? preferWindowsNativeExecutable(List<String> candidates) {
-    for (final ext in const ['.exe', '.cmd', '.bat', '.com']) {
-      for (final candidate in candidates) {
-        if (p.extension(candidate).toLowerCase() == ext) {
-          return candidate;
-        }
-      }
-    }
-    return null;
+  static String? preferWindowsNativeExecutable(List<String> candidates) =>
+      HostExecutableLocator.preferWindowsNativeExecutable(candidates);
+
+  static HostExecutableLocator _hostLocator(bool isWindows) {
+    final storageMode = RuntimeStorageContext.isInstalled
+        ? RuntimeStorageContext.current.mode
+        : StorageBackendMode.native;
+    return HostExecutableLocator(
+      HostExecutionEnvironment.resolve(
+        isWindowsHost: isWindows,
+        storageMode: storageMode,
+      ),
+    );
   }
 
   /// Normalizes npm/global shims and other extensionless paths for PTY spawn.
@@ -216,30 +184,4 @@ class CliToolLocator {
         executable.contains(':');
   }
 
-  String? _wslStdoutExecutablePath(Object? stdoutValue) {
-    final text = _stdoutAsString(stdoutValue);
-    if (text == null) return null;
-    for (final raw in text.split(RegExp(r'\r?\n'))) {
-      final line = raw.trim();
-      if (line.isEmpty) continue;
-      if (_looksLikeWslCliNoiseLine(line)) continue;
-      if (line.startsWith('/') && line.contains(executableName)) {
-        return line;
-      }
-    }
-    return null;
-  }
-
-  static bool _looksLikeWslCliNoiseLine(String line) {
-    final lower = line.toLowerCase();
-    return lower.startsWith('wsl:') || lower.startsWith('wsl ');
-  }
-
-  static String? _stdoutAsString(Object? stdoutValue) {
-    if (stdoutValue is String) return stdoutValue;
-    if (stdoutValue is List<int>) {
-      return utf8.decode(stdoutValue, allowMalformed: true);
-    }
-    return null;
-  }
 }

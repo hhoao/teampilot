@@ -9,7 +9,10 @@ import 'package:teampilot/services/cli/cli_data_layout.dart';
 import 'package:teampilot/services/provider/config_profile_service.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/team/rtk_detector.dart';
-import 'package:teampilot/services/team/rtk_hook_provisioner.dart';
+import 'package:teampilot/services/host/host_execution_environment.dart';
+import 'package:teampilot/services/host/host_script_dialect.dart';
+import 'package:teampilot/services/host/script_file_hook_provisioner.dart';
+import 'package:teampilot/services/storage/runtime_storage_context.dart';
 
 void main() {
   group('ConfigProfileService RTK', () {
@@ -42,9 +45,18 @@ void main() {
             return ProcessResult(1, 1, '', '');
           },
         ),
-        rtkHookProvisioner: RtkHookProvisioner(
+        hostEnvironment: HostExecutionEnvironment.resolve(
+          isWindowsHost: false,
+          storageMode: StorageBackendMode.native,
+        ),
+        rtkHookProvisioner: ScriptFileHookProvisioner(
           fs: fs,
-          loadHookScript: () async => '#!/bin/bash\n# rtk-hook-version: 3\n',
+          runner: HostExecutionEnvironment.resolve(
+            isWindowsHost: false,
+            storageMode: StorageBackendMode.native,
+          ).scriptRunner,
+          baseFileName: 'rtk-rewrite',
+          loadScript: (_) async => '#!/bin/bash\n# rtk-hook-version: 3\n',
         ),
       );
     });

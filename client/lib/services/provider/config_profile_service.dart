@@ -6,7 +6,6 @@ import '../../models/team_config.dart';
 import '../../utils/project_path_utils.dart';
 import '../../utils/team_member_naming.dart';
 import '../storage/app_storage.dart';
-import '../team/claude_hook_shell.dart';
 import 'claude_provider_credentials_service.dart';
 import '../team/claude_team_roster_service.dart';
 import '../cli/cli_data_layout.dart';
@@ -16,16 +15,18 @@ import '../cli/registry/config_profile/config_profile_context.dart';
 import '../cli/registry/cli_tool_registry.dart';
 import '../cli/registry/config_profile/claude_config_profile_capability.dart';
 import '../cli/registry/config_profile/flashskyai_config_profile_capability.dart';
+import '../host/host_execution_environment.dart';
+import '../host/host_script_dialect.dart';
+import '../host/script_file_hook_provisioner.dart';
+import '../host/team_pilot_hook_scripts.dart';
 import '../mcp/mcp_registry_service.dart';
 import '../plugin/cli_plugin_registry_service.dart';
 import '../io/filesystem.dart';
 import '../session/member_role_provision.dart';
+import '../storage/runtime_storage_context.dart';
 import '../team/rtk_detector.dart';
-import '../team/rtk_hook_provisioner.dart';
 import '../team/rtk_settings_merge.dart';
-import '../team/team_lead_delegate_hook_provisioner.dart';
 import '../team/team_lead_delegate_settings_merge.dart';
-import '../team/team_lead_hook_provisioner.dart';
 import '../team/team_lead_settings_merge.dart';
 
 /// Launch-time environment for tool-isolated team profiles.
@@ -93,13 +94,13 @@ class ConfigProfileService implements ConfigProfileDelegate {
     ClaudeProviderCredentialsService? claudeCredentialsService,
     Future<bool> Function()? loadRtkEnabled,
     RtkDetector? rtkDetector,
-    RtkHookProvisioner? rtkHookProvisioner,
-    Future<String> Function()? loadRtkHookScript,
-    TeamLeadHookProvisioner? teamLeadHookProvisioner,
-    Future<String> Function()? loadTeamLeadHookScript,
-    TeamLeadDelegateHookProvisioner? teamLeadDelegateHookProvisioner,
-    Future<String> Function()? loadTeamLeadDelegateHookScript,
-    ClaudeHookShell Function()? resolveHookShell,
+    ScriptFileHookProvisioner? rtkHookProvisioner,
+    Future<String> Function(HostScriptDialect dialect)? loadRtkHookScript,
+    ScriptFileHookProvisioner? teamLeadHookProvisioner,
+    Future<String> Function(HostScriptDialect dialect)? loadTeamLeadHookScript,
+    ScriptFileHookProvisioner? teamLeadDelegateHookProvisioner,
+    Future<String> Function(HostScriptDialect dialect)? loadTeamLeadDelegateHookScript,
+    HostExecutionEnvironment? hostEnvironment,
     CliToolRegistry? cliRegistry,
   }) : _fs = fs ?? AppStorage.fs,
        _cliRegistry = cliRegistry ?? _defaultCliRegistry,
@@ -115,7 +116,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
        _loadTeamLeadHookScript = loadTeamLeadHookScript,
        _teamLeadDelegateHookProvisioner = teamLeadDelegateHookProvisioner,
        _loadTeamLeadDelegateHookScript = loadTeamLeadDelegateHookScript,
-       _resolveHookShell = resolveHookShell;
+       _hostEnvironment = hostEnvironment;
 
   final String basePath;
   final Filesystem _fs;
@@ -123,13 +124,13 @@ class ConfigProfileService implements ConfigProfileDelegate {
   final ClaudeProviderCredentialsService? _claudeCredentialsService;
   final Future<bool> Function()? _loadRtkEnabled;
   final RtkDetector _rtkDetector;
-  final RtkHookProvisioner? _rtkHookProvisioner;
-  final Future<String> Function()? _loadRtkHookScript;
-  final TeamLeadHookProvisioner? _teamLeadHookProvisioner;
-  final Future<String> Function()? _loadTeamLeadHookScript;
-  final TeamLeadDelegateHookProvisioner? _teamLeadDelegateHookProvisioner;
-  final Future<String> Function()? _loadTeamLeadDelegateHookScript;
-  final ClaudeHookShell Function()? _resolveHookShell;
+  final ScriptFileHookProvisioner? _rtkHookProvisioner;
+  final Future<String> Function(HostScriptDialect dialect)? _loadRtkHookScript;
+  final ScriptFileHookProvisioner? _teamLeadHookProvisioner;
+  final Future<String> Function(HostScriptDialect dialect)? _loadTeamLeadHookScript;
+  final ScriptFileHookProvisioner? _teamLeadDelegateHookProvisioner;
+  final Future<String> Function(HostScriptDialect dialect)? _loadTeamLeadDelegateHookScript;
+  final HostExecutionEnvironment? _hostEnvironment;
   final CliToolRegistry _cliRegistry;
 
   @override
@@ -468,15 +469,8 @@ class ConfigProfileService implements ConfigProfileDelegate {
       _resolveAppendSystemPromptPath(scope: scope, tool: tool, member: member);
 
   @override
-  ClaudeHookShell hookShellForProvision() => _hookShellForProvision();
-
-  @override
-  TeamLeadHookProvisioner resolveTeamLeadHookProvisioner() =>
-      _resolveTeamLeadHookProvisioner();
-
-  @override
-  TeamLeadDelegateHookProvisioner resolveTeamLeadDelegateHookProvisioner() =>
-      _resolveTeamLeadDelegateHookProvisioner();
+  HostExecutionEnvironment hostEnvironmentForProvision() =>
+      _hostEnvironmentForProvision();
 
   Future<bool> _trustedProjectsAlreadyCurrent(
     String metadataPath,
@@ -539,50 +533,72 @@ class ConfigProfileService implements ConfigProfileDelegate {
     return loader();
   }
 
-  RtkHookProvisioner _resolveRtkProvisioner() {
+  HostExecutionEnvironment _hostEnvironmentForProvision() {
+    if (_hostEnvironment != null) return _hostEnvironment!;
+    if (RuntimeStorageContext.isInstalled) {
+      return HostExecutionEnvironment.fromStorage(RuntimeStorageContext.current);
+    }
+    return HostExecutionEnvironment.resolve();
+  }
+
+  ScriptFileHookProvisioner _resolveRtkProvisioner(
+    HostExecutionEnvironment host,
+  ) {
     return _rtkHookProvisioner ??
-        RtkHookProvisioner(
+        ScriptFileHookProvisioner(
           fs: _fs,
-          loadHookScript:
+          runner: host.scriptRunner,
+          baseFileName: TeamPilotHookScripts.rtkRewrite,
+          loadScript:
               _loadRtkHookScript ??
-              () => rootBundle.loadString('assets/rtk/rtk-rewrite.sh'),
+              (dialect) => rootBundle.loadString(
+                switch (dialect) {
+                  HostScriptDialect.bash => 'assets/rtk/rtk-rewrite.sh',
+                  HostScriptDialect.powershell => 'assets/rtk/rtk-rewrite.ps1',
+                },
+              ),
         );
   }
 
-  ClaudeHookShell _hookShellForProvision() =>
-      _resolveHookShell?.call() ?? ClaudeHookShellResolver.resolve();
-
-  TeamLeadHookProvisioner _resolveTeamLeadHookProvisioner() {
+  ScriptFileHookProvisioner _resolveTeamLeadHookProvisioner(
+    HostExecutionEnvironment host,
+  ) {
     return _teamLeadHookProvisioner ??
-        TeamLeadHookProvisioner(
+        ScriptFileHookProvisioner(
           fs: _fs,
-          loadHookScript: _loadTeamLeadHookScript != null
-              ? (shell) => _loadTeamLeadHookScript!()
-              : (shell) => rootBundle.loadString(
-                  switch (shell) {
-                    ClaudeHookShell.bash =>
-                      'assets/hooks/teampilot-deny-team-lead-self-message.sh',
-                    ClaudeHookShell.powershell =>
-                      'assets/hooks/teampilot-deny-team-lead-self-message.ps1',
-                  },
-                ),
+          runner: host.scriptRunner,
+          baseFileName: TeamPilotHookScripts.teamLeadSelf,
+          loadScript:
+              _loadTeamLeadHookScript ??
+              (dialect) => rootBundle.loadString(
+                switch (dialect) {
+                  HostScriptDialect.bash =>
+                    'assets/hooks/teampilot-deny-team-lead-self-message.sh',
+                  HostScriptDialect.powershell =>
+                    'assets/hooks/teampilot-deny-team-lead-self-message.ps1',
+                },
+              ),
         );
   }
 
-  TeamLeadDelegateHookProvisioner _resolveTeamLeadDelegateHookProvisioner() {
+  ScriptFileHookProvisioner _resolveTeamLeadDelegateHookProvisioner(
+    HostExecutionEnvironment host,
+  ) {
     return _teamLeadDelegateHookProvisioner ??
-        TeamLeadDelegateHookProvisioner(
+        ScriptFileHookProvisioner(
           fs: _fs,
-          loadHookScript: _loadTeamLeadDelegateHookScript != null
-              ? (shell) => _loadTeamLeadDelegateHookScript!()
-              : (shell) => rootBundle.loadString(
-                  switch (shell) {
-                    ClaudeHookShell.bash =>
-                      'assets/hooks/teampilot-team-lead-delegate-only.sh',
-                    ClaudeHookShell.powershell =>
-                      'assets/hooks/teampilot-team-lead-delegate-only.ps1',
-                  },
-                ),
+          runner: host.scriptRunner,
+          baseFileName: TeamPilotHookScripts.teamLeadDelegate,
+          loadScript:
+              _loadTeamLeadDelegateHookScript ??
+              (dialect) => rootBundle.loadString(
+                switch (dialect) {
+                  HostScriptDialect.bash =>
+                    'assets/hooks/teampilot-team-lead-delegate-only.sh',
+                  HostScriptDialect.powershell =>
+                    'assets/hooks/teampilot-team-lead-delegate-only.ps1',
+                },
+              ),
         );
   }
 
@@ -614,9 +630,10 @@ class ConfigProfileService implements ConfigProfileDelegate {
     final probe = await _rtkDetector.probe();
     if (!probe.isReady) return settings;
 
-    final provisioner = _resolveRtkProvisioner();
-    final scriptPath = await provisioner.provisionMemberToolDir(toolDir);
-    final hookCommand = provisioner.hookCommandForPath(scriptPath);
+    final host = _hostEnvironmentForProvision();
+    final provisioner = _resolveRtkProvisioner(host);
+    final scriptPath = await provisioner.provision(toolDir);
+    final hookCommand = provisioner.commandForPath(scriptPath);
     return const RtkSettingsMerge().mergeIntoSettings(
       base: settings,
       hookCommand: hookCommand,
@@ -716,32 +733,22 @@ class ConfigProfileService implements ConfigProfileDelegate {
     if (!TeamMemberNaming.isTeamLead(member)) {
       return settings;
     }
-    final shell = _hookShellForProvision();
-    final selfTargetProvisioner = _resolveTeamLeadHookProvisioner();
-    final selfScriptPath = await selfTargetProvisioner.provisionMemberToolDir(
-      memberToolDir,
-      shell,
-    );
+    final host = _hostEnvironmentForProvision();
+    final selfTargetProvisioner = _resolveTeamLeadHookProvisioner(host);
+    final selfScriptPath = await selfTargetProvisioner.provision(memberToolDir);
     var merged = const TeamLeadSettingsMerge().mergeIntoSettings(
       base: settings,
-      hookCommand: selfTargetProvisioner.hookCommandForPath(
-        selfScriptPath,
-        shell,
-      ),
+      hookCommand: selfTargetProvisioner.commandForPath(selfScriptPath),
     );
     merged = const TeamLeadDelegateSettingsMerge().stripFromSettings(merged);
     if (forceTeamLeadDelegateMode) {
-      final delegateProvisioner = _resolveTeamLeadDelegateHookProvisioner();
-      final delegateScriptPath = await delegateProvisioner.provisionMemberToolDir(
+      final delegateProvisioner = _resolveTeamLeadDelegateHookProvisioner(host);
+      final delegateScriptPath = await delegateProvisioner.provision(
         memberToolDir,
-        shell,
       );
       merged = const TeamLeadDelegateSettingsMerge().mergeIntoSettings(
         base: merged,
-        hookCommand: delegateProvisioner.hookCommandForPath(
-          delegateScriptPath,
-          shell,
-        ),
+        hookCommand: delegateProvisioner.commandForPath(delegateScriptPath),
       );
     }
     return merged;

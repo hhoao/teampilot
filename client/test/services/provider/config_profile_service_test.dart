@@ -5,14 +5,16 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/team/claude_team_roster_service.dart';
-import 'package:teampilot/services/team/claude_hook_shell.dart';
+import 'package:teampilot/services/host/host_execution_environment.dart';
+import 'package:teampilot/services/host/host_script_dialect.dart';
+import 'package:teampilot/services/host/script_file_hook_provisioner.dart';
+import 'package:teampilot/services/host/team_pilot_hook_scripts.dart';
+import 'package:teampilot/services/storage/runtime_storage_context.dart';
 import 'package:teampilot/services/cli/cli_data_layout.dart';
 import 'package:teampilot/services/provider/config_profile_service.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/session/member_role_provision.dart';
-import 'package:teampilot/services/team/team_lead_delegate_hook_provisioner.dart';
 import 'package:teampilot/services/team/team_lead_delegate_settings_merge.dart';
-import 'package:teampilot/services/team/team_lead_hook_provisioner.dart';
 import 'package:teampilot/services/team/team_lead_settings_merge.dart';
 
 String _sessionClaudeDir(String base, String teamId, String sessionId) =>
@@ -54,15 +56,28 @@ void main() {
       basePath: base.path,
       fs: fs,
       layout: CliDataLayout(teampilotRoot: base.path, fs: fs),
-      resolveHookShell: () => ClaudeHookShell.bash,
-      teamLeadHookProvisioner: TeamLeadHookProvisioner(
+      hostEnvironment: HostExecutionEnvironment.resolve(
+        isWindowsHost: false,
+        storageMode: StorageBackendMode.native,
+      ),
+      teamLeadHookProvisioner: ScriptFileHookProvisioner(
         fs: fs,
-        loadHookScript: (_) async =>
+        runner: HostExecutionEnvironment.resolve(
+          isWindowsHost: false,
+          storageMode: StorageBackendMode.native,
+        ).scriptRunner,
+        baseFileName: TeamPilotHookScripts.teamLeadSelf,
+        loadScript: (_) async =>
             '#!/usr/bin/env bash\n# teampilot-deny-team-lead-self-message\n',
       ),
-      teamLeadDelegateHookProvisioner: TeamLeadDelegateHookProvisioner(
+      teamLeadDelegateHookProvisioner: ScriptFileHookProvisioner(
         fs: fs,
-        loadHookScript: (_) async =>
+        runner: HostExecutionEnvironment.resolve(
+          isWindowsHost: false,
+          storageMode: StorageBackendMode.native,
+        ).scriptRunner,
+        baseFileName: TeamPilotHookScripts.teamLeadDelegate,
+        loadScript: (_) async =>
             '#!/usr/bin/env bash\n# teampilot-team-lead-delegate-only\n',
       ),
     );
@@ -215,7 +230,7 @@ void main() {
     final hookPath = p.join(
       claudeDir,
       'hooks',
-      TeamLeadHookProvisioner.shFileName,
+      '${TeamPilotHookScripts.teamLeadSelf}.sh',
     );
     expect(await File(hookPath).exists(), isTrue);
 
@@ -226,7 +241,7 @@ void main() {
       );
       final command =
           ((entry['hooks'] as List).first as Map)['command'] as String;
-      expect(command, contains(TeamLeadHookProvisioner.shFileName));
+      expect(command, contains('${TeamPilotHookScripts.teamLeadSelf}.sh'));
     }
   });
 
@@ -266,11 +281,15 @@ void main() {
     );
     final command =
         ((delegateEntry['hooks'] as List).first as Map)['command'] as String;
-    expect(command, contains(TeamLeadDelegateHookProvisioner.shFileName));
+    expect(command, contains('${TeamPilotHookScripts.teamLeadDelegate}.sh'));
 
     expect(
       await File(
-        p.join(claudeDir, 'hooks', TeamLeadDelegateHookProvisioner.shFileName),
+        p.join(
+          claudeDir,
+          'hooks',
+          '${TeamPilotHookScripts.teamLeadDelegate}.sh',
+        ),
       ).exists(),
       isTrue,
     );
@@ -320,7 +339,7 @@ void main() {
     final hookPath = p.join(
       flashskyaiDir,
       'hooks',
-      TeamLeadHookProvisioner.shFileName,
+      '${TeamPilotHookScripts.teamLeadSelf}.sh',
     );
     expect(await File(hookPath).exists(), isTrue);
     final pre = (settings['hooks'] as Map)['PreToolUse'] as List;
@@ -330,7 +349,7 @@ void main() {
       );
       final command =
           ((entry['hooks'] as List).first as Map)['command'] as String;
-      expect(command, contains(TeamLeadHookProvisioner.shFileName));
+      expect(command, contains('${TeamPilotHookScripts.teamLeadSelf}.sh'));
     }
   });
 
@@ -379,7 +398,7 @@ void main() {
       );
       final command =
           ((delegateEntry['hooks'] as List).first as Map)['command'] as String;
-      expect(command, contains(TeamLeadDelegateHookProvisioner.shFileName));
+      expect(command, contains('${TeamPilotHookScripts.teamLeadDelegate}.sh'));
     },
   );
 

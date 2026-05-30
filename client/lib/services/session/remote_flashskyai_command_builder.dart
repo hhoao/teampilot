@@ -1,4 +1,5 @@
 
+import '../host/remote_login_shell.dart';
 
 class RemoteFlashskyaiCommandBuilder {
   const RemoteFlashskyaiCommandBuilder();
@@ -48,14 +49,7 @@ class RemoteFlashskyaiCommandBuilder {
     );
   }
 
-  String wrapWithLoginShell(String command) {
-    final shellCommand = [
-      r'export TERM="${TERM:-xterm-256color}"',
-      'if [ -f ~/.bashrc ]; then . ~/.bashrc || true; fi',
-      command,
-    ].join(' && ');
-    return r'TERM="${TERM:-xterm-256color}" bash -lc ' + _quote(shellCommand);
-  }
+  String wrapWithLoginShell(String command) => RemoteLoginShell.wrap(command);
 
   static String _quote(String arg) {
     if (arg.isEmpty) return "''";
