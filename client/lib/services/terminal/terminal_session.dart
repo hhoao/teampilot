@@ -236,17 +236,6 @@ class TerminalSession {
       environment: _extraEnvironment,
     );
 
-    if (validateLaunch) {
-      final validationError = CliExecutableValidator.validateLaunch(
-        executable: invocation.executable,
-        workingDirectory: ptyWorkingDirectory,
-      );
-      if (validationError != null) {
-        _handleStartFailure(validationError);
-        return;
-      }
-    }
-
     appLogger.i(
       '--------------------------------\n'
       'Starting transport:\n'
@@ -271,13 +260,6 @@ class TerminalSession {
         _transport!.write(data);
       }
     });
-
-    engine.resize(columns: viewWidth, rows: viewHeight);
-    engine.initializeEmpty(viewHeight, viewWidth);
-    final theme = _terminalTheme;
-    if (theme != null) {
-      _reconfigureEngineColors(theme);
-    }
 
     _spawnTransport(
       executable: invocation.executable,
@@ -327,13 +309,6 @@ class TerminalSession {
         _transport!.write(data);
       }
     });
-
-    engine.resize(columns: viewWidth, rows: viewHeight);
-    engine.initializeEmpty(viewHeight, viewWidth);
-    final theme = _terminalTheme;
-    if (theme != null) {
-      _reconfigureEngineColors(theme);
-    }
 
     _spawnTransport(
       executable: executable,
@@ -417,18 +392,6 @@ class TerminalSession {
     if (_spawnRequested || _transport != null) return;
     _spawnRequested = true;
 
-    if (validateLaunch) {
-      final validationError = CliExecutableValidator.validateLaunch(
-        executable: executable,
-        workingDirectory: cwd,
-      );
-      if (validationError != null) {
-        _spawnRequested = false;
-        _handleStartFailure(validationError);
-        return;
-      }
-    }
-
     _startTransport(
       executable: executable,
       args: args,
@@ -498,6 +461,31 @@ class TerminalSession {
   }) async {
     final startGeneration = ++_transportStartGeneration;
     try {
+      // Yield to the event loop so the loading animation can paint before the
+      // synchronous Rust FFI call (engineNew) blocks the main thread.
+      await Future<void>.delayed(Duration.zero);
+      if (startGeneration != _transportStartGeneration || !_starting) return;
+
+      engine.resize(columns: cols, rows: rows);
+      engine.initializeEmpty(rows, cols);
+      final theme = _terminalTheme;
+      if (theme != null) {
+        _reconfigureEngineColors(theme);
+      }
+
+      if (validateLaunch) {
+        final validationError = await CliExecutableValidator.validateLaunchAsync(
+          executable: executable,
+          workingDirectory: cwd,
+        );
+        if (validationError != null) {
+          if (startGeneration == _transportStartGeneration && _starting) {
+            _spawnRequested = false;
+            _handleStartFailure(validationError);
+          }
+          return;
+        }
+      }
       final transport = await _transportStarter(
         executable,
         arguments: args,

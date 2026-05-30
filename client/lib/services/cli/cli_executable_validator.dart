@@ -10,6 +10,30 @@ class CliExecutableValidator {
   const CliExecutableValidator._();
 
   /// Returns a user-facing error message, or `null` when spawn may proceed.
+  /// Async variant — does not block the UI thread.
+  static Future<String?> validateLaunchAsync({
+    required String executable,
+    required String workingDirectory,
+  }) async {
+    final invocation = CliInvocation.fromExecutable(executable);
+    if (invocation.usesWsl) {
+      return null;
+    }
+
+    final cwd = workingDirectory.trim();
+    if (cwd.isNotEmpty && !Directory(cwd).existsSync()) {
+      return _formatMessage(
+        'Working directory does not exist',
+        cwd,
+        hint:
+            'Choose another project folder or create the directory before connecting.',
+      );
+    }
+
+    return _validateExecutablePathAsync(invocation.executable);
+  }
+
+  /// Synchronous variant kept for call sites that cannot be made async.
   static String? validateLaunch({
     required String executable,
     required String workingDirectory,
@@ -32,6 +56,46 @@ class CliExecutableValidator {
     final pathError = _validateExecutablePath(invocation.executable);
     if (pathError != null) return pathError;
 
+    return null;
+  }
+
+  static Future<String?> _validateExecutablePathAsync(String executable) async {
+    final cliName = cliDisplayName(executable);
+    final looksLikePath =
+        executable.contains('/') ||
+        (Platform.isWindows &&
+            (executable.contains(r'\') || executable.contains(':')));
+    if (!looksLikePath) {
+      final cmd = _pathLocator().whichCommand;
+      try {
+        final result = await Process.run(cmd, [executable]);
+        if (result.exitCode != 0) {
+          return _formatMessage(
+            '$cliName executable not found on PATH',
+            executable,
+            cliName: cliName,
+            hint: _settingsHint(cliName, includePathHint: true),
+          );
+        }
+      } on ProcessException {
+        return _formatMessage(
+          '$cliName executable not found on PATH',
+          executable,
+          cliName: cliName,
+          hint: _settingsHint(cliName, includePathHint: false),
+        );
+      }
+      return null;
+    }
+
+    if (!File(executable).existsSync()) {
+      return _formatMessage(
+        '$cliName executable not found',
+        executable,
+        cliName: cliName,
+        hint: _settingsHint(cliName, includePathHint: true),
+      );
+    }
     return null;
   }
 
