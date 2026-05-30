@@ -526,8 +526,9 @@ class _TerminalPlaceholder extends StatelessWidget {
         ? l10n.sessionReadySubtitle(member)
         : l10n.sessionReadySubtitleGeneric;
 
-    return Center(
-      child: Padding(
+    return Align(
+      alignment: Alignment.center,
+      child: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 400),

@@ -3,9 +3,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/widgets/split_layout.dart';
 
 void main() {
-  testWidgets('dragging divider down increases reported bottom height', (
-    tester,
-  ) async {
+  testWidgets('reports bottom height when divider drag ends', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(800, 600));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
     var height = 200.0;
     double? lastReported;
 
@@ -14,13 +15,15 @@ void main() {
         home: Scaffold(
           body: StatefulBuilder(
             builder: (context, setState) {
-              return ResizableBottomPaneView(
-                top: const Placeholder(),
-                bottom: const Placeholder(),
-                bottomHeight: height,
-                minBottomHeight: 120,
-                maxBottomHeight: 480,
-                onBottomHeightChanged: (next) {
+              return TwoPaneSplitView(
+                axis: Axis.vertical,
+                fixedChildIndex: 1,
+                first: const Placeholder(),
+                second: const Placeholder(),
+                size: height,
+                minSize: 120,
+                maxSize: 480,
+                onSizeChanged: (next) {
                   lastReported = next;
                   setState(() => height = next);
                 },
@@ -30,9 +33,13 @@ void main() {
         ),
       ),
     );
+    await tester.pumpAndSettle();
 
-    await tester.drag(find.byType(MultiSplitView), const Offset(0, 40));
-    await tester.pump();
+    final divider = find.byType(DividerWidget);
+    expect(divider, findsOneWidget);
+
+    await tester.drag(divider, const Offset(0, -40));
+    await tester.pumpAndSettle();
 
     expect(lastReported, 240.0);
   });

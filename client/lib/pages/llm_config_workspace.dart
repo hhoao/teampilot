@@ -410,11 +410,14 @@ class _ProvidersTabContentState extends State<_ProvidersTabContent> {
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
-      child: ResizableSplitView(
-        initialLeftFraction: 0.34,
-        minLeftWidth: 220,
-        maxLeftWidth: 560,
-        left: Padding(
+      child: TwoPaneSplitView(
+        axis: Axis.horizontal,
+        fixedChildIndex: 0,
+        initialFraction: 0.34,
+        minSize: 220,
+        maxSize: 560,
+        dynamicMax: true,
+        first: Padding(
           padding: const EdgeInsets.only(right: 6),
           child: _LlmProvidersListContent(
             controller: _controller,
@@ -431,7 +434,7 @@ class _ProvidersTabContentState extends State<_ProvidersTabContent> {
             onEdit: (provider) => _openEditProvider(provider.id),
           ),
         ),
-        right: Padding(
+        second: Padding(
           padding: const EdgeInsets.only(left: 6),
           child: _LlmWorkspaceDetailCard(
             child: _buildRightPanelContent(
@@ -1483,8 +1486,7 @@ class _LlmWorkspaceText {
   /// 面板顶栏标题（不做更大字号档位）。
   TextStyle get panelHeader => _tx.sectionTitle;
 
-  TextStyle panelHeaderColored(Color color) =>
-      _tx.sectionTitleColored(color);
+  TextStyle panelHeaderColored(Color color) => _tx.sectionTitleColored(color);
 
   TextStyle get mutedBody => _tx.mutedBody;
 

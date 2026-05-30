@@ -56,7 +56,7 @@ void main() {
     expect(find.text('Nav'), findsOneWidget);
     expect(find.text('Body'), findsOneWidget);
     expect(find.byType(WorkspaceSplitShell), findsOneWidget);
-    expect(find.byType(ResizableSplitView), findsOneWidget);
+    expect(find.byType(TwoPaneSplitView), findsOneWidget);
   });
 
   testWidgets('adaptive section page renders desktop shell on non-Android', (

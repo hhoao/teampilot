@@ -28,7 +28,7 @@ void main() {
 
     await tester.pump(const Duration(milliseconds: 260));
 
-    expect(find.byType(ResizableSplitView), findsOneWidget);
+    expect(find.byType(TwoPaneSplitView), findsOneWidget);
     expect(
       find.ancestor(
         of: find.text('Body'),
@@ -38,7 +38,6 @@ void main() {
       ),
       findsOneWidget,
     );
-
   });
 
   testWidgets('split shell recreates body animation when the key changes', (

@@ -217,13 +217,15 @@ class _WorkspaceCenterColumnWithTerminal extends StatelessWidget {
           LayoutPreferences.minWorkspaceTerminalHeight,
           LayoutPreferences.maxWorkspaceTerminalHeight,
         );
-        return ResizableBottomPaneView(
-          top: child,
-          bottom: WorkspaceTerminalPanel(workingDirectory: cwd),
-          bottomHeight: terminalHeight,
-          minBottomHeight: LayoutPreferences.minWorkspaceTerminalHeight,
-          maxBottomHeight: LayoutPreferences.maxWorkspaceTerminalHeight,
-          onBottomHeightChanged: (height) {
+        return TwoPaneSplitView(
+          axis: Axis.vertical,
+          fixedChildIndex: 1,
+          first: child,
+          second: WorkspaceTerminalPanel(workingDirectory: cwd),
+          size: terminalHeight,
+          minSize: LayoutPreferences.minWorkspaceTerminalHeight,
+          maxSize: LayoutPreferences.maxWorkspaceTerminalHeight,
+          onSizeChanged: (height) {
             context.read<LayoutCubit>().setWorkspaceTerminalHeight(height);
           },
         );
@@ -255,13 +257,15 @@ class _WorkspaceBody extends StatelessWidget {
         LayoutPreferences.minBottomToolsHeight,
         LayoutPreferences.maxBottomToolsHeight,
       );
-      return ResizableBottomPaneView(
-        top: child,
-        bottom: rightTools!,
-        bottomHeight: toolsHeight,
-        minBottomHeight: LayoutPreferences.minBottomToolsHeight,
-        maxBottomHeight: LayoutPreferences.maxBottomToolsHeight,
-        onBottomHeightChanged: (height) {
+      return TwoPaneSplitView(
+        axis: Axis.vertical,
+        fixedChildIndex: 1,
+        first: child,
+        second: rightTools!,
+        size: toolsHeight,
+        minSize: LayoutPreferences.minBottomToolsHeight,
+        maxSize: LayoutPreferences.maxBottomToolsHeight,
+        onSizeChanged: (height) {
           context.read<LayoutCubit>().setBottomToolsHeight(height);
         },
       );
@@ -269,16 +273,19 @@ class _WorkspaceBody extends StatelessWidget {
     final rightWidth = preferences.rightToolsWidth;
     return LayoutBuilder(
       builder: (context, constraints) {
-        return ResizableSplitView(
-          left: child,
-          right: rightTools!,
-          initialLeftWidth: (constraints.maxWidth - rightWidth).clamp(
+        return TwoPaneSplitView(
+          axis: Axis.horizontal,
+          fixedChildIndex: 0,
+          first: child,
+          second: rightTools!,
+          initialSize: (constraints.maxWidth - rightWidth).clamp(
             150,
             constraints.maxWidth - 80,
           ),
-          minLeftWidth: 150,
-          maxLeftWidth: (constraints.maxWidth - 80).clamp(150, double.infinity),
-          onWidthChanged: (leftWidth) {
+          minSize: 150,
+          maxSize: (constraints.maxWidth - 80).clamp(150, double.infinity),
+          dynamicMax: true,
+          onSizeChanged: (leftWidth) {
             onRightToolsWidthChanged?.call(constraints.maxWidth - leftWidth);
           },
         );
@@ -315,10 +322,7 @@ class _FadeSlideIn extends StatelessWidget {
 }
 
 class _TabRowTrailing extends StatelessWidget {
-  const _TabRowTrailing({
-    this.actions,
-    required this.showRightToolsToggle,
-  });
+  const _TabRowTrailing({this.actions, required this.showRightToolsToggle});
 
   final Widget? actions;
   final bool showRightToolsToggle;

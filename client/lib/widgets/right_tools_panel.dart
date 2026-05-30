@@ -153,13 +153,16 @@ class _StackedToolsPanel extends StatelessWidget {
         final totalHeight = constraints.maxHeight;
         final minTop = totalHeight * 0.25;
         final maxTop = totalHeight * 0.75;
-        return ResizableVerticalSplitView(
-          initialTopFraction: preferences.membersSplit,
-          minTopHeight: minTop,
-          maxTopHeight: maxTop,
-          top: panels.first,
-          bottom: panels.last,
-          onHeightChanged: (topHeight) {
+        return TwoPaneSplitView(
+          axis: Axis.vertical,
+          fixedChildIndex: 0,
+          initialFraction: preferences.membersSplit,
+          minSize: minTop,
+          maxSize: maxTop,
+          dynamicMax: true,
+          first: panels.first,
+          second: panels.last,
+          onSizeChanged: (topHeight) {
             context.read<LayoutCubit>().setMembersSplit(
               (topHeight / totalHeight).clamp(0.25, 0.75),
             );
@@ -573,15 +576,14 @@ class _FileTreePanelState extends State<_FileTreePanel> {
             previous.preferences.workspaceTerminalVisible !=
             next.preferences.workspaceTerminalVisible,
         builder: (context, layoutState) {
-          final visible =
-              layoutState.preferences.workspaceTerminalVisible;
+          final visible = layoutState.preferences.workspaceTerminalVisible;
           return _fileTreeHeaderIconButton(
             tooltip: visible
                 ? l10n.workspaceTerminalHide
                 : l10n.workspaceTerminalShow,
-            onPressed: () => context.read<LayoutCubit>().setWorkspaceTerminalVisible(
-              !visible,
-            ),
+            onPressed: () => context
+                .read<LayoutCubit>()
+                .setWorkspaceTerminalVisible(!visible),
             icon: Icon(
               visible ? Icons.terminal : Icons.terminal_outlined,
               size: 16,

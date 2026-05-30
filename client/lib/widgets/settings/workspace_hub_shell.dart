@@ -159,15 +159,16 @@ class WorkspaceHubNavItem extends StatelessWidget {
                       title,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: (hubStyle
-                              ? AppTextStyles.of(context).sectionTitle
-                              : AppTextStyles.of(context).body)
-                          .copyWith(
-                        fontWeight: hubStyle
-                            ? FontWeight.w600
-                            : FontWeight.w500,
-                        color: selected ? selectedFg : normalFg,
-                      ),
+                      style:
+                          (hubStyle
+                                  ? AppTextStyles.of(context).sectionTitle
+                                  : AppTextStyles.of(context).body)
+                              .copyWith(
+                                fontWeight: hubStyle
+                                    ? FontWeight.w600
+                                    : FontWeight.w500,
+                                color: selected ? selectedFg : normalFg,
+                              ),
                     ),
                   ),
                   if (trailing != null)
@@ -343,13 +344,11 @@ class WorkspaceSplitShell extends StatelessWidget {
                     curve: Curves.easeOutCubic,
                   );
 
-        return ResizableSplitView(
-          initialLeftWidth: navWidth,
-          minLeftWidth: LayoutPreferences.minWorkspaceNavWidth,
-          maxLeftWidth: LayoutPreferences.maxWorkspaceNavWidth,
-          onWidthChanged: onNavWidthChanged,
-          left: nav,
-          right: Padding(
+        return TwoPaneSplitView(
+          axis: Axis.horizontal,
+          fixedChildIndex: 0,
+          first: nav,
+          second: Padding(
             padding: contentPadding,
             child: LayoutBuilder(
               builder: (context, inner) {
@@ -368,6 +367,11 @@ class WorkspaceSplitShell extends StatelessWidget {
               },
             ),
           ),
+          initialSize: navWidth,
+          minSize: LayoutPreferences.minWorkspaceNavWidth,
+          maxSize: LayoutPreferences.maxWorkspaceNavWidth,
+          dynamicMax: true,
+          onSizeChanged: onNavWidthChanged,
         );
       },
     );

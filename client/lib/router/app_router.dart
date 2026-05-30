@@ -55,15 +55,18 @@ final appRouter = GoRouter(
         final body = Platform.isAndroid
             ? child
             : preferences.contextSidebarVisible
-            ? ResizableSplitView(
-                initialLeftWidth: preferences.sidebarWidth,
-                minLeftWidth: 180,
-                maxLeftWidth: 420,
-                onWidthChanged: (width) {
+            ? TwoPaneSplitView(
+                axis: Axis.horizontal,
+                fixedChildIndex: 0,
+                first: sidebar,
+                second: child,
+                initialSize: preferences.sidebarWidth,
+                minSize: 180,
+                maxSize: 420,
+                dynamicMax: true,
+                onSizeChanged: (width) {
                   context.read<LayoutCubit>().setSidebarWidth(width);
                 },
-                left: sidebar,
-                right: child,
               )
             : child;
 
@@ -73,30 +76,29 @@ final appRouter = GoRouter(
           return OnboardingGate(
             child: StartupGate(
               child: Scaffold(
-              appBar: AppBar(
-                title: Text(AndroidShellChrome.title(context, path)),
-                leading: hubDetail
-                    ? IconButton(
-                        icon: const Icon(Icons.arrow_back),
-                        onPressed: () => AndroidShellChrome.pop(context, path),
-                      )
-                    : null,
-                actions: const [AndroidSshProfileSelector()],
+                appBar: AppBar(
+                  title: Text(AndroidShellChrome.title(context, path)),
+                  leading: hubDetail
+                      ? IconButton(
+                          icon: const Icon(Icons.arrow_back),
+                          onPressed: () =>
+                              AndroidShellChrome.pop(context, path),
+                        )
+                      : null,
+                  actions: const [AndroidSshProfileSelector()],
+                ),
+                drawer: hubDetail
+                    ? null
+                    : Drawer(child: SafeArea(child: sidebar)),
+                body: body,
               ),
-              drawer: hubDetail
-                  ? null
-                  : Drawer(child: SafeArea(child: sidebar)),
-              body: body,
             ),
-          ),
           );
         }
 
         return OnboardingGate(
           child: StartupGate(
-            child: Scaffold(
-              body: SafeArea(child: body),
-            ),
+            child: Scaffold(body: SafeArea(child: body)),
           ),
         );
       },
@@ -337,17 +339,14 @@ final appRouter = GoRouter(
         ),
         GoRoute(
           path: '/mcp/add',
-          pageBuilder: (context, state) => const NoTransitionPage(
-            child: McpFormNavPage(),
-          ),
+          pageBuilder: (context, state) =>
+              const NoTransitionPage(child: McpFormNavPage()),
         ),
         GoRoute(
           path: '/mcp/edit/:serverId',
           pageBuilder: (context, state) => NoTransitionPage(
             child: McpFormNavPage(
-              serverId: Uri.decodeComponent(
-                state.pathParameters['serverId']!,
-              ),
+              serverId: Uri.decodeComponent(state.pathParameters['serverId']!),
             ),
           ),
         ),

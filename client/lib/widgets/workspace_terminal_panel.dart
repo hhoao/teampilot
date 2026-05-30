@@ -25,10 +25,7 @@ const _uuid = Uuid();
 
 /// VS Code–style bottom panel: main terminal + session list (not chat agent PTY).
 class WorkspaceTerminalPanel extends StatefulWidget {
-  const WorkspaceTerminalPanel({
-    required this.workingDirectory,
-    super.key,
-  });
+  const WorkspaceTerminalPanel({required this.workingDirectory, super.key});
 
   final String workingDirectory;
 
@@ -153,7 +150,11 @@ class _WorkspaceTerminalPanelState extends State<WorkspaceTerminalPanel> {
   TerminalTheme _terminalTheme(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final mode = context.read<LayoutCubit>().state.preferences.terminalThemeMode;
+    final mode = context
+        .read<LayoutCubit>()
+        .state
+        .preferences
+        .terminalThemeMode;
     return teampilotTerminalTheme(cs, isDark: isDark, mode: mode);
   }
 
@@ -245,7 +246,11 @@ class _WorkspaceTerminalPanelState extends State<WorkspaceTerminalPanel> {
         final grid = tab.session.engine.grid;
         if (grid.rows > 0 && grid.columns > 0) {
           tab.controller.selectionStart(0, 0, false, 0);
-          tab.controller.selectionUpdate(grid.rows - 1, grid.columns - 1, false);
+          tab.controller.selectionUpdate(
+            grid.rows - 1,
+            grid.columns - 1,
+            false,
+          );
         }
       default:
         break;
@@ -269,32 +274,30 @@ class _WorkspaceTerminalPanelState extends State<WorkspaceTerminalPanel> {
           LayoutPreferences.maxWorkspaceTerminalSessionSidebarWidth,
         );
 
-  final terminalBody = active == null || cwd.isEmpty
-      ? Center(
-          child: Text(
-            l10n.workspaceTerminalNoWorkingDirectory,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: terminalForeground.withValues(alpha: 0.65),
+    final terminalBody = active == null || cwd.isEmpty
+        ? Center(
+            child: Text(
+              l10n.workspaceTerminalNoWorkingDirectory,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: terminalForeground.withValues(alpha: 0.65),
+              ),
             ),
-          ),
-        )
-      : _WorkspaceTerminalView(
-          tab: active,
-          theme: theme,
-          onContextMenu: (position, cell) => _showContextMenu(
-            context,
-            active,
-            position,
-            cell,
-          ),
-        );
+          )
+        : _WorkspaceTerminalView(
+            tab: active,
+            theme: theme,
+            onContextMenu: (position, cell) =>
+                _showContextMenu(context, active, position, cell),
+          );
 
     return ColoredBox(
       key: AppKeys.workspaceTerminalPanel,
       color: terminalBackground,
-      child: ResizableTrailingPaneView(
-        leading: terminalBody,
-        trailing: _WorkspaceTerminalSessionSidebar(
+      child: TwoPaneSplitView(
+        axis: Axis.horizontal,
+        fixedChildIndex: 1,
+        first: terminalBody,
+        second: _WorkspaceTerminalSessionSidebar(
           theme: theme,
           tabs: _tabs,
           activeTabId: _activeTabId,
@@ -308,15 +311,13 @@ class _WorkspaceTerminalPanelState extends State<WorkspaceTerminalPanel> {
           onClosePanel: () =>
               context.read<LayoutCubit>().setWorkspaceTerminalVisible(false),
         ),
-        trailingWidth: sessionSidebarWidth,
-        minTrailingWidth:
-            LayoutPreferences.minWorkspaceTerminalSessionSidebarWidth,
-        maxTrailingWidth:
-            LayoutPreferences.maxWorkspaceTerminalSessionSidebarWidth,
-        onTrailingWidthChanged: (width) {
-          context
-              .read<LayoutCubit>()
-              .setWorkspaceTerminalSessionSidebarWidth(width);
+        size: sessionSidebarWidth,
+        minSize: LayoutPreferences.minWorkspaceTerminalSessionSidebarWidth,
+        maxSize: LayoutPreferences.maxWorkspaceTerminalSessionSidebarWidth,
+        onSizeChanged: (width) {
+          context.read<LayoutCubit>().setWorkspaceTerminalSessionSidebarWidth(
+            width,
+          );
         },
       ),
     );
@@ -480,7 +481,11 @@ class _WorkspaceTerminalSessionSidebar extends StatelessWidget {
                             child: IconButton(
                               tooltip: l10n.workspaceTerminalCloseSession,
                               padding: EdgeInsets.zero,
-                              icon: Icon(Icons.close, size: 14, color: itemColor),
+                              icon: Icon(
+                                Icons.close,
+                                size: 14,
+                                color: itemColor,
+                              ),
                               onPressed: () => onCloseTab(tab.id),
                             ),
                           ),

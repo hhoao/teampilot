@@ -1,5 +1,3 @@
-library multi_split_view;
-
 export 'src/area.dart' hide AreaHelper;
 export 'src/controller.dart' hide ControllerHelper;
 export 'src/divider_painter.dart';
