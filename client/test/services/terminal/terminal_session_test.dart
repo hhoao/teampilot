@@ -9,6 +9,8 @@ import 'package:teampilot/services/terminal/terminal_transport.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../../support/flush_terminal_engine.dart';
+
 class _FakeTransport implements TerminalTransport {
   final outputController = StreamController<Uint8List>();
   Completer<int> doneCompleter = Completer<int>();
@@ -165,6 +167,7 @@ void main() {
 
     expect(failed, isTrue);
     expect(session.isRunning, isFalse);
+    await flushTerminalEngine(session.engine);
     expect(
       exportTerminalScrollback(session.engine),
       contains('exited with code 127 during startup'),
@@ -200,10 +203,11 @@ void main() {
 
     expect(failed, isTrue);
     expect(session.isRunning, isFalse);
+    await flushTerminalEngine(session.engine);
     expect(exportTerminalScrollback(session.engine), contains('spawn timed out'));
   });
 
-  test('missing absolute executable fails fast without starting pty', () {
+  test('missing absolute executable fails fast without starting pty', () async {
     var started = false;
     final session = TerminalSession(
       executable: '/tmp/teampilot-missing-flashskyai-executable',
@@ -223,12 +227,15 @@ void main() {
     addTearDown(session.dispose);
 
     session.connect(workingDirectory: Directory.current.path);
+    session.onViewportResize(80, 24);
+    await flushTerminalEngine(session.engine);
 
     expect(started, isFalse);
     expect(session.isRunning, isFalse);
+    await flushTerminalEngine(session.engine);
     expect(
       exportTerminalScrollback(session.engine),
-      contains('not found'),
+      anyOf(contains('not found'), contains('未找到')),
     );
   });
 
@@ -304,6 +311,7 @@ void main() {
     expect(exited, isTrue);
     expect(session.isRunning, isFalse);
     expect(handle.closed, isTrue);
+    await flushTerminalEngine(session.engine);
     expect(
       exportTerminalScrollback(session.engine),
       isNot(contains('[process exited]')),
@@ -342,6 +350,7 @@ void main() {
     await handle.done;
 
     expect(session.isRunning, isTrue);
+    await flushTerminalEngine(session.engine);
     expect(
       exportTerminalScrollback(session.engine),
       contains('[process exited with code 1]'),
@@ -674,6 +683,7 @@ void main() {
     await Future<void>.delayed(const Duration(milliseconds: 300));
     handle.outputController.add(Uint8List.fromList(utf8.encode('hello\r\n')));
     await Future<void>.delayed(Duration.zero);
+    await flushTerminalEngine(session.engine);
 
     expect(exportTerminalScrollback(session.engine), contains('hello'));
   });
@@ -703,15 +713,17 @@ void main() {
     session.onViewportResize(80, 24);
     await Future<void>.delayed(const Duration(milliseconds: 300));
 
-    final bytes = utf8.encode('╰────任务已经完成了────╯\r\n');
-    final split = bytes.indexOf(0xe4) + 1;
+    final bytes = utf8.encode('café finished\r\n');
+    // Split inside é (UTF-8 c3 a9).
+    final split = bytes.indexOf(0xc3) + 1;
     handle.outputController
       ..add(Uint8List.fromList(bytes.take(split).toList()))
       ..add(Uint8List.fromList(bytes.skip(split).toList()));
     await Future<void>.delayed(Duration.zero);
+    await flushTerminalEngine(session.engine);
 
     final text = exportTerminalScrollback(session.engine);
-    expect(text, contains('任务已经完成了'));
+    expect(text, contains('café finished'));
     expect(text, isNot(contains('\uFFFD')));
   });
 

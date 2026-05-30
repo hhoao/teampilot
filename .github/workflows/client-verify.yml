@@ -57,6 +57,8 @@ jobs:
         with:
           submodules: recursive
 
+      - uses: dtolnay/rust-toolchain@stable
+
       - name: Install Linux build dependencies
         if: matrix.install_linux_deps
         run: |
