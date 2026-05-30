@@ -4,16 +4,19 @@
   // 欲了解更多信息，请访问: https://go.microsoft.com/fwlink/?linkid=830387
   "version": "0.2.0",
   "configurations": [
+
     {
       "name": "client",
       "cwd": "client",
       "request": "launch",
+      "program": "lib/main.dart",
       "type": "dart"
     },
     {
       "name": "client (profile mode)",
       "cwd": "client",
       "request": "launch",
+      "program": "lib/main.dart",
       "type": "dart",
       "flutterMode": "profile"
     },
@@ -21,8 +24,17 @@
       "name": "client (release mode)",
       "cwd": "client",
       "request": "launch",
+      "program": "lib/main.dart",
       "type": "dart",
       "flutterMode": "release"
+    },
+    {
+      "name": "flutter_alacritty (debug mode)",
+      "cwd": "client/packages/flutter_alacritty",
+      "request": "launch",
+      "program": "lib/main.dart",
+      "type": "dart",
+      "flutterMode": "debug"
     }
   ]
 }
