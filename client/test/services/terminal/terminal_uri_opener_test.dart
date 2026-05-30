@@ -26,6 +26,21 @@ void main() {
         isNull,
       );
     });
+
+    test('wraps bare absolute POSIX path as file URI', () {
+      if (Platform.isWindows) return;
+      expect(
+        TerminalUriOpener.fixup('/home/hhoa/.claude/CLAUDE.md'),
+        'file:///home/hhoa/.claude/CLAUDE.md',
+      );
+    });
+
+    test('leaves https URLs unchanged', () {
+      expect(
+        TerminalUriOpener.fixup('https://example.com'),
+        'https://example.com',
+      );
+    });
   });
 
   group('TerminalUriOpener.resolveLocalFilePath', () {
@@ -45,6 +60,25 @@ void main() {
           workingDirectory: wd,
         ),
         p.normalize(p.join(wd, 'src', 'main.dart')),
+      );
+    });
+
+    test('resolves bare absolute path without file prefix', () {
+      if (Platform.isWindows) return;
+      expect(
+        TerminalUriOpener.resolveLocalFilePath('/home/hhoa/.claude/CLAUDE.md'),
+        '/home/hhoa/.claude/CLAUDE.md',
+      );
+    });
+
+    test('resolves bare relative path with working directory', () {
+      if (Platform.isWindows) return;
+      expect(
+        TerminalUriOpener.resolveLocalFilePath(
+          'src/main.dart',
+          workingDirectory: '/project',
+        ),
+        '/project/src/main.dart',
       );
     });
   });

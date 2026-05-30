@@ -229,12 +229,6 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
     await File(path).writeAsString(exportTerminalScrollback(engine));
   }
 
-  Future<void> _openLinkAt(TerminalEngine engine, CellOffset offset) async {
-    final link = engine.hyperlinkAt(offset.row, offset.column);
-    if (link == null) return;
-    await _openTerminalLink(link);
-  }
-
   Future<void> _openTerminalLink(String link) async {
     if (!mounted) return;
     final workingDirectory = context
@@ -415,11 +409,8 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
                               _terminalController.clearSelection();
                             }
                           },
-                          onTapUp: (details, offset) {
-                            if (HardwareKeyboard.instance.isControlPressed ||
-                                HardwareKeyboard.instance.isMetaPressed) {
-                              unawaited(_openLinkAt(session.engine, offset));
-                            }
+                          onLinkActivate: (uri) {
+                            unawaited(_openTerminalLink(uri));
                           },
                           onSecondaryTapDown: (details, offset) {
                             unawaited(

@@ -3,6 +3,10 @@ import 'package:flutter_alacritty/flutter_alacritty.dart';
 
 int _packColor(Color color) => color.value & 0xFFFFFF;
 
+/// OSC 8 hyperlink highlight (rendered via [TerminalTheme.hintStart]).
+({int bg, int fg}) _hyperlinkHintFromScheme(ColorScheme cs) =>
+    (bg: _packColor(cs.primary), fg: _packColor(cs.onPrimary));
+
 /// Maps [TerminalTheme] into engine [TerminalColors] (PTY palette + defaults).
 TerminalColors terminalColorsFromTheme(TerminalTheme theme) {
   return TerminalColors(
@@ -63,13 +67,26 @@ TerminalTheme teampilotTerminalTheme(
       foreground: 0xC8CCD4,
       selection: 0x9AA0A8,
       ansi: const [
-        0x1A1A1A, 0xD04A62, 0x52C07E, 0xD4B85A, 0x5298D8, 0xB87CD8, 0x4EB8C4,
-        0xD0D4DC, 0x5A5A5A, 0xE86A7E, 0x6CD898, 0xE8CC70, 0x72B0E8, 0xD098F0,
-        0x72D0DC, 0xE4E6EC,
+        0x1A1A1A,
+        0xD04A62,
+        0x52C07E,
+        0xD4B85A,
+        0x5298D8,
+        0xB87CD8,
+        0x4EB8C4,
+        0xD0D4DC,
+        0x5A5A5A,
+        0xE86A7E,
+        0x6CD898,
+        0xE8CC70,
+        0x72B0E8,
+        0xD098F0,
+        0x72D0DC,
+        0xE4E6EC,
       ],
       searchMatch: (bg: 0xFFFF2B, fg: 0x000000),
       searchFocused: (bg: 0x31FF26, fg: 0x000000),
-      hintStart: (bg: 0x31FF26, fg: 0x000000),
+      hintStart: (bg: 0x5298D8, fg: 0x0A0C10),
       cursorText: null,
       cursorColor: 0x9AA0A8,
       bellOverlay: 0xFFFFFF,
@@ -105,7 +122,7 @@ TerminalTheme teampilotTerminalTheme(
       ],
       searchMatch: (bg: 0xFFFF2B, fg: 0x000000),
       searchFocused: (bg: 0x31FF26, fg: 0x000000),
-      hintStart: (bg: 0x31FF26, fg: 0x000000),
+      hintStart: (bg: primary, fg: isDark ? 0x000000 : 0xFFFFFF),
       cursorText: null,
       cursorColor: primary,
       bellOverlay: 0xFFFFFF,
@@ -165,7 +182,7 @@ TerminalTheme teampilotTerminalTheme(
     ],
     searchMatch: (bg: 0xFFFF2B, fg: 0x000000),
     searchFocused: (bg: 0x31FF26, fg: 0x000000),
-    hintStart: (bg: 0x31FF26, fg: 0x000000),
+    hintStart: _hyperlinkHintFromScheme(cs),
     cursorText: null,
     cursorColor: _packColor(cs.primary),
     bellOverlay: 0xFFFFFF,

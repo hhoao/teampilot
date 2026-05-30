@@ -24,22 +24,12 @@ abstract final class TerminalUriOpener {
     if (uri == null) return false;
 
     if (uri.scheme == 'file') {
-      final path = resolveLocalFilePath(
+      return _openLocalFile(
         raw,
         workingDirectory: workingDirectory,
-      );
-      if (path != null &&
-          openInEditor != null &&
-          _shouldOpenInEditor(path)) {
-        final filesystem = fs ?? AppStorage.fs;
-        final stat = await filesystem.stat(path);
-        if (stat.exists && stat.isFile) {
-          await openInEditor(path);
-          return true;
-        }
-      }
-      return _openFilePath(
-        path ?? uri.toFilePath(windows: Platform.isWindows),
+        fs: fs,
+        openInEditor: openInEditor,
+        fallbackPath: uri.toFilePath(windows: Platform.isWindows),
       );
     }
 
@@ -99,6 +89,11 @@ abstract final class TerminalUriOpener {
     final uri = Uri.tryParse(trimmed);
     if (uri == null) return trimmed;
 
+    if (uri.scheme.isEmpty && _isBareFilePath(trimmed, uri)) {
+      final path = _barePathFromUri(trimmed, uri);
+      return Uri.file(path, windows: Platform.isWindows).toString();
+    }
+
     if (uri.scheme != 'file') return trimmed;
 
     final host = uri.host;
@@ -112,6 +107,54 @@ abstract final class TerminalUriOpener {
 
     // Remote file:// in SSH sessions — refuse like gnome-terminal.
     return null;
+  }
+
+  /// Paths without `file:` / `https:` etc. (e.g. OSC 8 payloads from CLIs).
+  static bool _isBareFilePath(String trimmed, Uri uri) {
+    if (uri.scheme.isNotEmpty) return false;
+    if (trimmed.contains('://') || trimmed.startsWith('//')) return false;
+
+    final path = _barePathFromUri(trimmed, uri);
+    if (path.isEmpty) return false;
+    if (p.isAbsolute(path)) return true;
+    if (Platform.isWindows && RegExp(r'^[A-Za-z]:[/\\]').hasMatch(path)) {
+      return true;
+    }
+    if (path.startsWith('./') ||
+        path.startsWith('.\\') ||
+        path.startsWith('../')) {
+      return true;
+    }
+    if (path.contains('/') || path.contains(r'\')) return true;
+    return RegExp(r'\.[A-Za-z0-9]+$').hasMatch(path);
+  }
+
+  static String _barePathFromUri(String trimmed, Uri uri) =>
+      uri.path.isNotEmpty ? uri.path : trimmed;
+
+  static Future<bool> _openLocalFile(
+    String raw, {
+    required String? workingDirectory,
+    Filesystem? fs,
+    Future<void> Function(String absolutePath)? openInEditor,
+    required String? fallbackPath,
+  }) async {
+    final path = resolveLocalFilePath(
+      raw,
+      workingDirectory: workingDirectory,
+    );
+    final resolved = path ?? fallbackPath;
+    if (resolved == null || resolved.isEmpty) return false;
+
+    if (openInEditor != null && _shouldOpenInEditor(resolved)) {
+      final filesystem = fs ?? AppStorage.fs;
+      final stat = await filesystem.stat(resolved);
+      if (stat.exists && stat.isFile) {
+        await openInEditor(resolved);
+        return true;
+      }
+    }
+    return _openFilePath(resolved);
   }
 
   static bool _shouldOpenInEditor(String path) {

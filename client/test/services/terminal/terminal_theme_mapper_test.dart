@@ -9,7 +9,24 @@ void main() {
       background: 0x0A0C10,
       foreground: 0xC8CCD4,
       selection: 0x9AA0A8,
-      ansi: [0x1A1A1A, 0xD04A62, 0x52C07E, 0xD4B85A, 0x5298D8, 0xB87CD8, 0x4EB8C4, 0xD0D4DC, 0x5A5A5A, 0xE86A7E, 0x6CD898, 0xE8CC70, 0x72B0E8, 0xD098F0, 0x72D0DC, 0xE4E6EC],
+      ansi: [
+        0x1A1A1A,
+        0xD04A62,
+        0x52C07E,
+        0xD4B85A,
+        0x5298D8,
+        0xB87CD8,
+        0x4EB8C4,
+        0xD0D4DC,
+        0x5A5A5A,
+        0xE86A7E,
+        0x6CD898,
+        0xE8CC70,
+        0x72B0E8,
+        0xD098F0,
+        0x72D0DC,
+        0xE4E6EC,
+      ],
       searchMatch: (bg: 0xFFFF2B, fg: 0x000000),
       searchFocused: (bg: 0x31FF26, fg: 0x000000),
       hintStart: (bg: 0x31FF26, fg: 0x000000),
@@ -34,5 +51,12 @@ void main() {
     );
     expect(classic.background, isNot(defaults.background));
     expect(classic.ansi[1], isNot(defaults.ansi[1]));
+  });
+
+  test('teampilotTerminalTheme hyperlink hint uses ColorScheme primary', () {
+    const cs = ColorScheme.dark(primary: Color(0xFF336699));
+    final theme = teampilotTerminalTheme(cs, isDark: true, mode: 'default');
+    expect(theme.hintStart.bg, 0x336699);
+    expect(theme.hintStart.fg, cs.onPrimary.value & 0xFFFFFF);
   });
 }
