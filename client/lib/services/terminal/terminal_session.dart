@@ -522,12 +522,17 @@ class TerminalSession {
           return;
         }
       }
+      // PTY still spawns at the connect-time guess (cols/rows) by design — the
+      // reconciliation block below corrects it (and the engine) to the pending
+      // geometry right after attach, matching the original spawn-then-resize
+      // flow. Only the engine init above adopts the pending size, so the mirror
+      // grid is never left clobbered at the guess.
       final transport = await _transportStarter(
         executable,
         arguments: args,
         workingDirectory: cwd,
-        columns: startCols,
-        rows: startRows,
+        columns: cols,
+        rows: rows,
         environment: _ptyEnvironment,
       );
       if (startGeneration != _transportStartGeneration || !_starting) {
