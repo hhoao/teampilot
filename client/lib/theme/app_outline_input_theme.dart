@@ -110,7 +110,7 @@ InputDecorationTheme buildAppOutlineInputDecorationTheme({
     filled: true,
     fillColor: colorScheme.workspaceInset,
     isDense: true,
-    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 13),
     constraints: const BoxConstraints(minHeight: 40),
     hintStyle: hintStyle,
     labelStyle: textTheme.bodyMedium?.copyWith(color: labelColor),
