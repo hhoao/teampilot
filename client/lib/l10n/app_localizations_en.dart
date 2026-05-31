@@ -311,6 +311,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get newProjectTooltip => 'Create a project';
 
   @override
+  String get switchProjectTooltip => 'Switch project';
+
+  @override
   String get create => 'Create';
 
   @override

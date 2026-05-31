@@ -662,6 +662,12 @@ abstract class AppLocalizations {
   /// **'Create a project'**
   String get newProjectTooltip;
 
+  /// No description provided for @switchProjectTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Switch project'**
+  String get switchProjectTooltip;
+
   /// No description provided for @create.
   ///
   /// In en, this message translates to:

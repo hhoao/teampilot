@@ -108,6 +108,7 @@
   "projects": "项目",
   "newProject": "新建项目",
   "newProjectTooltip": "创建项目",
+  "switchProjectTooltip": "切换项目",
   "create": "创建",
   "pickPrimaryDirectory": "选择主目录",
   "projectPrimaryPathRequired": "请先选择主目录。",

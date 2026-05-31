@@ -4,7 +4,6 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:teampilot/widgets/hover_row.dart';
 import '../cubits/chat_cubit.dart';
 import '../cubits/team_cubit.dart';
 import '../l10n/l10n_extensions.dart';
@@ -29,6 +28,9 @@ import 'project_details_dialog.dart';
 import 'app_icon_button.dart';
 
 const double _kSidebarSessionTileInset = 12;
+
+/// Matches [_NewChatTile] / [_TeamConfigTile] inner padding for left alignment.
+const double _kSidebarNavRowPadding = 10;
 
 void _navigateToSessionInChat(BuildContext context, AppSession session) {
   final l10n = context.l10n;
@@ -357,20 +359,17 @@ class _ContextSidebarState extends State<ContextSidebar> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 14),
-                _ProjectSelector(
-                  projects: sortedProjects,
-                  selected: selectedProject,
-                  onSelect: (project) =>
-                      setState(() => _selectedProjectId = project.projectId),
-                  onNewProject: widget.onNewProject,
-                ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 12),
                 Expanded(
                   child: _showSessions
-                      ? _SelectedProjectSessionList(
-                          project: selectedProject,
+                      ? _ProjectSelector(
+                          projects: sortedProjects,
+                          selected: selectedProject,
                           sessions: sessions,
+                          onSelect: (project) => setState(
+                            () => _selectedProjectId = project.projectId,
+                          ),
+                          onNewProject: widget.onNewProject,
                         )
                       : const SizedBox.shrink(),
                 ),
@@ -417,69 +416,18 @@ List<AppSession> _sessionsForProject(AppProject project, List<AppSession> all) {
   return ordered;
 }
 
-class _SelectedProjectSessionList extends StatelessWidget {
-  const _SelectedProjectSessionList({
-    required this.project,
-    required this.sessions,
-  });
-
-  final AppProject? project;
-  final List<AppSession> sessions;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = context.l10n;
-    if (project == null) {
-      return Padding(
-        padding: const EdgeInsets.only(top: 8),
-        child: Text(
-          l10n.noSessions,
-          style: AppTextStyles.of(context).bodySmall.copyWith(
-            color: Theme.of(
-              context,
-            ).textTheme.bodySmall?.color?.withValues(alpha: 0.5),
-          ),
-        ),
-      );
-    }
-
-    final list = _sessionsForProject(project!, sessions);
-    if (list.isEmpty) {
-      return Padding(
-        padding: const EdgeInsets.only(top: 8),
-        child: Text(
-          l10n.noSessions,
-          style: AppTextStyles.of(context).bodySmall.copyWith(
-            color: Theme.of(
-              context,
-            ).textTheme.bodySmall?.color?.withValues(alpha: 0.5),
-          ),
-        ),
-      );
-    }
-
-    return ListView.builder(
-      itemCount: list.length,
-      itemBuilder: (context, index) {
-        return Container(
-          padding: EdgeInsets.only(bottom: index == list.length - 1 ? 0 : 2),
-          child: _SessionTileEntry(session: list[index]),
-        );
-      },
-    );
-  }
-}
-
 class _ProjectSelector extends StatefulWidget {
   const _ProjectSelector({
     required this.projects,
     required this.selected,
+    required this.sessions,
     required this.onSelect,
     this.onNewProject,
   });
 
   final List<AppProject> projects;
   final AppProject? selected;
+  final List<AppSession> sessions;
   final ValueChanged<AppProject> onSelect;
   final VoidCallback? onNewProject;
 
@@ -488,48 +436,12 @@ class _ProjectSelector extends StatefulWidget {
 }
 
 class _ProjectSelectorState extends State<_ProjectSelector> {
-  var _projectMenuOpen = false;
+  var _projectsExpanded = true;
 
-  static const double _rowHeight = 36;
+  VoidCallback? get _headerAddAction => widget.onNewProject;
 
-  Widget _projectLabel(
-    BuildContext context,
-    AppProject project,
-    TextStyle? style, {
-    bool inList = false,
-  }) {
-    final l10n = context.l10n;
-    final cs = Theme.of(context).colorScheme;
-    final name = _projectDisplayName(project, l10n);
-    final iconSize = inList ? 20.0 : 22.0;
-    return Row(
-      children: [
-        Container(
-          width: iconSize,
-          height: iconSize,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: cs.primaryContainer,
-            borderRadius: BorderRadius.circular(5),
-          ),
-          child: Icon(
-            Icons.folder_outlined,
-            size: iconSize * 0.64,
-            color: cs.onPrimaryContainer,
-          ),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Text(
-            name,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: style,
-          ),
-        ),
-      ],
-    );
-  }
+  String? _headerAddTooltip(AppLocalizations l10n) =>
+      widget.onNewProject != null ? l10n.newProjectTooltip : null;
 
   List<Widget> _projectMenuChildren(
     BuildContext context,
@@ -564,12 +476,6 @@ class _ProjectSelectorState extends State<_ProjectSelector> {
     }
 
     return [
-      if (widget.onNewProject != null)
-        item(
-          icon: Icons.create_new_folder_outlined,
-          label: l10n.newProject,
-          value: 'newProject',
-        ),
       if (hasId)
         item(
           icon: Icons.info_outline,
@@ -610,9 +516,6 @@ class _ProjectSelectorState extends State<_ProjectSelector> {
     String value,
   ) {
     switch (value) {
-      case 'newProject':
-        widget.onNewProject?.call();
-        break;
       case 'details':
         showProjectDetailsDialog(context, project, sessionCount);
         break;
@@ -720,146 +623,240 @@ class _ProjectSelectorState extends State<_ProjectSelector> {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final l10n = context.l10n;
-    final decoration = AppDropdownDecorations.themed(
-      context,
-      closedFillColor: cs.workspaceCard,
-      expandedFillColor: cs.workspaceCard,
-      borderRadius: 8,
-      headerFontWeight: FontWeight.w700,
-      listItemFontWeight: FontWeight.w600,
-      suffixIconSize: 18,
-      expandedShadowBlurRadius: 22,
-      expandedShadowOffset: const Offset(0, 10),
-      expandedShadowAlphaDark: 0.5,
-      expandedShadowAlphaLight: 0.12,
-      selectedPrimaryAlphaDark: 0.22,
-    );
     final selected = widget.selected;
     final projects = widget.projects;
     final hasProjects = projects.isNotEmpty;
-    final sessionCount = selected == null
-        ? 0
-        : _sessionsForProject(
-            selected,
-            context.read<ChatCubit>().state.visibleSessions,
-          ).length;
+    final sessions = context.read<ChatCubit>().state.visibleSessions;
+    final addTooltip = _headerAddTooltip(l10n);
+    final addAction = _headerAddAction;
 
-    Widget dropdown;
-    if (!hasProjects) {
-      dropdown = Container(
-        padding: kFlashskyDropdownClosedHeaderPadding,
-        decoration: BoxDecoration(
-          color: decoration.closedFillColor,
-          borderRadius: decoration.closedBorderRadius,
-          border: decoration.closedBorder,
+    final visibleProjects = !_projectsExpanded && selected != null
+        ? [selected]
+        : projects;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _ProjectSectionHeader(
+          label: l10n.projects,
+          addTooltip: addTooltip,
+          onAdd: addAction,
+          switchTooltip: l10n.switchProjectTooltip,
+          switchIcon: _projectsExpanded ? Icons.unfold_less : Icons.unfold_more,
+          onSwitch: hasProjects
+              ? () => setState(() => _projectsExpanded = !_projectsExpanded)
+              : null,
         ),
-        child: Text(
-          l10n.noSessions,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: decoration.hintStyle,
-        ),
-      );
-    } else {
-      dropdown = FlashskyDropdownField<AppProject>(
-        key: ValueKey(selected?.projectId),
-        items: projects,
-        initialItem: selected,
-        hintText: l10n.projects,
-        decoration: decoration,
-        closedHeaderPadding: kFlashskyDropdownClosedHeaderPadding,
-        expandedHeaderPadding: kFlashskyDropdownExpandedHeaderPadding,
-        listItemPadding: kFlashskyDropdownListItemPadding,
-        overlayHeight: kFlashskyDropdownDefaultOverlayHeight,
-        itemBuilder: (context, item) =>
-            _projectLabel(context, item, decoration.headerStyle),
-        listItemBuilder: (context, item) => _projectLabel(
-          context,
-          item,
-          decoration.listItemStyle,
-          inList: true,
-        ),
-        onChanged: (project) {
-          if (project != null) widget.onSelect(project);
-        },
-      );
-    }
-
-    final showProjectActions =
-        selected != null && selected.projectId.isNotEmpty;
-    final displayName = selected == null
-        ? ''
-        : _projectDisplayName(selected, l10n);
-
-    final hasTrailing =
-        showProjectActions || selected != null || widget.onNewProject != null;
-    final trailingWidth = showProjectActions
-        ? 68.0
-        : (hasTrailing ? 32.0 : null);
-
-    return HoverRow(
-      height: _rowHeight,
-      forceShowTrailing: _projectMenuOpen,
-      trailingWidth: trailingWidth,
-      trailing: hasTrailing
-          ? Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                if (showProjectActions) ...[
-                  SidebarActionMenuIconAnchor(
-                    icon: Icon(
-                      Icons.more_horiz,
-                      size: AppIconButton.kDefaultIconSize,
-                      color: cs.onSurface.withValues(alpha: 0.55),
-                    ),
-                    onOpen: () => setState(() => _projectMenuOpen = true),
-                    onClose: () => setState(() => _projectMenuOpen = false),
-                    buildMenuChildren: (context, controller) =>
-                        _projectMenuChildren(
-                          context,
-                          controller,
-                          selected,
-                          displayName,
-                          sessionCount,
-                        ),
-                  ),
-                  const SizedBox(width: 4),
-                  AppIconButton(
-                    icon: Icons.add,
-                    tooltip: l10n.newSessionTooltip,
-                    onTap: throttledAsync(
-                      'context_sidebar_new_session_${selected.projectId}',
-                      () => _createSessionAndOpenChat(
-                        context,
-                        selected.projectId,
-                      ),
+        Expanded(
+          child: !hasProjects
+              ? Align(
+                  alignment: Alignment.topLeft,
+                  child: Text(
+                    l10n.noSessions,
+                    style: AppTextStyles.of(context).bodySmall.copyWith(
+                      color: cs.onSurfaceVariant.withValues(alpha: 0.7),
                     ),
                   ),
-                ] else if (selected != null)
-                  AppIconButton(
-                    icon: Icons.add,
-                    tooltip: l10n.newSessionTooltip,
-                    onTap: throttledAsync(
-                      'context_sidebar_new_session_${selected.projectId}',
-                      () => _createSessionAndOpenChat(
-                        context,
-                        selected.projectId,
-                      ),
-                    ),
-                  )
-                else if (widget.onNewProject != null)
-                  AppIconButton(
-                    icon: Icons.add,
-                    tooltip: l10n.newProjectTooltip,
-                    onTap: widget.onNewProject,
-                  ),
-              ],
-            )
-          : null,
-      child: Align(alignment: Alignment.centerLeft, child: dropdown),
+                )
+              : ListView.builder(
+                  padding: EdgeInsets.zero,
+                  itemCount: visibleProjects.length,
+                  itemBuilder: (context, index) {
+                    final project = visibleProjects[index];
+                    final isSelected = selected?.projectId == project.projectId;
+                    final projectSessions = isSelected
+                        ? _sessionsForProject(project, sessions)
+                        : const <AppSession>[];
+                    return _ProjectDirectoryGroup(
+                      key: ValueKey(project.projectId),
+                      project: project,
+                      sessions: projectSessions,
+                      onSelect: () => widget.onSelect(project),
+                      buildMenuChildren: (context, controller) =>
+                          _projectMenuChildren(
+                            context,
+                            controller,
+                            project,
+                            _projectDisplayName(project, l10n),
+                            _sessionsForProject(project, sessions).length,
+                          ),
+                    );
+                  },
+                ),
+        ),
+      ],
     );
   }
+}
 
+class _ProjectDirectoryGroup extends StatelessWidget {
+  const _ProjectDirectoryGroup({
+    required this.project,
+    required this.sessions,
+    required this.onSelect,
+    required this.buildMenuChildren,
+    super.key,
+  });
+
+  final AppProject project;
+  final List<AppSession> sessions;
+  final VoidCallback onSelect;
+  final List<Widget> Function(BuildContext context, MenuController controller)
+  buildMenuChildren;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _ProjectFolderHeader(
+          project: project,
+          onSelect: onSelect,
+          buildMenuChildren: buildMenuChildren,
+        ),
+        if (sessions.isNotEmpty)
+          for (final session in sessions) _SessionTileEntry(session: session),
+      ],
+    );
+  }
+}
+
+class _ProjectFolderHeader extends StatefulWidget {
+  const _ProjectFolderHeader({
+    required this.project,
+    required this.onSelect,
+    required this.buildMenuChildren,
+  });
+
+  final AppProject project;
+  final VoidCallback onSelect;
+  final List<Widget> Function(BuildContext context, MenuController controller)
+  buildMenuChildren;
+
+  @override
+  State<_ProjectFolderHeader> createState() => _ProjectFolderHeaderState();
+}
+
+class _ProjectFolderHeaderState extends State<_ProjectFolderHeader> {
+  var _hovered = false;
+  var _menuOpen = false;
+
+  bool get _showActions => _hovered || _menuOpen || Platform.isAndroid;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final cs = Theme.of(context).colorScheme;
+    final name = _projectDisplayName(widget.project, l10n);
+    final labelColor = cs.onSurfaceVariant.withValues(alpha: 0.85);
+
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: throttledTap(
+          'context_sidebar_project_${widget.project.projectId}',
+          widget.onSelect,
+        ),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(_kSidebarNavRowPadding, 6, 4, 4),
+          child: Row(
+            children: [
+              Icon(Icons.folder_outlined, size: 16, color: labelColor),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: labelColor,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+              if (widget.project.projectId.isNotEmpty)
+                SizedBox(
+                  width: AppIconButton.kDefaultSize,
+                  height: AppIconButton.kDefaultSize,
+                  child: _showActions
+                      ? SidebarActionMenuIconAnchor(
+                          icon: Icon(
+                            Icons.more_horiz,
+                            size: AppIconButton.kDefaultIconSize,
+                            color: cs.onSurface.withValues(alpha: 0.45),
+                          ),
+                          onOpen: () => setState(() => _menuOpen = true),
+                          onClose: () => setState(() => _menuOpen = false),
+                          buildMenuChildren: widget.buildMenuChildren,
+                        )
+                      : null,
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ProjectSectionHeader extends StatelessWidget {
+  const _ProjectSectionHeader({
+    required this.label,
+    required this.switchTooltip,
+    this.addTooltip,
+    this.onAdd,
+    this.onSwitch,
+    this.switchIcon = Icons.unfold_more,
+  });
+
+  final String label;
+  final String? addTooltip;
+  final VoidCallback? onAdd;
+  final String switchTooltip;
+  final VoidCallback? onSwitch;
+  final IconData switchIcon;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.only(left: _kSidebarNavRowPadding),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              label,
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                color: cs.onSurfaceVariant,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.8,
+              ),
+              overflow: TextOverflow.ellipsis,
+              maxLines: 1,
+            ),
+          ),
+          if (onAdd != null && addTooltip != null)
+            AppIconButton(
+              icon: Icons.add,
+              iconSize: AppIconButton.kCompactIconSize,
+              size: AppIconButton.kCompactSize,
+              tooltip: addTooltip,
+              onTap: onAdd,
+            ),
+          AppIconButton(
+            icon: switchIcon,
+            iconSize: AppIconButton.kCompactIconSize,
+            size: AppIconButton.kCompactSize,
+            tooltip: switchTooltip,
+            enabled: onSwitch != null,
+            onTap: onSwitch,
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _SessionTileEntry extends StatefulWidget {
@@ -1307,7 +1304,7 @@ class _SidebarTile extends StatelessWidget {
           onSecondaryTapUp: onSecondaryTapUp,
           onLongPress: onLongPress,
           child: Container(
-            padding: EdgeInsets.fromLTRB(28, 6, 8, 6),
+            padding: EdgeInsets.fromLTRB(8 + contentLeftInset, 6, 8, 6),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(8),
               border: selected ? Border.all(color: cs.primaryContainer) : null,
@@ -1332,7 +1329,12 @@ class _SidebarTile extends StatelessWidget {
                             title,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context).textTheme.bodyMedium,
+                            style: Theme.of(context).textTheme.bodyMedium
+                                ?.copyWith(
+                                  fontWeight: selected
+                                      ? FontWeight.w600
+                                      : FontWeight.w400,
+                                ),
                           ),
                           if (subtitle.isNotEmpty) ...[
                             const SizedBox(height: 4),

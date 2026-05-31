@@ -115,6 +115,7 @@
   "projects": "Projects",
   "newProject": "New Project",
   "newProjectTooltip": "Create a project",
+  "switchProjectTooltip": "Switch project",
   "create": "Create",
   "pickPrimaryDirectory": "Pick primary directory",
   "projectPrimaryPathRequired": "Select a primary directory first.",

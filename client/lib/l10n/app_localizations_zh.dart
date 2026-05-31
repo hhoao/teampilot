@@ -299,6 +299,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get newProjectTooltip => '创建项目';
 
   @override
+  String get switchProjectTooltip => '切换项目';
+
+  @override
   String get create => '创建';
 
   @override
