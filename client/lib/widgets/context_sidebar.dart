@@ -255,18 +255,24 @@ class _AddTeamDialogState extends State<_AddTeamDialog> {
             ),
           ),
           const SizedBox(height: 8),
-          for (final def in launchable)
-            RadioListTile<TeamCli>(
-              value: TeamCli.decode(def.id),
-              groupValue: _selectedCli,
-              onChanged: (value) {
-                if (value == null) return;
-                setState(() => _selectedCli = value);
-              },
-              title: Text(cliDisplayName(def, l10n)),
-              dense: true,
-              contentPadding: EdgeInsets.zero,
+          RadioGroup<TeamCli>(
+            groupValue: _selectedCli,
+            onChanged: (value) {
+              if (value == null) return;
+              setState(() => _selectedCli = value);
+            },
+            child: Column(
+              children: [
+                for (final def in launchable)
+                  RadioListTile<TeamCli>(
+                    value: TeamCli.decode(def.id),
+                    title: Text(cliDisplayName(def, l10n)),
+                    dense: true,
+                    contentPadding: EdgeInsets.zero,
+                  ),
+              ],
             ),
+          ),
         ],
       ),
       actions: [

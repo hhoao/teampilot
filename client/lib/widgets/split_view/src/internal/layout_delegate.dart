@@ -1,10 +1,8 @@
 import 'package:flutter/widgets.dart';
-import 'package:meta/meta.dart';
 
 import '../controller.dart';
 import 'layout_constraints.dart';
 
-@internal
 class LayoutDelegate extends MultiChildLayoutDelegate {
   LayoutDelegate(
       {required this.axis,
@@ -19,7 +17,7 @@ class LayoutDelegate extends MultiChildLayoutDelegate {
 
   @override
   void performLayout(Size size) {
-    var onAreaLayout = (
+    void onAreaLayout(
         {required int index,
         required double start,
         required double thickness}) {
@@ -32,8 +30,8 @@ class LayoutDelegate extends MultiChildLayoutDelegate {
             BoxConstraints.tightFor(width: size.width, height: thickness));
         positionChild(index, Offset(0, start));
       }
-    };
-    var onDividerLayout = (
+    }
+    void onDividerLayout(
         {required int index,
         required double start,
         required double thickness}) {
@@ -46,7 +44,7 @@ class LayoutDelegate extends MultiChildLayoutDelegate {
             BoxConstraints.tightFor(width: size.width, height: thickness));
         positionChild('d$index', Offset(0, start));
       }
-    };
+    }
     layoutConstraints.performLayout(
         controller: controller,
         antiAliasingWorkaround: antiAliasingWorkaround,

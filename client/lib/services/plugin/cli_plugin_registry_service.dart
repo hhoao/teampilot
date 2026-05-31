@@ -7,7 +7,6 @@ import 'cli_plugin_layout.dart';
 import 'cli_plugin_manifest_flavor.dart';
 import 'cli_plugin_provision_cache.dart';
 import '../io/filesystem.dart';
-import 'plugin_repo_service.dart';
 import '../../utils/logger.dart';
 
 /// Writes Claude-compatible plugin registration under a session CONFIG_DIR.
@@ -20,14 +19,11 @@ class CliPluginRegistryService {
     required this.fs,
     required this.teampilotRoot,
     CliDataLayout? layout,
-    PluginRepoService? marketplaceCatalog,
-  })  : _layout = layout ?? CliDataLayout(teampilotRoot: teampilotRoot, fs: fs),
-        _marketplaceCatalog = marketplaceCatalog ?? PluginRepoService();
+  }) : _layout = layout ?? CliDataLayout(teampilotRoot: teampilotRoot, fs: fs);
 
   final Filesystem fs;
   final String teampilotRoot;
   final CliDataLayout _layout;
-  final PluginRepoService _marketplaceCatalog;
 
   static String? _cachedCatalogPath;
   static int? _cachedCatalogMtimeMs;
@@ -103,7 +99,6 @@ class CliPluginRegistryService {
     final localMarketplacePlugins = <Map<String, Object?>>[];
     final marketplaceEntriesCache = <String, List<Map<String, Object?>>>{};
 
-    var bundleCount = 0;
     final entries = await fs.listDir(memberPluginsDir);
     final scanned = await Future.wait(
       entries.map((entry) async {
@@ -174,7 +169,6 @@ class CliPluginRegistryService {
       if (result.localMarketplacePlugin != null) {
         localMarketplacePlugins.add(result.localMarketplacePlugin!);
       }
-      bundleCount++;
     }
 
     if (enabledPlugins.isEmpty) {
@@ -741,50 +735,4 @@ class _MarketplaceLaunchContext {
     );
   }
 
-  static Future<_MarketplaceLaunchContext> load({
-    required List<Plugin> catalog,
-    required List<String> enabledIds,
-    required PluginRepoService catalogService,
-    required Filesystem fs,
-    required String teampilotRoot,
-  }) async {
-    final marketplaces = await catalogService.loadMarketplaces();
-    final byName = {for (final m in marketplaces) m.name: m};
-    final stamps = <Map<String, Object?>>[];
-    final enabledEntries = <_EnabledMarketplaceEntry>[];
-    final enabled = enabledIds.isEmpty
-        ? catalog
-        : catalog.where((p) => enabledIds.contains(p.id));
-    final seen = <String>{};
-
-    for (final plugin in enabled) {
-      final name = plugin.marketplaceName;
-      if (name == null || name.isEmpty || seen.contains(name)) continue;
-      seen.add(name);
-      final marketplace = byName[name];
-      if (marketplace == null) continue;
-      final teampilotCache = fs.pathContext.join(
-        AppPaths.pluginMarketplaceCacheDirForTeampilotRoot(teampilotRoot),
-        marketplace.owner,
-        '${marketplace.name}@${marketplace.branch}',
-      );
-      final cacheStat = await fs.stat(teampilotCache);
-      if (!cacheStat.isDirectory) continue;
-      stamps.add(
-        CliPluginProvisionCache.marketplaceSourceStampEntry(
-          name: name,
-          teampilotCacheDir: teampilotCache,
-          sourceMtimeMs: cacheStat.mtime?.millisecondsSinceEpoch ?? 0,
-        ),
-      );
-      enabledEntries.add(
-        _EnabledMarketplaceEntry(name: name, cacheDir: teampilotCache),
-      );
-    }
-
-    return _MarketplaceLaunchContext(
-      sourceStamps: stamps,
-      enabledMarketplaces: enabledEntries,
-    );
-  }
 }

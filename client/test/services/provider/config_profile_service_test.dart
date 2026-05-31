@@ -6,7 +6,6 @@ import 'package:path/path.dart' as p;
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/team/claude_team_roster_service.dart';
 import 'package:teampilot/services/host/host_execution_environment.dart';
-import 'package:teampilot/services/host/host_script_dialect.dart';
 import 'package:teampilot/services/host/script_file_hook_provisioner.dart';
 import 'package:teampilot/services/host/team_pilot_hook_scripts.dart';
 import 'package:teampilot/services/storage/runtime_storage_context.dart';

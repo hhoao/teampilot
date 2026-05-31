@@ -118,8 +118,10 @@ class ConfigProfileService implements ConfigProfileDelegate {
        _loadTeamLeadDelegateHookScript = loadTeamLeadDelegateHookScript,
        _hostEnvironment = hostEnvironment;
 
+  @override
   final String basePath;
   final Filesystem _fs;
+  @override
   final CliDataLayout layout;
   final ClaudeProviderCredentialsService? _claudeCredentialsService;
   final Future<bool> Function()? _loadRtkEnabled;
@@ -147,6 +149,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
   String get configProfilesDir => layout.configProfilesDir;
 
   /// App-level FlashskyAI provider catalog file (`config-profiles/flashskyai/llm_config.json`).
+  @override
   String get appFlashskyaiLlmConfigFile => layout.appFlashskyaiLlmConfigFile;
 
   String appToolDir(String tool) => layout.appToolRoot(tool);
@@ -159,9 +162,11 @@ class ConfigProfileService implements ConfigProfileDelegate {
   String sessionProfileDir(String teamId, String sessionId) =>
       pathContext.join(teamScopeDir(teamId), 'members', sessionId.trim());
 
+  @override
   String sessionToolDir(String teamId, String sessionId, String tool) =>
       layout.memberToolDir(teamId, sessionId, tool);
 
+  @override
   String sessionClaudeMemberSettingsFile(
     String teamId,
     String sessionId,
@@ -174,12 +179,14 @@ class ConfigProfileService implements ConfigProfileDelegate {
     );
   }
 
+  @override
   String sessionFlashskyaiMetadataFile(String teamId, String sessionId) =>
       pathContext.join(
         sessionToolDir(teamId, sessionId, 'flashskyai'),
         flashskyaiMetadataFileName,
       );
 
+  @override
   String sessionClaudeMetadataFile(String teamId, String sessionId) =>
       pathContext.join(
         sessionToolDir(teamId, sessionId, 'claude'),
@@ -534,7 +541,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
   }
 
   HostExecutionEnvironment _hostEnvironmentForProvision() {
-    if (_hostEnvironment != null) return _hostEnvironment!;
+    if (_hostEnvironment != null) return _hostEnvironment;
     if (RuntimeStorageContext.isInstalled) {
       return HostExecutionEnvironment.fromStorage(RuntimeStorageContext.current);
     }

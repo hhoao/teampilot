@@ -73,7 +73,10 @@ class _AppPortalState extends State<AppPortal> with SingleTickerProviderStateMix
       if (!mounted) return;
       if (shouldShow) {
         _show();
-        _transitionController.forward(from: 0);
+        // Avoid replaying open animation on parent rebuilds while already open.
+        if (_transitionController.status == AnimationStatus.dismissed) {
+          _transitionController.forward(from: 0);
+        }
         return;
       }
       if (_transitionController.status == AnimationStatus.dismissed) {

@@ -31,7 +31,7 @@ void main() {
         memberToolDir: root,
         member: member.copyWith(prompt: ''),
       );
-      expect((await fs.stat(path!)).exists, isFalse);
+      expect((await fs.stat(path)).exists, isFalse);
     } finally {
       await fs.removeRecursive(root);
     }

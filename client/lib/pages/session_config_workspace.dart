@@ -187,19 +187,22 @@ class _SessionControlsState extends State<_SessionControls> {
     final mcpCubit = context.read<McpCubit>();
     final chatCubit = context.read<ChatCubit>();
     final sessionRepo = context.read<SessionRepository>();
+    final appProviderCubit = context.read<AppProviderCubit>();
+    final pluginCubit = context.read<PluginCubit>();
+    final sshProfileCubit = context.read<SshProfileCubit>();
     storageRoots.invalidate();
     await storageRoots.reinstallAndResolve();
     await reloadRemoteBackedAppData(
       storageRoots: storageRoots,
       llmConfigCubit: llmCubit,
-      appProviderCubit: context.read<AppProviderCubit>(),
+      appProviderCubit: appProviderCubit,
       teamCubit: teamCubit,
-      pluginCubit: context.read<PluginCubit>(),
+      pluginCubit: pluginCubit,
       skillCubit: skillCubit,
       mcpCubit: mcpCubit,
       chatCubit: chatCubit,
       sessionRepo: sessionRepo,
-      sshProfileCubit: context.read<SshProfileCubit>(),
+      sshProfileCubit: sshProfileCubit,
     );
   }
 
@@ -226,6 +229,7 @@ class _SessionControlsState extends State<_SessionControls> {
       }
     }
 
+    if (!mounted) return;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -314,6 +318,7 @@ class _SessionControlsState extends State<_SessionControls> {
                       final sessionRepo = context.read<SessionRepository>();
                       final storageRoots = context
                           .read<FlashskyaiStorageRoots>();
+                      final pluginCubit = context.read<PluginCubit>();
                       await widget.cubit.setConnectionMode(selected.first);
                       if (!context.mounted) return;
                       storageRoots.invalidate();
@@ -329,7 +334,7 @@ class _SessionControlsState extends State<_SessionControls> {
                         installed: skillCubit.state.installed,
                       );
                       await teamCubit.syncSelectedTeamPlugins(
-                        installed: context.read<PluginCubit>().state.installed,
+                        installed: pluginCubit.state.installed,
                       );
                       await teamCubit.syncSelectedTeamMcp(
                         installed: mcpCubit.state.servers,

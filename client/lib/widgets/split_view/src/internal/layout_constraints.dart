@@ -1,6 +1,5 @@
 import 'dart:math' as math;
 
-import 'package:meta/meta.dart';
 
 import '../area.dart';
 import '../controller.dart';
@@ -8,7 +7,6 @@ import '../policies.dart';
 import 'num_util.dart';
 
 /// Represents the layout constraints used by the [MultiSplitView].
-@internal
 class LayoutConstraints {
   factory LayoutConstraints(
       {required final MultiSplitViewController controller,
@@ -30,17 +28,13 @@ class LayoutConstraints {
         spaceForAreas: NumUtil.fix('spaceForAreas', spaceForAreas));
   }
 
-  LayoutConstraints._(
-      {required double containerSize,
-      required double dividerThickness,
-      required double dividerHandleBuffer,
-      required double totalDividerSize,
-      required double spaceForAreas})
-      : containerSize = containerSize,
-        dividerThickness = dividerThickness,
-        dividerHandleBuffer = dividerHandleBuffer,
-        totalDividerSize = totalDividerSize,
-        spaceForAreas = spaceForAreas;
+  LayoutConstraints._({
+    required this.containerSize,
+    required this.dividerThickness,
+    required this.dividerHandleBuffer,
+    required this.totalDividerSize,
+    required this.spaceForAreas,
+  });
 
   /// The container size.
   final double containerSize;
@@ -192,12 +186,12 @@ class LayoutConstraints {
       required MultiSplitViewController controller,
       required bool antiAliasingWorkaround}) {
     double dividerStart = double.infinity;
-    var onDividerLayout = (
+    void onDividerLayout(
         {required int index,
         required double start,
         required double thickness}) {
       dividerStart = start;
-    };
+    }
     performLayout(
         controller: controller,
         antiAliasingWorkaround: antiAliasingWorkaround,

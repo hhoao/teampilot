@@ -184,7 +184,8 @@ class PluginCommand {
   factory PluginCommand.fromJson(Map<String, Object?> j) =>
       PluginCommand(name: j['name'] as String, description: j['description'] as String?);
   @override
-  bool operator ==(Object o) => o is PluginCommand && o.name == name && o.description == description;
+  bool operator ==(Object other) =>
+      other is PluginCommand && other.name == name && other.description == description;
   @override
   int get hashCode => Object.hash(name, description);
 }
@@ -197,7 +198,8 @@ class PluginAgent {
   factory PluginAgent.fromJson(Map<String, Object?> j) =>
       PluginAgent(name: j['name'] as String, description: j['description'] as String?);
   @override
-  bool operator ==(Object o) => o is PluginAgent && o.name == name && o.description == description;
+  bool operator ==(Object other) =>
+      other is PluginAgent && other.name == name && other.description == description;
   @override
   int get hashCode => Object.hash(name, description);
 }
@@ -210,7 +212,8 @@ class PluginSkillRef {
   factory PluginSkillRef.fromJson(Map<String, Object?> j) =>
       PluginSkillRef(name: j['name'] as String, description: j['description'] as String?);
   @override
-  bool operator ==(Object o) => o is PluginSkillRef && o.name == name && o.description == description;
+  bool operator ==(Object other) =>
+      other is PluginSkillRef && other.name == name && other.description == description;
   @override
   int get hashCode => Object.hash(name, description);
 }
@@ -223,7 +226,8 @@ class PluginHook {
   factory PluginHook.fromJson(Map<String, Object?> j) =>
       PluginHook(event: j['event'] as String, matcher: j['matcher'] as String? ?? '');
   @override
-  bool operator ==(Object o) => o is PluginHook && o.event == event && o.matcher == matcher;
+  bool operator ==(Object other) =>
+      other is PluginHook && other.event == event && other.matcher == matcher;
   @override
   int get hashCode => Object.hash(event, matcher);
 }
@@ -236,7 +240,8 @@ class PluginMcpServer {
   factory PluginMcpServer.fromJson(Map<String, Object?> j) =>
       PluginMcpServer(name: j['name'] as String, type: j['type'] as String? ?? 'stdio');
   @override
-  bool operator ==(Object o) => o is PluginMcpServer && o.name == name && o.type == type;
+  bool operator ==(Object other) =>
+      other is PluginMcpServer && other.name == name && other.type == type;
   @override
   int get hashCode => Object.hash(name, type);
 }

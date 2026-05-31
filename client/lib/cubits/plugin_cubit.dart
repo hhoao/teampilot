@@ -103,7 +103,7 @@ class PluginCubit extends Cubit<PluginState> {
   /// state. Do not use in production.
   @visibleForTesting
   PluginCubit.test(
-    PluginState state, {
+    super.state, {
     PluginUninstalledHandler? onPluginUninstalled,
     PluginUpdatedHandler? onPluginUpdated,
   })  : repository = _dummyRepo,
@@ -112,8 +112,7 @@ class PluginCubit extends Cubit<PluginState> {
         _diskCache = PluginRepoDiskCacheService(),
         _externalFetch = PluginExternalFetchService(),
         _onPluginUninstalled = onPluginUninstalled,
-        _onPluginUpdated = onPluginUpdated,
-        super(state);
+        _onPluginUpdated = onPluginUpdated;
 
   static final _dummyRepo = PluginRepository();
   static final _dummyInstallService = PluginInstallService();

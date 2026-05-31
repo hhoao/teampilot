@@ -21,7 +21,7 @@ class MultiSplitView extends StatefulWidget {
   /// The default value for [axis] argument is [Axis.horizontal].
   /// The [children] argument is required.
   const MultiSplitView(
-      {Key? key,
+      {super.key,
       this.axis = MultiSplitView.defaultAxis,
       this.controller,
       this.dividerBuilder,
@@ -40,8 +40,7 @@ class MultiSplitView extends StatefulWidget {
       this.fallbackWidth = 500,
       this.fallbackHeight = 500,
       this.builder,
-      this.areaClipBehavior = Clip.hardEdge})
-      : super(key: key);
+      this.areaClipBehavior = Clip.hardEdge});
 
   final Axis axis;
   final MultiSplitViewController? controller;
@@ -121,7 +120,7 @@ class _MultiSplitViewState extends State<MultiSplitView> {
 
   _DraggingDivider? _draggingDivider;
 
-  ValueNotifier<int?> _hoverDividerIndex = ValueNotifier<int?>(null);
+  final ValueNotifier<int?> _hoverDividerIndex = ValueNotifier<int?>(null);
 
   Object? _lastAreasHash;
 
@@ -224,7 +223,7 @@ class _MultiSplitViewState extends State<MultiSplitView> {
           child = Container();
         }
 
-        child = IgnorePointer(child: child, ignoring: _draggingDivider != null);
+        child = IgnorePointer(ignoring: _draggingDivider != null, child: child);
 
         MouseCursor cursor = MouseCursor.defer;
         if (_draggingDivider != null) {
@@ -234,11 +233,11 @@ class _MultiSplitViewState extends State<MultiSplitView> {
         }
         child = MouseRegion(
             cursor: cursor,
-            child: child,
             opaque: _draggingDivider != null,
             hitTestBehavior: _draggingDivider != null
                 ? HitTestBehavior.opaque
-                : HitTestBehavior.translucent);
+                : HitTestBehavior.translucent,
+            child: child);
         children.insert(
             0,
             LayoutId(
@@ -348,12 +347,12 @@ class _MultiSplitViewState extends State<MultiSplitView> {
           maxWidth: widget.fallbackWidth,
           maxHeight: widget.fallbackHeight,
           child: CustomMultiChildLayout(
-              children: children,
               delegate: LayoutDelegate(
                   controller: _controller,
                   axis: widget.axis,
                   layoutConstraints: _layoutConstraints!,
-                  antiAliasingWorkaround: widget.antiAliasingWorkaround)));
+                  antiAliasingWorkaround: widget.antiAliasingWorkaround),
+              children: children));
     });
   }
 

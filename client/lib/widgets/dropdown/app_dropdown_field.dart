@@ -84,7 +84,8 @@ class _FlashskyDropdownFieldState<T extends Object>
     if (box != null && box.hasSize) {
       return box.size.width;
     }
-    return constraints.maxWidth.isFinite ? constraints.maxWidth : null;
+    // Do not fall back to maxWidth — that stretches the menu to the parent width.
+    return null;
   }
 
   @override
@@ -212,6 +213,7 @@ class _FlashskyDropdownFieldState<T extends Object>
         return AppPopover(
           controller: _popoverController,
           panelWidth: panelWidth,
+          overlayVisible: panelWidth != null,
           padding: deco.menuPadding,
           decoration: deco.menuDecoration(),
           anchor: const AppAnchor(

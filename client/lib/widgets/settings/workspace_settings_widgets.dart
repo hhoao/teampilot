@@ -92,7 +92,6 @@ class SettingsLabeledStackedRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
-    final onSurface = cs.onSurface;
     final hasSubtitle = _hasSettingsSubtitle(subtitle);
     final subtitleStyle = tt.bodySmall?.copyWith(
       color: cs.onSurfaceVariant,
@@ -150,7 +149,6 @@ class SettingsLabeledRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
-    final onSurface = cs.onSurface;
     final hasSubtitle = _hasSettingsSubtitle(subtitle);
     final subtitleStyle = tt.bodySmall?.copyWith(
       color: cs.onSurfaceVariant,

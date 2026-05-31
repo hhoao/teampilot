@@ -122,7 +122,7 @@ class DividerPainter {
 
   /// Builds a tween map for animations.
   Map<int, Tween> buildTween() {
-    Map<int, Tween> map = Map<int, Tween>();
+    Map<int, Tween> map = <int, Tween>{};
     if (animationEnabled &&
         backgroundColor != null &&
         highlightedBackgroundColor != null) {
@@ -183,21 +183,16 @@ class _DashedDividerPainter extends DividerPainter {
   _DashedDividerPainter(
       {required this.size,
       required this.gap,
-      Color? backgroundColor,
-      Color? highlightedBackgroundColor,
-      bool animationEnabled = DividerPainter.defaultAnimationEnabled,
-      Duration animationDuration = DividerPainter.defaultAnimationDuration,
+      super.backgroundColor,
+      super.highlightedBackgroundColor,
+      super.animationEnabled,
+      super.animationDuration,
       required this.color,
       this.highlightedColor,
       required this.strokeCap,
       required this.thickness,
       this.highlightedThickness,
-      this.highlightedGap})
-      : super(
-            animationEnabled: animationEnabled,
-            animationDuration: animationDuration,
-            backgroundColor: backgroundColor,
-            highlightedBackgroundColor: highlightedBackgroundColor) {
+      this.highlightedGap}) {
     if (size <= 0) {
       throw Exception('The size parameter must be positive: $size');
     }
@@ -241,26 +236,26 @@ class _DashedDividerPainter extends DividerPainter {
         canvas: canvas,
         dividerSize: dividerSize,
         animatedValues: animatedValues);
-    Color? _color;
+    Color? resolvedColor;
     if (animationEnabled && animatedValues.containsKey(colorKey)) {
-      _color = animatedValues[colorKey];
+      resolvedColor = animatedValues[colorKey];
     } else if (highlighted && highlightedColor != null) {
-      _color = highlightedColor!;
+      resolvedColor = highlightedColor!;
     } else {
-      _color = color;
+      resolvedColor = color;
     }
 
-    if (_color != null) {
-      double _thickness = thickness;
+    if (resolvedColor != null) {
+      var resolvedThickness = thickness;
       if (animationEnabled && animatedValues.containsKey(thicknessKey)) {
-        _thickness = animatedValues[thicknessKey];
+        resolvedThickness = animatedValues[thicknessKey];
       } else if (highlighted && highlightedThickness != null) {
-        _thickness = highlightedThickness!;
+        resolvedThickness = highlightedThickness!;
       }
       var paint = Paint()
         ..style = PaintingStyle.stroke
-        ..color = _color
-        ..strokeWidth = _thickness
+        ..color = resolvedColor
+        ..strokeWidth = resolvedThickness
         ..strokeCap = strokeCap
         ..isAntiAlias = true;
       if (dividerAxis == Axis.vertical) {
@@ -332,21 +327,16 @@ class _GroovedDividerPainter1 extends DividerPainter {
 
   _GroovedDividerPainter1(
       {required this.size,
-      Color? backgroundColor,
-      Color? highlightedBackgroundColor,
-      bool animationEnabled = DividerPainter.defaultAnimationEnabled,
-      Duration animationDuration = DividerPainter.defaultAnimationDuration,
+      super.backgroundColor,
+      super.highlightedBackgroundColor,
+      super.animationEnabled,
+      super.animationDuration,
       required this.color,
       this.highlightedColor,
       required this.strokeCap,
       required this.thickness,
       this.highlightedThickness,
-      this.highlightedSize})
-      : super(
-            animationEnabled: animationEnabled,
-            animationDuration: animationDuration,
-            backgroundColor: backgroundColor,
-            highlightedBackgroundColor: highlightedBackgroundColor) {
+      this.highlightedSize}) {
     if (size <= 0) {
       throw Exception('The size parameter must be positive: $size');
     }
@@ -386,42 +376,42 @@ class _GroovedDividerPainter1 extends DividerPainter {
         canvas: canvas,
         dividerSize: dividerSize,
         animatedValues: animatedValues);
-    Color? _color;
+    Color? resolvedColor;
     if (animationEnabled && animatedValues.containsKey(colorKey)) {
-      _color = animatedValues[colorKey];
+      resolvedColor = animatedValues[colorKey];
     } else if (highlighted && highlightedColor != null) {
-      _color = highlightedColor!;
+      resolvedColor = highlightedColor!;
     } else {
-      _color = color;
+      resolvedColor = color;
     }
 
-    if (_color != null) {
-      double _thickness = thickness;
+    if (resolvedColor != null) {
+      var resolvedThickness = thickness;
       if (animationEnabled && animatedValues.containsKey(thicknessKey)) {
-        _thickness = animatedValues[thicknessKey];
+        resolvedThickness = animatedValues[thicknessKey];
       } else if (highlighted && highlightedThickness != null) {
-        _thickness = highlightedThickness!;
+        resolvedThickness = highlightedThickness!;
       }
-      double _size = size;
+      var resolvedSize = size;
       if (animationEnabled && animatedValues.containsKey(sizeKey)) {
-        _size = animatedValues[sizeKey];
+        resolvedSize = animatedValues[sizeKey];
       } else if (highlighted && highlightedSize != null) {
-        _size = highlightedSize!;
+        resolvedSize = highlightedSize!;
       }
       var paint = Paint()
         ..style = PaintingStyle.stroke
-        ..color = _color
-        ..strokeWidth = _thickness
+        ..color = resolvedColor
+        ..strokeWidth = resolvedThickness
         ..strokeCap = strokeCap
         ..isAntiAlias = true;
       if (dividerAxis == Axis.vertical) {
-        double startY = (dividerSize.height - _size) / 2;
+        double startY = (dividerSize.height - resolvedSize) / 2;
         canvas.drawLine(Offset(dividerSize.width / 2, startY),
-            Offset(dividerSize.width / 2, startY + _size), paint);
+            Offset(dividerSize.width / 2, startY + resolvedSize), paint);
       } else {
-        double startX = (dividerSize.width - _size) / 2;
+        double startX = (dividerSize.width - resolvedSize) / 2;
         canvas.drawLine(Offset(startX, dividerSize.height / 2),
-            Offset(startX + _size, dividerSize.height / 2), paint);
+            Offset(startX + resolvedSize, dividerSize.height / 2), paint);
       }
     }
   }
@@ -477,22 +467,17 @@ class _GroovedDividerPainter2 extends DividerPainter {
 
   _GroovedDividerPainter2(
       {required this.size,
-      Color? backgroundColor,
-      Color? highlightedBackgroundColor,
-      bool animationEnabled = DividerPainter.defaultAnimationEnabled,
-      Duration animationDuration = DividerPainter.defaultAnimationDuration,
+      super.backgroundColor,
+      super.highlightedBackgroundColor,
+      super.animationEnabled,
+      super.animationDuration,
       required this.color,
       required this.gap,
       required this.count,
       this.highlightedColor,
       required this.strokeCap,
       required this.thickness,
-      this.highlightedCount})
-      : super(
-            animationEnabled: animationEnabled,
-            animationDuration: animationDuration,
-            backgroundColor: backgroundColor,
-            highlightedBackgroundColor: highlightedBackgroundColor) {
+      this.highlightedCount}) {
     if (size <= 0) {
       throw Exception('The size parameter must be positive: $size');
     }
@@ -543,45 +528,45 @@ class _GroovedDividerPainter2 extends DividerPainter {
         canvas: canvas,
         dividerSize: dividerSize,
         animatedValues: animatedValues);
-    Color? _color;
+    Color? resolvedColor;
     if (animationEnabled && animatedValues.containsKey(colorKey)) {
-      _color = animatedValues[colorKey];
+      resolvedColor = animatedValues[colorKey];
     } else if (highlighted && highlightedColor != null) {
-      _color = highlightedColor!;
+      resolvedColor = highlightedColor!;
     } else {
-      _color = color;
+      resolvedColor = color;
     }
 
-    if (_color != null) {
-      int _count = count;
+    if (resolvedColor != null) {
+      var resolvedCount = count;
       if (animationEnabled && animatedValues.containsKey(countKey)) {
-        _count = animatedValues[countKey];
-        if (_count.isEven) {
-          _count--;
+        resolvedCount = animatedValues[countKey];
+        if (resolvedCount.isEven) {
+          resolvedCount--;
         }
       } else if (highlighted && highlightedCount != null) {
-        _count = highlightedCount!;
+        resolvedCount = highlightedCount!;
       }
 
       var paint = Paint()
         ..style = PaintingStyle.stroke
-        ..color = _color
+        ..color = resolvedColor
         ..strokeWidth = thickness
         ..strokeCap = strokeCap
         ..isAntiAlias = true;
 
-      double groovesSize = (_count - 1) * gap;
+      double groovesSize = (resolvedCount - 1) * gap;
       if (dividerAxis == Axis.vertical) {
         double startY = (dividerSize.height - groovesSize) / 2;
         double x = (dividerSize.width - size) / 2;
-        for (int i = 0; i < _count; i++) {
+        for (int i = 0; i < resolvedCount; i++) {
           canvas.drawLine(Offset(x, startY + (gap * i)),
               Offset(x + size, startY + (gap * i)), paint);
         }
       } else {
         double startX = (dividerSize.width - groovesSize) / 2;
         double y = (dividerSize.height - size) / 2;
-        for (int i = 0; i < _count; i++) {
+        for (int i = 0; i < resolvedCount; i++) {
           canvas.drawLine(Offset(startX + (gap * i), y),
               Offset(startX + (gap * i), y + size), paint);
         }

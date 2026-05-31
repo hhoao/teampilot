@@ -303,7 +303,7 @@ class _FixedResumeLifecycleService extends SessionLifecycleService {
 class TestChatCubit extends ChatCubit {
   TestChatCubit._(
     this.postFrame, {
-    SessionRepository? sessionRepository,
+    super.sessionRepository,
     SessionLifecycleService? lifecycleService,
   }) : super(
         executableResolver: _testExecutable,
@@ -314,7 +314,6 @@ class TestChatCubit extends ChatCubit {
                   scrollbackLines: scrollbackLines,
                 ),
         postFrameScheduler: postFrame.scheduler,
-        sessionRepository: sessionRepository,
         lifecycleService:
             lifecycleService ??
             _FixedResumeLifecycleService(resume: false),
@@ -897,7 +896,7 @@ void main() {
         display: 'Session One',
         sessionTeam: 'test-team',
         cliTeamName: 'test-team-1',
-        members: const [
+        members: [
           SessionMemberBinding(rosterMemberId: 'team-lead', taskId: 'task-lead'),
           SessionMemberBinding(rosterMemberId: 'dev', taskId: 'task-dev'),
         ],

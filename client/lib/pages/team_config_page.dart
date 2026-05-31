@@ -35,7 +35,6 @@ import '../widgets/settings/workspace_hub_shell.dart';
 import '../widgets/settings/workspace_section_navigation.dart';
 import '../widgets/settings/workspace_section_host.dart';
 import '../theme/app_text_styles.dart';
-import '../theme/workspace_surface_layers.dart';
 
 enum TeamConfigSection implements WorkspaceSectionDescriptor {
   team,
@@ -416,10 +415,9 @@ class _Card extends StatelessWidget {
 }
 
 class _CardHeader extends StatelessWidget {
-  const _CardHeader({required this.title, this.subtitle, this.trailing});
+  const _CardHeader({required this.title, this.trailing});
 
   final String title;
-  final String? subtitle;
   final Widget? trailing;
 
   @override
@@ -435,15 +433,6 @@ class _CardHeader extends StatelessWidget {
             context,
           ).sectionTitle.copyWith(fontWeight: FontWeight.w800, color: textBase),
         ),
-        if (subtitle != null) ...[
-          const SizedBox(height: 6),
-          Text(
-            subtitle!,
-            style: AppTextStyles.of(
-              context,
-            ).body.copyWith(color: textBase.withValues(alpha: 0.64)),
-          ),
-        ],
       ],
     );
     if (trailing == null) return titleWidget;

@@ -22,6 +22,7 @@ class AppPopover extends StatefulWidget {
     this.padding,
     this.decoration,
     this.panelWidth,
+    this.overlayVisible,
     this.groupId,
     this.useSameGroupIdForChild = true,
   });
@@ -36,6 +37,9 @@ class AppPopover extends StatefulWidget {
 
   /// When set, the full panel (decoration + padding + content) matches this width.
   final double? panelWidth;
+
+  /// When false, keeps [controller] open state but hides the overlay (e.g. until width is measured).
+  final bool? overlayVisible;
   final Object? groupId;
   final bool useSameGroupIdForChild;
 
@@ -98,6 +102,12 @@ class _AppPopoverState extends State<AppPopover> {
         );
     final effectiveDecoration = widget.decoration;
 
+    final bridgeInsets = widget.closeOnTapOutside
+        ? tapRegionBridgeInsetsForAnchor(effectiveAnchor)
+        : EdgeInsets.zero;
+    final hasBridge = bridgeInsets.top > 0 || bridgeInsets.bottom > 0;
+    final panelWidth = widget.panelWidth;
+
     Widget panel = DecoratedBox(
       decoration: effectiveDecoration ?? const BoxDecoration(),
       child: Padding(
@@ -106,7 +116,18 @@ class _AppPopoverState extends State<AppPopover> {
       ),
     );
 
-    final panelWidth = widget.panelWidth;
+    if (hasBridge && panelWidth != null) {
+      panel = Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (bridgeInsets.top > 0) SizedBox(height: bridgeInsets.top),
+          panel,
+          if (bridgeInsets.bottom > 0) SizedBox(height: bridgeInsets.bottom),
+        ],
+      );
+    }
+
     if (panelWidth != null) {
       panel = SizedBox(width: panelWidth, child: panel);
     }
@@ -136,7 +157,8 @@ class _AppPopoverState extends State<AppPopover> {
             const SingleActivator(LogicalKeyboardKey.escape): controller.hide,
           },
           child: AppPortal(
-            visible: controller.isOpen,
+            visible:
+                controller.isOpen && (widget.overlayVisible ?? true),
             anchor: effectiveAnchor,
             portalBuilder: (_) => panel,
             child: widget.child,

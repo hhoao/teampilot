@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:flutter_alacritty/src/rust/frb_generated.dart';
+import 'package:flutter_alacritty/flutter_alacritty.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;

@@ -43,11 +43,14 @@ class OnboardingGateState extends State<OnboardingGate> {
   }
 
   Future<void> _completeOnboarding() async {
+    final appProviderCubit = context.read<AppProviderCubit>();
+    final teamCubit = context.read<TeamCubit>();
+    final settingsRepo = context.read<AppSettingsRepository>();
     await OnboardingService.applyDefaultClaudeProviderBinding(
-      appProviderCubit: context.read<AppProviderCubit>(),
-      teamCubit: context.read<TeamCubit>(),
+      appProviderCubit: appProviderCubit,
+      teamCubit: teamCubit,
     );
-    await context.read<AppSettingsRepository>().saveHasCompletedOnboarding(true);
+    await settingsRepo.saveHasCompletedOnboarding(true);
     if (!mounted) return;
     setState(() => _showWizard = false);
   }

@@ -2,7 +2,6 @@ import 'dart:collection';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
-import 'package:meta/meta.dart';
 import 'area.dart';
 
 /// Controller for [MultiSplitView].
@@ -43,10 +42,10 @@ class MultiSplitViewController extends ChangeNotifier {
   }
 
   /// Object to indicate that some area has been changed programmatically.
-  _AreasHash _areasHash = _AreasHash();
+  AreasHash _areasHash = AreasHash();
 
   void _newAreasHash() {
-    _areasHash = _AreasHash();
+    _areasHash = AreasHash();
   }
 
   /// Applies the current data modifier.
@@ -74,7 +73,7 @@ class MultiSplitViewController extends ChangeNotifier {
 
     _applyDataModifier();
 
-    _areasHash = _AreasHash();
+    _areasHash = AreasHash();
   }
 
   /// Set the areas.
@@ -130,7 +129,6 @@ class MultiSplitViewController extends ChangeNotifier {
 /// Allows to automatically set a new value for the data attribute of the [Area].
 typedef AreaDataModifier = dynamic Function(Area area, int index);
 
-@internal
 class ControllerHelper {
   const ControllerHelper(this.controller);
 
@@ -138,7 +136,7 @@ class ControllerHelper {
 
   List<Area> get areas => controller._areas;
 
-  _AreasHash get areasHash => controller._areasHash;
+  AreasHash get areasHash => controller._areasHash;
 
   void notifyListeners() => controller._forceNotifyListeners();
 
@@ -152,7 +150,7 @@ class ControllerHelper {
   }
 }
 
-class _AreasHash {
+class AreasHash {
   @override
   String toString() {
     return hashCode.toString();

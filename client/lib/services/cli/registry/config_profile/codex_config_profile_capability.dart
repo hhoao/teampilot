@@ -1,5 +1,4 @@
 import '../capabilities/config_profile_capability.dart';
-import '../config_profile/config_profile_context.dart';
 
 final class CodexConfigProfileCapability implements ConfigProfileCapability {
   const CodexConfigProfileCapability();

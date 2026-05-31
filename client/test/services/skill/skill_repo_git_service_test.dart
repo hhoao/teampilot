@@ -34,7 +34,7 @@ void main() {
       final svc = SkillRepoGitService(
         runner: (executable, arguments, {stdoutEncoding, stderrEncoding}) async {
           calls++;
-          final ref = arguments.last as String;
+          final ref = arguments.last;
           if (ref.endsWith('/develop')) {
             return ProcessResult(0, 0, '', '');
           }

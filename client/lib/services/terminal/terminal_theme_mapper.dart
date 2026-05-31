@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_alacritty/flutter_alacritty.dart';
 
-int _packColor(Color color) => color.value & 0xFFFFFF;
+int _packColor(Color color) => color.toARGB32() & 0xFFFFFF;
 
 /// OSC 8 hyperlink highlight (rendered via [TerminalTheme.hintStart]).
 ({int bg, int fg}) _hyperlinkHintFromScheme(ColorScheme cs) =>

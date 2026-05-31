@@ -108,6 +108,13 @@ class LocalFilesystem implements Filesystem {
         }
       case FileSystemEntityType.link:
         await Link(from).rename(to);
+      case FileSystemEntityType.notFound:
+      case FileSystemEntityType.pipe:
+      case FileSystemEntityType.unixDomainSock:
+        throw FileSystemException(
+          'rename failed: unsupported entity type',
+          from,
+        );
       case _:
         throw FileSystemException(
           'rename failed',

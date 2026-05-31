@@ -1,6 +1,5 @@
 import 'dart:convert';
 
-import 'package:path/path.dart' as p;
 import 'package:uuid/uuid.dart';
 
 import '../models/app_project.dart';
@@ -227,7 +226,7 @@ class SessionRepository {
 
   Future<({Filesystem fs, CliDataLayout layout})> _counterContext() async {
     if (_storageRoots != null) {
-      final snap = await _storageRoots!.resolve();
+      final snap = await _storageRoots.resolve();
       return (fs: snap.fs, layout: snap.layout);
     }
     final teampilotRoot = _rootOverride ?? AppStorage.paths.basePath;

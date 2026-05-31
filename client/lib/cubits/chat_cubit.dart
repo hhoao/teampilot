@@ -861,7 +861,7 @@ class ChatCubit extends Cubit<ChatState> {
       _updateTabRunning(tab.info.id);
       return;
     }
-    final launch = _workingDirectoryAndAddDirsForTab(tab);
+    _workingDirectoryAndAddDirsForTab(tab);
     _beginSessionConnect(tab.info.id);
     _postFrameScheduler(() async {
       try {

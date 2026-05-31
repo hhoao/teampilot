@@ -10,7 +10,6 @@ import 'package:teampilot/services/provider/config_profile_service.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/team/rtk_detector.dart';
 import 'package:teampilot/services/host/host_execution_environment.dart';
-import 'package:teampilot/services/host/host_script_dialect.dart';
 import 'package:teampilot/services/host/script_file_hook_provisioner.dart';
 import 'package:teampilot/services/storage/runtime_storage_context.dart';
 

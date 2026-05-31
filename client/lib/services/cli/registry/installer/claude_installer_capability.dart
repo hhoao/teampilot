@@ -1,4 +1,3 @@
-import '../../../../models/ssh_profile.dart';
 import '../../installer_types.dart';
 import '../capabilities/installer_capability.dart';
 import 'installer_context.dart';

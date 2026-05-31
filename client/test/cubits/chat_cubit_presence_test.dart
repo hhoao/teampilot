@@ -51,13 +51,11 @@ class _FakeTerminalSession extends TerminalSession {
 }
 
 class _DelayedPresenceService extends MemberPresenceService {
-  _DelayedPresenceService(
-    this.result, {
-    this.delay = const Duration(milliseconds: 80),
-  });
+  _DelayedPresenceService(this.result);
+
+  static const _delay = Duration(milliseconds: 80);
 
   final Map<String, MemberPresence> result;
-  final Duration delay;
   var computeCalls = 0;
 
   @override
@@ -69,7 +67,7 @@ class _DelayedPresenceService extends MemberPresenceService {
     required Map<String, TerminalSession> memberShells,
   }) async {
     computeCalls++;
-    await Future<void>.delayed(delay);
+    await Future<void>.delayed(_delay);
     return result;
   }
 }

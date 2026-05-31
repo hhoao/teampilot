@@ -57,6 +57,6 @@ void main() {
     const cs = ColorScheme.dark(primary: Color(0xFF336699));
     final theme = teampilotTerminalTheme(cs, isDark: true, mode: 'default');
     expect(theme.hintStart.bg, 0x336699);
-    expect(theme.hintStart.fg, cs.onPrimary.value & 0xFFFFFF);
+    expect(theme.hintStart.fg, cs.onPrimary.toARGB32() & 0xFFFFFF);
   });
 }

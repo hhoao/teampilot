@@ -1,4 +1,3 @@
-import 'package:path/path.dart' as p;
 
 import '../../models/skill.dart';
 import '../../utils/logger.dart';

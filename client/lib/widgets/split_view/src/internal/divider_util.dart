@@ -1,6 +1,5 @@
 import 'dart:math' as math;
 
-import 'package:meta/meta.dart';
 
 import '../area.dart';
 import '../controller.dart';
@@ -8,7 +7,6 @@ import 'layout_constraints.dart';
 import 'num_util.dart';
 
 /// Represents divider util used by the [MultiSplitView].
-@internal
 class DividerUtil {
   static double move(
       {required MultiSplitViewController controller,

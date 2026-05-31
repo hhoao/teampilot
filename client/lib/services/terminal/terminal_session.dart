@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_alacritty/flutter_alacritty.dart';
@@ -449,7 +448,7 @@ class TerminalSession {
 
   void _onStartupDeadline() {
     if (!_starting || _startFailed) return;
-    final cliExecutable = _startupExecutable ?? this.executable;
+    final cliExecutable = _startupExecutable ?? executable;
     final cliName = CliExecutableValidator.cliDisplayName(cliExecutable);
     if (_transport == null) {
       _handleStartFailure('[Failed to start $cliName: spawn timed out]');
@@ -593,7 +592,7 @@ class TerminalSession {
     _launchPhase = _LaunchPhase.running;
     activityTracker.reset();
     _cancelStartupTimers();
-    final cliExecutable = _startupExecutable ?? this.executable;
+    final cliExecutable = _startupExecutable ?? executable;
     appLogger.i(
       '[terminal] started ${CliExecutableValidator.cliDisplayName(cliExecutable)}',
     );

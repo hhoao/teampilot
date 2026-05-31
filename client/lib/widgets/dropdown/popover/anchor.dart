@@ -68,6 +68,38 @@ class AppAnchor extends AppAnchorBase {
   int get hashCode => Object.hash(childAlignment, overlayAlignment, offset);
 }
 
+/// Extra hit-test padding on the overlay so the pointer can cross [AppAnchor.offset]
+/// without leaving the [TapRegion] (avoids spurious [TapRegion.onTapOutside]).
+EdgeInsets tapRegionBridgeInsetsForAnchor(AppAnchorBase anchor) {
+  if (anchor is! AppAnchor) return EdgeInsets.zero;
+  final offset = anchor.offset;
+  final child = anchor.childAlignment;
+  final target = anchor.overlayAlignment;
+
+  var top = 0.0;
+  var bottom = 0.0;
+  var left = 0.0;
+  var right = 0.0;
+
+  if (child.y < target.y) {
+    if (offset.dy > 0) top = offset.dy;
+    if (offset.dy < 0) bottom = -offset.dy;
+  } else if (child.y > target.y) {
+    if (offset.dy > 0) bottom = offset.dy;
+    if (offset.dy < 0) top = -offset.dy;
+  }
+
+  if (child.x < target.x) {
+    if (offset.dx > 0) left = offset.dx;
+    if (offset.dx < 0) right = -offset.dx;
+  } else if (child.x > target.x) {
+    if (offset.dx > 0) right = offset.dx;
+    if (offset.dx < 0) left = -offset.dx;
+  }
+
+  return EdgeInsets.fromLTRB(left, top, right, bottom);
+}
+
 /// Positions the overlay at a fixed global offset.
 @immutable
 class AppGlobalAnchor extends AppAnchorBase {
