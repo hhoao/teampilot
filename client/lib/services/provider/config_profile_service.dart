@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'package:flutter/services.dart' show rootBundle;
 import 'package:path/path.dart' as p;
 
 import '../../models/team_config.dart';
@@ -15,6 +14,7 @@ import '../cli/registry/config_profile/config_profile_context.dart';
 import '../cli/registry/cli_tool_registry.dart';
 import '../cli/registry/config_profile/claude_config_profile_capability.dart';
 import '../cli/registry/config_profile/flashskyai_config_profile_capability.dart';
+import '../host/bundled_asset_loader.dart';
 import '../host/host_execution_environment.dart';
 import '../host/host_script_dialect.dart';
 import '../host/script_file_hook_provisioner.dart';
@@ -558,7 +558,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
           baseFileName: TeamPilotHookScripts.rtkRewrite,
           loadScript:
               _loadRtkHookScript ??
-              (dialect) => rootBundle.loadString(
+              (dialect) => loadBundledAssetString(
                 switch (dialect) {
                   HostScriptDialect.bash => 'assets/rtk/rtk-rewrite.sh',
                   HostScriptDialect.powershell => 'assets/rtk/rtk-rewrite.ps1',
@@ -577,7 +577,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
           baseFileName: TeamPilotHookScripts.teamLeadSelf,
           loadScript:
               _loadTeamLeadHookScript ??
-              (dialect) => rootBundle.loadString(
+              (dialect) => loadBundledAssetString(
                 switch (dialect) {
                   HostScriptDialect.bash =>
                     'assets/hooks/teampilot-deny-team-lead-self-message.sh',
@@ -598,7 +598,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
           baseFileName: TeamPilotHookScripts.teamLeadDelegate,
           loadScript:
               _loadTeamLeadDelegateHookScript ??
-              (dialect) => rootBundle.loadString(
+              (dialect) => loadBundledAssetString(
                 switch (dialect) {
                   HostScriptDialect.bash =>
                     'assets/hooks/teampilot-team-lead-delegate-only.sh',

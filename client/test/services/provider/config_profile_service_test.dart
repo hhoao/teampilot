@@ -125,8 +125,10 @@ void main() {
         ConfigProfileService.flashskyaiConfigDirEnvKey,
         ConfigProfileService.flashskyaiSessionHomeDirEnvKey,
         'LLM_CONFIG_PATH',
+        'FLASHSKYAI_CODE_NO_FLICKER',
       ],
     );
+    expect(env['FLASHSKYAI_CODE_NO_FLICKER'], '1');
     expect(
       env[ConfigProfileService.flashskyaiConfigDirEnvKey],
       memberFlashskyaiDir,

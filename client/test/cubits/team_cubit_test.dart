@@ -353,8 +353,12 @@ void main() {
     expect(cubit.state.selectedTeam?.id, 'alpha');
     expect(cubit.state.selectedTeam?.name, 'Alpha');
     expect(
-      cubit.state.selectedTeam?.members.map((m) => m.name).toList(),
-      ['team-lead', 'member'],
+      cubit.state.selectedTeam?.members.map((m) => m.id).toList(),
+      ['team-lead', 'developer', 'reviewer'],
+    );
+    expect(
+      cubit.state.selectedTeam?.members.every((m) => m.prompt.trim().isNotEmpty),
+      isTrue,
     );
     expect(await cubit.addTeam('Alpha'), isFalse);
 
@@ -376,7 +380,7 @@ void main() {
       TeamMemberNaming.isTeamLead,
     );
     await cubit.deleteMember(lead.id);
-    expect(cubit.state.selectedTeam?.members.length, 2);
+    expect(cubit.state.selectedTeam?.members.length, 3);
     expect(cubit.state.statusMessage, contains('team-lead'));
 
     await _drainAndCloseTeamCubit(cubit);

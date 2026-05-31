@@ -599,7 +599,11 @@ class TeamCubit extends Cubit<TeamState> {
     await _syncPluginsForTeamIds(affectedTeamIds);
   }
 
-  Future<bool> addTeam(String name, {TeamCli cli = TeamCli.flashskyai}) async {
+  Future<bool> addTeam(
+    String name, {
+    TeamCli cli = TeamCli.flashskyai,
+    List<TeamMemberConfig>? members,
+  }) async {
     final trimmed = name.trim();
     if (trimmed.isEmpty) {
       emit(state.copyWith(statusMessage: 'Team name is required.'));
@@ -627,7 +631,7 @@ class TeamCubit extends Cubit<TeamState> {
       name: trimmed,
       cli: cli,
       createdAt: now,
-      members: TeamMemberNaming.defaultRoster(joinedAt: now),
+      members: members ?? TeamMemberNaming.defaultRoster(joinedAt: now),
     );
     final teams = [...state.teams, team];
     emit(

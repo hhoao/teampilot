@@ -3374,6 +3374,12 @@ abstract class AppLocalizations {
   /// **'false — confirm each phase'**
   String get teamLoopFalse;
 
+  /// No description provided for @teamLeadBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'Leader'**
+  String get teamLeadBadge;
+
   /// No description provided for @teamLeadDelegateOnlyTitle.
   ///
   /// In en, this message translates to:
@@ -3413,7 +3419,7 @@ abstract class AppLocalizations {
   /// No description provided for @memberNameSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Shown in the sidebar and when assigning work.'**
+  /// **'Display only in TeamPilot (sidebar, member list). To define responsibilities and boundaries, edit the prompt below.'**
   String get memberNameSubtitle;
 
   /// No description provided for @provider.
@@ -3515,7 +3521,7 @@ abstract class AppLocalizations {
   /// No description provided for @memberPromptPresetTeamLeadText.
   ///
   /// In en, this message translates to:
-  /// **'Coordinate the team. Break work into scoped tasks with clear done criteria before implementation.\nDo not implement large changes yourself unless blocking.\nReply to the user in this chat; never SendMessage to team-lead. Assign tasks and spawn Agent only for other member names.'**
+  /// **'Coordinate the team: break the user\'s request into a task list (each item with scope and acceptance criteria), then assign teammates to implement. Unless blocked, do not do large implementation yourself—you may read code and docs to understand the situation.\nTalk to the user in this session window. When assigning and following up, contact only other teammates (by member name); do not assign work to yourself. After teammates finish, reply to the user with conclusions, relevant files, and next steps.'**
   String get memberPromptPresetTeamLeadText;
 
   /// No description provided for @memberPromptPresetDeveloper.

@@ -49,10 +49,15 @@ void main() {
     expect(TeamMemberNaming.leadAgentId('my-team'), 'team-lead');
   });
 
-  test('defaultRoster creates team-lead and member', () {
+  test('defaultRoster creates team-lead, developer, and reviewer', () {
     final roster = TeamMemberNaming.defaultRoster(joinedAt: 42);
-    expect(roster.map((m) => m.name).toList(), ['team-lead', 'member']);
+    expect(roster.map((m) => m.id).toList(), [
+      'team-lead',
+      'developer',
+      'reviewer',
+    ]);
     expect(roster.every((m) => m.joinedAt == 42), isTrue);
+    expect(roster.every((m) => m.prompt.trim().isNotEmpty), isTrue);
   });
 
   test('TeamMemberConfig.fromJson keeps display name and slugs id', () {

@@ -71,6 +71,7 @@ class SettingsLabeledStackedRow extends StatelessWidget {
     super.key,
     required this.title,
     this.subtitle,
+    this.titleTrailing,
     required this.body,
     this.helper,
     this.showDividerBelow = true,
@@ -79,6 +80,9 @@ class SettingsLabeledStackedRow extends StatelessWidget {
 
   final String title;
   final String? subtitle;
+
+  /// Shown on the same row as [title], aligned to the trailing edge.
+  final Widget? titleTrailing;
   final Widget body;
 
   /// Muted caption below [body], inside the same padded block as the labels.
@@ -106,7 +110,16 @@ class SettingsLabeledStackedRow extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text(title),
+              if (titleTrailing != null)
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Expanded(child: Text(title)),
+                    titleTrailing!,
+                  ],
+                )
+              else
+                Text(title),
               if (hasSubtitle) ...[
                 SizedBox(height: _titleSubtitleGap),
                 Text(subtitle!.trim(), style: subtitleStyle),

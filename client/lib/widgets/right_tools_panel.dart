@@ -22,6 +22,8 @@ import '../theme/app_text_styles.dart';
 import '../theme/workspace_surface_layers.dart';
 import '../utils/app_keys.dart';
 import '../utils/debounce/debounce.dart';
+import '../utils/team_member_naming.dart';
+import '../widgets/team/team_lead_badge.dart';
 import 'app_icon_button.dart';
 import 'file_tree_node.dart';
 import 'menu/sidebar_action_menu.dart';
@@ -96,9 +98,9 @@ class _RightToolsPanelState extends State<RightToolsPanel> {
 
     final members = [...team.members]
       ..sort((a, b) {
-        if (a.name == 'team-lead') return -1;
-        if (b.name == 'team-lead') return 1;
-        return 0;
+        if (TeamMemberNaming.isTeamLead(a)) return -1;
+        if (TeamMemberNaming.isTeamLead(b)) return 1;
+        return a.name.compareTo(b.name);
       });
     void maybeDismissDrawer() {
       if (widget.dismissDrawerOnAction) {
@@ -300,7 +302,13 @@ class _MembersPanel extends StatelessWidget {
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8),
                         ),
-                        title: Text(member.name),
+                        title: MemberTitleRow(
+                          member: member,
+                          fallbackName: l10n.memberName,
+                          style: Theme.of(context).textTheme.bodyMedium,
+                          textColor: titleColor,
+                          compactBadge: true,
+                        ),
                         textColor: titleColor,
                         iconColor: titleColor,
                         subtitle: Text(

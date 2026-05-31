@@ -1817,6 +1817,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get teamLoopFalse => 'false — confirm each phase';
 
   @override
+  String get teamLeadBadge => 'Leader';
+
+  @override
   String get teamLeadDelegateOnlyTitle => 'Team lead: plan and delegate only';
 
   @override
@@ -1838,7 +1841,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get memberNameSubtitle =>
-      'Shown in the sidebar and when assigning work.';
+      'Display only in TeamPilot (sidebar, member list). To define responsibilities and boundaries, edit the prompt below.';
 
   @override
   String get provider => 'Provider';
@@ -1894,7 +1897,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get memberPromptPresetTeamLeadText =>
-      'Coordinate the team. Break work into scoped tasks with clear done criteria before implementation.\nDo not implement large changes yourself unless blocking.\nReply to the user in this chat; never SendMessage to team-lead. Assign tasks and spawn Agent only for other member names.';
+      'Coordinate the team: break the user\'s request into a task list (each item with scope and acceptance criteria), then assign teammates to implement. Unless blocked, do not do large implementation yourself—you may read code and docs to understand the situation.\nTalk to the user in this session window. When assigning and following up, contact only other teammates (by member name); do not assign work to yourself. After teammates finish, reply to the user with conclusions, relevant files, and next steps.';
 
   @override
   String get memberPromptPresetDeveloper => 'Developer';

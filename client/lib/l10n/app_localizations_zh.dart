@@ -1765,6 +1765,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get teamLoopFalse => 'false — 每阶段确认';
 
   @override
+  String get teamLeadBadge => 'Leader';
+
+  @override
   String get teamLeadDelegateOnlyTitle => '队长仅规划分派';
 
   @override
@@ -1783,7 +1786,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get memberName => '成员名称';
 
   @override
-  String get memberNameSubtitle => '侧栏与任务分配中显示的名称。';
+  String get memberNameSubtitle => '仅作界面展示用。若要指明职责与边界，请编辑下方的提示词。';
 
   @override
   String get provider => '提供商';
@@ -1835,7 +1838,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get memberPromptPresetTeamLeadText =>
-      '协调团队。先把工作拆成有明确验收范围的任务，再安排实现。\n除非阻塞，不要亲自做大块实现。\n与用户在本终端直接对话；不要 SendMessage 给 team-lead。TaskUpdate 的 owner 和 Agent 的 name 只能填其他成员名。';
+      '协调全队：将用户需求拆成任务清单（每条写明范围与验收标准），再分配给各队友实现；除阻塞性问题外，不要亲自做大块开发，可先阅读代码与文档了解现状。\n在本会话窗口与用户直接沟通。指派与跟进时只联系其他队友（按成员名称），不要把任务派给自己。汇总队友结果后回复用户，写清结论、涉及文件与后续步骤。';
 
   @override
   String get memberPromptPresetDeveloper => '开发';

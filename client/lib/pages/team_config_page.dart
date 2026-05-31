@@ -32,6 +32,7 @@ import '../widgets/settings/workspace_settings_widgets.dart';
 import '../widgets/dropdown/app_dropdown_field.dart';
 import '../widgets/dropdown/app_dropdown_decoration.dart';
 import '../widgets/settings/workspace_hub_shell.dart';
+import '../widgets/team/team_lead_badge.dart';
 import '../widgets/settings/workspace_section_navigation.dart';
 import '../widgets/settings/workspace_section_host.dart';
 import '../theme/app_text_styles.dart';
@@ -171,6 +172,7 @@ class TeamConfigHubPage extends StatelessWidget {
       for (final member in team.members)
         WorkspaceHubEntry(
           title: member.name.trim().isEmpty ? l10n.memberName : member.name,
+          showLeaderBadge: TeamMemberNaming.isTeamLead(member),
           icon: Icons.person_outline,
           onTap: throttledTap(
             'team_config_hub_member_${member.id}',
@@ -330,6 +332,7 @@ class _TeamConfigNavPanel extends StatelessWidget {
         for (final m in team.members)
           WorkspaceHubNavItem(
             title: m.name.trim().isEmpty ? l10n.memberName : m.name.trim(),
+            showLeaderBadge: TeamMemberNaming.isTeamLead(m),
             icon: Icons.person_outline,
             density: WorkspaceHubNavDensity.subItem,
             selected:
@@ -1414,54 +1417,12 @@ class _MemberDetailSection extends StatelessWidget {
       );
     }
 
-    final canDelete =
-        team.members.length > 1 && !TeamMemberNaming.isTeamLead(member);
-
     return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Padding(
-            padding: const EdgeInsets.only(bottom: 14, left: 4),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Expanded(
-                  child: Text(
-                    member.name.trim().isEmpty ? l10n.memberName : member.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppTextStyles.of(context).sectionTitle.copyWith(
-                      fontWeight: FontWeight.w800,
-                      color: textBase,
-                    ),
-                  ),
-                ),
-                IconButton(
-                  tooltip: l10n.delete,
-                  onPressed: !canDelete
-                      ? null
-                      : throttledAsync(
-                          'team_delete_member_${member.id}',
-                          () => _confirmDeleteMember(
-                            context,
-                            cubit,
-                            member,
-                            l10n,
-                          ),
-                        ),
-                  icon: const Icon(Icons.delete_outline, size: 20),
-                ),
-              ],
-            ),
-          ),
-          _MemberConfigForm(
-            key: ValueKey(member.id),
-            team: team,
-            member: member,
-            cubit: cubit,
-          ),
-        ],
+      child: _MemberConfigForm(
+        key: ValueKey(member.id),
+        team: team,
+        member: member,
+        cubit: cubit,
       ),
     );
   }
@@ -1606,6 +1567,11 @@ class _MemberConfigFormState extends State<_MemberConfigForm> {
         ) ==
         FlashskyaiAgentCatalog.customDropdownValue;
 
+    final canDelete =
+        widget.team.members.length > 1 &&
+        !TeamMemberNaming.isTeamLead(m);
+    final errorColor = Theme.of(context).colorScheme.error;
+
     Widget agentBody() => Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -1672,6 +1638,41 @@ class _MemberConfigFormState extends State<_MemberConfigForm> {
         children: [
           SettingsLabeledStackedRow(
             title: l10n.memberName,
+            subtitle: l10n.memberNameSubtitle,
+            titleTrailing:
+                TeamMemberNaming.isTeamLead(m) || canDelete
+                ? Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (TeamMemberNaming.isTeamLead(m))
+                        const TeamLeadBadge(),
+                      if (canDelete)
+                        IconButton(
+                    tooltip: l10n.delete,
+                    visualDensity: VisualDensity.compact,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(
+                      minWidth: 36,
+                      minHeight: 36,
+                    ),
+                    onPressed: throttledAsync(
+                      'team_delete_member_${m.id}',
+                      () => _confirmDeleteMember(
+                        context,
+                        widget.cubit,
+                        m,
+                        l10n,
+                      ),
+                    ),
+                    icon: Icon(
+                      Icons.delete_outline,
+                      size: 20,
+                      color: errorColor,
+                    ),
+                        ),
+                    ],
+                  )
+                : null,
             body: TextField(
               controller: _nameCtl,
               decoration: const InputDecoration(),

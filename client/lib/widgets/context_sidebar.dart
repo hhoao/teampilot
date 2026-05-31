@@ -9,6 +9,7 @@ import '../cubits/team_cubit.dart';
 import '../l10n/l10n_extensions.dart';
 import '../models/app_project.dart';
 import '../models/app_session.dart';
+import '../models/default_team_roster.dart';
 import '../models/team_config.dart';
 import '../services/cli/registry/cli_display_name.dart';
 import '../services/cli/registry/cli_tool_registry_scope.dart';
@@ -192,7 +193,12 @@ Future<void> _promptAddTeam(BuildContext context, TeamCubit teamCubit) async {
     builder: (dialogContext) => _AddTeamDialog(l10n: l10n),
   );
   if (result == null || !context.mounted) return;
-  await teamCubit.addTeam(result.name, cli: result.cli);
+  final now = DateTime.now().millisecondsSinceEpoch;
+  await teamCubit.addTeam(
+    result.name,
+    cli: result.cli,
+    members: DefaultTeamRoster.localized(l10n, joinedAt: now),
+  );
 }
 
 /// Owns the team name [TextEditingController] for the add-team dialog.

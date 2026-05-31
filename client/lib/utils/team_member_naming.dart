@@ -1,3 +1,4 @@
+import '../models/default_team_roster.dart';
 import '../models/team_config.dart';
 
 /// Claude team member naming aligned with agentId / inbox / CLI `--agent-name`.
@@ -5,18 +6,9 @@ abstract final class TeamMemberNaming {
   static const teamLeadName = 'team-lead';
   static const defaultWorkerName = 'member';
 
-  /// Default roster for a newly created team: leader + one worker tab.
-  static List<TeamMemberConfig> defaultRoster({int? joinedAt}) {
-    final ts = joinedAt ?? DateTime.now().millisecondsSinceEpoch;
-    return [
-      TeamMemberConfig(id: teamLeadName, name: teamLeadName, joinedAt: ts),
-      TeamMemberConfig(
-        id: defaultWorkerName,
-        name: defaultWorkerName,
-        joinedAt: ts,
-      ),
-    ];
-  }
+  /// Default roster for a newly created team (leader + developer + reviewer).
+  static List<TeamMemberConfig> defaultRoster({int? joinedAt}) =>
+      DefaultTeamRoster.bootstrap(joinedAt: joinedAt);
 
   static bool isTeamLeadName(String raw) => raw.trim() == teamLeadName;
 

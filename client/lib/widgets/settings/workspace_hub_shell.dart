@@ -5,6 +5,7 @@ import '../../models/layout_preferences.dart';
 import '../../theme/app_text_styles.dart';
 import '../../theme/workspace_surface_layers.dart';
 import '../split_layout.dart';
+import '../team/team_lead_badge.dart';
 
 enum WorkspaceHubNavDensity { standard, relaxed, subItem }
 
@@ -17,6 +18,7 @@ class WorkspaceHubEntry {
     this.key,
     this.selected = false,
     this.trailingIcon,
+    this.showLeaderBadge = false,
     this.density = WorkspaceHubNavDensity.standard,
   });
 
@@ -26,6 +28,7 @@ class WorkspaceHubEntry {
   final Key? key;
   final bool selected;
   final IconData? trailingIcon;
+  final bool showLeaderBadge;
   final WorkspaceHubNavDensity density;
 }
 
@@ -94,6 +97,7 @@ class WorkspaceHubNavItem extends StatelessWidget {
     this.selected = false,
     this.hubStyle = false,
     this.trailingIcon,
+    this.showLeaderBadge = false,
     this.density = WorkspaceHubNavDensity.standard,
     super.key,
   });
@@ -104,6 +108,7 @@ class WorkspaceHubNavItem extends StatelessWidget {
   final bool selected;
   final bool hubStyle;
   final IconData? trailingIcon;
+  final bool showLeaderBadge;
   final WorkspaceHubNavDensity density;
 
   @override
@@ -155,20 +160,30 @@ class WorkspaceHubNavItem extends StatelessWidget {
                   ),
                   const SizedBox(width: 16),
                   Expanded(
-                    child: Text(
-                      title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style:
-                          (hubStyle
-                                  ? AppTextStyles.of(context).sectionTitle
-                                  : AppTextStyles.of(context).body)
-                              .copyWith(
-                                fontWeight: hubStyle
-                                    ? FontWeight.w600
-                                    : FontWeight.w500,
-                                color: selected ? selectedFg : normalFg,
-                              ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style:
+                                (hubStyle
+                                        ? AppTextStyles.of(context).sectionTitle
+                                        : AppTextStyles.of(context).body)
+                                    .copyWith(
+                                      fontWeight: hubStyle
+                                          ? FontWeight.w600
+                                          : FontWeight.w500,
+                                      color: selected ? selectedFg : normalFg,
+                                    ),
+                          ),
+                        ),
+                        if (showLeaderBadge) ...[
+                          const SizedBox(width: 6),
+                          const TeamLeadBadge(compact: true),
+                        ],
+                      ],
                     ),
                   ),
                   if (trailing != null)
@@ -222,6 +237,7 @@ class WorkspaceHubNavList extends StatelessWidget {
         selected: entry.selected,
         hubStyle: hubStyle,
         trailingIcon: entry.trailingIcon,
+        showLeaderBadge: entry.showLeaderBadge,
         density: entry.density,
         onTap: entry.onTap,
       );

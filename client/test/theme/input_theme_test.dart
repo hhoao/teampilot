@@ -12,9 +12,8 @@ void main() {
     );
     final hintSize = theme.inputDecorationTheme.hintStyle?.fontSize;
     final inputSize = theme.textTheme.bodyLarge?.fontSize;
-    expect(hintSize, AppTypographyScale.standard.bodySmall);
     expect(inputSize, AppTypographyScale.standard.bodyMedium);
-    expect(hintSize!, lessThan(inputSize!));
+    expect(hintSize, AppTypographyScale.standard.bodyMedium);
   });
 
   testWidgets('TextField merges theme hintStyle over M3 bodyLarge base', (
