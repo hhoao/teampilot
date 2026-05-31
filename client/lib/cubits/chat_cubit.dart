@@ -615,7 +615,15 @@ class ChatCubit extends Cubit<ChatState> {
                 _clearLaunchError(info.id);
                 _finishSessionConnect(info.id);
                 if (repo == null) return;
-                unawaited(_persistSessionStarted(repo, session.sessionId));
+                unawaited(
+                  _persistSessionStarted(repo, session.sessionId).onError(
+                    (e, st) => appLogger.w(
+                      '[session] persist after start failed: $e',
+                      error: e,
+                      stackTrace: st,
+                    ),
+                  ),
+                );
               },
             );
           }
@@ -837,7 +845,15 @@ class ChatCubit extends Cubit<ChatState> {
         _finishSessionConnect(tab.info.id);
         final r = repo ?? _sessionRepository;
         if (r != null && !activeSession.sessionId.startsWith('local-')) {
-          unawaited(_persistSessionStarted(r, activeSession.sessionId));
+          unawaited(
+            _persistSessionStarted(r, activeSession.sessionId).onError(
+              (e, st) => appLogger.w(
+                '[session] persist after start failed: $e',
+                error: e,
+                stackTrace: st,
+              ),
+            ),
+          );
         }
       },
     );
