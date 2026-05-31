@@ -367,12 +367,14 @@ Future<void> _createProject(BuildContext context) async {
   closeAndroidDrawerIfOpen(context);
   final draft = await showCreateProjectDialog(context);
   if (draft == null || !context.mounted) return;
-  final teamId = context.read<TeamCubit>().state.selectedTeam?.id ?? '';
+  final team = context.read<TeamCubit>().state.selectedTeam;
+  final teamId = team?.id ?? '';
   try {
     await context.read<ChatCubit>().createProjectWithFirstSession(
       draft.primaryPath,
       context.read<SessionRepository>(),
       sessionTeamId: teamId,
+      rosterMembers: team?.members ?? const [],
       additionalPaths: draft.additionalPaths,
       display: draft.display,
     );
