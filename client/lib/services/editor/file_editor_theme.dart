@@ -18,34 +18,134 @@ import '../../theme/app_fonts.dart';
 import '../../theme/app_typography_scale.dart';
 import '../../theme/workspace_surface_layers.dart';
 
-/// Extensions treated as non-text for in-app editing.
-const kEditorBinaryExtensions = {
-  'png',
-  'jpg',
-  'jpeg',
-  'gif',
-  'webp',
-  'ico',
-  'zip',
-  'gz',
-  'tar',
-  'bz2',
-  'xz',
-  '7z',
-  'exe',
-  'dll',
-  'so',
-  'dylib',
-  'woff',
-  'woff2',
-  'ttf',
-  'otf',
-  'pdf',
-  'bin',
+/// Extensions we treat as plain text for in-app editing (allowlist).
+///
+/// Everything else opens with the system default app. Safer than a binary
+/// blocklist: unknown formats (Office, media, …) never look "editable".
+const kEditorTextExtensions = {
+  // Highlighted in [highlightLanguageKeyForPath].
+  'dart',
+  'json',
+  'yaml',
+  'yml',
+  'md',
+  'markdown',
+  'py',
+  'rs',
+  'ts',
+  'tsx',
+  'js',
+  'jsx',
+  'mjs',
+  'cjs',
+  'sh',
+  'bash',
+  'zsh',
+  'fish',
+  'xml',
+  'html',
+  'htm',
+  'xhtml',
+  'toml',
+  'css',
+  'scss',
+  'sass',
+  'less',
+  // Other common text / code (no dedicated highlighter).
+  'txt',
+  'text',
+  'log',
+  'csv',
+  'tsv',
+  'sql',
+  'c',
+  'h',
+  'cc',
+  'cpp',
+  'cxx',
+  'hpp',
+  'hh',
+  'go',
+  'mod',
+  'sum',
+  'java',
+  'kt',
+  'kts',
+  'swift',
+  'rb',
+  'erb',
+  'php',
+  'vue',
+  'svelte',
+  'lua',
+  'zig',
+  'hs',
+  'elm',
+  'clj',
+  'cljs',
+  'ex',
+  'exs',
+  'ml',
+  'mli',
+  'fs',
+  'fsx',
+  'r',
+  'pl',
+  'pm',
+  'awk',
+  'gradle',
+  'groovy',
+  'tf',
+  'hcl',
+  'ini',
+  'cfg',
+  'conf',
+  'config',
+  'properties',
+  'env',
+  'plist',
+  'svg',
+  'graphql',
+  'gql',
+  'proto',
+  'cmake',
+  'ninja',
+  'lock',
+  'patch',
+  'diff',
+};
+
+/// Extensionless files that are still plain text (checked case-insensitively).
+const kEditorTextBasenames = {
+  'dockerfile',
+  'containerfile',
+  'makefile',
+  'gnumakefile',
+  'cmakelists.txt',
+  'license',
+  'licence',
+  'readme',
+  'changelog',
+  'gemfile',
+  'rakefile',
+  'procfile',
+  'vagrantfile',
+  'brewfile',
+  'justfile',
 };
 
 /// Maximum file size loaded into the editor (bytes).
 const kEditorMaxFileBytes = 2 * 1024 * 1024;
+
+/// Whether [filePath] should open in the in-app text editor.
+bool isEditorOpenableFilePath(String filePath) {
+  final ext = p.extension(filePath).replaceFirst('.', '').toLowerCase();
+  if (ext.isNotEmpty) {
+    return kEditorTextExtensions.contains(ext);
+  }
+  final base = p.basename(filePath).toLowerCase();
+  return kEditorTextBasenames.contains(base);
+}
 
 String? highlightLanguageKeyForPath(String filePath) {
   final ext = p.extension(filePath).replaceFirst('.', '').toLowerCase();

@@ -128,8 +128,7 @@ class EditorCubit extends Cubit<EditorState> {
       return;
     }
 
-    final ext = p.extension(normalized).replaceFirst('.', '').toLowerCase();
-    if (kEditorBinaryExtensions.contains(ext)) {
+    if (!isEditorOpenableFilePath(normalized)) {
       emit(
         state.copyWith(
           snackbarMessage: EditorMessage.binaryFile,

@@ -173,10 +173,8 @@ abstract final class TerminalUriOpener {
     return _openFilePath(resolved);
   }
 
-  static bool _shouldOpenInEditor(String path) {
-    final ext = p.extension(path).replaceFirst('.', '').toLowerCase();
-    return !kEditorBinaryExtensions.contains(ext);
-  }
+  static bool _shouldOpenInEditor(String path) =>
+      isEditorOpenableFilePath(path);
 
   static Future<bool> _openFilePath(String path) async {
     if (path.isEmpty) return false;

@@ -6,7 +6,6 @@ import 'package:flutter/material.dart';
 import '../theme/app_text_styles.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:path/path.dart' as p;
 
 import '../cubits/editor_cubit.dart';
 import '../cubits/file_tree_cubit.dart';
@@ -50,13 +49,22 @@ class FileTreeNode extends StatelessWidget {
     final isDir = entry.isDirectory;
     final isExpanded = cubit.state.expandedPaths.contains(path);
     final isActive = _isActiveEditorFile(context);
+    final canOpenInEditor = !isDir && isEditorOpenableFilePath(path);
     final cs = Theme.of(context).colorScheme;
     final labelColor = isActive
         ? cs.onSecondaryContainer
-        : textColor.withValues(alpha: 0.8);
+        : isDir
+        ? textColor.withValues(alpha: 0.8)
+        : canOpenInEditor
+        ? textColor.withValues(alpha: 0.92)
+        : cs.onSurfaceVariant.withValues(alpha: 0.52);
     final iconMuted = isActive
         ? cs.onSecondaryContainer.withValues(alpha: 0.7)
-        : textColor.withValues(alpha: 0.6);
+        : isDir
+        ? textColor.withValues(alpha: 0.6)
+        : canOpenInEditor
+        ? textColor.withValues(alpha: 0.65)
+        : cs.onSurfaceVariant.withValues(alpha: 0.45);
 
     return GestureDetector(
       onTap: () {
@@ -155,8 +163,7 @@ class FileTreeNode extends StatelessWidget {
   }
 
   void _openFile(BuildContext context, String filePath) {
-    final ext = p.extension(filePath).replaceFirst('.', '').toLowerCase();
-    if (kEditorBinaryExtensions.contains(ext)) {
+    if (!isEditorOpenableFilePath(filePath)) {
       _openFileExternally(filePath);
       return;
     }
