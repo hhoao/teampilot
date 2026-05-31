@@ -18,7 +18,8 @@ import '../services/terminal/terminal_theme_mapper.dart';
 import '../services/terminal/terminal_uri_opener.dart';
 import '../services/terminal/workspace_interactive_shell.dart';
 import '../utils/app_keys.dart';
-import '../utils/context_menu_position.dart';
+import 'app_icon_button.dart';
+import 'menu/sidebar_action_menu.dart';
 import 'split_layout.dart';
 
 const _uuid = Uuid();
@@ -195,28 +196,38 @@ class _WorkspaceTerminalPanelState extends State<WorkspaceTerminalPanel> {
     final linkUri = cellOffset != null
         ? tab.session.engine.hyperlinkAt(cellOffset.row, cellOffset.column)
         : null;
-    final entries = <PopupMenuEntry<String>>[
+    final specs = <SidebarActionMenuSpec>[
       if (linkUri != null)
-        PopupMenuItem(
+        SidebarActionMenuSpec.item(
           value: 'openLink',
-          child: Text(context.l10n.terminalOpenLink),
+          icon: Icons.link,
+          label: context.l10n.terminalOpenLink,
         ),
-      const PopupMenuDivider(),
-      PopupMenuItem(value: 'paste', child: Text(mloc.pasteButtonLabel)),
-      PopupMenuItem(
-        value: 'copy',
-        enabled: hasSelection,
-        child: Text(mloc.copyButtonLabel),
+      if (linkUri != null) const SidebarActionMenuSpec.divider(),
+      SidebarActionMenuSpec.item(
+        value: 'paste',
+        icon: Icons.content_paste,
+        label: mloc.pasteButtonLabel,
       ),
-      PopupMenuItem(value: 'selectAll', child: Text(mloc.selectAllButtonLabel)),
+      SidebarActionMenuSpec.item(
+        value: 'copy',
+        icon: Icons.content_copy,
+        label: mloc.copyButtonLabel,
+        enabled: hasSelection,
+      ),
+      SidebarActionMenuSpec.item(
+        value: 'selectAll',
+        icon: Icons.select_all,
+        label: mloc.selectAllButtonLabel,
+      ),
     ];
 
-    final selected = await showMenu<String>(
+    final selected = await showSidebarActionMenuFromSpecs<String>(
       context: menuContext,
-      position: contextMenuPositionForGlobal(menuContext, globalPosition),
+      globalPosition: globalPosition,
       useRootNavigator: true,
       popUpAnimationStyle: const AnimationStyle(duration: Duration.zero),
-      items: entries,
+      specs: specs,
     );
     if (!menuContext.mounted) return;
     switch (selected) {
@@ -413,27 +424,19 @@ class _WorkspaceTerminalSessionSidebar extends StatelessWidget {
                       ),
                     ),
                   ),
-                  IconButton(
+                  AppIconButton(
+                    icon: Icons.add,
+                    color: muted,
+                    size: AppIconButton.kCompactSize,
                     tooltip: l10n.workspaceTerminalNewSession,
-                    icon: Icon(Icons.add, size: 18, color: muted),
-                    onPressed: onNewTab,
-                    visualDensity: VisualDensity.compact,
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(
-                      minWidth: 28,
-                      minHeight: 28,
-                    ),
+                    onTap: onNewTab,
                   ),
-                  IconButton(
+                  AppIconButton(
+                    icon: Icons.close,
+                    color: muted,
+                    size: AppIconButton.kCompactSize,
                     tooltip: l10n.workspaceTerminalClose,
-                    icon: Icon(Icons.close, size: 18, color: muted),
-                    onPressed: onClosePanel,
-                    visualDensity: VisualDensity.compact,
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(
-                      minWidth: 28,
-                      minHeight: 28,
-                    ),
+                    onTap: onClosePanel,
                   ),
                 ],
               ),
@@ -475,19 +478,13 @@ class _WorkspaceTerminalSessionSidebar extends StatelessWidget {
                                   ),
                             ),
                           ),
-                          SizedBox(
-                            width: 28,
-                            height: 28,
-                            child: IconButton(
-                              tooltip: l10n.workspaceTerminalCloseSession,
-                              padding: EdgeInsets.zero,
-                              icon: Icon(
-                                Icons.close,
-                                size: 14,
-                                color: itemColor,
-                              ),
-                              onPressed: () => onCloseTab(tab.id),
-                            ),
+                          AppIconButton(
+                            icon: Icons.close,
+                            iconSize: 14,
+                            color: itemColor,
+                            size: AppIconButton.kCompactSize,
+                            tooltip: l10n.workspaceTerminalCloseSession,
+                            onTap: () => onCloseTab(tab.id),
                           ),
                         ],
                       ),

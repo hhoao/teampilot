@@ -82,7 +82,7 @@ final class AppTypographyScale {
 
   /// xterm / bundled terminal face (not [TextTheme]).
   static const double terminalBase = 14;
-  static const double terminalMultiplier = 1.2;
+  static const double terminalMultiplier = 1.0;
 
   /// Code editor & log viewer monospace (defaults to body medium).
   static const double monoBase = bodyMediumBase;

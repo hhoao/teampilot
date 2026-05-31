@@ -464,6 +464,7 @@ void main() {
     expect(env.keys, [
       'CLAUDE_CONFIG_DIR',
       'CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS',
+      'CLAUDE_CODE_NO_FLICKER',
     ]);
     expect(env['CLAUDE_CONFIG_DIR'], claudeDir);
 

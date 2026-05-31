@@ -7,8 +7,8 @@ import 'package:go_router/go_router.dart';
 import '../cubits/session_preferences_cubit.dart';
 import '../cubits/ssh_profile_cubit.dart';
 import '../l10n/l10n_extensions.dart';
-import '../models/ssh_profile.dart';
 import '../services/app/connection_mode_service.dart';
+import 'menu/sidebar_action_menu.dart';
 
 /// Android app-bar control: shows the active SSH server and switches profiles.
 class AndroidSshProfileSelector extends StatelessWidget {
@@ -32,80 +32,74 @@ class AndroidSshProfileSelector extends StatelessWidget {
     final selected = sshState.selectedProfile ?? sshState.profiles.first;
     final l10n = context.l10n;
 
-    return PopupMenuButton<String>(
-      tooltip: l10n.sshProfileSelectorTooltip,
-      onSelected: (value) {
-        if (value == _manageProfilesValue) {
-          context.go('/config/ssh-profiles');
-          return;
-        }
-        context.read<SshProfileCubit>().selectProfile(value);
-      },
-      itemBuilder: (context) => [
-        ...sshState.profiles.map(
-          (profile) => _profileMenuItem(context, profile, selected.id),
-        ),
-        const PopupMenuDivider(),
-        PopupMenuItem(
-          value: _manageProfilesValue,
-          child: Row(
-            children: [
-              const Icon(Icons.settings_outlined, size: 20),
-              const SizedBox(width: 12),
-              Expanded(child: Text(l10n.sshProfileSelectorManage)),
-            ],
-          ),
-        ),
-      ],
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.dns_outlined, size: 20),
-            const SizedBox(width: 4),
-            ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 140),
-              child: Text(
-                selected.name,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.titleSmall,
-              ),
-            ),
-            const Icon(Icons.arrow_drop_down),
-          ],
-        ),
-      ),
-    );
-  }
-
-  PopupMenuItem<String> _profileMenuItem(
-    BuildContext context,
-    SshProfile profile,
-    String selectedId,
-  ) {
-    final selected = profile.id == selectedId;
-    return PopupMenuItem(
-      value: profile.id,
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+    return SidebarActionMenuIconAnchor(
+      minWidth: 260,
+      triggerBuilder: (context, controller) {
+        return InkWell(
+          onTap: () {
+            if (controller.isOpen) {
+              controller.close();
+            } else {
+              controller.open();
+            }
+          },
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(profile.name),
-                Text(
-                  profile.hostIdentifier,
-                  style: AppTextStyles.of(context).bodySmall,
+                const Icon(Icons.dns_outlined, size: 20),
+                const SizedBox(width: 4),
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 140),
+                  child: Text(
+                    selected.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.titleSmall,
+                  ),
                 ),
+                const Icon(Icons.arrow_drop_down),
               ],
             ),
           ),
-          if (selected) const Icon(Icons.check, size: 18),
-        ],
-      ),
+        );
+      },
+      buildMenuChildren: (context, controller) {
+        final specs = <SidebarActionMenuSpec>[
+          for (final profile in sshState.profiles)
+            SidebarActionMenuSpec.item(
+              value: profile.id,
+              icon: Icons.dns_outlined,
+              label: profile.name,
+              subtitle: Text(
+                profile.hostIdentifier,
+                style: AppTextStyles.of(context).bodySmall,
+              ),
+              selected: profile.id == selected.id,
+            ),
+          const SidebarActionMenuSpec.divider(),
+          SidebarActionMenuSpec.item(
+            value: _manageProfilesValue,
+            icon: Icons.settings_outlined,
+            label: l10n.sshProfileSelectorManage,
+          ),
+        ];
+        return buildSidebarActionMenuChildren(
+          context: context,
+          specs: specs,
+          menuController: controller,
+          onSelect: (value) {
+            if (value == _manageProfilesValue) {
+              context.go('/config/ssh-profiles');
+              return;
+            }
+            if (value is String) {
+              context.read<SshProfileCubit>().selectProfile(value);
+            }
+          },
+        );
+      },
     );
   }
 }

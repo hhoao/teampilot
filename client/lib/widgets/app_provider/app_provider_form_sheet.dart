@@ -10,8 +10,8 @@ import '../../models/provider_presets/codex_provider_presets.dart';
 import '../../models/provider_presets/flashskyai_provider_presets.dart';
 import '../../theme/workspace_surface_layers.dart';
 import '../../utils/debounce/debounce.dart';
-import '../dropdown/flashsky_dropdown_field.dart';
-import '../dropdown/flashskyai_dropdown_decoration.dart';
+import '../app_icon_button.dart';
+import '../dropdown/app_dropdown_field.dart';
 
 List<AppProviderPreset> appProviderPresetsFor(AppProviderCli cli) {
   return switch (cli) {
@@ -271,9 +271,6 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
                     child: FlashskyDropdownField<AppProviderCli>(
                       items: AppProviderCli.values,
                       initialItem: widget.cli,
-                      decoration: FlashskyDropdownDecorations.denseField(
-                        context,
-                      ),
                       itemLabel: l10n.appProviderCliLabel,
                       onChanged: (cli) {
                         if (cli != null && cli != widget.cli) {
@@ -282,10 +279,10 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
                       },
                     ),
                   ),
-                IconButton(
+                AppIconButton(
+                  icon: Icons.close,
                   tooltip: l10n.cancel,
-                  onPressed: widget.onCancel,
-                  icon: const Icon(Icons.close),
+                  onTap: widget.onCancel,
                 ),
               ],
             ),
@@ -303,7 +300,6 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
                   key: ValueKey('app-provider-preset-${widget.cli.value}'),
                   items: presetItems,
                   initialItem: _effectiveItem(_presetId, presetItems),
-                  decoration: FlashskyDropdownDecorations.denseField(context),
                   itemLabel: (id) {
                     if (id == 'custom') return l10n.appProviderPresetCustom;
                     return appProviderPresetsFor(widget.cli)
@@ -516,7 +512,6 @@ class _ClaudeAdvancedOptions extends StatelessWidget {
           FlashskyDropdownField<String>(
             items: _claudeApiFormats,
             initialItem: _effectiveItem(apiFormat, _claudeApiFormats),
-            decoration: FlashskyDropdownDecorations.denseField(context),
             itemLabel: l10n.appProviderClaudeApiFormatOption,
             onChanged: (value) {
               if (value != null) onApiFormatChanged(value);
@@ -535,7 +530,6 @@ class _ClaudeAdvancedOptions extends StatelessWidget {
           FlashskyDropdownField<String>(
             items: _claudeApiKeyFields,
             initialItem: _effectiveItem(apiKeyField, _claudeApiKeyFields),
-            decoration: FlashskyDropdownDecorations.denseField(context),
             itemLabel: l10n.appProviderClaudeAuthFieldOption,
             onChanged: (value) {
               if (value != null) onApiKeyFieldChanged(value);

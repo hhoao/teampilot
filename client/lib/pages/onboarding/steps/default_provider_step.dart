@@ -10,8 +10,8 @@ import '../../../services/app/onboarding_service.dart';
 import '../../../models/app_provider_config.dart';
 import '../../../services/provider/claude_official_provider.dart';
 import '../../../utils/app_provider_model_candidates.dart';
-import '../../../widgets/dropdown/flashsky_dropdown_field.dart';
-import '../../../widgets/dropdown/flashskyai_dropdown_decoration.dart';
+import '../../../widgets/dropdown/app_dropdown_field.dart';
+import '../../../widgets/dropdown/app_dropdown_decoration.dart';
 import '../../../widgets/settings/workspace_settings_widgets.dart';
 
 class OnboardingDefaultProviderStep extends StatefulWidget {
@@ -44,8 +44,10 @@ class _OnboardingDefaultProviderStepState
     super.dispose();
   }
 
-  List<AppProviderConfig> get _providers =>
-      context.read<AppProviderCubit>().state.providersFor(AppProviderCli.claude);
+  List<AppProviderConfig> get _providers => context
+      .read<AppProviderCubit>()
+      .state
+      .providersFor(AppProviderCli.claude);
 
   AppProviderConfig? get _selectedProvider {
     final id = _selectedProviderId;
@@ -64,8 +66,10 @@ class _OnboardingDefaultProviderStepState
   void _syncFromCubit() {
     final cubit = context.read<AppProviderCubit>();
     final providers = cubit.state.providersFor(AppProviderCli.claude);
-    final selectedId = cubit.state.selectedProviderIdByCli[AppProviderCli.claude];
-    final initialId = selectedId != null && providers.any((p) => p.id == selectedId)
+    final selectedId =
+        cubit.state.selectedProviderIdByCli[AppProviderCli.claude];
+    final initialId =
+        selectedId != null && providers.any((p) => p.id == selectedId)
         ? selectedId
         : providers.firstOrNull?.id;
     _selectedProviderId = initialId;
@@ -112,10 +116,7 @@ class _OnboardingDefaultProviderStepState
     await cubit.upsertProvider(
       provider.copyWith(
         defaultModel: isOfficial ? '' : _defaultModel.trim(),
-        config: {
-          ...provider.config,
-          if (env.isNotEmpty) 'env': env,
-        },
+        config: {...provider.config, if (env.isNotEmpty) 'env': env},
       ),
     );
     if (!mounted) return;
@@ -157,12 +158,13 @@ class _OnboardingDefaultProviderStepState
             selectedProvider,
             currentModel: _defaultModel,
           );
-    final showClaudeModels = _haikuController.text.isNotEmpty ||
+    final showClaudeModels =
+        _haikuController.text.isNotEmpty ||
         _sonnetController.text.isNotEmpty ||
         _opusController.text.isNotEmpty ||
         _readEnv(selectedProvider).isNotEmpty;
     final showModelSection = !hideModelPicker;
-    final dropdownDeco = FlashskyDropdownDecorations.settingsCompact(context);
+    final dropdownDeco = AppDropdownDecorations.themed(context);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -221,13 +223,18 @@ class _OnboardingDefaultProviderStepState
                   body: modelNames.isEmpty
                       ? Text(
                           l10n.selectModel,
-                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: Theme.of(context).colorScheme.onSurfaceVariant,
-                          ),
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurfaceVariant,
+                              ),
                         )
                       : FlashskyDropdownField<String>(
                           items: modelNames,
-                          initialItem: _defaultModel.isEmpty ? null : _defaultModel,
+                          initialItem: _defaultModel.isEmpty
+                              ? null
+                              : _defaultModel,
                           hintText: l10n.selectModel,
                           decoration: dropdownDeco,
                           onChanged: (value) {

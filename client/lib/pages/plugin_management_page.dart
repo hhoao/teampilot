@@ -16,7 +16,7 @@ import '../utils/debounce/debounce.dart';
 import '../utils/github_source_url.dart';
 import '../utils/skill_repo_parse.dart';
 import '../widgets/github_details_button.dart';
-import '../widgets/dropdown/flashsky_dropdown_field.dart';
+import '../widgets/dropdown/app_dropdown_field.dart';
 import '../widgets/settings/workspace_hub_shell.dart';
 import '../widgets/settings/workspace_section_host.dart';
 import '../widgets/settings/workspace_section_navigation.dart';
@@ -423,9 +423,9 @@ class _ImportUnmanagedPluginsDialogState
             children: [
               Text(
                 l10n.pluginsImportTitle,
-                style: AppTextStyles.of(context).body.copyWith(
-                  fontWeight: FontWeight.w800,
-                ),
+                style: AppTextStyles.of(
+                  context,
+                ).body.copyWith(fontWeight: FontWeight.w800),
               ),
               const SizedBox(height: 12),
               Flexible(
@@ -511,18 +511,17 @@ class _EmptyPluginBlock extends StatelessWidget {
         const SizedBox(height: 12),
         Text(
           title,
-          style: AppTextStyles.of(context).subtitle.copyWith(
-            fontWeight: FontWeight.w700,
-            color: textBase,
-          ),
+          style: AppTextStyles.of(
+            context,
+          ).subtitle.copyWith(fontWeight: FontWeight.w700, color: textBase),
         ),
         const SizedBox(height: 8),
         Text(
           hint,
           textAlign: TextAlign.center,
-          style: AppTextStyles.of(context).body.copyWith(
-            color: textBase.withValues(alpha: 0.55),
-          ),
+          style: AppTextStyles.of(
+            context,
+          ).body.copyWith(color: textBase.withValues(alpha: 0.55)),
         ),
         const SizedBox(height: 16),
         FilledButton.tonal(onPressed: onAction, child: Text(actionLabel)),
@@ -568,9 +567,9 @@ class _InstalledPluginRow extends StatelessWidget {
                     Flexible(
                       child: Text(
                         plugin.name,
-                        style: AppTextStyles.of(context).bodyStrong.copyWith(
-                          color: textBase,
-                        ),
+                        style: AppTextStyles.of(
+                          context,
+                        ).bodyStrong.copyWith(color: textBase),
                       ),
                     ),
                     if (plugin.version.isNotEmpty) ...[
@@ -970,9 +969,9 @@ class _DiscoverablePluginCard extends StatelessWidget {
                     Flexible(
                       child: Text(
                         plugin.name,
-                        style: AppTextStyles.of(context).bodyStrong.copyWith(
-                          color: textBase,
-                        ),
+                        style: AppTextStyles.of(
+                          context,
+                        ).bodyStrong.copyWith(color: textBase),
                       ),
                     ),
                     if (plugin.version.isNotEmpty) ...[
@@ -1001,9 +1000,9 @@ class _DiscoverablePluginCard extends StatelessWidget {
                   const SizedBox(height: 4),
                   Text(
                     plugin.marketplaceFullName,
-                    style: AppTextStyles.of(context).caption.copyWith(
-                      color: textBase.withValues(alpha: 0.35),
-                    ),
+                    style: AppTextStyles.of(
+                      context,
+                    ).caption.copyWith(color: textBase.withValues(alpha: 0.35)),
                   ),
                 ],
               ],
@@ -1072,9 +1071,9 @@ class _MarketplacesSection extends StatelessWidget {
                     Expanded(
                       child: Text(
                         l10n.pluginsNavMarketplaces,
-                        style: AppTextStyles.of(context).sectionTitle.copyWith(
-                          fontWeight: FontWeight.w800,
-                        ),
+                        style: AppTextStyles.of(
+                          context,
+                        ).sectionTitle.copyWith(fontWeight: FontWeight.w800),
                       ),
                     ),
                     FilledButton.tonalIcon(
@@ -1199,9 +1198,9 @@ class _MarketplaceRow extends StatelessWidget {
                     Flexible(
                       child: Text(
                         marketplace.displayName ?? marketplace.fullName,
-                        style: AppTextStyles.of(context).bodyStrong.copyWith(
-                          color: textBase,
-                        ),
+                        style: AppTextStyles.of(
+                          context,
+                        ).bodyStrong.copyWith(color: textBase),
                       ),
                     ),
                   ],
@@ -1209,15 +1208,15 @@ class _MarketplaceRow extends StatelessWidget {
                 const SizedBox(height: 2),
                 Text(
                   marketplace.githubUrl,
-                    style: AppTextStyles.of(context).caption.copyWith(
-                      color: textBase.withValues(alpha: 0.4),
-                    ),
+                  style: AppTextStyles.of(
+                    context,
+                  ).caption.copyWith(color: textBase.withValues(alpha: 0.4)),
                 ),
                 Text(
                   'branch: ${marketplace.branch}',
-                  style: AppTextStyles.of(context).caption.copyWith(
-                    color: textBase.withValues(alpha: 0.35),
-                  ),
+                  style: AppTextStyles.of(
+                    context,
+                  ).caption.copyWith(color: textBase.withValues(alpha: 0.35)),
                 ),
               ],
             ),

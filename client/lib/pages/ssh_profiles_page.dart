@@ -7,6 +7,7 @@ import '../repositories/ssh_credential_store.dart';
 import '../repositories/ssh_profile_repository.dart';
 import '../services/ssh/ssh_profile_connection_tester.dart';
 import '../services/terminal/terminal_transport_factory.dart';
+import '../widgets/menu/sidebar_action_menu.dart';
 import 'ssh_profile_setup_page.dart';
 
 class SshProfilesPage extends StatelessWidget {
@@ -90,19 +91,28 @@ class _SshProfilesBody extends StatelessWidget {
             onTap: () {
               context.read<SshProfileCubit>().selectProfile(profile.id);
             },
-            trailing: PopupMenuButton<_ProfileAction>(
+            trailing: SidebarActionMenuButton(
+              specs: const [
+                SidebarActionMenuSpec.item(
+                  value: _ProfileAction.edit,
+                  icon: Icons.edit_outlined,
+                  label: '编辑',
+                ),
+                SidebarActionMenuSpec.item(
+                  value: _ProfileAction.delete,
+                  icon: Icons.delete_outline,
+                  label: '删除',
+                  destructive: true,
+                ),
+              ],
               onSelected: (action) {
-                switch (action) {
+                switch (action as _ProfileAction) {
                   case _ProfileAction.edit:
                     onEdit(profile);
                   case _ProfileAction.delete:
                     onDelete(profile);
                 }
               },
-              itemBuilder: (context) => const [
-                PopupMenuItem(value: _ProfileAction.edit, child: Text('编辑')),
-                PopupMenuItem(value: _ProfileAction.delete, child: Text('删除')),
-              ],
             ),
           );
         },

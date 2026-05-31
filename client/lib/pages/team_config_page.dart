@@ -29,8 +29,8 @@ import '../utils/team_member_naming.dart';
 import '../widgets/github_details_button.dart';
 import '../widgets/app_provider/team_tool_provider_selectors.dart';
 import '../widgets/settings/workspace_settings_widgets.dart';
-import '../widgets/dropdown/flashsky_dropdown_field.dart';
-import '../widgets/dropdown/flashskyai_dropdown_decoration.dart';
+import '../widgets/dropdown/app_dropdown_field.dart';
+import '../widgets/dropdown/app_dropdown_decoration.dart';
 import '../widgets/settings/workspace_hub_shell.dart';
 import '../widgets/settings/workspace_section_navigation.dart';
 import '../widgets/settings/workspace_section_host.dart';
@@ -84,7 +84,9 @@ String memberRoutePath(String basePath, String memberId) =>
     '$basePath/members/$memberId';
 
 AppProviderCli? _catalogCliForTeam(BuildContext context, TeamCli cli) =>
-    CliToolRegistryScope.maybeOf(context)?.tryGet(cli.value)?.providerCatalogCli;
+    CliToolRegistryScope.maybeOf(
+      context,
+    )?.tryGet(cli.value)?.providerCatalogCli;
 
 String _teamCliDisplayLabel(
   BuildContext context,
@@ -322,10 +324,7 @@ class _TeamConfigNavPanel extends StatelessWidget {
             icon: s.icon,
             selected: section == s,
             density: WorkspaceHubNavDensity.relaxed,
-            onTap: throttledTap(
-              'team_config_nav_${s.name}',
-              () => onSelect(s),
-            ),
+            onTap: throttledTap('team_config_nav_${s.name}', () => onSelect(s)),
           ),
       ],
       trailingChildren: [
@@ -432,18 +431,17 @@ class _CardHeader extends StatelessWidget {
       children: [
         Text(
           title,
-          style: AppTextStyles.of(context).sectionTitle.copyWith(
-            fontWeight: FontWeight.w800,
-            color: textBase,
-          ),
+          style: AppTextStyles.of(
+            context,
+          ).sectionTitle.copyWith(fontWeight: FontWeight.w800, color: textBase),
         ),
         if (subtitle != null) ...[
           const SizedBox(height: 6),
           Text(
             subtitle!,
-            style: AppTextStyles.of(context).body.copyWith(
-              color: textBase.withValues(alpha: 0.64),
-            ),
+            style: AppTextStyles.of(
+              context,
+            ).body.copyWith(color: textBase.withValues(alpha: 0.64)),
           ),
         ],
       ],
@@ -561,18 +559,17 @@ class _TeamSkillsEmptyBlock extends StatelessWidget {
           const SizedBox(height: 12),
           Text(
             l10n.skillsNoInstalled,
-            style: AppTextStyles.of(context).body.copyWith(
-              fontWeight: FontWeight.w700,
-              color: textBase,
-            ),
+            style: AppTextStyles.of(
+              context,
+            ).body.copyWith(fontWeight: FontWeight.w700, color: textBase),
           ),
           const SizedBox(height: 6),
           Text(
             l10n.skillsNoInstalledHint,
             textAlign: TextAlign.center,
-            style: AppTextStyles.of(context).bodySmall.copyWith(
-              color: textBase.withValues(alpha: 0.55),
-            ),
+            style: AppTextStyles.of(
+              context,
+            ).bodySmall.copyWith(color: textBase.withValues(alpha: 0.55)),
           ),
           const SizedBox(height: 14),
           OutlinedButton.icon(
@@ -680,8 +677,9 @@ class _TeamMcpSection extends StatelessWidget {
     final textBase = isDark ? Colors.white : const Color(0xFF111827);
     final mcpState = context.watch<McpCubit>().state;
     final enabled = mcpState.servers.where((s) => s.enabled).toList();
-    final assignedCount =
-        enabled.where((s) => team.mcpServerIds.contains(s.id)).length;
+    final assignedCount = enabled
+        .where((s) => team.mcpServerIds.contains(s.id))
+        .length;
 
     return SingleChildScrollView(
       child: Column(
@@ -709,7 +707,9 @@ class _TeamMcpSection extends StatelessWidget {
                     child: Center(
                       child: Text(
                         l10n.mcpEmpty,
-                        style: TextStyle(color: textBase.withValues(alpha: 0.6)),
+                        style: TextStyle(
+                          color: textBase.withValues(alpha: 0.6),
+                        ),
                       ),
                     ),
                   )
@@ -764,9 +764,9 @@ class _TeamMcpRow extends StatelessWidget {
                 children: [
                   Text(
                     server.name,
-                    style: AppTextStyles.of(context).body.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
+                    style: AppTextStyles.of(
+                      context,
+                    ).body.copyWith(fontWeight: FontWeight.w700),
                   ),
                   Text(
                     server.server['type']?.toString() ?? 'stdio',
@@ -808,8 +808,9 @@ class _TeamPluginsSection extends StatelessWidget {
     final assignedCount = installed
         .where((p) => team.pluginIds.contains(p.id))
         .length;
-    final teamToolDef =
-        CliToolRegistryScope.maybeOf(context)?.tryGet(team.cli.value);
+    final teamToolDef = CliToolRegistryScope.maybeOf(
+      context,
+    )?.tryGet(team.cli.value);
     final codexUnsupported = teamToolDef?.isLaunchSupported == false;
 
     return SingleChildScrollView(
@@ -822,9 +823,9 @@ class _TeamPluginsSection extends StatelessWidget {
               child: _Card(
                 child: Text(
                   l10n.teamPluginsCliUnsupportedBanner,
-                  style: AppTextStyles.of(context).body.copyWith(
-                    color: textBase.withValues(alpha: 0.6),
-                  ),
+                  style: AppTextStyles.of(
+                    context,
+                  ).body.copyWith(color: textBase.withValues(alpha: 0.6)),
                 ),
               ),
             ),
@@ -934,18 +935,17 @@ class _TeamPluginsEmptyBlock extends StatelessWidget {
           const SizedBox(height: 12),
           Text(
             l10n.teamPluginsEmpty,
-            style: AppTextStyles.of(context).body.copyWith(
-              fontWeight: FontWeight.w700,
-              color: textBase,
-            ),
+            style: AppTextStyles.of(
+              context,
+            ).body.copyWith(fontWeight: FontWeight.w700, color: textBase),
           ),
           const SizedBox(height: 6),
           Text(
             l10n.teamPluginsEmptyHint,
             textAlign: TextAlign.center,
-            style: AppTextStyles.of(context).bodySmall.copyWith(
-              color: textBase.withValues(alpha: 0.55),
-            ),
+            style: AppTextStyles.of(
+              context,
+            ).bodySmall.copyWith(color: textBase.withValues(alpha: 0.55)),
           ),
           const SizedBox(height: 14),
           OutlinedButton.icon(
@@ -1113,9 +1113,9 @@ class _TeamMissingPluginRow extends StatelessWidget {
                   const SizedBox(height: 4),
                   Text(
                     l10n.teamPluginsMissingLabel,
-                    style: AppTextStyles.of(context).caption.copyWith(
-                      color: cs.error.withValues(alpha: 0.85),
-                    ),
+                    style: AppTextStyles.of(
+                      context,
+                    ).caption.copyWith(color: cs.error.withValues(alpha: 0.85)),
                   ),
                 ],
               ),
@@ -1418,9 +1418,9 @@ class _MemberDetailSection extends StatelessWidget {
         child: Text(
           l10n.openMember,
           textAlign: TextAlign.center,
-          style: AppTextStyles.of(context).body.copyWith(
-            color: textBase.withValues(alpha: 0.55),
-          ),
+          style: AppTextStyles.of(
+            context,
+          ).body.copyWith(color: textBase.withValues(alpha: 0.55)),
         ),
       );
     }
@@ -1567,7 +1567,7 @@ class _MemberConfigFormState extends State<_MemberConfigForm> {
     final m = widget.member;
     final memberCatalogCli =
         _catalogCliForTeam(context, widget.team.cli) ?? AppProviderCli.claude;
-    final dropdownDeco = FlashskyDropdownDecorations.settingsCompact(context);
+    final dropdownDeco = AppDropdownDecorations.themed(context);
 
     final prov = m.provider;
     final appProviders = context

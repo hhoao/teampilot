@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../dropdown/flashsky_dropdown_field.dart';
-import '../dropdown/flashskyai_dropdown_decoration.dart';
+import '../dropdown/app_dropdown_field.dart';
+import '../dropdown/app_dropdown_decoration.dart';
 import '../../theme/workspace_surface_layers.dart';
 
 export '../../theme/workspace_surface_layers.dart';
@@ -213,7 +213,7 @@ class SettingsCompactDropdown<T extends Object> extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final decoration = FlashskyDropdownDecorations.settingsCompact(context);
+    final decoration = AppDropdownDecorations.themed(context);
     final values = entries.map((e) => e.$1).toList();
 
     String labelOf(T item) => entries

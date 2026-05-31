@@ -11,7 +11,9 @@ import '../theme/workspace_surface_layers.dart';
 import '../l10n/l10n_extensions.dart';
 import '../utils/app_keys.dart';
 import '../models/layout_preferences.dart';
+import '../widgets/app_icon_button.dart';
 import '../widgets/split_layout.dart';
+import '../widgets/menu/sidebar_action_menu.dart';
 import '../widgets/workspace_terminal_panel.dart';
 
 enum AppSection { chat, runs, config }
@@ -359,24 +361,18 @@ class _RightToolsVisibilityToggle extends StatelessWidget {
         final icon = prefs.toolPlacement == ToolPanelPlacement.bottom
             ? Icons.splitscreen_outlined
             : Icons.vertical_split_outlined;
-        return IconButton(
+        return AppIconButton(
           key: AppKeys.rightToolsVisibilityButton,
+          icon: icon,
           tooltip: visible
               ? l10n.rightToolsPanelHidden
               : l10n.rightToolsPanelVisible,
-          visualDensity: VisualDensity.compact,
-          padding: const EdgeInsets.all(6),
-          constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-          iconSize: 18,
-          style: IconButton.styleFrom(
-            foregroundColor: visible ? cs.primary : cs.onSurfaceVariant,
-            backgroundColor: visible
-                ? cs.primaryContainer.withValues(alpha: 0.45)
-                : Colors.transparent,
-          ),
-          onPressed: () =>
+          color: visible ? cs.primary : cs.onSurfaceVariant,
+          backgroundColor: visible
+              ? cs.primaryContainer.withValues(alpha: 0.45)
+              : Colors.transparent,
+          onTap: () =>
               context.read<LayoutCubit>().setRightToolsVisible(!visible),
-          icon: Icon(icon),
         );
       },
     );
@@ -408,7 +404,7 @@ class _TabRow extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textBase = isDark ? Colors.white : const Color(0xFF111827);
     return Container(
-      height: 42,
+      height: 38,
       padding: const EdgeInsets.symmetric(horizontal: 6),
       decoration: BoxDecoration(
         color: cs.workspaceCard,
@@ -476,7 +472,7 @@ class _TabChip extends StatefulWidget {
 class _TabChipState extends State<_TabChip> {
   var _hovered = false;
 
-  /// Keeps overflow actions (and [PopupMenuButton]) mounted while the menu is
+  /// Keeps overflow actions (and [SidebarActionMenuButton]) mounted while the menu is
   /// open; otherwise moving the pointer onto the overlay triggers
   /// [MouseRegion.onExit] and removes the button before [onSelected] runs.
   var _overflowMenuOpen = false;
@@ -491,28 +487,33 @@ class _TabChipState extends State<_TabChip> {
     }
   }
 
-  List<PopupMenuEntry<String>> _tabMenuEntries(BuildContext menuContext) {
+  List<SidebarActionMenuSpec> _tabMenuSpecs(BuildContext menuContext) {
     final l10n = menuContext.l10n;
     return [
-      PopupMenuItem(value: 'close', child: Text(l10n.closeTab)),
-      PopupMenuItem(value: 'closeOthers', child: Text(l10n.closeOtherTabs)),
-      PopupMenuItem(value: 'closeRight', child: Text(l10n.closeRightTabs)),
+      SidebarActionMenuSpec.item(
+        value: 'close',
+        icon: Icons.close,
+        label: l10n.closeTab,
+      ),
+      SidebarActionMenuSpec.item(
+        value: 'closeOthers',
+        icon: Icons.tab_unselected,
+        label: l10n.closeOtherTabs,
+      ),
+      SidebarActionMenuSpec.item(
+        value: 'closeRight',
+        icon: Icons.arrow_forward,
+        label: l10n.closeRightTabs,
+      ),
     ];
   }
 
   Future<void> _showTabContextMenu(Offset globalPosition) async {
     if (!mounted) return;
-    final overlayObject = Overlay.maybeOf(context)?.context.findRenderObject();
-    if (overlayObject is! RenderBox) return;
-
-    final anchor = overlayObject.globalToLocal(globalPosition);
-    final selected = await showMenu<String>(
+    final selected = await showSidebarActionMenuFromSpecs<String>(
       context: context,
-      position: RelativeRect.fromRect(
-        Rect.fromPoints(anchor, anchor),
-        Offset.zero & overlayObject.size,
-      ),
-      items: _tabMenuEntries(context),
+      globalPosition: globalPosition,
+      specs: _tabMenuSpecs(context),
     );
     if (!mounted || selected == null) return;
     _handleTabMenuSelection(selected);
@@ -532,7 +533,7 @@ class _TabChipState extends State<_TabChip> {
       _hovered || _overflowMenuOpen || Platform.isAndroid;
 
   /// Whole-tab hover from [MouseRegion]. Avoids [InkWell] + nested
-  /// [PopupMenuButton] ink fighting (hover patch only behind title text).
+  /// overflow menu ink fighting (hover patch only behind title text).
   Color _tabMaterialColor(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final hoverTint = Theme.of(
@@ -560,7 +561,7 @@ class _TabChipState extends State<_TabChip> {
           onExit: (_) => setState(() => _hovered = false),
           child: Material(
             color: _tabMaterialColor(context),
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(6)),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(10)),
             child: GestureDetector(
               behavior: HitTestBehavior.opaque,
               onTap: widget.onTap,
@@ -571,8 +572,8 @@ class _TabChipState extends State<_TabChip> {
                   : null,
               child: Container(
                 width: 200,
-                padding: const EdgeInsets.only(left: 12, top: 6, right: 12),
-                height: 42,
+                padding: const EdgeInsets.only(left: 12, right: 12),
+                height: 38,
                 decoration: BoxDecoration(
                   border: Border(
                     left: BorderSide(
@@ -592,7 +593,7 @@ class _TabChipState extends State<_TabChip> {
                     ),
                   ),
                   borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(6),
+                    top: Radius.circular(10),
                   ),
                 ),
                 child: Row(
@@ -605,32 +606,27 @@ class _TabChipState extends State<_TabChip> {
                           widget.title,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: AppTextStyles.of(context).caption.copyWith(
-                            fontWeight: FontWeight.w600,
-                            color: widget.textColor,
-                          ),
+                          style: AppTextStyles.of(context).body,
                         ),
                       ),
                     ),
                     if (_showTabActions) ...[
                       const SizedBox(width: 4),
-                      PopupMenuButton<String>(
-                        tooltip: '',
-                        padding: EdgeInsets.zero,
+                      SidebarActionMenuButton(
                         icon: Icon(
                           Icons.more_horiz,
                           size: 12,
                           color: widget.textColor.withValues(alpha: 0.6),
                         ),
-                        onOpened: () =>
-                            setState(() => _overflowMenuOpen = true),
-                        onCanceled: () =>
+                        size: 32,
+                        onOpen: () => setState(() => _overflowMenuOpen = true),
+                        onClose: () =>
                             setState(() => _overflowMenuOpen = false),
+                        specs: _tabMenuSpecs(context),
                         onSelected: (value) {
                           setState(() => _overflowMenuOpen = false);
-                          _handleTabMenuSelection(value);
+                          _handleTabMenuSelection(value as String);
                         },
-                        itemBuilder: _tabMenuEntries,
                       ),
                       GestureDetector(
                         onTap: widget.onClose,

@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:teampilot/widgets/hover_row.dart';
 import '../cubits/chat_cubit.dart';
 import '../cubits/team_cubit.dart';
 import '../l10n/l10n_extensions.dart';
@@ -19,13 +20,15 @@ import '../utils/app_keys.dart';
 import '../utils/debounce/debounce.dart';
 import '../utils/project_path_picker.dart';
 import '../utils/project_path_utils.dart';
-import '../widgets/dropdown/flashsky_dropdown_field.dart';
+import 'dropdown/app_dropdown_field.dart';
 import '../theme/app_text_styles.dart';
-import '../widgets/dropdown/flashskyai_dropdown_decoration.dart';
+import '../theme/workspace_surface_layers.dart';
+import 'dropdown/app_dropdown_decoration.dart';
+import 'menu/sidebar_action_menu.dart';
 import 'project_details_dialog.dart';
+import 'app_icon_button.dart';
 
-/// Matches [_ProjectHeader] label start: `padding.left` + chevron + gap + folder + gap.
-const double _kSidebarTreeTextInset = 12 + 16 + 6 + 16 + 6;
+const double _kSidebarSessionTileInset = 12;
 
 void _navigateToSessionInChat(BuildContext context, AppSession session) {
   final l10n = context.l10n;
@@ -93,7 +96,44 @@ AppProject? _mostRecentProject(
   return sorted.first;
 }
 
-Future<void> _startNewChat(BuildContext context) async {
+String _projectDisplayName(AppProject project, AppLocalizations l10n) {
+  if (project.effectiveDisplay.isNotEmpty) return project.effectiveDisplay;
+  if (project.primaryPath.isNotEmpty) {
+    return project.primaryPath.split(RegExp(r'[/\\]')).last;
+  }
+  return l10n.unknownFolder;
+}
+
+List<AppProject> _sortedProjects(
+  List<AppProject> projects,
+  List<AppSession> sessions,
+) {
+  final sorted = List<AppProject>.from(projects)
+    ..sort(
+      (a, b) =>
+          _projectRecency(b, sessions).compareTo(_projectRecency(a, sessions)),
+    );
+  return sorted;
+}
+
+AppProject? _resolveSelectedProject(
+  List<AppProject> projects,
+  List<AppSession> sessions,
+  String? selectedProjectId,
+) {
+  if (projects.isEmpty) return null;
+  if (selectedProjectId != null) {
+    for (final p in projects) {
+      if (p.projectId == selectedProjectId) return p;
+    }
+  }
+  return _mostRecentProject(projects, sessions);
+}
+
+Future<void> _startNewChat(
+  BuildContext context, {
+  String? preferredProjectId,
+}) async {
   closeAndroidDrawerIfOpen(context);
   final chatCubit = context.read<ChatCubit>();
   final repo = context.read<SessionRepository>();
@@ -101,7 +141,16 @@ Future<void> _startNewChat(BuildContext context) async {
   final projects = chatCubit.state.visibleProjects;
   final sessions = chatCubit.state.visibleSessions;
 
-  final project = _mostRecentProject(projects, sessions);
+  AppProject? project;
+  if (preferredProjectId != null && preferredProjectId.isNotEmpty) {
+    for (final p in projects) {
+      if (p.projectId == preferredProjectId) {
+        project = p;
+        break;
+      }
+    }
+  }
+  project ??= _mostRecentProject(projects, sessions);
   if (project != null) {
     await _createSessionAndOpenChat(context, project.projectId);
     return;
@@ -245,6 +294,7 @@ class ContextSidebar extends StatefulWidget {
 
 class _ContextSidebarState extends State<ContextSidebar> {
   var _showSessions = false;
+  String? _selectedProjectId;
 
   @override
   void initState() {
@@ -259,9 +309,20 @@ class _ContextSidebarState extends State<ContextSidebar> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final l10n = context.l10n;
     final teamCubit = context.watch<TeamCubit>();
     final selected = teamCubit.state.selectedTeam;
+    final projects = context.select<ChatCubit, List<AppProject>>(
+      (cubit) => cubit.state.visibleProjects,
+    );
+    final sessions = context.select<ChatCubit, List<AppSession>>(
+      (cubit) => cubit.state.visibleSessions,
+    );
+    final sortedProjects = _sortedProjects(projects, sessions);
+    final selectedProject = _resolveSelectedProject(
+      sortedProjects,
+      sessions,
+      _selectedProjectId,
+    );
 
     return Container(
       key: AppKeys.contextSidebar,
@@ -290,19 +351,27 @@ class _ContextSidebarState extends State<ContextSidebar> {
                 _NewChatTile(
                   onTap: throttledAsync(
                     'context_sidebar_new_chat',
-                    () => _startNewChat(context),
+                    () => _startNewChat(
+                      context,
+                      preferredProjectId: selectedProject?.projectId,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 14),
-                _SidebarSectionTitle(
-                  title: l10n.projects,
-                  actionLabel: '+',
-                  actionTooltip: l10n.newProjectTooltip,
-                  onAction: widget.onNewProject,
+                _ProjectSelector(
+                  projects: sortedProjects,
+                  selected: selectedProject,
+                  onSelect: (project) =>
+                      setState(() => _selectedProjectId = project.projectId),
+                  onNewProject: widget.onNewProject,
                 ),
+                const SizedBox(height: 10),
                 Expanded(
                   child: _showSessions
-                      ? const _ProjectList()
+                      ? _SelectedProjectSessionList(
+                          project: selectedProject,
+                          sessions: sessions,
+                        )
                       : const SizedBox.shrink(),
                 ),
                 const Divider(height: 1),
@@ -348,136 +417,227 @@ List<AppSession> _sessionsForProject(AppProject project, List<AppSession> all) {
   return ordered;
 }
 
-class _ProjectList extends StatelessWidget {
-  const _ProjectList();
+class _SelectedProjectSessionList extends StatelessWidget {
+  const _SelectedProjectSessionList({
+    required this.project,
+    required this.sessions,
+  });
+
+  final AppProject? project;
+  final List<AppSession> sessions;
 
   @override
   Widget build(BuildContext context) {
-    final projects = context.select<ChatCubit, List<AppProject>>(
-      (cubit) => cubit.state.visibleProjects,
-    );
-    final sessions = context.select<ChatCubit, List<AppSession>>(
-      (cubit) => cubit.state.visibleSessions,
-    );
     final l10n = context.l10n;
-
-    if (projects.isEmpty) {
+    if (project == null) {
       return Padding(
-        padding: const EdgeInsets.only(top: 16),
+        padding: const EdgeInsets.only(top: 8),
         child: Text(
           l10n.noSessions,
           style: AppTextStyles.of(context).bodySmall.copyWith(
-            color: Theme.of(context)
-                .textTheme
-                .bodySmall
-                ?.color
-                ?.withValues(alpha: 0.5),
+            color: Theme.of(
+              context,
+            ).textTheme.bodySmall?.color?.withValues(alpha: 0.5),
+          ),
+        ),
+      );
+    }
+
+    final list = _sessionsForProject(project!, sessions);
+    if (list.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.only(top: 8),
+        child: Text(
+          l10n.noSessions,
+          style: AppTextStyles.of(context).bodySmall.copyWith(
+            color: Theme.of(
+              context,
+            ).textTheme.bodySmall?.color?.withValues(alpha: 0.5),
           ),
         ),
       );
     }
 
     return ListView.builder(
-      itemCount: projects.length,
+      itemCount: list.length,
       itemBuilder: (context, index) {
-        final project = projects[index];
-        final list = _sessionsForProject(project, sessions);
-        return Padding(
-          padding: EdgeInsets.only(
-            bottom: index == projects.length - 1 ? 0 : 10,
-          ),
-          child: _ProjectGroup(project: project, sessions: list),
+        return Container(
+          padding: EdgeInsets.only(bottom: index == list.length - 1 ? 0 : 2),
+          child: _SessionTileEntry(session: list[index]),
         );
       },
     );
   }
 }
 
-class _ProjectGroup extends StatefulWidget {
-  const _ProjectGroup({required this.project, required this.sessions});
+class _ProjectSelector extends StatefulWidget {
+  const _ProjectSelector({
+    required this.projects,
+    required this.selected,
+    required this.onSelect,
+    this.onNewProject,
+  });
 
-  final AppProject project;
-  final List<AppSession> sessions;
+  final List<AppProject> projects;
+  final AppProject? selected;
+  final ValueChanged<AppProject> onSelect;
+  final VoidCallback? onNewProject;
 
   @override
-  State<_ProjectGroup> createState() => _ProjectGroupState();
+  State<_ProjectSelector> createState() => _ProjectSelectorState();
 }
 
-class _ProjectGroupState extends State<_ProjectGroup> {
-  late bool _expanded;
+class _ProjectSelectorState extends State<_ProjectSelector> {
+  var _projectMenuOpen = false;
 
-  @override
-  void initState() {
-    super.initState();
-    _expanded = widget.sessions.isNotEmpty;
-  }
+  static const double _rowHeight = 36;
 
-  @override
-  Widget build(BuildContext context) {
+  Widget _projectLabel(
+    BuildContext context,
+    AppProject project,
+    TextStyle? style, {
+    bool inList = false,
+  }) {
     final l10n = context.l10n;
-    final p = widget.project;
-    final displayName = p.effectiveDisplay.isNotEmpty
-        ? p.effectiveDisplay
-        : (p.primaryPath.isNotEmpty
-              ? p.primaryPath.split(RegExp(r'[/\\]')).last
-              : l10n.unknownFolder);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+    final cs = Theme.of(context).colorScheme;
+    final name = _projectDisplayName(project, l10n);
+    final iconSize = inList ? 20.0 : 22.0;
+    return Row(
       children: [
-        _ProjectHeader(
-          name: displayName,
-          path: p.primaryPath,
-          sessionCount: widget.sessions.length,
-          expanded: _expanded,
-          onToggle: () => setState(() => _expanded = !_expanded),
-          onNewSession: throttledAsync(
-            'context_sidebar_new_session_${p.projectId}',
-            () => _createSessionAndOpenChat(context, p.projectId),
+        Container(
+          width: iconSize,
+          height: iconSize,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: cs.primaryContainer,
+            borderRadius: BorderRadius.circular(5),
           ),
-          onViewDetails: p.projectId.isNotEmpty
-              ? () =>
-                    showProjectDetailsDialog(context, p, widget.sessions.length)
-              : null,
-          onAddDirectory: p.projectId.isNotEmpty
-              ? () => _addProjectDirectory(context, p)
-              : null,
-          onOpenFolder: p.primaryPath.isNotEmpty
-              ? () => _openFolder(p.primaryPath)
-              : null,
-          onCopyPath: p.primaryPath.isNotEmpty
-              ? () => _copyPath(context, p.primaryPath)
-              : null,
-          onDelete: p.projectId.isNotEmpty
-              ? () => _confirmDeleteProject(context, p, displayName)
-              : null,
+          child: Icon(
+            Icons.folder_outlined,
+            size: iconSize * 0.64,
+            color: cs.onPrimaryContainer,
+          ),
         ),
-        if (_expanded)
-          Padding(
-            padding: const EdgeInsets.only(top: 2),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                for (var i = 0; i < widget.sessions.length; i++) ...[
-                  if (i > 0) const SizedBox(height: 2),
-                  _SessionTileEntry(session: widget.sessions[i]),
-                ],
-              ],
-            ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            name,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: style,
           ),
-        const SizedBox(height: 2),
+        ),
       ],
     );
   }
 
-  void _openFolder(String path) {
-    Process.run(_openCommand, [path]);
+  List<Widget> _projectMenuChildren(
+    BuildContext context,
+    MenuController menuController,
+    AppProject project,
+    String displayName,
+    int sessionCount,
+  ) {
+    final l10n = context.l10n;
+    final hasId = project.projectId.isNotEmpty;
+    void select(String value) => _handleProjectMenuSelection(
+      context,
+      project,
+      displayName,
+      sessionCount,
+      value,
+    );
+
+    Widget item({
+      required IconData icon,
+      required String label,
+      required String value,
+      bool destructive = false,
+    }) {
+      return SidebarActionMenuItem(
+        icon: icon,
+        label: label,
+        destructive: destructive,
+        menuController: menuController,
+        onTap: () => select(value),
+      );
+    }
+
+    return [
+      if (widget.onNewProject != null)
+        item(
+          icon: Icons.create_new_folder_outlined,
+          label: l10n.newProject,
+          value: 'newProject',
+        ),
+      if (hasId)
+        item(
+          icon: Icons.info_outline,
+          label: l10n.projectDetails,
+          value: 'details',
+        ),
+      if (hasId)
+        item(
+          icon: Icons.folder_copy_outlined,
+          label: l10n.addProjectDirectory,
+          value: 'addDirectory',
+        ),
+      if (project.primaryPath.isNotEmpty)
+        item(
+          icon: Icons.folder_open,
+          label: l10n.openFolder,
+          value: 'openFolder',
+        ),
+      if (project.primaryPath.isNotEmpty)
+        item(icon: Icons.copy, label: l10n.copyFolderPath, value: 'copyPath'),
+      if (hasId) ...[
+        const SidebarActionMenuDivider(),
+        item(
+          icon: Icons.delete_outline,
+          label: l10n.deleteProject,
+          value: 'delete',
+          destructive: true,
+        ),
+      ],
+    ];
   }
 
-  String get _openCommand {
-    if (Platform.isMacOS) return 'open';
-    if (Platform.isWindows) return 'start';
-    return 'xdg-open';
+  void _handleProjectMenuSelection(
+    BuildContext context,
+    AppProject project,
+    String displayName,
+    int sessionCount,
+    String value,
+  ) {
+    switch (value) {
+      case 'newProject':
+        widget.onNewProject?.call();
+        break;
+      case 'details':
+        showProjectDetailsDialog(context, project, sessionCount);
+        break;
+      case 'addDirectory':
+        unawaited(_addProjectDirectory(context, project));
+        break;
+      case 'openFolder':
+        _openFolder(project.primaryPath);
+        break;
+      case 'copyPath':
+        _copyPath(context, project.primaryPath);
+        break;
+      case 'delete':
+        _confirmDeleteProject(context, project, displayName);
+        break;
+    }
+  }
+
+  void _openFolder(String path) {
+    final command = Platform.isMacOS
+        ? 'open'
+        : Platform.isWindows
+        ? 'start'
+        : 'xdg-open';
+    Process.run(command, [path]);
   }
 
   Future<void> _addProjectDirectory(
@@ -555,291 +715,151 @@ class _ProjectGroupState extends State<_ProjectGroup> {
       ),
     );
   }
-}
-
-class _ProjectHeader extends StatefulWidget {
-  const _ProjectHeader({
-    required this.name,
-    required this.path,
-    required this.sessionCount,
-    required this.expanded,
-    required this.onToggle,
-    required this.onNewSession,
-    this.onViewDetails,
-    this.onAddDirectory,
-    this.onOpenFolder,
-    this.onCopyPath,
-    this.onDelete,
-  });
-
-  final String name;
-  final String path;
-  final int sessionCount;
-  final bool expanded;
-  final VoidCallback onToggle;
-  final VoidCallback onNewSession;
-  final VoidCallback? onViewDetails;
-  final VoidCallback? onAddDirectory;
-  final VoidCallback? onOpenFolder;
-  final VoidCallback? onCopyPath;
-  final VoidCallback? onDelete;
-
-  @override
-  State<_ProjectHeader> createState() => _ProjectHeaderState();
-}
-
-class _ProjectHeaderState extends State<_ProjectHeader> {
-  var _hovered = false;
-  var _menuOpen = false;
-
-  bool get _hasOverflowMenu =>
-      widget.onViewDetails != null ||
-      widget.onAddDirectory != null ||
-      widget.onOpenFolder != null ||
-      widget.onCopyPath != null ||
-      widget.onDelete != null;
-
-  bool get _showActions => _hovered || _menuOpen || Platform.isAndroid;
-
-  List<PopupMenuEntry<String>> _projectMenuEntries(BuildContext context) {
-    final l10n = context.l10n;
-    return [
-      if (widget.onViewDetails != null)
-        PopupMenuItem(
-          value: 'details',
-          child: Row(
-            children: [
-              const Icon(Icons.info_outline, size: 18),
-              const SizedBox(width: 8),
-              Text(l10n.projectDetails),
-            ],
-          ),
-        ),
-      if (widget.onAddDirectory != null)
-        PopupMenuItem(
-          value: 'addDirectory',
-          child: Row(
-            children: [
-              const Icon(Icons.create_new_folder_outlined, size: 18),
-              const SizedBox(width: 8),
-              Text(l10n.addProjectDirectory),
-            ],
-          ),
-        ),
-      if (widget.onOpenFolder != null)
-        PopupMenuItem(
-          value: 'openFolder',
-          child: Row(
-            children: [
-              const Icon(Icons.folder_open, size: 18),
-              const SizedBox(width: 8),
-              Text(l10n.openFolder),
-            ],
-          ),
-        ),
-      if (widget.onCopyPath != null)
-        PopupMenuItem(
-          value: 'copyPath',
-          child: Row(
-            children: [
-              const Icon(Icons.copy, size: 18),
-              const SizedBox(width: 8),
-              Text(l10n.copyFolderPath),
-            ],
-          ),
-        ),
-      if (widget.onDelete != null)
-        PopupMenuItem(
-          value: 'delete',
-          child: Row(
-            children: [
-              Icon(
-                Icons.delete_outline,
-                size: 18,
-                color: Theme.of(context).colorScheme.error,
-              ),
-              const SizedBox(width: 8),
-              Text(l10n.deleteProject),
-            ],
-          ),
-        ),
-    ];
-  }
-
-  void _handleProjectMenuSelection(String value) {
-    switch (value) {
-      case 'details':
-        widget.onViewDetails?.call();
-        break;
-      case 'addDirectory':
-        widget.onAddDirectory?.call();
-        break;
-      case 'openFolder':
-        widget.onOpenFolder?.call();
-        break;
-      case 'copyPath':
-        widget.onCopyPath?.call();
-        break;
-      case 'delete':
-        widget.onDelete?.call();
-        break;
-    }
-  }
-
-  Future<void> _showProjectContextMenu(Offset globalPosition) async {
-    if (!mounted || !_hasOverflowMenu) return;
-    final overlayObject = Overlay.maybeOf(context)?.context.findRenderObject();
-    if (overlayObject is! RenderBox) return;
-
-    final anchor = overlayObject.globalToLocal(globalPosition);
-    setState(() => _menuOpen = true);
-    final selected = await showMenu<String>(
-      context: context,
-      position: RelativeRect.fromRect(
-        Rect.fromPoints(anchor, anchor),
-        Offset.zero & overlayObject.size,
-      ),
-      items: _projectMenuEntries(context),
-    );
-    if (!mounted) return;
-    setState(() => _menuOpen = false);
-    if (selected == null) return;
-    _handleProjectMenuSelection(selected);
-  }
-
-  void _showProjectContextMenuAtCenter() {
-    final box = context.findRenderObject();
-    if (box is! RenderBox || !box.hasSize) return;
-    final center = box.localToGlobal(
-      Offset(box.size.width / 2, box.size.height / 2),
-    );
-    unawaited(_showProjectContextMenu(center));
-  }
 
   @override
   Widget build(BuildContext context) {
-    final l10n = context.l10n;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textBase = isDark ? Colors.white : const Color(0xFF111827);
     final cs = Theme.of(context).colorScheme;
+    final l10n = context.l10n;
+    final decoration = AppDropdownDecorations.themed(
+      context,
+      closedFillColor: cs.workspaceCard,
+      expandedFillColor: cs.workspaceCard,
+      borderRadius: 8,
+      headerFontWeight: FontWeight.w700,
+      listItemFontWeight: FontWeight.w600,
+      suffixIconSize: 18,
+      expandedShadowBlurRadius: 22,
+      expandedShadowOffset: const Offset(0, 10),
+      expandedShadowAlphaDark: 0.5,
+      expandedShadowAlphaLight: 0.12,
+      selectedPrimaryAlphaDark: 0.22,
+    );
+    final selected = widget.selected;
+    final projects = widget.projects;
+    final hasProjects = projects.isNotEmpty;
+    final sessionCount = selected == null
+        ? 0
+        : _sessionsForProject(
+            selected,
+            context.read<ChatCubit>().state.visibleSessions,
+          ).length;
 
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 4, top: 4),
-      child: MouseRegion(
-        onEnter: (_) => setState(() => _hovered = true),
-        onExit: (_) => setState(() => _hovered = false),
-        child: GestureDetector(
-          onLongPress: Platform.isAndroid && _hasOverflowMenu
-              ? _showProjectContextMenuAtCenter
-              : null,
-          child: Material(
-            color: Colors.transparent,
-            borderRadius: BorderRadius.circular(8),
-            child: Ink(
-              decoration: BoxDecoration(borderRadius: BorderRadius.circular(8)),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: GestureDetector(
-                      behavior: HitTestBehavior.opaque,
-                      onTap: widget.onToggle,
-                      child: Container(
-                        padding: const EdgeInsets.only(
-                          left: 12,
-                          right: 4,
-                          top: 8,
-                          bottom: 8,
+    Widget dropdown;
+    if (!hasProjects) {
+      dropdown = Container(
+        padding: kFlashskyDropdownClosedHeaderPadding,
+        decoration: BoxDecoration(
+          color: decoration.closedFillColor,
+          borderRadius: decoration.closedBorderRadius,
+          border: decoration.closedBorder,
+        ),
+        child: Text(
+          l10n.noSessions,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: decoration.hintStyle,
+        ),
+      );
+    } else {
+      dropdown = FlashskyDropdownField<AppProject>(
+        key: ValueKey(selected?.projectId),
+        items: projects,
+        initialItem: selected,
+        hintText: l10n.projects,
+        decoration: decoration,
+        closedHeaderPadding: kFlashskyDropdownClosedHeaderPadding,
+        expandedHeaderPadding: kFlashskyDropdownExpandedHeaderPadding,
+        listItemPadding: kFlashskyDropdownListItemPadding,
+        overlayHeight: kFlashskyDropdownDefaultOverlayHeight,
+        itemBuilder: (context, item) =>
+            _projectLabel(context, item, decoration.headerStyle),
+        listItemBuilder: (context, item) => _projectLabel(
+          context,
+          item,
+          decoration.listItemStyle,
+          inList: true,
+        ),
+        onChanged: (project) {
+          if (project != null) widget.onSelect(project);
+        },
+      );
+    }
+
+    final showProjectActions =
+        selected != null && selected.projectId.isNotEmpty;
+    final displayName = selected == null
+        ? ''
+        : _projectDisplayName(selected, l10n);
+
+    final hasTrailing =
+        showProjectActions || selected != null || widget.onNewProject != null;
+    final trailingWidth = showProjectActions
+        ? 68.0
+        : (hasTrailing ? 32.0 : null);
+
+    return HoverRow(
+      height: _rowHeight,
+      forceShowTrailing: _projectMenuOpen,
+      trailingWidth: trailingWidth,
+      trailing: hasTrailing
+          ? Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                if (showProjectActions) ...[
+                  SidebarActionMenuIconAnchor(
+                    icon: Icon(
+                      Icons.more_horiz,
+                      size: AppIconButton.kDefaultIconSize,
+                      color: cs.onSurface.withValues(alpha: 0.55),
+                    ),
+                    onOpen: () => setState(() => _projectMenuOpen = true),
+                    onClose: () => setState(() => _projectMenuOpen = false),
+                    buildMenuChildren: (context, controller) =>
+                        _projectMenuChildren(
+                          context,
+                          controller,
+                          selected,
+                          displayName,
+                          sessionCount,
                         ),
-                        child: Row(
-                          children: [
-                            Icon(
-                              widget.expanded
-                                  ? Icons.expand_more
-                                  : Icons.chevron_right,
-                              size: 16,
-                              color: textBase.withValues(alpha: 0.5),
-                            ),
-                            const SizedBox(width: 6),
-                            Icon(
-                              Icons.folder_outlined,
-                              size: 16,
-                              color: textBase.withValues(alpha: 0.7),
-                            ),
-                            const SizedBox(width: 6),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    widget.name,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: Theme.of(
-                                      context,
-                                    ).textTheme.bodyMedium,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
+                  ),
+                  const SizedBox(width: 4),
+                  AppIconButton(
+                    icon: Icons.add,
+                    tooltip: l10n.newSessionTooltip,
+                    onTap: throttledAsync(
+                      'context_sidebar_new_session_${selected.projectId}',
+                      () => _createSessionAndOpenChat(
+                        context,
+                        selected.projectId,
                       ),
                     ),
                   ),
-                  // Keep action controls in the layout when hidden: [PopupMenuButton]
-                  // uses a tall minimum touch target, so toggling visibility used to
-                  // change the row height on hover.
-                  Visibility(
-                    visible: _showActions,
-                    maintainSize: true,
-                    maintainState: true,
-                    maintainAnimation: true,
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        InkWell(
-                          borderRadius: BorderRadius.circular(4),
-                          onTap: widget.onNewSession,
-                          child: Tooltip(
-                            message: l10n.newSessionTooltip,
-                            child: Padding(
-                              padding: const EdgeInsets.all(6),
-                              child: Icon(
-                                Icons.add,
-                                size: 16,
-                                color: cs.primary,
-                              ),
-                            ),
-                          ),
-                        ),
-                        if (_hasOverflowMenu)
-                          PopupMenuButton<String>(
-                            tooltip: '',
-                            padding: EdgeInsets.zero,
-                            icon: Icon(
-                              Icons.more_horiz,
-                              size: 16,
-                              color: textBase.withValues(alpha: 0.5),
-                            ),
-                            onOpened: () => setState(() => _menuOpen = true),
-                            onCanceled: () => setState(() => _menuOpen = false),
-                            onSelected: (value) {
-                              setState(() => _menuOpen = false);
-                              _handleProjectMenuSelection(value);
-                            },
-                            itemBuilder: _projectMenuEntries,
-                          ),
-                      ],
+                ] else if (selected != null)
+                  AppIconButton(
+                    icon: Icons.add,
+                    tooltip: l10n.newSessionTooltip,
+                    onTap: throttledAsync(
+                      'context_sidebar_new_session_${selected.projectId}',
+                      () => _createSessionAndOpenChat(
+                        context,
+                        selected.projectId,
+                      ),
                     ),
+                  )
+                else if (widget.onNewProject != null)
+                  AppIconButton(
+                    icon: Icons.add,
+                    tooltip: l10n.newProjectTooltip,
+                    onTap: widget.onNewProject,
                   ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
+              ],
+            )
+          : null,
+      child: Align(alignment: Alignment.centerLeft, child: dropdown),
     );
   }
+
 }
 
 class _SessionTileEntry extends StatefulWidget {
@@ -856,25 +876,32 @@ class _SessionTileEntryState extends State<_SessionTileEntry> {
 
   /// Keeps the overflow menu mounted while the popup is open; otherwise moving
   /// the pointer onto the overlay triggers [MouseRegion.onExit] and removes
-  /// the [PopupMenuButton] before a menu item can be selected.
+  /// the overflow menu before a menu item can be selected.
   var _menuOpen = false;
 
   Future<void> _showSessionContextMenu(Offset globalPosition) async {
     if (!mounted) return;
-    final overlayObject = Overlay.maybeOf(context)?.context.findRenderObject();
-    if (overlayObject is! RenderBox) return;
 
     final l10n = context.l10n;
     final session = widget.session;
-    final anchor = overlayObject.globalToLocal(globalPosition);
     setState(() => _menuOpen = true);
-    final selected = await showMenu<String>(
+    final selected = await showSidebarActionMenu<String>(
       context: context,
-      position: RelativeRect.fromRect(
-        Rect.fromPoints(anchor, anchor),
-        Offset.zero & overlayObject.size,
-      ),
-      items: _sessionOverflowMenuEntries(l10n),
+      globalPosition: globalPosition,
+      itemCount: 2,
+      children: [
+        SidebarActionMenuPopupItem(
+          value: 'rename',
+          icon: Icons.drive_file_rename_outline,
+          label: l10n.renameConversation,
+        ),
+        SidebarActionMenuPopupItem(
+          value: 'delete',
+          icon: Icons.delete_outline,
+          label: l10n.deleteConversation,
+          destructive: true,
+        ),
+      ],
     );
     if (!mounted) return;
     setState(() => _menuOpen = false);
@@ -887,15 +914,6 @@ class _SessionTileEntryState extends State<_SessionTileEntry> {
         _showDeleteDialog(context, session, l10n);
         break;
     }
-  }
-
-  List<PopupMenuEntry<String>> _sessionOverflowMenuEntries(
-    AppLocalizations l10n,
-  ) {
-    return [
-      PopupMenuItem(value: 'rename', child: Text(l10n.renameConversation)),
-      PopupMenuItem(value: 'delete', child: Text(l10n.deleteConversation)),
-    ];
   }
 
   void _showSessionContextMenuAtCenter() {
@@ -925,7 +943,7 @@ class _SessionTileEntryState extends State<_SessionTileEntry> {
         title: session.resolveDisplayTitle(l10n.defaultNewChatSessionTitle),
         selected: selected,
         rowHovered: _hovered || _menuOpen,
-        contentLeftInset: _kSidebarTreeTextInset,
+        contentLeftInset: _kSidebarSessionTileInset,
         onTap: throttledTap(
           'context_sidebar_session_${session.sessionId}',
           () => _navigateToSessionInChat(context, session),
@@ -936,28 +954,31 @@ class _SessionTileEntryState extends State<_SessionTileEntry> {
             ? _showSessionContextMenuAtCenter
             : null,
         trailing: SizedBox(
-          width: 24,
-          height: 24,
+          width: AppIconButton.kDefaultSize,
+          height: AppIconButton.kDefaultSize,
           child: _showSessionActions
-              ? PopupMenuButton<String>(
-                  tooltip: '',
-                  padding: EdgeInsets.zero,
-                  iconSize: 16,
-                  icon: const Icon(Icons.more_horiz, size: 16),
-                  onOpened: () => setState(() => _menuOpen = true),
-                  onCanceled: () => setState(() => _menuOpen = false),
-                  onSelected: (value) {
-                    setState(() => _menuOpen = false);
-                    switch (value) {
-                      case 'rename':
-                        _showRenameDialog(context, session, l10n);
-                        break;
-                      case 'delete':
-                        _showDeleteDialog(context, session, l10n);
-                        break;
-                    }
-                  },
-                  itemBuilder: (context) => _sessionOverflowMenuEntries(l10n),
+              ? SidebarActionMenuIconAnchor(
+                  icon: const Icon(
+                    Icons.more_horiz,
+                    size: AppIconButton.kDefaultIconSize,
+                  ),
+                  onOpen: () => setState(() => _menuOpen = true),
+                  onClose: () => setState(() => _menuOpen = false),
+                  buildMenuChildren: (context, controller) => [
+                    SidebarActionMenuItem(
+                      icon: Icons.drive_file_rename_outline,
+                      label: l10n.renameConversation,
+                      menuController: controller,
+                      onTap: () => _showRenameDialog(context, session, l10n),
+                    ),
+                    SidebarActionMenuItem(
+                      icon: Icons.delete_outline,
+                      label: l10n.deleteConversation,
+                      destructive: true,
+                      menuController: controller,
+                      onTap: () => _showDeleteDialog(context, session, l10n),
+                    ),
+                  ],
                 )
               : null,
         ),
@@ -1173,7 +1194,20 @@ class _TeamSelector extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final l10n = context.l10n;
-    final decoration = FlashskyDropdownDecorations.sidebarTeam(context);
+    final decoration = AppDropdownDecorations.themed(
+      context,
+      closedFillColor: cs.workspaceCard,
+      expandedFillColor: cs.workspaceCard,
+      borderRadius: 8,
+      headerFontWeight: FontWeight.w700,
+      listItemFontWeight: FontWeight.w600,
+      suffixIconSize: 18,
+      expandedShadowBlurRadius: 22,
+      expandedShadowOffset: const Offset(0, 10),
+      expandedShadowAlphaDark: 0.5,
+      expandedShadowAlphaLight: 0.12,
+      selectedPrimaryAlphaDark: 0.22,
+    );
 
     return Container(
       margin: const EdgeInsets.only(top: 14),
@@ -1198,97 +1232,12 @@ class _TeamSelector extends StatelessWidget {
           ),
           if (onAddTeam != null) ...[
             const SizedBox(width: 6),
-            Material(
-              color: Colors.transparent,
-              borderRadius: BorderRadius.circular(6),
-              child: InkWell(
-                borderRadius: BorderRadius.circular(6),
-                onTap: onAddTeam,
-                child: Tooltip(
-                  message: l10n.addTeamTooltip,
-                  child: Container(
-                    width: 32,
-                    height: 32,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(6),
-                      border: Border.all(color: cs.outlineVariant),
-                      color: cs.surfaceContainer,
-                    ),
-                    child: Icon(Icons.add, size: 18, color: cs.onSurface),
-                  ),
-                ),
-              ),
+            AppIconButton(
+              icon: Icons.add,
+              tooltip: l10n.addTeamTooltip,
+              onTap: onAddTeam,
             ),
           ],
-        ],
-      ),
-    );
-  }
-}
-
-class _SidebarSectionTitle extends StatelessWidget {
-  const _SidebarSectionTitle({
-    required this.title,
-    required this.actionLabel,
-    this.actionTooltip,
-    this.onAction,
-  });
-
-  final String title;
-  final String actionLabel;
-  final String? actionTooltip;
-  final VoidCallback? onAction;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textBase = isDark ? Colors.white : const Color(0xFF111827);
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              title,
-              style: AppTextStyles.of(context).caption.copyWith(
-                color: textBase.withValues(alpha: 0.58),
-                fontWeight: FontWeight.w700,
-                letterSpacing: 0.8,
-              ),
-            ),
-          ),
-          if (actionLabel.isNotEmpty)
-            Builder(
-              builder: (context) {
-                final action = Material(
-                  color: Colors.transparent,
-                  borderRadius: BorderRadius.circular(4),
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(4),
-                    onTap: onAction,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 6,
-                        vertical: 2,
-                      ),
-                      child: Text(
-                        actionLabel,
-                        style: AppTextStyles.of(context).bodyStrong.copyWith(
-                          color: cs.primary,
-                        ),
-                      ),
-                    ),
-                  ),
-                );
-                final tip = actionTooltip;
-                if (tip != null && tip.isNotEmpty) {
-                  return Tooltip(message: tip, child: action);
-                }
-                return action;
-              },
-            ),
         ],
       ),
     );
@@ -1316,7 +1265,7 @@ class _SidebarTile extends StatelessWidget {
   final bool selected;
 
   /// From parent [MouseRegion] (and menu-open), not [InkWell] — avoids ink
-  /// fighting with [PopupMenuButton] (hover patch only behind title).
+  /// fighting with the overflow menu (hover patch only behind title).
   final bool rowHovered;
   final VoidCallback? onTap;
   final GestureTapUpCallback? onSecondaryTapUp;
@@ -1358,7 +1307,7 @@ class _SidebarTile extends StatelessWidget {
           onSecondaryTapUp: onSecondaryTapUp,
           onLongPress: onLongPress,
           child: Container(
-            padding: EdgeInsets.fromLTRB(contentLeftInset, 6, 8, 6),
+            padding: EdgeInsets.fromLTRB(28, 6, 8, 6),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(8),
               border: selected ? Border.all(color: cs.primaryContainer) : null,

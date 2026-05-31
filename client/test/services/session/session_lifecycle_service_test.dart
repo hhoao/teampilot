@@ -107,6 +107,7 @@ void main() {
       expect(plan.memberConfigDir, memberDir);
       expect(plan.env['CLAUDE_CONFIG_DIR'], memberDir);
       expect(plan.env['CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS'], '1');
+      expect(plan.env['CLAUDE_CODE_NO_FLICKER'], '1');
       expect(plan.env.containsKey('TEAMPILOT_CLAUDE_SETTINGS_FILE'), isTrue);
       expect(plan.resolvedRoots, contains(memberDir));
     },

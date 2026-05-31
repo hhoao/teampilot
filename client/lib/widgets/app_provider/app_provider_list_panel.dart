@@ -6,8 +6,8 @@ import '../../l10n/l10n_extensions.dart';
 import '../../models/app_provider_config.dart';
 import '../../theme/workspace_surface_layers.dart';
 import '../../utils/app_keys.dart';
-import '../dropdown/flashsky_dropdown_field.dart';
-import '../dropdown/flashskyai_dropdown_decoration.dart';
+import '../dropdown/app_dropdown_field.dart';
+import '../menu/sidebar_action_menu.dart';
 
 class AppProviderListPanel extends StatefulWidget {
   const AppProviderListPanel({
@@ -160,11 +160,23 @@ class _ProviderListControls extends StatelessWidget {
                   style: Theme.of(context).textTheme.titleSmall,
                 ),
               ),
-              PopupMenuButton<String>(
+              SidebarActionMenuButton(
                 tooltip: l10n.add,
                 icon: const Icon(Icons.add),
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                size: 32,
+                specs: [
+                  SidebarActionMenuSpec.item(
+                    value: 'add',
+                    icon: Icons.add,
+                    label: l10n.addProvider,
+                  ),
+                  SidebarActionMenuSpec.item(
+                    value: 'import',
+                    icon: Icons.upload_file_outlined,
+                    label: l10n.appProviderImport,
+                    enabled: !isLoading,
+                  ),
+                ],
                 onSelected: (action) {
                   switch (action) {
                     case 'add':
@@ -173,14 +185,6 @@ class _ProviderListControls extends StatelessWidget {
                       onImport();
                   }
                 },
-                itemBuilder: (_) => [
-                  PopupMenuItem(value: 'add', child: Text(l10n.addProvider)),
-                  PopupMenuItem(
-                    value: 'import',
-                    enabled: !isLoading,
-                    child: Text(l10n.appProviderImport),
-                  ),
-                ],
               ),
             ],
           ),
@@ -190,7 +194,6 @@ class _ProviderListControls extends StatelessWidget {
           child: FlashskyDropdownField<AppProviderCli>(
             items: AppProviderCli.values,
             initialItem: selectedCli,
-            decoration: FlashskyDropdownDecorations.denseField(context),
             itemLabel: l10n.appProviderCliLabel,
             onChanged: (cli) {
               if (cli != null) onCliChanged(cli);
@@ -272,11 +275,20 @@ class _ProviderListTile extends StatelessWidget {
       ),
       trailing: hubStyle
           ? Icon(Icons.chevron_right, color: titleColor)
-          : PopupMenuButton<String>(
-              iconColor: titleColor,
-              itemBuilder: (_) => [
-                PopupMenuItem(value: 'edit', child: Text(l10n.edit)),
-                PopupMenuItem(value: 'delete', child: Text(l10n.delete)),
+          : SidebarActionMenuButton(
+              icon: Icon(Icons.more_horiz, color: titleColor),
+              specs: [
+                SidebarActionMenuSpec.item(
+                  value: 'edit',
+                  icon: Icons.edit_outlined,
+                  label: l10n.edit,
+                ),
+                SidebarActionMenuSpec.item(
+                  value: 'delete',
+                  icon: Icons.delete_outline,
+                  label: l10n.delete,
+                  destructive: true,
+                ),
               ],
               onSelected: (action) {
                 switch (action) {

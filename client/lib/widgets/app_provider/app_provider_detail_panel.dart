@@ -13,6 +13,7 @@ import '../../models/llm_config.dart';
 import '../../services/provider/claude_official_provider.dart';
 import '../../services/provider/tool_config_generator.dart';
 import '../../theme/workspace_surface_layers.dart';
+import '../app_icon_button.dart';
 import 'claude_official_credential_actions.dart';
 
 class AppProviderDetailPanel extends StatelessWidget {
@@ -68,15 +69,15 @@ class AppProviderDetailPanel extends StatelessWidget {
                   icon: const Icon(Icons.hub_outlined, size: 18),
                   label: Text(l10n.providerListModelCount(modelCount)),
                 ),
-              IconButton(
+              AppIconButton(
+                icon: Icons.edit_outlined,
                 tooltip: l10n.editProvider,
-                onPressed: onEdit,
-                icon: const Icon(Icons.edit_outlined),
+                onTap: onEdit,
               ),
-              IconButton(
+              AppIconButton(
+                icon: Icons.delete_outline,
                 tooltip: l10n.deleteProviderTooltip,
-                onPressed: onDelete,
-                icon: const Icon(Icons.delete_outline),
+                onTap: onDelete,
               ),
             ],
           ),

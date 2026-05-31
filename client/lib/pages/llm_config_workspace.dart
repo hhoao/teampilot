@@ -17,8 +17,10 @@ import '../widgets/app_provider/app_provider_form_sheet.dart';
 import '../widgets/app_provider/app_provider_list_panel.dart';
 import '../utils/app_keys.dart';
 import '../utils/debounce/debounce.dart';
-import '../widgets/dropdown/flashsky_dropdown_field.dart';
-import '../widgets/dropdown/flashskyai_dropdown_decoration.dart';
+import '../widgets/dropdown/app_dropdown_field.dart';
+import '../widgets/dropdown/app_dropdown_decoration.dart';
+import '../widgets/app_icon_button.dart';
+import '../widgets/menu/sidebar_action_menu.dart';
 import '../widgets/split_layout.dart';
 import '../widgets/settings/workspace_hub_shell.dart';
 
@@ -836,21 +838,26 @@ class _ProviderListRow extends StatelessWidget {
                   ],
                 ),
               ),
-              PopupMenuButton<String>(
+              SidebarActionMenuButton(
                 key: ValueKey<String>('prov-menu-${provider.name}'),
                 icon: Icon(
                   hubStyle ? Icons.more_vert : Icons.more_horiz,
                   size: 18,
                   color: textBase,
                 ),
-                padding: const EdgeInsets.all(4),
-                constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
-                itemBuilder: (context) => [
-                  PopupMenuItem(
+                size: 32,
+                specs: [
+                  SidebarActionMenuSpec.item(
                     value: 'rename',
-                    child: Text(l10n.renameProviderName),
+                    icon: Icons.drive_file_rename_outline,
+                    label: l10n.renameProviderName,
                   ),
-                  PopupMenuItem(value: 'delete', child: Text(l10n.delete)),
+                  SidebarActionMenuSpec.item(
+                    value: 'delete',
+                    icon: Icons.delete_outline,
+                    label: l10n.delete,
+                    destructive: true,
+                  ),
                 ],
                 onSelected: (value) {
                   switch (value) {
@@ -1156,13 +1163,12 @@ class _ProviderDetailPanelState extends State<_ProviderDetailPanel> {
                   label: Text(l10n.models),
                 ),
                 const SizedBox(width: _kLlmFieldGap),
-                IconButton(
+                AppIconButton(
+                  icon: Icons.delete_outline,
+                  iconSize: 20,
+                  color: theme.colorScheme.error,
                   tooltip: l10n.deleteProviderTooltip,
-                  style: IconButton.styleFrom(
-                    foregroundColor: theme.colorScheme.error,
-                  ),
-                  icon: const Icon(Icons.delete_outline, size: 20),
-                  onPressed: throttledOnPressed(
+                  onTap: throttledOnPressed(
                     'llm_delete_provider_${provider.name}',
                     () => widget.onDelete(provider.name),
                   ),
@@ -1280,17 +1286,16 @@ class _ProviderDetailPanelState extends State<_ProviderDetailPanel> {
                                       !_apiKeyRevealed && _apiKey.isNotEmpty,
                                   decoration: InputDecoration(
                                     suffixIcon: _apiKey.isNotEmpty
-                                        ? IconButton(
+                                        ? AppIconButton(
                                             key: AppKeys.revealApiKeyButton,
-                                            icon: Icon(
-                                              _apiKeyRevealed
-                                                  ? Icons.visibility_off
-                                                  : Icons.visibility,
-                                            ),
+                                            icon: _apiKeyRevealed
+                                                ? Icons.visibility_off
+                                                : Icons.visibility,
+                                            size: AppIconButton.kCompactSize,
                                             tooltip: _apiKeyRevealed
                                                 ? l10n.hide
                                                 : l10n.reveal,
-                                            onPressed: () => setState(() {
+                                            onTap: () => setState(() {
                                               _apiKeyRevealed =
                                                   !_apiKeyRevealed;
                                               if (_apiKeyRevealed &&
@@ -1319,10 +1324,11 @@ class _ProviderDetailPanelState extends State<_ProviderDetailPanel> {
                                 ),
                               ),
                               const SizedBox(width: 8),
-                              IconButton(
+                              AppIconButton(
                                 key: AppKeys.replaceApiKeyButton,
+                                icon: Icons.key_outlined,
                                 tooltip: l10n.replaceKey,
-                                onPressed: () {
+                                onTap: () {
                                   setState(() {
                                     _apiKeyController.clear();
                                     _apiKey = '';
@@ -1331,7 +1337,6 @@ class _ProviderDetailPanelState extends State<_ProviderDetailPanel> {
                                   });
                                   _persistProvider();
                                 },
-                                icon: const Icon(Icons.key_outlined),
                               ),
                             ],
                           ),
@@ -1360,11 +1365,11 @@ class _ProviderDetailPanelState extends State<_ProviderDetailPanel> {
                                     onSubmitted: (_) => _flushPersistDebounce(),
                                   ),
                                 ),
-                                IconButton(
+                                AppIconButton(
                                   key: AppKeys.deleteAccountPathButton,
-                                  icon: const Icon(Icons.remove_circle_outline),
+                                  icon: Icons.remove_circle_outline,
                                   tooltip: l10n.removePath,
-                                  onPressed: () {
+                                  onTap: () {
                                     setState(() {
                                       _accountControllers[index].dispose();
                                       _accountControllers.removeAt(index);
@@ -1658,19 +1663,19 @@ class _ProviderModelsTable extends StatelessWidget {
                     },
                   ),
                 ),
-                _CompactIconButton(
-                  tooltip: l10n.edit,
+                AppIconButton(
                   icon: Icons.edit_outlined,
-                  onTap: () {
-                    _editModel(context, model);
-                  },
+                  iconSize: AppIconButton.kCompactIconSize,
+                  size: AppIconButton.kCompactSize,
+                  tooltip: l10n.edit,
+                  onTap: () => _editModel(context, model),
                 ),
-                _CompactIconButton(
-                  tooltip: l10n.delete,
+                AppIconButton(
                   icon: Icons.delete_outline,
-                  onTap: () {
-                    onDelete(model.id);
-                  },
+                  iconSize: AppIconButton.kCompactIconSize,
+                  size: AppIconButton.kCompactSize,
+                  tooltip: l10n.delete,
+                  onTap: () => onDelete(model.id),
                 ),
               ],
             ),
@@ -1800,15 +1805,11 @@ class _ProviderModelsView extends StatelessWidget {
             ),
             child: Row(
               children: [
-                IconButton(
+                AppIconButton(
+                  icon: Icons.arrow_back,
+                  size: 40,
                   tooltip: l10n.back,
-                  icon: const Icon(Icons.arrow_back, size: 18),
-                  onPressed: onBack,
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(
-                    minWidth: 40,
-                    minHeight: 40,
-                  ),
+                  onTap: onBack,
                 ),
                 const SizedBox(width: 4),
                 Expanded(
@@ -1900,25 +1901,19 @@ class _ProviderModelsView extends StatelessWidget {
                                 await _saveAll(context, next);
                               },
                             ),
-                            IconButton(
+                            AppIconButton(
+                              icon: Icons.edit_outlined,
+                              iconSize: AppIconButton.kCompactIconSize,
+                              size: 36,
                               tooltip: l10n.edit,
-                              visualDensity: VisualDensity.compact,
-                              constraints: const BoxConstraints(
-                                minWidth: 36,
-                                minHeight: 36,
-                              ),
-                              icon: const Icon(Icons.edit_outlined, size: 16),
-                              onPressed: () => _editModel(context, model),
+                              onTap: () => _editModel(context, model),
                             ),
-                            IconButton(
+                            AppIconButton(
+                              icon: Icons.delete_outline,
+                              iconSize: AppIconButton.kCompactIconSize,
+                              size: 36,
                               tooltip: l10n.delete,
-                              visualDensity: VisualDensity.compact,
-                              constraints: const BoxConstraints(
-                                minWidth: 36,
-                                minHeight: 36,
-                              ),
-                              icon: const Icon(Icons.delete_outline, size: 16),
-                              onPressed: () async {
+                              onTap: () async {
                                 final next = Map<String, LlmModelConfig>.from(
                                   config.models,
                                 )..remove(model.id);
@@ -2058,7 +2053,14 @@ class _ModelEditDialogState extends State<_ModelEditDialog> {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final providerNames = widget.providers.keys.toList()..sort();
-    final deco = FlashskyDropdownDecorations.denseField(context);
+    final deco = AppDropdownDecorations.themed(
+      context,
+      borderRadius: 8,
+      headerFontWeight: FontWeight.w500,
+      suffixIconSize: 20,
+      expandedShadowBlurRadius: 18,
+      expandedShadowAlphaDark: 0.45,
+    );
     final initialProvider = widget.providers.containsKey(_provider)
         ? _provider
         : null;
@@ -2184,29 +2186,3 @@ class _WorkspaceHeading extends StatelessWidget {
   }
 }
 
-class _CompactIconButton extends StatelessWidget {
-  const _CompactIconButton({
-    required this.icon,
-    required this.onTap,
-    this.tooltip,
-  });
-
-  final IconData icon;
-  final VoidCallback onTap;
-  final String? tooltip;
-
-  @override
-  Widget build(BuildContext context) {
-    return Tooltip(
-      message: tooltip ?? '',
-      child: InkWell(
-        borderRadius: BorderRadius.circular(4),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(8),
-          child: Icon(icon, size: 16),
-        ),
-      ),
-    );
-  }
-}

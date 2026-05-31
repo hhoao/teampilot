@@ -14,7 +14,7 @@ import '../l10n/l10n_extensions.dart';
 import '../services/editor/file_editor_theme.dart';
 import '../services/file_tree/file_tree_visible_rows.dart';
 import '../services/io/filesystem.dart';
-import '../utils/context_menu_position.dart';
+import 'menu/sidebar_action_menu.dart';
 import '../utils/debounce/debounce.dart';
 
 const _indentWidth = 16.0;
@@ -183,22 +183,31 @@ class FileTreeNode extends StatelessWidget {
     required bool isDirectory,
   }) async {
     final l10n = context.l10n;
-    final value = await showMenu<String>(
-      context: context,
-      position: contextMenuPositionForGlobal(context, position),
-      useRootNavigator: true,
-      items: [
-        if (!isDirectory)
-          PopupMenuItem(
-            value: 'external',
-            child: Text(l10n.fileTreeOpenWithSystemApp),
-          ),
-        PopupMenuItem(value: 'copy', child: Text(l10n.fileTreeCopyPath)),
-        PopupMenuItem(
-          value: 'delete',
-          child: Text(l10n.fileTreeDeleteItemTitle),
+    final specs = <SidebarActionMenuSpec>[
+      if (!isDirectory)
+        SidebarActionMenuSpec.item(
+          value: 'external',
+          icon: Icons.open_in_new,
+          label: l10n.fileTreeOpenWithSystemApp,
         ),
-      ],
+      SidebarActionMenuSpec.item(
+        value: 'copy',
+        icon: Icons.copy,
+        label: l10n.fileTreeCopyPath,
+      ),
+      const SidebarActionMenuSpec.divider(),
+      SidebarActionMenuSpec.item(
+        value: 'delete',
+        icon: Icons.delete_outline,
+        label: l10n.fileTreeDeleteItemTitle,
+        destructive: true,
+      ),
+    ];
+    final value = await showSidebarActionMenuFromSpecs<String>(
+      context: context,
+      globalPosition: position,
+      useRootNavigator: true,
+      specs: specs,
     );
     if (value == 'external' && !isDirectory) {
       _openFileExternally(targetPath);

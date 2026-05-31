@@ -116,6 +116,7 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
           member,
         ),
       'CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS': '1',
+      'CLAUDE_CODE_NO_FLICKER': '1',
     };
 
     if (member != null && member.isValid) {
@@ -370,6 +371,7 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
       }
     }
     env['CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS'] = '1';
+    env['CLAUDE_CODE_NO_FLICKER'] = '1';
     env.putIfAbsent('CCGUI_CLI_LOGIN_AUTHORIZED', () => '1');
     env.putIfAbsent('CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC', () => '1');
     settings['env'] = env;

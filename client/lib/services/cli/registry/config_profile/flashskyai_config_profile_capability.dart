@@ -5,7 +5,8 @@ import '../../../session/member_role_provision.dart';
 import '../capabilities/config_profile_capability.dart';
 import '../config_profile/config_profile_context.dart';
 
-final class FlashskyaiConfigProfileCapability implements ConfigProfileCapability {
+final class FlashskyaiConfigProfileCapability
+    implements ConfigProfileCapability {
   const FlashskyaiConfigProfileCapability();
 
   static const metadataFileName = '.flashskyai.json';
@@ -190,6 +191,7 @@ final class FlashskyaiConfigProfileCapability implements ConfigProfileCapability
       ConfigProfileService.flashskyaiConfigDirEnvKey: memberDir,
       ConfigProfileService.flashskyaiSessionHomeDirEnvKey: memberDir,
       'LLM_CONFIG_PATH': delegate.appFlashskyaiLlmConfigFile,
+      'FLASHSKYAI_CODE_NO_FLICKER': '1',
     };
   }
 

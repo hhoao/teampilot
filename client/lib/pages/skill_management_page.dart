@@ -14,7 +14,7 @@ import '../utils/debounce/debounce.dart';
 import '../utils/github_source_url.dart';
 import '../utils/skill_repo_parse.dart';
 import '../widgets/github_details_button.dart';
-import '../widgets/dropdown/flashsky_dropdown_field.dart';
+import '../widgets/dropdown/app_dropdown_field.dart';
 import '../widgets/settings/workspace_hub_shell.dart';
 import '../widgets/settings/workspace_section_host.dart';
 import '../widgets/settings/workspace_section_navigation.dart';
@@ -416,9 +416,9 @@ class _InstalledSkillRow extends StatelessWidget {
                           skill.name,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: AppTextStyles.of(context).bodyStrong.copyWith(
-                            color: textBase,
-                          ),
+                          style: AppTextStyles.of(
+                            context,
+                          ).bodyStrong.copyWith(color: textBase),
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -542,17 +542,17 @@ class _EmptyBlock extends StatelessWidget {
           const SizedBox(height: 12),
           Text(
             title,
-            style: AppTextStyles.of(context).bodyStrong.copyWith(
-              color: textBase,
-            ),
+            style: AppTextStyles.of(
+              context,
+            ).bodyStrong.copyWith(color: textBase),
           ),
           const SizedBox(height: 6),
           Text(
             hint,
             textAlign: TextAlign.center,
-            style: AppTextStyles.of(context).bodySmall.copyWith(
-              color: textBase.withValues(alpha: 0.55),
-            ),
+            style: AppTextStyles.of(
+              context,
+            ).bodySmall.copyWith(color: textBase.withValues(alpha: 0.55)),
           ),
           if (actionLabel != null && onAction != null) ...[
             const SizedBox(height: 10),
@@ -595,9 +595,9 @@ class _ImportUnmanagedDialogState extends State<_ImportUnmanagedDialog> {
             children: [
               Text(
                 l10n.skillsImportTitle,
-                style: AppTextStyles.of(context).body.copyWith(
-                  fontWeight: FontWeight.w800,
-                ),
+                style: AppTextStyles.of(
+                  context,
+                ).body.copyWith(fontWeight: FontWeight.w800),
               ),
               const SizedBox(height: 12),
               Flexible(
@@ -1061,9 +1061,9 @@ class _DiscoverySectionState extends State<_DiscoverySection> {
               const SizedBox(height: 6),
               Text(
                 l10n.skillsSkillsShPoweredBy,
-                style: AppTextStyles.of(context).caption.copyWith(
-                  color: Theme.of(context).hintColor,
-                ),
+                style: AppTextStyles.of(
+                  context,
+                ).caption.copyWith(color: Theme.of(context).hintColor),
               ),
             ],
           ),
@@ -1161,9 +1161,9 @@ class _SkillCard extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             source,
-            style: AppTextStyles.of(context).caption.copyWith(
-              color: textBase.withValues(alpha: 0.55),
-            ),
+            style: AppTextStyles.of(
+              context,
+            ).caption.copyWith(color: textBase.withValues(alpha: 0.55)),
           ),
           const SizedBox(height: 6),
           Expanded(
@@ -1171,9 +1171,9 @@ class _SkillCard extends StatelessWidget {
               description,
               maxLines: 3,
               overflow: TextOverflow.ellipsis,
-              style: AppTextStyles.of(context).bodySmall.copyWith(
-                color: textBase.withValues(alpha: 0.7),
-              ),
+              style: AppTextStyles.of(
+                context,
+              ).bodySmall.copyWith(color: textBase.withValues(alpha: 0.7)),
             ),
           ),
           Align(
@@ -1374,16 +1374,16 @@ class _RepoRow extends StatelessWidget {
                 children: [
                   Text(
                     repo.githubUrl,
-                    style: AppTextStyles.of(context).bodyStrong.copyWith(
-                      color: textBase,
-                    ),
+                    style: AppTextStyles.of(
+                      context,
+                    ).bodyStrong.copyWith(color: textBase),
                   ),
                   const SizedBox(height: 2),
                   Text(
                     '@${repo.branch}',
-                    style: AppTextStyles.of(context).caption.copyWith(
-                      color: textBase.withValues(alpha: 0.55),
-                    ),
+                    style: AppTextStyles.of(
+                      context,
+                    ).caption.copyWith(color: textBase.withValues(alpha: 0.55)),
                   ),
                 ],
               ),

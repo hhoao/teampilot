@@ -6,8 +6,8 @@ import '../../l10n/l10n_extensions.dart';
 import '../../models/app_provider_config.dart';
 import '../../models/team_config.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
-import '../dropdown/flashsky_dropdown_field.dart';
-import '../dropdown/flashskyai_dropdown_decoration.dart';
+import '../dropdown/app_dropdown_field.dart';
+import '../dropdown/app_dropdown_decoration.dart';
 import '../settings/workspace_settings_widgets.dart';
 
 class TeamToolProviderSelectors extends StatelessWidget {
@@ -24,9 +24,9 @@ class TeamToolProviderSelectors extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final providerCli =
-        CliToolRegistryScope.maybeOf(context)
-            ?.tryGet(team.cli.value)
-            ?.providerCatalogCli ??
+        CliToolRegistryScope.maybeOf(
+          context,
+        )?.tryGet(team.cli.value)?.providerCatalogCli ??
         AppProviderCli.claude;
     final providers = context.watch<AppProviderCubit>().state.providersFor(
       providerCli,
@@ -46,7 +46,7 @@ class TeamToolProviderSelectors extends StatelessWidget {
         items: items,
         initialItem: effectiveSelectedId,
         hintText: l10n.appProviderTeamNone,
-        decoration: FlashskyDropdownDecorations.settingsCompact(context),
+        decoration: AppDropdownDecorations.themed(context),
         itemLabel: (id) {
           if (id.isEmpty) return l10n.appProviderTeamNone;
           return eligible
@@ -68,5 +68,4 @@ class TeamToolProviderSelectors extends StatelessWidget {
       showDividerBelow: false,
     );
   }
-
 }

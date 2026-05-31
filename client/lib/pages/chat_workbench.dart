@@ -22,7 +22,7 @@ import '../services/terminal/terminal_theme_mapper.dart';
 import '../services/terminal/terminal_uri_opener.dart';
 import '../services/terminal/terminal_fonts.dart';
 import '../utils/app_keys.dart';
-import '../utils/context_menu_position.dart';
+import '../widgets/menu/sidebar_action_menu.dart';
 import '../utils/debounce/debounce.dart';
 import '../theme/app_text_styles.dart';
 import '../widgets/file_editor_panel.dart';
@@ -128,46 +128,66 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
     final linkUri = cellOffset != null
         ? engine.hyperlinkAt(cellOffset.row, cellOffset.column)
         : null;
-    final entries = <PopupMenuEntry<String>>[
-      PopupMenuItem(value: 'find', child: Text(context.l10n.terminalFind)),
+    final specs = <SidebarActionMenuSpec>[
+      SidebarActionMenuSpec.item(
+        value: 'find',
+        icon: Icons.search,
+        label: context.l10n.terminalFind,
+      ),
       if (linkUri != null)
-        PopupMenuItem(
+        SidebarActionMenuSpec.item(
           value: 'openLink',
-          child: Text(context.l10n.terminalOpenLink),
+          icon: Icons.link,
+          label: context.l10n.terminalOpenLink,
         ),
-      PopupMenuItem(
+      SidebarActionMenuSpec.item(
         value: 'export',
-        child: Text(context.l10n.terminalExportScrollback),
+        icon: Icons.download_outlined,
+        label: context.l10n.terminalExportScrollback,
       ),
-      const PopupMenuDivider(),
-      PopupMenuItem(value: 'paste', child: Text(mloc.pasteButtonLabel)),
-      PopupMenuItem(
+      const SidebarActionMenuSpec.divider(),
+      SidebarActionMenuSpec.item(
+        value: 'paste',
+        icon: Icons.content_paste,
+        label: mloc.pasteButtonLabel,
+      ),
+      SidebarActionMenuSpec.item(
         value: 'copy',
+        icon: Icons.content_copy,
+        label: mloc.copyButtonLabel,
         enabled: hasSelection,
-        child: Text(mloc.copyButtonLabel),
       ),
-      PopupMenuItem(value: 'selectAll', child: Text(mloc.selectAllButtonLabel)),
-      const PopupMenuItem(
+      SidebarActionMenuSpec.item(
+        value: 'selectAll',
+        icon: Icons.select_all,
+        label: mloc.selectAllButtonLabel,
+      ),
+      SidebarActionMenuSpec.item(
         value: 'clearSelection',
-        child: Text('Clear selection'),
+        icon: Icons.deselect,
+        label: 'Clear selection',
       ),
+      if (sessionRunning) ...[
+        const SidebarActionMenuSpec.divider(),
+        const SidebarActionMenuSpec.item(
+          value: 'disconnect',
+          icon: Icons.link_off,
+          label: 'Disconnect',
+        ),
+        const SidebarActionMenuSpec.item(
+          value: 'restart',
+          icon: Icons.restart_alt,
+          label: 'Restart session',
+        ),
+      ],
     ];
-    if (sessionRunning) {
-      entries.add(const PopupMenuDivider());
-      entries.add(
-        const PopupMenuItem(value: 'disconnect', child: Text('Disconnect')),
-      );
-      entries.add(
-        const PopupMenuItem(value: 'restart', child: Text('Restart session')),
-      );
-    }
 
-    final selected = await showMenu<String>(
+    final selected = await showSidebarActionMenuFromSpecs<String>(
       context: menuContext,
-      position: contextMenuPositionForGlobal(menuContext, globalPosition),
+      globalPosition: globalPosition,
       useRootNavigator: true,
       popUpAnimationStyle: const AnimationStyle(duration: Duration.zero),
-      items: entries,
+      specs: specs,
     );
     if (!menuContext.mounted) return;
     switch (selected) {

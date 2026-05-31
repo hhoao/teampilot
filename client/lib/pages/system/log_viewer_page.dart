@@ -8,11 +8,13 @@ import '../../l10n/l10n_extensions.dart';
 import '../../services/storage/app_storage.dart';
 import '../../utils/debounce/debounce.dart';
 import '../../utils/logger_utils.dart';
-import '../../widgets/dropdown/flashsky_dropdown_field.dart';
-import '../../widgets/dropdown/flashskyai_dropdown_decoration.dart';
+import '../../widgets/dropdown/app_dropdown_field.dart';
+import '../../widgets/dropdown/app_dropdown_decoration.dart';
 import '../../theme/app_fonts.dart';
 import '../../theme/app_text_styles.dart';
 import '../../widgets/settings/workspace_hub_shell.dart';
+import '../../widgets/app_icon_button.dart';
+import '../../widgets/menu/sidebar_action_menu.dart';
 import '../../widgets/settings/workspace_settings_widgets.dart';
 
 TextStyle logMonospaceStyle(BuildContext context, {Color? color}) {
@@ -279,7 +281,9 @@ class _LogViewerPanelState extends State<_LogViewerPanel> {
     await Clipboard.setData(ClipboardData(text: path));
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(context.l10n.logViewerPathCopied(p.basename(path)))),
+      SnackBar(
+        content: Text(context.l10n.logViewerPathCopied(p.basename(path))),
+      ),
     );
   }
 
@@ -294,9 +298,9 @@ class _LogViewerPanelState extends State<_LogViewerPanel> {
       ).showSnackBar(SnackBar(content: Text(l10n.logViewerClearDone)));
     } on Object catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l10n.logViewerClearFailed('$e'))),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l10n.logViewerClearFailed('$e'))));
     }
   }
 
@@ -312,9 +316,9 @@ class _LogViewerPanelState extends State<_LogViewerPanel> {
     );
     return InputDecoration(
       hintText: hintText,
-      hintStyle: AppTextStyles.of(context).body.copyWith(
-        color: cs.onSurfaceVariant,
-      ),
+      hintStyle: AppTextStyles.of(
+        context,
+      ).body.copyWith(color: cs.onSurfaceVariant),
       prefixIcon: prefixIcon,
       prefixIconConstraints: const BoxConstraints(minWidth: 34, minHeight: 34),
       isDense: true,
@@ -338,19 +342,16 @@ class _LogViewerPanelState extends State<_LogViewerPanel> {
     required VoidCallback onPressed,
   }) {
     final cs = Theme.of(context).colorScheme;
-    return IconButton(
+    return AppIconButton(
+      icon: value ? onIcon : offIcon,
+      iconSize: 20,
+      size: 36,
       tooltip: tooltip,
-      visualDensity: VisualDensity.compact,
-      padding: const EdgeInsets.all(8),
-      constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
-      style: IconButton.styleFrom(
-        backgroundColor: value
-            ? cs.primaryContainer.withValues(alpha: 0.7)
-            : cs.workspaceInset,
-        foregroundColor: value ? cs.onPrimaryContainer : cs.onSurfaceVariant,
-      ),
-      icon: Icon(value ? onIcon : offIcon, size: 20),
-      onPressed: onPressed,
+      color: value ? cs.onPrimaryContainer : cs.onSurfaceVariant,
+      backgroundColor: value
+          ? cs.primaryContainer.withValues(alpha: 0.7)
+          : cs.workspaceInset,
+      onTap: onPressed,
     );
   }
 
@@ -376,7 +377,7 @@ class _LogViewerPanelState extends State<_LogViewerPanel> {
         key: ValueKey<T>(value),
         items: items,
         initialItem: value,
-        decoration: FlashskyDropdownDecorations.settingsCompact(context),
+        decoration: AppDropdownDecorations.themed(context),
         closedHeaderPadding: _toolbarDropdownPadding,
         expandedHeaderPadding: _toolbarDropdownPadding,
         itemLabel: itemLabel,
@@ -388,10 +389,16 @@ class _LogViewerPanelState extends State<_LogViewerPanel> {
   Widget _buildLogToolbar(BuildContext context, int lineCount) {
     final l10n = context.l10n;
     final cs = Theme.of(context).colorScheme;
-    final fileValue = _selectedFile ?? (_logFiles.isNotEmpty ? _logFiles.first : null);
+    final fileValue =
+        _selectedFile ?? (_logFiles.isNotEmpty ? _logFiles.first : null);
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(12, _toolbarVerticalPadding, 8, _toolbarVerticalPadding),
+      padding: const EdgeInsets.fromLTRB(
+        12,
+        _toolbarVerticalPadding,
+        8,
+        _toolbarVerticalPadding,
+      ),
       decoration: BoxDecoration(
         color: cs.workspaceInset,
         border: Border(
@@ -479,10 +486,32 @@ class _LogViewerPanelState extends State<_LogViewerPanel> {
                       value: _wrapLines,
                       onPressed: () => setState(() => _wrapLines = !_wrapLines),
                     ),
-                    PopupMenuButton<String>(
+                    SidebarActionMenuButton(
                       tooltip: l10n.logViewerActionsMenu,
-                      padding: EdgeInsets.zero,
                       icon: Icon(Icons.more_horiz, color: cs.onSurfaceVariant),
+                      specs: [
+                        SidebarActionMenuSpec.item(
+                          value: 'refresh',
+                          icon: Icons.refresh,
+                          label: l10n.logViewerRefresh,
+                        ),
+                        SidebarActionMenuSpec.item(
+                          value: 'copy',
+                          icon: Icons.copy_outlined,
+                          label: l10n.logViewerCopyPath,
+                        ),
+                        SidebarActionMenuSpec.item(
+                          value: 'clear',
+                          icon: Icons.cleaning_services_outlined,
+                          label: l10n.logViewerClearOld,
+                        ),
+                        SidebarActionMenuSpec.item(
+                          value: 'reverse',
+                          icon: Icons.swap_vert,
+                          label: l10n.logViewerReverseOrder,
+                          selected: _reverseOrder,
+                        ),
+                      ],
                       onSelected: (action) async {
                         switch (action) {
                           case 'refresh':
@@ -497,32 +526,13 @@ class _LogViewerPanelState extends State<_LogViewerPanel> {
                             if (file != null) await _loadLogContent(file);
                         }
                       },
-                      itemBuilder: (context) => [
-                        PopupMenuItem(
-                          value: 'refresh',
-                          child: _menuRow(Icons.refresh, l10n.logViewerRefresh),
-                        ),
-                        PopupMenuItem(
-                          value: 'copy',
-                          child: _menuRow(Icons.copy_outlined, l10n.logViewerCopyPath),
-                        ),
-                        PopupMenuItem(
-                          value: 'clear',
-                          child: _menuRow(
-                            Icons.cleaning_services_outlined,
-                            l10n.logViewerClearOld,
-                          ),
-                        ),
-                        CheckedPopupMenuItem(
-                          value: 'reverse',
-                          checked: _reverseOrder,
-                          child: _menuRow(Icons.swap_vert, l10n.logViewerReverseOrder),
-                        ),
-                      ],
                     ),
                     const SizedBox(width: 8),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
                       decoration: BoxDecoration(
                         color: cs.primaryContainer.withValues(alpha: 0.65),
                         borderRadius: BorderRadius.circular(999),
@@ -597,16 +607,6 @@ class _LogViewerPanelState extends State<_LogViewerPanel> {
     );
   }
 
-  static Widget _menuRow(IconData icon, String label) {
-    return Row(
-      children: [
-        Icon(icon, size: 20),
-        const SizedBox(width: 12),
-        Text(label),
-      ],
-    );
-  }
-
   Widget _buildCenteredMessage(
     BuildContext context, {
     required IconData icon,
@@ -625,9 +625,9 @@ class _LogViewerPanelState extends State<_LogViewerPanel> {
             Text(
               title,
               textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w700,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 8),
             Text(
@@ -658,18 +658,18 @@ class _LogViewerPanelState extends State<_LogViewerPanel> {
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
             child: Text(
               l10n.logViewerPendingTitle,
-              style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                fontWeight: FontWeight.w700,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
             ),
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
             child: Text(
               l10n.logViewerPendingBody,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: cs.onSurfaceVariant,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
             ),
           ),
           Expanded(
@@ -697,10 +697,7 @@ class _LogViewerPanelState extends State<_LogViewerPanel> {
       );
     }
 
-    return ColoredBox(
-      color: cs.workspaceCode,
-      child: _buildLogList(context),
-    );
+    return ColoredBox(color: cs.workspaceCode, child: _buildLogList(context));
   }
 
   @override

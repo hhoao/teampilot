@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -5,7 +7,7 @@ import 'package:re_editor/re_editor.dart';
 
 import '../../cubits/editor_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
-import '../../utils/context_menu_position.dart';
+import '../../widgets/menu/sidebar_action_menu.dart';
 import 'file_editor_ai_context.dart';
 
 /// Desktop/mobile context menu for [CodeEditor] (right-click / long-press).
@@ -29,24 +31,23 @@ class FileEditorContextMenuController implements SelectionToolbarController {
     final path = editorCubit.state.activePath;
     final readOnly = path != null && editorCubit.isReadOnly(path);
 
-    final position = contextMenuPositionForGlobal(
-      context,
-      anchors.primaryAnchor,
-    );
-
-    final items = <PopupMenuEntry<void>>[
+    final specs = <SidebarActionMenuSpec>[
       if (!readOnly)
-        PopupMenuItem(
-          onTap: () => controller.cut(),
-          child: Text(l10n.editorCut),
+        SidebarActionMenuSpec.item(
+          icon: Icons.content_cut,
+          label: l10n.editorCut,
+          onAction: controller.cut,
         ),
-      PopupMenuItem(
-        onTap: () => controller.copy(),
-        child: Text(l10n.editorCopy),
+      SidebarActionMenuSpec.item(
+        icon: Icons.content_copy,
+        label: l10n.editorCopy,
+        onAction: controller.copy,
       ),
       if (path != null)
-        PopupMenuItem(
-          onTap: () {
+        SidebarActionMenuSpec.item(
+          icon: Icons.auto_awesome_outlined,
+          label: l10n.editorCopyAsAiContext,
+          onAction: () {
             Clipboard.setData(
               ClipboardData(
                 text: formatEditorAiContext(
@@ -56,35 +57,40 @@ class FileEditorContextMenuController implements SelectionToolbarController {
               ),
             );
           },
-          child: Text(l10n.editorCopyAsAiContext),
         ),
       if (!readOnly)
-        PopupMenuItem(
-          onTap: () => controller.paste(),
-          child: Text(l10n.editorPaste),
+        SidebarActionMenuSpec.item(
+          icon: Icons.content_paste,
+          label: l10n.editorPaste,
+          onAction: controller.paste,
         ),
-      const PopupMenuDivider(),
-      PopupMenuItem(
-        onTap: controller.selectAll,
-        child: Text(l10n.editorSelectAll),
+      const SidebarActionMenuSpec.divider(),
+      SidebarActionMenuSpec.item(
+        icon: Icons.select_all,
+        label: l10n.editorSelectAll,
+        onAction: controller.selectAll,
       ),
       if (!readOnly && controller.canUndo)
-        PopupMenuItem(
-          onTap: controller.undo,
-          child: Text(l10n.editorUndoEdit),
+        SidebarActionMenuSpec.item(
+          icon: Icons.undo,
+          label: l10n.editorUndoEdit,
+          onAction: controller.undo,
         ),
       if (!readOnly && controller.canRedo)
-        PopupMenuItem(
-          onTap: controller.redo,
-          child: Text(l10n.editorRedoEdit),
+        SidebarActionMenuSpec.item(
+          icon: Icons.redo,
+          label: l10n.editorRedoEdit,
+          onAction: controller.redo,
         ),
     ];
 
-    showMenu<void>(
-      context: context,
-      position: position,
-      items: items,
-      useRootNavigator: true,
+    unawaited(
+      showSidebarActionMenuFromSpecs<void>(
+        context: context,
+        globalPosition: anchors.primaryAnchor,
+        useRootNavigator: true,
+        specs: specs,
+      ),
     );
   }
 }

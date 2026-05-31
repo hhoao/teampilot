@@ -5,7 +5,7 @@ import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/app_provider_config.dart';
 import 'package:teampilot/models/provider_presets/codex_provider_presets.dart';
 import 'package:teampilot/widgets/app_provider/app_provider_form_sheet.dart';
-import 'package:teampilot/widgets/dropdown/flashsky_dropdown_field.dart';
+import 'package:teampilot/widgets/dropdown/app_dropdown_field.dart';
 
 void main() {
   testWidgets('claude provider form shows advanced options', (tester) async {

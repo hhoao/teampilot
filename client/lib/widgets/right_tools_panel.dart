@@ -22,7 +22,9 @@ import '../theme/app_text_styles.dart';
 import '../theme/workspace_surface_layers.dart';
 import '../utils/app_keys.dart';
 import '../utils/debounce/debounce.dart';
+import 'app_icon_button.dart';
 import 'file_tree_node.dart';
+import 'menu/sidebar_action_menu.dart';
 import 'split_layout.dart';
 import 'member_presence_indicator.dart';
 
@@ -250,18 +252,11 @@ class _MembersPanel extends StatelessWidget {
                   ),
                 ),
               ),
-              SizedBox(
-                height: 22,
-                child: IconButton(
-                  tooltip: l10n.openTeam,
-                  onPressed: onLaunchAll,
-                  icon: const Icon(Icons.keyboard_double_arrow_right, size: 18),
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(
-                    minWidth: 28,
-                    minHeight: 22,
-                  ),
-                ),
+              AppIconButton(
+                icon: Icons.keyboard_double_arrow_right,
+                tooltip: l10n.openTeam,
+                size: AppIconButton.kCompactSize,
+                onTap: onLaunchAll,
               ),
             ],
           ),
@@ -517,9 +512,11 @@ class _FileTreePanelState extends State<_FileTreePanel> {
                           prefixIcon: const Icon(Icons.search, size: 18),
                           floatingLabelBehavior: FloatingLabelBehavior.never,
                           suffixIcon: _filterController.text.isNotEmpty
-                              ? IconButton(
-                                  icon: const Icon(Icons.clear, size: 16),
-                                  onPressed: () {
+                              ? AppIconButton(
+                                  icon: Icons.clear,
+                                  iconSize: AppIconButton.kCompactIconSize,
+                                  size: AppIconButton.kCompactSize,
+                                  onTap: () {
                                     _filterController.clear();
                                     _cubit.setFilter('');
                                   },
@@ -577,45 +574,47 @@ class _FileTreePanelState extends State<_FileTreePanel> {
             next.preferences.workspaceTerminalVisible,
         builder: (context, layoutState) {
           final visible = layoutState.preferences.workspaceTerminalVisible;
-          return _fileTreeHeaderIconButton(
+          return AppIconButton(
+            icon: visible ? Icons.terminal : Icons.terminal_outlined,
+            iconSize: AppIconButton.kCompactIconSize,
+            size: AppIconButton.kCompactSize,
             tooltip: visible
                 ? l10n.workspaceTerminalHide
                 : l10n.workspaceTerminalShow,
-            onPressed: () => context
+            onTap: () => context
                 .read<LayoutCubit>()
                 .setWorkspaceTerminalVisible(!visible),
-            icon: Icon(
-              visible ? Icons.terminal : Icons.terminal_outlined,
-              size: 16,
-            ),
           );
         },
       ),
-      _fileTreeHeaderIconButton(
+      AppIconButton(
+        icon: Icons.my_location_outlined,
+        iconSize: AppIconButton.kCompactIconSize,
+        size: AppIconButton.kCompactSize,
         tooltip: l10n.fileTreeRevealActiveFile,
-        onPressed: () => unawaited(_revealActiveEditorFile()),
-        icon: const Icon(Icons.my_location_outlined, size: 16),
+        onTap: () => unawaited(_revealActiveEditorFile()),
       ),
-      _fileTreeHeaderIconButton(
+      AppIconButton(
+        icon: state.showHiddenFiles
+            ? Icons.visibility_off_outlined
+            : Icons.visibility_outlined,
+        iconSize: AppIconButton.kCompactIconSize,
+        size: AppIconButton.kCompactSize,
         tooltip: state.showHiddenFiles
             ? 'Hide hidden files'
             : 'Show hidden files',
-        onPressed: _cubit.toggleShowHidden,
-        icon: Icon(
-          state.showHiddenFiles
-              ? Icons.visibility_off_outlined
-              : Icons.visibility_outlined,
-          size: 16,
-        ),
+        onTap: _cubit.toggleShowHidden,
       ),
-      _fileTreeHeaderIconButton(
+      AppIconButton(
+        icon: Icons.copy,
+        iconSize: 14,
+        size: AppIconButton.kCompactSize,
         tooltip: l10n.copy,
-        onPressed: () {
+        onTap: () {
           if (state.rootPath.isNotEmpty) {
             Clipboard.setData(ClipboardData(text: state.rootPath));
           }
         },
-        icon: const Icon(Icons.copy, size: 14),
       ),
     ];
   }
@@ -668,29 +667,6 @@ class _FileTreePanelState extends State<_FileTreePanel> {
   }
 }
 
-const _fileTreeHeaderButtonConstraints = BoxConstraints(
-  minWidth: 28,
-  minHeight: 22,
-);
-
-Widget _fileTreeHeaderIconButton({
-  required String tooltip,
-  required VoidCallback onPressed,
-  required Widget icon,
-}) {
-  return SizedBox(
-    height: 22,
-    width: 28,
-    child: IconButton(
-      tooltip: tooltip,
-      onPressed: onPressed,
-      icon: icon,
-      padding: EdgeInsets.zero,
-      constraints: _fileTreeHeaderButtonConstraints,
-    ),
-  );
-}
-
 enum _FileTreeHeaderAction { terminal, reveal, toggleHidden, copy }
 
 class _FileTreeHeaderOverflowMenu extends StatelessWidget {
@@ -716,16 +692,41 @@ class _FileTreeHeaderOverflowMenu extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: 22,
-      width: 28,
-      child: PopupMenuButton<_FileTreeHeaderAction>(
+    return SidebarActionMenuButton(
         tooltip: l10n.fileTree,
-        padding: EdgeInsets.zero,
-        constraints: _fileTreeHeaderButtonConstraints,
-        icon: const Icon(Icons.more_vert, size: 16),
+        icon: const Icon(Icons.more_vert, size: AppIconButton.kCompactIconSize),
+        size: AppIconButton.kCompactSize,
+        specs: [
+          SidebarActionMenuSpec.item(
+            value: _FileTreeHeaderAction.terminal,
+            icon: workspaceTerminalVisible
+                ? Icons.terminal
+                : Icons.terminal_outlined,
+            label: workspaceTerminalVisible
+                ? l10n.workspaceTerminalHide
+                : l10n.workspaceTerminalShow,
+          ),
+          SidebarActionMenuSpec.item(
+            value: _FileTreeHeaderAction.reveal,
+            icon: Icons.my_location_outlined,
+            label: l10n.fileTreeRevealActiveFile,
+          ),
+          SidebarActionMenuSpec.item(
+            value: _FileTreeHeaderAction.toggleHidden,
+            icon: showHiddenFiles
+                ? Icons.visibility_off_outlined
+                : Icons.visibility_outlined,
+            label: showHiddenFiles ? 'Hide hidden files' : 'Show hidden files',
+          ),
+          SidebarActionMenuSpec.item(
+            value: _FileTreeHeaderAction.copy,
+            icon: Icons.copy,
+            label: l10n.copy,
+            enabled: canCopy,
+          ),
+        ],
         onSelected: (action) {
-          switch (action) {
+          switch (action as _FileTreeHeaderAction) {
             case _FileTreeHeaderAction.terminal:
               onToggleTerminal();
             case _FileTreeHeaderAction.reveal:
@@ -736,62 +737,6 @@ class _FileTreeHeaderOverflowMenu extends StatelessWidget {
               onCopy();
           }
         },
-        itemBuilder: (context) => [
-          PopupMenuItem(
-            value: _FileTreeHeaderAction.terminal,
-            child: ListTile(
-              dense: true,
-              contentPadding: EdgeInsets.zero,
-              leading: Icon(
-                workspaceTerminalVisible
-                    ? Icons.terminal
-                    : Icons.terminal_outlined,
-                size: 18,
-              ),
-              title: Text(
-                workspaceTerminalVisible
-                    ? l10n.workspaceTerminalHide
-                    : l10n.workspaceTerminalShow,
-              ),
-            ),
-          ),
-          PopupMenuItem(
-            value: _FileTreeHeaderAction.reveal,
-            child: ListTile(
-              dense: true,
-              contentPadding: EdgeInsets.zero,
-              leading: const Icon(Icons.my_location_outlined, size: 18),
-              title: Text(l10n.fileTreeRevealActiveFile),
-            ),
-          ),
-          PopupMenuItem(
-            value: _FileTreeHeaderAction.toggleHidden,
-            child: ListTile(
-              dense: true,
-              contentPadding: EdgeInsets.zero,
-              leading: Icon(
-                showHiddenFiles
-                    ? Icons.visibility_off_outlined
-                    : Icons.visibility_outlined,
-                size: 18,
-              ),
-              title: Text(
-                showHiddenFiles ? 'Hide hidden files' : 'Show hidden files',
-              ),
-            ),
-          ),
-          PopupMenuItem(
-            value: _FileTreeHeaderAction.copy,
-            enabled: canCopy,
-            child: ListTile(
-              dense: true,
-              contentPadding: EdgeInsets.zero,
-              leading: const Icon(Icons.copy, size: 18),
-              title: Text(l10n.copy),
-            ),
-          ),
-        ],
-      ),
     );
   }
 }
