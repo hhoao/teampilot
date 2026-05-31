@@ -94,8 +94,7 @@ InputDecorationTheme buildAppOutlineInputDecorationTheme({
 
   final hintColor = colorScheme.onSurfaceVariant.withValues(alpha: 0.72);
   final labelColor = colorScheme.onSurfaceVariant.withValues(alpha: 0.9);
-  final hintBase =
-      textTheme.bodySmall ?? textTheme.bodyMedium ?? textTheme.bodyLarge!;
+  final hintBase = textTheme.bodyMedium ?? textTheme.bodyLarge!;
   final hintStyle = withResolvedFontSize(
     hintBase.copyWith(
       color: hintColor,
@@ -108,7 +107,7 @@ InputDecorationTheme buildAppOutlineInputDecorationTheme({
 
   return InputDecorationTheme(
     filled: true,
-    fillColor: colorScheme.workspaceInset,
+    fillColor: colorScheme.workspaceCard,
     isDense: true,
     contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 13),
     constraints: const BoxConstraints(minHeight: 40),
