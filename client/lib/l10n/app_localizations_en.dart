@@ -655,6 +655,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get terminalExportScrollback => 'Export scrollback…';
 
   @override
+  String get terminalCopySelectHint => 'Shift+drag to copy';
+
+  @override
   String get workspaceTerminal => 'Terminal';
 
   @override

@@ -1292,6 +1292,12 @@ abstract class AppLocalizations {
   /// **'Export scrollback…'**
   String get terminalExportScrollback;
 
+  /// No description provided for @terminalCopySelectHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Shift+drag to copy'**
+  String get terminalCopySelectHint;
+
   /// No description provided for @workspaceTerminal.
   ///
   /// In en, this message translates to:

@@ -227,6 +227,7 @@
   "fileTreeDeleteItemConfirm": "删除「{name}」？",
   "terminalOpenLink": "打开链接",
   "terminalExportScrollback": "导出滚动缓冲…",
+  "terminalCopySelectHint": "按住 Shift 选择复制",
   "workspaceTerminal": "终端",
   "workspaceTerminalShow": "显示终端",
   "workspaceTerminalHide": "隐藏终端",

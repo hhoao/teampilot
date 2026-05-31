@@ -276,6 +276,7 @@
   },
   "terminalOpenLink": "Open link",
   "terminalExportScrollback": "Export scrollback…",
+  "terminalCopySelectHint": "Shift+drag to copy",
   "workspaceTerminal": "Terminal",
   "workspaceTerminalShow": "Show terminal",
   "workspaceTerminalHide": "Hide terminal",

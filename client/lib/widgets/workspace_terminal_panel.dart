@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_alacritty/flutter_alacritty.dart';
 import 'package:flutter_alacritty/input/paste.dart' as alacritty_paste;
+import 'package:flutter_alacritty/input/term_mode.dart' show anyMouse;
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:path/path.dart' as p;
 import 'package:uuid/uuid.dart';
@@ -193,6 +194,9 @@ class _WorkspaceTerminalPanelState extends State<WorkspaceTerminalPanel> {
   ) async {
     final mloc = MaterialLocalizations.of(menuContext);
     final hasSelection = tab.controller.selectionActive;
+    // Mouse reporting (TUI) eats plain left-drag, so a terminal selection never
+    // forms and Copy stays disabled. Hint the standard Shift+drag escape hatch.
+    final mouseReporting = anyMouse(tab.session.engine.grid.modeFlags);
     final linkUri = cellOffset != null
         ? tab.session.engine.hyperlinkAt(cellOffset.row, cellOffset.column)
         : null;
@@ -212,7 +216,9 @@ class _WorkspaceTerminalPanelState extends State<WorkspaceTerminalPanel> {
       SidebarActionMenuSpec.item(
         value: 'copy',
         icon: Icons.content_copy,
-        label: mloc.copyButtonLabel,
+        label: (!hasSelection && mouseReporting)
+            ? menuContext.l10n.terminalCopySelectHint
+            : mloc.copyButtonLabel,
         enabled: hasSelection,
       ),
       SidebarActionMenuSpec.item(

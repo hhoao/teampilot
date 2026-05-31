@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_alacritty/flutter_alacritty.dart';
 import 'package:flutter_alacritty/input/paste.dart' as alacritty_paste;
+import 'package:flutter_alacritty/input/term_mode.dart' show anyMouse;
 
 import '../cubits/chat_cubit.dart';
 import '../cubits/editor_cubit.dart';
@@ -125,6 +126,10 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
   }) async {
     final mloc = MaterialLocalizations.of(menuContext);
     final hasSelection = _terminalController.selectionActive;
+    // When the running TUI has mouse reporting on, plain left-drag is forwarded
+    // to the app instead of creating a terminal selection, so Copy stays
+    // disabled. Surface the standard Shift+drag escape hatch as a hint.
+    final mouseReporting = anyMouse(engine.grid.modeFlags);
     final linkUri = cellOffset != null
         ? engine.hyperlinkAt(cellOffset.row, cellOffset.column)
         : null;
@@ -154,7 +159,9 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
       SidebarActionMenuSpec.item(
         value: 'copy',
         icon: Icons.content_copy,
-        label: mloc.copyButtonLabel,
+        label: (!hasSelection && mouseReporting)
+            ? menuContext.l10n.terminalCopySelectHint
+            : mloc.copyButtonLabel,
         enabled: hasSelection,
       ),
       SidebarActionMenuSpec.item(

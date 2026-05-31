@@ -635,6 +635,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get terminalExportScrollback => '导出滚动缓冲…';
 
   @override
+  String get terminalCopySelectHint => '按住 Shift 选择复制';
+
+  @override
   String get workspaceTerminal => '终端';
 
   @override
