@@ -23,6 +23,8 @@ import 'dropdown/app_dropdown_field.dart';
 import '../theme/app_text_styles.dart';
 import '../theme/workspace_surface_layers.dart';
 import 'dropdown/app_dropdown_decoration.dart';
+import 'dropdown/dropdown_menu_item_button.dart';
+import 'dropdown/popover/app_popover.dart';
 import 'menu/sidebar_action_menu.dart';
 import 'project_details_dialog.dart';
 import 'app_icon_button.dart';
@@ -436,9 +438,53 @@ class _ProjectSelector extends StatefulWidget {
 }
 
 class _ProjectSelectorState extends State<_ProjectSelector> {
-  var _projectsExpanded = true;
+  late final AppPopoverController _projectPickerController;
+  @override
+  void initState() {
+    super.initState();
+    _projectPickerController = AppPopoverController();
+  }
+
+  @override
+  void dispose() {
+    _projectPickerController.dispose();
+    super.dispose();
+  }
 
   VoidCallback? get _headerAddAction => widget.onNewProject;
+
+  Widget _projectPickerRow(
+    BuildContext context,
+    AppProject project,
+    AppDropdownDecoration decoration, {
+    required bool inList,
+  }) {
+    final l10n = context.l10n;
+    final cs = Theme.of(context).colorScheme;
+    final name = _projectDisplayName(project, l10n);
+    final style = inList ? decoration.listItemStyle : decoration.headerStyle;
+    return Row(
+      children: [
+        Icon(
+          Icons.folder_outlined,
+          size: 16,
+          color: cs.onSurfaceVariant.withValues(alpha: 0.85),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            name,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: style,
+          ),
+        ),
+      ],
+    );
+  }
+
+  double? _projectPickerPanelWidth(BoxConstraints constraints) =>
+      constraints.maxWidth.isFinite ? constraints.maxWidth : null;
 
   String? _headerAddTooltip(AppLocalizations l10n) =>
       widget.onNewProject != null ? l10n.newProjectTooltip : null;
@@ -629,62 +675,128 @@ class _ProjectSelectorState extends State<_ProjectSelector> {
     final sessions = context.read<ChatCubit>().state.visibleSessions;
     final addTooltip = _headerAddTooltip(l10n);
     final addAction = _headerAddAction;
+    final pickerDecoration = AppDropdownDecorations.themed(
+      context,
+      closedFillColor: cs.workspaceCard,
+      expandedFillColor: cs.workspaceCard,
+      borderRadius: 8,
+      listItemFontWeight: FontWeight.w600,
+      expandedShadowBlurRadius: 22,
+      expandedShadowOffset: const Offset(0, 10),
+      expandedShadowAlphaDark: 0.5,
+      expandedShadowAlphaLight: 0.12,
+      selectedPrimaryAlphaDark: 0.22,
+    );
 
-    final visibleProjects = !_projectsExpanded && selected != null
-        ? [selected]
-        : projects;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        _ProjectSectionHeader(
-          label: l10n.projects,
-          addTooltip: addTooltip,
-          onAdd: addAction,
-          switchTooltip: l10n.switchProjectTooltip,
-          switchIcon: _projectsExpanded ? Icons.unfold_less : Icons.unfold_more,
-          onSwitch: hasProjects
-              ? () => setState(() => _projectsExpanded = !_projectsExpanded)
-              : null,
-        ),
-        Expanded(
-          child: !hasProjects
-              ? Align(
-                  alignment: Alignment.topLeft,
-                  child: Text(
-                    l10n.noSessions,
-                    style: AppTextStyles.of(context).bodySmall.copyWith(
-                      color: cs.onSurfaceVariant.withValues(alpha: 0.7),
-                    ),
-                  ),
-                )
-              : ListView.builder(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final pickerPanelWidth = _projectPickerPanelWidth(constraints);
+        final switchButton = AppPopover(
+          controller: _projectPickerController,
+          panelWidth: pickerPanelWidth,
+          padding: pickerDecoration.menuPadding,
+          decoration: pickerDecoration.menuDecoration(),
+          anchor: const AppAnchor(
+            childAlignment: Alignment.topRight,
+            overlayAlignment: Alignment.bottomRight,
+            offset: Offset(0, 4),
+          ),
+          popover: (_) {
+            return ConstrainedBox(
+              constraints: const BoxConstraints(
+                maxHeight: kFlashskyDropdownDefaultOverlayHeight,
+              ),
+              child: FocusScope(
+                autofocus: true,
+                child: ListView.separated(
+                  shrinkWrap: true,
+                  physics: const ClampingScrollPhysics(),
                   padding: EdgeInsets.zero,
-                  itemCount: visibleProjects.length,
+                  itemCount: projects.length,
+                  separatorBuilder: (_, _) => const SizedBox(height: 4),
                   itemBuilder: (context, index) {
-                    final project = visibleProjects[index];
-                    final isSelected = selected?.projectId == project.projectId;
-                    final projectSessions = isSelected
-                        ? _sessionsForProject(project, sessions)
-                        : const <AppSession>[];
-                    return _ProjectDirectoryGroup(
-                      key: ValueKey(project.projectId),
-                      project: project,
-                      sessions: projectSessions,
-                      onSelect: () => widget.onSelect(project),
-                      buildMenuChildren: (context, controller) =>
-                          _projectMenuChildren(
-                            context,
-                            controller,
-                            project,
-                            _projectDisplayName(project, l10n),
-                            _sessionsForProject(project, sessions).length,
-                          ),
+                    final project = projects[index];
+                    final isSelected =
+                        selected?.projectId == project.projectId;
+                    return SizedBox(
+                      width: double.infinity,
+                      child: DropdownMenuItemButton(
+                        padding: kFlashskyDropdownListItemPadding,
+                        borderRadius: pickerDecoration.listItemBorderRadius,
+                        highlightColor: pickerDecoration.listItemHighlightColor,
+                        selectedColor: pickerDecoration.listItemSelectedColor,
+                        isSelected: isSelected,
+                        onTap: () {
+                          widget.onSelect(project);
+                          _projectPickerController.hide();
+                        },
+                        child: _projectPickerRow(
+                          context,
+                          project,
+                          pickerDecoration,
+                          inList: true,
+                        ),
+                      ),
                     );
                   },
                 ),
-        ),
-      ],
+              ),
+            );
+          },
+          child: AppIconButton(
+            icon: Icons.swap_horiz,
+            iconSize: AppIconButton.kCompactIconSize,
+            size: AppIconButton.kCompactSize,
+            tooltip: l10n.switchProjectTooltip,
+            enabled: hasProjects,
+            onTap: hasProjects ? _projectPickerController.toggle : null,
+          ),
+        );
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _ProjectSectionHeader(
+              label: l10n.projects,
+              addTooltip: addTooltip,
+              onAdd: addAction,
+              switchControl: switchButton,
+            ),
+            const SizedBox(height: 6),
+            Expanded(
+              child: selected == null
+                  ? Align(
+                      alignment: Alignment.topLeft,
+                      child: Text(
+                        l10n.noSessions,
+                        style: AppTextStyles.of(context).bodySmall.copyWith(
+                          color: cs.onSurfaceVariant.withValues(alpha: 0.7),
+                        ),
+                      ),
+                    )
+                  : ListView(
+                      padding: EdgeInsets.zero,
+                      children: [
+                        _ProjectDirectoryGroup(
+                          key: ValueKey(selected.projectId),
+                          project: selected,
+                          sessions: _sessionsForProject(selected, sessions),
+                          onSelect: () => widget.onSelect(selected),
+                          buildMenuChildren: (context, controller) =>
+                              _projectMenuChildren(
+                                context,
+                                controller,
+                                selected,
+                                _projectDisplayName(selected, l10n),
+                                _sessionsForProject(selected, sessions).length,
+                              ),
+                        ),
+                      ],
+                    ),
+            ),
+          ],
+        );
+      },
     );
   }
 }
@@ -804,19 +916,15 @@ class _ProjectFolderHeaderState extends State<_ProjectFolderHeader> {
 class _ProjectSectionHeader extends StatelessWidget {
   const _ProjectSectionHeader({
     required this.label,
-    required this.switchTooltip,
     this.addTooltip,
     this.onAdd,
-    this.onSwitch,
-    this.switchIcon = Icons.unfold_more,
+    this.switchControl,
   });
 
   final String label;
   final String? addTooltip;
   final VoidCallback? onAdd;
-  final String switchTooltip;
-  final VoidCallback? onSwitch;
-  final IconData switchIcon;
+  final Widget? switchControl;
 
   @override
   Widget build(BuildContext context) {
@@ -845,14 +953,7 @@ class _ProjectSectionHeader extends StatelessWidget {
               tooltip: addTooltip,
               onTap: onAdd,
             ),
-          AppIconButton(
-            icon: switchIcon,
-            iconSize: AppIconButton.kCompactIconSize,
-            size: AppIconButton.kCompactSize,
-            tooltip: switchTooltip,
-            enabled: onSwitch != null,
-            onTap: onSwitch,
-          ),
+          if (switchControl != null) switchControl!,
         ],
       ),
     );
