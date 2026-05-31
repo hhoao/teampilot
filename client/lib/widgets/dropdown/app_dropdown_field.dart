@@ -19,6 +19,9 @@ const EdgeInsets kFlashskyDropdownListItemPadding = EdgeInsets.symmetric(
 );
 const double kFlashskyDropdownDefaultOverlayHeight = 260;
 
+/// Vertical gap between rows in dropdown / picker overlays.
+const double kFlashskyDropdownListItemGap = 4;
+
 /// TeamPilot dropdown using AppFlowy's popover + list pattern.
 class FlashskyDropdownField<T extends Object> extends StatefulWidget {
   const FlashskyDropdownField({
@@ -221,11 +224,13 @@ class _FlashskyDropdownFieldState<T extends Object>
               constraints: BoxConstraints(maxHeight: maxHeight),
               child: FocusScope(
                 autofocus: true,
-                child: ListView.builder(
+                child: ListView.separated(
                   shrinkWrap: true,
                   physics: const ClampingScrollPhysics(),
                   padding: EdgeInsets.zero,
                   itemCount: widget.items.length,
+                  separatorBuilder: (_, _) =>
+                      const SizedBox(height: kFlashskyDropdownListItemGap),
                   itemBuilder: (context, index) {
                     final item = widget.items[index];
                     final isSelected = _selected == item;

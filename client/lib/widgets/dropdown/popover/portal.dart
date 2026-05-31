@@ -11,36 +11,58 @@ class AppPortal extends StatefulWidget {
     required this.portalBuilder,
     required this.visible,
     required this.anchor,
+    this.transitionDuration = const Duration(milliseconds: 160),
+    this.transitionCurve = Curves.easeOutCubic,
   });
 
   final Widget child;
   final WidgetBuilder portalBuilder;
   final bool visible;
   final AppAnchorBase anchor;
+  final Duration transitionDuration;
+  final Curve transitionCurve;
 
   @override
   State<AppPortal> createState() => _AppPortalState();
 }
 
-class _AppPortalState extends State<AppPortal> {
+class _AppPortalState extends State<AppPortal> with SingleTickerProviderStateMixin {
   final layerLink = LayerLink();
   final overlayPortalController = OverlayPortalController();
   final overlayKey = GlobalKey();
+  late final AnimationController _transitionController;
+  late final Animation<double> _fadeAnimation;
+  late final Animation<double> _scaleAnimation;
 
   @override
   void initState() {
     super.initState();
+    _transitionController = AnimationController(
+      vsync: this,
+      duration: widget.transitionDuration,
+    );
+    final curved = CurvedAnimation(
+      parent: _transitionController,
+      curve: widget.transitionCurve,
+      reverseCurve: Curves.easeInCubic,
+    );
+    _fadeAnimation = curved;
+    _scaleAnimation = Tween<double>(begin: 0.97, end: 1).animate(curved);
     _updateVisibility();
   }
 
   @override
   void didUpdateWidget(covariant AppPortal oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (oldWidget.transitionDuration != widget.transitionDuration) {
+      _transitionController.duration = widget.transitionDuration;
+    }
     _updateVisibility();
   }
 
   @override
   void dispose() {
+    _transitionController.dispose();
     _hide();
     super.dispose();
   }
@@ -49,7 +71,19 @@ class _AppPortalState extends State<AppPortal> {
     final shouldShow = widget.visible;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      shouldShow ? _show() : _hide();
+      if (shouldShow) {
+        _show();
+        _transitionController.forward(from: 0);
+        return;
+      }
+      if (_transitionController.status == AnimationStatus.dismissed) {
+        _hide();
+        return;
+      }
+      _transitionController.reverse().whenComplete(() {
+        if (!mounted || widget.visible) return;
+        _hide();
+      });
     });
   }
 
@@ -63,6 +97,25 @@ class _AppPortalState extends State<AppPortal> {
     if (!overlayPortalController.isShowing) {
       overlayPortalController.show();
     }
+  }
+
+  Alignment _transitionAlignment(AppAnchorBase anchor) {
+    return switch (anchor) {
+      AppAnchor anchor => anchor.childAlignment,
+      AppAnchorAuto anchor => anchor.followerAnchor,
+      AppGlobalAnchor _ => Alignment.topCenter,
+    };
+  }
+
+  Widget _buildAnimatedPortal(BuildContext context, Widget child) {
+    return FadeTransition(
+      opacity: _fadeAnimation,
+      child: ScaleTransition(
+        scale: _scaleAnimation,
+        alignment: _transitionAlignment(widget.anchor),
+        child: child,
+      ),
+    );
   }
 
   Widget _buildAutoPosition(BuildContext context, AppAnchorAuto anchor) {
@@ -133,7 +186,10 @@ class _AppPortalState extends State<AppPortal> {
           visible: overlay != null,
           child: IgnorePointer(
             ignoring: overlay == null,
-            child: widget.portalBuilder(context),
+            child: _buildAnimatedPortal(
+              context,
+              widget.portalBuilder(context),
+            ),
           ),
         ),
       ),
@@ -146,7 +202,7 @@ class _AppPortalState extends State<AppPortal> {
       offset: anchor.offset,
       followerAnchor: anchor.childAlignment,
       targetAnchor: anchor.overlayAlignment,
-      child: widget.portalBuilder(context),
+      child: _buildAnimatedPortal(context, widget.portalBuilder(context)),
     );
   }
 
@@ -157,7 +213,7 @@ class _AppPortalState extends State<AppPortal> {
         verticalOffset: 0,
         preferBelow: true,
       ),
-      child: widget.portalBuilder(context),
+      child: _buildAnimatedPortal(context, widget.portalBuilder(context)),
     );
   }
 

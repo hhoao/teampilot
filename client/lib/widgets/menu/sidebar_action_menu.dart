@@ -18,6 +18,7 @@ abstract final class SidebarActionMenuMetrics {
   static const double panelPaddingHorizontal = 8;
   static const double panelPaddingBottom = 12;
   static const double dividerVerticalPadding = 8;
+  static const double itemGap = 4;
   static const BorderRadius panelRadius = BorderRadius.all(Radius.circular(8));
 
   static BoxDecoration panelDecoration(BuildContext context) {
@@ -52,6 +53,23 @@ abstract final class SidebarActionMenuMetrics {
   }
 }
 
+bool _sidebarMenuChildUsesItemGap(Widget child) =>
+    child is! SidebarActionMenuDivider;
+
+List<Widget> _interleaveSidebarMenuItemGap(List<Widget> children) {
+  if (children.length < 2) return children;
+  final spaced = <Widget>[];
+  for (var i = 0; i < children.length; i++) {
+    spaced.add(children[i]);
+    if (i < children.length - 1 &&
+        _sidebarMenuChildUsesItemGap(children[i]) &&
+        _sidebarMenuChildUsesItemGap(children[i + 1])) {
+      spaced.add(const SizedBox(height: SidebarActionMenuMetrics.itemGap));
+    }
+  }
+  return spaced;
+}
+
 /// Panel container (background, padding, min width).
 class SidebarActionMenuPanel extends StatelessWidget {
   const SidebarActionMenuPanel({
@@ -79,7 +97,7 @@ class SidebarActionMenuPanel extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: children,
+            children: _interleaveSidebarMenuItemGap(children),
           ),
         ),
       ),
@@ -307,13 +325,32 @@ class SidebarActionMenuIconAnchor extends StatelessWidget {
 }
 
 /// Estimates vertical size for [showSidebarActionMenu] height budgeting.
+int sidebarActionMenuSpecGapCount(List<SidebarActionMenuSpec> specs) {
+  var gaps = 0;
+  var previousWasItem = false;
+  for (final spec in specs) {
+    if (spec.isDivider) {
+      previousWasItem = false;
+      continue;
+    }
+    if (previousWasItem) gaps++;
+    previousWasItem = true;
+  }
+  return gaps;
+}
+
 double estimateSidebarActionMenuHeight({
   required int itemCount,
   int dividerCount = 0,
+  int itemGapCount = 0,
 }) {
+  final gaps = itemGapCount > 0
+      ? itemGapCount
+      : (itemCount > 1 ? itemCount - 1 : 0);
   return SidebarActionMenuMetrics.panelPaddingTop +
       SidebarActionMenuMetrics.panelPaddingBottom +
       itemCount * SidebarActionMenuMetrics.itemHeight +
+      gaps * SidebarActionMenuMetrics.itemGap +
       dividerCount * (SidebarActionMenuMetrics.dividerVerticalPadding * 2 + 1);
 }
 
@@ -491,6 +528,7 @@ Future<T?> showSidebarActionMenu<T>({
   double minWidth = SidebarActionMenuMetrics.minWidth,
   int itemCount = 4,
   int dividerCount = 0,
+  int? itemGapCount,
   bool useRootNavigator = false,
   AnimationStyle? popUpAnimationStyle,
 }) {
@@ -498,6 +536,7 @@ Future<T?> showSidebarActionMenu<T>({
   final height = estimateSidebarActionMenuHeight(
     itemCount: itemCount,
     dividerCount: dividerCount,
+    itemGapCount: itemGapCount ?? (itemCount > 1 ? itemCount - 1 : 0),
   );
 
   return showMenu<T>(
@@ -533,6 +572,7 @@ Future<T?> showSidebarActionMenuFromSpecs<T>({
     popUpAnimationStyle: popUpAnimationStyle,
     itemCount: sidebarActionMenuSpecItemCount(specs),
     dividerCount: sidebarActionMenuSpecDividerCount(specs),
+    itemGapCount: sidebarActionMenuSpecGapCount(specs),
     children: buildSidebarActionMenuPopupChildren(
       context: context,
       specs: specs,

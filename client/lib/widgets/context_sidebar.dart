@@ -713,11 +713,11 @@ class _ProjectSelectorState extends State<_ProjectSelector> {
                   physics: const ClampingScrollPhysics(),
                   padding: EdgeInsets.zero,
                   itemCount: projects.length,
-                  separatorBuilder: (_, _) => const SizedBox(height: 4),
+                  separatorBuilder: (_, _) =>
+                      const SizedBox(height: kFlashskyDropdownListItemGap),
                   itemBuilder: (context, index) {
                     final project = projects[index];
-                    final isSelected =
-                        selected?.projectId == project.projectId;
+                    final isSelected = selected?.projectId == project.projectId;
                     return SizedBox(
                       width: double.infinity,
                       child: DropdownMenuItemButton(
@@ -1264,7 +1264,7 @@ class _NewChatTile extends StatelessWidget {
           padding: const EdgeInsets.all(10),
           child: Row(
             children: [
-              Icon(Icons.add_comment_outlined, size: 18, color: textBase),
+              Icon(Icons.edit_outlined, size: 18, color: textBase),
               const SizedBox(width: 10),
               Text(context.l10n.defaultNewChatSessionTitle),
             ],
