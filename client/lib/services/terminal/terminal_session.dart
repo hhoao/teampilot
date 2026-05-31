@@ -487,8 +487,23 @@ class TerminalSession {
       await Future<void>.delayed(Duration.zero);
       if (startGeneration != _transportStartGeneration || !_starting) return;
 
-      engine.resize(columns: cols, rows: rows);
-      engine.initializeEmpty(rows, cols);
+      // The view's first post-frame onViewportResize fires at the end of the
+      // mount frame, BEFORE this deferred body runs (this is a Timer(0) that
+      // only resumes once the event loop continues). So by now
+      // _pendingViewportCols/Rows already hold the real cell grid, while the
+      // cols/rows captured at spawn time are still the host's 80×24 guess.
+      // Start the engine at the freshest size — otherwise initializeEmpty would
+      // clobber the grid the view just sized, and nothing reconciles it until a
+      // window resize (engine stuck small → new output renders into the top
+      // rows with dead space below, looking like it can't scroll to the bottom).
+      final startCols = _hasPendingLayoutGeometry && _pendingViewportCols > 0
+          ? _pendingViewportCols
+          : cols;
+      final startRows = _hasPendingLayoutGeometry && _pendingViewportRows > 0
+          ? _pendingViewportRows
+          : rows;
+      engine.resize(columns: startCols, rows: startRows);
+      engine.initializeEmpty(startRows, startCols);
       final theme = _terminalTheme;
       if (theme != null) {
         _reconfigureEngineColors(theme);
@@ -511,8 +526,8 @@ class TerminalSession {
         executable,
         arguments: args,
         workingDirectory: cwd,
-        columns: cols,
-        rows: rows,
+        columns: startCols,
+        rows: startRows,
         environment: _ptyEnvironment,
       );
       if (startGeneration != _transportStartGeneration || !_starting) {
@@ -527,6 +542,14 @@ class TerminalSession {
           _pendingViewportRows > 0) {
         _lastSyncedCols = _pendingViewportCols;
         _lastSyncedRows = _pendingViewportRows;
+        // Resize BOTH the engine grid and the PTY: if onViewportResize landed
+        // during the awaits above (or its size differs from startCols/Rows),
+        // the engine grid must follow too — not just the PTY — or the painter
+        // draws a grid that's the wrong height for the viewport.
+        engine.resize(
+          columns: _pendingViewportCols,
+          rows: _pendingViewportRows,
+        );
         transport.resize(_pendingViewportRows, _pendingViewportCols);
         _hasPendingLayoutGeometry = false;
       }
