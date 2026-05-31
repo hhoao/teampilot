@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/widgets/split_layout.dart';
+import 'package:teampilot/widgets/resizable_split_view.dart';
 
 void main() {
   testWidgets('reports bottom height when divider drag ends', (tester) async {
@@ -15,15 +15,16 @@ void main() {
         home: Scaffold(
           body: StatefulBuilder(
             builder: (context, setState) {
-              return TwoPaneSplitView(
+              return ResizableSplitView(
                 axis: Axis.vertical,
-                fixedChildIndex: 1,
+                primaryAtEnd: true,
                 first: const Placeholder(),
                 second: const Placeholder(),
-                size: height,
-                minSize: 120,
-                maxSize: 480,
-                onSizeChanged: (next) {
+                initialPrimarySize: height,
+                minPrimarySize: 120,
+                minSecondarySize: 120,
+                maxPrimarySize: 480,
+                onPrimarySizeChanged: (next) {
                   lastReported = next;
                   setState(() => height = next);
                 },
@@ -35,7 +36,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    final divider = find.byType(DividerWidget);
+    final divider = find.byKey(const Key('resizable-split-divider'));
     expect(divider, findsOneWidget);
 
     await tester.drag(divider, const Offset(0, -40));

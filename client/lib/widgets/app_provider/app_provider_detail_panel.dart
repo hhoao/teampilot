@@ -200,9 +200,16 @@ class _InfoRow extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 8),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
-        textBaseline: TextBaseline.ideographic,
         children: [
-          SizedBox(width: 110, child: Text(label)),
+          SizedBox(
+            width: 100,
+            child: Text(
+              label,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          const SizedBox(width: 8),
           Expanded(child: SelectableText(value)),
         ],
       ),

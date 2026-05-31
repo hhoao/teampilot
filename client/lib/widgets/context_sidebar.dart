@@ -363,7 +363,6 @@ class _ContextSidebarState extends State<ContextSidebar> {
                     () => goFromSidebar(context, '/team-config'),
                   ),
                 ),
-                const SizedBox(height: 8),
                 _NewChatTile(
                   onTap: throttledAsync(
                     'context_sidebar_new_chat',

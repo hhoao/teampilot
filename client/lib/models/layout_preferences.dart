@@ -120,6 +120,18 @@ class LayoutPreferences {
   static const minWorkspaceTerminalSessionSidebarWidth = 140.0;
   static const maxWorkspaceTerminalSessionSidebarWidth = 420.0;
 
+  /// Minimum extent for the main workbench column beside a side panel.
+  static const minWorkbenchMainWidth = 320.0;
+
+  /// Minimum terminal grid width when a session sidebar is shown.
+  static const minWorkspaceTerminalMainWidth = 200.0;
+
+  /// Minimum LLM provider detail column in the config split.
+  static const minLlmProviderDetailWidth = 280.0;
+
+  /// Minimum settings hub content column beside nav.
+  static const minWorkspaceHubContentWidth = 480.0;
+
   final LayoutPreset preset;
   final ToolPanelPlacement toolPlacement;
   final ToolsArrangement toolsArrangement;

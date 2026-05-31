@@ -106,6 +106,9 @@ class _InternalTab {
 
   final Map<String, TerminalSession> memberShells = {};
 
+  /// Member ids with a scheduled or in-flight [_scheduleMemberConnect].
+  final Set<String> membersPendingConnect = {};
+
   Iterable<TerminalSession> get sessions sync* {
     if (resumeSession != null) yield resumeSession!;
     yield* memberShells.values;
@@ -857,10 +860,14 @@ class ChatCubit extends Cubit<ChatState> {
         selectedMemberId: member.id,
       ),
     );
-    if (shell.isRunning) {
+    if (shell.isRunning || shell.isConnecting) {
       _updateTabRunning(tab.info.id);
       return;
     }
+    if (tab.membersPendingConnect.contains(member.id)) {
+      return;
+    }
+    tab.membersPendingConnect.add(member.id);
     _workingDirectoryAndAddDirsForTab(tab);
     _beginSessionConnect(tab.info.id);
     _postFrameScheduler(() async {
@@ -895,6 +902,8 @@ class ChatCubit extends Cubit<ChatState> {
         final message = 'Failed to start session: $e';
         shell.write('\r\n[$message]\r\n');
         _failSessionConnect(tab.info.id, message);
+      } finally {
+        tab.membersPendingConnect.remove(member.id);
       }
     });
   }
@@ -1251,6 +1260,7 @@ class ChatCubit extends Cubit<ChatState> {
   void disconnectSession() {
     final tab = _activeTab;
     if (tab == null) return;
+    tab.membersPendingConnect.remove(tab.selectedMemberId);
     tab.memberShells[tab.selectedMemberId]?.disconnect();
     _clearLaunchError(tab.info.id);
     _updateTabRunning(tab.info.id);
@@ -1269,6 +1279,7 @@ class ChatCubit extends Cubit<ChatState> {
           : _defaultMemberId(team);
       final tab = _activeTab;
       if (tab != null) {
+        tab.membersPendingConnect.clear();
         for (final shell in tab.memberShells.values) {
           shell.disconnect();
         }

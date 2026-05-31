@@ -159,11 +159,10 @@ class _StackedToolsPanel extends StatelessWidget {
         final maxTop = totalHeight * 0.75;
         return TwoPaneSplitView(
           axis: Axis.vertical,
-          fixedChildIndex: 0,
           initialFraction: preferences.membersSplit,
           minSize: minTop,
+          minSecondarySize: minTop,
           maxSize: maxTop,
-          dynamicMax: true,
           first: panels.first,
           second: panels.last,
           onSizeChanged: (topHeight) {
@@ -257,6 +256,7 @@ class _MembersPanel extends StatelessWidget {
               AppIconButton(
                 icon: Icons.keyboard_double_arrow_right,
                 tooltip: l10n.openTeam,
+                color: cs.primary,
                 size: AppIconButton.kCompactSize,
                 onTap: onLaunchAll,
               ),
@@ -701,50 +701,50 @@ class _FileTreeHeaderOverflowMenu extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SidebarActionMenuButton(
-        tooltip: l10n.fileTree,
-        icon: const Icon(Icons.more_vert, size: AppIconButton.kCompactIconSize),
-        size: AppIconButton.kCompactSize,
-        specs: [
-          SidebarActionMenuSpec.item(
-            value: _FileTreeHeaderAction.terminal,
-            icon: workspaceTerminalVisible
-                ? Icons.terminal
-                : Icons.terminal_outlined,
-            label: workspaceTerminalVisible
-                ? l10n.workspaceTerminalHide
-                : l10n.workspaceTerminalShow,
-          ),
-          SidebarActionMenuSpec.item(
-            value: _FileTreeHeaderAction.reveal,
-            icon: Icons.my_location_outlined,
-            label: l10n.fileTreeRevealActiveFile,
-          ),
-          SidebarActionMenuSpec.item(
-            value: _FileTreeHeaderAction.toggleHidden,
-            icon: showHiddenFiles
-                ? Icons.visibility_off_outlined
-                : Icons.visibility_outlined,
-            label: showHiddenFiles ? 'Hide hidden files' : 'Show hidden files',
-          ),
-          SidebarActionMenuSpec.item(
-            value: _FileTreeHeaderAction.copy,
-            icon: Icons.copy,
-            label: l10n.copy,
-            enabled: canCopy,
-          ),
-        ],
-        onSelected: (action) {
-          switch (action as _FileTreeHeaderAction) {
-            case _FileTreeHeaderAction.terminal:
-              onToggleTerminal();
-            case _FileTreeHeaderAction.reveal:
-              onReveal();
-            case _FileTreeHeaderAction.toggleHidden:
-              onToggleHidden();
-            case _FileTreeHeaderAction.copy:
-              onCopy();
-          }
-        },
+      tooltip: l10n.fileTree,
+      icon: const Icon(Icons.more_vert, size: AppIconButton.kCompactIconSize),
+      size: AppIconButton.kCompactSize,
+      specs: [
+        SidebarActionMenuSpec.item(
+          value: _FileTreeHeaderAction.terminal,
+          icon: workspaceTerminalVisible
+              ? Icons.terminal
+              : Icons.terminal_outlined,
+          label: workspaceTerminalVisible
+              ? l10n.workspaceTerminalHide
+              : l10n.workspaceTerminalShow,
+        ),
+        SidebarActionMenuSpec.item(
+          value: _FileTreeHeaderAction.reveal,
+          icon: Icons.my_location_outlined,
+          label: l10n.fileTreeRevealActiveFile,
+        ),
+        SidebarActionMenuSpec.item(
+          value: _FileTreeHeaderAction.toggleHidden,
+          icon: showHiddenFiles
+              ? Icons.visibility_off_outlined
+              : Icons.visibility_outlined,
+          label: showHiddenFiles ? 'Hide hidden files' : 'Show hidden files',
+        ),
+        SidebarActionMenuSpec.item(
+          value: _FileTreeHeaderAction.copy,
+          icon: Icons.copy,
+          label: l10n.copy,
+          enabled: canCopy,
+        ),
+      ],
+      onSelected: (action) {
+        switch (action as _FileTreeHeaderAction) {
+          case _FileTreeHeaderAction.terminal:
+            onToggleTerminal();
+          case _FileTreeHeaderAction.reveal:
+            onReveal();
+          case _FileTreeHeaderAction.toggleHidden:
+            onToggleHidden();
+          case _FileTreeHeaderAction.copy:
+            onCopy();
+        }
+      },
     );
   }
 }

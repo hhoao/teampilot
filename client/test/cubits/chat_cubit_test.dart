@@ -17,11 +17,15 @@ class _FakeTerminalSession extends TerminalSession {
   _FakeTerminalSession({required super.executable});
 
   var _running = false;
+  var _connecting = false;
   final connectedMembers = <String>[];
   final connectedSessionTeams = <String?>[];
 
   @override
-  bool get isRunning => _running;
+  bool get isRunning => _running || _connecting;
+
+  @override
+  bool get isConnecting => _connecting;
 
   @override
   void connect({
@@ -38,10 +42,12 @@ class _FakeTerminalSession extends TerminalSession {
     void Function()? onProcessExited,
     void Function(String line)? onFirstUserLineSubmitted,
   }) {
+    _connecting = true;
     if (member != null) {
       connectedMembers.add(member.id);
     }
     connectedSessionTeams.add(sessionTeam);
+    _connecting = false;
     _running = true;
     onProcessStarted?.call();
   }
@@ -49,6 +55,7 @@ class _FakeTerminalSession extends TerminalSession {
   @override
   void disconnect() {
     _running = false;
+    _connecting = false;
   }
 
   @override
@@ -410,6 +417,62 @@ void main() {
         expect(connectedMembers.where((id) => id == 'm-dev'), hasLength(1));
         expect(cubit.isMemberRunning('m-lead'), isTrue);
         expect(cubit.isMemberRunning('m-dev'), isTrue);
+      },
+    );
+
+    test(
+      'openMemberTab ignores duplicate taps while member connect is pending',
+      () async {
+        final scheduled = <void Function()>[];
+        final fakeSessions = <_FakeTerminalSession>[];
+        const team = TeamConfig(
+          id: 'team-a',
+          name: 'A',
+          members: [
+            TeamMemberConfig(id: 'm-lead', name: 'team-lead'),
+            TeamMemberConfig(id: 'm-dev', name: 'developer'),
+          ],
+        );
+        final project = await repo.createProject('/tmp');
+        final session = await repo.createSession(
+          project.projectId,
+          sessionTeam: team.id,
+          rosterMembers: team.members,
+        );
+        final cubit = ChatCubit(
+          executableResolver: () => 'true',
+          sessionRepository: repo,
+          terminalSessionFactory:
+              ({required String executable, int scrollbackLines = 10000}) {
+            final fake = _FakeTerminalSession(executable: executable);
+            fakeSessions.add(fake);
+            return fake;
+          },
+          postFrameScheduler: scheduled.add,
+        );
+        addTearDown(cubit.close);
+
+        await cubit.openSessionTab(
+          session,
+          team: team,
+          member: team.members.first,
+          repo: repo,
+        );
+        await drainPostFrameQueue(scheduled);
+        scheduled.clear();
+
+        await cubit.openMemberTab(team, team.members[1]);
+        expect(scheduled, hasLength(1));
+
+        await cubit.openMemberTab(team, team.members[1]);
+        expect(scheduled, hasLength(1));
+
+        await drainPostFrameQueue(scheduled);
+
+        expect(
+          fakeSessions.expand((s) => s.connectedMembers).where((id) => id == 'm-dev'),
+          hasLength(1),
+        );
       },
     );
   });

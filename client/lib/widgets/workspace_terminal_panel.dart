@@ -20,7 +20,7 @@ import '../services/terminal/workspace_interactive_shell.dart';
 import '../utils/app_keys.dart';
 import 'app_icon_button.dart';
 import 'menu/sidebar_action_menu.dart';
-import 'split_layout.dart';
+import 'resizable_split_view.dart';
 
 const _uuid = Uuid();
 
@@ -304,9 +304,9 @@ class _WorkspaceTerminalPanelState extends State<WorkspaceTerminalPanel> {
     return ColoredBox(
       key: AppKeys.workspaceTerminalPanel,
       color: terminalBackground,
-      child: TwoPaneSplitView(
+      child: ResizableSplitView(
         axis: Axis.horizontal,
-        fixedChildIndex: 1,
+        primaryAtEnd: true,
         first: terminalBody,
         second: _WorkspaceTerminalSessionSidebar(
           theme: theme,
@@ -322,10 +322,11 @@ class _WorkspaceTerminalPanelState extends State<WorkspaceTerminalPanel> {
           onClosePanel: () =>
               context.read<LayoutCubit>().setWorkspaceTerminalVisible(false),
         ),
-        size: sessionSidebarWidth,
-        minSize: LayoutPreferences.minWorkspaceTerminalSessionSidebarWidth,
-        maxSize: LayoutPreferences.maxWorkspaceTerminalSessionSidebarWidth,
-        onSizeChanged: (width) {
+        initialPrimarySize: sessionSidebarWidth,
+        minPrimarySize: LayoutPreferences.minWorkspaceTerminalSessionSidebarWidth,
+        minSecondarySize: LayoutPreferences.minWorkspaceTerminalMainWidth,
+        maxPrimarySize: LayoutPreferences.maxWorkspaceTerminalSessionSidebarWidth,
+        onPrimarySizeChanged: (width) {
           context.read<LayoutCubit>().setWorkspaceTerminalSessionSidebarWidth(
             width,
           );

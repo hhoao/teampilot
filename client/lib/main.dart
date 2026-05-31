@@ -28,6 +28,7 @@ import 'services/terminal/terminal_fonts.dart';
 import 'theme/app_theme.dart';
 import 'theme/app_typography_scale.dart';
 import 'pages/system/error_page.dart';
+import 'services/app/windows_keyboard_workaround.dart';
 import 'utils/logger.dart';
 import 'widgets/ui_warmup.dart';
 
@@ -82,6 +83,7 @@ Future<void> _preloadBundledUiFonts() async {
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  installWindowsKeyboardWorkaround();
   await RustLib.init();
   GoogleFonts.config.allowRuntimeFetching = false;
   await loadBundledTerminalFonts();

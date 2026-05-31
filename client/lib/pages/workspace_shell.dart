@@ -12,7 +12,7 @@ import '../l10n/l10n_extensions.dart';
 import '../utils/app_keys.dart';
 import '../models/layout_preferences.dart';
 import '../widgets/app_icon_button.dart';
-import '../widgets/split_layout.dart';
+import '../widgets/resizable_split_view.dart';
 import '../widgets/menu/sidebar_action_menu.dart';
 import '../widgets/workspace_terminal_panel.dart';
 
@@ -219,15 +219,16 @@ class _WorkspaceCenterColumnWithTerminal extends StatelessWidget {
           LayoutPreferences.minWorkspaceTerminalHeight,
           LayoutPreferences.maxWorkspaceTerminalHeight,
         );
-        return TwoPaneSplitView(
+        return ResizableSplitView(
           axis: Axis.vertical,
-          fixedChildIndex: 1,
+          primaryAtEnd: true,
           first: child,
           second: WorkspaceTerminalPanel(workingDirectory: cwd),
-          size: terminalHeight,
-          minSize: LayoutPreferences.minWorkspaceTerminalHeight,
-          maxSize: LayoutPreferences.maxWorkspaceTerminalHeight,
-          onSizeChanged: (height) {
+          initialPrimarySize: terminalHeight,
+          minPrimarySize: LayoutPreferences.minWorkspaceTerminalHeight,
+          minSecondarySize: LayoutPreferences.minWorkbenchMainWidth,
+          maxPrimarySize: LayoutPreferences.maxWorkspaceTerminalHeight,
+          onPrimarySizeChanged: (height) {
             context.read<LayoutCubit>().setWorkspaceTerminalHeight(height);
           },
         );
@@ -259,36 +260,55 @@ class _WorkspaceBody extends StatelessWidget {
         LayoutPreferences.minBottomToolsHeight,
         LayoutPreferences.maxBottomToolsHeight,
       );
-      return TwoPaneSplitView(
-        axis: Axis.vertical,
-        fixedChildIndex: 1,
-        first: child,
-        second: rightTools!,
-        size: toolsHeight,
-        minSize: LayoutPreferences.minBottomToolsHeight,
-        maxSize: LayoutPreferences.maxBottomToolsHeight,
-        onSizeChanged: (height) {
-          context.read<LayoutCubit>().setBottomToolsHeight(height);
+      return LayoutBuilder(
+        builder: (context, constraints) {
+          const dividerHeight = 2.0;
+          final maxH = constraints.maxHeight;
+          final minTop =
+              (maxH - LayoutPreferences.maxBottomToolsHeight - dividerHeight)
+                  .clamp(0.0, maxH);
+          final maxTop =
+              (maxH - LayoutPreferences.minBottomToolsHeight - dividerHeight)
+                  .clamp(0.0, maxH);
+          final initialTop = (maxH - toolsHeight - dividerHeight).clamp(
+            minTop <= maxTop ? minTop : maxTop,
+            maxTop >= minTop ? maxTop : minTop,
+          );
+          return ResizableSplitView(
+            axis: Axis.vertical,
+            first: child,
+            second: rightTools!,
+            initialPrimarySize: initialTop,
+            minPrimarySize: minTop,
+            minSecondarySize: LayoutPreferences.minBottomToolsHeight,
+            maxPrimarySize: maxTop,
+            dividerThickness: dividerHeight,
+            onPrimarySizeChanged: (topHeight) {
+              final bottomHeight = maxH - topHeight - dividerHeight;
+              context.read<LayoutCubit>().setBottomToolsHeight(bottomHeight);
+            },
+          );
         },
       );
     }
     final rightWidth = preferences.rightToolsWidth;
     return LayoutBuilder(
       builder: (context, constraints) {
-        return TwoPaneSplitView(
-          axis: Axis.horizontal,
-          fixedChildIndex: 0,
+        final maxW = constraints.maxWidth;
+        const minCenter = 150.0;
+        final minTools = LayoutPreferences.minRightToolsWidth;
+        return ResizableSplitView(
           first: child,
           second: rightTools!,
-          initialSize: (constraints.maxWidth - rightWidth).clamp(
-            150,
-            constraints.maxWidth - 80,
+          initialPrimarySize: (maxW - rightWidth).clamp(
+            minCenter,
+            maxW - minTools,
           ),
-          minSize: 150,
-          maxSize: (constraints.maxWidth - 80).clamp(150, double.infinity),
-          dynamicMax: true,
-          onSizeChanged: (leftWidth) {
-            onRightToolsWidthChanged?.call(constraints.maxWidth - leftWidth);
+          minPrimarySize: minCenter,
+          minSecondarySize: minTools,
+          maxPrimarySize: (maxW - minTools).clamp(minCenter, maxW),
+          onPrimarySizeChanged: (leftWidth) {
+            onRightToolsWidthChanged?.call(maxW - leftWidth);
           },
         );
       },

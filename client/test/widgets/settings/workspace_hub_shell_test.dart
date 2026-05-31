@@ -117,6 +117,27 @@ void main() {
     expect(find.byKey(const ValueKey('layout-entry')), findsOneWidget);
   });
 
+  testWidgets('team-lead nav item uses distinct leading icon', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: WorkspaceHubNavItem(
+            title: 'team-lead',
+            icon: Icons.person_outline,
+            showLeaderBadge: true,
+            onTap: () {},
+          ),
+        ),
+      ),
+    );
+
+    expect(
+      find.byIcon(WorkspaceHubNavItem.teamLeadNavIcon),
+      findsOneWidget,
+    );
+    expect(find.byIcon(Icons.person_outline), findsNothing);
+  });
+
   testWidgets('relaxed nav item uses taller tap target', (tester) async {
     await tester.pumpWidget(
       MaterialApp(

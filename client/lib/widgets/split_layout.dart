@@ -1,4 +1,5 @@
-/// Vendored [MultiSplitView], [ThemedMultiSplitView], and [TwoPaneSplitView].
+/// Vendored [MultiSplitView], [ThemedMultiSplitView], and [TwoPaneSplitView]
+/// (wraps [ResizableSplitView]).
 library;
 
 export 'split_view/app_split_layout.dart';

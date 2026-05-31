@@ -10,6 +10,7 @@ import '../cubits/layout_cubit.dart';
 import '../cubits/session_preferences_cubit.dart';
 import '../cubits/team_cubit.dart';
 import '../models/app_provider_config.dart';
+import '../models/layout_preferences.dart';
 import '../pages/chat_page.dart';
 import '../pages/config_workspace.dart';
 import '../pages/llm_config_workspace.dart';
@@ -57,13 +58,12 @@ final appRouter = GoRouter(
             : preferences.contextSidebarVisible
             ? TwoPaneSplitView(
                 axis: Axis.horizontal,
-                fixedChildIndex: 0,
                 first: sidebar,
                 second: child,
                 initialSize: preferences.sidebarWidth,
-                minSize: 180,
-                maxSize: 420,
-                dynamicMax: true,
+                minSize: LayoutPreferences.minSidebarWidth,
+                minSecondarySize: LayoutPreferences.minWorkbenchMainWidth,
+                maxSize: LayoutPreferences.maxSidebarWidth,
                 onSizeChanged: (width) {
                   context.read<LayoutCubit>().setSidebarWidth(width);
                 },

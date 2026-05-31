@@ -5,7 +5,6 @@ import '../../models/layout_preferences.dart';
 import '../../theme/app_text_styles.dart';
 import '../../theme/workspace_surface_layers.dart';
 import '../split_layout.dart';
-import '../team/team_lead_badge.dart';
 
 enum WorkspaceHubNavDensity { standard, relaxed, subItem }
 
@@ -102,6 +101,9 @@ class WorkspaceHubNavItem extends StatelessWidget {
     super.key,
   });
 
+  /// Leading icon for team-lead rows (others use [Icons.person_outline]).
+  static const teamLeadNavIcon = Icons.workspace_premium_outlined;
+
   final String title;
   final IconData icon;
   final VoidCallback onTap;
@@ -134,6 +136,7 @@ class WorkspaceHubNavItem extends StatelessWidget {
     final borderRadius = density == WorkspaceHubNavDensity.subItem
         ? BorderRadius.circular(10)
         : BorderRadius.circular(12);
+    final leadingIcon = showLeaderBadge ? teamLeadNavIcon : icon;
 
     return Padding(
       padding: EdgeInsets.only(left: leftIndent, bottom: 8),
@@ -154,7 +157,7 @@ class WorkspaceHubNavItem extends StatelessWidget {
               child: Row(
                 children: [
                   Icon(
-                    icon,
+                    leadingIcon,
                     color: selected ? selectedFg : muted,
                     size: iconSize,
                   ),
@@ -179,10 +182,6 @@ class WorkspaceHubNavItem extends StatelessWidget {
                                     ),
                           ),
                         ),
-                        if (showLeaderBadge) ...[
-                          const SizedBox(width: 6),
-                          const TeamLeadBadge(compact: true),
-                        ],
                       ],
                     ),
                   ),
@@ -362,7 +361,6 @@ class WorkspaceSplitShell extends StatelessWidget {
 
         return TwoPaneSplitView(
           axis: Axis.horizontal,
-          fixedChildIndex: 0,
           first: nav,
           second: Padding(
             padding: contentPadding,
@@ -385,8 +383,8 @@ class WorkspaceSplitShell extends StatelessWidget {
           ),
           initialSize: navWidth,
           minSize: LayoutPreferences.minWorkspaceNavWidth,
+          minSecondarySize: LayoutPreferences.minWorkspaceHubContentWidth,
           maxSize: LayoutPreferences.maxWorkspaceNavWidth,
-          dynamicMax: true,
           onSizeChanged: onNavWidthChanged,
         );
       },

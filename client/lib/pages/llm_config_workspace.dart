@@ -9,6 +9,7 @@ import '../models/llm_config.dart';
 import '../cubits/app_provider_cubit.dart';
 import '../cubits/llm_config_cubit.dart';
 import '../models/app_provider_config.dart';
+import '../models/layout_preferences.dart';
 import '../services/app/platform_utils.dart';
 import '../theme/app_text_styles.dart';
 import '../theme/workspace_surface_layers.dart';
@@ -414,11 +415,10 @@ class _ProvidersTabContentState extends State<_ProvidersTabContent> {
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: TwoPaneSplitView(
         axis: Axis.horizontal,
-        fixedChildIndex: 0,
         initialFraction: 0.34,
         minSize: 220,
+        minSecondarySize: LayoutPreferences.minLlmProviderDetailWidth,
         maxSize: 560,
-        dynamicMax: true,
         first: Padding(
           padding: const EdgeInsets.only(right: 6),
           child: _LlmProvidersListContent(
