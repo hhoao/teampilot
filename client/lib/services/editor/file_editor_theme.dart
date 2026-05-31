@@ -79,17 +79,18 @@ Mode? highlightModeForKey(String key) => switch (key) {
   _ => null,
 };
 
-CodeHighlightTheme codeHighlightThemeFor(
+CodeHighlightTheme? codeHighlightThemeFor(
   BuildContext context,
   String filePath,
 ) {
   final isDark = Theme.of(context).brightness == Brightness.dark;
   final key = highlightLanguageKeyForPath(filePath);
   final mode = key == null ? null : highlightModeForKey(key);
+  if (mode == null || key == null) {
+    return null;
+  }
   return CodeHighlightTheme(
-    languages: mode == null || key == null
-        ? const {}
-        : {key: CodeHighlightThemeMode(mode: mode)},
+    languages: {key: CodeHighlightThemeMode(mode: mode)},
     theme: isDark ? atomOneDarkTheme : atomOneLightTheme,
   );
 }
