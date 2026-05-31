@@ -444,14 +444,31 @@ Widget _specToMenuItem({
         )
       : spec.trailing;
 
+  if (popup) {
+    return Builder(
+      builder: (popupContext) => SidebarActionMenuItem(
+        icon: spec.icon,
+        label: spec.label ?? '',
+        subtitle: spec.subtitle,
+        trailing: trailing,
+        destructive: spec.destructive,
+        enabled: spec.enabled,
+        tooltip: spec.tooltip,
+        menuController: null,
+        onTap: spec.enabled
+            ? () {
+                spec.onAction?.call();
+                Navigator.of(popupContext).pop(spec.value);
+              }
+            : null,
+      ),
+    );
+  }
+
   VoidCallback? onTap;
   if (spec.enabled) {
     onTap = () {
       spec.onAction?.call();
-      if (popup) {
-        Navigator.of(context).pop(spec.value);
-        return;
-      }
       menuController?.close();
       if (spec.value != null) {
         onSelect?.call(spec.value);
@@ -467,7 +484,7 @@ Widget _specToMenuItem({
     destructive: spec.destructive,
     enabled: spec.enabled,
     tooltip: spec.tooltip,
-    menuController: popup ? null : menuController,
+    menuController: menuController,
     onTap: onTap,
   );
 }
