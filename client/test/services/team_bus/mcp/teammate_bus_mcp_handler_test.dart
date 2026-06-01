@@ -4,6 +4,7 @@ import 'package:teampilot/services/team_bus/agent_node.dart';
 import 'package:teampilot/services/team_bus/mcp/jsonrpc.dart';
 import 'package:teampilot/services/team_bus/mcp/teammate_bus_mcp_handler.dart';
 import 'package:teampilot/services/team_bus/team_bus.dart';
+import 'package:teampilot/services/team_bus/team_message.dart';
 
 import '../support/fake_member_launcher.dart';
 
@@ -73,5 +74,41 @@ void main() {
     await handler.handle('w', const JsonRpcRequest(id: 4, method: 'tools/call',
         params: {'name': 'leave', 'arguments': {}}));
     expect(w.state, MemberState.retired);
+  });
+
+  test('wait_for_message returns a batch when a message is delivered', () {
+    fakeAsync((async) {
+      final bus = TeamBus(launcher: FakeMemberLauncher());
+      final leader = AgentNode(memberId: 'leader', state: MemberState.busy);
+      bus.declareMember(leader);
+      final handler = TeammateBusMcpHandler(bus: bus);
+
+      JsonRpcResponse? res;
+      handler.handle('leader', const JsonRpcRequest(id: 5, method: 'tools/call',
+          params: {'name': 'wait_for_message', 'arguments': {'timeout_ms': 300000}}))
+        .then((r) => res = r);
+      async.flushMicrotasks();
+      expect(res, isNull); // blocked
+
+      leader.inbox.deliver(TeamMessage(id: '1', from: 'w', to: 'leader', content: 'reply'));
+      async.elapse(const Duration(milliseconds: 50));
+      final text = (res!.result!['content'] as List).first as Map;
+      expect(text['text'], contains('FROM w'));
+      expect(text['text'], contains('reply'));
+    });
+  });
+
+  test('wait_for_message returns EMPTY sentinel on timeout', () {
+    fakeAsync((async) {
+      final bus = TeamBus(launcher: FakeMemberLauncher());
+      bus.declareMember(AgentNode(memberId: 'leader', state: MemberState.busy));
+      final handler = TeammateBusMcpHandler(bus: bus);
+      JsonRpcResponse? res;
+      handler.handle('leader', const JsonRpcRequest(id: 6, method: 'tools/call',
+          params: {'name': 'wait_for_message', 'arguments': {'timeout_ms': 1000}}))
+        .then((r) => res = r);
+      async.elapse(const Duration(milliseconds: 1000));
+      expect(((res!.result!['content'] as List).first as Map)['text'], contains('EMPTY'));
+    });
   });
 }
