@@ -14,7 +14,12 @@
 - `/extensions` page, `team_config_page` overrides, moving rtk probe UI out of `config_workspace.dart` → Phase 3.
 - The `ConfigProfileDelegate.isRtkEnabled` / `maybeApplyRtk` method *names* stay (renaming them is Phase 3 cleanup). Built-in manifests are an embedded JSON string this phase (externalizing to `assets/extensions/*.json` is Phase 2/3).
 
-**One intentional behavior change:** the warning code `rtk_enabled_jq_missing` becomes the generic `rtk_enabled_dependency_missing`. This string has **no consumer** anywhere in `lib/` (verified by grep — it is only emitted into `TeamLaunchOutcome.warnings`), so the rename is safe. Tests that assert the old string are updated.
+**One intentional behavior change:** the warning code `rtk_enabled_jq_missing` becomes the generic `rtk_enabled_dependency_missing`. This code is **never matched on** — it flows `prepareTeamLaunch` → `SessionLifecycleService` → `chat_cubit` → `chat_page.dart`, where the snackbar shows the raw code verbatim for every non-`claude_credentials_missing` warning. So the literal is user-visible but the rename is safe (no `switch`/equality consumer). Tests that assert the old string are updated.
+
+> **Implementation status (added 2026-06-01, post code-review):** Phase 1 was implemented in this session and verified independently — `flutter analyze` clean on the touched files and the **full suite (685 tests) passes**. Three places where the as-written tasks below needed correction (already reflected in the landed code):
+> 1. **`client/lib/pages/config_workspace.dart`** also imported the deleted `RtkDetector`/`RtkProbeResult` (its rtk probe UI). Phase 1 **must** rewire it to `ExtensionDetector`/`ExtensionProbe` (`jqFound`→`missingRequirements.contains('jq')`, `isVersionSupported`→`satisfiesMinVersion`) or it won't compile. This file is a Phase-1 modified file (Task 7), not deferred to Phase 3 — only the *widget relocation* is Phase 3.
+> 2. **Task 6 test scaffold:** `HostScriptRunner` is a `final class` (cannot be `implements`-ed/`extends`-ed). The test constructs a real `HostScriptRunner(HostExecutionEnvironment.resolve(...))` instead of a stub.
+> 3. **Task 6 fake filesystem:** the in-memory `Filesystem` is `InMemoryFilesystem` from `client/test/support/in_memory_filesystem.dart` (not `MemoryFilesystem` under `lib/services/io/`).
 
 ---
 
