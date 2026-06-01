@@ -21,6 +21,7 @@ import '../services/storage/app_storage.dart';
 import '../services/session/session_lifecycle_service.dart';
 import '../services/team_bus/agent_node.dart';
 import '../services/team_bus/chat_cubit_member_launcher.dart';
+import '../services/team_bus/mcp/teammate_bus_mcp_config.dart';
 import '../services/team_bus/mcp/teammate_bus_mcp_handler.dart';
 import '../services/team_bus/mcp/teammate_bus_mcp_server.dart';
 import '../services/team_bus/team_bus.dart';
@@ -863,6 +864,14 @@ class ChatCubit extends Cubit<ChatState> implements MemberMaterializer {
       team: team,
       member: member,
       memberBinding: binding,
+      extraMcpServers: team.teamMode == TeamMode.mixed && tab.mcpServer != null
+          ? {
+              teammateBusMcpServerName: teammateBusMcpServerConfig(
+                endpoint: tab.mcpServer!.endpoint,
+                memberId: member.id,
+              ),
+            }
+          : null,
     );
     final configDir = plan.memberConfigDir.trim();
     if (configDir.isNotEmpty) {
