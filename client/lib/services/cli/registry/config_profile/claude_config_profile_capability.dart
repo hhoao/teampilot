@@ -84,6 +84,7 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
       providerSettings: claude?.settings,
       providerSettingsByMember: claude?.settingsByMember ?? const {},
       forceTeamLeadDelegateMode: ctx.team?.forceTeamLeadDelegateMode ?? false,
+      mixed: ctx.team?.teamMode == TeamMode.mixed,
     );
 
     final providerId = claude?.providerId?.trim() ?? '';
@@ -269,6 +270,7 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
     required Map<String, Object?>? providerSettings,
     required Map<String, Map<String, Object?>> providerSettingsByMember,
     required bool forceTeamLeadDelegateMode,
+    required bool mixed,
   }) async {
     final uniqueMembers = <String, TeamMemberConfig>{};
     for (final member in members.where((member) => member.isValid)) {
@@ -287,6 +289,7 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
         providerSettings:
             providerSettingsByMember[member.id] ?? providerSettings,
         forceTeamLeadDelegateMode: forceTeamLeadDelegateMode,
+        mixed: mixed,
       );
     }
   }
@@ -297,6 +300,7 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
     required TeamMemberConfig member,
     required Map<String, Object?>? providerSettings,
     required bool forceTeamLeadDelegateMode,
+    required bool mixed,
   }) async {
     final memberToolDir = delegate.sessionToolDir(
       scope.teamId,
@@ -309,6 +313,7 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
       memberToolDir: memberToolDir,
       member: member,
       forceTeamLeadDelegateMode: isLead && forceTeamLeadDelegateMode,
+      mixed: mixed,
     );
     final file = delegate.sessionClaudeMemberSettingsFile(
       scope.teamId,
