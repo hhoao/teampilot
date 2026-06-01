@@ -44,16 +44,14 @@ class FlashskyaiCliToolAdapter implements CliToolAdapter {
 
   @override
   List<String> buildArguments(CliLaunchContext context) {
+    final mixed = context.team.teamMode == TeamMode.mixed;
     final args = <String>[
       ..._buildSessionPrefixArgs(context),
-      '--team',
-      context.teamName,
-      '--member',
-      context.memberCliId,
+      if (!mixed) ...['--team', context.teamName, '--member', context.memberCliId],
     ];
 
     final loop = context.team.loop;
-    if (loop != null) {
+    if (!mixed && loop != null) {
       args.addAll(['--loop', loop ? 'true' : 'false']);
     }
 
@@ -88,17 +86,20 @@ class ClaudeCodeCliToolAdapter implements CliToolAdapter {
   @override
   List<String> buildArguments(CliLaunchContext context) {
     final member = context.member;
+    final mixed = context.team.teamMode == TeamMode.mixed;
     final args = <String>[
       ..._buildSessionPrefixArgs(context, includeWorkingDirectory: false),
-      '--team-name',
-      context.teamName,
-      '--agent-name',
-      context.memberCliId,
-      '--agent-id',
-      TeamMemberNaming.cliAgentId(
-        memberId: context.memberCliId,
-        cliTeamName: context.teamName,
-      ),
+      if (!mixed) ...[
+        '--team-name',
+        context.teamName,
+        '--agent-name',
+        context.memberCliId,
+        '--agent-id',
+        TeamMemberNaming.cliAgentId(
+          memberId: context.memberCliId,
+          cliTeamName: context.teamName,
+        ),
+      ],
     ];
 
     if (member.model.trim().isNotEmpty) {

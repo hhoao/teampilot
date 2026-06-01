@@ -193,8 +193,12 @@ void main() {
       contains('--team-name'),
     );
     final mixedArgs = LaunchCommandBuilder.buildArguments(mixedClaude, member);
-    expect(mixedArgs, contains('--team'));
+    expect(mixedArgs, isNot(contains('--team')));
     expect(mixedArgs, isNot(contains('--team-name')));
+    expect(
+      mixedArgs,
+      containsAllInOrder(['--provider', 'anthropic', '--model', 'sonnet']),
+    );
   });
 
   test('preview delegates argument construction for Claude teams', () {
