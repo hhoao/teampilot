@@ -284,6 +284,8 @@ class ChatCubit extends Cubit<ChatState> implements MemberMaterializer {
   int _presencePollGeneration = 0;
   bool _presenceUiAttached = false;
   bool _presenceTickInFlight = false;
+  Timer? _idleWatchTimer;
+  final Map<String, bool> _lastWorking = {};
   var _scopeSessionsToSelectedTeam = false;
   String? _selectedTeamId;
   final TerminalSessionFactory _terminalSessionFactory;
@@ -608,6 +610,7 @@ class ChatCubit extends Cubit<ChatState> implements MemberMaterializer {
         await server.start();
         internalTab.teamBus = bus;
         internalTab.mcpServer = server;
+        _ensureIdleWatch();
       }
     }
     if (connectImmediately) {
@@ -1028,6 +1031,7 @@ class ChatCubit extends Cubit<ChatState> implements MemberMaterializer {
     }
     // ignore: discarded_futures
     tab.disposeBus();
+    _maybeStopIdleWatch();
     if (_internalTabs.isEmpty) {
       emit(
         state.copyWith(tabs: [], activeTabIndex: 0, clearActiveSessionId: true),
@@ -1060,6 +1064,7 @@ class ChatCubit extends Cubit<ChatState> implements MemberMaterializer {
       // ignore: discarded_futures
       tab.disposeBus();
     }
+    _maybeStopIdleWatch();
     final kept = _internalTabs.single;
     emit(
       state.copyWith(
@@ -1082,6 +1087,7 @@ class ChatCubit extends Cubit<ChatState> implements MemberMaterializer {
       // ignore: discarded_futures
       tab.disposeBus();
     }
+    _maybeStopIdleWatch();
     final active = _activeTab;
     emit(
       state.copyWith(
@@ -1269,6 +1275,40 @@ class ChatCubit extends Cubit<ChatState> implements MemberMaterializer {
       _emitMemberPresence(next);
     } finally {
       _presenceTickInFlight = false;
+    }
+  }
+
+  void _ensureIdleWatch() {
+    if (_idleWatchTimer != null) return;
+    _idleWatchTimer = Timer.periodic(
+      const Duration(seconds: 1),
+      (_) => _tickIdleWatch(),
+    );
+  }
+
+  void _maybeStopIdleWatch() {
+    final anyBus = _internalTabs.any((t) => t.teamBus != null);
+    if (!anyBus) {
+      _idleWatchTimer?.cancel();
+      _idleWatchTimer = null;
+      _lastWorking.clear();
+    }
+  }
+
+  void _tickIdleWatch() {
+    if (isClosed) return;
+    for (final tab in _internalTabs) {
+      final bus = tab.teamBus;
+      if (bus == null) continue;
+      tab.memberShells.forEach((memberId, shell) {
+        final key = '${tab.info.id}:$memberId';
+        final working = shell.activityTracker.isWorking;
+        final was = _lastWorking[key] ?? false;
+        _lastWorking[key] = working;
+        if (was && !working) {
+          bus.onMemberIdle(memberId);
+        }
+      });
     }
   }
 
@@ -1478,6 +1518,7 @@ class ChatCubit extends Cubit<ChatState> implements MemberMaterializer {
       }
       // ignore: discarded_futures
       tab.disposeBus();
+      _maybeStopIdleWatch();
     }
     final tabs = _internalTabs.map((t) => t.info).toList();
 
@@ -1736,6 +1777,9 @@ class ChatCubit extends Cubit<ChatState> implements MemberMaterializer {
   Future<void> close() async {
     if (isClosed) return;
     _invalidatePresencePolls();
+    _idleWatchTimer?.cancel();
+    _idleWatchTimer = null;
+    _lastWorking.clear();
     for (final tab in _internalTabs) {
       for (final session in tab.sessions) {
         session.dispose();
