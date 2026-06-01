@@ -78,4 +78,25 @@ class TeamBus {
         );
     }
   }
+
+  /// idle 边：成员这一轮结束。若信箱有积压则立即门铃唤醒。
+  void onMemberIdle(String memberId) {
+    final node = _members[memberId];
+    if (node == null) return;
+    if (node.state == MemberState.retired || node.state == MemberState.dead) {
+      return;
+    }
+    node.state = MemberState.idle;
+    if (!node.inbox.isEmpty) {
+      node.state = MemberState.busy;
+      _launcher.wake(node.memberId, doorbellNotice);
+    }
+  }
+
+  /// worker 自我退出循环。
+  void leave(String memberId) {
+    final node = _members[memberId];
+    if (node == null) return;
+    node.state = MemberState.retired;
+  }
 }
