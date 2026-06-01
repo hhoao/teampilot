@@ -214,4 +214,24 @@ void main() {
     final legacy = TeamConfig.fromJson({'id': 't', 'name': 'T'});
     expect(legacy.teamMode, TeamMode.native);
   });
+
+  test('member.cli is honored only in mixed mode', () {
+    const nativeTeam = TeamConfig(id: 't', name: 'T', cli: TeamCli.claude);
+    const mixedTeam = TeamConfig(
+      id: 't',
+      name: 'T',
+      cli: TeamCli.claude,
+      teamMode: TeamMode.mixed,
+    );
+    const m = TeamMemberConfig(id: 'm', name: 'a', cli: TeamCli.flashskyai);
+    const inherit = TeamMemberConfig(id: 'm2', name: 'b');
+
+    expect(m.cliWithin(nativeTeam), TeamCli.claude); // native ignores member.cli
+    expect(m.cliWithin(mixedTeam), TeamCli.flashskyai); // mixed honors it
+    expect(inherit.cliWithin(mixedTeam), TeamCli.claude); // mixed fallback
+
+    expect(TeamMemberConfig.fromJson(m.toJson()).cli, TeamCli.flashskyai);
+    expect(m.toJson()['cli'], 'flashskyai');
+    expect(inherit.toJson().containsKey('cli'), isFalse);
+  });
 }

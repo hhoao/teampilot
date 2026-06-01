@@ -64,6 +64,7 @@ class TeamMemberConfig {
     this.prompt = '',
     this.joinedAt = 0,
     this.dangerouslySkipPermissions = false,
+    this.cli,
   });
 
   static bool decodeDangerouslySkipPermissions(Object? raw) {
@@ -96,6 +97,7 @@ class TeamMemberConfig {
       dangerouslySkipPermissions: decodeDangerouslySkipPermissions(
         json['dangerouslySkipPermissions'],
       ),
+      cli: TeamCli.tryParse(json['cli'] as String?),
     );
   }
 
@@ -114,6 +116,13 @@ class TeamMemberConfig {
   /// When true, launch passes `--dangerously-skip-permissions` (CLI flag).
   final bool dangerouslySkipPermissions;
 
+  /// 成员 CLI 覆盖（仅 mixed 模式生效）；null 回退 [TeamConfig.cli]。
+  final TeamCli? cli;
+
+  /// 成员有效 CLI：native 一律 team.cli；mixed 用成员覆盖、否则 team 默认。
+  TeamCli cliWithin(TeamConfig team) =>
+      team.teamMode == TeamMode.mixed ? (cli ?? team.cli) : team.cli;
+
   bool get isValid => name.trim().isNotEmpty;
 
   TeamMemberConfig copyWith({
@@ -127,6 +136,8 @@ class TeamMemberConfig {
     String? prompt,
     int? joinedAt,
     bool? dangerouslySkipPermissions,
+    TeamCli? cli,
+    bool updateCli = false,
   }) {
     return TeamMemberConfig(
       id: id ?? this.id,
@@ -140,6 +151,7 @@ class TeamMemberConfig {
       joinedAt: joinedAt ?? this.joinedAt,
       dangerouslySkipPermissions:
           dangerouslySkipPermissions ?? this.dangerouslySkipPermissions,
+      cli: updateCli ? cli : this.cli,
     );
   }
 
@@ -155,6 +167,7 @@ class TeamMemberConfig {
       'prompt': prompt,
       'joinedAt': joinedAt,
       if (dangerouslySkipPermissions) 'dangerouslySkipPermissions': true,
+      if (cli != null) 'cli': cli!.value,
     };
   }
 
@@ -172,7 +185,8 @@ class TeamMemberConfig {
             extraArgs == other.extraArgs &&
             prompt == other.prompt &&
             joinedAt == other.joinedAt &&
-            dangerouslySkipPermissions == other.dangerouslySkipPermissions;
+            dangerouslySkipPermissions == other.dangerouslySkipPermissions &&
+            cli == other.cli;
   }
 
   @override
@@ -187,6 +201,7 @@ class TeamMemberConfig {
     prompt,
     joinedAt,
     dangerouslySkipPermissions,
+    cli,
   );
 }
 
