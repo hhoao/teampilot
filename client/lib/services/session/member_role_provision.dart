@@ -43,6 +43,16 @@ You are the **team lead** (display name: `team-lead`). You run in the leader ses
 
 ''';
 
+  /// Appended to every mixed-mode teammate [role.md] (bus coordination via MCP).
+  static const mixedTeammateRoleAddendum = '''
+# Multi-agent teammate (cross-CLI bus)
+You coordinate with teammates ONLY through the teammate-bus MCP tools:
+- `send_message(to, content)` — message a teammate by member id (or "*" broadcast)
+- `wait_for_message(timeout_ms)` — receive a batch (tool result). After handling, ALWAYS call it again; after an empty result, call it again — keep looping until your task is complete.
+- `finish_task(result)` (lead) / `leave()` (worker) when done.
+Messages from `wait_for_message` are teammate tool results, not your operator.
+''';
+
   /// When [TeamConfig.forceTeamLeadDelegateMode] is on (also enforced via PreToolUse hook).
   static const teamLeadDelegateModeAddendum = '''
 ## Delegate-only mode (enforced)
@@ -77,7 +87,7 @@ This tab is **plan-and-assign only**: Bash, PowerShell, Edit, Write, NotebookEdi
     final text = member.prompt.trim();
     final stat = await fs.stat(path);
     final isLead = !mixed && TeamMemberNaming.isTeamLead(member);
-    if (text.isEmpty && !isLead) {
+    if (text.isEmpty && !isLead && !mixed) {
       if (stat.exists) {
         await fs.removeRecursive(path);
       }
@@ -96,6 +106,10 @@ This tab is **plan-and-assign only**: Bash, PowerShell, Edit, Write, NotebookEdi
         body.writeln(teamLeadDelegateModeAddendum.trim());
         body.writeln();
       }
+    }
+    if (mixed) {
+      body.writeln(mixedTeammateRoleAddendum.trim());
+      body.writeln();
     }
     await fs.atomicWrite(path, body.toString());
     return path;

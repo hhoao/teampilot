@@ -60,6 +60,26 @@ void main() {
     }
   });
 
+  test('mixed role file includes bus-coordination addendum', () async {
+    final tmp = Directory.systemTemp.createTempSync('role_busadd_');
+    addTearDown(() => tmp.deleteSync(recursive: true));
+    final fs = LocalFilesystem(
+      pathContext: AppPaths.pathContextForDataRoot(tmp.path),
+    );
+    const m = TeamMemberConfig(id: 'worker', name: 'worker', prompt: 'Do X.');
+
+    final path = await MemberRoleProvision.syncRolePromptFile(
+      fs: fs,
+      memberToolDir: tmp.path,
+      member: m,
+      mixed: true,
+    );
+    final body = await fs.readString(path!);
+    expect(body, contains('Do X.'));
+    expect(body, contains('wait_for_message'));
+    expect(body, contains('send_message'));
+  });
+
   test('mixed mode writes member.prompt without team-lead addendum', () async {
     final tmp = Directory.systemTemp.createTempSync('role_mixed_');
     addTearDown(() => tmp.deleteSync(recursive: true));
