@@ -2,6 +2,7 @@ import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/team_bus/agent_node.dart';
 import 'package:teampilot/services/team_bus/mcp/jsonrpc.dart';
+import 'package:teampilot/services/team_bus/mcp/teammate_bus_mcp_config.dart';
 import 'package:teampilot/services/team_bus/mcp/teammate_bus_mcp_handler.dart';
 import 'package:teampilot/services/team_bus/team_bus.dart';
 import 'package:teampilot/services/team_bus/team_message.dart';
@@ -96,6 +97,16 @@ void main() {
       expect(text['text'], contains('FROM w'));
       expect(text['text'], contains('reply'));
     });
+  });
+
+  test('config entry points at endpoint with X-Member header', () {
+    final entry = teammateBusMcpServerConfig(
+      endpoint: Uri.parse('http://127.0.0.1:54321/mcp'),
+      memberId: 'worker-1',
+    );
+    expect(entry['type'], 'http');
+    expect(entry['url'], 'http://127.0.0.1:54321/mcp');
+    expect((entry['headers'] as Map)['X-Member'], 'worker-1');
   });
 
   test('wait_for_message returns EMPTY sentinel on timeout', () {
