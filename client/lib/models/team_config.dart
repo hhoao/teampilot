@@ -2,11 +2,12 @@ import 'package:flutter/foundation.dart';
 
 import '../utils/team_member_naming.dart';
 
-/// Backend CLI for a team session (`flashskyai`, `codex`, or `claude`).
+/// Backend CLI for a team session (`flashskyai`, `codex`, `claude`, or `opencode`).
 enum TeamCli {
   flashskyai('flashskyai'),
   codex('codex'),
-  claude('claude');
+  claude('claude'),
+  opencode('opencode');
 
   const TeamCli(this.value);
 
@@ -25,7 +26,9 @@ enum TeamCli {
 
   /// Whether TeamPilot can launch a team terminal with this CLI today.
   bool get isLaunchSupported =>
-      this == TeamCli.flashskyai || this == TeamCli.claude;
+      this == TeamCli.flashskyai ||
+      this == TeamCli.claude ||
+      this == TeamCli.opencode;
 }
 
 /// 团队协调模式：native = 单 CLI 原生团队；mixed = 混合 CLI 走 TeamBus。

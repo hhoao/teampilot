@@ -157,6 +157,16 @@ void main() {
     expect(TeamCli.codex.isLaunchSupported, isFalse);
   });
 
+  test('opencode is launch supported and round-trips through json', () {
+    expect(TeamCli.opencode.isLaunchSupported, isTrue);
+    expect(TeamCli.decode('opencode'), TeamCli.opencode);
+
+    const team = TeamConfig(id: 't', name: 'T', cli: TeamCli.opencode);
+    final decoded = TeamConfig.fromJson(team.toJson());
+    expect(decoded.cli, TeamCli.opencode);
+    expect(team.toJson()['cli'], 'opencode');
+  });
+
   test('round trips skillIds', () {
     const team = TeamConfig(
       id: 'team-1',
