@@ -10,7 +10,9 @@ import '../l10n/l10n_extensions.dart';
 import '../models/app_provider_config.dart';
 import '../models/layout_preferences.dart';
 import '../repositories/app_settings_repository.dart';
-import '../services/team/rtk_detector.dart';
+import '../services/extension/builtin_manifests.dart';
+import '../services/extension/extension_detector.dart';
+import '../services/extension/extension_probe.dart';
 import '../theme/app_text_styles.dart';
 import '../theme/app_theme.dart';
 import '../theme/app_typography_scale.dart';
@@ -368,7 +370,9 @@ class _RtkSettingsSectionState extends State<_RtkSettingsSection> {
   Future<void> _load() async {
     final settings = context.read<AppSettingsRepository>();
     final enabled = await settings.loadRtkEnabled();
-    final probe = await RtkDetector().probe();
+    final rtkDetect =
+        builtInExtensionManifests().firstWhere((m) => m.id == 'rtk').detect;
+    final probe = await ExtensionDetector().probe(rtkDetect);
     if (!mounted) return;
     setState(() {
       _rtkEnabled = enabled;
@@ -377,12 +381,13 @@ class _RtkSettingsSectionState extends State<_RtkSettingsSection> {
     });
   }
 
-  String _formatStatus(BuildContext context, RtkProbeResult probe) {
+  String _formatStatus(BuildContext context, ExtensionProbe probe) {
     final l10n = context.l10n;
     if (!probe.found) return l10n.rtkStatusNotFound;
-    if (!probe.jqFound) return l10n.rtkStatusJqMissing;
-    if (probe.version != null &&
-        !RtkDetector().isVersionSupported(probe.version!)) {
+    if (probe.missingRequirements.contains('jq')) {
+      return l10n.rtkStatusJqMissing;
+    }
+    if (probe.version != null && !probe.satisfiesMinVersion) {
       return l10n.rtkStatusVersionTooOld(probe.version!);
     }
     final version = probe.version?.trim();

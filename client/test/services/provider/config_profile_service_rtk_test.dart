@@ -8,7 +8,7 @@ import 'package:teampilot/services/storage/app_storage.dart';
 import 'package:teampilot/services/cli/cli_data_layout.dart';
 import 'package:teampilot/services/provider/config_profile_service.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
-import 'package:teampilot/services/team/rtk_detector.dart';
+import 'package:teampilot/services/extension/extension_detector.dart';
 import 'package:teampilot/services/host/host_execution_environment.dart';
 import 'package:teampilot/services/host/script_file_hook_provisioner.dart';
 import 'package:teampilot/services/storage/runtime_storage_context.dart';
@@ -27,9 +27,9 @@ void main() {
         fs: fs,
         layout: CliDataLayout(teampilotRoot: base.path, fs: fs),
         loadRtkEnabled: () async => true,
-        rtkDetector: RtkDetector(
+        extensionDetector: ExtensionDetector(
           processRunner: (executable, arguments, {environment}) async {
-            // RtkDetector locates binaries via `which` on POSIX and `where`
+            // ExtensionDetector locates binaries via `which` on POSIX and `where`
             // on Windows, so match on the queried name rather than the locator.
             const locators = {'which', 'where'};
             if (locators.contains(executable) && arguments.first == 'rtk') {
@@ -103,7 +103,7 @@ void main() {
         fs: LocalFilesystem(),
         layout: CliDataLayout(teampilotRoot: base.path, fs: LocalFilesystem()),
         loadRtkEnabled: () async => true,
-        rtkDetector: RtkDetector(processRunner: _alwaysMissing),
+        extensionDetector: ExtensionDetector(processRunner: _alwaysMissing),
       );
 
       final outcome = await service.prepareTeamLaunch(

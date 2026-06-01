@@ -24,8 +24,10 @@ import '../plugin/cli_plugin_registry_service.dart';
 import '../io/filesystem.dart';
 import '../session/member_role_provision.dart';
 import '../storage/runtime_storage_context.dart';
-import '../team/rtk_detector.dart';
-import '../team/rtk_settings_merge.dart';
+import '../../models/extension_manifest.dart';
+import '../extension/builtin_manifests.dart';
+import '../extension/extension_detector.dart';
+import '../extension/extension_provisioner.dart';
 import '../team/team_lead_delegate_settings_merge.dart';
 import '../team/team_lead_settings_merge.dart';
 
@@ -47,7 +49,7 @@ const configProfileAdhocSessionId = '_adhoc';
 
 /// [TeamLaunchOutcome.warnings] when RTK is enabled but dependencies are missing.
 const rtkWarningEnabledNotFound = 'rtk_enabled_not_found';
-const rtkWarningEnabledJqMissing = 'rtk_enabled_jq_missing';
+const rtkWarningEnabledDependencyMissing = 'rtk_enabled_dependency_missing';
 const rtkWarningEnabledVersionTooOld = 'rtk_enabled_version_too_old';
 
 /// Ensures team runtime isolation directories and returns launch env vars.
@@ -93,7 +95,8 @@ class ConfigProfileService implements ConfigProfileDelegate {
     CliDataLayout? layout,
     ClaudeProviderCredentialsService? claudeCredentialsService,
     Future<bool> Function()? loadRtkEnabled,
-    RtkDetector? rtkDetector,
+    ExtensionDetector? extensionDetector,
+    List<ExtensionManifest>? extensionManifests,
     ScriptFileHookProvisioner? rtkHookProvisioner,
     Future<String> Function(HostScriptDialect dialect)? loadRtkHookScript,
     ScriptFileHookProvisioner? teamLeadHookProvisioner,
@@ -109,7 +112,8 @@ class ConfigProfileService implements ConfigProfileDelegate {
            CliDataLayout(teampilotRoot: basePath, fs: fs ?? AppStorage.fs),
        _claudeCredentialsService = claudeCredentialsService,
        _loadRtkEnabled = loadRtkEnabled,
-       _rtkDetector = rtkDetector ?? RtkDetector(),
+       _extensionDetector = extensionDetector,
+       _extensionManifests = extensionManifests,
        _rtkHookProvisioner = rtkHookProvisioner,
        _loadRtkHookScript = loadRtkHookScript,
        _teamLeadHookProvisioner = teamLeadHookProvisioner,
@@ -125,7 +129,9 @@ class ConfigProfileService implements ConfigProfileDelegate {
   final CliDataLayout layout;
   final ClaudeProviderCredentialsService? _claudeCredentialsService;
   final Future<bool> Function()? _loadRtkEnabled;
-  final RtkDetector _rtkDetector;
+  final ExtensionDetector? _extensionDetector;
+  final List<ExtensionManifest>? _extensionManifests;
+  ExtensionProvisioner? _cachedExtensionProvisioner;
   final ScriptFileHookProvisioner? _rtkHookProvisioner;
   final Future<String> Function(HostScriptDialect dialect)? _loadRtkHookScript;
   final ScriptFileHookProvisioner? _teamLeadHookProvisioner;
@@ -609,41 +615,35 @@ class ConfigProfileService implements ConfigProfileDelegate {
         );
   }
 
+  ExtensionProvisioner get _extensionProvisioner =>
+      _cachedExtensionProvisioner ??= ExtensionProvisioner(
+        manifests: _extensionManifests ?? builtInExtensionManifests(),
+        isEnabled: (id) async => id == 'rtk' ? await _isRtkEnabled() : false,
+        detector: _extensionDetector,
+        hookProvisionerFor: _hookProvisionerForAsset,
+      );
+
+  ScriptFileHookProvisioner _hookProvisionerForAsset(String scriptAsset) {
+    final host = _hostEnvironmentForProvision();
+    switch (scriptAsset) {
+      case 'rtk-rewrite':
+        return _resolveRtkProvisioner(host);
+      default:
+        throw StateError('No hook provisioner for asset "$scriptAsset"');
+    }
+  }
+
   Future<void> _collectRtkWarnings(List<String> warnings) async {
-    if (!await _isRtkEnabled()) return;
-    final probe = await _rtkDetector.probe();
-    if (!probe.found) {
-      warnings.add(rtkWarningEnabledNotFound);
-      return;
-    }
-    if (!probe.jqFound) {
-      warnings.add(rtkWarningEnabledJqMissing);
-      return;
-    }
-    final version = probe.version;
-    if (version != null && !_rtkDetector.isVersionSupported(version)) {
-      warnings.add(rtkWarningEnabledVersionTooOld);
-    }
+    warnings.addAll(await _extensionProvisioner.collectWarnings());
   }
 
   Future<Map<String, Object?>> _maybeApplyRtk(
     Map<String, Object?> settings,
     String? memberToolDir,
   ) async {
-    final toolDir = memberToolDir?.trim() ?? '';
-    if (toolDir.isEmpty) return settings;
-    if (!await _isRtkEnabled()) return settings;
-
-    final probe = await _rtkDetector.probe();
-    if (!probe.isReady) return settings;
-
-    final host = _hostEnvironmentForProvision();
-    final provisioner = _resolveRtkProvisioner(host);
-    final scriptPath = await provisioner.provision(toolDir);
-    final hookCommand = provisioner.commandForPath(scriptPath);
-    return const RtkSettingsMerge().mergeIntoSettings(
-      base: settings,
-      hookCommand: hookCommand,
+    return _extensionProvisioner.applySettings(
+      settings,
+      memberToolDir?.trim() ?? '',
     );
   }
 

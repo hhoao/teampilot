@@ -1,0 +1,86 @@
+import '../../models/extension_manifest.dart';
+import '../host/script_file_hook_provisioner.dart';
+import 'effect/settings_hook_effect_applier.dart';
+import 'extension_detector.dart';
+
+/// Builds a hook-script provisioner for a given `scriptAsset`. Supplied by the
+/// caller so asset-specific script loading stays out of this generic engine.
+typedef HookProvisionerFactory = ScriptFileHookProvisioner Function(
+  String scriptAsset,
+);
+
+/// Orchestrates enabled extension manifests: surfaces readiness warnings and
+/// applies `settings-hook` effects into a settings map. The seam that replaces
+/// the former bespoke rtk logic in `ConfigProfileService`.
+class ExtensionProvisioner {
+  ExtensionProvisioner({
+    required List<ExtensionManifest> manifests,
+    required Future<bool> Function(String extensionId) isEnabled,
+    required HookProvisionerFactory hookProvisionerFor,
+    ExtensionDetector? detector,
+    SettingsHookEffectApplier settingsHookApplier =
+        const SettingsHookEffectApplier(),
+  })  : _manifests = manifests,
+        _isEnabled = isEnabled,
+        _hookProvisionerFor = hookProvisionerFor,
+        _detector = detector ?? ExtensionDetector(),
+        _settingsHookApplier = settingsHookApplier;
+
+  final List<ExtensionManifest> _manifests;
+  final Future<bool> Function(String extensionId) _isEnabled;
+  final HookProvisionerFactory _hookProvisionerFor;
+  final ExtensionDetector _detector;
+  final SettingsHookEffectApplier _settingsHookApplier;
+
+  /// Warning codes for enabled-but-unready extensions, mirroring the legacy
+  /// `rtk_enabled_*` shape: `<id>_enabled_not_found`,
+  /// `<id>_enabled_dependency_missing`, `<id>_enabled_version_too_old`.
+  Future<List<String>> collectWarnings() async {
+    final out = <String>[];
+    for (final manifest in _manifests) {
+      if (!await _isEnabled(manifest.id)) continue;
+      final probe = await _detector.probe(manifest.detect);
+      if (!probe.found) {
+        out.add('${manifest.id}_enabled_not_found');
+        continue;
+      }
+      if (probe.missingRequirements.isNotEmpty) {
+        out.add('${manifest.id}_enabled_dependency_missing');
+        continue;
+      }
+      if (!probe.satisfiesMinVersion) {
+        out.add('${manifest.id}_enabled_version_too_old');
+      }
+    }
+    return out;
+  }
+
+  /// Applies every ready, enabled extension's `settings-hook` effects to [base].
+  Future<Map<String, Object?>> applySettings(
+    Map<String, Object?> base,
+    String memberToolDir,
+  ) async {
+    if (memberToolDir.trim().isEmpty) return base;
+    var settings = base;
+    for (final manifest in _manifests) {
+      if (!await _isEnabled(manifest.id)) continue;
+      final probe = await _detector.probe(manifest.detect);
+      if (!probe.isReady) continue;
+      for (final effect in manifest.effects) {
+        if (effect.kind != 'settings-hook') continue;
+        final provisioner =
+            _hookProvisionerFor(effect.scriptAsset ?? manifest.id);
+        final scriptPath = await provisioner.provision(memberToolDir);
+        final command = provisioner.commandForPath(scriptPath);
+        settings = _settingsHookApplier.mergeIntoSettings(
+          base: settings,
+          event: effect.hookEvent ?? 'PreToolUse',
+          matcher: effect.hookMatcher ?? 'Bash',
+          hookCommand: command,
+          marker: effect.marker ?? manifest.id,
+        );
+      }
+    }
+    return settings;
+  }
+}
