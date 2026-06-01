@@ -38,6 +38,7 @@ final class FlashskyaiConfigProfileCapability
       members: ctx.members,
       launchedMember: ctx.member,
       forceTeamLeadDelegateMode: ctx.team?.forceTeamLeadDelegateMode ?? false,
+      mixed: ctx.team?.teamMode == TeamMode.mixed,
     );
 
     final environment = _teamLaunchEnvironment(delegate, scope);
@@ -104,6 +105,7 @@ final class FlashskyaiConfigProfileCapability
     required List<TeamMemberConfig> members,
     required TeamMemberConfig? launchedMember,
     required bool forceTeamLeadDelegateMode,
+    required bool mixed,
   }) async {
     final selected = launchedMember;
     if (selected == null || !selected.isValid) {
@@ -115,6 +117,7 @@ final class FlashskyaiConfigProfileCapability
       scope: scope,
       member: selected,
       forceTeamLeadDelegateMode: forceTeamLeadDelegateMode,
+      mixed: mixed,
     );
   }
 
@@ -146,6 +149,7 @@ final class FlashskyaiConfigProfileCapability
     required LaunchProfileScope scope,
     required TeamMemberConfig member,
     required bool forceTeamLeadDelegateMode,
+    required bool mixed,
   }) async {
     final memberToolDir = delegate.sessionToolDir(
       scope.teamId,
@@ -158,6 +162,7 @@ final class FlashskyaiConfigProfileCapability
       memberToolDir: memberToolDir,
       member: member,
       forceTeamLeadDelegateMode: isLead && forceTeamLeadDelegateMode,
+      mixed: mixed,
     );
     final settingsFile = delegate.pathContext.join(
       memberToolDir,

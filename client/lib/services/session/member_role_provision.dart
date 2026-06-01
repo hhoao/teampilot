@@ -71,11 +71,12 @@ This tab is **plan-and-assign only**: Bash, PowerShell, Edit, Write, NotebookEdi
     required String memberToolDir,
     required TeamMemberConfig member,
     bool forceTeamLeadDelegateMode = false,
+    bool mixed = false,
   }) async {
     final path = rolePromptPath(memberToolDir, member);
     final text = member.prompt.trim();
     final stat = await fs.stat(path);
-    final isLead = TeamMemberNaming.isTeamLead(member);
+    final isLead = !mixed && TeamMemberNaming.isTeamLead(member);
     if (text.isEmpty && !isLead) {
       if (stat.exists) {
         await fs.removeRecursive(path);
