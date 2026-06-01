@@ -5,8 +5,8 @@ import 'package:go_router/go_router.dart';
 import '../cubits/team_cubit.dart';
 import '../l10n/l10n_extensions.dart';
 import '../pages/mcp/mcp_routes.dart';
-import '../pages/mcp_management_page.dart';
-import '../pages/skill_management_page.dart';
+import '../pages/mcp/mcp_management_page.dart';
+import '../pages/skills/skill_management_page.dart';
 
 /// Resolves Android [Scaffold] title, back affordance, and drawer visibility
 /// for hub-style workspace routes (settings, team config, skills).

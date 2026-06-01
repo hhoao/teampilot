@@ -19,7 +19,7 @@ import '../widgets/settings/typography_scale_setting.dart';
 import '../widgets/settings/workspace_settings_toggle_strip.dart';
 import '../widgets/settings/workspace_settings_widgets.dart';
 import 'about_page.dart';
-import 'llm_config_workspace.dart';
+import 'llm_config/llm_config_workspace.dart';
 import 'session_config_workspace.dart';
 import 'system/log_viewer_page.dart';
 

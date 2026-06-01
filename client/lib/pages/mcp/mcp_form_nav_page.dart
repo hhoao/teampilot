@@ -9,7 +9,7 @@ import '../../services/app/platform_utils.dart';
 import '../../utils/app_keys.dart';
 import '../../widgets/settings/workspace_section_host.dart';
 import 'mcp_form_page.dart';
-import '../mcp_management_page.dart';
+import 'mcp_management_page.dart';
 import 'mcp_routes.dart';
 import 'mcp_shared_widgets.dart';
 

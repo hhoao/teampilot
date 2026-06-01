@@ -20,8 +20,7 @@ Run these commands and confirm success before claiming work is done.
 
 | Layer | Path | Responsibility |
 |-------|------|----------------|
-| Route entry | `pages/*_page.dart`, `pages/*_workspace.dart` | GoRouter shells: hub, split layout, `BlocConsumer`, wiring sections |
-| Single-screen UI | `pages/<domain>/` | Sections, forms, dialogs, route helpers **used only by that route** (see `pages/mcp/`) |
+| Single-screen module | `pages/<domain>/` | Route **shell** (`*_page.dart` / `*_workspace.dart`), sections, dialogs, route helpers (see `pages/mcp/`) |
 | Shared UI | `widgets/` | Controls and layout reused across routes (`dropdown/`, `settings/`, `split_layout.dart`, etc.) |
 | State | `cubits/` | Actions, loading/error; calls repositories / services |
 | Persistence | `repositories/` | JSON/files via `Filesystem` + `AppStorage` |
@@ -42,18 +41,26 @@ Run these commands and confirm success before claiming work is done.
 
 **Do not** put route-only sections under `widgets/<feature>/` when the folder name mirrors a page. When splitting oversized pages, prefer **`pages/<domain>/`**, aligned with `pages/mcp/`.
 
-Suggested layout:
+Suggested layout (**shell and sections colocated**, see `pages/mcp/`):
 
 ```
 pages/
-  skill_management_page.dart
-  skills/
-  mcp_management_page.dart
   mcp/
-  team_config_page.dart
+    mcp_management_page.dart
+    mcp_installed_section.dart
+    ...
+  plugins/
+    plugin_management_page.dart
+    ...
+  skills/
+    skill_management_page.dart
+    ...
   team_config/
-  llm_config_workspace.dart
+    team_config_page.dart
+    ...
   llm_config/
+    llm_config_workspace.dart
+    ...
 ```
 
 ## File size (soft limits)

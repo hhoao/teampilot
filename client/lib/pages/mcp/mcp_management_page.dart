@@ -2,22 +2,22 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
-import '../cubits/mcp_cubit.dart';
-import '../cubits/mcp_discovery_cubit.dart';
-import '../l10n/l10n_extensions.dart';
-import '../models/mcp_catalog_listing.dart';
-import '../models/mcp_server.dart';
-import '../services/app/platform_utils.dart';
-import '../services/mcp/mcp_listing_install_service.dart';
-import '../utils/app_keys.dart';
-import '../utils/debounce/debounce.dart';
-import '../widgets/settings/workspace_hub_shell.dart';
-import '../widgets/settings/workspace_section_host.dart';
-import '../widgets/settings/workspace_section_navigation.dart';
-import 'mcp/mcp_discovery_section.dart';
-import 'mcp/mcp_installed_section.dart';
-import 'mcp/mcp_registries_section.dart';
-import 'mcp/mcp_routes.dart';
+import '../../cubits/mcp_cubit.dart';
+import '../../cubits/mcp_discovery_cubit.dart';
+import '../../l10n/l10n_extensions.dart';
+import '../../models/mcp_catalog_listing.dart';
+import '../../models/mcp_server.dart';
+import '../../services/app/platform_utils.dart';
+import '../../services/mcp/mcp_listing_install_service.dart';
+import '../../utils/app_keys.dart';
+import '../../utils/debounce/debounce.dart';
+import '../../widgets/settings/workspace_hub_shell.dart';
+import '../../widgets/settings/workspace_section_host.dart';
+import '../../widgets/settings/workspace_section_navigation.dart';
+import 'mcp_discovery_section.dart';
+import 'mcp_installed_section.dart';
+import 'mcp_registries_section.dart';
+import 'mcp_routes.dart';
 
 IconData mcpSectionIcon(McpSection section) => switch (section) {
   McpSection.installed => Icons.dns_outlined,

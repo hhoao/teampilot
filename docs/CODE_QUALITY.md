@@ -20,8 +20,7 @@ flutter test --exclude-tags integration
 
 | 层 | 目录 | 职责 |
 |----|------|------|
-| UI 路由入口 | `pages/*_page.dart`、`pages/*_workspace.dart` | `GoRouter` 对应页面壳：Hub、分栏、`BlocConsumer`、组装 section |
-| UI 单屏实现 | `pages/<route>/` | **仅该路由使用**的 section、表单、对话框、路由 helper（参考 `pages/mcp/`） |
+| UI 单屏模块 | `pages/<route>/` | 该路由的**页面壳**（`*_page.dart` / `*_workspace.dart`）、section、对话框、路由 helper（参考 `pages/mcp/`） |
 | UI 跨屏复用 | `widgets/` | 多页面/工作台共用的控件与布局（`dropdown/`、`settings/`、`split_layout.dart` 等） |
 | 状态 | `cubits/` | 用户动作、加载态、错误态；调用 repository / service |
 | 持久化 | `repositories/` | JSON / 文件读写；通过 `Filesystem` + `AppStorage` 路径 |
@@ -42,18 +41,27 @@ flutter test --exclude-tags integration
 
 **不要**把「仅技能管理页使用」的 section 放进 `widgets/` 下以页面命名的子目录。拆分超大页面时，优先 **`pages/<域>/`**，与 `client/lib/pages/mcp/` 对齐。
 
-推荐布局：
+推荐布局（**壳与 section 同目录**，参考 `pages/mcp/`）：
 
 ```
 pages/
-  skill_management_page.dart    # 壳：路由、Bloc、选 section
-  skills/                       # 该屏专用 UI（installed / discovery / repos）
-  mcp_management_page.dart
-  mcp/                          # 已有范例
-  team_config_page.dart
+  mcp/
+    mcp_management_page.dart    # 壳 + McpSection 等
+    mcp_installed_section.dart
+    ...
+  plugins/
+    plugin_management_page.dart
+    plugin_installed_section.dart
+    ...
+  skills/
+    skill_management_page.dart
+    ...
   team_config/
-  llm_config_workspace.dart
+    team_config_page.dart
+    ...
   llm_config/
+    llm_config_workspace.dart
+    ...
 ```
 
 ## 文件体量（软上限）
