@@ -171,6 +171,32 @@ void main() {
     );
   });
 
+  test('mixed member cli overrides; native ignores member cli', () {
+    const member = TeamMemberConfig(
+      id: 'm',
+      name: 'planner',
+      provider: 'anthropic',
+      model: 'sonnet',
+      agent: 'builder',
+      cli: TeamCli.flashskyai,
+    );
+    const nativeClaude = TeamConfig(id: '1', name: 'agent', cli: TeamCli.claude);
+    const mixedClaude = TeamConfig(
+      id: '1',
+      name: 'agent',
+      cli: TeamCli.claude,
+      teamMode: TeamMode.mixed,
+    );
+
+    expect(
+      LaunchCommandBuilder.buildArguments(nativeClaude, member),
+      contains('--team-name'),
+    );
+    final mixedArgs = LaunchCommandBuilder.buildArguments(mixedClaude, member);
+    expect(mixedArgs, contains('--team'));
+    expect(mixedArgs, isNot(contains('--team-name')));
+  });
+
   test('preview delegates argument construction for Claude teams', () {
     const team = TeamConfig(id: '1', name: 'agent', cli: TeamCli.claude);
     const planner = TeamMemberConfig(

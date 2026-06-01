@@ -78,9 +78,13 @@ class LaunchCommandBuilder {
     CliToolRegistry? cliRegistry,
   }) {
     final registry = cliRegistry ?? _defaultCliRegistry;
-    final launch = registry.capability<LaunchArgsCapability>(team.cli.value);
+    final launch = registry.capability<LaunchArgsCapability>(
+      member.cliWithin(team).value,
+    );
     if (launch == null) {
-      throw StateError('No LaunchArgsCapability for ${team.cli.value}');
+      throw StateError(
+        'No LaunchArgsCapability for ${member.cliWithin(team).value}',
+      );
     }
     return launch.buildArguments(
       CliLaunchContext(
