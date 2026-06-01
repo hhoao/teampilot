@@ -199,4 +199,19 @@ void main() {
     const team = TeamConfig(id: 't', name: 'T');
     expect(team.toJson().containsKey('pluginIds'), isFalse);
   });
+
+  test('teamMode defaults to native, round-trips, omits native in json', () {
+    expect(const TeamConfig(id: 't', name: 'T').teamMode, TeamMode.native);
+
+    const mixed = TeamConfig(id: 't', name: 'T', teamMode: TeamMode.mixed);
+    final decoded = TeamConfig.fromJson(mixed.toJson());
+    expect(decoded.teamMode, TeamMode.mixed);
+    expect(mixed.toJson()['teamMode'], 'mixed');
+
+    const native = TeamConfig(id: 't', name: 'T', teamMode: TeamMode.native);
+    expect(native.toJson().containsKey('teamMode'), isFalse);
+
+    final legacy = TeamConfig.fromJson({'id': 't', 'name': 'T'});
+    expect(legacy.teamMode, TeamMode.native);
+  });
 }

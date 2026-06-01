@@ -28,6 +28,27 @@ enum TeamCli {
       this == TeamCli.flashskyai || this == TeamCli.claude;
 }
 
+/// 团队协调模式：native = 单 CLI 原生团队；mixed = 混合 CLI 走 TeamBus。
+enum TeamMode {
+  native('native'),
+  mixed('mixed');
+
+  const TeamMode(this.value);
+
+  final String value;
+
+  static TeamMode decode(Object? raw) => tryParse(raw?.toString()) ?? native;
+
+  static TeamMode? tryParse(String? raw) {
+    final normalized = raw?.trim().toLowerCase();
+    if (normalized == null || normalized.isEmpty) return null;
+    for (final mode in TeamMode.values) {
+      if (mode.value == normalized) return mode;
+    }
+    return null;
+  }
+}
+
 @immutable
 class TeamMemberConfig {
   const TeamMemberConfig({
@@ -182,6 +203,7 @@ class TeamConfig {
     this.mcpServerIds = const [],
     this.providerIdsByTool = const {},
     this.cli = TeamCli.claude,
+    this.teamMode = TeamMode.native,
     this.createdAt = 0,
     this.loop,
     this.claudeTeammateMode = 'in-process',
@@ -259,6 +281,7 @@ class TeamConfig {
       mcpServerIds: decodeMcpServerIds(json['mcpServerIds']),
       providerIdsByTool: _decodeProviderIdsByTool(json['providerIdsByTool']),
       cli: TeamCli.decode(json['cli']),
+      teamMode: TeamMode.decode(json['teamMode']),
       createdAt: (json['createdAt'] as num?)?.toInt() ?? 0,
       loop: decodeLoop(json['loop']),
       claudeTeammateMode:
@@ -303,6 +326,9 @@ class TeamConfig {
 
   /// CLI backend for this team. Set at creation; not user-editable afterward.
   final TeamCli cli;
+
+  /// 协调模式（默认 native；老 team 无此字段时回退 native）。
+  final TeamMode teamMode;
   final int createdAt;
 
   /// When non-null, launch passes `--loop true` or `--loop false` (team mode).
@@ -333,6 +359,7 @@ class TeamConfig {
     List<String>? mcpServerIds,
     Map<String, String>? providerIdsByTool,
     TeamCli? cli,
+    TeamMode? teamMode,
     int? createdAt,
     bool? loop,
     bool updateLoop = false,
@@ -354,6 +381,7 @@ class TeamConfig {
       mcpServerIds: mcpServerIds ?? this.mcpServerIds,
       providerIdsByTool: providerIdsByTool ?? this.providerIdsByTool,
       cli: cli ?? this.cli,
+      teamMode: teamMode ?? this.teamMode,
       createdAt: createdAt ?? this.createdAt,
       loop: updateLoop ? loop : this.loop,
       claudeTeammateMode: claudeTeammateMode ?? this.claudeTeammateMode,
@@ -379,6 +407,7 @@ class TeamConfig {
       if (mcpServerIds.isNotEmpty) 'mcpServerIds': mcpServerIds,
       if (providerIdsByTool.isNotEmpty) 'providerIdsByTool': providerIdsByTool,
       if (cli != TeamCli.flashskyai) 'cli': cli.value,
+      if (teamMode != TeamMode.native) 'teamMode': teamMode.value,
       'createdAt': createdAt,
       if (loop != null) 'loop': loop!,
       if (claudeTeammateMode != 'in-process')
@@ -405,6 +434,7 @@ class TeamConfig {
             listEquals(mcpServerIds, other.mcpServerIds) &&
             mapEquals(providerIdsByTool, other.providerIdsByTool) &&
             cli == other.cli &&
+            teamMode == other.teamMode &&
             createdAt == other.createdAt &&
             loop == other.loop &&
             claudeTeammateMode == other.claudeTeammateMode &&
@@ -425,6 +455,7 @@ class TeamConfig {
     Object.hashAll(mcpServerIds),
     Object.hashAll(providerIdsByTool.entries),
     cli,
+    teamMode,
     createdAt,
     loop,
     claudeTeammateMode,
