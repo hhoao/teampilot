@@ -71,6 +71,33 @@ flutter build linux --debug
 LD_LIBRARY_PATH=build/linux/x64/debug/bundle/lib flutter test --tags integration
 ```
 
+### 测试辅助（Cubit / AppStorage）
+
+凡单测会走到 `AppStorage` 或 `RuntimeStorageContext`，在 `setUp` / `tearDown` 中调用：
+
+```dart
+import '../support/post_frame_test_harness.dart';
+
+setUp(() => setUpTestAppStorage());
+tearDown(() => tearDownTestAppStorage());
+```
+
+`ChatCubit` 等 post-frame 异步：使用同文件中的 `PostFrameTestHarness`、`runScheduledCallback`。未初始化 storage 时跑 Cubit 会在日志里出现 `RuntimeStorageContext.install() must be called`——应视为测试搭建错误并修复，而非忽略。
+
+### 覆盖率（可选）
+
+CI 不强制，本地可用以查看**本次改动**的覆盖情况：
+
+```bash
+cd client
+flutter test --exclude-tags integration --coverage
+# 需安装 lcov：genhtml coverage/lcov.info -o coverage/html
+```
+
+## 代码质量规范
+
+分层、文件体量软上限、Extension 约定、发布前人工检查清单见 **[CODE_QUALITY.md](CODE_QUALITY.md)**。改大页面（`team_config_page`、`llm_config_workspace` 等）或 `app_shell.dart` 前请先阅读。
+
 ## 打包发布
 
 CI 使用 [fastforge](https://pub.dev/packages/fastforge) 在 `client/dist/` 产出安装包：
@@ -121,6 +148,8 @@ flutter build windows --release
 | 文档 | 内容 |
 |------|------|
 | [AGENTS.md](../AGENTS.md) | AI 协作指南：架构、关键路径与改代码约定 |
+| [CODE_QUALITY.md](CODE_QUALITY.md) | 代码质量：体量、测试、Extension、技术债 |
+| [DEBUGGING.md](DEBUGGING.md) | 排错流程（先搜索、根因优先） |
 | [CLAUDE.md](../CLAUDE.md) | Claude Code 入口（指向 AGENTS.md） |
 | [插件管理设计](superpowers/specs/2026-05-23-plugin-management-design.md) | 插件架构与存储 |
 | [RTK 集成设计](superpowers/specs/2026-05-24-rtk-integration-design.md) | Token 压缩钩子 |

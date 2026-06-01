@@ -71,6 +71,33 @@ flutter build linux --debug
 LD_LIBRARY_PATH=build/linux/x64/debug/bundle/lib flutter test --tags integration
 ```
 
+### Test helpers (cubit / AppStorage)
+
+When tests touch `AppStorage` or `RuntimeStorageContext`:
+
+```dart
+import '../support/post_frame_test_harness.dart';
+
+setUp(() => setUpTestAppStorage());
+tearDown(() => tearDownTestAppStorage());
+```
+
+For post-frame async (`ChatCubit`), use `PostFrameTestHarness` and `runScheduledCallback` from the same file. Log noise like `RuntimeStorageContext.install() must be called` means fix the test harness, not ignore it.
+
+### Coverage (optional)
+
+Not required in CI; locally:
+
+```bash
+cd client
+flutter test --exclude-tags integration --coverage
+# with lcov: genhtml coverage/lcov.info -o coverage/html
+```
+
+## Code quality guidelines
+
+Layering, soft file-size limits, Extension rules, and pre-release checklists: **[CODE_QUALITY.en.md](CODE_QUALITY.en.md)**. Read before editing large pages (`team_config_page`, `llm_config_workspace`) or `app_shell.dart`.
+
 ## Packaging & releases
 
 CI uses [fastforge](https://pub.dev/packages/fastforge) to produce artifacts under `client/dist/`:
@@ -121,6 +148,8 @@ OS-specific tooling matches the CI workflows. See [`client/linux/packaging/READM
 | Doc | Topic |
 |-----|--------|
 | [AGENTS.md](../AGENTS.md) | AI guide: architecture, key paths, change conventions |
+| [CODE_QUALITY.en.md](CODE_QUALITY.en.md) | File size, tests, Extension, tech-debt norms |
+| [DEBUGGING.md](DEBUGGING.md) | Debugging process (search-first, root cause) |
 | [CLAUDE.md](../CLAUDE.md) | Claude Code entry point (links to AGENTS.md) |
 | [Plugin management design](superpowers/specs/2026-05-23-plugin-management-design.md) | Plugin architecture & storage |
 | [RTK integration design](superpowers/specs/2026-05-24-rtk-integration-design.md) | Token compression hooks |
