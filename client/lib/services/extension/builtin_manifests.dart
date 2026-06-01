@@ -36,9 +36,39 @@ const String rtkManifestJson = '''
 }
 ''';
 
-/// All extensions TeamPilot ships with. Phase 1: rtk only.
+const String codegraphManifestJson = '''
+{
+  "id": "codegraph",
+  "name": "CodeGraph",
+  "version": "1.x",
+  "homepage": "https://github.com/colbymchenry/codegraph",
+  "acquire": {
+    "kind": "node-package",
+    "package": "@colbymchenry/codegraph",
+    "binary": "codegraph",
+    "allowNpx": true
+  },
+  "detect": {
+    "executable": "codegraph",
+    "versionArgs": ["--version"]
+  },
+  "effects": [
+    {
+      "kind": "mcp-server",
+      "appliesTo": ["claude", "flashskyai"],
+      "name": "codegraph",
+      "server": { "command": "codegraph", "args": ["serve", "--mcp"] }
+    }
+  ]
+}
+''';
+
+/// All extensions TeamPilot ships with.
 List<ExtensionManifest> builtInExtensionManifests() => [
       ExtensionManifest.fromJson(
         jsonDecode(rtkManifestJson) as Map<String, Object?>,
+      ),
+      ExtensionManifest.fromJson(
+        jsonDecode(codegraphManifestJson) as Map<String, Object?>,
       ),
     ];

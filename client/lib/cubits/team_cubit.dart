@@ -99,6 +99,26 @@ typedef InstalledSkillsLoader = Future<List<Skill>> Function();
 typedef InstalledPluginsLoader = Future<List<Plugin>> Function();
 typedef InstalledMcpLoader = Future<List<McpServer>> Function();
 
+/// Appends extension-contributed servers to [catalog]/[ids], de-duped by id.
+(List<McpServer>, List<String>) mergeExtensionMcp({
+  required List<McpServer> catalog,
+  required List<String> ids,
+  required List<McpServer> contributions,
+}) {
+  final existingIds = catalog.map((s) => s.id).toSet();
+  final mergedCatalog = [...catalog];
+  final mergedIds = [...ids];
+  for (final server in contributions) {
+    if (existingIds.add(server.id)) {
+      mergedCatalog.add(server);
+    }
+    if (!mergedIds.contains(server.id)) {
+      mergedIds.add(server.id);
+    }
+  }
+  return (mergedCatalog, mergedIds);
+}
+
 class TeamCubit extends Cubit<TeamState> {
   TeamCubit({
     required TeamRepository repository,
@@ -118,6 +138,7 @@ class TeamCubit extends Cubit<TeamState> {
     TeamMcpLinkerService? mcpLinker,
     McpRepository? mcpRepository,
     InstalledMcpLoader? installedMcpLoader,
+    Future<List<McpServer>> Function(String teamId)? extensionMcpContributor,
   }) : _repository = repository,
        _executableResolver = executableResolver,
        _cliExecutableResolver = cliExecutableResolver,
@@ -144,8 +165,12 @@ class TeamCubit extends Cubit<TeamState> {
        _mcpLinker = mcpLinker ?? TeamMcpLinkerService(),
        _mcpRepository = mcpRepository ?? McpRepository(),
        _installedMcpLoader = installedMcpLoader,
+       _extensionMcpContributor = extensionMcpContributor ?? _noExtensionMcp,
        _launcher = launcher,
        super(const TeamState());
+
+  static Future<List<McpServer>> _noExtensionMcp(String teamId) async =>
+      const <McpServer>[];
 
   final TeamRepository _repository;
   final TeamLauncher? _launcher;
@@ -172,6 +197,7 @@ class TeamCubit extends Cubit<TeamState> {
   final TeamMcpLinkerService _mcpLinker;
   final McpRepository _mcpRepository;
   final InstalledMcpLoader? _installedMcpLoader;
+  final Future<List<McpServer>> Function(String teamId) _extensionMcpContributor;
 
   /// Fire-and-forget skill/plugin sync can finish after [close]; skip emit.
   void _safeEmit(TeamState newState) {
@@ -460,12 +486,18 @@ class TeamCubit extends Cubit<TeamState> {
             await (_installedMcpLoader?.call() ?? _mcpRepository.loadAll());
       }
       final enabled = catalog.where((s) => s.enabled).toList(growable: false);
+      final contributions = await _extensionMcpContributor(team.id);
+      final (mergedCatalog, mergedIds) = mergeExtensionMcp(
+        catalog: enabled,
+        ids: team.mcpServerIds,
+        contributions: contributions,
+      );
       final layout = (await _profileService()).layout;
 
       var result = await _mcpLinker.syncForTeam(
         teamId: team.id,
-        mcpServerIds: team.mcpServerIds,
-        catalog: enabled,
+        mcpServerIds: mergedIds,
+        catalog: mergedCatalog,
         layout: layout,
       );
 
@@ -481,10 +513,15 @@ class TeamCubit extends Cubit<TeamState> {
           ];
           _safeEmit(state.copyWith(teams: teams));
           await _repository.saveTeams(teams);
+          final (_, prunedMergedIds) = mergeExtensionMcp(
+            catalog: enabled,
+            ids: prunedIds,
+            contributions: contributions,
+          );
           result = await _mcpLinker.syncForTeam(
             teamId: team.id,
-            mcpServerIds: prunedIds,
-            catalog: enabled,
+            mcpServerIds: prunedMergedIds,
+            catalog: mergedCatalog,
             layout: layout,
           );
         }

@@ -39,6 +39,9 @@ class AppPaths {
 
   String get teamsDir => _ctx.join(basePath, 'teams');
 
+  String get extensionsStateJson =>
+      _ctx.join(basePath, 'extensions', 'state.json');
+
   /// Linux desktop / `path_provider` app-data id (e.g. `~/.local/share/com.hhoa.teampilot`).
   static const teampilotAppDataDirName = 'com.hhoa.teampilot';
 
@@ -117,6 +120,9 @@ class AppPaths {
 
   static String pluginsJsonForTeampilotRoot(String teampilotRoot) =>
       _pathUnderTeampilotRoot(teampilotRoot, 'plugins/plugins.json');
+
+  static String extensionsStateJsonForTeampilotRoot(String teampilotRoot) =>
+      _pathUnderTeampilotRoot(teampilotRoot, 'extensions/state.json');
 
   static String pluginMarketplacesConfigPathForTeampilotRoot(String teampilotRoot) =>
       _pathUnderTeampilotRoot(teampilotRoot, 'plugins/marketplaces.json');

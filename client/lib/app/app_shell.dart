@@ -33,7 +33,10 @@ import '../repositories/skill_repository.dart';
 import '../repositories/ssh_credential_store.dart';
 import '../repositories/ssh_known_host_repository.dart';
 import '../repositories/ssh_profile_repository.dart';
+import '../repositories/extension_repository.dart';
 import '../repositories/team_repository.dart';
+import '../services/extension/builtin_manifests.dart';
+import '../services/extension/extension_provisioner.dart';
 import '../services/storage/app_storage.dart';
 import '../services/cli/cli_tool_locator.dart';
 import '../services/cli/registry/built_in_cli_tools.dart';
@@ -341,6 +344,19 @@ Future<AppShell> buildAppShell({
     mcpLinker: TeamMcpLinkerService(),
     mcpRepository: mcpRepository,
     installedMcpLoader: () => mcpRepository.loadAll(),
+    extensionMcpContributor: (teamId) async {
+      final repo = ExtensionRepository(
+        fs: AppStorage.fs,
+        stateFilePath: AppStorage.paths.extensionsStateJson,
+        manifests: builtInExtensionManifests(),
+      );
+      final enabled = await repo.effectiveEnabledIds(teamId);
+      final provisioner = ExtensionProvisioner(
+        manifests: builtInExtensionManifests(),
+        isEnabled: (id) async => enabled.contains(id),
+      );
+      return provisioner.collectMcpContributions();
+    },
   );
   skillCubit = SkillCubit(
     skillRepo,

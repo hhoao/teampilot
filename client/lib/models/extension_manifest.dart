@@ -101,6 +101,13 @@ class ExtensionEffect {
   String? get scriptAsset => config['scriptAsset'] as String?;
   String? get marker => config['marker'] as String?;
 
+  // mcp-server accessors.
+  String? get mcpName => config['name'] as String?;
+  Map<String, Object?>? get mcpServer {
+    final raw = config['server'];
+    return raw is Map ? raw.cast<String, Object?>() : null;
+  }
+
   factory ExtensionEffect.fromJson(Map<String, Object?> json) {
     final appliesTo = json['appliesTo'];
     return ExtensionEffect(

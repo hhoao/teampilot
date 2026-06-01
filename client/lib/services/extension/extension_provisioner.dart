@@ -1,4 +1,5 @@
 import '../../models/extension_manifest.dart';
+import '../../models/mcp_server.dart';
 import '../host/script_file_hook_provisioner.dart';
 import 'effect/settings_hook_effect_applier.dart';
 import 'extension_detector.dart';
@@ -16,7 +17,7 @@ class ExtensionProvisioner {
   ExtensionProvisioner({
     required List<ExtensionManifest> manifests,
     required Future<bool> Function(String extensionId) isEnabled,
-    required HookProvisionerFactory hookProvisionerFor,
+    HookProvisionerFactory? hookProvisionerFor,
     ExtensionDetector? detector,
     SettingsHookEffectApplier settingsHookApplier =
         const SettingsHookEffectApplier(),
@@ -28,7 +29,7 @@ class ExtensionProvisioner {
 
   final List<ExtensionManifest> _manifests;
   final Future<bool> Function(String extensionId) _isEnabled;
-  final HookProvisionerFactory _hookProvisionerFor;
+  final HookProvisionerFactory? _hookProvisionerFor;
   final ExtensionDetector _detector;
   final SettingsHookEffectApplier _settingsHookApplier;
 
@@ -68,8 +69,13 @@ class ExtensionProvisioner {
       if (!probe.isReady) continue;
       for (final effect in manifest.effects) {
         if (effect.kind != 'settings-hook') continue;
-        final provisioner =
-            _hookProvisionerFor(effect.scriptAsset ?? manifest.id);
+        final factory = _hookProvisionerFor;
+        if (factory == null) {
+          throw StateError(
+            'ExtensionProvisioner: settings-hook effect needs a hookProvisionerFor',
+          );
+        }
+        final provisioner = factory(effect.scriptAsset ?? manifest.id);
         final scriptPath = await provisioner.provision(memberToolDir);
         final command = provisioner.commandForPath(scriptPath);
         settings = _settingsHookApplier.mergeIntoSettings(
@@ -82,5 +88,31 @@ class ExtensionProvisioner {
       }
     }
     return settings;
+  }
+
+  /// `McpServer` entries contributed by every ready, enabled extension with an
+  /// `mcp-server` effect. Merged into the team MCP snapshot by the caller.
+  Future<List<McpServer>> collectMcpContributions() async {
+    final out = <McpServer>[];
+    for (final manifest in _manifests) {
+      if (!await _isEnabled(manifest.id)) continue;
+      final probe = await _detector.probe(manifest.detect);
+      if (!probe.isReady) continue;
+      for (final effect in manifest.effects) {
+        if (effect.kind != 'mcp-server') continue;
+        final serverMap = effect.mcpServer ?? const <String, Object?>{};
+        if (serverMap.isEmpty) continue;
+        final name = effect.mcpName?.trim();
+        out.add(
+          McpServer(
+            id: 'ext:${manifest.id}',
+            name: (name != null && name.isNotEmpty) ? name : manifest.id,
+            server: serverMap,
+            enabled: true,
+          ),
+        );
+      }
+    }
+    return out;
   }
 }
