@@ -60,6 +60,21 @@ void main() {
     expect(target.inbox.isEmpty, isFalse);
   });
 
+  test('POST /idle marks the member idle via the bus', () async {
+    final node = AgentNode(memberId: 'leader', state: MemberState.busy);
+    bus.declareMember(node);
+
+    final req = await client.postUrl(
+      Uri.parse('http://127.0.0.1:${server.port}/idle'),
+    );
+    req.headers.set('X-Member', 'leader');
+    final resp = await req.close();
+    await resp.drain<void>();
+
+    expect(resp.statusCode, 204);
+    expect(node.state, MemberState.idle);
+  });
+
   test('wait_for_message streams an SSE result when a message arrives', () async {
     bus.declareMember(AgentNode(memberId: 'leader', state: MemberState.busy));
     // deliver shortly after the call starts

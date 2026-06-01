@@ -19,6 +19,7 @@ class TeammateBusMcpServer {
   HttpServer? _server;
   int get port => _server!.port;
   Uri get endpoint => Uri.parse('http://127.0.0.1:$port/mcp');
+  Uri get idleEndpoint => Uri.parse('http://127.0.0.1:$port/idle');
 
   Future<void> start() async {
     final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
@@ -33,6 +34,14 @@ class TeammateBusMcpServer {
 
   Future<void> _onRequest(HttpRequest request) async {
     try {
+      if (request.method == 'POST' && request.uri.path == '/idle') {
+        final member = request.headers.value('x-member')?.trim() ?? '';
+        await utf8.decoder.bind(request).drain<void>(); // 丢弃 body（hook 会发 stdin JSON）
+        if (member.isNotEmpty) handler.notifyIdle(member);
+        request.response.statusCode = HttpStatus.noContent; // 204
+        await request.response.close();
+        return;
+      }
       if (request.method != 'POST' || request.uri.path != '/mcp') {
         request.response.statusCode = HttpStatus.notFound;
         await request.response.close();

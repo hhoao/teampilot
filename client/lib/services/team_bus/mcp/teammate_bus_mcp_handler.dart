@@ -18,6 +18,9 @@ class TeammateBusMcpHandler {
   final String Function() idGenerator;
   final Duration defaultWaitTimeout;
 
+  /// 控制端点：成员（经 Stop hook / plugin / 终端 watcher）报告 idle。
+  void notifyIdle(String memberId) => _bus.onMemberIdle(memberId);
+
   Future<JsonRpcResponse?> handle(String memberId, JsonRpcRequest req) async {
     switch (req.method) {
       case 'initialize':
