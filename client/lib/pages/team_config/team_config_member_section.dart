@@ -8,6 +8,8 @@ import '../../models/app_provider_config.dart';
 import '../../models/team_config.dart';
 import '../../models/team_member_prompt_presets.dart';
 import '../../services/app/flashskyai_agent_catalog_service.dart';
+import '../../services/cli/registry/cli_display_name.dart';
+import '../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../services/provider/claude_official_provider.dart';
 import '../../services/storage/flashskyai_storage_roots.dart';
 import '../../theme/app_text_styles.dart';
@@ -159,7 +161,8 @@ class TeamMemberConfigFormState extends State<TeamMemberConfigForm> {
     final l10n = context.l10n;
     final m = widget.member;
     final memberCatalogCli =
-        catalogCliForTeam(context, widget.team.cli) ?? AppProviderCli.claude;
+        catalogCliForTeam(context, widget.member.cli ?? widget.team.cli) ??
+        AppProviderCli.claude;
     final dropdownDeco = AppDropdownDecorations.themed(context);
 
     final prov = m.provider;
@@ -199,9 +202,14 @@ class TeamMemberConfigFormState extends State<TeamMemberConfigForm> {
     )..sort();
     final model = m.model;
     final hideModelPicker =
-        catalogCliForTeam(context, widget.team.cli) == AppProviderCli.claude &&
+        catalogCliForTeam(
+              context,
+              widget.member.cli ?? widget.team.cli,
+            ) ==
+            AppProviderCli.claude &&
         selectedAppProvider != null &&
         isOfficialClaudeProvider(selectedAppProvider);
+    final cliRegistry = CliToolRegistryScope.of(context);
 
     final showCustomAgentField =
         FlashskyaiAgentCatalog.activeDropdownValue(
@@ -320,6 +328,31 @@ class TeamMemberConfigFormState extends State<TeamMemberConfigForm> {
             ),
             showDividerBelow: true,
           ),
+          if (widget.team.teamMode == TeamMode.mixed)
+            SettingsLabeledStackedRow(
+              title: l10n.teamCliLabel,
+              body: AppDropdownField<String>(
+                items: [
+                  for (final def in cliRegistry.launchable) def.id,
+                ],
+                initialItem: widget.member.cli?.value,
+                hintText: l10n.memberCliInheritHint,
+                decoration: dropdownDeco,
+                onChanged: (value) {
+                  _update(
+                    widget.member.copyWith(
+                      cli: value == null ? null : TeamCli.decode(value),
+                      updateCli: true,
+                    ),
+                  );
+                },
+                itemLabel: (value) => cliDisplayName(
+                  cliRegistry.tryGet(value)!,
+                  l10n,
+                ),
+              ),
+              showDividerBelow: true,
+            ),
           SettingsLabeledStackedRow(
             title: l10n.provider,
             body: AppDropdownField<String>(

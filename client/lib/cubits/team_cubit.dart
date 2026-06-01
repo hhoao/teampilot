@@ -639,6 +639,7 @@ class TeamCubit extends Cubit<TeamState> {
   Future<bool> addTeam(
     String name, {
     TeamCli cli = TeamCli.flashskyai,
+    TeamMode teamMode = TeamMode.native,
     List<TeamMemberConfig>? members,
   }) async {
     final trimmed = name.trim();
@@ -667,6 +668,7 @@ class TeamCubit extends Cubit<TeamState> {
       id: teamId,
       name: trimmed,
       cli: cli,
+      teamMode: teamMode,
       createdAt: now,
       members: members ?? TeamMemberNaming.defaultRoster(joinedAt: now),
     );

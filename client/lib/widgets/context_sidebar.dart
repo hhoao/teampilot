@@ -188,7 +188,8 @@ Future<void> _startNewChat(
 
 Future<void> _promptAddTeam(BuildContext context, TeamCubit teamCubit) async {
   final l10n = context.l10n;
-  final result = await showDialog<({String name, TeamCli cli})?>(
+  final result = await showDialog<
+      ({String name, TeamCli cli, TeamMode teamMode})?>(
     context: context,
     builder: (dialogContext) => _AddTeamDialog(l10n: l10n),
   );
@@ -197,6 +198,7 @@ Future<void> _promptAddTeam(BuildContext context, TeamCubit teamCubit) async {
   await teamCubit.addTeam(
     result.name,
     cli: result.cli,
+    teamMode: result.teamMode,
     members: DefaultTeamRoster.localized(l10n, joinedAt: now),
   );
 }
@@ -217,6 +219,7 @@ class _AddTeamDialog extends StatefulWidget {
 
 class _AddTeamDialogState extends State<_AddTeamDialog> {
   late final TextEditingController _nameController;
+  TeamMode _selectedMode = TeamMode.native;
   TeamCli _selectedCli = TeamCli.flashskyai;
 
   @override
@@ -247,6 +250,35 @@ class _AddTeamDialogState extends State<_AddTeamDialog> {
             controller: _nameController,
             autofocus: true,
             decoration: InputDecoration(labelText: l10n.teamName),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            l10n.teamModeLabel,
+            style: Theme.of(context).textTheme.labelLarge,
+          ),
+          const SizedBox(height: 8),
+          RadioGroup<TeamMode>(
+            groupValue: _selectedMode,
+            onChanged: (value) {
+              if (value == null) return;
+              setState(() => _selectedMode = value);
+            },
+            child: Column(
+              children: [
+                RadioListTile<TeamMode>(
+                  value: TeamMode.native,
+                  title: Text(l10n.teamModeNative),
+                  dense: true,
+                  contentPadding: EdgeInsets.zero,
+                ),
+                RadioListTile<TeamMode>(
+                  value: TeamMode.mixed,
+                  title: Text(l10n.teamModeMixed),
+                  dense: true,
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ],
+            ),
           ),
           const SizedBox(height: 16),
           Text(
@@ -290,7 +322,10 @@ class _AddTeamDialogState extends State<_AddTeamDialog> {
           onPressed: () {
             final name = _nameController.text.trim();
             if (name.isEmpty) return;
-            Navigator.pop(context, (name: name, cli: _selectedCli));
+            Navigator.pop(
+              context,
+              (name: name, cli: _selectedCli, teamMode: _selectedMode),
+            );
           },
           child: Text(l10n.add),
         ),
