@@ -41,4 +41,28 @@ void main() {
 
     expect(node.state, MemberState.retired);
   });
+
+  test('finishTask retires leader and broadcasts stand-down to live members', () async {
+    final launcher = FakeMemberLauncher();
+    var n = 0;
+    final bus = TeamBus(launcher: launcher, idGenerator: () => 'id${n++}');
+    final leader = AgentNode(memberId: 'leader', state: MemberState.busy);
+    final w1 = AgentNode(memberId: 'w1', state: MemberState.busy);
+    final w2 = AgentNode(memberId: 'w2', state: MemberState.idle);
+    final w3 = AgentNode(memberId: 'w3', state: MemberState.declared);
+    bus.declareMember(leader);
+    bus.declareMember(w1);
+    bus.declareMember(w2);
+    bus.declareMember(w3);
+
+    await bus.finishTask('leader', 'done');
+
+    expect(leader.state, MemberState.retired);
+    expect(w1.inbox.isEmpty, isFalse); // busy worker gets stand-down
+    expect(w2.inbox.isEmpty, isFalse); // idle worker gets stand-down
+    expect(w2.state, MemberState.busy); // idle worker woken
+    expect(launcher.woken.map((w) => w.memberId), ['w2']);
+    expect(w3.inbox.isEmpty, isTrue); // declared worker skipped
+    expect(launcher.materialized, isEmpty); // never materializes a declared one
+  });
 }

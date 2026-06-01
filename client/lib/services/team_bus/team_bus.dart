@@ -99,4 +99,42 @@ class TeamBus {
     if (node == null) return;
     node.state = MemberState.retired;
   }
+
+  /// 向除发送方外的所有已物化成员投递（跳过 declared/retired/dead）。
+  void broadcast(TeamMessage message) {
+    for (final node in _members.values) {
+      if (node.memberId == message.from) continue;
+      if (node.state == MemberState.declared ||
+          node.state == MemberState.retired ||
+          node.state == MemberState.dead) {
+        continue;
+      }
+      node.inbox.deliver(
+        message.copyWith(
+          id: _idGenerator(),
+          to: node.memberId,
+          hop: message.hop + 1,
+        ),
+      );
+      if (node.state == MemberState.idle) {
+        node.state = MemberState.busy;
+        _launcher.wake(node.memberId, doorbellNotice);
+      }
+    }
+  }
+
+  /// leader 完成：置 retired + 广播 stand-down。
+  Future<void> finishTask(String memberId, String result) async {
+    final node = _members[memberId];
+    if (node == null) return;
+    node.state = MemberState.retired;
+    broadcast(
+      TeamMessage(
+        id: _idGenerator(),
+        from: memberId,
+        to: '*',
+        content: 'TASK COMPLETE — stand down. Result: $result',
+      ),
+    );
+  }
 }
