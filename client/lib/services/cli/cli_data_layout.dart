@@ -9,7 +9,12 @@ import '../plugin/cli_plugin_manifest_flavor.dart';
 import '../io/filesystem.dart';
 import '../session/launch_command_builder.dart';
 /// Tools with a `config-profiles/{tool}/` tree (see [CliDataLayout]).
-const List<String> cliLayoutDefaultTools = ['claude', 'flashskyai', 'codex'];
+const List<String> cliLayoutDefaultTools = [
+  'claude',
+  'flashskyai',
+  'codex',
+  'opencode',
+];
 
 /// Canonical paths for CLI **runtime config** under TeamPilot app data.
 ///
