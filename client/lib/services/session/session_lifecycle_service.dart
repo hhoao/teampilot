@@ -230,7 +230,9 @@ class SessionLifecycleService {
       String? claudeProviderId;
       var claudeSettingsByMember = const <String, Map<String, Object?>>{};
       final claudeCap = _cliToolRegistry
-          .capability<ClaudeConfigProfileCapability>(team.cli.value);
+          .capability<ClaudeConfigProfileCapability>(
+            (member?.cli ?? team.cli).value,
+          );
       if (claudeCap != null) {
         final extras = await claudeCap.resolveLaunchExtras(
           team: team,
@@ -251,7 +253,7 @@ class SessionLifecycleService {
       final outcome = await service.prepareTeamLaunch(
         teamId: teamId,
         runtimeTeamId: runtimeTeamId,
-        cli: team.cli,
+        cli: member?.cli ?? team.cli,
         members: team.members,
         member: member,
         workingDirectory: workingDirectory,
