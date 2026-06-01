@@ -306,6 +306,7 @@ class _FixedResumeLifecycleService extends SessionLifecycleService {
     SessionMemberBinding? memberBinding,
     String? llmConfigPathOverride,
     Map<String, Map<String, Object?>>? extraMcpServers,
+    String? busIdleUrl,
   }) async {
     final taskId = memberBinding?.taskId ?? session.sessionId;
     final cliTeamName = session.cliTeamName.trim().isNotEmpty
