@@ -257,7 +257,7 @@ class TeamCubit extends Cubit<TeamState> {
         (t, m) => LaunchCommandBuilder.launch(
           t,
           member: m,
-          executable: _resolveExecutableFor(t.cli),
+          executable: _resolveExecutableFor(m.cliWithin(t)),
           extraEnvironment: env,
         );
     await launch(team, member);
@@ -274,7 +274,7 @@ class TeamCubit extends Cubit<TeamState> {
         : LaunchCommandBuilder.preview(
             team,
             member,
-            executable: _resolveExecutableFor(team.cli),
+            executable: _resolveExecutableFor(member.cliWithin(team)),
           );
   }
 
@@ -284,7 +284,7 @@ class TeamCubit extends Cubit<TeamState> {
     return LaunchCommandBuilder.preview(
       team,
       team.members.first,
-      executable: _resolveExecutableFor(team.cli),
+      executable: _resolveExecutableFor(team.members.first.cliWithin(team)),
     );
   }
 
@@ -934,7 +934,7 @@ class TeamCubit extends Cubit<TeamState> {
         state.copyWith(
           isLaunching: false,
           statusMessage:
-              'Started ${member.name}: ${LaunchCommandBuilder.preview(team, member, executable: _resolveExecutableFor(team.cli))}',
+              'Started ${member.name}: ${LaunchCommandBuilder.preview(team, member, executable: _resolveExecutableFor(member.cliWithin(team)))}',
         ),
       );
     } on Object catch (error) {

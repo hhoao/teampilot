@@ -867,7 +867,7 @@ class ChatCubit extends Cubit<ChatState> {
     tab.selectedMemberId = member.id;
     final shell = tab.memberShells.putIfAbsent(
       member.id,
-      () => _newSession(team.cli),
+      () => _newSession(member.cliWithin(team)),
     );
     emit(
       state.copyWith(
