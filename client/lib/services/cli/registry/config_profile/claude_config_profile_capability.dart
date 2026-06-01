@@ -50,6 +50,7 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
     final workingDirectory = ctx.workingDirectory ?? '';
     final claude = ctx.claude;
     final warnings = <String>[];
+    final mixed = ctx.team?.teamMode == TeamMode.mixed;
 
     await _writeMetadata(
       delegate,
@@ -64,15 +65,17 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
       effortLevel: ctx.team?.claudeEffortLevel ?? 'xhigh',
       teammateMode: ctx.team?.claudeTeammateMode ?? 'in-process',
     );
-    await _writeRoster(
-      delegate: delegate,
-      scope: scope,
-      members: ctx.members,
-      workingDirectory: workingDirectory,
-      description: ctx.team?.description ?? '',
-      leadSessionId: ctx.leadSessionId,
-      teammateMode: ctx.team?.claudeTeammateMode ?? 'in-process',
-    );
+    if (!mixed) {
+      await _writeRoster(
+        delegate: delegate,
+        scope: scope,
+        members: ctx.members,
+        workingDirectory: workingDirectory,
+        description: ctx.team?.description ?? '',
+        leadSessionId: ctx.leadSessionId,
+        teammateMode: ctx.team?.claudeTeammateMode ?? 'in-process',
+      );
+    }
     await _writeMemberProfiles(
       delegate: delegate,
       scope: scope,
@@ -115,7 +118,7 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
           scope.sessionId,
           member,
         ),
-      'CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS': '1',
+      if (!mixed) 'CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS': '1',
       'CLAUDE_CODE_NO_FLICKER': '1',
     };
 
@@ -284,7 +287,6 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
         providerSettings:
             providerSettingsByMember[member.id] ?? providerSettings,
         forceTeamLeadDelegateMode: forceTeamLeadDelegateMode,
-        mixed: mixed,
       );
     }
   }
@@ -295,7 +297,6 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
     required TeamMemberConfig member,
     required Map<String, Object?>? providerSettings,
     required bool forceTeamLeadDelegateMode,
-    required bool mixed,
   }) async {
     final memberToolDir = delegate.sessionToolDir(
       scope.teamId,
@@ -308,7 +309,6 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
       memberToolDir: memberToolDir,
       member: member,
       forceTeamLeadDelegateMode: isLead && forceTeamLeadDelegateMode,
-      mixed: mixed,
     );
     final file = delegate.sessionClaudeMemberSettingsFile(
       scope.teamId,
