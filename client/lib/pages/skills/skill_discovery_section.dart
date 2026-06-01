@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -15,7 +14,11 @@ import 'skill_management_cards.dart';
 enum SkillSearchSource { repos, skillsSh }
 
 class SkillDiscoverySection extends StatefulWidget {
-  const SkillDiscoverySection({super.key, required this.state, required this.onGoRepos});
+  const SkillDiscoverySection({
+    super.key,
+    required this.state,
+    required this.onGoRepos,
+  });
   final SkillState state;
   final VoidCallback onGoRepos;
 
@@ -104,7 +107,8 @@ class SkillDiscoverySectionState extends State<SkillDiscoverySection> {
                   SkillSourceToggle(
                     label: l10n.skillsSourceRepos,
                     selected: _source == SkillSearchSource.repos,
-                    onTap: () => setState(() => _source = SkillSearchSource.repos),
+                    onTap: () =>
+                        setState(() => _source = SkillSearchSource.repos),
                   ),
                   const SizedBox(width: 8),
                   SkillSourceToggle(
@@ -215,7 +219,7 @@ class SkillDiscoverySectionState extends State<SkillDiscoverySection> {
         ),
         SizedBox(
           width: 300,
-          child: FlashskyDropdownField<String>(
+          child: AppDropdownField<String>(
             key: ValueKey(repoItems.join('|')),
             items: repoItems,
             initialItem: effectiveRepo,
@@ -228,7 +232,7 @@ class SkillDiscoverySectionState extends State<SkillDiscoverySection> {
         ),
         SizedBox(
           width: 160,
-          child: FlashskyDropdownField<String>(
+          child: AppDropdownField<String>(
             items: const ['all', 'installed', 'uninstalled'],
             initialItem: _filterStatus,
             overlayHeight: 200,
@@ -423,7 +427,8 @@ class SkillDiscoverySectionState extends State<SkillDiscoverySection> {
 }
 
 class SkillSourceToggle extends StatelessWidget {
-  const SkillSourceToggle({super.key, 
+  const SkillSourceToggle({
+    super.key,
     required this.label,
     required this.selected,
     required this.onTap,
@@ -462,7 +467,8 @@ class SkillSourceToggle extends StatelessWidget {
 }
 
 class SkillDiscoverCard extends StatelessWidget {
-  const SkillDiscoverCard({super.key, 
+  const SkillDiscoverCard({
+    super.key,
     required this.name,
     required this.description,
     required this.source,

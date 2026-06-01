@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -12,7 +11,8 @@ import '../../widgets/github_details_button.dart';
 import 'plugin_management_cards.dart';
 
 class PluginDiscoverySection extends StatefulWidget {
-  const PluginDiscoverySection({super.key, 
+  const PluginDiscoverySection({
+    super.key,
     required this.state,
     required this.onGoMarketplaces,
   });
@@ -44,7 +44,8 @@ class PluginDiscoverySectionState extends State<PluginDiscoverySection> {
 }
 
 class PluginDiscoveryBody extends StatefulWidget {
-  const PluginDiscoveryBody({super.key, 
+  const PluginDiscoveryBody({
+    super.key,
     required this.state,
     required this.installed,
     required this.onGoMarketplaces,
@@ -237,7 +238,8 @@ class PluginDiscoveryBodyState extends State<PluginDiscoveryBody> {
 }
 
 class PluginMarketplaceDropdown extends StatelessWidget {
-  const PluginMarketplaceDropdown({super.key, 
+  const PluginMarketplaceDropdown({
+    super.key,
     required this.marketplaces,
     required this.value,
     required this.l10n,
@@ -258,7 +260,7 @@ class PluginMarketplaceDropdown extends StatelessWidget {
         m.fullName: m.displayName ?? m.fullName,
     };
     final keys = labels.keys.toList();
-    return FlashskyDropdownField<String>(
+    return AppDropdownField<String>(
       items: keys,
       itemLabel: (k) => labels[k] ?? k,
       initialItem: value ?? '',
@@ -268,7 +270,8 @@ class PluginMarketplaceDropdown extends StatelessWidget {
 }
 
 class PluginStatusDropdown extends StatelessWidget {
-  const PluginStatusDropdown({super.key, 
+  const PluginStatusDropdown({
+    super.key,
     required this.value,
     required this.l10n,
     required this.onChanged,
@@ -286,7 +289,7 @@ class PluginStatusDropdown extends StatelessWidget {
       'uninstalled': l10n.pluginsFilterUninstalled,
     };
     final keys = labels.keys.toList();
-    return FlashskyDropdownField<String>(
+    return AppDropdownField<String>(
       items: keys,
       itemLabel: (k) => labels[k] ?? k,
       initialItem: value,
@@ -296,7 +299,8 @@ class PluginStatusDropdown extends StatelessWidget {
 }
 
 class PluginDiscoverableCard extends StatelessWidget {
-  const PluginDiscoverableCard({super.key, 
+  const PluginDiscoverableCard({
+    super.key,
     required this.plugin,
     required this.installed,
     required this.busy,

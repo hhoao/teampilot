@@ -22,7 +22,8 @@ import 'team_config_helpers.dart';
 import 'team_config_member_dialogs.dart';
 
 class TeamMemberDetailSection extends StatelessWidget {
-  const TeamMemberDetailSection({super.key, 
+  const TeamMemberDetailSection({
+    super.key,
     required this.team,
     required this.cubit,
     required this.selectedMemberId,
@@ -210,14 +211,13 @@ class TeamMemberConfigFormState extends State<TeamMemberConfigForm> {
         FlashskyaiAgentCatalog.customDropdownValue;
 
     final canDelete =
-        widget.team.members.length > 1 &&
-        !TeamMemberNaming.isTeamLead(m);
+        widget.team.members.length > 1 && !TeamMemberNaming.isTeamLead(m);
     final errorColor = Theme.of(context).colorScheme.error;
 
     Widget agentBody() => Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        FlashskyDropdownField<String>(
+        AppDropdownField<String>(
           key: ValueKey(
             'member-agent-dd-${widget.member.id}-${m.agent}-${_userAgentIds.join(",")}',
           ),
@@ -281,36 +281,34 @@ class TeamMemberConfigFormState extends State<TeamMemberConfigForm> {
           SettingsLabeledStackedRow(
             title: l10n.memberName,
             subtitle: l10n.memberNameSubtitle,
-            titleTrailing:
-                TeamMemberNaming.isTeamLead(m) || canDelete
+            titleTrailing: TeamMemberNaming.isTeamLead(m) || canDelete
                 ? Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      if (TeamMemberNaming.isTeamLead(m))
-                        const TeamLeadBadge(),
+                      if (TeamMemberNaming.isTeamLead(m)) const TeamLeadBadge(),
                       if (canDelete)
                         IconButton(
-                    tooltip: l10n.delete,
-                    visualDensity: VisualDensity.compact,
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(
-                      minWidth: 36,
-                      minHeight: 36,
-                    ),
-                    onPressed: throttledAsync(
-                      'team_delete_member_${m.id}',
-                      () => confirmDeleteTeamMember(
-                        context,
-                        widget.cubit,
-                        m,
-                        l10n,
-                      ),
-                    ),
-                    icon: Icon(
-                      Icons.delete_outline,
-                      size: 20,
-                      color: errorColor,
-                    ),
+                          tooltip: l10n.delete,
+                          visualDensity: VisualDensity.compact,
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(
+                            minWidth: 36,
+                            minHeight: 36,
+                          ),
+                          onPressed: throttledAsync(
+                            'team_delete_member_${m.id}',
+                            () => confirmDeleteTeamMember(
+                              context,
+                              widget.cubit,
+                              m,
+                              l10n,
+                            ),
+                          ),
+                          icon: Icon(
+                            Icons.delete_outline,
+                            size: 20,
+                            color: errorColor,
+                          ),
                         ),
                     ],
                   )
@@ -324,7 +322,7 @@ class TeamMemberConfigFormState extends State<TeamMemberConfigForm> {
           ),
           SettingsLabeledStackedRow(
             title: l10n.provider,
-            body: FlashskyDropdownField<String>(
+            body: AppDropdownField<String>(
               items: providerIds,
               initialItem: prov.isEmpty ? null : prov,
               hintText: l10n.selectProvider,
@@ -366,7 +364,7 @@ class TeamMemberConfigFormState extends State<TeamMemberConfigForm> {
           if (!hideModelPicker)
             SettingsLabeledStackedRow(
               title: l10n.model,
-              body: FlashskyDropdownField<String>(
+              body: AppDropdownField<String>(
                 items: modelNames,
                 initialItem: model.isEmpty ? null : model,
                 hintText: l10n.selectModel,

@@ -268,7 +268,7 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
                 if (!_isEditing && widget.onCliChanged != null)
                   SizedBox(
                     width: 180,
-                    child: FlashskyDropdownField<AppProviderCli>(
+                    child: AppDropdownField<AppProviderCli>(
                       items: AppProviderCli.values,
                       initialItem: widget.cli,
                       itemLabel: l10n.appProviderCliLabel,
@@ -296,7 +296,7 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
                   style: Theme.of(context).textTheme.labelLarge,
                 ),
                 const SizedBox(height: 8),
-                FlashskyDropdownField<String>(
+                AppDropdownField<String>(
                   key: ValueKey('app-provider-preset-${widget.cli.value}'),
                   items: presetItems,
                   initialItem: _effectiveItem(_presetId, presetItems),
@@ -509,7 +509,7 @@ class _ClaudeAdvancedOptions extends StatelessWidget {
           const SizedBox(height: 8),
           _FieldLabel(l10n.appProviderClaudeApiFormat),
           const SizedBox(height: 6),
-          FlashskyDropdownField<String>(
+          AppDropdownField<String>(
             items: _claudeApiFormats,
             initialItem: _effectiveItem(apiFormat, _claudeApiFormats),
             itemLabel: l10n.appProviderClaudeApiFormatOption,
@@ -527,7 +527,7 @@ class _ClaudeAdvancedOptions extends StatelessWidget {
           const SizedBox(height: 16),
           _FieldLabel(l10n.appProviderClaudeAuthField),
           const SizedBox(height: 6),
-          FlashskyDropdownField<String>(
+          AppDropdownField<String>(
             items: _claudeApiKeyFields,
             initialItem: _effectiveItem(apiKeyField, _claudeApiKeyFields),
             itemLabel: l10n.appProviderClaudeAuthFieldOption,

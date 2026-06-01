@@ -79,12 +79,12 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byType(FlashskyDropdownField<String>).first);
+    await tester.tap(find.byType(AppDropdownField<String>).first);
     await tester.pumpAndSettle();
     await tester.tap(find.text(codexPreset.label).last);
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byType(FlashskyDropdownField<AppProviderCli>).first);
+    await tester.tap(find.byType(AppDropdownField<AppProviderCli>).first);
     await tester.pumpAndSettle();
     await tester.tap(find.text('Claude Code').last);
     await tester.pumpAndSettle();

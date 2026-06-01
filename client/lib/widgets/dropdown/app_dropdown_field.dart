@@ -4,27 +4,27 @@ import 'app_dropdown_decoration.dart';
 import 'dropdown_menu_item_button.dart';
 import 'popover/app_popover.dart';
 
-/// Default paddings and overlay height for [FlashskyDropdownField].
-const EdgeInsets kFlashskyDropdownClosedHeaderPadding = EdgeInsets.symmetric(
+/// Default paddings and overlay height for [AppDropdownField].
+const EdgeInsets kAppDropdownClosedHeaderPadding = EdgeInsets.symmetric(
   vertical: 6,
   horizontal: 12,
 );
-const EdgeInsets kFlashskyDropdownExpandedHeaderPadding = EdgeInsets.symmetric(
+const EdgeInsets kAppDropdownExpandedHeaderPadding = EdgeInsets.symmetric(
   vertical: 6,
   horizontal: 12,
 );
-const EdgeInsets kFlashskyDropdownListItemPadding = EdgeInsets.symmetric(
+const EdgeInsets kAppDropdownListItemPadding = EdgeInsets.symmetric(
   vertical: 6,
   horizontal: 12,
 );
-const double kFlashskyDropdownDefaultOverlayHeight = 260;
+const double kAppDropdownDefaultOverlayHeight = 260;
 
 /// Vertical gap between rows in dropdown / picker overlays.
-const double kFlashskyDropdownListItemGap = 4;
+const double kAppDropdownListItemGap = 4;
 
 /// TeamPilot dropdown using AppFlowy's popover + list pattern.
-class FlashskyDropdownField<T extends Object> extends StatefulWidget {
-  const FlashskyDropdownField({
+class AppDropdownField<T extends Object> extends StatefulWidget {
+  const AppDropdownField({
     super.key,
     required this.items,
     required this.onChanged,
@@ -67,12 +67,11 @@ class FlashskyDropdownField<T extends Object> extends StatefulWidget {
   final AppPopoverController? controller;
 
   @override
-  State<FlashskyDropdownField<T>> createState() =>
-      _FlashskyDropdownFieldState<T>();
+  State<AppDropdownField<T>> createState() => _AppDropdownFieldState<T>();
 }
 
-class _FlashskyDropdownFieldState<T extends Object>
-    extends State<FlashskyDropdownField<T>> {
+class _AppDropdownFieldState<T extends Object>
+    extends State<AppDropdownField<T>> {
   final GlobalKey _triggerKey = GlobalKey();
   late final AppPopoverController _popoverController;
   late final bool _ownsController;
@@ -98,7 +97,7 @@ class _FlashskyDropdownFieldState<T extends Object>
   }
 
   @override
-  void didUpdateWidget(FlashskyDropdownField<T> oldWidget) {
+  void didUpdateWidget(AppDropdownField<T> oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.initialItem != oldWidget.initialItem) {
       _selected = widget.initialItem;
@@ -163,10 +162,7 @@ class _FlashskyDropdownFieldState<T extends Object>
     );
   }
 
-  Widget _buildHeader(
-    BuildContext context,
-    AppDropdownDecoration deco,
-  ) {
+  Widget _buildHeader(BuildContext context, AppDropdownDecoration deco) {
     if (_selected != null) {
       return _buildItemChild(
         context,
@@ -197,13 +193,11 @@ class _FlashskyDropdownFieldState<T extends Object>
           suffixIconSize: 20,
         );
     final headerPadding =
-        widget.closedHeaderPadding ?? kFlashskyDropdownClosedHeaderPadding;
+        widget.closedHeaderPadding ?? kAppDropdownClosedHeaderPadding;
     final expandedPadding =
-        widget.expandedHeaderPadding ?? kFlashskyDropdownExpandedHeaderPadding;
-    final itemPadding =
-        widget.listItemPadding ?? kFlashskyDropdownListItemPadding;
-    final maxHeight =
-        widget.overlayHeight ?? kFlashskyDropdownDefaultOverlayHeight;
+        widget.expandedHeaderPadding ?? kAppDropdownExpandedHeaderPadding;
+    final itemPadding = widget.listItemPadding ?? kAppDropdownListItemPadding;
+    final maxHeight = widget.overlayHeight ?? kAppDropdownDefaultOverlayHeight;
     final isOpen = _popoverController.isOpen;
     final triggerPadding = isOpen ? expandedPadding : headerPadding;
 
@@ -232,7 +226,7 @@ class _FlashskyDropdownFieldState<T extends Object>
                   padding: EdgeInsets.zero,
                   itemCount: widget.items.length,
                   separatorBuilder: (_, _) =>
-                      const SizedBox(height: kFlashskyDropdownListItemGap),
+                      const SizedBox(height: kAppDropdownListItemGap),
                   itemBuilder: (context, index) {
                     final item = widget.items[index];
                     final isSelected = _selected == item;

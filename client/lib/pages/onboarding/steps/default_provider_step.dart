@@ -230,7 +230,7 @@ class _OnboardingDefaultProviderStepState
                                 ).colorScheme.onSurfaceVariant,
                               ),
                         )
-                      : FlashskyDropdownField<String>(
+                      : AppDropdownField<String>(
                           items: modelNames,
                           initialItem: _defaultModel.isEmpty
                               ? null

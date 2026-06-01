@@ -191,7 +191,7 @@ class _ProviderListControls extends StatelessWidget {
         ),
         Padding(
           padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
-          child: FlashskyDropdownField<AppProviderCli>(
+          child: AppDropdownField<AppProviderCli>(
             items: AppProviderCli.values,
             initialItem: selectedCli,
             itemLabel: l10n.appProviderCliLabel,

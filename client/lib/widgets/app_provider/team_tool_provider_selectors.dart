@@ -41,7 +41,7 @@ class TeamToolProviderSelectors extends StatelessWidget {
     return SettingsLabeledStackedRow(
       title: l10n.appProviderTeamToolSection,
       subtitle: l10n.appProviderTeamToolSubtitle,
-      body: FlashskyDropdownField<String>(
+      body: AppDropdownField<String>(
         key: ValueKey('team-tool-provider-$effectiveSelectedId'),
         items: items,
         initialItem: effectiveSelectedId,

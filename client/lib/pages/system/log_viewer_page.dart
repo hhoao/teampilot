@@ -373,7 +373,7 @@ class _LogViewerPanelState extends State<_LogViewerPanel> {
     return SizedBox(
       width: width,
       height: _toolbarControlHeight,
-      child: FlashskyDropdownField<T>(
+      child: AppDropdownField<T>(
         key: ValueKey<T>(value),
         items: items,
         initialItem: value,

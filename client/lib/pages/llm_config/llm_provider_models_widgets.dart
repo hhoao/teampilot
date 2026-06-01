@@ -120,7 +120,11 @@ class LlmProviderModelsTable extends StatelessWidget {
 // --- App provider models (FlashskyAI) ---
 
 class LlmAppProviderModelsPanel extends StatelessWidget {
-  const LlmAppProviderModelsPanel({super.key, required this.provider, required this.onBack});
+  const LlmAppProviderModelsPanel({
+    super.key,
+    required this.provider,
+    required this.onBack,
+  });
 
   final AppProviderConfig provider;
   final VoidCallback onBack;
@@ -425,7 +429,8 @@ Future<void> _showValidationDialog(BuildContext context, LlmConfig config) {
 // --- Model edit dialog ---
 
 class LlmModelEditDialog extends StatefulWidget {
-  const LlmModelEditDialog({super.key, 
+  const LlmModelEditDialog({
+    super.key,
     required this.providers,
     this.model,
     this.defaultProvider = '',
@@ -505,7 +510,7 @@ class LlmModelEditDialogState extends State<LlmModelEditDialog> {
                   style: LlmWorkspaceText(Theme.of(context)).bodyStrong,
                 ),
                 const SizedBox(height: 8),
-                FlashskyDropdownField<String>(
+                AppDropdownField<String>(
                   key: AppKeys.modelProviderField,
                   items: providerNames,
                   initialItem: initialProvider,
@@ -559,4 +564,3 @@ class LlmModelEditDialogState extends State<LlmModelEditDialog> {
     );
   }
 }
-

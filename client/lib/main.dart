@@ -92,14 +92,17 @@ void main() async {
   if (!Platform.isAndroid) {
     await windowManager.ensureInitialized();
     final windowRect = await windowManager.getBounds();
-    WindowOptions windowOptions = WindowOptions(
-      size: Size(
-        (windowRect.width > 400) ? windowRect.width : 1200,
-        (windowRect.height > 300) ? windowRect.height : 700,
-      ),
+    final initialSize = Size(
+      (windowRect.width > 400) ? windowRect.width : 1200,
+      (windowRect.height > 300) ? windowRect.height : 700,
+    );
+    final windowOptions = WindowOptions(
+      size: initialSize,
       minimumSize: const Size(800, 500),
       center: false,
       title: 'TeamPilot',
+      titleBarStyle: TitleBarStyle.hidden,
+      windowButtonVisibility: false,
     );
     windowManager.waitUntilReadyToShow(windowOptions, () async {
       await windowManager.show();

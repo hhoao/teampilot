@@ -715,7 +715,7 @@ class _ProjectSelectorState extends State<_ProjectSelector> {
           popover: (_) {
             return ConstrainedBox(
               constraints: const BoxConstraints(
-                maxHeight: kFlashskyDropdownDefaultOverlayHeight,
+                maxHeight: kAppDropdownDefaultOverlayHeight,
               ),
               child: FocusScope(
                 autofocus: true,
@@ -725,14 +725,14 @@ class _ProjectSelectorState extends State<_ProjectSelector> {
                   padding: EdgeInsets.zero,
                   itemCount: projects.length,
                   separatorBuilder: (_, _) =>
-                      const SizedBox(height: kFlashskyDropdownListItemGap),
+                      const SizedBox(height: kAppDropdownListItemGap),
                   itemBuilder: (context, index) {
                     final project = projects[index];
                     final isSelected = selected?.projectId == project.projectId;
                     return SizedBox(
                       width: double.infinity,
                       child: DropdownMenuItemButton(
-                        padding: kFlashskyDropdownListItemPadding,
+                        padding: kAppDropdownListItemPadding,
                         borderRadius: pickerDecoration.listItemBorderRadius,
                         highlightColor: pickerDecoration.listItemHighlightColor,
                         selectedColor: pickerDecoration.listItemSelectedColor,
@@ -1326,7 +1326,7 @@ class _TeamSelector extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Expanded(
-            child: FlashskyDropdownField<TeamConfig>(
+            child: AppDropdownField<TeamConfig>(
               items: teams,
               initialItem: selected,
               hintText: l10n.selectTeam,

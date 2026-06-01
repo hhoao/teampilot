@@ -11,6 +11,9 @@ ConnectionMode defaultConnectionMode() {
   return ConnectionMode.localPty;
 }
 
+/// Linux / Windows / macOS window chrome; false on Android.
+bool get useCustomDesktopWindowTitleBar => !Platform.isAndroid;
+
 @Deprecated('Use ConnectionModeService.requiresSshProfileSetup')
 bool get requiresSshProfile => Platform.isAndroid;
 

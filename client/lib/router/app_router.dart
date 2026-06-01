@@ -27,6 +27,7 @@ import '../repositories/session_repository.dart';
 import '../services/app/platform_utils.dart';
 import 'android_shell_chrome.dart';
 import '../widgets/context_sidebar.dart';
+import '../widgets/desktop_window_title_bar.dart';
 import '../widgets/create_project_dialog.dart';
 import '../widgets/split_layout.dart';
 import '../l10n/l10n_extensions.dart';
@@ -98,7 +99,11 @@ final appRouter = GoRouter(
 
         return OnboardingGate(
           child: StartupGate(
-            child: Scaffold(body: SafeArea(child: body)),
+            child: Scaffold(
+              body: DesktopWindowChrome(
+                child: SafeArea(top: false, child: body),
+              ),
+            ),
           ),
         );
       },

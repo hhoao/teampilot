@@ -233,7 +233,7 @@ class SettingsCompactDropdown<T extends Object> extends StatelessWidget {
 
     return ConstrainedBox(
       constraints: const BoxConstraints(minWidth: _dropdownMinWidth),
-      child: FlashskyDropdownField<T>(
+      child: AppDropdownField<T>(
         items: values,
         initialItem: value,
         onChanged: onChanged,
