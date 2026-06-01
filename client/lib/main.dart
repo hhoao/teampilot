@@ -179,6 +179,7 @@ void main() async {
                 BlocProvider.value(value: shell.pluginCubit),
                 BlocProvider.value(value: shell.skillCubit),
                 BlocProvider.value(value: shell.mcpCubit),
+                BlocProvider.value(value: shell.extensionCubit),
                 BlocProvider.value(value: shell.appUpdateCubit),
                 BlocProvider.value(value: shell.sshProfileCubit),
               ],

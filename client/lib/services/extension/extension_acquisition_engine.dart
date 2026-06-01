@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import '../../models/extension_manifest.dart';
 import '../cli/installer_types.dart';
 import 'extension_detector.dart';
@@ -23,13 +25,28 @@ class ExtensionInstallResult {
 /// only in Phase 2 (no SSH/remote).
 class ExtensionAcquisitionEngine {
   ExtensionAcquisitionEngine({
-    required ExtensionInstallRunner runner,
+    ExtensionInstallRunner? runner,
     ExtensionDetector? detector,
-  })  : _runner = runner,
+  })  : _runner = runner ?? _defaultLocalRunner,
         _detector = detector ?? ExtensionDetector();
 
   final ExtensionInstallRunner _runner;
   final ExtensionDetector _detector;
+
+  static Future<CliInstallerCommandResult> _defaultLocalRunner(
+    CliInstallerCommand command,
+  ) async {
+    try {
+      final result = await Process.run(command.executable, command.arguments);
+      return CliInstallerCommandResult(
+        exitCode: result.exitCode,
+        stdout: result.stdout?.toString() ?? '',
+        stderr: result.stderr?.toString() ?? '',
+      );
+    } on ProcessException catch (e) {
+      return CliInstallerCommandResult(exitCode: 127, stderr: e.message);
+    }
+  }
 
   Future<ExtensionInstallResult> install(ExtensionManifest manifest) async {
     final acquire = manifest.acquire;
@@ -117,10 +134,17 @@ class ExtensionAcquisitionEngine {
       case 'brew':
         return CliInstallerCommand('brew', ['install', target]);
       case 'script':
+        if (!_isSafeScriptUrl(target)) return null;
         return CliInstallerCommand('sh', ['-c', 'curl -fsSL "$target" | sh']);
       default:
         return null;
     }
+  }
+
+  static bool _isSafeScriptUrl(String url) {
+    final uri = Uri.tryParse(url);
+    if (uri == null || uri.scheme != 'https' || uri.host.isEmpty) return false;
+    return !RegExp(r'''[\s"'`$\\;|&<>()]''').hasMatch(url);
   }
 
   CliInstallerCommand? _uninstallCommand(ExtensionAcquireSpec acquire) {

@@ -13,6 +13,7 @@ import '../cubits/config_cubit.dart';
 import '../cubits/layout_cubit.dart';
 import '../cubits/llm_config_cubit.dart';
 import '../cubits/session_preferences_cubit.dart';
+import '../cubits/extension_cubit.dart';
 import '../cubits/mcp_cubit.dart';
 import '../cubits/plugin_cubit.dart';
 import '../cubits/skill_cubit.dart';
@@ -36,7 +37,9 @@ import '../repositories/ssh_profile_repository.dart';
 import '../repositories/extension_repository.dart';
 import '../repositories/team_repository.dart';
 import '../services/extension/builtin_manifests.dart';
+import '../services/extension/extension_acquisition_engine.dart';
 import '../services/extension/extension_provisioner.dart';
+import '../services/extension/extension_state_migration.dart';
 import '../services/storage/app_storage.dart';
 import '../services/cli/cli_tool_locator.dart';
 import '../services/cli/registry/built_in_cli_tools.dart';
@@ -83,6 +86,7 @@ class AppShell {
     required this.pluginCubit,
     required this.skillCubit,
     required this.mcpCubit,
+    required this.extensionCubit,
     required this.appUpdateCubit,
     required this.sshProfileCubit,
     required this.appSettings,
@@ -111,6 +115,7 @@ class AppShell {
   final PluginCubit pluginCubit;
   final SkillCubit skillCubit;
   final McpCubit mcpCubit;
+  final ExtensionCubit extensionCubit;
   final AppUpdateCubit appUpdateCubit;
   final SshProfileCubit sshProfileCubit;
   final AppSettingsRepository appSettings;
@@ -211,6 +216,7 @@ Future<AppShell> buildAppShell({
   late final PluginCubit pluginCubit;
   late final SkillCubit skillCubit;
   late final McpCubit mcpCubit;
+  late final ExtensionCubit extensionCubit;
   late final SessionRepository sessionRepo;
   late final ChatCubit chatCubit;
   late final EditorCubit editorCubit;
@@ -312,10 +318,25 @@ Future<AppShell> buildAppShell({
     return s.isUsingCustomPath ? path : null;
   }
 
+  final extensionRepository = ExtensionRepository(
+    fs: AppStorage.fs,
+    stateFilePath: AppStorage.paths.extensionsStateJson,
+    manifests: builtInExtensionManifests(),
+  );
+  await ExtensionStateMigration.run(
+    repository: extensionRepository,
+    legacyRtkEnabled: appSettings.loadRtkEnabled,
+  );
+  extensionCubit = ExtensionCubit(
+    extensionRepository,
+    ExtensionAcquisitionEngine(),
+  );
+
   sessionLifecycleService = SessionLifecycleService(
     llmConfigPathOverride: llmConfigPathOverrideForLaunch,
     storageRootsResolver: storageRoots.resolve,
-    loadRtkEnabled: appSettings.loadRtkEnabled,
+    loadRtkEnabled: () async =>
+        (await extensionRepository.load(forceReload: true)).globalEnabled.contains('rtk'),
     cliToolRegistry: cliToolRegistry,
   );
   sessionRepo = SessionRepository(
@@ -345,12 +366,7 @@ Future<AppShell> buildAppShell({
     mcpRepository: mcpRepository,
     installedMcpLoader: () => mcpRepository.loadAll(),
     extensionMcpContributor: (teamId) async {
-      final repo = ExtensionRepository(
-        fs: AppStorage.fs,
-        stateFilePath: AppStorage.paths.extensionsStateJson,
-        manifests: builtInExtensionManifests(),
-      );
-      final enabled = await repo.effectiveEnabledIds(teamId);
+      final enabled = await extensionRepository.effectiveEnabledIds(teamId);
       final provisioner = ExtensionProvisioner(
         manifests: builtInExtensionManifests(),
         isEnabled: (id) async => enabled.contains(id),
@@ -452,6 +468,7 @@ Future<AppShell> buildAppShell({
     pluginCubit: pluginCubit,
     skillCubit: skillCubit,
     mcpCubit: mcpCubit,
+    extensionCubit: extensionCubit,
     appUpdateCubit: appUpdateCubit,
     sshProfileCubit: sshProfileCubit,
     appSettings: appSettings,

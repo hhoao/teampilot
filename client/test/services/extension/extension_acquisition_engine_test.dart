@@ -14,6 +14,15 @@ ExtensionManifest _manifest(Map<String, Object?> acquire) =>
       'detect': {'executable': 'x', 'versionArgs': ['--version']},
     });
 
+extension on ExtensionManifest {
+  ExtensionManifest copyForScript(String url) => ExtensionManifest.fromJson({
+        'id': id,
+        'name': name,
+        'acquire': {'kind': 'script', 'package': url, 'binary': 'x'},
+        'detect': {'executable': 'x', 'versionArgs': ['--version']},
+      });
+}
+
 ExtensionDetector _present(String version) => ExtensionDetector(
       processRunner: (exe, args, {environment}) async {
         if (args.length == 1 && args.first == 'x') {
@@ -120,5 +129,40 @@ void main() {
     );
     expect(commands.single.executable, 'npm');
     expect(commands.single.arguments, ['uninstall', '-g', '@scope/pkg']);
+  });
+
+  test('script kind accepts an https url', () async {
+    final commands = <CliInstallerCommand>[];
+    final engine = ExtensionAcquisitionEngine(
+      runner: (cmd) async {
+        commands.add(cmd);
+        return const CliInstallerCommandResult(exitCode: 0);
+      },
+      detector: _present('1.0.0'),
+    );
+    await engine.install(_manifest({
+      'kind': 'script',
+      'binary': 'x',
+      'alternatives': <String>[],
+    }).copyForScript('https://example.com/install.sh'));
+    expect(commands.single.executable, 'sh');
+    expect(commands.single.arguments.last, contains('https://example.com/install.sh'));
+  });
+
+  test('script kind rejects non-https / metacharacter urls (no command run)', () async {
+    final commands = <CliInstallerCommand>[];
+    final engine = ExtensionAcquisitionEngine(
+      runner: (cmd) async {
+        commands.add(cmd);
+        return const CliInstallerCommandResult(exitCode: 0);
+      },
+      detector: _present('1.0.0'),
+    );
+    final result = await engine.install(_manifest({
+      'kind': 'script',
+      'binary': 'x',
+    }).copyForScript('https://example.com/i.sh; rm -rf /'));
+    expect(commands, isEmpty);
+    expect(result.success, isFalse);
   });
 }

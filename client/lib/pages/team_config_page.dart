@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import '../cubits/app_provider_cubit.dart';
+import '../cubits/extension_cubit.dart';
 import '../cubits/mcp_cubit.dart';
 import '../cubits/plugin_cubit.dart';
 import '../cubits/skill_cubit.dart';
@@ -42,6 +43,7 @@ enum TeamConfigSection implements WorkspaceSectionDescriptor {
   skills,
   plugins,
   mcp,
+  extensions,
   members;
 
   @override
@@ -50,6 +52,7 @@ enum TeamConfigSection implements WorkspaceSectionDescriptor {
     TeamConfigSection.skills => 'skills',
     TeamConfigSection.plugins => 'plugins',
     TeamConfigSection.mcp => 'mcp',
+    TeamConfigSection.extensions => 'extensions',
     TeamConfigSection.members => 'members',
   };
 
@@ -65,6 +68,7 @@ enum TeamConfigSection implements WorkspaceSectionDescriptor {
     TeamConfigSection.skills => l10n.teamSkillsNav,
     TeamConfigSection.plugins => l10n.teamPluginsNav,
     TeamConfigSection.mcp => l10n.teamMcpNav,
+    TeamConfigSection.extensions => l10n.teamExtensionsNav,
     TeamConfigSection.members => l10n.members,
   };
 
@@ -77,6 +81,7 @@ IconData _teamConfigSectionIcon(TeamConfigSection section) => switch (section) {
   TeamConfigSection.skills => Icons.extension_outlined,
   TeamConfigSection.plugins => Icons.widgets_outlined,
   TeamConfigSection.mcp => Icons.hub_outlined,
+  TeamConfigSection.extensions => Icons.power_outlined,
   TeamConfigSection.members => Icons.person_outline,
 };
 
@@ -169,6 +174,14 @@ class TeamConfigHubPage extends StatelessWidget {
           () => context.push('/team-config/mcp'),
         ),
       ),
+      WorkspaceHubEntry(
+        title: l10n.teamExtensionsNav,
+        icon: Icons.power_outlined,
+        onTap: throttledTap(
+          'team_config_hub_extensions',
+          () => context.push('/team-config/extensions'),
+        ),
+      ),
       for (final member in team.members)
         WorkspaceHubEntry(
           title: member.name.trim().isEmpty ? l10n.memberName : member.name,
@@ -243,6 +256,7 @@ class TeamConfigPage extends StatelessWidget {
         cubit: teamCubit,
       ),
       TeamConfigSection.mcp => _TeamMcpSection(team: team, cubit: teamCubit),
+      TeamConfigSection.extensions => _TeamExtensionsSection(team: team),
       TeamConfigSection.members => _MemberDetailSection(
         team: team,
         cubit: teamCubit,
@@ -649,6 +663,182 @@ class _TeamSkillRow extends StatelessWidget {
             ),
             const SizedBox(width: 8),
             Switch(value: assigned, onChanged: onAssignedChanged),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+enum _ExtOverrideChoice { followGlobal, forceOn, forceOff }
+
+class _TeamExtensionsSection extends StatefulWidget {
+  const _TeamExtensionsSection({required this.team});
+
+  final TeamConfig team;
+
+  @override
+  State<_TeamExtensionsSection> createState() => _TeamExtensionsSectionState();
+}
+
+class _TeamExtensionsSectionState extends State<_TeamExtensionsSection> {
+  Map<String, bool> _overrides = const {};
+
+  @override
+  void initState() {
+    super.initState();
+    context.read<ExtensionCubit>().load();
+    _loadOverrides();
+  }
+
+  @override
+  void didUpdateWidget(covariant _TeamExtensionsSection oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.team.id != widget.team.id) _loadOverrides();
+  }
+
+  Future<void> _loadOverrides() async {
+    final map = await context.read<ExtensionCubit>().teamOverrides(widget.team.id);
+    if (!mounted) return;
+    setState(() => _overrides = map);
+  }
+
+  _ExtOverrideChoice _choiceFor(String id) {
+    if (!_overrides.containsKey(id)) return _ExtOverrideChoice.followGlobal;
+    return _overrides[id]!
+        ? _ExtOverrideChoice.forceOn
+        : _ExtOverrideChoice.forceOff;
+  }
+
+  bool _effective(ExtensionRow row) {
+    final override = _overrides[row.id];
+    return override ?? row.globalEnabled;
+  }
+
+  Future<void> _setChoice(String id, _ExtOverrideChoice choice) async {
+    final value = switch (choice) {
+      _ExtOverrideChoice.followGlobal => null,
+      _ExtOverrideChoice.forceOn => true,
+      _ExtOverrideChoice.forceOff => false,
+    };
+    await context.read<ExtensionCubit>().setTeamOverride(widget.team.id, id, value);
+    await _loadOverrides();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final rows = context.watch<ExtensionCubit>().state.rows;
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _Card(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _CardHeader(title: l10n.teamExtensionsTitle),
+                const SizedBox(height: 6),
+                Text(
+                  l10n.teamExtensionsSubtitle,
+                  style: AppTextStyles.of(context).bodySmall.copyWith(
+                        color: Theme.of(context)
+                            .colorScheme
+                            .onSurface
+                            .withValues(alpha: 0.6),
+                      ),
+                ),
+                const SizedBox(height: 14),
+                for (final row in rows)
+                  _TeamExtensionRow(
+                    row: row,
+                    choice: _choiceFor(row.id),
+                    effective: _effective(row),
+                    onChoice: (c) => _setChoice(row.id, c),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TeamExtensionRow extends StatelessWidget {
+  const _TeamExtensionRow({
+    required this.row,
+    required this.choice,
+    required this.effective,
+    required this.onChoice,
+  });
+
+  final ExtensionRow row;
+  final _ExtOverrideChoice choice;
+  final bool effective;
+  final ValueChanged<_ExtOverrideChoice> onChoice;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final l10n = context.l10n;
+    final isRtk = row.id == 'rtk';
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: workspaceInsetDecoration(cs, radius: 10),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    row.name,
+                    style: AppTextStyles.of(context)
+                        .body
+                        .copyWith(fontWeight: FontWeight.w700),
+                  ),
+                  Text(
+                    effective
+                        ? l10n.teamExtensionEffectiveOn
+                        : l10n.teamExtensionEffectiveOff,
+                    style: AppTextStyles.of(context).bodySmall.copyWith(
+                          color: cs.onSurface.withValues(alpha: 0.6),
+                        ),
+                  ),
+                  if (isRtk)
+                    Text(
+                      l10n.teamExtensionRtkGlobalOnlyHint,
+                      style: AppTextStyles.of(context).bodySmall.copyWith(
+                            color: cs.onSurface.withValues(alpha: 0.5),
+                          ),
+                    ),
+                ],
+              ),
+            ),
+            DropdownButton<_ExtOverrideChoice>(
+              value: choice,
+              underline: const SizedBox.shrink(),
+              onChanged: (c) {
+                if (c != null) onChoice(c);
+              },
+              items: [
+                DropdownMenuItem(
+                  value: _ExtOverrideChoice.followGlobal,
+                  child: Text(l10n.teamExtensionFollowGlobal),
+                ),
+                DropdownMenuItem(
+                  value: _ExtOverrideChoice.forceOn,
+                  child: Text(l10n.teamExtensionForceOn),
+                ),
+                DropdownMenuItem(
+                  value: _ExtOverrideChoice.forceOff,
+                  child: Text(l10n.teamExtensionForceOff),
+                ),
+              ],
+            ),
           ],
         ),
       ),

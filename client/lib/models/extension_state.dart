@@ -33,11 +33,16 @@ class ExtensionState {
     this.installed = const {},
     this.globalEnabled = const {},
     this.teamOverrides = const {},
+    this.migrations = const {},
   });
 
   final Map<String, InstalledExtension> installed;
   final Set<String> globalEnabled;
   final Map<String, Map<String, bool>> teamOverrides;
+
+  /// One-shot migration markers (kept out of [teamOverrides] so a real team id
+  /// can never collide with a marker key).
+  final Set<String> migrations;
 
   bool effectiveEnabled(String teamId, String extensionId) {
     final override = teamOverrides[teamId]?[extensionId];
@@ -82,15 +87,20 @@ class ExtensionState {
     return _copy(installed: next);
   }
 
+  ExtensionState withMigration(String key) =>
+      _copy(migrations: {...migrations, key});
+
   ExtensionState _copy({
     Map<String, InstalledExtension>? installed,
     Set<String>? globalEnabled,
     Map<String, Map<String, bool>>? teamOverrides,
+    Set<String>? migrations,
   }) =>
       ExtensionState(
         installed: installed ?? this.installed,
         globalEnabled: globalEnabled ?? this.globalEnabled,
         teamOverrides: teamOverrides ?? this.teamOverrides,
+        migrations: migrations ?? this.migrations,
       );
 
   Map<String, Object?> toJson() => {
@@ -102,13 +112,18 @@ class ExtensionState {
           for (final entry in teamOverrides.entries)
             entry.key: Map<String, bool>.from(entry.value),
         },
+        'migrations': migrations.toList()..sort(),
       };
 
   factory ExtensionState.fromJson(Map<String, Object?> json) {
     final installedRaw = json['installed'];
     final globalRaw = json['globalEnabled'];
     final overridesRaw = json['teamOverrides'];
+    final migrationsRaw = json['migrations'];
     return ExtensionState(
+      migrations: migrationsRaw is List
+          ? migrationsRaw.map((e) => e.toString()).where((e) => e.isNotEmpty).toSet()
+          : const {},
       installed: installedRaw is Map
           ? {
               for (final entry in installedRaw.entries)

@@ -1,18 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:url_launcher/url_launcher.dart';
-
 import '../cubits/config_cubit.dart';
 import '../cubits/layout_cubit.dart';
 import '../cubits/team_cubit.dart';
 import '../l10n/l10n_extensions.dart';
 import '../models/app_provider_config.dart';
 import '../models/layout_preferences.dart';
-import '../repositories/app_settings_repository.dart';
-import '../services/extension/builtin_manifests.dart';
-import '../services/extension/extension_detector.dart';
-import '../services/extension/extension_probe.dart';
+import '../cubits/extension_cubit.dart';
 import '../theme/app_text_styles.dart';
 import '../theme/app_theme.dart';
 import '../theme/app_typography_scale.dart';
@@ -194,7 +189,7 @@ class _LayoutSettingsScroll extends StatelessWidget {
           SizedBox(height: _cardGap),
           SettingsSurfaceCard(child: _RegionVisibilitySettingsSection()),
           SizedBox(height: _cardGap),
-          SettingsSurfaceCard(child: _RtkSettingsSection()),
+          SettingsSurfaceCard(child: _ExtensionsSection()),
           SizedBox(height: _cardGap),
           SettingsSurfaceCard(child: _AppearanceSettingsSection()),
         ],
@@ -345,106 +340,111 @@ class _RegionVisibilitySettingsSection extends StatelessWidget {
   }
 }
 
-class _RtkSettingsSection extends StatefulWidget {
-  const _RtkSettingsSection();
+class _ExtensionsSection extends StatefulWidget {
+  const _ExtensionsSection();
 
   @override
-  State<_RtkSettingsSection> createState() => _RtkSettingsSectionState();
+  State<_ExtensionsSection> createState() => _ExtensionsSectionState();
 }
 
-class _RtkSettingsSectionState extends State<_RtkSettingsSection> {
-  bool _rtkEnabled = false;
-  bool _loading = true;
-  String _statusLine = '';
-
-  static final _rtkInstallUri = Uri.parse(
-    'https://github.com/rtk-ai/rtk#installation',
-  );
-
+class _ExtensionsSectionState extends State<_ExtensionsSection> {
   @override
   void initState() {
     super.initState();
-    _load();
+    context.read<ExtensionCubit>().load();
   }
 
-  Future<void> _load() async {
-    final settings = context.read<AppSettingsRepository>();
-    final enabled = await settings.loadRtkEnabled();
-    final rtkDetect =
-        builtInExtensionManifests().firstWhere((m) => m.id == 'rtk').detect;
-    final probe = await ExtensionDetector().probe(rtkDetect);
-    if (!mounted) return;
-    setState(() {
-      _rtkEnabled = enabled;
-      _loading = false;
-      _statusLine = _formatStatus(context, probe);
-    });
-  }
-
-  String _formatStatus(BuildContext context, ExtensionProbe probe) {
+  String _statusText(BuildContext context, ExtensionRow row) {
     final l10n = context.l10n;
-    if (!probe.found) return l10n.rtkStatusNotFound;
-    if (probe.missingRequirements.contains('jq')) {
-      return l10n.rtkStatusJqMissing;
+    switch (row.status) {
+      case ExtensionStatusCode.notInstalled:
+        return l10n.extensionStatusNotInstalled;
+      case ExtensionStatusCode.dependencyMissing:
+        return l10n.extensionStatusDependencyMissing;
+      case ExtensionStatusCode.versionTooOld:
+        return l10n.extensionStatusVersionTooOld;
+      case ExtensionStatusCode.ready:
+        final v = row.version?.trim();
+        return (v == null || v.isEmpty)
+            ? l10n.extensionStatusReady
+            : l10n.extensionStatusReadyVersion(v);
     }
-    if (probe.version != null && !probe.satisfiesMinVersion) {
-      return l10n.rtkStatusVersionTooOld(probe.version!);
-    }
-    final version = probe.version?.trim();
-    return version == null || version.isEmpty
-        ? l10n.rtkStatusInstalledGeneric
-        : l10n.rtkStatusInstalled(version);
-  }
-
-  Future<void> _setEnabled(bool value) async {
-    await context.read<AppSettingsRepository>().saveRtkEnabled(value);
-    if (!mounted) return;
-    setState(() => _rtkEnabled = value);
-  }
-
-  Future<void> _openInstallDocs() async {
-    await launchUrl(_rtkInstallUri, mode: LaunchMode.externalApplication);
   }
 
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        SettingsGroupHeader(title: l10n.rtkSettingsTitle),
-        SettingsLabeledRow(
-          title: l10n.rtkSettingsEnableTitle,
-          subtitle: l10n.rtkSettingsDescription,
-          trailing: _loading
-              ? const SizedBox(
-                  width: 24,
-                  height: 24,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : Switch(
-                  value: _rtkEnabled,
-                  onChanged: _setEnabled,
+    return BlocBuilder<ExtensionCubit, ExtensionUiState>(
+      builder: (context, state) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            SettingsGroupHeader(title: l10n.extensionsSettingsTitle),
+            if (state.status == ExtensionLoadStatus.loading && state.rows.isEmpty)
+              const Padding(
+                padding: EdgeInsets.all(16),
+                child: Center(
+                  child: SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
                 ),
-          showDividerBelow: true,
-        ),
-        SettingsLabeledRow(
-          title: l10n.rtkSettingsStatusTitle,
-          subtitle: _statusLine.isEmpty ? '—' : _statusLine,
-          trailing: TextButton(
-            onPressed: _openInstallDocs,
-            child: Text(l10n.rtkSettingsInstallLink),
-          ),
-          showDividerBelow: false,
-        ),
-        Padding(
-          padding: const EdgeInsets.only(left: 16, right: 16, bottom: 12),
-          child: Text(
-            l10n.rtkBashOnlyHint,
-            style: Theme.of(context).textTheme.bodySmall,
-          ),
-        ),
-      ],
+              )
+            else
+              for (var i = 0; i < state.rows.length; i++)
+                _extensionRow(
+                  context,
+                  state,
+                  state.rows[i],
+                  last: i == state.rows.length - 1,
+                ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _extensionRow(
+    BuildContext context,
+    ExtensionUiState state,
+    ExtensionRow row, {
+    required bool last,
+  }) {
+    final l10n = context.l10n;
+    final cubit = context.read<ExtensionCubit>();
+    final busy = state.busyIds.contains(row.id);
+    final trailing = busy
+        ? const SizedBox(
+            width: 24,
+            height: 24,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          )
+        : Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextButton(
+                onPressed: row.installed
+                    ? () => cubit.uninstall(row.id)
+                    : () => cubit.install(row.id),
+                child: Text(
+                  row.installed ? l10n.extensionUninstall : l10n.extensionInstall,
+                ),
+              ),
+              Switch(
+                value: row.globalEnabled,
+                onChanged: row.installed
+                    ? (v) => cubit.setGlobalEnabled(row.id, v)
+                    : null,
+              ),
+            ],
+          );
+    return SettingsLabeledRow(
+      title: row.name,
+      subtitle: '${_statusText(context, row)} · '
+          '${row.homepage.isNotEmpty ? row.homepage : row.description}',
+      trailing: trailing,
+      showDividerBelow: !last,
     );
   }
 }

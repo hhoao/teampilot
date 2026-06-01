@@ -96,6 +96,47 @@ class AppLocalizationsZh extends AppLocalizations {
   String get visibilityFileTreeHint => '显示项目文件树以便快速浏览。';
 
   @override
+  String get extensionsSettingsTitle => '扩展';
+
+  @override
+  String get extensionsSettingsDescription => '安装并启用增强 Agent 的外部工具。';
+
+  @override
+  String get extensionEnableLabel => '已启用';
+
+  @override
+  String get extensionInstall => '安装';
+
+  @override
+  String get extensionUninstall => '卸载';
+
+  @override
+  String get extensionInstallGuide => '安装指引';
+
+  @override
+  String get extensionStatusNotInstalled => '未安装';
+
+  @override
+  String get extensionStatusReady => '就绪';
+
+  @override
+  String extensionStatusReadyVersion(String version) {
+    return '就绪（$version）';
+  }
+
+  @override
+  String get extensionStatusDependencyMissing => '缺少依赖';
+
+  @override
+  String get extensionStatusVersionTooOld => '已安装版本过旧';
+
+  @override
+  String get extensionKindMcpServer => '代码智能（MCP）';
+
+  @override
+  String get extensionKindSettingsHook => 'Token 节省（hook）';
+
+  @override
   String get rtkSettingsTitle => 'RTK 省 token';
 
   @override
@@ -1391,6 +1432,33 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get teamPluginsNav => '插件';
+
+  @override
+  String get teamExtensionsNav => '扩展';
+
+  @override
+  String get teamExtensionsTitle => '本团队的扩展';
+
+  @override
+  String get teamExtensionsSubtitle => '覆盖本团队启用哪些扩展，默认跟随全局设置。';
+
+  @override
+  String get teamExtensionFollowGlobal => '跟随全局';
+
+  @override
+  String get teamExtensionForceOn => '开启';
+
+  @override
+  String get teamExtensionForceOff => '关闭';
+
+  @override
+  String get teamExtensionEffectiveOn => '本团队已启用';
+
+  @override
+  String get teamExtensionEffectiveOff => '本团队未启用';
+
+  @override
+  String get teamExtensionRtkGlobalOnlyHint => 'rtk 目前按全局生效，按团队覆盖暂未生效。';
 
   @override
   String get teamMcpNav => 'MCP';

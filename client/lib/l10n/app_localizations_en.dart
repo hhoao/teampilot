@@ -102,6 +102,48 @@ class AppLocalizationsEn extends AppLocalizations {
       'Show the project file tree for quick navigation.';
 
   @override
+  String get extensionsSettingsTitle => 'Extensions';
+
+  @override
+  String get extensionsSettingsDescription =>
+      'Install and enable external tools that augment your agents.';
+
+  @override
+  String get extensionEnableLabel => 'Enabled';
+
+  @override
+  String get extensionInstall => 'Install';
+
+  @override
+  String get extensionUninstall => 'Uninstall';
+
+  @override
+  String get extensionInstallGuide => 'Install guide';
+
+  @override
+  String get extensionStatusNotInstalled => 'Not installed';
+
+  @override
+  String get extensionStatusReady => 'Ready';
+
+  @override
+  String extensionStatusReadyVersion(String version) {
+    return 'Ready ($version)';
+  }
+
+  @override
+  String get extensionStatusDependencyMissing => 'Missing dependency';
+
+  @override
+  String get extensionStatusVersionTooOld => 'Installed version is too old';
+
+  @override
+  String get extensionKindMcpServer => 'Code intelligence (MCP)';
+
+  @override
+  String get extensionKindSettingsHook => 'Token savings (hook)';
+
+  @override
   String get rtkSettingsTitle => 'RTK token savings';
 
   @override
@@ -1426,6 +1468,35 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get teamPluginsNav => 'Plugins';
+
+  @override
+  String get teamExtensionsNav => 'Extensions';
+
+  @override
+  String get teamExtensionsTitle => 'Extensions for this team';
+
+  @override
+  String get teamExtensionsSubtitle =>
+      'Override which extensions run for this team. Default follows the global setting.';
+
+  @override
+  String get teamExtensionFollowGlobal => 'Follow global';
+
+  @override
+  String get teamExtensionForceOn => 'On';
+
+  @override
+  String get teamExtensionForceOff => 'Off';
+
+  @override
+  String get teamExtensionEffectiveOn => 'Active for this team';
+
+  @override
+  String get teamExtensionEffectiveOff => 'Inactive for this team';
+
+  @override
+  String get teamExtensionRtkGlobalOnlyHint =>
+      'rtk currently applies globally; per-team override is not yet effective.';
 
   @override
   String get teamMcpNav => 'MCP';

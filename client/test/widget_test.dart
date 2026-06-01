@@ -4,6 +4,7 @@ import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/cubits/app_provider_cubit.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
 import 'package:teampilot/cubits/config_cubit.dart';
+import 'package:teampilot/cubits/extension_cubit.dart';
 import 'package:teampilot/cubits/editor_cubit.dart';
 import 'package:teampilot/cubits/layout_cubit.dart';
 import 'package:teampilot/cubits/llm_config_cubit.dart';
@@ -21,7 +22,12 @@ import 'package:teampilot/repositories/app_provider_repository.dart';
 import 'package:teampilot/repositories/layout_repository.dart';
 import 'package:teampilot/repositories/session_preferences_repository.dart';
 import 'package:teampilot/repositories/session_repository.dart';
+import 'package:teampilot/repositories/extension_repository.dart';
 import 'package:teampilot/repositories/team_repository.dart';
+import 'package:teampilot/services/extension/builtin_manifests.dart';
+import 'package:teampilot/services/extension/extension_acquisition_engine.dart';
+import 'package:teampilot/services/extension/extension_detector.dart';
+import 'package:teampilot/services/cli/installer_types.dart';
 import 'package:teampilot/models/connection_mode.dart';
 import 'package:teampilot/services/provider/config_profile_service.dart';
 import 'package:teampilot/services/app/connection_mode_service.dart';
@@ -39,7 +45,20 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'support/in_memory_filesystem.dart';
 import 'support/post_frame_test_harness.dart';
+
+ExtensionCubit _testExtensionCubit() => ExtensionCubit(
+      ExtensionRepository(
+        fs: InMemoryFilesystem(),
+        stateFilePath: '/test/extensions/state.json',
+        manifests: builtInExtensionManifests(),
+      ),
+      ExtensionAcquisitionEngine(
+        runner: (c) async => const CliInstallerCommandResult(exitCode: 0),
+      ),
+      detector: ExtensionDetector(processRunner: (e, a, {environment}) async => ProcessResult(0, 1, '', '')),
+    );
 
 String _testExecutable() => 'flashskyai';
 
@@ -69,6 +88,7 @@ Widget buildTestApp({
   LlmConfigCubit? llmConfigCubit,
   AppProviderCubit? appProviderCubit,
   AppSettingsRepository? appSettings,
+  ExtensionCubit? extensionCubit,
 }) {
   final connectionModeService = ConnectionModeService(
     readPreferredMode: () => ConnectionMode.localPty,
@@ -100,6 +120,7 @@ Widget buildTestApp({
         BlocProvider.value(value: layoutCubit ?? LayoutCubit()),
         BlocProvider.value(value: sessionPreferencesCubit),
         BlocProvider(create: (_) => EditorCubit(fs: LocalFilesystem())),
+        BlocProvider.value(value: extensionCubit ?? _testExtensionCubit()),
       ],
       child: const TeamPilotApp(),
     ),
