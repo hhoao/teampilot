@@ -19,8 +19,13 @@ import '../repositories/session_repository.dart';
 import '../services/team/member_presence_service.dart';
 import '../services/storage/app_storage.dart';
 import '../services/session/session_lifecycle_service.dart';
+import '../services/team_bus/agent_node.dart';
 import '../services/team_bus/chat_cubit_member_launcher.dart';
+import '../services/team_bus/mcp/teammate_bus_mcp_handler.dart';
+import '../services/team_bus/mcp/teammate_bus_mcp_server.dart';
+import '../services/team_bus/team_bus.dart';
 import '../services/terminal/terminal_session.dart';
+import '../utils/team_member_naming.dart';
 import '../services/terminal/terminal_transport_factory.dart';
 import '../utils/logger.dart';
 import '../utils/project_path_utils.dart';
@@ -106,6 +111,17 @@ class _InternalTab {
   String? memberToolConfigDir;
 
   final Map<String, TerminalSession> memberShells = {};
+
+  /// mixed 模式：本 team 会话的进程内总线与其 loopback MCP server（随 tab 建/销）。
+  TeamBus? teamBus;
+  TeammateBusMcpServer? mcpServer;
+
+  Future<void> disposeBus() async {
+    teamBus?.abortAll();
+    await mcpServer?.stop();
+    teamBus = null;
+    mcpServer = null;
+  }
 
   /// Member ids with a scheduled or in-flight [_scheduleMemberConnect].
   final Set<String> membersPendingConnect = {};
@@ -569,6 +585,29 @@ class ChatCubit extends Cubit<ChatState> implements MemberMaterializer {
     if (team != null) {
       _presenceTeam = team;
       refreshPresencePolling();
+      if (team.teamMode == TeamMode.mixed) {
+        final bus = TeamBus(
+          launcher: ChatCubitMemberLauncher(
+            materializer: this,
+            sessionId: info.id,
+          ),
+        );
+        for (final m in team.members) {
+          final lead = TeamMemberNaming.isTeamLead(m);
+          bus.declareMember(
+            AgentNode(
+              memberId: m.id,
+              state: lead ? MemberState.busy : MemberState.declared,
+            ),
+          );
+        }
+        final server = TeammateBusMcpServer(
+          handler: TeammateBusMcpHandler(bus: bus),
+        );
+        await server.start();
+        internalTab.teamBus = bus;
+        internalTab.mcpServer = server;
+      }
     }
     if (connectImmediately) {
       _beginSessionConnect(info.id);
@@ -972,6 +1011,8 @@ class ChatCubit extends Cubit<ChatState> implements MemberMaterializer {
     for (final session in tab.sessions) {
       session.dispose();
     }
+    // ignore: discarded_futures
+    tab.disposeBus();
     if (_internalTabs.isEmpty) {
       emit(
         state.copyWith(tabs: [], activeTabIndex: 0, clearActiveSessionId: true),
@@ -1001,6 +1042,8 @@ class ChatCubit extends Cubit<ChatState> implements MemberMaterializer {
       for (final session in tab.sessions) {
         session.dispose();
       }
+      // ignore: discarded_futures
+      tab.disposeBus();
     }
     final kept = _internalTabs.single;
     emit(
@@ -1021,6 +1064,8 @@ class ChatCubit extends Cubit<ChatState> implements MemberMaterializer {
       for (final session in tab.sessions) {
         session.dispose();
       }
+      // ignore: discarded_futures
+      tab.disposeBus();
     }
     final active = _activeTab;
     emit(
@@ -1416,6 +1461,8 @@ class ChatCubit extends Cubit<ChatState> implements MemberMaterializer {
       for (final session in tab.sessions) {
         session.dispose();
       }
+      // ignore: discarded_futures
+      tab.disposeBus();
     }
     final tabs = _internalTabs.map((t) => t.info).toList();
 
@@ -1653,6 +1700,23 @@ class ChatCubit extends Cubit<ChatState> implements MemberMaterializer {
     emit(state.copyWith(clearSnackbarMessage: true));
   }
 
+  @visibleForTesting
+  bool hasTeamBusResources(String sessionId) {
+    final tab = _tabBySessionId(sessionId);
+    return tab?.teamBus != null && tab?.mcpServer != null;
+  }
+
+  @visibleForTesting
+  Uri? teammateBusMcpEndpointForSession(String sessionId) {
+    final server = _tabBySessionId(sessionId)?.mcpServer;
+    if (server == null) return null;
+    try {
+      return server.endpoint;
+    } catch (_) {
+      return null;
+    }
+  }
+
   @override
   Future<void> close() async {
     if (isClosed) return;
@@ -1661,6 +1725,8 @@ class ChatCubit extends Cubit<ChatState> implements MemberMaterializer {
       for (final session in tab.sessions) {
         session.dispose();
       }
+      // ignore: discarded_futures
+      tab.disposeBus();
     }
     _internalTabs.clear();
     await super.close();

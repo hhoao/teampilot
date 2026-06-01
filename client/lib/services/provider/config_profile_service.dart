@@ -220,6 +220,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
     String sessionId, {
     TeamCli cli = TeamCli.flashskyai,
     TeamConfig? team,
+    Map<String, Map<String, Object?>>? extraMcpServers,
   }) async {
     final trimmedTeamId = teamId.trim();
     final trimmedSessionId = sessionId.trim();
@@ -269,6 +270,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
     await McpRegistryService(fs: _fs, layout: layout).writeForSession(
       teamId: trimmedTeamId,
       sessionId: trimmedSessionId,
+      extraServers: extraMcpServers,
     );
   }
 
@@ -319,6 +321,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
     TeamConfig? team,
     String? leadSessionId,
     String? claudeProviderId,
+    Map<String, Map<String, Object?>>? extraMcpServers,
   }) async {
     final trimmedTeamId = teamId.trim();
     if (trimmedTeamId.isEmpty) {
@@ -338,6 +341,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
       scope.sessionId,
       cli: cli,
       team: team,
+      extraMcpServers: extraMcpServers,
     );
 
     final cap = _cliRegistry.capability<ConfigProfileCapability>(cli.value);

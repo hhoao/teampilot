@@ -29,55 +29,71 @@ class McpRegistryService {
   Future<void> writeForSession({
     required String teamId,
     required String sessionId,
+    Map<String, Map<String, Object?>>? extraServers,
   }) async {
     final trimmedTeamId = teamId.trim();
     final trimmedSessionId = sessionId.trim();
     if (trimmedTeamId.isEmpty || trimmedSessionId.isEmpty) return;
 
+    Map<String, Map<String, Object?>>? catalogServers;
     final snapshotPath = layout.teamMcpServersFile(trimmedTeamId);
     final snapshotStat = await _fs.stat(snapshotPath);
-    if (!snapshotStat.isFile) return;
+    if (snapshotStat.isFile) {
+      final snapshotText = await _fs.readString(snapshotPath);
+      if (snapshotText != null && snapshotText.trim().isNotEmpty) {
+        final snapshotRoot =
+            (jsonDecode(snapshotText) as Map).cast<String, Object?>();
+        catalogServers = (snapshotRoot['mcpServers'] as Map?)
+            ?.cast<String, Object?>()
+            .map(
+              (key, value) => MapEntry(
+                key,
+                value is Map ? value.cast<String, Object?>() : <String, Object?>{},
+              ),
+            );
+      }
+    }
 
-    final snapshotText = await _fs.readString(snapshotPath);
-    if (snapshotText == null || snapshotText.trim().isEmpty) return;
-
-    final snapshotRoot = (jsonDecode(snapshotText) as Map).cast<String, Object?>();
-    final catalogServers = (snapshotRoot['mcpServers'] as Map?)
-        ?.cast<String, Object?>()
-        .map(
-          (key, value) => MapEntry(
-            key,
-            value is Map ? value.cast<String, Object?>() : <String, Object?>{},
-          ),
-        );
-    if (catalogServers == null || catalogServers.isEmpty) return;
-
-    final registry = await _registryConfigService.load();
-    final smitheryToken = registry.byKind(McpRegistrySourceKind.smithery)?.apiToken;
-    final serversForSession = SmitheryMcpAuth.applyToCatalogServers(
-      catalogServers,
-      smitheryToken,
-    );
+    final mergedServers = <String, Map<String, Object?>>{};
+    if (catalogServers != null && catalogServers.isNotEmpty) {
+      final registry = await _registryConfigService.load();
+      final smitheryToken =
+          registry.byKind(McpRegistrySourceKind.smithery)?.apiToken;
+      mergedServers.addAll(
+        SmitheryMcpAuth.applyToCatalogServers(
+          catalogServers,
+          smitheryToken,
+        ),
+      );
+    }
+    if (extraServers != null) {
+      for (final entry in extraServers.entries) {
+        mergedServers[entry.key] = Map<String, Object?>.from(entry.value);
+      }
+    }
+    if (mergedServers.isEmpty) return;
 
     await _mergeForTool(
       teamId: trimmedTeamId,
       sessionId: trimmedSessionId,
       tool: 'claude',
       metadataFileName: ConfigProfileService.claudeMetadataFileName,
-      catalogServers: serversForSession,
+      catalogServers: mergedServers,
     );
     await _mergeForTool(
       teamId: trimmedTeamId,
       sessionId: trimmedSessionId,
       tool: 'flashskyai',
       metadataFileName: ConfigProfileService.flashskyaiMetadataFileName,
-      catalogServers: serversForSession,
+      catalogServers: mergedServers,
     );
 
-    await McpCredentialsStore(fs: _fs).mergeInto(
-      fromConfigDir: layout.appToolRoot('claude'),
-      toConfigDir: layout.memberToolDir(trimmedTeamId, trimmedSessionId, 'claude'),
-    );
+    if (catalogServers != null && catalogServers.isNotEmpty) {
+      await McpCredentialsStore(fs: _fs).mergeInto(
+        fromConfigDir: layout.appToolRoot('claude'),
+        toConfigDir: layout.memberToolDir(trimmedTeamId, trimmedSessionId, 'claude'),
+      );
+    }
   }
 
   Future<void> _mergeForTool({

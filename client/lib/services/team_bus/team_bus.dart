@@ -123,6 +123,16 @@ class TeamBus {
     }
   }
 
+  /// 会话 tab 关闭：所有未 retired/dead 的成员置为 dead。
+  void abortAll() {
+    for (final node in _members.values) {
+      if (node.state != MemberState.retired &&
+          node.state != MemberState.dead) {
+        node.state = MemberState.dead;
+      }
+    }
+  }
+
   /// leader 完成：置 retired + 广播 stand-down。
   Future<void> finishTask(String memberId, String result) async {
     final node = _members[memberId];
