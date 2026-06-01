@@ -122,6 +122,47 @@ class ClaudeCodeCliToolAdapter implements CliToolAdapter {
   }
 }
 
+/// opencode TUI（bare `opencode`，默认命令）。工作目录走进程 cwd；
+/// 模型用 `provider/model` 形式；resume 用 `--session`（opencode 无「指定 id 新建」flag）。
+class OpencodeCliToolAdapter implements CliToolAdapter {
+  const OpencodeCliToolAdapter();
+
+  @override
+  List<String> buildArguments(CliLaunchContext context) {
+    final member = context.member;
+    final args = <String>[];
+
+    final resume = context.resumeSessionId?.trim() ?? '';
+    if (resume.isNotEmpty) {
+      args.addAll(['--session', resume]);
+    }
+
+    final model = _opencodeModel(member);
+    if (model.isNotEmpty) {
+      args.addAll(['--model', model]);
+    }
+
+    final agent = member.agent.trim();
+    if (agent.isNotEmpty) {
+      args.addAll(['--agent', agent]);
+    }
+
+    _addExtraArgs(args, context.team.extraArgs);
+    _addExtraArgs(args, member.extraArgs);
+
+    return args;
+  }
+
+  /// opencode 期望 `provider/model`；缺 provider 时退回裸 model。
+  String _opencodeModel(TeamMemberConfig member) {
+    final provider = member.provider.trim();
+    final model = member.model.trim();
+    if (model.isEmpty) return '';
+    if (provider.isEmpty) return model;
+    return '$provider/$model';
+  }
+}
+
 List<String> _buildSessionPrefixArgs(
   CliLaunchContext context, {
   bool includeWorkingDirectory = true,
