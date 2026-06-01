@@ -41,4 +41,41 @@ class TeamBus {
     }
     return node.inbox.waitBatch(timeout: timeout);
   }
+
+  /// 出站（来自成员的 send_message）。按目标状态分流投递。
+  Future<void> send(TeamMessage message) async {
+    if (message.hop >= maxHop) {
+      appLogger.w(
+        '[team-bus] dropped over-hop message ${message.id} (hop=${message.hop})',
+      );
+      return;
+    }
+    final target = _members[message.to];
+    if (target == null) {
+      appLogger.w(
+        '[team-bus] dropped message ${message.id} to unknown member '
+        '"${message.to}"',
+      );
+      return;
+    }
+    switch (target.state) {
+      case MemberState.declared:
+        target.state = MemberState.materializing;
+        await _launcher.materialize(target.memberId, message);
+        target.state = MemberState.busy;
+      case MemberState.materializing:
+      case MemberState.busy:
+        target.inbox.deliver(message);
+      case MemberState.idle:
+        target.inbox.deliver(message);
+        target.state = MemberState.busy;
+        _launcher.wake(target.memberId, doorbellNotice);
+      case MemberState.retired:
+      case MemberState.dead:
+        appLogger.w(
+          '[team-bus] dropped message ${message.id} to ${target.memberId} '
+          '(state=${target.state.name})',
+        );
+    }
+  }
 }
