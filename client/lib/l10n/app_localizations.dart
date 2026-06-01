@@ -692,6 +692,30 @@ abstract class AppLocalizations {
   /// **'CLI backend'**
   String get teamCliLabel;
 
+  /// No description provided for @teamModeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Team mode'**
+  String get teamModeLabel;
+
+  /// No description provided for @teamModeNative.
+  ///
+  /// In en, this message translates to:
+  /// **'Native (single CLI)'**
+  String get teamModeNative;
+
+  /// No description provided for @teamModeMixed.
+  ///
+  /// In en, this message translates to:
+  /// **'Mixed (cross-CLI bus)'**
+  String get teamModeMixed;
+
+  /// No description provided for @memberCliInheritHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Inherit team default'**
+  String get memberCliInheritHint;
+
   /// No description provided for @teamCliSubtitle.
   ///
   /// In en, this message translates to:

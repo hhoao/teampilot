@@ -326,6 +326,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get teamCliLabel => 'CLI backend';
 
   @override
+  String get teamModeLabel => 'Team mode';
+
+  @override
+  String get teamModeNative => 'Native (single CLI)';
+
+  @override
+  String get teamModeMixed => 'Mixed (cross-CLI bus)';
+
+  @override
+  String get memberCliInheritHint => 'Inherit team default';
+
+  @override
   String get teamCliSubtitle =>
       'Chosen when the team is created and cannot be changed later.';
 

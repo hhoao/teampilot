@@ -42,6 +42,24 @@ void main() {
     expect(node.state, MemberState.retired);
   });
 
+  test('broadcast with materializeDeclared launches declared workers', () async {
+    final launcher = FakeMemberLauncher();
+    final bus = TeamBus(launcher: launcher);
+    final leader = AgentNode(memberId: 'team-lead', state: MemberState.busy);
+    final worker = AgentNode(memberId: 'developer', state: MemberState.declared);
+    bus.declareMember(leader);
+    bus.declareMember(worker);
+
+    await bus.broadcast(
+      TeamMessage(id: '1', from: 'team-lead', to: '*', content: 'go'),
+      materializeDeclared: true,
+    );
+
+    expect(worker.state, MemberState.busy);
+    expect(launcher.materialized.single.memberId, 'developer');
+    expect(launcher.materialized.single.bootstrap.content, 'go');
+  });
+
   test('finishTask retires leader and broadcasts stand-down to live members', () async {
     final launcher = FakeMemberLauncher();
     var n = 0;

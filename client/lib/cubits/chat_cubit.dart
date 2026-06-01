@@ -941,12 +941,15 @@ class ChatCubit extends Cubit<ChatState> implements MemberMaterializer {
       _scheduleMemberConnect(team, member, tab);
     }
     await ready.future;
-    tab.memberShells[memberId]?.writeToPty(bootstrap);
   }
 
   @override
   void injectMemberStdin(String sessionId, String memberId, String text) {
-    _tabBySessionId(sessionId)?.memberShells[memberId]?.writeToPty(text);
+    final shell = _tabBySessionId(sessionId)?.memberShells[memberId];
+    if (shell == null) return;
+    final trimmed = text.trim();
+    if (trimmed.isEmpty) return;
+    shell.writeln(trimmed);
   }
 
   void _scheduleMemberConnect(

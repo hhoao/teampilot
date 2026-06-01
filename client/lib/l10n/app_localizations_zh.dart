@@ -314,6 +314,18 @@ class AppLocalizationsZh extends AppLocalizations {
   String get teamCliLabel => 'CLI 后端';
 
   @override
+  String get teamModeLabel => '团队模式';
+
+  @override
+  String get teamModeNative => '原生（单 CLI）';
+
+  @override
+  String get teamModeMixed => '混合（跨 CLI bus）';
+
+  @override
+  String get memberCliInheritHint => '继承团队默认';
+
+  @override
   String get teamCliSubtitle => '创建团队时选定，之后不可更改。';
 
   @override

@@ -63,6 +63,8 @@ class TeamBus {
         target.state = MemberState.materializing;
         await _launcher.materialize(target.memberId, message);
         target.state = MemberState.busy;
+        target.inbox.deliver(message);
+        _launcher.wake(target.memberId, doorbellNotice);
       case MemberState.materializing:
       case MemberState.busy:
         target.inbox.deliver(message);
@@ -100,8 +102,29 @@ class TeamBus {
     node.state = MemberState.retired;
   }
 
-  /// 向除发送方外的所有已物化成员投递（跳过 declared/retired/dead）。
-  void broadcast(TeamMessage message) {
+  /// 向除发送方外的所有成员投递；[materializeDeclared] 为 true 时对
+  /// `declared` 成员惰性物化（`send_message(to="*")`），否则跳过（如 stand-down）。
+  Future<void> broadcast(
+    TeamMessage message, {
+    bool materializeDeclared = false,
+  }) async {
+    if (materializeDeclared) {
+      for (final node in _members.values) {
+        if (node.memberId == message.from) continue;
+        if (node.state == MemberState.retired || node.state == MemberState.dead) {
+          continue;
+        }
+        await send(
+          message.copyWith(
+            id: _idGenerator(),
+            to: node.memberId,
+            hop: message.hop + 1,
+          ),
+        );
+      }
+      return;
+    }
+
     for (final node in _members.values) {
       if (node.memberId == message.from) continue;
       if (node.state == MemberState.declared ||
@@ -138,7 +161,7 @@ class TeamBus {
     final node = _members[memberId];
     if (node == null) return;
     node.state = MemberState.retired;
-    broadcast(
+    await broadcast(
       TeamMessage(
         id: _idGenerator(),
         from: memberId,

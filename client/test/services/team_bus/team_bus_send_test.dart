@@ -34,10 +34,11 @@ void main() {
     });
   });
 
-  test('send to a declared member materializes it with the message', () async {
+  test('send to a declared member materializes and enqueues the message', () async {
     final launcher = FakeMemberLauncher();
     final bus = TeamBus(launcher: launcher);
-    bus.declareMember(AgentNode(memberId: 'worker'));
+    final worker = AgentNode(memberId: 'worker');
+    bus.declareMember(worker);
 
     await bus.send(
       TeamMessage(id: '1', from: 'leader', to: 'worker', content: 'do X'),
@@ -45,8 +46,12 @@ void main() {
 
     expect(launcher.materialized.single.memberId, 'worker');
     expect(launcher.materialized.single.bootstrap.content, 'do X');
-    expect(bus.memberById('worker')!.state, MemberState.busy);
-    expect(launcher.woken, isEmpty);
+    expect(worker.state, MemberState.busy);
+    expect(worker.inbox.isEmpty, isFalse);
+    expect(launcher.woken.single.memberId, 'worker');
+    expect(launcher.woken.single.notice, TeamBus.doorbellNotice);
+    final batch = await worker.inbox.waitBatch(timeout: const Duration(seconds: 1));
+    expect(batch.single.content, 'do X');
   });
 
   test('send to a busy member only enqueues', () async {

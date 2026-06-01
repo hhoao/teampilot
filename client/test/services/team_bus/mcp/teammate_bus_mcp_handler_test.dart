@@ -60,6 +60,36 @@ void main() {
     expect((res!.result!['content'] as List).first, {'type': 'text', 'text': 'sent'});
   });
 
+  test('send_message with to=* broadcasts and materializes declared teammates', () async {
+    final launcher = FakeMemberLauncher();
+    final bus = TeamBus(launcher: launcher);
+    final leader = AgentNode(memberId: 'team-lead', state: MemberState.busy);
+    final worker = AgentNode(memberId: 'developer', state: MemberState.busy);
+    final declared = AgentNode(memberId: 'reviewer', state: MemberState.declared);
+    bus
+      ..declareMember(leader)
+      ..declareMember(worker)
+      ..declareMember(declared);
+    final handler = TeammateBusMcpHandler(bus: bus);
+
+    await handler.handle(
+      'team-lead',
+      const JsonRpcRequest(id: 7, method: 'tools/call', params: {
+        'name': 'send_message',
+        'arguments': {'to': '*', 'content': 'all hands'},
+      }),
+    );
+
+    expect(leader.inbox.isEmpty, isTrue); // sender skipped
+    expect(worker.inbox.isEmpty, isFalse);
+    expect(declared.state, MemberState.busy);
+    expect(launcher.materialized.single.memberId, 'reviewer');
+    expect(declared.inbox.isEmpty, isFalse);
+    final batch = await worker.inbox.waitBatch(timeout: const Duration(seconds: 1));
+    expect(batch.single.content, 'all hands');
+    expect(batch.single.from, 'team-lead');
+  });
+
   test('finish_task retires caller and broadcasts; leave retires caller', () async {
     final bus = TeamBus(launcher: FakeMemberLauncher());
     final lead = AgentNode(memberId: 'leader', state: MemberState.busy);

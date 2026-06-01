@@ -101,12 +101,19 @@ class TeammateBusMcpHandler {
         : const <String, Object?>{};
     switch (name) {
       case 'send_message':
-        await _bus.send(TeamMessage(
+        final to = (args['to'] as String?)?.trim() ?? '';
+        final content = args['content'] as String? ?? '';
+        final message = TeamMessage(
           id: idGenerator(),
           from: memberId,
-          to: (args['to'] as String?)?.trim() ?? '',
-          content: args['content'] as String? ?? '',
-        ));
+          to: to,
+          content: content,
+        );
+        if (to == '*') {
+          await _bus.broadcast(message, materializeDeclared: true);
+        } else {
+          await _bus.send(message);
+        }
         return _ok(req.id, 'sent');
       case 'wait_for_message':
         final ms = (args['timeout_ms'] as num?)?.toInt();
