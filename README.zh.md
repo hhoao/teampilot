@@ -2,7 +2,7 @@
 
 [English](README.md) · [开发指南](docs/DEVELOPMENT.md) · 架构与 AI 约定见 [CLAUDE.md](CLAUDE.md)
 
-**TeamPilot** 是基于终端 AI Agent 封装的面向团队易用的桌面客户端。它的核心是 **团队能力**：在 GUI 里为每位成员单独指定模型与提示词，按角色分档协作（省 Token、快实现、准验收），并一键为每个成员启动独立内嵌终端，通过本机或远程的 **`flashskyai` / `claude` CLI** 与 Agent 协作；项目与会话则负责把这套团队绑定到具体仓库与对话上。
+**TeamPilot** 是基于终端 AI Agent 封装的面向团队易用的桌面客户端。它的核心是 **团队能力**：在 GUI 里为每位成员单独指定模型与提示词，按角色分档协作（省 Token、快实现、准验收），并一键为每个成员启动独立内嵌终端，通过本机或远程的 **Claude Code CLI** 与 Agent 协作；项目与会话则负责把这套团队绑定到具体仓库与对话上。
 
 ![应用预览](assets/image.png)
 
@@ -12,7 +12,7 @@
 
 | 配置项 | 作用 |
 |--------|------|
-| **团队** | 一套完整的多 Agent 方案：选用 `flashskyai` / `claude` 等 CLI、团队级参数，并绑定该团队专用的技能与插件。 |
+| **团队** | 一套完整的多 Agent 方案：选用 Claude Code 等 CLI、团队级参数，并绑定该团队专用的技能与插件。 |
 | **成员** | 团队内的角色（如 `team-lead`、开发者、审查者）：**各自独立**指定模型、Provider、系统提示词与启动参数；连接会话时为**每位成员单独 spawn 一个 PTY 终端**，模型与上下文互不混用。 |
 | **技能 / 插件** | 按团队挂载能力扩展；启动时写入该团队隔离的 CLI 配置目录，成员终端自动继承。 |
 
@@ -31,7 +31,7 @@
 **典型用法：**
 
 - **模型分档**：为 `team-lead`、实现位、审查位分别配置不同 Provider / 模型；切换成员标签即切换终端与模型，无需反复改全局设置。
-- **分工协作**：`team-lead` 负责统筹与委派（FlashSky AI 要求存在名为 `team-lead` 的成员），其他成员承担实现、审查等子任务，在同一窗口内切换终端即可。
+- **分工协作**：`team-lead` 负责统筹与委派（Claude Code 要求存在名为 `team-lead` 的成员），其他成员承担实现、审查等子任务，在同一窗口内切换终端即可。
 - **场景切换**：为「日常开发」「深度重构」「文档撰写」各建一个团队，换任务时切换团队，无需重配模型与提示词。
 - **与会话联动**：打开项目会话时，TeamPilot 将当前团队注入启动参数（如 `--team` / `--member`、独立 `CONFIG_DIR`），并支持恢复历史 CLI 会话。
 
@@ -80,7 +80,7 @@ chmod +x teampilot-*-linux.AppImage
 
 需要 `libfuse2`（Ubuntu 22.04+ 常需 `sudo apt install libfuse2`）。若希望写入开始菜单 / Dock，可配合 [AppImageLauncher](https://github.com/TheAssassin/AppImageLauncher)。
 
-桌面端在本机直接启动 `flashskyai` / `claude` 终端；也可在设置中改用 **SSH** 连接远端主机（CLI 在远端运行）。
+桌面端在本机直接启动 Claude Code 终端；也可在设置中改用 **SSH** 连接远端主机（CLI 在远端运行）。
 
 ### macOS
 
@@ -102,7 +102,7 @@ chmod +x teampilot-*-linux.AppImage
 
 ### Android
 
-Android 版**不运行本机 PTY**，需通过 **SSH** 连接已安装 `flashskyai` / `claude` 的 Linux/macOS/Windows（WSL）主机。
+Android 版**不运行本机 PTY**，需通过 **SSH** 连接已安装 Claude Code 的 Linux/macOS/Windows（WSL）主机。
 
 1. 根据 CPU 架构下载 `teampilot-*-arm64-v8a.apk`（多数新机型）或 `teampilot-*-armeabi-v7a.apk`。
 2. 允许「未知来源」后安装 APK。
@@ -113,8 +113,8 @@ Android 版**不运行本机 PTY**，需通过 **SSH** 连接已安装 `flashsky
 
 | CLI | 终端会话 | Provider 配置 | 说明 |
 |-----|----------|---------------|------|
-| **flashskyai** | ✅ | ✅ | 默认团队 CLI；应用启动时自动探测路径。 |
-| **claude** | ✅ | ✅ | 引导向导可协助检测/安装。 |
+| **Claude Code** | ✅ | ✅ | 默认团队 CLI；引导向导可协助检测/安装。 |
+| **flashskyai** | ✅ | ✅ | 应用启动时自动探测路径。 |
 | **codex** | ❌ | ✅ | 仅 Provider 目录管理，暂不支持启动 PTY 会话。 |
 
 ## 使用前准备
@@ -123,8 +123,7 @@ Android 版**不运行本机 PTY**，需通过 **SSH** 连接已安装 `flashsky
 
 | 项目 | 说明 |
 |------|------|
-| **`flashskyai`** | 已安装且在登录 shell 的 **PATH** 中，或在 **设置 → 会话** 中填写 CLI 绝对路径 |
-| **`claude`** | 可选；使用 Claude 团队或首次引导安装时需要 |
+| **Claude Code** | 已安装且在登录 shell 的 **PATH** 中，或在 **设置 → 会话** 中填写 CLI 绝对路径 |
 
 首次启动可按引导检测 CLI。安装包由 CI 自动构建；从源码编译见 **[开发指南](docs/DEVELOPMENT.md)**。
 

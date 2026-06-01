@@ -2,14 +2,7 @@
 
 [简体中文](README.zh.md) · [Development guide](docs/DEVELOPMENT.en.md) · Architecture & AI: [CLAUDE.md](CLAUDE.md)
 
-**TeamPilot** is a desktop client based on terminal AI Agent Team. Its centerpiece is **team capabilities**: assign **a model per member** for tiered collaboration (save tokens, implement fast, review accurately), plus roles, prompts, skills, and plugins in the GUI—then launch **one embedded terminal per member** that talks to agents through the **`flashskyai`** or **`claude`** CLI locally or over SSH. Projects and sessions attach that team to a repo and conversation.
-
-| Name | Meaning |
-|------|---------|
-| Product | **TeamPilot** (window title, installers) |
-| Package / data ID | `com.hhoa.teampilot` (Dart package `teampilot`) |
-| Primary CLI | **`flashskyai`** (recommended; PATH or explicit path) |
-| Version | See [`client/pubspec.yaml`](client/pubspec.yaml) |
+**TeamPilot** is a desktop client based on terminal AI Agent Team. Its centerpiece is **team capabilities**: assign **a model per member** for tiered collaboration (save tokens, implement fast, review accurately), plus roles, prompts, skills, and plugins in the GUI—then launch **one embedded terminal per member** that talks to agents through the **Claude Code** CLI locally or over SSH. Projects and sessions attach that team to a repo and conversation.
 
 ![App preview](assets/image.png)
 
@@ -19,7 +12,7 @@ Team configuration is what sets TeamPilot apart from a single terminal and hand-
 
 | Piece | Purpose |
 |-------|---------|
-| **Team** | A full multi-agent preset: pick `flashskyai` / `claude` (etc.), team-level CLI options, and the skills/plugins bound to this team only. |
+| **Team** | A full multi-agent preset: pick Claude Code (etc.), team-level CLI options, and the skills/plugins bound to this team only. |
 | **Member** | A role inside the team (e.g. `team-lead`, developer, reviewer): **its own** model, provider, system prompt, and launch flags. Connecting a session **spawns a separate PTY per member**—models and context do not mix. |
 | **Skills / plugins** | Capabilities attached per team; at launch they are written into an isolated CLI config tree that member terminals inherit. |
 
@@ -38,7 +31,7 @@ This is not coding-only: docs, research, ops triage, or any **multi-step pipelin
 **Typical workflows:**
 
 - **Tiered models**: Set different providers/models for `team-lead`, implementer, and reviewer; switch member tabs to switch terminal and model—no global retuning each time.
-- **Parallel roles**: `team-lead` coordinates and delegates (FlashSky AI expects a member named exactly `team-lead`); other members handle implementation, review, etc.—switch terminals in one window.
+- **Parallel roles**: `team-lead` coordinates and delegates (Claude Code expects a member named exactly `team-lead`); other members handle implementation, review, etc.—switch terminals in one window.
 - **Scenario presets**: Maintain teams for “daily dev”, “deep refactor”, “docs”—switch teams instead of retyping models and prompts.
 - **Session binding**: Opening a project session injects the active team into CLI args (e.g. `--team` / `--member`, per-member `CONFIG_DIR`) and can resume prior CLI sessions.
 
@@ -109,7 +102,7 @@ If your CLI lives in **WSL**, point app data or the CLI path at WSL in settings.
 
 ### Android
 
-Android does **not** run a local PTY. You connect over **SSH** to a machine that already has `flashskyai` / `claude`.
+Android does **not** run a local PTY. You connect over **SSH** to a machine that already has Claude Code.
 
 1. Download `teampilot-*-arm64-v8a.apk` (most phones) or `teampilot-*-armeabi-v7a.apk`.
 2. Allow installs from unknown sources, then install the APK.
@@ -120,8 +113,8 @@ Android does **not** run a local PTY. You connect over **SSH** to a machine that
 
 | CLI | Terminal sessions | Provider config | Notes |
 |-----|-------------------|-----------------|-------|
-| **flashskyai** | Yes | Yes | Default team CLI; path resolved at startup. |
-| **claude** | Yes | Yes | Onboarding can detect/install. |
+| **Claude Code** | Yes | Yes | Default team CLI; onboarding can detect/install. |
+| **flashskyai** | Yes | Yes | Path resolved at startup. |
 | **codex** | No | Yes | Provider catalog only; PTY launch not supported yet. |
 
 ## Before you start
@@ -130,8 +123,7 @@ After [installation](#installation), on the machine where agents actually run (l
 
 | Item | Notes |
 |------|--------|
-| **`flashskyai`** | On the login shell **PATH**, or set the CLI path under **Settings → Session** |
-| **`claude`** | Optional; needed for Claude teams or first-run onboarding |
+| **Claude Code** | On the login shell **PATH**, or set the CLI path under **Settings → Session** |
 
 First launch can run the built-in CLI detection. Installers are built by CI; building from source: **[Development guide](docs/DEVELOPMENT.en.md)**.
 
