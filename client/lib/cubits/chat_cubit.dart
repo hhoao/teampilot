@@ -19,6 +19,7 @@ import '../repositories/session_repository.dart';
 import '../services/team/member_presence_service.dart';
 import '../services/storage/app_storage.dart';
 import '../services/session/session_lifecycle_service.dart';
+import '../services/team_bus/chat_cubit_member_launcher.dart';
 import '../services/terminal/terminal_session.dart';
 import '../services/terminal/terminal_transport_factory.dart';
 import '../utils/logger.dart';
@@ -225,7 +226,7 @@ class ChatState extends Equatable {
   ];
 }
 
-class ChatCubit extends Cubit<ChatState> {
+class ChatCubit extends Cubit<ChatState> implements MemberMaterializer {
   ChatCubit({
     required String Function() executableResolver,
     CliExecutableResolver? cliExecutableResolver,
@@ -281,6 +282,8 @@ class ChatCubit extends Cubit<ChatState> {
   final bool Function()? _sshUseLoginShellResolver;
   final ConnectionMode Function()? _connectionModeResolver;
   final int Function()? _terminalScrollbackLinesResolver;
+
+  final Map<(String, String), Completer<void>> _memberReady = {};
 
   ConnectionMode get _connectionMode =>
       _connectionModeResolver?.call() ?? ConnectionMode.localPty;
@@ -843,6 +846,7 @@ class ChatCubit extends Cubit<ChatState> {
       onProcessStarted: () {
         _clearLaunchError(tab.info.id);
         _finishSessionConnect(tab.info.id);
+        _memberReady.remove((tab.info.id, member.id))?.complete();
         final r = repo ?? _sessionRepository;
         if (r != null && !activeSession.sessionId.startsWith('local-')) {
           unawaited(
@@ -857,6 +861,44 @@ class ChatCubit extends Cubit<ChatState> {
         }
       },
     );
+  }
+
+  _InternalTab? _tabBySessionId(String id) {
+    for (final tab in _internalTabs) {
+      if (tab.info.id == id) return tab;
+    }
+    return null;
+  }
+
+  @override
+  Future<void> materializeMember(
+    String sessionId,
+    String memberId,
+    String bootstrap,
+  ) async {
+    final tab = _tabBySessionId(sessionId);
+    final team = _presenceTeam;
+    if (tab == null || team == null) return;
+    final member = team.members.firstWhere(
+      (m) => m.id == memberId,
+      orElse: () => const TeamMemberConfig(id: '', name: ''),
+    );
+    if (!member.isValid) return;
+    final ready = Completer<void>();
+    _memberReady[(sessionId, memberId)] = ready;
+    final shell = tab.memberShells[memberId];
+    if (shell != null && shell.isRunning) {
+      ready.complete();
+    } else {
+      _scheduleMemberConnect(team, member, tab);
+    }
+    await ready.future;
+    tab.memberShells[memberId]?.writeToPty(bootstrap);
+  }
+
+  @override
+  void injectMemberStdin(String sessionId, String memberId, String text) {
+    _tabBySessionId(sessionId)?.memberShells[memberId]?.writeToPty(text);
   }
 
   void _scheduleMemberConnect(
