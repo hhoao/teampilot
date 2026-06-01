@@ -67,3 +67,25 @@ final class CodexPresence implements PresenceCapability {
   @override
   bool get usesShellActivity => false;
 }
+
+final class OpencodeTranscriptProbe implements TranscriptProbeCapability {
+  const OpencodeTranscriptProbe();
+  @override
+  bool get probeHistoryFiles => false;
+}
+
+final class OpencodeExecutableResolver implements ExecutableResolverCapability {
+  const OpencodeExecutableResolver();
+  @override
+  String get defaultExecutableName => 'opencode';
+  @override
+  String get preferencesPathKey => 'opencode';
+}
+
+final class OpencodePresence implements PresenceCapability {
+  const OpencodePresence();
+  @override
+  bool get usesClaudeRoster => false;
+  @override
+  bool get usesShellActivity => false;
+}
