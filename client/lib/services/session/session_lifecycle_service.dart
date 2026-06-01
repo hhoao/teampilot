@@ -79,6 +79,7 @@ class SessionLifecycleService {
     SessionMemberBinding? memberBinding,
     String? llmConfigPathOverride,
     Map<String, Map<String, Object?>>? extraMcpServers,
+    String? busIdleUrl,
   }) async {
     final sessionId = session.sessionId.trim();
     final teamId = (team?.id ?? session.sessionTeam).trim();
@@ -122,6 +123,7 @@ class SessionLifecycleService {
         workingDirectory: session.primaryPath,
         llmConfigPathOverride: llmConfigPathOverride,
         extraMcpServers: extraMcpServers,
+        busIdleUrl: busIdleUrl,
       );
       final memberConfigDir = _memberConfigDirFromEnv(prepared.env);
       final resolvedRoots = <String>{
@@ -223,6 +225,7 @@ class SessionLifecycleService {
     required String workingDirectory,
     required String? llmConfigPathOverride,
     Map<String, Map<String, Object?>>? extraMcpServers,
+    String? busIdleUrl,
   }) async {
     final teamId = team?.id.trim() ?? '';
     if (team != null && teamId.isNotEmpty) {
@@ -267,6 +270,7 @@ class SessionLifecycleService {
         leadSessionId: leadSessionId,
         claudeProviderId: claudeProviderId,
         extraMcpServers: extraMcpServers,
+        busIdleUrl: busIdleUrl,
       );
       return _PreparedLaunch(
         env: outcome.environment,

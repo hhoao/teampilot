@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
+
 import '../../../../models/claude_credential_link_result.dart';
 import '../../../../models/team_config.dart';
 import '../../../../utils/team_member_naming.dart';
@@ -10,6 +12,40 @@ import '../../../session/member_role_provision.dart';
 import '../../../team/claude_team_roster_service.dart';
 import '../capabilities/config_profile_capability.dart';
 import '../config_profile/config_profile_context.dart';
+
+/// mixed：往成员 settings 的 hooks.Stop 加一个 http 通知（成员 idle → POST /idle）。
+@visibleForTesting
+Map<String, Object?> mergeStopIdleHook(
+  Map<String, Object?> settings,
+  String memberId,
+  String idleUrl,
+) {
+  final hooks = Map<String, Object?>.from(
+    (settings['hooks'] as Map?)?.cast<String, Object?>() ?? const {},
+  );
+  final stop = List<Object?>.from((hooks['Stop'] as List?) ?? const []);
+  final exists = stop.any(
+    (e) =>
+        e is Map &&
+        (e['hooks'] as List?)?.any(
+              (h) => h is Map && h['url'] == idleUrl,
+            ) ==
+            true,
+  );
+  if (!exists) {
+    stop.add({
+      'hooks': [
+        {
+          'type': 'http',
+          'url': idleUrl,
+          'headers': {'X-Member': memberId},
+        },
+      ],
+    });
+  }
+  hooks['Stop'] = stop;
+  return {...settings, 'hooks': hooks};
+}
 
 final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
   const ClaudeConfigProfileCapability();
@@ -85,6 +121,7 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
       providerSettingsByMember: claude?.settingsByMember ?? const {},
       forceTeamLeadDelegateMode: ctx.team?.forceTeamLeadDelegateMode ?? false,
       mixed: ctx.team?.teamMode == TeamMode.mixed,
+      idleUrl: ctx.busIdleUrl,
     );
 
     final providerId = claude?.providerId?.trim() ?? '';
@@ -271,6 +308,7 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
     required Map<String, Map<String, Object?>> providerSettingsByMember,
     required bool forceTeamLeadDelegateMode,
     required bool mixed,
+    String? idleUrl,
   }) async {
     final uniqueMembers = <String, TeamMemberConfig>{};
     for (final member in members.where((member) => member.isValid)) {
@@ -290,6 +328,7 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
             providerSettingsByMember[member.id] ?? providerSettings,
         forceTeamLeadDelegateMode: forceTeamLeadDelegateMode,
         mixed: mixed,
+        idleUrl: idleUrl,
       );
     }
   }
@@ -301,6 +340,7 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
     required Map<String, Object?>? providerSettings,
     required bool forceTeamLeadDelegateMode,
     required bool mixed,
+    String? idleUrl,
   }) async {
     final memberToolDir = delegate.sessionToolDir(
       scope.teamId,
@@ -322,6 +362,9 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
     );
     var settings = _memberSettings(providerSettings, member);
     settings = MemberRoleProvision.applyTeamSessionPolicy(settings);
+    if (mixed && idleUrl != null && idleUrl.isNotEmpty) {
+      settings = mergeStopIdleHook(settings, member.id, idleUrl);
+    }
     settings = await delegate.maybeApplyTeamLeadHooks(
       settings,
       member,

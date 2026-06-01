@@ -872,6 +872,9 @@ class ChatCubit extends Cubit<ChatState> implements MemberMaterializer {
               ),
             }
           : null,
+      busIdleUrl: team.teamMode == TeamMode.mixed && tab.mcpServer != null
+          ? tab.mcpServer!.idleEndpoint.toString()
+          : null,
     );
     final configDir = plan.memberConfigDir.trim();
     if (configDir.isNotEmpty) {

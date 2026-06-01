@@ -62,6 +62,7 @@ class ConfigProfileLaunchContext {
     required this.paths,
     this.claude,
     this.leadSessionId,
+    this.busIdleUrl,
   });
 
   final String teamId;
@@ -75,4 +76,5 @@ class ConfigProfileLaunchContext {
   final ConfigProfileDelegate paths;
   final ClaudeLaunchExtras? claude;
   final String? leadSessionId;
+  final String? busIdleUrl;
 }

@@ -322,6 +322,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
     String? leadSessionId,
     String? claudeProviderId,
     Map<String, Map<String, Object?>>? extraMcpServers,
+    String? busIdleUrl,
   }) async {
     final trimmedTeamId = teamId.trim();
     if (trimmedTeamId.isEmpty) {
@@ -377,6 +378,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
           paths: this,
           claude: claudeExtras,
           leadSessionId: leadSessionId,
+          busIdleUrl: busIdleUrl,
         ),
       );
     } on Object catch (e) {
