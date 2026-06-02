@@ -310,11 +310,16 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
     required bool mixed,
     String? idleUrl,
   }) async {
-    final uniqueMembers = <String, TeamMemberConfig>{};
-    for (final member in members.where((member) => member.isValid)) {
-      uniqueMembers[member.id] = member;
-    }
     final selected = launchedMember;
+    final uniqueMembers = <String, TeamMemberConfig>{};
+    if (!mixed) {
+      // In-process agent-teams share one CONFIG_DIR, so every member profile
+      // must be materialized up front. Mixed members each own an isolated
+      // CONFIG_DIR and only ever read their own settings file.
+      for (final member in members.where((member) => member.isValid)) {
+        uniqueMembers[member.id] = member;
+      }
+    }
     if (selected != null && selected.isValid) {
       uniqueMembers[selected.id] = selected;
     }

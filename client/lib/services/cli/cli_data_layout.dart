@@ -50,7 +50,9 @@ const List<String> cliLayoutDefaultTools = [
 ///         │   └── plugins/  → team bundles (flashskyai only; [teamPluginsDir])
 ///         └── members/
 ///             └── {cliTeamName}/                 # e.g. my-team-3 or _adhoc
-///                 └── {tool}/                    # member — PTY CONFIG_DIR
+///                 ├── {tool}/                    # non-mixed: shared session CONFIG_DIR
+///                 └── {memberId}/                # mixed: one isolated CONFIG_DIR per agent process
+///                     └── {tool}/                # member — PTY CONFIG_DIR
 ///                     ├── agents/   → symlink to team …/agents/
 ///                     ├── skills/   → symlink to team …/skills/
 ///                     ├── plugins/  → copies/symlinks from team at launch
@@ -132,6 +134,11 @@ class CliDataLayout {
   /// `config-profiles/teams/{teamId}/members/{cliTeamName}/{tool}/`.
   ///
   /// [sessionId] is [AppSession.cliTeamName] or [configProfileAdhocSessionId].
+  /// In mixed mode each agent runs as its own process, so the launch scope nests
+  /// the member under the session (`{cliTeamName}/{memberId}`) via
+  /// `ConfigProfileService.memberScopeSessionId`; the resulting per-member
+  /// CONFIG_DIR keeps each member's teammate-bus MCP config + `X-Member` identity
+  /// isolated. Teardown removes the `{cliTeamName}` parent, covering all members.
   String memberToolDir(String teamId, String sessionId, String tool) =>
       _pathContext.join(
         configProfilesDir,

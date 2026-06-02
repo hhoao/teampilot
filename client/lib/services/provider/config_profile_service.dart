@@ -332,10 +332,17 @@ class ConfigProfileService implements ConfigProfileDelegate {
     final warnings = <String>[];
     await _collectRtkWarnings(warnings);
 
-    final scope = resolveLaunchScope(
+    var scope = resolveLaunchScope(
       teamId: trimmedTeamId,
       runtimeTeamId: runtimeTeamId,
     );
+    if (team?.teamMode == TeamMode.mixed && member != null && member.isValid) {
+      scope = LaunchProfileScope(
+        teamId: scope.teamId,
+        sessionId: memberScopeSessionId(pathContext, scope.sessionId, member),
+        cliTeamName: scope.cliTeamName,
+      );
+    }
 
     await ensureSessionProfile(
       scope.teamId,
@@ -396,6 +403,20 @@ class ConfigProfileService implements ConfigProfileDelegate {
       warnings: [...warnings, ...contribution.warnings],
     );
   }
+
+  /// Mixed-mode per-member runtime scope: nests the member under the session
+  /// dir so each agent process gets its own CONFIG_DIR (teammate-bus MCP config
+  /// + `X-Member`, settings, Stop hook, transcripts, plugins). Non-mixed teams
+  /// (single in-process Claude agent-teams process) keep the shared session dir.
+  static String memberScopeSessionId(
+    p.Context pathContext,
+    String sessionId,
+    TeamMemberConfig member,
+  ) =>
+      pathContext.join(
+        sessionId,
+        ClaudeTeamRosterService.safeClaudePathSegment(member.id),
+      );
 
   static LaunchProfileScope resolveLaunchScope({
     required String teamId,

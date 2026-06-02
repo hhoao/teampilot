@@ -95,13 +95,23 @@ class SessionLifecycleService {
       final roots = await _resolveRoots();
       final service = await _configProfileServiceFor(roots);
       final runtimeTeamId = cliTeamName.isNotEmpty ? cliTeamName : sessionId;
+      // Mixed members run as isolated processes under per-member CONFIG_DIRs, so
+      // transcripts / --resume probes must target the same nested runtime dir.
+      final runtimeSessionId =
+          team?.teamMode == TeamMode.mixed && member != null && member.isValid
+          ? ConfigProfileService.memberScopeSessionId(
+              roots.fs.pathContext,
+              runtimeTeamId,
+              member,
+            )
+          : runtimeTeamId;
       final cli = team?.cli;
       final cliState = session.launchState == AppSessionLaunchState.started
           ? await _findCliState(
               roots: roots,
               session: session,
               teamId: teamId,
-              runtimeSessionId: runtimeTeamId,
+              runtimeSessionId: runtimeSessionId,
               cliSessionId: taskId,
               cli: cli,
             )
@@ -109,7 +119,7 @@ class SessionLifecycleService {
               exists: false,
               rootsTried: roots.layout.transcriptSearchRoots(
                 teamId: teamId,
-                runtimeSessionId: runtimeTeamId,
+                runtimeSessionId: runtimeSessionId,
                 tools: cli != null ? [cli.value] : cliLayoutDefaultTools,
               ),
             );

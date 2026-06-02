@@ -177,14 +177,17 @@ void main() {
         ),
       );
 
+      // Mixed members each own an isolated CONFIG_DIR nested under the session
+      // (members/<cliTeamName>/<memberId>/<tool>) so the teammate-bus MCP config
+      // and X-Member identity cannot be clobbered by a sibling member launch.
       final claudeDir = layout.memberToolDir(
         'team-a',
-        'mixed-session',
+        'mixed-session/team-lead',
         'claude',
       );
       final flashskyaiDir = layout.memberToolDir(
         'team-a',
-        'mixed-session',
+        'mixed-session/team-lead',
         'flashskyai',
       );
       expect(plan.memberConfigDir, claudeDir);
