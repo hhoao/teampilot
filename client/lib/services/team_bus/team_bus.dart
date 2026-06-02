@@ -36,11 +36,7 @@ class TeamBus {
   final BusMessageStore? _messageStore;
   final int maxHop;
   final Map<String, AgentNode> _members = {};
-  final Map<String, DateTime> _lastIdleLeaderNotify = {};
   TeamSessionContext? _sessionContext;
-
-  /// worker idle → leader mailbox：Stop + watcher 叠打防抖。
-  static const idleLeaderNotifyCooldown = Duration(seconds: 10);
 
   void installSessionContext(TeamSessionContext context) {
     _sessionContext = context;
@@ -156,10 +152,11 @@ class TeamBus {
     if (store == null) return;
     for (final memberId in _members.keys) {
       final unread = await store.loadUnread(memberId);
-      for (final message in unread) {
-        _members[memberId]?.inbox.deliver(message);
-      }
       final node = _members[memberId];
+      if (unread.isNotEmpty) node?.hasUnreportedWork = true;
+      for (final message in unread) {
+        node?.inbox.deliver(message);
+      }
       if (node != null) _syncDeclaredInboxActivity(node);
     }
   }
@@ -177,6 +174,7 @@ class TeamBus {
   void _deliverToInbox(String memberId, TeamMessage message) {
     final node = _members[memberId];
     if (node == null) return;
+    node.hasUnreportedWork = true;
     node.inbox.deliver(message);
     _syncDeclaredInboxActivity(node);
     final store = _messageStore;
@@ -219,15 +217,13 @@ class TeamBus {
   void _notifyLeaderOnMemberIdle(String workerMemberId) {
     final worker = _members[workerMemberId];
     if (worker == null || worker.profile.isTeamLead) return;
+    // A worker only reports to the leader when it has unreported work: never
+    // when it just booted and went idle, and at most once per dispatched batch.
+    if (!worker.hasUnreportedWork) return;
     final leaderId = _teamLeadMemberId();
     if (leaderId == null || leaderId == workerMemberId) return;
 
-    final last = _lastIdleLeaderNotify[workerMemberId];
-    if (last != null &&
-        DateTime.now().difference(last) < idleLeaderNotifyCooldown) {
-      return;
-    }
-    _lastIdleLeaderNotify[workerMemberId] = DateTime.now();
+    worker.hasUnreportedWork = false;
 
     final body = IdleNotification.fromWorker(
       memberId: workerMemberId,

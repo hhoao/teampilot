@@ -43,6 +43,7 @@ void main() {
         ),
       );
 
+    bus.deliverUserCommand('developer', 'do the work'); // dispatch real work
     bus.onMemberIdle('developer');
 
     final leader = bus.memberById('team-lead')!;
@@ -67,7 +68,7 @@ void main() {
     expect(bus.memberById('team-lead')!.inbox.isEmpty, isTrue);
   });
 
-  test('idle leader notify debounces within cooldown', () {
+  test('leader is notified once per dispatched batch; re-tasking re-arms', () {
     final bus = TeamBus(launcher: FakeMemberLauncher());
     bus
       ..declareMember(
@@ -82,10 +83,41 @@ void main() {
           lifecycle: MemberLifecycle.running, activity: MemberActivity.active,
         ),
       );
+    final leader = bus.memberById('team-lead')!;
 
+    // One dispatched batch → repeated idle edges report exactly once.
+    bus.deliverUserCommand('developer', 'task one');
     bus.onMemberIdle('developer');
     bus.onMemberIdle('developer');
+    expect(leader.inbox.unreadCount, 1);
 
-    expect(bus.memberById('team-lead')!.inbox.unreadCount, 1);
+    // A fresh task re-arms the report for the next idle.
+    bus.deliverUserCommand('developer', 'task two');
+    bus.onMemberIdle('developer');
+    expect(leader.inbox.unreadCount, 2);
+  });
+
+  test('idle of a never-dispatched worker does not notify the leader', () {
+    final bus = TeamBus(launcher: FakeMemberLauncher());
+    bus
+      ..declareMember(
+        AgentNode(
+          profile: TeammateRosterProfile.minimal('team-lead', isTeamLead: true),
+          lifecycle: MemberLifecycle.running,
+          activity: MemberActivity.active,
+        ),
+      )
+      ..declareMember(
+        AgentNode(
+          profile: TeammateRosterProfile.minimal('developer'),
+          lifecycle: MemberLifecycle.running,
+          activity: MemberActivity.active,
+        ),
+      );
+
+    // Worker just booted and went idle without ever receiving a task.
+    bus.onMemberIdle('developer');
+
+    expect(bus.memberById('team-lead')!.inbox.isEmpty, isTrue);
   });
 }

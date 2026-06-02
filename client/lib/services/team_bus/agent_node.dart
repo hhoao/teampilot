@@ -38,6 +38,13 @@ class AgentNode {
   MemberActivity activity;
   final Mailbox inbox;
 
+  /// Set when this member receives real work (any inbound message), cleared
+  /// when it next reports idle to the leader. Gates worker→leader idle
+  /// notifications to one ping per dispatched batch: a freshly-launched,
+  /// never-tasked worker never pings the leader (and thus the doorbell), and a
+  /// busy worker does not re-ping on every idle edge until it is tasked again.
+  bool hasUnreportedWork = false;
+
   String get memberId => profile.memberId;
 
   bool get ptyRunning =>
