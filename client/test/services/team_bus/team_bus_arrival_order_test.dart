@@ -31,7 +31,7 @@ void main() {
   );
 
   test(
-    'order B: idle first (empty), message later → enqueue only until idle edge',
+    'order B: idle first (empty), message later → doorbell on send when turnDoneReady',
     () async {
       final launcher = FakeMemberLauncher();
       final bus = TeamBus(launcher: launcher);
@@ -43,13 +43,13 @@ void main() {
       bus.declareMember(node);
 
       bus.onMemberIdle('leader');
-      expect(node.activity, MemberActivity.active);
-      expect(launcher.woken.single.notice, TeamBus.coordinationLoopNotice);
+      expect(node.activity, MemberActivity.turnDoneReady);
+      expect(launcher.woken, isEmpty);
 
       await bus.send(
         TeamMessage(id: '1', from: 'w', to: 'leader', content: 'x'),
       );
-      expect(launcher.woken.length, 1); // send to busy: enqueue only
+      expect(launcher.woken.single.notice, TeamBus.doorbellNotice);
       expect(node.inbox.isEmpty, isFalse);
       expect(node.activity, MemberActivity.active);
     },

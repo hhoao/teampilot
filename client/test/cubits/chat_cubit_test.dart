@@ -423,6 +423,62 @@ void main() {
     );
 
     test(
+      'mixed openSessionTab seeds member shell with member cli executable',
+      () async {
+        final fakeSessions = <_FakeTerminalSession>[];
+        const team = TeamConfig(
+          id: 'team-a',
+          name: 'A',
+          cli: TeamCli.flashskyai,
+          teamMode: TeamMode.mixed,
+          members: [
+            TeamMemberConfig(
+              id: 'm-lead',
+              name: 'team-lead',
+              cli: TeamCli.claude,
+            ),
+          ],
+        );
+        final tmp = await Directory.systemTemp.createTemp('chat_cubit_mixed_cli_');
+        addTearDown(() => tmp.deleteSync(recursive: true));
+        final repo = SessionRepository(rootDir: tmp.path);
+        final project = await repo.createProject('/tmp');
+        final session = await repo.createSession(
+          project.projectId,
+          sessionTeam: team.id,
+          rosterMembers: team.members,
+        );
+        final postFrame = PostFrameTestHarness();
+        final cubit = ChatCubit(
+          executableResolver: () => 'flashskyai',
+          cliExecutableResolver: (cli) =>
+              cli == TeamCli.claude ? 'claude' : 'flashskyai',
+          sessionRepository: repo,
+          terminalSessionFactory:
+              ({required String executable, int scrollbackLines = 10000}) {
+            final fake = _FakeTerminalSession(executable: executable);
+            fakeSessions.add(fake);
+            return fake;
+          },
+          postFrameScheduler: postFrame.scheduler,
+        );
+        addTearDown(cubit.close);
+
+        await cubit.openSessionTab(
+          session,
+          team: team,
+          member: team.members.first,
+          repo: repo,
+          connectImmediately: false,
+        );
+        await postFrame.flush();
+
+        expect(fakeSessions, hasLength(1));
+        expect(fakeSessions.single.executable, 'claude');
+      },
+    );
+
+    test(
       'mixed openSessionTab does not connect PTY until user connect',
       () async {
         final fakeSessions = <_FakeTerminalSession>[];

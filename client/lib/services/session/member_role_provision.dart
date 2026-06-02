@@ -55,7 +55,7 @@ You orchestrate teammates via teammate-bus MCP. **Never stand down** — there i
 3. **`wait_for_message()`** — blocks **indefinitely** until **teammate mail or the human operator's next instruction** arrives (shown as `FROM user (operator):`)
 4. Handle the batch, then go back to step 3. **Always** return to `wait_for_message` after handling.
 
-While you are inside `wait_for_message`, the human types in TeamPilot — that text is **not** raw stdin; it arrives in your next batch as `FROM user (operator):`. After every turn, call `wait_for_message` immediately. Stop-hook / bus stdin nudges mean: call `wait_for_message` now.
+While you are inside `wait_for_message`, the human types in TeamPilot — that text is **not** raw stdin; it arrives in your next batch as `FROM user (operator):`. After every turn, call `wait_for_message` immediately. The bus doorbell (injected notice) appears only when you have **unread teammate mail**.
 
 **Idle notifications:** when a worker finishes a turn, the bus auto-delivers `IDLE NOTIFICATION from <member>` to your mailbox (Claude-style). Treat as "teammate is available" — assign with `send_message` or pull via `wait_for_message` / `read_messages`. Use explicit `send_message` from workers for task **results**, not only idle pings.
 ''';
@@ -70,7 +70,7 @@ You coordinate with teammates ONLY through the teammate-bus MCP tools:
 - **`wait_for_message()`** — blocks **indefinitely** until teammate mail or `FROM user (operator):` arrives; after handling, **always** call it again
 - **Never stand down** — no `finish_task` / `leave`; stay in the loop until the human closes the session
 
-Stop-hook / bus stdin nudges mean: call `wait_for_message` now.
+After every turn, call `wait_for_message` again. Unread mail may arrive as a bus doorbell notice.
 ''';
 
   /// When [TeamConfig.forceTeamLeadDelegateMode] is on (also enforced via PreToolUse hook).

@@ -229,6 +229,7 @@ class SessionLifecycleService {
   }) async {
     final teamId = team?.id.trim() ?? '';
     if (team != null && teamId.isNotEmpty) {
+      final launchCli = member != null ? member.cliWithin(team) : team.cli;
       final resolver =
           _claudeSettingsResolver ??
           ClaudeProviderSettingsResolver(basePath: service.basePath);
@@ -237,7 +238,7 @@ class SessionLifecycleService {
       var claudeSettingsByMember = const <String, Map<String, Object?>>{};
       final claudeCap = _cliToolRegistry
           .capability<ClaudeConfigProfileCapability>(
-            (member?.cli ?? team.cli).value,
+            launchCli.value,
           );
       if (claudeCap != null) {
         final extras = await claudeCap.resolveLaunchExtras(
@@ -259,7 +260,7 @@ class SessionLifecycleService {
       final outcome = await service.prepareTeamLaunch(
         teamId: teamId,
         runtimeTeamId: runtimeTeamId,
-        cli: member?.cli ?? team.cli,
+        cli: launchCli,
         members: team.members,
         member: member,
         workingDirectory: workingDirectory,

@@ -13,7 +13,7 @@ import '../../../team/claude_team_roster_service.dart';
 import '../capabilities/config_profile_capability.dart';
 import '../config_profile/config_profile_context.dart';
 
-/// mixed：往成员 settings 的 hooks.Stop 加一个 http 通知（turn 结束 → POST /idle → 门铃拉回 wait_for_message）。
+/// mixed：往成员 settings 的 hooks.Stop 加一个 http 通知（turn 结束 → POST /idle → 更新 bus 状态；有未读信才门铃）。
 @visibleForTesting
 Map<String, Object?> mergeStopIdleHook(
   Map<String, Object?> settings,
