@@ -100,6 +100,14 @@ class TerminalSession {
   int _lastSyncedCols = 0;
   int _lastSyncedRows = 0;
 
+  /// Serializes [submitFullScreenInput] so overlapping bracketed-paste + CR
+  /// injections never interleave their carriage returns.
+  Future<void> _ptySubmitChain = Future<void>.value();
+
+  /// Settle window between bracketed-paste content and the standalone CR for
+  /// full-screen TUI CLIs, matching Claude Code's own ~10ms child-PTY delay.
+  static const _fullScreenSubmitDelay = Duration(milliseconds: 10);
+
   int get viewWidth => _pendingViewportCols;
   int get viewHeight => _pendingViewportRows;
 
@@ -681,6 +689,26 @@ class TerminalSession {
 
   void writeln(String text) {
     writeToPty('$text\r');
+  }
+
+  /// Submit a line to a full-screen TUI CLI (e.g. Claude Code) on the alternate
+  /// screen, where [writeln]'s single `text\r` write does not submit.
+  ///
+  /// Claude Code's Ink input box coalesces one write of `text\r` into a paste
+  /// burst, so the trailing CR becomes a literal newline and nothing is sent.
+  /// Mirror Claude Code's own child-PTY injection: write the text wrapped in
+  /// bracketed-paste markers, let the input box settle, then write a CR on its
+  /// own so it registers as a discrete Enter. Submissions are serialized through
+  /// [_ptySubmitChain] so overlapping injections never interleave their CR.
+  Future<void> submitFullScreenInput(String text) {
+    final next = _ptySubmitChain.then((_) async {
+      writeToPty('\x1B[200~$text\x1B[201~');
+      await Future<void>.delayed(_fullScreenSubmitDelay);
+      writeToPty('\r');
+    });
+    // Keep the chain healthy if a write throws so later injections still run.
+    _ptySubmitChain = next.catchError((_) {});
+    return next;
   }
 
   void _writeOutput(String text) {

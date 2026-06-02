@@ -955,4 +955,75 @@ void main() {
       contains(anyOf('SystemRoot', 'windir', 'WINDIR')),
     );
   });
+
+  test('submitFullScreenInput writes bracketed paste then a standalone CR',
+      () async {
+    final handle = _FakeTransport();
+    final session = TerminalSession(
+      executable: _ptyTestExecutable,
+      confirmFallback: const Duration(milliseconds: 20),
+      transportStarter:
+          (
+            executable, {
+            required arguments,
+            required workingDirectory,
+            required columns,
+            required rows,
+            environment,
+          }) {
+            return Future.value(handle);
+          },
+    );
+    addTearDown(() async {
+      session.dispose();
+      await handle.outputController.close();
+    });
+
+    session.connect(workingDirectory: Directory.systemTemp.path);
+    session.onViewportResize(80, 24);
+    handle.outputController.add(Uint8List.fromList(utf8.encode('ready\r\n')));
+    await Future<void>.delayed(Duration.zero);
+    expect(session.isRunning, isTrue);
+
+    await session.submitFullScreenInput('hello team');
+
+    final writes = handle.writes.map(utf8.decode).toList();
+    // Text arrives wrapped in bracketed-paste markers, and the CR is a separate
+    // write — so Claude Code's full-screen TUI registers a discrete Enter
+    // (submit) rather than a literal newline inside a paste burst.
+    expect(writes, ['\x1B[200~hello team\x1B[201~', '\r']);
+  });
+
+  test('writeln writes text and CR as a single chunk (line CLIs)', () async {
+    final handle = _FakeTransport();
+    final session = TerminalSession(
+      executable: _ptyTestExecutable,
+      confirmFallback: const Duration(milliseconds: 20),
+      transportStarter:
+          (
+            executable, {
+            required arguments,
+            required workingDirectory,
+            required columns,
+            required rows,
+            environment,
+          }) {
+            return Future.value(handle);
+          },
+    );
+    addTearDown(() async {
+      session.dispose();
+      await handle.outputController.close();
+    });
+
+    session.connect(workingDirectory: Directory.systemTemp.path);
+    session.onViewportResize(80, 24);
+    handle.outputController.add(Uint8List.fromList(utf8.encode('ready\r\n')));
+    await Future<void>.delayed(Duration.zero);
+
+    session.writeln('hello team');
+
+    final writes = handle.writes.map(utf8.decode).toList();
+    expect(writes, ['hello team\r']);
+  });
 }

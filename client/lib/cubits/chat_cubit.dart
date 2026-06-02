@@ -1002,7 +1002,23 @@ class ChatCubit extends Cubit<ChatState> implements MemberMaterializer {
     if (shell == null) return;
     final trimmed = text.trim();
     if (trimmed.isEmpty) return;
-    shell.writeln(trimmed);
+    final team = _presenceTeam;
+    var cli = team?.cli ?? TeamCli.flashskyai;
+    if (team != null) {
+      for (final m in team.members) {
+        if (m.id == memberId) {
+          cli = m.cliWithin(team);
+          break;
+        }
+      }
+    }
+    if (cli.usesFullScreenInput) {
+      // Claude Code & other full-screen TUIs ignore a single `text\r` write;
+      // submit via bracketed paste + a standalone CR instead.
+      unawaited(shell.submitFullScreenInput(trimmed));
+    } else {
+      shell.writeln(trimmed);
+    }
   }
 
   void _scheduleMemberConnect(
