@@ -1,5 +1,7 @@
+import 'dart:convert';
 import 'dart:io';
 
+import 'package:path/path.dart' as p;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/cli/cli_data_layout.dart';
@@ -95,6 +97,33 @@ void main() {
         isNot(contains('CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS')),
       );
       expect(contribution.environment['CLAUDE_CODE_NO_FLICKER'], '1');
+
+      // The member settings file must not re-enable agent-teams either: a
+      // mixed member is a standalone process driven by the teammate-bus Stop
+      // hook, and agent-teams mode would suppress that hook.
+      final settingsPath = p.join(
+        base.path,
+        'config-profiles',
+        'teams',
+        'team-a',
+        'members',
+        'session-1',
+        'claude',
+        'settings',
+        'm1.json',
+      );
+      final settings =
+          jsonDecode(await File(settingsPath).readAsString()) as Map;
+      expect(
+        (settings['env'] as Map),
+        isNot(contains('CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS')),
+      );
+      expect(settings.containsKey('teammateMode'), isFalse);
+      expect(
+        (settings['hooks'] as Map?)?['Stop'],
+        isNull,
+        reason: 'no idle URL passed → no Stop hook here',
+      );
     },
   );
 }

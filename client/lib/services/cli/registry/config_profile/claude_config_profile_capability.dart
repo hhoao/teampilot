@@ -65,6 +65,7 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
       claude?.settings,
       effortLevel: ctx.team?.claudeEffortLevel ?? 'xhigh',
       teammateMode: ctx.team?.claudeTeammateMode ?? 'in-process',
+      mixed: mixed,
     );
     if (!mixed) {
       await _writeRoster(
@@ -165,6 +166,7 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
     Map<String, Object?>? providerSettings, {
     required String effortLevel,
     required String teammateMode,
+    required bool mixed,
   }) async {
     final file = delegate.pathContext.join(
       delegate.sessionToolDir(scope.teamId, scope.sessionId, 'claude'),
@@ -174,6 +176,7 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
       providerSettings,
       effortLevel: effortLevel,
       teammateMode: teammateMode,
+      mixed: mixed,
     );
     await delegate.writeSettingsFile(
       file,
@@ -330,7 +333,7 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
       scope.sessionId,
       member,
     );
-    var settings = _memberSettings(providerSettings, member);
+    var settings = _memberSettings(providerSettings, member, mixed: mixed);
     settings = MemberRoleProvision.applyTeamSessionPolicy(settings);
     if (mixed && idleUrl != null && idleUrl.isNotEmpty) {
       settings = mergeStopIdleHook(settings, member.id, idleUrl);
@@ -377,6 +380,7 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
     Map<String, Object?>? providerSettings, {
     required String effortLevel,
     required String teammateMode,
+    required bool mixed,
   }) {
     final settings = <String, Object?>{
       if (providerSettings != null) ...providerSettings,
@@ -391,25 +395,35 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
         }
       }
     }
-    env['CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS'] = '1';
+    // mixed members are standalone processes coordinating via the teammate-bus
+    // MCP, not Claude's in-process agent-teams. Enabling agent-teams there
+    // changes the turn/idle lifecycle and suppresses the bus Stop hook, so keep
+    // it (and teammateMode) to non-mixed only — the launch env already does.
+    if (!mixed) {
+      env['CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS'] = '1';
+    }
     env['CLAUDE_CODE_NO_FLICKER'] = '1';
     env.putIfAbsent('CCGUI_CLI_LOGIN_AUTHORIZED', () => '1');
     env.putIfAbsent('CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC', () => '1');
     settings['env'] = env;
     settings['effortLevel'] = effortLevel;
     settings['skipDangerousModePermissionPrompt'] = true;
-    settings['teammateMode'] = teammateMode;
+    if (!mixed) {
+      settings['teammateMode'] = teammateMode;
+    }
     return settings;
   }
 
   static Map<String, Object?> _memberSettings(
     Map<String, Object?>? providerSettings,
-    TeamMemberConfig member,
-  ) {
+    TeamMemberConfig member, {
+    required bool mixed,
+  }) {
     final settings = _teamSettings(
       providerSettings,
       effortLevel: 'xhigh',
       teammateMode: 'in-process',
+      mixed: mixed,
     );
     final model = member.model.trim();
     if (model.isNotEmpty) {
