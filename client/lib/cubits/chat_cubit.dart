@@ -20,14 +20,16 @@ import '../services/team/member_presence_service.dart';
 import '../services/storage/app_storage.dart';
 import '../services/session/session_lifecycle_service.dart';
 import '../services/team_bus/agent_node.dart';
+import '../services/team_bus/teammate_roster_profile.dart';
 import '../services/team_bus/chat_cubit_member_launcher.dart';
 import '../services/team_bus/mcp/teammate_bus_mcp_config.dart';
 import '../services/team_bus/mcp/teammate_bus_mcp_handler.dart';
 import '../services/team_bus/mcp/teammate_bus_mcp_server.dart';
+import '../services/team_bus/bus_user_line_capture.dart';
 import '../services/team_bus/team_bus.dart';
 import '../services/terminal/terminal_session.dart';
-import '../utils/team_member_naming.dart';
 import '../services/terminal/terminal_transport_factory.dart';
+import '../utils/team_member_naming.dart';
 import '../utils/logger.dart';
 import '../utils/project_path_utils.dart';
 import '../utils/session_display_title.dart';
@@ -595,12 +597,36 @@ class ChatCubit extends Cubit<ChatState> implements MemberMaterializer {
             sessionId: info.id,
           ),
         );
+        final cliTeamName = session.cliTeamName;
+        bus.installSessionContext(
+          TeamSessionContext(
+            cliTeamName: cliTeamName,
+            teamId: team.id,
+            teamName: team.name,
+            description: team.description,
+            workingDirectory: session.primaryPath,
+            teamMode: team.teamMode.value,
+            leadAgentId: TeamMemberNaming.leadAgentId(cliTeamName),
+            appSessionId: session.sessionId,
+            additionalPaths: session.additionalPaths,
+          ),
+        );
         for (final m in team.members) {
-          final lead = TeamMemberNaming.isTeamLead(m);
+          final taskId = session.members
+              .where((b) => b.rosterMemberId == m.id)
+              .map((b) => b.taskId)
+              .where((id) => id.isNotEmpty)
+              .firstOrNull;
           bus.declareMember(
             AgentNode(
-              memberId: m.id,
-              state: lead ? MemberState.busy : MemberState.declared,
+              profile: TeammateRosterProfile.fromMember(
+                member: m,
+                team: team,
+                cliTeamName: cliTeamName,
+                cwd: session.primaryPath,
+                taskId: taskId,
+              ),
+              state: MemberState.declared,
             ),
           );
         }
@@ -613,7 +639,10 @@ class ChatCubit extends Cubit<ChatState> implements MemberMaterializer {
         _ensureIdleWatch();
       }
     }
-    if (connectImmediately) {
+    // mixed：打开/恢复 tab 只建 bus + MCP，不 spawn PTY（等用户 connect 或 mailbox 物化）。
+    final connectNow =
+        connectImmediately && team?.teamMode != TeamMode.mixed;
+    if (connectNow) {
       _beginSessionConnect(info.id);
       _postFrameScheduler(() async {
         try {
@@ -744,6 +773,13 @@ class ChatCubit extends Cubit<ChatState> implements MemberMaterializer {
           connectImmediately: true,
           memberForInitialShell: member,
         );
+        if (isClosed) return;
+        if (team.teamMode == TeamMode.mixed) {
+          final tab = _activeTab;
+          if (tab != null) {
+            _scheduleMemberConnect(team, member, tab);
+          }
+        }
       } on Object catch (e, st) {
         appLogger.e(
           'openMemberTab: default session failed: $e',
@@ -831,6 +867,20 @@ class ChatCubit extends Cubit<ChatState> implements MemberMaterializer {
     return session;
   }
 
+  BusUserInputRouting? _busUserInputRouting(
+    _InternalTab tab,
+    TeamConfig team,
+    TeamMemberConfig member,
+  ) {
+    final bus = tab.teamBus;
+    if (team.teamMode != TeamMode.mixed || bus == null) return null;
+    final memberId = member.id;
+    return BusUserInputRouting(
+      shouldIntercept: () => bus.isWaitingForMessage(memberId),
+      onUserLine: (line) => bus.deliverUserCommand(memberId, line),
+    );
+  }
+
   Future<void> _connectMemberShell({
     required _InternalTab tab,
     required AppSession session,
@@ -894,10 +944,12 @@ class ChatCubit extends Cubit<ChatState> implements MemberMaterializer {
       member: member,
       sessionTeam: activeSession.cliTeamName,
       extraEnvironment: plan.env.isEmpty ? null : plan.env,
+      busUserInputRouting: _busUserInputRouting(tab, team, member),
       onFirstUserLineSubmitted: _autoRenameOnFirstPrompt(activeSession.sessionId),
       onProcessFailed: (message) => _failSessionConnect(tab.info.id, message),
       onProcessExited: () => _updateTabRunning(tab.info.id),
       onProcessStarted: () {
+        tab.teamBus?.markMemberRunning(member.id);
         _clearLaunchError(tab.info.id);
         _finishSessionConnect(tab.info.id);
         _memberReady.remove((tab.info.id, member.id))?.complete();
@@ -1305,7 +1357,7 @@ class ChatCubit extends Cubit<ChatState> implements MemberMaterializer {
         final working = shell.activityTracker.isWorking;
         final was = _lastWorking[key] ?? false;
         _lastWorking[key] = working;
-        if (was && !working) {
+        if (was && !working && !bus.isWaitingForMessage(memberId)) {
           bus.onMemberIdle(memberId);
         }
       });
@@ -1327,6 +1379,15 @@ class ChatCubit extends Cubit<ChatState> implements MemberMaterializer {
           connectImmediately: true,
           memberForInitialShell: validMembers.first,
         );
+        if (isClosed) return;
+        if (team.teamMode == TeamMode.mixed) {
+          final tab = _activeTab;
+          if (tab != null) {
+            for (final member in validMembers) {
+              _scheduleMemberConnect(team, member, tab);
+            }
+          }
+        }
       } on Object catch (e, st) {
         appLogger.e(
           'launchAllMembers: default session failed: $e',

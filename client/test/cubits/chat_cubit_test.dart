@@ -5,6 +5,7 @@ import 'package:teampilot/models/app_project.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/repositories/session_repository.dart';
+import 'package:teampilot/services/team_bus/bus_user_line_capture.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -41,6 +42,7 @@ class _FakeTerminalSession extends TerminalSession {
     void Function(String message)? onProcessFailed,
     void Function()? onProcessExited,
     void Function(String line)? onFirstUserLineSubmitted,
+    BusUserInputRouting? busUserInputRouting,
   }) {
     _connecting = true;
     if (member != null) {
@@ -417,6 +419,66 @@ void main() {
         expect(connectedMembers.where((id) => id == 'm-dev'), hasLength(1));
         expect(cubit.isMemberRunning('m-lead'), isTrue);
         expect(cubit.isMemberRunning('m-dev'), isTrue);
+      },
+    );
+
+    test(
+      'mixed openSessionTab does not connect PTY until user connect',
+      () async {
+        final fakeSessions = <_FakeTerminalSession>[];
+        const team = TeamConfig(
+          id: 'team-a',
+          name: 'A',
+          teamMode: TeamMode.mixed,
+          members: [
+            TeamMemberConfig(id: 'm-lead', name: 'team-lead'),
+            TeamMemberConfig(id: 'm-dev', name: 'developer'),
+          ],
+        );
+        final tmp = await Directory.systemTemp.createTemp('chat_cubit_mixed_');
+        addTearDown(() => tmp.deleteSync(recursive: true));
+        final repo = SessionRepository(rootDir: tmp.path);
+        final project = await repo.createProject('/tmp');
+        final session = await repo.createSession(
+          project.projectId,
+          sessionTeam: team.id,
+          rosterMembers: team.members,
+        );
+        final postFrame = PostFrameTestHarness();
+        final cubit = ChatCubit(
+          executableResolver: () => 'true',
+          sessionRepository: repo,
+          terminalSessionFactory:
+              ({required String executable, int scrollbackLines = 10000}) {
+            final fake = _FakeTerminalSession(executable: executable);
+            fakeSessions.add(fake);
+            return fake;
+          },
+          postFrameScheduler: postFrame.scheduler,
+        );
+        addTearDown(cubit.close);
+
+        await cubit.openSessionTab(
+          session,
+          team: team,
+          member: team.members.first,
+          repo: repo,
+        );
+        await postFrame.flush();
+
+        expect(cubit.state.tabs.length, 1);
+        expect(cubit.isMemberRunning('m-lead'), isFalse);
+        expect(cubit.isMemberRunning('m-dev'), isFalse);
+        expect(fakeSessions.expand((s) => s.connectedMembers), isEmpty);
+
+        await cubit.connectSession(team, repo: repo);
+        await postFrame.flush();
+
+        expect(cubit.isMemberRunning('m-lead'), isTrue);
+        expect(
+          fakeSessions.expand((s) => s.connectedMembers),
+          contains('m-lead'),
+        );
       },
     );
 

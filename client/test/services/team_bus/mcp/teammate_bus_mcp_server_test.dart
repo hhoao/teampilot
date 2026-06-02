@@ -15,11 +15,13 @@ void main() {
   });
 
   late TeamBus bus;
+  late FakeMemberLauncher launcher;
   late TeammateBusMcpServer server;
   late HttpClient client;
 
   setUp(() async {
-    bus = TeamBus(launcher: FakeMemberLauncher());
+    launcher = FakeMemberLauncher();
+    bus = TeamBus(launcher: launcher);
     server = TeammateBusMcpServer(handler: TeammateBusMcpHandler(bus: bus));
     await server.start();
     client = HttpClient();
@@ -51,7 +53,7 @@ void main() {
   });
 
   test('send_message via HTTP routes by X-Member header', () async {
-    final target = AgentNode(memberId: 'worker', state: MemberState.busy);
+    final target = AgentNode.test(memberId: 'worker', state: MemberState.busy);
     bus.declareMember(target);
     await rpc('leader', {
       'jsonrpc': '2.0', 'id': 1, 'method': 'tools/call',
@@ -60,8 +62,8 @@ void main() {
     expect(target.inbox.isEmpty, isFalse);
   });
 
-  test('POST /idle marks the member idle via the bus', () async {
-    final node = AgentNode(memberId: 'leader', state: MemberState.busy);
+  test('POST /idle nudges member back to wait_for_message via doorbell', () async {
+    final node = AgentNode.test(memberId: 'leader', state: MemberState.busy);
     bus.declareMember(node);
 
     final req = await client.postUrl(
@@ -72,11 +74,13 @@ void main() {
     await resp.drain<void>();
 
     expect(resp.statusCode, 204);
-    expect(node.state, MemberState.idle);
+    expect(node.state, MemberState.busy);
+    expect(launcher.woken.single.memberId, 'leader');
+    expect(launcher.woken.single.notice, TeamBus.coordinationLoopNotice);
   });
 
   test('wait_for_message streams an SSE result when a message arrives', () async {
-    bus.declareMember(AgentNode(memberId: 'leader', state: MemberState.busy));
+    bus.declareMember(AgentNode.test(memberId: 'leader', state: MemberState.busy));
     // deliver shortly after the call starts
     Future.delayed(const Duration(milliseconds: 100), () {
       bus.memberById('leader')!.inbox.deliver(
@@ -85,7 +89,7 @@ void main() {
     });
     final res = await rpc('leader', {
       'jsonrpc': '2.0', 'id': 2, 'method': 'tools/call',
-      'params': {'name': 'wait_for_message', 'arguments': {'timeout_ms': 5000}},
+      'params': {'name': 'wait_for_message', 'arguments': {}},
     });
     final text = ((res['result'] as Map)['content'] as List).first as Map;
     expect(text['text'], contains('reply'));

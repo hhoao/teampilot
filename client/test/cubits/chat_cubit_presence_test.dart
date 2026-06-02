@@ -8,6 +8,7 @@ import 'package:teampilot/models/member_presence.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/repositories/session_repository.dart';
 import 'package:teampilot/services/team/member_presence_service.dart';
+import 'package:teampilot/services/team_bus/bus_user_line_capture.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
 
 import '../support/post_frame_test_harness.dart';
@@ -34,6 +35,7 @@ class _FakeTerminalSession extends TerminalSession {
     void Function(String message)? onProcessFailed,
     void Function()? onProcessExited,
     void Function(String line)? onFirstUserLineSubmitted,
+    BusUserInputRouting? busUserInputRouting,
   }) {
     _running = true;
     onProcessStarted?.call();

@@ -10,7 +10,7 @@ void main() {
   test('receive parks until a message is delivered to the member inbox', () {
     fakeAsync((async) {
       final bus = TeamBus(launcher: FakeMemberLauncher());
-      final node = AgentNode(memberId: 'leader', state: MemberState.busy);
+      final node = AgentNode.test(memberId: 'leader', state: MemberState.busy);
       bus.declareMember(node);
 
       List<TeamMessage>? got;
@@ -37,7 +37,7 @@ void main() {
   test('send to a declared member materializes and enqueues the message', () async {
     final launcher = FakeMemberLauncher();
     final bus = TeamBus(launcher: launcher);
-    final worker = AgentNode(memberId: 'worker');
+    final worker = AgentNode.test(memberId: 'worker');
     bus.declareMember(worker);
 
     await bus.send(
@@ -57,7 +57,7 @@ void main() {
   test('send to a busy member only enqueues', () async {
     final launcher = FakeMemberLauncher();
     final bus = TeamBus(launcher: launcher);
-    final node = AgentNode(memberId: 'leader', state: MemberState.busy);
+    final node = AgentNode.test(memberId: 'leader', state: MemberState.busy);
     bus.declareMember(node);
 
     await bus.send(TeamMessage(id: '1', from: 'w', to: 'leader', content: 'x'));
@@ -70,7 +70,7 @@ void main() {
   test('send to an idle member enqueues and rings the doorbell', () async {
     final launcher = FakeMemberLauncher();
     final bus = TeamBus(launcher: launcher);
-    final node = AgentNode(memberId: 'leader', state: MemberState.idle);
+    final node = AgentNode.test(memberId: 'leader', state: MemberState.idle);
     bus.declareMember(node);
 
     await bus.send(TeamMessage(id: '1', from: 'w', to: 'leader', content: 'r'));
@@ -84,8 +84,8 @@ void main() {
   test('send drops over-hop, unknown, and retired targets', () async {
     final launcher = FakeMemberLauncher();
     final bus = TeamBus(launcher: launcher, maxHop: 3);
-    final busy = AgentNode(memberId: 'leader', state: MemberState.busy);
-    final retired = AgentNode(memberId: 'old', state: MemberState.retired);
+    final busy = AgentNode.test(memberId: 'leader', state: MemberState.busy);
+    final retired = AgentNode.test(memberId: 'old', state: MemberState.retired);
     bus.declareMember(busy);
     bus.declareMember(retired);
 

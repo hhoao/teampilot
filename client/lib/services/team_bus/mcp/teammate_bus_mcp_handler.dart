@@ -1,5 +1,6 @@
 import '../team_bus.dart';
 import '../team_message.dart';
+import '../teammate_snapshot.dart';
 import 'jsonrpc.dart';
 
 /// 把 MCP JSON-RPC 调用分发到 [TeamBus]。纯逻辑，不依赖 HTTP。
@@ -8,7 +9,6 @@ class TeammateBusMcpHandler {
   TeammateBusMcpHandler({
     required TeamBus bus,
     this.idGenerator = _uuidish,
-    this.defaultWaitTimeout = const Duration(minutes: 5),
   }) : _bus = bus;
 
   static const protocolVersion = '2025-06-18';
@@ -16,7 +16,6 @@ class TeammateBusMcpHandler {
 
   final TeamBus _bus;
   final String Function() idGenerator;
-  final Duration defaultWaitTimeout;
 
   /// 控制端点：成员（经 Stop hook / plugin / 终端 watcher）报告 idle。
   void notifyIdle(String memberId) => _bus.onMemberIdle(memberId);
@@ -51,6 +50,20 @@ class TeammateBusMcpHandler {
 
   static const _toolDefs = <Map<String, Object?>>[
     {
+      'name': 'list_teammates',
+      'description':
+          'List all team members and team config (Claude-style roster): ids, '
+          'agentId, agentType, model, provider, CLI, taskId, cwd, prompt '
+          'summary, plus live bus state (unread, wait_for_message, pty). '
+          'Use member id in send_message(to=...).',
+      'inputSchema': {
+        'type': 'object',
+        'additionalProperties': false,
+        'properties': <String, Object?>{},
+        'required': <String>[],
+      },
+    },
+    {
       'name': 'send_message',
       'description': 'Send a message to a teammate by member id (or "*" to broadcast).',
       'inputSchema': {
@@ -65,29 +78,10 @@ class TeammateBusMcpHandler {
     },
     {
       'name': 'wait_for_message',
-      'description': 'Block until teammate messages arrive (returns a batch), or time out (empty). Call again after handling, and after an empty result, until your task is complete.',
-      'inputSchema': {
-        'type': 'object',
-        'additionalProperties': false,
-        'properties': {
-          'timeout_ms': {'type': 'integer'},
-        },
-        'required': <String>[],
-      },
-    },
-    {
-      'name': 'finish_task',
-      'description': 'Leader: mark the whole task complete and tell teammates to stand down.',
-      'inputSchema': {
-        'type': 'object',
-        'additionalProperties': false,
-        'properties': {'result': {'type': 'string'}},
-        'required': ['result'],
-      },
-    },
-    {
-      'name': 'leave',
-      'description': 'Worker: leave the team loop; you are done.',
+      'description':
+          'Block until teammate or user (operator) messages arrive (returns a batch). '
+          'No timeout — waits indefinitely. User input while you wait appears as '
+          'FROM user (operator):. After handling a batch, call again.',
       'inputSchema': {
         'type': 'object',
         'additionalProperties': false,
@@ -103,6 +97,8 @@ class TeammateBusMcpHandler {
         ? Map<String, Object?>.from(req.params['arguments'] as Map)
         : const <String, Object?>{};
     switch (name) {
+      case 'list_teammates':
+        return _ok(req.id, _encodeRoster(memberId));
       case 'send_message':
         final to = (args['to'] as String?)?.trim() ?? '';
         final content = args['content'] as String? ?? '';
@@ -119,16 +115,8 @@ class TeammateBusMcpHandler {
         }
         return _ok(req.id, 'sent');
       case 'wait_for_message':
-        final ms = (args['timeout_ms'] as num?)?.toInt();
-        final timeout = ms != null ? Duration(milliseconds: ms) : defaultWaitTimeout;
-        final batch = await _bus.receive(memberId, timeout: timeout);
+        final batch = await _bus.receive(memberId);
         return _ok(req.id, _encodeBatch(batch));
-      case 'finish_task':
-        await _bus.finishTask(memberId, args['result'] as String? ?? '');
-        return _ok(req.id, 'finished');
-      case 'leave':
-        _bus.leave(memberId);
-        return _ok(req.id, 'left');
       default:
         return JsonRpcResponse.error(req.id, -32602, 'Unknown tool: $name');
     }
@@ -141,11 +129,80 @@ class TeammateBusMcpHandler {
     'isError': false,
   });
 
+  String _encodeRoster(String callerMemberId) {
+    final snapshot = _bus.rosterSnapshot();
+    if (snapshot.members.isEmpty) {
+      return 'No teammates registered on the bus.';
+    }
+    final buffer = StringBuffer();
+    final team = snapshot.team;
+    if (team != null) {
+      buffer.writeln('=== Team: ${team.teamName} (${team.cliTeamName}) ===');
+      if (team.description.trim().isNotEmpty) {
+        buffer.writeln('description: ${team.description.trim()}');
+      }
+      buffer.writeln('team_id: ${team.teamId}');
+      buffer.writeln('team_mode: ${team.teamMode}');
+      buffer.writeln('lead_agent_id: ${team.leadAgentId}');
+      buffer.writeln('app_session_id: ${team.appSessionId}');
+      buffer.writeln('cwd: ${team.workingDirectory}');
+      if (team.additionalPaths.isNotEmpty) {
+        buffer.writeln('additional_paths: ${team.additionalPaths.join(', ')}');
+      }
+      buffer.writeln('');
+    }
+    buffer.writeln(
+      'Roster (${snapshot.members.length} members). You (caller): $callerMemberId',
+    );
+    buffer.writeln('');
+    for (final t in snapshot.members) {
+      buffer.writeln(_formatTeammate(t, callerMemberId == t.memberId));
+      buffer.writeln('');
+    }
+    return buffer.toString().trimRight();
+  }
+
+  String _formatTeammate(TeammateSnapshot t, bool isSelf) {
+    final p = t.profile;
+    final role = p.isTeamLead ? 'leader' : 'worker';
+    final lines = <String>[
+      '--- ${p.memberId}${isSelf ? ' (self)' : ''} ---',
+      'name: ${p.memberId}',
+      'display_name: ${p.effectiveDisplayName}',
+      'agentId: ${p.agentId.isEmpty ? p.memberId : p.agentId}',
+      'agentType: ${p.agentType.isEmpty ? p.memberId : p.agentType}',
+      'role: $role',
+      if (p.agent.isNotEmpty) 'agent: ${p.agent}',
+      if (p.model.isNotEmpty) 'model: ${p.model}',
+      if (p.provider.isNotEmpty) 'provider: ${p.provider}',
+      'cli: ${p.cli.isEmpty ? '?' : p.cli}',
+      'backendType: ${p.backendType.isEmpty ? p.cli : p.backendType}',
+      if (p.taskId.isNotEmpty) 'taskId: ${p.taskId}',
+      if (p.cwd.isNotEmpty) 'cwd: ${p.cwd}',
+      if (p.joinedAt > 0) 'joinedAt: ${p.joinedAt}',
+      if (p.extraArgs.isNotEmpty) 'extraArgs: ${p.extraArgs}',
+      'dangerouslySkipPermissions: ${p.dangerouslySkipPermissions}',
+      'prompt: ${p.promptSummary()}',
+      'bus.state: ${t.state.name}',
+      'bus.unread: ${t.unreadCount}',
+      'bus.waiting_for_message: ${t.waitingForMessage}',
+      'pty.running: ${t.ptyRunning}',
+    ];
+    return lines.join('\n');
+  }
+
   String _encodeBatch(List<TeamMessage> batch) {
-    if (batch.isEmpty) return 'EMPTY: no messages yet — call wait_for_message again.';
-    return batch
-        .map((m) => 'FROM ${m.from}:\n${m.content}')
-        .join('\n\n---\n\n');
+    if (batch.isEmpty) {
+      return 'EMPTY: no messages (unexpected — wait_for_message should block until mail arrives).';
+    }
+    return batch.map(_formatMessage).join('\n\n---\n\n');
+  }
+
+  String _formatMessage(TeamMessage m) {
+    if (m.from == TeamBus.userSenderId) {
+      return 'FROM user (operator):\n${m.content}';
+    }
+    return 'FROM ${m.from}:\n${m.content}';
   }
 
   static String _uuidish() =>

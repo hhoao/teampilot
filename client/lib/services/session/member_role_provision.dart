@@ -43,14 +43,30 @@ You are the **team lead** (display name: `team-lead`). You run in the leader ses
 
 ''';
 
-  /// Appended to every mixed-mode teammate [role.md] (bus coordination via MCP).
+  /// Appended to mixed-mode **team lead** [role.md] (orchestration + never stand down).
+  static const mixedTeamLeadRoleAddendum = '''
+# Team leader (mixed cross-CLI bus)
+You orchestrate teammates via teammate-bus MCP. **Never stand down** — there is no `finish_task` or `leave`; the session ends only when the human closes it.
+
+## Coordination loop (mandatory)
+0. `list_teammates()` — roster: member ids, roles, CLI, bus state, unread counts
+1. `send_message(to, content)` — assign / reply to teammates by **member id** (or `"*"` broadcast)
+2. **`wait_for_message()`** — blocks **indefinitely** until **teammate mail or the human operator's next instruction** arrives (shown as `FROM user (operator):`)
+3. Handle the batch, then go back to step 2. **Always** return to `wait_for_message` after handling.
+
+While you are inside `wait_for_message`, the human types in TeamPilot — that text is **not** raw stdin; it arrives in your next batch as `FROM user (operator):`. After every turn, call `wait_for_message` immediately. Stop-hook / bus stdin nudges mean: call `wait_for_message` now.
+''';
+
+  /// Appended to mixed-mode **worker** [role.md] (bus coordination via MCP).
   static const mixedTeammateRoleAddendum = '''
 # Multi-agent teammate (cross-CLI bus)
 You coordinate with teammates ONLY through the teammate-bus MCP tools:
-- `send_message(to, content)` — message a teammate by member id (or "*" broadcast)
-- `wait_for_message(timeout_ms)` — receive a batch (tool result). After handling, ALWAYS call it again; after an empty result, call it again — keep looping until your task is complete.
-- `finish_task(result)` (lead) / `leave()` (worker) when done.
-Messages from `wait_for_message` are teammate tool results, not your operator.
+- `list_teammates()` — roster: member ids, roles, CLI, bus state, unread counts
+- `send_message(to, content)` — message a teammate by member id (or `"*"` broadcast)
+- **`wait_for_message()`** — blocks **indefinitely** until teammate mail or `FROM user (operator):` arrives; after handling, **always** call it again
+- **Never stand down** — no `finish_task` / `leave`; stay in the loop until the human closes the session
+
+Stop-hook / bus stdin nudges mean: call `wait_for_message` now.
 ''';
 
   /// When [TeamConfig.forceTeamLeadDelegateMode] is on (also enforced via PreToolUse hook).
@@ -86,7 +102,7 @@ This tab is **plan-and-assign only**: Bash, PowerShell, Edit, Write, NotebookEdi
     final path = rolePromptPath(memberToolDir, member);
     final text = member.prompt.trim();
     final stat = await fs.stat(path);
-    final isLead = !mixed && TeamMemberNaming.isTeamLead(member);
+    final isLead = TeamMemberNaming.isTeamLead(member);
     if (text.isEmpty && !isLead && !mixed) {
       if (stat.exists) {
         await fs.removeRecursive(path);
@@ -99,7 +115,7 @@ This tab is **plan-and-assign only**: Bash, PowerShell, Edit, Write, NotebookEdi
       body.writeln(text);
       body.writeln();
     }
-    if (isLead) {
+    if (isLead && !mixed) {
       body.writeln(teamLeadRoleAddendum.trim());
       body.writeln();
       if (forceTeamLeadDelegateMode) {
@@ -107,7 +123,10 @@ This tab is **plan-and-assign only**: Bash, PowerShell, Edit, Write, NotebookEdi
         body.writeln();
       }
     }
-    if (mixed) {
+    if (isLead && mixed) {
+      body.writeln(mixedTeamLeadRoleAddendum.trim());
+      body.writeln();
+    } else if (mixed) {
       body.writeln(mixedTeammateRoleAddendum.trim());
       body.writeln();
     }

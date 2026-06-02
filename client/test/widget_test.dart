@@ -34,6 +34,7 @@ import 'package:teampilot/services/app/connection_mode_service.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/storage/flashskyai_storage_roots.dart';
 import 'package:teampilot/services/session/session_lifecycle_service.dart';
+import 'package:teampilot/services/team_bus/bus_user_line_capture.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
 import 'package:teampilot/router/app_router.dart';
 import 'package:teampilot/theme/app_theme.dart';
@@ -260,6 +261,7 @@ class FakeTerminalSession extends TerminalSession {
     void Function(String message)? onProcessFailed,
     void Function()? onProcessExited,
     void Function(String line)? onFirstUserLineSubmitted,
+    BusUserInputRouting? busUserInputRouting,
   }) {
     lastFixedSessionIds.add(fixedSessionId);
     lastResumeSessionIds.add(resumeSessionId);

@@ -14,6 +14,8 @@ class Mailbox {
 
   bool get isEmpty => _queue.isEmpty;
 
+  int get unreadCount => _queue.length;
+
   /// 投递。有等待者→debounce 后批量唤醒；否则入队。
   void deliver(TeamMessage message) {
     _queue.add(message);
@@ -22,20 +24,24 @@ class Mailbox {
     _flushTimer = Timer(_debounce, _flush);
   }
 
-  /// 阻塞到有消息或超时。非空批=真消息；空批=超时，调用方应再调（长轮询）。
-  Future<List<TeamMessage>> waitBatch({required Duration timeout}) {
+  /// 阻塞到有消息；[timeout] 为 null 时无限等待（mixed bus 默认）。
+  /// 非空批=真消息；空批仅在有 timeout 且到期时出现。
+  Future<List<TeamMessage>> waitBatch({Duration? timeout}) {
     if (_queue.isNotEmpty) {
       return Future.value(_drain());
     }
     final completer = Completer<List<TeamMessage>>();
     _waiter = completer;
-    final timer = Timer(timeout, () {
-      if (!completer.isCompleted) {
-        _waiter = null;
-        completer.complete(const <TeamMessage>[]);
-      }
-    });
-    return completer.future.whenComplete(timer.cancel);
+    Timer? timer;
+    if (timeout != null) {
+      timer = Timer(timeout, () {
+        if (!completer.isCompleted) {
+          _waiter = null;
+          completer.complete(const <TeamMessage>[]);
+        }
+      });
+    }
+    return completer.future.whenComplete(() => timer?.cancel());
   }
 
   List<TeamMessage> drainAll() => _drain();

@@ -31,7 +31,7 @@ void main() {
     expect(res, isNull);
   });
 
-  test('tools/list returns the four bus tools', () async {
+  test('tools/list returns teammate-bus tools', () async {
     final res = await _handler().handle(
       'leader',
       const JsonRpcRequest(id: 1, method: 'tools/list'),
@@ -39,12 +39,52 @@ void main() {
     final names = [
       for (final t in res!.result!['tools'] as List) (t as Map)['name'],
     ];
-    expect(names, containsAll(['send_message', 'wait_for_message', 'finish_task', 'leave']));
+    expect(names, ['list_teammates', 'send_message', 'wait_for_message']);
+  });
+
+  test('list_teammates returns roster with state and unread counts', () async {
+    final bus = TeamBus(launcher: FakeMemberLauncher());
+    final leader = AgentNode.test(
+      memberId: 'team-lead',
+      displayName: 'Team Lead',
+      cli: 'claude',
+      isTeamLead: true,
+      state: MemberState.busy,
+    );
+    final worker = AgentNode.test(
+      memberId: 'developer',
+      displayName: 'Developer',
+      cli: 'opencode',
+      state: MemberState.declared,
+    );
+    bus
+      ..declareMember(leader)
+      ..declareMember(worker);
+    worker.inbox.deliver(
+      TeamMessage(id: '1', from: 'team-lead', to: 'developer', content: 'hi'),
+    );
+    final handler = TeammateBusMcpHandler(bus: bus);
+
+    final res = await handler.handle(
+      'team-lead',
+      const JsonRpcRequest(id: 8, method: 'tools/call', params: {
+        'name': 'list_teammates',
+        'arguments': {},
+      }),
+    );
+
+    final text = (res!.result!['content'] as List).first['text'] as String;
+    expect(text, contains('--- team-lead (self) ---'));
+    expect(text, contains('display_name: Team Lead'));
+    expect(text, contains('cli: claude'));
+    expect(text, contains('--- developer ---'));
+    expect(text, contains('bus.state: declared'));
+    expect(text, contains('bus.unread: 1'));
   });
 
   test('send_message routes to the target member mailbox', () async {
     final bus = TeamBus(launcher: FakeMemberLauncher());
-    final target = AgentNode(memberId: 'worker', state: MemberState.busy);
+    final target = AgentNode.test(memberId: 'worker', state: MemberState.busy);
     bus.declareMember(target);
     final handler = TeammateBusMcpHandler(bus: bus);
 
@@ -63,9 +103,9 @@ void main() {
   test('send_message with to=* broadcasts and materializes declared teammates', () async {
     final launcher = FakeMemberLauncher();
     final bus = TeamBus(launcher: launcher);
-    final leader = AgentNode(memberId: 'team-lead', state: MemberState.busy);
-    final worker = AgentNode(memberId: 'developer', state: MemberState.busy);
-    final declared = AgentNode(memberId: 'reviewer', state: MemberState.declared);
+    final leader = AgentNode.test(memberId: 'team-lead', state: MemberState.busy);
+    final worker = AgentNode.test(memberId: 'developer', state: MemberState.busy);
+    final declared = AgentNode.test(memberId: 'reviewer', state: MemberState.declared);
     bus
       ..declareMember(leader)
       ..declareMember(worker)
@@ -90,36 +130,33 @@ void main() {
     expect(batch.single.from, 'team-lead');
   });
 
-  test('finish_task retires caller and broadcasts; leave retires caller', () async {
-    final bus = TeamBus(launcher: FakeMemberLauncher());
-    final lead = AgentNode(memberId: 'leader', state: MemberState.busy);
-    final w = AgentNode(memberId: 'w', state: MemberState.busy);
-    bus..declareMember(lead)..declareMember(w);
-    final handler = TeammateBusMcpHandler(bus: bus);
-
-    await handler.handle('leader', const JsonRpcRequest(id: 3, method: 'tools/call',
-        params: {'name': 'finish_task', 'arguments': {'result': 'done'}}));
-    expect(lead.state, MemberState.retired);
-    expect(w.inbox.isEmpty, isFalse); // stand-down broadcast
-
-    await handler.handle('w', const JsonRpcRequest(id: 4, method: 'tools/call',
-        params: {'name': 'leave', 'arguments': {}}));
-    expect(w.state, MemberState.retired);
+  test('wait_for_message blocks indefinitely without timeout_ms', () {
+    fakeAsync((async) {
+      final bus = TeamBus(launcher: FakeMemberLauncher());
+      bus.declareMember(AgentNode.test(memberId: 'leader', state: MemberState.busy));
+      final handler = TeammateBusMcpHandler(bus: bus);
+      JsonRpcResponse? res;
+      handler.handle('leader', const JsonRpcRequest(id: 6, method: 'tools/call',
+          params: {'name': 'wait_for_message', 'arguments': {}}))
+        .then((r) => res = r);
+      async.elapse(const Duration(hours: 1));
+      expect(res, isNull); // still blocked
+    });
   });
 
   test('wait_for_message returns a batch when a message is delivered', () {
     fakeAsync((async) {
       final bus = TeamBus(launcher: FakeMemberLauncher());
-      final leader = AgentNode(memberId: 'leader', state: MemberState.busy);
+      final leader = AgentNode.test(memberId: 'leader', state: MemberState.busy);
       bus.declareMember(leader);
       final handler = TeammateBusMcpHandler(bus: bus);
 
       JsonRpcResponse? res;
       handler.handle('leader', const JsonRpcRequest(id: 5, method: 'tools/call',
-          params: {'name': 'wait_for_message', 'arguments': {'timeout_ms': 300000}}))
+          params: {'name': 'wait_for_message', 'arguments': {}}))
         .then((r) => res = r);
       async.flushMicrotasks();
-      expect(res, isNull); // blocked
+      expect(res, isNull); // blocked (no timeout)
 
       leader.inbox.deliver(TeamMessage(id: '1', from: 'w', to: 'leader', content: 'reply'));
       async.elapse(const Duration(milliseconds: 50));
@@ -137,19 +174,5 @@ void main() {
     expect(entry['type'], 'http');
     expect(entry['url'], 'http://127.0.0.1:54321/mcp');
     expect((entry['headers'] as Map)['X-Member'], 'worker-1');
-  });
-
-  test('wait_for_message returns EMPTY sentinel on timeout', () {
-    fakeAsync((async) {
-      final bus = TeamBus(launcher: FakeMemberLauncher());
-      bus.declareMember(AgentNode(memberId: 'leader', state: MemberState.busy));
-      final handler = TeammateBusMcpHandler(bus: bus);
-      JsonRpcResponse? res;
-      handler.handle('leader', const JsonRpcRequest(id: 6, method: 'tools/call',
-          params: {'name': 'wait_for_message', 'arguments': {'timeout_ms': 1000}}))
-        .then((r) => res = r);
-      async.elapse(const Duration(milliseconds: 1000));
-      expect(((res!.result!['content'] as List).first as Map)['text'], contains('EMPTY'));
-    });
   });
 }

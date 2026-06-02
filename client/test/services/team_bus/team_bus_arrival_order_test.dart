@@ -10,7 +10,7 @@ void main() {
   test('order A: message arrives while busy, idle edge then rings doorbell', () async {
     final launcher = FakeMemberLauncher();
     final bus = TeamBus(launcher: launcher);
-    final node = AgentNode(memberId: 'leader', state: MemberState.busy);
+    final node = AgentNode.test(memberId: 'leader', state: MemberState.busy);
     bus.declareMember(node);
 
     await bus.send(TeamMessage(id: '1', from: 'w', to: 'leader', content: 'x'));
@@ -21,18 +21,19 @@ void main() {
     expect(node.state, MemberState.busy);
   });
 
-  test('order B: idle first (empty), message later → enqueue + doorbell', () async {
+  test('order B: idle edge with empty inbox rings coordination doorbell', () async {
     final launcher = FakeMemberLauncher();
     final bus = TeamBus(launcher: launcher);
-    final node = AgentNode(memberId: 'leader', state: MemberState.busy);
+    final node = AgentNode.test(memberId: 'leader', state: MemberState.busy);
     bus.declareMember(node);
 
-    bus.onMemberIdle('leader'); // empty → idle, no wake
-    expect(node.state, MemberState.idle);
-    expect(launcher.woken, isEmpty);
+    bus.onMemberIdle('leader');
+    expect(node.state, MemberState.busy);
+    expect(launcher.woken.single.notice, TeamBus.coordinationLoopNotice);
 
     await bus.send(TeamMessage(id: '1', from: 'w', to: 'leader', content: 'x'));
-    expect(launcher.woken.single.memberId, 'leader');
+    expect(launcher.woken.length, 1); // send to busy: enqueue only
+    expect(node.inbox.isEmpty, isFalse);
     expect(node.state, MemberState.busy);
   });
 
@@ -40,7 +41,7 @@ void main() {
     fakeAsync((async) {
       final launcher = FakeMemberLauncher();
       final bus = TeamBus(launcher: launcher);
-      final node = AgentNode(memberId: 'leader', state: MemberState.busy);
+      final node = AgentNode.test(memberId: 'leader', state: MemberState.busy);
       bus.declareMember(node);
 
       List<TeamMessage>? got;

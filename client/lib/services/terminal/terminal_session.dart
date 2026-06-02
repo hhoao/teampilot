@@ -14,6 +14,7 @@ import 'pty_launch_environment.dart';
 import 'terminal_transport.dart';
 import '../../models/team_config.dart';
 import '../team/terminal_activity_tracker.dart';
+import '../team_bus/bus_user_line_capture.dart';
 import '../../utils/first_user_line_capture.dart';
 import '../../utils/logger.dart';
 import 'terminal_theme_mapper.dart';
@@ -86,6 +87,7 @@ class TerminalSession {
   StreamSubscription<String>? _outputSubscription;
   StreamSubscription<Uint8List>? _engineOutputSubscription;
   FirstUserLineCapture? _firstUserLineCapture;
+  BusUserLineCapture? _busUserLineCapture;
   Timer? _confirmFallbackTimer;
   Timer? _startupDeadlineTimer;
   Timer? _ptyGeometryTimer;
@@ -170,6 +172,7 @@ class TerminalSession {
     void Function(String message)? onProcessFailed,
     VoidCallback? onProcessExited,
     void Function(String line)? onFirstUserLineSubmitted,
+    BusUserInputRouting? busUserInputRouting,
   }) {
     if (_running || _starting) {
       disconnect();
@@ -262,12 +265,16 @@ class TerminalSession {
     _firstUserLineCapture = onFirstUserLineSubmitted == null
         ? null
         : FirstUserLineCapture(onFirstUserLineSubmitted);
+    _busUserLineCapture = busUserInputRouting == null
+        ? null
+        : BusUserLineCapture(busUserInputRouting);
 
     _engineOutputSubscription?.cancel();
     _engineOutputSubscription = engine.output.listen((Uint8List data) {
       _firstUserLineCapture?.feed(utf8.decode(data));
-      if (_transportReadyForIo && _transport != null) {
-        _transport!.write(data);
+      final forward = _busUserLineCapture?.filter(data) ?? data;
+      if (forward.isNotEmpty && _transportReadyForIo && _transport != null) {
+        _transport!.write(forward);
       }
     });
 
@@ -323,6 +330,7 @@ class TerminalSession {
     _beginStartup(executable);
 
     _firstUserLineCapture = null;
+    _busUserLineCapture = null;
 
     _engineOutputSubscription?.cancel();
     _engineOutputSubscription = engine.output.listen((Uint8List data) {
@@ -719,6 +727,7 @@ class TerminalSession {
     _onProcessExited = null;
     _ptyEnvironment = null;
     _firstUserLineCapture = null;
+    _busUserLineCapture = null;
     _engineOutputSubscription?.cancel();
     _engineOutputSubscription = null;
     _transport?.close();
