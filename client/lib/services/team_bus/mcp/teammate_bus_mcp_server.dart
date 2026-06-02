@@ -110,28 +110,75 @@ class TeammateBusMcpServer {
     await response.flush();
 
     final progressToken = _progressToken(rpc);
-    final keepalive = Timer.periodic(progressInterval, (_) {
-      // 注释保活（保 TCP）+ progress（为 opencode 续 30s 超时）。
-      response.write(': ping\n\n');
-      if (progressToken != null) {
-        response.write(
-          'event: message\ndata: ${jsonEncode({
-            'jsonrpc': '2.0',
-            'method': 'notifications/progress',
-            'params': {'progressToken': progressToken, 'progress': 0},
-          })}\n\n',
+    // 诊断：坐实 leader(claude) 的 wait_for_message 为何会断 —— 记录开流、每次
+    // keepalive 的耗时、keepalive 写失败(=客户端断开)的精确秒数、以及结果是否
+    // 写得回去。Stopwatch 避免依赖墙钟。
+    final sw = Stopwatch()..start();
+    var pings = 0;
+    var disconnectAtSec = -1;
+    appLogger.i(
+      '[teammate-bus-mcp] stream open member=$member '
+      'tool=${rpc.params['name']} id=${rpc.id} '
+      'progressToken=${progressToken != null} '
+      'interval=${progressInterval.inSeconds}s',
+    );
+
+    final keepalive = Timer.periodic(progressInterval, (timer) async {
+      pings++;
+      try {
+        // 注释保活（保 TCP）+ progress（为 opencode 续 30s 超时）。
+        response.write(': ping\n\n');
+        if (progressToken != null) {
+          response.write(
+            'event: message\ndata: ${jsonEncode({
+              'jsonrpc': '2.0',
+              'method': 'notifications/progress',
+              'params': {'progressToken': progressToken, 'progress': 0},
+            })}\n\n',
+          );
+        }
+        await response.flush();
+        appLogger.d(
+          '[teammate-bus-mcp] keepalive #$pings member=$member '
+          't=${sw.elapsed.inSeconds}s',
         );
+      } catch (e) {
+        disconnectAtSec = sw.elapsed.inSeconds;
+        appLogger.w(
+          '[teammate-bus-mcp] keepalive write FAILED member=$member '
+          'after ${disconnectAtSec}s (#$pings pings, progressToken='
+          '${progressToken != null}) — client dropped the SSE: $e',
+        );
+        timer.cancel();
       }
-      response.flush();
     });
 
     try {
       final res = await handler.handle(member, rpc);
-      response.write('event: message\ndata: ${res!.encode()}\n\n');
-      await response.flush();
+      try {
+        response.write('event: message\ndata: ${res!.encode()}\n\n');
+        await response.flush();
+        appLogger.i(
+          '[teammate-bus-mcp] stream delivered result member=$member '
+          't=${sw.elapsed.inSeconds}s pings=$pings',
+        );
+      } catch (e) {
+        appLogger.w(
+          '[teammate-bus-mcp] result write FAILED member=$member '
+          't=${sw.elapsed.inSeconds}s — client gone, this message was '
+          'consumed but NOT delivered (potential loss): $e',
+        );
+      }
     } finally {
       keepalive.cancel();
-      await response.close();
+      appLogger.i(
+        '[teammate-bus-mcp] stream closed member=$member '
+        'total=${sw.elapsed.inSeconds}s pings=$pings '
+        'disconnectAt=${disconnectAtSec < 0 ? 'n/a' : '${disconnectAtSec}s'}',
+      );
+      try {
+        await response.close();
+      } catch (_) {}
     }
   }
 
