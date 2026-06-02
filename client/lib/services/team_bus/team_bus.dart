@@ -4,6 +4,7 @@ import 'package:uuid/uuid.dart';
 
 import '../../utils/logger.dart';
 import 'agent_node.dart';
+import 'idle_notification.dart';
 import 'member_launcher.dart';
 import 'persistence/bus_message_page.dart';
 import 'persistence/bus_message_store.dart';
@@ -43,10 +44,14 @@ class TeamBus {
   final Map<String, AgentNode> _members = {};
   final Set<String> _waitingForMessage = {};
   final Map<String, DateTime> _lastCoordinationWake = {};
+  final Map<String, DateTime> _lastIdleLeaderNotify = {};
   TeamSessionContext? _sessionContext;
 
   /// 空信箱 coordination 门铃最短间隔（Stop hook + 终端 watcher 会叠打）。
   static const coordinationWakeCooldown = Duration(seconds: 30);
+
+  /// worker idle → leader mailbox：Stop + watcher 叠打防抖。
+  static const idleLeaderNotifyCooldown = Duration(seconds: 10);
 
   void installSessionContext(TeamSessionContext context) {
     _sessionContext = context;
@@ -190,6 +195,65 @@ class TeamBus {
     unawaited(store.append(memberId, message));
   }
 
+  /// 投递 + 若成员已 idle 且未在 wait，doorbell 拉去读信箱。
+  void _deliverToMember(String memberId, TeamMessage message) {
+    final node = _members[memberId];
+    if (node == null) return;
+    _deliverToInbox(memberId, message);
+    _wakeMemberForMail(memberId);
+  }
+
+  void _wakeMemberForMail(String memberId) {
+    if (_waitingForMessage.contains(memberId)) return;
+    final node = _members[memberId];
+    if (node == null) return;
+    if (node.state == MemberState.declared ||
+        node.state == MemberState.materializing ||
+        node.state == MemberState.retired ||
+        node.state == MemberState.dead) {
+      return;
+    }
+    node.state = MemberState.busy;
+    _launcher.wake(memberId, doorbellNotice);
+  }
+
+  String? _teamLeadMemberId() {
+    for (final node in _members.values) {
+      if (node.profile.isTeamLead) return node.memberId;
+    }
+    return null;
+  }
+
+  /// Claude Code 对齐：worker turn 结束 idle → leader 信箱 `idle_notification`。
+  void _notifyLeaderOnMemberIdle(String workerMemberId) {
+    final worker = _members[workerMemberId];
+    if (worker == null || worker.profile.isTeamLead) return;
+    final leaderId = _teamLeadMemberId();
+    if (leaderId == null || leaderId == workerMemberId) return;
+
+    final last = _lastIdleLeaderNotify[workerMemberId];
+    if (last != null &&
+        DateTime.now().difference(last) < idleLeaderNotifyCooldown) {
+      return;
+    }
+    _lastIdleLeaderNotify[workerMemberId] = DateTime.now();
+
+    final body = IdleNotification.fromWorker(
+      memberId: workerMemberId,
+      displayName: worker.profile.effectiveDisplayName,
+    ).encode();
+
+    _deliverToMember(
+      leaderId,
+      TeamMessage(
+        id: _idGenerator(),
+        from: workerMemberId,
+        to: leaderId,
+        content: body,
+      ),
+    );
+  }
+
   /// UI 用户在成员 wait 期间提交的一行 → 信箱（`from: user`）。
   void deliverUserCommand(String memberId, String content) {
     final trimmed = content.trim();
@@ -200,7 +264,7 @@ class TeamBus {
         node.state == MemberState.dead) {
       return;
     }
-    _deliverToInbox(
+    _deliverToMember(
       memberId,
       TeamMessage(
         id: _idGenerator(),
@@ -211,10 +275,6 @@ class TeamBus {
     );
     if (_waitingForMessage.contains(memberId)) {
       return; // in-loop: mailbox debounce 唤醒 waiter
-    }
-    if (node.state == MemberState.idle) {
-      node.state = MemberState.busy;
-      _launcher.wake(memberId, doorbellNotice);
     }
   }
 
@@ -257,23 +317,24 @@ class TeamBus {
     }
   }
 
-  /// idle 边（Stop hook / 终端 watcher）：不收工，门铃拉回 wait_for_message 循环。
+  /// idle 边（Stop hook / 终端 watcher）：worker → leader 通知 + 自我门铃。
   void onMemberIdle(String memberId) {
     final node = _members[memberId];
     if (node == null) return;
     if (node.state == MemberState.retired || node.state == MemberState.dead) {
       return;
     }
-    // 尚未 spawn PTY（仅 declared / 物化中）— 不能 doorbell。
     if (node.state == MemberState.declared ||
         node.state == MemberState.materializing) {
       return;
     }
-    // 已在 MCP wait_for_message：信箱 debounce 会唤醒，勿再 writeln 污染 PTY 输入框。
     if (_waitingForMessage.contains(memberId)) {
       return;
     }
-    node.state = MemberState.busy;
+
+    _notifyLeaderOnMemberIdle(memberId);
+
+    node.state = MemberState.idle;
     if (node.inbox.isEmpty) {
       final last = _lastCoordinationWake[memberId];
       if (last != null &&
@@ -281,9 +342,11 @@ class TeamBus {
         return;
       }
       _lastCoordinationWake[memberId] = DateTime.now();
+      node.state = MemberState.busy;
       _launcher.wake(node.memberId, coordinationLoopNotice);
       return;
     }
+    node.state = MemberState.busy;
     _launcher.wake(node.memberId, doorbellNotice);
   }
 

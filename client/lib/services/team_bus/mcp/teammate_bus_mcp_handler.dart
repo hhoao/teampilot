@@ -1,4 +1,5 @@
 import '../persistence/bus_message_page.dart';
+import '../idle_notification.dart';
 import '../team_bus.dart';
 import '../team_message.dart';
 import '../teammate_snapshot.dart';
@@ -250,6 +251,10 @@ class TeammateBusMcpHandler {
   String _formatMessage(TeamMessage m) {
     if (m.from == TeamBus.userSenderId) {
       return 'FROM user (operator):\n${m.content}';
+    }
+    final idle = IdleNotification.parseTeamMessageContent(m.content);
+    if (idle != null) {
+      return 'FROM ${m.from}:\n${idle.formatForLeader()}';
     }
     return 'FROM ${m.from}:\n${m.content}';
   }

@@ -56,6 +56,8 @@ You orchestrate teammates via teammate-bus MCP. **Never stand down** — there i
 4. Handle the batch, then go back to step 3. **Always** return to `wait_for_message` after handling.
 
 While you are inside `wait_for_message`, the human types in TeamPilot — that text is **not** raw stdin; it arrives in your next batch as `FROM user (operator):`. After every turn, call `wait_for_message` immediately. Stop-hook / bus stdin nudges mean: call `wait_for_message` now.
+
+**Idle notifications:** when a worker finishes a turn, the bus auto-delivers `IDLE NOTIFICATION from <member>` to your mailbox (Claude-style). Treat as "teammate is available" — assign with `send_message` or pull via `wait_for_message` / `read_messages`. Use explicit `send_message` from workers for task **results**, not only idle pings.
 ''';
 
   /// Appended to mixed-mode **worker** [role.md] (bus coordination via MCP).
