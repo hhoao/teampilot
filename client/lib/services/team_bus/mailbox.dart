@@ -9,6 +9,7 @@ class Mailbox {
 
   final Duration _debounce;
   final List<TeamMessage> _queue = [];
+  final Set<String> _queuedIds = {};
   Completer<List<TeamMessage>>? _waiter;
   Timer? _flushTimer;
 
@@ -16,16 +17,29 @@ class Mailbox {
 
   int get unreadCount => _queue.length;
 
-  /// 投递。有等待者→debounce 后批量唤醒；否则入队。
+  /// 投递。有等待者→debounce 后批量唤醒；否则入队。按 [TeamMessage.id] 去重。
   void deliver(TeamMessage message) {
+    if (_queuedIds.contains(message.id)) return;
+    _queuedIds.add(message.id);
     _queue.add(message);
-    if (_waiter == null) return; // 没人等：留在队列
+    if (_waiter == null) return;
     _flushTimer?.cancel();
     _flushTimer = Timer(_debounce, _flush);
   }
 
+  /// 从热队列移除（冷层已 mark read 时避免 wait 重复投递）。
+  void removeByIds(Set<String> ids) {
+    if (ids.isEmpty) return;
+    _queue.removeWhere((m) {
+      if (ids.contains(m.id)) {
+        _queuedIds.remove(m.id);
+        return true;
+      }
+      return false;
+    });
+  }
+
   /// 阻塞到有消息；[timeout] 为 null 时无限等待（mixed bus 默认）。
-  /// 非空批=真消息；空批仅在有 timeout 且到期时出现。
   Future<List<TeamMessage>> waitBatch({Duration? timeout}) {
     if (_queue.isNotEmpty) {
       return Future.value(_drain());
@@ -46,9 +60,14 @@ class Mailbox {
 
   List<TeamMessage> drainAll() => _drain();
 
+  List<TeamMessage> peekAll() => List<TeamMessage>.unmodifiable(_queue);
+
   List<TeamMessage> _drain() {
     final batch = List<TeamMessage>.unmodifiable(_queue);
     _queue.clear();
+    for (final m in batch) {
+      _queuedIds.remove(m.id);
+    }
     return batch;
   }
 

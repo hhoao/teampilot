@@ -20,6 +20,7 @@ import '../services/team/member_presence_service.dart';
 import '../services/storage/app_storage.dart';
 import '../services/session/session_lifecycle_service.dart';
 import '../services/team_bus/agent_node.dart';
+import '../services/team_bus/persistence/bus_message_store_factory.dart';
 import '../services/team_bus/teammate_roster_profile.dart';
 import '../services/team_bus/chat_cubit_member_launcher.dart';
 import '../services/team_bus/mcp/teammate_bus_mcp_config.dart';
@@ -596,6 +597,7 @@ class ChatCubit extends Cubit<ChatState> implements MemberMaterializer {
             materializer: this,
             sessionId: info.id,
           ),
+          messageStore: BusMessageStoreFactory.forSession(session.sessionId),
         );
         final cliTeamName = session.cliTeamName;
         bus.installSessionContext(
@@ -630,6 +632,7 @@ class ChatCubit extends Cubit<ChatState> implements MemberMaterializer {
             ),
           );
         }
+        await bus.rehydrateUnread();
         final server = TeammateBusMcpServer(
           handler: TeammateBusMcpHandler(bus: bus),
         );

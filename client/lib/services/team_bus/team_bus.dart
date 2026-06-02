@@ -1,8 +1,12 @@
+import 'dart:async';
+
 import 'package:uuid/uuid.dart';
 
 import '../../utils/logger.dart';
 import 'agent_node.dart';
 import 'member_launcher.dart';
+import 'persistence/bus_message_page.dart';
+import 'persistence/bus_message_store.dart';
 import 'team_message.dart';
 import 'teammate_roster_profile.dart';
 import 'teammate_snapshot.dart';
@@ -12,9 +16,11 @@ class TeamBus {
   TeamBus({
     required MemberLauncher launcher,
     String Function()? idGenerator,
+    BusMessageStore? messageStore,
     this.maxHop = 8,
   }) : _launcher = launcher,
-       _idGenerator = idGenerator ?? (() => const Uuid().v4());
+       _idGenerator = idGenerator ?? (() => const Uuid().v4()),
+       _messageStore = messageStore;
 
   /// 门铃：信箱有积压时提示 pull。
   static const String doorbellNotice =
@@ -32,6 +38,7 @@ class TeamBus {
 
   final MemberLauncher _launcher;
   final String Function() _idGenerator;
+  final BusMessageStore? _messageStore;
   final int maxHop;
   final Map<String, AgentNode> _members = {};
   final Set<String> _waitingForMessage = {};
@@ -81,7 +88,7 @@ class TeamBus {
           (node) => TeammateSnapshot(
             profile: node.profile,
             state: node.state,
-            unreadCount: node.inbox.unreadCount,
+            unreadCount: _hotUnreadCount(node),
             waitingForMessage: _waitingForMessage.contains(node.memberId),
             ptyRunning: ptyRunningForState(node.state),
           ),
@@ -111,10 +118,76 @@ class TeamBus {
     _waitingForMessage.add(memberId);
     _lastCoordinationWake.remove(memberId);
     try {
-      return await node.inbox.waitBatch(timeout: timeout);
+      final batch = await node.inbox.waitBatch(timeout: timeout);
+      if (batch.isNotEmpty) {
+        await _messageStore?.markRead(memberId, batch.map((m) => m.id));
+      }
+      return batch;
     } finally {
       _waitingForMessage.remove(memberId);
     }
+  }
+
+  /// 分页读邮件（冷层 + 可选 mark read）；默认只读未读。
+  Future<BusMessagePage> readMessages(
+    String memberId, {
+    String? afterId,
+    int limit = 20,
+    bool unreadOnly = true,
+    bool markRead = false,
+  }) async {
+    final store = _messageStore;
+    if (store == null) {
+      final node = _members[memberId];
+      final hot = node?.inbox.peekAll() ?? const <TeamMessage>[];
+      return BusMessagePage(
+        messages: hot,
+        hasMore: false,
+        totalUnread: hot.length,
+      );
+    }
+    final page = await store.readPage(
+      memberId,
+      afterId: afterId,
+      limit: limit,
+      unreadOnly: unreadOnly,
+      markRead: markRead,
+    );
+    if (markRead && page.messages.isNotEmpty) {
+      _members[memberId]?.inbox.removeByIds(
+        page.messages.map((m) => m.id).toSet(),
+      );
+    }
+    return page;
+  }
+
+  /// 打开 session：冷层未读 → 热层信箱（dedupe）。
+  Future<void> rehydrateUnread() async {
+    final store = _messageStore;
+    if (store == null) return;
+    for (final memberId in _members.keys) {
+      final unread = await store.loadUnread(memberId);
+      for (final message in unread) {
+        _members[memberId]?.inbox.deliver(message);
+      }
+    }
+  }
+
+  Future<int> unreadCountFor(String memberId) async {
+    final store = _messageStore;
+    if (store != null) {
+      return store.unreadCount(memberId);
+    }
+    return _members[memberId]?.inbox.unreadCount ?? 0;
+  }
+
+  int _hotUnreadCount(AgentNode node) => node.inbox.unreadCount;
+
+  void _deliverToInbox(String memberId, TeamMessage message) {
+    _members[memberId]?.inbox.deliver(message);
+    final store = _messageStore;
+    if (store == null) return;
+    unawaited(store.append(memberId, message));
   }
 
   /// UI 用户在成员 wait 期间提交的一行 → 信箱（`from: user`）。
@@ -127,7 +200,8 @@ class TeamBus {
         node.state == MemberState.dead) {
       return;
     }
-    node.inbox.deliver(
+    _deliverToInbox(
+      memberId,
       TeamMessage(
         id: _idGenerator(),
         from: userSenderId,
@@ -165,13 +239,13 @@ class TeamBus {
         target.state = MemberState.materializing;
         await _launcher.materialize(target.memberId, message);
         target.state = MemberState.busy;
-        target.inbox.deliver(message);
+        _deliverToInbox(target.memberId, message);
         _launcher.wake(target.memberId, doorbellNotice);
       case MemberState.materializing:
       case MemberState.busy:
-        target.inbox.deliver(message);
+        _deliverToInbox(target.memberId, message);
       case MemberState.idle:
-        target.inbox.deliver(message);
+        _deliverToInbox(target.memberId, message);
         target.state = MemberState.busy;
         _launcher.wake(target.memberId, doorbellNotice);
       case MemberState.retired:
@@ -250,7 +324,8 @@ class TeamBus {
           node.state == MemberState.dead) {
         continue;
       }
-      node.inbox.deliver(
+      _deliverToInbox(
+        node.memberId,
         message.copyWith(
           id: _idGenerator(),
           to: node.memberId,

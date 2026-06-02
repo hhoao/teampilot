@@ -39,7 +39,12 @@ void main() {
     final names = [
       for (final t in res!.result!['tools'] as List) (t as Map)['name'],
     ];
-    expect(names, ['list_teammates', 'send_message', 'wait_for_message']);
+    expect(names, [
+      'list_teammates',
+      'send_message',
+      'read_messages',
+      'wait_for_message',
+    ]);
   });
 
   test('list_teammates returns roster with state and unread counts', () async {

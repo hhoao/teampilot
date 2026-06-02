@@ -1,3 +1,4 @@
+import '../persistence/bus_message_page.dart';
 import '../team_bus.dart';
 import '../team_message.dart';
 import '../teammate_snapshot.dart';
@@ -77,6 +78,24 @@ class TeammateBusMcpHandler {
       },
     },
     {
+      'name': 'read_messages',
+      'description':
+          'Page through persisted mailbox (unread by default). Use after_id '
+          'from the previous page for pagination. Set mark_read=true to '
+          'consume without blocking in wait_for_message.',
+      'inputSchema': {
+        'type': 'object',
+        'additionalProperties': false,
+        'properties': {
+          'after_id': {'type': 'string'},
+          'limit': {'type': 'integer', 'minimum': 1, 'maximum': 100},
+          'unread_only': {'type': 'boolean'},
+          'mark_read': {'type': 'boolean'},
+        },
+        'required': <String>[],
+      },
+    },
+    {
       'name': 'wait_for_message',
       'description':
           'Block until teammate or user (operator) messages arrive (returns a batch). '
@@ -114,6 +133,19 @@ class TeammateBusMcpHandler {
           await _bus.send(message);
         }
         return _ok(req.id, 'sent');
+      case 'read_messages':
+        final afterId = (args['after_id'] as String?)?.trim();
+        final limit = (args['limit'] as num?)?.toInt() ?? 20;
+        final unreadOnly = args['unread_only'] as bool? ?? true;
+        final markRead = args['mark_read'] as bool? ?? true;
+        final page = await _bus.readMessages(
+          memberId,
+          afterId: afterId?.isEmpty == true ? null : afterId,
+          limit: limit,
+          unreadOnly: unreadOnly,
+          markRead: markRead,
+        );
+        return _ok(req.id, _encodeMessagePage(page));
       case 'wait_for_message':
         final batch = await _bus.receive(memberId);
         return _ok(req.id, _encodeBatch(batch));
@@ -189,6 +221,23 @@ class TeammateBusMcpHandler {
       'pty.running: ${t.ptyRunning}',
     ];
     return lines.join('\n');
+  }
+
+  String _encodeMessagePage(BusMessagePage page) {
+    if (page.messages.isEmpty) {
+      return 'No messages (total_unread=${page.totalUnread}).';
+    }
+    final buffer = StringBuffer(
+      'Messages (${page.messages.length}, total_unread=${page.totalUnread}, '
+      'has_more=${page.hasMore}',
+    );
+    if (page.nextAfterId != null) {
+      buffer.write(', next_after_id=${page.nextAfterId}');
+    }
+    buffer.writeln('):');
+    buffer.writeln();
+    buffer.write(page.messages.map(_formatMessage).join('\n\n---\n\n'));
+    return buffer.toString().trimRight();
   }
 
   String _encodeBatch(List<TeamMessage> batch) {
