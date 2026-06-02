@@ -33,13 +33,13 @@ void main() {
             displayName: 'Lead',
             isTeamLead: true,
           ),
-          state: MemberState.busy,
+          lifecycle: MemberLifecycle.running, activity: MemberActivity.active,
         ),
       )
       ..declareMember(
         AgentNode(
           profile: TeammateRosterProfile.minimal('developer', displayName: 'Dev'),
-          state: MemberState.busy,
+          lifecycle: MemberLifecycle.running, activity: MemberActivity.active,
         ),
       );
 
@@ -58,7 +58,7 @@ void main() {
     bus.declareMember(
       AgentNode(
         profile: TeammateRosterProfile.minimal('team-lead', isTeamLead: true),
-        state: MemberState.busy,
+        lifecycle: MemberLifecycle.running, activity: MemberActivity.active,
       ),
     );
 
@@ -73,13 +73,13 @@ void main() {
       ..declareMember(
         AgentNode(
           profile: TeammateRosterProfile.minimal('team-lead', isTeamLead: true),
-          state: MemberState.busy,
+          lifecycle: MemberLifecycle.running, activity: MemberActivity.active,
         ),
       )
       ..declareMember(
         AgentNode(
           profile: const TeammateRosterProfile(memberId: 'developer'),
-          state: MemberState.busy,
+          lifecycle: MemberLifecycle.running, activity: MemberActivity.active,
         ),
       );
 

@@ -26,7 +26,7 @@ void main() {
           displayName: 'Lead',
           cli: 'claude',
           isTeamLead: true,
-          state: MemberState.busy,
+          lifecycle: MemberLifecycle.running, activity: MemberActivity.active,
         ),
       )
       ..declareMember(
@@ -78,7 +78,7 @@ void main() {
 
   test('listTeammates reports unread mailbox count', () {
     final bus = TeamBus(launcher: FakeMemberLauncher());
-    bus.declareMember(AgentNode.test(memberId: 'leader', state: MemberState.busy));
+    bus.declareMember(AgentNode.test(memberId: 'leader', lifecycle: MemberLifecycle.running, activity: MemberActivity.active));
     bus.memberById('leader')!.inbox.deliver(
       TeamMessage(id: '1', from: 'w', to: 'leader', content: 'x'),
     );
@@ -86,15 +86,26 @@ void main() {
     expect(bus.listTeammates().single.unreadCount, 1);
   });
 
+  test('declared member with queued mail is mailQueued', () {
+    final bus = TeamBus(launcher: FakeMemberLauncher());
+    bus.declareMember(AgentNode.test(memberId: 'developer'));
+    bus.deliverUserCommand('developer', 'hi');
+
+    final snap = bus.listTeammates().single;
+    expect(snap.activity, MemberActivity.mailQueued);
+    expect(snap.busPhaseLabel, 'no_pty · mail_queued');
+  });
+
   test('listTeammates reflects waiting flag while blocked in receive', () async {
     final bus = TeamBus(launcher: FakeMemberLauncher());
-    bus.declareMember(AgentNode.test(memberId: 'leader', state: MemberState.busy));
+    bus.declareMember(AgentNode.test(memberId: 'leader', lifecycle: MemberLifecycle.running, activity: MemberActivity.active));
 
     final waiting = bus.receive('leader');
     await Future<void>.delayed(Duration.zero);
 
     final snap = bus.listTeammates().single;
     expect(snap.unreadCount, 0);
+    expect(snap.activity, MemberActivity.turnDoneBusWait);
     expect(snap.waitingForMessage, isTrue);
 
     bus.memberById('leader')!.inbox.deliver(
@@ -102,7 +113,7 @@ void main() {
     );
     final batch = await waiting;
     expect(batch, hasLength(1));
-    expect(bus.listTeammates().single.waitingForMessage, isFalse);
+    expect(bus.listTeammates().single.activity, MemberActivity.active);
   });
 
   test('handler list_teammates includes team header and member fields', () async {
@@ -132,7 +143,7 @@ void main() {
             cwd: '/tmp/ws',
             taskId: 'lead-task',
           ),
-          state: MemberState.busy,
+          lifecycle: MemberLifecycle.running, activity: MemberActivity.active,
         ),
       )
       ..declareMember(
@@ -148,7 +159,7 @@ void main() {
             cliTeamName: 'demo-1',
             cwd: '/tmp/ws',
           ),
-          state: MemberState.declared,
+          lifecycle: MemberLifecycle.declared,
         ),
       );
     bus.memberById('developer')!.inbox.deliver(
@@ -175,6 +186,8 @@ void main() {
     expect(text, contains('agentId: developer@demo-1'));
     expect(text, contains('agentType: implementer'));
     expect(text, contains('cli: opencode'));
+    expect(text, contains('bus.activity: active'));
+    expect(text, contains('bus.phase: in_turn'));
     expect(text, contains('bus.unread: 1'));
     expect(text, contains('pty.running: false'));
   });

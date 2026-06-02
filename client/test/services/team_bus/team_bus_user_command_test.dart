@@ -10,7 +10,7 @@ void main() {
   test('isWaitingForMessage tracks receive lifecycle', () {
     fakeAsync((async) {
       final bus = TeamBus(launcher: FakeMemberLauncher());
-      bus.declareMember(AgentNode.test(memberId: 'leader', state: MemberState.busy));
+      bus.declareMember(AgentNode.test(memberId: 'leader', lifecycle: MemberLifecycle.running, activity: MemberActivity.active));
 
       expect(bus.isWaitingForMessage('leader'), isFalse);
 
@@ -29,7 +29,7 @@ void main() {
 
   test('deliverUserCommand enqueues for later wait when not parked', () async {
     final bus = TeamBus(launcher: FakeMemberLauncher());
-    final node = AgentNode.test(memberId: 'leader', state: MemberState.busy);
+    final node = AgentNode.test(memberId: 'leader', lifecycle: MemberLifecycle.running, activity: MemberActivity.active);
     bus.declareMember(node);
 
     bus.deliverUserCommand('leader', 'hello');

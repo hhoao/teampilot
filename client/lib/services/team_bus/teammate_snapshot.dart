@@ -1,26 +1,36 @@
 import 'agent_node.dart';
 import 'teammate_roster_profile.dart';
 
-/// MCP `list_teammates` 返回的成员快照（配置 + bus 运行时）。
+/// MCP `list_teammates` 返回的成员快照。
 class TeammateSnapshot {
   const TeammateSnapshot({
     required this.profile,
-    required this.state,
+    required this.lifecycle,
+    required this.activity,
     required this.unreadCount,
-    required this.waitingForMessage,
-    required this.ptyRunning,
   });
 
   final TeammateRosterProfile profile;
-  final MemberState state;
+  final MemberLifecycle lifecycle;
+  final MemberActivity activity;
   final int unreadCount;
-  final bool waitingForMessage;
-  final bool ptyRunning;
 
   String get memberId => profile.memberId;
+
+  bool get waitingForMessage => activity.isBusWaitBlocked;
+
+  bool get ptyRunning =>
+      lifecycle == MemberLifecycle.materializing ||
+      lifecycle == MemberLifecycle.running;
+
+  bool? get claudeIsActive => switch (lifecycle) {
+    MemberLifecycle.running => activity.claudeIsActive,
+    _ => null,
+  };
+
+  String get busPhaseLabel => activity.busPhaseLabel;
 }
 
-/// MCP `list_teammates` 完整响应（团队头 + 成员列表）。
 class TeamRosterSnapshot {
   const TeamRosterSnapshot({
     this.team,

@@ -31,7 +31,10 @@ void main() {
     await server.stop();
   });
 
-  Future<Map<String, Object?>> rpc(String member, Map<String, Object?> body) async {
+  Future<Map<String, Object?>> rpc(
+    String member,
+    Map<String, Object?> body,
+  ) async {
     final req = await client.postUrl(server.endpoint);
     req.headers.set('content-type', 'application/json');
     req.headers.set('accept', 'application/json, text/event-stream');
@@ -47,51 +50,88 @@ void main() {
     return jsonDecode(text) as Map<String, Object?>;
   }
 
-  test('initialize over real HTTP returns protocol + tools capability', () async {
-    final res = await rpc('leader', {'jsonrpc': '2.0', 'id': 0, 'method': 'initialize'});
-    expect((res['result'] as Map)['protocolVersion'], '2025-06-18');
-  });
+  test(
+    'initialize over real HTTP returns protocol + tools capability',
+    () async {
+      final res = await rpc('leader', {
+        'jsonrpc': '2.0',
+        'id': 0,
+        'method': 'initialize',
+      });
+      expect((res['result'] as Map)['protocolVersion'], '2025-06-18');
+    },
+  );
 
   test('send_message via HTTP routes by X-Member header', () async {
-    final target = AgentNode.test(memberId: 'worker', state: MemberState.busy);
+    final target = AgentNode.test(
+      memberId: 'worker',
+      lifecycle: MemberLifecycle.running,
+      activity: MemberActivity.active,
+    );
     bus.declareMember(target);
     await rpc('leader', {
-      'jsonrpc': '2.0', 'id': 1, 'method': 'tools/call',
-      'params': {'name': 'send_message', 'arguments': {'to': 'worker', 'content': 'hi'}},
+      'jsonrpc': '2.0',
+      'id': 1,
+      'method': 'tools/call',
+      'params': {
+        'name': 'send_message',
+        'arguments': {'to': 'worker', 'content': 'hi'},
+      },
     });
     expect(target.inbox.isEmpty, isFalse);
   });
 
-  test('POST /idle nudges member back to wait_for_message via doorbell', () async {
-    final node = AgentNode.test(memberId: 'leader', state: MemberState.busy);
-    bus.declareMember(node);
-
-    final req = await client.postUrl(
-      Uri.parse('http://127.0.0.1:${server.port}/idle'),
-    );
-    req.headers.set('X-Member', 'leader');
-    final resp = await req.close();
-    await resp.drain<void>();
-
-    expect(resp.statusCode, 204);
-    expect(node.state, MemberState.busy);
-    expect(launcher.woken.single.memberId, 'leader');
-    expect(launcher.woken.single.notice, TeamBus.coordinationLoopNotice);
-  });
-
-  test('wait_for_message streams an SSE result when a message arrives', () async {
-    bus.declareMember(AgentNode.test(memberId: 'leader', state: MemberState.busy));
-    // deliver shortly after the call starts
-    Future.delayed(const Duration(milliseconds: 100), () {
-      bus.memberById('leader')!.inbox.deliver(
-        TeamMessage(id: '1', from: 'w', to: 'leader', content: 'reply'),
+  test(
+    'POST /idle nudges member back to wait_for_message via doorbell',
+    () async {
+      final node = AgentNode.test(
+        memberId: 'leader',
+        lifecycle: MemberLifecycle.running,
+        activity: MemberActivity.active,
       );
-    });
-    final res = await rpc('leader', {
-      'jsonrpc': '2.0', 'id': 2, 'method': 'tools/call',
-      'params': {'name': 'wait_for_message', 'arguments': {}},
-    });
-    final text = ((res['result'] as Map)['content'] as List).first as Map;
-    expect(text['text'], contains('reply'));
-  });
+      bus.declareMember(node);
+
+      final req = await client.postUrl(
+        Uri.parse('http://127.0.0.1:${server.port}/idle'),
+      );
+      req.headers.set('X-Member', 'leader');
+      final resp = await req.close();
+      await resp.drain<void>();
+
+      expect(resp.statusCode, 204);
+      expect(node.activity, MemberActivity.active);
+      expect(launcher.woken.single.memberId, 'leader');
+      expect(launcher.woken.single.notice, TeamBus.coordinationLoopNotice);
+    },
+  );
+
+  test(
+    'wait_for_message streams an SSE result when a message arrives',
+    () async {
+      bus.declareMember(
+        AgentNode.test(
+          memberId: 'leader',
+          lifecycle: MemberLifecycle.running,
+          activity: MemberActivity.active,
+        ),
+      );
+      // deliver shortly after the call starts
+      Future.delayed(const Duration(milliseconds: 100), () {
+        bus
+            .memberById('leader')!
+            .inbox
+            .deliver(
+              TeamMessage(id: '1', from: 'w', to: 'leader', content: 'reply'),
+            );
+      });
+      final res = await rpc('leader', {
+        'jsonrpc': '2.0',
+        'id': 2,
+        'method': 'tools/call',
+        'params': {'name': 'wait_for_message', 'arguments': {}},
+      });
+      final text = ((res['result'] as Map)['content'] as List).first as Map;
+      expect(text['text'], contains('reply'));
+    },
+  );
 }

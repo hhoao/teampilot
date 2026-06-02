@@ -28,7 +28,7 @@ class TeamBus {
       '[teammate-bus] You have unread teammate messages — call '
       'wait_for_message to read them. (From the bus, not your operator.)';
 
-  /// Stop hook / idle 边：禁止收工，立刻回到 wait_for_message（无限阻塞）。
+  /// PTY 已运行、跳出 wait 循环且信箱空：拉回 wait_for_message。
   static const String coordinationLoopNotice =
       '[teammate-bus] Session policy: do not stand down. Call wait_for_message '
       'now (no timeout — blocks until a teammate or user message). (From the '
@@ -42,7 +42,6 @@ class TeamBus {
   final BusMessageStore? _messageStore;
   final int maxHop;
   final Map<String, AgentNode> _members = {};
-  final Set<String> _waitingForMessage = {};
   final Map<String, DateTime> _lastCoordinationWake = {};
   final Map<String, DateTime> _lastIdleLeaderNotify = {};
   TeamSessionContext? _sessionContext;
@@ -59,32 +58,28 @@ class TeamBus {
 
   TeamSessionContext? get sessionContext => _sessionContext;
 
-  static bool ptyRunningForState(MemberState state) => switch (state) {
-    MemberState.declared || MemberState.retired || MemberState.dead => false,
-    MemberState.materializing ||
-    MemberState.busy ||
-    MemberState.idle => true,
-  };
-
+  /// 注册成员 → [MemberLifecycle.declared]。
   void declareMember(AgentNode node) {
     _members[node.memberId] = node;
   }
 
   AgentNode? memberById(String memberId) => _members[memberId];
 
-  /// PTY 已 spawn（用户 connect 或 mailbox 物化后）。
+  /// PTY 已 spawn → [MemberLifecycle.running] + [MemberActivity.turnDoneReady]。
   void markMemberRunning(String memberId) {
     final node = _members[memberId];
     if (node == null) return;
-    if (node.state == MemberState.retired || node.state == MemberState.dead) {
+    if (node.lifecycle == MemberLifecycle.retired ||
+        node.lifecycle == MemberLifecycle.dead) {
       return;
     }
-    node.state = MemberState.busy;
+    node.lifecycle = MemberLifecycle.running;
+    node.activity = MemberActivity.turnDoneReady;
   }
 
-  /// 成员是否正 park 在 MCP `wait_for_message`（UI 用户输入应进 bus 而非 PTY）。
+  /// 成员是否正 park 在 MCP `wait_for_message`。
   bool isWaitingForMessage(String memberId) =>
-      _waitingForMessage.contains(memberId);
+      _members[memberId]?.waitingForMessage ?? false;
 
   /// 全队 roster（MCP `list_teammates`）；leader 在前，其余按 member id 排序。
   TeamRosterSnapshot rosterSnapshot() {
@@ -92,10 +87,9 @@ class TeamBus {
         .map(
           (node) => TeammateSnapshot(
             profile: node.profile,
-            state: node.state,
+            lifecycle: node.lifecycle,
+            activity: node.activity,
             unreadCount: _hotUnreadCount(node),
-            waitingForMessage: _waitingForMessage.contains(node.memberId),
-            ptyRunning: ptyRunningForState(node.state),
           ),
         )
         .toList();
@@ -120,7 +114,9 @@ class TeamBus {
     if (node == null) {
       return Future.value(const <TeamMessage>[]);
     }
-    _waitingForMessage.add(memberId);
+    if (node.lifecycle == MemberLifecycle.running) {
+      node.activity = MemberActivity.turnDoneBusWait;
+    }
     _lastCoordinationWake.remove(memberId);
     try {
       final batch = await node.inbox.waitBatch(timeout: timeout);
@@ -129,7 +125,10 @@ class TeamBus {
       }
       return batch;
     } finally {
-      _waitingForMessage.remove(memberId);
+      if (node.lifecycle == MemberLifecycle.running &&
+          node.activity == MemberActivity.turnDoneBusWait) {
+        node.activity = MemberActivity.active;
+      }
     }
   }
 
@@ -175,6 +174,8 @@ class TeamBus {
       for (final message in unread) {
         _members[memberId]?.inbox.deliver(message);
       }
+      final node = _members[memberId];
+      if (node != null) _syncDeclaredInboxActivity(node);
     }
   }
 
@@ -189,13 +190,23 @@ class TeamBus {
   int _hotUnreadCount(AgentNode node) => node.inbox.unreadCount;
 
   void _deliverToInbox(String memberId, TeamMessage message) {
-    _members[memberId]?.inbox.deliver(message);
+    final node = _members[memberId];
+    if (node == null) return;
+    node.inbox.deliver(message);
+    _syncDeclaredInboxActivity(node);
     final store = _messageStore;
     if (store == null) return;
     unawaited(store.append(memberId, message));
   }
 
-  /// 投递 + 若成员已 idle 且未在 wait，doorbell 拉去读信箱。
+  /// declared 且无 PTY：有信 → [MemberActivity.mailQueued]。
+  void _syncDeclaredInboxActivity(AgentNode node) {
+    if (node.lifecycle != MemberLifecycle.declared) return;
+    node.activity = node.inbox.isEmpty
+        ? MemberActivity.none
+        : MemberActivity.mailQueued;
+  }
+
   void _deliverToMember(String memberId, TeamMessage message) {
     final node = _members[memberId];
     if (node == null) return;
@@ -204,16 +215,12 @@ class TeamBus {
   }
 
   void _wakeMemberForMail(String memberId) {
-    if (_waitingForMessage.contains(memberId)) return;
     final node = _members[memberId];
     if (node == null) return;
-    if (node.state == MemberState.declared ||
-        node.state == MemberState.materializing ||
-        node.state == MemberState.retired ||
-        node.state == MemberState.dead) {
-      return;
-    }
-    node.state = MemberState.busy;
+    if (node.waitingForMessage) return;
+    if (!node.ptyRunning) return;
+    if (node.inbox.isEmpty) return;
+    node.activity = MemberActivity.active;
     _launcher.wake(memberId, doorbellNotice);
   }
 
@@ -224,7 +231,6 @@ class TeamBus {
     return null;
   }
 
-  /// Claude Code 对齐：worker turn 结束 idle → leader 信箱 `idle_notification`。
   void _notifyLeaderOnMemberIdle(String workerMemberId) {
     final worker = _members[workerMemberId];
     if (worker == null || worker.profile.isTeamLead) return;
@@ -260,8 +266,8 @@ class TeamBus {
     if (trimmed.isEmpty) return;
     final node = _members[memberId];
     if (node == null ||
-        node.state == MemberState.retired ||
-        node.state == MemberState.dead) {
+        node.lifecycle == MemberLifecycle.retired ||
+        node.lifecycle == MemberLifecycle.dead) {
       return;
     }
     _deliverToMember(
@@ -273,12 +279,9 @@ class TeamBus {
         content: trimmed,
       ),
     );
-    if (_waitingForMessage.contains(memberId)) {
-      return; // in-loop: mailbox debounce 唤醒 waiter
-    }
   }
 
-  /// 出站（来自成员的 send_message）。按目标状态分流投递。
+  /// 出站投递；按 lifecycle + activity 分流。
   Future<void> send(TeamMessage message) async {
     if (message.hop >= maxHop) {
       appLogger.w(
@@ -294,47 +297,49 @@ class TeamBus {
       );
       return;
     }
-    switch (target.state) {
-      case MemberState.declared:
-        target.state = MemberState.materializing;
+    switch (target.lifecycle) {
+      case MemberLifecycle.declared:
+        target.lifecycle = MemberLifecycle.materializing;
         await _launcher.materialize(target.memberId, message);
-        target.state = MemberState.busy;
+        target.lifecycle = MemberLifecycle.running;
+        target.activity = MemberActivity.active;
         _deliverToInbox(target.memberId, message);
         _launcher.wake(target.memberId, doorbellNotice);
-      case MemberState.materializing:
-      case MemberState.busy:
+      case MemberLifecycle.materializing:
+      case MemberLifecycle.running:
         _deliverToInbox(target.memberId, message);
-      case MemberState.idle:
-        _deliverToInbox(target.memberId, message);
-        target.state = MemberState.busy;
-        _launcher.wake(target.memberId, doorbellNotice);
-      case MemberState.retired:
-      case MemberState.dead:
+        if (target.acceptsImmediateDoorbell) {
+          target.activity = MemberActivity.active;
+          _launcher.wake(target.memberId, doorbellNotice);
+        }
+      case MemberLifecycle.retired:
+      case MemberLifecycle.dead:
         appLogger.w(
           '[team-bus] dropped message ${message.id} to ${target.memberId} '
-          '(state=${target.state.name})',
+          '(lifecycle=${target.lifecycle.name})',
         );
     }
   }
 
-  /// idle 边（Stop hook / 终端 watcher）：worker → leader 通知 + 自我门铃。
+  /// idle 边：turn 结束 → [MemberActivity.turnDoneReady]（或 doorbell → active）。
   void onMemberIdle(String memberId) {
     final node = _members[memberId];
     if (node == null) return;
-    if (node.state == MemberState.retired || node.state == MemberState.dead) {
+    if (node.lifecycle == MemberLifecycle.retired ||
+        node.lifecycle == MemberLifecycle.dead) {
       return;
     }
-    if (node.state == MemberState.declared ||
-        node.state == MemberState.materializing) {
+    if (node.lifecycle == MemberLifecycle.declared ||
+        node.lifecycle == MemberLifecycle.materializing) {
       return;
     }
-    if (_waitingForMessage.contains(memberId)) {
+    if (node.waitingForMessage) {
       return;
     }
 
     _notifyLeaderOnMemberIdle(memberId);
 
-    node.state = MemberState.idle;
+    node.activity = MemberActivity.turnDoneReady;
     if (node.inbox.isEmpty) {
       final last = _lastCoordinationWake[memberId];
       if (last != null &&
@@ -342,23 +347,22 @@ class TeamBus {
         return;
       }
       _lastCoordinationWake[memberId] = DateTime.now();
-      node.state = MemberState.busy;
+      node.activity = MemberActivity.active;
       _launcher.wake(node.memberId, coordinationLoopNotice);
       return;
     }
-    node.state = MemberState.busy;
+    node.activity = MemberActivity.active;
     _launcher.wake(node.memberId, doorbellNotice);
   }
 
-  /// worker 自我退出循环。
+  /// → [MemberLifecycle.retired]（worker 主动收工）。
   void leave(String memberId) {
     final node = _members[memberId];
     if (node == null) return;
-    node.state = MemberState.retired;
+    node.lifecycle = MemberLifecycle.retired;
+    node.activity = MemberActivity.none;
   }
 
-  /// 向除发送方外的所有成员投递；[materializeDeclared] 为 true 时对
-  /// `declared` 成员惰性物化（`send_message(to="*")`），否则跳过（如 stand-down）。
   Future<void> broadcast(
     TeamMessage message, {
     bool materializeDeclared = false,
@@ -366,7 +370,8 @@ class TeamBus {
     if (materializeDeclared) {
       for (final node in _members.values) {
         if (node.memberId == message.from) continue;
-        if (node.state == MemberState.retired || node.state == MemberState.dead) {
+        if (node.lifecycle == MemberLifecycle.retired ||
+            node.lifecycle == MemberLifecycle.dead) {
           continue;
         }
         await send(
@@ -382,9 +387,9 @@ class TeamBus {
 
     for (final node in _members.values) {
       if (node.memberId == message.from) continue;
-      if (node.state == MemberState.declared ||
-          node.state == MemberState.retired ||
-          node.state == MemberState.dead) {
+      if (node.lifecycle == MemberLifecycle.declared ||
+          node.lifecycle == MemberLifecycle.retired ||
+          node.lifecycle == MemberLifecycle.dead) {
         continue;
       }
       _deliverToInbox(
@@ -395,28 +400,30 @@ class TeamBus {
           hop: message.hop + 1,
         ),
       );
-      if (node.state == MemberState.idle) {
-        node.state = MemberState.busy;
+      if (node.acceptsImmediateDoorbell) {
+        node.activity = MemberActivity.active;
         _launcher.wake(node.memberId, doorbellNotice);
       }
     }
   }
 
-  /// 会话 tab 关闭：所有未 retired/dead 的成员置为 dead。
+  /// 非 retired/dead → [MemberLifecycle.dead]（关 session tab）。
   void abortAll() {
     for (final node in _members.values) {
-      if (node.state != MemberState.retired &&
-          node.state != MemberState.dead) {
-        node.state = MemberState.dead;
+      if (node.lifecycle != MemberLifecycle.retired &&
+          node.lifecycle != MemberLifecycle.dead) {
+        node.lifecycle = MemberLifecycle.dead;
+        node.activity = MemberActivity.none;
       }
     }
   }
 
-  /// leader 完成：置 retired + 广播 stand-down。
+  /// leader → [MemberLifecycle.retired] + 广播 stand-down。
   Future<void> finishTask(String memberId, String result) async {
     final node = _members[memberId];
     if (node == null) return;
-    node.state = MemberState.retired;
+    node.lifecycle = MemberLifecycle.retired;
+    node.activity = MemberActivity.none;
     await broadcast(
       TeamMessage(
         id: _idGenerator(),

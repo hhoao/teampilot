@@ -36,10 +36,8 @@ import '../utils/project_path_utils.dart';
 import '../utils/session_display_title.dart';
 import '../utils/session_launch_error.dart';
 
-typedef TerminalSessionFactory = TerminalSession Function({
-  required String executable,
-  int scrollbackLines,
-});
+typedef TerminalSessionFactory =
+    TerminalSession Function({required String executable, int scrollbackLines});
 
 TerminalSession defaultTerminalSessionFactory({
   required String executable,
@@ -84,9 +82,7 @@ class ChatTabInfo extends Equatable {
       title: title ?? this.title,
       subtitle: subtitle ?? this.subtitle,
       isRunning: isRunning ?? this.isRunning,
-      launchError: clearLaunchError
-          ? null
-          : (launchError ?? this.launchError),
+      launchError: clearLaunchError ? null : (launchError ?? this.launchError),
     );
   }
 
@@ -569,10 +565,8 @@ class ChatCubit extends Cubit<ChatState> implements MemberMaterializer {
     );
     final launched = session.launchState == AppSessionLaunchState.started;
     final cliTeamName = session.cliTeamName;
-    final internalTab = _InternalTab(
-      info: info,
-      cliTeamName: cliTeamName,
-    )..persistedSession = session;
+    final internalTab = _InternalTab(info: info, cliTeamName: cliTeamName)
+      ..persistedSession = session;
     if (team != null && member != null) {
       internalTab.memberShells[member.id] = ts;
       internalTab.selectedMemberId = member.id;
@@ -628,7 +622,7 @@ class ChatCubit extends Cubit<ChatState> implements MemberMaterializer {
                 cwd: session.primaryPath,
                 taskId: taskId,
               ),
-              state: MemberState.declared,
+              lifecycle: MemberLifecycle.declared,
             ),
           );
         }
@@ -643,8 +637,7 @@ class ChatCubit extends Cubit<ChatState> implements MemberMaterializer {
       }
     }
     // mixed：打开/恢复 tab 只建 bus + MCP，不 spawn PTY（等用户 connect 或 mailbox 物化）。
-    final connectNow =
-        connectImmediately && team?.teamMode != TeamMode.mixed;
+    final connectNow = connectImmediately && team?.teamMode != TeamMode.mixed;
     if (connectNow) {
       _beginSessionConnect(info.id);
       _postFrameScheduler(() async {
@@ -788,10 +781,7 @@ class ChatCubit extends Cubit<ChatState> implements MemberMaterializer {
           'openMemberTab: default session failed: $e',
           stackTrace: st,
         );
-        _failSessionConnect(
-          'pending',
-          'Failed to create session: $e',
-        );
+        _failSessionConnect('pending', 'Failed to create session: $e');
       }
       return;
     }
@@ -948,7 +938,9 @@ class ChatCubit extends Cubit<ChatState> implements MemberMaterializer {
       sessionTeam: activeSession.cliTeamName,
       extraEnvironment: plan.env.isEmpty ? null : plan.env,
       busUserInputRouting: _busUserInputRouting(tab, team, member),
-      onFirstUserLineSubmitted: _autoRenameOnFirstPrompt(activeSession.sessionId),
+      onFirstUserLineSubmitted: _autoRenameOnFirstPrompt(
+        activeSession.sessionId,
+      ),
       onProcessFailed: (message) => _failSessionConnect(tab.info.id, message),
       onProcessExited: () => _updateTabRunning(tab.info.id),
       onProcessStarted: () {
@@ -1466,8 +1458,7 @@ class ChatCubit extends Cubit<ChatState> implements MemberMaterializer {
     }
     if (memberId.isEmpty || team.members.isEmpty) {
       final session = ensureSession(team);
-      const message =
-          'No member selected. Choose a team member and try again.';
+      const message = 'No member selected. Choose a team member and try again.';
       session?.write('\r\n[$message]\r\n');
       _failSessionConnect(_activeTab?.info.id ?? 'pending', message);
       return;

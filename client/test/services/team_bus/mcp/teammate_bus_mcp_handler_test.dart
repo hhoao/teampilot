@@ -54,13 +54,13 @@ void main() {
       displayName: 'Team Lead',
       cli: 'claude',
       isTeamLead: true,
-      state: MemberState.busy,
+      lifecycle: MemberLifecycle.running, activity: MemberActivity.active,
     );
     final worker = AgentNode.test(
       memberId: 'developer',
       displayName: 'Developer',
       cli: 'opencode',
-      state: MemberState.declared,
+      lifecycle: MemberLifecycle.declared,
     );
     bus
       ..declareMember(leader)
@@ -83,13 +83,14 @@ void main() {
     expect(text, contains('display_name: Team Lead'));
     expect(text, contains('cli: claude'));
     expect(text, contains('--- developer ---'));
-    expect(text, contains('bus.state: declared'));
+    expect(text, contains('bus.lifecycle: declared'));
+    expect(text, contains('bus.activity: none'));
     expect(text, contains('bus.unread: 1'));
   });
 
   test('send_message routes to the target member mailbox', () async {
     final bus = TeamBus(launcher: FakeMemberLauncher());
-    final target = AgentNode.test(memberId: 'worker', state: MemberState.busy);
+    final target = AgentNode.test(memberId: 'worker', lifecycle: MemberLifecycle.running, activity: MemberActivity.active);
     bus.declareMember(target);
     final handler = TeammateBusMcpHandler(bus: bus);
 
@@ -108,9 +109,9 @@ void main() {
   test('send_message with to=* broadcasts and materializes declared teammates', () async {
     final launcher = FakeMemberLauncher();
     final bus = TeamBus(launcher: launcher);
-    final leader = AgentNode.test(memberId: 'team-lead', state: MemberState.busy);
-    final worker = AgentNode.test(memberId: 'developer', state: MemberState.busy);
-    final declared = AgentNode.test(memberId: 'reviewer', state: MemberState.declared);
+    final leader = AgentNode.test(memberId: 'team-lead', lifecycle: MemberLifecycle.running, activity: MemberActivity.active);
+    final worker = AgentNode.test(memberId: 'developer', lifecycle: MemberLifecycle.running, activity: MemberActivity.active);
+    final declared = AgentNode.test(memberId: 'reviewer', lifecycle: MemberLifecycle.declared);
     bus
       ..declareMember(leader)
       ..declareMember(worker)
@@ -127,7 +128,7 @@ void main() {
 
     expect(leader.inbox.isEmpty, isTrue); // sender skipped
     expect(worker.inbox.isEmpty, isFalse);
-    expect(declared.state, MemberState.busy);
+    expect(declared.lifecycle, MemberLifecycle.running);
     expect(launcher.materialized.single.memberId, 'reviewer');
     expect(declared.inbox.isEmpty, isFalse);
     final batch = await worker.inbox.waitBatch(timeout: const Duration(seconds: 1));
@@ -138,7 +139,7 @@ void main() {
   test('wait_for_message blocks indefinitely without timeout_ms', () {
     fakeAsync((async) {
       final bus = TeamBus(launcher: FakeMemberLauncher());
-      bus.declareMember(AgentNode.test(memberId: 'leader', state: MemberState.busy));
+      bus.declareMember(AgentNode.test(memberId: 'leader', lifecycle: MemberLifecycle.running, activity: MemberActivity.active));
       final handler = TeammateBusMcpHandler(bus: bus);
       JsonRpcResponse? res;
       handler.handle('leader', const JsonRpcRequest(id: 6, method: 'tools/call',
@@ -152,7 +153,7 @@ void main() {
   test('wait_for_message returns a batch when a message is delivered', () {
     fakeAsync((async) {
       final bus = TeamBus(launcher: FakeMemberLauncher());
-      final leader = AgentNode.test(memberId: 'leader', state: MemberState.busy);
+      final leader = AgentNode.test(memberId: 'leader', lifecycle: MemberLifecycle.running, activity: MemberActivity.active);
       bus.declareMember(leader);
       final handler = TeammateBusMcpHandler(bus: bus);
 

@@ -10,15 +10,23 @@ void main() {
   test('receive parks until a message is delivered to the member inbox', () {
     fakeAsync((async) {
       final bus = TeamBus(launcher: FakeMemberLauncher());
-      final node = AgentNode.test(memberId: 'leader', state: MemberState.busy);
+      final node = AgentNode.test(
+        memberId: 'leader',
+        lifecycle: MemberLifecycle.running,
+        activity: MemberActivity.active,
+      );
       bus.declareMember(node);
 
       List<TeamMessage>? got;
-      bus.receive('leader', timeout: const Duration(seconds: 30)).then((b) => got = b);
+      bus
+          .receive('leader', timeout: const Duration(seconds: 30))
+          .then((b) => got = b);
       async.flushMicrotasks();
       expect(got, isNull);
 
-      node.inbox.deliver(TeamMessage(id: '1', from: 'w', to: 'leader', content: 'hi'));
+      node.inbox.deliver(
+        TeamMessage(id: '1', from: 'w', to: 'leader', content: 'hi'),
+      );
       async.elapse(const Duration(milliseconds: 50));
       expect(got!.single.content, 'hi');
     });
@@ -28,36 +36,47 @@ void main() {
     fakeAsync((async) {
       final bus = TeamBus(launcher: FakeMemberLauncher());
       List<TeamMessage>? got;
-      bus.receive('ghost', timeout: const Duration(seconds: 1)).then((b) => got = b);
+      bus
+          .receive('ghost', timeout: const Duration(seconds: 1))
+          .then((b) => got = b);
       async.flushMicrotasks();
       expect(got, isEmpty);
     });
   });
 
-  test('send to a declared member materializes and enqueues the message', () async {
+  test(
+    'send to a declared member materializes and enqueues the message',
+    () async {
+      final launcher = FakeMemberLauncher();
+      final bus = TeamBus(launcher: launcher);
+      final worker = AgentNode.test(memberId: 'worker');
+      bus.declareMember(worker);
+
+      await bus.send(
+        TeamMessage(id: '1', from: 'leader', to: 'worker', content: 'do X'),
+      );
+
+      expect(launcher.materialized.single.memberId, 'worker');
+      expect(launcher.materialized.single.bootstrap.content, 'do X');
+      expect(worker.lifecycle, MemberLifecycle.running);
+      expect(worker.inbox.isEmpty, isFalse);
+      expect(launcher.woken.single.memberId, 'worker');
+      expect(launcher.woken.single.notice, TeamBus.doorbellNotice);
+      final batch = await worker.inbox.waitBatch(
+        timeout: const Duration(seconds: 1),
+      );
+      expect(batch.single.content, 'do X');
+    },
+  );
+
+  test('send to an active member only enqueues', () async {
     final launcher = FakeMemberLauncher();
     final bus = TeamBus(launcher: launcher);
-    final worker = AgentNode.test(memberId: 'worker');
-    bus.declareMember(worker);
-
-    await bus.send(
-      TeamMessage(id: '1', from: 'leader', to: 'worker', content: 'do X'),
+    final node = AgentNode.test(
+      memberId: 'leader',
+      lifecycle: MemberLifecycle.running,
+      activity: MemberActivity.active,
     );
-
-    expect(launcher.materialized.single.memberId, 'worker');
-    expect(launcher.materialized.single.bootstrap.content, 'do X');
-    expect(worker.state, MemberState.busy);
-    expect(worker.inbox.isEmpty, isFalse);
-    expect(launcher.woken.single.memberId, 'worker');
-    expect(launcher.woken.single.notice, TeamBus.doorbellNotice);
-    final batch = await worker.inbox.waitBatch(timeout: const Duration(seconds: 1));
-    expect(batch.single.content, 'do X');
-  });
-
-  test('send to a busy member only enqueues', () async {
-    final launcher = FakeMemberLauncher();
-    final bus = TeamBus(launcher: launcher);
-    final node = AgentNode.test(memberId: 'leader', state: MemberState.busy);
     bus.declareMember(node);
 
     await bus.send(TeamMessage(id: '1', from: 'w', to: 'leader', content: 'x'));
@@ -67,10 +86,38 @@ void main() {
     expect(launcher.materialized, isEmpty);
   });
 
+  test('send to a member in wait_for_message only enqueues', () async {
+    final launcher = FakeMemberLauncher();
+    final bus = TeamBus(launcher: launcher);
+    final node = AgentNode.test(
+      memberId: 'leader',
+      lifecycle: MemberLifecycle.running,
+      activity: MemberActivity.turnDoneReady,
+    );
+    bus.declareMember(node);
+
+    final waiting = bus.receive('leader');
+    await Future<void>.delayed(Duration.zero);
+    expect(node.waitingForMessage, isTrue);
+    expect(node.claudeIsActive, isFalse);
+
+    await bus.send(
+      TeamMessage(id: '1', from: 'w', to: 'leader', content: 'queued'),
+    );
+
+    expect(launcher.woken, isEmpty);
+    final batch = await waiting;
+    expect(batch.single.content, 'queued');
+  });
+
   test('send to an idle member enqueues and rings the doorbell', () async {
     final launcher = FakeMemberLauncher();
     final bus = TeamBus(launcher: launcher);
-    final node = AgentNode.test(memberId: 'leader', state: MemberState.idle);
+    final node = AgentNode.test(
+      memberId: 'leader',
+      lifecycle: MemberLifecycle.running,
+      activity: MemberActivity.turnDoneReady,
+    );
     bus.declareMember(node);
 
     await bus.send(TeamMessage(id: '1', from: 'w', to: 'leader', content: 'r'));
@@ -78,14 +125,21 @@ void main() {
     expect(node.inbox.isEmpty, isFalse);
     expect(launcher.woken.single.memberId, 'leader');
     expect(launcher.woken.single.notice, TeamBus.doorbellNotice);
-    expect(node.state, MemberState.busy);
+    expect(node.activity, MemberActivity.active);
   });
 
   test('send drops over-hop, unknown, and retired targets', () async {
     final launcher = FakeMemberLauncher();
     final bus = TeamBus(launcher: launcher, maxHop: 3);
-    final busy = AgentNode.test(memberId: 'leader', state: MemberState.busy);
-    final retired = AgentNode.test(memberId: 'old', state: MemberState.retired);
+    final busy = AgentNode.test(
+      memberId: 'leader',
+      lifecycle: MemberLifecycle.running,
+      activity: MemberActivity.active,
+    );
+    final retired = AgentNode.test(
+      memberId: 'old',
+      lifecycle: MemberLifecycle.retired,
+    );
     bus.declareMember(busy);
     bus.declareMember(retired);
 

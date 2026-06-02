@@ -8,10 +8,8 @@ import 'jsonrpc.dart';
 /// 把 MCP JSON-RPC 调用分发到 [TeamBus]。纯逻辑，不依赖 HTTP。
 /// [memberId] 来自传输层解析的身份头。返回 null = 通知（无响应/202）。
 class TeammateBusMcpHandler {
-  TeammateBusMcpHandler({
-    required TeamBus bus,
-    this.idGenerator = _uuidish,
-  }) : _bus = bus;
+  TeammateBusMcpHandler({required TeamBus bus, this.idGenerator = _uuidish})
+    : _bus = bus;
 
   static const protocolVersion = '2025-06-18';
   static const serverName = 'teampilot-teammate-bus';
@@ -41,14 +39,17 @@ class TeammateBusMcpHandler {
       case 'tools/call':
         return _callTool(memberId, req);
       default:
-        return JsonRpcResponse.error(req.id, -32601, 'Method not found: ${req.method}');
+        return JsonRpcResponse.error(
+          req.id,
+          -32601,
+          'Method not found: ${req.method}',
+        );
     }
   }
 
   /// wait_for_message 是长任务：返回 true 让传输层走 SSE。
   bool isLongRunning(JsonRpcRequest req) =>
-      req.method == 'tools/call' &&
-      (req.params['name'] == 'wait_for_message');
+      req.method == 'tools/call' && (req.params['name'] == 'wait_for_message');
 
   static const _toolDefs = <Map<String, Object?>>[
     {
@@ -67,7 +68,8 @@ class TeammateBusMcpHandler {
     },
     {
       'name': 'send_message',
-      'description': 'Send a message to a teammate by member id (or "*" to broadcast).',
+      'description':
+          'Send a message to a teammate by member id (or "*" to broadcast).',
       'inputSchema': {
         'type': 'object',
         'additionalProperties': false,
@@ -91,7 +93,6 @@ class TeammateBusMcpHandler {
           'after_id': {'type': 'string'},
           'limit': {'type': 'integer', 'minimum': 1, 'maximum': 100},
           'unread_only': {'type': 'boolean'},
-          'mark_read': {'type': 'boolean'},
         },
         'required': <String>[],
       },
@@ -111,7 +112,10 @@ class TeammateBusMcpHandler {
     },
   ];
 
-  Future<JsonRpcResponse?> _callTool(String memberId, JsonRpcRequest req) async {
+  Future<JsonRpcResponse?> _callTool(
+    String memberId,
+    JsonRpcRequest req,
+  ) async {
     final name = req.params['name'];
     final args = req.params['arguments'] is Map
         ? Map<String, Object?>.from(req.params['arguments'] as Map)
@@ -216,9 +220,11 @@ class TeammateBusMcpHandler {
       if (p.extraArgs.isNotEmpty) 'extraArgs: ${p.extraArgs}',
       'dangerouslySkipPermissions: ${p.dangerouslySkipPermissions}',
       'prompt: ${p.promptSummary()}',
-      'bus.state: ${t.state.name}',
+      'bus.lifecycle: ${t.lifecycle.name}',
+      'bus.activity: ${t.activity.name}',
+      'bus.phase: ${t.busPhaseLabel}',
+      if (t.claudeIsActive != null) 'claude.isActive: ${t.claudeIsActive}',
       'bus.unread: ${t.unreadCount}',
-      'bus.waiting_for_message: ${t.waitingForMessage}',
       'pty.running: ${t.ptyRunning}',
     ];
     return lines.join('\n');

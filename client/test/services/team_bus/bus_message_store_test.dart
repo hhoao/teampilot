@@ -10,7 +10,7 @@ void main() {
   test('readMessages pages unread and mark_read removes from hot queue', () async {
     final store = InMemoryBusMessageStore();
     final bus = TeamBus(launcher: FakeMemberLauncher(), messageStore: store);
-    bus.declareMember(AgentNode.test(memberId: 'leader', state: MemberState.busy));
+    bus.declareMember(AgentNode.test(memberId: 'leader', lifecycle: MemberLifecycle.running, activity: MemberActivity.active));
 
     for (var i = 0; i < 5; i++) {
       await store.append(
@@ -42,7 +42,7 @@ void main() {
   test('receive marks persisted messages read', () async {
     final store = InMemoryBusMessageStore();
     final bus = TeamBus(launcher: FakeMemberLauncher(), messageStore: store);
-    final node = AgentNode.test(memberId: 'leader', state: MemberState.busy);
+    final node = AgentNode.test(memberId: 'leader', lifecycle: MemberLifecycle.running, activity: MemberActivity.active);
     bus.declareMember(node);
 
     await store.append(

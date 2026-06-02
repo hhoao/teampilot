@@ -1,23 +1,22 @@
 import 'mailbox.dart';
+import 'member_state.dart';
 import 'teammate_roster_profile.dart';
 
-/// 成员生命周期状态。`busy` = 一轮进行中（可能 park 在 wait_for_message）；
-/// `idle` = 这一轮已结束、终端挂在 prompt。
-enum MemberState { declared, materializing, busy, idle, retired, dead }
+export 'member_state.dart';
 
-/// TeamBus 对单个成员的句柄：状态 + 信箱 + roster 配置。
+/// TeamBus 对单个成员的句柄。
 class AgentNode {
   AgentNode({
-    required TeammateRosterProfile profile,
-    this.state = MemberState.declared,
+    required this.profile,
+    this.lifecycle = MemberLifecycle.declared,
+    this.activity = MemberActivity.none,
     Mailbox? inbox,
-  }) : profile = profile,
-       inbox = inbox ?? Mailbox();
+  }) : inbox = inbox ?? Mailbox();
 
-  /// 兼容测试：仅 member id + 可选 state。
   factory AgentNode.test({
     required String memberId,
-    MemberState state = MemberState.declared,
+    MemberLifecycle lifecycle = MemberLifecycle.declared,
+    MemberActivity activity = MemberActivity.none,
     String? displayName,
     String? cli,
     bool isTeamLead = false,
@@ -29,13 +28,41 @@ class AgentNode {
         cli: cli,
         isTeamLead: isTeamLead,
       ),
-      state: state,
+      lifecycle: lifecycle,
+      activity: activity,
     );
   }
 
   final TeammateRosterProfile profile;
-  MemberState state;
+  MemberLifecycle lifecycle;
+  MemberActivity activity;
   final Mailbox inbox;
 
   String get memberId => profile.memberId;
+
+  bool get ptyRunning =>
+      lifecycle == MemberLifecycle.materializing ||
+      lifecycle == MemberLifecycle.running;
+
+  /// MCP `wait_for_message` 阻塞中（PTY 已运行）。
+  bool get waitingForMessage => activity.isBusWaitBlocked;
+
+  /// Claude `TeamFile.members[].isActive`。
+  bool? get claudeIsActive => switch (lifecycle) {
+    MemberLifecycle.running => activity.claudeIsActive,
+    _ => null,
+  };
+
+  String get busPhaseLabel => activity.busPhaseLabel;
+
+  /// send 到 running + [MemberActivity.turnDoneReady] 时立刻 doorbell。
+  bool get acceptsImmediateDoorbell =>
+      lifecycle == MemberLifecycle.running &&
+      activity == MemberActivity.turnDoneReady;
+
+  /// send 时只入队、不 writeln。
+  bool get shouldEnqueueMailOnly =>
+      lifecycle == MemberLifecycle.materializing ||
+      (lifecycle == MemberLifecycle.running &&
+          (activity == MemberActivity.active || activity.isBusWaitBlocked));
 }
