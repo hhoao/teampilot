@@ -52,14 +52,28 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
   int? _lastTerminalThemeFingerprint;
   TerminalSession? _themeSyncedSession;
   String? _lastThemeSyncedMemberId;
+  ChatCubit? _chatCubit;
+  TeamCubit? _teamCubit;
+  SessionRepository? _sessionRepo;
+  EditorCubit? _editorCubit;
 
   @override
   void initState() {
     super.initState();
     final chatCubit = context.read<ChatCubit>();
+    _chatCubit = chatCubit;
     _chatSub = chatCubit.stream.listen(_onChatState);
     _syncWorkbenchTracking(chatCubit.state);
     _consumeRouteSession(chatCubit.state);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _chatCubit = context.read<ChatCubit>();
+    _teamCubit = context.read<TeamCubit>();
+    _sessionRepo = context.read<SessionRepository>();
+    _editorCubit = context.read<EditorCubit>();
   }
 
   /// [TerminalController.attach] is one-shot; re-bind when the active session's
@@ -258,14 +272,16 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
 
   Future<void> _openTerminalLink(String link) async {
     if (!mounted) return;
-    final workingDirectory = context
-        .read<ChatCubit>()
-        .activeTabWorkingDirectory;
+    final chatCubit = _chatCubit;
+    final editorCubit = _editorCubit;
+    if (chatCubit == null || editorCubit == null) return;
+    final workingDirectory = chatCubit.activeTabWorkingDirectory;
     await TerminalUriOpener.open(
       link,
       workingDirectory: workingDirectory,
       openInEditor: (path) async {
-        await context.read<EditorCubit>().openFile(path);
+        if (!mounted) return;
+        await editorCubit.openFile(path);
       },
     );
   }
@@ -293,11 +309,12 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
     if (session == null) return;
 
     _handledRouteSession = true;
-    final chatCubit = context.read<ChatCubit>();
-    final teamCubit = context.read<TeamCubit>();
+    final chatCubit = _chatCubit;
+    final teamCubit = _teamCubit;
+    final repo = _sessionRepo;
+    if (chatCubit == null || teamCubit == null || repo == null) return;
     final team = teamCubit.state.selectedTeam;
     final l10n = AppLocalizations.of(context);
-    final repo = context.read<SessionRepository>();
 
     chatCubit.selectSession(session.sessionId);
 

@@ -113,6 +113,7 @@ class ChatPage extends StatelessWidget {
           previous.snackbarMessage != next.snackbarMessage &&
           next.snackbarMessage != null,
       listener: (listenerContext, state) {
+        if (!listenerContext.mounted) return;
         final code = state.snackbarMessage;
         if (code == null) return;
         final message = code == 'claude_credentials_missing'
@@ -128,6 +129,7 @@ class ChatPage extends StatelessWidget {
             previous.snackbarMessage != next.snackbarMessage &&
             next.snackbarMessage != null,
         listener: (listenerContext, state) {
+          if (!listenerContext.mounted) return;
           final code = state.snackbarMessage;
           if (code == null) return;
           final message =

@@ -29,11 +29,20 @@ class _OnboardingDefaultProviderStepState
   final _haikuController = TextEditingController();
   final _sonnetController = TextEditingController();
   final _opusController = TextEditingController();
+  AppProviderCubit? _appProviderCubit;
+  TeamCubit? _teamCubit;
 
   @override
   void initState() {
     super.initState();
     _syncFromCubit();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _appProviderCubit = context.read<AppProviderCubit>();
+    _teamCubit = context.read<TeamCubit>();
   }
 
   @override
@@ -44,10 +53,9 @@ class _OnboardingDefaultProviderStepState
     super.dispose();
   }
 
-  List<AppProviderConfig> get _providers => context
-      .read<AppProviderCubit>()
-      .state
-      .providersFor(AppProviderCli.claude);
+  List<AppProviderConfig> get _providers =>
+      _appProviderCubit?.state.providersFor(AppProviderCli.claude) ??
+      const [];
 
   AppProviderConfig? get _selectedProvider {
     final id = _selectedProviderId;
@@ -64,7 +72,7 @@ class _OnboardingDefaultProviderStepState
   }
 
   void _syncFromCubit() {
-    final cubit = context.read<AppProviderCubit>();
+    final cubit = _appProviderCubit ?? context.read<AppProviderCubit>();
     final providers = cubit.state.providersFor(AppProviderCli.claude);
     final selectedId =
         cubit.state.selectedProviderIdByCli[AppProviderCli.claude];
@@ -95,10 +103,13 @@ class _OnboardingDefaultProviderStepState
   }
 
   Future<void> _applySelection() async {
+    if (!mounted) return;
     final provider = _selectedProvider;
     if (provider == null) return;
 
-    final cubit = context.read<AppProviderCubit>();
+    final cubit = _appProviderCubit;
+    final teamCubit = _teamCubit;
+    if (cubit == null || teamCubit == null) return;
     cubit.selectProvider(provider.id);
 
     final env = Map<String, Object?>.from(_readEnv(provider));
@@ -122,7 +133,7 @@ class _OnboardingDefaultProviderStepState
     if (!mounted) return;
     await OnboardingService.applyDefaultClaudeProviderBinding(
       appProviderCubit: cubit,
-      teamCubit: context.read<TeamCubit>(),
+      teamCubit: teamCubit,
     );
   }
 

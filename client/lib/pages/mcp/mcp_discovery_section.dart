@@ -36,6 +36,7 @@ class _McpDiscoverySectionState extends State<McpDiscoverySection> {
 
   @override
   void dispose() {
+    Debounces.cancel('mcp_discovery_search');
     _searchCtl.dispose();
     super.dispose();
   }

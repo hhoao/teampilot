@@ -51,6 +51,7 @@ class PluginManagementPage extends StatelessWidget {
       listenWhen: (a, b) =>
           a.errorMessage != b.errorMessage && b.errorMessage != null,
       listener: (context, state) {
+        if (!context.mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(state.errorMessage!),

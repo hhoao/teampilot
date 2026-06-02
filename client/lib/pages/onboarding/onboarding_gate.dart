@@ -43,6 +43,7 @@ class OnboardingGateState extends State<OnboardingGate> {
   }
 
   Future<void> _completeOnboarding() async {
+    if (!mounted) return;
     final appProviderCubit = context.read<AppProviderCubit>();
     final teamCubit = context.read<TeamCubit>();
     final settingsRepo = context.read<AppSettingsRepository>();
@@ -56,6 +57,7 @@ class OnboardingGateState extends State<OnboardingGate> {
   }
 
   Future<void> reopenWizard() async {
+    if (!mounted) return;
     await context.read<AppSettingsRepository>().saveHasCompletedOnboarding(false);
     if (!mounted) return;
     setState(() => _showWizard = true);

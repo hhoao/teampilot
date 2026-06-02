@@ -155,6 +155,7 @@ class _SessionControlsState extends State<_SessionControls> {
   }
 
   void _onSshCwdFocusChanged() {
+    if (!mounted) return;
     if (!_sshCwdFocus.hasFocus) {
       _flushSshCwdPersist();
     }
@@ -169,6 +170,7 @@ class _SessionControlsState extends State<_SessionControls> {
   }
 
   void _flushSshCwdPersist() {
+    if (!mounted) return;
     _sshCwdPersistDebouncer.cancel();
     _persistSshCwdFromField();
   }
@@ -565,6 +567,7 @@ class _CliExecutablePathSettingsRowState
   }
 
   void _onFocusChanged() {
+    if (!mounted) return;
     if (!_focusNode.hasFocus) {
       _flushPersist();
     }
@@ -579,6 +582,7 @@ class _CliExecutablePathSettingsRowState
   }
 
   void _flushPersist() {
+    if (!mounted) return;
     _persistDebouncer.cancel();
     _persistFromField();
   }
@@ -805,6 +809,7 @@ class _LlmConfigPathSettingsRowState extends State<_LlmConfigPathSettingsRow> {
   }
 
   void _onLlmPathFocusChanged() {
+    if (!mounted) return;
     if (!_llmPathFocus.hasFocus) {
       _flushLlmConfigPathPersist();
     }
@@ -819,6 +824,7 @@ class _LlmConfigPathSettingsRowState extends State<_LlmConfigPathSettingsRow> {
   }
 
   void _flushLlmConfigPathPersist() {
+    if (!mounted) return;
     _llmPathPersistDebouncer.cancel();
     _persistLlmConfigPathFromField();
   }

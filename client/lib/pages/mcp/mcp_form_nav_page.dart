@@ -28,7 +28,7 @@ class McpFormNavPage extends StatelessWidget {
       listenWhen: (a, b) =>
           a.errorMessage != b.errorMessage && b.errorMessage != null,
       listener: (context, state) {
-        if (state.errorMessage == null) return;
+        if (!context.mounted || state.errorMessage == null) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(state.errorMessage!)),
         );

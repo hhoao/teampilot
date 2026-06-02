@@ -117,16 +117,22 @@ class _RightToolsPanelState extends State<RightToolsPanel> {
           selectedMemberId: chatCubit.state.selectedMemberId,
           onSelected: (id) {
             final member = team.members.firstWhere((m) => m.id == id);
-            unawaited(context.read<ChatCubit>().openMemberTab(team, member));
+            final cubit = _chatCubit;
+            if (cubit == null) return;
+            unawaited(cubit.openMemberTab(team, member));
             maybeDismissDrawer();
           },
           onOpen: (id) {
             final member = team.members.firstWhere((m) => m.id == id);
-            unawaited(context.read<ChatCubit>().openMemberTab(team, member));
+            final cubit = _chatCubit;
+            if (cubit == null) return;
+            unawaited(cubit.openMemberTab(team, member));
             maybeDismissDrawer();
           },
           onLaunchAll: throttledAsync('right_tools_launch_all', () async {
-            await context.read<ChatCubit>().launchAllMembers(team);
+            final cubit = _chatCubit;
+            if (cubit == null) return;
+            await cubit.launchAllMembers(team);
             maybeDismissDrawer();
           }),
         ),
@@ -344,11 +350,18 @@ class _FileTreePanelState extends State<_FileTreePanel> {
   final _cubit = FileTreeCubit(fs: AppStorage.fs);
   final _filterController = TextEditingController();
   final _listScrollController = ScrollController();
+  EditorCubit? _editorCubit;
 
   @override
   void initState() {
     super.initState();
     _syncRoot();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _editorCubit = context.read<EditorCubit>();
   }
 
   @override
@@ -364,7 +377,8 @@ class _FileTreePanelState extends State<_FileTreePanel> {
   }
 
   Future<void> _revealActiveEditorFile() async {
-    final active = context.read<EditorCubit>().state.activePath;
+    if (!mounted) return;
+    final active = _editorCubit?.state.activePath;
     if (active == null) return;
 
     _filterController.clear();
