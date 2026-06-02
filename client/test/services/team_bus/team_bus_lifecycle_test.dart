@@ -7,7 +7,7 @@ import 'support/fake_member_launcher.dart';
 
 void main() {
   test(
-    'onMemberIdle with empty inbox rings coordination doorbell when PTY running',
+    'onMemberIdle with empty inbox does not ring doorbell when PTY running',
     () {
       final launcher = FakeMemberLauncher();
       final bus = TeamBus(launcher: launcher);
@@ -20,9 +20,8 @@ void main() {
 
       bus.onMemberIdle('leader');
 
-      expect(node.activity, MemberActivity.active);
-      expect(launcher.woken.single.memberId, 'leader');
-      expect(launcher.woken.single.notice, TeamBus.coordinationLoopNotice);
+      expect(node.activity, MemberActivity.turnDoneReady);
+      expect(launcher.woken, isEmpty);
     },
   );
 
@@ -79,7 +78,7 @@ void main() {
   });
 
   test(
-    'onMemberIdle debounces empty-inbox coordination doorbell when PTY running',
+    'onMemberIdle with empty inbox stays quiet across repeated idle edges',
     () {
       final launcher = FakeMemberLauncher();
       final bus = TeamBus(launcher: launcher);
@@ -93,8 +92,8 @@ void main() {
       bus.onMemberIdle('leader');
       bus.onMemberIdle('leader');
 
-      expect(launcher.woken, hasLength(1));
-      expect(launcher.woken.single.notice, TeamBus.coordinationLoopNotice);
+      expect(node.activity, MemberActivity.turnDoneReady);
+      expect(launcher.woken, isEmpty);
     },
   );
 
@@ -115,21 +114,6 @@ void main() {
 
     expect(launcher.woken.single.memberId, 'leader');
     expect(node.activity, MemberActivity.active);
-  });
-
-  test('leave retires a member', () {
-    final launcher = FakeMemberLauncher();
-    final bus = TeamBus(launcher: launcher);
-    final node = AgentNode.test(
-      memberId: 'w',
-      lifecycle: MemberLifecycle.running,
-      activity: MemberActivity.active,
-    );
-    bus.declareMember(node);
-
-    bus.leave('w');
-
-    expect(node.lifecycle, MemberLifecycle.retired);
   });
 
   test(
@@ -160,48 +144,4 @@ void main() {
     },
   );
 
-  test(
-    'finishTask retires leader and broadcasts stand-down to live members',
-    () async {
-      final launcher = FakeMemberLauncher();
-      var n = 0;
-      final bus = TeamBus(launcher: launcher, idGenerator: () => 'id${n++}');
-      final leader = AgentNode.test(
-        memberId: 'leader',
-        lifecycle: MemberLifecycle.running,
-        activity: MemberActivity.active,
-      );
-      final w1 = AgentNode.test(
-        memberId: 'w1',
-        lifecycle: MemberLifecycle.running,
-        activity: MemberActivity.active,
-      );
-      final w2 = AgentNode.test(
-        memberId: 'w2',
-        lifecycle: MemberLifecycle.running,
-        activity: MemberActivity.turnDoneReady,
-      );
-      final w3 = AgentNode.test(
-        memberId: 'w3',
-        lifecycle: MemberLifecycle.declared,
-      );
-      bus.declareMember(leader);
-      bus.declareMember(w1);
-      bus.declareMember(w2);
-      bus.declareMember(w3);
-
-      await bus.finishTask('leader', 'done');
-
-      expect(leader.lifecycle, MemberLifecycle.retired);
-      expect(w1.inbox.isEmpty, isFalse); // busy worker gets stand-down
-      expect(w2.inbox.isEmpty, isFalse); // idle worker gets stand-down
-      expect(w2.activity, MemberActivity.active); // idle worker woken
-      expect(launcher.woken.map((w) => w.memberId), ['w2']);
-      expect(w3.inbox.isEmpty, isTrue); // declared worker skipped
-      expect(
-        launcher.materialized,
-        isEmpty,
-      ); // never materializes a declared one
-    },
-  );
 }

@@ -1,3 +1,7 @@
+/// TeamBus 成员状态：`MemberLifecycle`（PTY）× `MemberActivity`（CLI/bus）。
+///
+/// Mermaid 流程图见仓库 [TEAM_BUS_MEMBER_STATE.md](../../../../docs/TEAM_BUS_MEMBER_STATE.md)。
+///
 /// PTY / 进程是否存在（TeamPilot 扩展；Claude spawn 时通常直接 running）。
 enum MemberLifecycle {
   /// 已在 roster，CLI 未 spawn（mixed 惰性启动）。
@@ -8,12 +12,6 @@ enum MemberLifecycle {
 
   /// PTY 已起来。
   running,
-
-  /// 正常收工（leave / finish_task）。
-  retired,
-
-  /// 会话 tab 关闭（abortAll）。
-  dead,
 }
 
 /// CLI / bus 活动态。
@@ -21,7 +19,7 @@ enum MemberLifecycle {
 /// - [active] ↔ Claude `isActive: true`
 /// - [turnDoneReady] / [turnDoneBusWait] / [mailQueued] ↔ `isActive: false`（turn 已结束一侧）
 enum MemberActivity {
-  /// 无 PTY 或已收工，且信箱无积压。
+  /// 尚无 PTY（declared）且信箱无积压。
   none,
 
   /// turn 进行中（Claude `isActive: true`）。
@@ -69,12 +67,3 @@ extension MemberActivitySemantics on MemberActivity {
     MemberActivity.mailQueued => 'no_pty · mail_queued',
   };
 }
-
-/// 组合速查：
-///
-/// | lifecycle | activity         | bus.phase              |
-/// |-----------|------------------|------------------------|
-/// | running   | active           | in_turn                |
-/// | running   | turnDoneReady    | turn_done · ready      |
-/// | running   | turnDoneBusWait  | turn_done · bus_wait   |
-/// | declared  | mailQueued       | no_pty · mail_queued   |

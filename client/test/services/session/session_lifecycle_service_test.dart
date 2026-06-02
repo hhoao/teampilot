@@ -152,6 +152,51 @@ void main() {
     },
   );
 
+  test(
+    'prepareLaunch mixed member claude override uses claude profile dirs',
+    () async {
+      final plan = await service().prepareLaunch(
+        session: _session(id: 'mixed-session'),
+        team: const TeamConfig(
+          id: 'team-a',
+          name: 'Team A',
+          cli: TeamCli.flashskyai,
+          teamMode: TeamMode.mixed,
+          members: [
+            TeamMemberConfig(
+              id: 'team-lead',
+              name: 'team-lead',
+              cli: TeamCli.claude,
+            ),
+          ],
+        ),
+        member: const TeamMemberConfig(
+          id: 'team-lead',
+          name: 'team-lead',
+          cli: TeamCli.claude,
+        ),
+      );
+
+      final claudeDir = layout.memberToolDir(
+        'team-a',
+        'mixed-session',
+        'claude',
+      );
+      final flashskyaiDir = layout.memberToolDir(
+        'team-a',
+        'mixed-session',
+        'flashskyai',
+      );
+      expect(plan.memberConfigDir, claudeDir);
+      expect(plan.env['CLAUDE_CONFIG_DIR'], claudeDir);
+      expect(
+        plan.env.containsKey(ConfigProfileService.flashskyaiConfigDirEnvKey),
+        isFalse,
+      );
+      expect(claudeDir, isNot(equals(flashskyaiDir)));
+    },
+  );
+
   test('prepareLaunch preserves llm override for non-team launches', () async {
     final plan = await SessionLifecycleService(
       appDataBasePath: base.path,

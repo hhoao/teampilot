@@ -157,6 +157,13 @@ void main() {
     expect(TeamCli.codex.isLaunchSupported, isFalse);
   });
 
+  test('only claude needs full-screen (bracketed-paste) stdin submit', () {
+    expect(TeamCli.claude.usesFullScreenInput, isTrue);
+    expect(TeamCli.flashskyai.usesFullScreenInput, isFalse);
+    expect(TeamCli.codex.usesFullScreenInput, isFalse);
+    expect(TeamCli.opencode.usesFullScreenInput, isFalse);
+  });
+
   test('opencode is launch supported and round-trips through json', () {
     expect(TeamCli.opencode.isLaunchSupported, isTrue);
     expect(TeamCli.decode('opencode'), TeamCli.opencode);

@@ -117,7 +117,6 @@ class _InternalTab {
   TeammateBusMcpServer? mcpServer;
 
   Future<void> disposeBus() async {
-    teamBus?.abortAll();
     await mcpServer?.stop();
     teamBus = null;
     mcpServer = null;
@@ -314,6 +313,13 @@ class ChatCubit extends Cubit<ChatState> implements MemberMaterializer {
 
   String _resolveExecutableFor(TeamCli cli) {
     return _cliExecutableResolver?.call(cli) ?? _executableResolver();
+  }
+
+  TeamCli _cliForMember(TeamConfig team, String memberId) {
+    for (final m in team.members) {
+      if (m.id == memberId) return m.cliWithin(team);
+    }
+    return team.cli;
   }
 
   int get _scrollbackLines => _terminalScrollbackLinesResolver?.call() ?? 10000;
@@ -557,7 +563,11 @@ class ChatCubit extends Cubit<ChatState> implements MemberMaterializer {
       );
       return;
     }
-    final ts = _newSession(team?.cli ?? TeamCli.flashskyai);
+    final ts = _newSession(
+      team != null && member != null
+          ? member.cliWithin(team)
+          : (team?.cli ?? TeamCli.flashskyai),
+    );
     final info = ChatTabInfo(
       id: session.sessionId,
       title: session.resolveDisplayTitle(emptyDisplayTitleFallback),
@@ -1002,7 +1012,17 @@ class ChatCubit extends Cubit<ChatState> implements MemberMaterializer {
     if (shell == null) return;
     final trimmed = text.trim();
     if (trimmed.isEmpty) return;
-    shell.writeln(trimmed);
+    final team = _presenceTeam;
+    final cli = team == null
+        ? TeamCli.flashskyai
+        : _cliForMember(team, memberId);
+    if (cli.usesFullScreenInput) {
+      // Claude Code & other full-screen TUIs ignore a single `text\r` write;
+      // submit via bracketed paste + a standalone CR instead.
+      unawaited(shell.submitFullScreenInput(trimmed));
+    } else {
+      shell.writeln(trimmed);
+    }
   }
 
   void _scheduleMemberConnect(
@@ -1414,9 +1434,10 @@ class ChatCubit extends Cubit<ChatState> implements MemberMaterializer {
       tab.selectedMemberId = _defaultMemberId(team);
     }
     if (tab.selectedMemberId.isNotEmpty) {
+      final memberId = tab.selectedMemberId;
       return tab.memberShells.putIfAbsent(
-        tab.selectedMemberId,
-        () => _newSession(team.cli),
+        memberId,
+        () => _newSession(_cliForMember(team, memberId)),
       );
     }
     return tab.resumeSession ??= _newSession(team.cli);

@@ -28,12 +28,6 @@ class TeamBus {
       '[teammate-bus] You have unread teammate messages — call '
       'wait_for_message to read them. (From the bus, not your operator.)';
 
-  /// PTY 已运行、跳出 wait 循环且信箱空：拉回 wait_for_message。
-  static const String coordinationLoopNotice =
-      '[teammate-bus] Session policy: do not stand down. Call wait_for_message '
-      'now (no timeout — blocks until a teammate or user message). (From the '
-      'bus, not raw stdin.)';
-
   /// [TeamMessage.from] when the human operator submits while the member waits.
   static const String userSenderId = 'user';
 
@@ -42,12 +36,8 @@ class TeamBus {
   final BusMessageStore? _messageStore;
   final int maxHop;
   final Map<String, AgentNode> _members = {};
-  final Map<String, DateTime> _lastCoordinationWake = {};
   final Map<String, DateTime> _lastIdleLeaderNotify = {};
   TeamSessionContext? _sessionContext;
-
-  /// 空信箱 coordination 门铃最短间隔（Stop hook + 终端 watcher 会叠打）。
-  static const coordinationWakeCooldown = Duration(seconds: 30);
 
   /// worker idle → leader mailbox：Stop + watcher 叠打防抖。
   static const idleLeaderNotifyCooldown = Duration(seconds: 10);
@@ -69,10 +59,6 @@ class TeamBus {
   void markMemberRunning(String memberId) {
     final node = _members[memberId];
     if (node == null) return;
-    if (node.lifecycle == MemberLifecycle.retired ||
-        node.lifecycle == MemberLifecycle.dead) {
-      return;
-    }
     node.lifecycle = MemberLifecycle.running;
     node.activity = MemberActivity.turnDoneReady;
   }
@@ -117,7 +103,6 @@ class TeamBus {
     if (node.lifecycle == MemberLifecycle.running) {
       node.activity = MemberActivity.turnDoneBusWait;
     }
-    _lastCoordinationWake.remove(memberId);
     try {
       final batch = await node.inbox.waitBatch(timeout: timeout);
       if (batch.isNotEmpty) {
@@ -265,11 +250,7 @@ class TeamBus {
     final trimmed = content.trim();
     if (trimmed.isEmpty) return;
     final node = _members[memberId];
-    if (node == null ||
-        node.lifecycle == MemberLifecycle.retired ||
-        node.lifecycle == MemberLifecycle.dead) {
-      return;
-    }
+    if (node == null) return;
     _deliverToMember(
       memberId,
       TeamMessage(
@@ -312,12 +293,6 @@ class TeamBus {
           target.activity = MemberActivity.active;
           _launcher.wake(target.memberId, doorbellNotice);
         }
-      case MemberLifecycle.retired:
-      case MemberLifecycle.dead:
-        appLogger.w(
-          '[team-bus] dropped message ${message.id} to ${target.memberId} '
-          '(lifecycle=${target.lifecycle.name})',
-        );
     }
   }
 
@@ -325,10 +300,6 @@ class TeamBus {
   void onMemberIdle(String memberId) {
     final node = _members[memberId];
     if (node == null) return;
-    if (node.lifecycle == MemberLifecycle.retired ||
-        node.lifecycle == MemberLifecycle.dead) {
-      return;
-    }
     if (node.lifecycle == MemberLifecycle.declared ||
         node.lifecycle == MemberLifecycle.materializing) {
       return;
@@ -341,26 +312,10 @@ class TeamBus {
 
     node.activity = MemberActivity.turnDoneReady;
     if (node.inbox.isEmpty) {
-      final last = _lastCoordinationWake[memberId];
-      if (last != null &&
-          DateTime.now().difference(last) < coordinationWakeCooldown) {
-        return;
-      }
-      _lastCoordinationWake[memberId] = DateTime.now();
-      node.activity = MemberActivity.active;
-      _launcher.wake(node.memberId, coordinationLoopNotice);
       return;
     }
     node.activity = MemberActivity.active;
     _launcher.wake(node.memberId, doorbellNotice);
-  }
-
-  /// → [MemberLifecycle.retired]（worker 主动收工）。
-  void leave(String memberId) {
-    final node = _members[memberId];
-    if (node == null) return;
-    node.lifecycle = MemberLifecycle.retired;
-    node.activity = MemberActivity.none;
   }
 
   Future<void> broadcast(
@@ -370,10 +325,6 @@ class TeamBus {
     if (materializeDeclared) {
       for (final node in _members.values) {
         if (node.memberId == message.from) continue;
-        if (node.lifecycle == MemberLifecycle.retired ||
-            node.lifecycle == MemberLifecycle.dead) {
-          continue;
-        }
         await send(
           message.copyWith(
             id: _idGenerator(),
@@ -387,9 +338,7 @@ class TeamBus {
 
     for (final node in _members.values) {
       if (node.memberId == message.from) continue;
-      if (node.lifecycle == MemberLifecycle.declared ||
-          node.lifecycle == MemberLifecycle.retired ||
-          node.lifecycle == MemberLifecycle.dead) {
+      if (node.lifecycle == MemberLifecycle.declared) {
         continue;
       }
       _deliverToInbox(
@@ -405,32 +354,5 @@ class TeamBus {
         _launcher.wake(node.memberId, doorbellNotice);
       }
     }
-  }
-
-  /// 非 retired/dead → [MemberLifecycle.dead]（关 session tab）。
-  void abortAll() {
-    for (final node in _members.values) {
-      if (node.lifecycle != MemberLifecycle.retired &&
-          node.lifecycle != MemberLifecycle.dead) {
-        node.lifecycle = MemberLifecycle.dead;
-        node.activity = MemberActivity.none;
-      }
-    }
-  }
-
-  /// leader → [MemberLifecycle.retired] + 广播 stand-down。
-  Future<void> finishTask(String memberId, String result) async {
-    final node = _members[memberId];
-    if (node == null) return;
-    node.lifecycle = MemberLifecycle.retired;
-    node.activity = MemberActivity.none;
-    await broadcast(
-      TeamMessage(
-        id: _idGenerator(),
-        from: memberId,
-        to: '*',
-        content: 'TASK COMPLETE — stand down. Result: $result',
-      ),
-    );
   }
 }

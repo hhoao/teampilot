@@ -82,7 +82,7 @@ void main() {
   });
 
   test(
-    'POST /idle nudges member back to wait_for_message via doorbell',
+    'POST /idle with empty inbox does not inject doorbell',
     () async {
       final node = AgentNode.test(
         memberId: 'leader',
@@ -99,9 +99,8 @@ void main() {
       await resp.drain<void>();
 
       expect(resp.statusCode, 204);
-      expect(node.activity, MemberActivity.active);
-      expect(launcher.woken.single.memberId, 'leader');
-      expect(launcher.woken.single.notice, TeamBus.coordinationLoopNotice);
+      expect(node.activity, MemberActivity.turnDoneReady);
+      expect(launcher.woken, isEmpty);
     },
   );
 

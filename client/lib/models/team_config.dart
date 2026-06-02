@@ -29,6 +29,15 @@ enum TeamCli {
       this == TeamCli.flashskyai ||
       this == TeamCli.claude ||
       this == TeamCli.opencode;
+
+  /// Whether the CLI runs as a full-screen TUI (alternate screen) whose input
+  /// box treats a single chunk ending in CR as pasted text — the trailing CR
+  /// lands as a literal newline, so a plain `text\r` write never submits.
+  ///
+  /// Such CLIs need bracketed paste + a standalone CR to submit injected stdin
+  /// (see `TerminalSession.submitFullScreenInput`). Claude Code is the canonical
+  /// case; line-oriented CLIs (flashskyai, codex) submit on a bare `\r`.
+  bool get usesFullScreenInput => this == TeamCli.claude;
 }
 
 /// 团队协调模式：native = 单 CLI 原生团队；mixed = 混合 CLI 走 TeamBus。

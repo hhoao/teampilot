@@ -128,7 +128,7 @@ void main() {
     expect(node.activity, MemberActivity.active);
   });
 
-  test('send drops over-hop, unknown, and retired targets', () async {
+  test('send drops over-hop and unknown targets', () async {
     final launcher = FakeMemberLauncher();
     final bus = TeamBus(launcher: launcher, maxHop: 3);
     final busy = AgentNode.test(
@@ -136,12 +136,7 @@ void main() {
       lifecycle: MemberLifecycle.running,
       activity: MemberActivity.active,
     );
-    final retired = AgentNode.test(
-      memberId: 'old',
-      lifecycle: MemberLifecycle.retired,
-    );
     bus.declareMember(busy);
-    bus.declareMember(retired);
 
     await bus.send(
       TeamMessage(id: '1', from: 'x', to: 'leader', content: 'a', hop: 3),
@@ -150,8 +145,5 @@ void main() {
 
     await bus.send(TeamMessage(id: '2', from: 'x', to: 'ghost', content: 'a'));
     expect(launcher.materialized, isEmpty); // unknown target
-
-    await bus.send(TeamMessage(id: '3', from: 'x', to: 'old', content: 'a'));
-    expect(retired.inbox.isEmpty, isTrue); // dropped: retired
   });
 }
