@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import '../persistence/bus_message_page.dart';
 import '../idle_notification.dart';
 import '../team_bus.dart';
@@ -19,6 +21,23 @@ class TeammateBusMcpHandler {
 
   /// 控制端点：成员（经 Stop hook / plugin / 终端 watcher）报告 idle。
   void notifyIdle(String memberId) => _bus.onMemberIdle(memberId);
+
+  /// Stop-hook 拦截语：把成员推回 `wait_for_message`，不让它结束 turn。
+  static const stopRedirectReason =
+      '[teammate-bus] Do not stop. Call wait_for_message to receive any '
+      'teammate or operator messages and stay available for the next one — '
+      'you coordinate through the bus, not by ending your turn.';
+
+  /// Stop hook 的 JSON 响应体：回 `decision:block` 把成员拦在停止前、推回
+  /// `wait_for_message`。[stopHookActive] 为真（上一次已拦过、成员仍想停）时返回
+  /// `{}` 放行,避免 Stop→block 死循环。
+  String stopHookResponse({required bool stopHookActive}) {
+    if (stopHookActive) return '{}';
+    return jsonEncode(<String, Object?>{
+      'decision': 'block',
+      'reason': stopRedirectReason,
+    });
+  }
 
   Future<JsonRpcResponse?> handle(String memberId, JsonRpcRequest req) async {
     switch (req.method) {

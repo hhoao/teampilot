@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/cli/registry/config_profile/claude_config_profile_capability.dart';
+import 'package:teampilot/services/cli/registry/config_profile/bus_idle_stop_hook.dart';
 
 void main() {
   const idleUrl = 'http://127.0.0.1:12345/idle';

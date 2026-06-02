@@ -4,6 +4,7 @@ import '../../../provider/config_profile_service.dart';
 import '../../../session/member_role_provision.dart';
 import '../capabilities/config_profile_capability.dart';
 import '../config_profile/config_profile_context.dart';
+import 'bus_idle_stop_hook.dart';
 
 final class FlashskyaiConfigProfileCapability
     implements ConfigProfileCapability {
@@ -39,6 +40,7 @@ final class FlashskyaiConfigProfileCapability
       launchedMember: ctx.member,
       forceTeamLeadDelegateMode: ctx.team?.forceTeamLeadDelegateMode ?? false,
       mixed: ctx.team?.teamMode == TeamMode.mixed,
+      idleUrl: ctx.busIdleUrl,
     );
 
     final environment = _teamLaunchEnvironment(delegate, scope);
@@ -106,6 +108,7 @@ final class FlashskyaiConfigProfileCapability
     required TeamMemberConfig? launchedMember,
     required bool forceTeamLeadDelegateMode,
     required bool mixed,
+    String? idleUrl,
   }) async {
     final selected = launchedMember;
     if (selected == null || !selected.isValid) {
@@ -118,6 +121,7 @@ final class FlashskyaiConfigProfileCapability
       member: selected,
       forceTeamLeadDelegateMode: forceTeamLeadDelegateMode,
       mixed: mixed,
+      idleUrl: idleUrl,
     );
   }
 
@@ -150,6 +154,7 @@ final class FlashskyaiConfigProfileCapability
     required TeamMemberConfig member,
     required bool forceTeamLeadDelegateMode,
     required bool mixed,
+    String? idleUrl,
   }) async {
     final memberToolDir = delegate.sessionToolDir(
       scope.teamId,
@@ -170,6 +175,9 @@ final class FlashskyaiConfigProfileCapability
     );
     var settings = _memberSettings(member);
     settings = MemberRoleProvision.applyTeamSessionPolicy(settings);
+    if (mixed && idleUrl != null && idleUrl.isNotEmpty) {
+      settings = mergeStopIdleHook(settings, member.id, idleUrl);
+    }
     settings = await delegate.maybeApplyTeamLeadHooks(
       settings,
       member,

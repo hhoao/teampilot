@@ -1,7 +1,5 @@
 import 'dart:convert';
 
-import 'package:flutter/foundation.dart';
-
 import '../../../../models/claude_credential_link_result.dart';
 import '../../../../models/team_config.dart';
 import '../../../../utils/team_member_naming.dart';
@@ -12,40 +10,7 @@ import '../../../session/member_role_provision.dart';
 import '../../../team/claude_team_roster_service.dart';
 import '../capabilities/config_profile_capability.dart';
 import '../config_profile/config_profile_context.dart';
-
-/// mixed：往成员 settings 的 hooks.Stop 加一个 http 通知（turn 结束 → POST /idle → 更新 bus 状态；有未读信才门铃）。
-@visibleForTesting
-Map<String, Object?> mergeStopIdleHook(
-  Map<String, Object?> settings,
-  String memberId,
-  String idleUrl,
-) {
-  final hooks = Map<String, Object?>.from(
-    (settings['hooks'] as Map?)?.cast<String, Object?>() ?? const {},
-  );
-  final stop = List<Object?>.from((hooks['Stop'] as List?) ?? const []);
-  final exists = stop.any(
-    (e) =>
-        e is Map &&
-        (e['hooks'] as List?)?.any(
-              (h) => h is Map && h['url'] == idleUrl,
-            ) ==
-            true,
-  );
-  if (!exists) {
-    stop.add({
-      'hooks': [
-        {
-          'type': 'http',
-          'url': idleUrl,
-          'headers': {'X-Member': memberId},
-        },
-      ],
-    });
-  }
-  hooks['Stop'] = stop;
-  return {...settings, 'hooks': hooks};
-}
+import 'bus_idle_stop_hook.dart';
 
 final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
   const ClaudeConfigProfileCapability();

@@ -82,7 +82,7 @@ void main() {
   });
 
   test(
-    'POST /idle with empty inbox does not inject doorbell',
+    'POST /idle redirects the member back into wait_for_message',
     () async {
       final node = AgentNode.test(
         memberId: 'leader',
@@ -95,12 +95,41 @@ void main() {
         Uri.parse('http://127.0.0.1:${server.port}/idle'),
       );
       req.headers.set('X-Member', 'leader');
+      req.add(utf8.encode(jsonEncode({'stop_hook_active': false})));
       final resp = await req.close();
-      await resp.drain<void>();
+      final body = await resp.transform(utf8.decoder).join();
 
-      expect(resp.statusCode, 204);
+      expect(resp.statusCode, 200);
+      final json = jsonDecode(body) as Map<String, Object?>;
+      expect(json['decision'], 'block');
+      expect(json['reason'], contains('wait_for_message'));
+      // notifyIdle still runs: empty inbox settles at turnDoneReady, no doorbell.
       expect(node.activity, MemberActivity.turnDoneReady);
       expect(launcher.woken, isEmpty);
+    },
+  );
+
+  test(
+    'POST /idle allows the stop when stop_hook_active (no block loop)',
+    () async {
+      bus.declareMember(
+        AgentNode.test(
+          memberId: 'leader',
+          lifecycle: MemberLifecycle.running,
+          activity: MemberActivity.active,
+        ),
+      );
+
+      final req = await client.postUrl(
+        Uri.parse('http://127.0.0.1:${server.port}/idle'),
+      );
+      req.headers.set('X-Member', 'leader');
+      req.add(utf8.encode(jsonEncode({'stop_hook_active': true})));
+      final resp = await req.close();
+      final body = await resp.transform(utf8.decoder).join();
+
+      expect(resp.statusCode, 200);
+      expect(jsonDecode(body), <String, Object?>{});
     },
   );
 
