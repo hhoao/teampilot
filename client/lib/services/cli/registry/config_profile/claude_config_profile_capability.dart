@@ -396,10 +396,13 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
       }
     }
     // mixed members are standalone processes coordinating via the teammate-bus
-    // MCP, not Claude's in-process agent-teams. Enabling agent-teams there
-    // changes the turn/idle lifecycle and suppresses the bus Stop hook, so keep
-    // it (and teammateMode) to non-mixed only — the launch env already does.
-    if (!mixed) {
+    // MCP, not Claude's in-process agent-teams. Agent-teams mode changes the
+    // turn/idle lifecycle and suppresses the bus Stop hook, so it must be OFF
+    // for mixed members — strip it (and teammateMode) even when it leaks in
+    // from persisted provider settings, not just skip adding our own.
+    if (mixed) {
+      env.remove('CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS');
+    } else {
       env['CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS'] = '1';
     }
     env['CLAUDE_CODE_NO_FLICKER'] = '1';
@@ -408,7 +411,9 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
     settings['env'] = env;
     settings['effortLevel'] = effortLevel;
     settings['skipDangerousModePermissionPrompt'] = true;
-    if (!mixed) {
+    if (mixed) {
+      settings.remove('teammateMode');
+    } else {
       settings['teammateMode'] = teammateMode;
     }
     return settings;

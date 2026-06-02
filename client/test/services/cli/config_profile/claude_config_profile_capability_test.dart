@@ -89,6 +89,14 @@ void main() {
           members: const [member],
           workingDirectory: '/workspace/project',
           paths: service,
+          // Persisted provider settings may carry agent-teams on; mixed must
+          // strip it, not just avoid adding its own.
+          claude: const ClaudeLaunchExtras(
+            settings: {
+              'env': {'CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS': '1'},
+              'teammateMode': 'in-process',
+            },
+          ),
         ),
       );
 
