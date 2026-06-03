@@ -196,14 +196,14 @@ CodeHighlightTheme? codeHighlightThemeFor(
 }
 
 /// Editor monospace size from [AppTypographyTheme.mono].
-double fileEditorFontSize(BuildContext context) =>
-    context.appTypography.mono;
+double fileEditorFontSize(BuildContext context) => context.appTypography.mono;
 
 CodeEditorStyle codeEditorStyleFor(BuildContext context, String filePath) {
   final cs = Theme.of(context).colorScheme;
   final fonts = context.appFonts;
+  final textScaler = MediaQuery.textScalerOf(context);
   return CodeEditorStyle(
-    fontSize: fileEditorFontSize(context),
+    fontSize: textScaler.scale(fileEditorFontSize(context)),
     fontHeight: 1.35,
     fontFamily: fonts.monoFontFamily,
     fontFamilyFallback: fonts.monoFontFamilyFallback,

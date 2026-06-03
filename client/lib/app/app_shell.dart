@@ -37,6 +37,7 @@ import '../repositories/ssh_known_host_repository.dart';
 import '../repositories/ssh_profile_repository.dart';
 import '../repositories/extension_repository.dart';
 import '../repositories/team_repository.dart';
+import '../router/app_router.dart';
 import '../services/extension/builtin_manifests.dart';
 import '../services/extension/extension_acquisition_engine.dart';
 import '../services/extension/extension_provisioner.dart';
@@ -481,6 +482,7 @@ Future<AppShell> buildAppShell({
 
   boot('loading layout');
   await layoutCubit.load();
+  applyWorkspaceEntryMode(layoutCubit.state.preferences.workspaceEntryMode);
   boot('buildAppShell complete');
 
   Future<void> bootstrapAppData() async {

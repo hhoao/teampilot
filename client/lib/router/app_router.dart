@@ -36,10 +36,20 @@ import '../widgets/create_project_dialog.dart';
 import '../widgets/split_layout.dart';
 import '../l10n/l10n_extensions.dart';
 
+final _workspaceEntryNotifier = ValueNotifier<String>('/home-v2');
+
+/// Apply the user's startup view preference. Call after [LayoutCubit.load()]
+/// during bootstrap, before the first route is resolved.
+void applyWorkspaceEntryMode(WorkspaceEntryMode mode) {
+  _workspaceEntryNotifier.value = switch (mode) {
+    WorkspaceEntryMode.home => '/home-v2',
+    WorkspaceEntryMode.hub => '/chat',
+  };
+}
+
 final appRouter = GoRouter(
-  // Dev entry for the new workspace home. Revert to '/chat' to restore the
-  // legacy shell as the default landing route.
-  initialLocation: '/home-v2',
+  refreshListenable: _workspaceEntryNotifier,
+  initialLocation: _workspaceEntryNotifier.value,
   routes: [
     // New Apifox-style workspace home — standalone, outside the legacy shell.
     // The shell draws the persistent title bar + open project tabs; the home

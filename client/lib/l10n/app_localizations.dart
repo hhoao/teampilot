@@ -566,6 +566,36 @@ abstract class AppLocalizations {
   /// **'Appearance'**
   String get appearance;
 
+  /// No description provided for @appearancePageSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Interface appearance and the view shown on startup.'**
+  String get appearancePageSubtitle;
+
+  /// No description provided for @workspaceEntryModeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Startup view'**
+  String get workspaceEntryModeTitle;
+
+  /// No description provided for @workspaceEntryModeDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Where the app opens after launch.'**
+  String get workspaceEntryModeDescription;
+
+  /// No description provided for @workspaceEntryModeHome.
+  ///
+  /// In en, this message translates to:
+  /// **'Home'**
+  String get workspaceEntryModeHome;
+
+  /// No description provided for @workspaceEntryModeHub.
+  ///
+  /// In en, this message translates to:
+  /// **'Workspace'**
+  String get workspaceEntryModeHub;
+
   /// No description provided for @theme.
   ///
   /// In en, this message translates to:

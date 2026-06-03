@@ -184,15 +184,18 @@ class _TabBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        for (var i = 0; i < tabs.length; i++)
-          _TabItem(
-            label: tabs[i],
-            selected: i == selectedIndex,
-            onTap: () => onSelect(i),
-          ),
-      ],
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: [
+          for (var i = 0; i < tabs.length; i++)
+            _TabItem(
+              label: tabs[i],
+              selected: i == selectedIndex,
+              onTap: () => onSelect(i),
+            ),
+        ],
+      ),
     );
   }
 }
@@ -249,6 +252,8 @@ class _TabItemState extends State<_TabItem> {
             ),
             child: Text(
               widget.label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: styles.prominent.copyWith(
                 color: selected
                     ? cs.primary
@@ -310,16 +315,30 @@ class _Toolbar extends StatelessWidget {
         const SizedBox(width: 8),
         _IconChip(icon: Icons.sort_rounded, onTap: () => _comingSoon(context)),
         const Spacer(),
-        _OutlinedAction(
-          icon: Icons.file_download_outlined,
-          label: l10n.homeWorkspaceImportProject,
-          onTap: () => _comingSoon(context),
-        ),
-        const SizedBox(width: 10),
-        _PrimaryAction(
-          icon: Icons.add_rounded,
-          label: l10n.newProject,
-          onTap: () => _comingSoon(context),
+        Flexible(
+          child: Align(
+            alignment: Alignment.centerRight,
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              reverse: true,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _OutlinedAction(
+                    icon: Icons.file_download_outlined,
+                    label: l10n.homeWorkspaceImportProject,
+                    onTap: () => _comingSoon(context),
+                  ),
+                  const SizedBox(width: 10),
+                  _PrimaryAction(
+                    icon: Icons.add_rounded,
+                    label: l10n.newProject,
+                    onTap: () => _comingSoon(context),
+                  ),
+                ],
+              ),
+            ),
+          ),
         ),
       ],
     );

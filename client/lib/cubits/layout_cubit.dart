@@ -122,6 +122,9 @@ class LayoutCubit extends Cubit<LayoutState> {
   Future<void> setTerminalThemeMode(String mode) =>
       _save(state.preferences.copyWith(terminalThemeMode: mode));
 
+  Future<void> setWorkspaceEntryMode(WorkspaceEntryMode mode) =>
+      _save(state.preferences.copyWith(workspaceEntryMode: mode));
+
   Future<void> setLocale(String locale) =>
       _save(state.preferences.copyWith(locale: locale));
 

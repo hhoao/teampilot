@@ -67,8 +67,10 @@ class _FileEditorTabBar extends StatelessWidget {
                   children: [
                     Text(
                       label,
-                      style: AppTextStyles.of(context).bodySmall.copyWith(
-                        fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+                      style: AppTextStyles.of(context).body.copyWith(
+                        fontWeight: selected
+                            ? FontWeight.w600
+                            : FontWeight.w500,
                         color: selected
                             ? cs.onSecondaryContainer
                             : cs.onSurface,
@@ -105,7 +107,9 @@ class _FileEditorTabBar extends StatelessWidget {
         builder: (ctx) => AlertDialog(
           title: Text(l10n.editorUnsavedChangesTitle),
           content: Text(
-            l10n.editorUnsavedChangesDiscardFile(editor.state.fileNameFor(path)),
+            l10n.editorUnsavedChangesDiscardFile(
+              editor.state.fileNameFor(path),
+            ),
           ),
           actions: [
             TextButton(
@@ -176,12 +180,13 @@ class _FileEditorBody extends StatelessWidget {
       toolbarController: const FileEditorContextMenuController(),
       style: codeEditorStyleFor(context, path),
       wordWrap: false,
-      indicatorBuilder: (context, editingController, chunkController, notifier) {
-        return DefaultCodeLineNumber(
-          controller: editingController,
-          notifier: notifier,
-        );
-      },
+      indicatorBuilder:
+          (context, editingController, chunkController, notifier) {
+            return DefaultCodeLineNumber(
+              controller: editingController,
+              notifier: notifier,
+            );
+          },
     );
   }
 }
@@ -586,7 +591,9 @@ class _FloatingTitleBar extends StatelessWidget {
         decoration: BoxDecoration(
           color: cs.workspaceInset,
           border: Border(
-            bottom: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.45)),
+            bottom: BorderSide(
+              color: cs.outlineVariant.withValues(alpha: 0.45),
+            ),
           ),
         ),
         child: Row(
@@ -602,10 +609,7 @@ class _FloatingTitleBar extends StatelessWidget {
                 title.isEmpty ? l10n.editorTitle : p.basename(title),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: AppTextStyles.of(context).bodySmall.copyWith(
-                  fontWeight: FontWeight.w600,
-                  color: cs.onSurface,
-                ),
+                style: AppTextStyles.of(context).body,
               ),
             ),
             if (showDirtyActions) ...[
