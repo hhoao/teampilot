@@ -911,8 +911,44 @@ abstract class AppLocalizations {
   /// No description provided for @homeWorkspaceProjectSettings.
   ///
   /// In en, this message translates to:
-  /// **'Settings'**
+  /// **'Project settings'**
   String get homeWorkspaceProjectSettings;
+
+  /// No description provided for @homeWorkspaceProjectSettingsSectionBasic.
+  ///
+  /// In en, this message translates to:
+  /// **'Basic'**
+  String get homeWorkspaceProjectSettingsSectionBasic;
+
+  /// No description provided for @homeWorkspaceProjectSettingsBasicInfo.
+  ///
+  /// In en, this message translates to:
+  /// **'Basic information'**
+  String get homeWorkspaceProjectSettingsBasicInfo;
+
+  /// No description provided for @homeWorkspaceProjectId.
+  ///
+  /// In en, this message translates to:
+  /// **'Project ID'**
+  String get homeWorkspaceProjectId;
+
+  /// No description provided for @homeWorkspaceProjectAdditionalDirsCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 additional directory} other{{count} additional directories}}'**
+  String homeWorkspaceProjectAdditionalDirsCount(int count);
+
+  /// No description provided for @homeWorkspaceProjectSettingsPathsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Use Manage on additional directories to add or remove workspace folders.'**
+  String get homeWorkspaceProjectSettingsPathsHint;
+
+  /// No description provided for @deleteProjectSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Deletes this project and all conversations in it. This cannot be undone.'**
+  String get deleteProjectSubtitle;
 
   /// No description provided for @homeWorkspaceInviteMembers.
   ///

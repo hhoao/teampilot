@@ -7,6 +7,7 @@ import '../../l10n/l10n_extensions.dart';
 import '../../services/app/platform_utils.dart';
 import '../../theme/app_text_styles.dart';
 import '../../theme/workspace_surface_layers.dart';
+import '../../widgets/team_pilot_brand_logo.dart';
 import '../../widgets/window_drag_area.dart';
 import '../config_workspace.dart';
 
@@ -223,29 +224,14 @@ class _BrandMark extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final styles = AppTextStyles.of(context);
+    final l10n = context.l10n;
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Container(
-          width: 24,
-          height: 24,
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [cs.primary, cs.tertiary],
-            ),
-            borderRadius: BorderRadius.circular(7),
-          ),
-          child: Icon(
-            Icons.flight_takeoff_rounded,
-            size: AppIconSizes.md,
-            color: cs.onPrimary,
-          ),
-        ),
+        const TeamPilotBrandLogo(),
         const SizedBox(width: 8),
         Text(
-          'TeamPilot',
+          l10n.appTitle,
           style: styles.bodyStrong.copyWith(color: cs.onSurface),
         ),
       ],

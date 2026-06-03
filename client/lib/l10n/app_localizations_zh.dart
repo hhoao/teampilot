@@ -427,6 +427,27 @@ class AppLocalizationsZh extends AppLocalizations {
   String get homeWorkspaceProjectSettings => '项目设置';
 
   @override
+  String get homeWorkspaceProjectSettingsSectionBasic => '基本设置';
+
+  @override
+  String get homeWorkspaceProjectSettingsBasicInfo => '基本信息';
+
+  @override
+  String get homeWorkspaceProjectId => '项目 ID';
+
+  @override
+  String homeWorkspaceProjectAdditionalDirsCount(int count) {
+    return '$count 个附加目录';
+  }
+
+  @override
+  String get homeWorkspaceProjectSettingsPathsHint =>
+      '在「附加目录」行点击编辑，可添加或移除工作区文件夹。';
+
+  @override
+  String get deleteProjectSubtitle => '将删除该项目及其下所有会话，且无法恢复。';
+
+  @override
   String get homeWorkspaceInviteMembers => '邀请成员';
 
   @override

@@ -163,7 +163,20 @@
   "homeWorkspaceEmptyProjectsHint": "Create or import a project to get started",
   "homeWorkspaceComingSoon": "Coming soon",
   "homeWorkspaceConversations": "Conversations",
-  "homeWorkspaceProjectSettings": "Settings",
+  "homeWorkspaceProjectSettings": "Project settings",
+  "homeWorkspaceProjectSettingsSectionBasic": "Basic",
+  "homeWorkspaceProjectSettingsBasicInfo": "Basic information",
+  "homeWorkspaceProjectId": "Project ID",
+  "homeWorkspaceProjectAdditionalDirsCount": "{count, plural, =1{1 additional directory} other{{count} additional directories}}",
+  "@homeWorkspaceProjectAdditionalDirsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "homeWorkspaceProjectSettingsPathsHint": "Use Manage on additional directories to add or remove workspace folders.",
+  "deleteProjectSubtitle": "Deletes this project and all conversations in it. This cannot be undone.",
   "homeWorkspaceInviteMembers": "Invite",
   "homeWorkspaceNewConversation": "New Conversation",
   "homeWorkspaceNoConversations": "No conversations in this project yet",

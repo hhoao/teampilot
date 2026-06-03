@@ -130,18 +130,8 @@ class WorkspaceHubNavItem extends StatelessWidget {
         hubStyle ? 16.0 : 18.0,
         0.0,
       ),
-      WorkspaceHubNavDensity.relaxed => (
-        54.0,
-        AppIconSizes.md,
-        18.0,
-        0.0,
-      ),
-      WorkspaceHubNavDensity.subItem => (
-        44.0,
-        AppIconSizes.md,
-        14.0,
-        14.0,
-      ),
+      WorkspaceHubNavDensity.relaxed => (54.0, AppIconSizes.md, 18.0, 0.0),
+      WorkspaceHubNavDensity.subItem => (44.0, AppIconSizes.md, 14.0, 14.0),
     };
 
     final borderRadius = density == WorkspaceHubNavDensity.subItem

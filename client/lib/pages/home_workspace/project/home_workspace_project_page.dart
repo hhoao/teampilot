@@ -8,15 +8,24 @@ import '../../../models/app_project.dart';
 import '../../chat_page.dart';
 import 'home_workspace_conversation_panel.dart';
 import 'home_workspace_project_rail.dart';
+import 'home_workspace_project_section.dart';
+import 'home_workspace_project_settings_view.dart';
 
 /// Apifox-style project detail page body: a narrow icon rail, the
 /// "Conversations" panel (renamed from 接口管理), and the existing chat
 /// workspace_shell on the right. The title bar/tabs come from
 /// [HomeWorkspaceShell].
-class HomeWorkspaceProjectPage extends StatelessWidget {
+class HomeWorkspaceProjectPage extends StatefulWidget {
   const HomeWorkspaceProjectPage({required this.projectId, super.key});
 
   final String projectId;
+
+  @override
+  State<HomeWorkspaceProjectPage> createState() => _HomeWorkspaceProjectPageState();
+}
+
+class _HomeWorkspaceProjectPageState extends State<HomeWorkspaceProjectPage> {
+  HomeWorkspaceProjectSection _section = HomeWorkspaceProjectSection.conversations;
 
   @override
   Widget build(BuildContext context) {
@@ -24,7 +33,7 @@ class HomeWorkspaceProjectPage extends StatelessWidget {
     final l10n = context.l10n;
 
     final project = context.select<ChatCubit, AppProject?>(
-      (c) => _findProject(c.state.projects, projectId),
+      (c) => _findProject(c.state.projects, widget.projectId),
     );
 
     if (project == null) {
@@ -36,10 +45,15 @@ class HomeWorkspaceProjectPage extends StatelessWidget {
       children: [
         HomeWorkspaceProjectRail(
           brandColor: cs.primary,
-          onInvite: () => context.go('/team-config'),
+          section: _section,
+          onSectionChanged: (s) => setState(() => _section = s),
+          onLogoTap: () => context.go('/home-v2'),
         ),
-        HomeWorkspaceConversationPanel(project: project),
-        const Expanded(child: ChatPage()),
+        if (_section == HomeWorkspaceProjectSection.conversations) ...[
+          HomeWorkspaceConversationPanel(project: project),
+          const Expanded(child: ChatPage()),
+        ] else
+          HomeWorkspaceProjectSettingsView(project: project),
       ],
     );
   }

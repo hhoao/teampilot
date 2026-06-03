@@ -441,7 +441,35 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homeWorkspaceConversations => 'Conversations';
 
   @override
-  String get homeWorkspaceProjectSettings => 'Settings';
+  String get homeWorkspaceProjectSettings => 'Project settings';
+
+  @override
+  String get homeWorkspaceProjectSettingsSectionBasic => 'Basic';
+
+  @override
+  String get homeWorkspaceProjectSettingsBasicInfo => 'Basic information';
+
+  @override
+  String get homeWorkspaceProjectId => 'Project ID';
+
+  @override
+  String homeWorkspaceProjectAdditionalDirsCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count additional directories',
+      one: '1 additional directory',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get homeWorkspaceProjectSettingsPathsHint =>
+      'Use Manage on additional directories to add or remove workspace folders.';
+
+  @override
+  String get deleteProjectSubtitle =>
+      'Deletes this project and all conversations in it. This cannot be undone.';
 
   @override
   String get homeWorkspaceInviteMembers => 'Invite';

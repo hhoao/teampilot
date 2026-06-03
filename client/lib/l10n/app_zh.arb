@@ -154,6 +154,19 @@
   "homeWorkspaceComingSoon": "功能开发中",
   "homeWorkspaceConversations": "对话管理",
   "homeWorkspaceProjectSettings": "项目设置",
+  "homeWorkspaceProjectSettingsSectionBasic": "基本设置",
+  "homeWorkspaceProjectSettingsBasicInfo": "基本信息",
+  "homeWorkspaceProjectId": "项目 ID",
+  "homeWorkspaceProjectAdditionalDirsCount": "{count} 个附加目录",
+  "@homeWorkspaceProjectAdditionalDirsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "homeWorkspaceProjectSettingsPathsHint": "在「附加目录」行点击编辑，可添加或移除工作区文件夹。",
+  "deleteProjectSubtitle": "将删除该项目及其下所有会话，且无法恢复。",
   "homeWorkspaceInviteMembers": "邀请成员",
   "homeWorkspaceNewConversation": "新建对话",
   "homeWorkspaceNoConversations": "该项目还没有对话",
