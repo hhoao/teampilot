@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../cubits/app_provider_cubit.dart';
 import '../cubits/app_update_cubit.dart';
 import '../cubits/chat_cubit.dart';
+import '../cubits/member_presence_cubit.dart';
 import '../cubits/editor_cubit.dart';
 import '../cubits/config_cubit.dart';
 import '../cubits/layout_cubit.dart';
@@ -74,6 +75,7 @@ import '../utils/logger.dart';
 class AppShell {
   AppShell({
     required this.chatCubit,
+    required this.memberPresenceCubit,
     required this.editorCubit,
     required this.sessionRepo,
     required this.sshProfileRepo,
@@ -104,6 +106,7 @@ class AppShell {
 
   final CliToolRegistry cliToolRegistry;
   final ChatCubit chatCubit;
+  final MemberPresenceCubit memberPresenceCubit;
   final EditorCubit editorCubit;
   final SessionRepository sessionRepo;
   final SshProfileRepository sshProfileRepo;
@@ -228,6 +231,7 @@ Future<AppShell> buildAppShell({
   late final ExtensionCubit extensionCubit;
   late final SessionRepository sessionRepo;
   late final ChatCubit chatCubit;
+  late final MemberPresenceCubit memberPresenceCubit;
   late final EditorCubit editorCubit;
   late final FlashskyaiStorageRoots storageRoots;
   late final SessionLifecycleService sessionLifecycleService;
@@ -480,6 +484,9 @@ Future<AppShell> buildAppShell({
         sessionPreferencesCubit.state.preferences.terminalScrollbackLines,
   );
 
+  memberPresenceCubit = MemberPresenceCubit();
+  chatCubit.bindPresenceCubit(memberPresenceCubit);
+
   boot('loading layout');
   await layoutCubit.load();
   applyWorkspaceEntryMode(layoutCubit.state.preferences.workspaceEntryMode);
@@ -511,6 +518,7 @@ Future<AppShell> buildAppShell({
   return AppShell(
     cliToolRegistry: cliToolRegistry,
     chatCubit: chatCubit,
+    memberPresenceCubit: memberPresenceCubit,
     editorCubit: editorCubit,
     sessionRepo: sessionRepo,
     sshProfileRepo: sshProfileRepo,

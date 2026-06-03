@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../cubits/chat_cubit.dart';
+import '../../cubits/member_presence_cubit.dart';
 import '../../cubits/team_cubit.dart';
 import '../../models/layout_preferences.dart';
 import '../../theme/workspace_surface_layers.dart';
@@ -41,21 +42,24 @@ class RightToolsPanel extends StatefulWidget {
 class _RightToolsPanelState extends State<RightToolsPanel> {
   String? _syncedPresenceTeamId;
   ChatCubit? _chatCubit;
+  MemberPresenceCubit? _presenceCubit;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    final cubit = context.read<ChatCubit>();
-    if (!identical(_chatCubit, cubit)) {
-      _chatCubit?.detachPresenceUi();
-      _chatCubit = cubit;
-      cubit.attachPresenceUi();
+    final chatCubit = context.read<ChatCubit>();
+    final presenceCubit = context.read<MemberPresenceCubit>();
+    if (!identical(_chatCubit, chatCubit)) {
+      _presenceCubit?.detachPresenceUi();
+      _chatCubit = chatCubit;
+      _presenceCubit = presenceCubit;
+      presenceCubit.attachPresenceUi();
     }
   }
 
   @override
   void dispose() {
-    _chatCubit?.detachPresenceUi();
+    _presenceCubit?.detachPresenceUi();
     super.dispose();
   }
 
@@ -68,10 +72,10 @@ class _RightToolsPanelState extends State<RightToolsPanel> {
     final teamId = team?.id;
     if (teamId != _syncedPresenceTeamId) {
       _syncedPresenceTeamId = teamId;
-      final cubit = _chatCubit;
+      final presenceCubit = _presenceCubit;
       final teamSnapshot = team;
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        cubit?.syncPresenceTeam(teamSnapshot);
+        presenceCubit?.syncPresenceTeam(teamSnapshot);
       });
     }
     if (team == null) return const SizedBox.shrink();
@@ -93,7 +97,7 @@ class _RightToolsPanelState extends State<RightToolsPanel> {
         MembersPanel(
           teamCli: team.cli,
           members: members,
-          memberPresence: chatCubit.state.memberPresence,
+          memberPresence: context.watch<MemberPresenceCubit>().state.presence,
           selectedMemberId: chatCubit.state.selectedMemberId,
           onSelected: (id) {
             final member = team.members.firstWhere((m) => m.id == id);

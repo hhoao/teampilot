@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
+import 'package:teampilot/cubits/member_presence_cubit.dart';
 import 'package:teampilot/models/member_presence.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/repositories/session_repository.dart';
@@ -78,15 +79,11 @@ void main() {
   setUp(setUpTestAppStorage);
   tearDown(tearDownTestAppStorage);
 
-  group('ChatCubit presence polling', () {
+  group('MemberPresenceCubit polling', () {
     test('does not poll until UI is attached', () async {
       final service = _DelayedPresenceService(const {});
       final harness = PostFrameTestHarness();
-      final cubit = ChatCubit(
-        executableResolver: () => 'true',
-        postFrameScheduler: harness.scheduler,
-        memberPresenceService: service,
-      );
+      final cubit = MemberPresenceCubit(memberPresenceService: service);
       addTearDown(cubit.close);
 
       const team = TeamConfig(
@@ -108,14 +105,17 @@ void main() {
           ),
         });
         final harness = PostFrameTestHarness();
-        final cubit = ChatCubit(
+        final presenceCubit = MemberPresenceCubit(
+          memberPresenceService: service,
+        );
+        final chatCubit = ChatCubit(
           executableResolver: () => 'true',
           postFrameScheduler: harness.scheduler,
-          memberPresenceService: service,
           terminalSessionFactory:
               ({required String executable, int scrollbackLines = 10000}) =>
                   _FakeTerminalSession(executable: executable),
         );
+        chatCubit.bindPresenceCubit(presenceCubit);
 
         const team = TeamConfig(
           id: 'team-a',
@@ -123,25 +123,26 @@ void main() {
           members: [TeamMemberConfig(id: 'm-lead', name: 'team-lead')],
         );
 
-        unawaited(cubit.connectSession(team));
+        unawaited(chatCubit.connectSession(team));
         async.flushMicrotasks();
         unawaited(harness.flush());
         async.flushMicrotasks();
 
-        cubit.attachPresenceUi();
-        cubit.syncPresenceTeam(team);
+        presenceCubit.attachPresenceUi();
+        presenceCubit.syncPresenceTeam(team);
         async.flushMicrotasks();
         unawaited(harness.flush());
         async.flushMicrotasks();
 
-        cubit.detachPresenceUi();
-        expect(cubit.state.memberPresence, isEmpty);
+        presenceCubit.detachPresenceUi();
+        expect(presenceCubit.state.presence, isEmpty);
 
         async.elapse(const Duration(milliseconds: 200));
         async.flushMicrotasks();
-        expect(cubit.state.memberPresence, isEmpty);
+        expect(presenceCubit.state.presence, isEmpty);
 
-        cubit.close();
+        unawaited(chatCubit.close());
+        unawaited(presenceCubit.close());
       });
     });
 
@@ -151,15 +152,18 @@ void main() {
         final harness = PostFrameTestHarness();
         final tmp = Directory.systemTemp.createTempSync('presence_tabs_');
         final repo = SessionRepository(rootDir: tmp.path);
-        final cubit = ChatCubit(
+        final presenceCubit = MemberPresenceCubit(
+          memberPresenceService: service,
+        );
+        final chatCubit = ChatCubit(
           executableResolver: () => 'true',
           postFrameScheduler: harness.scheduler,
-          memberPresenceService: service,
           sessionRepository: repo,
           terminalSessionFactory:
               ({required String executable, int scrollbackLines = 10000}) =>
                   _FakeTerminalSession(executable: executable),
         );
+        chatCubit.bindPresenceCubit(presenceCubit);
 
         const team = TeamConfig(
           id: 'team-a',
@@ -167,7 +171,7 @@ void main() {
           members: [TeamMemberConfig(id: 'm-lead', name: 'team-lead')],
         );
 
-        unawaited(cubit.connectSession(team));
+        unawaited(chatCubit.connectSession(team));
         async.flushMicrotasks();
         unawaited(harness.flush());
         async.flushMicrotasks();
@@ -175,13 +179,13 @@ void main() {
         unawaited(
           repo.createProject('/tmp').then((project) async {
             final localSession = await repo.createSession(project.projectId);
-            await cubit.openSessionTab(localSession, connectImmediately: false);
+            await chatCubit.openSessionTab(localSession, connectImmediately: false);
             async.flushMicrotasks();
             unawaited(harness.flush());
             async.flushMicrotasks();
 
-            cubit.attachPresenceUi();
-            cubit.syncPresenceTeam(team);
+            presenceCubit.attachPresenceUi();
+            presenceCubit.syncPresenceTeam(team);
             async.flushMicrotasks();
             unawaited(harness.flush());
             async.flushMicrotasks();
@@ -189,7 +193,7 @@ void main() {
             expect(service.computeCalls, greaterThan(0));
             final callsWithTeamTab = service.computeCalls;
 
-            cubit.selectTab(1);
+            chatCubit.selectTab(1);
             async.flushMicrotasks();
             unawaited(harness.flush());
             async.flushMicrotasks();
@@ -198,7 +202,8 @@ void main() {
             async.flushMicrotasks();
             expect(service.computeCalls, callsWithTeamTab);
 
-            await cubit.close();
+            await chatCubit.close();
+            await presenceCubit.close();
             if (tmp.existsSync()) {
               tmp.deleteSync(recursive: true);
             }

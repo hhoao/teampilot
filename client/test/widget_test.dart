@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/cubits/app_provider_cubit.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
+import 'package:teampilot/cubits/member_presence_cubit.dart';
 import 'package:teampilot/cubits/config_cubit.dart';
 import 'package:teampilot/cubits/extension_cubit.dart';
 import 'package:teampilot/cubits/editor_cubit.dart';
@@ -85,6 +86,7 @@ Widget buildTestApp({
   required TeamCubit teamCubit,
   required SessionPreferencesCubit sessionPreferencesCubit,
   ChatCubit? chatCubit,
+  MemberPresenceCubit? memberPresenceCubit,
   LayoutCubit? layoutCubit,
   LlmConfigCubit? llmConfigCubit,
   AppProviderCubit? appProviderCubit,
@@ -98,6 +100,9 @@ Widget buildTestApp({
   final settings =
       appSettings ??
       InMemoryAppSettingsRepository(hasCompletedOnboarding: true);
+  final chat = chatCubit ?? ChatCubit(executableResolver: _testExecutable);
+  final presence = memberPresenceCubit ?? MemberPresenceCubit();
+  chat.bindPresenceCubit(presence);
 
   return MultiRepositoryProvider(
     providers: [
@@ -112,9 +117,8 @@ Widget buildTestApp({
     child: MultiBlocProvider(
       providers: [
         BlocProvider.value(value: teamCubit),
-        BlocProvider.value(
-          value: chatCubit ?? ChatCubit(executableResolver: _testExecutable),
-        ),
+        BlocProvider.value(value: chat),
+        BlocProvider.value(value: presence),
         BlocProvider(create: (_) => ConfigCubit()),
         BlocProvider.value(value: llmConfigCubit ?? testLlmConfigCubit()),
         BlocProvider.value(value: appProviderCubit!),
