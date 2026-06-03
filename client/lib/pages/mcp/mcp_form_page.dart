@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:teampilot/theme/app_icon_sizes.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../cubits/mcp_cubit.dart';
@@ -178,7 +179,7 @@ class _McpFormPageState extends State<McpFormPage> {
                         height: 16,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
-                    : Icon(_isEditing ? Icons.save : Icons.add, size: 18),
+                    : Icon(_isEditing ? Icons.save : Icons.add, size: AppIconSizes.md),
                 label: Text(_isEditing ? l10n.save : l10n.mcpFormSubmitAdd),
               ),
               IconButton(

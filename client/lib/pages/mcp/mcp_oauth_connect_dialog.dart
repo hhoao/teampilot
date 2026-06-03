@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:teampilot/theme/app_icon_sizes.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../l10n/l10n_extensions.dart';
@@ -209,7 +210,7 @@ class _McpOAuthConnectDialogState extends State<_McpOAuthConnectDialog> {
                 const SizedBox(height: 12),
                 FilledButton.icon(
                   onPressed: finishing ? null : _openBrowser,
-                  icon: const Icon(Icons.open_in_browser, size: 18),
+                  icon: const Icon(Icons.open_in_browser, size: AppIconSizes.md),
                   label: Text(l10n.mcpOAuthOpenBrowser),
                 ),
                 const SizedBox(height: 8),

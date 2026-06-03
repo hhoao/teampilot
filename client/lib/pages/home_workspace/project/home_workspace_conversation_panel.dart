@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:teampilot/theme/app_icon_sizes.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../cubits/chat_cubit.dart';
@@ -133,7 +134,7 @@ class _PanelHeader extends StatelessWidget {
                 color: cs.primary,
                 borderRadius: BorderRadius.circular(7),
               ),
-              child: Icon(Icons.add_rounded, size: 16, color: cs.onPrimary),
+              child: Icon(Icons.add_rounded, size: AppIconSizes.md, color: cs.onPrimary),
             ),
           ),
         ],
@@ -162,7 +163,7 @@ class _SearchBox extends StatelessWidget {
         ),
         child: Row(
           children: [
-            Icon(Icons.search_rounded, size: 16, color: cs.onSurfaceVariant),
+            Icon(Icons.search_rounded, size: AppIconSizes.md, color: cs.onSurfaceVariant),
             const SizedBox(width: 8),
             Text(hint, style: styles.bodySmall.copyWith(
               color: cs.onSurfaceVariant.withValues(alpha: 0.8),
@@ -224,7 +225,7 @@ class _ConversationRowState extends State<_ConversationRow> {
             children: [
               Icon(
                 Icons.chat_bubble_outline_rounded,
-                size: 16,
+                size: AppIconSizes.md,
                 color: active ? cs.primary : cs.onSurfaceVariant,
               ),
               const SizedBox(width: 9),
@@ -262,7 +263,7 @@ class _EmptyConversations extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(Icons.forum_outlined,
-              size: 32, color: cs.onSurfaceVariant.withValues(alpha: 0.5)),
+              size: AppIconSizes.md, color: cs.onSurfaceVariant.withValues(alpha: 0.5)),
           const SizedBox(height: 10),
           Text(
             label,

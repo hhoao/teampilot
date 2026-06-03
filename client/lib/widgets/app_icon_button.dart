@@ -1,15 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:teampilot/theme/app_icon_sizes.dart';
 
 /// Compact icon control for toolbars and list rows: square hit target, rounded
 /// ink splash (AppFlowy-style).
 class AppIconButton extends StatelessWidget {
   static const double kDefaultSize = 32;
-  static const double kDefaultIconSize = 18;
+  static const double kDefaultIconSize = AppIconSizes.md;
   static const double kDefaultBorderRadius = 6;
 
   /// Dense toolbar preset (file tree header, terminal tabs, etc.).
   static const double kCompactSize = 28;
-  static const double kCompactIconSize = 16;
+  static const double kCompactIconSize = AppIconSizes.sm;
 
   const AppIconButton({
     super.key,

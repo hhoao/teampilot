@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math' show min;
 
 import 'package:flutter/material.dart';
+import 'package:teampilot/theme/app_icon_sizes.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_alacritty/flutter_alacritty.dart';
 import 'package:flutter_alacritty/input/paste.dart' as alacritty_paste;
@@ -469,7 +470,7 @@ class _WorkspaceTerminalSessionSidebar extends StatelessWidget {
                       ),
                       child: Row(
                         children: [
-                          Icon(Icons.terminal, size: 16, color: itemColor),
+                          Icon(Icons.terminal, size: AppIconSizes.md, color: itemColor),
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
@@ -487,7 +488,7 @@ class _WorkspaceTerminalSessionSidebar extends StatelessWidget {
                           ),
                           AppIconButton(
                             icon: Icons.close,
-                            iconSize: 14,
+                            iconSize: AppIconSizes.md,
                             color: itemColor,
                             size: AppIconButton.kCompactSize,
                             tooltip: l10n.workspaceTerminalCloseSession,

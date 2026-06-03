@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:teampilot/theme/app_icon_sizes.dart';
 
 import '../../l10n/l10n_extensions.dart';
 import '../../models/mcp_registry_source.dart';
@@ -404,7 +405,7 @@ class _RegistryRow extends StatelessWidget {
                   onPressed: onReset,
                   icon: Icon(
                     Icons.delete_outline,
-                    size: 18,
+                    size: AppIconSizes.md,
                     color: cs.error,
                   ),
                 ),

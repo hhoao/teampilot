@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:teampilot/theme/app_icon_sizes.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
@@ -63,13 +64,13 @@ class _HomeWorkspaceSidebarState extends State<HomeWorkspaceSidebar> {
               icon: Icons.groups_2_outlined,
               label: l10n.homeWorkspaceMyTeams,
               expanded: _teamsExpanded,
-              onToggle: () =>
-                  setState(() => _teamsExpanded = !_teamsExpanded),
+              onToggle: () => setState(() => _teamsExpanded = !_teamsExpanded),
             ),
           ),
           Expanded(
             child: ListView(
               padding: const EdgeInsets.fromLTRB(32, 8, 24, 8),
+
               children: [
                 ClipRect(
                   child: AnimatedSize(
@@ -83,10 +84,12 @@ class _HomeWorkspaceSidebarState extends State<HomeWorkspaceSidebar> {
                               for (final team in teams)
                                 _TeamRow(
                                   team: team,
-                                  selected: activeGlobalView == null &&
+                                  selected:
+                                      activeGlobalView == null &&
                                       team.id == selected?.id,
                                   onTap: () => onTeam?.call(team.id),
                                 ),
+
                               _NewTeamRow(
                                 label: l10n.homeWorkspaceNewTeam,
                                 onTap: () => _comingSoon(context),
@@ -108,18 +111,21 @@ class _HomeWorkspaceSidebarState extends State<HomeWorkspaceSidebar> {
                   active: activeGlobalView == HomeWorkspaceGlobalView.skills,
                   onTap: () => onGlobal?.call(HomeWorkspaceGlobalView.skills),
                 ),
+                const SizedBox(height: 4),
                 _ShortcutRow(
                   icon: Icons.widgets_outlined,
                   label: l10n.teamPluginsNav,
                   active: activeGlobalView == HomeWorkspaceGlobalView.plugins,
                   onTap: () => onGlobal?.call(HomeWorkspaceGlobalView.plugins),
                 ),
+                const SizedBox(height: 4),
                 _ShortcutRow(
                   icon: Icons.hub_outlined,
                   label: l10n.teamMcpNav,
                   active: activeGlobalView == HomeWorkspaceGlobalView.mcp,
                   onTap: () => onGlobal?.call(HomeWorkspaceGlobalView.mcp),
                 ),
+                const SizedBox(height: 4),
                 _ShortcutRow(
                   icon: Icons.power_outlined,
                   label: l10n.teamExtensionsNav,
@@ -175,7 +181,7 @@ class _SectionHeader extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(8, 6, 6, 10),
         child: Row(
           children: [
-            Icon(icon, size: 17, color: cs.onSurfaceVariant),
+            Icon(icon, size: AppIconSizes.md, color: cs.onSurfaceVariant),
             const SizedBox(width: 8),
             Expanded(
               child: Text(
@@ -191,7 +197,7 @@ class _SectionHeader extends StatelessWidget {
               duration: const Duration(milliseconds: 180),
               child: Icon(
                 Icons.expand_more_rounded,
-                size: 20,
+                size: AppIconSizes.md,
                 color: cs.onSurfaceVariant,
               ),
             ),
@@ -240,7 +246,7 @@ class _TeamRowState extends State<_TeamRow> {
         onTap: widget.onTap,
         behavior: HitTestBehavior.opaque,
         child: Container(
-          margin: const EdgeInsets.symmetric(vertical: 1),
+          margin: const EdgeInsets.symmetric(vertical: 4),
           // Left inset = icon (17) + gap (8) so the icon-less team name lines up
           // with the header label and the icon'd shortcut rows below.
           padding: const EdgeInsets.fromLTRB(36, 10, 11, 10),
@@ -280,7 +286,7 @@ class _NewTeamRow extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 10),
         child: Row(
           children: [
-            Icon(Icons.add_rounded, size: 17, color: cs.primary),
+            Icon(Icons.add_rounded, size: AppIconSizes.md, color: cs.primary),
             const SizedBox(width: 8),
             Text(label, style: styles.prominent.copyWith(color: cs.primary)),
           ],
@@ -290,7 +296,7 @@ class _NewTeamRow extends StatelessWidget {
   }
 }
 
-class _ShortcutRow extends StatelessWidget {
+class _ShortcutRow extends StatefulWidget {
   const _ShortcutRow({
     required this.icon,
     required this.label,
@@ -304,36 +310,55 @@ class _ShortcutRow extends StatelessWidget {
   final bool active;
 
   @override
+  State<_ShortcutRow> createState() => _ShortcutRowState();
+}
+
+class _ShortcutRowState extends State<_ShortcutRow> {
+  bool _hovered = false;
+
+  @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final styles = AppTextStyles.of(context);
+    final active = widget.active;
     final Color fg = active ? cs.primary : cs.onSurface;
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
-      child: Container(
-        margin: const EdgeInsets.symmetric(vertical: 1),
-        padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 10),
-        decoration: BoxDecoration(
-          color: active ? cs.primary.withValues(alpha: 0.14) : null,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Row(
-          children: [
-            Icon(
-              icon,
-              size: 17,
-              color: active ? cs.primary : cs.onSurfaceVariant,
-            ),
-            const SizedBox(width: 8),
-            Text(
-              label,
-              style: styles.prominent.copyWith(
-                color: fg,
-                fontWeight: active ? FontWeight.w600 : FontWeight.w400,
+    final Color background = active
+        ? cs.primary.withValues(alpha: 0.14)
+        : _hovered
+        ? cs.onSurface.withValues(alpha: 0.05)
+        : Colors.transparent;
+
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        behavior: HitTestBehavior.opaque,
+        child: Container(
+          margin: const EdgeInsets.symmetric(vertical: 1),
+          padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 10),
+          decoration: BoxDecoration(
+            color: background,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                widget.icon,
+                size: AppIconSizes.md,
+                color: active ? cs.primary : cs.onSurfaceVariant,
               ),
-            ),
-          ],
+              const SizedBox(width: 8),
+              Text(
+                widget.label,
+                style: styles.prominent.copyWith(
+                  color: fg,
+                  fontWeight: active ? FontWeight.w600 : FontWeight.w400,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -363,7 +388,11 @@ class _OrganizationButton extends StatelessWidget {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.apartment_rounded, size: 17, color: cs.onSurfaceVariant),
+            Icon(
+              Icons.apartment_rounded,
+              size: AppIconSizes.md,
+              color: cs.onSurfaceVariant,
+            ),
             const SizedBox(width: 8),
             Text(label, style: styles.body.copyWith(color: cs.onSurface)),
           ],

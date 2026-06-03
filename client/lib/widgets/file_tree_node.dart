@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io' show Platform, Process;
 
 import 'package:flutter/material.dart';
+import 'package:teampilot/theme/app_icon_sizes.dart';
 
 import '../theme/app_text_styles.dart';
 import 'package:flutter/services.dart';
@@ -102,7 +103,7 @@ class FileTreeNode extends StatelessWidget {
                   duration: const Duration(milliseconds: 150),
                   child: Icon(
                     Icons.chevron_right,
-                    size: 16,
+                    size: AppIconSizes.md,
                     color: isActive
                         ? iconMuted
                         : textColor.withValues(alpha: 0.55),
@@ -115,7 +116,7 @@ class FileTreeNode extends StatelessWidget {
               isDir
                   ? (isExpanded ? Icons.folder_open : Icons.folder_outlined)
                   : _fileIcon(entry.name),
-              size: 18,
+              size: AppIconSizes.md,
               color: isDir ? const Color(0xFFE5B143) : iconMuted,
             ),
             const SizedBox(width: 6),

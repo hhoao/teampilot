@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:teampilot/theme/app_icon_sizes.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../cubits/session_preferences_cubit.dart';
@@ -236,7 +237,7 @@ class _OnboardingCliStepState extends State<OnboardingCliStep> {
           children: [
             OutlinedButton.icon(
               onPressed: _detecting ? null : _detect,
-              icon: const Icon(Icons.refresh, size: 16),
+              icon: const Icon(Icons.refresh, size: AppIconSizes.md),
               label: Text(l10n.onboardingCliRedetect),
             ),
             OutlinedButton.icon(
@@ -248,7 +249,7 @@ class _OnboardingCliStepState extends State<OnboardingCliStep> {
                       height: 16,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
-                  : const Icon(Icons.download_outlined, size: 16),
+                  : const Icon(Icons.download_outlined, size: AppIconSizes.md),
               label: Text(
                 _installing ? l10n.cliInstallInstalling : l10n.cliInstallButton,
               ),

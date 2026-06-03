@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:teampilot/theme/app_icon_sizes.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
@@ -43,7 +44,7 @@ class TeamMcpSection extends StatelessWidget {
                   ),
                   trailing: OutlinedButton.icon(
                     onPressed: () => context.go('/mcp'),
-                    icon: const Icon(Icons.hub_outlined, size: 16),
+                    icon: const Icon(Icons.hub_outlined, size: AppIconSizes.md),
                     label: Text(l10n.teamMcpManage),
                   ),
                 ),

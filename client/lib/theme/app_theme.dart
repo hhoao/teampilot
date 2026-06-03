@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import 'app_fonts.dart';
+import 'app_icon_sizes.dart';
 import 'app_outline_input_theme.dart';
 import 'app_typography_scale.dart';
 
@@ -194,6 +195,7 @@ ThemeData _applyTypography(
     return flexTheme.copyWith(
       visualDensity: VisualDensity.compact,
       materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      iconTheme: AppIconSizes.iconTheme(),
       textTheme: textTheme,
       extensions: [AppFontTheme.fallback, typographyTheme],
       inputDecorationTheme: buildAppOutlineInputDecorationTheme(
@@ -220,6 +222,7 @@ ThemeData _applyTypography(
   return flexTheme.copyWith(
     visualDensity: VisualDensity.compact,
     materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+    iconTheme: AppIconSizes.iconTheme(),
     textTheme: mergedTextTheme,
     primaryTextTheme: primaryTextTheme,
     extensions: [

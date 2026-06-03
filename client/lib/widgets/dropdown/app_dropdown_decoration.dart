@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:teampilot/theme/app_icon_sizes.dart';
 
 import '../../theme/app_text_styles.dart';
 import '../../theme/workspace_surface_layers.dart';
@@ -105,7 +106,7 @@ abstract final class AppDropdownDecorations {
     FontWeight? listItemFontWeight = FontWeight.w500,
     Widget? closedSuffixIcon,
     Widget? expandedSuffixIcon,
-    double suffixIconSize = 22,
+    double suffixIconSize = AppIconSizes.md,
     double suffixIconOpacity = 0.55,
     double highlightAlphaDark = 0.06,
     double highlightAlphaLight = 0.04,

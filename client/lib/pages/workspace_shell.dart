@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:teampilot/theme/app_icon_sizes.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../cubits/chat_cubit.dart';
@@ -635,7 +636,7 @@ class _TabChipState extends State<_TabChip> {
                       SidebarActionMenuButton(
                         icon: Icon(
                           Icons.more_horiz,
-                          size: 12,
+                          size: AppIconSizes.md,
                           color: widget.textColor.withValues(alpha: 0.6),
                         ),
                         size: 32,
@@ -652,7 +653,7 @@ class _TabChipState extends State<_TabChip> {
                         onTap: widget.onClose,
                         child: Icon(
                           Icons.close,
-                          size: 14,
+                          size: AppIconSizes.md,
                           color: widget.textColor.withValues(alpha: 0.5),
                         ),
                       ),

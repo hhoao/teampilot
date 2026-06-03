@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:teampilot/theme/app_icon_sizes.dart';
 import 'package:flutter/services.dart';
 import 'package:path/path.dart' as p;
 
@@ -344,7 +345,7 @@ class _LogViewerPanelState extends State<_LogViewerPanel> {
     final cs = Theme.of(context).colorScheme;
     return AppIconButton(
       icon: value ? onIcon : offIcon,
-      iconSize: 20,
+      iconSize: AppIconSizes.md,
       size: 36,
       tooltip: tooltip,
       color: value ? cs.onPrimaryContainer : cs.onSurfaceVariant,
@@ -432,7 +433,7 @@ class _LogViewerPanelState extends State<_LogViewerPanel> {
                   hintText: l10n.logViewerSearchHint,
                   prefixIcon: Icon(
                     Icons.search,
-                    size: 18,
+                    size: AppIconSizes.md,
                     color: cs.onSurfaceVariant,
                   ),
                 ),
@@ -620,7 +621,7 @@ class _LogViewerPanelState extends State<_LogViewerPanel> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, size: 48, color: cs.primary.withValues(alpha: 0.55)),
+            Icon(icon, size: AppIconSizes.md, color: cs.primary.withValues(alpha: 0.55)),
             const SizedBox(height: 16),
             Text(
               title,

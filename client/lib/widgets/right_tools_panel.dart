@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:teampilot/theme/app_icon_sizes.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -531,7 +532,7 @@ class _FileTreePanelState extends State<_FileTreePanel> {
                         controller: _filterController,
                         decoration: InputDecoration(
                           hintText: l10n.filterFiles,
-                          prefixIcon: const Icon(Icons.search, size: 18),
+                          prefixIcon: const Icon(Icons.search, size: AppIconSizes.md),
                           floatingLabelBehavior: FloatingLabelBehavior.never,
                           suffixIcon: _filterController.text.isNotEmpty
                               ? AppIconButton(
@@ -629,7 +630,7 @@ class _FileTreePanelState extends State<_FileTreePanel> {
       ),
       AppIconButton(
         icon: Icons.copy,
-        iconSize: 14,
+        iconSize: AppIconSizes.md,
         size: AppIconButton.kCompactSize,
         tooltip: l10n.copy,
         onTap: () {

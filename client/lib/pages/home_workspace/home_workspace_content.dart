@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:teampilot/theme/app_icon_sizes.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -393,7 +394,7 @@ class _ToggleCell extends StatelessWidget {
         ),
         child: Icon(
           icon,
-          size: 16,
+          size: AppIconSizes.md,
           color: active ? cs.primary : cs.onSurfaceVariant,
         ),
       ),
@@ -420,7 +421,7 @@ class _IconChip extends StatelessWidget {
           borderRadius: BorderRadius.circular(8),
           border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.7)),
         ),
-        child: Icon(icon, size: 16, color: cs.onSurfaceVariant),
+        child: Icon(icon, size: AppIconSizes.md, color: cs.onSurfaceVariant),
       ),
     );
   }
@@ -454,7 +455,7 @@ class _OutlinedAction extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 16, color: cs.onSurfaceVariant),
+            Icon(icon, size: AppIconSizes.md, color: cs.onSurfaceVariant),
             const SizedBox(width: 7),
             Text(label, style: styles.body.copyWith(color: cs.onSurface)),
           ],
@@ -491,7 +492,7 @@ class _PrimaryAction extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 16, color: cs.onPrimary),
+            Icon(icon, size: AppIconSizes.md, color: cs.onPrimary),
             const SizedBox(width: 7),
             Text(
               label,
@@ -552,7 +553,7 @@ class _EmptyProjects extends StatelessWidget {
         children: [
           Icon(
             Icons.folder_open_outlined,
-            size: 44,
+            size: AppIconSizes.md,
             color: cs.onSurfaceVariant.withValues(alpha: 0.5),
           ),
           const SizedBox(height: 14),

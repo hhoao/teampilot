@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:teampilot/theme/app_icon_sizes.dart';
 import 'package:flutter/services.dart';
 import 'package:window_manager/window_manager.dart';
 
@@ -199,7 +200,7 @@ class _WindowChromeButtonState extends State<_WindowChromeButton> {
               hoverColor: Colors.transparent,
               splashColor: Colors.transparent,
               highlightColor: Colors.transparent,
-              child: Icon(widget.icon, size: 16, color: foreground),
+              child: Icon(widget.icon, size: AppIconSizes.md, color: foreground),
             ),
           ),
         ),

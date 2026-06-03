@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:teampilot/theme/app_icon_sizes.dart';
 
 import '../../l10n/l10n_extensions.dart';
 import '../../theme/app_text_styles.dart';
@@ -128,7 +129,7 @@ class SkillEmptyBlock extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 24),
       child: Column(
         children: [
-          Icon(icon, size: 36, color: textBase.withValues(alpha: 0.35)),
+          Icon(icon, size: AppIconSizes.md, color: textBase.withValues(alpha: 0.35)),
           const SizedBox(height: 12),
           Text(
             title,

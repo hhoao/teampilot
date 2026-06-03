@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:teampilot/theme/app_icon_sizes.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_alacritty/flutter_alacritty.dart';
@@ -591,7 +592,7 @@ class _TerminalPlaceholder extends StatelessWidget {
                   padding: const EdgeInsets.all(20),
                   child: Icon(
                     Icons.forum_outlined,
-                    size: 40,
+                    size: AppIconSizes.md,
                     color: cs.primary,
                   ),
                 ),
@@ -659,7 +660,7 @@ class _TerminalPlaceholder extends StatelessWidget {
                       ),
                 icon: Icon(
                   hasError ? Icons.refresh_rounded : Icons.play_arrow_rounded,
-                  size: 22,
+                  size: AppIconSizes.md,
                 ),
                 label: Text(
                   hasError ? l10n.sessionRetryButton : l10n.sessionStartButton,

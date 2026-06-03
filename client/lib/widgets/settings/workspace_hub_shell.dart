@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:teampilot/theme/app_icon_sizes.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
 import '../../models/layout_preferences.dart';
@@ -125,12 +126,22 @@ class WorkspaceHubNavItem extends StatelessWidget {
     final (height, iconSize, horizontalPadding, leftIndent) = switch (density) {
       WorkspaceHubNavDensity.standard => (
         hubStyle ? 56.0 : 48.0,
-        18.0,
+        AppIconSizes.md,
         hubStyle ? 16.0 : 18.0,
         0.0,
       ),
-      WorkspaceHubNavDensity.relaxed => (54.0, 21.0, 18.0, 0.0),
-      WorkspaceHubNavDensity.subItem => (44.0, 19.0, 14.0, 14.0),
+      WorkspaceHubNavDensity.relaxed => (
+        54.0,
+        AppIconSizes.md,
+        18.0,
+        0.0,
+      ),
+      WorkspaceHubNavDensity.subItem => (
+        44.0,
+        AppIconSizes.md,
+        14.0,
+        14.0,
+      ),
     };
 
     final borderRadius = density == WorkspaceHubNavDensity.subItem

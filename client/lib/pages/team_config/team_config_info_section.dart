@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:teampilot/theme/app_icon_sizes.dart';
 
 import '../../cubits/team_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
@@ -220,7 +221,7 @@ class TeamConfigDangerZone extends StatelessWidget {
           child: OutlinedButton.icon(
             key: AppKeys.deleteButton,
             onPressed: () => _confirmDelete(context),
-            icon: Icon(Icons.delete_outline, size: 18, color: errorColor),
+            icon: Icon(Icons.delete_outline, size: AppIconSizes.md, color: errorColor),
             label: Text(l10n.deleteTeam, style: TextStyle(color: errorColor)),
             style: OutlinedButton.styleFrom(
               side: BorderSide(color: errorColor.withValues(alpha: 0.4)),

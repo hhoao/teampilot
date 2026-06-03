@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:teampilot/theme/app_icon_sizes.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../cubits/skill_cubit.dart';
@@ -132,7 +133,7 @@ class SkillDiscoverySectionState extends State<SkillDiscoverySection> {
                               height: 14,
                               child: CircularProgressIndicator(strokeWidth: 2),
                             )
-                          : const Icon(Icons.refresh, size: 18),
+                          : const Icon(Icons.refresh, size: AppIconSizes.md),
                     ),
                 ],
               ),
@@ -211,7 +212,7 @@ class SkillDiscoverySectionState extends State<SkillDiscoverySection> {
           child: TextField(
             decoration: InputDecoration(
               hintText: l10n.skillsSearchPlaceholder,
-              prefixIcon: const Icon(Icons.search, size: 18),
+              prefixIcon: const Icon(Icons.search, size: AppIconSizes.md),
               floatingLabelBehavior: FloatingLabelBehavior.never,
             ),
             onChanged: (v) => setState(() => _searchQuery = v),
@@ -256,7 +257,7 @@ class SkillDiscoverySectionState extends State<SkillDiscoverySection> {
             controller: _skillsShCtl,
             decoration: InputDecoration(
               hintText: l10n.skillsSkillsShPlaceholder,
-              prefixIcon: const Icon(Icons.search, size: 18),
+              prefixIcon: const Icon(Icons.search, size: AppIconSizes.md),
               floatingLabelBehavior: FloatingLabelBehavior.never,
             ),
             onSubmitted: (v) {
@@ -408,7 +409,7 @@ class SkillDiscoverySectionState extends State<SkillDiscoverySection> {
                           height: 14,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
-                      : const Icon(Icons.expand_more, size: 16),
+                      : const Icon(Icons.expand_more, size: AppIconSizes.md),
                   label: Text(l10n.skillsSkillsShLoadMore),
                 ),
               const SizedBox(height: 6),

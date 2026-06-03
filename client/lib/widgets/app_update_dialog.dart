@@ -12,6 +12,7 @@ import 'package:teampilot/services/app/app_update_service.dart';
 import 'package:teampilot/services/app/backend_app_update_service.dart';
 import 'package:teampilot/theme/app_text_styles.dart';
 import 'package:teampilot/utils/changelog_parser.dart';
+import 'package:teampilot/theme/app_icon_sizes.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 /// Backend-driven update dialog: download and install on Android and desktop.
@@ -212,7 +213,7 @@ class _AppUpdateDialogState extends State<AppUpdateDialog> {
                 trailing: Icon(
                   _isExpanded ? Icons.expand_less : Icons.expand_more,
                   color: Colors.grey[600],
-                  size: 16,
+                  size: AppIconSizes.md,
                 ),
                 onExpansionChanged: (expanded) {
                   setState(() => _isExpanded = expanded);
@@ -313,7 +314,7 @@ class _AppUpdateDialogState extends State<AppUpdateDialog> {
             Expanded(
               child: _buildBottomButton(
                 () => _handleBrowserDownload(latestApp),
-                const Icon(Icons.open_in_browser, size: 18),
+                const Icon(Icons.open_in_browser, size: AppIconSizes.md),
                 l10n.appUpdateBrowserDownload,
               ),
             ),

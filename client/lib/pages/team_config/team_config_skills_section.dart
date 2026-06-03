@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:teampilot/theme/app_icon_sizes.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
@@ -48,7 +49,7 @@ class TeamSkillsSection extends StatelessWidget {
                   ),
                   trailing: OutlinedButton.icon(
                     onPressed: () => context.go('/skills'),
-                    icon: const Icon(Icons.extension_outlined, size: 16),
+                    icon: const Icon(Icons.extension_outlined, size: AppIconSizes.md),
                     label: Text(l10n.teamSkillsManage),
                   ),
                 ),
@@ -109,7 +110,7 @@ class TeamSkillsEmptyBlock extends StatelessWidget {
         children: [
           Icon(
             Icons.inventory_2_outlined,
-            size: 36,
+            size: AppIconSizes.md,
             color: textBase.withValues(alpha: 0.35),
           ),
           const SizedBox(height: 12),
@@ -130,7 +131,7 @@ class TeamSkillsEmptyBlock extends StatelessWidget {
           const SizedBox(height: 14),
           OutlinedButton.icon(
             onPressed: onGoSkills,
-            icon: const Icon(Icons.extension_outlined, size: 16),
+            icon: const Icon(Icons.extension_outlined, size: AppIconSizes.md),
             label: Text(l10n.teamSkillsManage),
           ),
         ],

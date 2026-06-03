@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:teampilot/theme/app_icon_sizes.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../cubits/plugin_cubit.dart';
@@ -133,7 +134,7 @@ class PluginDiscoveryBodyState extends State<PluginDiscoveryBody> {
                       controller: _searchCtrl,
                       decoration: InputDecoration(
                         hintText: l10n.pluginsSearchPlaceholder,
-                        prefixIcon: const Icon(Icons.search, size: 18),
+                        prefixIcon: const Icon(Icons.search, size: AppIconSizes.md),
                         floatingLabelBehavior: FloatingLabelBehavior.never,
                       ),
                       onChanged: (_) => setState(() {}),
@@ -153,7 +154,7 @@ class PluginDiscoveryBodyState extends State<PluginDiscoveryBody> {
                             height: 14,
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
-                        : const Icon(Icons.refresh, size: 18),
+                        : const Icon(Icons.refresh, size: AppIconSizes.md),
                   ),
                 ],
               ),

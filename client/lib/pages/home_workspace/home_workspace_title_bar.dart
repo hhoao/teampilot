@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:teampilot/theme/app_icon_sizes.dart';
 import 'package:flutter/services.dart';
 import 'package:window_manager/window_manager.dart';
 
@@ -195,7 +196,7 @@ class _BrandMark extends StatelessWidget {
           ),
           child: Icon(
             Icons.flight_takeoff_rounded,
-            size: 15,
+            size: AppIconSizes.md,
             color: cs.onPrimary,
           ),
         ),
@@ -240,7 +241,7 @@ class _HomePill extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.home_filled, size: 15, color: fg),
+            Icon(Icons.home_filled, size: AppIconSizes.md, color: fg),
             const SizedBox(width: 6),
             Text(
               label,
@@ -292,7 +293,7 @@ class _ProjectTab extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.description_outlined, size: 14, color: fg),
+            Icon(Icons.description_outlined, size: AppIconSizes.md, color: fg),
             const SizedBox(width: 6),
             Flexible(
               child: Text(
@@ -311,7 +312,7 @@ class _ProjectTab extends StatelessWidget {
               borderRadius: BorderRadius.circular(5),
               child: Padding(
                 padding: const EdgeInsets.all(2),
-                child: Icon(Icons.close, size: 14, color: cs.onSurfaceVariant),
+                child: Icon(Icons.close, size: AppIconSizes.md, color: cs.onSurfaceVariant),
               ),
             ),
           ],
@@ -350,7 +351,7 @@ class _ActionGlyphState extends State<_ActionGlyph> {
               : Colors.transparent,
           borderRadius: BorderRadius.circular(8),
         ),
-        child: Icon(widget.icon, size: 17, color: cs.onSurfaceVariant),
+        child: Icon(widget.icon, size: AppIconSizes.md, color: cs.onSurfaceVariant),
       ),
     );
   }
@@ -373,7 +374,7 @@ class _Avatar extends StatelessWidget {
           colors: [cs.tertiary, cs.primary],
         ),
       ),
-      child: Icon(Icons.person, size: 16, color: cs.onPrimary),
+      child: Icon(Icons.person, size: AppIconSizes.md, color: cs.onPrimary),
     );
   }
 }
@@ -433,7 +434,7 @@ class _WinButtonState extends State<_WinButton> {
               hoverColor: Colors.transparent,
               splashColor: Colors.transparent,
               highlightColor: Colors.transparent,
-              child: Icon(widget.icon, size: 16, color: foreground),
+              child: Icon(widget.icon, size: AppIconSizes.md, color: foreground),
             ),
           ),
         ),

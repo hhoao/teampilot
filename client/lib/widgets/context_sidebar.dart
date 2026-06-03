@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:teampilot/theme/app_icon_sizes.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../cubits/chat_cubit.dart';
@@ -513,7 +514,7 @@ class _ProjectSelectorState extends State<_ProjectSelector> {
       children: [
         Icon(
           Icons.folder_outlined,
-          size: 16,
+          size: AppIconSizes.md,
           color: cs.onSurfaceVariant.withValues(alpha: 0.85),
         ),
         const SizedBox(width: 8),
@@ -921,7 +922,7 @@ class _ProjectFolderHeaderState extends State<_ProjectFolderHeader> {
           padding: const EdgeInsets.fromLTRB(_kSidebarNavRowPadding, 6, 4, 4),
           child: Row(
             children: [
-              Icon(Icons.folder_outlined, size: 16, color: labelColor),
+              Icon(Icons.folder_outlined, size: AppIconSizes.md, color: labelColor),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
@@ -1246,7 +1247,7 @@ class _SettingsTile extends StatelessWidget {
           padding: const EdgeInsets.all(10),
           child: Row(
             children: [
-              Icon(Icons.tune_outlined, size: 18, color: textBase),
+              Icon(Icons.tune_outlined, size: AppIconSizes.md, color: textBase),
               const SizedBox(width: 10),
               Text(
                 'Settings',
@@ -1279,7 +1280,7 @@ class _TeamConfigTile extends StatelessWidget {
           padding: const EdgeInsets.all(10),
           child: Row(
             children: [
-              Icon(Icons.groups_2_outlined, size: 18, color: textBase),
+              Icon(Icons.groups_2_outlined, size: AppIconSizes.md, color: textBase),
               const SizedBox(width: 10),
               Text(context.l10n.teamConfig),
             ],
@@ -1310,7 +1311,7 @@ class _NewChatTile extends StatelessWidget {
           padding: const EdgeInsets.all(10),
           child: Row(
             children: [
-              Icon(Icons.edit_outlined, size: 18, color: textBase),
+              Icon(Icons.edit_outlined, size: AppIconSizes.md, color: textBase),
               const SizedBox(width: 10),
               Text(context.l10n.defaultNewChatSessionTitle),
             ],
@@ -1345,7 +1346,7 @@ class _TeamSelector extends StatelessWidget {
       borderRadius: 8,
       headerFontWeight: FontWeight.w700,
       listItemFontWeight: FontWeight.w600,
-      suffixIconSize: 18,
+      suffixIconSize: AppIconSizes.md,
       expandedShadowBlurRadius: 22,
       expandedShadowOffset: const Offset(0, 10),
       expandedShadowAlphaDark: 0.5,

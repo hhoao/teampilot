@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:teampilot/theme/app_icon_sizes.dart';
 
 import '../../l10n/l10n_extensions.dart';
 import '../../models/app_project.dart';
@@ -75,7 +76,7 @@ class _HomeWorkspaceProjectCardState extends State<HomeWorkspaceProjectCard> {
               ),
               child: Icon(
                 Icons.auto_stories_rounded,
-                size: 34,
+                size: AppIconSizes.md,
                 color: cs.onPrimary,
               ),
             ),

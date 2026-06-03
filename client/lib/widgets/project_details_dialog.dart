@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:teampilot/theme/app_icon_sizes.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -165,14 +166,14 @@ class _ProjectDetailsDialogState extends State<_ProjectDetailsDialog> {
                         ),
                         IconButton(
                           tooltip: l10n.copyFolderPath,
-                          icon: const Icon(Icons.copy, size: 18),
+                          icon: const Icon(Icons.copy, size: AppIconSizes.md),
                           onPressed: () => _copyPath(path),
                         ),
                         IconButton(
                           tooltip: l10n.removeProjectDirectory,
                           icon: Icon(
                             Icons.remove_circle_outline,
-                            size: 18,
+                            size: AppIconSizes.md,
                             color: theme.colorScheme.error,
                           ),
                           onPressed: () {
@@ -192,7 +193,7 @@ class _ProjectDetailsDialogState extends State<_ProjectDetailsDialog> {
                 alignment: Alignment.centerLeft,
                 child: TextButton.icon(
                   onPressed: _saving ? null : _addDirectory,
-                  icon: const Icon(Icons.create_new_folder_outlined, size: 18),
+                  icon: const Icon(Icons.create_new_folder_outlined, size: AppIconSizes.md),
                   label: Text(l10n.addProjectDirectory),
                 ),
               ),
@@ -259,7 +260,7 @@ class _DetailRow extends StatelessWidget {
             if (onCopy != null)
               IconButton(
                 tooltip: context.l10n.copyFolderPath,
-                icon: const Icon(Icons.copy, size: 18),
+                icon: const Icon(Icons.copy, size: AppIconSizes.md),
                 onPressed: onCopy,
               ),
           ],

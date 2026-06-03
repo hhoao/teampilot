@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:teampilot/theme/app_icon_sizes.dart';
 
 import '../../cubits/team_cubit.dart';
 import '../../models/team_config.dart';
@@ -175,7 +176,7 @@ class _MemberChip extends StatelessWidget {
             children: [
               Icon(
                 isLead ? Icons.star_rounded : Icons.person_outline,
-                size: 15,
+                size: AppIconSizes.md,
                 color: selected ? cs.primary : cs.onSurfaceVariant,
               ),
               const SizedBox(width: 6),
@@ -220,7 +221,7 @@ class _AddMemberChip extends StatelessWidget {
           border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.7)),
         ),
         child: Icon(Icons.person_add_alt_1_outlined,
-            size: 16, color: cs.onSurfaceVariant),
+            size: AppIconSizes.md, color: cs.onSurfaceVariant),
       ),
     );
   }

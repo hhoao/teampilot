@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:teampilot/theme/app_icon_sizes.dart';
 
 import '../../theme/app_text_styles.dart';
 import '../../utils/context_menu_position.dart';
@@ -12,7 +13,7 @@ abstract final class SidebarActionMenuMetrics {
   static const double itemHorizontalMargin = 6;
   static const double itemPaddingLeft = 6;
   static const double itemPaddingRight = 6;
-  static const double iconSize = 18;
+  static const double iconSize = AppIconSizes.md;
   static const double iconGap = 10;
   static const double panelPaddingTop = 12;
   static const double panelPaddingHorizontal = 8;
@@ -439,7 +440,7 @@ Widget _specToMenuItem({
   final trailing = spec.selected
       ? Icon(
           Icons.check,
-          size: 18,
+          size: AppIconSizes.md,
           color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
         )
       : spec.trailing;

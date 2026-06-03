@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:teampilot/theme/app_icon_sizes.dart';
 import 'package:toggle_switch/toggle_switch.dart';
 
 import '../../theme/app_text_styles.dart';
 import '../../theme/workspace_surface_layers.dart';
 
-const _segmentedIconSize = 18.0;
+const _segmentedIconSize = AppIconSizes.md;
 
 /// One option in [WorkspaceSettingsToggleStrip].
 class WorkspaceToggleSegment<T extends Object> {

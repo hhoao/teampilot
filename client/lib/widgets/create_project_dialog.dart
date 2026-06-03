@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:teampilot/theme/app_icon_sizes.dart';
 
 import '../l10n/l10n_extensions.dart';
 import '../utils/project_path_picker.dart';
@@ -111,7 +112,7 @@ class _CreateProjectDialogState extends State<_CreateProjectDialog> {
                 alignment: Alignment.centerLeft,
                 child: FilledButton.tonalIcon(
                   onPressed: _pickPrimary,
-                  icon: const Icon(Icons.folder_open, size: 18),
+                  icon: const Icon(Icons.folder_open, size: AppIconSizes.md),
                   label: Text(l10n.pickPrimaryDirectory),
                 ),
               ),
@@ -144,7 +145,7 @@ class _CreateProjectDialogState extends State<_CreateProjectDialog> {
                           tooltip: l10n.removeProjectDirectory,
                           icon: Icon(
                             Icons.remove_circle_outline,
-                            size: 18,
+                            size: AppIconSizes.md,
                             color: theme.colorScheme.error,
                           ),
                           onPressed: () {
@@ -160,7 +161,7 @@ class _CreateProjectDialogState extends State<_CreateProjectDialog> {
                 alignment: Alignment.centerLeft,
                 child: TextButton.icon(
                   onPressed: _addAdditional,
-                  icon: const Icon(Icons.create_new_folder_outlined, size: 18),
+                  icon: const Icon(Icons.create_new_folder_outlined, size: AppIconSizes.md),
                   label: Text(l10n.addProjectDirectory),
                 ),
               ),

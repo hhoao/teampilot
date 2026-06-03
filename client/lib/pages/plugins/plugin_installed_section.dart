@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:teampilot/theme/app_icon_sizes.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../cubits/plugin_cubit.dart';
@@ -46,7 +47,7 @@ class PluginInstalledSection extends StatelessWidget {
                                   'plugin_update_all',
                                   cubit.updateAll,
                                 ),
-                          icon: const Icon(Icons.upgrade, size: 16),
+                          icon: const Icon(Icons.upgrade, size: AppIconSizes.md),
                           label: Text(
                             l10n.pluginsUpdateAll(state.updates.length),
                           ),
@@ -58,7 +59,7 @@ class PluginInstalledSection extends StatelessWidget {
                                 'plugin_import_disk',
                                 () => _onImportFromDisk(context),
                               ),
-                        icon: const Icon(Icons.folder_open_outlined, size: 16),
+                        icon: const Icon(Icons.folder_open_outlined, size: AppIconSizes.md),
                         label: Text(l10n.pluginsImportFromDisk),
                       ),
                       OutlinedButton.icon(
@@ -68,7 +69,7 @@ class PluginInstalledSection extends StatelessWidget {
                                 'plugin_install_zip',
                                 () => _onInstallZip(context),
                               ),
-                        icon: const Icon(Icons.archive_outlined, size: 16),
+                        icon: const Icon(Icons.archive_outlined, size: AppIconSizes.md),
                         label: Text(l10n.pluginsInstallFromZip),
                       ),
                       OutlinedButton.icon(
@@ -86,7 +87,7 @@ class PluginInstalledSection extends StatelessWidget {
                                   strokeWidth: 2,
                                 ),
                               )
-                            : const Icon(Icons.refresh, size: 16),
+                            : const Icon(Icons.refresh, size: AppIconSizes.md),
                         label: Text(
                           state.updatesLoading
                               ? l10n.pluginsCheckingUpdates
@@ -329,12 +330,12 @@ class PluginInstalledRow extends StatelessWidget {
             if (updateInfo != null)
               TextButton.icon(
                 onPressed: () => cubit.updatePlugin(plugin),
-                icon: const Icon(Icons.upgrade, size: 16),
+                icon: const Icon(Icons.upgrade, size: AppIconSizes.md),
                 label: Text(l10n.pluginsCardUpdate),
               ),
             TextButton.icon(
               onPressed: () => _uninstall(context, plugin, l10n, cubit),
-              icon: const Icon(Icons.delete_outline, size: 16),
+              icon: const Icon(Icons.delete_outline, size: AppIconSizes.md),
               label: Text(l10n.pluginsCardUninstall),
             ),
           ],

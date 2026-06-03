@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:teampilot/theme/app_icon_sizes.dart';
 
 import '../../../l10n/l10n_extensions.dart';
 import '../../../theme/app_text_styles.dart';
@@ -111,7 +112,7 @@ class _RailItemState extends State<_RailItem> {
           ),
           child: Column(
             children: [
-              Icon(widget.icon, size: 20, color: fg),
+              Icon(widget.icon, size: AppIconSizes.md, color: fg),
               const SizedBox(height: 4),
               Text(
                 widget.label,

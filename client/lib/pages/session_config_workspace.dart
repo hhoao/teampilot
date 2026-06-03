@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:teampilot/theme/app_icon_sizes.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../app/app_shell.dart';
@@ -695,7 +696,7 @@ class _CliExecutablePathSettingsRowState
                           height: 16,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
-                      : const Icon(Icons.download_outlined, size: 16),
+                      : const Icon(Icons.download_outlined, size: AppIconSizes.md),
                   label: Text(
                     _isInstalling
                         ? l10n.cliInstallInstalling
@@ -707,7 +708,7 @@ class _CliExecutablePathSettingsRowState
               OutlinedButton.icon(
                 key: widget.browseKey,
                 onPressed: isSshMode ? null : _pickFile,
-                icon: const Icon(Icons.folder_open_outlined, size: 16),
+                icon: const Icon(Icons.folder_open_outlined, size: AppIconSizes.md),
                 label: Text(l10n.cliExecutablePathBrowse),
               ),
               const SizedBox(width: 6),
@@ -884,7 +885,7 @@ class _LlmConfigPathSettingsRowState extends State<_LlmConfigPathSettingsRow> {
             OutlinedButton.icon(
               key: AppKeys.llmConfigPathOverrideBrowseButton,
               onPressed: state.isLoading ? null : _pickFile,
-              icon: const Icon(Icons.folder_open_outlined, size: 16),
+              icon: const Icon(Icons.folder_open_outlined, size: AppIconSizes.md),
               label: Text(l10n.cliExecutablePathBrowse),
             ),
           ],
