@@ -102,6 +102,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'Show the project file tree for quick navigation.';
 
   @override
+  String get visibilityGitHint =>
+      'Show the source control panel for the current repository.';
+
+  @override
   String get extensionsSettingsTitle => 'Extensions';
 
   @override
@@ -318,6 +322,84 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get fileTree => 'File Tree';
+
+  @override
+  String get sourceControl => 'Source Control';
+
+  @override
+  String get gitStagedChanges => 'Staged Changes';
+
+  @override
+  String get gitChanges => 'Changes';
+
+  @override
+  String get gitNoChanges => 'No changes';
+
+  @override
+  String get gitNotARepository => 'This folder is not a Git repository';
+
+  @override
+  String get gitNotInstalled =>
+      'Git was not found. Install Git to use source control.';
+
+  @override
+  String get gitCommit => 'Commit';
+
+  @override
+  String gitCommitMessageHint(String branch) {
+    return 'Message (commit to \"$branch\")';
+  }
+
+  @override
+  String get gitStage => 'Stage changes';
+
+  @override
+  String get gitUnstage => 'Unstage changes';
+
+  @override
+  String get gitStageAll => 'Stage all changes';
+
+  @override
+  String get gitUnstageAll => 'Unstage all changes';
+
+  @override
+  String get gitDiscard => 'Discard changes';
+
+  @override
+  String get gitDiscardConfirmTitle => 'Discard changes?';
+
+  @override
+  String gitDiscardConfirmBody(String path) {
+    return 'Discard all changes in $path? This cannot be undone.';
+  }
+
+  @override
+  String get gitPush => 'Push';
+
+  @override
+  String get gitPull => 'Pull';
+
+  @override
+  String get gitRefresh => 'Refresh';
+
+  @override
+  String get gitSwitchBranch => 'Switch branch';
+
+  @override
+  String get gitCreateBranch => 'Create branch';
+
+  @override
+  String get gitNewBranchHint => 'New branch name';
+
+  @override
+  String gitError(String message) {
+    return 'Git: $message';
+  }
+
+  @override
+  String gitAheadBehind(int ahead, int behind) {
+    return '↑$ahead ↓$behind';
+  }
 
   @override
   String get openTeam => 'Open Team';

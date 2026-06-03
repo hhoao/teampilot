@@ -27,12 +27,14 @@ import '../utils/team_member_naming.dart';
 import '../widgets/team/team_lead_badge.dart';
 import 'app_icon_button.dart';
 import 'file_tree_node.dart';
+import 'git/git_source_control_panel.dart';
 import 'menu/sidebar_action_menu.dart';
 import 'split_layout.dart';
 import 'member_presence_indicator.dart';
 
 class RightToolsPanel extends StatefulWidget {
   const RightToolsPanel({
+    required this.cwd,
     this.preferences = const LayoutPreferences(),
     this.panelKey = AppKeys.rightToolsPanel,
     this.dismissDrawerOnAction = false,
@@ -42,6 +44,11 @@ class RightToolsPanel extends StatefulWidget {
   final LayoutPreferences preferences;
   final Key panelKey;
   final bool dismissDrawerOnAction;
+
+  /// Working directory the file tree / git panel operate on. Supplied by the
+  /// caller (the project context), decoupling the tools from chat-session tab
+  /// state.
+  final String cwd;
 
   @override
   State<RightToolsPanel> createState() => _RightToolsPanelState();
@@ -66,18 +73,6 @@ class _RightToolsPanelState extends State<RightToolsPanel> {
   void dispose() {
     _chatCubit?.detachPresenceUi();
     super.dispose();
-  }
-
-  static String _sessionCwd(ChatCubit chatCubit) {
-    final tabs = chatCubit.state.tabs;
-    final index = chatCubit.state.activeTabIndex;
-    if (index >= 0 && index < tabs.length) {
-      final cwd = tabs[index].subtitle;
-      if (cwd.isNotEmpty) {
-        return cwd;
-      }
-    }
-    return '';
   }
 
   @override
@@ -138,7 +133,9 @@ class _RightToolsPanelState extends State<RightToolsPanel> {
           }),
         ),
       if (widget.preferences.fileTreeVisible)
-        _FileTreePanel(team: team, cwd: _sessionCwd(chatCubit)),
+        _FileTreePanel(team: team, cwd: widget.cwd),
+      if (widget.preferences.gitVisible)
+        GitSourceControlPanel(cwd: widget.cwd),
     ];
     return Container(
       key: widget.panelKey,
@@ -158,12 +155,15 @@ class _StackedToolsPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (panels.isEmpty) return const SizedBox.shrink();
     if (panels.length == 1) return panels.single;
     return LayoutBuilder(
       builder: (context, constraints) {
         final totalHeight = constraints.maxHeight;
         final minTop = totalHeight * 0.25;
         final maxTop = totalHeight * 0.75;
+        // First split persists via membersSplit; any panels beyond the first
+        // are stacked evenly in the lower pane (not persisted).
         return TwoPaneSplitView(
           axis: Axis.vertical,
           initialFraction: preferences.membersSplit,
@@ -171,12 +171,31 @@ class _StackedToolsPanel extends StatelessWidget {
           minSecondarySize: minTop,
           maxSize: maxTop,
           first: panels.first,
-          second: panels.last,
+          second: _evenStack(panels.sublist(1)),
           onSizeChanged: (topHeight) {
             context.read<LayoutCubit>().setMembersSplit(
               (topHeight / totalHeight).clamp(0.25, 0.75),
             );
           },
+        );
+      },
+    );
+  }
+
+  /// Stacks [items] vertically with even, non-persisted splits.
+  Widget _evenStack(List<Widget> items) {
+    if (items.length == 1) return items.single;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final height = constraints.maxHeight;
+        return TwoPaneSplitView(
+          axis: Axis.vertical,
+          initialFraction: 1 / items.length,
+          minSize: height * 0.2,
+          minSecondarySize: height * 0.2,
+          maxSize: height * 0.8,
+          first: items.first,
+          second: _evenStack(items.sublist(1)),
         );
       },
     );
@@ -195,6 +214,7 @@ class _TabbedToolsPanel extends StatelessWidget {
     final tabs = <Tab>[
       if (preferences.membersVisible) Tab(text: l10n.members),
       if (preferences.fileTreeVisible) Tab(text: l10n.fileTree),
+      if (preferences.gitVisible) Tab(text: l10n.sourceControl),
     ];
     return DefaultTabController(
       length: panels.length,

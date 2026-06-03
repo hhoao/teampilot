@@ -51,7 +51,7 @@ class _HomeWorkspaceProjectPageState extends State<HomeWorkspaceProjectPage> {
         ),
         if (_section == HomeWorkspaceProjectSection.conversations) ...[
           HomeWorkspaceConversationPanel(project: project),
-          const Expanded(child: ChatPage()),
+          Expanded(child: ChatPage(cwd: project.primaryPath)),
         ] else
           HomeWorkspaceProjectSettingsView(project: project),
       ],

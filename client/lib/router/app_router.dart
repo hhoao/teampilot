@@ -149,12 +149,14 @@ final appRouter = GoRouter(
         GoRoute(
           path: '/chat',
           pageBuilder: (context, state) =>
-              const NoTransitionPage(child: ChatPage()),
+              const NoTransitionPage(child: ActiveSessionChatPage()),
           routes: [
             GoRoute(
               path: 'session/:sessionId',
               pageBuilder: (context, state) => NoTransitionPage(
-                child: ChatPage(sessionId: state.pathParameters['sessionId']),
+                child: ActiveSessionChatPage(
+                  sessionId: state.pathParameters['sessionId'],
+                ),
               ),
             ),
           ],

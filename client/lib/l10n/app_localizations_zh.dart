@@ -96,6 +96,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get visibilityFileTreeHint => '显示项目文件树以便快速浏览。';
 
   @override
+  String get visibilityGitHint => '显示当前仓库的源代码管理面板。';
+
+  @override
   String get extensionsSettingsTitle => '扩展';
 
   @override
@@ -303,6 +306,83 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get fileTree => '文件树';
+
+  @override
+  String get sourceControl => '源代码管理';
+
+  @override
+  String get gitStagedChanges => '暂存的更改';
+
+  @override
+  String get gitChanges => '更改';
+
+  @override
+  String get gitNoChanges => '没有更改';
+
+  @override
+  String get gitNotARepository => '当前文件夹不是 Git 仓库';
+
+  @override
+  String get gitNotInstalled => '未找到 Git。安装 Git 后即可使用源代码管理。';
+
+  @override
+  String get gitCommit => '提交';
+
+  @override
+  String gitCommitMessageHint(String branch) {
+    return '消息（提交到 \"$branch\"）';
+  }
+
+  @override
+  String get gitStage => '暂存更改';
+
+  @override
+  String get gitUnstage => '取消暂存';
+
+  @override
+  String get gitStageAll => '暂存所有更改';
+
+  @override
+  String get gitUnstageAll => '取消暂存所有更改';
+
+  @override
+  String get gitDiscard => '放弃更改';
+
+  @override
+  String get gitDiscardConfirmTitle => '放弃更改？';
+
+  @override
+  String gitDiscardConfirmBody(String path) {
+    return '放弃 $path 中的所有更改？此操作无法撤销。';
+  }
+
+  @override
+  String get gitPush => '推送';
+
+  @override
+  String get gitPull => '拉取';
+
+  @override
+  String get gitRefresh => '刷新';
+
+  @override
+  String get gitSwitchBranch => '切换分支';
+
+  @override
+  String get gitCreateBranch => '新建分支';
+
+  @override
+  String get gitNewBranchHint => '新分支名称';
+
+  @override
+  String gitError(String message) {
+    return 'Git：$message';
+  }
+
+  @override
+  String gitAheadBehind(int ahead, int behind) {
+    return '↑$ahead ↓$behind';
+  }
 
   @override
   String get openTeam => '打开团队';

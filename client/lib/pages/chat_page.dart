@@ -18,9 +18,14 @@ import 'chat_workbench.dart';
 import 'workspace_shell.dart';
 
 class ChatPage extends StatelessWidget {
-  const ChatPage({this.sessionId, super.key});
+  const ChatPage({required this.cwd, this.sessionId, super.key});
 
   final String? sessionId;
+
+  /// Working directory the file tree / git tools operate on, supplied by the
+  /// caller's context (project path for the v2 project page; active-session
+  /// cwd for the chat routes). [ChatPage] never derives it from session state.
+  final String cwd;
 
   @override
   Widget build(BuildContext context) {
@@ -36,6 +41,7 @@ class ChatPage extends StatelessWidget {
 
     final toolsAsDrawer = useRightToolsAsDrawer(context);
     final rightToolsPanel = RightToolsPanel(
+      cwd: cwd,
       preferences: preferences,
       panelKey: AppKeys.rightToolsPanel,
       dismissDrawerOnAction: toolsAsDrawer,
@@ -83,6 +89,7 @@ class ChatPage extends StatelessWidget {
         buildShell(
           rightTools: preferences.rightToolsVisible
               ? RightToolsPanel(
+                  cwd: cwd,
                   preferences: preferences,
                   panelKey: preferences.toolPlacement == ToolPanelPlacement.right
                       ? AppKeys.rightToolsPanel
@@ -171,5 +178,20 @@ class ChatPage extends StatelessWidget {
         icon: const Icon(Icons.groups_outlined),
       ),
     ];
+  }
+}
+
+/// Chat route entry that scopes the tools to the active session's cwd. Keeps
+/// the "follow the active session" behavior out of [ChatPage] itself, which
+/// only renders the cwd it is given.
+class ActiveSessionChatPage extends StatelessWidget {
+  const ActiveSessionChatPage({this.sessionId, super.key});
+
+  final String? sessionId;
+
+  @override
+  Widget build(BuildContext context) {
+    final cwd = context.select<ChatCubit, String>((c) => c.state.activeCwd);
+    return ChatPage(sessionId: sessionId, cwd: cwd);
   }
 }

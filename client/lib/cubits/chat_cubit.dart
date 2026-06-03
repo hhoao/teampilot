@@ -214,6 +214,16 @@ class ChatState extends Equatable {
     );
   }
 
+  /// Working directory of the active session tab (its cwd), or empty when no
+  /// tab is open. Used by chat routes that scope the tools to the active
+  /// session rather than a fixed project.
+  String get activeCwd {
+    if (activeTabIndex >= 0 && activeTabIndex < tabs.length) {
+      return tabs[activeTabIndex].subtitle;
+    }
+    return '';
+  }
+
   bool get isActiveSessionConnecting {
     final id = sessionConnectingId;
     final active = activeSessionId;

@@ -338,26 +338,33 @@ class _RegionVisibilitySettingsSection extends StatelessWidget {
     final l10n = context.l10n;
     final controller = context.read<LayoutCubit>();
 
-    return BlocSelector<LayoutCubit, LayoutState, (bool, bool, bool)>(
+    return BlocSelector<LayoutCubit, LayoutState, (bool, bool, bool, bool)>(
       selector: (state) => (
         state.preferences.contextSidebarVisible,
         state.preferences.membersVisible,
         state.preferences.fileTreeVisible,
+        state.preferences.gitVisible,
       ),
       builder: (context, visibility) {
-        final (contextSidebarVisible, membersVisible, fileTreeVisible) =
-            visibility;
+        final (
+          contextSidebarVisible,
+          membersVisible,
+          fileTreeVisible,
+          gitVisible,
+        ) = visibility;
 
         void setVisibility({
           bool? contextSidebarVisible,
           bool? membersVisible,
           bool? fileTreeVisible,
+          bool? gitVisible,
         }) {
           controller.setRegionVisibility(
             appRailVisible: true,
             contextSidebarVisible: contextSidebarVisible ?? visibility.$1,
             membersVisible: membersVisible ?? visibility.$2,
             fileTreeVisible: fileTreeVisible ?? visibility.$3,
+            gitVisible: gitVisible ?? visibility.$4,
           );
         }
 
@@ -393,6 +400,15 @@ class _RegionVisibilitySettingsSection extends StatelessWidget {
                 key: AppKeys.fileTreeVisibilitySwitch,
                 value: fileTreeVisible,
                 onChanged: (value) => setVisibility(fileTreeVisible: value),
+              ),
+              showDividerBelow: true,
+            ),
+            SettingsLabeledRow(
+              title: l10n.sourceControl,
+              subtitle: l10n.visibilityGitHint,
+              trailing: Switch(
+                value: gitVisible,
+                onChanged: (value) => setVisibility(gitVisible: value),
               ),
               showDividerBelow: false,
             ),

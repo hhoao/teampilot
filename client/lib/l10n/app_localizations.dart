@@ -272,6 +272,12 @@ abstract class AppLocalizations {
   /// **'Show the project file tree for quick navigation.'**
   String get visibilityFileTreeHint;
 
+  /// No description provided for @visibilityGitHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Show the source control panel for the current repository.'**
+  String get visibilityGitHint;
+
   /// No description provided for @extensionsSettingsTitle.
   ///
   /// In en, this message translates to:
@@ -673,6 +679,144 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'File Tree'**
   String get fileTree;
+
+  /// No description provided for @sourceControl.
+  ///
+  /// In en, this message translates to:
+  /// **'Source Control'**
+  String get sourceControl;
+
+  /// No description provided for @gitStagedChanges.
+  ///
+  /// In en, this message translates to:
+  /// **'Staged Changes'**
+  String get gitStagedChanges;
+
+  /// No description provided for @gitChanges.
+  ///
+  /// In en, this message translates to:
+  /// **'Changes'**
+  String get gitChanges;
+
+  /// No description provided for @gitNoChanges.
+  ///
+  /// In en, this message translates to:
+  /// **'No changes'**
+  String get gitNoChanges;
+
+  /// No description provided for @gitNotARepository.
+  ///
+  /// In en, this message translates to:
+  /// **'This folder is not a Git repository'**
+  String get gitNotARepository;
+
+  /// No description provided for @gitNotInstalled.
+  ///
+  /// In en, this message translates to:
+  /// **'Git was not found. Install Git to use source control.'**
+  String get gitNotInstalled;
+
+  /// No description provided for @gitCommit.
+  ///
+  /// In en, this message translates to:
+  /// **'Commit'**
+  String get gitCommit;
+
+  /// No description provided for @gitCommitMessageHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Message (commit to \"{branch}\")'**
+  String gitCommitMessageHint(String branch);
+
+  /// No description provided for @gitStage.
+  ///
+  /// In en, this message translates to:
+  /// **'Stage changes'**
+  String get gitStage;
+
+  /// No description provided for @gitUnstage.
+  ///
+  /// In en, this message translates to:
+  /// **'Unstage changes'**
+  String get gitUnstage;
+
+  /// No description provided for @gitStageAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Stage all changes'**
+  String get gitStageAll;
+
+  /// No description provided for @gitUnstageAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Unstage all changes'**
+  String get gitUnstageAll;
+
+  /// No description provided for @gitDiscard.
+  ///
+  /// In en, this message translates to:
+  /// **'Discard changes'**
+  String get gitDiscard;
+
+  /// No description provided for @gitDiscardConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Discard changes?'**
+  String get gitDiscardConfirmTitle;
+
+  /// No description provided for @gitDiscardConfirmBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Discard all changes in {path}? This cannot be undone.'**
+  String gitDiscardConfirmBody(String path);
+
+  /// No description provided for @gitPush.
+  ///
+  /// In en, this message translates to:
+  /// **'Push'**
+  String get gitPush;
+
+  /// No description provided for @gitPull.
+  ///
+  /// In en, this message translates to:
+  /// **'Pull'**
+  String get gitPull;
+
+  /// No description provided for @gitRefresh.
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh'**
+  String get gitRefresh;
+
+  /// No description provided for @gitSwitchBranch.
+  ///
+  /// In en, this message translates to:
+  /// **'Switch branch'**
+  String get gitSwitchBranch;
+
+  /// No description provided for @gitCreateBranch.
+  ///
+  /// In en, this message translates to:
+  /// **'Create branch'**
+  String get gitCreateBranch;
+
+  /// No description provided for @gitNewBranchHint.
+  ///
+  /// In en, this message translates to:
+  /// **'New branch name'**
+  String get gitNewBranchHint;
+
+  /// No description provided for @gitError.
+  ///
+  /// In en, this message translates to:
+  /// **'Git: {message}'**
+  String gitError(String message);
+
+  /// No description provided for @gitAheadBehind.
+  ///
+  /// In en, this message translates to:
+  /// **'↑{ahead} ↓{behind}'**
+  String gitAheadBehind(int ahead, int behind);
 
   /// No description provided for @openTeam.
   ///

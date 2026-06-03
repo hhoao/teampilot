@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
+import 'package:teampilot/services/git/git_service.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/storage/runtime_storage_context.dart';
@@ -22,9 +23,17 @@ void setUpTestAppStorage() {
     home: _testAppDataDir!.path,
     cwd: _testAppDataDir!.path,
   );
+  // The source control panel self-builds a GitService that would otherwise
+  // spawn a real `git` process on mount, leaking timers in widget tests. Use a
+  // process-free runner so it reports "git unavailable" instead.
+  GitService.debugOverrideFactory = () => GitService(
+    runner: (executable, arguments, {stdoutEncoding, stderrEncoding}) async =>
+        ProcessResult(0, 1, '', ''),
+  );
 }
 
 void tearDownTestAppStorage() {
+  GitService.debugOverrideFactory = null;
   RuntimeStorageContext.resetForTesting();
   AppPathsBootstrapper.resetForTesting();
   DefaultProjectDirectory.resetForTesting();

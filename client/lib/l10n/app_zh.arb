@@ -29,6 +29,7 @@
   "visibilityTeamSessionsHint": "在左侧边栏显示团队会话列表。",
   "visibilityMembersHint": "在工具或终端旁显示成员列表。",
   "visibilityFileTreeHint": "显示项目文件树以便快速浏览。",
+  "visibilityGitHint": "显示当前仓库的源代码管理面板。",
   "extensionsSettingsTitle": "扩展",
   "extensionsSettingsDescription": "安装并启用增强 Agent 的外部工具。",
   "extensionsNavInstalled": "已安装",
@@ -110,6 +111,60 @@
   "chatHintText": "为 team-lead 编写提示...",
   "emptyTimeline": "本地 shell 模式对话记录将显示在此处。",
   "fileTree": "文件树",
+  "sourceControl": "源代码管理",
+  "gitStagedChanges": "暂存的更改",
+  "gitChanges": "更改",
+  "gitNoChanges": "没有更改",
+  "gitNotARepository": "当前文件夹不是 Git 仓库",
+  "gitNotInstalled": "未找到 Git。安装 Git 后即可使用源代码管理。",
+  "gitCommit": "提交",
+  "gitCommitMessageHint": "消息（提交到 \"{branch}\"）",
+  "@gitCommitMessageHint": {
+    "placeholders": {
+      "branch": {
+        "type": "String"
+      }
+    }
+  },
+  "gitStage": "暂存更改",
+  "gitUnstage": "取消暂存",
+  "gitStageAll": "暂存所有更改",
+  "gitUnstageAll": "取消暂存所有更改",
+  "gitDiscard": "放弃更改",
+  "gitDiscardConfirmTitle": "放弃更改？",
+  "gitDiscardConfirmBody": "放弃 {path} 中的所有更改？此操作无法撤销。",
+  "@gitDiscardConfirmBody": {
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
+  },
+  "gitPush": "推送",
+  "gitPull": "拉取",
+  "gitRefresh": "刷新",
+  "gitSwitchBranch": "切换分支",
+  "gitCreateBranch": "新建分支",
+  "gitNewBranchHint": "新分支名称",
+  "gitError": "Git：{message}",
+  "@gitError": {
+    "placeholders": {
+      "message": {
+        "type": "String"
+      }
+    }
+  },
+  "gitAheadBehind": "↑{ahead} ↓{behind}",
+  "@gitAheadBehind": {
+    "placeholders": {
+      "ahead": {
+        "type": "int"
+      },
+      "behind": {
+        "type": "int"
+      }
+    }
+  },
   "openTeam": "打开团队",
   "openMember": "打开成员",
   "memberPresenceOffline": "未连接",

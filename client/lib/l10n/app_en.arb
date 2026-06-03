@@ -29,6 +29,7 @@
   "visibilityTeamSessionsHint": "Show the team sessions list in the left sidebar.",
   "visibilityMembersHint": "Show the member list next to tools or terminals.",
   "visibilityFileTreeHint": "Show the project file tree for quick navigation.",
+  "visibilityGitHint": "Show the source control panel for the current repository.",
   "extensionsSettingsTitle": "Extensions",
   "extensionsSettingsDescription": "Install and enable external tools that augment your agents.",
   "extensionsNavInstalled": "Installed",
@@ -113,6 +114,60 @@
   "chatHintText": "Write a prompt for team-lead...",
   "emptyTimeline": "Local shell-mode conversation notes will appear here.",
   "fileTree": "File Tree",
+  "sourceControl": "Source Control",
+  "gitStagedChanges": "Staged Changes",
+  "gitChanges": "Changes",
+  "gitNoChanges": "No changes",
+  "gitNotARepository": "This folder is not a Git repository",
+  "gitNotInstalled": "Git was not found. Install Git to use source control.",
+  "gitCommit": "Commit",
+  "gitCommitMessageHint": "Message (commit to \"{branch}\")",
+  "@gitCommitMessageHint": {
+    "placeholders": {
+      "branch": {
+        "type": "String"
+      }
+    }
+  },
+  "gitStage": "Stage changes",
+  "gitUnstage": "Unstage changes",
+  "gitStageAll": "Stage all changes",
+  "gitUnstageAll": "Unstage all changes",
+  "gitDiscard": "Discard changes",
+  "gitDiscardConfirmTitle": "Discard changes?",
+  "gitDiscardConfirmBody": "Discard all changes in {path}? This cannot be undone.",
+  "@gitDiscardConfirmBody": {
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
+  },
+  "gitPush": "Push",
+  "gitPull": "Pull",
+  "gitRefresh": "Refresh",
+  "gitSwitchBranch": "Switch branch",
+  "gitCreateBranch": "Create branch",
+  "gitNewBranchHint": "New branch name",
+  "gitError": "Git: {message}",
+  "@gitError": {
+    "placeholders": {
+      "message": {
+        "type": "String"
+      }
+    }
+  },
+  "gitAheadBehind": "↑{ahead} ↓{behind}",
+  "@gitAheadBehind": {
+    "placeholders": {
+      "ahead": {
+        "type": "int"
+      },
+      "behind": {
+        "type": "int"
+      }
+    }
+  },
   "openTeam": "Open Team",
   "openMember": "Open member",
   "memberPresenceOffline": "Offline",

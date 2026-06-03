@@ -66,6 +66,7 @@ class LayoutCubit extends Cubit<LayoutState> {
     required bool contextSidebarVisible,
     required bool membersVisible,
     required bool fileTreeVisible,
+    bool? gitVisible,
   }) {
     return _save(
       state.preferences.copyWith(
@@ -73,6 +74,7 @@ class LayoutCubit extends Cubit<LayoutState> {
         contextSidebarVisible: contextSidebarVisible,
         membersVisible: membersVisible,
         fileTreeVisible: fileTreeVisible,
+        gitVisible: gitVisible,
       ),
     );
   }
