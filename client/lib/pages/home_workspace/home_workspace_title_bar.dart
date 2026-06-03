@@ -107,8 +107,21 @@ class _HomeWorkspaceTitleBarState extends State<HomeWorkspaceTitleBar>
               active: widget.activeProjectId == null,
               onTap: widget.onHomeTap,
             ),
-            if (widget.tabs.isNotEmpty)
-              Flexible(
+            if (widget.tabs.isEmpty)
+              Expanded(
+                child: showWindowControls
+                    ? const DragToMoveArea(child: SizedBox.expand())
+                    : const SizedBox.expand(),
+              )
+            else
+              // Tabs take all remaining space as the sole flex child. Previously
+              // a Flexible tab strip and a separate Expanded spacer both carried
+              // flex, so the free width was split 50/50: the greedy horizontal
+              // scroll view filled its half on the left while the spacer left a
+              // dead band on the right. Filling the whole gap keeps the tabs
+              // left-aligned, the action buttons flush right, and removes the
+              // wasted space.
+              Expanded(
                 child: SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
                   child: Row(
@@ -128,11 +141,6 @@ class _HomeWorkspaceTitleBarState extends State<HomeWorkspaceTitleBar>
                 ),
               ),
             const SizedBox(width: 8),
-            Expanded(
-              child: showWindowControls
-                  ? const DragToMoveArea(child: SizedBox.expand())
-                  : const SizedBox.expand(),
-            ),
             const _ActionGlyph(icon: Icons.settings_outlined),
             const _ActionGlyph(icon: Icons.notifications_none_rounded),
             const SizedBox(width: 6),
