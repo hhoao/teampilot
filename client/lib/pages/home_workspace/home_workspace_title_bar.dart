@@ -134,8 +134,9 @@ class _HomeWorkspaceTitleBarState extends State<HomeWorkspaceTitleBar>
                     return Row(
                       children: [
                         ConstrainedBox(
-                          constraints:
-                              BoxConstraints(maxWidth: constraints.maxWidth),
+                          constraints: BoxConstraints(
+                            maxWidth: constraints.maxWidth,
+                          ),
                           child: ListView(
                             shrinkWrap: true,
                             scrollDirection: Axis.horizontal,
@@ -177,9 +178,6 @@ class _HomeWorkspaceTitleBarState extends State<HomeWorkspaceTitleBar>
               tooltip: l10n.settings,
               onTap: () => showWorkspaceSettingsDialog(context),
             ),
-            const _ActionGlyph(icon: Icons.notifications_none_rounded),
-            const SizedBox(width: 6),
-            const _Avatar(),
             const SizedBox(width: 10),
             if (showWindowControls) ...[
               _WinButton(
@@ -357,7 +355,11 @@ class _ProjectTab extends StatelessWidget {
               borderRadius: BorderRadius.circular(5),
               child: Padding(
                 padding: const EdgeInsets.all(2),
-                child: Icon(Icons.close, size: AppIconSizes.md, color: cs.onSurfaceVariant),
+                child: Icon(
+                  Icons.close,
+                  size: AppIconSizes.md,
+                  color: cs.onSurfaceVariant,
+                ),
               ),
             ),
           ],
@@ -416,28 +418,6 @@ class _ActionGlyphState extends State<_ActionGlyph> {
   }
 }
 
-class _Avatar extends StatelessWidget {
-  const _Avatar();
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Container(
-      width: 26,
-      height: 26,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [cs.tertiary, cs.primary],
-        ),
-      ),
-      child: Icon(Icons.person, size: AppIconSizes.md, color: cs.onPrimary),
-    );
-  }
-}
-
 class _WinButton extends StatefulWidget {
   const _WinButton({
     required this.tooltip,
@@ -493,7 +473,11 @@ class _WinButtonState extends State<_WinButton> {
               hoverColor: Colors.transparent,
               splashColor: Colors.transparent,
               highlightColor: Colors.transparent,
-              child: Icon(widget.icon, size: AppIconSizes.md, color: foreground),
+              child: Icon(
+                widget.icon,
+                size: AppIconSizes.md,
+                color: foreground,
+              ),
             ),
           ),
         ),

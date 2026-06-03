@@ -34,6 +34,16 @@ class SettingsDialogEntry {
 /// Opens a settings modal with a left nav column and a headed content pane.
 ///
 /// [entries] must be non-empty; the first section is selected initially.
+/// Fixed dialog size — roughly half the width and two-thirds the height of a
+/// maximized window on a 1080p display. Clamped to the viewport on smaller
+/// windows so the box never overflows.
+const double _kSettingsDialogWidth = 1160;
+const double _kSettingsDialogHeight = 960;
+
+/// Total horizontal/vertical space reserved around the dialog (matches
+/// [Dialog.insetPadding] of `EdgeInsets.all(24)`).
+const double _kSettingsDialogInset = 48;
+
 Future<void> showSettingsDialog(
   BuildContext context, {
   required String navTitle,
@@ -64,10 +74,14 @@ class _SettingsDialogState extends State<_SettingsDialog> {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final media = MediaQuery.of(context);
-    final maxW = media.size.width;
-    final maxH = media.size.height;
-    final dialogWidth = maxW.clamp(0.0, 1040.0) * (maxW < 720 ? 1.0 : 0.9);
-    final dialogHeight = maxH.clamp(0.0, 720.0) * (maxH < 640 ? 1.0 : 0.86);
+    final dialogWidth = _kSettingsDialogWidth.clamp(
+      0.0,
+      media.size.width - _kSettingsDialogInset,
+    );
+    final dialogHeight = _kSettingsDialogHeight.clamp(
+      0.0,
+      media.size.height - _kSettingsDialogInset,
+    );
 
     final active = widget.entries[_selected];
 
@@ -75,7 +89,7 @@ class _SettingsDialogState extends State<_SettingsDialog> {
       backgroundColor: cs.workspacePage,
       clipBehavior: Clip.antiAlias,
       insetPadding: const EdgeInsets.all(24),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(32)),
       child: SizedBox(
         width: dialogWidth,
         height: dialogHeight,
@@ -88,29 +102,35 @@ class _SettingsDialogState extends State<_SettingsDialog> {
               onSelect: (index) => setState(() => _selected = index),
             ),
             Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  _SettingsHeader(
-                    title: active.title,
-                    subtitle: active.subtitle,
-                    onClose: () => Navigator.of(context).pop(),
-                  ),
-                  Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
-                      child: active.body
-                          .animate(key: ValueKey(_selected))
-                          .fadeIn(duration: 180.ms, curve: Curves.easeOut)
-                          .slideX(
-                            begin: 0.025,
-                            end: 0,
-                            duration: 220.ms,
-                            curve: Curves.easeOutCubic,
-                          ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 18,
+                  vertical: 16,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _SettingsHeader(
+                      title: active.title,
+                      subtitle: active.subtitle,
+                      onClose: () => Navigator.of(context).pop(),
                     ),
-                  ),
-                ],
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
+                        child: active.body
+                            .animate(key: ValueKey(_selected))
+                            .fadeIn(duration: 180.ms, curve: Curves.easeOut)
+                            .slideX(
+                              begin: 0.025,
+                              end: 0,
+                              duration: 220.ms,
+                              curve: Curves.easeOutCubic,
+                            ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ],
@@ -146,34 +166,36 @@ class _SettingsNav extends StatelessWidget {
           right: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.5)),
         ),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 22, 20, 14),
-            child: Text(
-              title,
-              style: styles.subtitle.copyWith(
-                fontWeight: FontWeight.w800,
-                color: cs.onSurface,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 22, 20, 14),
+              child: Text(
+                title,
+                style: styles.subtitle.copyWith(
+                  fontWeight: FontWeight.w800,
+                  color: cs.onSurface,
+                ),
               ),
             ),
-          ),
-          Expanded(
-            child: ListView(
-              padding: const EdgeInsets.fromLTRB(12, 0, 12, 16),
-              children: [
-                for (final (index, entry) in entries.indexed)
-                  WorkspaceHubNavItem(
-                    title: entry.navLabel,
-                    icon: entry.icon,
-                    selected: index == selectedIndex,
-                    onTap: () => onSelect(index),
-                  ),
-              ],
+            Expanded(
+              child: ListView(
+                children: [
+                  for (final (index, entry) in entries.indexed)
+                    WorkspaceHubNavItem(
+                      title: entry.navLabel,
+                      icon: entry.icon,
+                      selected: index == selectedIndex,
+                      onTap: () => onSelect(index),
+                    ),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
