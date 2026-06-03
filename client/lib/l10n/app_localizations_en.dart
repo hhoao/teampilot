@@ -375,6 +375,21 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homeWorkspaceMainWindow => 'Home';
 
   @override
+  String get windowControlMinimize => 'Minimize';
+
+  @override
+  String get windowControlMaximize => 'Maximize';
+
+  @override
+  String get windowControlRestore => 'Restore';
+
+  @override
+  String get windowControlClose => 'Close';
+
+  @override
+  String get windowControlAlwaysOnTop => 'Always on top';
+
+  @override
   String get homeWorkspaceMyTeams => 'My Teams';
 
   @override

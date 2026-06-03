@@ -7,6 +7,7 @@ import '../../l10n/l10n_extensions.dart';
 import '../../services/app/platform_utils.dart';
 import '../../theme/app_text_styles.dart';
 import '../../theme/workspace_surface_layers.dart';
+import '../../widgets/window_drag_area.dart';
 
 /// Height of the Apifox-style workspace title bar.
 const double kHomeWorkspaceTitleBarHeight = 58;
@@ -110,7 +111,7 @@ class _HomeWorkspaceTitleBarState extends State<HomeWorkspaceTitleBar>
             if (widget.tabs.isEmpty)
               Expanded(
                 child: showWindowControls
-                    ? const DragToMoveArea(child: SizedBox.expand())
+                    ? const WindowDragArea(child: SizedBox.expand())
                     : const SizedBox.expand(),
               )
             else
@@ -161,7 +162,7 @@ class _HomeWorkspaceTitleBarState extends State<HomeWorkspaceTitleBar>
                         ),
                         Expanded(
                           child: showWindowControls
-                              ? const DragToMoveArea(child: SizedBox.expand())
+                              ? const WindowDragArea(child: SizedBox.expand())
                               : const SizedBox.expand(),
                         ),
                       ],
@@ -177,12 +178,14 @@ class _HomeWorkspaceTitleBarState extends State<HomeWorkspaceTitleBar>
             const SizedBox(width: 10),
             if (showWindowControls) ...[
               _WinButton(
-                tooltip: 'Minimize',
+                tooltip: l10n.windowControlMinimize,
                 icon: Icons.remove,
                 onPressed: () => _windowManagerCall(windowManager.minimize),
               ),
               _WinButton(
-                tooltip: _isMaximized ? 'Restore' : 'Maximize',
+                tooltip: _isMaximized
+                    ? l10n.windowControlRestore
+                    : l10n.windowControlMaximize,
                 icon: _isMaximized
                     ? Icons.filter_none
                     : Icons.crop_square_outlined,
@@ -196,7 +199,7 @@ class _HomeWorkspaceTitleBarState extends State<HomeWorkspaceTitleBar>
                 },
               ),
               _WinButton(
-                tooltip: 'Close',
+                tooltip: l10n.windowControlClose,
                 icon: Icons.close,
                 isClose: true,
                 onPressed: () => _windowManagerCall(windowManager.close),

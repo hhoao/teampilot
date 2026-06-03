@@ -3,8 +3,10 @@ import 'package:teampilot/theme/app_icon_sizes.dart';
 import 'package:flutter/services.dart';
 import 'package:window_manager/window_manager.dart';
 
+import '../l10n/l10n_extensions.dart';
 import '../services/app/platform_utils.dart';
 import '../theme/app_text_styles.dart';
+import 'window_drag_area.dart';
 
 /// Height of the in-app replacement for the native window title bar.
 const double kDesktopWindowTitleBarHeight = 40;
@@ -79,6 +81,7 @@ class _DesktopWindowTitleBarState extends State<DesktopWindowTitleBar>
     final cs = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark;
     final titleColor = isDark ? Colors.white : const Color(0xFF111827);
+    final l10n = context.l10n;
 
     return Material(
       color: cs.surfaceContainerLow,
@@ -95,7 +98,7 @@ class _DesktopWindowTitleBarState extends State<DesktopWindowTitleBar>
           child: Row(
             children: [
               Expanded(
-                child: DragToMoveArea(
+                child: WindowDragArea(
                   child: Align(
                     alignment: Alignment.centerLeft,
                     child: Padding(
@@ -113,12 +116,14 @@ class _DesktopWindowTitleBarState extends State<DesktopWindowTitleBar>
                 ),
               ),
               _WindowChromeButton(
-                tooltip: 'Minimize',
+                tooltip: l10n.windowControlMinimize,
                 icon: Icons.remove,
                 onPressed: () => _windowManagerCall(windowManager.minimize),
               ),
               _WindowChromeButton(
-                tooltip: _isMaximized ? 'Restore' : 'Maximize',
+                tooltip: _isMaximized
+                    ? l10n.windowControlRestore
+                    : l10n.windowControlMaximize,
                 icon: _isMaximized
                     ? Icons.filter_none
                     : Icons.crop_square_outlined,
@@ -132,7 +137,7 @@ class _DesktopWindowTitleBarState extends State<DesktopWindowTitleBar>
                 },
               ),
               _WindowChromeButton(
-                tooltip: 'Close',
+                tooltip: l10n.windowControlClose,
                 icon: Icons.close,
                 isClose: true,
                 onPressed: () => _windowManagerCall(windowManager.close),

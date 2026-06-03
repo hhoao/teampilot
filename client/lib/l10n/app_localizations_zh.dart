@@ -361,6 +361,21 @@ class AppLocalizationsZh extends AppLocalizations {
   String get homeWorkspaceMainWindow => '主窗口';
 
   @override
+  String get windowControlMinimize => '最小化';
+
+  @override
+  String get windowControlMaximize => '最大化';
+
+  @override
+  String get windowControlRestore => '还原';
+
+  @override
+  String get windowControlClose => '关闭';
+
+  @override
+  String get windowControlAlwaysOnTop => '置顶';
+
+  @override
   String get homeWorkspaceMyTeams => '我的团队';
 
   @override

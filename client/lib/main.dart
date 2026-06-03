@@ -259,8 +259,17 @@ class TeamPilotApp extends StatelessWidget {
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
           locale: savedLocale.isNotEmpty ? Locale(savedLocale) : null,
-          builder: (context, child) =>
-              UiWarmup(child: child ?? const SizedBox.shrink()),
+          builder: (context, child) {
+            Widget content = UiWarmup(child: child ?? const SizedBox.shrink());
+            // The native title bar is hidden (TitleBarStyle.hidden), which on
+            // Linux/GTK also strips the resize-border grips. DragToResizeArea
+            // re-adds invisible resize handles on all edges/corners so the
+            // frameless window can still be resized from its borders.
+            if (!Platform.isAndroid) {
+              content = DragToResizeArea(child: content);
+            }
+            return content;
+          },
           localeResolutionCallback: (locale, supportedLocales) {
             if (savedLocale.isNotEmpty) return Locale(savedLocale);
             for (final supportedLocale in supportedLocales) {

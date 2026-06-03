@@ -782,6 +782,36 @@ abstract class AppLocalizations {
   /// **'Home'**
   String get homeWorkspaceMainWindow;
 
+  /// No description provided for @windowControlMinimize.
+  ///
+  /// In en, this message translates to:
+  /// **'Minimize'**
+  String get windowControlMinimize;
+
+  /// No description provided for @windowControlMaximize.
+  ///
+  /// In en, this message translates to:
+  /// **'Maximize'**
+  String get windowControlMaximize;
+
+  /// No description provided for @windowControlRestore.
+  ///
+  /// In en, this message translates to:
+  /// **'Restore'**
+  String get windowControlRestore;
+
+  /// No description provided for @windowControlClose.
+  ///
+  /// In en, this message translates to:
+  /// **'Close'**
+  String get windowControlClose;
+
+  /// No description provided for @windowControlAlwaysOnTop.
+  ///
+  /// In en, this message translates to:
+  /// **'Always on top'**
+  String get windowControlAlwaysOnTop;
+
   /// No description provided for @homeWorkspaceMyTeams.
   ///
   /// In en, this message translates to:
