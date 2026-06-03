@@ -12,11 +12,21 @@ const kTerminalFontFamily = AppFonts.monoFamily;
 const kUbuntuSansMonoFontFamily = 'Ubuntu Sans Mono';
 
 /// Terminal face + size from [AppTypographyTheme.terminal].
+///
+/// The terminal renders via [TerminalView] (a [CustomPaint], not a [Text]
+/// widget), so it never picks up [MediaQuery.textScaler] automatically the way
+/// the rest of the UI does. On Linux the GTK embedder feeds the GNOME
+/// `text-scaling-factor` into [MediaQuery.textScaler], so without applying it
+/// here the terminal stays at the raw 14px while every other surface grows —
+/// making the terminal look smaller. Scaling the [TerminalStyle.size] keeps the
+/// terminal in step (the size drives both cell metrics and glyph rendering, so
+/// columns stay aligned).
 TerminalStyle appTerminalTextStyle(BuildContext context) {
   final typography = context.appTypography;
   final fonts = context.appFonts;
+  final textScaler = MediaQuery.textScalerOf(context);
   return TerminalStyle(
-    size: typography.terminal,
+    size: textScaler.scale(typography.terminal),
     family: fonts.monoFontFamily,
     lineHeight: 1.3,
     fallback: fonts.monoFontFamilyFallback,
