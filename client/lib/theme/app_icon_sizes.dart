@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 
-/// Central **icon pixel sizes** for TeamPilot UI.
+/// Central **icon sizes and colors** for TeamPilot UI.
 ///
-/// [buildLightTheme] / [buildDarkTheme] set [IconThemeData.size] to [md].
-/// **Default:** use [md] or omit `size` and rely on [IconTheme]. Other roles are
-/// available when a screen needs denser chrome or larger illustrations.
+/// [buildLightTheme] / [buildDarkTheme] set [IconThemeData] to [md] + [AppIconColors.icon].
+/// **Default:** omit `size` / `color` on [Icon] and rely on [IconTheme]. For muted
+/// or disabled glyphs use [AppIconColors.iconMuted] / [AppIconColors.iconDisabled].
+/// Other size roles are available when a screen needs denser chrome or illustrations.
 ///
 /// All roles scale with [multiplier] (same pattern as [AppTypographyScale]).
 abstract final class AppIconSizes {
@@ -63,11 +64,27 @@ abstract final class AppIconSizes {
   static const double display = displayBase * multiplier;
 
   /// Default [IconThemeData] for app themes.
-  static IconThemeData iconTheme({Color? color}) =>
-      IconThemeData(size: md, color: color);
+  static IconThemeData iconTheme(ColorScheme scheme) =>
+      IconThemeData(size: md, color: scheme.icon);
+}
+
+/// Semantic icon colors aligned with [ThemeData.iconTheme].
+extension AppIconColors on ColorScheme {
+  /// Default interactive glyph ([ThemeData.iconTheme]).
+  Color get icon => onSurface;
+
+  /// Secondary / hint glyphs (search fields, placeholders).
+  Color get iconMuted => onSurfaceVariant;
+
+  /// Disabled toolbar and list icons (Material 3 disabled opacity).
+  Color get iconDisabled => icon.withValues(alpha: 0.38);
 }
 
 extension AppIconSizesContext on BuildContext {
   /// Resolved default icon size from [ThemeData.iconTheme].
   double get appIconSize => IconTheme.of(this).size ?? AppIconSizes.md;
+
+  /// Resolved default icon color from [ThemeData.iconTheme].
+  Color get appIconColor =>
+      IconTheme.of(this).color ?? Theme.of(this).colorScheme.icon;
 }

@@ -244,7 +244,7 @@ ThemeData _applyTypography(
     return flexTheme.copyWith(
       visualDensity: VisualDensity.compact,
       materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-      iconTheme: AppIconSizes.iconTheme(),
+      iconTheme: AppIconSizes.iconTheme(scheme),
       textTheme: textTheme,
       extensions: [AppFontTheme.fallback, typographyTheme],
       inputDecorationTheme: buildAppOutlineInputDecorationTheme(
@@ -275,7 +275,7 @@ ThemeData _applyTypography(
   return flexTheme.copyWith(
     visualDensity: VisualDensity.compact,
     materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-    iconTheme: AppIconSizes.iconTheme(),
+    iconTheme: AppIconSizes.iconTheme(scheme),
     textTheme: mergedTextTheme,
     primaryTextTheme: primaryTextTheme,
     extensions: [

@@ -39,8 +39,7 @@ class AppIconButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final effectiveColor = color ?? cs.onSurface;
+    final effectiveColor = color ?? context.appIconColor;
     final radius = BorderRadius.circular(borderRadius);
 
     Widget iconChild =
