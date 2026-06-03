@@ -2960,6 +2960,162 @@ abstract class AppLocalizations {
   /// **'MCP'**
   String get teamMcpNav;
 
+  /// No description provided for @teamHubNav.
+  ///
+  /// In en, this message translates to:
+  /// **'TeamHub'**
+  String get teamHubNav;
+
+  /// No description provided for @teamHubSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Discover more public teams'**
+  String get teamHubSubtitle;
+
+  /// No description provided for @teamHubTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'TeamHub'**
+  String get teamHubTitle;
+
+  /// No description provided for @teamHubDiscovery.
+  ///
+  /// In en, this message translates to:
+  /// **'Discovery'**
+  String get teamHubDiscovery;
+
+  /// No description provided for @teamHubFavorites.
+  ///
+  /// In en, this message translates to:
+  /// **'Favorites'**
+  String get teamHubFavorites;
+
+  /// No description provided for @teamHubSearchHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search public teams'**
+  String get teamHubSearchHint;
+
+  /// No description provided for @teamHubSortName.
+  ///
+  /// In en, this message translates to:
+  /// **'Name'**
+  String get teamHubSortName;
+
+  /// No description provided for @teamHubSortUpdated.
+  ///
+  /// In en, this message translates to:
+  /// **'Recently updated'**
+  String get teamHubSortUpdated;
+
+  /// No description provided for @teamHubCategoryAll.
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get teamHubCategoryAll;
+
+  /// No description provided for @teamHubClone.
+  ///
+  /// In en, this message translates to:
+  /// **'Clone to my teams'**
+  String get teamHubClone;
+
+  /// No description provided for @teamHubCloning.
+  ///
+  /// In en, this message translates to:
+  /// **'Cloning…'**
+  String get teamHubCloning;
+
+  /// No description provided for @teamHubCloneSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Cloned \"{name}\".'**
+  String teamHubCloneSuccess(Object name);
+
+  /// No description provided for @teamHubClonePartial.
+  ///
+  /// In en, this message translates to:
+  /// **'Cloned \"{name}\"; {count} dependencies could not be installed automatically.'**
+  String teamHubClonePartial(Object name, Object count);
+
+  /// No description provided for @teamHubCloneFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not clone this team.'**
+  String get teamHubCloneFailed;
+
+  /// No description provided for @teamHubEmptyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No public teams yet'**
+  String get teamHubEmptyTitle;
+
+  /// No description provided for @teamHubEmptyHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh to fetch teams from the registry.'**
+  String get teamHubEmptyHint;
+
+  /// No description provided for @teamHubFavoritesEmptyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No favorites yet'**
+  String get teamHubFavoritesEmptyTitle;
+
+  /// No description provided for @teamHubFavoritesEmptyHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap the star on a team to save it here.'**
+  String get teamHubFavoritesEmptyHint;
+
+  /// No description provided for @teamHubRefresh.
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh'**
+  String get teamHubRefresh;
+
+  /// No description provided for @teamHubLoadError.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not load public teams.'**
+  String get teamHubLoadError;
+
+  /// No description provided for @teamHubDepInstalled.
+  ///
+  /// In en, this message translates to:
+  /// **'Installed'**
+  String get teamHubDepInstalled;
+
+  /// No description provided for @teamHubDepToInstall.
+  ///
+  /// In en, this message translates to:
+  /// **'Will be installed'**
+  String get teamHubDepToInstall;
+
+  /// No description provided for @teamHubMembersLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Members'**
+  String get teamHubMembersLabel;
+
+  /// No description provided for @teamHubSkillsLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Skills'**
+  String get teamHubSkillsLabel;
+
+  /// No description provided for @teamHubPluginsLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Plugins'**
+  String get teamHubPluginsLabel;
+
+  /// No description provided for @teamHubMcpLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'MCP'**
+  String get teamHubMcpLabel;
+
   /// No description provided for @teamMcpAssignedCount.
   ///
   /// In en, this message translates to:

@@ -1536,6 +1536,88 @@ class AppLocalizationsZh extends AppLocalizations {
   String get teamMcpNav => 'MCP';
 
   @override
+  String get teamHubNav => '团队中心';
+
+  @override
+  String get teamHubSubtitle => '发现更多公开团队';
+
+  @override
+  String get teamHubTitle => '团队中心';
+
+  @override
+  String get teamHubDiscovery => '发现';
+
+  @override
+  String get teamHubFavorites => '我的收藏';
+
+  @override
+  String get teamHubSearchHint => '搜索公开团队';
+
+  @override
+  String get teamHubSortName => '名称';
+
+  @override
+  String get teamHubSortUpdated => '最近更新';
+
+  @override
+  String get teamHubCategoryAll => '全部';
+
+  @override
+  String get teamHubClone => '克隆为我的团队';
+
+  @override
+  String get teamHubCloning => '正在克隆…';
+
+  @override
+  String teamHubCloneSuccess(Object name) {
+    return '已克隆「$name」。';
+  }
+
+  @override
+  String teamHubClonePartial(Object name, Object count) {
+    return '已克隆「$name」；有 $count 个依赖未能自动安装。';
+  }
+
+  @override
+  String get teamHubCloneFailed => '无法克隆该团队。';
+
+  @override
+  String get teamHubEmptyTitle => '暂无公开团队';
+
+  @override
+  String get teamHubEmptyHint => '点击刷新从注册表拉取团队。';
+
+  @override
+  String get teamHubFavoritesEmptyTitle => '暂无收藏';
+
+  @override
+  String get teamHubFavoritesEmptyHint => '点击团队上的星标即可收藏到这里。';
+
+  @override
+  String get teamHubRefresh => '刷新';
+
+  @override
+  String get teamHubLoadError => '无法加载公开团队。';
+
+  @override
+  String get teamHubDepInstalled => '已安装';
+
+  @override
+  String get teamHubDepToInstall => '将安装';
+
+  @override
+  String get teamHubMembersLabel => '成员';
+
+  @override
+  String get teamHubSkillsLabel => '技能';
+
+  @override
+  String get teamHubPluginsLabel => '插件';
+
+  @override
+  String get teamHubMcpLabel => 'MCP';
+
+  @override
   String teamMcpAssignedCount(int assigned, int total) {
     return '已启用 $assigned/$total';
   }

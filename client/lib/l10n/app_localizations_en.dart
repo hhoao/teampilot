@@ -1577,6 +1577,89 @@ class AppLocalizationsEn extends AppLocalizations {
   String get teamMcpNav => 'MCP';
 
   @override
+  String get teamHubNav => 'TeamHub';
+
+  @override
+  String get teamHubSubtitle => 'Discover more public teams';
+
+  @override
+  String get teamHubTitle => 'TeamHub';
+
+  @override
+  String get teamHubDiscovery => 'Discovery';
+
+  @override
+  String get teamHubFavorites => 'Favorites';
+
+  @override
+  String get teamHubSearchHint => 'Search public teams';
+
+  @override
+  String get teamHubSortName => 'Name';
+
+  @override
+  String get teamHubSortUpdated => 'Recently updated';
+
+  @override
+  String get teamHubCategoryAll => 'All';
+
+  @override
+  String get teamHubClone => 'Clone to my teams';
+
+  @override
+  String get teamHubCloning => 'Cloning…';
+
+  @override
+  String teamHubCloneSuccess(Object name) {
+    return 'Cloned \"$name\".';
+  }
+
+  @override
+  String teamHubClonePartial(Object name, Object count) {
+    return 'Cloned \"$name\"; $count dependencies could not be installed automatically.';
+  }
+
+  @override
+  String get teamHubCloneFailed => 'Could not clone this team.';
+
+  @override
+  String get teamHubEmptyTitle => 'No public teams yet';
+
+  @override
+  String get teamHubEmptyHint => 'Refresh to fetch teams from the registry.';
+
+  @override
+  String get teamHubFavoritesEmptyTitle => 'No favorites yet';
+
+  @override
+  String get teamHubFavoritesEmptyHint =>
+      'Tap the star on a team to save it here.';
+
+  @override
+  String get teamHubRefresh => 'Refresh';
+
+  @override
+  String get teamHubLoadError => 'Could not load public teams.';
+
+  @override
+  String get teamHubDepInstalled => 'Installed';
+
+  @override
+  String get teamHubDepToInstall => 'Will be installed';
+
+  @override
+  String get teamHubMembersLabel => 'Members';
+
+  @override
+  String get teamHubSkillsLabel => 'Skills';
+
+  @override
+  String get teamHubPluginsLabel => 'Plugins';
+
+  @override
+  String get teamHubMcpLabel => 'MCP';
+
+  @override
   String teamMcpAssignedCount(int assigned, int total) {
     return '$assigned of $total enabled';
   }

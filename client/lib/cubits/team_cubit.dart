@@ -688,6 +688,73 @@ class TeamCubit extends Cubit<TeamState> {
     return true;
   }
 
+  /// Creates a team cloned from a TeamHub template. Unlike [addTeam], a
+  /// colliding display name is auto-suffixed (clone must never fail on a name
+  /// clash) and skill/plugin/MCP ids are carried over.
+  Future<String?> addClonedTeam({
+    required String name,
+    required TeamCli cli,
+    TeamMode teamMode = TeamMode.native,
+    required List<TeamMemberConfig> members,
+    List<String> skillIds = const [],
+    List<String> pluginIds = const [],
+    List<String> mcpServerIds = const [],
+    String description = '',
+    String extraArgs = '',
+  }) async {
+    final base = name.trim().isEmpty ? 'Team' : name.trim();
+    if (!cli.isLaunchSupported) {
+      emit(
+        state.copyWith(
+          statusMessage: 'CLI "${cli.value}" is not available for teams yet.',
+        ),
+      );
+      return null;
+    }
+    final existingNames = state.teams.map((t) => t.name).toSet();
+    var displayName = base;
+    var n = 2;
+    while (existingNames.contains(displayName)) {
+      displayName = '$base ($n)';
+      n++;
+    }
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final teamId = TeamMemberNaming.uniqueTeamId(
+      displayName,
+      state.teams.map((t) => t.id),
+    );
+    final roster = members.isEmpty
+        ? TeamMemberNaming.defaultRoster(joinedAt: now)
+        : members;
+    final team = TeamConfig(
+      id: teamId,
+      name: displayName,
+      description: description,
+      extraArgs: extraArgs,
+      cli: cli,
+      teamMode: teamMode,
+      createdAt: now,
+      members: roster,
+      skillIds: skillIds,
+      pluginIds: pluginIds,
+      mcpServerIds: mcpServerIds,
+    );
+    final teams = [...state.teams, team];
+    emit(
+      state.copyWith(
+        teams: teams,
+        selectedTeamId: team.id,
+        statusMessage: 'Cloned ${team.name}.',
+      ),
+    );
+    await _repository.saveTeams(teams);
+    final profileService = await _profileService();
+    await profileService.ensureTeamProfile(team.id, cli: team.cli);
+    unawaited(_syncSkillsForSelected());
+    unawaited(_syncPluginsForSelected());
+    return team.id;
+  }
+
   /// Renames the selected team and removes persisted files keyed by the old name.
   Future<bool> renameSelectedTeamName(String newName) async {
     final selected = state.selectedTeam;

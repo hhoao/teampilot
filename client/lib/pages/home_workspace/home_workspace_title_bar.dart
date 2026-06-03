@@ -114,30 +114,59 @@ class _HomeWorkspaceTitleBarState extends State<HomeWorkspaceTitleBar>
                     : const SizedBox.expand(),
               )
             else
-              // Tabs take all remaining space as the sole flex child. Previously
-              // a Flexible tab strip and a separate Expanded spacer both carried
-              // flex, so the free width was split 50/50: the greedy horizontal
-              // scroll view filled its half on the left while the spacer left a
-              // dead band on the right. Filling the whole gap keeps the tabs
-              // left-aligned, the action buttons flush right, and removes the
-              // wasted space.
+              // The open project tabs share the remaining width with a single
+              // Expanded spacer that doubles as the window-move area, so the
+              // action buttons stay flush right with no dead band.
+              //
+              // The earlier layout paired a Flexible tab strip with a separate
+              // Expanded spacer; two flex siblings split the free width 50/50,
+              // and the greedy horizontal scroll view filled its half on the
+              // left while the right half sat empty. Here the tabs are instead
+              // sized to their content (a shrink-wrapping horizontal ListView,
+              // capped at the available width so they scroll only when they
+              // would overflow), which leaves the spacer as the *sole* flex
+              // child: it absorbs all leftover width and remains draggable.
               Expanded(
-                child: SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      for (final tab in widget.tabs) ...[
-                        const SizedBox(width: 6),
-                        _ProjectTab(
-                          label: tab.name,
-                          active: tab.id == widget.activeProjectId,
-                          onTap: () => widget.onSelectTab?.call(tab.id),
-                          onClose: () => widget.onCloseTab?.call(tab.id),
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    return Row(
+                      children: [
+                        ConstrainedBox(
+                          constraints:
+                              BoxConstraints(maxWidth: constraints.maxWidth),
+                          child: ListView(
+                            shrinkWrap: true,
+                            scrollDirection: Axis.horizontal,
+                            children: [
+                              for (final tab in widget.tabs) ...[
+                                const SizedBox(width: 6),
+                                // widthFactor keeps the tab at its content
+                                // width; the ListView otherwise stretches each
+                                // child to the full bar height.
+                                Align(
+                                  alignment: Alignment.center,
+                                  widthFactor: 1,
+                                  child: _ProjectTab(
+                                    label: tab.name,
+                                    active: tab.id == widget.activeProjectId,
+                                    onTap: () =>
+                                        widget.onSelectTab?.call(tab.id),
+                                    onClose: () =>
+                                        widget.onCloseTab?.call(tab.id),
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                        Expanded(
+                          child: showWindowControls
+                              ? const DragToMoveArea(child: SizedBox.expand())
+                              : const SizedBox.expand(),
                         ),
                       ],
-                    ],
-                  ),
+                    );
+                  },
                 ),
               ),
             const SizedBox(width: 8),

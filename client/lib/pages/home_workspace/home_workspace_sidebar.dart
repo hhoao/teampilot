@@ -100,6 +100,13 @@ class _HomeWorkspaceSidebarState extends State<HomeWorkspaceSidebar> {
                         : const SizedBox(width: double.infinity),
                   ),
                 ),
+                _TeamHubEntry(
+                  label: l10n.teamHubNav,
+                  subtitle: l10n.teamHubSubtitle,
+                  active: activeGlobalView == HomeWorkspaceGlobalView.teamHub,
+                  onTap: () => onGlobal?.call(HomeWorkspaceGlobalView.teamHub),
+                ),
+                const SizedBox(height: 8),
                 Divider(
                   height: 1,
                   color: cs.outlineVariant.withValues(alpha: 0.5),
@@ -355,6 +362,87 @@ class _ShortcutRowState extends State<_ShortcutRow> {
                 style: styles.prominent.copyWith(
                   color: fg,
                   fontWeight: active ? FontWeight.w600 : FontWeight.w400,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _TeamHubEntry extends StatefulWidget {
+  const _TeamHubEntry({
+    required this.label,
+    required this.subtitle,
+    required this.active,
+    required this.onTap,
+  });
+
+  final String label;
+  final String subtitle;
+  final bool active;
+  final VoidCallback onTap;
+
+  @override
+  State<_TeamHubEntry> createState() => _TeamHubEntryState();
+}
+
+class _TeamHubEntryState extends State<_TeamHubEntry> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final styles = AppTextStyles.of(context);
+    final active = widget.active;
+    final Color background = active
+        ? cs.primary.withValues(alpha: 0.14)
+        : _hovered
+            ? cs.onSurface.withValues(alpha: 0.05)
+            : cs.surfaceContainer;
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        behavior: HitTestBehavior.opaque,
+        child: Container(
+          margin: const EdgeInsets.symmetric(vertical: 4),
+          padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 10),
+          decoration: BoxDecoration(
+            color: background,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: cs.outlineVariant.withValues(alpha: 0.7),
+            ),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                Icons.travel_explore_outlined,
+                size: AppIconSizes.md,
+                color: active ? cs.primary : cs.onSurfaceVariant,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      widget.label,
+                      style: styles.prominent.copyWith(
+                        color: active ? cs.primary : cs.onSurface,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    Text(
+                      widget.subtitle,
+                      style: styles.caption.copyWith(color: cs.onSurfaceVariant),
+                    ),
+                  ],
                 ),
               ),
             ],

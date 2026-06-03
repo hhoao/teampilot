@@ -144,6 +144,18 @@ class AppPaths {
   static String mcpBackupsDirForTeampilotRoot(String teampilotRoot) =>
       _pathUnderTeampilotRoot(teampilotRoot, 'mcp/backups');
 
+  static String teamHubDirForTeampilotRoot(String teampilotRoot) =>
+      _pathUnderTeampilotRoot(teampilotRoot, 'team-hub');
+
+  static String teamHubCacheDirForTeampilotRoot(String teampilotRoot) =>
+      _pathUnderTeampilotRoot(teampilotRoot, 'team-hub/cache');
+
+  static String teamHubRegistriesJsonForTeampilotRoot(String teampilotRoot) =>
+      _pathUnderTeampilotRoot(teampilotRoot, 'team-hub/registries.json');
+
+  static String teamHubFavoritesJsonForTeampilotRoot(String teampilotRoot) =>
+      _pathUnderTeampilotRoot(teampilotRoot, 'team-hub/favorites.json');
+
   String get skillRepoCacheDir => skillRepoCacheDirForTeampilotRoot(basePath);
 
   String get pluginMarketplaceCacheDir =>
@@ -165,6 +177,13 @@ class AppPaths {
   String get appProjectsDir => _ctx.join(basePath, 'projects');
 
   String get skillReposConfigPath => skillReposConfigPathForTeampilotRoot(basePath);
+
+  String get teamHubDir => teamHubDirForTeampilotRoot(basePath);
+  String get teamHubCacheDir => teamHubCacheDirForTeampilotRoot(basePath);
+  String get teamHubRegistriesJson =>
+      teamHubRegistriesJsonForTeampilotRoot(basePath);
+  String get teamHubFavoritesJson =>
+      teamHubFavoritesJsonForTeampilotRoot(basePath);
 
   /// Application-level unified provider catalog (`providers/providers.json`).
   String get providerConfigDir => _ctx.join(basePath, 'providers');

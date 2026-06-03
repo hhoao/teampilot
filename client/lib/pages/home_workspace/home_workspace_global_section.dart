@@ -4,9 +4,11 @@ import '../extensions/extension_management_page.dart';
 import '../mcp/mcp_management_page.dart';
 import '../plugins/plugin_management_page.dart';
 import '../skills/skill_management_page.dart';
+import '../team_hub/team_hub_page.dart';
+import '../team_hub/team_hub_section.dart';
 
 /// Which global management view is shown in the workspace-home right pane.
-enum HomeWorkspaceGlobalView { skills, plugins, mcp, extensions }
+enum HomeWorkspaceGlobalView { skills, plugins, mcp, extensions, teamHub }
 
 /// Embeds an existing global management page (Skills / Plugins / MCP) — or the
 /// team Extensions section — inside the workspace-home right pane. Sub-section
@@ -28,6 +30,7 @@ class _HomeWorkspaceGlobalSectionState
   PluginSection _plugin = PluginSection.installed;
   McpSection _mcp = McpSection.installed;
   ExtensionSection _extension = ExtensionSection.installed;
+  TeamHubSection _teamHub = TeamHubSection.discovery;
 
   @override
   Widget build(BuildContext context) {
@@ -47,6 +50,10 @@ class _HomeWorkspaceGlobalSectionState
       HomeWorkspaceGlobalView.extensions => ExtensionManagementPage(
           section: _extension,
           onSelectSection: (s) => setState(() => _extension = s),
+        ),
+      HomeWorkspaceGlobalView.teamHub => TeamHubPage(
+          section: _teamHub,
+          onSelectSection: (s) => setState(() => _teamHub = s),
         ),
     };
   }

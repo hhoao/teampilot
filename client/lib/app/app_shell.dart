@@ -21,6 +21,7 @@ import '../repositories/mcp_repository.dart';
 import '../services/mcp/team_mcp_linker_service.dart';
 import '../cubits/ssh_profile_cubit.dart';
 import '../cubits/team_cubit.dart';
+import '../cubits/team_hub_cubit.dart';
 import '../models/connection_mode.dart';
 import '../models/team_config.dart';
 import '../models/windows_storage_backend.dart';
@@ -41,6 +42,10 @@ import '../services/extension/extension_acquisition_engine.dart';
 import '../services/extension/extension_provisioner.dart';
 import '../services/extension/extension_state_migration.dart';
 import '../services/storage/app_storage.dart';
+import '../services/team/team_clone_service.dart';
+import '../services/team_hub/git_registry_team_hub_source.dart';
+import '../services/team_hub/team_hub_dependency_installers.dart';
+import '../services/team_hub/team_hub_favorites_store.dart';
 import '../services/cli/cli_tool_locator.dart';
 import '../services/cli/registry/built_in_cli_tools.dart';
 import '../services/cli/registry/cli_tool_registry.dart';
@@ -86,6 +91,7 @@ class AppShell {
     required this.pluginCubit,
     required this.skillCubit,
     required this.mcpCubit,
+    required this.teamHubCubit,
     required this.extensionCubit,
     required this.appUpdateCubit,
     required this.sshProfileCubit,
@@ -115,6 +121,7 @@ class AppShell {
   final PluginCubit pluginCubit;
   final SkillCubit skillCubit;
   final McpCubit mcpCubit;
+  final TeamHubCubit teamHubCubit;
   final ExtensionCubit extensionCubit;
   final AppUpdateCubit appUpdateCubit;
   final SshProfileCubit sshProfileCubit;
@@ -216,6 +223,7 @@ Future<AppShell> buildAppShell({
   late final PluginCubit pluginCubit;
   late final SkillCubit skillCubit;
   late final McpCubit mcpCubit;
+  late final TeamHubCubit teamHubCubit;
   late final ExtensionCubit extensionCubit;
   late final SessionRepository sessionRepo;
   late final ChatCubit chatCubit;
@@ -391,6 +399,57 @@ Future<AppShell> buildAppShell({
     mcpRepository,
     onMcpDeleted: teamCubit.removeMcpFromAllTeams,
   );
+
+  final teamHubSource = GitRegistryTeamHubSource();
+  final teamHubFavorites = TeamHubFavoritesStore();
+  final pluginDiskCache = PluginRepoDiskCacheService(storageRoots: storageRoots);
+  final teamCloneService = TeamCloneService(
+    installSkill: skillInstallerFor(skillRepo.install),
+    installPlugin: pluginInstallerFor(
+      pluginRepository.install,
+      pluginDiskCache,
+    ),
+    installMcp: mcpInstallerFor(mcpRepository),
+    createTeam: ({
+      required name,
+      required cli,
+      required teamMode,
+      required members,
+      required skillIds,
+      required pluginIds,
+      required mcpServerIds,
+      required description,
+      required extraArgs,
+    }) =>
+        teamCubit.addClonedTeam(
+          name: name,
+          cli: cli,
+          teamMode: teamMode,
+          members: members,
+          skillIds: skillIds,
+          pluginIds: pluginIds,
+          mcpServerIds: mcpServerIds,
+          description: description,
+          extraArgs: extraArgs,
+        ),
+  );
+  teamHubCubit = TeamHubCubit(
+    source: teamHubSource,
+    loadFavorites: teamHubFavorites.load,
+    saveFavoriteToggle: teamHubFavorites.toggle,
+    cloneTeam: teamCloneService.clone,
+    loadInstalledDepIds: () async {
+      final skills = await skillRepo.loadInstalled();
+      final plugins = await pluginRepository.loadAll();
+      final mcps = await mcpRepository.loadAll();
+      return <String>{
+        ...skills.map((s) => s.id),
+        ...plugins.map((p) => p.id),
+        ...mcps.map((m) => m.id),
+      };
+    },
+  );
+
   final appUpdateCubit = AppUpdateCubit();
   final layoutCubit = LayoutCubit(repository: LayoutRepository(preferences));
   final configCubit = ConfigCubit();
@@ -468,6 +527,7 @@ Future<AppShell> buildAppShell({
     pluginCubit: pluginCubit,
     skillCubit: skillCubit,
     mcpCubit: mcpCubit,
+    teamHubCubit: teamHubCubit,
     extensionCubit: extensionCubit,
     appUpdateCubit: appUpdateCubit,
     sshProfileCubit: sshProfileCubit,
