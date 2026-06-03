@@ -547,7 +547,7 @@ Future<T?> showSidebarActionMenu<T>({
   int itemCount = 4,
   int dividerCount = 0,
   int? itemGapCount,
-  bool useRootNavigator = false,
+  bool useRootNavigator = true,
   AnimationStyle? popUpAnimationStyle,
 }) {
   final panel = SidebarActionMenuPanel(minWidth: minWidth, children: children);
@@ -561,7 +561,11 @@ Future<T?> showSidebarActionMenu<T>({
     context: context,
     useRootNavigator: useRootNavigator,
     popUpAnimationStyle: popUpAnimationStyle,
-    position: contextMenuPositionForGlobal(context, globalPosition),
+    position: contextMenuPositionForGlobal(
+      context,
+      globalPosition,
+      rootOverlay: useRootNavigator,
+    ),
     elevation: 0,
     shadowColor: Colors.transparent,
     surfaceTintColor: Colors.transparent,
@@ -573,13 +577,39 @@ Future<T?> showSidebarActionMenu<T>({
   );
 }
 
+/// [showSidebarActionMenu] at a right-click ([TapDownDetails]) on [context]'s
+/// widget.
+Future<T?> showSidebarActionMenuAtTap<T>({
+  required BuildContext context,
+  required TapDownDetails tapDetails,
+  required List<Widget> children,
+  double minWidth = SidebarActionMenuMetrics.minWidth,
+  int itemCount = 4,
+  int dividerCount = 0,
+  int? itemGapCount,
+  bool useRootNavigator = true,
+  AnimationStyle? popUpAnimationStyle,
+}) {
+  return showSidebarActionMenu<T>(
+    context: context,
+    globalPosition: contextMenuGlobalPosition(context, tapDetails),
+    children: children,
+    minWidth: minWidth,
+    itemCount: itemCount,
+    dividerCount: dividerCount,
+    itemGapCount: itemGapCount,
+    useRootNavigator: useRootNavigator,
+    popUpAnimationStyle: popUpAnimationStyle,
+  );
+}
+
 /// [showSidebarActionMenu] driven by [SidebarActionMenuSpec] list.
 Future<T?> showSidebarActionMenuFromSpecs<T>({
   required BuildContext context,
   required Offset globalPosition,
   required List<SidebarActionMenuSpec> specs,
   double minWidth = SidebarActionMenuMetrics.minWidth,
-  bool useRootNavigator = false,
+  bool useRootNavigator = true,
   AnimationStyle? popUpAnimationStyle,
 }) {
   return showSidebarActionMenu<T>(
@@ -595,6 +625,25 @@ Future<T?> showSidebarActionMenuFromSpecs<T>({
       context: context,
       specs: specs,
     ),
+  );
+}
+
+/// [showSidebarActionMenuFromSpecs] at a right-click on [context]'s widget.
+Future<T?> showSidebarActionMenuFromSpecsAtTap<T>({
+  required BuildContext context,
+  required TapDownDetails tapDetails,
+  required List<SidebarActionMenuSpec> specs,
+  double minWidth = SidebarActionMenuMetrics.minWidth,
+  bool useRootNavigator = true,
+  AnimationStyle? popUpAnimationStyle,
+}) {
+  return showSidebarActionMenuFromSpecs<T>(
+    context: context,
+    globalPosition: contextMenuGlobalPosition(context, tapDetails),
+    specs: specs,
+    minWidth: minWidth,
+    useRootNavigator: useRootNavigator,
+    popUpAnimationStyle: popUpAnimationStyle,
   );
 }
 

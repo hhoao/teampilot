@@ -9,8 +9,10 @@ import '../l10n/l10n_extensions.dart';
 import '../services/editor/file_editor_theme.dart';
 import '../theme/app_text_styles.dart';
 import '../services/editor/file_editor_toolbar.dart';
+import '../services/editor/file_editor_tab_close.dart';
 import '../theme/workspace_surface_layers.dart';
 import '../utils/debounce/debounce.dart';
+import 'file_editor/file_editor_tab.dart';
 
 class FileEditorPanel extends StatelessWidget {
   const FileEditorPanel({super.key});
@@ -37,7 +39,6 @@ class _FileEditorTabBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
     final editor = context.watch<EditorCubit>();
     final state = editor.state;
     if (state.openPaths.isEmpty) {
@@ -54,78 +55,20 @@ class _FileEditorTabBar extends StatelessWidget {
           final selected = index == state.activeIndex;
           final dirty = state.isDirty(path);
           final name = state.fileNameFor(path);
-          final label = dirty ? '$name •' : name;
 
-          return Material(
-            color: selected ? cs.secondaryContainer : Colors.transparent,
-            child: InkWell(
-              onTap: () => editor.selectFile(index),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 10),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      label,
-                      style: AppTextStyles.of(context).body.copyWith(
-                        fontWeight: selected
-                            ? FontWeight.w600
-                            : FontWeight.w500,
-                        color: selected
-                            ? cs.onSecondaryContainer
-                            : cs.onSurface,
-                      ),
-                    ),
-                    const SizedBox(width: 4),
-                    InkWell(
-                      onTap: () => _closeTab(context, index),
-                      child: Icon(
-                        Icons.close,
-                        size: AppIconSizes.md,
-                        color: selected
-                            ? cs.onSecondaryContainer
-                            : cs.onSurfaceVariant,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
+          return FileEditorTab(
+            fileName: name,
+            filePath: path,
+            selected: selected,
+            dirty: dirty,
+            onTap: () => editor.selectFile(index),
+            onClose: () => FileEditorTabClose.closeAt(context, index),
+            onCloseOthers: () => FileEditorTabClose.closeOthers(context, index),
+            onCloseRight: () => FileEditorTabClose.closeRight(context, index),
           );
         },
       ),
     );
-  }
-
-  Future<void> _closeTab(BuildContext context, int index) async {
-    final l10n = context.l10n;
-    final editor = context.read<EditorCubit>();
-    final path = editor.state.openPaths[index];
-    if (editor.state.isDirty(path)) {
-      final discard = await showDialog<bool>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          title: Text(l10n.editorUnsavedChangesTitle),
-          content: Text(
-            l10n.editorUnsavedChangesDiscardFile(
-              editor.state.fileNameFor(path),
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: Text(l10n.cancel),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: Text(l10n.editorDiscard),
-            ),
-          ],
-        ),
-      );
-      if (discard != true || !context.mounted) return;
-    }
-    editor.closeFile(index, force: true);
   }
 }
 

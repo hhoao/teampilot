@@ -207,7 +207,6 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
     final selected = await showSidebarActionMenuFromSpecs<String>(
       context: menuContext,
       globalPosition: globalPosition,
-      useRootNavigator: true,
       popUpAnimationStyle: const AnimationStyle(duration: Duration.zero),
       specs: specs,
     );

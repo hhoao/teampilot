@@ -16,6 +16,7 @@ import '../services/file_tree/file_tree_visible_rows.dart';
 import '../services/io/filesystem.dart';
 import 'menu/sidebar_action_menu.dart';
 import '../utils/debounce/debounce.dart';
+import '../utils/file_icon.dart';
 
 const _indentWidth = 16.0;
 
@@ -77,7 +78,7 @@ class FileTreeNode extends StatelessWidget {
       },
       onSecondaryTapDown: (details) => _showContextMenu(
         context,
-        details.globalPosition,
+        details,
         path,
         entry.name,
         isDirectory: isDir,
@@ -115,7 +116,7 @@ class FileTreeNode extends StatelessWidget {
             Icon(
               isDir
                   ? (isExpanded ? Icons.folder_open : Icons.folder_outlined)
-                  : _fileIcon(entry.name),
+                  : fileIconForFileName(entry.name),
               size: AppIconSizes.md,
               color: isDir ? const Color(0xFFE5B143) : iconMuted,
             ),
@@ -135,32 +136,6 @@ class FileTreeNode extends StatelessWidget {
         ),
       ),
     );
-  }
-
-  IconData _fileIcon(String name) {
-    final ext = name.contains('.') ? name.split('.').last.toLowerCase() : '';
-    switch (ext) {
-      case 'dart':
-        return Icons.code;
-      case 'yaml':
-      case 'yml':
-      case 'json':
-        return Icons.settings;
-      case 'md':
-        return Icons.description_outlined;
-      case 'png':
-      case 'jpg':
-      case 'jpeg':
-      case 'gif':
-      case 'svg':
-        return Icons.image_outlined;
-      case 'zip':
-      case 'tar':
-      case 'gz':
-        return Icons.archive_outlined;
-      default:
-        return Icons.insert_drive_file_outlined;
-    }
   }
 
   void _openFile(BuildContext context, String filePath) {
@@ -185,7 +160,7 @@ class FileTreeNode extends StatelessWidget {
 
   void _showContextMenu(
     BuildContext context,
-    Offset position,
+    TapDownDetails tapDetails,
     String targetPath,
     String targetName, {
     required bool isDirectory,
@@ -211,10 +186,9 @@ class FileTreeNode extends StatelessWidget {
         destructive: true,
       ),
     ];
-    final value = await showSidebarActionMenuFromSpecs<String>(
+    final value = await showSidebarActionMenuFromSpecsAtTap<String>(
       context: context,
-      globalPosition: position,
-      useRootNavigator: true,
+      tapDetails: tapDetails,
       specs: specs,
     );
     if (value == 'external' && !isDirectory) {

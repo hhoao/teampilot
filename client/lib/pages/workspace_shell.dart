@@ -529,6 +529,21 @@ class _TabChipState extends State<_TabChip> {
     ];
   }
 
+  Future<void> _showTabContextMenuAtTap(TapDownDetails details) async {
+    if (!mounted) return;
+    final selected = await showSidebarActionMenuFromSpecsAtTap<String>(
+      context: context,
+      tapDetails: details,
+      specs: _tabMenuSpecs(context),
+    );
+    if (!mounted || selected == null) return;
+    _handleTabMenuSelection(selected);
+  }
+
+  void _showTabContextMenuFromTap(TapDownDetails details) {
+    _showTabContextMenuAtTap(details);
+  }
+
   Future<void> _showTabContextMenu(Offset globalPosition) async {
     if (!mounted) return;
     final selected = await showSidebarActionMenuFromSpecs<String>(
@@ -586,8 +601,7 @@ class _TabChipState extends State<_TabChip> {
             child: GestureDetector(
               behavior: HitTestBehavior.opaque,
               onTap: widget.onTap,
-              onSecondaryTapUp: (details) =>
-                  _showTabContextMenu(details.globalPosition),
+              onSecondaryTapDown: _showTabContextMenuFromTap,
               onLongPress: Platform.isAndroid
                   ? _showTabContextMenuAtChipCenter
                   : null,

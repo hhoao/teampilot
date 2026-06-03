@@ -18,3 +18,16 @@ RelativeRect contextMenuPositionForGlobal(
     Offset.zero & overlay.size,
   );
 }
+
+/// Resolves a right-click position for [showSidebarActionMenu] from the
+/// widget that owns [context].
+Offset contextMenuGlobalPosition(
+  BuildContext context,
+  TapDownDetails details,
+) {
+  final box = context.findRenderObject();
+  if (box is RenderBox) {
+    return box.localToGlobal(details.localPosition);
+  }
+  return details.globalPosition;
+}

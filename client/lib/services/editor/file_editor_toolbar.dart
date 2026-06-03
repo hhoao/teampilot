@@ -88,7 +88,6 @@ class FileEditorContextMenuController implements SelectionToolbarController {
       showSidebarActionMenuFromSpecs<void>(
         context: context,
         globalPosition: anchors.primaryAnchor,
-        useRootNavigator: true,
         specs: specs,
       ),
     );

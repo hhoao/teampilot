@@ -1024,6 +1024,45 @@ class _SessionTileEntryState extends State<_SessionTileEntry> {
   /// the overflow menu before a menu item can be selected.
   var _menuOpen = false;
 
+  Future<void> _showSessionContextMenuAtTap(TapDownDetails details) async {
+    if (!mounted) return;
+
+    final l10n = context.l10n;
+    final session = widget.session;
+    setState(() => _menuOpen = true);
+    final selected = await showSidebarActionMenuAtTap<String>(
+      context: context,
+      tapDetails: details,
+      itemCount: 2,
+      children: [
+        SidebarActionMenuPopupItem(
+          value: 'rename',
+          icon: Icons.drive_file_rename_outline,
+          label: l10n.renameConversation,
+        ),
+        SidebarActionMenuPopupItem(
+          value: 'delete',
+          icon: Icons.delete_outline,
+          label: l10n.deleteConversation,
+          destructive: true,
+        ),
+      ],
+    );
+    if (!mounted) return;
+    setState(() => _menuOpen = false);
+    if (selected == null) return;
+    switch (selected) {
+      case 'rename':
+        _showRenameDialog(context, session, l10n);
+      case 'delete':
+        _showDeleteDialog(context, session, l10n);
+    }
+  }
+
+  void _showSessionContextMenuFromTap(TapDownDetails details) {
+    unawaited(_showSessionContextMenuAtTap(details));
+  }
+
   Future<void> _showSessionContextMenu(Offset globalPosition) async {
     if (!mounted) return;
 
@@ -1054,10 +1093,8 @@ class _SessionTileEntryState extends State<_SessionTileEntry> {
     switch (selected) {
       case 'rename':
         _showRenameDialog(context, session, l10n);
-        break;
       case 'delete':
         _showDeleteDialog(context, session, l10n);
-        break;
     }
   }
 
@@ -1093,8 +1130,7 @@ class _SessionTileEntryState extends State<_SessionTileEntry> {
           'context_sidebar_session_${session.sessionId}',
           () => _navigateToSessionInChat(context, session),
         ),
-        onSecondaryTapUp: (details) =>
-            _showSessionContextMenu(details.globalPosition),
+        onSecondaryTapDown: _showSessionContextMenuFromTap,
         onLongPress: Platform.isAndroid
             ? _showSessionContextMenuAtCenter
             : null,
@@ -1398,7 +1434,7 @@ class _SidebarTile extends StatelessWidget {
     this.subtitle = '',
     this.rowHovered = false,
     this.onTap,
-    this.onSecondaryTapUp,
+    this.onSecondaryTapDown,
     this.onLongPress,
     this.trailing,
     this.contentLeftInset = 0,
@@ -1413,7 +1449,7 @@ class _SidebarTile extends StatelessWidget {
   /// fighting with the overflow menu (hover patch only behind title).
   final bool rowHovered;
   final VoidCallback? onTap;
-  final GestureTapUpCallback? onSecondaryTapUp;
+  final GestureTapDownCallback? onSecondaryTapDown;
   final VoidCallback? onLongPress;
   final Widget? trailing;
 
@@ -1449,7 +1485,7 @@ class _SidebarTile extends StatelessWidget {
         child: GestureDetector(
           behavior: HitTestBehavior.opaque,
           onTap: onTap,
-          onSecondaryTapUp: onSecondaryTapUp,
+          onSecondaryTapDown: onSecondaryTapDown,
           onLongPress: onLongPress,
           child: Container(
             padding: EdgeInsets.fromLTRB(8 + contentLeftInset, 6, 8, 6),
