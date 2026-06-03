@@ -13,6 +13,7 @@ import '../theme/app_theme.dart';
 import '../theme/app_typography_scale.dart';
 import '../utils/app_keys.dart';
 import '../utils/debounce/debounce.dart';
+import '../widgets/settings/settings_dialog.dart';
 import '../widgets/settings/workspace_hub_shell.dart';
 import '../widgets/settings/workspace_section_host.dart';
 import '../widgets/settings/typography_scale_setting.dart';
@@ -22,6 +23,61 @@ import 'about_page.dart';
 import 'llm_config/llm_config_workspace.dart';
 import 'session_config_workspace.dart';
 import 'system/log_viewer_page.dart';
+
+/// Opens the workspace quick-settings modal from anywhere (e.g. the title bar).
+///
+/// Self-contained sections (layout/appearance, session) render inline; sections
+/// that depend on the `/config/*` route tree (LLM providers, about) close the
+/// dialog and navigate to the full settings route instead.
+Future<void> showWorkspaceSettingsDialog(BuildContext context) {
+  final l10n = context.l10n;
+
+  void goToSection(ConfigSection section) {
+    final router = GoRouter.of(context);
+    final navigator = Navigator.of(context);
+    context.read<ConfigCubit>().selectSection(section);
+    navigator.pop();
+    router.go('/config/${section.name}');
+  }
+
+  return showSettingsDialog(
+    context,
+    navTitle: l10n.settings,
+    entries: [
+      SettingsDialogEntry(
+        icon: Icons.dashboard_customize_outlined,
+        navLabel: l10n.layout,
+        title: l10n.layout,
+        subtitle: l10n.layoutPageSubtitle,
+        body: const LayoutConfigWorkspace(showHeading: false),
+      ),
+      SettingsDialogEntry(
+        icon: Icons.terminal_outlined,
+        navLabel: l10n.session,
+        title: l10n.session,
+        subtitle: l10n.sessionPageSubtitle,
+        body: const SessionConfigWorkspace(showHeading: false),
+      ),
+      SettingsDialogEntry(
+        icon: Icons.memory_outlined,
+        navLabel: l10n.llmConfig,
+        title: l10n.appProviderCatalogLabel,
+        subtitle: l10n.appProviderCatalogHint,
+        body: const LlmConfigWorkspace(showHeading: false),
+      ),
+      SettingsDialogEntry(
+        icon: Icons.info_outline,
+        navLabel: l10n.aboutTitle,
+        title: l10n.aboutTitle,
+        subtitle: l10n.aboutPageSubtitle,
+        body: AboutConfigWorkspace(
+          showHeading: false,
+          onViewLogs: () => goToSection(ConfigSection.logs),
+        ),
+      ),
+    ],
+  );
+}
 
 /// Android settings landing: title + section list (each section is a full page).
 class ConfigSettingsHubPage extends StatelessWidget {

@@ -66,13 +66,15 @@ class TeamHubCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 6),
-            Text(
-              team.description,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: styles.body.copyWith(color: cs.onSurfaceVariant),
+            Expanded(
+              child: Text(
+                team.description,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: styles.body.copyWith(color: cs.onSurfaceVariant),
+              ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
             Wrap(
               spacing: 8,
               children: [

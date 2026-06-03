@@ -8,6 +8,7 @@ import '../../services/app/platform_utils.dart';
 import '../../theme/app_text_styles.dart';
 import '../../theme/workspace_surface_layers.dart';
 import '../../widgets/window_drag_area.dart';
+import '../config_workspace.dart';
 
 /// Height of the Apifox-style workspace title bar.
 const double kHomeWorkspaceTitleBarHeight = 58;
@@ -171,7 +172,11 @@ class _HomeWorkspaceTitleBarState extends State<HomeWorkspaceTitleBar>
                 ),
               ),
             const SizedBox(width: 8),
-            const _ActionGlyph(icon: Icons.settings_outlined),
+            _ActionGlyph(
+              icon: Icons.settings_outlined,
+              tooltip: l10n.settings,
+              onTap: () => showWorkspaceSettingsDialog(context),
+            ),
             const _ActionGlyph(icon: Icons.notifications_none_rounded),
             const SizedBox(width: 6),
             const _Avatar(),
@@ -363,9 +368,11 @@ class _ProjectTab extends StatelessWidget {
 }
 
 class _ActionGlyph extends StatefulWidget {
-  const _ActionGlyph({required this.icon});
+  const _ActionGlyph({required this.icon, this.onTap, this.tooltip});
 
   final IconData icon;
+  final VoidCallback? onTap;
+  final String? tooltip;
 
   @override
   State<_ActionGlyph> createState() => _ActionGlyphState();
@@ -377,23 +384,35 @@ class _ActionGlyphState extends State<_ActionGlyph> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    return MouseRegion(
+    Widget glyph = MouseRegion(
       cursor: SystemMouseCursors.click,
       onEnter: (_) => setState(() => _hovered = true),
       onExit: (_) => setState(() => _hovered = false),
-      child: Container(
-        width: 32,
-        height: 32,
-        margin: const EdgeInsets.symmetric(horizontal: 1),
-        decoration: BoxDecoration(
-          color: _hovered
-              ? cs.onSurface.withValues(alpha: 0.07)
-              : Colors.transparent,
-          borderRadius: BorderRadius.circular(8),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: Container(
+          width: 32,
+          height: 32,
+          margin: const EdgeInsets.symmetric(horizontal: 1),
+          decoration: BoxDecoration(
+            color: _hovered
+                ? cs.onSurface.withValues(alpha: 0.07)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(
+            widget.icon,
+            size: AppIconSizes.md,
+            color: cs.onSurfaceVariant,
+          ),
         ),
-        child: Icon(widget.icon, size: AppIconSizes.md, color: cs.onSurfaceVariant),
       ),
     );
+    final tooltip = widget.tooltip;
+    if (tooltip != null) {
+      glyph = Tooltip(message: tooltip, child: glyph);
+    }
+    return glyph;
   }
 }
 

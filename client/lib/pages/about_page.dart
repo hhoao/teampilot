@@ -14,9 +14,17 @@ import '../widgets/settings/workspace_settings_widgets.dart';
 
 /// About / app update section inside [ConfigWorkspace] (desktop split or Android hub).
 class AboutConfigWorkspace extends StatefulWidget {
-  const AboutConfigWorkspace({this.showHeading = true, super.key});
+  const AboutConfigWorkspace({
+    this.showHeading = true,
+    this.onViewLogs,
+    super.key,
+  });
 
   final bool showHeading;
+
+  /// Overrides the default `/config/logs` route navigation for the logs button.
+  /// Lets embedders (e.g. the settings dialog) decide how to open the viewer.
+  final VoidCallback? onViewLogs;
 
   @override
   State<AboutConfigWorkspace> createState() => _AboutConfigWorkspaceState();
@@ -150,6 +158,11 @@ class _AboutConfigWorkspaceState extends State<AboutConfigWorkspace> {
                             OutlinedButton.icon(
                               key: AppKeys.configLogsSectionButton,
                               onPressed: () {
+                                final onViewLogs = widget.onViewLogs;
+                                if (onViewLogs != null) {
+                                  onViewLogs();
+                                  return;
+                                }
                                 context.read<ConfigCubit>().selectSection(
                                   ConfigSection.logs,
                                 );
