@@ -1,125 +1,43 @@
 import 'dart:async';
 
-import 'package:equatable/equatable.dart';
-import 'package:uuid/uuid.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../models/app_session.dart';
 import '../models/mcp_server.dart';
 import '../models/plugin.dart';
 import '../models/skill.dart';
-import '../repositories/mcp_repository.dart';
 import '../models/team_config.dart';
+import '../repositories/mcp_repository.dart';
 import '../repositories/plugin_repository.dart';
 import '../repositories/team_repository.dart';
-import '../services/storage/app_storage.dart';
-import '../services/cli/cli_data_layout.dart';
 import '../services/provider/config_profile_service.dart';
-import '../services/session/launch_command_builder.dart';
 import '../services/session/session_lifecycle_service.dart';
 import '../services/mcp/team_mcp_linker_service.dart';
 import '../services/plugin/team_plugin_linker_service.dart';
 import '../services/skill/team_skill_linker_service.dart';
 import '../utils/logger.dart';
 import '../utils/team_member_naming.dart';
+import 'team/model/team_state.dart';
+import 'team/team_cubit_host.dart';
+import 'team/team_launch_service.dart';
+import 'team/team_profile_provisioner.dart';
+import 'team/team_resource_sync_service.dart';
+import 'team/team_roster_editor.dart';
 
-class TeamState extends Equatable {
-  const TeamState({
-    this.teams = const [],
-    this.selectedTeamId,
-    this.statusMessage = '',
-    this.isLoading = true,
-    this.isLaunching = false,
-    this.isSyncingSkills = false,
-    this.isSyncingPlugins = false,
-    this.pluginSyncConflicts = const {},
-  });
+export 'team/model/team_state.dart';
+export 'team/team_launch_service.dart' show TeamLauncher, CliExecutableResolver;
+export 'team/team_resource_sync_service.dart'
+    show
+        mergeExtensionMcp,
+        InstalledSkillsLoader,
+        InstalledPluginsLoader,
+        InstalledMcpLoader;
 
-  final List<TeamConfig> teams;
-  final String? selectedTeamId;
-  final String statusMessage;
-  final bool isLoading;
-  final bool isLaunching;
-  final bool isSyncingSkills;
-  final bool isSyncingPlugins;
-  /// Plugin ids on the selected team that were linked under a fallback dir name.
-  final Map<String, String> pluginSyncConflicts;
-
-  TeamConfig? get selectedTeam {
-    for (final team in teams) {
-      if (team.id == selectedTeamId) return team;
-    }
-    return teams.isEmpty ? null : teams.first;
-  }
-
-  TeamState copyWith({
-    List<TeamConfig>? teams,
-    String? selectedTeamId,
-    String? statusMessage,
-    bool? isLoading,
-    bool? isLaunching,
-    bool? isSyncingSkills,
-    bool? isSyncingPlugins,
-    Map<String, String>? pluginSyncConflicts,
-    bool clearSelectedTeamId = false,
-  }) {
-    return TeamState(
-      teams: teams ?? this.teams,
-      selectedTeamId: clearSelectedTeamId
-          ? null
-          : (selectedTeamId ?? this.selectedTeamId),
-      statusMessage: statusMessage ?? this.statusMessage,
-      isLoading: isLoading ?? this.isLoading,
-      isLaunching: isLaunching ?? this.isLaunching,
-      isSyncingSkills: isSyncingSkills ?? this.isSyncingSkills,
-      isSyncingPlugins: isSyncingPlugins ?? this.isSyncingPlugins,
-      pluginSyncConflicts: pluginSyncConflicts ?? this.pluginSyncConflicts,
-    );
-  }
-
-  @override
-  List<Object?> get props => [
-    teams,
-    selectedTeamId,
-    statusMessage,
-    isLoading,
-    isLaunching,
-    isSyncingSkills,
-    isSyncingPlugins,
-    pluginSyncConflicts,
-  ];
-}
-
-typedef TeamLauncher =
-    Future<void> Function(TeamConfig team, TeamMemberConfig member);
-typedef StringProvider = String Function();
-typedef CliExecutableResolver = String Function(TeamCli cli);
-typedef InstalledSkillsLoader = Future<List<Skill>> Function();
-typedef InstalledPluginsLoader = Future<List<Plugin>> Function();
-typedef InstalledMcpLoader = Future<List<McpServer>> Function();
-
-/// Appends extension-contributed servers to [catalog]/[ids], de-duped by id.
-(List<McpServer>, List<String>) mergeExtensionMcp({
-  required List<McpServer> catalog,
-  required List<String> ids,
-  required List<McpServer> contributions,
-}) {
-  final existingIds = catalog.map((s) => s.id).toSet();
-  final mergedCatalog = [...catalog];
-  final mergedIds = [...ids];
-  for (final server in contributions) {
-    if (existingIds.add(server.id)) {
-      mergedCatalog.add(server);
-    }
-    if (!mergedIds.contains(server.id)) {
-      mergedIds.add(server.id);
-    }
-  }
-  return (mergedCatalog, mergedIds);
-}
-
-class TeamCubit extends Cubit<TeamState> {
+/// Owns team/member roster state and coordinates resource linking
+/// ([TeamResourceSyncService]), launching ([TeamLaunchService]) and
+/// config-profile provisioning ([TeamProfileProvisioner]). Roster transforms
+/// live in [TeamRosterEditor]; this cubit persists and emits.
+class TeamCubit extends Cubit<TeamState> implements TeamCubitHost {
   TeamCubit({
     required TeamRepository repository,
     required String Function() executableResolver,
@@ -142,9 +60,7 @@ class TeamCubit extends Cubit<TeamState> {
   }) : _repository = repository,
        _executableResolver = executableResolver,
        _cliExecutableResolver = cliExecutableResolver,
-       _appDataBasePathOverride = appDataBasePath.isNotEmpty
-           ? appDataBasePath
-           : null,
+       _appDataBasePath = appDataBasePath,
        _configProfileService = configProfileService,
        _storageRootsResolver = storageRootsResolver,
        _lifecycle =
@@ -173,20 +89,10 @@ class TeamCubit extends Cubit<TeamState> {
       const <McpServer>[];
 
   final TeamRepository _repository;
-  final TeamLauncher? _launcher;
   final String Function() _executableResolver;
   final CliExecutableResolver? _cliExecutableResolver;
-  final String? _appDataBasePathOverride;
+  final String _appDataBasePath;
   final ConfigProfileService? _configProfileService;
-
-  String get _resolvedAppDataBasePath {
-    final override = _appDataBasePathOverride;
-    if (override != null && override.isNotEmpty) {
-      return override;
-    }
-    return AppStorage.paths.basePath;
-  }
-
   final StorageRootsResolver? _storageRootsResolver;
   final SessionLifecycleService _lifecycle;
   final TeamSkillLinkerService _skillLinker;
@@ -198,102 +104,94 @@ class TeamCubit extends Cubit<TeamState> {
   final McpRepository _mcpRepository;
   final InstalledMcpLoader? _installedMcpLoader;
   final Future<List<McpServer>> Function(String teamId) _extensionMcpContributor;
+  final TeamLauncher? _launcher;
 
-  /// Fire-and-forget skill/plugin sync can finish after [close]; skip emit.
-  void _safeEmit(TeamState newState) {
-    if (!isClosed) emit(newState);
+  final TeamRosterEditor _rosterEditor = const TeamRosterEditor();
+
+  late final TeamProfileProvisioner _provisioner = TeamProfileProvisioner(
+    configProfileService: _configProfileService,
+    storageRootsResolver: _storageRootsResolver,
+    appDataBasePathOverride: _appDataBasePath,
+  );
+
+  late final TeamResourceSyncService _sync = TeamResourceSyncService(
+    host: this,
+    provisioner: _provisioner,
+    skillLinker: _skillLinker,
+    pluginLinker: _pluginLinker,
+    mcpLinker: _mcpLinker,
+    pluginRepository: _pluginRepository,
+    mcpRepository: _mcpRepository,
+    installedSkillsLoader: _installedSkillsLoader,
+    installedPluginsLoader: _installedPluginsLoader,
+    installedMcpLoader: _installedMcpLoader,
+    extensionMcpContributor: _extensionMcpContributor,
+  );
+
+  late final TeamLaunchService _launchService = TeamLaunchService(
+    host: this,
+    lifecycle: _lifecycle,
+    sync: _sync,
+    executableResolver: _executableResolver,
+    cliExecutableResolver: _cliExecutableResolver,
+    launcher: _launcher,
+  );
+
+  // ===== TeamCubitHost =====
+
+  @override
+  void applyState(TeamState next) {
+    if (!isClosed) emit(next);
   }
 
-  Future<Map<String, String>?> _buildLaunchEnvironment(
-    TeamConfig team, {
-    TeamMemberConfig? member,
-  }) async {
-    final plan = await _lifecycle.prepareLaunch(
-      session: AppSession(
-        sessionId: const Uuid().v4(),
-        projectId: '',
-        primaryPath: AppStorage.cwd,
-        sessionTeam: team.id,
-        cliTeamName: team.id,
-        createdAt: DateTime.now().millisecondsSinceEpoch,
-      ),
-      team: team,
-      member: member,
-    );
-    return plan.env.isEmpty ? null : plan.env;
-  }
+  @override
+  Future<void> saveTeams(List<TeamConfig> teams) => _repository.saveTeams(teams);
 
-  Future<ConfigProfileService> _profileService() async {
-    final injected = _configProfileService;
-    if (injected != null) return injected;
-    final resolver = _storageRootsResolver;
-    if (resolver == null) {
-      final fs = AppStorage.fs;
-      return ConfigProfileService(
-        basePath: _resolvedAppDataBasePath,
-        fs: fs,
-        layout: CliDataLayout(teampilotRoot: _resolvedAppDataBasePath, fs: fs),
-      );
-    }
-    final roots = await resolver();
-    return ConfigProfileService(
-      basePath: roots.teampilotRoot,
-      fs: roots.fs,
-      layout: roots.layout,
-    );
-  }
+  // ===== Launch / preview (delegated) =====
 
-  Future<void> _ensureProfilesForTeams(List<TeamConfig> teams) async {
-    final profileService = await _profileService();
-    for (final team in teams) {
-      await profileService.ensureTeamProfile(team.id, cli: team.cli);
-    }
-  }
+  String previewFor(TeamMemberConfig member) =>
+      _launchService.previewFor(member);
 
-  Future<void> _runLaunch(TeamConfig team, TeamMemberConfig member) async {
-    final env = await _buildLaunchEnvironment(team, member: member);
-    final launch =
-        _launcher ??
-        (t, m) => LaunchCommandBuilder.launch(
-          t,
-          member: m,
-          executable: _resolveExecutableFor(m.cliWithin(t)),
-          extraEnvironment: env,
-        );
-    await launch(team, member);
-  }
+  String get selectedCommandPreview => _launchService.selectedCommandPreview;
 
-  String _resolveExecutableFor(TeamCli cli) {
-    return _cliExecutableResolver?.call(cli) ?? _executableResolver();
-  }
+  Future<void> launchMember(String memberId) =>
+      _launchService.launchMember(memberId);
 
-  String previewFor(TeamMemberConfig member) {
-    final team = state.selectedTeam;
-    return team == null
-        ? ''
-        : LaunchCommandBuilder.preview(
-            team,
-            member,
-            executable: _resolveExecutableFor(member.cliWithin(team)),
-          );
-  }
+  Future<void> launchSelectedTeam() => _launchService.launchSelectedTeam();
 
-  String get selectedCommandPreview {
-    final team = state.selectedTeam;
-    if (team == null || team.members.isEmpty) return '';
-    return LaunchCommandBuilder.preview(
-      team,
-      team.members.first,
-      executable: _resolveExecutableFor(team.members.first.cliWithin(team)),
-    );
-  }
+  // ===== Resource sync (delegated) =====
+
+  Future<void> syncSelectedTeamSkills({List<Skill>? installed}) =>
+      _sync.syncSkills(installed: installed);
+
+  Future<void> syncSelectedTeamPlugins({List<Plugin>? installed}) =>
+      _sync.syncPluginsForSelected(installed: installed);
+
+  Future<void> syncSelectedTeamMcp({List<McpServer>? installed}) =>
+      _sync.syncMcp(installed: installed);
+
+  Future<void> syncTeamsUsingPlugin(
+    String pluginId, {
+    List<Plugin>? installed,
+  }) => _sync.syncTeamsUsingPlugin(pluginId, installed: installed);
+
+  Future<void> removeMcpFromAllTeams(String mcpId) =>
+      _sync.removeMcpFromAllTeams(mcpId);
+
+  Future<void> removeSkillFromAllTeams(String skillId) =>
+      _sync.removeSkillFromAllTeams(skillId);
+
+  Future<void> removePluginFromAllTeams(String pluginId) =>
+      _sync.removePluginFromAllTeams(pluginId);
+
+  // ===== Team lifecycle =====
 
   Future<void> load({bool awaitProfiles = false}) async {
     appLogger.i('TeamCubit loading teams...');
     emit(state.copyWith(isLoading: true));
     var teams = await _repository.loadTeams();
     if (teams.isEmpty) {
-      teams = [_defaultTeam()];
+      teams = [_rosterEditor.defaultTeam()];
       await _repository.saveTeams(teams);
     }
     emit(
@@ -305,7 +203,7 @@ class TeamCubit extends Cubit<TeamState> {
       ),
     );
     appLogger.i('TeamCubit loaded ${teams.length} teams');
-    final profiles = _ensureProfilesForTeams(teams);
+    final profiles = _provisioner.ensureForTeams(teams);
     if (awaitProfiles) {
       await profiles;
     } else {
@@ -327,313 +225,10 @@ class TeamCubit extends Cubit<TeamState> {
       ),
     );
     await Future.wait([
-      _syncSkillsForSelected(),
-      _syncPluginsForSelected(),
-      _syncMcpForSelected(),
+      _sync.syncSkills(),
+      _sync.syncPluginsForSelected(),
+      _sync.syncMcp(),
     ]);
-  }
-
-  Future<void> syncSelectedTeamSkills({List<Skill>? installed}) async {
-    await _syncSkillsForSelected(installed: installed);
-  }
-
-  Future<void> syncSelectedTeamPlugins({List<Plugin>? installed}) async {
-    await _syncPluginsForSelected(installed: installed);
-  }
-
-  Future<void> syncSelectedTeamMcp({List<McpServer>? installed}) async {
-    await _syncMcpForSelected(installed: installed);
-  }
-
-  Future<void> syncTeamsUsingPlugin(
-    String pluginId, {
-    List<Plugin>? installed,
-  }) async {
-    final teamIds = [
-      for (final team in state.teams)
-        if (team.pluginIds.contains(pluginId)) team.id,
-    ];
-    await _syncPluginsForTeamIds(teamIds, installed: installed);
-  }
-
-  Future<void> removeMcpFromAllTeams(String mcpId) async {
-    final selected = state.selectedTeam;
-    final syncNeeded = selected != null && selected.mcpServerIds.contains(mcpId);
-    var changed = false;
-    final teams = [
-      for (final team in state.teams)
-        if (team.mcpServerIds.contains(mcpId))
-          () {
-            changed = true;
-            return team.copyWith(
-              mcpServerIds: team.mcpServerIds
-                  .where((id) => id != mcpId)
-                  .toList(growable: false),
-            );
-          }()
-        else
-          team,
-    ];
-    if (!changed) return;
-    emit(state.copyWith(teams: teams));
-    await _repository.saveTeams(teams);
-    if (syncNeeded) {
-      await _syncMcpForSelected();
-    }
-  }
-
-  Future<void> removeSkillFromAllTeams(String skillId) async {
-    final selected = state.selectedTeam;
-    final syncNeeded = selected != null && selected.skillIds.contains(skillId);
-    var changed = false;
-    final teams = [
-      for (final team in state.teams)
-        if (team.skillIds.contains(skillId))
-          () {
-            changed = true;
-            return team.copyWith(
-              skillIds: team.skillIds
-                  .where((id) => id != skillId)
-                  .toList(growable: false),
-            );
-          }()
-        else
-          team,
-    ];
-    if (!changed) return;
-    emit(state.copyWith(teams: teams));
-    await _repository.saveTeams(teams);
-    if (syncNeeded) {
-      await _syncSkillsForSelected();
-    }
-  }
-
-  Future<void> _syncSkillsForSelected({List<Skill>? installed}) async {
-    final team = state.selectedTeam;
-    if (team == null) return;
-
-    _safeEmit(state.copyWith(isSyncingSkills: true));
-    try {
-      final List<Skill> catalog;
-      if (installed != null) {
-        catalog = installed;
-      } else {
-        catalog =
-            await (_installedSkillsLoader?.call() ??
-                Future.value(const <Skill>[]));
-      }
-      final enabled = catalog.where((s) => s.enabled).toList(growable: false);
-
-      var result = await _skillLinker.syncForTeam(
-        teamId: team.id,
-        skillIds: team.skillIds,
-        installed: enabled,
-      );
-
-      if (result.skippedMissingIds.isNotEmpty) {
-        final prunedIds = team.skillIds
-            .where((id) => !result.skippedMissingIds.contains(id))
-            .toList(growable: false);
-        if (prunedIds.length != team.skillIds.length) {
-          final prunedTeam = team.copyWith(skillIds: prunedIds);
-          final teams = [
-            for (final t in state.teams)
-              if (t.id == team.id) prunedTeam else t,
-          ];
-          _safeEmit(state.copyWith(teams: teams));
-          await _repository.saveTeams(teams);
-          result = await _skillLinker.syncForTeam(
-            teamId: team.id,
-            skillIds: prunedIds,
-            installed: enabled,
-          );
-        }
-      }
-
-      var status = state.statusMessage;
-      if (result.linked.isNotEmpty) {
-        status = 'Linked ${result.linked.length} skill(s) for ${team.name}.';
-      } else if (team.skillIds.isEmpty) {
-        status = 'Cleared CLI skills for ${team.name}.';
-      }
-      if (result.skippedMissingIds.isNotEmpty) {
-        status =
-            '$status Removed ${result.skippedMissingIds.length} missing skill(s).';
-      }
-      if (result.errors.isNotEmpty) {
-        status = result.errors.first;
-        appLogger.w('[team-skills] sync errors: ${result.errors}');
-      }
-      _safeEmit(state.copyWith(statusMessage: status));
-    } catch (e) {
-      appLogger.e('[team-skills] sync failed: $e');
-      _safeEmit(state.copyWith(statusMessage: 'Skill sync failed: $e'));
-    } finally {
-      _safeEmit(state.copyWith(isSyncingSkills: false));
-    }
-  }
-
-  Future<void> _syncMcpForSelected({List<McpServer>? installed}) async {
-    final team = state.selectedTeam;
-    if (team == null) return;
-
-    try {
-      final List<McpServer> catalog;
-      if (installed != null) {
-        catalog = installed;
-      } else {
-        catalog =
-            await (_installedMcpLoader?.call() ?? _mcpRepository.loadAll());
-      }
-      final enabled = catalog.where((s) => s.enabled).toList(growable: false);
-      final contributions = await _extensionMcpContributor(team.id);
-      final (mergedCatalog, mergedIds) = mergeExtensionMcp(
-        catalog: enabled,
-        ids: team.mcpServerIds,
-        contributions: contributions,
-      );
-      final layout = (await _profileService()).layout;
-
-      var result = await _mcpLinker.syncForTeam(
-        teamId: team.id,
-        mcpServerIds: mergedIds,
-        catalog: mergedCatalog,
-        layout: layout,
-      );
-
-      if (result.skippedMissingIds.isNotEmpty) {
-        final prunedIds = team.mcpServerIds
-            .where((id) => !result.skippedMissingIds.contains(id))
-            .toList(growable: false);
-        if (prunedIds.length != team.mcpServerIds.length) {
-          final prunedTeam = team.copyWith(mcpServerIds: prunedIds);
-          final teams = [
-            for (final t in state.teams)
-              if (t.id == team.id) prunedTeam else t,
-          ];
-          _safeEmit(state.copyWith(teams: teams));
-          await _repository.saveTeams(teams);
-          final (_, prunedMergedIds) = mergeExtensionMcp(
-            catalog: enabled,
-            ids: prunedIds,
-            contributions: contributions,
-          );
-          result = await _mcpLinker.syncForTeam(
-            teamId: team.id,
-            mcpServerIds: prunedMergedIds,
-            catalog: mergedCatalog,
-            layout: layout,
-          );
-        }
-      }
-
-      if (result.errors.isNotEmpty) {
-        appLogger.w('[team-mcp] sync errors: ${result.errors}');
-        _safeEmit(
-          state.copyWith(statusMessage: result.errors.first),
-        );
-      }
-    } catch (e) {
-      appLogger.e('[team-mcp] sync failed: $e');
-      _safeEmit(state.copyWith(statusMessage: 'MCP sync failed: $e'));
-    }
-  }
-
-  Future<void> _syncPluginsForSelected({List<Plugin>? installed}) async {
-    final team = state.selectedTeam;
-    if (team == null) return;
-    await _syncPluginsForTeamIds([team.id], installed: installed);
-  }
-
-  Future<void> _syncPluginsForTeamIds(
-    Iterable<String> teamIds, {
-    List<Plugin>? installed,
-  }) async {
-    final ids = teamIds.toList(growable: false);
-    if (ids.isEmpty) return;
-
-    _safeEmit(state.copyWith(isSyncingPlugins: true));
-    try {
-      final catalog = installed ??
-          await (_installedPluginsLoader?.call() ??
-              _pluginRepository.loadAll());
-
-      var conflicts = state.pluginSyncConflicts;
-      for (final teamId in ids) {
-        TeamConfig? team;
-        for (final candidate in state.teams) {
-          if (candidate.id == teamId) {
-            team = candidate;
-            break;
-          }
-        }
-        if (team == null) continue;
-
-        final result = await _pluginLinker.syncForTeam(
-          teamId: team.id,
-          pluginIds: team.pluginIds,
-          installed: catalog,
-        );
-
-        if (result.skippedMissingIds.isNotEmpty) {
-          appLogger.w(
-            '[team-plugins] skipped missing for ${team.id}: '
-            '${result.skippedMissingIds}',
-          );
-        }
-
-        if (result.errors.isNotEmpty) {
-          appLogger.w(
-            '[team-plugins] sync errors for ${team.id}: ${result.errors}',
-          );
-          if (team.id == state.selectedTeamId) {
-            _safeEmit(
-              state.copyWith(
-                statusMessage:
-                    'Plugin sync had ${result.errors.length} error(s): '
-                    '${result.errors.first}',
-              ),
-            );
-          }
-        }
-
-        if (team.id == state.selectedTeamId) {
-          conflicts = {
-            for (final resolution in result.conflictResolutions)
-              resolution.$1: resolution.$2,
-          };
-        }
-      }
-
-      _safeEmit(state.copyWith(pluginSyncConflicts: conflicts));
-    } catch (e) {
-      appLogger.e('[team-plugins] sync failed: $e');
-    } finally {
-      _safeEmit(state.copyWith(isSyncingPlugins: false));
-    }
-  }
-
-  Future<void> removePluginFromAllTeams(String pluginId) async {
-    final affectedTeamIds = [
-      for (final team in state.teams)
-        if (team.pluginIds.contains(pluginId)) team.id,
-    ];
-    if (affectedTeamIds.isEmpty) return;
-
-    final teams = [
-      for (final team in state.teams)
-        if (team.pluginIds.contains(pluginId))
-          team.copyWith(
-            pluginIds: team.pluginIds
-                .where((id) => id != pluginId)
-                .toList(growable: false),
-          )
-        else
-          team,
-    ];
-    emit(state.copyWith(teams: teams));
-    await _repository.saveTeams(teams);
-    await _syncPluginsForTeamIds(affectedTeamIds);
   }
 
   Future<bool> addTeam(
@@ -681,10 +276,9 @@ class TeamCubit extends Cubit<TeamState> {
       ),
     );
     await _repository.saveTeams(teams);
-    final profileService = await _profileService();
-    await profileService.ensureTeamProfile(team.id, cli: team.cli);
-    unawaited(_syncSkillsForSelected());
-    unawaited(_syncPluginsForSelected());
+    await _provisioner.ensureTeamProfile(team.id, cli: team.cli);
+    unawaited(_sync.syncSkills());
+    unawaited(_sync.syncPluginsForSelected());
     return true;
   }
 
@@ -711,13 +305,10 @@ class TeamCubit extends Cubit<TeamState> {
       );
       return null;
     }
-    final existingNames = state.teams.map((t) => t.name).toSet();
-    var displayName = base;
-    var n = 2;
-    while (existingNames.contains(displayName)) {
-      displayName = '$base ($n)';
-      n++;
-    }
+    final displayName = _rosterEditor.uniqueDisplayName(
+      base,
+      state.teams.map((t) => t.name).toSet(),
+    );
     final now = DateTime.now().millisecondsSinceEpoch;
     final teamId = TeamMemberNaming.uniqueTeamId(
       displayName,
@@ -748,10 +339,9 @@ class TeamCubit extends Cubit<TeamState> {
       ),
     );
     await _repository.saveTeams(teams);
-    final profileService = await _profileService();
-    await profileService.ensureTeamProfile(team.id, cli: team.cli);
-    unawaited(_syncSkillsForSelected());
-    unawaited(_syncPluginsForSelected());
+    await _provisioner.ensureTeamProfile(team.id, cli: team.cli);
+    unawaited(_sync.syncSkills());
+    unawaited(_sync.syncPluginsForSelected());
     return team.id;
   }
 
@@ -791,7 +381,9 @@ class TeamCubit extends Cubit<TeamState> {
 
   /// Sets [providerIdsByTool]['claude'] on Claude teams that do not already
   /// have a team-level provider binding.
-  Future<void> bindClaudeProviderForTeamsWithoutBinding(String providerId) async {
+  Future<void> bindClaudeProviderForTeamsWithoutBinding(
+    String providerId,
+  ) async {
     final trimmed = providerId.trim();
     if (trimmed.isEmpty) return;
 
@@ -810,10 +402,7 @@ class TeamCubit extends Cubit<TeamState> {
       changed = true;
       teams.add(
         team.copyWith(
-          providerIdsByTool: {
-            ...team.providerIdsByTool,
-            'claude': trimmed,
-          },
+          providerIdsByTool: {...team.providerIdsByTool, 'claude': trimmed},
         ),
       );
     }
@@ -827,14 +416,11 @@ class TeamCubit extends Cubit<TeamState> {
     final selected = state.selectedTeam;
     if (selected == null) return;
     final skillsChanged = !listEquals(selected.skillIds, updated.skillIds);
-    final pluginsChanged =
-        !listEquals(selected.pluginIds, updated.pluginIds);
+    final pluginsChanged = !listEquals(selected.pluginIds, updated.pluginIds);
     final mcpChanged = !listEquals(selected.mcpServerIds, updated.mcpServerIds);
-    final normalized = _normalizeTeam(
+    final normalized = _rosterEditor.normalizeTeam(
       updated.members.isEmpty
-          ? updated.copyWith(
-              members: TeamMemberNaming.defaultRoster(),
-            )
+          ? updated.copyWith(members: TeamMemberNaming.defaultRoster())
           : updated,
     );
     final teams = [
@@ -852,13 +438,13 @@ class TeamCubit extends Cubit<TeamState> {
     );
     await _repository.saveTeams(teams);
     if (skillsChanged) {
-      await _syncSkillsForSelected();
+      await _sync.syncSkills();
     }
     if (pluginsChanged) {
-      await _syncPluginsForSelected();
+      await _sync.syncPluginsForSelected();
     }
     if (mcpChanged) {
-      await _syncMcpForSelected();
+      await _sync.syncMcp();
     }
   }
 
@@ -867,7 +453,7 @@ class TeamCubit extends Cubit<TeamState> {
     if (selected == null) return;
     await _repository.deleteTeam(selected.name, cliStateTeamId: selected.id);
     var teams = state.teams.where((team) => team.id != selected.id).toList();
-    if (teams.isEmpty) teams = [_defaultTeam()];
+    if (teams.isEmpty) teams = [_rosterEditor.defaultTeam()];
     emit(
       state.copyWith(
         teams: teams,
@@ -876,47 +462,41 @@ class TeamCubit extends Cubit<TeamState> {
       ),
     );
     await _repository.saveTeams(teams);
-    unawaited(_syncSkillsForSelected());
-    unawaited(_syncPluginsForSelected());
+    unawaited(_sync.syncSkills());
+    unawaited(_sync.syncPluginsForSelected());
   }
+
+  // ===== Members =====
 
   Future<void> addMember() async {
     final team = state.selectedTeam;
     if (team == null) return;
-    final id = _uniqueMemberSlug(team, TeamMemberNaming.defaultWorkerName);
-    final now = DateTime.now().millisecondsSinceEpoch;
-    final member = TeamMemberConfig(
-      id: id,
-      name: TeamMemberNaming.defaultWorkerName,
-      joinedAt: now,
-    );
-    await updateSelected(team.copyWith(members: [...team.members, member]));
-    emit(state.copyWith(statusMessage: 'Added ${member.name}.'));
+    final (team: updated, :added) = _rosterEditor.addMember(team);
+    await updateSelected(updated);
+    emit(state.copyWith(statusMessage: 'Added ${added.name}.'));
   }
 
   Future<void> updateMember(String memberId, TeamMemberConfig updated) async {
     final team = state.selectedTeam;
     if (team == null) return;
-    final error = TeamMemberNaming.validateMemberName(updated.name);
-    if (error != null) {
-      emit(
-        state.copyWith(
-          statusMessage: error == 'at_sign'
-              ? 'Member name cannot contain @.'
-              : 'Member name is required.',
-        ),
-      );
+    final mutation = _rosterEditor.updateMember(team, memberId, updated);
+    if (mutation.isRejected) {
+      emit(state.copyWith(statusMessage: mutation.statusMessage));
       return;
     }
-    final normalized = _normalizeMember(updated);
-    await updateSelected(
-      team.copyWith(
-        members: [
-          for (final m in team.members)
-            if (m.id == memberId) normalized else m,
-        ],
-      ),
-    );
+    await updateSelected(mutation.team!);
+  }
+
+  Future<void> deleteMember(String memberId) async {
+    final team = state.selectedTeam;
+    if (team == null) return;
+    final mutation = _rosterEditor.removeMember(team, memberId);
+    if (mutation.isRejected) {
+      emit(state.copyWith(statusMessage: mutation.statusMessage));
+      return;
+    }
+    await updateSelected(mutation.team!);
+    emit(state.copyWith(statusMessage: mutation.statusMessage));
   }
 
   /// Updates [TeamMemberConfig.provider] on every team when an LLM provider is renamed.
@@ -941,157 +521,5 @@ class TeamCubit extends Cubit<TeamState> {
     if (!changed) return;
     emit(state.copyWith(teams: teams));
     await _repository.saveTeams(teams);
-  }
-
-  Future<void> deleteMember(String memberId) async {
-    final team = state.selectedTeam;
-    if (team == null) return;
-    TeamMemberConfig? target;
-    for (final m in team.members) {
-      if (m.id == memberId) {
-        target = m;
-        break;
-      }
-    }
-    if (target != null && TeamMemberNaming.isTeamLead(target)) {
-      emit(
-        state.copyWith(
-          statusMessage: 'Cannot remove team-lead from the roster.',
-        ),
-      );
-      return;
-    }
-    if (team.members.length == 1) {
-      emit(state.copyWith(statusMessage: 'A team needs at least one member.'));
-      return;
-    }
-    final deleted = team.members.firstWhere((m) => m.id == memberId);
-    await updateSelected(
-      team.copyWith(
-        members: team.members
-            .where((m) => m.id != memberId)
-            .toList(growable: false),
-      ),
-    );
-    emit(state.copyWith(statusMessage: 'Deleted ${deleted.name}.'));
-  }
-
-  Future<void> launchMember(String memberId) async {
-    final team = state.selectedTeam;
-    if (team == null || team.name.trim().isEmpty) {
-      emit(state.copyWith(statusMessage: 'Team name is required.'));
-      return;
-    }
-    final member = team.members.firstWhere(
-      (m) => m.id == memberId,
-      orElse: () => const TeamMemberConfig(id: '', name: ''),
-    );
-    if (!member.isValid) {
-      emit(state.copyWith(statusMessage: 'Member name is required.'));
-      return;
-    }
-    emit(
-      state.copyWith(
-        isLaunching: true,
-        statusMessage: 'Starting ${member.name}...',
-      ),
-    );
-    try {
-      await syncSelectedTeamPlugins();
-      await _runLaunch(team, member);
-      emit(
-        state.copyWith(
-          isLaunching: false,
-          statusMessage:
-              'Started ${member.name}: ${LaunchCommandBuilder.preview(team, member, executable: _resolveExecutableFor(member.cliWithin(team)))}',
-        ),
-      );
-    } on Object catch (error) {
-      emit(
-        state.copyWith(
-          isLaunching: false,
-          statusMessage: 'Launch failed: $error',
-        ),
-      );
-    }
-  }
-
-  Future<void> launchSelectedTeam() async {
-    final team = state.selectedTeam;
-    if (team == null || team.name.trim().isEmpty) {
-      emit(state.copyWith(statusMessage: 'Team name is required.'));
-      return;
-    }
-    final validMembers = team.members.where((m) => m.isValid).toList();
-    if (validMembers.isEmpty) {
-      emit(
-        state.copyWith(statusMessage: 'At least one valid member is required.'),
-      );
-      return;
-    }
-    emit(
-      state.copyWith(
-        isLaunching: true,
-        statusMessage: 'Starting ${validMembers.length} members...',
-      ),
-    );
-    try {
-      await syncSelectedTeamPlugins();
-      for (final member in validMembers) {
-        await _runLaunch(team, member);
-      }
-      emit(
-        state.copyWith(
-          isLaunching: false,
-          statusMessage: 'Started ${validMembers.length} members.',
-        ),
-      );
-    } on Object catch (error) {
-      emit(
-        state.copyWith(
-          isLaunching: false,
-          statusMessage: 'Launch failed: $error',
-        ),
-      );
-    }
-  }
-
-  TeamConfig _defaultTeam() {
-    const name = 'Default Team';
-    final now = DateTime.now().millisecondsSinceEpoch;
-    return TeamConfig(
-      id: TeamMemberNaming.slugTeamId(name),
-      name: name,
-      createdAt: now,
-      members: TeamMemberNaming.defaultRoster(joinedAt: now),
-    );
-  }
-
-  TeamMemberConfig _defaultMember({int? now}) {
-    final ts = now ?? DateTime.now().millisecondsSinceEpoch;
-    return TeamMemberNaming.defaultRoster(joinedAt: ts).first;
-  }
-
-  TeamConfig _normalizeTeam(TeamConfig team) {
-    final hasLead = team.members.any(TeamMemberNaming.isTeamLead);
-    if (hasLead) return team;
-    final now = DateTime.now().millisecondsSinceEpoch;
-    return team.copyWith(
-      members: [_defaultMember(now: now), ...team.members],
-    );
-  }
-
-  TeamMemberConfig _normalizeMember(TeamMemberConfig member) => member;
-
-  String _uniqueMemberSlug(TeamConfig team, String base) {
-    final existing = team.members.map((m) => m.id).toSet();
-    final first = TeamMemberNaming.slugMemberName(base);
-    if (!existing.contains(first)) return first;
-    var i = 2;
-    while (true) {
-      final candidate = TeamMemberNaming.slugMemberName('$base-$i');
-      if (!existing.contains(candidate)) return candidate;
-      i++;
-    }
   }
 }
