@@ -13,7 +13,7 @@ import '../models/team_config.dart';
 import '../services/app/platform_utils.dart';
 import '../utils/app_keys.dart';
 import '../utils/debounce/debounce.dart';
-import '../widgets/right_tools_panel.dart';
+import '../widgets/right_tools/right_tools_panel.dart';
 import 'chat_workbench.dart';
 import 'workspace_shell.dart';
 
@@ -91,7 +91,8 @@ class ChatPage extends StatelessWidget {
               ? RightToolsPanel(
                   cwd: cwd,
                   preferences: preferences,
-                  panelKey: preferences.toolPlacement == ToolPanelPlacement.right
+                  panelKey:
+                      preferences.toolPlacement == ToolPanelPlacement.right
                       ? AppKeys.rightToolsPanel
                       : AppKeys.bottomToolsPanel,
                 )
@@ -126,9 +127,9 @@ class ChatPage extends StatelessWidget {
         final message = code == 'claude_credentials_missing'
             ? listenerContext.l10n.claudeLaunchCredentialsMissingWarning
             : code;
-        ScaffoldMessenger.of(listenerContext).showSnackBar(
-          SnackBar(content: Text(message)),
-        );
+        ScaffoldMessenger.of(
+          listenerContext,
+        ).showSnackBar(SnackBar(content: Text(message)));
         listenerContext.read<ChatCubit>().clearSnackbarMessage();
       },
       child: BlocListener<EditorCubit, EditorState>(
@@ -139,11 +140,10 @@ class ChatPage extends StatelessWidget {
           if (!listenerContext.mounted) return;
           final code = state.snackbarMessage;
           if (code == null) return;
-          final message =
-              listenerContext.l10n.editorSnackbarMessage(code);
-          ScaffoldMessenger.of(listenerContext).showSnackBar(
-            SnackBar(content: Text(message)),
-          );
+          final message = listenerContext.l10n.editorSnackbarMessage(code);
+          ScaffoldMessenger.of(
+            listenerContext,
+          ).showSnackBar(SnackBar(content: Text(message)));
           listenerContext.read<EditorCubit>().clearSnackbarMessage();
         },
         child: child,
