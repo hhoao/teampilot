@@ -102,6 +102,15 @@ class AppLocalizationsZh extends AppLocalizations {
   String get extensionsSettingsDescription => '安装并启用增强 Agent 的外部工具。';
 
   @override
+  String get extensionsNavInstalled => '已安装';
+
+  @override
+  String get extensionsEmptyTitle => '暂无可用扩展';
+
+  @override
+  String get extensionsEmptyHint => '扩展目录加载后会显示在这里。';
+
+  @override
   String get extensionEnableLabel => '已启用';
 
   @override
@@ -347,6 +356,57 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get newProject => '新建项目';
+
+  @override
+  String get homeWorkspaceMainWindow => '主窗口';
+
+  @override
+  String get homeWorkspaceMyTeams => '我的团队';
+
+  @override
+  String get homeWorkspaceNewTeam => '新建团队';
+
+  @override
+  String get homeWorkspaceOrganization => '组织';
+
+  @override
+  String get homeWorkspaceTeamProjects => '团队项目';
+
+  @override
+  String get homeWorkspaceOwner => '团队所有者';
+
+  @override
+  String get homeWorkspaceImportProject => '导入项目';
+
+  @override
+  String get homeWorkspaceSessionsLabel => '会话';
+
+  @override
+  String get homeWorkspaceEmptyProjects => '该团队还没有项目';
+
+  @override
+  String get homeWorkspaceEmptyProjectsHint => '新建或导入一个项目开始吧';
+
+  @override
+  String get homeWorkspaceComingSoon => '功能开发中';
+
+  @override
+  String get homeWorkspaceConversations => '对话管理';
+
+  @override
+  String get homeWorkspaceProjectSettings => '项目设置';
+
+  @override
+  String get homeWorkspaceInviteMembers => '邀请成员';
+
+  @override
+  String get homeWorkspaceNewConversation => '新建对话';
+
+  @override
+  String get homeWorkspaceNoConversations => '该项目还没有对话';
+
+  @override
+  String get homeWorkspaceSearchHint => '搜索';
 
   @override
   String get newProjectTooltip => '创建项目';

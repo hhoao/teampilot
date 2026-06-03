@@ -41,12 +41,23 @@ class SkillManagementHubPage extends StatelessWidget {
 }
 
 class SkillManagementPage extends StatelessWidget {
-  const SkillManagementPage({required this.section, super.key});
+  const SkillManagementPage({
+    required this.section,
+    this.onSelectSection,
+    super.key,
+  });
 
   final SkillSection section;
 
+  /// When set, section switches call this instead of route navigation — lets
+  /// the page be embedded (e.g. in the workspace home) with local-state nav.
+  final void Function(SkillSection target)? onSelectSection;
+
   @override
   Widget build(BuildContext context) {
+    void select(SkillSection target) => onSelectSection != null
+        ? onSelectSection!(target)
+        : navigateSkillSection(context, target);
     return BlocConsumer<SkillCubit, SkillState>(
       listenWhen: (a, b) =>
           a.errorMessage != b.errorMessage && b.errorMessage != null,
@@ -64,12 +75,11 @@ class SkillManagementPage extends StatelessWidget {
         final sectionBody = switch (section) {
           SkillSection.installed => SkillInstalledSection(
             state: state,
-            onGoDiscovery: () =>
-                navigateSkillSection(context, SkillSection.discovery),
+            onGoDiscovery: () => select(SkillSection.discovery),
           ),
           SkillSection.discovery => SkillDiscoverySection(
             state: state,
-            onGoRepos: () => navigateSkillSection(context, SkillSection.repos),
+            onGoRepos: () => select(SkillSection.repos),
           ),
           SkillSection.repos => SkillReposSection(state: state),
         };
@@ -84,7 +94,7 @@ class SkillManagementPage extends StatelessWidget {
             current: section,
             basePath: '/skills',
             descriptor: (s) => s,
-            onSelect: (target) => navigateSkillSection(context, target),
+            onSelect: select,
           ),
           body: sectionBody,
         );

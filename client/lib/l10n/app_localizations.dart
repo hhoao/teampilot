@@ -284,6 +284,24 @@ abstract class AppLocalizations {
   /// **'Install and enable external tools that augment your agents.'**
   String get extensionsSettingsDescription;
 
+  /// No description provided for @extensionsNavInstalled.
+  ///
+  /// In en, this message translates to:
+  /// **'Installed'**
+  String get extensionsNavInstalled;
+
+  /// No description provided for @extensionsEmptyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No extensions available'**
+  String get extensionsEmptyTitle;
+
+  /// No description provided for @extensionsEmptyHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Extensions will appear here once the catalog loads.'**
+  String get extensionsEmptyHint;
+
   /// No description provided for @extensionEnableLabel.
   ///
   /// In en, this message translates to:
@@ -757,6 +775,108 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'New Project'**
   String get newProject;
+
+  /// No description provided for @homeWorkspaceMainWindow.
+  ///
+  /// In en, this message translates to:
+  /// **'Home'**
+  String get homeWorkspaceMainWindow;
+
+  /// No description provided for @homeWorkspaceMyTeams.
+  ///
+  /// In en, this message translates to:
+  /// **'My Teams'**
+  String get homeWorkspaceMyTeams;
+
+  /// No description provided for @homeWorkspaceNewTeam.
+  ///
+  /// In en, this message translates to:
+  /// **'New Team'**
+  String get homeWorkspaceNewTeam;
+
+  /// No description provided for @homeWorkspaceOrganization.
+  ///
+  /// In en, this message translates to:
+  /// **'Organization'**
+  String get homeWorkspaceOrganization;
+
+  /// No description provided for @homeWorkspaceTeamProjects.
+  ///
+  /// In en, this message translates to:
+  /// **'Projects'**
+  String get homeWorkspaceTeamProjects;
+
+  /// No description provided for @homeWorkspaceOwner.
+  ///
+  /// In en, this message translates to:
+  /// **'Owner'**
+  String get homeWorkspaceOwner;
+
+  /// No description provided for @homeWorkspaceImportProject.
+  ///
+  /// In en, this message translates to:
+  /// **'Import'**
+  String get homeWorkspaceImportProject;
+
+  /// No description provided for @homeWorkspaceSessionsLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'sessions'**
+  String get homeWorkspaceSessionsLabel;
+
+  /// No description provided for @homeWorkspaceEmptyProjects.
+  ///
+  /// In en, this message translates to:
+  /// **'No projects in this team yet'**
+  String get homeWorkspaceEmptyProjects;
+
+  /// No description provided for @homeWorkspaceEmptyProjectsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Create or import a project to get started'**
+  String get homeWorkspaceEmptyProjectsHint;
+
+  /// No description provided for @homeWorkspaceComingSoon.
+  ///
+  /// In en, this message translates to:
+  /// **'Coming soon'**
+  String get homeWorkspaceComingSoon;
+
+  /// No description provided for @homeWorkspaceConversations.
+  ///
+  /// In en, this message translates to:
+  /// **'Conversations'**
+  String get homeWorkspaceConversations;
+
+  /// No description provided for @homeWorkspaceProjectSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Settings'**
+  String get homeWorkspaceProjectSettings;
+
+  /// No description provided for @homeWorkspaceInviteMembers.
+  ///
+  /// In en, this message translates to:
+  /// **'Invite'**
+  String get homeWorkspaceInviteMembers;
+
+  /// No description provided for @homeWorkspaceNewConversation.
+  ///
+  /// In en, this message translates to:
+  /// **'New Conversation'**
+  String get homeWorkspaceNewConversation;
+
+  /// No description provided for @homeWorkspaceNoConversations.
+  ///
+  /// In en, this message translates to:
+  /// **'No conversations in this project yet'**
+  String get homeWorkspaceNoConversations;
+
+  /// No description provided for @homeWorkspaceSearchHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search'**
+  String get homeWorkspaceSearchHint;
 
   /// No description provided for @newProjectTooltip.
   ///

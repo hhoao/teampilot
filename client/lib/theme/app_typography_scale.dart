@@ -71,7 +71,7 @@ final class AppTypographyScale {
 
   // --- Base sizes at multiplier 1.0 (Material 3 type scale) ---
 
-  static const double titleLargeBase = 22;
+  static const double titleLargeBase = 20;
   static const double titleMediumBase = 16;
   static const double titleSmallBase = 14;
   static const double bodyLargeBase = 16;

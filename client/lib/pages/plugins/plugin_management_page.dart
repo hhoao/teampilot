@@ -41,12 +41,23 @@ class PluginManagementHubPage extends StatelessWidget {
 }
 
 class PluginManagementPage extends StatelessWidget {
-  const PluginManagementPage({required this.section, super.key});
+  const PluginManagementPage({
+    required this.section,
+    this.onSelectSection,
+    super.key,
+  });
 
   final PluginSection section;
 
+  /// When set, section switches call this instead of route navigation — lets
+  /// the page be embedded (e.g. in the workspace home) with local-state nav.
+  final void Function(PluginSection target)? onSelectSection;
+
   @override
   Widget build(BuildContext context) {
+    void select(PluginSection target) => onSelectSection != null
+        ? onSelectSection!(target)
+        : navigatePluginSection(context, target);
     return BlocConsumer<PluginCubit, PluginState>(
       listenWhen: (a, b) =>
           a.errorMessage != b.errorMessage && b.errorMessage != null,
@@ -64,13 +75,11 @@ class PluginManagementPage extends StatelessWidget {
         final sectionBody = switch (section) {
           PluginSection.installed => PluginInstalledSection(
             state: state,
-            onGoDiscovery: () =>
-                navigatePluginSection(context, PluginSection.discovery),
+            onGoDiscovery: () => select(PluginSection.discovery),
           ),
           PluginSection.discovery => PluginDiscoverySection(
             state: state,
-            onGoMarketplaces: () =>
-                navigatePluginSection(context, PluginSection.marketplaces),
+            onGoMarketplaces: () => select(PluginSection.marketplaces),
           ),
           PluginSection.marketplaces => PluginMarketplacesSection(state: state),
         };
@@ -85,7 +94,7 @@ class PluginManagementPage extends StatelessWidget {
             current: section,
             basePath: '/plugins',
             descriptor: (s) => s,
-            onSelect: (target) => navigatePluginSection(context, target),
+            onSelect: select,
           ),
           body: sectionBody,
         );

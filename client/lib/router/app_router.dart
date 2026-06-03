@@ -13,7 +13,11 @@ import '../models/app_provider_config.dart';
 import '../models/layout_preferences.dart';
 import '../pages/chat_page.dart';
 import '../pages/config_workspace.dart';
+import '../pages/home_workspace/home_workspace_page.dart';
+import '../pages/home_workspace/home_workspace_shell.dart';
+import '../pages/home_workspace/project/home_workspace_project_page.dart';
 import '../pages/llm_config/llm_config_workspace.dart';
+import '../pages/extensions/extension_management_page.dart';
 import '../pages/skills/skill_management_page.dart';
 import '../pages/plugins/plugin_management_page.dart';
 import '../pages/mcp/mcp_form_nav_page.dart';
@@ -33,8 +37,32 @@ import '../widgets/split_layout.dart';
 import '../l10n/l10n_extensions.dart';
 
 final appRouter = GoRouter(
-  initialLocation: '/chat',
+  // Dev entry for the new workspace home. Revert to '/chat' to restore the
+  // legacy shell as the default landing route.
+  initialLocation: '/home-v2',
   routes: [
+    // New Apifox-style workspace home — standalone, outside the legacy shell.
+    // The shell draws the persistent title bar + open project tabs; the home
+    // and project routes render only the body below it.
+    ShellRoute(
+      builder: (context, state, child) =>
+          HomeWorkspaceShell(location: state.uri.path, child: child),
+      routes: [
+        GoRoute(
+          path: '/home-v2',
+          pageBuilder: (context, state) =>
+              const NoTransitionPage(child: HomeWorkspacePage()),
+        ),
+        GoRoute(
+          path: '/home-v2/project/:projectId',
+          pageBuilder: (context, state) => NoTransitionPage(
+            child: HomeWorkspaceProjectPage(
+              projectId: state.pathParameters['projectId']!,
+            ),
+          ),
+        ),
+      ],
+    ),
     ShellRoute(
       builder: (context, state, child) {
         final layoutCubit = context.watch<LayoutCubit>();
@@ -292,6 +320,21 @@ final appRouter = GoRouter(
           path: '/skills/repos',
           pageBuilder: (context, state) => const NoTransitionPage(
             child: SkillManagementPage(section: SkillSection.repos),
+          ),
+        ),
+        GoRoute(
+          path: '/extensions',
+          redirect: (context, state) {
+            if (Platform.isAndroid) return null;
+            return '/extensions/installed';
+          },
+          pageBuilder: (context, state) =>
+              const NoTransitionPage(child: ExtensionManagementHubPage()),
+        ),
+        GoRoute(
+          path: '/extensions/installed',
+          pageBuilder: (context, state) => const NoTransitionPage(
+            child: ExtensionManagementPage(section: ExtensionSection.installed),
           ),
         ),
         GoRoute(

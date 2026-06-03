@@ -89,9 +89,17 @@ class McpManagementHubPage extends StatelessWidget {
 }
 
 class McpManagementPage extends StatefulWidget {
-  const McpManagementPage({required this.section, super.key});
+  const McpManagementPage({
+    required this.section,
+    this.onSelectSection,
+    super.key,
+  });
 
   final McpSection section;
+
+  /// When set, section switches call this instead of route navigation — lets
+  /// the page be embedded (e.g. in the workspace home) with local-state nav.
+  final void Function(McpSection target)? onSelectSection;
 
   @override
   State<McpManagementPage> createState() => _McpManagementPageState();
@@ -228,6 +236,9 @@ class _McpManagementPageState extends State<McpManagementPage> {
         context.read<McpCubit>().clearError();
       },
       builder: (context, state) {
+        void select(McpSection target) => widget.onSelectSection != null
+            ? widget.onSelectSection!(target)
+            : navigateMcpSection(context, target);
         final sectionBody = switch (widget.section) {
           McpSection.installed => McpInstalledSection(
             state: state,
@@ -235,20 +246,14 @@ class _McpManagementPageState extends State<McpManagementPage> {
             onAdd: () => navigateMcpAdd(context),
             onEdit: (s) => navigateMcpEdit(context, s),
             onDelete: _confirmDelete,
-            onGoDiscovery: () => navigateMcpSection(
-              context,
-              McpSection.discovery,
-            ),
+            onGoDiscovery: () => select(McpSection.discovery),
             onOAuthConnected: () {},
           ),
           McpSection.discovery => BlocProvider.value(
             value: _discoveryCubit,
             child: McpDiscoverySection(
               onAddListing: _addFromListing,
-              onGoRegistries: () => navigateMcpSection(
-                context,
-                McpSection.registries,
-              ),
+              onGoRegistries: () => select(McpSection.registries),
             ),
           ),
           McpSection.registries => const McpRegistriesSection(),
@@ -264,7 +269,7 @@ class _McpManagementPageState extends State<McpManagementPage> {
             current: widget.section,
             basePath: '/mcp',
             descriptor: (s) => s,
-            onSelect: (target) => navigateMcpSection(context, target),
+            onSelect: select,
           ),
           body: sectionBody,
         );

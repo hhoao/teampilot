@@ -109,6 +109,16 @@ class AppLocalizationsEn extends AppLocalizations {
       'Install and enable external tools that augment your agents.';
 
   @override
+  String get extensionsNavInstalled => 'Installed';
+
+  @override
+  String get extensionsEmptyTitle => 'No extensions available';
+
+  @override
+  String get extensionsEmptyHint =>
+      'Extensions will appear here once the catalog loads.';
+
+  @override
   String get extensionEnableLabel => 'Enabled';
 
   @override
@@ -360,6 +370,59 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get newProject => 'New Project';
+
+  @override
+  String get homeWorkspaceMainWindow => 'Home';
+
+  @override
+  String get homeWorkspaceMyTeams => 'My Teams';
+
+  @override
+  String get homeWorkspaceNewTeam => 'New Team';
+
+  @override
+  String get homeWorkspaceOrganization => 'Organization';
+
+  @override
+  String get homeWorkspaceTeamProjects => 'Projects';
+
+  @override
+  String get homeWorkspaceOwner => 'Owner';
+
+  @override
+  String get homeWorkspaceImportProject => 'Import';
+
+  @override
+  String get homeWorkspaceSessionsLabel => 'sessions';
+
+  @override
+  String get homeWorkspaceEmptyProjects => 'No projects in this team yet';
+
+  @override
+  String get homeWorkspaceEmptyProjectsHint =>
+      'Create or import a project to get started';
+
+  @override
+  String get homeWorkspaceComingSoon => 'Coming soon';
+
+  @override
+  String get homeWorkspaceConversations => 'Conversations';
+
+  @override
+  String get homeWorkspaceProjectSettings => 'Settings';
+
+  @override
+  String get homeWorkspaceInviteMembers => 'Invite';
+
+  @override
+  String get homeWorkspaceNewConversation => 'New Conversation';
+
+  @override
+  String get homeWorkspaceNoConversations =>
+      'No conversations in this project yet';
+
+  @override
+  String get homeWorkspaceSearchHint => 'Search';
 
   @override
   String get newProjectTooltip => 'Create a project';

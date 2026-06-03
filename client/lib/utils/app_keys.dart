@@ -95,6 +95,8 @@ class AppKeys {
   static const mcpHub = Key('mcp-hub');
   static const mcpWorkspace = Key('mcp-workspace');
   static const mcpFormDetail = Key('mcp-form-detail');
+  static const extensionsHub = Key('extensions-hub');
+  static const extensionsWorkspace = Key('extensions-workspace');
   static const memberConfigWorkspace = Key('member-config-workspace');
   static const llmConfigWorkspace = Key('llm-config-workspace');
   static const llmProviderDetail = Key('llm-provider-detail');

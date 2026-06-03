@@ -153,7 +153,7 @@ ThemeData buildDarkTheme([
 ]) => _applyTypography(
   FlexThemeData.dark(
     colors: _flexSchemeColors(normalizeThemeColorPreset(themeColorPreset)),
-    surfaceMode: FlexSurfaceMode.levelSurfacesLowScaffold,
+    surfaceMode: FlexSurfaceMode.highScaffoldLevelSurface,
     blendLevel: 30,
 
     /// When true, base layer stays near #000 so only upper surfaces show
@@ -222,7 +222,10 @@ ThemeData _applyTypography(
     materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
     textTheme: mergedTextTheme,
     primaryTextTheme: primaryTextTheme,
-    extensions: [buildAppFontTheme(uiFont: appUiFont), typographyTheme],
+    extensions: [
+      buildAppFontTheme(uiFont: appUiFont),
+      typographyTheme,
+    ],
     inputDecorationTheme: buildAppOutlineInputDecorationTheme(
       colorScheme: flexTheme.colorScheme,
       textTheme: mergedTextTheme,
