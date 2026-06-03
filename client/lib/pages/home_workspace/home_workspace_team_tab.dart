@@ -50,20 +50,28 @@ class _HomeWorkspaceTeamTabState extends State<HomeWorkspaceTeamTab> {
     }
 
     final body = switch (widget.section) {
-      TeamConfigSection.team =>
-        TeamInfoSection(team: widget.team, cubit: widget.cubit),
-      TeamConfigSection.skills =>
-        TeamSkillsSection(team: widget.team, cubit: widget.cubit),
-      TeamConfigSection.plugins =>
-        TeamPluginsSection(team: widget.team, cubit: widget.cubit),
-      TeamConfigSection.mcp =>
-        TeamMcpSection(team: widget.team, cubit: widget.cubit),
+      TeamConfigSection.team => TeamInfoSection(
+        team: widget.team,
+        cubit: widget.cubit,
+      ),
+      TeamConfigSection.skills => TeamSkillsSection(
+        team: widget.team,
+        cubit: widget.cubit,
+      ),
+      TeamConfigSection.plugins => TeamPluginsSection(
+        team: widget.team,
+        cubit: widget.cubit,
+      ),
+      TeamConfigSection.mcp => TeamMcpSection(
+        team: widget.team,
+        cubit: widget.cubit,
+      ),
       TeamConfigSection.extensions => TeamExtensionsSection(team: widget.team),
       TeamConfigSection.members => const SizedBox.shrink(),
     };
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(28, 16, 28, 8),
+      padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 16),
       child: body,
     );
   }
@@ -81,7 +89,7 @@ class _HomeWorkspaceTeamTabState extends State<HomeWorkspaceTeamTab> {
         ),
         Expanded(
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(28, 4, 28, 8),
+            padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 4),
             child: TeamMemberDetailSection(
               team: widget.team,
               cubit: widget.cubit,
@@ -111,7 +119,7 @@ class _MemberPicker extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     return Container(
-      padding: const EdgeInsets.fromLTRB(28, 12, 28, 12),
+      padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 12),
       decoration: BoxDecoration(
         border: Border(
           bottom: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.5)),
@@ -220,8 +228,11 @@ class _AddMemberChip extends StatelessWidget {
           borderRadius: BorderRadius.circular(8),
           border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.7)),
         ),
-        child: Icon(Icons.person_add_alt_1_outlined,
-            size: AppIconSizes.md, color: cs.onSurfaceVariant),
+        child: Icon(
+          Icons.person_add_alt_1_outlined,
+          size: AppIconSizes.md,
+          color: cs.onSurfaceVariant,
+        ),
       ),
     );
   }
