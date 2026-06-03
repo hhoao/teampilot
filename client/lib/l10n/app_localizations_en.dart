@@ -438,6 +438,56 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homeWorkspaceComingSoon => 'Coming soon';
 
   @override
+  String get homeWorkspaceNewTeamSubtitle =>
+      'Pick how the team collaborates, then name it.';
+
+  @override
+  String get homeWorkspaceNewTeamRecommended => 'Recommended';
+
+  @override
+  String get homeWorkspaceNewTeamModeBeta => 'Beta';
+
+  @override
+  String get homeWorkspaceNewTeamNameHint => 'Enter a team name';
+
+  @override
+  String get homeWorkspaceCreateTeam => 'Create team';
+
+  @override
+  String get teamModeNativeTitle => 'Native mode';
+
+  @override
+  String get teamModeMixedTitle => 'Mixed mode';
+
+  @override
+  String get teamModeNativeDescription =>
+      'All members share one CLI for native, low-config collaboration.';
+
+  @override
+  String get teamModeMixedDescription =>
+      'Members can run different CLIs and collaborate across tools over TeamBus.';
+
+  @override
+  String get homeWorkspaceNewProjectSubtitle =>
+      'Choose a working directory and name your project.';
+
+  @override
+  String get homeWorkspaceNewProjectDirectoryLabel => 'Project directory';
+
+  @override
+  String get homeWorkspaceNewProjectChooseDirectory => 'Choose folder';
+
+  @override
+  String get homeWorkspaceNewProjectDirectoryHint =>
+      'No directory selected yet';
+
+  @override
+  String get homeWorkspaceNewProjectNameHint => 'Defaults to the folder name';
+
+  @override
+  String get homeWorkspaceCreateProject => 'Create project';
+
+  @override
   String get homeWorkspaceConversations => 'Conversations';
 
   @override

@@ -41,7 +41,10 @@ class _HomeWorkspacePageState extends State<HomeWorkspacePage> {
         ),
         Expanded(
           child: globalView == null
-              ? const HomeWorkspaceContent()
+              ? HomeWorkspaceContent(
+                  onSelectGlobalView: (view) =>
+                      setState(() => _globalView = view),
+                )
               : HomeWorkspaceGlobalSection(view: globalView),
         ),
       ],

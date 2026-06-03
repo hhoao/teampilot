@@ -10,9 +10,12 @@ import '../../l10n/l10n_extensions.dart';
 import '../../models/app_project.dart';
 import '../../models/app_session.dart';
 import '../../models/team_config.dart';
+import '../../repositories/session_repository.dart';
 import '../../theme/app_text_styles.dart';
 import '../../theme/workspace_surface_layers.dart';
 import '../team_config/team_config_section.dart';
+import 'home_workspace_global_section.dart';
+import 'home_workspace_new_project_dialog.dart';
 import 'home_workspace_project_card.dart';
 import 'home_workspace_team_tab.dart';
 
@@ -20,7 +23,11 @@ import 'home_workspace_team_tab.dart';
 /// Members / Skills & Plugins / Settings), a toolbar, and the project grid for
 /// the selected team. Read-only — actions show a "coming soon" hint.
 class HomeWorkspaceContent extends StatefulWidget {
-  const HomeWorkspaceContent({super.key});
+  const HomeWorkspaceContent({this.onSelectGlobalView, super.key});
+
+  /// Switches the workspace right pane to a global management view, used by the
+  /// embedded team skills/plugins/MCP tabs to jump to global management.
+  final ValueChanged<HomeWorkspaceGlobalView>? onSelectGlobalView;
 
   @override
   State<HomeWorkspaceContent> createState() => _HomeWorkspaceContentState();
@@ -103,6 +110,7 @@ class _HomeWorkspaceContentState extends State<HomeWorkspaceContent> {
                               section: activeSection,
                               team: team,
                               cubit: teamCubit,
+                              onSelectGlobalView: widget.onSelectGlobalView,
                             ))
                       // Match the global-navigation section transition: fade + slight
                       // slide-in, replayed whenever the selected tab changes.
@@ -333,7 +341,12 @@ class _Toolbar extends StatelessWidget {
                   _PrimaryAction(
                     icon: Icons.add_rounded,
                     label: l10n.newProject,
-                    onTap: () => _comingSoon(context),
+                    onTap: () => showHomeWorkspaceNewProjectDialog(
+                      context,
+                      chatCubit: context.read<ChatCubit>(),
+                      repository: context.read<SessionRepository>(),
+                      teamCubit: context.read<TeamCubit>(),
+                    ),
                   ),
                 ],
               ),

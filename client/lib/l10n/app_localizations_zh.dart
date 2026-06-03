@@ -421,6 +421,51 @@ class AppLocalizationsZh extends AppLocalizations {
   String get homeWorkspaceComingSoon => '功能开发中';
 
   @override
+  String get homeWorkspaceNewTeamSubtitle => '选择团队协作模式，并填写团队名称。';
+
+  @override
+  String get homeWorkspaceNewTeamRecommended => '推荐';
+
+  @override
+  String get homeWorkspaceNewTeamModeBeta => 'Beta';
+
+  @override
+  String get homeWorkspaceNewTeamNameHint => '请输入团队名称';
+
+  @override
+  String get homeWorkspaceCreateTeam => '创建团队';
+
+  @override
+  String get teamModeNativeTitle => '原生模式';
+
+  @override
+  String get teamModeMixedTitle => '混合模式';
+
+  @override
+  String get teamModeNativeDescription => '全部成员共用同一个 CLI，原生协同，配置简单。';
+
+  @override
+  String get teamModeMixedDescription => '不同成员可使用不同 CLI，通过 TeamBus 跨工具协作。';
+
+  @override
+  String get homeWorkspaceNewProjectSubtitle => '选择项目的工作目录，并为它命名。';
+
+  @override
+  String get homeWorkspaceNewProjectDirectoryLabel => '项目目录';
+
+  @override
+  String get homeWorkspaceNewProjectChooseDirectory => '选择文件夹';
+
+  @override
+  String get homeWorkspaceNewProjectDirectoryHint => '尚未选择目录';
+
+  @override
+  String get homeWorkspaceNewProjectNameHint => '默认使用文件夹名';
+
+  @override
+  String get homeWorkspaceCreateProject => '创建项目';
+
+  @override
   String get homeWorkspaceConversations => '对话管理';
 
   @override

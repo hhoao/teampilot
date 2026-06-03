@@ -13,14 +13,24 @@ import '../../widgets/settings/workspace_settings_widgets.dart';
 import 'team_config_cards.dart';
 
 class TeamMcpSection extends StatelessWidget {
-  const TeamMcpSection({super.key, required this.team, required this.cubit});
+  const TeamMcpSection({
+    super.key,
+    required this.team,
+    required this.cubit,
+    this.onManageGlobal,
+  });
 
   final TeamConfig team;
   final TeamCubit cubit;
 
+  /// Opens global MCP management. When null, falls back to the v1 `/mcp`
+  /// route so this section stays usable outside the v2 workspace.
+  final VoidCallback? onManageGlobal;
+
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
+    final onManage = onManageGlobal ?? () => context.go('/mcp');
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textBase = isDark ? Colors.white : const Color(0xFF111827);
     final mcpState = context.watch<McpCubit>().state;
@@ -43,7 +53,7 @@ class TeamMcpSection extends StatelessWidget {
                     enabled.length,
                   ),
                   trailing: OutlinedButton.icon(
-                    onPressed: () => context.go('/mcp'),
+                    onPressed: onManage,
                     icon: const Icon(Icons.hub_outlined, size: AppIconSizes.md),
                     label: Text(l10n.teamMcpManage),
                   ),

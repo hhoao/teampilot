@@ -15,14 +15,24 @@ import '../../widgets/settings/workspace_settings_widgets.dart';
 import 'team_config_cards.dart';
 
 class TeamSkillsSection extends StatelessWidget {
-  const TeamSkillsSection({super.key, required this.team, required this.cubit});
+  const TeamSkillsSection({
+    super.key,
+    required this.team,
+    required this.cubit,
+    this.onManageGlobal,
+  });
 
   final TeamConfig team;
   final TeamCubit cubit;
 
+  /// Opens global skill management. When null, falls back to the v1
+  /// `/skills` route so this section stays usable outside the v2 workspace.
+  final VoidCallback? onManageGlobal;
+
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
+    final onManage = onManageGlobal ?? () => context.go('/skills');
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textBase = isDark ? Colors.white : const Color(0xFF111827);
     final skillState = context.watch<SkillCubit>().state;
@@ -48,7 +58,7 @@ class TeamSkillsSection extends StatelessWidget {
                     enabled.length,
                   ),
                   trailing: OutlinedButton.icon(
-                    onPressed: () => context.go('/skills'),
+                    onPressed: onManage,
                     icon: const Icon(Icons.extension_outlined, size: AppIconSizes.md),
                     label: Text(l10n.teamSkillsManage),
                   ),
@@ -61,7 +71,7 @@ class TeamSkillsSection extends StatelessWidget {
                 if (enabled.isEmpty)
                   TeamSkillsEmptyBlock(
                     textBase: textBase,
-                    onGoSkills: () => context.go('/skills'),
+                    onGoSkills: onManage,
                   )
                 else
                   Column(

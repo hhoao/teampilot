@@ -12,6 +12,7 @@ import '../team_config/team_config_member_section.dart';
 import '../team_config/team_config_plugins_section.dart';
 import '../team_config/team_config_section.dart';
 import '../team_config/team_config_skills_section.dart';
+import 'home_workspace_global_section.dart';
 
 /// Embeds an existing team-config section body inside a workspace-home tab.
 /// For the Members section it adds a lightweight member picker (the standalone
@@ -21,12 +22,18 @@ class HomeWorkspaceTeamTab extends StatefulWidget {
     required this.section,
     required this.team,
     required this.cubit,
+    this.onSelectGlobalView,
     super.key,
   });
 
   final TeamConfigSection section;
   final TeamConfig team;
   final TeamCubit cubit;
+
+  /// Switches the workspace right pane to a global management view. Lets the
+  /// reused skills/plugins/MCP sections jump to v2 global management instead of
+  /// pushing a v1 route.
+  final ValueChanged<HomeWorkspaceGlobalView>? onSelectGlobalView;
 
   @override
   State<HomeWorkspaceTeamTab> createState() => _HomeWorkspaceTeamTabState();
@@ -49,6 +56,10 @@ class _HomeWorkspaceTeamTabState extends State<HomeWorkspaceTeamTab> {
       return _buildMembers(context);
     }
 
+    final onGlobal = widget.onSelectGlobalView;
+    VoidCallback? manage(HomeWorkspaceGlobalView view) =>
+        onGlobal == null ? null : () => onGlobal(view);
+
     final body = switch (widget.section) {
       TeamConfigSection.team => TeamInfoSection(
         team: widget.team,
@@ -57,14 +68,17 @@ class _HomeWorkspaceTeamTabState extends State<HomeWorkspaceTeamTab> {
       TeamConfigSection.skills => TeamSkillsSection(
         team: widget.team,
         cubit: widget.cubit,
+        onManageGlobal: manage(HomeWorkspaceGlobalView.skills),
       ),
       TeamConfigSection.plugins => TeamPluginsSection(
         team: widget.team,
         cubit: widget.cubit,
+        onManageGlobal: manage(HomeWorkspaceGlobalView.plugins),
       ),
       TeamConfigSection.mcp => TeamMcpSection(
         team: widget.team,
         cubit: widget.cubit,
+        onManageGlobal: manage(HomeWorkspaceGlobalView.mcp),
       ),
       TeamConfigSection.extensions => TeamExtensionsSection(team: widget.team),
       TeamConfigSection.members => const SizedBox.shrink(),

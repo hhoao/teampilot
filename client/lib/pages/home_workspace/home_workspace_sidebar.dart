@@ -9,6 +9,7 @@ import '../../models/team_config.dart';
 import '../../theme/app_text_styles.dart';
 import '../../theme/workspace_surface_layers.dart';
 import 'home_workspace_global_section.dart';
+import 'home_workspace_new_team_dialog.dart';
 
 /// Left rail of the workspace home: "My Teams" list plus global management
 /// shortcuts, mirroring the Apifox sidebar. Team selection drives the global
@@ -92,7 +93,10 @@ class _HomeWorkspaceSidebarState extends State<HomeWorkspaceSidebar> {
 
                               _NewTeamRow(
                                 label: l10n.homeWorkspaceNewTeam,
-                                onTap: () => _comingSoon(context),
+                                onTap: () => showHomeWorkspaceNewTeamDialog(
+                                  context,
+                                  teamCubit,
+                                ),
                               ),
                               const SizedBox(height: 10),
                             ],
@@ -160,12 +164,6 @@ class _HomeWorkspaceSidebarState extends State<HomeWorkspaceSidebar> {
           ),
         ],
       ),
-    );
-  }
-
-  void _comingSoon(BuildContext context) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(context.l10n.homeWorkspaceComingSoon)),
     );
   }
 }

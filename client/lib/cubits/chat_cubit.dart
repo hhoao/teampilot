@@ -492,7 +492,10 @@ class ChatCubit extends Cubit<ChatState> implements MemberMaterializer {
     return session;
   }
 
-  Future<void> createProjectWithFirstSession(
+  /// Creates (or reuses) the project for [primaryPath], seeds a first session,
+  /// reloads project data, and returns the project id so callers can navigate
+  /// straight to the new project.
+  Future<String> createProjectWithFirstSession(
     String primaryPath,
     SessionRepository repo, {
     String sessionTeamId = '',
@@ -511,6 +514,7 @@ class ChatCubit extends Cubit<ChatState> implements MemberMaterializer {
       rosterMembers: rosterMembers,
     );
     await loadProjectData(repo);
+    return project.projectId;
   }
 
   Future<void> addProjectDirectory(

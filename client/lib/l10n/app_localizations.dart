@@ -902,6 +902,96 @@ abstract class AppLocalizations {
   /// **'Coming soon'**
   String get homeWorkspaceComingSoon;
 
+  /// No description provided for @homeWorkspaceNewTeamSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick how the team collaborates, then name it.'**
+  String get homeWorkspaceNewTeamSubtitle;
+
+  /// No description provided for @homeWorkspaceNewTeamRecommended.
+  ///
+  /// In en, this message translates to:
+  /// **'Recommended'**
+  String get homeWorkspaceNewTeamRecommended;
+
+  /// No description provided for @homeWorkspaceNewTeamModeBeta.
+  ///
+  /// In en, this message translates to:
+  /// **'Beta'**
+  String get homeWorkspaceNewTeamModeBeta;
+
+  /// No description provided for @homeWorkspaceNewTeamNameHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a team name'**
+  String get homeWorkspaceNewTeamNameHint;
+
+  /// No description provided for @homeWorkspaceCreateTeam.
+  ///
+  /// In en, this message translates to:
+  /// **'Create team'**
+  String get homeWorkspaceCreateTeam;
+
+  /// No description provided for @teamModeNativeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Native mode'**
+  String get teamModeNativeTitle;
+
+  /// No description provided for @teamModeMixedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Mixed mode'**
+  String get teamModeMixedTitle;
+
+  /// No description provided for @teamModeNativeDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'All members share one CLI for native, low-config collaboration.'**
+  String get teamModeNativeDescription;
+
+  /// No description provided for @teamModeMixedDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Members can run different CLIs and collaborate across tools over TeamBus.'**
+  String get teamModeMixedDescription;
+
+  /// No description provided for @homeWorkspaceNewProjectSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a working directory and name your project.'**
+  String get homeWorkspaceNewProjectSubtitle;
+
+  /// No description provided for @homeWorkspaceNewProjectDirectoryLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Project directory'**
+  String get homeWorkspaceNewProjectDirectoryLabel;
+
+  /// No description provided for @homeWorkspaceNewProjectChooseDirectory.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose folder'**
+  String get homeWorkspaceNewProjectChooseDirectory;
+
+  /// No description provided for @homeWorkspaceNewProjectDirectoryHint.
+  ///
+  /// In en, this message translates to:
+  /// **'No directory selected yet'**
+  String get homeWorkspaceNewProjectDirectoryHint;
+
+  /// No description provided for @homeWorkspaceNewProjectNameHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Defaults to the folder name'**
+  String get homeWorkspaceNewProjectNameHint;
+
+  /// No description provided for @homeWorkspaceCreateProject.
+  ///
+  /// In en, this message translates to:
+  /// **'Create project'**
+  String get homeWorkspaceCreateProject;
+
   /// No description provided for @homeWorkspaceConversations.
   ///
   /// In en, this message translates to:
