@@ -167,10 +167,55 @@ ThemeData buildDarkTheme([
   typographyScale: typographyScale,
 );
 
+/// How far to pull [ColorScheme.onSurface] toward [surface] in dark mode.
+const _darkOnSurfaceSoften = 0.14;
+
+/// Secondary / muted copy is softened a bit more than body.
+const _darkOnSurfaceVariantSoften = 0.34;
+
+/// Light mode: nudge foreground toward ink for slightly softer contrast.
+const _lightOnSurfaceDeepen = 0.10;
+const _lightOnSurfaceVariantDeepen = 0.15;
+
+ColorScheme _softenedForegroundColorScheme(ColorScheme scheme) {
+  if (scheme.brightness == Brightness.dark) {
+    final base = scheme.surface;
+    Color soften(Color c, double t) => Color.lerp(c, base, t)!;
+    return scheme.copyWith(
+      onSurface: soften(scheme.onSurface, _darkOnSurfaceSoften),
+      onSurfaceVariant: soften(
+        scheme.onSurfaceVariant,
+        _darkOnSurfaceVariantSoften,
+      ),
+    );
+  }
+  const ink = Color(0xFF121212);
+  Color deepen(Color c, double t) => Color.lerp(c, ink, t)!;
+  return scheme.copyWith(
+    onSurface: deepen(scheme.onSurface, _lightOnSurfaceDeepen),
+    onSurfaceVariant: deepen(
+      scheme.onSurfaceVariant,
+      _lightOnSurfaceVariantDeepen,
+    ),
+  );
+}
+
+TextTheme _textThemeWithForeground(TextTheme theme, ColorScheme scheme) =>
+    theme.apply(bodyColor: scheme.onSurface, displayColor: scheme.onSurface);
+
+ThemeData _withSoftenedForeground(ThemeData base) {
+  final scheme = _softenedForegroundColorScheme(base.colorScheme);
+  return base.copyWith(
+    colorScheme: scheme,
+    textTheme: _textThemeWithForeground(base.textTheme, scheme),
+  );
+}
+
 ThemeData _applyTypography(
   ThemeData flexTheme, {
   AppTypographyScale typographyScale = AppTypographyScale.standard,
 }) {
+  flexTheme = _withSoftenedForeground(flexTheme);
   final typographyTheme = AppTypographyTheme.fromScale(typographyScale);
   final useRuntimeGoogleFonts = _googleFontsNetworkAllowed();
   final compactOutlinedButton = OutlinedButtonThemeData(
@@ -189,8 +234,12 @@ ThemeData _applyTypography(
       colorScheme: flexTheme.colorScheme,
       useMaterial3: true,
     );
-    final textTheme = applyAppInputTextStyles(
-      materializeM3TextThemeSizes(seed.textTheme, scale: typographyScale),
+    final scheme = flexTheme.colorScheme;
+    final textTheme = _textThemeWithForeground(
+      applyAppInputTextStyles(
+        materializeM3TextThemeSizes(seed.textTheme, scale: typographyScale),
+      ),
+      scheme,
     );
     return flexTheme.copyWith(
       visualDensity: VisualDensity.compact,
@@ -215,8 +264,12 @@ ThemeData _applyTypography(
     typographySeed.primaryTextTheme,
   );
   final appUiFont = GoogleFonts.notoSansSc();
-  final mergedTextTheme = applyAppInputTextStyles(
-    materializeM3TextThemeSizes(textTheme, scale: typographyScale),
+  final scheme = flexTheme.colorScheme;
+  final mergedTextTheme = _textThemeWithForeground(
+    applyAppInputTextStyles(
+      materializeM3TextThemeSizes(textTheme, scale: typographyScale),
+    ),
+    scheme,
   );
 
   return flexTheme.copyWith(
