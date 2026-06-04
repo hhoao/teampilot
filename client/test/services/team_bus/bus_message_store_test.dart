@@ -58,6 +58,66 @@ void main() {
     expect(await store.unreadCount('leader'), 0);
   });
 
+  test('receivePending drains hot but leaves cold unread until ack', () async {
+    final store = InMemoryBusMessageStore();
+    final bus = TeamBus(launcher: FakeMemberLauncher(), messageStore: store);
+    final node = AgentNode.test(
+      memberId: 'leader',
+      lifecycle: MemberLifecycle.running,
+      activity: MemberActivity.active,
+    );
+    bus.declareMember(node);
+
+    await store.append(
+      'leader',
+      TeamMessage(id: '1', from: 'w', to: 'leader', content: 'hi'),
+    );
+    node.inbox.deliver(
+      TeamMessage(id: '1', from: 'w', to: 'leader', content: 'hi'),
+    );
+
+    final batch = await bus.receivePending('leader');
+    expect(batch, hasLength(1));
+    // hot drained, but cold still UNREAD — not consumed until delivery confirmed.
+    expect(node.inbox.unreadCount, 0);
+    expect(await store.unreadCount('leader'), 1);
+
+    await bus.acknowledgeDelivery('leader', ['1']);
+    expect(await store.unreadCount('leader'), 0);
+  });
+
+  test('redeliver re-queues a drained batch so it is not lost on disconnect',
+      () async {
+    final store = InMemoryBusMessageStore();
+    final bus = TeamBus(launcher: FakeMemberLauncher(), messageStore: store);
+    final node = AgentNode.test(
+      memberId: 'leader',
+      lifecycle: MemberLifecycle.running,
+      activity: MemberActivity.active,
+    );
+    bus.declareMember(node);
+
+    await store.append(
+      'leader',
+      TeamMessage(id: '1', from: 'w', to: 'leader', content: 'hi'),
+    );
+    node.inbox.deliver(
+      TeamMessage(id: '1', from: 'w', to: 'leader', content: 'hi'),
+    );
+
+    final batch = await bus.receivePending('leader');
+    expect(node.inbox.unreadCount, 0);
+
+    // Simulate the SSE write failing before confirm: roll back into the inbox.
+    bus.redeliver('leader', batch);
+    expect(node.inbox.unreadCount, 1);
+    // Cold layer was never marked read, so a reconnecting member still sees it.
+    expect(await store.unreadCount('leader'), 1);
+
+    final again = await bus.receivePending('leader');
+    expect(again.map((m) => m.id), ['1']);
+  });
+
   test('rehydrateUnread restores cold unread into hot mailbox', () async {
     final store = InMemoryBusMessageStore();
     final bus = TeamBus(launcher: FakeMemberLauncher(), messageStore: store);

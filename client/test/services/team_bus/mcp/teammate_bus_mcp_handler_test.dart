@@ -4,6 +4,7 @@ import 'package:teampilot/services/team_bus/agent_node.dart';
 import 'package:teampilot/services/team_bus/mcp/jsonrpc.dart';
 import 'package:teampilot/services/team_bus/mcp/teammate_bus_mcp_config.dart';
 import 'package:teampilot/services/team_bus/mcp/teammate_bus_mcp_handler.dart';
+import 'package:teampilot/services/team_bus/persistence/in_memory_bus_message_store.dart';
 import 'package:teampilot/services/team_bus/team_bus.dart';
 import 'package:teampilot/services/team_bus/team_message.dart';
 
@@ -104,6 +105,56 @@ void main() {
 
     expect(target.inbox.isEmpty, isFalse);
     expect((res!.result!['content'] as List).first, {'type': 'text', 'text': 'sent'});
+  });
+
+  test('read_messages browses without consuming by default', () async {
+    final store = InMemoryBusMessageStore();
+    final bus = TeamBus(launcher: FakeMemberLauncher(), messageStore: store);
+    final leader = AgentNode.test(
+      memberId: 'leader',
+      lifecycle: MemberLifecycle.running,
+      activity: MemberActivity.active,
+    );
+    bus.declareMember(leader);
+    const msg = TeamMessage(id: '1', from: 'w', to: 'leader', content: 'hi');
+    await store.append('leader', msg);
+    leader.inbox.deliver(msg);
+    final handler = TeammateBusMcpHandler(bus: bus);
+
+    // No mark_read in the call → default browse, must NOT consume.
+    await handler.handle(
+      'leader',
+      const JsonRpcRequest(id: 3, method: 'tools/call', params: {
+        'name': 'read_messages',
+        'arguments': <String, Object?>{},
+      }),
+    );
+    expect(leader.inbox.unreadCount, 1, reason: 'browse must not drain hot queue');
+    expect(await bus.unreadCountFor('leader'), 1);
+
+    // Explicit mark_read=true consumes the page.
+    await handler.handle(
+      'leader',
+      const JsonRpcRequest(id: 4, method: 'tools/call', params: {
+        'name': 'read_messages',
+        'arguments': {'mark_read': true},
+      }),
+    );
+    expect(leader.inbox.unreadCount, 0);
+    expect(await bus.unreadCountFor('leader'), 0);
+  });
+
+  test('read_messages exposes mark_read in its input schema', () async {
+    final res = await _handler().handle(
+      'leader',
+      const JsonRpcRequest(id: 9, method: 'tools/list'),
+    );
+    final tools = res!.result!['tools'] as List;
+    final readTool = tools.firstWhere((t) => (t as Map)['name'] == 'read_messages')
+        as Map;
+    final props =
+        (readTool['inputSchema'] as Map)['properties'] as Map<String, Object?>;
+    expect(props.containsKey('mark_read'), isTrue);
   });
 
   test('send_message with to=* broadcasts and materializes declared teammates', () async {

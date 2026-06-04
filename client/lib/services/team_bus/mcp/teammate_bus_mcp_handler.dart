@@ -7,6 +7,23 @@ import '../team_message.dart';
 import '../teammate_snapshot.dart';
 import 'jsonrpc.dart';
 
+/// 流式 `wait_for_message` 的投递句柄：响应体 + 「送达确认 / 断连回滚」两个钩子。
+class WaitDelivery {
+  const WaitDelivery({
+    required this.response,
+    required this.confirm,
+    required this.abort,
+  });
+
+  final JsonRpcResponse response;
+
+  /// 结果成功写回 SSE 后调：把这批标记已读。
+  final Future<void> Function() confirm;
+
+  /// 结果写回失败（客户端断连）后调：把这批放回信箱，避免丢消息。
+  final void Function() abort;
+}
+
 /// 把 MCP JSON-RPC 调用分发到 [TeamBus]。纯逻辑，不依赖 HTTP。
 /// [memberId] 来自传输层解析的身份头。返回 null = 通知（无响应/202）。
 class TeammateBusMcpHandler {
@@ -70,6 +87,19 @@ class TeammateBusMcpHandler {
   bool isLongRunning(JsonRpcRequest req) =>
       req.method == 'tools/call' && (req.params['name'] == 'wait_for_message');
 
+  /// 流式 `wait_for_message`：抽干热信箱但 **不** 标记已读，连同 confirm/abort
+  /// 钩子返回给传输层 —— 仅当结果成功写回 SSE 后 [WaitDelivery.confirm] 才标记
+  /// 已读；客户端断连则 [WaitDelivery.abort] 把批次放回信箱，避免丢消息。
+  Future<WaitDelivery> beginWait(String memberId, JsonRpcRequest req) async {
+    final batch = await _bus.receivePending(memberId);
+    final ids = [for (final m in batch) m.id];
+    return WaitDelivery(
+      response: _ok(req.id, _encodeBatch(batch)),
+      confirm: () => _bus.acknowledgeDelivery(memberId, ids),
+      abort: () => _bus.redeliver(memberId, batch),
+    );
+  }
+
   static const _toolDefs = <Map<String, Object?>>[
     {
       'name': 'list_teammates',
@@ -102,9 +132,10 @@ class TeammateBusMcpHandler {
     {
       'name': 'read_messages',
       'description':
-          'Page through persisted mailbox (unread by default). Use after_id '
-          'from the previous page for pagination. Set mark_read=true to '
-          'consume without blocking in wait_for_message.',
+          'Page through persisted mailbox (unread by default) WITHOUT consuming. '
+          'Use after_id from the previous page for pagination. Set '
+          'mark_read=true to consume the returned page (mark read + drop from '
+          'the wait_for_message queue) instead of blocking in wait_for_message.',
       'inputSchema': {
         'type': 'object',
         'additionalProperties': false,
@@ -112,6 +143,7 @@ class TeammateBusMcpHandler {
           'after_id': {'type': 'string'},
           'limit': {'type': 'integer', 'minimum': 1, 'maximum': 100},
           'unread_only': {'type': 'boolean'},
+          'mark_read': {'type': 'boolean'},
         },
         'required': <String>[],
       },
@@ -161,7 +193,8 @@ class TeammateBusMcpHandler {
         final afterId = (args['after_id'] as String?)?.trim();
         final limit = (args['limit'] as num?)?.toInt() ?? 20;
         final unreadOnly = args['unread_only'] as bool? ?? true;
-        final markRead = args['mark_read'] as bool? ?? true;
+        // 默认浏览不消费（与工具描述一致）；wait_for_message 才是消费路径。
+        final markRead = args['mark_read'] as bool? ?? false;
         final page = await _bus.readMessages(
           memberId,
           afterId: afterId?.isEmpty == true ? null : afterId,

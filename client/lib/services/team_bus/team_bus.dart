@@ -88,28 +88,63 @@ class TeamBus {
   List<TeammateSnapshot> listTeammates() => rosterSnapshot().members;
 
   /// 阻塞接收（MCP `wait_for_message` 落点）；[timeout] 为 null 时无限等待。
+  ///
+  /// 抽干热信箱 **并立即** 把这批标记已读 —— 仅当传输层确保能把结果送达 CLI 时
+  /// 才该用它（例如非流式调用 / 测试）。流式 SSE 路径请改用
+  /// [receivePending] + [acknowledgeDelivery] / [redeliver]，否则客户端中途断连
+  /// 会「已读但未投递」丢消息。
   Future<List<TeamMessage>> receive(
+    String memberId, {
+    Duration? timeout,
+  }) async {
+    final batch = await receivePending(memberId, timeout: timeout);
+    if (batch.isNotEmpty) {
+      await acknowledgeDelivery(memberId, batch.map((m) => m.id));
+    }
+    return batch;
+  }
+
+  /// 抽干热信箱但 **不** 标记已读（冷层仍为未读）。流式传输层在结果写回成功后
+  /// 调 [acknowledgeDelivery]，失败（客户端断连）则调 [redeliver] 回滚。
+  Future<List<TeamMessage>> receivePending(
     String memberId, {
     Duration? timeout,
   }) async {
     final node = _members[memberId];
     if (node == null) {
-      return Future.value(const <TeamMessage>[]);
+      return const <TeamMessage>[];
     }
-    if (node.lifecycle == MemberLifecycle.running) {
+    if (node.ptyRunning) {
       node.activity = MemberActivity.turnDoneBusWait;
     }
     try {
-      final batch = await node.inbox.waitBatch(timeout: timeout);
-      if (batch.isNotEmpty) {
-        await _messageStore?.markRead(memberId, batch.map((m) => m.id));
-      }
-      return batch;
+      return await node.inbox.waitBatch(timeout: timeout);
     } finally {
-      if (node.lifecycle == MemberLifecycle.running &&
+      if (node.ptyRunning &&
           node.activity == MemberActivity.turnDoneBusWait) {
         node.activity = MemberActivity.active;
       }
+    }
+  }
+
+  /// 结果已成功送达 CLI → 冷层标记已读（热层抽干已发生在 [receivePending]）。
+  Future<void> acknowledgeDelivery(
+    String memberId,
+    Iterable<String> messageIds,
+  ) async {
+    final ids = messageIds.toList(growable: false);
+    if (ids.isEmpty) return;
+    await _messageStore?.markRead(memberId, ids);
+  }
+
+  /// 结果写回失败（SSE 断连）→ 把抽干的批次放回热信箱，避免「已读但未投递」丢失。
+  /// 冷层从未标记已读，故无需回滚冷层；[Mailbox.deliver] 按 id 去重，重连安全。
+  void redeliver(String memberId, List<TeamMessage> batch) {
+    if (batch.isEmpty) return;
+    final node = _members[memberId];
+    if (node == null) return;
+    for (final message in batch) {
+      node.inbox.deliver(message);
     }
   }
 
@@ -179,7 +214,15 @@ class TeamBus {
     _syncDeclaredInboxActivity(node);
     final store = _messageStore;
     if (store == null) return;
-    unawaited(store.append(memberId, message));
+    // fire-and-forget 持久化：吞掉 IO 失败为日志，避免变成未捕获的异步错误。
+    unawaited(
+      store.append(memberId, message).catchError((Object e) {
+        appLogger.w(
+          '[team-bus] cold-store append failed member=$memberId '
+          'msg=${message.id}: $e',
+        );
+      }),
+    );
   }
 
   /// declared 且无 PTY：有信 → [MemberActivity.mailQueued]。
@@ -349,6 +392,13 @@ class TeamBus {
         node.activity = MemberActivity.active;
         _launcher.wake(node.memberId, doorbellNotice);
       }
+    }
+  }
+
+  /// 关闭 session：释放每个信箱的 Timer / 挂起 waiter，防泄漏。
+  void dispose() {
+    for (final node in _members.values) {
+      node.inbox.dispose();
     }
   }
 }

@@ -154,19 +154,22 @@ class TeammateBusMcpServer {
     });
 
     try {
-      final res = await handler.handle(member, rpc);
+      // 抽干信箱但不标记已读：写回成功 → confirm(标记已读)；失败 → abort(放回信箱)。
+      final delivery = await handler.beginWait(member, rpc);
       try {
-        response.write('event: message\ndata: ${res!.encode()}\n\n');
+        response.write('event: message\ndata: ${delivery.response.encode()}\n\n');
         await response.flush();
+        await delivery.confirm();
         appLogger.i(
           '[teammate-bus-mcp] stream delivered result member=$member '
           't=${sw.elapsed.inSeconds}s pings=$pings',
         );
       } catch (e) {
+        delivery.abort();
         appLogger.w(
           '[teammate-bus-mcp] result write FAILED member=$member '
-          't=${sw.elapsed.inSeconds}s — client gone, this message was '
-          'consumed but NOT delivered (potential loss): $e',
+          't=${sw.elapsed.inSeconds}s — client gone; batch re-queued to the '
+          'inbox (not lost), will redeliver on reconnect: $e',
         );
       }
     } finally {

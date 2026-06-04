@@ -44,18 +44,40 @@ class Mailbox {
     if (_queue.isNotEmpty) {
       return Future.value(_drain());
     }
+    // 重入保护：协议上每成员串行，但若上一个 waiter 仍挂着（未完成）就被覆盖，
+    // 它的 future 将永不完成 → 泄漏。先以空批结束旧 waiter。
+    final stale = _waiter;
+    if (stale != null && !stale.isCompleted) {
+      stale.complete(const <TeamMessage>[]);
+    }
     final completer = Completer<List<TeamMessage>>();
     _waiter = completer;
     Timer? timer;
     if (timeout != null) {
       timer = Timer(timeout, () {
         if (!completer.isCompleted) {
-          _waiter = null;
+          if (identical(_waiter, completer)) _waiter = null;
+          // 超时即放弃本次等待：取消可能挂起的 debounce flush，避免它之后空跑。
+          _flushTimer?.cancel();
+          _flushTimer = null;
           completer.complete(const <TeamMessage>[]);
         }
       });
     }
     return completer.future.whenComplete(() => timer?.cancel());
+  }
+
+  /// 拆 session：取消 timer、以空批结束挂起的 waiter，防 Timer / Future 泄漏。
+  void dispose() {
+    _flushTimer?.cancel();
+    _flushTimer = null;
+    final waiter = _waiter;
+    _waiter = null;
+    if (waiter != null && !waiter.isCompleted) {
+      waiter.complete(const <TeamMessage>[]);
+    }
+    _queue.clear();
+    _queuedIds.clear();
   }
 
   List<TeamMessage> drainAll() => _drain();

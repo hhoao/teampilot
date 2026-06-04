@@ -36,6 +36,7 @@ class ChatTab {
 
   Future<void> disposeBus() async {
     await mcpServer?.stop();
+    teamBus?.dispose();
     teamBus = null;
     mcpServer = null;
   }

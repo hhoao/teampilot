@@ -19,7 +19,9 @@ class TeamMessage {
 
   final String content;
 
-  /// 防环：每次转发 +1。
+  /// 广播扇出深度计数：仅 [TeamBus.broadcast] 每跳 +1，超 maxHop 丢弃，防广播风暴。
+  /// 注意：点对点 `send_message` 不经总线自动转发（由 agent 主动发起），故此计数
+  /// **不**保护 A↔B 直接互发的 ping-pong 循环——那需由 agent 行为层面约束。
   final int hop;
 
   TeamMessage copyWith({

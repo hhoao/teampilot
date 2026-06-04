@@ -113,11 +113,8 @@ class FileBusMessageStore implements BusMessageStore {
           createdAt: _clock(),
         ).toJson(),
       );
-      final existing = await _fs.readString(path);
-      final next = existing == null || existing.isEmpty
-          ? '$line\n'
-          : '$existing$line\n';
-      await _fs.atomicWrite(path, next);
+      // 真正的 append（O(1)），而非整文件读改写。mark-read 仍需全量重写。
+      await _fs.appendString(path, '$line\n');
     });
   }
 
@@ -173,13 +170,17 @@ class FileBusMessageStore implements BusMessageStore {
 
   @override
   Future<int> unreadCount(String memberId) async {
-    final records = await _readAll(memberId);
-    return records.where((r) => r.isUnread).length;
+    return _locked(memberId, () async {
+      final records = await _readAll(memberId);
+      return records.where((r) => r.isUnread).length;
+    });
   }
 
   @override
   Future<List<TeamMessage>> loadUnread(String memberId) async {
-    final records = await _readAll(memberId);
-    return [for (final r in records) if (r.isUnread) r.message];
+    return _locked(memberId, () async {
+      final records = await _readAll(memberId);
+      return [for (final r in records) if (r.isUnread) r.message];
+    });
   }
 }
