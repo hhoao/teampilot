@@ -14,6 +14,7 @@ import '../services/app/platform_utils.dart';
 import '../utils/app_keys.dart';
 import '../utils/debounce/debounce.dart';
 import '../widgets/right_tools/right_tools_panel.dart';
+import 'chat/team_config_incomplete_dialog.dart';
 import 'chat_workbench.dart';
 import 'workspace_shell/workspace_shell.dart';
 
@@ -54,6 +55,7 @@ class ChatPage extends StatelessWidget {
 
     Widget buildShell({Widget? rightTools}) {
       return WorkspaceShell(
+        workspaceTerminalWorkingDirectory: cwd,
         showHeader: false,
         breadcrumb: '${team.name} / Chat / Shell chat workbench',
         title: 'Shell chat workbench',
@@ -146,7 +148,20 @@ class ChatPage extends StatelessWidget {
           ).showSnackBar(SnackBar(content: Text(message)));
           listenerContext.read<EditorCubit>().clearSnackbarMessage();
         },
-        child: child,
+        child: BlocListener<ChatCubit, ChatState>(
+          listenWhen: (previous, next) =>
+              previous.teamConfigValidation != next.teamConfigValidation &&
+              next.teamConfigValidation != null,
+          listener: (listenerContext, state) {
+            final validation = state.teamConfigValidation;
+            listenerContext.read<ChatCubit>().clearTeamConfigValidation();
+            if (validation == null || !listenerContext.mounted) return;
+            unawaited(
+              showTeamConfigIncompleteDialog(listenerContext, validation),
+            );
+          },
+          child: child,
+        ),
       ),
     );
   }

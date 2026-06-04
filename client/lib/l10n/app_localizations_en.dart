@@ -1293,6 +1293,43 @@ class AppLocalizationsEn extends AppLocalizations {
       'Claude Official credentials are missing for this team provider. Sign in from Providers settings.';
 
   @override
+  String get teamConfigIncompleteTitle => 'Team configuration incomplete';
+
+  @override
+  String teamConfigIncompleteBody(String team) {
+    return 'Team \"$team\" is missing settings needed to launch. The session still starts, but agents may fail without them:';
+  }
+
+  @override
+  String get teamConfigIncompleteGoConfigure => 'Configure team';
+
+  @override
+  String get teamConfigIncompleteDismiss => 'Later';
+
+  @override
+  String get teamConfigGroupTeamDefault => 'Team default';
+
+  @override
+  String get teamConfigAspectDefaultProvider => 'Default provider';
+
+  @override
+  String get teamConfigAspectProvider => 'Provider';
+
+  @override
+  String get teamConfigAspectModel => 'Model';
+
+  @override
+  String get teamConfigAspectCli => 'CLI';
+
+  @override
+  String get teamConfigAspectSeparator => ', ';
+
+  @override
+  String teamConfigIssueSemanticLabel(String subject, String aspects) {
+    return '$subject is missing: $aspects';
+  }
+
+  @override
   String get noModelsUsingProvider => 'No models are using this provider.';
 
   @override

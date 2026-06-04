@@ -3,6 +3,7 @@ import 'package:path/path.dart' as p;
 import '../../models/team_config.dart';
 import '../../utils/team_member_naming.dart';
 import '../team/claude_team_roster_service.dart';
+import '../team_bus/mcp/teammate_bus_mcp_config.dart';
 import '../io/filesystem.dart';
 
 /// Provisions per-member role prompts and coordinator-style settings for Claude.
@@ -18,6 +19,13 @@ abstract final class MemberRoleProvision {
 
   /// Denied for every Claude team member — roster is provisioned by TeamPilot.
   static const teamSessionDenyTools = <String>['TeamCreate', 'TeamDelete'];
+
+  /// Auto-allowed in mixed mode so the teammate-bus MCP tools (list_teammates,
+  /// send_message, wait_for_message, add_tasks, update_task, …) never prompt.
+  /// `mcp__<server>` whitelists every tool exposed by that MCP server.
+  static const mixedTeamSessionAllowTools = <String>[
+    'mcp__$teammateBusMcpServerName',
+  ];
 
   /// Appended to every team-lead [role.md] (identity and team layout).
   static const teamLeadRoleAddendum = '''
@@ -146,10 +154,12 @@ This tab is **plan-and-assign only**: Bash, PowerShell, Edit, Write, NotebookEdi
     return path;
   }
 
-  /// Merges deny rules for Claude team sessions (lead and teammates).
+  /// Merges deny rules for Claude team sessions (lead and teammates). In mixed
+  /// mode also pre-allows the teammate-bus MCP tools so they never prompt.
   static Map<String, Object?> applyTeamSessionPolicy(
-    Map<String, Object?> settings,
-  ) {
+    Map<String, Object?> settings, {
+    bool mixed = false,
+  }) {
     final merged = Map<String, Object?>.from(settings);
     final permissions = Map<String, Object?>.from(
       (merged['permissions'] as Map?)?.cast<String, Object?>() ?? const {},
@@ -163,6 +173,16 @@ This tab is **plan-and-assign only**: Bash, PowerShell, Edit, Write, NotebookEdi
       ...teamSessionDenyTools,
     }.toList(growable: false);
     permissions['deny'] = deny;
+    if (mixed) {
+      final existingAllow = <String>[
+        for (final entry in (permissions['allow'] as List?) ?? const [])
+          if (entry is String) entry,
+      ];
+      permissions['allow'] = <String>{
+        ...existingAllow,
+        ...mixedTeamSessionAllowTools,
+      }.toList(growable: false);
+    }
     merged['permissions'] = permissions;
     return merged;
   }

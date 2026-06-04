@@ -22,6 +22,7 @@ class HomeWorkspaceTeamTab extends StatefulWidget {
     required this.section,
     required this.team,
     required this.cubit,
+    this.initialMemberId,
     this.onSelectGlobalView,
     super.key,
   });
@@ -29,6 +30,10 @@ class HomeWorkspaceTeamTab extends StatefulWidget {
   final TeamConfigSection section;
   final TeamConfig team;
   final TeamCubit cubit;
+
+  /// Member to pre-select in the Members section (deep-link); null picks the
+  /// first member.
+  final String? initialMemberId;
 
   /// Switches the workspace right pane to a global management view. Lets the
   /// reused skills/plugins/MCP sections jump to v2 global management instead of
@@ -40,7 +45,7 @@ class HomeWorkspaceTeamTab extends StatefulWidget {
 }
 
 class _HomeWorkspaceTeamTabState extends State<HomeWorkspaceTeamTab> {
-  String? _selectedMemberId;
+  late String? _selectedMemberId = widget.initialMemberId;
 
   String? get _resolvedMemberId {
     final members = widget.team.members;

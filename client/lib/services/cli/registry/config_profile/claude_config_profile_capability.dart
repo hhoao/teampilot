@@ -402,7 +402,7 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
       member,
     );
     var settings = _memberSettings(providerSettings, member, mixed: mixed);
-    settings = MemberRoleProvision.applyTeamSessionPolicy(settings);
+    settings = MemberRoleProvision.applyTeamSessionPolicy(settings, mixed: mixed);
     if (mixed && idleUrl != null && idleUrl.isNotEmpty) {
       settings = mergeStopIdleHook(settings, member.id, idleUrl);
     }

@@ -462,6 +462,28 @@
   "claudeOfficialCredentialsActionSuccess": "凭据已更新",
   "claudeOfficialCredentialsActionFailed": "凭据更新失败",
   "claudeLaunchCredentialsMissingWarning": "该 Team 绑定的 Claude Official Provider 缺少凭据，请在 Providers 设置中登录。",
+  "teamConfigIncompleteTitle": "团队配置不完整",
+  "teamConfigIncompleteBody": "团队“{team}”缺少启动所需的配置。会话仍会启动，但缺少这些配置时智能体可能无法正常工作：",
+  "@teamConfigIncompleteBody": {
+    "placeholders": {
+      "team": { "type": "String" }
+    }
+  },
+  "teamConfigIncompleteGoConfigure": "前往配置",
+  "teamConfigIncompleteDismiss": "稍后",
+  "teamConfigGroupTeamDefault": "团队默认",
+  "teamConfigAspectDefaultProvider": "默认服务商",
+  "teamConfigAspectProvider": "服务商",
+  "teamConfigAspectModel": "模型",
+  "teamConfigAspectCli": "CLI",
+  "teamConfigAspectSeparator": "、",
+  "teamConfigIssueSemanticLabel": "{subject}缺少：{aspects}",
+  "@teamConfigIssueSemanticLabel": {
+    "placeholders": {
+      "subject": { "type": "String" },
+      "aspects": { "type": "String" }
+    }
+  },
   "noModelsUsingProvider": "没有模型使用此提供商。",
   "modelsUsingProviderTitle": "使用此提供商的模型",
   "selectProvider": "从列表中选择一个提供商",

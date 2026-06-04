@@ -50,6 +50,17 @@ void main() {
     return jsonDecode(text) as Map<String, Object?>;
   }
 
+  Future<Map<String, Object?>> postIdle(String member) async {
+    final req = await client.postUrl(
+      Uri.parse('http://127.0.0.1:${server.port}/idle'),
+    );
+    req.headers.set('X-Member', member);
+    req.add(utf8.encode('{}'));
+    final resp = await req.close();
+    final body = await resp.transform(utf8.decoder).join();
+    return jsonDecode(body) as Map<String, Object?>;
+  }
+
   test(
     'initialize over real HTTP returns protocol + tools capability',
     () async {
@@ -91,16 +102,8 @@ void main() {
       );
       bus.declareMember(node);
 
-      final req = await client.postUrl(
-        Uri.parse('http://127.0.0.1:${server.port}/idle'),
-      );
-      req.headers.set('X-Member', 'leader');
-      req.add(utf8.encode(jsonEncode({'stop_hook_active': false})));
-      final resp = await req.close();
-      final body = await resp.transform(utf8.decoder).join();
+      final json = await postIdle('leader');
 
-      expect(resp.statusCode, 200);
-      final json = jsonDecode(body) as Map<String, Object?>;
       expect(json['decision'], 'block');
       expect(json['reason'], contains('wait_for_message'));
       // notifyIdle still runs: empty inbox settles at turnDoneReady, no doorbell.
@@ -110,7 +113,7 @@ void main() {
   );
 
   test(
-    'POST /idle allows the stop when stop_hook_active (no block loop)',
+    'POST /idle keeps blocking, only fuses out after consecutive spins',
     () async {
       bus.declareMember(
         AgentNode.test(
@@ -120,18 +123,48 @@ void main() {
         ),
       );
 
-      final req = await client.postUrl(
-        Uri.parse('http://127.0.0.1:${server.port}/idle'),
-      );
-      req.headers.set('X-Member', 'leader');
-      req.add(utf8.encode(jsonEncode({'stop_hook_active': true})));
-      final resp = await req.close();
-      final body = await resp.transform(utf8.decoder).join();
-
-      expect(resp.statusCode, 200);
-      expect(jsonDecode(body), <String, Object?>{});
+      // Every idle blocks until the runaway fuse trips — no wait in between.
+      for (var i = 0; i < TeammateBusMcpHandler.maxConsecutiveIdleStops; i++) {
+        expect((await postIdle('leader'))['decision'], 'block');
+      }
+      // Spinning without ever calling wait_for_message → fuse allows the stop.
+      expect(await postIdle('leader'), <String, Object?>{});
     },
   );
+
+  test('wait_for_message resets the idle fuse', () async {
+    final leader = AgentNode.test(
+      memberId: 'leader',
+      lifecycle: MemberLifecycle.running,
+      activity: MemberActivity.active,
+    );
+    bus.declareMember(leader);
+
+    // Walk right up to the fuse threshold.
+    for (var i = 0; i < TeammateBusMcpHandler.maxConsecutiveIdleStops; i++) {
+      expect((await postIdle('leader'))['decision'], 'block');
+    }
+
+    // A real wait (message already pending → returns immediately) clears it.
+    await rpc('leader', {
+      'jsonrpc': '2.0',
+      'id': 8,
+      'method': 'tools/call',
+      'params': {
+        'name': 'send_message',
+        'arguments': {'to': 'leader', 'content': 'go'},
+      },
+    });
+    await rpc('leader', {
+      'jsonrpc': '2.0',
+      'id': 9,
+      'method': 'tools/call',
+      'params': {'name': 'wait_for_message', 'arguments': <String, Object?>{}},
+    });
+
+    // Streak reset → blocks again instead of fusing out.
+    expect((await postIdle('leader'))['decision'], 'block');
+  });
 
   // NOTE: client-disconnect → park-release is verified deterministically at the
   // bus level (see bus_message_store_test.dart 'receivePending unblocks ... when

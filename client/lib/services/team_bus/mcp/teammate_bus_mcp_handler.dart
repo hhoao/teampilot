@@ -36,6 +36,14 @@ class TeammateBusMcpHandler {
   static const protocolVersion = '2025-06-18';
   static const serverName = 'teampilot-teammate-bus';
 
+  /// 保险丝：连续多少次 idle（中间一次 `wait_for_message` 都没调）后放行 stop。
+  /// 健康循环里每次 block 后成员都会去调 wait（[beginWait] 清零），streak 恒为 1；
+  /// 只有成员空转、从不进 wait 时 streak 才会爬升到这个阈值，触发放行防跑飞。
+  static const maxConsecutiveIdleStops = 3;
+
+  /// 每个成员连续 idle（未进 wait）的次数，喂给上面的保险丝。
+  final Map<String, int> _idleStreak = <String, int>{};
+
   final TeamBus _bus;
   final String Function() idGenerator;
 
@@ -49,11 +57,18 @@ class TeammateBusMcpHandler {
       'task claimed for you from the work queue. You coordinate through the '
       'bus, not by ending your turn.';
 
-  /// Stop hook 的 JSON 响应体：回 `decision:block` 把成员拦在停止前、推回
-  /// `wait_for_message`。[stopHookActive] 为真（上一次已拦过、成员仍想停）时返回
-  /// `{}` 放行,避免 Stop→block 死循环。
-  String stopHookResponse({required bool stopHookActive}) {
-    if (stopHookActive) return '{}';
+  /// Stop hook 的 JSON 响应体：默认永远回 `decision:block`，把成员一直推回
+  /// `wait_for_message`（永不主动结束 turn）。仅当该成员连续 idle 超过
+  /// [maxConsecutiveIdleStops] 次、其间一次 `wait_for_message` 都没调（[beginWait]
+  /// 会清零）时，才返回 `{}` 放行 —— 这是防模型空转烧 token 的唯一逃生阀，
+  /// 故意不看 Claude 的 `stop_hook_active`。
+  String idleStopDecision(String memberId) {
+    final streak = (_idleStreak[memberId] ?? 0) + 1;
+    _idleStreak[memberId] = streak;
+    if (streak > maxConsecutiveIdleStops) {
+      _idleStreak[memberId] = 0;
+      return '{}';
+    }
     return jsonEncode(<String, Object?>{
       'decision': 'block',
       'reason': stopRedirectReason,
@@ -105,6 +120,8 @@ class TeammateBusMcpHandler {
     JsonRpcRequest req, {
     CancellationToken? cancel,
   }) async {
+    // 成员真的进了 wait 循环 → 健康，清零空转保险丝（见 [idleStopDecision]）。
+    _idleStreak[memberId] = 0;
     final outcome = await _bus.receiveWork(memberId, cancel: cancel);
     switch (outcome) {
       case MessageWork(:final messages):

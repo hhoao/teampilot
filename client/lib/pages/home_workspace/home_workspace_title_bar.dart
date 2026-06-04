@@ -28,10 +28,17 @@ Future<T?> _windowManagerCall<T>(Future<T> Function() action) async {
 /// brand colors.
 /// An open project tab in the title bar.
 class HomeProjectTab {
-  const HomeProjectTab({required this.id, required this.name});
+  const HomeProjectTab({
+    required this.id,
+    required this.name,
+    this.tooltip,
+  });
 
   final String id;
   final String name;
+
+  /// Shown on hover; defaults to [name] when omitted.
+  final String? tooltip;
 }
 
 class HomeWorkspaceTitleBar extends StatefulWidget {
@@ -152,6 +159,7 @@ class _HomeWorkspaceTitleBarState extends State<HomeWorkspaceTitleBar>
                                   widthFactor: 1,
                                   child: _ProjectTab(
                                     label: tab.name,
+                                    tooltip: tab.tooltip ?? tab.name,
                                     active: tab.id == widget.activeProjectId,
                                     onTap: () =>
                                         widget.onSelectTab?.call(tab.id),
@@ -289,12 +297,14 @@ class _HomePill extends StatelessWidget {
 class _ProjectTab extends StatelessWidget {
   const _ProjectTab({
     required this.label,
+    required this.tooltip,
     this.active = false,
     this.onTap,
     this.onClose,
   });
 
   final String label;
+  final String tooltip;
   final bool active;
   final VoidCallback? onTap;
   final VoidCallback? onClose;
@@ -304,51 +314,64 @@ class _ProjectTab extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final styles = AppTextStyles.of(context);
     final Color fg = active ? cs.onSurface : cs.onSurfaceVariant;
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
-      child: Container(
-        constraints: const BoxConstraints(maxWidth: 200),
-        padding: const EdgeInsets.only(left: 12, right: 6, top: 6, bottom: 6),
-        decoration: BoxDecoration(
-          color: active ? cs.surfaceContainerHigh : Colors.transparent,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(
-            color: active
-                ? cs.outlineVariant.withValues(alpha: 0.7)
-                : Colors.transparent,
+    return Tooltip(
+      message: tooltip,
+      waitDuration: const Duration(milliseconds: 500),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 200),
+          padding: const EdgeInsets.only(
+            left: 12,
+            right: 6,
+            top: 6,
+            bottom: 6,
           ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.description_outlined, size: AppIconSizes.md, color: fg),
-            const SizedBox(width: 6),
-            Flexible(
-              child: Text(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: styles.bodySmall.copyWith(
-                  color: fg,
-                  fontWeight: FontWeight.w600,
+          decoration: BoxDecoration(
+            color: active ? cs.surfaceContainerHigh : Colors.transparent,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: active
+                  ? cs.outlineVariant.withValues(alpha: 0.7)
+                  : Colors.transparent,
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.description_outlined,
+                size: AppIconSizes.md,
+                color: fg,
+              ),
+              const SizedBox(width: 6),
+              Flexible(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: styles.bodySmall.copyWith(
+                    color: fg,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(width: 4),
-            InkWell(
-              onTap: onClose,
-              borderRadius: BorderRadius.circular(5),
-              child: Padding(
-                padding: const EdgeInsets.all(2),
-                child: Icon(
-                  Icons.close,
-                  size: AppIconSizes.md,
-                  color: cs.onSurfaceVariant,
+              const SizedBox(width: 4),
+              InkWell(
+                onTap: onClose,
+                borderRadius: BorderRadius.circular(5),
+                child: Padding(
+                  padding: const EdgeInsets.all(2),
+                  child: Icon(
+                    Icons.close,
+                    size: AppIconSizes.md,
+                    color: cs.onSurfaceVariant,
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

@@ -131,4 +131,15 @@ void main() {
     expect(deny['deny'], isNot(contains('Bash')));
     expect(deny['deny'], isNot(contains('Edit')));
   });
+
+  test('applyTeamSessionPolicy pre-allows teammate-bus only in mixed mode', () {
+    final native = MemberRoleProvision.applyTeamSessionPolicy(const {});
+    expect((native['permissions']! as Map)['allow'], isNull);
+
+    final mixed =
+        MemberRoleProvision.applyTeamSessionPolicy(const {}, mixed: true);
+    final permissions = mixed['permissions']! as Map;
+    expect(permissions['allow'], contains('mcp__teammate-bus'));
+    expect(permissions['deny'], contains('TeamCreate'));
+  });
 }

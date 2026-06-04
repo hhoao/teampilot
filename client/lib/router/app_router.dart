@@ -66,8 +66,17 @@ final appRouter = GoRouter(
           routes: [
             GoRoute(
               path: '/home-v2',
-              pageBuilder: (context, state) =>
-                  const NoTransitionPage(child: HomeWorkspacePage()),
+              pageBuilder: (context, state) {
+                final query = state.uri.queryParameters;
+                return NoTransitionPage(
+                  child: HomeWorkspacePage(
+                    initialSection: TeamConfigSection.fromSegment(
+                      query['section'],
+                    ),
+                    initialMemberId: query['member'],
+                  ),
+                );
+              },
             ),
             GoRoute(
               path: '/home-v2/project/:projectId',

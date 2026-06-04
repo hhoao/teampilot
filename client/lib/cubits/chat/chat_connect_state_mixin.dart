@@ -1,5 +1,6 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../services/team/team_config_launch_validator.dart';
 import '../../utils/session_launch_error.dart';
 import 'chat_tab_store.dart';
 import 'model/chat_state.dart';
@@ -110,5 +111,22 @@ mixin ChatConnectStateMixin on Cubit<ChatState> {
   void clearSnackbarMessage() {
     if (isClosed || state.snackbarMessage == null) return;
     emit(state.copyWith(clearSnackbarMessage: true));
+  }
+
+  /// Surfaces incomplete team config (provider/model/CLI) found at session open.
+  /// No-op when there are no issues — launch itself is never blocked.
+  void emitTeamConfigValidation(TeamConfigValidation validation) {
+    if (isClosed || !validation.hasIssues) return;
+    emit(
+      state.copyWith(
+        teamConfigValidation: validation,
+        stateVersion: state.stateVersion + 1,
+      ),
+    );
+  }
+
+  void clearTeamConfigValidation() {
+    if (isClosed || state.teamConfigValidation == null) return;
+    emit(state.copyWith(clearTeamConfigValidation: true));
   }
 }

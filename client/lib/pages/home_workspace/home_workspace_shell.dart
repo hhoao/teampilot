@@ -126,7 +126,11 @@ class _HomeWorkspaceShellState extends State<HomeWorkspaceShell> {
     final tabs = <HomeProjectTab>[
       for (final id in _openIds)
         if (_resolve(projects, id) case final p?)
-          HomeProjectTab(id: id, name: p.effectiveDisplay),
+          HomeProjectTab(
+            id: id,
+            name: p.effectiveDisplay,
+            tooltip: _projectTabTooltip(p),
+          ),
     ];
 
     return Scaffold(
@@ -153,5 +157,12 @@ class _HomeWorkspaceShellState extends State<HomeWorkspaceShell> {
       if (p.projectId == id) return p;
     }
     return null;
+  }
+
+  static String _projectTabTooltip(AppProject project) {
+    final name = project.effectiveDisplay;
+    final path = project.primaryPath.trim();
+    if (path.isEmpty || path == name) return name;
+    return '$name\n$path';
   }
 }

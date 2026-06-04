@@ -1242,6 +1242,43 @@ class AppLocalizationsZh extends AppLocalizations {
       '该 Team 绑定的 Claude Official Provider 缺少凭据，请在 Providers 设置中登录。';
 
   @override
+  String get teamConfigIncompleteTitle => '团队配置不完整';
+
+  @override
+  String teamConfigIncompleteBody(String team) {
+    return '团队“$team”缺少启动所需的配置。会话仍会启动，但缺少这些配置时智能体可能无法正常工作：';
+  }
+
+  @override
+  String get teamConfigIncompleteGoConfigure => '前往配置';
+
+  @override
+  String get teamConfigIncompleteDismiss => '稍后';
+
+  @override
+  String get teamConfigGroupTeamDefault => '团队默认';
+
+  @override
+  String get teamConfigAspectDefaultProvider => '默认服务商';
+
+  @override
+  String get teamConfigAspectProvider => '服务商';
+
+  @override
+  String get teamConfigAspectModel => '模型';
+
+  @override
+  String get teamConfigAspectCli => 'CLI';
+
+  @override
+  String get teamConfigAspectSeparator => '、';
+
+  @override
+  String teamConfigIssueSemanticLabel(String subject, String aspects) {
+    return '$subject缺少：$aspects';
+  }
+
+  @override
   String get noModelsUsingProvider => '没有模型使用此提供商。';
 
   @override

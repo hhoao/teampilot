@@ -9,6 +9,7 @@ import '../../models/team_config.dart';
 import '../../repositories/session_repository.dart';
 import '../../services/session/session_lifecycle_service.dart';
 import '../../services/team/default_team_project_service.dart';
+import '../../services/team/team_config_launch_validator.dart';
 import '../../services/team_bus/mcp/teammate_bus_mcp_config.dart';
 import '../../services/terminal/terminal_session.dart';
 import '../../utils/logger.dart';
@@ -40,6 +41,7 @@ abstract interface class SessionLaunchHost {
   void finishSessionConnect(String sessionId);
   void clearLaunchError(String sessionId);
   void emitLaunchWarnings(List<String> warnings);
+  void emitTeamConfigValidation(TeamConfigValidation validation);
   void updateTabRunning(String tabId);
 
   // Cubit-owned facade methods the launch flow drives.
@@ -78,6 +80,7 @@ class SessionLaunchService implements MemberConnector {
   final SessionLaunchHost _h;
 
   static const _uuid = Uuid();
+  static const _teamConfigValidator = TeamConfigLaunchValidator();
 
   ChatState get _state => _h.state;
   ChatTabStore get _tabStore => _h.tabStore;
@@ -136,6 +139,9 @@ class SessionLaunchService implements MemberConnector {
     if (team != null) {
       _h.activeTeam = team;
       _h.pushPresenceTarget();
+      // Non-blocking pre-launch config check: warn (via dialog) when the team
+      // lacks a usable provider/model (and CLI, in mixed mode).
+      _h.emitTeamConfigValidation(_teamConfigValidator.validate(team));
       if (team.teamMode == TeamMode.mixed) {
         await _h.busCoordinator.installBusForTab(internalTab, team, session);
       }

@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../cubits/team_cubit.dart';
 import '../../theme/workspace_surface_layers.dart';
+import '../team_config/team_config_section.dart';
 import 'home_workspace_content.dart';
 import 'home_workspace_global_section.dart';
 import 'home_workspace_sidebar.dart';
@@ -12,7 +13,18 @@ import 'home_workspace_sidebar.dart';
 /// The right pane shows either the selected team (projects + tabs) or a global
 /// management section (Skills / Plugins / MCP / Extensions).
 class HomeWorkspacePage extends StatefulWidget {
-  const HomeWorkspacePage({super.key});
+  const HomeWorkspacePage({
+    this.initialSection,
+    this.initialMemberId,
+    super.key,
+  });
+
+  /// Team-config tab to open on first build (deep-link from e.g. the launch
+  /// config-incomplete dialog); null shows the default Projects tab.
+  final TeamConfigSection? initialSection;
+
+  /// Member to focus when [initialSection] is [TeamConfigSection.members].
+  final String? initialMemberId;
 
   @override
   State<HomeWorkspacePage> createState() => _HomeWorkspacePageState();
@@ -42,6 +54,8 @@ class _HomeWorkspacePageState extends State<HomeWorkspacePage> {
         Expanded(
           child: globalView == null
               ? HomeWorkspaceContent(
+                  initialSection: widget.initialSection,
+                  initialMemberId: widget.initialMemberId,
                   onSelectGlobalView: (view) =>
                       setState(() => _globalView = view),
                 )

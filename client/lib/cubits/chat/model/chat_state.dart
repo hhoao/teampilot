@@ -5,6 +5,7 @@ import '../../../models/app_project.dart';
 import '../../../models/app_session.dart';
 import '../../../models/ssh_profile.dart';
 import '../../../models/team_config.dart';
+import '../../../services/team/team_config_launch_validator.dart';
 import '../../../services/terminal/terminal_session.dart';
 import 'chat_tab_info.dart';
 
@@ -39,6 +40,7 @@ class ChatState extends Equatable {
     this.snackbarMessage,
     this.sessionConnectingId,
     this.sessionLaunchError,
+    this.teamConfigValidation,
   });
 
   final List<ChatTabInfo> tabs;
@@ -58,6 +60,10 @@ class ChatState extends Equatable {
   /// Launch error when connect fails before a tab exists (empty workbench).
   final String? sessionLaunchError;
 
+  /// Set when a team session opens with incomplete provider/model/CLI config;
+  /// the workbench surfaces a "go configure" dialog. Launch is not blocked.
+  final TeamConfigValidation? teamConfigValidation;
+
   ChatState copyWith({
     List<ChatTabInfo>? tabs,
     int? activeTabIndex,
@@ -75,6 +81,8 @@ class ChatState extends Equatable {
     bool clearSessionConnectingId = false,
     String? sessionLaunchError,
     bool clearSessionLaunchError = false,
+    TeamConfigValidation? teamConfigValidation,
+    bool clearTeamConfigValidation = false,
   }) {
     return ChatState(
       tabs: tabs ?? this.tabs,
@@ -97,6 +105,9 @@ class ChatState extends Equatable {
       sessionLaunchError: clearSessionLaunchError
           ? null
           : (sessionLaunchError ?? this.sessionLaunchError),
+      teamConfigValidation: clearTeamConfigValidation
+          ? null
+          : (teamConfigValidation ?? this.teamConfigValidation),
     );
   }
 
@@ -133,5 +144,6 @@ class ChatState extends Equatable {
     snackbarMessage,
     sessionConnectingId,
     sessionLaunchError,
+    teamConfigValidation,
   ];
 }

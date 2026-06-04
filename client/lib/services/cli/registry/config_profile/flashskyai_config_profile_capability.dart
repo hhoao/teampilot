@@ -204,7 +204,7 @@ final class FlashskyaiConfigProfileCapability
       settingsFileName,
     );
     var settings = _memberSettings(member);
-    settings = MemberRoleProvision.applyTeamSessionPolicy(settings);
+    settings = MemberRoleProvision.applyTeamSessionPolicy(settings, mixed: mixed);
     if (mixed && idleUrl != null && idleUrl.isNotEmpty) {
       settings = mergeStopIdleHook(settings, member.id, idleUrl);
     }

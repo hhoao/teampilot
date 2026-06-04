@@ -2408,6 +2408,72 @@ abstract class AppLocalizations {
   /// **'Claude Official credentials are missing for this team provider. Sign in from Providers settings.'**
   String get claudeLaunchCredentialsMissingWarning;
 
+  /// No description provided for @teamConfigIncompleteTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Team configuration incomplete'**
+  String get teamConfigIncompleteTitle;
+
+  /// No description provided for @teamConfigIncompleteBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Team \"{team}\" is missing settings needed to launch. The session still starts, but agents may fail without them:'**
+  String teamConfigIncompleteBody(String team);
+
+  /// No description provided for @teamConfigIncompleteGoConfigure.
+  ///
+  /// In en, this message translates to:
+  /// **'Configure team'**
+  String get teamConfigIncompleteGoConfigure;
+
+  /// No description provided for @teamConfigIncompleteDismiss.
+  ///
+  /// In en, this message translates to:
+  /// **'Later'**
+  String get teamConfigIncompleteDismiss;
+
+  /// No description provided for @teamConfigGroupTeamDefault.
+  ///
+  /// In en, this message translates to:
+  /// **'Team default'**
+  String get teamConfigGroupTeamDefault;
+
+  /// No description provided for @teamConfigAspectDefaultProvider.
+  ///
+  /// In en, this message translates to:
+  /// **'Default provider'**
+  String get teamConfigAspectDefaultProvider;
+
+  /// No description provided for @teamConfigAspectProvider.
+  ///
+  /// In en, this message translates to:
+  /// **'Provider'**
+  String get teamConfigAspectProvider;
+
+  /// No description provided for @teamConfigAspectModel.
+  ///
+  /// In en, this message translates to:
+  /// **'Model'**
+  String get teamConfigAspectModel;
+
+  /// No description provided for @teamConfigAspectCli.
+  ///
+  /// In en, this message translates to:
+  /// **'CLI'**
+  String get teamConfigAspectCli;
+
+  /// No description provided for @teamConfigAspectSeparator.
+  ///
+  /// In en, this message translates to:
+  /// **', '**
+  String get teamConfigAspectSeparator;
+
+  /// No description provided for @teamConfigIssueSemanticLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'{subject} is missing: {aspects}'**
+  String teamConfigIssueSemanticLabel(String subject, String aspects);
+
   /// No description provided for @noModelsUsingProvider.
   ///
   /// In en, this message translates to:

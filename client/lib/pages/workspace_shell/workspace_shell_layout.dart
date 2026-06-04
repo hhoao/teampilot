@@ -14,6 +14,7 @@ class WorkspaceShellMainWithTerminal extends StatelessWidget {
     required this.rightTools,
     required this.onRightToolsWidthChanged,
     required this.childAnimationKey,
+    this.workspaceTerminalWorkingDirectory,
   });
 
   final LayoutPreferences preferences;
@@ -21,6 +22,7 @@ class WorkspaceShellMainWithTerminal extends StatelessWidget {
   final Widget? rightTools;
   final ValueChanged<double>? onRightToolsWidthChanged;
   final Key? childAnimationKey;
+  final String? workspaceTerminalWorkingDirectory;
 
   @override
   Widget build(BuildContext context) {
@@ -32,16 +34,23 @@ class WorkspaceShellMainWithTerminal extends StatelessWidget {
       preferences: preferences,
       rightTools: rightTools,
       onRightToolsWidthChanged: onRightToolsWidthChanged,
-      child: WorkspaceShellCenterColumnWithTerminal(child: animatedChild),
+      child: WorkspaceShellCenterColumnWithTerminal(
+        workspaceTerminalWorkingDirectory: workspaceTerminalWorkingDirectory,
+        child: animatedChild,
+      ),
     );
   }
 }
 
 /// Bottom terminal under the center workbench only (not under right tools).
 class WorkspaceShellCenterColumnWithTerminal extends StatelessWidget {
-  const WorkspaceShellCenterColumnWithTerminal({required this.child});
+  const WorkspaceShellCenterColumnWithTerminal({
+    required this.child,
+    this.workspaceTerminalWorkingDirectory,
+  });
 
   final Widget child;
+  final String? workspaceTerminalWorkingDirectory;
 
   @override
   Widget build(BuildContext context) {
@@ -56,7 +65,10 @@ class WorkspaceShellCenterColumnWithTerminal extends StatelessWidget {
         if (!prefs.workspaceTerminalVisible) {
           return child;
         }
-        final cwd = context.watch<ChatCubit>().activeTabWorkingDirectory;
+        final scoped = workspaceTerminalWorkingDirectory?.trim() ?? '';
+        final cwd = scoped.isNotEmpty
+            ? scoped
+            : context.watch<ChatCubit>().activeTabWorkingDirectory;
         final terminalHeight = prefs.workspaceTerminalHeight.clamp(
           LayoutPreferences.minWorkspaceTerminalHeight,
           LayoutPreferences.maxWorkspaceTerminalHeight,
@@ -65,7 +77,10 @@ class WorkspaceShellCenterColumnWithTerminal extends StatelessWidget {
           axis: Axis.vertical,
           primaryAtEnd: true,
           first: child,
-          second: WorkspaceTerminalPanel(workingDirectory: cwd),
+          second: WorkspaceTerminalPanel(
+            key: ValueKey('workspace-terminal-$cwd'),
+            workingDirectory: cwd,
+          ),
           initialPrimarySize: terminalHeight,
           minPrimarySize: LayoutPreferences.minWorkspaceTerminalHeight,
           minSecondarySize: LayoutPreferences.minWorkbenchMainWidth,

@@ -19,7 +19,18 @@ import 'home_workspace_team_tab.dart';
 /// Members / Skills & Plugins / Settings), a toolbar, and the project grid for
 /// the selected team. Read-only — actions show a "coming soon" hint.
 class HomeWorkspaceContent extends StatefulWidget {
-  const HomeWorkspaceContent({this.onSelectGlobalView, super.key});
+  const HomeWorkspaceContent({
+    this.initialSection,
+    this.initialMemberId,
+    this.onSelectGlobalView,
+    super.key,
+  });
+
+  /// Team-config tab to select on first build; null shows the Projects tab.
+  final TeamConfigSection? initialSection;
+
+  /// Member to focus when [initialSection] is [TeamConfigSection.members].
+  final String? initialMemberId;
 
   /// Switches the workspace right pane to a global management view, used by the
   /// embedded team skills/plugins/MCP tabs to jump to global management.
@@ -30,8 +41,27 @@ class HomeWorkspaceContent extends StatefulWidget {
 }
 
 class _HomeWorkspaceContentState extends State<HomeWorkspaceContent> {
-  int _tabIndex = 0;
+  // Tab 0 is Projects; the rest reuse the existing team-config sections in the
+  // order the user requested: Members, Skills, Plugins, MCP, Extensions, Team.
+  static const _sections = <TeamConfigSection?>[
+    null,
+    TeamConfigSection.members,
+    TeamConfigSection.skills,
+    TeamConfigSection.plugins,
+    TeamConfigSection.mcp,
+    TeamConfigSection.extensions,
+    TeamConfigSection.team,
+  ];
+
+  late int _tabIndex = _initialTabIndex();
   bool _gridView = true;
+
+  int _initialTabIndex() {
+    final section = widget.initialSection;
+    if (section == null) return 0;
+    final index = _sections.indexOf(section);
+    return index < 0 ? 0 : index;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -55,23 +85,11 @@ class _HomeWorkspaceContentState extends State<HomeWorkspaceContent> {
     }
 
     final teamProjects = _projectsForTeam(team, projects);
-    // Tab 0 is Projects; the rest reuse the existing team-config sections in
-    // the order the user requested: Members, Skills, Plugins, MCP, Extensions,
-    // Team Settings.
-    const sections = <TeamConfigSection?>[
-      null,
-      TeamConfigSection.members,
-      TeamConfigSection.skills,
-      TeamConfigSection.plugins,
-      TeamConfigSection.mcp,
-      TeamConfigSection.extensions,
-      TeamConfigSection.team,
-    ];
     final tabs = <String>[
       l10n.homeWorkspaceTeamProjects,
-      for (final section in sections.skip(1)) section!.title(l10n),
+      for (final section in _sections.skip(1)) section!.title(l10n),
     ];
-    final activeSection = sections[_tabIndex];
+    final activeSection = _sections[_tabIndex];
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(44, 48, 42, 18),
@@ -106,6 +124,10 @@ class _HomeWorkspaceContentState extends State<HomeWorkspaceContent> {
                               section: activeSection,
                               team: team,
                               cubit: teamCubit,
+                              initialMemberId:
+                                  activeSection == TeamConfigSection.members
+                                  ? widget.initialMemberId
+                                  : null,
                               onSelectGlobalView: widget.onSelectGlobalView,
                             ))
                       // Match the global-navigation section transition: fade + slight

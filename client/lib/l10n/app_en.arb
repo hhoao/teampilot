@@ -586,6 +586,28 @@
   "claudeOfficialCredentialsActionSuccess": "Credentials updated",
   "claudeOfficialCredentialsActionFailed": "Could not update credentials",
   "claudeLaunchCredentialsMissingWarning": "Claude Official credentials are missing for this team provider. Sign in from Providers settings.",
+  "teamConfigIncompleteTitle": "Team configuration incomplete",
+  "teamConfigIncompleteBody": "Team \"{team}\" is missing settings needed to launch. The session still starts, but agents may fail without them:",
+  "@teamConfigIncompleteBody": {
+    "placeholders": {
+      "team": { "type": "String" }
+    }
+  },
+  "teamConfigIncompleteGoConfigure": "Configure team",
+  "teamConfigIncompleteDismiss": "Later",
+  "teamConfigGroupTeamDefault": "Team default",
+  "teamConfigAspectDefaultProvider": "Default provider",
+  "teamConfigAspectProvider": "Provider",
+  "teamConfigAspectModel": "Model",
+  "teamConfigAspectCli": "CLI",
+  "teamConfigAspectSeparator": ", ",
+  "teamConfigIssueSemanticLabel": "{subject} is missing: {aspects}",
+  "@teamConfigIssueSemanticLabel": {
+    "placeholders": {
+      "subject": { "type": "String" },
+      "aspects": { "type": "String" }
+    }
+  },
   "noModelsUsingProvider": "No models are using this provider.",
   "modelsUsingProviderTitle": "Models using this provider",
   "selectProvider": "Select a provider from the list",

@@ -37,13 +37,13 @@ class TeammateBusMcpServer {
     try {
       if (request.method == 'POST' && request.uri.path == '/idle') {
         final member = request.headers.value('x-member')?.trim() ?? '';
-        final body = await utf8.decoder.bind(request).join();
+        await request.drain<void>();
         if (member.isNotEmpty) handler.notifyIdle(member);
-        // 回 Stop-hook decision：把成员推回 wait_for_message（除非这次是再入的
-        // stop，stop_hook_active 为真则放行,防死循环）。
+        // 回 Stop-hook decision：永远把成员推回 wait_for_message（永不主动结束），
+        // 仅空转保险丝（idleStopDecision 内部）触发时才放行。
         final reply = member.isEmpty
             ? '{}'
-            : handler.stopHookResponse(stopHookActive: _stopHookActive(body));
+            : handler.idleStopDecision(member);
         request.response
           ..statusCode = HttpStatus.ok
           ..headers.contentType = ContentType(
@@ -204,17 +204,5 @@ class TeammateBusMcpServer {
   Object? _progressToken(JsonRpcRequest rpc) {
     final meta = rpc.params['_meta'];
     return meta is Map ? meta['progressToken'] : null;
-  }
-
-  /// Stop hook 输入里的 `stop_hook_active`：CLI 在「已被 Stop hook 拦过一次仍想停」
-  /// 时置真。用来一次性放行,避免 Stop→block 死循环。
-  bool _stopHookActive(String body) {
-    if (body.trim().isEmpty) return false;
-    try {
-      final json = jsonDecode(body);
-      return json is Map && json['stop_hook_active'] == true;
-    } catch (_) {
-      return false;
-    }
   }
 }
