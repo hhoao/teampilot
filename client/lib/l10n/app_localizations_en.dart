@@ -1762,10 +1762,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get teamExtensionEffectiveOff => 'Inactive for this team';
 
   @override
-  String get teamExtensionRtkGlobalOnlyHint =>
-      'rtk currently applies globally; per-team override is not yet effective.';
-
-  @override
   String get teamMcpNav => 'MCP';
 
   @override

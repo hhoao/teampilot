@@ -13,9 +13,6 @@ abstract final class MemberRoleProvision {
   static const appendSystemPromptFileEnvKey =
       'TEAMPILOT_APPEND_SYSTEM_PROMPT_FILE';
 
-  /// Back-compat alias (Claude + FlashskyAI).
-  static const claudeAppendSystemPromptFileEnvKey = appendSystemPromptFileEnvKey;
-
   static const rolePromptsDirName = 'prompts';
   static const rolePromptFileName = 'role.md';
 

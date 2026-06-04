@@ -849,7 +849,6 @@
   "teamExtensionForceOff": "Off",
   "teamExtensionEffectiveOn": "Active for this team",
   "teamExtensionEffectiveOff": "Inactive for this team",
-  "teamExtensionRtkGlobalOnlyHint": "rtk currently applies globally; per-team override is not yet effective.",
   "teamMcpNav": "MCP",
   "teamHubNav": "TeamHub",
   "teamHubSubtitle": "Discover more public teams",

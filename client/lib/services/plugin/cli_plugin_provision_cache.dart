@@ -38,7 +38,7 @@ class CliPluginProvisionCache {
   /// Skips copying when member plugins already match team bundles.
   ///
   /// Returns member provision stamp JSON, or `null` when a full reprovision is
-  /// needed. Upgrades legacy stamp files in place (no bundle recopy).
+  /// needed.
   static Future<String?> trySkipMemberProvision({
     required Filesystem fs,
     required String teamPluginsDir,
@@ -75,15 +75,8 @@ class CliPluginProvisionCache {
 
     if (saved['teamPluginsDir'] != teamPluginsDir ||
         saved['teamPluginsMtimeMs'] == null ||
-        _stampNeedsTeamEntryNames(saved)) {
-      await _upgradeMemberProvisionStampMetadata(
-        fs: fs,
-        stampPath: stampPath,
-        memberPluginsDir: memberPluginsDir,
-        teamPluginsDir: teamPluginsDir,
-        saved: saved,
-        flavor: flavor,
-      );
+        _stampMissingTeamEntryNames(saved)) {
+      return null;
     }
 
     return memberProvisionStampJson(
@@ -92,7 +85,7 @@ class CliPluginProvisionCache {
     );
   }
 
-  static bool _stampNeedsTeamEntryNames(Map<String, Object?> saved) {
+  static bool _stampMissingTeamEntryNames(Map<String, Object?> saved) {
     final bundles = saved['bundles'] as List? ?? const [];
     for (final bundle in bundles) {
       if (bundle is! Map) continue;
@@ -100,43 +93,6 @@ class CliPluginProvisionCache {
       if (name == null || name.isEmpty) return true;
     }
     return false;
-  }
-
-  /// Adds team fingerprint fields to a legacy stamp without rescanning bundles.
-  static Future<void> _upgradeMemberProvisionStampMetadata({
-    required Filesystem fs,
-    required String stampPath,
-    required String memberPluginsDir,
-    required String teamPluginsDir,
-    required Map<String, Object?> saved,
-    required CliPluginManifestFlavor flavor,
-  }) async {
-    final teamStat = await fs.stat(teamPluginsDir);
-    final bundles = (saved['bundles'] as List? ?? const [])
-        .whereType<Map>()
-        .map((m) => Map<String, Object?>.from(m.cast<String, Object?>()))
-        .toList();
-    for (final bundle in bundles) {
-      final teamEntryName = bundle['teamEntryName'] as String?;
-      if (teamEntryName != null && teamEntryName.isNotEmpty) continue;
-      final source = await _resolveTeamBundleSource(
-        fs: fs,
-        teamPluginsDir: teamPluginsDir,
-        bundle: bundle,
-        flavor: flavor,
-      );
-      if (source != null) {
-        bundle['teamEntryName'] = fs.pathContext.basename(source);
-      }
-    }
-
-    final upgraded = Map<String, Object?>.from(saved)
-      ..['teamPluginsDir'] = teamPluginsDir
-      ..['teamPluginsMtimeMs'] = teamStat.mtime?.millisecondsSinceEpoch ?? 0
-      ..['bundles'] = bundles;
-    final encoded = const JsonEncoder.withIndent('  ').convert(upgraded);
-    await fs.atomicWrite(stampPath, encoded);
-    _memberStampJsonCache[memberPluginsDir] = encoded;
   }
 
   /// Verifies saved bundle fingerprints against team sources (stat only).
@@ -218,11 +174,6 @@ class CliPluginProvisionCache {
 
     final dirName = bundle['dirName'] as String?;
     if (dirName == null || dirName.isEmpty) return null;
-
-    final legacyDirect = ctx.join(teamPluginsDir, dirName);
-    if (await CliPluginLayout.isPluginBundleEntry(fs, legacyDirect)) {
-      return legacyDirect;
-    }
 
     for (final entry in await fs.listDir(teamPluginsDir)) {
       if (entry.name.startsWith('.')) continue;

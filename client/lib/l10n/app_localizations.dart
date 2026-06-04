@@ -3278,12 +3278,6 @@ abstract class AppLocalizations {
   /// **'Inactive for this team'**
   String get teamExtensionEffectiveOff;
 
-  /// No description provided for @teamExtensionRtkGlobalOnlyHint.
-  ///
-  /// In en, this message translates to:
-  /// **'rtk currently applies globally; per-team override is not yet effective.'**
-  String get teamExtensionRtkGlobalOnlyHint;
-
   /// No description provided for @teamMcpNav.
   ///
   /// In en, this message translates to:

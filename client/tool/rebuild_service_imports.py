@@ -17,7 +17,6 @@ FILE_TO_SUBDIR: dict[str, str] = {
     "runtime_storage_context.dart": "storage",
     "flashskyai_storage_roots.dart": "storage",
     "remote_file_store.dart": "storage",
-    "remote_teampilot_app_data_resolver.dart": "storage",
     "remote_ssh_storage_paths.dart": "storage",
     "remote_home_resolver.dart": "storage",
     "terminal_session.dart": "terminal",

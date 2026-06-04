@@ -49,27 +49,6 @@ void main() {
       expect(restored.installed, isEmpty);
       expect(restored.globalEnabled, isEmpty);
       expect(restored.teamOverrides, isEmpty);
-      expect(restored.migrations, isEmpty);
-    });
-
-    test('migrations round-trip and stay out of teamOverrides', () {
-      final state =
-          const ExtensionState().withMigration('rtk_flag_v1');
-      expect(state.migrations, {'rtk_flag_v1'});
-      expect(state.teamOverrides, isEmpty);
-      final restored = ExtensionState.fromJson(state.toJson());
-      expect(restored.migrations, {'rtk_flag_v1'});
-      expect(restored.teamOverrides, isEmpty);
-    });
-
-    test('a team named like a migration key keeps independent overrides', () {
-      final state = const ExtensionState()
-          .withMigration('rtk_flag_v1')
-          .withTeamOverride('rtk_flag_v1', 'codegraph', true);
-      // The migration marker and the (oddly-named) team never share a namespace.
-      expect(state.migrations, {'rtk_flag_v1'});
-      expect(state.teamOverrides['rtk_flag_v1'], {'codegraph': true});
-      expect(state.effectiveEnabled('rtk_flag_v1', 'codegraph'), isTrue);
     });
   });
 

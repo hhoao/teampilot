@@ -4,7 +4,6 @@ import '../../l10n/l10n_extensions.dart';
 import '../../widgets/settings/workspace_hub_shell.dart';
 import '../../widgets/settings/workspace_settings_widgets.dart';
 import 'layout_appearance_in_layout_section.dart';
-import 'layout_extensions_section.dart';
 import 'layout_region_visibility_section.dart';
 import 'layout_tool_settings_section.dart';
 
@@ -46,8 +45,6 @@ class _LayoutSettingsScroll extends StatelessWidget {
           SettingsSurfaceCard(child: LayoutToolSettingsSection()),
           SizedBox(height: _cardGap),
           SettingsSurfaceCard(child: LayoutRegionVisibilitySection()),
-          SizedBox(height: _cardGap),
-          SettingsSurfaceCard(child: LayoutExtensionsSection()),
           SizedBox(height: _cardGap),
           SettingsSurfaceCard(child: LayoutAppearanceInLayoutSection()),
         ],

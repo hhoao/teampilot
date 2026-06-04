@@ -74,14 +74,6 @@ class ExtensionRepository {
   Future<bool> isEffectivelyEnabled(String teamId, String id) async =>
       (await load()).effectiveEnabled(teamId, id);
 
-  Future<bool> isMigrated(String key) async =>
-      (await load()).migrations.contains(key);
-
-  Future<void> markMigrated(String key) async {
-    final state = await load();
-    await save(state.withMigration(key));
-  }
-
   /// Known extension ids that are effectively enabled for [teamId].
   Future<Set<String>> effectiveEnabledIds(String teamId) async {
     final state = await load();

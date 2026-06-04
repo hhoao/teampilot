@@ -120,7 +120,6 @@ class TeamExtensionRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final l10n = context.l10n;
-    final isRtk = row.id == 'rtk';
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Container(
@@ -146,13 +145,6 @@ class TeamExtensionRow extends StatelessWidget {
                           color: cs.onSurface.withValues(alpha: 0.6),
                         ),
                   ),
-                  if (isRtk)
-                    Text(
-                      l10n.teamExtensionRtkGlobalOnlyHint,
-                      style: AppTextStyles.of(context).bodySmall.copyWith(
-                            color: cs.onSurface.withValues(alpha: 0.5),
-                          ),
-                    ),
                 ],
               ),
             ),

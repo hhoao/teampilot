@@ -77,13 +77,8 @@ class SessionCliExecutablePathSettingsRowState
     super.dispose();
   }
 
-  String _storedPath() {
-    final prefs = widget.cubit.state.preferences;
-    if (widget.cli == TeamCli.flashskyai) {
-      return prefs.cliExecutablePath;
-    }
-    return prefs.cliExecutablePaths[widget.cli.value] ?? '';
-  }
+  String _storedPath() =>
+      widget.cubit.state.preferences.cliExecutablePathFor(widget.cli.value);
 
   void _syncFromState(String stored) {
     if (stored == _lastSyncedPath) return;

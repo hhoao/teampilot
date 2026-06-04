@@ -75,18 +75,11 @@ class SessionPreferencesCubit extends Cubit<SessionPreferencesState> {
 
   bool get isSshMode => state.preferences.connectionMode == ConnectionMode.ssh;
 
-  Future<void> setCliExecutablePath(String value) {
-    return _save(state.preferences.copyWith(cliExecutablePath: value.trim()));
-  }
-
   Future<void> setCliExecutablePathFor(TeamCli cli, String value) {
     final pathKey = _cliToolRegistry
             .capability<ExecutableResolverCapability>(cli.value)
             ?.preferencesPathKey ??
         cli.value;
-    if (pathKey == 'flashskyai') {
-      return setCliExecutablePath(value);
-    }
     final next = Map<String, String>.of(state.preferences.cliExecutablePaths);
     final trimmed = value.trim();
     if (trimmed.isEmpty) {
@@ -153,10 +146,7 @@ class SessionPreferencesCubit extends Cubit<SessionPreferencesState> {
             .capability<ExecutableResolverCapability>(cli.value)
             ?.preferencesPathKey ??
         cli.value;
-    if (pathKey == 'flashskyai') {
-      return state.preferences.cliExecutablePath.trim();
-    }
-    return state.preferences.cliExecutablePaths[pathKey]?.trim() ?? '';
+    return state.preferences.cliExecutablePathFor(pathKey);
   }
 
   static Map<TeamCli, String> _normalizeLocatedExecutables({
@@ -168,9 +158,9 @@ class SessionPreferencesCubit extends Cubit<SessionPreferencesState> {
       final value = entry.value.trim();
       if (value.isNotEmpty) normalized[entry.key] = value;
     }
-    final legacy = locatedExecutable?.trim();
-    if (legacy != null && legacy.isNotEmpty) {
-      normalized.putIfAbsent(TeamCli.flashskyai, () => legacy);
+    final flashskyaiLocated = locatedExecutable?.trim();
+    if (flashskyaiLocated != null && flashskyaiLocated.isNotEmpty) {
+      normalized.putIfAbsent(TeamCli.flashskyai, () => flashskyaiLocated);
     }
     return Map.unmodifiable(normalized);
   }

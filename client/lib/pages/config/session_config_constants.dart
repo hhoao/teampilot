@@ -4,5 +4,5 @@ const kSessionPathPersistDebounce = Duration(milliseconds: 400);
 const kShowConnectionModeSetting = false;
 
 /// Team sessions use [AppStorage.commonFlashskyaiLlmConfigFile] from the
-/// app-level provider catalog; per-session LLM path override is legacy only.
+/// app-level provider catalog; per-session LLM path override is not exposed.
 const kShowLlmConfigPathSetting = false;

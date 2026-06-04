@@ -1706,9 +1706,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get teamExtensionEffectiveOff => '本团队未启用';
 
   @override
-  String get teamExtensionRtkGlobalOnlyHint => 'rtk 目前按全局生效，按团队覆盖暂未生效。';
-
-  @override
   String get teamMcpNav => 'MCP';
 
   @override

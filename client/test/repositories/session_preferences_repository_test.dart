@@ -16,7 +16,7 @@ void main() {
 
     final loaded = await repo.load();
 
-    expect(loaded.cliExecutablePath, '');
+    expect(loaded.cliExecutablePathFor('flashskyai'), '');
     expect(loaded.autoLaunchAllMembersOnConnect, true);
     expect(loaded.scopeSessionsToSelectedTeam, true);
   });
@@ -27,7 +27,9 @@ void main() {
 
     await repo.save(
       SessionPreferences(
-        cliExecutablePath: '/usr/local/bin/flashskyai',
+        cliExecutablePaths: const {
+          'flashskyai': '/usr/local/bin/flashskyai',
+        },
         autoLaunchAllMembersOnConnect: true,
         scopeSessionsToSelectedTeam: true,
       ),
@@ -35,7 +37,10 @@ void main() {
 
     final loaded = await repo.load();
 
-    expect(loaded.cliExecutablePath, '/usr/local/bin/flashskyai');
+    expect(
+      loaded.cliExecutablePathFor('flashskyai'),
+      '/usr/local/bin/flashskyai',
+    );
     expect(loaded.autoLaunchAllMembersOnConnect, true);
     expect(loaded.scopeSessionsToSelectedTeam, true);
   });
@@ -49,7 +54,7 @@ void main() {
 
     final loaded = await repo.load();
 
-    expect(loaded.cliExecutablePath, '');
+    expect(loaded.cliExecutablePathFor('flashskyai'), '');
     expect(loaded.autoLaunchAllMembersOnConnect, true);
     expect(loaded.scopeSessionsToSelectedTeam, true);
   });
@@ -58,11 +63,15 @@ void main() {
     final prefs = await SharedPreferences.getInstance();
     final repo = SessionPreferencesRepository(prefs);
 
-    await repo.save(SessionPreferences(cliExecutablePath: '/x'));
+    await repo.save(
+      SessionPreferences(
+        cliExecutablePaths: const {'flashskyai': '/x'},
+      ),
+    );
 
     final raw = prefs.getString('flashskyai.session_preferences.v1');
     expect(raw, isNotNull);
     final decoded = jsonDecode(raw!) as Map<String, Object?>;
-    expect(decoded['cliExecutablePath'], '/x');
+    expect(decoded['cliExecutablePaths'], {'flashskyai': '/x'});
   });
 }

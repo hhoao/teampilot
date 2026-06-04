@@ -33,8 +33,8 @@ class ExtensionProvisioner {
   final ExtensionDetector _detector;
   final SettingsHookEffectApplier _settingsHookApplier;
 
-  /// Warning codes for enabled-but-unready extensions, mirroring the legacy
-  /// `rtk_enabled_*` shape: `<id>_enabled_not_found`,
+  /// Warning codes for enabled-but-unready extensions:
+  /// `<id>_enabled_not_found`,
   /// `<id>_enabled_dependency_missing`, `<id>_enabled_version_too_old`.
   Future<List<String>> collectWarnings() async {
     final out = <String>[];

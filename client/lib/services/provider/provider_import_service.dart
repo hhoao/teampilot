@@ -110,7 +110,7 @@ class ProviderImportService {
     for (final entry in llm.providers.entries) {
       final id = sanitizeProviderId(entry.key);
       if (id.isEmpty) continue;
-      final legacy = entry.value;
+      final source = entry.value;
       final defaultModel = llm.models.values
           .where((m) => m.provider == entry.key && m.enabled)
           .map((m) => m.model)
@@ -119,23 +119,23 @@ class ProviderImportService {
         AppProviderConfig(
           id: id,
           cli: AppProviderCli.flashskyai,
-          name: legacy.name.isNotEmpty ? legacy.name : id,
-          category: legacy.type == 'account'
+          name: source.name.isNotEmpty ? source.name : id,
+          category: source.type == 'account'
               ? AppProviderCategory.official
               : AppProviderCategory.thirdParty,
-          apiKey: legacy.apiKey,
+          apiKey: source.apiKey,
           apiKeyField: 'api_key',
-          baseUrl: legacy.baseUrl,
+          baseUrl: source.baseUrl,
           defaultModel: defaultModel,
           config: {
-            'type': legacy.type.isNotEmpty ? legacy.type : 'api',
-            'provider_type': legacy.providerType.isNotEmpty
-                ? legacy.providerType
+            'type': source.type.isNotEmpty ? source.type : 'api',
+            'provider_type': source.providerType.isNotEmpty
+                ? source.providerType
                 : 'openai',
-            if (legacy.proxy) 'proxy': true,
-            if (legacy.proxyUrl.isNotEmpty) 'proxy_url': legacy.proxyUrl,
-            if (legacy.accounts.isNotEmpty) 'account': legacy.accounts,
-            ...legacy.unknownFields,
+            if (source.proxy) 'proxy': true,
+            if (source.proxyUrl.isNotEmpty) 'proxy_url': source.proxyUrl,
+            if (source.accounts.isNotEmpty) 'account': source.accounts,
+            ...source.unknownFields,
             if (llm.models.isNotEmpty)
               'models': {
                 for (final model in llm.models.entries)
@@ -212,11 +212,8 @@ class ProviderImportService {
 
     final files = <_NamedFile>[];
     final settingsPath = ctx.join(dirPath, 'settings.json');
-    final legacyPath = ctx.join(dirPath, 'claude.json');
     if ((await fs.stat(settingsPath)).isFile) {
       files.add(_NamedFile('default', settingsPath));
-    } else if ((await fs.stat(legacyPath)).isFile) {
-      files.add(_NamedFile('default', legacyPath));
     }
     for (final entry in await fs.listDir(dirPath)) {
       if (entry.isDirectory) continue;

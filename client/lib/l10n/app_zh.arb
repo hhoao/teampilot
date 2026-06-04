@@ -600,7 +600,6 @@
   "teamExtensionForceOff": "关闭",
   "teamExtensionEffectiveOn": "本团队已启用",
   "teamExtensionEffectiveOff": "本团队未启用",
-  "teamExtensionRtkGlobalOnlyHint": "rtk 目前按全局生效，按团队覆盖暂未生效。",
   "teamMcpNav": "MCP",
   "teamHubNav": "团队中心",
   "teamHubSubtitle": "发现更多公开团队",

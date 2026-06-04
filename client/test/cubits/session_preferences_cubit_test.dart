@@ -24,7 +24,10 @@ void main() {
   test('resolveExecutable prefers user path over located path', () async {
     final cubit = await makeCubit(located: '/usr/local/bin/flashskyai');
     await cubit.load();
-    await cubit.setCliExecutablePath('/opt/custom/flashskyai');
+    await cubit.setCliExecutablePathFor(
+      TeamCli.flashskyai,
+      '/opt/custom/flashskyai',
+    );
 
     expect(cubit.resolveExecutable(), '/opt/custom/flashskyai');
   });
@@ -49,16 +52,22 @@ void main() {
     },
   );
 
-  test('setCliExecutablePath persists and emits new state', () async {
+  test('setCliExecutablePathFor flashskyai persists and emits new state', () async {
     final cubit = await makeCubit(located: null);
     await cubit.load();
-    await cubit.setCliExecutablePath('/a/b/flashskyai');
+    await cubit.setCliExecutablePathFor(TeamCli.flashskyai, '/a/b/flashskyai');
 
-    expect(cubit.state.preferences.cliExecutablePath, '/a/b/flashskyai');
+    expect(
+      cubit.state.preferences.cliExecutablePathFor('flashskyai'),
+      '/a/b/flashskyai',
+    );
 
     final cubit2 = await makeCubit(located: null);
     await cubit2.load();
-    expect(cubit2.state.preferences.cliExecutablePath, '/a/b/flashskyai');
+    expect(
+      cubit2.state.preferences.cliExecutablePathFor('flashskyai'),
+      '/a/b/flashskyai',
+    );
   });
 
   test('setAutoLaunchAllMembersOnConnect persists the flag', () async {
@@ -105,13 +114,13 @@ void main() {
   });
 
   test(
-    'setCliExecutablePath trims whitespace and treats blank as cleared',
+    'setCliExecutablePathFor flashskyai trims whitespace and treats blank as cleared',
     () async {
       final cubit = await makeCubit(located: '/located');
       await cubit.load();
-      await cubit.setCliExecutablePath('   ');
+      await cubit.setCliExecutablePathFor(TeamCli.flashskyai, '   ');
 
-      expect(cubit.state.preferences.cliExecutablePath, '');
+      expect(cubit.state.preferences.cliExecutablePathFor('flashskyai'), '');
       expect(cubit.resolveExecutable(), '/located');
     },
   );

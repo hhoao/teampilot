@@ -9,7 +9,6 @@ import '../io/sftp_filesystem.dart';
 import '../io/wsl_filesystem.dart';
 import 'remote_file_store.dart';
 import 'remote_ssh_storage_paths.dart';
-import 'remote_teampilot_app_data_resolver.dart';
 import '../ssh/ssh_client_factory.dart';
 
 enum StorageBackendMode { native, wsl, ssh }
@@ -193,33 +192,14 @@ class RuntimeStorageContext {
     );
     await clientFactory.sftpFor(profile);
 
-    final primaryTeampilot = paths.teampilotAppDir;
-    final legacyTeampilot = AppPaths.defaultTeampilotAppDataDirForHome(
-      paths.home,
-    );
-    var teampilot = primaryTeampilot;
-    if (primaryTeampilot != legacyTeampilot) {
-      final exists = await Future.wait([
-        RemoteTeampilotAppDataResolver.teampilotTreeHasData(
-          fileStore.fileExists,
-          primaryTeampilot,
-        ),
-        RemoteTeampilotAppDataResolver.teampilotTreeHasData(
-          fileStore.fileExists,
-          legacyTeampilot,
-        ),
-      ]);
-      if (!exists[0] && exists[1]) teampilot = legacyTeampilot;
-    }
-
     final fs = SftpFilesystem(fileStore);
     return RuntimeStorageContext._(
       mode: StorageBackendMode.ssh,
       filesystem: fs,
       home: paths.home,
       cwd: paths.home,
-      appDataRoot: teampilot,
-      paths: AppPaths(teampilot),
+      appDataRoot: paths.teampilotAppDir,
+      paths: AppPaths(paths.teampilotAppDir),
     );
   }
 

@@ -5,7 +5,6 @@ import '../services/app/platform_utils.dart';
 class SessionPreferences {
   SessionPreferences({
     ConnectionMode? connectionMode,
-    this.cliExecutablePath = '',
     Map<String, String> cliExecutablePaths = const {},
     this.defaultSshWorkingDirectory = '',
     this.sshUseLoginShell = false,
@@ -26,7 +25,6 @@ class SessionPreferences {
         json['connectionMode'] as String?,
         fallback: defaultConnectionMode(),
       ),
-      cliExecutablePath: json['cliExecutablePath'] as String? ?? '',
       cliExecutablePaths: _cliExecutablePathsFromJson(
         json['cliExecutablePaths'],
       ),
@@ -48,17 +46,8 @@ class SessionPreferences {
   /// Local PTY vs remote SSH transport for launching [flashskyai].
   final ConnectionMode connectionMode;
 
-  /// Absolute path to the flashskyai CLI executable. Empty means "fall back
-  /// to the path located at startup, then to bare 'flashskyai' (resolved by
-  /// the OS via PATH)".
-  ///
-  /// In [ConnectionMode.ssh] this is the path on the remote host.
-  final String cliExecutablePath;
-
-  /// Tool-specific CLI executable paths keyed by [TeamCli.value].
-  ///
-  /// The legacy [cliExecutablePath] remains the canonical flashskyai path for
-  /// backward compatibility; this map stores additional CLI tool overrides.
+  /// CLI executable paths keyed by [TeamCli.value]. Empty value means fall
+  /// back to startup discovery, then the tool name on PATH.
   final Map<String, String> cliExecutablePaths;
 
   /// Default remote working directory used when an SSH launch has no project
@@ -83,9 +72,11 @@ class SessionPreferences {
   /// Windows-only: business file I/O via native AppData or WSL home.
   final WindowsStorageBackend windowsStorageBackend;
 
+  String cliExecutablePathFor(String toolId) =>
+      cliExecutablePaths[toolId]?.trim() ?? '';
+
   SessionPreferences copyWith({
     ConnectionMode? connectionMode,
-    String? cliExecutablePath,
     Map<String, String>? cliExecutablePaths,
     String? defaultSshWorkingDirectory,
     bool? sshUseLoginShell,
@@ -96,7 +87,6 @@ class SessionPreferences {
   }) {
     return SessionPreferences(
       connectionMode: connectionMode ?? this.connectionMode,
-      cliExecutablePath: cliExecutablePath ?? this.cliExecutablePath,
       cliExecutablePaths: cliExecutablePaths ?? this.cliExecutablePaths,
       defaultSshWorkingDirectory:
           defaultSshWorkingDirectory ?? this.defaultSshWorkingDirectory,
@@ -113,9 +103,9 @@ class SessionPreferences {
   }
 
   Map<String, Object?> toJson() {
-    final json = <String, Object?>{
+    return <String, Object?>{
       'connectionMode': connectionMode.toJson(),
-      'cliExecutablePath': cliExecutablePath,
+      'cliExecutablePaths': cliExecutablePaths,
       'defaultSshWorkingDirectory': defaultSshWorkingDirectory,
       'sshUseLoginShell': sshUseLoginShell,
       'autoLaunchAllMembersOnConnect': autoLaunchAllMembersOnConnect,
@@ -123,10 +113,6 @@ class SessionPreferences {
       'terminalScrollbackLines': terminalScrollbackLines,
       'windowsStorageBackend': windowsStorageBackend.toJson(),
     };
-    if (cliExecutablePaths.isNotEmpty) {
-      json['cliExecutablePaths'] = cliExecutablePaths;
-    }
-    return json;
   }
 
   static Map<String, String> _cliExecutablePathsFromJson(Object? value) {

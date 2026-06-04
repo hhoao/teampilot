@@ -286,7 +286,7 @@ void main() {
           launchInExternalTerminal: false,
           extraEnvironment: const {
             'CLAUDE_CONFIG_DIR': '/tmp/team/claude',
-            MemberRoleProvision.claudeAppendSystemPromptFileEnvKey:
+            MemberRoleProvision.appendSystemPromptFileEnvKey:
                 '/tmp/team/claude/prompts/team-lead/role.md',
           },
           starter:
@@ -318,7 +318,7 @@ void main() {
       );
       expect(
         capturedEnv?.containsKey(
-          MemberRoleProvision.claudeAppendSystemPromptFileEnvKey,
+          MemberRoleProvision.appendSystemPromptFileEnvKey,
         ),
         isFalse,
       );

@@ -4,7 +4,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
 import 'package:teampilot/services/storage/flashskyai_storage_roots.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
-import 'package:teampilot/services/storage/remote_teampilot_app_data_resolver.dart';
 import 'package:teampilot/services/storage/runtime_storage_context.dart';
 
 void main() {
@@ -130,24 +129,4 @@ void main() {
     expect(reinstallCalls, 1);
   });
 
-  test('pickTeampilotRoot prefers primary when it has data', () async {
-    final root = await RemoteTeampilotAppDataResolver.pickTeampilotRoot(
-      primary: '/xdg/teampilot',
-      legacy: '/cli/.flashskyai/teampilot',
-      hasExistingData: (path) async => path.startsWith('/xdg'),
-    );
-    expect(root, '/xdg/teampilot');
-  });
-
-  test(
-    'pickTeampilotRoot falls back to legacy when primary is empty',
-    () async {
-      final root = await RemoteTeampilotAppDataResolver.pickTeampilotRoot(
-        primary: '/xdg/teampilot',
-        legacy: '/cli/.flashskyai/teampilot',
-        hasExistingData: (path) async => path.contains('.flashskyai'),
-      );
-      expect(root, '/cli/.flashskyai/teampilot');
-    },
-  );
 }

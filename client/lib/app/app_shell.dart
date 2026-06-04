@@ -42,7 +42,6 @@ import '../router/app_router.dart';
 import '../services/extension/builtin_manifests.dart';
 import '../services/extension/extension_acquisition_engine.dart';
 import '../services/extension/extension_provisioner.dart';
-import '../services/extension/extension_state_migration.dart';
 import '../services/storage/app_storage.dart';
 import '../services/team/team_clone_service.dart';
 import '../services/team_hub/git_registry_team_hub_source.dart';
@@ -335,10 +334,6 @@ Future<AppShell> buildAppShell({
     fs: AppStorage.fs,
     stateFilePath: AppStorage.paths.extensionsStateJson,
     manifests: builtInExtensionManifests(),
-  );
-  await ExtensionStateMigration.run(
-    repository: extensionRepository,
-    legacyRtkEnabled: appSettings.loadRtkEnabled,
   );
   extensionCubit = ExtensionCubit(
     extensionRepository,
