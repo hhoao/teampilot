@@ -32,11 +32,6 @@ class TeamLaunchOutcome {
   final List<String> warnings;
 }
 
-/// [TeamLaunchOutcome.warnings] when RTK is enabled but dependencies are missing.
-const rtkWarningEnabledNotFound = 'rtk_enabled_not_found';
-const rtkWarningEnabledDependencyMissing = 'rtk_enabled_dependency_missing';
-const rtkWarningEnabledVersionTooOld = 'rtk_enabled_version_too_old';
-
 /// Orchestrates config-profile layout, MCP/plugin merge, and per-CLI capabilities.
 class ConfigProfileService implements ConfigProfileDelegate {
   static final _defaultCliRegistry = () {
@@ -51,11 +46,10 @@ class ConfigProfileService implements ConfigProfileDelegate {
     required String basePath,
     Filesystem? fs,
     CliDataLayout? layout,
-    Future<bool> Function()? loadRtkEnabled,
+    Future<Set<String>> Function({String? teamId})? loadEnabledExtensionIds,
     ExtensionDetector? extensionDetector,
     List<ExtensionManifest>? extensionManifests,
-    ScriptFileHookProvisioner? rtkHookProvisioner,
-    Future<String> Function(HostScriptDialect dialect)? loadRtkHookScript,
+    Map<String, ScriptFileHookProvisioner>? extensionHookProvisioners,
     ScriptFileHookProvisioner? teamLeadHookProvisioner,
     Future<String> Function(HostScriptDialect dialect)? loadTeamLeadHookScript,
     ScriptFileHookProvisioner? teamLeadDelegateHookProvisioner,
@@ -69,11 +63,10 @@ class ConfigProfileService implements ConfigProfileDelegate {
              layout ??
              CliDataLayout(teampilotRoot: basePath, fs: fs ?? AppStorage.fs),
          fs: fs,
-         loadRtkEnabled: loadRtkEnabled,
+         loadEnabledExtensionIds: loadEnabledExtensionIds,
          extensionDetector: extensionDetector,
          extensionManifests: extensionManifests,
-         rtkHookProvisioner: rtkHookProvisioner,
-         loadRtkHookScript: loadRtkHookScript,
+         extensionHookProvisioners: extensionHookProvisioners,
          teamLeadHookProvisioner: teamLeadHookProvisioner,
          loadTeamLeadHookScript: loadTeamLeadHookScript,
          teamLeadDelegateHookProvisioner: teamLeadDelegateHookProvisioner,
@@ -196,7 +189,10 @@ class ConfigProfileService implements ConfigProfileDelegate {
     }
 
     final warnings = <String>[];
-    await _infra.collectRtkWarnings(warnings);
+    await _infra.collectExtensionWarnings(
+      warnings,
+      teamId: trimmedTeamId,
+    );
 
     var scope = resolveLaunchProfileScope(
       teamId: trimmedTeamId,
@@ -309,18 +305,37 @@ class ConfigProfileService implements ConfigProfileDelegate {
     String path,
     Map<String, Object?> settings, {
     String? memberToolDir,
+    required String tool,
+    String? teamId,
   }) =>
-      _infra.writeSettingsFile(path, settings, memberToolDir: memberToolDir);
+      _infra.writeSettingsFile(
+        path,
+        settings,
+        memberToolDir: memberToolDir,
+        tool: tool,
+        teamId: teamId,
+      );
 
   @override
-  Future<bool> isRtkEnabled() => _infra.isRtkEnabled();
+  Future<bool> hasEnabledExtensionSettingsHooks(
+    String tool, {
+    String? teamId,
+  }) =>
+      _infra.hasEnabledExtensionSettingsHooks(tool, teamId: teamId);
 
   @override
-  Future<Map<String, Object?>> maybeApplyRtk(
+  Future<Map<String, Object?>> applyExtensionSettings(
     Map<String, Object?> settings,
-    String? memberToolDir,
-  ) =>
-      _infra.maybeApplyRtk(settings, memberToolDir);
+    String? memberToolDir, {
+    required String tool,
+    String? teamId,
+  }) =>
+      _infra.applyExtensionSettings(
+        settings,
+        memberToolDir,
+        tool: tool,
+        teamId: teamId,
+      );
 
   @override
   Future<Map<String, Object?>> maybeApplyTeamLeadHooks(

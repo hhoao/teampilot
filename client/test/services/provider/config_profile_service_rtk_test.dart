@@ -14,7 +14,7 @@ import 'package:teampilot/services/host/script_file_hook_provisioner.dart';
 import 'package:teampilot/services/storage/runtime_storage_context.dart';
 
 void main() {
-  group('ConfigProfileService RTK', () {
+  group('ConfigProfileService extension settings hooks', () {
     late Directory base;
     late ConfigProfileService service;
 
@@ -26,7 +26,7 @@ void main() {
         basePath: base.path,
         fs: fs,
         layout: CliDataLayout(teampilotRoot: base.path, fs: fs),
-        loadRtkEnabled: () async => true,
+        loadEnabledExtensionIds: ({teamId}) async => {'rtk'},
         extensionDetector: ExtensionDetector(
           processRunner: (executable, arguments, {environment}) async {
             // ExtensionDetector locates binaries via `which` on POSIX and `where`
@@ -48,15 +48,17 @@ void main() {
           isWindowsHost: false,
           storageMode: StorageBackendMode.native,
         ),
-        rtkHookProvisioner: ScriptFileHookProvisioner(
-          fs: fs,
-          runner: HostExecutionEnvironment.resolve(
-            isWindowsHost: false,
-            storageMode: StorageBackendMode.native,
-          ).scriptRunner,
-          baseFileName: 'rtk-rewrite',
-          loadScript: (_) async => '#!/bin/bash\n# rtk-hook-version: 3\n',
-        ),
+        extensionHookProvisioners: {
+          'rtk-rewrite': ScriptFileHookProvisioner(
+            fs: fs,
+            runner: HostExecutionEnvironment.resolve(
+              isWindowsHost: false,
+              storageMode: StorageBackendMode.native,
+            ).scriptRunner,
+            baseFileName: 'rtk-rewrite',
+            loadScript: (_) async => '#!/bin/bash\n# rtk-hook-version: 3\n',
+          ),
+        },
       );
     });
 
@@ -65,7 +67,7 @@ void main() {
       if (await base.exists()) await base.delete(recursive: true);
     });
 
-    test('writes PreToolUse hook when RTK enabled', () async {
+    test('writes PreToolUse hook when RTK extension enabled', () async {
       final outcome = await service.prepareTeamLaunch(
         teamId: 'team-a',
         cli: TeamCli.flashskyai,
@@ -97,12 +99,12 @@ void main() {
       expect(command, contains('rtk-rewrite.sh'));
     });
 
-    test('emits warning when RTK enabled but binary missing', () async {
+    test('emits warning when extension enabled but binary missing', () async {
       service = ConfigProfileService(
         basePath: base.path,
         fs: LocalFilesystem(),
         layout: CliDataLayout(teampilotRoot: base.path, fs: LocalFilesystem()),
-        loadRtkEnabled: () async => true,
+        loadEnabledExtensionIds: ({teamId}) async => {'rtk'},
         extensionDetector: ExtensionDetector(processRunner: _alwaysMissing),
       );
 
@@ -111,7 +113,7 @@ void main() {
         cli: TeamCli.flashskyai,
       );
 
-      expect(outcome.warnings, contains(rtkWarningEnabledNotFound));
+      expect(outcome.warnings, contains('rtk_enabled_not_found'));
     });
   });
 }

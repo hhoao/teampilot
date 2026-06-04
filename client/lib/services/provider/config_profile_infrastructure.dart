@@ -23,17 +23,16 @@ import '../storage/runtime_storage_context.dart';
 import '../team/team_lead_delegate_settings_merge.dart';
 import '../team/team_lead_settings_merge.dart';
 
-/// Cross-CLI config profile file I/O, trusted-project metadata, RTK, and hooks.
+/// Cross-CLI config profile file I/O, trusted-project metadata, extensions, hooks.
 final class ConfigProfileInfrastructure implements ConfigProfileDelegate {
   ConfigProfileInfrastructure({
     required this.basePath,
     required this.layout,
     Filesystem? fs,
-    Future<bool> Function()? loadRtkEnabled,
+    Future<Set<String>> Function({String? teamId})? loadEnabledExtensionIds,
     ExtensionDetector? extensionDetector,
     List<ExtensionManifest>? extensionManifests,
-    ScriptFileHookProvisioner? rtkHookProvisioner,
-    Future<String> Function(HostScriptDialect dialect)? loadRtkHookScript,
+    Map<String, ScriptFileHookProvisioner>? extensionHookProvisioners,
     ScriptFileHookProvisioner? teamLeadHookProvisioner,
     Future<String> Function(HostScriptDialect dialect)? loadTeamLeadHookScript,
     ScriptFileHookProvisioner? teamLeadDelegateHookProvisioner,
@@ -41,11 +40,10 @@ final class ConfigProfileInfrastructure implements ConfigProfileDelegate {
     loadTeamLeadDelegateHookScript,
     HostExecutionEnvironment? hostEnvironment,
   }) : _fs = fs ?? AppStorage.fs,
-       _loadRtkEnabled = loadRtkEnabled,
+       _loadEnabledExtensionIds = loadEnabledExtensionIds,
        _extensionDetector = extensionDetector,
        _extensionManifests = extensionManifests,
-       _rtkHookProvisioner = rtkHookProvisioner,
-       _loadRtkHookScript = loadRtkHookScript,
+       _extensionHookProvisioners = extensionHookProvisioners,
        _teamLeadHookProvisioner = teamLeadHookProvisioner,
        _loadTeamLeadHookScript = loadTeamLeadHookScript,
        _teamLeadDelegateHookProvisioner = teamLeadDelegateHookProvisioner,
@@ -57,12 +55,10 @@ final class ConfigProfileInfrastructure implements ConfigProfileDelegate {
   @override
   final CliDataLayout layout;
   final Filesystem _fs;
-  final Future<bool> Function()? _loadRtkEnabled;
+  final Future<Set<String>> Function({String? teamId})? _loadEnabledExtensionIds;
   final ExtensionDetector? _extensionDetector;
   final List<ExtensionManifest>? _extensionManifests;
-  ExtensionProvisioner? _cachedExtensionProvisioner;
-  final ScriptFileHookProvisioner? _rtkHookProvisioner;
-  final Future<String> Function(HostScriptDialect dialect)? _loadRtkHookScript;
+  final Map<String, ScriptFileHookProvisioner>? _extensionHookProvisioners;
   final ScriptFileHookProvisioner? _teamLeadHookProvisioner;
   final Future<String> Function(HostScriptDialect dialect)? _loadTeamLeadHookScript;
   final ScriptFileHookProvisioner? _teamLeadDelegateHookProvisioner;
@@ -170,24 +166,35 @@ final class ConfigProfileInfrastructure implements ConfigProfileDelegate {
     String path,
     Map<String, Object?> settings, {
     String? memberToolDir,
+    required String tool,
+    String? teamId,
   }) =>
-      _writeSettingsFile(path, settings, memberToolDir: memberToolDir);
+      _writeSettingsFile(
+        path,
+        settings,
+        memberToolDir: memberToolDir,
+        tool: tool,
+        teamId: teamId,
+      );
 
   @override
-  Future<bool> isRtkEnabled() async {
-    final loader = _loadRtkEnabled;
-    if (loader == null) return false;
-    return loader();
-  }
+  Future<bool> hasEnabledExtensionSettingsHooks(
+    String tool, {
+    String? teamId,
+  }) =>
+      _extensionProvisioner(teamId: teamId).hasEnabledSettingsHooksForTool(tool);
 
   @override
-  Future<Map<String, Object?>> maybeApplyRtk(
+  Future<Map<String, Object?>> applyExtensionSettings(
     Map<String, Object?> settings,
-    String? memberToolDir,
-  ) =>
-      _extensionProvisioner.applySettings(
+    String? memberToolDir, {
+    required String tool,
+    String? teamId,
+  }) =>
+      _extensionProvisioner(teamId: teamId).applySettings(
         settings,
         memberToolDir?.trim() ?? '',
+        tool: tool,
       );
 
   @override
@@ -247,8 +254,11 @@ final class ConfigProfileInfrastructure implements ConfigProfileDelegate {
     return HostExecutionEnvironment.resolve();
   }
 
-  Future<void> collectRtkWarnings(List<String> warnings) async {
-    warnings.addAll(await _extensionProvisioner.collectWarnings());
+  Future<void> collectExtensionWarnings(
+    List<String> warnings, {
+    String? teamId,
+  }) async {
+    warnings.addAll(await _extensionProvisioner(teamId: teamId).collectWarnings());
   }
 
   Future<void> _writeJsonIfChanged(
@@ -267,6 +277,8 @@ final class ConfigProfileInfrastructure implements ConfigProfileDelegate {
     String path,
     Map<String, Object?> settings, {
     String? memberToolDir,
+    required String tool,
+    String? teamId,
   }) async {
     final existing = await _readSettingsFile(path);
     final enabledPlugins = existing['enabledPlugins'];
@@ -274,33 +286,57 @@ final class ConfigProfileInfrastructure implements ConfigProfileDelegate {
     if (enabledPlugins is Map && enabledPlugins.isNotEmpty) {
       merged['enabledPlugins'] = enabledPlugins;
     }
-    merged = await maybeApplyRtk(merged, memberToolDir);
+    merged = await applyExtensionSettings(
+      merged,
+      memberToolDir,
+      tool: tool,
+      teamId: teamId,
+    );
     await _fs.atomicWrite(
       path,
       const JsonEncoder.withIndent('  ').convert(merged),
     );
   }
 
-  HostExecutionEnvironment _hostEnvironmentForProvision() =>
-      hostEnvironmentForProvision();
+  ExtensionProvisioner _extensionProvisioner({String? teamId}) {
+    return ExtensionProvisioner(
+      manifests: _extensionManifests ?? builtInExtensionManifests(),
+      isEnabled: (id) async =>
+          (await _enabledExtensionIds(teamId: teamId)).contains(id),
+      detector: _extensionDetector,
+      hookProvisionerFor: _hookProvisionerForAsset,
+    );
+  }
 
-  ScriptFileHookProvisioner _resolveRtkProvisioner(
-    HostExecutionEnvironment host,
-  ) {
-    return _rtkHookProvisioner ??
-        ScriptFileHookProvisioner(
+  Future<Set<String>> _enabledExtensionIds({String? teamId}) async {
+    final loader = _loadEnabledExtensionIds;
+    if (loader == null) return {};
+    return loader(teamId: teamId);
+  }
+
+  ScriptFileHookProvisioner _hookProvisionerForAsset(String scriptAsset) {
+    final override = _extensionHookProvisioners?[scriptAsset];
+    if (override != null) return override;
+
+    final host = hostEnvironmentForProvision();
+    switch (scriptAsset) {
+      case TeamPilotHookScripts.rtkRewrite:
+        return ScriptFileHookProvisioner(
           fs: _fs,
           runner: host.scriptRunner,
           baseFileName: TeamPilotHookScripts.rtkRewrite,
-          loadScript:
-              _loadRtkHookScript ??
-              (dialect) => loadBundledAssetString(
-                switch (dialect) {
-                  HostScriptDialect.bash => 'assets/rtk/rtk-rewrite.sh',
-                  HostScriptDialect.powershell => 'assets/rtk/rtk-rewrite.ps1',
-                },
-              ),
+          loadScript: (dialect) => loadBundledAssetString(
+            switch (dialect) {
+              HostScriptDialect.bash => 'assets/rtk/rtk-rewrite.sh',
+              HostScriptDialect.powershell => 'assets/rtk/rtk-rewrite.ps1',
+            },
+          ),
         );
+      default:
+        throw StateError(
+          'No bundled hook provisioner for extension script asset "$scriptAsset"',
+        );
+    }
   }
 
   ScriptFileHookProvisioner _resolveTeamLeadHookProvisioner(
@@ -343,24 +379,6 @@ final class ConfigProfileInfrastructure implements ConfigProfileDelegate {
                 },
               ),
         );
-  }
-
-  ExtensionProvisioner get _extensionProvisioner =>
-      _cachedExtensionProvisioner ??= ExtensionProvisioner(
-        manifests: _extensionManifests ?? builtInExtensionManifests(),
-        isEnabled: (id) async => id == 'rtk' ? await isRtkEnabled() : false,
-        detector: _extensionDetector,
-        hookProvisionerFor: _hookProvisionerForAsset,
-      );
-
-  ScriptFileHookProvisioner _hookProvisionerForAsset(String scriptAsset) {
-    final host = _hostEnvironmentForProvision();
-    switch (scriptAsset) {
-      case 'rtk-rewrite':
-        return _resolveRtkProvisioner(host);
-      default:
-        throw StateError('No hook provisioner for asset "$scriptAsset"');
-    }
   }
 
   Future<Map<String, Object?>> _readSettingsFile(String path) async {

@@ -348,8 +348,12 @@ Future<AppShell> buildAppShell({
   sessionLifecycleService = SessionLifecycleService(
     llmConfigPathOverride: llmConfigPathOverrideForLaunch,
     storageRootsResolver: storageRoots.resolve,
-    loadRtkEnabled: () async =>
-        (await extensionRepository.load(forceReload: true)).globalEnabled.contains('rtk'),
+    loadEnabledExtensionIds: ({teamId}) async {
+      if (teamId != null && teamId.trim().isNotEmpty) {
+        return extensionRepository.effectiveEnabledIds(teamId.trim());
+      }
+      return (await extensionRepository.load(forceReload: true)).globalEnabled;
+    },
     cliToolRegistry: cliToolRegistry,
   );
   sessionRepo = SessionRepository(

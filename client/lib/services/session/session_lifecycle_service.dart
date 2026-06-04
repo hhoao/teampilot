@@ -52,20 +52,20 @@ class SessionLifecycleService {
     String? Function()? llmConfigPathOverride,
     ConfigProfileService? configProfileService,
     StorageRootsResolver? storageRootsResolver,
-    Future<bool> Function()? loadRtkEnabled,
+    Future<Set<String>> Function({String? teamId})? loadEnabledExtensionIds,
     CliToolRegistry? cliToolRegistry,
   }) : _appDataBasePath = appDataBasePath,
        _llmConfigPathOverride = llmConfigPathOverride,
        _configProfileService = configProfileService,
        _storageRootsResolver = storageRootsResolver,
-       _loadRtkEnabled = loadRtkEnabled,
+       _loadEnabledExtensionIds = loadEnabledExtensionIds,
        _cliToolRegistry = cliToolRegistry ?? _defaultCliRegistry;
 
   final String? _appDataBasePath;
   final String? Function()? _llmConfigPathOverride;
   final ConfigProfileService? _configProfileService;
   final StorageRootsResolver? _storageRootsResolver;
-  final Future<bool> Function()? _loadRtkEnabled;
+  final Future<Set<String>> Function({String? teamId})? _loadEnabledExtensionIds;
   final CliToolRegistry _cliToolRegistry;
 
   Future<LaunchPlan> prepareLaunch({
@@ -279,7 +279,7 @@ class SessionLifecycleService {
       basePath: roots.teampilotRoot,
       fs: roots.fs,
       layout: roots.layout,
-      loadRtkEnabled: _loadRtkEnabled,
+      loadEnabledExtensionIds: _loadEnabledExtensionIds,
       cliRegistry: _cliToolRegistry,
     );
   }

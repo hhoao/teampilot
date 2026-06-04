@@ -56,11 +56,29 @@ class ExtensionProvisioner {
     return out;
   }
 
+  /// Whether any enabled extension has a `settings-hook` for [tool].
+  ///
+  /// When [tool] is empty, returns true if any enabled extension has a hook.
+  Future<bool> hasEnabledSettingsHooksForTool(String tool) async {
+    for (final manifest in _manifests) {
+      if (!await _isEnabled(manifest.id)) continue;
+      for (final effect in manifest.effects) {
+        if (effect.kind != 'settings-hook') continue;
+        if (_effectAppliesToTool(effect, tool)) return true;
+      }
+    }
+    return false;
+  }
+
   /// Applies every ready, enabled extension's `settings-hook` effects to [base].
+  ///
+  /// When [tool] is non-empty, only effects whose `appliesTo` includes [tool]
+  /// (or lists no targets) are merged.
   Future<Map<String, Object?>> applySettings(
     Map<String, Object?> base,
-    String memberToolDir,
-  ) async {
+    String memberToolDir, {
+    String tool = '',
+  }) async {
     if (memberToolDir.trim().isEmpty) return base;
     var settings = base;
     for (final manifest in _manifests) {
@@ -69,6 +87,7 @@ class ExtensionProvisioner {
       if (!probe.isReady) continue;
       for (final effect in manifest.effects) {
         if (effect.kind != 'settings-hook') continue;
+        if (!_effectAppliesToTool(effect, tool)) continue;
         final factory = _hookProvisionerFor;
         if (factory == null) {
           throw StateError(
@@ -114,5 +133,12 @@ class ExtensionProvisioner {
       }
     }
     return out;
+  }
+
+  static bool _effectAppliesToTool(ExtensionEffect effect, String tool) {
+    final trimmed = tool.trim();
+    if (trimmed.isEmpty) return true;
+    if (effect.appliesTo.isEmpty) return true;
+    return effect.appliesTo.contains(trimmed);
   }
 }

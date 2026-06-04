@@ -162,11 +162,19 @@ final class FlashskyaiConfigProfileCapability
     );
     final teamDefaults = _teamSettings();
     if (await _settingsAlreadyCurrent(delegate, file, teamDefaults) &&
-        !await delegate.isRtkEnabled()) {
+        !await delegate.hasEnabledExtensionSettingsHooks(
+          toolId,
+          teamId: scope.teamId,
+        )) {
       return;
     }
     var merged = await _teamSettingsMerged(delegate, file);
-    merged = await delegate.maybeApplyRtk(merged, memberToolDir);
+    merged = await delegate.applyExtensionSettings(
+      merged,
+      memberToolDir,
+      tool: toolId,
+      teamId: scope.teamId,
+    );
     await delegate.writeJsonIfChanged(file, merged);
   }
 
@@ -210,6 +218,8 @@ final class FlashskyaiConfigProfileCapability
       settingsFile,
       settings,
       memberToolDir: memberToolDir,
+      tool: toolId,
+      teamId: scope.teamId,
     );
   }
 

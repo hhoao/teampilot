@@ -21,7 +21,7 @@ abstract interface class ConfigProfilePaths {
   String sessionToolDir(String teamId, String sessionId, String tool);
 }
 
-/// Shared profile I/O and cross-CLI hooks (RTK, team-lead scripts).
+/// Shared profile I/O, extension settings hooks, and team-lead scripts.
 abstract interface class ConfigProfileDelegate implements ConfigProfilePaths {
   Future<Map<String, Object?>> readMetadataFile(
     String path,
@@ -49,14 +49,21 @@ abstract interface class ConfigProfileDelegate implements ConfigProfilePaths {
     String path,
     Map<String, Object?> settings, {
     String? memberToolDir,
+    required String tool,
+    String? teamId,
   });
 
-  Future<bool> isRtkEnabled();
+  Future<bool> hasEnabledExtensionSettingsHooks(
+    String tool, {
+    String? teamId,
+  });
 
-  Future<Map<String, Object?>> maybeApplyRtk(
+  Future<Map<String, Object?>> applyExtensionSettings(
     Map<String, Object?> settings,
-    String? memberToolDir,
-  );
+    String? memberToolDir, {
+    required String tool,
+    String? teamId,
+  });
 
   Future<Map<String, Object?>> maybeApplyTeamLeadHooks(
     Map<String, Object?> settings,

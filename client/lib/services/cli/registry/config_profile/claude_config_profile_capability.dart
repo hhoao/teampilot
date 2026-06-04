@@ -252,6 +252,8 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
         scope.sessionId,
         toolId,
       ),
+      tool: toolId,
+      teamId: scope.teamId,
     );
   }
 
@@ -410,7 +412,13 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
       memberToolDir,
       forceTeamLeadDelegateMode: isLead && forceTeamLeadDelegateMode,
     );
-    await delegate.writeSettingsFile(file, settings, memberToolDir: memberToolDir);
+    await delegate.writeSettingsFile(
+      file,
+      settings,
+      memberToolDir: memberToolDir,
+      tool: toolId,
+      teamId: scope.teamId,
+    );
   }
 
   Future<Map<String, Map<String, Object?>>> _loadMemberProviderSettings({
