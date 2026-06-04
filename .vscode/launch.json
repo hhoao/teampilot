@@ -6,11 +6,12 @@
   "configurations": [
 
     {
-      "name": "client",
+      "name": "client (debug mode)",
       "cwd": "client",
       "request": "launch",
       "program": "lib/main.dart",
-      "type": "dart"
+      "type": "dart",
+      "flutterMode": "debug"
     },
     {
       "name": "client (profile mode)",

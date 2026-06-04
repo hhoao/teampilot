@@ -1,9 +1,10 @@
 import 'package:equatable/equatable.dart';
 
+import '../../models/app_provider_config.dart';
 import '../../models/team_config.dart';
+import '../../repositories/app_provider_repository.dart';
 
-/// One missing piece of team configuration that should be filled before a
-/// session can launch with a usable provider/model (and CLI, in mixed mode).
+/// What aspect of team config is missing for launch.
 enum TeamConfigIssueKind {
   /// native: team has no explicit default provider for its CLI, and members
   /// don't supply their own provider either.
@@ -12,7 +13,7 @@ enum TeamConfigIssueKind {
   /// A member has no provider configured.
   memberProviderMissing,
 
-  /// A member has no model configured.
+  /// A member has a non-official provider but no model selected.
   memberModelMissing,
 
   /// mixed: a member has no CLI selected (no per-member override).
@@ -62,22 +63,31 @@ class TeamConfigValidation extends Equatable {
   List<Object?> get props => [teamId, teamName, mode, issues];
 }
 
+/// Resolves whether [providerId] (in [cli]'s catalog) is an official provider.
+/// Official providers ship their own model, so model selection is optional.
+typedef OfficialProviderResolver =
+    Future<bool> Function(TeamCli cli, String providerId);
+
 /// Pre-launch check that a team has enough provider/model/CLI configuration to
-/// start a session. Pure (presence-based) and synchronous so it is cheap to run
-/// on every team-session open and trivially unit-testable.
+/// start a session. Provider/model/CLI presence is checked structurally; the
+/// model requirement is waived for official providers (which carry their own
+/// model) via [OfficialProviderResolver].
 ///
 /// Rules:
 /// - **native**: a session uses one CLI ([TeamConfig.cli]). It is satisfied when
 ///   the team has an explicit default provider for that CLI
 ///   (`providerIdsByTool[cli]`, strict — global "sole provider" fallback is not
 ///   counted). Without a team default, every valid member must instead carry
-///   their own provider + model.
+///   their own provider, plus a model unless that provider is official.
 /// - **mixed**: each valid member runs its own CLI, so each must have a CLI
-///   override, a provider, and a model.
+///   override and a provider, plus a model unless the provider is official.
 class TeamConfigLaunchValidator {
-  const TeamConfigLaunchValidator();
+  TeamConfigLaunchValidator({OfficialProviderResolver? isOfficialProvider})
+    : _isOfficialProvider = isOfficialProvider ?? _defaultIsOfficialProvider;
 
-  TeamConfigValidation validate(TeamConfig team) {
+  final OfficialProviderResolver _isOfficialProvider;
+
+  Future<TeamConfigValidation> validate(TeamConfig team) async {
     final members = team.members.where((m) => m.isValid).toList(growable: false);
     final issues = <TeamConfigIssue>[];
 
@@ -90,8 +100,11 @@ class TeamConfigLaunchValidator {
           issues.add(
             _memberIssue(TeamConfigIssueKind.memberProviderMissing, member),
           );
-        }
-        if (member.model.trim().isEmpty) {
+        } else if (await _needsModel(
+          member.cliWithin(team),
+          member.provider,
+          member.model,
+        )) {
           issues.add(
             _memberIssue(TeamConfigIssueKind.memberModelMissing, member),
           );
@@ -117,8 +130,11 @@ class TeamConfigLaunchValidator {
             issues.add(
               _memberIssue(TeamConfigIssueKind.memberProviderMissing, member),
             );
-          }
-          if (member.model.trim().isEmpty) {
+          } else if (await _needsModel(
+            team.cli,
+            member.provider,
+            member.model,
+          )) {
             issues.add(
               _memberIssue(TeamConfigIssueKind.memberModelMissing, member),
             );
@@ -135,9 +151,30 @@ class TeamConfigLaunchValidator {
     );
   }
 
+  /// A model is required only when a non-official provider is configured but no
+  /// model is selected. Official providers bundle their own model.
+  Future<bool> _needsModel(TeamCli cli, String provider, String model) async {
+    if (provider.trim().isEmpty) return false;
+    if (model.trim().isNotEmpty) return false;
+    return !await _isOfficialProvider(cli, provider);
+  }
+
   TeamConfigIssue _memberIssue(
     TeamConfigIssueKind kind,
     TeamMemberConfig member,
-  ) =>
-      TeamConfigIssue(kind, memberId: member.id, memberName: member.name);
+  ) => TeamConfigIssue(kind, memberId: member.id, memberName: member.name);
+
+  static Future<bool> _defaultIsOfficialProvider(
+    TeamCli cli,
+    String providerId,
+  ) async {
+    final id = providerId.trim();
+    if (id.isEmpty) return false;
+    final appCli = AppProviderCli.tryParse(cli.value);
+    if (appCli == null) return false;
+    final provider = await AppProviderRepository().findById(appCli, id);
+    if (provider == null) return false;
+    return provider.isOfficial ||
+        provider.category == AppProviderCategory.official;
+  }
 }

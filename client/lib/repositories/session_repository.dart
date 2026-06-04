@@ -476,7 +476,7 @@ class SessionRepository {
           projects: projects,
         ),
       );
-      await fs.deleteFile(fs.sessionFile(sessionId));
+      await fs.deleteSessionDir(sessionId);
     });
   }
 

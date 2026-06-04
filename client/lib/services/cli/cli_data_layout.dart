@@ -27,7 +27,7 @@ const List<String> cliLayoutDefaultTools = [
 /// | `providers/{tool}/providers.json` | UI provider catalog (not CONFIG_DIR) |
 /// | `skills/installed/` | Global skill packages (source for team links) |
 /// | `plugins/installed/` | Global plugin bundles (source for team links) |
-/// | `projects/` | TeamPilot session index (`projects.json`, `sessions/*.json`) |
+/// | `projects/` | TeamPilot session index (`projects.json`, `sessions/{id}/`) |
 /// | `config-profiles/` | **This layout** — per-tool trees the CLIs read at launch |
 ///
 /// ## Three isolation layers
@@ -61,8 +61,10 @@ const List<String> cliLayoutDefaultTools = [
 ///                     └── settings/, metadata, hooks …  # [ConfigProfileService]
 /// ```
 ///
-/// UI chat [AppSession.sessionId] (UUID) lives under `{teampilotRoot}/projects/sessions/`,
-/// not under `members/{cliTeamName}/`.
+/// UI chat [AppSession.sessionId] (UUID) lives under its own self-contained
+/// directory `{teampilotRoot}/projects/sessions/{sessionId}/` (metadata +
+/// bus-mail/ + bus-tasks/), not under `members/{cliTeamName}/`. See
+/// [SessionStorageLayout].
 ///
 /// **Inheritance:** [ensureTeamInheritsApp] links `agents/` and `skills/` from app
 /// → team. [ensureMemberInheritsTeam] links the same names from team → member.

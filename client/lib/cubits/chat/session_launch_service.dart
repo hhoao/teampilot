@@ -80,7 +80,7 @@ class SessionLaunchService implements MemberConnector {
   final SessionLaunchHost _h;
 
   static const _uuid = Uuid();
-  static const _teamConfigValidator = TeamConfigLaunchValidator();
+  final _teamConfigValidator = TeamConfigLaunchValidator();
 
   ChatState get _state => _h.state;
   ChatTabStore get _tabStore => _h.tabStore;
@@ -140,8 +140,10 @@ class SessionLaunchService implements MemberConnector {
       _h.activeTeam = team;
       _h.pushPresenceTarget();
       // Non-blocking pre-launch config check: warn (via dialog) when the team
-      // lacks a usable provider/model (and CLI, in mixed mode).
-      _h.emitTeamConfigValidation(_teamConfigValidator.validate(team));
+      // lacks a usable provider/model (and CLI, in mixed mode). Runs async (it
+      // reads the provider catalog to waive model for official providers) and
+      // must not delay the connect, so it is fire-and-forget.
+      unawaited(_emitTeamConfigValidation(team));
       if (team.teamMode == TeamMode.mixed) {
         await _h.busCoordinator.installBusForTab(internalTab, team, session);
       }
@@ -223,6 +225,13 @@ class SessionLaunchService implements MemberConnector {
     } else {
       _h.updateTabRunning(info.id);
     }
+  }
+
+  Future<void> _emitTeamConfigValidation(TeamConfig team) async {
+    if (_h.isClosed) return;
+    final validation = await _teamConfigValidator.validate(team);
+    if (_h.isClosed) return;
+    _h.emitTeamConfigValidation(validation);
   }
 
   void _launchRemainingMembersForTab(

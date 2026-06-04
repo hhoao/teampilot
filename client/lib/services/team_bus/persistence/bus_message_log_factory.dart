@@ -1,9 +1,11 @@
 import '../../storage/app_storage.dart';
+import '../../storage/session_storage_layout.dart';
 import 'bus_message_log.dart';
 import 'file_bus_message_log.dart';
 import 'in_memory_bus_message_log.dart';
 
-/// 按 session 创建事件日志目录。
+/// 按 session 创建事件日志目录:`{sessionDir}/bus-mail/{role}.jsonl`。
+/// `local-` 前缀走内存。路径布局见 [SessionStorageLayout]。
 abstract final class BusMessageLogFactory {
   BusMessageLogFactory._();
 
@@ -11,13 +13,13 @@ abstract final class BusMessageLogFactory {
     if (sessionId.startsWith('local-')) {
       return InMemoryBusMessageLog();
     }
-    final root = AppStorage.paths.appProjectsDir;
-    final mailRoot = AppStorage.fs.pathContext.join(
-      root,
-      'sessions',
-      'bus-mail',
-      sessionId,
+    final layout = SessionStorageLayout.forProjectsDir(
+      AppStorage.paths.appProjectsDir,
+      AppStorage.fs.pathContext,
     );
-    return FileBusMessageLog(mailRoot: mailRoot, fs: AppStorage.fs);
+    return FileBusMessageLog(
+      mailRoot: layout.busMailDir(sessionId),
+      fs: AppStorage.fs,
+    );
   }
 }

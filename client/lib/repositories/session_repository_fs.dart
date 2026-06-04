@@ -1,11 +1,13 @@
 import 'dart:convert';
 
-import 'package:path/path.dart' as p;
-
 import '../services/storage/app_storage.dart';
+import '../services/storage/session_storage_layout.dart';
 import '../services/io/filesystem.dart';
 
 /// Local or remote file access for [SessionRepository].
+///
+/// On disk each session is one self-contained directory; see
+/// [SessionStorageLayout] for the canonical path layout.
 class SessionRepositoryFs {
   SessionRepositoryFs({
     required this.projectsFile,
@@ -17,10 +19,16 @@ class SessionRepositoryFs {
   final String sessionsDir;
   final Filesystem fs;
 
-  p.Context get _pathContext => fs.pathContext;
+  late final SessionStorageLayout _layout = SessionStorageLayout(
+    sessionsDir: sessionsDir,
+    context: fs.pathContext,
+  );
 
-  String sessionFile(String sessionId) =>
-      _pathContext.join(sessionsDir, '$sessionId.json');
+  /// `{sessionsDir}/{sessionId}` — the self-contained directory for one session.
+  String sessionDir(String sessionId) => _layout.sessionDir(sessionId);
+
+  /// `{sessionDir}/session.json` — the session metadata file.
+  String sessionFile(String sessionId) => _layout.sessionFile(sessionId);
 
   Future<String?> readText(String path) => fs.readString(path);
 
@@ -29,9 +37,10 @@ class SessionRepositoryFs {
 
   Future<bool> exists(String path) async => (await fs.stat(path)).exists;
 
-  Future<void> deleteFile(String path) async {
+  /// Recursively removes one session's entire directory (metadata + bus logs).
+  Future<void> deleteSessionDir(String sessionId) async {
     try {
-      await fs.removeRecursive(path);
+      await fs.removeRecursive(sessionDir(sessionId));
     } on Object {
       // best effort
     }
@@ -42,11 +51,9 @@ class SessionRepositoryFs {
   Future<List<Map<String, Object?>>> listSessionJsonMaps() async {
     final maps = <Map<String, Object?>>[];
     for (final entry in await fs.listDir(sessionsDir)) {
-      if (entry.isDirectory || !entry.name.endsWith('.json')) continue;
+      if (!entry.isDirectory) continue;
       try {
-        final text = await fs.readString(
-          _pathContext.join(sessionsDir, entry.name),
-        );
+        final text = await fs.readString(sessionFile(entry.name));
         if (text == null || text.isEmpty) continue;
         final decoded = jsonDecode(text);
         if (decoded is Map) {
