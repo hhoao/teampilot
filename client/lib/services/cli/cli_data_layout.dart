@@ -136,7 +136,7 @@ class CliDataLayout {
   /// [sessionId] is [AppSession.cliTeamName] or [configProfileAdhocSessionId].
   /// In mixed mode each agent runs as its own process, so the launch scope nests
   /// the member under the session (`{cliTeamName}/{memberId}`) via
-  /// `ConfigProfileService.memberScopeSessionId`; the resulting per-member
+  /// [mixedModeMemberScopeSessionId]; the resulting per-member
   /// CONFIG_DIR keeps each member's teammate-bus MCP config + `X-Member` identity
   /// isolated. Teardown removes the `{cliTeamName}` parent, covering all members.
   String memberToolDir(String teamId, String sessionId, String tool) =>

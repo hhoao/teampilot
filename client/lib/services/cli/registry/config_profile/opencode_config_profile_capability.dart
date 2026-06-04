@@ -2,7 +2,6 @@ import 'package:flutter/foundation.dart';
 
 import '../../../../models/team_config.dart';
 import '../capabilities/config_profile_capability.dart';
-import 'config_profile_context.dart';
 import 'opencode_idle_plugin.dart';
 
 /// Parses bus idle URL (e.g. `http://127.0.0.1:12345/idle`) to the listening port.

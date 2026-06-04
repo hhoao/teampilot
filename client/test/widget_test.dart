@@ -30,6 +30,7 @@ import 'package:teampilot/services/extension/extension_acquisition_engine.dart';
 import 'package:teampilot/services/extension/extension_detector.dart';
 import 'package:teampilot/services/cli/installer_types.dart';
 import 'package:teampilot/models/connection_mode.dart';
+import 'package:teampilot/services/cli/registry/config_profile/claude_config_profile_capability.dart';
 import 'package:teampilot/services/provider/config_profile_service.dart';
 import 'package:teampilot/services/app/connection_mode_service.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
@@ -784,8 +785,8 @@ void main() {
         ),
       );
       expect(
-        sessions.single.lastExtraEnvironments.single?[ConfigProfileService
-            .claudeSettingsFileEnvKey],
+        sessions.single.lastExtraEnvironments
+            .single?[ClaudeConfigProfileCapability.settingsFileEnvKey],
         p.join(
           tmp.path,
           'config-profiles',

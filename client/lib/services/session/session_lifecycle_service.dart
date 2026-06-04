@@ -4,12 +4,11 @@ import '../../models/team_config.dart';
 import '../../utils/team_member_naming.dart';
 import '../../utils/logger.dart';
 import '../storage/app_storage.dart';
-import '../provider/claude_provider_settings_resolver.dart';
 import '../cli/cli_data_layout.dart';
 import '../cli/registry/built_in_cli_tools.dart';
 import '../cli/registry/capabilities/transcript_probe_capability.dart';
 import '../cli/registry/cli_tool_registry.dart';
-import '../cli/registry/config_profile/claude_config_profile_capability.dart';
+import '../cli/registry/config_profile/flashskyai_config_profile_capability.dart';
 import '../provider/config_profile_service.dart';
 import '../storage/flashskyai_storage_roots.dart';
 import '../io/filesystem.dart';
@@ -53,14 +52,12 @@ class SessionLifecycleService {
     String? Function()? llmConfigPathOverride,
     ConfigProfileService? configProfileService,
     StorageRootsResolver? storageRootsResolver,
-    ClaudeProviderSettingsResolver? claudeSettingsResolver,
     Future<bool> Function()? loadRtkEnabled,
     CliToolRegistry? cliToolRegistry,
   }) : _appDataBasePath = appDataBasePath,
        _llmConfigPathOverride = llmConfigPathOverride,
        _configProfileService = configProfileService,
        _storageRootsResolver = storageRootsResolver,
-       _claudeSettingsResolver = claudeSettingsResolver,
        _loadRtkEnabled = loadRtkEnabled,
        _cliToolRegistry = cliToolRegistry ?? _defaultCliRegistry;
 
@@ -68,7 +65,6 @@ class SessionLifecycleService {
   final String? Function()? _llmConfigPathOverride;
   final ConfigProfileService? _configProfileService;
   final StorageRootsResolver? _storageRootsResolver;
-  final ClaudeProviderSettingsResolver? _claudeSettingsResolver;
   final Future<bool> Function()? _loadRtkEnabled;
   final CliToolRegistry _cliToolRegistry;
 
@@ -99,7 +95,7 @@ class SessionLifecycleService {
       // transcripts / --resume probes must target the same nested runtime dir.
       final runtimeSessionId =
           team?.teamMode == TeamMode.mixed && member != null && member.isValid
-          ? ConfigProfileService.memberScopeSessionId(
+          ? mixedModeMemberScopeSessionId(
               roots.fs.pathContext,
               runtimeTeamId,
               member,
@@ -240,26 +236,6 @@ class SessionLifecycleService {
     final teamId = team?.id.trim() ?? '';
     if (team != null && teamId.isNotEmpty) {
       final launchCli = member != null ? member.cliWithin(team) : team.cli;
-      final resolver =
-          _claudeSettingsResolver ??
-          ClaudeProviderSettingsResolver(basePath: service.basePath);
-      Map<String, Object?>? claudeSettings;
-      String? claudeProviderId;
-      var claudeSettingsByMember = const <String, Map<String, Object?>>{};
-      final claudeCap = _cliToolRegistry
-          .capability<ClaudeConfigProfileCapability>(
-            launchCli.value,
-          );
-      if (claudeCap != null) {
-        final extras = await claudeCap.resolveLaunchExtras(
-          team: team,
-          member: member,
-          resolver: resolver,
-        );
-        claudeSettings = extras.settings;
-        claudeProviderId = extras.providerId;
-        claudeSettingsByMember = extras.settingsByMember;
-      }
       final leadTaskId = memberBinding?.taskId.trim() ?? '';
       final leadSessionId =
           member != null &&
@@ -275,11 +251,8 @@ class SessionLifecycleService {
         member: member,
         workingDirectory: workingDirectory,
         additionalDirectories: session.additionalPaths,
-        claudeSettings: claudeSettings,
-        claudeSettingsByMember: claudeSettingsByMember,
         team: team,
         leadSessionId: leadSessionId,
-        claudeProviderId: claudeProviderId,
         extraMcpServers: extraMcpServers,
         busIdleUrl: busIdleUrl,
       );
@@ -474,8 +447,8 @@ class SessionLifecycleService {
 
   String _memberConfigDirFromEnv(Map<String, String> env) {
     return env['CLAUDE_CONFIG_DIR'] ??
-        env[ConfigProfileService.flashskyaiConfigDirEnvKey] ??
-        env[ConfigProfileService.flashskyaiSessionHomeDirEnvKey] ??
+        env[FlashskyaiConfigProfileCapability.configDirEnvKey] ??
+        env[FlashskyaiConfigProfileCapability.sessionHomeDirEnvKey] ??
         env['CODEX_HOME'] ??
         '';
   }

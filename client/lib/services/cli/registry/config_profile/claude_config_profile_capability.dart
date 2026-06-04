@@ -4,18 +4,67 @@ import '../../../../models/claude_credential_link_result.dart';
 import '../../../../models/team_config.dart';
 import '../../../../utils/team_member_naming.dart';
 import '../../../provider/claude_official_provider.dart';
+import '../../../../repositories/app_provider_repository.dart';
+import '../../../provider/claude_provider_credentials_service.dart';
 import '../../../provider/claude_provider_settings_resolver.dart';
-import '../../../provider/config_profile_service.dart';
 import '../../../session/member_role_provision.dart';
 import '../../../team/claude_team_roster_service.dart';
 import '../capabilities/config_profile_capability.dart';
-import '../config_profile/config_profile_context.dart';
 import 'bus_idle_stop_hook.dart';
+
+class ClaudeLaunchExtras {
+  const ClaudeLaunchExtras({
+    this.settings,
+    this.providerId,
+    this.settingsByMember = const {},
+  });
+
+  final Map<String, Object?>? settings;
+  final String? providerId;
+  final Map<String, Map<String, Object?>> settingsByMember;
+}
 
 final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
   const ClaudeConfigProfileCapability();
 
+  static const toolId = 'claude';
   static const metadataFileName = '.claude.json';
+  static const settingsFileEnvKey = 'TEAMPILOT_CLAUDE_SETTINGS_FILE';
+
+  static const defaultMetadata = <String, Object?>{
+    'hasCompletedOnboarding': true,
+  };
+
+  static const defaultProjectConfig = <String, Object?>{
+    'hasTrustDialogAccepted': true,
+    'projectOnboardingSeenCount': 1,
+    'hasClaudeMdExternalIncludesApproved': true,
+    'hasClaudeMdExternalIncludesWarningShown': true,
+    'allowedTools': <Object?>[],
+    'mcpServers': <String, Object?>{},
+  };
+
+  static String sessionMetadataFile(
+    ConfigProfileDelegate delegate,
+    String teamId,
+    String sessionId,
+  ) =>
+      delegate.pathContext.join(
+        delegate.sessionToolDir(teamId, sessionId, toolId),
+        metadataFileName,
+      );
+
+  static String sessionMemberSettingsFile(
+    ConfigProfileDelegate delegate,
+    String teamId,
+    String sessionId,
+    TeamMemberConfig member,
+  ) =>
+      delegate.pathContext.join(
+        delegate.sessionToolDir(teamId, sessionId, toolId),
+        'settings',
+        '${ClaudeTeamRosterService.safeClaudePathSegment(member.id)}.json',
+      );
 
   Future<ClaudeLaunchExtras> resolveLaunchExtras({
     required TeamConfig team,
@@ -49,9 +98,25 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
     final delegate = ctx.paths;
     final scope = ctx.scope;
     final workingDirectory = ctx.workingDirectory ?? '';
-    final claude = ctx.claude;
+    final team = ctx.team;
     final warnings = <String>[];
-    final mixed = ctx.team?.teamMode == TeamMode.mixed;
+    final mixed = team?.teamMode == TeamMode.mixed;
+
+    ClaudeLaunchExtras? claude;
+    if (team != null) {
+      final resolver = ClaudeProviderSettingsResolver(
+        basePath: delegate.basePath,
+        repository: AppProviderRepository(
+          basePath: delegate.basePath,
+          fs: delegate.fs,
+        ),
+      );
+      claude = await resolveLaunchExtras(
+        team: team,
+        member: ctx.member,
+        resolver: resolver,
+      );
+    }
 
     await _writeMetadata(
       delegate,
@@ -63,8 +128,8 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
       delegate,
       scope,
       claude?.settings,
-      effortLevel: ctx.team?.claudeEffortLevel ?? 'xhigh',
-      teammateMode: ctx.team?.claudeTeammateMode ?? 'in-process',
+      effortLevel: team?.claudeEffortLevel ?? 'xhigh',
+      teammateMode: team?.claudeTeammateMode ?? 'in-process',
       mixed: mixed,
     );
     if (!mixed) {
@@ -73,9 +138,9 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
         scope: scope,
         members: ctx.members,
         workingDirectory: workingDirectory,
-        description: ctx.team?.description ?? '',
+        description: team?.description ?? '',
         leadSessionId: ctx.leadSessionId,
-        teammateMode: ctx.team?.claudeTeammateMode ?? 'in-process',
+        teammateMode: team?.claudeTeammateMode ?? 'in-process',
       );
     }
     await _writeMemberProfiles(
@@ -85,8 +150,8 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
       launchedMember: ctx.member,
       providerSettings: claude?.settings,
       providerSettingsByMember: claude?.settingsByMember ?? const {},
-      forceTeamLeadDelegateMode: ctx.team?.forceTeamLeadDelegateMode ?? false,
-      mixed: ctx.team?.teamMode == TeamMode.mixed,
+      forceTeamLeadDelegateMode: team?.forceTeamLeadDelegateMode ?? false,
+      mixed: mixed,
       idleUrl: ctx.busIdleUrl,
     );
 
@@ -97,9 +162,13 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
       final sessionClaudeDir = delegate.sessionToolDir(
         scope.teamId,
         scope.sessionId,
-        'claude',
+        toolId,
       );
-      final link = await delegate.claudeCredentials.ensureLinked(
+      final credentials = ClaudeProviderCredentialsService(
+        fs: delegate.fs,
+        basePath: delegate.basePath,
+      );
+      final link = await credentials.ensureLinked(
         sessionClaudeDir,
         providerId,
       );
@@ -113,11 +182,11 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
       'CLAUDE_CONFIG_DIR': delegate.sessionToolDir(
         scope.teamId,
         scope.sessionId,
-        'claude',
+        toolId,
       ),
       if (member != null && member.isValid)
-        ConfigProfileService.claudeSettingsFileEnvKey:
-            delegate.sessionClaudeMemberSettingsFile(
+        settingsFileEnvKey: sessionMemberSettingsFile(
+          delegate,
           scope.teamId,
           scope.sessionId,
           member,
@@ -129,7 +198,7 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
     if (member != null && member.isValid) {
       final appendPath = await delegate.resolveAppendSystemPromptPath(
         scope: scope,
-        tool: 'claude',
+        tool: toolId,
         member: member,
       );
       if (appendPath != null) {
@@ -149,13 +218,10 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
     String teamId,
     String sessionId,
   ) async {
-    final file = delegate.sessionClaudeMetadataFile(teamId, sessionId);
-    final existing = await delegate.readMetadataFile(
-      file,
-      ConfigProfileService.defaultClaudeMetadata,
-    );
+    final file = sessionMetadataFile(delegate, teamId, sessionId);
+    final existing = await delegate.readMetadataFile(file, defaultMetadata);
     await delegate.writeJsonIfChanged(file, {
-      ...ConfigProfileService.defaultClaudeMetadata,
+      ...defaultMetadata,
       ...existing,
     });
   }
@@ -169,7 +235,7 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
     required bool mixed,
   }) async {
     final file = delegate.pathContext.join(
-      delegate.sessionToolDir(scope.teamId, scope.sessionId, 'claude'),
+      delegate.sessionToolDir(scope.teamId, scope.sessionId, toolId),
       'settings.json',
     );
     final settings = _teamSettings(
@@ -184,7 +250,7 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
       memberToolDir: delegate.sessionToolDir(
         scope.teamId,
         scope.sessionId,
-        'claude',
+        toolId,
       ),
     );
   }
@@ -195,13 +261,15 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
     String workingDirectory, {
     List<String> additionalDirectories = const [],
   }) async {
-    final metadataPath = delegate.sessionClaudeMetadataFile(
+    final metadataPath = sessionMetadataFile(
+      delegate,
       scope.teamId,
       scope.sessionId,
     );
     final metadata = await delegate.metadataWithTrustedProjects(
       metadataPath: metadataPath,
-      defaultMetadata: ConfigProfileService.defaultClaudeMetadata,
+      defaultMetadata: defaultMetadata,
+      defaultProjectConfig: defaultProjectConfig,
       directories: [workingDirectory, ...additionalDirectories],
     );
     await delegate.fs.atomicWrite(
@@ -222,7 +290,7 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
     final claudeDir = delegate.sessionToolDir(
       scope.teamId,
       scope.sessionId,
-      'claude',
+      toolId,
     );
     final rosterDir = delegate.pathContext.join(
       claudeDir,
@@ -281,9 +349,6 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
     final selected = launchedMember;
     final uniqueMembers = <String, TeamMemberConfig>{};
     if (!mixed) {
-      // In-process agent-teams share one CONFIG_DIR, so every member profile
-      // must be materialized up front. Mixed members each own an isolated
-      // CONFIG_DIR and only ever read their own settings file.
       for (final member in members.where((member) => member.isValid)) {
         uniqueMembers[member.id] = member;
       }
@@ -318,7 +383,7 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
     final memberToolDir = delegate.sessionToolDir(
       scope.teamId,
       scope.sessionId,
-      'claude',
+      toolId,
     );
     final isLead = TeamMemberNaming.isTeamLead(member);
     await MemberRoleProvision.syncRolePromptFile(
@@ -328,7 +393,8 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
       forceTeamLeadDelegateMode: isLead && forceTeamLeadDelegateMode,
       mixed: mixed,
     );
-    final file = delegate.sessionClaudeMemberSettingsFile(
+    final file = sessionMemberSettingsFile(
+      delegate,
       scope.teamId,
       scope.sessionId,
       member,
@@ -395,11 +461,6 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
         }
       }
     }
-    // mixed members are standalone processes coordinating via the teammate-bus
-    // MCP, not Claude's in-process agent-teams. Agent-teams mode changes the
-    // turn/idle lifecycle and suppresses the bus Stop hook, so it must be OFF
-    // for mixed members — strip it (and teammateMode) even when it leaks in
-    // from persisted provider settings, not just skip adding our own.
     if (mixed) {
       env.remove('CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS');
     } else {

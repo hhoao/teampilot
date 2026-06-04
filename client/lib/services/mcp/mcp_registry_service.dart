@@ -4,7 +4,8 @@ import '../../models/mcp_registry_source.dart';
 import '../cli/cli_data_layout.dart';
 import '../io/filesystem.dart';
 import '../io/local_filesystem.dart';
-import '../provider/config_profile_service.dart';
+import '../cli/registry/config_profile/claude_config_profile_capability.dart';
+import '../cli/registry/config_profile/flashskyai_config_profile_capability.dart';
 import 'mcp_credentials_store.dart';
 import 'mcp_registry_config_service.dart';
 import 'smithery_mcp_auth.dart';
@@ -77,14 +78,14 @@ class McpRegistryService {
       teamId: trimmedTeamId,
       sessionId: trimmedSessionId,
       tool: 'claude',
-      metadataFileName: ConfigProfileService.claudeMetadataFileName,
+      metadataFileName: ClaudeConfigProfileCapability.metadataFileName,
       catalogServers: mergedServers,
     );
     await _mergeForTool(
       teamId: trimmedTeamId,
       sessionId: trimmedSessionId,
       tool: 'flashskyai',
-      metadataFileName: ConfigProfileService.flashskyaiMetadataFileName,
+      metadataFileName: FlashskyaiConfigProfileCapability.metadataFileName,
       catalogServers: mergedServers,
     );
 

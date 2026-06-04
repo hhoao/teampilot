@@ -1,22 +1,44 @@
 import '../../../../models/team_config.dart';
 import '../../../../utils/team_member_naming.dart';
-import '../../../provider/config_profile_service.dart';
 import '../../../session/member_role_provision.dart';
 import '../capabilities/config_profile_capability.dart';
-import '../config_profile/config_profile_context.dart';
 import 'bus_idle_stop_hook.dart';
 
 final class FlashskyaiConfigProfileCapability
     implements ConfigProfileCapability {
   const FlashskyaiConfigProfileCapability();
 
+  static const toolId = 'flashskyai';
   static const metadataFileName = '.flashskyai.json';
   static const settingsFileName = 'settings.json';
+  static const configDirEnvKey = 'FLASHSKYAI_CONFIG_DIR';
+  static const sessionHomeDirEnvKey = 'FLASHSKYAI_SESSION_HOME_DIR';
+
+  static const defaultMetadata = <String, Object?>{
+    'hasCompletedOnboarding': true,
+  };
+
+  static const defaultProjectConfig = <String, Object?>{
+    'hasTrustDialogAccepted': true,
+    'projectOnboardingSeenCount': 1,
+    'allowedTools': <Object?>[],
+    'mcpServers': <String, Object?>{},
+  };
+
+  static String sessionMetadataFile(
+    ConfigProfileDelegate delegate,
+    String teamId,
+    String sessionId,
+  ) =>
+      delegate.pathContext.join(
+        delegate.sessionToolDir(teamId, sessionId, toolId),
+        metadataFileName,
+      );
 
   @override
   Future<void> ensureSessionProfile(ConfigProfileSessionContext ctx) async {
     final delegate = ctx.paths;
-    await delegate.layout.ensureAppToolLayout('flashskyai');
+    await delegate.layout.ensureAppToolLayout(toolId);
     await _ensureSessionDefaults(delegate, ctx.teamId, ctx.sessionId);
   }
 
@@ -48,7 +70,7 @@ final class FlashskyaiConfigProfileCapability
     if (member != null && member.isValid) {
       final appendPath = await delegate.resolveAppendSystemPromptPath(
         scope: scope,
-        tool: 'flashskyai',
+        tool: toolId,
         member: member,
       );
       if (appendPath != null) {
@@ -65,13 +87,10 @@ final class FlashskyaiConfigProfileCapability
     String teamId,
     String sessionId,
   ) async {
-    final file = delegate.sessionFlashskyaiMetadataFile(teamId, sessionId);
-    final existing = await delegate.readMetadataFile(
-      file,
-      ConfigProfileService.defaultFlashskyaiMetadata,
-    );
+    final file = sessionMetadataFile(delegate, teamId, sessionId);
+    final existing = await delegate.readMetadataFile(file, defaultMetadata);
     await delegate.writeJsonIfChanged(file, {
-      ...ConfigProfileService.defaultFlashskyaiMetadata,
+      ...defaultMetadata,
       ...existing,
     });
   }
@@ -82,7 +101,8 @@ final class FlashskyaiConfigProfileCapability
     String workingDirectory, {
     List<String> additionalDirectories = const [],
   }) async {
-    final metadataPath = delegate.sessionFlashskyaiMetadataFile(
+    final metadataPath = sessionMetadataFile(
+      delegate,
       scope.teamId,
       scope.sessionId,
     );
@@ -90,12 +110,14 @@ final class FlashskyaiConfigProfileCapability
     if (await delegate.trustedProjectsAlreadyCurrent(
       metadataPath,
       directories,
+      defaultMetadata: defaultMetadata,
     )) {
       return;
     }
     final metadata = await delegate.metadataWithTrustedProjects(
       metadataPath: metadataPath,
-      defaultMetadata: ConfigProfileService.defaultFlashskyaiMetadata,
+      defaultMetadata: defaultMetadata,
+      defaultProjectConfig: defaultProjectConfig,
       directories: directories,
     );
     await delegate.writeJsonIfChanged(metadataPath, metadata);
@@ -130,13 +152,13 @@ final class FlashskyaiConfigProfileCapability
     LaunchProfileScope scope,
   ) async {
     final file = delegate.pathContext.join(
-      delegate.sessionToolDir(scope.teamId, scope.sessionId, 'flashskyai'),
+      delegate.sessionToolDir(scope.teamId, scope.sessionId, toolId),
       settingsFileName,
     );
     final memberToolDir = delegate.sessionToolDir(
       scope.teamId,
       scope.sessionId,
-      'flashskyai',
+      toolId,
     );
     final teamDefaults = _teamSettings();
     if (await _settingsAlreadyCurrent(delegate, file, teamDefaults) &&
@@ -159,7 +181,7 @@ final class FlashskyaiConfigProfileCapability
     final memberToolDir = delegate.sessionToolDir(
       scope.teamId,
       scope.sessionId,
-      'flashskyai',
+      toolId,
     );
     final isLead = TeamMemberNaming.isTeamLead(member);
     await MemberRoleProvision.syncRolePromptFile(
@@ -198,12 +220,12 @@ final class FlashskyaiConfigProfileCapability
     final memberDir = delegate.sessionToolDir(
       scope.teamId,
       scope.sessionId,
-      'flashskyai',
+      toolId,
     );
     return {
-      ConfigProfileService.flashskyaiConfigDirEnvKey: memberDir,
-      ConfigProfileService.flashskyaiSessionHomeDirEnvKey: memberDir,
-      'LLM_CONFIG_PATH': delegate.appFlashskyaiLlmConfigFile,
+      configDirEnvKey: memberDir,
+      sessionHomeDirEnvKey: memberDir,
+      'LLM_CONFIG_PATH': delegate.layout.appFlashskyaiLlmConfigFile,
       'FLASHSKYAI_CODE_NO_FLICKER': '1',
     };
   }

@@ -1,24 +1,14 @@
-import '../../cli_data_layout.dart';
-import '../../../../models/team_config.dart';
-import '../../../provider/claude_provider_credentials_service.dart';
-import '../../../io/filesystem.dart';
-import '../../../host/host_execution_environment.dart';
 import 'package:path/path.dart' as p;
 
-/// Resolved launch path scope for a team session.
-class LaunchProfileScope {
-  const LaunchProfileScope({
-    required this.teamId,
-    required this.sessionId,
-    required this.cliTeamName,
-  });
+import '../../cli_data_layout.dart';
+import '../../../../models/team_config.dart';
+import '../../../io/filesystem.dart';
+import '../../../host/host_execution_environment.dart';
+import 'config_profile_scope.dart';
 
-  final String teamId;
-  final String sessionId;
-  final String cliTeamName;
-}
+export 'config_profile_scope.dart';
 
-/// Narrow path facade for [ConfigProfileCapability] unit tests.
+/// Path facade for [ConfigProfileCapability] implementations.
 abstract interface class ConfigProfilePaths {
   String get basePath;
 
@@ -29,21 +19,9 @@ abstract interface class ConfigProfilePaths {
   CliDataLayout get layout;
 
   String sessionToolDir(String teamId, String sessionId, String tool);
-
-  String sessionFlashskyaiMetadataFile(String teamId, String sessionId);
-
-  String sessionClaudeMetadataFile(String teamId, String sessionId);
-
-  String sessionClaudeMemberSettingsFile(
-    String teamId,
-    String sessionId,
-    TeamMemberConfig member,
-  );
-
-  String get appFlashskyaiLlmConfigFile;
 }
 
-/// Shared profile operations delegated from [ConfigProfileService].
+/// Shared profile I/O and cross-CLI hooks (RTK, team-lead scripts).
 abstract interface class ConfigProfileDelegate implements ConfigProfilePaths {
   Future<Map<String, Object?>> readMetadataFile(
     String path,
@@ -55,13 +33,15 @@ abstract interface class ConfigProfileDelegate implements ConfigProfilePaths {
   Future<Map<String, Object?>> metadataWithTrustedProjects({
     required String metadataPath,
     required Map<String, Object?> defaultMetadata,
+    required Map<String, Object?> defaultProjectConfig,
     required Iterable<String> directories,
   });
 
   Future<bool> trustedProjectsAlreadyCurrent(
     String metadataPath,
-    Iterable<String> directories,
-  );
+    Iterable<String> directories, {
+    required Map<String, Object?> defaultMetadata,
+  });
 
   Future<Map<String, Object?>> readSettingsFile(String path);
 
@@ -91,7 +71,49 @@ abstract interface class ConfigProfileDelegate implements ConfigProfilePaths {
     required TeamMemberConfig member,
   });
 
-  ClaudeProviderCredentialsService get claudeCredentials;
-
   HostExecutionEnvironment hostEnvironmentForProvision();
+}
+
+class ConfigProfileSessionContext {
+  const ConfigProfileSessionContext({
+    required this.teamId,
+    required this.sessionId,
+    required this.members,
+    required this.paths,
+    this.team,
+  });
+
+  final String teamId;
+  final String sessionId;
+  final List<TeamMemberConfig> members;
+  final ConfigProfileDelegate paths;
+  final TeamConfig? team;
+}
+
+class ConfigProfileLaunchContext {
+  const ConfigProfileLaunchContext({
+    required this.teamId,
+    required this.sessionId,
+    required this.scope,
+    this.team,
+    this.member,
+    required this.members,
+    this.workingDirectory = '',
+    this.additionalDirectories = const [],
+    required this.paths,
+    this.leadSessionId,
+    this.busIdleUrl,
+  });
+
+  final String teamId;
+  final String sessionId;
+  final LaunchProfileScope scope;
+  final TeamConfig? team;
+  final TeamMemberConfig? member;
+  final List<TeamMemberConfig> members;
+  final String? workingDirectory;
+  final List<String> additionalDirectories;
+  final ConfigProfileDelegate paths;
+  final String? leadSessionId;
+  final String? busIdleUrl;
 }

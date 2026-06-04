@@ -26,7 +26,7 @@ void main() {
     const capability = FlashskyaiConfigProfileCapability();
     const member = TeamMemberConfig(id: 'm1', name: 'Member', model: 'test');
 
-    final scope = ConfigProfileService.resolveLaunchScope(
+    final scope = resolveLaunchProfileScope(
       teamId: 'team-a',
       runtimeTeamId: 'session-1',
     );
@@ -53,7 +53,7 @@ void main() {
       'flashskyai',
     );
     expect(
-      contribution.environment[ConfigProfileService.flashskyaiConfigDirEnvKey],
+      contribution.environment[FlashskyaiConfigProfileCapability.configDirEnvKey],
       expectedDir,
     );
   });
@@ -79,7 +79,7 @@ void main() {
       members: [member],
     );
 
-    final scope = ConfigProfileService.resolveLaunchScope(
+    final scope = resolveLaunchProfileScope(
       teamId: 'team-a',
       runtimeTeamId: 'session-1',
     );

@@ -8,6 +8,8 @@ import 'package:teampilot/services/cli/cli_data_layout.dart';
 import 'package:teampilot/services/cli/registry/capabilities/config_profile_capability.dart';
 import 'package:teampilot/services/cli/registry/config_profile/claude_config_profile_capability.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
+import 'package:teampilot/models/app_provider_config.dart';
+import 'package:teampilot/repositories/app_provider_repository.dart';
 import 'package:teampilot/services/provider/config_profile_service.dart';
 
 void main() {
@@ -27,7 +29,7 @@ void main() {
     const member = TeamMemberConfig(id: 'm1', name: 'Member', model: 'test');
     const team = TeamConfig(id: 'team-a', name: 'agent', cli: TeamCli.claude);
 
-    final scope = ConfigProfileService.resolveLaunchScope(
+    final scope = resolveLaunchProfileScope(
       teamId: 'team-a',
       runtimeTeamId: 'session-1',
     );
@@ -67,14 +69,31 @@ void main() {
       );
       const capability = ClaudeConfigProfileCapability();
       const member = TeamMemberConfig(id: 'm1', name: 'Member', model: 'test');
+      final repository = AppProviderRepository(basePath: base.path);
+      await repository.saveProviders(AppProviderCli.claude, [
+        const AppProviderConfig(
+          id: 'leaky',
+          cli: AppProviderCli.claude,
+          name: 'leaky',
+          category: AppProviderCategory.thirdParty,
+          config: {
+            'env': {
+              'ANTHROPIC_BASE_URL': 'https://api.example.com/anthropic',
+              'CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS': '1',
+            },
+            'teammateMode': 'in-process',
+          },
+        ),
+      ]);
       const team = TeamConfig(
         id: 'team-a',
         name: 'agent',
         cli: TeamCli.claude,
         teamMode: TeamMode.mixed,
+        providerIdsByTool: {'claude': 'leaky'},
       );
 
-      final scope = ConfigProfileService.resolveLaunchScope(
+      final scope = resolveLaunchProfileScope(
         teamId: 'team-a',
         runtimeTeamId: 'session-1',
       );
@@ -89,14 +108,6 @@ void main() {
           members: const [member],
           workingDirectory: '/workspace/project',
           paths: service,
-          // Persisted provider settings may carry agent-teams on; mixed must
-          // strip it, not just avoid adding its own.
-          claude: const ClaudeLaunchExtras(
-            settings: {
-              'env': {'CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS': '1'},
-              'teammateMode': 'in-process',
-            },
-          ),
         ),
       );
 

@@ -7,7 +7,7 @@ import 'package:teampilot/services/mcp/mcp_registry_service.dart';
 import 'package:teampilot/models/mcp_registry_source.dart';
 import 'package:teampilot/models/mcp_server.dart';
 import 'package:teampilot/services/mcp/team_mcp_linker_service.dart';
-import 'package:teampilot/services/provider/config_profile_service.dart';
+import 'package:teampilot/services/cli/registry/config_profile/claude_config_profile_capability.dart';
 import 'package:teampilot/services/team_bus/mcp/teammate_bus_mcp_config.dart';
 import 'package:path/path.dart' as p;
 
@@ -187,7 +187,7 @@ void main() {
     await Directory(memberDir).create(recursive: true);
 
     final metaFile = File(
-      p.join(memberDir, ConfigProfileService.claudeMetadataFileName),
+      p.join(memberDir, ClaudeConfigProfileCapability.metadataFileName),
     );
     await metaFile.writeAsString(
       jsonEncode({'hasCompletedOnboarding': true}),

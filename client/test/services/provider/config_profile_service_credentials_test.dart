@@ -1,33 +1,75 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:teampilot/models/app_provider_config.dart';
 import 'package:teampilot/models/team_config.dart';
-import 'package:teampilot/services/provider/claude_provider_credentials_service.dart';
+import 'package:teampilot/repositories/app_provider_repository.dart';
 import 'package:teampilot/services/provider/config_profile_service.dart';
 
 import '../../support/in_memory_filesystem.dart';
+import '../../support/post_frame_test_harness.dart';
 
 void main() {
   late InMemoryFilesystem fs;
   late ConfigProfileService service;
-  late ClaudeProviderCredentialsService credentials;
+  late AppProviderRepository repository;
   const base = '/data/tp';
 
   setUp(() {
+    setUpTestAppStorage();
     fs = InMemoryFilesystem();
-    credentials = ClaudeProviderCredentialsService(fs: fs, basePath: base);
-    service = ConfigProfileService(
-      basePath: base,
-      fs: fs,
-      claudeCredentialsService: credentials,
-    );
+    service = ConfigProfileService(basePath: base, fs: fs);
+    repository = AppProviderRepository(basePath: base, fs: fs);
   });
 
+  tearDown(() => tearDownTestAppStorage());
+
+  TeamConfig teamWithProvider(String teamId, String providerId) => TeamConfig(
+    id: teamId,
+    name: teamId,
+    cli: TeamCli.claude,
+    providerIdsByTool: {'claude': providerId},
+  );
+
+  Future<void> seedOfficialProvider(String id) async {
+    await repository.saveProviders(AppProviderCli.claude, [
+      AppProviderConfig(
+        id: id,
+        cli: AppProviderCli.claude,
+        name: id,
+        category: AppProviderCategory.official,
+        config: const {'env': {}},
+      ),
+    ]);
+  }
+
   test('official launch links provider credentials into session dir', () async {
+    await repository.saveProviders(AppProviderCli.claude, [
+      const AppProviderConfig(
+        id: 'work',
+        cli: AppProviderCli.claude,
+        name: 'work',
+        category: AppProviderCategory.official,
+        config: {'env': {}},
+      ),
+      const AppProviderConfig(
+        id: 'personal',
+        cli: AppProviderCli.claude,
+        name: 'personal',
+        category: AppProviderCategory.official,
+        config: {'env': {}},
+      ),
+    ]);
     await fs.writeString(
       fs.pathContext.join(base, 'providers', 'claude', 'work', '.credentials.json'),
       '{"claudeAiOauth":{"accessToken":"work"}}',
     );
     await fs.writeString(
-      fs.pathContext.join(base, 'providers', 'claude', 'personal', '.credentials.json'),
+      fs.pathContext.join(
+        base,
+        'providers',
+        'claude',
+        'personal',
+        '.credentials.json',
+      ),
       '{"claudeAiOauth":{"accessToken":"personal"}}',
     );
 
@@ -35,19 +77,18 @@ void main() {
       teamId: 'team-a',
       runtimeTeamId: 'session-a',
       cli: TeamCli.claude,
-      claudeSettings: const {'env': {}},
-      claudeProviderId: 'work',
+      team: teamWithProvider('team-a', 'work'),
     );
     final personalOutcome = await service.prepareTeamLaunch(
       teamId: 'team-b',
       runtimeTeamId: 'session-b',
       cli: TeamCli.claude,
-      claudeSettings: const {'env': {}},
-      claudeProviderId: 'personal',
+      team: teamWithProvider('team-b', 'personal'),
     );
 
     final workSessionDir = workOutcome.environment['CLAUDE_CONFIG_DIR']!;
-    final personalSessionDir = personalOutcome.environment['CLAUDE_CONFIG_DIR']!;
+    final personalSessionDir =
+        personalOutcome.environment['CLAUDE_CONFIG_DIR']!;
 
     expect(
       fs.symlinks[fs.pathContext.join(workSessionDir, '.credentials.json')],
@@ -55,17 +96,24 @@ void main() {
     );
     expect(
       fs.symlinks[fs.pathContext.join(personalSessionDir, '.credentials.json')],
-      fs.pathContext.join(base, 'providers', 'claude', 'personal', '.credentials.json'),
+      fs.pathContext.join(
+        base,
+        'providers',
+        'claude',
+        'personal',
+        '.credentials.json',
+      ),
     );
   });
 
   test('missing credentials adds launch warning without failing', () async {
+    await seedOfficialProvider('work');
+
     final outcome = await service.prepareTeamLaunch(
       teamId: 'team-a',
       runtimeTeamId: 'session-a',
       cli: TeamCli.claude,
-      claudeSettings: const {'env': {}},
-      claudeProviderId: 'work',
+      team: teamWithProvider('team-a', 'work'),
     );
 
     expect(outcome.warnings, contains('claude_credentials_missing'));

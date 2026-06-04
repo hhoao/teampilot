@@ -10,11 +10,32 @@ import 'package:teampilot/services/host/script_file_hook_provisioner.dart';
 import 'package:teampilot/services/host/team_pilot_hook_scripts.dart';
 import 'package:teampilot/services/storage/runtime_storage_context.dart';
 import 'package:teampilot/services/cli/cli_data_layout.dart';
+import 'package:teampilot/services/cli/registry/config_profile/claude_config_profile_capability.dart';
+import 'package:teampilot/services/cli/registry/config_profile/flashskyai_config_profile_capability.dart';
 import 'package:teampilot/services/provider/config_profile_service.dart';
+import 'package:teampilot/models/app_provider_config.dart';
+import 'package:teampilot/repositories/app_provider_repository.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/session/member_role_provision.dart';
 import 'package:teampilot/services/team/team_lead_delegate_settings_merge.dart';
 import 'package:teampilot/services/team/team_lead_settings_merge.dart';
+
+Future<void> _seedClaudeProvider(
+  String basePath, {
+  required String id,
+  required Map<String, Object?> env,
+}) async {
+  final repository = AppProviderRepository(basePath: basePath);
+  await repository.saveProviders(AppProviderCli.claude, [
+    AppProviderConfig(
+      id: id,
+      cli: AppProviderCli.claude,
+      name: id,
+      category: AppProviderCategory.thirdParty,
+      config: {'env': env},
+    ),
+  ]);
+}
 
 String _sessionClaudeDir(String base, String teamId, String sessionId) =>
     p.join(
@@ -122,19 +143,19 @@ void main() {
     expect(
       env.keys,
       [
-        ConfigProfileService.flashskyaiConfigDirEnvKey,
-        ConfigProfileService.flashskyaiSessionHomeDirEnvKey,
+        FlashskyaiConfigProfileCapability.configDirEnvKey,
+        FlashskyaiConfigProfileCapability.sessionHomeDirEnvKey,
         'LLM_CONFIG_PATH',
         'FLASHSKYAI_CODE_NO_FLICKER',
       ],
     );
     expect(env['FLASHSKYAI_CODE_NO_FLICKER'], '1');
     expect(
-      env[ConfigProfileService.flashskyaiConfigDirEnvKey],
+      env[FlashskyaiConfigProfileCapability.configDirEnvKey],
       memberFlashskyaiDir,
     );
     expect(
-      env[ConfigProfileService.flashskyaiSessionHomeDirEnvKey],
+      env[FlashskyaiConfigProfileCapability.sessionHomeDirEnvKey],
       memberFlashskyaiDir,
     );
     expect(
@@ -145,7 +166,7 @@ void main() {
     final metadata = File(
       p.join(
         memberFlashskyaiDir,
-        ConfigProfileService.flashskyaiMetadataFileName,
+        FlashskyaiConfigProfileCapability.metadataFileName,
       ),
     );
     expect(await metadata.exists(), isTrue);
@@ -159,7 +180,7 @@ void main() {
     final settings = File(
       p.join(
         memberFlashskyaiDir,
-        ConfigProfileService.flashskyaiSettingsFileName,
+        FlashskyaiConfigProfileCapability.settingsFileName,
       ),
     );
     expect(await settings.exists(), isTrue);
@@ -218,7 +239,7 @@ void main() {
         env[MemberRoleProvision.appendSystemPromptFileEnvKey];
     expect(appendPath, roleFile);
 
-    final settingsPath = env[ConfigProfileService.claudeSettingsFileEnvKey]!;
+    final settingsPath = env[ClaudeConfigProfileCapability.settingsFileEnvKey]!;
     final settings =
         jsonDecode(await File(settingsPath).readAsString())
             as Map<String, Object?>;
@@ -270,7 +291,7 @@ void main() {
     ).readAsString();
     expect(roleText, contains('Delegate-only mode'));
 
-    final settingsPath = env[ConfigProfileService.claudeSettingsFileEnvKey]!;
+    final settingsPath = env[ClaudeConfigProfileCapability.settingsFileEnvKey]!;
     final settings =
         jsonDecode(await File(settingsPath).readAsString())
             as Map<String, Object?>;
@@ -329,7 +350,7 @@ void main() {
               await File(
                 p.join(
                   flashskyaiDir,
-                  ConfigProfileService.flashskyaiSettingsFileName,
+                  FlashskyaiConfigProfileCapability.settingsFileName,
                 ),
               ).readAsString(),
             )
@@ -386,7 +407,7 @@ void main() {
                 await File(
                   p.join(
                     flashskyaiDir,
-                    ConfigProfileService.flashskyaiSettingsFileName,
+                    FlashskyaiConfigProfileCapability.settingsFileName,
                   ),
                 ).readAsString(),
               )
@@ -482,7 +503,7 @@ void main() {
     final metadata =
         jsonDecode(
               await File(
-                p.join(claudeDir, ConfigProfileService.claudeMetadataFileName),
+                p.join(claudeDir, ClaudeConfigProfileCapability.metadataFileName),
               ).readAsString(),
             )
             as Map<String, Object?>;
@@ -569,6 +590,14 @@ void main() {
     'prepareTeamLaunch for claude member returns runtime dir and settings file',
     () async {
       const sessionId = '00000000-0000-4000-8000-000000000001';
+      await _seedClaudeProvider(
+        base.path,
+        id: 'custom',
+        env: const {
+          'ANTHROPIC_BASE_URL': 'https://api.example.com/anthropic',
+          'ANTHROPIC_MODEL': 'team-default',
+        },
+      );
       final env = (await service.prepareTeamLaunch(
         teamId: 'team-a',
         runtimeTeamId: sessionId,
@@ -582,19 +611,19 @@ void main() {
           name: 'developer',
           model: 'sonnet',
         ),
-        claudeSettings: const {
-          'env': {
-            'ANTHROPIC_BASE_URL': 'https://api.example.com/anthropic',
-            'ANTHROPIC_MODEL': 'team-default',
-          },
-        },
+        team: TeamConfig(
+          id: 'team-a',
+          name: 'team-a',
+          cli: TeamCli.claude,
+          providerIdsByTool: const {'claude': 'custom'},
+        ),
       )).environment;
 
       final claudeDir = _sessionClaudeDir(base.path, 'team-a', sessionId);
       final developerSettings = p.join(claudeDir, 'settings', 'developer.json');
       expect(env['CLAUDE_CONFIG_DIR'], claudeDir);
       expect(
-        env[ConfigProfileService.claudeSettingsFileEnvKey],
+        env[ClaudeConfigProfileCapability.settingsFileEnvKey],
         developerSettings,
       );
 
@@ -670,7 +699,7 @@ void main() {
       const sessionId = 'sess-trust';
       final metadataPath = p.join(
         _sessionClaudeDir(base.path, 'team-a', sessionId),
-        ConfigProfileService.claudeMetadataFileName,
+        ClaudeConfigProfileCapability.metadataFileName,
       );
       await Directory(p.dirname(metadataPath)).create(recursive: true);
       await File(metadataPath).writeAsString(
@@ -742,7 +771,7 @@ void main() {
 
       final metadataPath = p.join(
         _sessionClaudeDir(base.path, 'team-a', sessionId),
-        ConfigProfileService.claudeMetadataFileName,
+        ClaudeConfigProfileCapability.metadataFileName,
       );
       final metadata =
           jsonDecode(await File(metadataPath).readAsString())
@@ -780,7 +809,7 @@ void main() {
 
       final metadataPath = p.join(
         _sessionFlashskyaiDir(base.path, 'team-a', sessionId),
-        ConfigProfileService.flashskyaiMetadataFileName,
+        FlashskyaiConfigProfileCapability.metadataFileName,
       );
       final metadata =
           jsonDecode(await File(metadataPath).readAsString())
@@ -792,11 +821,11 @@ void main() {
     },
   );
 
-  test('ensureSessionClaudeDefaults backfills mcp-only metadata', () async {
+  test('ensureSessionProfile for claude backfills mcp-only metadata', () async {
     const sessionId = 'sess-mcp-only';
     final metadataPath = p.join(
       _sessionClaudeDir(base.path, 'team-a', sessionId),
-      ConfigProfileService.claudeMetadataFileName,
+      ClaudeConfigProfileCapability.metadataFileName,
     );
     await Directory(p.dirname(metadataPath)).create(recursive: true);
     await File(metadataPath).writeAsString(
@@ -807,7 +836,11 @@ void main() {
       }),
     );
 
-    await service.ensureSessionClaudeDefaults('team-a', sessionId);
+    await service.ensureSessionProfile(
+      'team-a',
+      sessionId,
+      cli: TeamCli.claude,
+    );
 
     final metadata =
         jsonDecode(await File(metadataPath).readAsString())

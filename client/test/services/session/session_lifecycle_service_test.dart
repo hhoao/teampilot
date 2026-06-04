@@ -8,6 +8,8 @@ import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/session_member_binding.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/cli/cli_data_layout.dart';
+import 'package:teampilot/services/cli/registry/config_profile/claude_config_profile_capability.dart';
+import 'package:teampilot/services/cli/registry/config_profile/flashskyai_config_profile_capability.dart';
 import 'package:teampilot/services/provider/config_profile_service.dart';
 import 'package:teampilot/services/storage/flashskyai_storage_roots.dart';
 import 'package:teampilot/services/session/session_lifecycle_service.dart';
@@ -137,11 +139,11 @@ void main() {
       expect(plan.cliTeamName, 'session-1');
       expect(plan.memberConfigDir, memberDir);
       expect(
-        plan.env[ConfigProfileService.flashskyaiConfigDirEnvKey],
+        plan.env[FlashskyaiConfigProfileCapability.configDirEnvKey],
         memberDir,
       );
       expect(
-        plan.env[ConfigProfileService.flashskyaiSessionHomeDirEnvKey],
+        plan.env[FlashskyaiConfigProfileCapability.sessionHomeDirEnvKey],
         memberDir,
       );
       expect(
@@ -193,7 +195,7 @@ void main() {
       expect(plan.memberConfigDir, claudeDir);
       expect(plan.env['CLAUDE_CONFIG_DIR'], claudeDir);
       expect(
-        plan.env.containsKey(ConfigProfileService.flashskyaiConfigDirEnvKey),
+        plan.env.containsKey(FlashskyaiConfigProfileCapability.configDirEnvKey),
         isFalse,
       );
       expect(claudeDir, isNot(equals(flashskyaiDir)));
@@ -335,7 +337,7 @@ void main() {
       );
       expect(plan.env['CLAUDE_CONFIG_DIR'], plan.memberConfigDir);
       expect(
-        plan.env[ConfigProfileService.claudeSettingsFileEnvKey],
+        plan.env[ClaudeConfigProfileCapability.settingsFileEnvKey],
         developerSettings,
       );
       final settingsEnv =
@@ -355,7 +357,7 @@ void main() {
       p.join(memberRoot, 'flashskyai', 'projects', 'bucket', 'session-1.jsonl'),
     ).create(recursive: true);
     await File(
-      p.join(memberRoot, 'claude', ConfigProfileService.claudeMetadataFileName),
+      p.join(memberRoot, 'claude', ClaudeConfigProfileCapability.metadataFileName),
     ).create(recursive: true);
 
     expect(await Directory(memberRoot).exists(), isTrue);

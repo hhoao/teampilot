@@ -43,7 +43,7 @@ void main() {
         teamMode: TeamMode.mixed,
       );
 
-      final scope = ConfigProfileService.resolveLaunchScope(
+      final scope = resolveLaunchProfileScope(
         teamId: 'team-a',
         runtimeTeamId: 'session-1',
       );
