@@ -5,6 +5,8 @@ import 'package:teampilot/services/team_bus/mcp/jsonrpc.dart';
 import 'package:teampilot/services/team_bus/mcp/teammate_bus_mcp_config.dart';
 import 'package:teampilot/services/team_bus/mcp/teammate_bus_mcp_handler.dart';
 import 'package:teampilot/services/team_bus/persistence/in_memory_bus_message_log.dart';
+import 'package:teampilot/services/team_bus/tasks/task_queue.dart';
+import 'package:teampilot/services/team_bus/tasks/team_task.dart';
 import 'package:teampilot/services/team_bus/team_bus.dart';
 import 'package:teampilot/services/team_bus/team_message.dart';
 
@@ -234,5 +236,49 @@ void main() {
     expect(entry['type'], 'http');
     expect(entry['url'], 'http://127.0.0.1:54321/mcp');
     expect((entry['headers'] as Map)['X-Member'], 'worker-1');
+  });
+
+  test('tools/list with a task queue adds queue tools and no claim_task',
+      () async {
+    final bus = TeamBus(launcher: FakeMemberLauncher(), taskQueue: TaskQueue());
+    final res = await TeammateBusMcpHandler(bus: bus).handle(
+      'developer',
+      const JsonRpcRequest(id: 1, method: 'tools/list'),
+    );
+    final names = [
+      for (final t in res!.result!['tools'] as List) (t as Map)['name'],
+    ];
+    expect(names, containsAll(['add_tasks', 'update_task', 'list_tasks']));
+    expect(names, isNot(contains('claim_task')));
+  });
+
+  test('wait_for_message hands a worker a queued task (auto-claimed)', () {
+    fakeAsync((async) {
+      final bus = TeamBus(launcher: FakeMemberLauncher(), taskQueue: TaskQueue());
+      bus.declareMember(AgentNode.test(
+        memberId: 'developer',
+        lifecycle: MemberLifecycle.running,
+        activity: MemberActivity.active,
+      ));
+      final handler = TeammateBusMcpHandler(bus: bus);
+
+      JsonRpcResponse? res;
+      handler.handle('developer', const JsonRpcRequest(id: 5, method: 'tools/call',
+          params: {'name': 'wait_for_message', 'arguments': {}}))
+        .then((r) => res = r);
+      async.flushMicrotasks();
+      expect(res, isNull); // parked: nothing to do
+
+      bus.addTasks('lead', [const TeamTaskDraft(title: 'ship it', brief: 'do X')]);
+      async.flushMicrotasks();
+
+      final text = (res!.result!['content'] as List).first as Map;
+      expect(text['text'], contains('ASSIGNED TASK'));
+      expect(text['text'], contains('ship it'));
+      expect(text['text'], contains('update_task'));
+      // auto-claimed for the asking worker
+      expect(bus.listTasks(status: TaskStatus.claimed).single.assignee,
+          'developer');
+    });
   });
 }

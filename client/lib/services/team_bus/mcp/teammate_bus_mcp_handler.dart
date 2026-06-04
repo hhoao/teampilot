@@ -3,6 +3,7 @@ import 'dart:convert';
 import '../cancellation.dart';
 import '../persistence/bus_message_page.dart';
 import '../idle_notification.dart';
+import '../tasks/team_task.dart';
 import '../team_bus.dart';
 import '../team_message.dart';
 import '../teammate_snapshot.dart';
@@ -43,9 +44,10 @@ class TeammateBusMcpHandler {
 
   /// Stop-hook 拦截语：把成员推回 `wait_for_message`，不让它结束 turn。
   static const stopRedirectReason =
-      '[teammate-bus] Do not stop. Call wait_for_message to receive any '
-      'teammate or operator messages and stay available for the next one — '
-      'you coordinate through the bus, not by ending your turn.';
+      '[teammate-bus] Do not stop. Call wait_for_message — it blocks until you '
+      'have something to do and returns either teammate/operator messages or a '
+      'task claimed for you from the work queue. You coordinate through the '
+      'bus, not by ending your turn.';
 
   /// Stop hook 的 JSON 响应体：回 `decision:block` 把成员拦在停止前、推回
   /// `wait_for_message`。[stopHookActive] 为真（上一次已拦过、成员仍想停）时返回
@@ -73,7 +75,13 @@ class TeammateBusMcpHandler {
       case 'ping':
         return JsonRpcResponse.result(req.id, const {});
       case 'tools/list':
-        return JsonRpcResponse.result(req.id, {'tools': _toolDefs});
+        return JsonRpcResponse.result(req.id, {
+          'tools': [
+            ..._toolDefs,
+            // work-queue 工具仅 mixed 模式（装配了任务队列）才广播。
+            if (_bus.hasTaskQueue) ..._taskToolDefs,
+          ],
+        });
       case 'tools/call':
         return _callTool(memberId, req);
       default:
@@ -97,13 +105,29 @@ class TeammateBusMcpHandler {
     JsonRpcRequest req, {
     CancellationToken? cancel,
   }) async {
-    final batch = await _bus.receivePending(memberId, cancel: cancel);
-    final ids = [for (final m in batch) m.id];
-    return WaitDelivery(
-      response: _ok(req.id, _encodeBatch(batch)),
-      confirm: () => _bus.acknowledgeDelivery(memberId, ids),
-      abort: () => _bus.redeliver(memberId, batch),
-    );
+    final outcome = await _bus.receiveWork(memberId, cancel: cancel);
+    switch (outcome) {
+      case MessageWork(:final messages):
+        final ids = [for (final m in messages) m.id];
+        return WaitDelivery(
+          response: _ok(req.id, _encodeBatch(messages)),
+          confirm: () => _bus.acknowledgeDelivery(memberId, ids),
+          abort: () => _bus.redeliver(memberId, messages),
+        );
+      case TaskWork(:final task):
+        // 任务已原子认领；写回失败则退回 pending（比等租约回收更及时）。
+        return WaitDelivery(
+          response: _ok(req.id, _encodeTaskAssignment(task)),
+          confirm: () async {},
+          abort: () => _bus.releaseTask(task.id),
+        );
+      case EmptyWork():
+        return WaitDelivery(
+          response: _ok(req.id, _encodeBatch(const [])),
+          confirm: () async {},
+          abort: () {},
+        );
+    }
   }
 
   static const _toolDefs = <Map<String, Object?>>[
@@ -157,13 +181,88 @@ class TeammateBusMcpHandler {
     {
       'name': 'wait_for_message',
       'description':
-          'Block until teammate or user (operator) messages arrive (returns a batch). '
-          'No timeout — waits indefinitely. User input while you wait appears as '
-          'FROM user (operator):. After handling a batch, call again.',
+          'Your single idle loop. Blocks indefinitely until there is something '
+          'to do, then returns ONE of: (a) a batch of teammate/operator '
+          'messages, or (b) a TASK already claimed for you from the shared '
+          'work queue. If it returns a task, do it and report via update_task; '
+          'if messages, handle them. Either way, call wait_for_message again '
+          'afterwards. User input while you wait appears as FROM user '
+          '(operator):. (Team leads only ever receive messages here.)',
       'inputSchema': {
         'type': 'object',
         'additionalProperties': false,
         'properties': <String, Object?>{},
+        'required': <String>[],
+      },
+    },
+  ];
+
+  /// 共享 work-queue 工具（mixed 模式）。leader 用 `add_tasks` 入队，空闲 worker
+  /// 经 `wait_for_message` 自动认领并执行、`update_task` 汇报终态；`list_tasks` 看板。
+  static const _taskToolDefs = <Map<String, Object?>>[
+    {
+      'name': 'add_tasks',
+      'description':
+          'Leader: enqueue tasks onto the shared work queue. Idle workers '
+          'receive them automatically via their own wait_for_message (FIFO, '
+          'deps-gated, auto-claimed). Each task: title (one line), brief (full '
+          'instructions), optional depends_on (task ids that must be done '
+          'first).',
+      'inputSchema': {
+        'type': 'object',
+        'additionalProperties': false,
+        'properties': {
+          'tasks': {
+            'type': 'array',
+            'items': {
+              'type': 'object',
+              'additionalProperties': false,
+              'properties': {
+                'title': {'type': 'string'},
+                'brief': {'type': 'string'},
+                'depends_on': {
+                  'type': 'array',
+                  'items': {'type': 'string'},
+                },
+              },
+              'required': ['title', 'brief'],
+            },
+          },
+        },
+        'required': ['tasks'],
+      },
+    },
+    {
+      'name': 'update_task',
+      'description':
+          'Worker: report a claimed task as done | failed | cancelled, with an '
+          'optional result note (findings, file paths, failure reason). Only '
+          'the claiming worker may update its task.',
+      'inputSchema': {
+        'type': 'object',
+        'additionalProperties': false,
+        'properties': {
+          'task_id': {'type': 'string'},
+          'status': {
+            'type': 'string',
+            'enum': ['done', 'failed', 'cancelled'],
+          },
+          'result': {'type': 'string'},
+        },
+        'required': ['task_id', 'status'],
+      },
+    },
+    {
+      'name': 'list_tasks',
+      'description':
+          'List the shared work queue (board). Optional status filter: '
+          'pending | claimed | done | failed | cancelled.',
+      'inputSchema': {
+        'type': 'object',
+        'additionalProperties': false,
+        'properties': {
+          'status': {'type': 'string'},
+        },
         'required': <String>[],
       },
     },
@@ -210,11 +309,98 @@ class TeammateBusMcpHandler {
         );
         return _ok(req.id, _encodeMessagePage(page));
       case 'wait_for_message':
-        final batch = await _bus.receive(memberId);
-        return _ok(req.id, _encodeBatch(batch));
+        final outcome = await _bus.receiveWork(memberId);
+        switch (outcome) {
+          case MessageWork(:final messages):
+            await _bus.acknowledgeDelivery(
+              memberId,
+              [for (final m in messages) m.id],
+            );
+            return _ok(req.id, _encodeBatch(messages));
+          case TaskWork(:final task):
+            return _ok(req.id, _encodeTaskAssignment(task));
+          case EmptyWork():
+            return _ok(req.id, _encodeBatch(const []));
+        }
+      case 'add_tasks':
+        if (!_bus.hasTaskQueue) {
+          return JsonRpcResponse.error(req.id, -32602, 'No task queue');
+        }
+        final raw = args['tasks'];
+        final drafts = <TeamTaskDraft>[
+          for (final item in (raw is List ? raw : const []))
+            if (item is Map)
+              TeamTaskDraft(
+                title: item['title'] as String? ?? '',
+                brief: item['brief'] as String? ?? '',
+                dependsOn: [
+                  for (final d in (item['depends_on'] as List?) ?? const [])
+                    if (d is String) d,
+                ],
+              ),
+        ];
+        final created = _bus.addTasks(memberId, drafts);
+        return _ok(req.id, 'Enqueued ${created.length} task(s):\n'
+            '${created.map((t) => '- ${t.id}: ${t.title}').join('\n')}');
+      case 'update_task':
+        if (!_bus.hasTaskQueue) {
+          return JsonRpcResponse.error(req.id, -32602, 'No task queue');
+        }
+        final taskId = (args['task_id'] as String?)?.trim() ?? '';
+        final status = TaskStatus.parse(args['status'] as String?);
+        if (!status.isTerminal) {
+          return _ok(req.id,
+              'Invalid status. Use done | failed | cancelled.');
+        }
+        final ok = _bus.updateTask(
+          taskId,
+          status,
+          result: args['result'] as String?,
+          byMember: memberId,
+        );
+        return _ok(req.id,
+            ok ? 'Task $taskId -> ${status.name}.' : 'Update rejected '
+                '(unknown task or not the claiming worker): $taskId');
+      case 'list_tasks':
+        if (!_bus.hasTaskQueue) {
+          return JsonRpcResponse.error(req.id, -32602, 'No task queue');
+        }
+        final filter = (args['status'] as String?)?.trim();
+        final status = (filter == null || filter.isEmpty)
+            ? null
+            : TaskStatus.parse(filter);
+        return _ok(req.id, _encodeTasks(_bus.listTasks(status: status)));
       default:
         return JsonRpcResponse.error(req.id, -32602, 'Unknown tool: $name');
     }
+  }
+
+  String _encodeTasks(List<TeamTask> tasks) {
+    if (tasks.isEmpty) return 'No tasks on the queue.';
+    final buffer = StringBuffer('Work queue (${tasks.length}):\n\n');
+    buffer.write(tasks.map((t) => _formatTask(t)).join('\n\n'));
+    return buffer.toString().trimRight();
+  }
+
+  /// wait_for_message 返回的"已认领任务"。明确告知执行 + 完成后回报。
+  String _encodeTaskAssignment(TeamTask t) {
+    return 'ASSIGNED TASK (claimed for you from the shared work queue):\n'
+        '${_formatTask(t, full: true)}\n\n'
+        'Do this task now. When finished, call '
+        'update_task(task_id: "${t.id}", status: "done" | "failed", result?), '
+        'then call wait_for_message again.';
+  }
+
+  String _formatTask(TeamTask t, {bool full = false}) {
+    final lines = <String>[
+      '--- ${t.id} [${t.status.name}] ---',
+      'title: ${t.title}',
+      if (t.assignee != null) 'assignee: ${t.assignee}',
+      if (t.dependsOn.isNotEmpty) 'depends_on: ${t.dependsOn.join(', ')}',
+      if (t.result != null && t.result!.isNotEmpty) 'result: ${t.result}',
+      if (full) 'brief:\n${t.brief}',
+    ];
+    return lines.join('\n');
   }
 
   JsonRpcResponse _ok(Object? id, String text) => JsonRpcResponse.result(id, {

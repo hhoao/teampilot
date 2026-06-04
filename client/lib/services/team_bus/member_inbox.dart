@@ -85,6 +85,19 @@ class MemberInbox {
     if (cancel?.isCancelled ?? false) {
       return Future.value(const <TeamMessage>[]);
     }
+    return _park(timeout: timeout, cancel: cancel).then((_) => _take());
+  }
+
+  /// 阻塞到有未读但 **不取走**(供统一 idle 原语 race 信箱/任务队列两个信号用)。
+  /// 醒来后由调用方决定是否 [waitAndTake]。[cancel]/[timeout] 解除。
+  Future<void> waitForArrival({Duration? timeout, CancellationToken? cancel}) {
+    if (_unread.isNotEmpty) return Future.value();
+    if (cancel?.isCancelled ?? false) return Future.value();
+    return _park(timeout: timeout, cancel: cancel);
+  }
+
+  /// 在内存信号上挂起到下一次投递(debounce 合批)/ 取消 / 超时。不消费未读。
+  Future<void> _park({Duration? timeout, CancellationToken? cancel}) {
     final stale = _waiter;
     if (stale != null && !stale.isCompleted) {
       stale.complete();
@@ -102,9 +115,7 @@ class MemberInbox {
 
     final timer = timeout != null ? Timer(timeout, abandon) : null;
     cancel?.whenCancelled.then((_) => abandon());
-    return completer.future.whenComplete(() => timer?.cancel()).then((_) {
-      return _take();
-    });
+    return completer.future.whenComplete(() => timer?.cancel());
   }
 
   /// 已读确认:对取走的批次落 read 事件(append-only)。配合 [waitAndTake] 实现

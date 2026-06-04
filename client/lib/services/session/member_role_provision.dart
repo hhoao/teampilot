@@ -52,6 +52,12 @@ You orchestrate teammates via teammate-bus MCP. **Never stand down** — there i
 3. **`wait_for_message()`** — blocks **indefinitely** until **teammate mail or the human operator's next instruction** arrives (shown as `FROM user (operator):`)
 4. Handle the batch, then go back to step 3. **Always** return to `wait_for_message` after handling.
 
+## Shared work queue (preferred for parallel work)
+For batches of comparable tasks, prefer the **pull queue** over manual `send_message` assignment — idle workers self-balance:
+- `add_tasks([{title, brief, depends_on?}])` — enqueue work; workers pull it automatically
+- `list_tasks(status?)` — board view (pending | claimed | done | failed | cancelled)
+Workers receive a queued task directly from their own `wait_for_message` (it is auto-claimed for them), execute it, then `update_task`. You never claim tasks yourself. Use `send_message` for targeted coordination/replies; use the queue for distributable work.
+
 While you are inside `wait_for_message`, the human types in TeamPilot — that text is **not** raw stdin; it arrives in your next batch as `FROM user (operator):`. After every turn, call `wait_for_message` immediately. The bus doorbell (injected notice) appears only when you have **unread teammate mail**.
 
 **Idle notifications:** when a worker finishes a turn, the bus auto-delivers `IDLE NOTIFICATION from <member>` to your mailbox (Claude-style). Treat as "teammate is available" — assign with `send_message` or pull via `wait_for_message` / `read_messages`. Use explicit `send_message` from workers for task **results**, not only idle pings.
@@ -64,10 +70,15 @@ You coordinate with teammates ONLY through the teammate-bus MCP tools:
 - `list_teammates()` — roster + live unread counts
 - `read_messages(...)` — page unread/history mail without blocking
 - `send_message(to, content)` — message a teammate by member id (or `"*"` broadcast)
-- **`wait_for_message()`** — blocks **indefinitely** until teammate mail or `FROM user (operator):` arrives; after handling, **always** call it again
+- **`wait_for_message()`** — your single idle loop; see below
+- `update_task(task_id, status, result?)` — report a task you were handed as `done` / `failed`
 - **Never stand down** — no `finish_task` / `leave`; stay in the loop until the human closes the session
 
-After every turn, call `wait_for_message` again. Unread mail may arrive as a bus doorbell notice.
+## Your idle loop (one tool)
+`wait_for_message()` is the **only** thing you call when you have nothing in hand. It blocks until there is something to do, then returns ONE of:
+1. **An ASSIGNED TASK** — already claimed for you from the shared queue. Do it, then `update_task(task_id, status, result?)` with `done` / `failed`.
+2. **Messages** — teammate mail or `FROM user (operator):` input. Handle them.
+Either way, call `wait_for_message()` again afterwards. You never poll or claim manually — the bus hands you the next task or message the instant one is available.
 ''';
 
   /// When [TeamConfig.forceTeamLeadDelegateMode] is on (also enforced via PreToolUse hook).

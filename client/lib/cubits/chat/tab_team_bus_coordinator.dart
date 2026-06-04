@@ -8,6 +8,8 @@ import '../../services/team_bus/chat_cubit_member_launcher.dart';
 import '../../services/team_bus/mcp/teammate_bus_mcp_handler.dart';
 import '../../services/team_bus/mcp/teammate_bus_mcp_server.dart';
 import '../../services/team_bus/persistence/bus_message_log_factory.dart';
+import '../../services/team_bus/tasks/task_log_factory.dart';
+import '../../services/team_bus/tasks/task_queue.dart';
 import '../../services/team_bus/team_bus.dart';
 import '../../services/team_bus/teammate_roster_profile.dart';
 import '../../utils/team_member_naming.dart';
@@ -55,12 +57,17 @@ class TabTeamBusCoordinator implements MemberMaterializer {
     TeamConfig team,
     AppSession session,
   ) async {
+    // 共享任务队列仅 mixed 模式接线：纯 Claude swarm 复用 Claude 原生任务表。
+    final taskQueue = team.teamMode == TeamMode.mixed
+        ? TaskQueue(log: TaskLogFactory.forSession(session.sessionId))
+        : null;
     final bus = TeamBus(
       launcher: ChatCubitMemberLauncher(
         materializer: this,
         sessionId: tab.info.id,
       ),
       messageLog: BusMessageLogFactory.forSession(session.sessionId),
+      taskQueue: taskQueue,
     );
     final cliTeamName = session.cliTeamName;
     bus.installSessionContext(
@@ -208,6 +215,8 @@ class TabTeamBusCoordinator implements MemberMaterializer {
     for (final tab in _tabStore.tabs) {
       final bus = tab.teamBus;
       if (bus == null) continue;
+      // 租约回收：claimed 超时且认领者掉线的任务退回 pending（仅 mixed 模式有队列）。
+      if (bus.hasTaskQueue) bus.reclaimExpiredTasks();
       tab.memberShells.forEach((memberId, shell) {
         final key = '${tab.info.id}:$memberId';
         final working = shell.activityTracker.isWorking;

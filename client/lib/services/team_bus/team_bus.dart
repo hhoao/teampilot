@@ -14,6 +14,8 @@ import 'state/bus_effect_dispatcher.dart';
 import 'state/bus_event.dart';
 import 'state/presence.dart';
 import 'state/presence_reducer.dart';
+import 'tasks/task_queue.dart';
+import 'tasks/team_task.dart';
 import 'team_message.dart';
 import 'teammate_roster_profile.dart';
 import 'teammate_snapshot.dart';
@@ -28,9 +30,11 @@ class TeamBus implements CoordinationView {
     int Function()? clock, // sugar over BusEnvironment.clock
     BusMessageLog? messageLog,
     CoordinationPolicy? coordination,
+    TaskQueue? taskQueue,
     this.maxHop = 8,
   }) : _env = environment ?? BusEnvironment(ids: idGenerator, clock: clock),
        _messageLog = messageLog,
+       _taskQueue = taskQueue,
        _dispatcher = BusEffectDispatcher(
          launcher: launcher,
          doorbellNotice: doorbellNotice,
@@ -52,6 +56,7 @@ class TeamBus implements CoordinationView {
 
   final BusEnvironment _env;
   final BusMessageLog? _messageLog;
+  final TaskQueue? _taskQueue;
   final BusEffectDispatcher _dispatcher;
   late final CoordinationPolicy _coordination;
   final int maxHop;
@@ -208,6 +213,56 @@ class TeamBus implements CoordinationView {
     _env.events.emit(DeliveryRolledBack(memberId: memberId, count: batch.length));
   }
 
+  /// **统一 idle 原语**（`wait_for_message` 落点）：阻塞到 **有消息或有可认领任务**，
+  /// 醒来返回其一。优先级 **消息 > 队列任务 > 阻塞**（消息可能改写/重排 worker 当前
+  /// 要做的事）。消息取走但 **不** 标记已读（传输层成功写回后 [acknowledgeDelivery]，
+  /// 断连则 [redeliver]）；任务已原子认领（断连则 [releaseTask] 退回 pending）。
+  /// team-lead 不自动认领任务（[_taskQueue] 为空亦然），退化为纯消息等待。
+  Future<WorkBatch> receiveWork(String memberId, {CancellationToken? cancel}) async {
+    final node = _members[memberId];
+    if (node == null) return const EmptyWork();
+    // team-lead 永不自动认领任务；非 mixed 模式 _taskQueue 为空 → 纯消息等待。
+    final queue = node.profile.isTeamLead ? null : _taskQueue;
+    _apply(node, const WaitEntered());
+    try {
+      while (true) {
+        if (cancel?.isCancelled ?? false) return const EmptyWork();
+        // 1) 消息优先（非空时立即取走，不阻塞）。
+        if (!node.inbox.isEmpty) {
+          final batch = await node.inbox.waitAndTake(cancel: cancel);
+          if (batch.isNotEmpty) {
+            _env.events.emit(BatchTaken(memberId: memberId, count: batch.length));
+            return MessageWork(batch);
+          }
+        }
+        // 2) 否则原子认领一个队列任务（worker only）。
+        if (queue != null) {
+          final task = queue.claimNext(memberId);
+          if (task != null) return TaskWork(task);
+        }
+        // 3) 两者皆空 → race 信箱到达 / 队列可认领 / 取消，醒来重判。
+        final wake = Completer<void>();
+        void signal() {
+          if (!wake.isCompleted) wake.complete();
+        }
+
+        unawaited(node.inbox.waitForArrival(cancel: cancel).then((_) => signal()));
+        if (queue != null) {
+          unawaited(queue.waitForClaimable().then((_) => signal()));
+        }
+        if (cancel != null) {
+          unawaited(cancel.whenCancelled.then((_) => signal()));
+        }
+        await wake.future;
+      }
+    } finally {
+      _apply(node, const WaitExited());
+    }
+  }
+
+  /// 任务结果写回失败（客户端断连）→ 退回 pending，避免卡在没收到它的 worker 上。
+  void releaseTask(String taskId) => _taskQueue?.release(taskId);
+
   /// 分页读邮件（默认只读未读、不消费）。
   Future<BusMessagePage> readMessages(
     String memberId, {
@@ -228,8 +283,9 @@ class TeamBus implements CoordinationView {
     );
   }
 
-  /// 打开 session：回放每个成员的日志，重建未读集。
+  /// 打开 session：回放每个成员的日志，重建未读集；并回放共享任务队列。
   Future<void> rehydrateUnread() async {
+    await _taskQueue?.rehydrate();
     for (final node in _members.values) {
       await node.inbox.rehydrate();
       if (!node.inbox.isEmpty) _coordination.noteInboundWork(node.memberId);
@@ -370,10 +426,72 @@ class TeamBus implements CoordinationView {
     }
   }
 
+  // --- work-queue（mixed 模式专属；纯 Claude swarm 复用 Claude 原生任务表）---
+
+  /// 是否装配了共享任务队列（仅 mixed 模式接线）。
+  bool get hasTaskQueue => _taskQueue != null;
+
+  /// leader 批量入队任务（`add_tasks` 落点）。入队会触发队列内部 waiter，统一 idle
+  /// 原语 [receiveWork] 中阻塞的空闲 worker 由此被即时唤醒并自动认领（无需 nudge）。
+  List<TeamTask> addTasks(String createdBy, List<TeamTaskDraft> drafts) =>
+      _taskQueue?.addTasks(createdBy, drafts) ?? const [];
+
+  /// 原子认领下一个任务（[receiveWork] 内部复用；无可认领返回 null）。
+  TeamTask? claimNextTask(String memberId) => _taskQueue?.claimNext(memberId);
+
+  /// worker 汇报任务终态（`update_task` 落点）。
+  bool updateTask(
+    String taskId,
+    TaskStatus status, {
+    String? result,
+    String? byMember,
+  }) =>
+      _taskQueue?.update(taskId, status, result: result, byMember: byMember) ??
+      false;
+
+  /// 任务看板快照（`list_tasks` 落点）。
+  List<TeamTask> listTasks({TaskStatus? status}) =>
+      _taskQueue?.list(status: status) ?? const [];
+
+  /// 租约回收：claimed 超时且认领者掉线 → 退回 pending。掉线判定复用 PTY 在线态。
+  List<TeamTask> reclaimExpiredTasks({int leaseMs = 5 * 60 * 1000}) {
+    final queue = _taskQueue;
+    if (queue == null) return const [];
+    // 回收会触发队列 waiter，唤醒 [receiveWork] 中阻塞的其它空闲 worker 接手。
+    return queue.reclaimExpired(
+      leaseMs: leaseMs,
+      isAlive: (memberId) => _members[memberId]?.ptyRunning ?? false,
+    );
+  }
+
   /// 关闭 session：释放每个信箱的 Timer / 挂起 waiter，防泄漏。
   void dispose() {
     for (final node in _members.values) {
       node.inbox.dispose();
     }
+    _taskQueue?.dispose();
   }
+}
+
+/// [TeamBus.receiveWork] 的结果：一批消息 / 一个已认领任务 / 空（取消）。统一
+/// idle 原语让 worker 在单次调用里拿到“下一件该做的事”，无需在 wait / claim 间分支。
+sealed class WorkBatch {
+  const WorkBatch();
+}
+
+/// 取走但未标记已读的消息批（传输层 confirm / abort）。
+class MessageWork extends WorkBatch {
+  const MessageWork(this.messages);
+  final List<TeamMessage> messages;
+}
+
+/// 已为该成员原子认领的任务（传输层断连则 [TeamBus.releaseTask] 退回 pending）。
+class TaskWork extends WorkBatch {
+  const TaskWork(this.task);
+  final TeamTask task;
+}
+
+/// 取消 / 未知成员，无内容。
+class EmptyWork extends WorkBatch {
+  const EmptyWork();
 }
