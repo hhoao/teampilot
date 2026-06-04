@@ -50,7 +50,8 @@ class HomeWorkspaceConversationPanel extends StatelessWidget {
         children: [
           _PanelHeader(
             title: l10n.homeWorkspaceConversations,
-            onAdd: () => _comingSoon(context),
+            addTooltip: l10n.homeWorkspaceNewConversation,
+            onAdd: () => unawaited(_addConversation(context)),
           ),
           _SearchBox(hint: l10n.homeWorkspaceSearchHint),
           Expanded(
@@ -98,17 +99,41 @@ class HomeWorkspaceConversationPanel extends StatelessWidget {
     );
   }
 
-  void _comingSoon(BuildContext context) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(context.l10n.homeWorkspaceComingSoon)),
-    );
+  Future<void> _addConversation(BuildContext context) async {
+    final chatCubit = context.read<ChatCubit>();
+    final repo = context.read<SessionRepository>();
+    final team = context.read<TeamCubit>().state.selectedTeam;
+    final teamId = team?.id ?? project.teamId;
+
+    try {
+      final session = await chatCubit.createSession(
+        project.projectId,
+        repo,
+        sessionTeamId: teamId,
+        rosterMembers: team?.members ?? const [],
+      );
+      if (!context.mounted) return;
+      _openSession(context, session);
+    } on Object catch (error) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${context.l10n.homeWorkspaceNewConversation}: $error'),
+        ),
+      );
+    }
   }
 }
 
 class _PanelHeader extends StatelessWidget {
-  const _PanelHeader({required this.title, required this.onAdd});
+  const _PanelHeader({
+    required this.title,
+    required this.addTooltip,
+    required this.onAdd,
+  });
 
   final String title;
+  final String addTooltip;
   final VoidCallback onAdd;
 
   @override
@@ -125,16 +150,23 @@ class _PanelHeader extends StatelessWidget {
               style: styles.bodyStrong.copyWith(color: cs.onSurface),
             ),
           ),
-          InkWell(
-            onTap: onAdd,
-            borderRadius: BorderRadius.circular(7),
-            child: Container(
-              padding: const EdgeInsets.all(5),
-              decoration: BoxDecoration(
-                color: cs.primary,
-                borderRadius: BorderRadius.circular(7),
+          Tooltip(
+            message: addTooltip,
+            child: InkWell(
+              onTap: onAdd,
+              borderRadius: BorderRadius.circular(7),
+              child: Container(
+                padding: const EdgeInsets.all(5),
+                decoration: BoxDecoration(
+                  color: cs.primary,
+                  borderRadius: BorderRadius.circular(7),
+                ),
+                child: Icon(
+                  Icons.add_rounded,
+                  size: AppIconSizes.md,
+                  color: cs.onPrimary,
+                ),
               ),
-              child: Icon(Icons.add_rounded, size: AppIconSizes.md, color: cs.onPrimary),
             ),
           ),
         ],
