@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import '../../../utils/logger.dart';
+import '../cancellation.dart';
 import 'jsonrpc.dart';
 import 'teammate_bus_mcp_handler.dart';
 
@@ -109,6 +110,10 @@ class TeammateBusMcpServer {
     response.write(': open\n\n');
     await response.flush();
 
+    // 客户端断连 → 取消阻塞中的 wait，避免 park 永挂、Future 泄漏。断连由下方
+    // keepalive 的写失败探知（progressInterval 周期），随后 cancel 解除阻塞。
+    final cancel = CancellationToken();
+
     final progressToken = _progressToken(rpc);
     // 诊断：坐实 leader(claude) 的 wait_for_message 为何会断 —— 记录开流、每次
     // keepalive 的耗时、keepalive 写失败(=客户端断开)的精确秒数、以及结果是否
@@ -150,27 +155,38 @@ class TeammateBusMcpServer {
           '${progressToken != null}) — client dropped the SSE: $e',
         );
         timer.cancel();
+        cancel.cancel(); // 解除阻塞中的 wait，member 不再永卡 park
       }
     });
 
     try {
       // 抽干信箱但不标记已读：写回成功 → confirm(标记已读)；失败 → abort(放回信箱)。
-      final delivery = await handler.beginWait(member, rpc);
-      try {
-        response.write('event: message\ndata: ${delivery.response.encode()}\n\n');
-        await response.flush();
-        await delivery.confirm();
-        appLogger.i(
-          '[teammate-bus-mcp] stream delivered result member=$member '
-          't=${sw.elapsed.inSeconds}s pings=$pings',
-        );
-      } catch (e) {
+      final delivery = await handler.beginWait(member, rpc, cancel: cancel);
+      if (cancel.isCancelled) {
+        // 断连解除的等待：batch 必为空（无消息被消费），无需写回 / 回滚。
         delivery.abort();
-        appLogger.w(
-          '[teammate-bus-mcp] result write FAILED member=$member '
-          't=${sw.elapsed.inSeconds}s — client gone; batch re-queued to the '
-          'inbox (not lost), will redeliver on reconnect: $e',
+        appLogger.i(
+          '[teammate-bus-mcp] wait cancelled (client gone) member=$member '
+          't=${sw.elapsed.inSeconds}s — no batch consumed',
         );
+      } else {
+        try {
+          response
+              .write('event: message\ndata: ${delivery.response.encode()}\n\n');
+          await response.flush();
+          await delivery.confirm();
+          appLogger.i(
+            '[teammate-bus-mcp] stream delivered result member=$member '
+            't=${sw.elapsed.inSeconds}s pings=$pings',
+          );
+        } catch (e) {
+          delivery.abort();
+          appLogger.w(
+            '[teammate-bus-mcp] result write FAILED member=$member '
+            't=${sw.elapsed.inSeconds}s — client gone; batch re-queued to the '
+            'inbox (not lost), will redeliver on reconnect: $e',
+          );
+        }
       }
     } finally {
       keepalive.cancel();

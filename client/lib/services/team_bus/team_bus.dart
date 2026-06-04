@@ -1,27 +1,46 @@
 import 'dart:async';
 
-import 'package:uuid/uuid.dart';
-
-import '../../utils/logger.dart';
 import 'agent_node.dart';
-import 'idle_notification.dart';
+import 'cancellation.dart';
+import 'coordination/coordination_policy.dart';
+import 'coordination/leader_star_coordination_policy.dart';
+import 'env/bus_environment.dart';
+import 'env/bus_observation.dart';
 import 'member_launcher.dart';
+import 'persistence/bus_message_log.dart';
 import 'persistence/bus_message_page.dart';
-import 'persistence/bus_message_store.dart';
+import 'state/bus_effect.dart';
+import 'state/bus_effect_dispatcher.dart';
+import 'state/bus_event.dart';
+import 'state/presence.dart';
+import 'state/presence_reducer.dart';
 import 'team_message.dart';
 import 'teammate_roster_profile.dart';
 import 'teammate_snapshot.dart';
 
-/// 进程内消息总线：路由 + 每成员信箱 + 状态机 + 惰性物化 + 边触发唤醒。
-class TeamBus {
+/// 进程内消息总线：路由 + 每成员信箱 + 纯函数状态机（[PresenceReducer]）+ 效果即
+/// 数据（[BusEffect]）+ 可插拔协调策略（[CoordinationPolicy]）+ 惰性物化。
+class TeamBus implements CoordinationView {
   TeamBus({
     required MemberLauncher launcher,
-    String Function()? idGenerator,
-    BusMessageStore? messageStore,
+    BusEnvironment? environment,
+    String Function()? idGenerator, // sugar over BusEnvironment.ids
+    int Function()? clock, // sugar over BusEnvironment.clock
+    BusMessageLog? messageLog,
+    CoordinationPolicy? coordination,
     this.maxHop = 8,
-  }) : _launcher = launcher,
-       _idGenerator = idGenerator ?? (() => const Uuid().v4()),
-       _messageStore = messageStore;
+  }) : _env = environment ?? BusEnvironment(ids: idGenerator, clock: clock),
+       _messageLog = messageLog,
+       _dispatcher = BusEffectDispatcher(
+         launcher: launcher,
+         doorbellNotice: doorbellNotice,
+       ) {
+    _coordination = coordination ??
+        LeaderStarCoordinationPolicy(environment: _env);
+  }
+
+  /// 新消息 id(MCP handler 复用,统一 id 源)。
+  String newMessageId() => _env.ids();
 
   /// 门铃：信箱有积压时提示 pull。
   static const String doorbellNotice =
@@ -31,12 +50,19 @@ class TeamBus {
   /// [TeamMessage.from] when the human operator submits while the member waits.
   static const String userSenderId = 'user';
 
-  final MemberLauncher _launcher;
-  final String Function() _idGenerator;
-  final BusMessageStore? _messageStore;
+  final BusEnvironment _env;
+  final BusMessageLog? _messageLog;
+  final BusEffectDispatcher _dispatcher;
+  late final CoordinationPolicy _coordination;
   final int maxHop;
   final Map<String, AgentNode> _members = {};
   TeamSessionContext? _sessionContext;
+
+  @override
+  AgentNode? member(String memberId) => _members[memberId];
+
+  @override
+  String? get teamLeadId => _teamLeadMemberId();
 
   void installSessionContext(TeamSessionContext context) {
     _sessionContext = context;
@@ -44,9 +70,11 @@ class TeamBus {
 
   TeamSessionContext? get sessionContext => _sessionContext;
 
-  /// 注册成员 → [MemberLifecycle.declared]。
+  /// 注册成员 → [MemberLifecycle.declared]。绑定日志层(单一事实源)。
   void declareMember(AgentNode node) {
     _members[node.memberId] = node;
+    final log = _messageLog;
+    if (log != null) node.inbox.bindLog(log, _env.clock);
   }
 
   AgentNode? memberById(String memberId) => _members[memberId];
@@ -55,8 +83,39 @@ class TeamBus {
   void markMemberRunning(String memberId) {
     final node = _members[memberId];
     if (node == null) return;
-    node.lifecycle = MemberLifecycle.running;
-    node.activity = MemberActivity.turnDoneReady;
+    _apply(node, const PtySpawned());
+  }
+
+  /// 跑 reducer：算出新在线态写回 node，返回待落地的效果。
+  List<BusEffect> _reduce(AgentNode node, BusEvent event) {
+    final t = PresenceReducer.reduce(
+      Presence(node.lifecycle, node.activity),
+      event,
+      PresenceContext(memberId: node.memberId, hasUnread: !node.inbox.isEmpty),
+    );
+    node.lifecycle = t.presence.lifecycle;
+    node.activity = t.presence.activity;
+    return t.effects;
+  }
+
+  /// 同步路径（效果仅含 doorbell，wake 在当前微任务内同步触发，保序）。
+  void _apply(AgentNode node, BusEvent event) {
+    unawaited(_dispatcher.dispatchAll(_observe(node, _reduce(node, event))));
+  }
+
+  /// 异步路径（含 materialize：须 await PTY 拉起后才继续）。
+  Future<void> _applyAsync(AgentNode node, BusEvent event) {
+    return _dispatcher.dispatchAll(_observe(node, _reduce(node, event)));
+  }
+
+  /// 把效果落成可观测事件后原样返回(门铃)。
+  List<BusEffect> _observe(AgentNode node, List<BusEffect> effects) {
+    for (final e in effects) {
+      if (e is DoorbellEffect) {
+        _env.events.emit(MemberDoorbelled(e.memberId));
+      }
+    }
+    return effects;
   }
 
   /// 成员是否正 park 在 MCP `wait_for_message`。
@@ -89,66 +148,67 @@ class TeamBus {
 
   /// 阻塞接收（MCP `wait_for_message` 落点）；[timeout] 为 null 时无限等待。
   ///
-  /// 抽干热信箱 **并立即** 把这批标记已读 —— 仅当传输层确保能把结果送达 CLI 时
-  /// 才该用它（例如非流式调用 / 测试）。流式 SSE 路径请改用
+  /// 取走并 **立即** 标记已读 —— 仅当传输层确保能把结果送达 CLI 时才该用它
+  /// （例如非流式调用 / 测试）。流式 SSE 路径请改用
   /// [receivePending] + [acknowledgeDelivery] / [redeliver]，否则客户端中途断连
   /// 会「已读但未投递」丢消息。
   Future<List<TeamMessage>> receive(
     String memberId, {
     Duration? timeout,
+    CancellationToken? cancel,
   }) async {
-    final batch = await receivePending(memberId, timeout: timeout);
+    final batch = await receivePending(memberId, timeout: timeout, cancel: cancel);
     if (batch.isNotEmpty) {
       await acknowledgeDelivery(memberId, batch.map((m) => m.id));
     }
     return batch;
   }
 
-  /// 抽干热信箱但 **不** 标记已读（冷层仍为未读）。流式传输层在结果写回成功后
-  /// 调 [acknowledgeDelivery]，失败（客户端断连）则调 [redeliver] 回滚。
+  /// 取走未读但 **不** 标记已读（日志仍为未读）。流式传输层在结果写回成功后调
+  /// [acknowledgeDelivery]，失败（客户端断连）则调 [redeliver] 回滚。[cancel]
+  /// 触发（客户端断连）时以空批解除阻塞，避免 park 泄漏。
   Future<List<TeamMessage>> receivePending(
     String memberId, {
     Duration? timeout,
+    CancellationToken? cancel,
   }) async {
     final node = _members[memberId];
     if (node == null) {
       return const <TeamMessage>[];
     }
-    if (node.ptyRunning) {
-      node.activity = MemberActivity.turnDoneBusWait;
-    }
+    _apply(node, const WaitEntered());
     try {
-      return await node.inbox.waitBatch(timeout: timeout);
-    } finally {
-      if (node.ptyRunning &&
-          node.activity == MemberActivity.turnDoneBusWait) {
-        node.activity = MemberActivity.active;
+      final batch = await node.inbox.waitAndTake(timeout: timeout, cancel: cancel);
+      if (batch.isNotEmpty) {
+        _env.events.emit(BatchTaken(memberId: memberId, count: batch.length));
       }
+      return batch;
+    } finally {
+      _apply(node, const WaitExited());
     }
   }
 
-  /// 结果已成功送达 CLI → 冷层标记已读（热层抽干已发生在 [receivePending]）。
+  /// 结果已成功送达 CLI → 落 read 事件（取走已发生在 [receivePending]）。
   Future<void> acknowledgeDelivery(
     String memberId,
     Iterable<String> messageIds,
   ) async {
     final ids = messageIds.toList(growable: false);
-    if (ids.isEmpty) return;
-    await _messageStore?.markRead(memberId, ids);
-  }
-
-  /// 结果写回失败（SSE 断连）→ 把抽干的批次放回热信箱，避免「已读但未投递」丢失。
-  /// 冷层从未标记已读，故无需回滚冷层；[Mailbox.deliver] 按 id 去重，重连安全。
-  void redeliver(String memberId, List<TeamMessage> batch) {
-    if (batch.isEmpty) return;
-    final node = _members[memberId];
-    if (node == null) return;
-    for (final message in batch) {
-      node.inbox.deliver(message);
+    await _members[memberId]?.inbox.confirmRead(ids);
+    if (ids.isNotEmpty) {
+      _env.events.emit(DeliveryConfirmed(memberId: memberId, count: ids.length));
     }
   }
 
-  /// 分页读邮件（冷层 + 可选 mark read）；默认只读未读。
+  /// 结果写回失败（SSE 断连）→ 把取走但未确认的批次放回未读集，避免「已读但未
+  /// 投递」丢失。日志从未落 read 事件，重连安全。
+  void redeliver(String memberId, List<TeamMessage> batch) {
+    if (batch.isEmpty) return;
+    _members[memberId]?.inbox.restore(batch);
+    _env.events.emit(DeliveryRolledBack(memberId: memberId, count: batch.length));
+  }
+
+  /// 分页读邮件（默认只读未读、不消费）。
   Future<BusMessagePage> readMessages(
     String memberId, {
     String? afterId,
@@ -156,98 +216,52 @@ class TeamBus {
     bool unreadOnly = true,
     bool markRead = false,
   }) async {
-    final store = _messageStore;
-    if (store == null) {
-      final node = _members[memberId];
-      final hot = node?.inbox.peekAll() ?? const <TeamMessage>[];
-      return BusMessagePage(
-        messages: hot,
-        hasMore: false,
-        totalUnread: hot.length,
-      );
+    final node = _members[memberId];
+    if (node == null) {
+      return const BusMessagePage(messages: [], hasMore: false);
     }
-    final page = await store.readPage(
-      memberId,
+    return node.inbox.readPage(
       afterId: afterId,
       limit: limit,
       unreadOnly: unreadOnly,
       markRead: markRead,
     );
-    if (markRead && page.messages.isNotEmpty) {
-      _members[memberId]?.inbox.removeByIds(
-        page.messages.map((m) => m.id).toSet(),
-      );
-    }
-    return page;
   }
 
-  /// 打开 session：冷层未读 → 热层信箱（dedupe）。
+  /// 打开 session：回放每个成员的日志，重建未读集。
   Future<void> rehydrateUnread() async {
-    final store = _messageStore;
-    if (store == null) return;
-    for (final memberId in _members.keys) {
-      final unread = await store.loadUnread(memberId);
-      final node = _members[memberId];
-      if (unread.isNotEmpty) node?.hasUnreportedWork = true;
-      for (final message in unread) {
-        node?.inbox.deliver(message);
-      }
-      if (node != null) _syncDeclaredInboxActivity(node);
+    for (final node in _members.values) {
+      await node.inbox.rehydrate();
+      if (!node.inbox.isEmpty) _coordination.noteInboundWork(node.memberId);
+      // 同步 declared 的 mailQueued/none（此时尚无 PTY，不会响门铃）。
+      _apply(node, const MailArrived());
     }
   }
 
   Future<int> unreadCountFor(String memberId) async {
-    final store = _messageStore;
-    if (store != null) {
-      return store.unreadCount(memberId);
-    }
     return _members[memberId]?.inbox.unreadCount ?? 0;
   }
 
   int _hotUnreadCount(AgentNode node) => node.inbox.unreadCount;
 
-  void _deliverToInbox(String memberId, TeamMessage message) {
-    final node = _members[memberId];
-    if (node == null) return;
-    node.hasUnreportedWork = true;
+  /// 纯数据投递（内存 + 日志由 inbox 自洽）；活动态 / 门铃交给 [MailArrived]，
+  /// 协调上报由 [CoordinationPolicy] 记账。
+  void _deliverToInbox(AgentNode node, TeamMessage message) {
+    _coordination.noteInboundWork(node.memberId);
     node.inbox.deliver(message);
-    _syncDeclaredInboxActivity(node);
-    final store = _messageStore;
-    if (store == null) return;
-    // fire-and-forget 持久化：吞掉 IO 失败为日志，避免变成未捕获的异步错误。
-    unawaited(
-      store.append(memberId, message).catchError((Object e) {
-        appLogger.w(
-          '[team-bus] cold-store append failed member=$memberId '
-          'msg=${message.id}: $e',
-        );
-      }),
-    );
+    _env.events.emit(MessageRouted(
+      messageId: message.id,
+      to: node.memberId,
+      from: message.from,
+    ));
   }
 
-  /// declared 且无 PTY：有信 → [MemberActivity.mailQueued]。
-  void _syncDeclaredInboxActivity(AgentNode node) {
-    if (node.lifecycle != MemberLifecycle.declared) return;
-    node.activity = node.inbox.isEmpty
-        ? MemberActivity.none
-        : MemberActivity.mailQueued;
-  }
-
+  /// 直投并 eager 唤醒（idle-notify / 用户命令）：即便成员在回合中也响门铃。
   void _deliverToMember(String memberId, TeamMessage message) {
     final node = _members[memberId];
     if (node == null) return;
-    _deliverToInbox(memberId, message);
-    _wakeMemberForMail(memberId);
-  }
-
-  void _wakeMemberForMail(String memberId) {
-    final node = _members[memberId];
-    if (node == null) return;
-    if (node.waitingForMessage) return;
-    if (!node.ptyRunning) return;
-    if (node.inbox.isEmpty) return;
-    node.activity = MemberActivity.active;
-    _launcher.wake(memberId, doorbellNotice);
+    _deliverToInbox(node, message);
+    _apply(node, const MailArrived(eager: true));
   }
 
   String? _teamLeadMemberId() {
@@ -255,33 +269,6 @@ class TeamBus {
       if (node.profile.isTeamLead) return node.memberId;
     }
     return null;
-  }
-
-  void _notifyLeaderOnMemberIdle(String workerMemberId) {
-    final worker = _members[workerMemberId];
-    if (worker == null || worker.profile.isTeamLead) return;
-    // A worker only reports to the leader when it has unreported work: never
-    // when it just booted and went idle, and at most once per dispatched batch.
-    if (!worker.hasUnreportedWork) return;
-    final leaderId = _teamLeadMemberId();
-    if (leaderId == null || leaderId == workerMemberId) return;
-
-    worker.hasUnreportedWork = false;
-
-    final body = IdleNotification.fromWorker(
-      memberId: workerMemberId,
-      displayName: worker.profile.effectiveDisplayName,
-    ).encode();
-
-    _deliverToMember(
-      leaderId,
-      TeamMessage(
-        id: _idGenerator(),
-        from: workerMemberId,
-        to: leaderId,
-        content: body,
-      ),
-    );
   }
 
   /// UI 用户在成员 wait 期间提交的一行 → 信箱（`from: user`）。
@@ -293,7 +280,7 @@ class TeamBus {
     _deliverToMember(
       memberId,
       TeamMessage(
-        id: _idGenerator(),
+        id: _env.ids(),
         from: userSenderId,
         to: memberId,
         content: trimmed,
@@ -304,34 +291,32 @@ class TeamBus {
   /// 出站投递；按 lifecycle + activity 分流。
   Future<void> send(TeamMessage message) async {
     if (message.hop >= maxHop) {
-      appLogger.w(
-        '[team-bus] dropped over-hop message ${message.id} (hop=${message.hop})',
-      );
+      _env.events.emit(MessageDropped(
+        messageId: message.id,
+        reason: 'over-hop(${message.hop})',
+        to: message.to,
+      ));
       return;
     }
     final target = _members[message.to];
     if (target == null) {
-      appLogger.w(
-        '[team-bus] dropped message ${message.id} to unknown member '
-        '"${message.to}"',
-      );
+      _env.events.emit(MessageDropped(
+        messageId: message.id,
+        reason: 'unknown-member',
+        to: message.to,
+      ));
       return;
     }
     switch (target.lifecycle) {
       case MemberLifecycle.declared:
-        target.lifecycle = MemberLifecycle.materializing;
-        await _launcher.materialize(target.memberId, message);
-        target.lifecycle = MemberLifecycle.running;
-        target.activity = MemberActivity.active;
-        _deliverToInbox(target.memberId, message);
-        _launcher.wake(target.memberId, doorbellNotice);
+        // 物化（awaited PTY 拉起）→ 投递 → 完成（running+active）+ 门铃。
+        await _applyAsync(target, MaterializeStarted(message));
+        _deliverToInbox(target, message);
+        await _applyAsync(target, const MaterializeCompleted());
       case MemberLifecycle.materializing:
       case MemberLifecycle.running:
-        _deliverToInbox(target.memberId, message);
-        if (target.acceptsImmediateDoorbell) {
-          target.activity = MemberActivity.active;
-          _launcher.wake(target.memberId, doorbellNotice);
-        }
+        _deliverToInbox(target, message);
+        _apply(target, const MailArrived()); // send 路径：仅 idle-at-prompt 响门铃
     }
   }
 
@@ -346,15 +331,10 @@ class TeamBus {
     if (node.waitingForMessage) {
       return;
     }
-
-    _notifyLeaderOnMemberIdle(memberId);
-
-    node.activity = MemberActivity.turnDoneReady;
-    if (node.inbox.isEmpty) {
-      return;
+    for (final msg in _coordination.onMemberIdle(this, memberId)) {
+      _deliverToMember(msg.to, msg);
     }
-    node.activity = MemberActivity.active;
-    _launcher.wake(node.memberId, doorbellNotice);
+    _apply(node, const TurnEnded());
   }
 
   Future<void> broadcast(
@@ -366,7 +346,7 @@ class TeamBus {
         if (node.memberId == message.from) continue;
         await send(
           message.copyWith(
-            id: _idGenerator(),
+            id: _env.ids(),
             to: node.memberId,
             hop: message.hop + 1,
           ),
@@ -377,21 +357,16 @@ class TeamBus {
 
     for (final node in _members.values) {
       if (node.memberId == message.from) continue;
-      if (node.lifecycle == MemberLifecycle.declared) {
-        continue;
-      }
+      if (node.lifecycle == MemberLifecycle.declared) continue;
       _deliverToInbox(
-        node.memberId,
+        node,
         message.copyWith(
-          id: _idGenerator(),
+          id: _env.ids(),
           to: node.memberId,
           hop: message.hop + 1,
         ),
       );
-      if (node.acceptsImmediateDoorbell) {
-        node.activity = MemberActivity.active;
-        _launcher.wake(node.memberId, doorbellNotice);
-      }
+      _apply(node, const MailArrived());
     }
   }
 

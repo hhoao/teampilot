@@ -62,7 +62,7 @@ void main() {
       expect(worker.inbox.isEmpty, isFalse);
       expect(launcher.woken.single.memberId, 'worker');
       expect(launcher.woken.single.notice, TeamBus.doorbellNotice);
-      final batch = await worker.inbox.waitBatch(
+      final batch = await worker.inbox.waitAndTake(
         timeout: const Duration(seconds: 1),
       );
       expect(batch.single.content, 'do X');

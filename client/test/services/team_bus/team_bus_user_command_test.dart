@@ -35,7 +35,7 @@ void main() {
     bus.deliverUserCommand('leader', 'hello');
     expect(node.inbox.isEmpty, isFalse);
 
-    final batch = await node.inbox.waitBatch(timeout: const Duration(seconds: 1));
+    final batch = await node.inbox.waitAndTake(timeout: const Duration(seconds: 1));
     expect(batch.single.from, TeamBus.userSenderId);
     expect(batch.single.content, 'hello');
   });

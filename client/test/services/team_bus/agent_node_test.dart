@@ -23,22 +23,21 @@ void main() {
       expect(mailQueued.busPhaseLabel, 'no_pty · mail_queued');
     });
 
-    test('acceptsImmediateDoorbell only for turnDoneReady', () {
+    test('busPhaseLabel + waitingForMessage reflect activity', () {
       final ready = AgentNode.test(
         memberId: 'w',
         lifecycle: MemberLifecycle.running,
         activity: MemberActivity.turnDoneReady,
       );
-      expect(ready.acceptsImmediateDoorbell, isTrue);
       expect(ready.busPhaseLabel, 'turn_done · ready');
+      expect(ready.waitingForMessage, isFalse);
 
       final waiting = AgentNode.test(
         memberId: 'w',
         lifecycle: MemberLifecycle.running,
         activity: MemberActivity.turnDoneBusWait,
       );
-      expect(waiting.acceptsImmediateDoorbell, isFalse);
-      expect(waiting.shouldEnqueueMailOnly, isTrue);
+      expect(waiting.waitingForMessage, isTrue);
     });
   });
 }

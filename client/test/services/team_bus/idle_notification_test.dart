@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/team_bus/agent_node.dart';
 import 'package:teampilot/services/team_bus/idle_notification.dart';
-import 'package:teampilot/services/team_bus/persistence/in_memory_bus_message_store.dart';
+import 'package:teampilot/services/team_bus/persistence/in_memory_bus_message_log.dart';
 import 'package:teampilot/services/team_bus/teammate_roster_profile.dart';
 import 'package:teampilot/services/team_bus/team_bus.dart';
 
@@ -24,7 +24,7 @@ void main() {
 
   test('onMemberIdle delivers idle_notification to team-lead mailbox', () {
     final launcher = FakeMemberLauncher();
-    final bus = TeamBus(launcher: launcher, messageStore: InMemoryBusMessageStore());
+    final bus = TeamBus(launcher: launcher, messageLog: InMemoryBusMessageLog());
     bus
       ..declareMember(
         AgentNode(

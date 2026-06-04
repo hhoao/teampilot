@@ -1,4 +1,4 @@
-import 'mailbox.dart';
+import 'member_inbox.dart';
 import 'member_state.dart';
 import 'teammate_roster_profile.dart';
 
@@ -10,8 +10,8 @@ class AgentNode {
     required this.profile,
     this.lifecycle = MemberLifecycle.declared,
     this.activity = MemberActivity.none,
-    Mailbox? inbox,
-  }) : inbox = inbox ?? Mailbox();
+    MemberInbox? inbox,
+  }) : inbox = inbox ?? MemberInbox(memberId: profile.memberId);
 
   factory AgentNode.test({
     required String memberId,
@@ -36,14 +36,7 @@ class AgentNode {
   final TeammateRosterProfile profile;
   MemberLifecycle lifecycle;
   MemberActivity activity;
-  final Mailbox inbox;
-
-  /// Set when this member receives real work (any inbound message), cleared
-  /// when it next reports idle to the leader. Gates worker→leader idle
-  /// notifications to one ping per dispatched batch: a freshly-launched,
-  /// never-tasked worker never pings the leader (and thus the doorbell), and a
-  /// busy worker does not re-ping on every idle edge until it is tasked again.
-  bool hasUnreportedWork = false;
+  final MemberInbox inbox;
 
   String get memberId => profile.memberId;
 
@@ -61,15 +54,4 @@ class AgentNode {
   };
 
   String get busPhaseLabel => activity.busPhaseLabel;
-
-  /// send 到 running + [MemberActivity.turnDoneReady] 时立刻 doorbell。
-  bool get acceptsImmediateDoorbell =>
-      lifecycle == MemberLifecycle.running &&
-      activity == MemberActivity.turnDoneReady;
-
-  /// send 时只入队、不 writeln。
-  bool get shouldEnqueueMailOnly =>
-      lifecycle == MemberLifecycle.materializing ||
-      (lifecycle == MemberLifecycle.running &&
-          (activity == MemberActivity.active || activity.isBusWaitBlocked));
 }

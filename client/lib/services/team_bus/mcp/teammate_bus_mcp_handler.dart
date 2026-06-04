@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import '../cancellation.dart';
 import '../persistence/bus_message_page.dart';
 import '../idle_notification.dart';
 import '../team_bus.dart';
@@ -27,8 +28,9 @@ class WaitDelivery {
 /// 把 MCP JSON-RPC 调用分发到 [TeamBus]。纯逻辑，不依赖 HTTP。
 /// [memberId] 来自传输层解析的身份头。返回 null = 通知（无响应/202）。
 class TeammateBusMcpHandler {
-  TeammateBusMcpHandler({required TeamBus bus, this.idGenerator = _uuidish})
-    : _bus = bus;
+  TeammateBusMcpHandler({required TeamBus bus, String Function()? idGenerator})
+    : _bus = bus,
+      idGenerator = idGenerator ?? bus.newMessageId;
 
   static const protocolVersion = '2025-06-18';
   static const serverName = 'teampilot-teammate-bus';
@@ -90,8 +92,12 @@ class TeammateBusMcpHandler {
   /// 流式 `wait_for_message`：抽干热信箱但 **不** 标记已读，连同 confirm/abort
   /// 钩子返回给传输层 —— 仅当结果成功写回 SSE 后 [WaitDelivery.confirm] 才标记
   /// 已读；客户端断连则 [WaitDelivery.abort] 把批次放回信箱，避免丢消息。
-  Future<WaitDelivery> beginWait(String memberId, JsonRpcRequest req) async {
-    final batch = await _bus.receivePending(memberId);
+  Future<WaitDelivery> beginWait(
+    String memberId,
+    JsonRpcRequest req, {
+    CancellationToken? cancel,
+  }) async {
+    final batch = await _bus.receivePending(memberId, cancel: cancel);
     final ids = [for (final m in batch) m.id];
     return WaitDelivery(
       response: _ok(req.id, _encodeBatch(batch)),
@@ -317,7 +323,4 @@ class TeammateBusMcpHandler {
     return 'FROM ${m.from}:\n${m.content}';
   }
 
-  static String _uuidish() =>
-      '${DateTime.now().microsecondsSinceEpoch}-${_seq++}';
-  static int _seq = 0;
 }

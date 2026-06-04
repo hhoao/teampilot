@@ -133,6 +133,12 @@ void main() {
     },
   );
 
+  // NOTE: client-disconnect → park-release is verified deterministically at the
+  // bus level (see bus_message_store_test.dart 'receivePending unblocks ... when
+  // cancelled'). The server hooks that same CancellationToken onto the keepalive
+  // write-failure signal; a socket-level disconnect test is too timing-flaky on
+  // loopback (dart:io buffers SSE writes and hides the peer RST).
+
   test(
     'wait_for_message streams an SSE result when a message arrives',
     () async {

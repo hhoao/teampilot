@@ -4,7 +4,7 @@ import 'package:teampilot/services/team_bus/agent_node.dart';
 import 'package:teampilot/services/team_bus/mcp/jsonrpc.dart';
 import 'package:teampilot/services/team_bus/mcp/teammate_bus_mcp_config.dart';
 import 'package:teampilot/services/team_bus/mcp/teammate_bus_mcp_handler.dart';
-import 'package:teampilot/services/team_bus/persistence/in_memory_bus_message_store.dart';
+import 'package:teampilot/services/team_bus/persistence/in_memory_bus_message_log.dart';
 import 'package:teampilot/services/team_bus/team_bus.dart';
 import 'package:teampilot/services/team_bus/team_message.dart';
 
@@ -108,17 +108,20 @@ void main() {
   });
 
   test('read_messages browses without consuming by default', () async {
-    final store = InMemoryBusMessageStore();
-    final bus = TeamBus(launcher: FakeMemberLauncher(), messageStore: store);
+    final bus = TeamBus(
+      launcher: FakeMemberLauncher(),
+      messageLog: InMemoryBusMessageLog(),
+    );
     final leader = AgentNode.test(
       memberId: 'leader',
       lifecycle: MemberLifecycle.running,
       activity: MemberActivity.active,
     );
     bus.declareMember(leader);
-    const msg = TeamMessage(id: '1', from: 'w', to: 'leader', content: 'hi');
-    await store.append('leader', msg);
-    leader.inbox.deliver(msg);
+    // Single source: deliver once; the inbox owns memory + log.
+    leader.inbox.deliver(
+      const TeamMessage(id: '1', from: 'w', to: 'leader', content: 'hi'),
+    );
     final handler = TeammateBusMcpHandler(bus: bus);
 
     // No mark_read in the call → default browse, must NOT consume.
@@ -182,7 +185,7 @@ void main() {
     expect(declared.lifecycle, MemberLifecycle.running);
     expect(launcher.materialized.single.memberId, 'reviewer');
     expect(declared.inbox.isEmpty, isFalse);
-    final batch = await worker.inbox.waitBatch(timeout: const Duration(seconds: 1));
+    final batch = await worker.inbox.waitAndTake(timeout: const Duration(seconds: 1));
     expect(batch.single.content, 'all hands');
     expect(batch.single.from, 'team-lead');
   });
