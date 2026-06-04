@@ -12,7 +12,7 @@ import '../../services/app/flashskyai_agent_catalog_service.dart';
 import '../../services/cli/registry/cli_display_name.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../services/provider/claude_official_provider.dart';
-import '../../services/storage/flashskyai_storage_roots.dart';
+import '../../services/storage/storage_resolver.dart';
 import '../../theme/app_text_styles.dart';
 import '../../utils/app_provider_model_candidates.dart';
 import '../../utils/debounce/debounce.dart';
@@ -105,7 +105,7 @@ class TeamMemberConfigFormState extends State<TeamMemberConfigForm> {
   }
 
   Future<void> _loadUserAgents() async {
-    final storageRoots = context.read<FlashskyaiStorageRoots>();
+    final storageRoots = context.read<StorageRoots>();
     final ids = await FlashskyaiAgentCatalogService(
       storageRoots: storageRoots,
     ).listUserAgentIds();
@@ -203,10 +203,7 @@ class TeamMemberConfigFormState extends State<TeamMemberConfigForm> {
     )..sort();
     final model = m.model;
     final hideModelPicker =
-        catalogCliForTeam(
-              context,
-              widget.member.cli ?? widget.team.cli,
-            ) ==
+        catalogCliForTeam(context, widget.member.cli ?? widget.team.cli) ==
             AppProviderCli.claude &&
         selectedAppProvider != null &&
         isOfficialClaudeProvider(selectedAppProvider);
@@ -333,9 +330,7 @@ class TeamMemberConfigFormState extends State<TeamMemberConfigForm> {
             SettingsLabeledStackedRow(
               title: l10n.teamCliLabel,
               body: AppDropdownField<String>(
-                items: [
-                  for (final def in cliRegistry.launchable) def.id,
-                ],
+                items: [for (final def in cliRegistry.launchable) def.id],
                 initialItem: widget.member.cli?.value,
                 hintText: l10n.memberCliInheritHint,
                 decoration: dropdownDeco,
@@ -347,10 +342,8 @@ class TeamMemberConfigFormState extends State<TeamMemberConfigForm> {
                     ),
                   );
                 },
-                itemLabel: (value) => cliDisplayName(
-                  cliRegistry.tryGet(value)!,
-                  l10n,
-                ),
+                itemLabel: (value) =>
+                    cliDisplayName(cliRegistry.tryGet(value)!, l10n),
               ),
               showDividerBelow: true,
             ),

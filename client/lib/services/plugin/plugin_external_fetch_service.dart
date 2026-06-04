@@ -3,7 +3,7 @@ import 'package:path/path.dart' as p;
 
 import '../../models/plugin_external_source.dart';
 import '../storage/app_storage.dart';
-import '../storage/flashskyai_storage_roots.dart';
+import '../storage/storage_resolver.dart';
 import '../io/filesystem.dart';
 import 'plugin_exceptions.dart';
 import 'plugin_repo_git_service.dart';
@@ -12,14 +12,14 @@ import 'plugin_repo_git_service.dart';
 class PluginExternalFetchService {
   PluginExternalFetchService({
     PluginRepoGitService? gitService,
-    FlashskyaiStorageRoots? storageRoots,
+    StorageRoots? storageRoots,
     Filesystem? filesystem,
-  })  : _git = gitService ?? PluginRepoGitService(),
-        _storageRoots = storageRoots,
-        _fsOverride = filesystem;
+  }) : _git = gitService ?? PluginRepoGitService(),
+       _storageRoots = storageRoots,
+       _fsOverride = filesystem;
 
   final PluginRepoGitService _git;
-  final FlashskyaiStorageRoots? _storageRoots;
+  final StorageRoots? _storageRoots;
   final Filesystem? _fsOverride;
 
   Filesystem get _fs => _fsOverride ?? AppStorage.fs;
@@ -43,7 +43,8 @@ class PluginExternalFetchService {
     final root = await _cacheRoot();
     final dirPath = p.join(root, spec.cacheKey);
     final head = await _git.readHeadSha(_fs, dirPath);
-    final needsSync = head == null ||
+    final needsSync =
+        head == null ||
         (spec.sha != null &&
             spec.sha!.isNotEmpty &&
             head != spec.sha &&

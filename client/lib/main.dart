@@ -21,7 +21,7 @@ import 'router/app_router.dart';
 import 'services/cli/registry/cli_tool_registry_scope.dart';
 import 'services/storage/app_storage.dart';
 import 'services/app/connection_mode_service.dart';
-import 'services/storage/flashskyai_storage_roots.dart';
+import 'services/storage/storage_resolver.dart';
 import 'services/ssh/ssh_client_factory.dart';
 import 'services/terminal/terminal_transport_factory.dart';
 import 'services/terminal/terminal_fonts.dart';
@@ -130,7 +130,7 @@ void main() async {
     TeamPilotBootstrap(
       preferences: preferences,
       nativeAppDataPath: nativeAppDataPath,
-          childBuilder: (shell) {
+      childBuilder: (shell) {
         if (!Platform.isAndroid) {
           windowManager.addListener(_CleanupWindowListener(shell.chatCubit));
         }
@@ -138,9 +138,7 @@ void main() async {
           chatCubit: shell.chatCubit,
           child: MultiRepositoryProvider(
             providers: [
-              RepositoryProvider<SharedPreferences>.value(
-                value: preferences,
-              ),
+              RepositoryProvider<SharedPreferences>.value(value: preferences),
               RepositoryProvider<AppSettingsRepository>.value(
                 value: shell.appSettings,
               ),
@@ -165,9 +163,7 @@ void main() async {
               RepositoryProvider<ConnectionModeService>.value(
                 value: shell.connectionModeService,
               ),
-              RepositoryProvider<FlashskyaiStorageRoots>.value(
-                value: shell.storageRoots,
-              ),
+              RepositoryProvider<StorageRoots>.value(value: shell.storageRoots),
             ],
             child: MultiBlocProvider(
               providers: [

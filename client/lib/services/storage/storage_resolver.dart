@@ -29,10 +29,7 @@ class StorageRootsSnapshot {
   }) : fs = fs ?? AppStorage.fs,
        layout =
            layout ??
-           CliDataLayout(
-             teampilotRoot: teampilotRoot,
-             fs: fs ?? AppStorage.fs,
-           );
+           CliDataLayout(teampilotRoot: teampilotRoot, fs: fs ?? AppStorage.fs);
 
   factory StorageRootsSnapshot.fromContext(RuntimeStorageContext context) {
     final root = context.appDataRoot;
@@ -50,9 +47,13 @@ class StorageRootsSnapshot {
       pluginsRoot: AppPaths.pluginsDirForTeampilotRoot(root),
       pluginBackupsDir: AppPaths.pluginBackupsDirForTeampilotRoot(root),
       pluginsJsonPath: AppPaths.pluginsJsonForTeampilotRoot(root),
-      pluginMarketplacesConfigPath: AppPaths.pluginMarketplacesConfigPathForTeampilotRoot(root),
-      pluginMarketplaceCacheDir: AppPaths.pluginMarketplaceCacheDirForTeampilotRoot(root),
-      pluginExternalCacheDir: AppPaths.pluginExternalCacheDirForTeampilotRoot(root),
+      pluginMarketplacesConfigPath:
+          AppPaths.pluginMarketplacesConfigPathForTeampilotRoot(root),
+      pluginMarketplaceCacheDir:
+          AppPaths.pluginMarketplaceCacheDirForTeampilotRoot(root),
+      pluginExternalCacheDir: AppPaths.pluginExternalCacheDirForTeampilotRoot(
+        root,
+      ),
       mcpServersJsonPath: AppPaths.mcpServersJsonForTeampilotRoot(root),
       mcpRegistrySourcesConfigPath:
           AppPaths.mcpRegistrySourcesConfigPathForTeampilotRoot(root),
@@ -92,13 +93,10 @@ class StorageRootsSnapshot {
   bool get storageIsRemote => fs is SftpFilesystem;
   RemoteFileStore? get remoteFileStore =>
       fs is SftpFilesystem ? (fs as SftpFilesystem).store : null;
-
-  /// Convenience accessor: `<teampilotRoot>/config-profiles/flashskyai/`.
-  String get appFlashskyaiDir => layout.appToolRoot('flashskyai');
 }
 
-class FlashskyaiStorageRoots {
-  FlashskyaiStorageRoots({
+class StorageRoots {
+  StorageRoots({
     bool Function()? isSshMode,
     SshProfile? Function()? sshProfileResolver,
     Future<RuntimeStorageContext> Function()? reinstallContext,
@@ -148,7 +146,8 @@ class FlashskyaiStorageRoots {
   Future<StorageRootsSnapshot> _resolveUncached() async {
     final reinstall = _reinstallContext;
     if (reinstall != null &&
-        ((_isSshMode?.call() ?? false) || _sshProfileResolver?.call() != null)) {
+        ((_isSshMode?.call() ?? false) ||
+            _sshProfileResolver?.call() != null)) {
       await reinstall();
     }
     return StorageRootsSnapshot.fromContext(RuntimeStorageContext.current);

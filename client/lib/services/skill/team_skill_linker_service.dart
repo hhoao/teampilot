@@ -1,9 +1,8 @@
-
 import '../../models/skill.dart';
 import '../../utils/logger.dart';
 import '../cli/cli_data_layout.dart';
 import '../storage/app_storage.dart';
-import '../storage/flashskyai_storage_roots.dart';
+import '../storage/storage_resolver.dart';
 import '../io/filesystem.dart';
 
 class TeamSkillSyncResult {
@@ -31,14 +30,14 @@ class TeamSkillLinkerService {
     String? appSkillsRoot,
     String? teamSkillsRootOverride,
     bool? useWslSymlinks,
-    FlashskyaiStorageRoots? storageRoots,
+    StorageRoots? storageRoots,
   }) : _appSkillsRoot = appSkillsRoot,
        _teamSkillsRootOverride = teamSkillsRootOverride,
        _storageRoots = storageRoots;
 
   final String? _appSkillsRoot;
   final String? _teamSkillsRootOverride;
-  final FlashskyaiStorageRoots? _storageRoots;
+  final StorageRoots? _storageRoots;
 
   String get appSkillsDir {
     final root = _appSkillsRoot;

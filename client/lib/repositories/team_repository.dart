@@ -2,7 +2,7 @@ import 'dart:convert';
 
 import '../models/team_config.dart';
 import '../services/storage/app_storage.dart';
-import '../services/storage/flashskyai_storage_roots.dart';
+import '../services/storage/storage_resolver.dart';
 import '../services/io/filesystem.dart';
 import '../services/session/session_lifecycle_service.dart';
 
@@ -24,18 +24,17 @@ class _TeamPaths {
 class TeamRepository {
   TeamRepository({
     String? rootDir,
-    FlashskyaiStorageRoots? storageRoots,
+    StorageRoots? storageRoots,
     SessionLifecycleService? lifecycleService,
   }) : _rootDirOverride = rootDir,
        _storageRoots = storageRoots,
        _lifecycleService = lifecycleService;
 
   final String? _rootDirOverride;
-  final FlashskyaiStorageRoots? _storageRoots;
+  final StorageRoots? _storageRoots;
   final SessionLifecycleService? _lifecycleService;
 
-  String get rootDir =>
-      _rootDirOverride ?? AppStorage.paths.teamsDir;
+  String get rootDir => _rootDirOverride ?? AppStorage.paths.teamsDir;
 
   Future<_TeamPaths> _paths() async {
     if (_storageRoots != null) {

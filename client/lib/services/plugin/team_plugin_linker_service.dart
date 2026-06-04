@@ -4,7 +4,7 @@ import '../storage/app_storage.dart';
 import '../cli/cli_data_layout.dart';
 import 'cli_plugin_layout.dart';
 import 'cli_plugin_manifest_flavor.dart';
-import '../storage/flashskyai_storage_roots.dart';
+import '../storage/storage_resolver.dart';
 import '../io/filesystem.dart';
 
 class TeamPluginSyncResult {
@@ -28,14 +28,12 @@ class TeamPluginSyncResult {
 ///
 /// Each entry is a symlink (or copy fallback) to the app-level plugin root.
 class TeamPluginLinkerService {
-  TeamPluginLinkerService({
-    String? appPluginsRoot,
-    FlashskyaiStorageRoots? storageRoots,
-  })  : _appPluginsRoot = appPluginsRoot,
-        _storageRoots = storageRoots;
+  TeamPluginLinkerService({String? appPluginsRoot, StorageRoots? storageRoots})
+    : _appPluginsRoot = appPluginsRoot,
+      _storageRoots = storageRoots;
 
   final String? _appPluginsRoot;
-  final FlashskyaiStorageRoots? _storageRoots;
+  final StorageRoots? _storageRoots;
 
   String get appPluginsDir {
     final root = _appPluginsRoot;
@@ -72,11 +70,9 @@ class TeamPluginLinkerService {
 
     final roots = await _storageRoots?.resolve();
     final fs = roots?.fs ?? AppStorage.fs;
-    final layout = roots?.layout ??
-        CliDataLayout(
-          teampilotRoot: _appPluginsRootParent(),
-          fs: fs,
-        );
+    final layout =
+        roots?.layout ??
+        CliDataLayout(teampilotRoot: _appPluginsRootParent(), fs: fs);
     final teamPluginsDir = layout.teamPluginsDir(trimmedTeamId);
     final sourceRoot = roots?.pluginsRoot ?? appPluginsDir;
     return _syncWithFilesystem(

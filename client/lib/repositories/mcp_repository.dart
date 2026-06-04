@@ -2,18 +2,18 @@ import '../models/mcp_server.dart';
 import '../services/mcp/mcp_catalog_service.dart';
 import '../services/mcp/mcp_server_validator.dart';
 import '../services/storage/app_storage.dart';
-import '../services/storage/flashskyai_storage_roots.dart';
+import '../services/storage/storage_resolver.dart';
 
 class McpRepository {
   McpRepository({
-    FlashskyaiStorageRoots? storageRoots,
+    StorageRoots? storageRoots,
     McpCatalogService? catalog,
     McpServerValidator? validator,
   }) : _storageRoots = storageRoots,
        _catalog = catalog,
        _validator = validator ?? McpServerValidator();
 
-  final FlashskyaiStorageRoots? _storageRoots;
+  final StorageRoots? _storageRoots;
   final McpCatalogService? _catalog;
   final McpServerValidator _validator;
 
@@ -26,7 +26,10 @@ class McpRepository {
     if (injected != null) return injected;
     if (_storageRoots != null) {
       final roots = await _storageRoots.resolve();
-      return McpCatalogService(catalogPath: roots.mcpServersJsonPath, fs: roots.fs);
+      return McpCatalogService(
+        catalogPath: roots.mcpServersJsonPath,
+        fs: roots.fs,
+      );
     }
     return McpCatalogService(catalogPath: AppStorage.paths.mcpServersJson);
   }

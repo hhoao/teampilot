@@ -7,7 +7,7 @@ import '../../services/team_bus/bus_user_line_capture.dart';
 import '../../services/team_bus/chat_cubit_member_launcher.dart';
 import '../../services/team_bus/mcp/teammate_bus_mcp_handler.dart';
 import '../../services/team_bus/mcp/teammate_bus_mcp_server.dart';
-import '../../services/team_bus/persistence/bus_message_store_factory.dart';
+import '../../services/team_bus/persistence/bus_message_log_factory.dart';
 import '../../services/team_bus/team_bus.dart';
 import '../../services/team_bus/teammate_roster_profile.dart';
 import '../../utils/team_member_naming.dart';
@@ -60,7 +60,7 @@ class TabTeamBusCoordinator implements MemberMaterializer {
         materializer: this,
         sessionId: tab.info.id,
       ),
-      messageStore: BusMessageStoreFactory.forSession(session.sessionId),
+      messageLog: BusMessageLogFactory.forSession(session.sessionId),
     );
     final cliTeamName = session.cliTeamName;
     bus.installSessionContext(

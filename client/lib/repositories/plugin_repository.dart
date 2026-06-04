@@ -3,7 +3,7 @@ import 'dart:io';
 
 import '../models/plugin.dart';
 import '../services/storage/app_storage.dart';
-import '../services/storage/flashskyai_storage_roots.dart';
+import '../services/storage/storage_resolver.dart';
 import '../services/plugin/plugin_fetch_service.dart';
 import '../services/plugin/plugin_install_service.dart';
 import '../services/plugin/plugin_manifest_service.dart';
@@ -13,7 +13,7 @@ import '../services/plugin/plugin_repo_service.dart';
 
 class PluginRepository {
   factory PluginRepository({
-    FlashskyaiStorageRoots? storageRoots,
+    StorageRoots? storageRoots,
     PluginManifestService? manifest,
     PluginFetchService? fetch,
     PluginRepoDiskCacheService? diskCache,
@@ -23,14 +23,16 @@ class PluginRepository {
     final resolvedFetch = fetch ?? PluginFetchService();
     final resolvedManifest = manifest ?? PluginManifestService();
     final resolvedGit = PluginRepoGitService();
-    final resolvedCache = diskCache ??
+    final resolvedCache =
+        diskCache ??
         PluginRepoDiskCacheService(
           gitService: resolvedGit,
           storageRoots: storageRoots,
         );
     return PluginRepository._(
       storageRoots: storageRoots,
-      install: install ??
+      install:
+          install ??
           PluginInstallService(
             manifestService: resolvedManifest,
             fetchService: resolvedFetch,
@@ -42,12 +44,12 @@ class PluginRepository {
   }
 
   PluginRepository._({
-    FlashskyaiStorageRoots? storageRoots,
+    StorageRoots? storageRoots,
     required this.install,
     required this.repos,
   }) : _storageRoots = storageRoots;
 
-  final FlashskyaiStorageRoots? _storageRoots;
+  final StorageRoots? _storageRoots;
   final PluginInstallService install;
   final PluginRepoService repos;
 

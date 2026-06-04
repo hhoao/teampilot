@@ -6,7 +6,7 @@ import '../../models/plugin.dart';
 import '../../models/plugin_external_source.dart';
 import '../../utils/logger.dart';
 import '../storage/app_storage.dart';
-import '../storage/flashskyai_storage_roots.dart';
+import '../storage/storage_resolver.dart';
 import '../io/filesystem.dart';
 import 'plugin_exceptions.dart';
 import 'plugin_repo_git_service.dart';
@@ -20,14 +20,14 @@ import '../skill/skill_fetch_service.dart';
 class PluginRepoDiskCacheService {
   PluginRepoDiskCacheService({
     PluginRepoGitService? gitService,
-    FlashskyaiStorageRoots? storageRoots,
+    StorageRoots? storageRoots,
     Filesystem? filesystem,
   }) : _git = gitService ?? PluginRepoGitService(),
        _storageRoots = storageRoots,
        _fsOverride = filesystem;
 
   final PluginRepoGitService _git;
-  final FlashskyaiStorageRoots? _storageRoots;
+  final StorageRoots? _storageRoots;
   final Filesystem? _fsOverride;
 
   Filesystem get _fs => _fsOverride ?? AppStorage.fs;
@@ -128,14 +128,14 @@ class PluginRepoDiskCacheService {
         return dirPath;
       } catch (e) {
         lastError = e;
-        appLogger.d('[PluginRepoDiskCache] sync ${m.fullName}@$branch failed: $e');
+        appLogger.d(
+          '[PluginRepoDiskCache] sync ${m.fullName}@$branch failed: $e',
+        );
       }
     }
 
     if ((await _fs.stat(dirPath)).exists) {
-      appLogger.w(
-        '[PluginRepoDiskCache] using stale cache for ${m.fullName}',
-      );
+      appLogger.w('[PluginRepoDiskCache] using stale cache for ${m.fullName}');
       return dirPath;
     }
 
@@ -150,7 +150,9 @@ class PluginRepoDiskCacheService {
       _fs.pathContext.join(workDirPath, '.claude-plugin', 'marketplace.json'),
     );
     if (manifestStat.exists) return true;
-    return (await _fs.stat(_fs.pathContext.join(workDirPath, '.git'))).isDirectory;
+    return (await _fs.stat(
+      _fs.pathContext.join(workDirPath, '.git'),
+    )).isDirectory;
   }
 
   Future<_PluginCacheMeta?> _readMeta(String workDirPath) async {
@@ -196,7 +198,9 @@ class PluginRepoDiskCacheService {
   }
 
   /// Sync + parse → list of [DiscoverablePlugin].
-  Future<List<DiscoverablePlugin>> discoverablePlugins(PluginMarketplace m) async {
+  Future<List<DiscoverablePlugin>> discoverablePlugins(
+    PluginMarketplace m,
+  ) async {
     final dirPath = await syncMarketplace(m);
     return parseMarketplaceManifest(directory: dirPath, marketplace: m);
   }
@@ -212,9 +216,7 @@ class PluginRepoDiskCacheService {
       p.join(directory, '.claude-plugin', 'marketplace.json'),
     );
     if (!manifestFile.existsSync()) {
-      appLogger.w(
-        '[PluginRepoDiskCache] no marketplace.json in $directory',
-      );
+      appLogger.w('[PluginRepoDiskCache] no marketplace.json in $directory');
       return const [];
     }
 
@@ -283,7 +285,7 @@ class PluginRepoDiskCacheService {
           ? homepage
           : (homepage ??
                 'https://github.com/${marketplace.owner}/${marketplace.name}'
-                '/tree/${marketplace.branch}/$relative');
+                    '/tree/${marketplace.branch}/$relative');
       return _ParsedMarketplaceSource(
         relativePath: relative,
         readmeUrl: readmeUrl,
@@ -302,7 +304,8 @@ class PluginRepoDiskCacheService {
             final relative = path.startsWith('./') ? path : './$path';
             return _ParsedMarketplaceSource(
               relativePath: relative,
-              readmeUrl: homepage ?? _githubTreeUrl(url, map['ref'] as String?, path),
+              readmeUrl:
+                  homepage ?? _githubTreeUrl(url, map['ref'] as String?, path),
               localInstall: true,
             );
           }
@@ -316,9 +319,12 @@ class PluginRepoDiskCacheService {
         case 'url':
         case 'github':
           final external = PluginExternalSource.fromMarketplaceObject(map);
-          final readme = homepage ??
+          final readme =
+              homepage ??
               (map['url'] as String?) ??
-              (map['repo'] != null ? 'https://github.com/${map['repo']}' : null);
+              (map['repo'] != null
+                  ? 'https://github.com/${map['repo']}'
+                  : null);
           return _ParsedMarketplaceSource(
             relativePath: '',
             readmeUrl: readme,

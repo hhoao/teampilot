@@ -11,7 +11,7 @@ import 'package:teampilot/services/cli/cli_data_layout.dart';
 import 'package:teampilot/services/cli/registry/config_profile/claude_config_profile_capability.dart';
 import 'package:teampilot/services/cli/registry/config_profile/flashskyai_config_profile_capability.dart';
 import 'package:teampilot/services/provider/config_profile_service.dart';
-import 'package:teampilot/services/storage/flashskyai_storage_roots.dart';
+import 'package:teampilot/services/storage/storage_resolver.dart';
 import 'package:teampilot/services/session/session_lifecycle_service.dart';
 
 import '../../support/post_frame_test_harness.dart';
@@ -27,11 +27,19 @@ StorageRootsSnapshot _roots(String basePath) => StorageRootsSnapshot(
   pluginsRoot: p.join(basePath, 'plugins', 'installed'),
   pluginBackupsDir: p.join(basePath, 'plugins', 'backups'),
   pluginsJsonPath: p.join(basePath, 'plugins', 'plugins.json'),
-  pluginMarketplacesConfigPath: p.join(basePath, 'plugins', 'marketplaces.json'),
+  pluginMarketplacesConfigPath: p.join(
+    basePath,
+    'plugins',
+    'marketplaces.json',
+  ),
   pluginMarketplaceCacheDir: p.join(basePath, 'plugins', 'marketplace-cache'),
   pluginExternalCacheDir: p.join(basePath, 'plugins', 'external-cache'),
   mcpServersJsonPath: p.join(basePath, 'mcp', 'mcp_servers.json'),
-  mcpRegistrySourcesConfigPath: p.join(basePath, 'mcp', 'registry_sources.json'),
+  mcpRegistrySourcesConfigPath: p.join(
+    basePath,
+    'mcp',
+    'registry_sources.json',
+  ),
 );
 
 AppSession _session({
@@ -98,11 +106,7 @@ void main() {
         member: const TeamMemberConfig(id: 'team-lead', name: 'team-lead'),
       );
 
-      final memberDir = layout.memberToolDir(
-        'team-a',
-        'session-1',
-        'claude',
-      );
+      final memberDir = layout.memberToolDir('team-a', 'session-1', 'claude');
       expect(plan.resume, isFalse);
       expect(plan.taskId, 'session-1');
       expect(plan.cliTeamName, 'session-1');
@@ -357,7 +361,11 @@ void main() {
       p.join(memberRoot, 'flashskyai', 'projects', 'bucket', 'session-1.jsonl'),
     ).create(recursive: true);
     await File(
-      p.join(memberRoot, 'claude', ClaudeConfigProfileCapability.metadataFileName),
+      p.join(
+        memberRoot,
+        'claude',
+        ClaudeConfigProfileCapability.metadataFileName,
+      ),
     ).create(recursive: true);
 
     expect(await Directory(memberRoot).exists(), isTrue);

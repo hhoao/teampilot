@@ -19,7 +19,7 @@ import '../../models/team_config.dart';
 import '../../models/windows_storage_backend.dart';
 import '../../repositories/session_repository.dart';
 import '../../cubits/ssh_profile_cubit.dart';
-import '../../services/storage/flashskyai_storage_roots.dart';
+import '../../services/storage/storage_resolver.dart';
 import '../../services/storage/runtime_storage_context.dart';
 import '../../utils/app_keys.dart';
 import '../../utils/debounce/debounce.dart';
@@ -170,7 +170,7 @@ class _SessionControlsState extends State<_SessionControls> {
   }
 
   Future<void> _reloadAfterStorageBackendChange() async {
-    final storageRoots = context.read<FlashskyaiStorageRoots>();
+    final storageRoots = context.read<StorageRoots>();
     final llmCubit = context.read<LlmConfigCubit>();
     final teamCubit = context.read<TeamCubit>();
     final skillCubit = context.read<SkillCubit>();
@@ -306,8 +306,7 @@ class _SessionControlsState extends State<_SessionControls> {
                       final mcpCubit = context.read<McpCubit>();
                       final chatCubit = context.read<ChatCubit>();
                       final sessionRepo = context.read<SessionRepository>();
-                      final storageRoots = context
-                          .read<FlashskyaiStorageRoots>();
+                      final storageRoots = context.read<StorageRoots>();
                       final pluginCubit = context.read<PluginCubit>();
                       await widget.cubit.setConnectionMode(selected.first);
                       if (!context.mounted) return;
@@ -404,7 +403,8 @@ class _SessionControlsState extends State<_SessionControls> {
                   showDividerBelow: true,
                 ),
               ],
-              if (kShowLlmConfigPathSetting) const SessionLlmConfigPathSettingsRow(),
+              if (kShowLlmConfigPathSetting)
+                const SessionLlmConfigPathSettingsRow(),
               SettingsLabeledRow(
                 title: l10n.terminalScrollbackLinesTitle,
                 subtitle: l10n.terminalScrollbackLinesDescription,

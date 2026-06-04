@@ -6,18 +6,18 @@ import '../../models/mcp_registry_source.dart';
 import '../io/filesystem.dart';
 import '../io/local_filesystem.dart';
 import '../storage/app_storage.dart';
-import '../storage/flashskyai_storage_roots.dart';
+import '../storage/storage_resolver.dart';
 
 class McpRegistryConfigService {
   McpRegistryConfigService({
-    FlashskyaiStorageRoots? storageRoots,
+    StorageRoots? storageRoots,
     Filesystem? fs,
     String? teampilotRoot,
   }) : _storageRoots = storageRoots,
        _teampilotRoot = teampilotRoot?.trim(),
        _fs = fs ?? LocalFilesystem();
 
-  final FlashskyaiStorageRoots? _storageRoots;
+  final StorageRoots? _storageRoots;
   final String? _teampilotRoot;
   final Filesystem _fs;
 

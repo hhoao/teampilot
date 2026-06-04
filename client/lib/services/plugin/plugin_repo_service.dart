@@ -4,14 +4,14 @@ import 'package:path/path.dart' as p;
 import '../../models/plugin.dart';
 import '../../utils/logger.dart';
 import '../storage/app_storage.dart';
-import '../storage/flashskyai_storage_roots.dart';
+import '../storage/storage_resolver.dart';
 import '../storage/remote_file_store.dart';
 
 class PluginRepoService {
-  PluginRepoService({FlashskyaiStorageRoots? storageRoots})
-      : _storageRoots = storageRoots;
+  PluginRepoService({StorageRoots? storageRoots})
+    : _storageRoots = storageRoots;
 
-  final FlashskyaiStorageRoots? _storageRoots;
+  final StorageRoots? _storageRoots;
 
   static const _defaults = [
     PluginMarketplace(owner: 'anthropics', name: 'claude-plugins-official'),
@@ -80,9 +80,12 @@ class PluginRepoService {
       final text = await remote.readFile(path);
       if (text == null || text.isEmpty) return {};
       try {
-        return (json.decode(text) as Map<String, dynamic>).cast<String, Object?>();
+        return (json.decode(text) as Map<String, dynamic>)
+            .cast<String, Object?>();
       } on FormatException catch (e) {
-        appLogger.w('[PluginRepoService] Corrupt plugins/marketplaces.json, resetting: $e');
+        appLogger.w(
+          '[PluginRepoService] Corrupt plugins/marketplaces.json, resetting: $e',
+        );
         return {};
       }
     }
@@ -92,12 +95,17 @@ class PluginRepoService {
     try {
       final content = await AppStorage.fs.readString(path);
       if (content == null) return {};
-      return (json.decode(content) as Map<String, dynamic>).cast<String, Object?>();
+      return (json.decode(content) as Map<String, dynamic>)
+          .cast<String, Object?>();
     } on FormatException catch (e) {
-      appLogger.w('[PluginRepoService] Corrupt plugins/marketplaces.json, resetting: $e');
+      appLogger.w(
+        '[PluginRepoService] Corrupt plugins/marketplaces.json, resetting: $e',
+      );
       return {};
     } catch (e) {
-      appLogger.w('[PluginRepoService] Cannot read plugins/marketplaces.json: $e');
+      appLogger.w(
+        '[PluginRepoService] Cannot read plugins/marketplaces.json: $e',
+      );
       return {};
     }
   }

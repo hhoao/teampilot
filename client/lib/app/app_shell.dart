@@ -52,7 +52,7 @@ import '../services/cli/registry/built_in_cli_tools.dart';
 import '../services/cli/registry/cli_tool_registry.dart';
 import '../services/app/connection_mode_service.dart';
 import '../services/cli/flashskyai_cli_locator.dart';
-import '../services/storage/flashskyai_storage_roots.dart';
+import '../services/storage/storage_resolver.dart';
 import '../services/provider/provider_migration_service.dart';
 import '../services/cli/remote_flashskyai_cli_locator.dart';
 import '../services/storage/runtime_storage_context.dart';
@@ -114,7 +114,7 @@ class AppShell {
   final TerminalTransportFactory transportFactory;
   final SshClientFactory sshClientFactory;
   final ConnectionModeService connectionModeService;
-  final FlashskyaiStorageRoots storageRoots;
+  final StorageRoots storageRoots;
   final TeamCubit teamCubit;
   final ConfigCubit configCubit;
   final AppProviderCubit appProviderCubit;
@@ -209,9 +209,7 @@ Future<AppShell> buildAppShell({
 
   if (!Platform.isAndroid) {
     unawaited(
-      ProviderMigrationService(
-        cliExecutablePath: cliLocated,
-      ).migrateIfNeeded(),
+      ProviderMigrationService(cliExecutablePath: cliLocated).migrateIfNeeded(),
     );
   }
 
@@ -232,7 +230,7 @@ Future<AppShell> buildAppShell({
   late final ChatCubit chatCubit;
   late final MemberPresenceCubit memberPresenceCubit;
   late final EditorCubit editorCubit;
-  late final FlashskyaiStorageRoots storageRoots;
+  late final StorageRoots storageRoots;
   late final SessionLifecycleService sessionLifecycleService;
   late final ConnectionModeService connectionModeService;
   late final Future<RuntimeStorageContext> Function() reinstallStorageContext;
@@ -242,7 +240,8 @@ Future<AppShell> buildAppShell({
     profileRepository: sshProfileRepo,
     credentialStore: sshCredentialStore,
     locateRemoteCliPath: remoteCliLocator.locate,
-    onRemoteCliLocated: sessionPreferencesCubit.setCliExecutablePath,
+    onRemoteCliLocated: (path) =>
+        sessionPreferencesCubit.setCliExecutablePathFor(TeamCli.claude, path),
     invalidateProfileConnection: sshClientFactory.disconnectProfile,
     enableRemoteCliDiscovery: () =>
         Platform.isAndroid &&
@@ -284,7 +283,7 @@ Future<AppShell> buildAppShell({
     windowsStorageBackend: windowsStorageBackend(),
   );
 
-  storageRoots = FlashskyaiStorageRoots(
+  storageRoots = StorageRoots(
     isSshMode: () => connectionModeService.isSshMode,
     sshProfileResolver: () => sshProfileCubit.state.selectedProfile,
     reinstallContext: reinstallStorageContext,
@@ -406,7 +405,9 @@ Future<AppShell> buildAppShell({
 
   final teamHubSource = GitRegistryTeamHubSource();
   final teamHubFavorites = TeamHubFavoritesStore();
-  final pluginDiskCache = PluginRepoDiskCacheService(storageRoots: storageRoots);
+  final pluginDiskCache = PluginRepoDiskCacheService(
+    storageRoots: storageRoots,
+  );
   final teamCloneService = TeamCloneService(
     installSkill: skillInstallerFor(skillRepo.install),
     installPlugin: pluginInstallerFor(
@@ -414,18 +415,18 @@ Future<AppShell> buildAppShell({
       pluginDiskCache,
     ),
     installMcp: mcpInstallerFor(mcpRepository),
-    createTeam: ({
-      required name,
-      required cli,
-      required teamMode,
-      required members,
-      required skillIds,
-      required pluginIds,
-      required mcpServerIds,
-      required description,
-      required extraArgs,
-    }) =>
-        teamCubit.addClonedTeam(
+    createTeam:
+        ({
+          required name,
+          required cli,
+          required teamMode,
+          required members,
+          required skillIds,
+          required pluginIds,
+          required mcpServerIds,
+          required description,
+          required extraArgs,
+        }) => teamCubit.addClonedTeam(
           name: name,
           cli: cli,
           teamMode: teamMode,
@@ -547,7 +548,7 @@ Future<AppShell> buildAppShell({
 }
 
 Future<void> reloadRemoteBackedAppData({
-  required FlashskyaiStorageRoots storageRoots,
+  required StorageRoots storageRoots,
   required LlmConfigCubit llmConfigCubit,
   required AppProviderCubit appProviderCubit,
   required TeamCubit teamCubit,
@@ -570,7 +571,9 @@ Future<void> reloadRemoteBackedAppData({
     sshProfileCubit.load(notifyActiveProfileChanged: false),
   ]);
   await teamCubit.syncSelectedTeamSkills(installed: skillCubit.state.installed);
-  await teamCubit.syncSelectedTeamPlugins(installed: pluginCubit.state.installed);
+  await teamCubit.syncSelectedTeamPlugins(
+    installed: pluginCubit.state.installed,
+  );
   await teamCubit.syncSelectedTeamMcp(installed: mcpCubit.state.servers);
 }
 
@@ -618,7 +621,11 @@ class _TeamPilotBootstrapState extends State<TeamPilotBootstrap> {
         unawaited(shell.bootstrapAppData());
       });
     } on Object catch (error, stackTrace) {
-      appLogger.e('[boot] buildAppShell failed', error: error, stackTrace: stackTrace);
+      appLogger.e(
+        '[boot] buildAppShell failed',
+        error: error,
+        stackTrace: stackTrace,
+      );
       if (!mounted) return;
       setState(() {
         _error = error;
@@ -676,8 +683,9 @@ class _TeamPilotBootstrapState extends State<TeamPilotBootstrap> {
                       if (_canFallbackToNativeStorage) ...[
                         const SizedBox(height: 16),
                         FilledButton(
-                          onPressed:
-                              _retrying ? null : _switchToNativeStorageAndRetry,
+                          onPressed: _retrying
+                              ? null
+                              : _switchToNativeStorageAndRetry,
                           child: _retrying
                               ? const SizedBox(
                                   width: 18,

@@ -10,7 +10,7 @@ import '../services/cli/cli_data_layout.dart';
 import '../services/io/filesystem.dart';
 import '../services/session/session_team_counter.dart';
 import '../services/storage/app_storage.dart';
-import '../services/storage/flashskyai_storage_roots.dart';
+import '../services/storage/storage_resolver.dart';
 import '../services/session/session_lifecycle_service.dart';
 import '../utils/lock_pool.dart';
 import '../utils/project_path_utils.dart';
@@ -19,14 +19,14 @@ import 'session_repository_fs.dart';
 class SessionRepository {
   SessionRepository({
     String? rootDir,
-    FlashskyaiStorageRoots? storageRoots,
+    StorageRoots? storageRoots,
     SessionLifecycleService? lifecycleService,
   }) : _rootOverride = rootDir,
        _storageRoots = storageRoots,
        _lifecycleService = lifecycleService;
 
   final String? _rootOverride;
-  final FlashskyaiStorageRoots? _storageRoots;
+  final StorageRoots? _storageRoots;
   final SessionLifecycleService? _lifecycleService;
   final _sessionFileLocks = LockPool();
 
@@ -272,10 +272,7 @@ class SessionRepository {
       cliTeamName = await counter.nextCliTeamName(trimmedTeam);
       members = [
         for (final m in valid)
-          SessionMemberBinding(
-            rosterMemberId: m.id,
-            taskId: const Uuid().v4(),
-          ),
+          SessionMemberBinding(rosterMemberId: m.id, taskId: const Uuid().v4()),
       ];
     }
 

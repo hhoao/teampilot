@@ -4,14 +4,13 @@ import 'package:path/path.dart' as p;
 import '../../models/skill.dart';
 import '../../utils/logger.dart';
 import '../storage/app_storage.dart';
-import '../storage/flashskyai_storage_roots.dart';
+import '../storage/storage_resolver.dart';
 import '../storage/remote_file_store.dart';
 
 class SkillRepoService {
-  SkillRepoService({FlashskyaiStorageRoots? storageRoots})
-    : _storageRoots = storageRoots;
+  SkillRepoService({StorageRoots? storageRoots}) : _storageRoots = storageRoots;
 
-  final FlashskyaiStorageRoots? _storageRoots;
+  final StorageRoots? _storageRoots;
 
   static const _defaultRepos = [
     SkillRepo(owner: 'anthropics', name: 'skills', branch: 'main'),
@@ -103,7 +102,9 @@ class SkillRepoService {
         return (json.decode(text) as Map<String, dynamic>)
             .cast<String, Object?>();
       } on FormatException catch (e) {
-        appLogger.w('[SkillRepoService] Corrupt skills/repos.json, resetting: $e');
+        appLogger.w(
+          '[SkillRepoService] Corrupt skills/repos.json, resetting: $e',
+        );
         return {};
       }
     }
@@ -116,7 +117,9 @@ class SkillRepoService {
       return (json.decode(content) as Map<String, dynamic>)
           .cast<String, Object?>();
     } on FormatException catch (e) {
-      appLogger.w('[SkillRepoService] Corrupt skills/repos.json, resetting: $e');
+      appLogger.w(
+        '[SkillRepoService] Corrupt skills/repos.json, resetting: $e',
+      );
       return {};
     } catch (e) {
       appLogger.w('[SkillRepoService] Cannot read skills/repos.json: $e');

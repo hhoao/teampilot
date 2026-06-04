@@ -6,7 +6,7 @@ import 'package:path/path.dart' as p;
 import '../../models/plugin.dart';
 import '../../utils/logger.dart';
 import '../storage/app_storage.dart';
-import '../storage/flashskyai_storage_roots.dart';
+import '../storage/storage_resolver.dart';
 import '../io/filesystem.dart';
 import 'plugin_exceptions.dart';
 import 'plugin_fetch_service.dart';
@@ -37,17 +37,17 @@ class PluginInstallService {
     PluginManifestService? manifestService,
     PluginFetchService? fetchService,
     PluginRepoDiskCacheService? diskCache,
-    FlashskyaiStorageRoots? storageRoots,
-  })  : _manifest = manifestService ?? PluginManifestService(),
-        _fetch = fetchService ?? PluginFetchService(),
-        _diskCache =
-            diskCache ?? PluginRepoDiskCacheService(storageRoots: storageRoots),
-        _storageRoots = storageRoots;
+    StorageRoots? storageRoots,
+  }) : _manifest = manifestService ?? PluginManifestService(),
+       _fetch = fetchService ?? PluginFetchService(),
+       _diskCache =
+           diskCache ?? PluginRepoDiskCacheService(storageRoots: storageRoots),
+       _storageRoots = storageRoots;
 
   final PluginManifestService _manifest;
   final PluginFetchService _fetch;
   final PluginRepoDiskCacheService _diskCache;
-  final FlashskyaiStorageRoots? _storageRoots;
+  final StorageRoots? _storageRoots;
 
   Future<_PluginStorage> _storage() async {
     if (_storageRoots != null) {
@@ -87,6 +87,7 @@ class PluginInstallService {
   Future<Plugin> installFromDirectory(
     Directory source, {
     PluginMarketplace? marketplace,
+
     /// Marketplace catalog `plugins[].name` (may differ from bundle `plugin.json` name).
     String? marketplaceEntryName,
   }) => _installFromStaged(
@@ -119,7 +120,8 @@ class PluginInstallService {
     await storage.fs.copyTree(source: source.path, destination: installDir);
 
     final now = DateTime.now().millisecondsSinceEpoch;
-    final version = marketplace == null &&
+    final version =
+        marketplace == null &&
             (parsed.version.isEmpty || parsed.version == '0.0.0')
         ? '0.0.0+local'
         : parsed.version;
@@ -134,7 +136,11 @@ class PluginInstallService {
       marketplaceBranch: marketplace?.branch,
       homepageUrl: parsed.homepageUrl,
       capabilities: parsed.capabilities,
-      contentHash: await _hashDirectoryPath(storage.fs, storage.ctx, installDir),
+      contentHash: await _hashDirectoryPath(
+        storage.fs,
+        storage.ctx,
+        installDir,
+      ),
       installedAt: now,
       updatedAt: now,
     );
@@ -171,10 +177,7 @@ class PluginInstallService {
       if ((await storage.fs.stat(target)).exists) {
         await storage.fs.removeRecursive(target);
       }
-      await storage.fs.copyTree(
-        source: backupDir,
-        destination: target,
-      );
+      await storage.fs.copyTree(source: backupDir, destination: target);
       throw PluginInstallException(
         existing.id,
         'update failed; restored from backup',
@@ -277,9 +280,9 @@ class PluginInstallService {
       return const [];
     }
 
-    final installed = (await _loadPersisted(storage))
-        .map((p) => p.directory)
-        .toSet();
+    final installed = (await _loadPersisted(
+      storage,
+    )).map((p) => p.directory).toSet();
     final out = <UnmanagedPlugin>[];
     for (final entry in await storage.fs.listDir(storage.pluginsRoot)) {
       if (!entry.isDirectory) continue;
@@ -340,10 +343,7 @@ class PluginInstallService {
   }
 
   String _hashLocalDirectory(Directory dir) {
-    final files = dir
-        .listSync(recursive: true)
-        .whereType<File>()
-        .toList()
+    final files = dir.listSync(recursive: true).whereType<File>().toList()
       ..sort((a, b) => a.path.compareTo(b.path));
     final bytes = <int>[];
     for (final f in files) {
@@ -378,7 +378,9 @@ class PluginInstallService {
     List<String> out,
   ) async {
     for (final entry in await fs.listDir(dirPath)) {
-      final rel = relPrefix.isEmpty ? entry.name : ctx.join(relPrefix, entry.name);
+      final rel = relPrefix.isEmpty
+          ? entry.name
+          : ctx.join(relPrefix, entry.name);
       final full = ctx.join(dirPath, entry.name);
       if (entry.isDirectory) {
         await _collectRelativeFiles(fs, ctx, full, rel, out);
@@ -392,13 +394,16 @@ class PluginInstallService {
       name.replaceAll(RegExp(r'[^A-Za-z0-9._-]'), '-').toLowerCase();
 
   Directory? _findPluginRoot(Directory stage) {
-    if (File(p.join(stage.path, '.claude-plugin', 'plugin.json')).existsSync()) {
+    if (File(
+      p.join(stage.path, '.claude-plugin', 'plugin.json'),
+    ).existsSync()) {
       return stage;
     }
     for (final entry in stage.listSync()) {
       if (entry is Directory &&
-          File(p.join(entry.path, '.claude-plugin', 'plugin.json'))
-              .existsSync()) {
+          File(
+            p.join(entry.path, '.claude-plugin', 'plugin.json'),
+          ).existsSync()) {
         return entry;
       }
     }
@@ -426,10 +431,7 @@ class PluginInstallService {
     list.removeWhere((p) => p.id == plugin.id);
     list.add(plugin);
     existing['plugins'] = list.map((p) => p.toJson()).toList();
-    await storage.fs.writeString(
-      storage.pluginsJsonPath,
-      jsonEncode(existing),
-    );
+    await storage.fs.writeString(storage.pluginsJsonPath, jsonEncode(existing));
   }
 
   Future<void> _removePersisted(String id, _PluginStorage storage) async {
@@ -438,16 +440,14 @@ class PluginInstallService {
     final text = await storage.fs.readString(storage.pluginsJsonPath);
     if (text == null) return;
     final existing = (jsonDecode(text) as Map).cast<String, Object?>();
-    final list = ((existing['plugins'] as List?) ?? const [])
-        .whereType<Map>()
-        .map((m) => Plugin.fromJson(m.cast<String, Object?>()))
-        .toList()
-      ..removeWhere((p) => p.id == id);
+    final list =
+        ((existing['plugins'] as List?) ?? const [])
+            .whereType<Map>()
+            .map((m) => Plugin.fromJson(m.cast<String, Object?>()))
+            .toList()
+          ..removeWhere((p) => p.id == id);
     existing['plugins'] = list.map((p) => p.toJson()).toList();
-    await storage.fs.writeString(
-      storage.pluginsJsonPath,
-      jsonEncode(existing),
-    );
+    await storage.fs.writeString(storage.pluginsJsonPath, jsonEncode(existing));
   }
 
   Future<Map<String, Object?>> _readManifest(_PluginStorage storage) async {

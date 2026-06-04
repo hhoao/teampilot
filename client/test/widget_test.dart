@@ -34,7 +34,7 @@ import 'package:teampilot/services/cli/registry/config_profile/claude_config_pro
 import 'package:teampilot/services/provider/config_profile_service.dart';
 import 'package:teampilot/services/app/connection_mode_service.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
-import 'package:teampilot/services/storage/flashskyai_storage_roots.dart';
+import 'package:teampilot/services/storage/storage_resolver.dart';
 import 'package:teampilot/services/session/session_lifecycle_service.dart';
 import 'package:teampilot/services/team_bus/bus_user_line_capture.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
@@ -52,16 +52,18 @@ import 'support/in_memory_filesystem.dart';
 import 'support/post_frame_test_harness.dart';
 
 ExtensionCubit _testExtensionCubit() => ExtensionCubit(
-      ExtensionRepository(
-        fs: InMemoryFilesystem(),
-        stateFilePath: '/test/extensions/state.json',
-        manifests: builtInExtensionManifests(),
-      ),
-      ExtensionAcquisitionEngine(
-        runner: (c) async => const CliInstallerCommandResult(exitCode: 0),
-      ),
-      detector: ExtensionDetector(processRunner: (e, a, {environment}) async => ProcessResult(0, 1, '', '')),
-    );
+  ExtensionRepository(
+    fs: InMemoryFilesystem(),
+    stateFilePath: '/test/extensions/state.json',
+    manifests: builtInExtensionManifests(),
+  ),
+  ExtensionAcquisitionEngine(
+    runner: (c) async => const CliInstallerCommandResult(exitCode: 0),
+  ),
+  detector: ExtensionDetector(
+    processRunner: (e, a, {environment}) async => ProcessResult(0, 1, '', ''),
+  ),
+);
 
 String _testExecutable() => 'flashskyai';
 
@@ -336,18 +338,17 @@ class TestChatCubit extends ChatCubit {
     super.sessionRepository,
     SessionLifecycleService? lifecycleService,
   }) : super(
-        executableResolver: _testExecutable,
-        terminalSessionFactory:
-            ({required String executable, int scrollbackLines = 10000}) =>
-                FakeTerminalSession(
-                  executable: executable,
-                  scrollbackLines: scrollbackLines,
-                ),
-        postFrameScheduler: postFrame.scheduler,
-        lifecycleService:
-            lifecycleService ??
-            _FixedResumeLifecycleService(resume: false),
-      );
+         executableResolver: _testExecutable,
+         terminalSessionFactory:
+             ({required String executable, int scrollbackLines = 10000}) =>
+                 FakeTerminalSession(
+                   executable: executable,
+                   scrollbackLines: scrollbackLines,
+                 ),
+         postFrameScheduler: postFrame.scheduler,
+         lifecycleService:
+             lifecycleService ?? _FixedResumeLifecycleService(resume: false),
+       );
 
   factory TestChatCubit() {
     final harness = PostFrameTestHarness();
@@ -398,11 +399,11 @@ void main() {
     final chatCubit = ChatCubit(
       executableResolver: _testExecutable,
       terminalSessionFactory:
-            ({required String executable, int scrollbackLines = 10000}) =>
-                FakeTerminalSession(
-                  executable: executable,
-                  scrollbackLines: scrollbackLines,
-                ),
+          ({required String executable, int scrollbackLines = 10000}) =>
+              FakeTerminalSession(
+                executable: executable,
+                scrollbackLines: scrollbackLines,
+              ),
       postFrameScheduler: postFrame.scheduler,
       sessionRepository: _widgetTestSessionRepo,
     );
@@ -423,17 +424,12 @@ void main() {
     final workbenchCtx = tester.element(find.byKey(AppKeys.chatWorkspace));
     final l10n = AppLocalizations.of(workbenchCtx);
     expect(find.text(l10n.sessionReadyTitle), findsOneWidget);
-    expect(
-      find.text(l10n.sessionReadySubtitle('team-lead')),
-      findsOneWidget,
-    );
+    expect(find.text(l10n.sessionReadySubtitle('team-lead')), findsOneWidget);
 
     final selectedTeam = teamCubit.state.selectedTeam;
     expect(selectedTeam, isNotNull);
     // Real repository I/O must run inside runAsync in widget tests.
-    await tester.runAsync(
-      () => chatCubit.connectSession(selectedTeam!),
-    );
+    await tester.runAsync(() => chatCubit.connectSession(selectedTeam!));
     await tester.pump();
     await tester.runAsync(postFrame.flush);
     await tester.pump();
@@ -548,7 +544,9 @@ void main() {
       members: TeamMemberNaming.defaultRoster(),
     );
     final postFrame = PostFrameTestHarness();
-    final repo = SessionRepository(rootDir: (await Directory.systemTemp.createTemp('sidebar_sess_')).path);
+    final repo = SessionRepository(
+      rootDir: (await Directory.systemTemp.createTemp('sidebar_sess_')).path,
+    );
     final project = await repo.createProject('/work/current');
     final session = await repo.createSession(
       project.projectId,
@@ -615,10 +613,11 @@ void main() {
     expect(cubit.state.selectedTeam?.name, 'Default Team');
     expect(cubit.state.teams.length, 1);
     expect(cubit.state.selectedTeam?.members.length, 3);
-    expect(
-      cubit.state.selectedTeam?.members.map((m) => m.id).toList(),
-      ['team-lead', 'developer', 'reviewer'],
-    );
+    expect(cubit.state.selectedTeam?.members.map((m) => m.id).toList(), [
+      'team-lead',
+      'developer',
+      'reviewer',
+    ]);
 
     cubit.selectTeam('default-team');
     expect(cubit.state.selectedTeam?.name, 'Default Team');
@@ -680,11 +679,11 @@ void main() {
     final cubit = ChatCubit(
       executableResolver: _testExecutable,
       terminalSessionFactory:
-            ({required String executable, int scrollbackLines = 10000}) =>
-                FakeTerminalSession(
-                  executable: executable,
-                  scrollbackLines: scrollbackLines,
-                ),
+          ({required String executable, int scrollbackLines = 10000}) =>
+              FakeTerminalSession(
+                executable: executable,
+                scrollbackLines: scrollbackLines,
+              ),
       postFrameScheduler: postFrame.scheduler,
     );
     final team = TeamConfig(
@@ -718,10 +717,10 @@ void main() {
         executableResolver: () => 'claude',
         terminalSessionFactory:
             ({required String executable, int scrollbackLines = 10000}) {
-          final session = FakeTerminalSession(executable: executable);
-          sessions.add(session);
-          return session;
-        },
+              final session = FakeTerminalSession(executable: executable);
+              sessions.add(session);
+              return session;
+            },
         postFrameScheduler: postFrame.scheduler,
         lifecycleService: SessionLifecycleService(
           storageRootsResolver: () async => StorageRootsSnapshot(
@@ -735,14 +734,27 @@ void main() {
             pluginsRoot: p.join(tmp.path, 'plugins', 'installed'),
             pluginBackupsDir: p.join(tmp.path, 'plugins', 'backups'),
             pluginsJsonPath: p.join(tmp.path, 'plugins', 'plugins.json'),
-            pluginMarketplacesConfigPath:
-                p.join(tmp.path, 'plugins', 'marketplaces.json'),
-            pluginMarketplaceCacheDir:
-                p.join(tmp.path, 'plugins', 'marketplace-cache'),
-            pluginExternalCacheDir: p.join(tmp.path, 'plugins', 'external-cache'),
+            pluginMarketplacesConfigPath: p.join(
+              tmp.path,
+              'plugins',
+              'marketplaces.json',
+            ),
+            pluginMarketplaceCacheDir: p.join(
+              tmp.path,
+              'plugins',
+              'marketplace-cache',
+            ),
+            pluginExternalCacheDir: p.join(
+              tmp.path,
+              'plugins',
+              'external-cache',
+            ),
             mcpServersJsonPath: p.join(tmp.path, 'mcp', 'mcp_servers.json'),
-            mcpRegistrySourcesConfigPath:
-                p.join(tmp.path, 'mcp', 'registry_sources.json'),
+            mcpRegistrySourcesConfigPath: p.join(
+              tmp.path,
+              'mcp',
+              'registry_sources.json',
+            ),
           ),
         ),
       );
@@ -785,7 +797,9 @@ void main() {
         ),
       );
       expect(
-        sessions.single.lastExtraEnvironments
+        sessions
+            .single
+            .lastExtraEnvironments
             .single?[ClaudeConfigProfileCapability.settingsFileEnvKey],
         p.join(
           tmp.path,
@@ -927,7 +941,10 @@ void main() {
         sessionTeam: 'test-team',
         cliTeamName: 'test-team-1',
         members: [
-          SessionMemberBinding(rosterMemberId: 'team-lead', taskId: 'task-lead'),
+          SessionMemberBinding(
+            rosterMemberId: 'team-lead',
+            taskId: 'task-lead',
+          ),
           SessionMemberBinding(rosterMemberId: 'dev', taskId: 'task-dev'),
         ],
         createdAt: 1,
@@ -973,9 +990,9 @@ void main() {
       executableResolver: _testExecutable,
       terminalSessionFactory:
           ({required String executable, int scrollbackLines = 10000}) {
-        captured = FakeTerminalSession(executable: executable);
-        return captured!;
-      },
+            captured = FakeTerminalSession(executable: executable);
+            return captured!;
+          },
       postFrameScheduler: postFrame.scheduler,
     );
     addTearDown(() => _tearDownChatCubitWithSessionPersist(cubit, postFrame));
@@ -991,10 +1008,7 @@ void main() {
     await drainPendingAsyncWork();
     expect(captured, isNotNull);
     expect(captured!.lastResumeSessionIds.last, isNull);
-    expect(
-      captured!.lastFixedSessionIds.last,
-      rel.members.single.taskId,
-    );
+    expect(captured!.lastFixedSessionIds.last, rel.members.single.taskId);
   });
 
   test('openSessionTab started session uses resume not session-id', () async {
@@ -1020,9 +1034,9 @@ void main() {
       executableResolver: _testExecutable,
       terminalSessionFactory:
           ({required String executable, int scrollbackLines = 10000}) {
-        captured = FakeTerminalSession(executable: executable);
-        return captured!;
-      },
+            captured = FakeTerminalSession(executable: executable);
+            return captured!;
+          },
       postFrameScheduler: postFrame.scheduler,
       lifecycleService: _FixedResumeLifecycleService(resume: true),
     );
@@ -1065,9 +1079,9 @@ void main() {
         executableResolver: _testExecutable,
         terminalSessionFactory:
             ({required String executable, int scrollbackLines = 10000}) {
-          captured = FakeTerminalSession(executable: executable);
-          return captured!;
-        },
+              captured = FakeTerminalSession(executable: executable);
+              return captured!;
+            },
         postFrameScheduler: postFrame.scheduler,
         lifecycleService: _FixedResumeLifecycleService(resume: false),
       );
@@ -1112,9 +1126,9 @@ void main() {
         executableResolver: _testExecutable,
         terminalSessionFactory:
             ({required String executable, int scrollbackLines = 10000}) {
-          captured = FakeTerminalSession(executable: executable);
-          return captured!;
-        },
+              captured = FakeTerminalSession(executable: executable);
+              return captured!;
+            },
         postFrameScheduler: postFrame.scheduler,
       );
       addTearDown(() => _tearDownChatCubitWithSessionPersist(cubit, postFrame));

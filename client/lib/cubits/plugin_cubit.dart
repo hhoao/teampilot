@@ -8,7 +8,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../models/plugin.dart';
 import '../repositories/plugin_repository.dart';
 import '../services/plugin/plugin_install_service.dart';
-import '../services/storage/flashskyai_storage_roots.dart';
+import '../services/storage/storage_resolver.dart';
 import '../services/plugin/plugin_external_fetch_service.dart';
 import '../services/plugin/plugin_repo_disk_cache_service.dart';
 import '../services/plugin/plugin_repo_service.dart';
@@ -66,14 +66,23 @@ class PluginState extends Equatable {
     busyIds: busyIds ?? this.busyIds,
     discoveryLoading: discoveryLoading ?? this.discoveryLoading,
     updatesLoading: updatesLoading ?? this.updatesLoading,
-    marketplaceSyncingKeys: marketplaceSyncingKeys ?? this.marketplaceSyncingKeys,
+    marketplaceSyncingKeys:
+        marketplaceSyncingKeys ?? this.marketplaceSyncingKeys,
     toolbarBusy: toolbarBusy ?? this.toolbarBusy,
   );
 
   @override
   List<Object?> get props => [
-    installed, marketplaces, discoverable, updates, status, errorMessage,
-    busyIds, discoveryLoading, updatesLoading, marketplaceSyncingKeys,
+    installed,
+    marketplaces,
+    discoverable,
+    updates,
+    status,
+    errorMessage,
+    busyIds,
+    discoveryLoading,
+    updatesLoading,
+    marketplaceSyncingKeys,
     toolbarBusy,
   ];
 }
@@ -90,14 +99,15 @@ class PluginCubit extends Cubit<PluginState> {
     PluginExternalFetchService? externalFetch,
     PluginUninstalledHandler? onPluginUninstalled,
     PluginUpdatedHandler? onPluginUpdated,
-    FlashskyaiStorageRoots? storageRoots,
-  })  : _diskCache = diskCache ??
-            PluginRepoDiskCacheService(storageRoots: storageRoots),
-        _externalFetch = externalFetch ??
-            PluginExternalFetchService(storageRoots: storageRoots),
-        _onPluginUninstalled = onPluginUninstalled,
-        _onPluginUpdated = onPluginUpdated,
-        super(const PluginState());
+    StorageRoots? storageRoots,
+  }) : _diskCache =
+           diskCache ?? PluginRepoDiskCacheService(storageRoots: storageRoots),
+       _externalFetch =
+           externalFetch ??
+           PluginExternalFetchService(storageRoots: storageRoots),
+       _onPluginUninstalled = onPluginUninstalled,
+       _onPluginUpdated = onPluginUpdated,
+       super(const PluginState());
 
   /// Test-only constructor that skips service wiring and accepts a pre-built
   /// state. Do not use in production.
@@ -106,13 +116,13 @@ class PluginCubit extends Cubit<PluginState> {
     super.state, {
     PluginUninstalledHandler? onPluginUninstalled,
     PluginUpdatedHandler? onPluginUpdated,
-  })  : repository = _dummyRepo,
-        installService = _dummyInstallService,
-        repoService = _dummyRepoService,
-        _diskCache = PluginRepoDiskCacheService(),
-        _externalFetch = PluginExternalFetchService(),
-        _onPluginUninstalled = onPluginUninstalled,
-        _onPluginUpdated = onPluginUpdated;
+  }) : repository = _dummyRepo,
+       installService = _dummyInstallService,
+       repoService = _dummyRepoService,
+       _diskCache = PluginRepoDiskCacheService(),
+       _externalFetch = PluginExternalFetchService(),
+       _onPluginUninstalled = onPluginUninstalled,
+       _onPluginUpdated = onPluginUpdated;
 
   static final _dummyRepo = PluginRepository();
   static final _dummyInstallService = PluginInstallService();
@@ -145,11 +155,13 @@ class PluginCubit extends Cubit<PluginState> {
       ]);
       final installed = results[0] as List<Plugin>;
       final marketplaces = results[1] as List<PluginMarketplace>;
-      emit(state.copyWith(
-        installed: installed,
-        marketplaces: marketplaces,
-        status: PluginLoadStatus.ready,
-      ));
+      emit(
+        state.copyWith(
+          installed: installed,
+          marketplaces: marketplaces,
+          status: PluginLoadStatus.ready,
+        ),
+      );
     } catch (e) {
       appLogger.e('[plugins] load failed: $e');
       emit(state.copyWith(status: PluginLoadStatus.error, errorMessage: '$e'));
@@ -159,14 +171,20 @@ class PluginCubit extends Cubit<PluginState> {
   Future<void> refreshDiscoverable({bool force = false}) async {
     final enabled = state.marketplaces.where((m) => m.enabled).toList();
     if (enabled.isEmpty) {
-      emit(state.copyWith(
-        discoveryLoading: false,
-        discoverable: const [],
-        marketplaceSyncingKeys: const {},
-      ));
+      emit(
+        state.copyWith(
+          discoveryLoading: false,
+          discoverable: const [],
+          marketplaceSyncingKeys: const {},
+        ),
+      );
       return;
     }
-    await _syncMarketplacesInBackground(enabled, force: force, clearError: true);
+    await _syncMarketplacesInBackground(
+      enabled,
+      force: force,
+      clearError: true,
+    );
   }
 
   Future<void> _syncMarketplacesInBackground(
@@ -182,12 +200,14 @@ class PluginCubit extends Cubit<PluginState> {
       ...state.marketplaceSyncingKeys,
       ...marketplacesToSync.map(PluginRepoDiskCacheService.repoKey),
     };
-    emit(state.copyWith(
-      discoveryLoading: true,
-      discoverable: await _aggregateDiscoverableFromDisk(enabled),
-      marketplaceSyncingKeys: syncing,
-      clearError: clearError,
-    ));
+    emit(
+      state.copyWith(
+        discoveryLoading: true,
+        discoverable: await _aggregateDiscoverableFromDisk(enabled),
+        marketplaceSyncingKeys: syncing,
+        clearError: clearError,
+      ),
+    );
 
     final batchKeys = marketplacesToSync
         .map(PluginRepoDiskCacheService.repoKey)
@@ -205,11 +225,13 @@ class PluginCubit extends Cubit<PluginState> {
         ...state.marketplaceSyncingKeys.where((k) => !batchKeys.contains(k)),
         ...remaining,
       };
-      emit(state.copyWith(
-        discoverable: discoverable,
-        discoveryLoading: marketplaceSyncingKeys.isNotEmpty,
-        marketplaceSyncingKeys: marketplaceSyncingKeys,
-      ));
+      emit(
+        state.copyWith(
+          discoverable: discoverable,
+          discoveryLoading: marketplaceSyncingKeys.isNotEmpty,
+          marketplaceSyncingKeys: marketplaceSyncingKeys,
+        ),
+      );
     }
 
     await Future.wait(
@@ -226,15 +248,18 @@ class PluginCubit extends Cubit<PluginState> {
     );
 
     if (generation != _discoveryGeneration) return;
-    final marketplaceSyncingKeys =
-        state.marketplaceSyncingKeys.where((k) => !batchKeys.contains(k)).toSet();
-    emit(state.copyWith(
-      discoveryLoading: false,
-      marketplaceSyncingKeys: marketplaceSyncingKeys,
-      discoverable: await _aggregateDiscoverableFromDisk(
-        state.marketplaces.where((m) => m.enabled).toList(),
+    final marketplaceSyncingKeys = state.marketplaceSyncingKeys
+        .where((k) => !batchKeys.contains(k))
+        .toSet();
+    emit(
+      state.copyWith(
+        discoveryLoading: false,
+        marketplaceSyncingKeys: marketplaceSyncingKeys,
+        discoverable: await _aggregateDiscoverableFromDisk(
+          state.marketplaces.where((m) => m.enabled).toList(),
+        ),
       ),
-    ));
+    );
   }
 
   Future<List<DiscoverablePlugin>> _aggregateDiscoverableFromDisk(
@@ -256,9 +281,12 @@ class PluginCubit extends Cubit<PluginState> {
 
   Future<void> installFromDiscovery(DiscoverablePlugin d) async {
     if (!d.canInstall) {
-      emit(state.copyWith(
-        errorMessage: 'Plugin "${d.name}" cannot be installed from this marketplace entry.',
-      ));
+      emit(
+        state.copyWith(
+          errorMessage:
+              'Plugin "${d.name}" cannot be installed from this marketplace entry.',
+        ),
+      );
       return;
     }
     final busy = {...state.busyIds, d.key};
@@ -274,7 +302,9 @@ class PluginCubit extends Cubit<PluginState> {
         final marketDir = await _diskCache.syncMarketplace(marketplace);
         sourceDir = Directory('$marketDir/${d.source}');
       } else {
-        sourceDir = await _externalFetch.fetchPluginDirectory(d.externalSource!);
+        sourceDir = await _externalFetch.fetchPluginDirectory(
+          d.externalSource!,
+        );
       }
       if (!sourceDir.existsSync()) {
         throw StateError('Plugin source directory missing: ${sourceDir.path}');
@@ -342,20 +372,26 @@ class PluginCubit extends Cubit<PluginState> {
     final discoverable = state.discoverable
         .where((d) => d.marketplaceOwner != owner || d.marketplaceName != name)
         .toList();
-    emit(state.copyWith(marketplaces: marketplaces, discoverable: discoverable));
+    emit(
+      state.copyWith(marketplaces: marketplaces, discoverable: discoverable),
+    );
   }
 
-  Future<void> toggleMarketplaceEnabled(PluginMarketplace m, bool enabled) async {
+  Future<void> toggleMarketplaceEnabled(
+    PluginMarketplace m,
+    bool enabled,
+  ) async {
     await repoService.setEnabled(m.owner, m.name, enabled);
     final marketplaces = await repoService.loadMarketplaces();
     if (!enabled) {
       final discoverable = state.discoverable
           .where(
-            (d) =>
-                d.marketplaceOwner != m.owner || d.marketplaceName != m.name,
+            (d) => d.marketplaceOwner != m.owner || d.marketplaceName != m.name,
           )
           .toList();
-      emit(state.copyWith(marketplaces: marketplaces, discoverable: discoverable));
+      emit(
+        state.copyWith(marketplaces: marketplaces, discoverable: discoverable),
+      );
       return;
     }
     emit(state.copyWith(marketplaces: marketplaces));

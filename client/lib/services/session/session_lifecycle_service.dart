@@ -10,7 +10,7 @@ import '../cli/registry/capabilities/transcript_probe_capability.dart';
 import '../cli/registry/cli_tool_registry.dart';
 import '../cli/registry/config_profile/flashskyai_config_profile_capability.dart';
 import '../provider/config_profile_service.dart';
-import '../storage/flashskyai_storage_roots.dart';
+import '../storage/storage_resolver.dart';
 import '../io/filesystem.dart';
 import '../storage/runtime_storage_context.dart';
 
@@ -65,7 +65,8 @@ class SessionLifecycleService {
   final String? Function()? _llmConfigPathOverride;
   final ConfigProfileService? _configProfileService;
   final StorageRootsResolver? _storageRootsResolver;
-  final Future<Set<String>> Function({String? teamId})? _loadEnabledExtensionIds;
+  final Future<Set<String>> Function({String? teamId})?
+  _loadEnabledExtensionIds;
   final CliToolRegistry _cliToolRegistry;
 
   Future<LaunchPlan> prepareLaunch({
@@ -320,7 +321,8 @@ class SessionLifecycleService {
       toolRoots: toolRoots,
       sessionId: id,
       bucket: bucket,
-      probeHistoryFiles: _cliToolRegistry
+      probeHistoryFiles:
+          _cliToolRegistry
               .capability<TranscriptProbeCapability>(cli?.value ?? '')
               ?.probeHistoryFiles ??
           false,

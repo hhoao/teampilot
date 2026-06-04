@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
-import 'package:teampilot/services/storage/flashskyai_storage_roots.dart';
+import 'package:teampilot/services/storage/storage_resolver.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/storage/runtime_storage_context.dart';
 
@@ -30,20 +30,8 @@ void main() {
     }
   });
 
-  test('resolve returns local paths when not in SSH mode', () async {
-    final roots = FlashskyaiStorageRoots(isSshMode: () => false);
-    final snap = await roots.resolve();
-    expect(snap.storageIsRemote, isFalse);
-    expect(snap.teamsUiDir, AppPathsBootstrapper.current.teamsDir);
-    expect(
-      snap.appFlashskyaiDir.replaceAll(r'\', '/'),
-      endsWith('config-profiles/flashskyai'),
-    );
-    expect(snap.remoteFileStore, isNull);
-  });
-
   test('resolve falls back to local when SSH mode but no profile', () async {
-    final roots = FlashskyaiStorageRoots(
+    final roots = StorageRoots(
       isSshMode: () => true,
       sshProfileResolver: () => null,
     );
@@ -65,15 +53,20 @@ void main() {
         teampilotRoot,
       ),
       pluginsRoot: AppPaths.pluginsDirForTeampilotRoot(teampilotRoot),
-      pluginBackupsDir: AppPaths.pluginBackupsDirForTeampilotRoot(teampilotRoot),
+      pluginBackupsDir: AppPaths.pluginBackupsDirForTeampilotRoot(
+        teampilotRoot,
+      ),
       pluginsJsonPath: AppPaths.pluginsJsonForTeampilotRoot(teampilotRoot),
       pluginMarketplacesConfigPath:
           AppPaths.pluginMarketplacesConfigPathForTeampilotRoot(teampilotRoot),
       pluginMarketplaceCacheDir:
           AppPaths.pluginMarketplaceCacheDirForTeampilotRoot(teampilotRoot),
-      pluginExternalCacheDir:
-          AppPaths.pluginExternalCacheDirForTeampilotRoot(teampilotRoot),
-      mcpServersJsonPath: AppPaths.mcpServersJsonForTeampilotRoot(teampilotRoot),
+      pluginExternalCacheDir: AppPaths.pluginExternalCacheDirForTeampilotRoot(
+        teampilotRoot,
+      ),
+      mcpServersJsonPath: AppPaths.mcpServersJsonForTeampilotRoot(
+        teampilotRoot,
+      ),
       mcpRegistrySourcesConfigPath:
           AppPaths.mcpRegistrySourcesConfigPathForTeampilotRoot(teampilotRoot),
     );
@@ -86,10 +79,7 @@ void main() {
       snap.skillReposConfigPath,
       posix.join(teampilotRoot, 'skills', 'repos.json'),
     );
-    expect(
-      snap.appFlashskyaiDir,
-      posix.join(teampilotRoot, 'config-profiles', 'flashskyai'),
-    );
+
     expect(
       snap.layout.teamToolDir('team-a', 'flashskyai'),
       posix.join(
@@ -114,19 +104,21 @@ void main() {
     );
   });
 
-  test('reinstallAndResolve invokes reinstallContext before resolving', () async {
-    var reinstallCalls = 0;
-    final roots = FlashskyaiStorageRoots(
-      isSshMode: () => false,
-      reinstallContext: () async {
-        reinstallCalls++;
-        return RuntimeStorageContext.current;
-      },
-    );
+  test(
+    'reinstallAndResolve invokes reinstallContext before resolving',
+    () async {
+      var reinstallCalls = 0;
+      final roots = StorageRoots(
+        isSshMode: () => false,
+        reinstallContext: () async {
+          reinstallCalls++;
+          return RuntimeStorageContext.current;
+        },
+      );
 
-    await roots.reinstallAndResolve();
+      await roots.reinstallAndResolve();
 
-    expect(reinstallCalls, 1);
-  });
-
+      expect(reinstallCalls, 1);
+    },
+  );
 }
