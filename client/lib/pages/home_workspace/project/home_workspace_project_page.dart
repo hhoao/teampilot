@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../cubits/chat_cubit.dart';
+import '../../../cubits/team_cubit.dart';
 import '../../../l10n/l10n_extensions.dart';
 import '../../../models/app_project.dart';
 import '../../chat_page.dart';
@@ -40,6 +41,10 @@ class _HomeWorkspaceProjectPageState extends State<HomeWorkspaceProjectPage> {
       return _MissingProject(label: l10n.homeWorkspaceEmptyProjects);
     }
 
+    // Opening a project belongs to a team; keep the selected team in sync so the
+    // sidebar, team-scoped content and top tabs all reflect the project's team.
+    _syncSelectedTeam(project.teamId);
+
     return Row(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -56,6 +61,19 @@ class _HomeWorkspaceProjectPageState extends State<HomeWorkspaceProjectPage> {
           HomeWorkspaceProjectSettingsView(project: project),
       ],
     );
+  }
+
+  void _syncSelectedTeam(String teamId) {
+    if (teamId.isEmpty) return;
+    final teamCubit = context.read<TeamCubit>();
+    if (teamCubit.state.selectedTeam?.id == teamId) return;
+    // Defer the state change out of build to avoid mutating during a build pass.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (teamCubit.state.selectedTeam?.id != teamId) {
+        teamCubit.selectTeam(teamId);
+      }
+    });
   }
 
   static AppProject? _findProject(List<AppProject> projects, String id) {

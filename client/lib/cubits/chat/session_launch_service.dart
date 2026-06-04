@@ -239,7 +239,7 @@ class SessionLaunchService implements MemberConnector {
   }) async {
     if (!_tabStore.isEmpty) return;
     final cwd = AppStorage.cwd.trim();
-    final project = await repo.createProject(cwd);
+    final project = await repo.createProject(cwd, teamId: team.id);
     final session = await repo.createSession(
       project.projectId,
       sessionTeam: team.id,

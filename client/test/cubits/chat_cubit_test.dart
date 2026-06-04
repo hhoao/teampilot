@@ -117,6 +117,7 @@ void main() {
           AppProject(
             projectId: pA,
             primaryPath: '/a',
+            teamId: 'tid-1',
             createdAt: 1,
             updatedAt: 1,
             sessionIds: ['s1', 's2'],
@@ -124,6 +125,7 @@ void main() {
           AppProject(
             projectId: pB,
             primaryPath: '/b',
+            teamId: 'tid-1',
             createdAt: 1,
             updatedAt: 1,
             sessionIds: ['s3'],
@@ -341,7 +343,7 @@ void main() {
         final tmp = await Directory.systemTemp.createTemp('chat_cubit_');
         addTearDown(() => tmp.deleteSync(recursive: true));
         final repo = SessionRepository(rootDir: tmp.path);
-        final project = await repo.createProject('/tmp');
+        final project = await repo.createProject('/tmp', teamId: '');
         final session = await repo.createSession(
           project.projectId,
           sessionTeam: team.id,
@@ -379,6 +381,57 @@ void main() {
           fakeSessions.map((shell) => shell.connectedSessionTeams.single),
           everyElement('team-a-1'),
         );
+      },
+    );
+
+    test(
+      'closeTabsForProject counts and terminates a project\'s open tabs',
+      () async {
+        const team = TeamConfig(
+          id: 'team-a',
+          name: 'A',
+          members: [TeamMemberConfig(id: 'm-lead', name: 'team-lead')],
+        );
+        final tmp = await Directory.systemTemp.createTemp('chat_cubit_close_');
+        addTearDown(() => tmp.deleteSync(recursive: true));
+        final repo = SessionRepository(rootDir: tmp.path);
+        final projectA = await repo.createProject('/a', teamId: 'team-a');
+        final projectB = await repo.createProject('/b', teamId: 'team-a');
+        final sessionA = await repo.createSession(
+          projectA.projectId,
+          sessionTeam: team.id,
+          rosterMembers: team.members,
+        );
+        final sessionB = await repo.createSession(
+          projectB.projectId,
+          sessionTeam: team.id,
+          rosterMembers: team.members,
+        );
+        final postFrame = PostFrameTestHarness();
+        final cubit = ChatCubit(
+          executableResolver: () => 'true',
+          sessionRepository: repo,
+          terminalSessionFactory:
+              ({required String executable, int scrollbackLines = 10000}) =>
+                  _FakeTerminalSession(executable: executable),
+          postFrameScheduler: postFrame.scheduler,
+        );
+        addTearDown(cubit.close);
+
+        await cubit.openSessionTab(sessionA, team: team, member: team.members.first, repo: repo);
+        await cubit.openSessionTab(sessionB, team: team, member: team.members.first, repo: repo);
+        await postFrame.flush();
+
+        expect(cubit.state.tabs.length, 2);
+        expect(cubit.openTabCountForProject(projectA.projectId), 1);
+        expect(cubit.openTabCountForProject(projectB.projectId), 1);
+        expect(cubit.openTabCountForProject('no-such-project'), 0);
+
+        cubit.closeTabsForProject(projectA.projectId);
+
+        expect(cubit.state.tabs.length, 1);
+        expect(cubit.openTabCountForProject(projectA.projectId), 0);
+        expect(cubit.openTabCountForProject(projectB.projectId), 1);
       },
     );
 
@@ -442,7 +495,7 @@ void main() {
         final tmp = await Directory.systemTemp.createTemp('chat_cubit_mixed_cli_');
         addTearDown(() => tmp.deleteSync(recursive: true));
         final repo = SessionRepository(rootDir: tmp.path);
-        final project = await repo.createProject('/tmp');
+        final project = await repo.createProject('/tmp', teamId: '');
         final session = await repo.createSession(
           project.projectId,
           sessionTeam: team.id,
@@ -494,7 +547,7 @@ void main() {
         final tmp = await Directory.systemTemp.createTemp('chat_cubit_mixed_');
         addTearDown(() => tmp.deleteSync(recursive: true));
         final repo = SessionRepository(rootDir: tmp.path);
-        final project = await repo.createProject('/tmp');
+        final project = await repo.createProject('/tmp', teamId: '');
         final session = await repo.createSession(
           project.projectId,
           sessionTeam: team.id,
@@ -551,7 +604,7 @@ void main() {
             TeamMemberConfig(id: 'm-dev', name: 'developer'),
           ],
         );
-        final project = await repo.createProject('/tmp');
+        final project = await repo.createProject('/tmp', teamId: '');
         final session = await repo.createSession(
           project.projectId,
           sessionTeam: team.id,

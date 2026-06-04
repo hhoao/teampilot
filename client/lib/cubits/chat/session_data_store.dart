@@ -53,14 +53,11 @@ class SessionDataStore {
     return all.where((s) => s.sessionTeam == tid).toList();
   }
 
-  List<AppProject> _computeVisibleProjects(
-    List<AppProject> all,
-    List<AppSession> visibleSessions,
-  ) {
+  List<AppProject> _computeVisibleProjects(List<AppProject> all) {
     if (!_scopeSessionsToSelectedTeam) return all;
-    return all
-        .where((p) => visibleSessions.any((s) => s.projectId == p.projectId))
-        .toList();
+    final tid = _selectedTeamId;
+    if (tid == null || tid.isEmpty) return [];
+    return all.where((p) => p.teamId == tid).toList();
   }
 
   ChatDataSnapshot deriveSnapshot({
@@ -68,7 +65,7 @@ class SessionDataStore {
     required List<AppSession> sessions,
   }) {
     final visS = _computeVisibleSessions(sessions);
-    final visP = _computeVisibleProjects(projects, visS);
+    final visP = _computeVisibleProjects(projects);
     return ChatDataSnapshot(
       projects: projects,
       sessions: sessions,
@@ -107,6 +104,7 @@ class SessionDataStore {
   }) async {
     final project = await repo.createProject(
       primaryPath,
+      teamId: sessionTeamId,
       additionalPaths: additionalPaths,
       display: display,
     );
@@ -128,7 +126,11 @@ class SessionDataStore {
     if (trimmed.isEmpty) return null;
     if (projectPathsEqual(trimmed, project.primaryPath)) return null;
     if (projectPathsContains(project.additionalPaths, trimmed)) return null;
-    await repo.createProject(project.primaryPath, additionalPaths: [trimmed]);
+    await repo.createProject(
+      project.primaryPath,
+      teamId: project.teamId,
+      additionalPaths: [trimmed],
+    );
     return loadProjectData(repo);
   }
 

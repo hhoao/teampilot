@@ -547,7 +547,7 @@ void main() {
     final repo = SessionRepository(
       rootDir: (await Directory.systemTemp.createTemp('sidebar_sess_')).path,
     );
-    final project = await repo.createProject('/work/current');
+    final project = await repo.createProject('/work/current', teamId: '');
     final session = await repo.createSession(
       project.projectId,
       sessionTeam: team.id,
@@ -831,7 +831,7 @@ void main() {
           TeamMemberConfig(id: 'dev', name: 'developer'),
         ],
       );
-      final project = await repo.createProject('/wd');
+      final project = await repo.createProject('/wd', teamId: '');
       await repo.createSession(
         project.projectId,
         sessionTeam: team.id,
@@ -879,7 +879,7 @@ void main() {
           TeamMemberConfig(id: 'dev', name: 'developer'),
         ],
       );
-      final project = await repo.createProject('/wd');
+      final project = await repo.createProject('/wd', teamId: '');
       await repo.createSession(
         project.projectId,
         sessionTeam: team.id,
@@ -973,7 +973,7 @@ void main() {
     final tmp = await Directory.systemTemp.createTemp('open_sess_');
     addTearDown(() => _deleteTempDirBestEffort(tmp));
     final repo = SessionRepository(rootDir: tmp.path);
-    final project = await repo.createProject('/wd');
+    final project = await repo.createProject('/wd', teamId: '');
     final team = TeamConfig(
       id: 'tid',
       name: 'TName',
@@ -1015,7 +1015,7 @@ void main() {
     final tmp = await Directory.systemTemp.createTemp('open_sess_');
     addTearDown(() => _deleteTempDirBestEffort(tmp));
     final repo = SessionRepository(rootDir: tmp.path);
-    final project = await repo.createProject('/wd');
+    final project = await repo.createProject('/wd', teamId: '');
     final team = TeamConfig(
       id: 'tid',
       name: 'TName',
@@ -1060,7 +1060,7 @@ void main() {
       final tmp = await Directory.systemTemp.createTemp('open_sess_');
       addTearDown(() => _deleteTempDirBestEffort(tmp));
       final repo = SessionRepository(rootDir: tmp.path);
-      final project = await repo.createProject('/wd');
+      final project = await repo.createProject('/wd', teamId: '');
       final team = TeamConfig(
         id: 'tid',
         name: 'TName',
@@ -1107,7 +1107,7 @@ void main() {
       addTearDown(() => _deleteTempDirBestEffort(tmp));
       final repo = SessionRepository(rootDir: tmp.path);
       final project = await repo.createProject(
-        '/root',
+        '/root', teamId: '',
         additionalPaths: const ['/extra'],
       );
       final team = TeamConfig(

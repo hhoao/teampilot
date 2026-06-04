@@ -54,7 +54,7 @@ class _HomeWorkspaceContentState extends State<HomeWorkspaceContent> {
       );
     }
 
-    final teamProjects = _projectsForTeam(team, projects, sessions);
+    final teamProjects = _projectsForTeam(team, projects);
     // Tab 0 is Projects; the rest reuse the existing team-config sections in
     // the order the user requested: Members, Skills, Plugins, MCP, Extensions,
     // Team Settings.
@@ -128,14 +128,7 @@ class _HomeWorkspaceContentState extends State<HomeWorkspaceContent> {
   List<AppProject> _projectsForTeam(
     TeamConfig team,
     List<AppProject> projects,
-    List<AppSession> sessions,
   ) {
-    final teamSessionProjectIds = sessions
-        .where((s) => s.sessionTeam == team.id)
-        .map((s) => s.projectId)
-        .toSet();
-    return projects
-        .where((p) => teamSessionProjectIds.contains(p.projectId))
-        .toList();
+    return projects.where((p) => p.teamId == team.id).toList();
   }
 }

@@ -570,6 +570,24 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homeWorkspaceCreateProject => 'Create project';
 
   @override
+  String get homeWorkspaceCloseProjectTitle => 'Close project?';
+
+  @override
+  String homeWorkspaceCloseProjectMessage(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          'Closing this tab will end $count running sessions in this project.',
+      one: 'Closing this tab will end 1 running session in this project.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get homeWorkspaceCloseProjectConfirm => 'Close & end sessions';
+
+  @override
   String get homeWorkspaceConversations => 'Conversations';
 
   @override

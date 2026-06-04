@@ -23,12 +23,12 @@ void main() {
     expect(snap.visibleProjects, projects);
   });
 
-  test('team scope filters by sessionTeam', () {
+  test('team scope filters sessions by sessionTeam and projects by teamId', () {
     final store = SessionDataStore()
       ..setScope(scopeSessionsToSelectedTeam: true, selectedTeamId: 't1');
     final projects = [
-      AppProject(projectId: 'p1', primaryPath: '/p1', createdAt: 0),
-      AppProject(projectId: 'p2', primaryPath: '/p2', createdAt: 0),
+      AppProject(projectId: 'p1', primaryPath: '/p1', teamId: 't1', createdAt: 0),
+      AppProject(projectId: 'p2', primaryPath: '/p2', teamId: 't2', createdAt: 0),
     ];
     final sessions = [
       AppSession(

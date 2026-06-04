@@ -340,6 +340,35 @@ class ChatCubit extends Cubit<ChatState>
     _pushPresenceTarget();
   }
 
+  /// Open terminal tabs whose backing session belongs to [projectId].
+  /// `local-` scratch tabs have no project and are excluded.
+  List<int> _tabIndicesForProject(String projectId) {
+    final result = <int>[];
+    for (var i = 0; i < _tabStore.length; i++) {
+      final session = _tabStore.sessionForTab(
+        _tabStore.tabs[i],
+        state.sessions,
+      );
+      if (session != null && session.projectId == projectId) result.add(i);
+    }
+    return result;
+  }
+
+  /// Number of open terminal tabs backed by sessions in [projectId].
+  int openTabCountForProject(String projectId) =>
+      _tabIndicesForProject(projectId).length;
+
+  /// Closes (terminates) every open terminal tab belonging to [projectId].
+  void closeTabsForProject(String projectId) {
+    // Close highest index first so earlier indices stay valid as the list
+    // shrinks; [closeTab] disposes the terminal sessions and team-bus.
+    final indices = _tabIndicesForProject(projectId)
+      ..sort((a, b) => b.compareTo(a));
+    for (final i in indices) {
+      closeTab(i);
+    }
+  }
+
   void closeOtherTabs(int index) {
     if (index < 0 || index >= _tabStore.length) return;
     for (var i = _tabStore.length - 1; i >= 0; i--) {

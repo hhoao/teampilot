@@ -113,6 +113,7 @@ class SessionRepository {
   /// [additionalPaths] (union, stable order) and non-empty [display] into the index.
   Future<AppProject> createProject(
     String primaryPath, {
+    required String teamId,
     List<String> additionalPaths = const [],
     String display = '',
   }) async {
@@ -122,7 +123,10 @@ class SessionRepository {
     final now = DateTime.now().millisecondsSinceEpoch;
     for (var i = 0; i < index.projects.length; i++) {
       final existing = index.projects[i];
-      if (!projectPathsEqual(existing.primaryPath, trimmed)) continue;
+      if (existing.teamId != teamId ||
+          !projectPathsEqual(existing.primaryPath, trimmed)) {
+        continue;
+      }
       final newAdd = additionalPaths
           .map(normalizeProjectPath)
           .where((e) => e.isNotEmpty)
@@ -157,6 +161,7 @@ class SessionRepository {
     final project = AppProject(
       projectId: const Uuid().v4(),
       primaryPath: trimmed,
+      teamId: teamId,
       additionalPaths: List<String>.from(
         additionalPaths.map(normalizeProjectPath).where((e) => e.isNotEmpty),
       ),

@@ -88,7 +88,7 @@ void main() {
     });
 
     test('openSessionTab creates TeamBus and loopback MCP server', () async {
-      final project = await repo.createProject('/tmp');
+      final project = await repo.createProject('/tmp', teamId: '');
       final session = await repo.createSession(
         project.projectId,
         sessionTeam: team.id,
@@ -112,7 +112,7 @@ void main() {
     });
 
     test('closeTab stops MCP server and clears bus resources', () async {
-      final project = await repo.createProject('/tmp');
+      final project = await repo.createProject('/tmp', teamId: '');
       final session = await repo.createSession(
         project.projectId,
         sessionTeam: team.id,

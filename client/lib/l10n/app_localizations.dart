@@ -1136,6 +1136,24 @@ abstract class AppLocalizations {
   /// **'Create project'**
   String get homeWorkspaceCreateProject;
 
+  /// No description provided for @homeWorkspaceCloseProjectTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Close project?'**
+  String get homeWorkspaceCloseProjectTitle;
+
+  /// No description provided for @homeWorkspaceCloseProjectMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Closing this tab will end 1 running session in this project.} other{Closing this tab will end {count} running sessions in this project.}}'**
+  String homeWorkspaceCloseProjectMessage(int count);
+
+  /// No description provided for @homeWorkspaceCloseProjectConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Close & end sessions'**
+  String get homeWorkspaceCloseProjectConfirm;
+
   /// No description provided for @homeWorkspaceConversations.
   ///
   /// In en, this message translates to:

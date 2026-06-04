@@ -5,6 +5,7 @@ class AppProject {
   const AppProject({
     required this.projectId,
     required this.primaryPath,
+    this.teamId = '',
     this.additionalPaths = const [],
     this.display = '',
     required this.createdAt,
@@ -24,6 +25,7 @@ class AppProject {
     return AppProject(
       projectId: json['projectId'] as String? ?? '',
       primaryPath: json['primaryPath'] as String? ?? '',
+      teamId: json['teamId'] as String? ?? '',
       additionalPaths: paths,
       display: json['display'] as String? ?? '',
       createdAt: json['createdAt'] as int? ?? 0,
@@ -34,6 +36,7 @@ class AppProject {
 
   final String projectId;
   final String primaryPath;
+  final String teamId;
   final List<String> additionalPaths;
   final String display;
   final int createdAt;
@@ -52,6 +55,7 @@ class AppProject {
   AppProject copyWith({
     String? projectId,
     String? primaryPath,
+    String? teamId,
     List<String>? additionalPaths,
     String? display,
     int? createdAt,
@@ -61,6 +65,7 @@ class AppProject {
     return AppProject(
       projectId: projectId ?? this.projectId,
       primaryPath: primaryPath ?? this.primaryPath,
+      teamId: teamId ?? this.teamId,
       additionalPaths: additionalPaths ?? this.additionalPaths,
       display: display ?? this.display,
       createdAt: createdAt ?? this.createdAt,
@@ -73,6 +78,7 @@ class AppProject {
     return {
       'projectId': projectId,
       'primaryPath': primaryPath,
+      'teamId': teamId,
       'additionalPaths': additionalPaths,
       'display': display,
       'createdAt': createdAt,
@@ -88,6 +94,7 @@ class AppProject {
             runtimeType == other.runtimeType &&
             projectId == other.projectId &&
             primaryPath == other.primaryPath &&
+            teamId == other.teamId &&
             listEquals(additionalPaths, other.additionalPaths) &&
             display == other.display &&
             createdAt == other.createdAt &&
@@ -99,6 +106,7 @@ class AppProject {
   int get hashCode => Object.hash(
     projectId,
     primaryPath,
+    teamId,
     Object.hashAll(additionalPaths),
     display,
     createdAt,

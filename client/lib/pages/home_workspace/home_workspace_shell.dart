@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../cubits/chat_cubit.dart';
+import '../../l10n/l10n_extensions.dart';
 import '../../models/app_project.dart';
 import '../../theme/workspace_surface_layers.dart';
 import 'home_workspace_title_bar.dart';
@@ -66,7 +67,17 @@ class _HomeWorkspaceShellState extends State<HomeWorkspaceShell> {
 
   void _goHome() => context.go('/home-v2');
 
-  void _closeTab(String id) {
+  Future<void> _closeTab(String id) async {
+    if (!_openIds.contains(id)) return;
+    // Closing a project tab always terminates that project's running sessions;
+    // confirm first when there are any so the user can cancel.
+    final chat = context.read<ChatCubit>();
+    final running = chat.openTabCountForProject(id);
+    if (running > 0) {
+      final confirmed = await _confirmCloseWithSessions(running);
+      if (confirmed != true || !mounted) return;
+      chat.closeTabsForProject(id);
+    }
     final idx = _openIds.indexOf(id);
     if (idx < 0) return;
     final wasActive = id == _projectIdFromLocation(widget.location);
@@ -81,6 +92,27 @@ class _HomeWorkspaceShellState extends State<HomeWorkspaceShell> {
     }
   }
 
+  Future<bool?> _confirmCloseWithSessions(int running) {
+    final l10n = context.l10n;
+    return showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(l10n.homeWorkspaceCloseProjectTitle),
+        content: Text(l10n.homeWorkspaceCloseProjectMessage(running)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: Text(l10n.cancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: Text(l10n.homeWorkspaceCloseProjectConfirm),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
@@ -88,6 +120,9 @@ class _HomeWorkspaceShellState extends State<HomeWorkspaceShell> {
       (c) => c.state.projects,
     );
     final activeId = _projectIdFromLocation(widget.location);
+    // Show every open project tab across all teams (IDE-style open editors).
+    // Selecting a tab switches the active team to the project's team via
+    // HomeWorkspaceProjectPage, so the sidebar/content stay in sync.
     final tabs = <HomeProjectTab>[
       for (final id in _openIds)
         if (_resolve(projects, id) case final p?)

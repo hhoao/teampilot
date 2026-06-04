@@ -232,6 +232,16 @@
   "homeWorkspaceNewProjectDirectoryHint": "No directory selected yet",
   "homeWorkspaceNewProjectNameHint": "Defaults to the folder name",
   "homeWorkspaceCreateProject": "Create project",
+  "homeWorkspaceCloseProjectTitle": "Close project?",
+  "homeWorkspaceCloseProjectMessage": "{count, plural, =1{Closing this tab will end 1 running session in this project.} other{Closing this tab will end {count} running sessions in this project.}}",
+  "@homeWorkspaceCloseProjectMessage": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "homeWorkspaceCloseProjectConfirm": "Close & end sessions",
   "homeWorkspaceConversations": "Conversations",
   "homeWorkspaceProjectSettings": "Project settings",
   "homeWorkspaceProjectSettingsSectionBasic": "Basic",

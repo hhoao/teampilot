@@ -177,7 +177,7 @@ void main() {
         async.flushMicrotasks();
 
         unawaited(
-          repo.createProject('/tmp').then((project) async {
+          repo.createProject('/tmp', teamId: '').then((project) async {
             final localSession = await repo.createSession(project.projectId);
             await chatCubit.openSessionTab(localSession, connectImmediately: false);
             async.flushMicrotasks();

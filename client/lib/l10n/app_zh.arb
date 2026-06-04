@@ -222,6 +222,16 @@
   "homeWorkspaceNewProjectDirectoryHint": "尚未选择目录",
   "homeWorkspaceNewProjectNameHint": "默认使用文件夹名",
   "homeWorkspaceCreateProject": "创建项目",
+  "homeWorkspaceCloseProjectTitle": "关闭项目？",
+  "homeWorkspaceCloseProjectMessage": "{count, plural, =1{关闭该标签会终止此项目中 1 个运行中的会话。} other{关闭该标签会终止此项目中 {count} 个运行中的会话。}}",
+  "@homeWorkspaceCloseProjectMessage": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "homeWorkspaceCloseProjectConfirm": "关闭并终止会话",
   "homeWorkspaceConversations": "对话管理",
   "homeWorkspaceProjectSettings": "项目设置",
   "homeWorkspaceProjectSettingsSectionBasic": "基本设置",

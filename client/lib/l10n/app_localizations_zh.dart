@@ -546,6 +546,23 @@ class AppLocalizationsZh extends AppLocalizations {
   String get homeWorkspaceCreateProject => '创建项目';
 
   @override
+  String get homeWorkspaceCloseProjectTitle => '关闭项目？';
+
+  @override
+  String homeWorkspaceCloseProjectMessage(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '关闭该标签会终止此项目中 $count 个运行中的会话。',
+      one: '关闭该标签会终止此项目中 1 个运行中的会话。',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get homeWorkspaceCloseProjectConfirm => '关闭并终止会话';
+
+  @override
   String get homeWorkspaceConversations => '对话管理';
 
   @override
