@@ -81,6 +81,9 @@ Future<void> _preloadBundledUiFonts() async {
   }
 }
 
+/// Desktop default window size (Linux GTK + Windows Win32 + [WindowOptions]).
+const kDefaultDesktopWindowSize = Size(1380, 960);
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   installWindowsKeyboardWorkaround();
@@ -91,11 +94,11 @@ void main() async {
 
   if (!Platform.isAndroid) {
     await windowManager.ensureInitialized();
-    final windowRect = await windowManager.getBounds();
-    final initialSize = Size(
-      (windowRect.width > 400) ? windowRect.width : 1200,
-      (windowRect.height > 300) ? windowRect.height : 700,
-    );
+    // Cold-start window size. Do not use [getBounds] here — native runners
+    // already size the window before Dart runs, so getBounds() masked edits to
+    // a Dart-only fallback. When changing height/width, update this constant
+    // and linux/runner/my_application.cc + windows/runner/main.cpp to match.
+    const initialSize = kDefaultDesktopWindowSize;
     final windowOptions = WindowOptions(
       size: initialSize,
       minimumSize: const Size(800, 500),

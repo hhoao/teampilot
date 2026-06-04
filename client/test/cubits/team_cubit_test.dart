@@ -6,6 +6,7 @@ import 'package:teampilot/cubits/team_cubit.dart';
 import 'package:teampilot/models/plugin.dart';
 import 'package:teampilot/models/skill.dart';
 import 'package:teampilot/models/team_config.dart';
+import 'package:teampilot/repositories/session_repository.dart';
 import 'package:teampilot/repositories/team_repository.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
 import 'package:teampilot/services/provider/config_profile_service.dart';
@@ -139,6 +140,8 @@ void main() {
     final linker = _RecordingLinker();
     final cubit = TeamCubit(
       repository: repo,
+      sessionRepository: SessionRepository(),
+      reloadProjects: () async {},
       executableResolver: () => 'flashskyai',
       pluginLinker: _RecordingPluginLinker(),
       skillLinker: linker,
@@ -170,6 +173,8 @@ void main() {
     final linker = _RecordingLinker();
     final cubit = TeamCubit(
       repository: repo,
+      sessionRepository: SessionRepository(),
+      reloadProjects: () async {},
       executableResolver: () => 'flashskyai',
       pluginLinker: _RecordingPluginLinker(),
       skillLinker: linker,
@@ -201,6 +206,8 @@ void main() {
     final linker = _RecordingLinker();
     final cubit = TeamCubit(
       repository: repo,
+      sessionRepository: SessionRepository(),
+      reloadProjects: () async {},
       executableResolver: () => 'flashskyai',
       pluginLinker: _RecordingPluginLinker(),
       skillLinker: linker,
@@ -232,6 +239,8 @@ void main() {
     final linker = _RecordingPluginLinker();
     final cubit = TeamCubit(
       repository: repo,
+      sessionRepository: SessionRepository(),
+      reloadProjects: () async {},
       executableResolver: () => 'flashskyai',
       pluginLinker: linker,
       installedPluginsLoader: () async => [],
@@ -281,6 +290,8 @@ void main() {
     );
     final cubit = TeamCubit(
       repository: repo,
+      sessionRepository: SessionRepository(),
+      reloadProjects: () async {},
       executableResolver: () => 'flashskyai',
       pluginLinker: linker,
       installedPluginsLoader: () async => [plugin],
@@ -311,6 +322,8 @@ void main() {
     final linker = _RecordingPluginLinker();
     final cubit = TeamCubit(
       repository: repo,
+      sessionRepository: SessionRepository(),
+      reloadProjects: () async {},
       executableResolver: () => 'flashskyai',
       pluginLinker: linker,
       installedPluginsLoader: () async => [],
@@ -343,6 +356,8 @@ void main() {
     final repo = _repo(dir);
     final cubit = TeamCubit(
       repository: repo,
+      sessionRepository: SessionRepository(),
+      reloadProjects: () async {},
       executableResolver: () => 'flashskyai',
       pluginLinker: _RecordingPluginLinker(),
     );
@@ -370,6 +385,8 @@ void main() {
     final dir = await Directory.systemTemp.createTemp('team-cubit-');
     final cubit = TeamCubit(
       repository: _repo(dir),
+      sessionRepository: SessionRepository(),
+      reloadProjects: () async {},
       executableResolver: () => 'flashskyai',
       pluginLinker: _RecordingPluginLinker(),
     );
@@ -398,6 +415,8 @@ void main() {
       );
       final cubit = TeamCubit(
         repository: repo,
+        sessionRepository: SessionRepository(),
+        reloadProjects: () async {},
         executableResolver: () => 'flashskyai',
       pluginLinker: _RecordingPluginLinker(),
       );
@@ -424,10 +443,40 @@ void main() {
     },
   );
 
+  test('load seeds default project when creating Default Team', () async {
+    final base = await Directory.systemTemp.createTemp('team_default_project_');
+    final sessionRepo = SessionRepository();
+    var reloadCount = 0;
+    final cubit = TeamCubit(
+      repository: _repo(base),
+      sessionRepository: sessionRepo,
+      reloadProjects: () async => reloadCount++,
+      executableResolver: () => 'flashskyai',
+      pluginLinker: _RecordingPluginLinker(),
+    );
+
+    await cubit.load();
+
+    final team = cubit.state.teams.single;
+    expect(team.name, 'Default Team');
+    expect(reloadCount, 1);
+    final projects = await sessionRepo.loadProjects();
+    expect(projects.where((p) => p.teamId == team.id), hasLength(1));
+    expect(
+      projects.singleWhere((p) => p.teamId == team.id).display,
+      'Default Team',
+    );
+
+    await _drainAndCloseTeamCubit(cubit);
+    await base.delete(recursive: true);
+  });
+
   test('addTeam creates team runtime profile directories', () async {
     final base = await Directory.systemTemp.createTemp('team_profile_');
     final cubit = TeamCubit(
       repository: _repo(base),
+      sessionRepository: SessionRepository(),
+      reloadProjects: () async {},
       executableResolver: () => 'flashskyai',
       pluginLinker: _RecordingPluginLinker(),
       skillLinker: _RecordingLinker(),
@@ -450,6 +499,8 @@ void main() {
     final base = await Directory.systemTemp.createTemp('team_profile_cli_');
     final cubit = TeamCubit(
       repository: _repo(base),
+      sessionRepository: SessionRepository(),
+      reloadProjects: () async {},
       executableResolver: () => 'flashskyai',
       pluginLinker: _RecordingPluginLinker(),
       appDataBasePath: base.path,
@@ -467,6 +518,8 @@ void main() {
     final base = await Directory.systemTemp.createTemp('team_cli_preview_');
     final cubit = TeamCubit(
       repository: _repo(base),
+      sessionRepository: SessionRepository(),
+      reloadProjects: () async {},
       executableResolver: () => 'flashskyai',
       pluginLinker: _RecordingPluginLinker(),
       cliExecutableResolver: (cli) =>
@@ -498,6 +551,8 @@ void main() {
     final repo = _repo(base);
     final cubit = TeamCubit(
       repository: repo,
+      sessionRepository: SessionRepository(),
+      reloadProjects: () async {},
       executableResolver: () => 'claude',
       pluginLinker: _RecordingPluginLinker(),
       appDataBasePath: base.path,
@@ -561,6 +616,8 @@ void main() {
     final launched = <String>[];
     final cubit = TeamCubit(
       repository: repo,
+      sessionRepository: SessionRepository(),
+      reloadProjects: () async {},
       executableResolver: () => 'claude',
       pluginLinker: _RecordingPluginLinker(),
       appDataBasePath: base.path,
@@ -613,6 +670,8 @@ void main() {
     final base = await Directory.systemTemp.createTemp('team_profile_load_');
     final cubit = TeamCubit(
       repository: _repo(base),
+      sessionRepository: SessionRepository(),
+      reloadProjects: () async {},
       executableResolver: () => 'flashskyai',
       pluginLinker: _RecordingPluginLinker(),
       appDataBasePath: base.path,
@@ -639,6 +698,8 @@ void main() {
     final repo = _repo(dir);
     final cubit = TeamCubit(
       repository: repo,
+      sessionRepository: SessionRepository(),
+      reloadProjects: () async {},
       executableResolver: () => 'claude',
       pluginLinker: _RecordingPluginLinker(),
     );
@@ -670,6 +731,8 @@ void main() {
     final repo = _repo(dir);
     final cubit = TeamCubit(
       repository: repo,
+      sessionRepository: SessionRepository(),
+      reloadProjects: () async {},
       executableResolver: () => 'claude',
       pluginLinker: _RecordingPluginLinker(),
     );

@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/team_cubit.dart';
 import 'package:teampilot/models/team_config.dart';
+import 'package:teampilot/repositories/session_repository.dart';
 import 'package:teampilot/repositories/team_repository.dart';
 
 import '../support/post_frame_test_harness.dart';
@@ -13,6 +14,8 @@ void main() {
 
   TeamCubit build(TeamRepository repo) => TeamCubit(
         repository: repo,
+        sessionRepository: SessionRepository(),
+        reloadProjects: () async {},
         executableResolver: () => 'flashskyai',
       );
 

@@ -1,12 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
 
+import '../../cubits/app_provider_cubit.dart';
 import '../../cubits/team_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
+import '../../models/app_provider_config.dart';
 import '../../models/default_team_roster.dart';
 import '../../models/team_config.dart';
+import '../../services/cli/registry/cli_display_name.dart';
+import '../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../theme/app_text_styles.dart';
-import '../../theme/workspace_surface_layers.dart';
+import '../../widgets/settings/workspace_settings_widgets.dart';
 
 /// Large centered "create team" modal launched from the workspace sidebar's
 /// "New Team" row. Mirrors the Apifox project-creation modal: centered title +
@@ -18,15 +23,25 @@ Future<void> showHomeWorkspaceNewTeamDialog(
   TeamCubit teamCubit,
 ) async {
   final l10n = context.l10n;
-  final result = await showDialog<({String name, TeamMode mode})>(
-    context: context,
-    barrierColor: Colors.black.withValues(alpha: 0.55),
-    builder: (_) => const HomeWorkspaceNewTeamDialog(),
-  );
+  final result =
+      await showDialog<
+        ({
+          String name,
+          TeamMode mode,
+          TeamCli cli,
+          Map<String, String> providerIdsByTool,
+        })
+      >(
+        context: context,
+        barrierColor: Colors.black.withValues(alpha: 0.55),
+        builder: (_) => const HomeWorkspaceNewTeamDialog(),
+      );
   if (result == null || !context.mounted) return;
   await teamCubit.addTeam(
     result.name,
+    cli: result.cli,
     teamMode: result.mode,
+    providerIdsByTool: result.providerIdsByTool,
     members: DefaultTeamRoster.localized(
       l10n,
       joinedAt: DateTime.now().millisecondsSinceEpoch,
@@ -46,12 +61,23 @@ class _HomeWorkspaceNewTeamDialogState
     extends State<HomeWorkspaceNewTeamDialog> {
   late final TextEditingController _nameController;
   TeamMode _mode = TeamMode.native;
+  TeamCli _cli = TeamCli.claude;
+  String? _providerId;
   bool _canCreate = false;
+  bool _didSeedProvider = false;
 
   @override
   void initState() {
     super.initState();
     _nameController = TextEditingController()..addListener(_syncCanCreate);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_didSeedProvider) return;
+    _didSeedProvider = true;
+    _syncDefaultProviderForCli(_cli);
   }
 
   @override
@@ -65,10 +91,43 @@ class _HomeWorkspaceNewTeamDialogState
     if (canCreate != _canCreate) setState(() => _canCreate = canCreate);
   }
 
+  AppProviderCli? _providerCatalogCli(TeamCli cli) =>
+      CliToolRegistryScope.maybeOf(
+        context,
+      )?.tryGet(cli.value)?.providerCatalogCli;
+
+  void _syncDefaultProviderForCli(TeamCli cli) {
+    final catalogCli = _providerCatalogCli(cli);
+    if (catalogCli == null) {
+      if (_providerId != null) setState(() => _providerId = null);
+      return;
+    }
+    final appProviders = context.read<AppProviderCubit>().state;
+    final providers = appProviders.providersFor(catalogCli);
+    final global = appProviders.selectedProviderIdByCli[catalogCli];
+    final next = global != null && providers.any((p) => p.id == global)
+        ? global
+        : providers.firstOrNull?.id;
+    if (next != _providerId) setState(() => _providerId = next);
+  }
+
+  Map<String, String> _providerIdsByToolForSubmit() {
+    if (_mode != TeamMode.native) return const {};
+    final catalogCli = _providerCatalogCli(_cli);
+    final providerId = _providerId?.trim() ?? '';
+    if (catalogCli == null || providerId.isEmpty) return const {};
+    return {catalogCli.value: providerId};
+  }
+
   void _submit() {
     final name = _nameController.text.trim();
     if (name.isEmpty) return;
-    Navigator.of(context).pop((name: name, mode: _mode));
+    Navigator.of(context).pop((
+      name: name,
+      mode: _mode,
+      cli: _cli,
+      providerIdsByTool: _providerIdsByToolForSubmit(),
+    ));
   }
 
   @override
@@ -77,14 +136,16 @@ class _HomeWorkspaceNewTeamDialogState
     final l10n = context.l10n;
     final styles = AppTextStyles.of(context);
 
+    final maxDialogHeight = MediaQuery.sizeOf(context).height * 0.92;
+
     return Dialog(
       backgroundColor: cs.workspaceCard,
       surfaceTintColor: Colors.transparent,
       clipBehavior: Clip.antiAlias,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 720),
-        child: Padding(
+        constraints: BoxConstraints(maxWidth: 720, maxHeight: maxDialogHeight),
+        child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(40, 28, 40, 28),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -128,6 +189,18 @@ class _HomeWorkspaceNewTeamDialogState
                   ],
                 ),
               ),
+              if (_mode == TeamMode.native) ...[
+                const SizedBox(height: 20),
+                _NativeTeamOptionsCard(
+                  cli: _cli,
+                  providerId: _providerId,
+                  onCliChanged: (cli) {
+                    setState(() => _cli = cli);
+                    _syncDefaultProviderForCli(cli);
+                  },
+                  onProviderChanged: (id) => setState(() => _providerId = id),
+                ),
+              ],
               const SizedBox(height: 24),
               _NameField(
                 controller: _nameController,
@@ -314,6 +387,84 @@ class _Badge extends StatelessWidget {
       child: Text(
         label,
         style: styles.caption.copyWith(color: fg, fontWeight: FontWeight.w600),
+      ),
+    );
+  }
+}
+
+class _NativeTeamOptionsCard extends StatelessWidget {
+  const _NativeTeamOptionsCard({
+    required this.cli,
+    required this.providerId,
+    required this.onCliChanged,
+    required this.onProviderChanged,
+  });
+
+  final TeamCli cli;
+  final String? providerId;
+  final ValueChanged<TeamCli> onCliChanged;
+  final ValueChanged<String?> onProviderChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final registry = CliToolRegistryScope.of(context);
+    final launchable = registry.launchable.toList()
+      ..sort((a, b) => a.id.compareTo(b.id));
+    final catalogCli = registry.tryGet(cli.value)?.providerCatalogCli;
+    final providers = catalogCli == null
+        ? const <AppProviderConfig>[]
+        : context.watch<AppProviderCubit>().state.providersFor(catalogCli);
+    final providerEntries = [
+      for (final provider in providers) (provider.id, provider.name),
+    ];
+    final effectiveProviderId =
+        providerId != null && providers.any((p) => p.id == providerId)
+        ? providerId!
+        : providers.firstOrNull?.id ?? '';
+
+    return SettingsSurfaceCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SettingsLabeledRow(
+            title: l10n.teamCliLabel,
+            subtitle: l10n.teamCliSubtitle,
+            trailing: SettingsCompactDropdown<TeamCli>(
+              value: cli,
+              entries: [
+                for (final def in launchable)
+                  (TeamCli.decode(def.id), cliDisplayName(def, l10n)),
+              ],
+              onChanged: (value) {
+                if (value == null) return;
+                onCliChanged(value);
+              },
+            ),
+            showDividerBelow: catalogCli != null,
+          ),
+          if (catalogCli != null)
+            SettingsLabeledRow(
+              title: l10n.provider,
+              subtitle: l10n.appProviderTeamToolSubtitle,
+              trailing: providerEntries.isEmpty
+                  ? Text(
+                      l10n.onboardingDefaultProviderEmpty,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    )
+                  : SettingsCompactDropdown<String>(
+                      value: effectiveProviderId,
+                      entries: providerEntries,
+                      onChanged: (value) {
+                        if (value == null) return;
+                        onProviderChanged(value);
+                      },
+                    ),
+              showDividerBelow: false,
+            ),
+        ],
       ),
     );
   }

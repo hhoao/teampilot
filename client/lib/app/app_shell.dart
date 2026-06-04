@@ -363,6 +363,8 @@ Future<AppShell> buildAppShell({
   final mcpRepository = McpRepository(storageRoots: storageRoots);
   teamCubit = TeamCubit(
     repository: teamRepo,
+    sessionRepository: sessionRepo,
+    reloadProjects: () => chatCubit.loadProjectData(sessionRepo),
     executableResolver: () => sessionPreferencesCubit.resolveExecutable(),
     cliExecutableResolver: sessionPreferencesCubit.resolveExecutable,
     llmConfigPathOverride: llmConfigPathOverrideForLaunch,

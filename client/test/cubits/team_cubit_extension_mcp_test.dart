@@ -7,6 +7,7 @@ import 'package:teampilot/models/mcp_server.dart';
 import 'package:teampilot/models/plugin.dart';
 import 'package:teampilot/models/skill.dart';
 import 'package:teampilot/models/team_config.dart';
+import 'package:teampilot/repositories/session_repository.dart';
 import 'package:teampilot/repositories/team_repository.dart';
 import 'package:teampilot/services/cli/cli_data_layout.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
@@ -165,6 +166,8 @@ void main() {
       final linker = _RecordingMcpLinker();
       final cubit = TeamCubit(
         repository: repo,
+        sessionRepository: SessionRepository(),
+        reloadProjects: () async {},
         executableResolver: () => 'flashskyai',
         mcpLinker: linker,
         skillLinker: _NoopSkillLinker(),
@@ -208,6 +211,8 @@ void main() {
       );
       final cubit = TeamCubit(
         repository: repo,
+        sessionRepository: SessionRepository(),
+        reloadProjects: () async {},
         executableResolver: () => 'flashskyai',
         mcpLinker: linker,
         skillLinker: _NoopSkillLinker(),

@@ -42,7 +42,8 @@ static void my_application_activate(GApplication* application) {
   // Client-side decorations: Flutter + window_manager draw the title bar.
   gtk_window_set_title(window, "TeamPilot");
 
-  gtk_window_set_default_size(window, 1280, 720);
+  // Keep in sync with kDefaultWindowSize in lib/main.dart.
+  gtk_window_set_default_size(window, 1380, 960);
 
   g_autofree gchar* icon_path = resolve_app_icon_path();
   if (icon_path != nullptr && g_file_test(icon_path, G_FILE_TEST_EXISTS)) {

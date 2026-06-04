@@ -4,9 +4,9 @@ import '../utils/team_member_naming.dart';
 
 /// Backend CLI for a team session (`flashskyai`, `codex`, `claude`, or `opencode`).
 enum TeamCli {
-  flashskyai('flashskyai'),
-  codex('codex'),
   claude('claude'),
+  codex('codex'),
+  flashskyai('flashskyai'),
   opencode('opencode');
 
   const TeamCli(this.value);
@@ -26,8 +26,8 @@ enum TeamCli {
 
   /// Whether TeamPilot can launch a team terminal with this CLI today.
   bool get isLaunchSupported =>
-      this == TeamCli.flashskyai ||
       this == TeamCli.claude ||
+      this == TeamCli.flashskyai ||
       this == TeamCli.opencode;
 
   /// Whether the CLI runs as a full-screen TUI (alternate screen) whose input
@@ -66,6 +66,7 @@ class TeamMemberConfig {
   const TeamMemberConfig({
     /// CLI / roster key ([TeamMemberNaming.slugMemberName]); stable after create.
     required this.id,
+
     /// Sidebar and forms; may contain spaces; not passed to CLI flags.
     required this.name,
     this.provider = '',
@@ -91,7 +92,8 @@ class TeamMemberConfig {
   factory TeamMemberConfig.fromJson(Map<String, Object?> json) {
     final name = json['name'] as String? ?? '';
     final rawId = json['id'] as String? ?? name;
-    final id = TeamMemberNaming.isTeamLeadName(rawId) ||
+    final id =
+        TeamMemberNaming.isTeamLeadName(rawId) ||
             TeamMemberNaming.isTeamLeadName(name)
         ? TeamMemberNaming.teamLeadName
         : TeamMemberNaming.slugMemberName(rawId);
@@ -311,8 +313,7 @@ class TeamConfig {
       teamMode: TeamMode.decode(json['teamMode']),
       createdAt: (json['createdAt'] as num?)?.toInt() ?? 0,
       loop: decodeLoop(json['loop']),
-      claudeTeammateMode:
-          json['claudeTeammateMode'] as String? ?? 'in-process',
+      claudeTeammateMode: json['claudeTeammateMode'] as String? ?? 'in-process',
       claudeEffortLevel: json['claudeEffortLevel'] as String? ?? 'xhigh',
       autoLaunchMembers: json['autoLaunchMembers'] as bool?,
       forceTeamLeadDelegateMode: decodeForceTeamLeadDelegateMode(

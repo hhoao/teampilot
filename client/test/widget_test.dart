@@ -215,6 +215,8 @@ Future<TeamCubit> createTeamCubit({TeamLauncher? launcher}) async {
   final repository = TeamRepository(rootDir: tmp.path);
   final cubit = TeamCubit(
     repository: repository,
+    sessionRepository: SessionRepository(),
+    reloadProjects: () async {},
     executableResolver: _testExecutable,
     launcher: launcher ?? (_, __) async {},
     appDataBasePath: appData.path,
@@ -604,6 +606,8 @@ void main() {
     final repository = TeamRepository(rootDir: tmp.path);
     final cubit = TeamCubit(
       repository: repository,
+      sessionRepository: SessionRepository(),
+      reloadProjects: () async {},
       executableResolver: _testExecutable,
       appDataBasePath: appData.path,
       configProfileService: ConfigProfileService(basePath: appData.path),

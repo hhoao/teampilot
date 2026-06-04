@@ -9,7 +9,9 @@ import '../models/skill.dart';
 import '../models/team_config.dart';
 import '../repositories/mcp_repository.dart';
 import '../repositories/plugin_repository.dart';
+import '../repositories/session_repository.dart';
 import '../repositories/team_repository.dart';
+import '../services/team/default_team_project_service.dart';
 import '../services/provider/config_profile_service.dart';
 import '../services/session/session_lifecycle_service.dart';
 import '../services/mcp/team_mcp_linker_service.dart';
@@ -40,6 +42,8 @@ export 'team/team_resource_sync_service.dart'
 class TeamCubit extends Cubit<TeamState> implements TeamCubitHost {
   TeamCubit({
     required TeamRepository repository,
+    required SessionRepository sessionRepository,
+    required Future<void> Function() reloadProjects,
     required String Function() executableResolver,
     CliExecutableResolver? cliExecutableResolver,
     TeamLauncher? launcher,
@@ -58,6 +62,8 @@ class TeamCubit extends Cubit<TeamState> implements TeamCubitHost {
     InstalledMcpLoader? installedMcpLoader,
     Future<List<McpServer>> Function(String teamId)? extensionMcpContributor,
   }) : _repository = repository,
+       _sessionRepository = sessionRepository,
+       _reloadProjects = reloadProjects,
        _executableResolver = executableResolver,
        _cliExecutableResolver = cliExecutableResolver,
        _appDataBasePath = appDataBasePath,
@@ -89,6 +95,8 @@ class TeamCubit extends Cubit<TeamState> implements TeamCubitHost {
       const <McpServer>[];
 
   final TeamRepository _repository;
+  final SessionRepository _sessionRepository;
+  final Future<void> Function() _reloadProjects;
   final String Function() _executableResolver;
   final CliExecutableResolver? _cliExecutableResolver;
   final String _appDataBasePath;
@@ -191,8 +199,10 @@ class TeamCubit extends Cubit<TeamState> implements TeamCubitHost {
     emit(state.copyWith(isLoading: true));
     var teams = await _repository.loadTeams();
     if (teams.isEmpty) {
-      teams = [_rosterEditor.defaultTeam()];
+      final team = _rosterEditor.defaultTeam();
+      teams = [team];
       await _repository.saveTeams(teams);
+      await _seedDefaultProject(team);
     }
     emit(
       state.copyWith(
@@ -235,6 +245,7 @@ class TeamCubit extends Cubit<TeamState> implements TeamCubitHost {
     String name, {
     TeamCli cli = TeamCli.flashskyai,
     TeamMode teamMode = TeamMode.native,
+    Map<String, String> providerIdsByTool = const {},
     List<TeamMemberConfig>? members,
   }) async {
     final trimmed = name.trim();
@@ -264,6 +275,7 @@ class TeamCubit extends Cubit<TeamState> implements TeamCubitHost {
       name: trimmed,
       cli: cli,
       teamMode: teamMode,
+      providerIdsByTool: providerIdsByTool,
       createdAt: now,
       members: members ?? TeamMemberNaming.defaultRoster(joinedAt: now),
     );
@@ -277,6 +289,7 @@ class TeamCubit extends Cubit<TeamState> implements TeamCubitHost {
     );
     await _repository.saveTeams(teams);
     await _provisioner.ensureTeamProfile(team.id, cli: team.cli);
+    await _seedDefaultProject(team);
     unawaited(_sync.syncSkills());
     unawaited(_sync.syncPluginsForSelected());
     return true;
@@ -340,9 +353,15 @@ class TeamCubit extends Cubit<TeamState> implements TeamCubitHost {
     );
     await _repository.saveTeams(teams);
     await _provisioner.ensureTeamProfile(team.id, cli: team.cli);
+    await _seedDefaultProject(team);
     unawaited(_sync.syncSkills());
     unawaited(_sync.syncPluginsForSelected());
     return team.id;
+  }
+
+  Future<void> _seedDefaultProject(TeamConfig team) async {
+    await DefaultTeamProjectService.seed(_sessionRepository, team);
+    await _reloadProjects();
   }
 
   /// Renames the selected team and removes persisted files keyed by the old name.
