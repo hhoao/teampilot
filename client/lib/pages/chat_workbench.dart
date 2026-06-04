@@ -1,34 +1,22 @@
 import 'dart:async';
-import 'dart:io';
 
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
-import 'package:teampilot/theme/app_icon_sizes.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_alacritty/flutter_alacritty.dart';
-import 'package:flutter_alacritty/input/paste.dart' as alacritty_paste;
-import 'package:flutter_alacritty/input/term_mode.dart' show anyMouse;
 
 import '../cubits/chat_cubit.dart';
 import '../cubits/editor_cubit.dart';
 import '../cubits/layout_cubit.dart';
 import '../cubits/team_cubit.dart';
 import '../l10n/l10n_extensions.dart';
-import '../models/app_session.dart';
 import '../models/team_config.dart';
 import '../repositories/session_repository.dart';
-import '../services/terminal/terminal_export.dart';
 import '../services/terminal/terminal_session.dart';
 import '../services/terminal/terminal_theme_mapper.dart';
-import '../services/terminal/terminal_uri_opener.dart';
-import '../services/terminal/terminal_fonts.dart';
 import '../utils/app_keys.dart';
-import '../widgets/menu/sidebar_action_menu.dart';
-import '../utils/debounce/debounce.dart';
-import '../theme/app_text_styles.dart';
 import '../widgets/file_editor_panel.dart';
-import '../widgets/terminal_find_bar.dart';
+import 'chat/chat_workbench_placeholders.dart';
+import 'chat/chat_workbench_terminal.dart';
 
 class ChatWorkbench extends StatefulWidget {
   const ChatWorkbench({this.sessionId, super.key});
@@ -77,19 +65,6 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
     _editorCubit = context.read<EditorCubit>();
   }
 
-  /// [TerminalController.attach] is one-shot; re-bind when the active session's
-  /// [TerminalEngine] instance changes (tab switch, reconnect, new shell).
-  void _bindTerminalController(TerminalEngine engine) {
-    if (identical(_terminalController.engine, engine)) return;
-    if (_terminalController.engine != null) {
-      _terminalController.dispose();
-      _terminalController = TerminalController();
-    }
-    _terminalController.attach(engine);
-  }
-
-  /// Engine palette must match [terminalTheme]; [TerminalView.theme] alone does not
-  /// recolor PTY output (unlike the old xterm [Terminal] theme).
   void _syncTerminalTheme(
     TerminalSession session,
     TerminalTheme theme,
@@ -130,159 +105,16 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
     super.dispose();
   }
 
-  Future<void> _showTerminalContextMenu({
-    required BuildContext menuContext,
-    required Offset globalPosition,
-    required TerminalEngine engine,
-    required CellOffset? cellOffset,
-    required bool sessionRunning,
-    required VoidCallback onDisconnect,
-    required Future<void> Function() onRestart,
-  }) async {
-    final mloc = MaterialLocalizations.of(menuContext);
-    final hasSelection = _terminalController.selectionActive;
-    // When the running TUI has mouse reporting on, plain left-drag is forwarded
-    // to the app instead of creating a terminal selection, so Copy stays
-    // disabled. Surface the standard Shift+drag escape hatch as a hint.
-    final mouseReporting = anyMouse(engine.grid.modeFlags);
-    final linkUri = cellOffset != null
-        ? engine.hyperlinkAt(cellOffset.row, cellOffset.column)
-        : null;
-    final specs = <SidebarActionMenuSpec>[
-      SidebarActionMenuSpec.item(
-        value: 'find',
-        icon: Icons.search,
-        label: context.l10n.terminalFind,
-      ),
-      if (linkUri != null)
-        SidebarActionMenuSpec.item(
-          value: 'openLink',
-          icon: Icons.link,
-          label: context.l10n.terminalOpenLink,
-        ),
-      SidebarActionMenuSpec.item(
-        value: 'export',
-        icon: Icons.download_outlined,
-        label: context.l10n.terminalExportScrollback,
-      ),
-      const SidebarActionMenuSpec.divider(),
-      SidebarActionMenuSpec.item(
-        value: 'paste',
-        icon: Icons.content_paste,
-        label: mloc.pasteButtonLabel,
-      ),
-      SidebarActionMenuSpec.item(
-        value: 'copy',
-        icon: Icons.content_copy,
-        label: (!hasSelection && mouseReporting)
-            ? menuContext.l10n.terminalCopySelectHint
-            : mloc.copyButtonLabel,
-        enabled: hasSelection,
-      ),
-      SidebarActionMenuSpec.item(
-        value: 'selectAll',
-        icon: Icons.select_all,
-        label: mloc.selectAllButtonLabel,
-      ),
-      SidebarActionMenuSpec.item(
-        value: 'clearSelection',
-        icon: Icons.deselect,
-        label: 'Clear selection',
-      ),
-      if (sessionRunning) ...[
-        const SidebarActionMenuSpec.divider(),
-        const SidebarActionMenuSpec.item(
-          value: 'disconnect',
-          icon: Icons.link_off,
-          label: 'Disconnect',
-        ),
-        const SidebarActionMenuSpec.item(
-          value: 'restart',
-          icon: Icons.restart_alt,
-          label: 'Restart session',
-        ),
-      ],
-    ];
-
-    final selected = await showSidebarActionMenuFromSpecs<String>(
-      context: menuContext,
-      globalPosition: globalPosition,
-      popUpAnimationStyle: const AnimationStyle(duration: Duration.zero),
-      specs: specs,
-    );
-    if (!menuContext.mounted) return;
-    switch (selected) {
-      case 'find':
-        setState(() => _findVisible = true);
-      case 'openLink':
-        if (linkUri != null) {
-          await _openTerminalLink(linkUri);
-        }
-      case 'export':
-        await _exportTerminalScrollback(menuContext, engine);
-      case 'paste':
-        final data = await Clipboard.getData(Clipboard.kTextPlain);
-        final text = data?.text;
-        if (text != null && text.isNotEmpty) {
-          _terminalController.onTerminalInputStart();
-          engine.write(
-            alacritty_paste.pasteBytes(text, modeFlags: engine.grid.modeFlags),
-          );
-          _terminalController.clearSelection();
-        }
-      case 'copy':
-        final text = _terminalController.readSelectionText();
-        if (text != null && text.isNotEmpty) {
-          await Clipboard.setData(ClipboardData(text: text));
-        }
-      case 'selectAll':
-        final grid = engine.grid;
-        if (grid.rows > 0 && grid.columns > 0) {
-          _terminalController.selectionStart(0, 0, false, 0);
-          _terminalController.selectionUpdate(
-            grid.rows - 1,
-            grid.columns - 1,
-            false,
-          );
-        }
-      case 'clearSelection':
-        _terminalController.clearSelection();
-      case 'disconnect':
-        onDisconnect();
-      case 'restart':
-        await onRestart();
-      default:
-        break;
-    }
-  }
-
-  Future<void> _exportTerminalScrollback(
-    BuildContext context,
-    TerminalEngine engine,
-  ) async {
-    final path = await FilePicker.platform.saveFile(
-      dialogTitle: context.l10n.terminalExportScrollback,
-      fileName: 'terminal-scrollback.txt',
-      type: FileType.custom,
-      allowedExtensions: ['txt'],
-    );
-    if (path == null || !context.mounted) return;
-    await File(path).writeAsString(exportTerminalScrollback(engine));
-  }
-
   Future<void> _openTerminalLink(String link) async {
     if (!mounted) return;
     final chatCubit = _chatCubit;
     final editorCubit = _editorCubit;
     if (chatCubit == null || editorCubit == null) return;
-    final workingDirectory = chatCubit.activeTabWorkingDirectory;
-    await TerminalUriOpener.open(
-      link,
-      workingDirectory: workingDirectory,
-      openInEditor: (path) async {
-        if (!mounted) return;
-        await editorCubit.openFile(path);
-      },
+    await openChatWorkbenchTerminalLink(
+      link: link,
+      chatCubit: chatCubit,
+      editorCubit: editorCubit,
+      isMounted: () => mounted,
     );
   }
 
@@ -296,55 +128,29 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
   }
 
   void _consumeRouteSession(ChatState state) {
-    final routeId = widget.sessionId;
-    if (routeId == null || _handledRouteSession || !mounted) return;
-
-    AppSession? session;
-    for (final s in state.sessions) {
-      if (s.sessionId == routeId) {
-        session = s;
-        break;
-      }
-    }
-    if (session == null) return;
-
-    _handledRouteSession = true;
     final chatCubit = _chatCubit;
     final teamCubit = _teamCubit;
     final repo = _sessionRepo;
-    if (chatCubit == null || teamCubit == null || repo == null) return;
-    final team = teamCubit.state.selectedTeam;
-    final l10n = AppLocalizations.of(context);
-
-    chatCubit.selectSession(session.sessionId);
-
-    final lead = team != null
-        ? team.members.where((m) => m.id == 'team-lead').toList()
-        : <TeamMemberConfig>[];
-    if (team != null && lead.isNotEmpty) {
-      unawaited(
-        chatCubit.openSessionTab(
-          session,
-          team: team,
-          member: lead.first,
-          repo: repo,
-          emptyDisplayTitleFallback: l10n.defaultNewChatSessionTitle,
-        ),
-      );
-    } else {
-      unawaited(
-        chatCubit.openSessionTab(
-          session,
-          repo: repo,
-          emptyDisplayTitleFallback: l10n.defaultNewChatSessionTitle,
-        ),
-      );
-      if (team != null) {
-        chatCubit.addSystemMessage(
-          'FlashskyAI requires a member named team-lead.',
-        );
-      }
+    if (chatCubit == null || teamCubit == null || repo == null || !mounted) {
+      return;
     }
+    consumeChatWorkbenchRouteSession(
+      routeSessionId: widget.sessionId,
+      handledRouteSession: _handledRouteSession,
+      state: state,
+      chatCubit: chatCubit,
+      teamCubit: teamCubit,
+      sessionRepo: repo,
+      l10n: AppLocalizations.of(context),
+      onHandled: (handled) => _handledRouteSession = handled,
+    );
+  }
+
+  Future<void> _connectSession(TeamConfig team) async {
+    final chatCubit = _chatCubit;
+    if (chatCubit == null) return;
+    await chatCubit.connectSession(team);
+    if (mounted) setState(() {});
   }
 
   @override
@@ -374,13 +180,6 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
         return const Center(child: CircularProgressIndicator());
       }
     } else if (chatCubit.state.tabs.isEmpty) {
-      void onConnect() {
-        unawaited(() async {
-          await chatCubit.connectSession(team);
-          if (mounted) setState(() {});
-        }());
-      }
-
       return Container(
         key: AppKeys.chatWorkspace,
         color: cs.surface,
@@ -388,9 +187,11 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
           terminalChild: Container(
             color: terminalBackground,
             child: sessionConnectInProgress
-                ? _SessionLoadingView(message: context.l10n.sessionStarting)
-                : _TerminalPlaceholder(
-                    onConnect: onConnect,
+                ? ChatWorkbenchSessionLoadingView(
+                    message: context.l10n.sessionStarting,
+                  )
+                : ChatWorkbenchTerminalPlaceholder(
+                    onConnect: () => unawaited(_connectSession(team)),
                     connectDisabled: sessionConnectInProgress,
                     memberName: chatCubit.selectedMemberName(team),
                     launchError: chatCubit.activeLaunchError,
@@ -417,263 +218,40 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
         terminalChild: Container(
           color: terminalBackground,
           child: sessionConnectInProgress
-              ? _SessionLoadingView(message: context.l10n.sessionStarting)
+              ? ChatWorkbenchSessionLoadingView(
+                  message: context.l10n.sessionStarting,
+                )
               : session.isRunning
               ? () {
-                  _bindTerminalController(session.engine);
-                  return TerminalFindShortcuts(
+                  _terminalController = bindChatWorkbenchTerminalController(
+                    _terminalController,
+                    session.engine,
+                  );
+                  return ChatWorkbenchRunningTerminal(
+                    session: session,
+                    terminalTheme: terminalTheme,
+                    terminalController: _terminalController,
                     findVisible: _findVisible,
-                    onToggleFind: () => setState(() => _findVisible = true),
-                    onFindNext: () {
-                      _terminalController.searchNext();
+                    onFindVisibleChanged: (visible) =>
+                        setState(() => _findVisible = visible),
+                    onControllerSearchChanged: () => setState(() {}),
+                    onOpenLink: _openTerminalLink,
+                    onDisconnect: () {
+                      chatCubit.disconnectSession();
                       setState(() {});
                     },
-                    onFindPrevious: () {
-                      _terminalController.searchPrev();
-                      setState(() {});
+                    onRestart: () async {
+                      await chatCubit.restartSession(team);
+                      if (mounted) setState(() {});
                     },
-                    onCloseFind: () {
-                      _terminalController.searchClear();
-                      setState(() => _findVisible = false);
-                    },
-                    child: Stack(
-                      children: [
-                        TerminalView(
-                          session.engine,
-                          controller: _terminalController,
-                          theme: terminalTheme,
-                          backgroundOpacity: 0.98,
-                          padding: const EdgeInsets.all(16),
-                          textStyle: appTerminalTextStyle(context),
-                          autofocus: !_findVisible,
-                          onViewportResize: session.onViewportResize,
-                          onTapDown: (_, offset) {
-                            if (!HardwareKeyboard.instance.isControlPressed &&
-                                !HardwareKeyboard.instance.isMetaPressed) {
-                              _terminalController.clearSelection();
-                            }
-                          },
-                          onLinkActivate: (uri) {
-                            unawaited(_openTerminalLink(uri));
-                          },
-                          onSecondaryTapDown: (details, offset) {
-                            unawaited(
-                              _showTerminalContextMenu(
-                                menuContext: context,
-                                globalPosition: details.globalPosition,
-                                engine: session.engine,
-                                cellOffset: offset,
-                                sessionRunning: session.isRunning,
-                                onDisconnect: () {
-                                  chatCubit.disconnectSession();
-                                  setState(() {});
-                                },
-                                onRestart: () async {
-                                  await chatCubit.restartSession(team);
-                                  if (mounted) setState(() {});
-                                },
-                              ),
-                            );
-                          },
-                        ),
-                        if (_findVisible)
-                          Positioned(
-                            left: 8,
-                            right: 8,
-                            top: 8,
-                            child: TerminalFindBar(
-                              engine: session.engine,
-                              controller: _terminalController,
-                              searchLabel: context.l10n.terminalFind,
-                              noResultsLabel:
-                                  context.l10n.terminalFindNoResults,
-                              onClose: () {
-                                _terminalController.searchClear();
-                                setState(() => _findVisible = false);
-                              },
-                            ),
-                          ),
-                      ],
-                    ),
                   );
                 }()
-              : _TerminalPlaceholder(
-                  onConnect: () {
-                    unawaited(() async {
-                      await chatCubit.connectSession(team);
-                      if (mounted) setState(() {});
-                    }());
-                  },
+              : ChatWorkbenchTerminalPlaceholder(
+                  onConnect: () => unawaited(_connectSession(team)),
                   connectDisabled: sessionConnectInProgress,
                   memberName: chatCubit.selectedMemberName(team),
                   launchError: chatCubit.activeLaunchError,
                 ),
-        ),
-      ),
-    );
-  }
-}
-
-class _SessionLoadingView extends StatelessWidget {
-  const _SessionLoadingView({required this.message});
-
-  final String message;
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textBase = isDark ? Colors.white : const Color(0xFF111827);
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const SizedBox(
-            width: 36,
-            height: 36,
-            child: CircularProgressIndicator(strokeWidth: 2.5),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            message,
-            style: AppTextStyles.of(
-              context,
-            ).body.copyWith(color: textBase.withValues(alpha: 0.68)),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _TerminalPlaceholder extends StatelessWidget {
-  const _TerminalPlaceholder({
-    required this.onConnect,
-    this.connectDisabled = false,
-    this.memberName,
-    this.launchError,
-  });
-
-  final VoidCallback onConnect;
-  final bool connectDisabled;
-  final String? memberName;
-  final String? launchError;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = context.l10n;
-    final cs = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
-    final member = memberName?.trim();
-    final error = launchError?.trim();
-    final hasError = error != null && error.isNotEmpty;
-    final subtitle = member != null && member.isNotEmpty
-        ? l10n.sessionReadySubtitle(member)
-        : l10n.sessionReadySubtitleGeneric;
-
-    return Align(
-      alignment: Alignment.center,
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 400),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              DecoratedBox(
-                decoration: BoxDecoration(
-                  color: Color.alphaBlend(
-                    cs.primary.withValues(alpha: 0.12),
-                    cs.surfaceContainerHighest,
-                  ),
-                  shape: BoxShape.circle,
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(20),
-                  child: Icon(
-                    Icons.forum_outlined,
-                    size: AppIconSizes.md,
-                    color: cs.primary,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 24),
-              Text(
-                hasError ? l10n.sessionFailedTitle : l10n.sessionReadyTitle,
-                style: textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w600,
-                  color: hasError ? cs.error : null,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 10),
-              Text(
-                subtitle,
-                style: textTheme.bodyMedium?.copyWith(
-                  color: cs.onSurfaceVariant,
-                  height: 1.45,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              if (hasError) ...[
-                const SizedBox(height: 16),
-                DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: cs.errorContainer.withValues(alpha: 0.35),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: cs.error.withValues(alpha: 0.35)),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
-                    ),
-                    child: Text(
-                      error,
-                      style: textTheme.bodySmall?.copyWith(
-                        color: cs.onErrorContainer,
-                        height: 1.5,
-                      ),
-                      textAlign: TextAlign.start,
-                    ),
-                  ),
-                ),
-              ],
-              if (!hasError) ...[
-                const SizedBox(height: 12),
-                Text(
-                  l10n.sessionReadyHint,
-                  style: textTheme.bodySmall?.copyWith(
-                    color: cs.onSurfaceVariant.withValues(alpha: 0.8),
-                    height: 1.5,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ],
-              const SizedBox(height: 28),
-              FilledButton.icon(
-                onPressed: connectDisabled
-                    ? null
-                    : throttledOnPressed(
-                        'chat_workbench_session_start',
-                        onConnect,
-                      ),
-                icon: Icon(
-                  hasError ? Icons.refresh_rounded : Icons.play_arrow_rounded,
-                  size: AppIconSizes.md,
-                ),
-                label: Text(
-                  hasError ? l10n.sessionRetryButton : l10n.sessionStartButton,
-                ),
-                style: FilledButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 28,
-                    vertical: 14,
-                  ),
-                  minimumSize: const Size(0, 48),
-                ),
-              ),
-            ],
-          ),
         ),
       ),
     );

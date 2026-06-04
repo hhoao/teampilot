@@ -9,7 +9,7 @@ import '../../theme/app_text_styles.dart';
 import '../../theme/workspace_surface_layers.dart';
 import '../../widgets/team_pilot_brand_logo.dart';
 import '../../widgets/window_drag_area.dart';
-import '../config_workspace.dart';
+import '../config/config_workspace.dart';
 
 /// Height of the Apifox-style workspace title bar.
 const double kHomeWorkspaceTitleBarHeight = 58;

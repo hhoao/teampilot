@@ -13,7 +13,7 @@ import '../../widgets/app_provider/app_provider_form_sheet.dart';
 import '../../widgets/split_layout.dart';
 import 'llm_config_helpers.dart';
 import 'llm_config_routes.dart';
-import 'llm_provider_models_widgets.dart';
+import 'llm_app_provider_models_panel.dart';
 import 'llm_providers_list_content.dart';
 
 // --- Providers tab: split view ---

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/layout_cubit.dart';
-import 'package:teampilot/pages/workspace_shell.dart';
+import 'package:teampilot/pages/workspace_shell/workspace_shell.dart';
 
 Widget _wrapShell(Widget shell) {
   return MaterialApp(

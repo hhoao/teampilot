@@ -12,7 +12,7 @@ import '../cubits/team_cubit.dart';
 import '../models/app_provider_config.dart';
 import '../models/layout_preferences.dart';
 import '../pages/chat_page.dart';
-import '../pages/config_workspace.dart';
+import '../pages/config/config_workspace.dart';
 import '../pages/home_workspace/home_workspace_page.dart';
 import '../pages/home_workspace/home_workspace_shell.dart';
 import '../pages/home_workspace/project/home_workspace_project_page.dart';

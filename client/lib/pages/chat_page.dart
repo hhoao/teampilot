@@ -15,7 +15,7 @@ import '../utils/app_keys.dart';
 import '../utils/debounce/debounce.dart';
 import '../widgets/right_tools/right_tools_panel.dart';
 import 'chat_workbench.dart';
-import 'workspace_shell.dart';
+import 'workspace_shell/workspace_shell.dart';
 
 class ChatPage extends StatelessWidget {
   const ChatPage({required this.cwd, this.sessionId, super.key});

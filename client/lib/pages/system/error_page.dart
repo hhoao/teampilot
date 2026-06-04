@@ -9,7 +9,8 @@ import '../../widgets/settings/workspace_hub_shell.dart';
 import '../../widgets/settings/workspace_settings_widgets.dart';
 import '../../utils/logger_utils.dart';
 import 'fatal_app_theme.dart';
-import 'log_viewer_page.dart';
+import 'log_config_workspace.dart';
+import 'log_helpers.dart';
 
 /// Fallback UI when startup fails before the main app shell loads.
 Future<void> showInitErrorApp({
