@@ -33,6 +33,15 @@ class SkillDiscoverySectionState extends State<SkillDiscoverySection> {
   final _skillsShCtl = TextEditingController();
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      context.read<SkillCubit>().ensureDiscoveryLoaded();
+    });
+  }
+
+  @override
   void dispose() {
     _skillsShCtl.dispose();
     super.dispose();
@@ -78,7 +87,7 @@ class SkillDiscoverySectionState extends State<SkillDiscoverySection> {
                       tooltip: l10n.skillsCheckUpdates,
                       onPressed: state.discoveryLoading
                           ? null
-                          : () => cubit.refreshDiscoverable(),
+                          : () => cubit.ensureDiscoveryLoaded(force: true),
                       icon:
                           state.discoveryLoading ||
                               state.repoSyncingKeys.isNotEmpty

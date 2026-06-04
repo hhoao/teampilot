@@ -147,11 +147,19 @@ class SkillCubit extends Cubit<SkillState> {
           status: SkillLoadStatus.ready,
         ),
       );
-      unawaited(refreshDiscoverable());
     } catch (e) {
       appLogger.e('[skills] loadAll failed: $e');
       emit(state.copyWith(status: SkillLoadStatus.error, errorMessage: '$e'));
     }
+  }
+
+  /// Loads discovery when the Discovery tab opens: disk cache first, then git sync.
+  /// Skips work when the list is already populated unless [force] is true.
+  Future<void> ensureDiscoveryLoaded({bool force = false}) async {
+    if (!force && state.discoveryLoading) return;
+    if (!force && state.repoSyncingKeys.isNotEmpty) return;
+    if (!force && state.discoverable.isNotEmpty) return;
+    await refreshDiscoverable(force: force);
   }
 
   Future<void> refreshDiscoverable({bool force = false}) async {
