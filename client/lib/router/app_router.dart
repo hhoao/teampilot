@@ -51,30 +51,36 @@ final appRouter = GoRouter(
   refreshListenable: _workspaceEntryNotifier,
   initialLocation: _workspaceEntryNotifier.value,
   routes: [
-    // New Apifox-style workspace home — standalone, outside the legacy shell.
-    // The shell draws the persistent title bar + open project tabs; the home
-    // and project routes render only the body below it.
+    // App-wide gates run once above both workspace shells so first-run setup
+    // and SSH startup checks apply regardless of home vs hub entry mode.
     ShellRoute(
-      builder: (context, state, child) =>
-          HomeWorkspaceShell(location: state.uri.path, child: child),
+      builder: (context, state, child) => OnboardingGate(
+        child: StartupGate(child: child),
+      ),
       routes: [
-        GoRoute(
-          path: '/home-v2',
-          pageBuilder: (context, state) =>
-              const NoTransitionPage(child: HomeWorkspacePage()),
-        ),
-        GoRoute(
-          path: '/home-v2/project/:projectId',
-          pageBuilder: (context, state) => NoTransitionPage(
-            child: HomeWorkspaceProjectPage(
-              projectId: state.pathParameters['projectId']!,
+        // Apifox-style workspace home — title bar + open project tabs live in
+        // [HomeWorkspaceShell]; routed pages render only the body below it.
+        ShellRoute(
+          builder: (context, state, child) =>
+              HomeWorkspaceShell(location: state.uri.path, child: child),
+          routes: [
+            GoRoute(
+              path: '/home-v2',
+              pageBuilder: (context, state) =>
+                  const NoTransitionPage(child: HomeWorkspacePage()),
             ),
-          ),
+            GoRoute(
+              path: '/home-v2/project/:projectId',
+              pageBuilder: (context, state) => NoTransitionPage(
+                child: HomeWorkspaceProjectPage(
+                  projectId: state.pathParameters['projectId']!,
+                ),
+              ),
+            ),
+          ],
         ),
-      ],
-    ),
-    ShellRoute(
-      builder: (context, state, child) {
+        ShellRoute(
+          builder: (context, state, child) {
         final layoutCubit = context.watch<LayoutCubit>();
         final preferences = layoutCubit.state.preferences;
         final scopeOn = context
@@ -112,36 +118,27 @@ final appRouter = GoRouter(
         if (Platform.isAndroid) {
           final path = state.uri.path;
           final hubDetail = AndroidShellChrome.isHubDetailPath(path);
-          return OnboardingGate(
-            child: StartupGate(
-              child: Scaffold(
-                appBar: AppBar(
-                  title: Text(AndroidShellChrome.title(context, path)),
-                  leading: hubDetail
-                      ? IconButton(
-                          icon: const Icon(Icons.arrow_back),
-                          onPressed: () =>
-                              AndroidShellChrome.pop(context, path),
-                        )
-                      : null,
-                  actions: const [AndroidSshProfileSelector()],
-                ),
-                drawer: hubDetail
-                    ? null
-                    : Drawer(child: SafeArea(child: sidebar)),
-                body: body,
-              ),
+          return Scaffold(
+            appBar: AppBar(
+              title: Text(AndroidShellChrome.title(context, path)),
+              leading: hubDetail
+                  ? IconButton(
+                      icon: const Icon(Icons.arrow_back),
+                      onPressed: () => AndroidShellChrome.pop(context, path),
+                    )
+                  : null,
+              actions: const [AndroidSshProfileSelector()],
             ),
+            drawer: hubDetail
+                ? null
+                : Drawer(child: SafeArea(child: sidebar)),
+            body: body,
           );
         }
 
-        return OnboardingGate(
-          child: StartupGate(
-            child: Scaffold(
-              body: DesktopWindowChrome(
-                child: SafeArea(top: false, child: body),
-              ),
-            ),
+        return Scaffold(
+          body: DesktopWindowChrome(
+            child: SafeArea(top: false, child: body),
           ),
         );
       },
@@ -419,6 +416,8 @@ final appRouter = GoRouter(
         GoRoute(
           path: '/ssh-profiles',
           redirect: (context, state) => '/config/ssh-profiles',
+        ),
+      ],
         ),
       ],
     ),

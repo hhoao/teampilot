@@ -646,5 +646,55 @@ void main() {
         );
       },
     );
+
+    test(
+      'openMemberTab reuses existing team project when workspace cwd is set',
+      () async {
+        const team = TeamConfig(
+          id: 'team-default',
+          name: 'Default Team',
+          members: [TeamMemberConfig(id: 'team-lead', name: 'team-lead')],
+        );
+        final tmp = await Directory.systemTemp.createTemp(
+          'chat_cubit_materialize_',
+        );
+        addTearDown(() => tmp.deleteSync(recursive: true));
+        final repo = SessionRepository(rootDir: tmp.path);
+        const workspacePath = '/tmp/default-team-workspace';
+        final project = await repo.createProject(
+          workspacePath,
+          teamId: team.id,
+          display: 'Default Team',
+        );
+        await repo.createSession(
+          project.projectId,
+          sessionTeam: team.id,
+          rosterMembers: team.members,
+        );
+
+        final postFrame = PostFrameTestHarness();
+        final cubit = ChatCubit(
+          executableResolver: () => 'true',
+          sessionRepository: repo,
+          postFrameScheduler: postFrame.scheduler,
+        );
+        addTearDown(cubit.close);
+
+        await cubit.loadProjectData(repo);
+        expect(cubit.state.projects, hasLength(1));
+
+        await cubit.openMemberTab(
+          team,
+          team.members.first,
+          repo: repo,
+          workspaceCwd: workspacePath,
+        );
+        await postFrame.flush();
+
+        expect(cubit.state.projects, hasLength(1));
+        expect(cubit.state.projects.single.primaryPath, workspacePath);
+        expect(cubit.state.tabs, hasLength(1));
+      },
+    );
   });
 }

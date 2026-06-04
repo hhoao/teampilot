@@ -2,15 +2,17 @@ import 'dart:async';
 
 import 'package:uuid/uuid.dart';
 
+import '../../models/app_project.dart';
 import '../../models/app_session.dart';
 import '../../models/session_member_binding.dart';
 import '../../models/team_config.dart';
 import '../../repositories/session_repository.dart';
 import '../../services/session/session_lifecycle_service.dart';
-import '../../services/storage/app_storage.dart';
+import '../../services/team/default_team_project_service.dart';
 import '../../services/team_bus/mcp/teammate_bus_mcp_config.dart';
 import '../../services/terminal/terminal_session.dart';
 import '../../utils/logger.dart';
+import '../../utils/project_path_utils.dart';
 import '../../utils/session_display_title.dart';
 import 'chat_session_shell_factory.dart';
 import 'chat_tab_store.dart';
@@ -236,11 +238,29 @@ class SessionLaunchService implements MemberConnector {
     SessionRepository repo, {
     required bool connectImmediately,
     required TeamMemberConfig memberForInitialShell,
+    String? workspaceCwd,
   }) async {
     if (!_tabStore.isEmpty) return;
-    final cwd = AppStorage.cwd.trim();
-    final project = await repo.createProject(cwd, teamId: team.id);
-    final session = await repo.createSession(
+
+    final existingSession = _existingSessionForMaterialize(
+      team,
+      workspaceCwd: workspaceCwd,
+    );
+    if (existingSession != null) {
+      await openSessionTab(
+        existingSession,
+        team: team,
+        member: memberForInitialShell,
+        repo: repo,
+        connectImmediately: connectImmediately,
+      );
+      return;
+    }
+
+    final primaryPath = _materializePrimaryPath(team, workspaceCwd: workspaceCwd);
+    final project = await repo.createProject(primaryPath, teamId: team.id);
+    var session = _firstSessionForProject(project.projectId);
+    session ??= await repo.createSession(
       project.projectId,
       sessionTeam: team.id,
       rosterMembers: team.members,
@@ -256,10 +276,58 @@ class SessionLaunchService implements MemberConnector {
     );
   }
 
+  AppSession? _existingSessionForMaterialize(
+    TeamConfig team, {
+    String? workspaceCwd,
+  }) {
+    if (workspaceCwd != null && workspaceCwd.trim().isNotEmpty) {
+      final project = _projectMatchingPath(workspaceCwd, teamId: team.id);
+      if (project != null) {
+        final session = _firstSessionForProject(project.projectId);
+        if (session != null) return session;
+      }
+    }
+    for (final session in _state.sessions) {
+      final project = _projectById(session.projectId);
+      if (project?.teamId == team.id) return session;
+    }
+    return null;
+  }
+
+  String _materializePrimaryPath(TeamConfig team, {String? workspaceCwd}) {
+    if (workspaceCwd != null && workspaceCwd.trim().isNotEmpty) {
+      return normalizeProjectPath(workspaceCwd);
+    }
+    return DefaultTeamProjectService.primaryPathForTeam(team.id);
+  }
+
+  AppProject? _projectMatchingPath(String primaryPath, {required String teamId}) {
+    for (final project in _state.projects) {
+      if (project.teamId != teamId) continue;
+      if (projectPathsEqual(project.primaryPath, primaryPath)) return project;
+    }
+    return null;
+  }
+
+  AppProject? _projectById(String projectId) {
+    for (final project in _state.projects) {
+      if (project.projectId == projectId) return project;
+    }
+    return null;
+  }
+
+  AppSession? _firstSessionForProject(String projectId) {
+    for (final session in _state.sessions) {
+      if (session.projectId == projectId) return session;
+    }
+    return null;
+  }
+
   Future<void> openMemberTab(
     TeamConfig team,
     TeamMemberConfig member, {
     SessionRepository? repo,
+    String? workspaceCwd,
   }) async {
     final r = repo ?? _h.sessionRepository;
     if (_tabStore.isEmpty && r != null) {
@@ -270,6 +338,7 @@ class SessionLaunchService implements MemberConnector {
           r,
           connectImmediately: true,
           memberForInitialShell: member,
+          workspaceCwd: workspaceCwd,
         );
         if (_h.isClosed) return;
         if (team.teamMode == TeamMode.mixed) {
@@ -529,6 +598,7 @@ class SessionLaunchService implements MemberConnector {
   Future<void> launchAllMembers(
     TeamConfig team, {
     SessionRepository? repo,
+    String? workspaceCwd,
   }) async {
     final r = repo ?? _h.sessionRepository;
     final validMembers = team.members.where((m) => m.isValid).toList();
@@ -540,6 +610,7 @@ class SessionLaunchService implements MemberConnector {
           r,
           connectImmediately: true,
           memberForInitialShell: validMembers.first,
+          workspaceCwd: workspaceCwd,
         );
         if (_h.isClosed) return;
         if (team.teamMode == TeamMode.mixed) {

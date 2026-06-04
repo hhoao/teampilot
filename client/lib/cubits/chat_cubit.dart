@@ -307,8 +307,14 @@ class ChatCubit extends Cubit<ChatState>
     TeamConfig team,
     TeamMemberConfig member, {
     SessionRepository? repo,
+    String? workspaceCwd,
   }) =>
-      _launchService.openMemberTab(team, member, repo: repo);
+      _launchService.openMemberTab(
+        team,
+        member,
+        repo: repo,
+        workspaceCwd: workspaceCwd,
+      );
 
   void closeTab(int index) {
     if (index < 0 || index >= _tabStore.length) return;
@@ -456,8 +462,13 @@ class ChatCubit extends Cubit<ChatState>
   Future<void> launchAllMembers(
     TeamConfig team, {
     SessionRepository? repo,
+    String? workspaceCwd,
   }) =>
-      _launchService.launchAllMembers(team, repo: repo);
+      _launchService.launchAllMembers(
+        team,
+        repo: repo,
+        workspaceCwd: workspaceCwd,
+      );
 
   String selectedMemberName(TeamConfig team) {
     for (final m in team.members) {

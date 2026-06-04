@@ -103,25 +103,27 @@ class _OnboardingProviderImportStepState
             )
           else
             SettingsSurfaceCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                SettingsGroupHeader(title: l10n.onboardingProviderImportResults),
-                for (var i = 0; i < _providers.length; i++) ...[
-                  ListTile(
-                    title: Text(_providers[i].name),
-                    subtitle: Text(
-                      _providers[i].defaultModel.isEmpty
-                          ? _providers[i].id
-                          : _providers[i].defaultModel,
-                    ),
-                    trailing: const Icon(Icons.check, size: AppIconSizes.md),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  SettingsGroupHeader(
+                    title: l10n.onboardingProviderImportResults,
                   ),
-                  if (i < _providers.length - 1) const Divider(height: 1),
+                  for (var i = 0; i < _providers.length; i++) ...[
+                    ListTile(
+                      title: Text(_providers[i].name),
+                      subtitle: Text(
+                        _providers[i].defaultModel.isEmpty
+                            ? _providers[i].id
+                            : _providers[i].defaultModel,
+                      ),
+                      trailing: const Icon(Icons.check, size: AppIconSizes.md),
+                    ),
+                    if (i < _providers.length - 1) const Divider(height: 1),
+                  ],
                 ],
-              ],
+              ),
             ),
-          ),
         if (_imported && !_importing) ...[
           const SizedBox(height: 12),
           Align(

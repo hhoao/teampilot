@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'dart:io';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
@@ -46,43 +48,107 @@ class OnboardingWizard extends StatefulWidget {
 }
 
 class _OnboardingWizardState extends State<OnboardingWizard> {
+  static const _pageAnimationDuration = Duration(milliseconds: 300);
+  static const _minPageViewportHeight = 280;
+  static const _maxPageViewportHeight = 520;
+  static const _footerReserve = 96;
+
   late final List<OnboardingStepKind> _steps;
+  late final List<GlobalKey> _stepMeasureKeys;
+  late final PageController _pageController;
   var _pageIndex = 0;
+  var _isAnimating = false;
+  var _pageViewportHeight = _minPageViewportHeight.toDouble();
 
   @override
   void initState() {
     super.initState();
     _steps = onboardingStepsForPlatform();
+    _stepMeasureKeys = List.generate(_steps.length, (_) => GlobalKey());
+    _pageController = PageController();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _syncViewportHeightForPage(_pageIndex);
+    });
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
   }
 
   bool get _isFirstStep => _pageIndex <= 0;
   bool get _isLastStep => _pageIndex >= _steps.length - 1;
 
-  void _goPrevious() {
-    if (_isFirstStep) return;
-    setState(() => _pageIndex -= 1);
+  Future<void> _goPrevious() async {
+    if (_isAnimating || _isFirstStep) return;
+    await _animateToPage(_pageIndex - 1);
   }
 
-  void _goNext() {
+  Future<void> _goNext() async {
+    if (_isAnimating) return;
     if (_isLastStep) {
       widget.onComplete();
       return;
     }
-    setState(() => _pageIndex += 1);
+    await _animateToPage(_pageIndex + 1);
   }
 
-  void _skip() => _goNext();
+  void _skip() => unawaited(_goNext());
+
+  Future<void> _animateToPage(int page) async {
+    if (!_pageController.hasClients) return;
+    setState(() => _isAnimating = true);
+    await _pageController.animateToPage(
+      page,
+      duration: _pageAnimationDuration,
+      curve: Curves.easeOutCubic,
+    );
+    if (mounted) {
+      setState(() => _isAnimating = false);
+    }
+  }
+
+  void _syncViewportHeightForPage(int index) {
+    if (!mounted || _isAnimating) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _isAnimating) return;
+      final box =
+          _stepMeasureKeys[index].currentContext?.findRenderObject()
+              as RenderBox?;
+      if (box == null || !box.hasSize) return;
+
+      final nextHeight = box.size.height.clamp(
+        _minPageViewportHeight.toDouble(),
+        _maxPageViewportHeight.toDouble(),
+      );
+      if ((_pageViewportHeight - nextHeight).abs() <= 1) return;
+      setState(() => _pageViewportHeight = nextHeight);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final cs = Theme.of(context).colorScheme;
+    final navigationLocked = _isAnimating;
 
     return Scaffold(
       backgroundColor: cs.workspacePage,
       body: SafeArea(
         child: LayoutBuilder(
           builder: (context, constraints) {
+            final maxViewportHeight = math
+                .min(
+                  _maxPageViewportHeight.toDouble(),
+                  constraints.maxHeight - _footerReserve,
+                )
+                .clamp(
+                  _minPageViewportHeight.toDouble(),
+                  _maxPageViewportHeight.toDouble(),
+                );
+            final viewportHeight = math.min(_pageViewportHeight, maxViewportHeight);
+
             return SingleChildScrollView(
               child: ConstrainedBox(
                 constraints: BoxConstraints(minHeight: constraints.maxHeight),
@@ -98,32 +164,65 @@ class _OnboardingWizardState extends State<OnboardingWizard> {
                         mainAxisSize: MainAxisSize.min,
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          AnimatedSwitcher(
-                            duration: const Duration(milliseconds: 240),
-                            switchInCurve: Curves.easeOutCubic,
-                            switchOutCurve: Curves.easeInCubic,
-                            child: KeyedSubtree(
-                              key: ValueKey(_pageIndex),
-                              child: _buildStep(_steps[_pageIndex]),
+                          AnimatedSize(
+                            duration: _pageAnimationDuration,
+                            curve: Curves.easeOutCubic,
+                            alignment: Alignment.topCenter,
+                            child: SizedBox(
+                              height: viewportHeight,
+                              child: PageView(
+                                controller: _pageController,
+                                physics: const NeverScrollableScrollPhysics(),
+                                onPageChanged: (index) {
+                                  setState(() => _pageIndex = index);
+                                  _syncViewportHeightForPage(index);
+                                },
+                                children: [
+                                  for (var i = 0; i < _steps.length; i++)
+                                    NotificationListener<SizeChangedLayoutNotification>(
+                                      onNotification: (_) {
+                                        if (i == _pageIndex) {
+                                          _syncViewportHeightForPage(i);
+                                        }
+                                        return false;
+                                      },
+                                      child: SizeChangedLayoutNotifier(
+                                        child: Align(
+                                          alignment: Alignment.topCenter,
+                                          child: SingleChildScrollView(
+                                            child: KeyedSubtree(
+                                              key: _stepMeasureKeys[i],
+                                              child: _buildStep(_steps[i]),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              ),
                             ),
                           ),
                           const SizedBox(height: 20),
                           Row(
                             children: [
                               TextButton(
-                                onPressed: _skip,
+                                onPressed: navigationLocked ? null : _skip,
                                 child: Text(l10n.onboardingSkip),
                               ),
                               const Spacer(),
                               if (!_isFirstStep) ...[
                                 OutlinedButton(
-                                  onPressed: _goPrevious,
+                                  onPressed: navigationLocked
+                                      ? null
+                                      : () => unawaited(_goPrevious()),
                                   child: Text(l10n.onboardingPrevious),
                                 ),
                                 const SizedBox(width: 12),
                               ],
                               FilledButton(
-                                onPressed: _goNext,
+                                onPressed: navigationLocked
+                                    ? null
+                                    : () => unawaited(_goNext()),
                                 child: Text(
                                   _isLastStep
                                       ? l10n.onboardingGetStarted
@@ -148,10 +247,14 @@ class _OnboardingWizardState extends State<OnboardingWizard> {
   Widget _buildStep(OnboardingStepKind kind) {
     return switch (kind) {
       OnboardingStepKind.appearance => const OnboardingAppearanceStep(),
-      OnboardingStepKind.ssh => OnboardingSshStep(onContinue: _goNext),
+      OnboardingStepKind.ssh => OnboardingSshStep(
+        onContinue: () => unawaited(_goNext()),
+      ),
       OnboardingStepKind.cli => const OnboardingCliStep(),
-      OnboardingStepKind.providerImport => const OnboardingProviderImportStep(),
-      OnboardingStepKind.defaultProvider => const OnboardingDefaultProviderStep(),
+      OnboardingStepKind.providerImport =>
+        const OnboardingProviderImportStep(),
+      OnboardingStepKind.defaultProvider =>
+        const OnboardingDefaultProviderStep(),
     };
   }
 }

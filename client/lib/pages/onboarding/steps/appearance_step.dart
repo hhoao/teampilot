@@ -5,6 +5,7 @@ import '../../../cubits/layout_cubit.dart';
 import '../../../l10n/l10n_extensions.dart';
 import '../../../theme/app_theme.dart';
 import '../../../utils/app_keys.dart';
+import '../../../widgets/settings/theme_color_preset_picker.dart';
 import '../../../widgets/settings/workspace_settings_toggle_strip.dart';
 import '../../../widgets/settings/workspace_settings_widgets.dart';
 
@@ -41,7 +42,10 @@ class OnboardingAppearanceStep extends StatelessWidget {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(l10n.onboardingAppearanceTitle, style: Theme.of(context).textTheme.headlineSmall),
+            Text(
+              l10n.onboardingAppearanceTitle,
+              style: Theme.of(context).textTheme.headlineSmall,
+            ),
             const SizedBox(height: 8),
             Text(
               l10n.onboardingAppearanceSubtitle,
@@ -54,7 +58,6 @@ class OnboardingAppearanceStep extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  SettingsGroupHeader(title: l10n.appearance),
                   SettingsLabeledRow(
                     title: l10n.themeModeTitle,
                     subtitle: l10n.themeModeDescription,
@@ -84,7 +87,7 @@ class OnboardingAppearanceStep extends StatelessWidget {
                   SettingsLabeledRow(
                     title: l10n.themeColorPresetTitle,
                     subtitle: l10n.themeColorPresetDescription,
-                    trailing: _OnboardingThemeColorPresetPicker(
+                    trailing: ThemeColorPresetPicker(
                       selected: colorPreset,
                       onSelect: controller.setThemeColorPreset,
                     ),
@@ -115,44 +118,6 @@ class OnboardingAppearanceStep extends StatelessWidget {
           ],
         );
       },
-    );
-  }
-}
-
-class _OnboardingThemeColorPresetPicker extends StatelessWidget {
-  const _OnboardingThemeColorPresetPicker({
-    required this.selected,
-    required this.onSelect,
-  });
-
-  final String selected;
-  final ValueChanged<String> onSelect;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = context.l10n;
-    return Align(
-      alignment: Alignment.centerRight,
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        reverse: true,
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            for (final id in kThemeColorPresetIds)
-              Padding(
-                padding: const EdgeInsets.only(left: 8),
-                child: ActionChip(
-                  label: Text(l10n.themeColorPresetName(id)),
-                  onPressed: () => onSelect(id),
-                  backgroundColor: id == selected
-                      ? Theme.of(context).colorScheme.primaryContainer
-                      : null,
-                ),
-              ),
-          ],
-        ),
-      ),
     );
   }
 }

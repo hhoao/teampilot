@@ -103,20 +103,32 @@ class _RightToolsPanelState extends State<RightToolsPanel> {
             final member = team.members.firstWhere((m) => m.id == id);
             final cubit = _chatCubit;
             if (cubit == null) return;
-            unawaited(cubit.openMemberTab(team, member));
+            unawaited(
+              cubit.openMemberTab(
+                team,
+                member,
+                workspaceCwd: widget.cwd,
+              ),
+            );
             maybeDismissDrawer();
           },
           onOpen: (id) {
             final member = team.members.firstWhere((m) => m.id == id);
             final cubit = _chatCubit;
             if (cubit == null) return;
-            unawaited(cubit.openMemberTab(team, member));
+            unawaited(
+              cubit.openMemberTab(
+                team,
+                member,
+                workspaceCwd: widget.cwd,
+              ),
+            );
             maybeDismissDrawer();
           },
           onLaunchAll: throttledAsync('right_tools_launch_all', () async {
             final cubit = _chatCubit;
             if (cubit == null) return;
-            await cubit.launchAllMembers(team);
+            await cubit.launchAllMembers(team, workspaceCwd: widget.cwd);
             maybeDismissDrawer();
           }),
         ),

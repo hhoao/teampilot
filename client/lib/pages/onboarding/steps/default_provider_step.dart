@@ -215,19 +215,9 @@ class _OnboardingDefaultProviderStepState
                     unawaited(_applySelection());
                   },
                 ),
-                showDividerBelow: hideModelPicker || showModelSection,
+                showDividerBelow: showModelSection,
               ),
-              if (hideModelPicker) ...[
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                  child: Text(
-                    l10n.memberOfficialClaudeModelHint,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                ),
-              ] else if (showModelSection) ...[
+              if (showModelSection) ...[
                 SettingsLabeledStackedRow(
                   title: l10n.defaultModel,
                   subtitle: l10n.onboardingDefaultProviderModelHint,
