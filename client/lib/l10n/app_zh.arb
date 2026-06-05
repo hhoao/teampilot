@@ -252,6 +252,24 @@
   "homeWorkspaceNoConversations": "该项目还没有对话",
   "homeWorkspaceSearchHint": "搜索",
   "homeWorkspaceNoSearchResults": "没有匹配的对话",
+  "homeWorkspaceOpenProjectInNewTab": "在新标签页中打开",
+  "homeWorkspaceFavoriteProject": "收藏项目",
+  "homeWorkspaceUnfavoriteProject": "取消收藏",
+  "homeWorkspaceRenameProject": "修改名称",
+  "homeWorkspaceCloneProject": "克隆项目",
+  "homeWorkspaceCloneProjectDisplayName": "{name}（副本）",
+  "@homeWorkspaceCloneProjectDisplayName": {
+    "placeholders": {
+      "name": {}
+    }
+  },
+  "homeWorkspaceCloneProjectSuccess": "已克隆「{name}」。",
+  "@homeWorkspaceCloneProjectSuccess": {
+    "placeholders": {
+      "name": {}
+    }
+  },
+  "homeWorkspaceCloneProjectFailed": "无法克隆项目",
   "newProjectTooltip": "创建项目",
   "switchProjectTooltip": "切换项目",
   "create": "创建",
@@ -393,6 +411,8 @@
     "placeholders": { "content": { "type": "String" } }
   },
   "terminalParkedSendDismiss": "关闭",
+  "mailbox": "信箱",
+  "mailboxEmpty": "暂无消息",
   "autoLaunchAllMembersTitle": "连接时启动全部成员",
   "autoLaunchAllMembersDescription": "开启后，点击连接或重启会为每个有效成员启动终端；关闭则仅启动当前选中的成员。",
   "scopeSessionsToSelectedTeamTitle": "按所选团队筛选会话",

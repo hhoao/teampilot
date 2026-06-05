@@ -4,18 +4,23 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../cubits/chat_cubit.dart';
+import '../../cubits/mailbox_cubit.dart';
 import '../../cubits/member_presence_cubit.dart';
 import '../../cubits/team_cubit.dart';
+import '../../l10n/l10n_extensions.dart';
 import '../../models/layout_preferences.dart';
+import '../../models/team_config.dart';
 import '../../theme/workspace_surface_layers.dart';
 import '../../utils/app_keys.dart';
 import '../../utils/debounce/debounce.dart';
 import '../../utils/team_member_naming.dart';
 import '../git/git_source_control_panel.dart';
 import 'file_tree_panel.dart';
+import 'mailbox_panel.dart';
 import 'members_panel.dart';
 import 'stacked_panel.dart';
 import 'tabbed_panel.dart';
+import 'tool_view.dart';
 
 class RightToolsPanel extends StatefulWidget {
   const RightToolsPanel({
@@ -92,63 +97,73 @@ class _RightToolsPanelState extends State<RightToolsPanel> {
       }
     }
 
-    final panels = <Widget>[
+    final mailboxState = context.watch<MailboxCubit>().state;
+    final showMailbox =
+        team.teamMode == TeamMode.mixed && chatCubit.activeTab?.teamBus != null;
+
+    final views = <ToolView>[
       if (widget.preferences.membersVisible)
-        MembersPanel(
-          teamCli: team.cli,
-          members: members,
-          memberPresence: context.watch<MemberPresenceCubit>().state.presence,
-          selectedMemberId: chatCubit.state.selectedMemberId,
-          onSelected: (id) {
-            final member = team.members.firstWhere((m) => m.id == id);
-            final cubit = _chatCubit;
-            if (cubit == null) return;
-            unawaited(
-              cubit.openMemberTab(
-                team,
-                member,
-                workspaceCwd: widget.cwd,
-              ),
-            );
-            maybeDismissDrawer();
-          },
-          onOpen: (id) {
-            final member = team.members.firstWhere((m) => m.id == id);
-            final cubit = _chatCubit;
-            if (cubit == null) return;
-            unawaited(
-              cubit.openMemberTab(
-                team,
-                member,
-                workspaceCwd: widget.cwd,
-              ),
-            );
-            maybeDismissDrawer();
-          },
-          onLaunchAll: throttledAsync('right_tools_launch_all', () async {
-            final cubit = _chatCubit;
-            if (cubit == null) return;
-            await cubit.launchAllMembers(team, workspaceCwd: widget.cwd);
-            maybeDismissDrawer();
-          }),
+        ToolView(
+          icon: Icons.groups_outlined,
+          label: context.l10n.members,
+          child: MembersPanel(
+            teamCli: team.cli,
+            members: members,
+            memberPresence:
+                context.watch<MemberPresenceCubit>().state.presence,
+            selectedMemberId: chatCubit.state.selectedMemberId,
+            onSelected: (id) {
+              final member = team.members.firstWhere((m) => m.id == id);
+              final cubit = _chatCubit;
+              if (cubit == null) return;
+              unawaited(
+                cubit.openMemberTab(team, member, workspaceCwd: widget.cwd),
+              );
+              maybeDismissDrawer();
+            },
+            onOpen: (id) {
+              final member = team.members.firstWhere((m) => m.id == id);
+              final cubit = _chatCubit;
+              if (cubit == null) return;
+              unawaited(
+                cubit.openMemberTab(team, member, workspaceCwd: widget.cwd),
+              );
+              maybeDismissDrawer();
+            },
+            onLaunchAll: throttledAsync('right_tools_launch_all', () async {
+              final cubit = _chatCubit;
+              if (cubit == null) return;
+              await cubit.launchAllMembers(team, workspaceCwd: widget.cwd);
+              maybeDismissDrawer();
+            }),
+          ),
         ),
       if (widget.preferences.fileTreeVisible)
-        FileTreePanel(team: team, cwd: widget.cwd),
+        ToolView(
+          icon: Icons.folder_outlined,
+          label: context.l10n.fileTree,
+          child: FileTreePanel(team: team, cwd: widget.cwd),
+        ),
       if (widget.preferences.gitVisible)
-        GitSourceControlPanel(cwd: widget.cwd),
+        ToolView(
+          icon: Icons.account_tree_outlined,
+          label: context.l10n.sourceControl,
+          child: GitSourceControlPanel(cwd: widget.cwd),
+        ),
+      if (showMailbox)
+        ToolView(
+          icon: Icons.mail_outline,
+          label: context.l10n.mailbox,
+          badgeCount: mailboxState.totalUnread,
+          child: MailboxPanel(team: team, cwd: widget.cwd),
+        ),
     ];
     return Container(
       key: widget.panelKey,
       color: cs.workspaceSubtleSurface,
       child: widget.preferences.toolsArrangement == ToolsArrangement.tabs
-          ? TabbedPanel(
-              panels: panels,
-              preferences: widget.preferences,
-            )
-          : StackedPanel(
-              panels: panels,
-              preferences: widget.preferences,
-            ),
+          ? TabbedPanel(views: views)
+          : StackedPanel(views: views),
     );
   }
 }

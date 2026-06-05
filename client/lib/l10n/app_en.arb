@@ -262,6 +262,24 @@
   "homeWorkspaceNoConversations": "No conversations in this project yet",
   "homeWorkspaceSearchHint": "Search",
   "homeWorkspaceNoSearchResults": "No conversations match your search",
+  "homeWorkspaceOpenProjectInNewTab": "Open in new tab",
+  "homeWorkspaceFavoriteProject": "Favorite project",
+  "homeWorkspaceUnfavoriteProject": "Remove from favorites",
+  "homeWorkspaceRenameProject": "Rename project",
+  "homeWorkspaceCloneProject": "Clone project",
+  "homeWorkspaceCloneProjectDisplayName": "{name} (copy)",
+  "@homeWorkspaceCloneProjectDisplayName": {
+    "placeholders": {
+      "name": {}
+    }
+  },
+  "homeWorkspaceCloneProjectSuccess": "Cloned \"{name}\".",
+  "@homeWorkspaceCloneProjectSuccess": {
+    "placeholders": {
+      "name": {}
+    }
+  },
+  "homeWorkspaceCloneProjectFailed": "Could not clone project",
   "newProjectTooltip": "Create a project",
   "switchProjectTooltip": "Switch project",
   "create": "Create",
@@ -445,6 +463,8 @@
     "placeholders": { "content": { "type": "String" } }
   },
   "terminalParkedSendDismiss": "Dismiss",
+  "mailbox": "Mailbox",
+  "mailboxEmpty": "No messages yet",
   "autoLaunchAllMembersTitle": "Start all members on connect",
   "autoLaunchAllMembersDescription": "When enabled, Connect and Restart launch every valid member shell; otherwise only the selected member starts.",
   "scopeSessionsToSelectedTeamTitle": "Scope sessions to selected team",
