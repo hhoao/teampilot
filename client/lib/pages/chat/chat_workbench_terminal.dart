@@ -14,6 +14,7 @@ import '../../repositories/session_repository.dart';
 import '../../services/terminal/terminal_session.dart';
 import '../../services/terminal/terminal_uri_opener.dart';
 import '../../services/terminal/terminal_fonts.dart';
+import '../../widgets/terminal/parked_send_overlay.dart';
 import '../../widgets/terminal_find_bar.dart';
 import 'chat_workbench_context_menu.dart';
 
@@ -117,6 +118,10 @@ class ChatWorkbenchRunningTerminal extends StatelessWidget {
                 },
               ),
             ),
+          ParkedSendOverlay(
+            submissions: session.parkedUserSubmissions,
+            isUnread: session.isUnreadParkedMessage,
+          ),
         ],
       ),
     );
