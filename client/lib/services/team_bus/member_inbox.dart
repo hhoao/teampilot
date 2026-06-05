@@ -177,6 +177,21 @@ class MemberInbox {
     return page;
   }
 
+  /// All known records for this member (read + unread). Reads the log when
+  /// present, then folds in any un-flushed in-memory unread tail (dedup by id).
+  /// Falls back to the in-memory unread set when there is no log.
+  Future<List<LoggedMessage>> snapshotRecords() async {
+    final log = _log;
+    if (log == null) return List<LoggedMessage>.of(_unread);
+    final persisted = await log.load(memberId);
+    final ids = {for (final r in persisted) r.message.id};
+    return [
+      ...persisted,
+      for (final r in _unread)
+        if (!ids.contains(r.message.id)) r,
+    ];
+  }
+
   void dispose() {
     _flushTimer?.cancel();
     _flushTimer = null;

@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'agent_node.dart';
+import 'bus_feed_entry.dart';
 import 'cancellation.dart';
 import 'coordination/coordination_policy.dart';
 import 'coordination/leader_star_coordination_policy.dart';
@@ -296,6 +297,40 @@ class TeamBus implements CoordinationView {
 
   Future<int> unreadCountFor(String memberId) async {
     return _members[memberId]?.inbox.unreadCount ?? 0;
+  }
+
+  /// Read-only full-team feed: unions every member inbox's records, dedups by
+  /// message id (broadcasts land in multiple inboxes), and sorts by time.
+  Future<List<BusFeedEntry>> messagesSnapshot() async {
+    final byId = <String, BusFeedEntry>{};
+    for (final node in _members.values) {
+      final records = await node.inbox.snapshotRecords();
+      for (final r in records) {
+        final existing = byId[r.message.id];
+        if (existing == null) {
+          byId[r.message.id] = BusFeedEntry(
+            from: r.message.from,
+            to: r.message.to,
+            content: r.message.content,
+            createdAt: r.createdAt,
+            isUnread: r.isUnread,
+          );
+        } else {
+          byId[r.message.id] = BusFeedEntry(
+            from: existing.from,
+            to: existing.to,
+            content: existing.content,
+            createdAt: existing.createdAt < r.createdAt
+                ? existing.createdAt
+                : r.createdAt,
+            isUnread: existing.isUnread || r.isUnread,
+          );
+        }
+      }
+    }
+    final entries = byId.values.toList()
+      ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
+    return entries;
   }
 
   int _hotUnreadCount(AgentNode node) => node.inbox.unreadCount;
