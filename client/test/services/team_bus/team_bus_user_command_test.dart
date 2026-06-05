@@ -39,4 +39,33 @@ void main() {
     expect(batch.single.from, TeamBus.userSenderId);
     expect(batch.single.content, 'hello');
   });
+
+  test('deliverUserCommand returns id; isUnread flips when taken', () async {
+    final bus = TeamBus(launcher: FakeMemberLauncher());
+    final node = AgentNode.test(
+      memberId: 'leader',
+      lifecycle: MemberLifecycle.running,
+      activity: MemberActivity.active,
+    );
+    bus.declareMember(node);
+
+    final id = bus.deliverUserCommand('leader', 'hello');
+    expect(id, isNotEmpty);
+    expect(bus.isUnread('leader', id), isTrue);
+    expect(bus.isUnread('leader', 'nope'), isFalse);
+    expect(bus.isUnread('ghost', id), isFalse);
+
+    await node.inbox.waitAndTake(timeout: const Duration(seconds: 1));
+    expect(bus.isUnread('leader', id), isFalse);
+  });
+
+  test('deliverUserCommand returns empty id for blank line', () {
+    final bus = TeamBus(launcher: FakeMemberLauncher());
+    bus.declareMember(AgentNode.test(
+      memberId: 'leader',
+      lifecycle: MemberLifecycle.running,
+      activity: MemberActivity.active,
+    ));
+    expect(bus.deliverUserCommand('leader', '   '), isEmpty);
+  });
 }

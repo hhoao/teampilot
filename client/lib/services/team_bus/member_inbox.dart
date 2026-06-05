@@ -41,6 +41,10 @@ class MemberInbox {
   bool get isEmpty => _unread.isEmpty;
   int get unreadCount => _unread.length;
 
+  /// True iff [id] is still in the unread working set (not yet taken/read).
+  bool containsUnread(String id) =>
+      _unread.any((r) => r.message.id == id);
+
   /// 绑定日志层(由 [TeamBus.declareMember] 注入)。
   void bindLog(BusMessageLog log, int Function() clock) {
     _log = log;

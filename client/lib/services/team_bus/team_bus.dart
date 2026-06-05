@@ -327,22 +327,29 @@ class TeamBus implements CoordinationView {
     return null;
   }
 
-  /// UI 用户在成员 wait 期间提交的一行 → 信箱（`from: user`）。
-  void deliverUserCommand(String memberId, String content) {
+  /// UI 用户在成员 wait 期间提交的一行 → 信箱（`from: user`）。返回新建消息 id，
+  /// 空行 / 未知成员返回空串。
+  String deliverUserCommand(String memberId, String content) {
     final trimmed = content.trim();
-    if (trimmed.isEmpty) return;
+    if (trimmed.isEmpty) return '';
     final node = _members[memberId];
-    if (node == null) return;
+    if (node == null) return '';
+    final id = _env.ids();
     _deliverToMember(
       memberId,
       TeamMessage(
-        id: _env.ids(),
+        id: id,
         from: userSenderId,
         to: memberId,
         content: trimmed,
       ),
     );
+    return id;
   }
+
+  /// 该成员信箱里 [id] 是否仍未读（未被取走 / 未读）。
+  bool isUnread(String memberId, String id) =>
+      _members[memberId]?.inbox.containsUnread(id) ?? false;
 
   /// 出站投递；按 lifecycle + activity 分流。
   Future<void> send(TeamMessage message) async {
