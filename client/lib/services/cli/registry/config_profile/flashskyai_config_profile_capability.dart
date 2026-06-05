@@ -16,6 +16,11 @@ final class FlashskyaiConfigProfileCapability
 
   static const defaultMetadata = <String, Object?>{
     'hasCompletedOnboarding': true,
+    // Follow the embedded terminal's light/dark out of the box (no `/theme`),
+    // resolved from the COLORFGBG we inject at launch. Seed-only: a later user
+    // `/theme` choice is persisted and wins via `{...defaults, ...existing}`.
+    // See ClaudeConfigProfileCapability.defaultMetadata for the rationale.
+    'theme': 'auto',
   };
 
   static const defaultProjectConfig = <String, Object?>{

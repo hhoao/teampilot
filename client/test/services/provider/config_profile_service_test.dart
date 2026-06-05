@@ -963,6 +963,7 @@ base_url = "https://api.example.com/v1"
         jsonDecode(await File(metadataPath).readAsString())
             as Map<String, Object?>;
     expect(metadata['hasCompletedOnboarding'], isTrue);
+    expect(metadata['theme'], 'auto', reason: 'seeds auto so the TUI follows the terminal out of the box');
     expect((metadata['mcpServers'] as Map)['github'], isNotNull);
   });
 }

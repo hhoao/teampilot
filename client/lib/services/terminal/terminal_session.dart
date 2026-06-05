@@ -221,7 +221,10 @@ class TerminalSession {
     _extraEnvironment = LaunchCommandBuilder.launchEnvironmentForProcess(
       _extraEnvironment,
     );
-    _ptyEnvironment = buildPtyEnvironment(_extraEnvironment);
+    _ptyEnvironment = buildPtyEnvironment(
+      _extraEnvironment,
+      themeBackground: _terminalTheme?.background,
+    );
     _onProcessStarted = onProcessStarted;
     _onProcessFailed = onProcessFailed;
     _onProcessExited = onProcessExited;
@@ -347,7 +350,10 @@ class TerminalSession {
             useWslPaths: false,
           );
     _extraEnvironment = null;
-    _ptyEnvironment = buildPtyEnvironment(null);
+    _ptyEnvironment = buildPtyEnvironment(
+      null,
+      themeBackground: _terminalTheme?.background,
+    );
     _onProcessStarted = onProcessStarted;
     _onProcessFailed = onProcessFailed;
     _onProcessExited = onProcessExited;
@@ -801,13 +807,17 @@ class TerminalSession {
 
   /// Full process environment for [Pty.start], including OSC 8 identity hints.
   static Map<String, String> buildPtyEnvironment(
-    Map<String, String>? environment,
-  ) {
+    Map<String, String>? environment, {
+    int? themeBackground,
+  }) {
     final merged = <String, String>{
       ...Platform.environment,
       if (environment != null) ...environment,
     };
     PtyLaunchEnvironment.applyHyperlinkIdentity(merged);
+    if (themeBackground != null) {
+      PtyLaunchEnvironment.applyColorScheme(merged, background: themeBackground);
+    }
     if (Platform.isWindows) {
       final path = merged['Path'] ?? merged['PATH'];
       if (path != null && path.isNotEmpty) {

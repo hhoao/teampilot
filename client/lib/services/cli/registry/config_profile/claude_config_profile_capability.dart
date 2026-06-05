@@ -33,6 +33,12 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
 
   static const defaultMetadata = <String, Object?>{
     'hasCompletedOnboarding': true,
+    // Follow the embedded terminal's light/dark instead of Claude's built-in
+    // 'dark' default, so a session is themed out of the box (no `/theme`). The
+    // CLI resolves 'auto' from the COLORFGBG we inject at launch
+    // (see PtyLaunchEnvironment.applyColorScheme). Seed-only: a later user
+    // `/theme` choice is written to the file and wins via `{...defaults, ...existing}`.
+    'theme': 'auto',
   };
 
   static const defaultProjectConfig = <String, Object?>{
