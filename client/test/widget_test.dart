@@ -504,7 +504,7 @@ void main() {
     expect(find.byType(DraggableScrollableSheet), findsNothing);
   });
 
-  testWidgets('session settings configure Claude Code CLI path', (
+  testWidgets('cli settings configure Claude Code CLI path', (
     tester,
   ) async {
     final teamCubit = await createTeamCubitInTest(tester);
@@ -520,7 +520,7 @@ void main() {
 
     await tester.tap(find.byKey(AppKeys.sidebarSettingsButton));
     await pumpPhaseTransitions(tester);
-    await tester.tap(find.byKey(AppKeys.configSessionSectionButton));
+    await tester.tap(find.byKey(AppKeys.configCliSectionButton));
     await pumpPhaseTransitions(tester);
 
     expect(find.text('Claude Code CLI path'), findsOneWidget);

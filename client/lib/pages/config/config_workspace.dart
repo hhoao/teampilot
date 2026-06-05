@@ -13,6 +13,7 @@ import '../../widgets/settings/workspace_section_host.dart';
 import '../about_page.dart';
 import '../system/log_config_workspace.dart';
 import 'appearance_config_section.dart';
+import 'cli_config_section.dart';
 import 'layout_config_section.dart';
 import 'session_config_section.dart';
 
@@ -56,6 +57,13 @@ Future<void> showWorkspaceSettingsDialog(BuildContext context) {
         title: l10n.session,
         subtitle: l10n.sessionPageSubtitle,
         body: const SessionConfigWorkspace(showHeading: false),
+      ),
+      SettingsDialogEntry(
+        icon: Icons.code_outlined,
+        navLabel: l10n.cliConfig,
+        title: l10n.cliConfig,
+        subtitle: l10n.cliConfigPageSubtitle,
+        body: const CliConfigWorkspace(showHeading: false),
       ),
       SettingsDialogEntry(
         icon: Icons.info_outline,
@@ -103,6 +111,15 @@ class ConfigSettingsHubPage extends StatelessWidget {
           onTap: throttledTap('config_hub_session', () {
             context.read<ConfigCubit>().selectSection(ConfigSection.session);
             context.push('/config/session');
+          }),
+        ),
+        WorkspaceHubEntry(
+          key: AppKeys.configCliSectionButton,
+          title: l10n.cliConfig,
+          icon: Icons.code_outlined,
+          onTap: throttledTap('config_hub_cli', () {
+            context.read<ConfigCubit>().selectSection(ConfigSection.cli);
+            context.push('/config/cli');
           }),
         ),
         WorkspaceHubEntry(
@@ -173,6 +190,7 @@ class ConfigWorkspace extends StatelessWidget {
         ConfigSection.session => SessionConfigWorkspace(
           showHeading: showHeading,
         ),
+        ConfigSection.cli => CliConfigWorkspace(showHeading: showHeading),
         ConfigSection.about => AboutConfigWorkspace(showHeading: showHeading),
         ConfigSection.logs => LogConfigWorkspace(showHeading: showHeading),
       },
@@ -216,6 +234,16 @@ class ConfigNavPanel extends StatelessWidget {
           onTap: throttledTap(
             'config_nav_session',
             () => onSelectSection(ConfigSection.session),
+          ),
+        ),
+        WorkspaceHubEntry(
+          key: AppKeys.configCliSectionButton,
+          title: l10n.cliConfig,
+          icon: Icons.code_outlined,
+          selected: section == ConfigSection.cli,
+          onTap: throttledTap(
+            'config_nav_cli',
+            () => onSelectSection(ConfigSection.cli),
           ),
         ),
         WorkspaceHubEntry(

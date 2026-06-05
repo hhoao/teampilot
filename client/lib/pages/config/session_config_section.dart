@@ -15,7 +15,6 @@ import '../../cubits/skill_cubit.dart';
 import '../../cubits/team_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/connection_mode.dart';
-import '../../models/team_config.dart';
 import '../../models/windows_storage_backend.dart';
 import '../../repositories/session_repository.dart';
 import '../../cubits/ssh_profile_cubit.dart';
@@ -24,7 +23,6 @@ import '../../services/storage/runtime_storage_context.dart';
 import '../../utils/app_keys.dart';
 import '../../utils/debounce/debounce.dart';
 import '../../widgets/settings/workspace_settings_widgets.dart';
-import 'session_cli_path_settings_row.dart';
 import 'session_config_constants.dart';
 import 'session_llm_path_settings_row.dart';
 
@@ -332,71 +330,6 @@ class _SessionControlsState extends State<_SessionControls> {
                   ),
                   showDividerBelow: true,
                 ),
-              SessionCliExecutablePathSettingsRow(
-                cubit: widget.cubit,
-                cli: CliTool.flashskyai,
-                title: l10n.cliExecutablePathLabel,
-                subtitle: isSshMode
-                    ? l10n.cliExecutablePathDescriptionSsh
-                    : l10n.cliExecutablePathDescription,
-                fieldKey: AppKeys.cliExecutablePathField,
-                browseKey: AppKeys.cliExecutablePathBrowseButton,
-                resetKey: AppKeys.cliExecutablePathResetButton,
-                debouncerTag: 'session_cli_executable_path',
-                showDividerBelow: true,
-              ),
-              SessionCliExecutablePathSettingsRow(
-                cubit: widget.cubit,
-                cli: CliTool.claude,
-                title: l10n.claudeCliExecutablePathLabel,
-                subtitle: isSshMode
-                    ? l10n.claudeCliExecutablePathDescriptionSsh
-                    : l10n.claudeCliExecutablePathDescription,
-                fieldKey: AppKeys.claudeCliExecutablePathField,
-                browseKey: AppKeys.claudeCliExecutablePathBrowseButton,
-                resetKey: AppKeys.claudeCliExecutablePathResetButton,
-                debouncerTag: 'session_claude_cli_executable_path',
-                installKey: AppKeys.claudeCliInstallButton,
-                showDividerBelow: true,
-              ),
-              SessionCliExecutablePathSettingsRow(
-                cubit: widget.cubit,
-                cli: CliTool.codex,
-                title: l10n.cliExecutablePathLabelFor(l10n.appProviderToolCodex),
-                subtitle: isSshMode
-                    ? l10n.cliExecutablePathDescriptionSshFor(
-                        l10n.appProviderToolCodex,
-                      )
-                    : l10n.cliExecutablePathDescriptionFor(
-                        l10n.appProviderToolCodex,
-                      ),
-                fieldKey: AppKeys.codexCliExecutablePathField,
-                browseKey: AppKeys.codexCliExecutablePathBrowseButton,
-                resetKey: AppKeys.codexCliExecutablePathResetButton,
-                debouncerTag: 'session_codex_cli_executable_path',
-                installKey: AppKeys.codexCliInstallButton,
-                showDividerBelow: true,
-              ),
-              SessionCliExecutablePathSettingsRow(
-                cubit: widget.cubit,
-                cli: CliTool.opencode,
-                title: l10n.cliExecutablePathLabelFor(
-                  l10n.appProviderToolOpencode,
-                ),
-                subtitle: isSshMode
-                    ? l10n.cliExecutablePathDescriptionSshFor(
-                        l10n.appProviderToolOpencode,
-                      )
-                    : l10n.cliExecutablePathDescriptionFor(
-                        l10n.appProviderToolOpencode,
-                      ),
-                fieldKey: AppKeys.opencodeCliExecutablePathField,
-                browseKey: AppKeys.opencodeCliExecutablePathBrowseButton,
-                resetKey: AppKeys.opencodeCliExecutablePathResetButton,
-                debouncerTag: 'session_opencode_cli_executable_path',
-                installKey: AppKeys.opencodeCliInstallButton,
-                showDividerBelow: true,
-              ),
               if (isSshMode) ...[
                 SettingsLabeledStackedRow(
                   title: 'SSH 默认工作目录',

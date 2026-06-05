@@ -833,7 +833,14 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get sessionPageSubtitle =>
-      'Configure shell session launch and the LLM config file path.';
+      'Configure shell session launch, terminal behavior, and storage backend.';
+
+  @override
+  String get cliConfig => 'CLI';
+
+  @override
+  String get cliConfigPageSubtitle =>
+      'Configure AI agent CLI executable paths and install missing tools.';
 
   @override
   String get connectionModeLabel => 'Runtime mode';

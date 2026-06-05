@@ -794,7 +794,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get session => '会话';
 
   @override
-  String get sessionPageSubtitle => '配置 Shell 会话启动方式与 LLM 配置文件路径。';
+  String get sessionPageSubtitle => '配置 Shell 会话启动方式、终端行为与存储后端。';
+
+  @override
+  String get cliConfig => 'CLI';
+
+  @override
+  String get cliConfigPageSubtitle => '配置 AI 代理 CLI 可执行文件路径，并安装缺失的工具。';
 
   @override
   String get connectionModeLabel => '运行模式';

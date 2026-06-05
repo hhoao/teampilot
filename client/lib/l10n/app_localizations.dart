@@ -1589,8 +1589,20 @@ abstract class AppLocalizations {
   /// No description provided for @sessionPageSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Configure shell session launch and the LLM config file path.'**
+  /// **'Configure shell session launch, terminal behavior, and storage backend.'**
   String get sessionPageSubtitle;
+
+  /// No description provided for @cliConfig.
+  ///
+  /// In en, this message translates to:
+  /// **'CLI'**
+  String get cliConfig;
+
+  /// No description provided for @cliConfigPageSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Configure AI agent CLI executable paths and install missing tools.'**
+  String get cliConfigPageSubtitle;
 
   /// No description provided for @connectionModeLabel.
   ///

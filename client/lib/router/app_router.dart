@@ -280,6 +280,12 @@ final appRouter = GoRouter(
           ),
         ),
         GoRoute(
+          path: '/config/cli',
+          pageBuilder: (context, state) => const NoTransitionPage(
+            child: ConfigWorkspace(section: ConfigSection.cli),
+          ),
+        ),
+        GoRoute(
           path: '/config/ssh-profiles',
           pageBuilder: (context, state) =>
               const NoTransitionPage(child: SshProfilesPage(embedded: true)),

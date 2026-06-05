@@ -15,8 +15,8 @@ import '../../widgets/cli_install_progress_panel.dart';
 import '../../widgets/settings/workspace_settings_widgets.dart';
 import 'session_config_constants.dart';
 
-class SessionCliExecutablePathSettingsRow extends StatefulWidget {
-  const SessionCliExecutablePathSettingsRow({
+class CliExecutablePathSettingsRow extends StatefulWidget {
+  const CliExecutablePathSettingsRow({
     required this.cubit,
     required this.cli,
     required this.title,
@@ -41,12 +41,12 @@ class SessionCliExecutablePathSettingsRow extends StatefulWidget {
   final Key? installKey;
 
   @override
-  State<SessionCliExecutablePathSettingsRow> createState() =>
-      SessionCliExecutablePathSettingsRowState();
+  State<CliExecutablePathSettingsRow> createState() =>
+      CliExecutablePathSettingsRowState();
 }
 
-class SessionCliExecutablePathSettingsRowState
-    extends State<SessionCliExecutablePathSettingsRow> {
+class CliExecutablePathSettingsRowState
+    extends State<CliExecutablePathSettingsRow> {
   late final TextEditingController _controller;
   late final FocusNode _focusNode;
   late final Debouncer _persistDebouncer;
