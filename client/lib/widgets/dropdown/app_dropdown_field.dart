@@ -79,14 +79,9 @@ class _AppDropdownFieldState<T extends Object>
   late T? _selected;
   bool _isHovering = false;
 
-  double? _triggerWidth(BoxConstraints constraints) {
-    final box = _triggerKey.currentContext?.findRenderObject() as RenderBox?;
-    if (box != null && box.hasSize) {
-      return box.size.width;
-    }
-    // Do not fall back to maxWidth — that stretches the menu to the parent width.
-    return null;
-  }
+  /// Measured trigger width for the overlay panel. Updated after layout only —
+  /// never read [RenderBox] during [build] or constrain the trigger from it.
+  double? _overlayWidth;
 
   @override
   void initState() {
@@ -116,15 +111,28 @@ class _AppDropdownFieldState<T extends Object>
 
   void _onPopoverChanged() {
     if (!mounted) return;
-    setState(() {});
-    if (_popoverController.isOpen) {
-      // Measure trigger after layout so the overlay matches its painted width.
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted && _popoverController.isOpen) {
-          setState(() {});
-        }
-      });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (_popoverController.isOpen) {
+        _syncOverlayWidth();
+        return;
+      }
+      if (_overlayWidth != null) {
+        setState(() => _overlayWidth = null);
+      }
+    });
+  }
+
+  void _syncOverlayWidth() {
+    if (!mounted || !_popoverController.isOpen) return;
+    final box = _triggerKey.currentContext?.findRenderObject() as RenderBox?;
+    if (box == null || !box.hasSize) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _syncOverlayWidth());
+      return;
     }
+    final width = box.size.width;
+    if (_overlayWidth == width) return;
+    setState(() => _overlayWidth = width);
   }
 
   void _toggleMenu() {
@@ -199,91 +207,108 @@ class _AppDropdownFieldState<T extends Object>
         widget.expandedHeaderPadding ?? kAppDropdownExpandedHeaderPadding;
     final itemPadding = widget.listItemPadding ?? kAppDropdownListItemPadding;
     final maxHeight = widget.overlayHeight ?? kAppDropdownDefaultOverlayHeight;
-    final isOpen = _popoverController.isOpen;
-    final triggerPadding = isOpen ? expandedPadding : headerPadding;
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final panelWidth = _triggerWidth(constraints);
-        return AppPopover(
-          controller: _popoverController,
-          panelWidth: panelWidth,
-          overlayVisible: panelWidth != null,
-          padding: deco.menuPadding,
-          decoration: deco.menuDecoration(),
-          anchor: const AppAnchor(
-            childAlignment: Alignment.topCenter,
-            overlayAlignment: Alignment.bottomCenter,
-            offset: Offset(0, 4),
-          ),
-          popover: (_) {
-            return ConstrainedBox(
-              constraints: BoxConstraints(maxHeight: maxHeight),
-              child: FocusScope(
-                autofocus: true,
-                child: ListView.separated(
-                  shrinkWrap: true,
-                  physics: const ClampingScrollPhysics(),
-                  padding: EdgeInsets.zero,
-                  itemCount: widget.items.length,
-                  separatorBuilder: (_, _) =>
-                      const SizedBox(height: kAppDropdownListItemGap),
-                  itemBuilder: (context, index) {
-                    final item = widget.items[index];
-                    final isSelected = _selected == item;
-                    return SizedBox(
-                      width: double.infinity,
-                      child: DropdownMenuItemButton(
-                        padding: itemPadding,
-                        borderRadius: deco.listItemBorderRadius,
-                        highlightColor: deco.listItemHighlightColor,
-                        selectedColor: deco.listItemSelectedColor,
-                        isSelected: isSelected,
-                        enabled: widget.enabled,
-                        onTap: () {
-                          setState(() => _selected = item);
-                          widget.onChanged(item);
-                          _popoverController.hide();
-                        },
-                        child: _buildItemChild(
-                          context,
-                          item,
-                          maxLines: widget.listItemMaxLines,
-                          inList: true,
-                          style: deco.listItemStyle,
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
-            );
-          },
-          child: MouseRegion(
-            onEnter: (_) => setState(() => _isHovering = true),
-            onExit: (_) => setState(() => _isHovering = false),
-            child: GestureDetector(
-              onTap: _toggleMenu,
-              behavior: HitTestBehavior.opaque,
-              child: Container(
-                key: _triggerKey,
-                width: panelWidth,
-                padding: triggerPadding,
-                decoration: deco.buttonDecoration(
-                  menuOpen: isOpen,
-                  isHovering: _isHovering,
-                ),
-                child: Row(
-                  children: [
-                    Expanded(child: _buildHeader(context, deco)),
-                    isOpen ? deco.expandedSuffixIcon : deco.closedSuffixIcon,
-                  ],
-                ),
-              ),
+    return ListenableBuilder(
+      listenable: _popoverController,
+      builder: (context, _) {
+        final isOpen = _popoverController.isOpen;
+        final triggerPadding = isOpen ? expandedPadding : headerPadding;
+        return _buildPopover(
+          context,
+          deco: deco,
+          isOpen: isOpen,
+          triggerPadding: triggerPadding,
+          itemPadding: itemPadding,
+          maxHeight: maxHeight,
+        );
+      },
+    );
+  }
+
+  Widget _buildPopover(
+    BuildContext context, {
+    required AppDropdownDecoration deco,
+    required bool isOpen,
+    required EdgeInsets triggerPadding,
+    required EdgeInsets itemPadding,
+    required double maxHeight,
+  }) {
+    return AppPopover(
+      controller: _popoverController,
+      panelWidth: _overlayWidth,
+      overlayVisible: _overlayWidth != null,
+      padding: deco.menuPadding,
+      decoration: deco.menuDecoration(),
+      anchor: const AppAnchor(
+        childAlignment: Alignment.topCenter,
+        overlayAlignment: Alignment.bottomCenter,
+        offset: Offset(0, 4),
+      ),
+      popover: (_) {
+        return ConstrainedBox(
+          constraints: BoxConstraints(maxHeight: maxHeight),
+          child: FocusScope(
+            autofocus: true,
+            child: ListView.separated(
+              shrinkWrap: true,
+              physics: const ClampingScrollPhysics(),
+              padding: EdgeInsets.zero,
+              itemCount: widget.items.length,
+              separatorBuilder: (_, _) =>
+                  const SizedBox(height: kAppDropdownListItemGap),
+              itemBuilder: (context, index) {
+                final item = widget.items[index];
+                final isSelected = _selected == item;
+                return SizedBox(
+                  width: double.infinity,
+                  child: DropdownMenuItemButton(
+                    padding: itemPadding,
+                    borderRadius: deco.listItemBorderRadius,
+                    highlightColor: deco.listItemHighlightColor,
+                    selectedColor: deco.listItemSelectedColor,
+                    isSelected: isSelected,
+                    enabled: widget.enabled,
+                    onTap: () {
+                      setState(() => _selected = item);
+                      widget.onChanged(item);
+                      _popoverController.hide();
+                    },
+                    child: _buildItemChild(
+                      context,
+                      item,
+                      maxLines: widget.listItemMaxLines,
+                      inList: true,
+                      style: deco.listItemStyle,
+                    ),
+                  ),
+                );
+              },
             ),
           ),
         );
       },
+      child: MouseRegion(
+        onEnter: (_) => setState(() => _isHovering = true),
+        onExit: (_) => setState(() => _isHovering = false),
+        child: GestureDetector(
+          onTap: _toggleMenu,
+          behavior: HitTestBehavior.opaque,
+          child: Container(
+            key: _triggerKey,
+            padding: triggerPadding,
+            decoration: deco.buttonDecoration(
+              menuOpen: isOpen,
+              isHovering: _isHovering,
+            ),
+            child: Row(
+              children: [
+                Expanded(child: _buildHeader(context, deco)),
+                isOpen ? deco.expandedSuffixIcon : deco.closedSuffixIcon,
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

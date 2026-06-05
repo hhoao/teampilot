@@ -68,18 +68,19 @@ class _HomeWorkspaceProjectCardState extends State<HomeWorkspaceProjectCard> {
           duration: const Duration(milliseconds: 160),
           curve: Curves.easeOut,
           padding: const EdgeInsets.all(26),
-          decoration: workspaceCardDecoration(
-            cs,
-            radius: 14,
-            borderAlpha: _hovered ? 1 : 0.7,
-          ).copyWith(
-            color: cs.workspaceInset,
-            border: Border.all(
-              color: _hovered
-                  ? cs.primary.withValues(alpha: 0.5)
-                  : cs.outlineVariant.withValues(alpha: 0.7),
-            ),
-          ),
+          decoration:
+              workspaceCardDecoration(
+                cs,
+                radius: 14,
+                borderAlpha: _hovered ? 1 : 0.7,
+              ).copyWith(
+                color: cs.workspaceInset,
+                border: Border.all(
+                  color: _hovered
+                      ? cs.primary.withValues(alpha: 0.5)
+                      : cs.outlineVariant.withValues(alpha: 0.7),
+                ),
+              ),
           child: Stack(
             children: [
               Column(
@@ -111,7 +112,6 @@ class _HomeWorkspaceProjectCardState extends State<HomeWorkspaceProjectCard> {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: styles.prominent.copyWith(
-                      color: cs.onSurface,
                       fontWeight: FontWeight.w600,
                     ),
                   ),

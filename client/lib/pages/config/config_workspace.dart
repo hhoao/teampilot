@@ -105,6 +105,15 @@ class ConfigSettingsHubPage extends StatelessWidget {
           }),
         ),
         WorkspaceHubEntry(
+          key: AppKeys.configAppearanceSectionButton,
+          title: l10n.appearance,
+          icon: Icons.palette_outlined,
+          onTap: throttledTap('config_hub_appearance', () {
+            context.read<ConfigCubit>().selectSection(ConfigSection.appearance);
+            context.push('/config/appearance');
+          }),
+        ),
+        WorkspaceHubEntry(
           key: AppKeys.configSessionSectionButton,
           title: l10n.session,
           icon: Icons.terminal_outlined,
@@ -187,6 +196,9 @@ class ConfigWorkspace extends StatelessWidget {
       ),
       body: switch (currentSection) {
         ConfigSection.layout => LayoutConfigWorkspace(showHeading: showHeading),
+        ConfigSection.appearance => AppearanceConfigWorkspace(
+          showHeading: showHeading,
+        ),
         ConfigSection.session => SessionConfigWorkspace(
           showHeading: showHeading,
         ),
@@ -224,6 +236,16 @@ class ConfigNavPanel extends StatelessWidget {
           onTap: throttledTap(
             'config_nav_layout',
             () => onSelectSection(ConfigSection.layout),
+          ),
+        ),
+        WorkspaceHubEntry(
+          key: AppKeys.configAppearanceSectionButton,
+          title: l10n.appearance,
+          icon: Icons.palette_outlined,
+          selected: section == ConfigSection.appearance,
+          onTap: throttledTap(
+            'config_nav_appearance',
+            () => onSelectSection(ConfigSection.appearance),
           ),
         ),
         WorkspaceHubEntry(

@@ -102,8 +102,8 @@ abstract final class AppDropdownDecorations {
     TextStyle? headerStyle,
     TextStyle? hintStyle,
     TextStyle? listItemStyle,
-    FontWeight headerFontWeight = FontWeight.w600,
-    FontWeight? listItemFontWeight = FontWeight.w500,
+    FontWeight? headerFontWeight,
+    FontWeight? listItemFontWeight,
     Widget? closedSuffixIcon,
     Widget? expandedSuffixIcon,
     double suffixIconSize = AppIconSizes.md,
@@ -135,17 +135,16 @@ abstract final class AppDropdownDecorations {
     return AppDropdownDecoration(
       closedFillColor: closedFillColor ?? Colors.transparent,
       expandedFillColor: expandedFillColor ?? hoverBg,
-      closedBorder:
-          closedBorder ?? Border.all(color: outlineVariant, width: 1),
-      expandedBorder:
-          expandedBorder ?? Border.all(color: cs.primary, width: 1),
+      closedBorder: closedBorder ?? Border.all(color: outlineVariant, width: 1),
+      expandedBorder: expandedBorder ?? Border.all(color: cs.primary, width: 1),
       closedBorderRadius: buttonRadius,
       expandedBorderRadius: buttonRadius,
       buttonHoverColor: buttonHoverColor ?? hoverBg,
       menuFillColor: menuFillColor ?? cs.workspaceCard,
       menuBorder: menuBorder ?? Border.all(color: outlineVariant),
       menuBorderRadius: BorderRadius.circular(menuBorderRadius),
-      expandedShadow: expandedShadow ??
+      expandedShadow:
+          expandedShadow ??
           [
             BoxShadow(
               color: Colors.black.withValues(
@@ -157,27 +156,31 @@ abstract final class AppDropdownDecorations {
               offset: expandedShadowOffset,
             ),
           ],
-      headerStyle: headerStyle ??
+      headerStyle:
+          headerStyle ??
           dropdownFieldTextStyle(
             context,
             color: onSurface,
             fontWeight: headerFontWeight,
           ),
       hintStyle: hintStyle ?? dropdownHintTextStyle(context),
-      listItemStyle: listItemStyle ??
+      listItemStyle:
+          listItemStyle ??
           dropdownFieldTextStyle(
             context,
             color: onSurface,
             fontWeight: listItemFontWeight,
           ),
-      closedSuffixIcon: closedSuffixIcon ??
+      closedSuffixIcon:
+          closedSuffixIcon ??
           _suffixIcon(
             Icons.expand_more_rounded,
             onSurface,
             suffixIconSize,
             suffixIconOpacity,
           ),
-      expandedSuffixIcon: expandedSuffixIcon ??
+      expandedSuffixIcon:
+          expandedSuffixIcon ??
           _suffixIcon(
             Icons.expand_less_rounded,
             onSurface,

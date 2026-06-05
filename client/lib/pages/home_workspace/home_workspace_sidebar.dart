@@ -89,10 +89,7 @@ class _HomeWorkspaceSidebarState extends State<HomeWorkspaceSidebar> {
             ),
           ),
           const SizedBox(height: 12),
-          Divider(
-            height: 1,
-            color: cs.outlineVariant.withValues(alpha: 0.5),
-          ),
+          Divider(height: 1, color: cs.outlineVariant.withValues(alpha: 0.5)),
           const SizedBox(height: 8),
           Padding(
             padding: const EdgeInsets.fromLTRB(32, 0, 32, 0),
@@ -232,15 +229,7 @@ class _SectionHeader extends StatelessWidget {
           children: [
             Icon(icon, size: AppIconSizes.md, color: cs.onSurfaceVariant),
             const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                label,
-                style: styles.prominent.copyWith(
-                  color: cs.onSurface,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
+            Expanded(child: Text(label, style: styles.prominent)),
             AnimatedRotation(
               turns: expanded ? 0 : -0.25,
               duration: const Duration(milliseconds: 180),

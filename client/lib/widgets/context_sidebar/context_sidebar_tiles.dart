@@ -53,7 +53,11 @@ class _TeamConfigTile extends StatelessWidget {
           padding: const EdgeInsets.all(10),
           child: Row(
             children: [
-              Icon(Icons.groups_2_outlined, size: AppIconSizes.md, color: textBase),
+              Icon(
+                Icons.groups_2_outlined,
+                size: AppIconSizes.md,
+                color: textBase,
+              ),
               const SizedBox(width: 10),
               Text(context.l10n.teamConfig),
             ],
@@ -117,8 +121,6 @@ class _TeamSelector extends StatelessWidget {
       closedFillColor: cs.workspaceCard,
       expandedFillColor: cs.workspaceCard,
       borderRadius: 8,
-      headerFontWeight: FontWeight.w700,
-      listItemFontWeight: FontWeight.w600,
       suffixIconSize: AppIconSizes.md,
       expandedShadowBlurRadius: 22,
       expandedShadowOffset: const Offset(0, 10),
@@ -132,7 +134,8 @@ class _TeamSelector extends StatelessWidget {
       // InputDecorator below the closed header adds invisible height; top-align
       // a fixed-size add button with the visible field instead of stretching it.
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Expanded(
             child: AppDropdownField<TeamConfig>(
@@ -151,6 +154,7 @@ class _TeamSelector extends StatelessWidget {
           if (onAddTeam != null) ...[
             const SizedBox(width: 6),
             AppIconButton(
+              size: 42,
               icon: Icons.add,
               tooltip: l10n.addTeamTooltip,
               onTap: onAddTeam,
@@ -161,4 +165,3 @@ class _TeamSelector extends StatelessWidget {
     );
   }
 }
-

@@ -3,7 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../models/team_config.dart';
 
-enum ConfigSection { layout, session, cli, about, logs }
+enum ConfigSection { layout, appearance, session, cli, about, logs }
 
 class ConfigState extends Equatable {
   const ConfigState({
@@ -16,6 +16,7 @@ class ConfigState extends Equatable {
 
   String get title => switch (section) {
     ConfigSection.layout => 'Layout Configuration',
+    ConfigSection.appearance => 'Appearance Configuration',
     ConfigSection.session => 'Session Configuration',
     ConfigSection.cli => 'CLI Configuration',
     ConfigSection.about => 'About',
@@ -24,6 +25,7 @@ class ConfigState extends Equatable {
 
   String get breadcrumb => switch (section) {
     ConfigSection.layout => 'Config / Layout',
+    ConfigSection.appearance => 'Config / Appearance',
     ConfigSection.session => 'Config / Session',
     ConfigSection.cli => 'Config / CLI',
     ConfigSection.about => 'Config / About',

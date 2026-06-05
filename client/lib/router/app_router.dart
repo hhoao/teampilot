@@ -183,6 +183,12 @@ final appRouter = GoRouter(
           ),
         ),
         GoRoute(
+          path: '/config/appearance',
+          pageBuilder: (context, state) => const NoTransitionPage(
+            child: ConfigWorkspace(section: ConfigSection.appearance),
+          ),
+        ),
+        GoRoute(
           path: '/config/llm/:cli/provider/:providerName/models',
           redirect: (context, state) =>
               '/providers/${state.pathParameters['cli']}/provider/${state.pathParameters['providerName']}/models',

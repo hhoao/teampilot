@@ -13,6 +13,7 @@ import '../../theme/workspace_surface_layers.dart';
 import '../../utils/debounce/debounce.dart';
 import '../../utils/github_source_url.dart';
 import '../../widgets/github_details_button.dart';
+import '../../widgets/settings/workspace_settings_widgets.dart';
 import 'skill_management_cards.dart';
 
 class SkillInstalledSection extends StatelessWidget {
@@ -36,8 +37,7 @@ class SkillInstalledSection extends StatelessWidget {
               children: [
                 SkillCardHeader(
                   title: l10n.skillsInstalledCount(state.installed.length),
-                  trailing: Wrap(
-                    spacing: 8,
+                  trailing: CardHeaderActionRow(
                     children: [
                       if (state.updates.isNotEmpty)
                         FilledButton.tonalIcon(

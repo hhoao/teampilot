@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io' show Platform;
 
 import 'package:flutter/material.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
@@ -32,11 +33,7 @@ Future<T?> _windowManagerCall<T>(Future<T> Function() action) async {
 /// brand colors.
 /// An open project tab in the title bar.
 class HomeProjectTab {
-  const HomeProjectTab({
-    required this.id,
-    required this.name,
-    this.tooltip,
-  });
+  const HomeProjectTab({required this.id, required this.name, this.tooltip});
 
   final String id;
   final String name;
@@ -326,7 +323,7 @@ class _HomePill extends StatelessWidget {
   }
 }
 
-class _ProjectTab extends StatelessWidget {
+class _ProjectTab extends StatefulWidget {
   const _ProjectTab({
     required this.label,
     required this.tooltip,
@@ -342,67 +339,89 @@ class _ProjectTab extends StatelessWidget {
   final VoidCallback? onClose;
 
   @override
+  State<_ProjectTab> createState() => _ProjectTabState();
+}
+
+class _ProjectTabState extends State<_ProjectTab> {
+  var _hovered = false;
+
+  /// Touch platforms have no hover; keep tab chrome visible on Android.
+  bool get _showChrome => widget.active || _hovered || Platform.isAndroid;
+
+  @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final styles = AppTextStyles.of(context);
+    final active = widget.active;
     final Color fg = active ? cs.onSurface : cs.onSurfaceVariant;
     return Tooltip(
-      message: tooltip,
+      message: widget.tooltip,
       waitDuration: const Duration(milliseconds: 500),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(8),
-        child: Container(
-          constraints: const BoxConstraints(maxWidth: 200),
-          padding: const EdgeInsets.only(
-            left: 12,
-            right: 6,
-            top: 6,
-            bottom: 6,
-          ),
-          decoration: BoxDecoration(
-            color: active ? cs.surfaceContainerHigh : Colors.transparent,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(
-              color: active
-                  ? cs.outlineVariant.withValues(alpha: 0.7)
-                  : Colors.transparent,
+      child: MouseRegion(
+        onEnter: (_) => setState(() => _hovered = true),
+        onExit: (_) => setState(() => _hovered = false),
+        child: InkWell(
+          onTap: widget.onTap,
+          borderRadius: BorderRadius.circular(8),
+          child: Container(
+            constraints: const BoxConstraints(maxWidth: 200),
+            padding: const EdgeInsets.only(
+              left: 12,
+              right: 6,
+              top: 6,
+              bottom: 6,
             ),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                Icons.description_outlined,
-                size: AppIconSizes.md,
-                color: fg,
+            decoration: BoxDecoration(
+              color: active
+                  ? cs.surfaceContainerHigh
+                  : _hovered
+                  ? cs.onSurface.withValues(alpha: 0.05)
+                  : Colors.transparent,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: active
+                    ? cs.outlineVariant.withValues(alpha: 0.7)
+                    : Colors.transparent,
               ),
-              const SizedBox(width: 6),
-              Flexible(
-                child: Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: styles.bodySmall.copyWith(
-                    color: fg,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 4),
-              InkWell(
-                onTap: onClose,
-                borderRadius: BorderRadius.circular(5),
-                child: Padding(
-                  padding: const EdgeInsets.all(2),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _TabChromeSlot(
+                  visible: _showChrome,
                   child: Icon(
-                    Icons.close,
+                    Icons.description_outlined,
                     size: AppIconSizes.md,
-                    color: cs.onSurfaceVariant,
+                    color: fg,
                   ),
                 ),
-              ),
-            ],
+                const SizedBox(width: 12),
+                Flexible(
+                  child: Text(
+                    widget.label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: styles.bodySmall.copyWith(color: fg),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                _TabChromeSlot(
+                  visible: _showChrome,
+                  child: InkWell(
+                    onTap: widget.onClose,
+                    borderRadius: BorderRadius.circular(5),
+                    child: Padding(
+                      padding: const EdgeInsets.all(2),
+                      child: Icon(
+                        Icons.close,
+                        size: AppIconSizes.md,
+                        color: cs.onSurfaceVariant,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -410,12 +429,30 @@ class _ProjectTab extends StatelessWidget {
   }
 }
 
+/// Keeps tab chrome in the layout while hiding it visually until hover/active.
+class _TabChromeSlot extends StatelessWidget {
+  const _TabChromeSlot({required this.visible, required this.child});
+
+  final bool visible;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return IgnorePointer(
+      ignoring: !visible,
+      child: AnimatedOpacity(
+        opacity: visible ? 1 : 0,
+        duration: const Duration(milliseconds: 120),
+        curve: Curves.easeOut,
+        child: child,
+      ),
+    );
+  }
+}
+
 /// Overflow menu listing recently closed project tabs; opens on hover.
 class _RecentlyClosedOverflowButton extends StatefulWidget {
-  const _RecentlyClosedOverflowButton({
-    required this.entries,
-    this.onReopen,
-  });
+  const _RecentlyClosedOverflowButton({required this.entries, this.onReopen});
 
   final List<HomeClosedProjectEntry> entries;
   final ValueChanged<String>? onReopen;
@@ -533,8 +570,7 @@ class _RecentlyClosedOverflowButtonState
                                     ),
                                   ),
                             menuController: _menuController,
-                            onTap: () =>
-                                widget.onReopen?.call(entry.projectId),
+                            onTap: () => widget.onReopen?.call(entry.projectId),
                           ),
                       ],
                     ),

@@ -148,25 +148,18 @@ class TeamExtensionRow extends StatelessWidget {
                 ],
               ),
             ),
-            DropdownButton<ExtensionOverrideChoice>(
+            SettingsCompactDropdown<ExtensionOverrideChoice>(
               value: choice,
-              underline: const SizedBox.shrink(),
               onChanged: (c) {
                 if (c != null) onChoice(c);
               },
-              items: [
-                DropdownMenuItem(
-                  value: ExtensionOverrideChoice.followGlobal,
-                  child: Text(l10n.teamExtensionFollowGlobal),
+              entries: [
+                (
+                  ExtensionOverrideChoice.followGlobal,
+                  l10n.teamExtensionFollowGlobal,
                 ),
-                DropdownMenuItem(
-                  value: ExtensionOverrideChoice.forceOn,
-                  child: Text(l10n.teamExtensionForceOn),
-                ),
-                DropdownMenuItem(
-                  value: ExtensionOverrideChoice.forceOff,
-                  child: Text(l10n.teamExtensionForceOff),
-                ),
+                (ExtensionOverrideChoice.forceOn, l10n.teamExtensionForceOn),
+                (ExtensionOverrideChoice.forceOff, l10n.teamExtensionForceOff),
               ],
             ),
           ],

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../dropdown/app_dropdown_field.dart';
 import '../dropdown/app_dropdown_decoration.dart';
+import '../../theme/app_text_styles.dart';
 import '../../theme/workspace_surface_layers.dart';
 
 export '../../theme/workspace_surface_layers.dart';
@@ -202,6 +203,81 @@ class SettingsLabeledRow extends StatelessWidget {
             thickness: 1,
             color: cs.outlineVariant.withValues(alpha: 0.5),
           ),
+      ],
+    );
+  }
+}
+
+/// Single-line action buttons for management card headers.
+class CardHeaderActionRow extends StatelessWidget {
+  const CardHeaderActionRow({required this.children, super.key});
+
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        for (var i = 0; i < children.length; i++) ...[
+          if (i > 0) const SizedBox(width: 8),
+          children[i],
+        ],
+      ],
+    );
+  }
+}
+
+/// Title + optional trailing actions for skills/plugins/MCP cards.
+class ManagementCardHeader extends StatelessWidget {
+  const ManagementCardHeader({
+    required this.title,
+    this.trailing,
+    this.crossAxisAlignment = CrossAxisAlignment.start,
+    super.key,
+  });
+
+  final String title;
+  final Widget? trailing;
+  final CrossAxisAlignment crossAxisAlignment;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textBase = isDark ? Colors.white : const Color(0xFF111827);
+    final titleText = Text(
+      title,
+      maxLines: 2,
+      overflow: TextOverflow.ellipsis,
+      style: AppTextStyles.of(context).sectionTitle.copyWith(
+        fontWeight: FontWeight.w800,
+        color: textBase,
+      ),
+    );
+
+    if (trailing == null) {
+      return titleText;
+    }
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      crossAxisAlignment: crossAxisAlignment,
+      children: [
+        Flexible(
+          fit: FlexFit.loose,
+          child: Padding(
+            padding: const EdgeInsets.only(right: 12),
+            child: titleText,
+          ),
+        ),
+        Flexible(
+          fit: FlexFit.loose,
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            reverse: true,
+            child: trailing!,
+          ),
+        ),
       ],
     );
   }

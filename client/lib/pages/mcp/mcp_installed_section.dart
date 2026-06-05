@@ -7,6 +7,7 @@ import '../../l10n/l10n_extensions.dart';
 import '../../models/mcp_server.dart';
 import '../../services/mcp/mcp_credentials_store.dart';
 import '../../services/mcp/mcp_oauth_flow.dart';
+import '../../widgets/settings/workspace_settings_widgets.dart';
 import 'mcp_oauth_connect_dialog.dart';
 import 'mcp_shared_widgets.dart';
 
@@ -101,8 +102,7 @@ class _McpInstalledSectionState extends State<McpInstalledSection> {
         children: [
           McpCardHeader(
             title: l10n.mcpInstalledCount(servers.length),
-            trailing: Wrap(
-              spacing: 8,
+            trailing: CardHeaderActionRow(
               children: [
                 OutlinedButton.icon(
                   onPressed: toolbarBusy ? null : widget.onImport,

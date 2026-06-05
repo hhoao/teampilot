@@ -87,7 +87,6 @@ class _AppPopoverState extends State<AppPopover> {
     } else {
       _unregisterPopover();
     }
-    setState(() {});
   }
 
   @override

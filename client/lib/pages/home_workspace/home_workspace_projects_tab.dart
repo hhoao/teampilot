@@ -35,7 +35,10 @@ class HomeWorkspaceProjectsTab extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        HomeWorkspaceProjectsToolbar(gridView: gridView, onToggleView: onToggleView),
+        HomeWorkspaceProjectsToolbar(
+          gridView: gridView,
+          onToggleView: onToggleView,
+        ),
         const SizedBox(height: 16),
         Expanded(
           child: projects.isEmpty
@@ -53,7 +56,10 @@ class HomeWorkspaceProjectsTab extends StatelessWidget {
 }
 
 class HomeWorkspaceProjectsToolbar extends StatelessWidget {
-  const HomeWorkspaceProjectsToolbar({required this.gridView, required this.onToggleView});
+  const HomeWorkspaceProjectsToolbar({
+    required this.gridView,
+    required this.onToggleView,
+  });
 
   final bool gridView;
   final ValueChanged<bool> onToggleView;
@@ -63,9 +69,15 @@ class HomeWorkspaceProjectsToolbar extends StatelessWidget {
     final l10n = context.l10n;
     return Row(
       children: [
-        HomeWorkspaceProjectsViewToggle(gridView: gridView, onToggleView: onToggleView),
+        HomeWorkspaceProjectsViewToggle(
+          gridView: gridView,
+          onToggleView: onToggleView,
+        ),
         const SizedBox(width: 8),
-        HomeWorkspaceProjectsIconChip(icon: Icons.sort_rounded, onTap: () => _comingSoon(context)),
+        HomeWorkspaceProjectsIconChip(
+          icon: Icons.sort_rounded,
+          onTap: () => _comingSoon(context),
+        ),
         const Spacer(),
         Flexible(
           child: Align(
@@ -109,7 +121,10 @@ class HomeWorkspaceProjectsToolbar extends StatelessWidget {
 }
 
 class HomeWorkspaceProjectsViewToggle extends StatelessWidget {
-  const HomeWorkspaceProjectsViewToggle({required this.gridView, required this.onToggleView});
+  const HomeWorkspaceProjectsViewToggle({
+    required this.gridView,
+    required this.onToggleView,
+  });
 
   final bool gridView;
   final ValueChanged<bool> onToggleView;
@@ -179,7 +194,10 @@ class HomeWorkspaceProjectsToggleCell extends StatelessWidget {
 }
 
 class HomeWorkspaceProjectsIconChip extends StatelessWidget {
-  const HomeWorkspaceProjectsIconChip({required this.icon, required this.onTap});
+  const HomeWorkspaceProjectsIconChip({
+    required this.icon,
+    required this.onTap,
+  });
 
   final IconData icon;
   final VoidCallback onTap;
@@ -270,13 +288,7 @@ class HomeWorkspaceProjectsPrimaryAction extends StatelessWidget {
           children: [
             Icon(icon, size: AppIconSizes.md, color: cs.onPrimary),
             const SizedBox(width: 7),
-            Text(
-              label,
-              style: styles.body.copyWith(
-                color: cs.onPrimary,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
+            Text(label, style: styles.body.copyWith(color: cs.onPrimary)),
           ],
         ),
       ),

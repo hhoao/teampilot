@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -157,7 +156,7 @@ class SkillRepoRow extends StatelessWidget {
                     repo.githubUrl,
                     style: AppTextStyles.of(
                       context,
-                    ).bodyStrong.copyWith(color: textBase),
+                    ).body.copyWith(color: textBase),
                   ),
                   const SizedBox(height: 2),
                   Text(

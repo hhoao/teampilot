@@ -173,14 +173,14 @@ const _darkOnSurfaceSoften = 0.14;
 /// Secondary / muted copy is softened a bit more than body.
 const _darkOnSurfaceVariantSoften = 0.34;
 
-/// Light mode: nudge foreground toward ink for slightly softer contrast.
-const _lightOnSurfaceDeepen = 0.10;
-const _lightOnSurfaceVariantDeepen = 0.15;
+/// Light mode: pull foreground toward [surface] for softer contrast on white.
+const _lightOnSurfaceSoften = 0.12;
+const _lightOnSurfaceVariantSoften = 0.22;
 
 ColorScheme _softenedForegroundColorScheme(ColorScheme scheme) {
+  final base = scheme.surface;
+  Color soften(Color c, double t) => Color.lerp(c, base, t)!;
   if (scheme.brightness == Brightness.dark) {
-    final base = scheme.surface;
-    Color soften(Color c, double t) => Color.lerp(c, base, t)!;
     return scheme.copyWith(
       onSurface: soften(scheme.onSurface, _darkOnSurfaceSoften),
       onSurfaceVariant: soften(
@@ -189,13 +189,11 @@ ColorScheme _softenedForegroundColorScheme(ColorScheme scheme) {
       ),
     );
   }
-  const ink = Color(0xFF121212);
-  Color deepen(Color c, double t) => Color.lerp(c, ink, t)!;
   return scheme.copyWith(
-    onSurface: deepen(scheme.onSurface, _lightOnSurfaceDeepen),
-    onSurfaceVariant: deepen(
+    onSurface: soften(scheme.onSurface, _lightOnSurfaceSoften),
+    onSurfaceVariant: soften(
       scheme.onSurfaceVariant,
-      _lightOnSurfaceVariantDeepen,
+      _lightOnSurfaceVariantSoften,
     ),
   );
 }
