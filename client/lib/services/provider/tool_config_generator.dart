@@ -162,6 +162,8 @@ requires_openai_auth = true
     'config',
     'configToml',
     'config_toml',
+    'upstreamConfigToml',
+    'upstream_config_toml',
     'disable_response_storage',
     'model',
     'model_provider',

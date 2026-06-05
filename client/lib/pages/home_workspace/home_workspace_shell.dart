@@ -144,9 +144,7 @@ class _HomeWorkspaceShellState extends State<HomeWorkspaceShell> {
             onSelectTab: _selectTab,
             onCloseTab: _closeTab,
           ),
-          Expanded(
-            child: SafeArea(top: false, child: widget.child),
-          ),
+          Expanded(child: SafeArea(top: false, child: widget.child)),
         ],
       ),
     );

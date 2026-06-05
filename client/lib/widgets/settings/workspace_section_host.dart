@@ -4,7 +4,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../cubits/layout_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../services/app/platform_utils.dart';
-import '../../theme/workspace_surface_layers.dart';
 import 'workspace_hub_shell.dart';
 import 'workspace_section_navigation.dart';
 
@@ -28,10 +27,8 @@ class WorkspaceHubDesktopShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
     return Container(
       key: pageKey,
-      color: cs.workspacePage,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -140,22 +137,18 @@ class WorkspaceCompositeNavPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return ColoredBox(
-      color: cs.workspacePage,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(24, 28, 18, 24),
-        child: WorkspaceHubNavList(
-          entries: primaryEntries,
-          animateEntries: true,
-          trailingChildren: [
-            for (final child in trailingChildren)
-              Padding(
-                padding: const EdgeInsets.only(left: 14, right: 2),
-                child: child,
-              ),
-          ],
-        ),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 28, 18, 24),
+      child: WorkspaceHubNavList(
+        entries: primaryEntries,
+        animateEntries: true,
+        trailingChildren: [
+          for (final child in trailingChildren)
+            Padding(
+              padding: const EdgeInsets.only(left: 14, right: 2),
+              child: child,
+            ),
+        ],
       ),
     );
   }

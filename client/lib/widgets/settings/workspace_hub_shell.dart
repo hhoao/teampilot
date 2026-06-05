@@ -55,7 +55,6 @@ class WorkspaceHubTitleBar extends StatelessWidget {
           ? const EdgeInsets.fromLTRB(20, 20, 20, 16)
           : const EdgeInsets.fromLTRB(40, 42, 40, 28),
       decoration: BoxDecoration(
-        color: cs.workspacePage,
         border: Border(
           bottom: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.5)),
         ),
@@ -273,7 +272,6 @@ class WorkspaceHubNavList extends StatelessWidget {
     }
 
     return Container(
-      color: cs.workspacePage,
       child: ListView(
         shrinkWrap: shrinkWrap,
         physics: scrollPhysics,

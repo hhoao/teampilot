@@ -91,58 +91,55 @@ class _HomeWorkspaceContentState extends State<HomeWorkspaceContent> {
     ];
     final activeSection = _sections[_tabIndex];
 
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(44, 48, 42, 18),
-      child: ColoredBox(
-        color: cs.workspaceCard,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            HomeWorkspaceTeamHeader(team: team),
-            const SizedBox(height: 14),
-            HomeWorkspaceContentTabBar(
-              tabs: tabs,
-              selectedIndex: _tabIndex,
-              onSelect: (i) => setState(() => _tabIndex = i),
-            ),
-            Divider(height: 1, color: cs.outlineVariant.withValues(alpha: 0.5)),
-            const SizedBox(height: 16),
-            Expanded(
-              child:
-                  (activeSection == null
-                          ? HomeWorkspaceProjectsTab(
-                              projects: teamProjects,
-                              sessions: sessions,
-                              gridView: _gridView,
-                              onToggleView: (grid) =>
-                                  setState(() => _gridView = grid),
-                            )
-                          : HomeWorkspaceTeamTab(
-                              key: ValueKey(
-                                'home-team-tab-${activeSection.name}',
-                              ),
-                              section: activeSection,
-                              team: team,
-                              cubit: teamCubit,
-                              initialMemberId:
-                                  activeSection == TeamConfigSection.members
-                                  ? widget.initialMemberId
-                                  : null,
-                              onSelectGlobalView: widget.onSelectGlobalView,
-                            ))
-                      // Match the global-navigation section transition: fade + slight
-                      // slide-in, replayed whenever the selected tab changes.
-                      .animate(key: ValueKey('home-content-tab-$_tabIndex'))
-                      .fadeIn(duration: 180.ms, curve: Curves.easeOut)
-                      .slideX(
-                        begin: 0.025,
-                        end: 0,
-                        duration: 220.ms,
-                        curve: Curves.easeOutCubic,
-                      ),
-            ),
-          ],
-        ),
+    return ColoredBox(
+      color: cs.workspaceCard,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          HomeWorkspaceTeamHeader(team: team),
+          const SizedBox(height: 14),
+          HomeWorkspaceContentTabBar(
+            tabs: tabs,
+            selectedIndex: _tabIndex,
+            onSelect: (i) => setState(() => _tabIndex = i),
+          ),
+          Divider(height: 1, color: cs.outlineVariant.withValues(alpha: 0.5)),
+          const SizedBox(height: 16),
+          Expanded(
+            child:
+                (activeSection == null
+                        ? HomeWorkspaceProjectsTab(
+                            projects: teamProjects,
+                            sessions: sessions,
+                            gridView: _gridView,
+                            onToggleView: (grid) =>
+                                setState(() => _gridView = grid),
+                          )
+                        : HomeWorkspaceTeamTab(
+                            key: ValueKey(
+                              'home-team-tab-${activeSection.name}',
+                            ),
+                            section: activeSection,
+                            team: team,
+                            cubit: teamCubit,
+                            initialMemberId:
+                                activeSection == TeamConfigSection.members
+                                ? widget.initialMemberId
+                                : null,
+                            onSelectGlobalView: widget.onSelectGlobalView,
+                          ))
+                    // Match the global-navigation section transition: fade + slight
+                    // slide-in, replayed whenever the selected tab changes.
+                    .animate(key: ValueKey('home-content-tab-$_tabIndex'))
+                    .fadeIn(duration: 180.ms, curve: Curves.easeOut)
+                    .slideX(
+                      begin: 0.025,
+                      end: 0,
+                      duration: 220.ms,
+                      curve: Curves.easeOutCubic,
+                    ),
+          ),
+        ],
       ),
     );
   }

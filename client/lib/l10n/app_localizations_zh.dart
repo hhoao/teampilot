@@ -477,7 +477,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get homeWorkspaceNewTeam => '新建团队';
 
   @override
-  String get homeWorkspaceOrganization => '组织';
+  String get homeWorkspaceProviders => '供应商';
 
   @override
   String get homeWorkspaceTeamProjects => '团队项目';

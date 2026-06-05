@@ -5,14 +5,12 @@ import 'package:go_router/go_router.dart';
 import '../../cubits/config_cubit.dart';
 import '../../cubits/team_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
-import '../../models/app_provider_config.dart';
 import '../../utils/app_keys.dart';
 import '../../utils/debounce/debounce.dart';
 import '../../widgets/settings/settings_dialog.dart';
 import '../../widgets/settings/workspace_hub_shell.dart';
 import '../../widgets/settings/workspace_section_host.dart';
 import '../about_page.dart';
-import '../llm_config/llm_config_workspace.dart';
 import '../system/log_config_workspace.dart';
 import 'appearance_config_section.dart';
 import 'layout_config_section.dart';
@@ -21,8 +19,8 @@ import 'session_config_section.dart';
 /// Opens the workspace quick-settings modal from anywhere (e.g. the title bar).
 ///
 /// Self-contained sections (layout/appearance, session) render inline; sections
-/// that depend on the `/config/*` route tree (LLM providers, about) close the
-/// dialog and navigate to the full settings route instead.
+/// that depend on the `/config/*` route tree (about) close the dialog and
+/// navigate to the full settings route instead.
 Future<void> showWorkspaceSettingsDialog(BuildContext context) {
   final l10n = context.l10n;
 
@@ -60,13 +58,6 @@ Future<void> showWorkspaceSettingsDialog(BuildContext context) {
         body: const SessionConfigWorkspace(showHeading: false),
       ),
       SettingsDialogEntry(
-        icon: Icons.memory_outlined,
-        navLabel: l10n.llmConfig,
-        title: l10n.appProviderCatalogLabel,
-        subtitle: l10n.appProviderCatalogHint,
-        body: const LlmConfigWorkspace(showHeading: false),
-      ),
-      SettingsDialogEntry(
         icon: Icons.info_outline,
         navLabel: l10n.aboutTitle,
         title: l10n.aboutTitle,
@@ -96,15 +87,6 @@ class ConfigSettingsHubPage extends StatelessWidget {
       title: l10n.settings,
       subtitle: l10n.settingsPageSubtitle,
       entries: [
-        WorkspaceHubEntry(
-          key: AppKeys.configLlmSectionButton,
-          title: l10n.llmConfig,
-          icon: Icons.memory_outlined,
-          onTap: throttledTap('config_hub_llm', () {
-            context.read<ConfigCubit>().selectSection(ConfigSection.llm);
-            context.push('/config/llm');
-          }),
-        ),
         WorkspaceHubEntry(
           key: AppKeys.configLayoutSectionButton,
           title: l10n.layout,
@@ -149,14 +131,10 @@ class ConfigSettingsHubPage extends StatelessWidget {
 class ConfigWorkspace extends StatelessWidget {
   const ConfigWorkspace({
     required this.section,
-    this.initialProviderCli,
-    this.showAddProviderOnOpen = false,
     super.key,
   });
 
   final ConfigSection section;
-  final AppProviderCli? initialProviderCli;
-  final bool showAddProviderOnOpen;
 
   @override
   Widget build(BuildContext context) {
@@ -192,11 +170,6 @@ class ConfigWorkspace extends StatelessWidget {
       ),
       body: switch (currentSection) {
         ConfigSection.layout => LayoutConfigWorkspace(showHeading: showHeading),
-        ConfigSection.llm => LlmConfigWorkspace(
-          initialCli: initialProviderCli,
-          showAddProviderOnOpen: showAddProviderOnOpen,
-          showHeading: showHeading,
-        ),
         ConfigSection.session => SessionConfigWorkspace(
           showHeading: showHeading,
         ),
@@ -233,16 +206,6 @@ class ConfigNavPanel extends StatelessWidget {
           onTap: throttledTap(
             'config_nav_layout',
             () => onSelectSection(ConfigSection.layout),
-          ),
-        ),
-        WorkspaceHubEntry(
-          key: AppKeys.configLlmSectionButton,
-          title: l10n.llmConfig,
-          icon: Icons.memory_outlined,
-          selected: section == ConfigSection.llm,
-          onTap: throttledTap(
-            'config_nav_llm',
-            () => onSelectSection(ConfigSection.llm),
           ),
         ),
         WorkspaceHubEntry(

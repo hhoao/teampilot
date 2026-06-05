@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../cubits/team_cubit.dart';
@@ -39,6 +40,8 @@ class _HomeWorkspacePageState extends State<HomeWorkspacePage> {
     final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final globalView = _globalView;
+    final teamId = context.watch<TeamCubit>().state.selectedTeam?.id ?? 'none';
+    final paneKey = ValueKey(globalView?.name ?? 'team-$teamId');
 
     final body = Row(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -52,14 +55,25 @@ class _HomeWorkspacePageState extends State<HomeWorkspacePage> {
           },
         ),
         Expanded(
-          child: globalView == null
-              ? HomeWorkspaceContent(
-                  initialSection: widget.initialSection,
-                  initialMemberId: widget.initialMemberId,
-                  onSelectGlobalView: (view) =>
-                      setState(() => _globalView = view),
-                )
-              : HomeWorkspaceGlobalSection(view: globalView),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(44, 48, 42, 18),
+            child: (globalView == null
+                    ? HomeWorkspaceContent(
+                        initialSection: widget.initialSection,
+                        initialMemberId: widget.initialMemberId,
+                        onSelectGlobalView: (view) =>
+                            setState(() => _globalView = view),
+                      )
+                    : HomeWorkspaceGlobalSection(view: globalView))
+                .animate(key: paneKey)
+                .fadeIn(duration: 180.ms, curve: Curves.easeOut)
+                .slideX(
+                  begin: 0.025,
+                  end: 0,
+                  duration: 220.ms,
+                  curve: Curves.easeOutCubic,
+                ),
+          ),
         ),
       ],
     );

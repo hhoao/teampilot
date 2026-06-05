@@ -42,7 +42,9 @@ class AppKeys {
     'config-members-section-button',
   );
   static const configLayoutSectionButton = Key('config-layout-section-button');
-  static const configLlmSectionButton = Key('config-llm-section-button');
+  static const homeWorkspaceProvidersButton = Key(
+    'home-workspace-providers-button',
+  );
   static const configSessionSectionButton = Key(
     'config-session-section-button',
   );

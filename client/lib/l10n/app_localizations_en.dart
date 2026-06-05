@@ -495,7 +495,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homeWorkspaceNewTeam => 'New Team';
 
   @override
-  String get homeWorkspaceOrganization => 'Organization';
+  String get homeWorkspaceProviders => 'Providers';
 
   @override
   String get homeWorkspaceTeamProjects => 'Projects';

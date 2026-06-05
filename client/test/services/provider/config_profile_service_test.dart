@@ -37,6 +37,32 @@ Future<void> _seedClaudeProvider(
   ]);
 }
 
+Future<void> _seedCodexProvider(
+  String basePath, {
+  required String id,
+  required String configToml,
+  String apiKey = 'sk-codex',
+  Map<String, Object?> meta = const {},
+}) async {
+  final repository = AppProviderRepository(basePath: basePath);
+  await repository.saveProviders(AppProviderCli.codex, [
+    AppProviderConfig(
+      id: id,
+      cli: AppProviderCli.codex,
+      name: id,
+      apiKey: apiKey,
+      baseUrl: 'http://127.0.0.1:15721/v1',
+      defaultModel: 'deepseek-v4-flash',
+      category: AppProviderCategory.thirdParty,
+      config: {
+        'auth': {'OPENAI_API_KEY': apiKey},
+        'configToml': configToml,
+        if (meta.isNotEmpty) 'meta': meta,
+      },
+    ),
+  ]);
+}
+
 String _sessionClaudeDir(String base, String teamId, String sessionId) =>
     p.join(
       base,
@@ -189,11 +215,41 @@ void main() {
     expect(settingsJson['skipDangerousModePermissionPrompt'], isTrue);
   });
 
-  test('prepareTeamLaunch for codex returns CODEX_HOME only', () async {
-    final env = (await service.prepareTeamLaunch(
+  test('prepareTeamLaunch provisions codex provider auth and config', () async {
+    const providerToml = '''
+model_provider = "custom"
+model = "deepseek-v4-flash"
+
+[model_providers.custom]
+base_url = "http://127.0.0.1:15721/v1"
+wire_api = "responses"
+requires_openai_auth = true
+''';
+    await _seedCodexProvider(
+      base.path,
+      id: 'deepseek',
+      configToml: providerToml,
+      meta: {'proxyTakeover': true},
+    );
+
+    final outcome = await service.prepareTeamLaunch(
       teamId: 'team-a',
       cli: TeamCli.codex,
-    )).environment;
+      team: TeamConfig(
+        id: 'team-a',
+        name: 'team-a',
+        cli: TeamCli.codex,
+        providerIdsByTool: const {'codex': 'deepseek'},
+        members: const [
+          TeamMemberConfig(id: 'worker', name: 'worker', provider: 'deepseek'),
+        ],
+      ),
+      member: const TeamMemberConfig(
+        id: 'worker',
+        name: 'worker',
+        provider: 'deepseek',
+      ),
+    );
 
     final codexDir = p.join(
       base.path,
@@ -204,10 +260,71 @@ void main() {
       configProfileAdhocSessionId,
       'codex',
     );
-    expect(env.keys, ['CODEX_HOME']);
-    expect(env['CODEX_HOME'], codexDir);
-    expect(File(p.join(codexDir, 'auth.json')).existsSync(), isFalse);
+    expect(outcome.environment['CODEX_HOME'], codexDir);
+    expect(outcome.warnings, isEmpty);
+
+    final auth =
+        jsonDecode(
+              await File(p.join(codexDir, 'auth.json')).readAsString(),
+            )
+            as Map<String, Object?>;
+    expect(auth['OPENAI_API_KEY'], 'PROXY_MANAGED');
+
+    final toml = await File(p.join(codexDir, 'config.toml')).readAsString();
+    expect(toml, contains('127.0.0.1:15721'));
+    expect(toml, contains('deepseek-v4-flash'));
   });
+
+  test(
+    'prepareTeamLaunch merges team-bus overlay into codex config for mixed teams',
+    () async {
+      const providerToml = '''
+model_provider = "custom"
+model = "gpt-test"
+
+[model_providers.custom]
+base_url = "https://api.example.com/v1"
+''';
+      await _seedCodexProvider(base.path, id: 'p1', configToml: providerToml);
+
+      await service.prepareTeamLaunch(
+        teamId: 'team-a',
+        runtimeTeamId: 'sess-mixed-codex',
+        cli: TeamCli.codex,
+        team: TeamConfig(
+          id: 'team-a',
+          name: 'team-a',
+          cli: TeamCli.codex,
+          teamMode: TeamMode.mixed,
+          providerIdsByTool: const {'codex': 'p1'},
+          members: const [
+            TeamMemberConfig(id: 'worker', name: 'worker', provider: 'p1'),
+          ],
+        ),
+        member: const TeamMemberConfig(
+          id: 'worker',
+          name: 'worker',
+          provider: 'p1',
+        ),
+        busIdleUrl: 'http://127.0.0.1:59999/idle',
+      );
+
+      final codexDir = p.join(
+        base.path,
+        'config-profiles',
+        'teams',
+        'team-a',
+        'members',
+        'sess-mixed-codex',
+        'worker',
+        'codex',
+      );
+      final toml = await File(p.join(codexDir, 'config.toml')).readAsString();
+      expect(toml, contains('https://api.example.com/v1'));
+      expect(toml, contains('[mcp_servers.teammate-bus]'));
+      expect(toml, contains('http://127.0.0.1:59999/mcp'));
+    },
+  );
 
   test('prepareTeamLaunch writes role prompt and injects append env', () async {
     const sessionId = 'sess-role-prompt';

@@ -3,7 +3,7 @@ import '../../models/app_provider_config.dart';
 
 // LLM 配置页统一留白（8dp 网格）。
 
-String llmCliRoute(AppProviderCli cli) => '/config/llm/${cli.value}';
+String llmCliRoute(AppProviderCli cli) => '/providers/${cli.value}';
 
 String llmProviderAddRoute(AppProviderCli cli) =>
     '${llmCliRoute(cli)}/provider/add';

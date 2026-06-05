@@ -28,7 +28,7 @@ class AndroidShellChrome {
     final l10n = context.l10n;
     if (path == '/config') return l10n.settings;
     if (path == '/config/layout') return l10n.layout;
-    if (path == '/config/llm' || _isLlmCliRoot(path)) return l10n.llmConfig;
+    if (path == '/providers' || _isLlmCliRoot(path)) return l10n.llmConfig;
     if (_isLlmProviderDetail(path)) {
       if (path.endsWith('/edit')) return l10n.editProvider;
       if (path.endsWith('/add')) return l10n.addProvider;
@@ -83,7 +83,7 @@ class AndroidShellChrome {
         context.pop();
         return;
       }
-      context.go(_llmCliRootFromPath(path) ?? '/config/llm');
+      context.go(_llmCliRootFromPath(path) ?? '/providers');
       return;
     }
     if (_isConfigDetail(path) || path == '/config') {
@@ -111,7 +111,7 @@ class AndroidShellChrome {
       path.startsWith('/config/') && path.length > '/config/'.length;
 
   static bool _isLlmProviderDetail(String path) =>
-      path.startsWith('/config/llm/') && path.contains('/provider/');
+      path.startsWith('/providers/') && path.contains('/provider/');
 
   static String? _llmProviderNameFromPath(String path) {
     final marker = '/provider/';
@@ -131,15 +131,15 @@ class AndroidShellChrome {
 
   static bool _isLlmCliRoot(String path) {
     final parts = path.split('/').where((p) => p.isNotEmpty).toList();
-    return parts.length == 3 && parts[0] == 'config' && parts[1] == 'llm';
+    return parts.length == 2 && parts[0] == 'providers';
   }
 
   static String? _llmCliRootFromPath(String path) {
     final parts = path.split('/').where((p) => p.isNotEmpty).toList();
-    if (parts.length < 3 || parts[0] != 'config' || parts[1] != 'llm') {
+    if (parts.length < 2 || parts[0] != 'providers') {
       return null;
     }
-    return '/config/llm/${parts[2]}';
+    return '/providers/${parts[1]}';
   }
 
   static bool _isTeamConfigDetail(String path) =>

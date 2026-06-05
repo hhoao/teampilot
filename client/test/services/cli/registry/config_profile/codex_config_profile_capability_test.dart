@@ -1,9 +1,10 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/cli/registry/config_profile/codex_config_profile_capability.dart';
+import 'package:teampilot/services/provider/codex_team_bus_overlay.dart';
 
 void main() {
-  group('CodexConfigProfileCapability.buildCodexConfigToml', () {
-    final toml = CodexConfigProfileCapability.buildCodexConfigToml(
+  group('CodexTeamBusOverlay', () {
+    final toml = CodexTeamBusOverlay.build(
       memberId: 'worker-1',
       port: 54321,
     );
@@ -17,8 +18,7 @@ void main() {
     test('keeps the bus tool timeout far above any real idle wait', () {
       expect(
         toml,
-        contains('tool_timeout_sec = '
-            '${CodexConfigProfileCapability.busToolTimeoutSec}'),
+        contains('tool_timeout_sec = ${CodexTeamBusOverlay.busToolTimeoutSec}'),
       );
     });
 

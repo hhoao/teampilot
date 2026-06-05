@@ -449,29 +449,24 @@ void main() {
     await tester.tap(find.byKey(AppKeys.sidebarSettingsButton));
     await pumpPhaseTransitions(tester);
 
-    expect(
-      find.text('Manage FlashskyAI team and model settings.'),
+    expect(find.text('Manage FlashskyAI team and model settings.'),
       findsOneWidget,
     );
     expect(find.byIcon(Icons.groups_2_outlined), findsOneWidget);
-    expect(find.byIcon(Icons.memory_outlined), findsOneWidget);
+    expect(find.byIcon(Icons.memory_outlined), findsNothing);
   });
 
   testWidgets('settings pages use the global component theme', (tester) async {
     final teamCubit = await createTeamCubitInTest(tester);
     await pumpDesktopApp(tester, teamCubit);
 
-    await tester.tap(find.byKey(AppKeys.sidebarSettingsButton));
+    appRouter.go('/providers/claude');
     await pumpPhaseTransitions(tester);
 
-    final settingsCtx = tester.element(find.byKey(AppKeys.configWorkspace));
-    final settingsTheme = Theme.of(settingsCtx);
-    final cs = settingsTheme.colorScheme;
+    final providerCtx = tester.element(find.byKey(AppKeys.llmConfigWorkspace));
+    final providerTheme = Theme.of(providerCtx);
+    final cs = providerTheme.colorScheme;
     expect(cs.primary, themePresetSwatchPrimary(kDefaultThemeColorPreset));
-    expect(settingsTheme.filledButtonTheme.style, isNotNull);
-
-    await tester.tap(find.byKey(AppKeys.configLlmSectionButton));
-    await pumpPhaseTransitions(tester);
 
     final providerList = tester.widget<Material>(
       find.byKey(AppKeys.llmProviderList),
@@ -483,9 +478,7 @@ void main() {
     final teamCubit = await createTeamCubitInTest(tester);
     await pumpDesktopApp(tester, teamCubit);
 
-    await tester.tap(find.byKey(AppKeys.sidebarSettingsButton));
-    await pumpPhaseTransitions(tester);
-    await tester.tap(find.byKey(AppKeys.configLlmSectionButton));
+    appRouter.go('/providers/claude');
     await pumpPhaseTransitions(tester);
 
     await tester.tap(
@@ -650,8 +643,8 @@ void main() {
     final cubit = ConfigCubit();
     expect(cubit.state.section, ConfigSection.layout);
 
-    cubit.selectSection(ConfigSection.llm);
-    expect(cubit.state.section, ConfigSection.llm);
+    cubit.selectSection(ConfigSection.session);
+    expect(cubit.state.section, ConfigSection.session);
 
     cubit.selectSection(ConfigSection.layout);
     expect(cubit.state.section, ConfigSection.layout);

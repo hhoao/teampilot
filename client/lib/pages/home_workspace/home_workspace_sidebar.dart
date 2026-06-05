@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:go_router/go_router.dart';
-
 import '../../cubits/team_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/team_config.dart';
 import '../../theme/app_text_styles.dart';
 import '../../theme/workspace_surface_layers.dart';
+import '../../utils/app_keys.dart';
 import 'home_workspace_global_section.dart';
 import 'home_workspace_new_team_dialog.dart';
 
@@ -157,9 +156,11 @@ class _HomeWorkspaceSidebarState extends State<HomeWorkspaceSidebar> {
           Divider(height: 1, color: cs.outlineVariant.withValues(alpha: 0.5)),
           Padding(
             padding: const EdgeInsets.all(12),
-            child: _OrganizationButton(
-              label: l10n.homeWorkspaceOrganization,
-              onTap: () => context.go('/team-config'),
+            child: _ProvidersButton(
+              key: AppKeys.homeWorkspaceProvidersButton,
+              label: l10n.homeWorkspaceProviders,
+              active: activeGlobalView == HomeWorkspaceGlobalView.providers,
+              onTap: () => onGlobal?.call(HomeWorkspaceGlobalView.providers),
             ),
           ),
         ],
@@ -376,36 +377,56 @@ class _ShortcutRowState extends State<_ShortcutRow> {
   }
 }
 
-class _OrganizationButton extends StatelessWidget {
-  const _OrganizationButton({required this.label, required this.onTap});
+class _ProvidersButton extends StatelessWidget {
+  const _ProvidersButton({
+    required this.label,
+    required this.onTap,
+    this.active = false,
+    super.key,
+  });
 
   final String label;
   final VoidCallback onTap;
+  final bool active;
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final styles = AppTextStyles.of(context);
+    final Color fg = active ? cs.primary : cs.onSurface;
+    final Color background = active
+        ? cs.primary.withValues(alpha: 0.14)
+        : cs.surfaceContainer;
+    final Color borderColor = active
+        ? cs.primary.withValues(alpha: 0.45)
+        : cs.outlineVariant.withValues(alpha: 0.7);
+
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(8),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
         decoration: BoxDecoration(
-          color: cs.surfaceContainer,
+          color: background,
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.7)),
+          border: Border.all(color: borderColor),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
-              Icons.apartment_rounded,
+              Icons.memory_outlined,
               size: AppIconSizes.md,
-              color: cs.onSurfaceVariant,
+              color: active ? cs.primary : cs.onSurfaceVariant,
             ),
             const SizedBox(width: 8),
-            Text(label, style: styles.body.copyWith(color: cs.onSurface)),
+            Text(
+              label,
+              style: styles.body.copyWith(
+                color: fg,
+                fontWeight: active ? FontWeight.w600 : FontWeight.w400,
+              ),
+            ),
           ],
         ),
       ),

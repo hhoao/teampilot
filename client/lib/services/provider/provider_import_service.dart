@@ -9,6 +9,8 @@ import '../storage/app_storage.dart';
 import 'claude_official_provider.dart';
 import '../io/filesystem.dart';
 import 'llm_config_path_resolver.dart';
+import 'codex_cc_switch_import.dart';
+import 'codex_toml_parser.dart';
 
 class ProviderImportResult {
   const ProviderImportResult({
@@ -187,14 +189,26 @@ class ProviderImportService {
   }
 
   Future<_ImportedProviders> _importCodex() async {
+    const importer = CodexCcSwitchImport();
+    final runtime = await importer.loadRuntime();
     final byId = <String, AppProviderConfig>{};
     final sources = <String>{};
-    for (final provider in await _importCodexLive()) {
+    final now = _now();
+
+    if (runtime.hasLive) {
+      byId['default'] = importer.buildLiveDefaultProvider(runtime, now);
+      sources.add('live');
+    }
+    for (final provider in await _importCodexLiveExtraProfiles()) {
       byId[provider.id] = provider;
       sources.add('live');
     }
-    for (final provider in await _importCcSwitch(AppProviderCli.codex)) {
-      byId[provider.id] = provider;
+    for (final row in await importer.loadCatalog()) {
+      byId[row.id] = importer.buildCatalogProvider(
+        row: row,
+        runtime: runtime,
+        now: now,
+      );
       sources.add('cc-switch');
     }
     return _ImportedProviders(byId.values.toList(), sources.toList());
@@ -233,7 +247,7 @@ class ProviderImportService {
     return providers;
   }
 
-  Future<List<AppProviderConfig>> _importCodexLive() async {
+  Future<List<AppProviderConfig>> _importCodexLiveExtraProfiles() async {
     final fs = AppStorage.fs;
     final ctx = fs.pathContext;
     final home = AppStorage.home.trim();
@@ -244,10 +258,6 @@ class ProviderImportService {
     if (!dirStat.isDirectory) return const [];
 
     final ids = <String>{};
-    if ((await fs.stat(ctx.join(dirPath, 'auth.json'))).isFile ||
-        (await fs.stat(ctx.join(dirPath, 'config.toml'))).isFile) {
-      ids.add('default');
-    }
     for (final entry in await fs.listDir(dirPath)) {
       if (entry.isDirectory) continue;
       final name = entry.name;
@@ -432,7 +442,7 @@ WHERE app_type = ?
     int createdAt = 0,
     Map<String, Object?>? meta,
   }) {
-    final parsed = _parseCodexToml(toml);
+    final parsed = CodexTomlParser.parse(toml);
     final apiKey =
         auth['OPENAI_API_KEY']?.toString() ??
         auth['openai_api_key']?.toString() ??
@@ -603,28 +613,10 @@ WHERE app_type = ?
     };
   }
 
-  _CodexTomlParts _parseCodexToml(String toml) {
-    final model = RegExp(
-      r'^\s*model\s*=\s*"([^"]+)"',
-      multiLine: true,
-    ).firstMatch(toml)?.group(1) ?? '';
-    final baseUrl = RegExp(
-      r'^\s*base_url\s*=\s*"([^"]+)"',
-      multiLine: true,
-    ).firstMatch(toml)?.group(1) ?? '';
-    return _CodexTomlParts(model: model, baseUrl: baseUrl);
-  }
-
   int _now() => DateTime.now().toUtc().millisecondsSinceEpoch;
 
-  static String sanitizeProviderId(String value) {
-    final id = value
-        .trim()
-        .toLowerCase()
-        .replaceAll(RegExp(r'[^a-z0-9]+'), '-')
-        .replaceAll(RegExp(r'^-+|-+$'), '');
-    return id;
-  }
+  static String sanitizeProviderId(String value) =>
+      sanitizeImportedProviderId(value);
 }
 
 class _ImportedProviders {
@@ -651,9 +643,3 @@ class _NamedFile {
   final String path;
 }
 
-class _CodexTomlParts {
-  const _CodexTomlParts({required this.model, required this.baseUrl});
-
-  final String model;
-  final String baseUrl;
-}

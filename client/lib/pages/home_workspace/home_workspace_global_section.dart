@@ -4,11 +4,19 @@ import '../extensions/extension_management_page.dart';
 import '../mcp/mcp_management_page.dart';
 import '../plugins/plugin_management_page.dart';
 import '../skills/skill_management_page.dart';
+import '../llm_config/llm_config_workspace.dart';
 import '../team_hub/team_hub_page.dart';
 import '../team_hub/team_hub_section.dart';
 
 /// Which global management view is shown in the workspace-home right pane.
-enum HomeWorkspaceGlobalView { skills, plugins, mcp, extensions, teamHub }
+enum HomeWorkspaceGlobalView {
+  skills,
+  plugins,
+  mcp,
+  extensions,
+  teamHub,
+  providers,
+}
 
 /// Embeds an existing global management page (Skills / Plugins / MCP) — or the
 /// team Extensions section — inside the workspace-home right pane. Sub-section
@@ -55,6 +63,7 @@ class _HomeWorkspaceGlobalSectionState
           section: _teamHub,
           onSelectSection: (s) => setState(() => _teamHub = s),
         ),
+      HomeWorkspaceGlobalView.providers => const LlmConfigWorkspace(),
     };
   }
 }

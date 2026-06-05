@@ -998,11 +998,11 @@ abstract class AppLocalizations {
   /// **'New Team'**
   String get homeWorkspaceNewTeam;
 
-  /// No description provided for @homeWorkspaceOrganization.
+  /// No description provided for @homeWorkspaceProviders.
   ///
   /// In en, this message translates to:
-  /// **'Organization'**
-  String get homeWorkspaceOrganization;
+  /// **'Providers'**
+  String get homeWorkspaceProviders;
 
   /// No description provided for @homeWorkspaceTeamProjects.
   ///

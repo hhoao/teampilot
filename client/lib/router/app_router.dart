@@ -183,34 +183,65 @@ final appRouter = GoRouter(
           ),
         ),
         GoRoute(
-          path: '/config/llm',
-          pageBuilder: (context, state) => const NoTransitionPage(
-            child: ConfigWorkspace(section: ConfigSection.llm),
-          ),
+          path: '/config/llm/:cli/provider/:providerName/models',
+          redirect: (context, state) =>
+              '/providers/${state.pathParameters['cli']}/provider/${state.pathParameters['providerName']}/models',
+        ),
+        GoRoute(
+          path: '/config/llm/:cli/provider/:providerName/edit',
+          redirect: (context, state) =>
+              '/providers/${state.pathParameters['cli']}/provider/${state.pathParameters['providerName']}/edit',
+        ),
+        GoRoute(
+          path: '/config/llm/:cli/provider/:providerName',
+          redirect: (context, state) =>
+              '/providers/${state.pathParameters['cli']}/provider/${state.pathParameters['providerName']}',
+        ),
+        GoRoute(
+          path: '/config/llm/:cli/provider/add',
+          redirect: (context, state) =>
+              '/providers/${state.pathParameters['cli']}/provider/add',
         ),
         GoRoute(
           path: '/config/llm/:cli',
+          redirect: (context, state) =>
+              '/providers/${state.pathParameters['cli']}',
+        ),
+        GoRoute(
+          path: '/config/llm',
+          redirect: (context, state) => '/providers/claude',
+        ),
+        GoRoute(
+          path: '/providers',
+          redirect: (context, state) {
+            if (Platform.isAndroid) return null;
+            return '/providers/claude';
+          },
+          pageBuilder: (context, state) => const NoTransitionPage(
+            child: LlmConfigWorkspace(),
+          ),
+        ),
+        GoRoute(
+          path: '/providers/:cli',
           pageBuilder: (context, state) => NoTransitionPage(
-            child: ConfigWorkspace(
-              section: ConfigSection.llm,
-              initialProviderCli: _appProviderCliFromRoute(state),
+            child: LlmConfigWorkspace(
+              initialCli: _appProviderCliFromRoute(state),
             ),
           ),
         ),
         GoRoute(
-          path: '/config/llm/:cli/provider/add',
+          path: '/providers/:cli/provider/add',
           pageBuilder: (context, state) => NoTransitionPage(
             child: Platform.isAndroid
                 ? LlmProviderAddPage(cli: _appProviderCliFromRoute(state))
-                : ConfigWorkspace(
-                    section: ConfigSection.llm,
-                    initialProviderCli: _appProviderCliFromRoute(state),
+                : LlmConfigWorkspace(
+                    initialCli: _appProviderCliFromRoute(state),
                     showAddProviderOnOpen: true,
                   ),
           ),
         ),
         GoRoute(
-          path: '/config/llm/:cli/provider/:providerName',
+          path: '/providers/:cli/provider/:providerName',
           pageBuilder: (context, state) => NoTransitionPage(
             child: LlmProviderConfigPage(
               cli: _appProviderCliFromRoute(state),
@@ -221,7 +252,7 @@ final appRouter = GoRouter(
           ),
         ),
         GoRoute(
-          path: '/config/llm/:cli/provider/:providerName/edit',
+          path: '/providers/:cli/provider/:providerName/edit',
           pageBuilder: (context, state) => NoTransitionPage(
             child: LlmProviderEditPage(
               cli: _appProviderCliFromRoute(state),
@@ -232,7 +263,7 @@ final appRouter = GoRouter(
           ),
         ),
         GoRoute(
-          path: '/config/llm/:cli/provider/:providerName/models',
+          path: '/providers/:cli/provider/:providerName/models',
           pageBuilder: (context, state) => NoTransitionPage(
             child: LlmProviderModelsPage(
               cli: _appProviderCliFromRoute(state),
