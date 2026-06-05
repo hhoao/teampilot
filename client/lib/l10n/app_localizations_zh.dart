@@ -385,7 +385,7 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String get openTeam => '打开团队';
+  String get openTeam => '启动所有成员';
 
   @override
   String get openMember => '打开成员';

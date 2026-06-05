@@ -165,7 +165,7 @@
       }
     }
   },
-  "openTeam": "打开团队",
+  "openTeam": "启动所有成员",
   "openMember": "打开成员",
   "memberPresenceOffline": "未连接",
   "memberPresenceConnecting": "连接中…",
