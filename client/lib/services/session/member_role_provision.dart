@@ -110,26 +110,17 @@ This tab is **plan-and-assign only**: Bash, PowerShell, Edit, Write, NotebookEdi
     );
   }
 
-  /// Writes [member.prompt] under `{toolDir}/prompts/<slug>/role.md`.
-  /// Removes the file when prompt is empty. Returns the path when non-empty.
-  static Future<String?> syncRolePromptFile({
-    required Filesystem fs,
-    required String memberToolDir,
+  /// Composes the full role-prompt body (member prompt + role addendum) for any
+  /// CLI. Transport-agnostic: Claude/flashskyai write it to `role.md` (fed via
+  /// `--append-system-prompt-file`), codex writes it to `$CODEX_HOME/AGENTS.md`.
+  /// Returns the empty string when there is nothing to inject.
+  static String composeRolePrompt({
     required TeamMemberConfig member,
     bool forceTeamLeadDelegateMode = false,
     bool mixed = false,
-  }) async {
-    final path = rolePromptPath(memberToolDir, member);
+  }) {
     final text = member.prompt.trim();
-    final stat = await fs.stat(path);
     final isLead = TeamMemberNaming.isTeamLead(member);
-    if (text.isEmpty && !isLead && !mixed) {
-      if (stat.exists) {
-        await fs.removeRecursive(path);
-      }
-      return null;
-    }
-    await fs.ensureDir(p.dirname(path));
     final body = StringBuffer();
     if (text.isNotEmpty) {
       body.writeln(text);
@@ -150,7 +141,35 @@ This tab is **plan-and-assign only**: Bash, PowerShell, Edit, Write, NotebookEdi
       body.writeln(mixedTeammateRoleAddendum.trim());
       body.writeln();
     }
-    await fs.atomicWrite(path, body.toString());
+    return body.toString();
+  }
+
+  /// Writes [member.prompt] under `{toolDir}/prompts/<slug>/role.md`.
+  /// Removes the file when prompt is empty. Returns the path when non-empty.
+  static Future<String?> syncRolePromptFile({
+    required Filesystem fs,
+    required String memberToolDir,
+    required TeamMemberConfig member,
+    bool forceTeamLeadDelegateMode = false,
+    bool mixed = false,
+  }) async {
+    final path = rolePromptPath(memberToolDir, member);
+    final text = member.prompt.trim();
+    final stat = await fs.stat(path);
+    final isLead = TeamMemberNaming.isTeamLead(member);
+    if (text.isEmpty && !isLead && !mixed) {
+      if (stat.exists) {
+        await fs.removeRecursive(path);
+      }
+      return null;
+    }
+    await fs.ensureDir(p.dirname(path));
+    final body = composeRolePrompt(
+      member: member,
+      forceTeamLeadDelegateMode: forceTeamLeadDelegateMode,
+      mixed: mixed,
+    );
+    await fs.atomicWrite(path, body);
     return path;
   }
 

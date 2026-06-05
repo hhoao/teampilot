@@ -495,7 +495,7 @@ void main() {
     await base.delete(recursive: true);
   });
 
-  test('addTeam rejects unsupported cli backends', () async {
+  test('addTeam accepts codex now that it is launch-supported', () async {
     final base = await Directory.systemTemp.createTemp('team_profile_cli_');
     final cubit = TeamCubit(
       repository: _repo(base),
@@ -507,8 +507,8 @@ void main() {
       configProfileService: ConfigProfileService(basePath: base.path),
     );
 
-    expect(await cubit.addTeam('beta', cli: TeamCli.codex), isFalse);
-    expect(cubit.state.teams, isEmpty);
+    expect(await cubit.addTeam('beta', cli: TeamCli.codex), isTrue);
+    expect(cubit.state.teams.single.cli, TeamCli.codex);
 
     await _drainAndCloseTeamCubit(cubit);
     await base.delete(recursive: true);

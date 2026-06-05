@@ -47,7 +47,12 @@ class FlashskyaiCliToolAdapter implements CliToolAdapter {
     final mixed = context.team.teamMode == TeamMode.mixed;
     final args = <String>[
       ..._buildSessionPrefixArgs(context),
-      if (!mixed) ...['--team', context.teamName, '--member', context.memberCliId],
+      if (!mixed) ...[
+        '--team',
+        context.teamName,
+        '--member',
+        context.memberCliId,
+      ],
     ];
 
     final loop = context.team.loop;
@@ -161,6 +166,45 @@ class OpencodeCliToolAdapter implements CliToolAdapter {
     if (model.isEmpty) return '';
     if (provider.isEmpty) return model;
     return '$provider/$model';
+  }
+}
+
+/// OpenAI Codex CLI (`codex` TUI). Identity is injected via `$CODEX_HOME/AGENTS.md`
+/// and team-bus wiring via `$CODEX_HOME/config.toml` (see [CodexConfigProfileCapability]),
+/// so — unlike flashskyai — codex takes none of `--team`/`--member`/`--session-id`/
+/// `--append-system-prompt-file`. Working dir is `--cd`, model is `-m`.
+class CodexCliToolAdapter implements CliToolAdapter {
+  const CodexCliToolAdapter();
+
+  @override
+  List<String> buildArguments(CliLaunchContext context) {
+    final member = context.member;
+    final mixed = context.team.teamMode == TeamMode.mixed;
+    final args = <String>[];
+
+    final wd = context.workingDirectory ?? '';
+    if (wd.isNotEmpty) {
+      args.addAll(['--cd', _normalizePathForCli(wd, context.useWslPaths)]);
+    }
+
+    final model = member.model.trim();
+    if (model.isNotEmpty) {
+      args.addAll(['-m', model]);
+    }
+
+    if (member.dangerouslySkipPermissions) {
+      args.add('--dangerously-bypass-approvals-and-sandbox');
+    }
+    // Mixed mode provisions a self-trusted Stop hook (idle shim) into CODEX_HOME;
+    // bypass the interactive hook-trust prompt for this invocation.
+    if (mixed) {
+      args.add('--dangerously-bypass-hook-trust');
+    }
+
+    _addExtraArgs(args, context.team.extraArgs);
+    _addExtraArgs(args, member.extraArgs);
+
+    return args;
   }
 }
 

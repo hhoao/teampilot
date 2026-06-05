@@ -286,7 +286,45 @@ void main() {
     );
     expect(
       registry.capability<LaunchArgsCapability>('codex'),
-      isA<FlashskyaiCliToolAdapter>(),
+      isA<CodexCliToolAdapter>(),
     );
+  });
+
+  test('codex adapter emits codex-native flags, not flashskyai team flags', () {
+    const adapter = CodexCliToolAdapter();
+    const mixedTeam = TeamConfig(
+      id: 'team-x',
+      name: 'mixers',
+      teamMode: TeamMode.mixed,
+    );
+
+    final args = adapter.buildArguments(
+      CliLaunchContext(
+        team: mixedTeam,
+        member: member,
+        workingDirectory: '/home/hhoa/git/agent',
+      ),
+    );
+
+    expect(args, containsAllInOrder(['--cd', '/home/hhoa/git/agent']));
+    expect(args, containsAllInOrder(['-m', 'sonnet']));
+    expect(args, contains('--dangerously-bypass-approvals-and-sandbox'));
+    // mixed mode provisions a self-trusted Stop hook → bypass the trust prompt
+    expect(args, contains('--dangerously-bypass-hook-trust'));
+    // never the flashskyai/claude roster flags
+    expect(args, isNot(contains('--team')));
+    expect(args, isNot(contains('--member')));
+    expect(args, isNot(contains('--session-id')));
+    expect(args, isNot(contains('--append-system-prompt-file')));
+  });
+
+  test('codex adapter omits hook-trust bypass outside mixed mode', () {
+    const adapter = CodexCliToolAdapter();
+
+    final args = adapter.buildArguments(
+      CliLaunchContext(team: flashskyaiTeam, member: member),
+    );
+
+    expect(args, isNot(contains('--dangerously-bypass-hook-trust')));
   });
 }

@@ -151,10 +151,10 @@ void main() {
     expect(legacy.toJson().containsKey('cli'), isFalse);
   });
 
-  test('launch support includes flashskyai and claude', () {
+  test('launch support includes flashskyai, claude, and codex', () {
     expect(TeamCli.flashskyai.isLaunchSupported, isTrue);
     expect(TeamCli.claude.isLaunchSupported, isTrue);
-    expect(TeamCli.codex.isLaunchSupported, isFalse);
+    expect(TeamCli.codex.isLaunchSupported, isTrue);
   });
 
   test('only claude needs full-screen (bracketed-paste) stdin submit', () {

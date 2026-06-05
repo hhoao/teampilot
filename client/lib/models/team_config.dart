@@ -28,7 +28,8 @@ enum TeamCli {
   bool get isLaunchSupported =>
       this == TeamCli.claude ||
       this == TeamCli.flashskyai ||
-      this == TeamCli.opencode;
+      this == TeamCli.opencode ||
+      this == TeamCli.codex;
 
   /// Whether the CLI runs as a full-screen TUI (alternate screen) whose input
   /// box treats a single chunk ending in CR as pasted text — the trailing CR

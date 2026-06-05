@@ -14,7 +14,7 @@ import '../config_profile/codex_config_profile_capability.dart';
 
 final class CodexCliTool implements CliToolDefinition {
   const CodexCliTool({
-    this.launchArgs = const FlashskyaiCliToolAdapter(),
+    this.launchArgs = const CodexCliToolAdapter(),
     this.configProfile = const CodexConfigProfileCapability(),
     this.transcriptProbe = const CodexTranscriptProbe(),
     this.executableResolver = const CodexExecutableResolver(),
@@ -33,7 +33,7 @@ final class CodexCliTool implements CliToolDefinition {
   String get id => 'codex';
 
   @override
-  bool get isLaunchSupported => false;
+  bool get isLaunchSupported => true;
 
   @override
   AppProviderCli? get providerCatalogCli => AppProviderCli.codex;
