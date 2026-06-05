@@ -602,6 +602,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get homeWorkspaceSearchHint => '搜索';
 
   @override
+  String get homeWorkspaceNoSearchResults => '没有匹配的对话';
+
+  @override
   String get newProjectTooltip => '创建项目';
 
   @override

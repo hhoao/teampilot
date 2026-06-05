@@ -30,14 +30,13 @@ import 'dropdown/popover/app_popover.dart';
 import 'menu/sidebar_action_menu.dart';
 import 'project_details_dialog.dart';
 import 'app_icon_button.dart';
+import 'sidebar_session_tile.dart';
+import '../utils/project_sessions.dart';
 
 part 'context_sidebar/context_sidebar_actions.dart';
 part 'context_sidebar/context_sidebar_shell.dart';
 part 'context_sidebar/context_sidebar_project_selector.dart';
-part 'context_sidebar/context_sidebar_session_tile.dart';
 part 'context_sidebar/context_sidebar_tiles.dart';
-
-const double _kSidebarSessionTileInset = 12;
 
 /// Matches [_NewChatTile] / [_TeamConfigTile] inner padding for left alignment.
 const double _kSidebarNavRowPadding = 10;

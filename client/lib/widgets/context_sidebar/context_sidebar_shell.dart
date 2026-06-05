@@ -115,17 +115,3 @@ int _projectRecency(AppProject project, List<AppSession> allSessions) {
   return max;
 }
 
-List<AppSession> _sessionsForProject(AppProject project, List<AppSession> all) {
-  final byId = {for (final s in all) s.sessionId: s};
-  final ordered = <AppSession>[];
-  for (final id in project.sessionIds) {
-    final s = byId[id];
-    if (s != null) ordered.add(s);
-  }
-  for (final s in all) {
-    if (s.projectId != project.projectId) continue;
-    if (ordered.any((x) => x.sessionId == s.sessionId)) continue;
-    ordered.add(s);
-  }
-  return ordered;
-}

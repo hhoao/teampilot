@@ -362,7 +362,7 @@ class _ProjectSelectorState extends State<_ProjectSelector> {
                         _ProjectDirectoryGroup(
                           key: ValueKey(selected.projectId),
                           project: selected,
-                          sessions: _sessionsForProject(selected, sessions),
+                          sessions: sessionsForProject(selected, sessions),
                           onSelect: () => widget.onSelect(selected),
                           buildMenuChildren: (context, controller) =>
                               _projectMenuChildren(
@@ -370,7 +370,7 @@ class _ProjectSelectorState extends State<_ProjectSelector> {
                                 controller,
                                 selected,
                                 _projectDisplayName(selected, l10n),
-                                _sessionsForProject(selected, sessions).length,
+                                sessionsForProject(selected, sessions).length,
                               ),
                         ),
                       ],
@@ -409,7 +409,12 @@ class _ProjectDirectoryGroup extends StatelessWidget {
           buildMenuChildren: buildMenuChildren,
         ),
         if (sessions.isNotEmpty)
-          for (final session in sessions) _SessionTileEntry(session: session),
+          for (final session in sessions)
+            SidebarSessionTile(
+              session: session,
+              tapThrottleKeyPrefix: 'context_sidebar_session',
+              onTap: () => _navigateToSessionInChat(context, session),
+            ),
       ],
     );
   }

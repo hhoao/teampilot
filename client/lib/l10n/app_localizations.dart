@@ -1226,6 +1226,12 @@ abstract class AppLocalizations {
   /// **'Search'**
   String get homeWorkspaceSearchHint;
 
+  /// No description provided for @homeWorkspaceNoSearchResults.
+  ///
+  /// In en, this message translates to:
+  /// **'No conversations match your search'**
+  String get homeWorkspaceNoSearchResults;
+
   /// No description provided for @newProjectTooltip.
   ///
   /// In en, this message translates to:

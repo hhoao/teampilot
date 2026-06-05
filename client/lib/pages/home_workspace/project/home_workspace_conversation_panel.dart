@@ -12,11 +12,14 @@ import '../../../models/app_session.dart';
 import '../../../models/team_config.dart';
 import '../../../repositories/session_repository.dart';
 import '../../../theme/app_text_styles.dart';
+import '../../../utils/project_sessions.dart';
+import '../../../widgets/app_icon_button.dart';
+import '../../../widgets/sidebar_session_tile.dart';
 
 /// The "Conversations" tree panel (renamed from Apifox's 接口管理). Lists the
 /// sessions that belong to [project] and opens the tapped one in the embedded
 /// workspace_shell via [ChatCubit.openSessionTab].
-class HomeWorkspaceConversationPanel extends StatelessWidget {
+class HomeWorkspaceConversationPanel extends StatefulWidget {
   const HomeWorkspaceConversationPanel({required this.project, super.key});
 
   final AppProject project;
@@ -26,17 +29,36 @@ class HomeWorkspaceConversationPanel extends StatelessWidget {
   static const double maxWidth = 480;
 
   @override
+  State<HomeWorkspaceConversationPanel> createState() =>
+      _HomeWorkspaceConversationPanelState();
+}
+
+class _HomeWorkspaceConversationPanelState
+    extends State<HomeWorkspaceConversationPanel> {
+  final _searchController = TextEditingController();
+  var _searchQuery = '';
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final l10n = context.l10n;
 
-    final sessions = context.select<ChatCubit, List<AppSession>>(
-      (c) => c.state.sessions
-          .where((s) => s.projectId == project.projectId)
-          .toList(),
+    final sessions = sessionsForProject(
+      widget.project,
+      context.select<ChatCubit, List<AppSession>>(
+        (c) => c.state.visibleSessions,
+      ),
     );
-    final activeSessionId = context.select<ChatCubit, String?>(
-      (c) => c.state.activeSessionId,
+    final filteredSessions = filterSessionsByQuery(
+      sessions,
+      query: _searchQuery,
+      emptyTitleFallback: l10n.defaultNewChatSessionTitle,
     );
 
     return ColoredBox(
@@ -49,22 +71,35 @@ class HomeWorkspaceConversationPanel extends StatelessWidget {
             addTooltip: l10n.homeWorkspaceNewConversation,
             onAdd: () => unawaited(_addConversation(context)),
           ),
-          _SearchBox(hint: l10n.homeWorkspaceSearchHint),
+          _ConversationSearchField(
+            controller: _searchController,
+            hint: l10n.homeWorkspaceSearchHint,
+            onChanged: (value) => setState(() => _searchQuery = value),
+            onClear: () {
+              _searchController.clear();
+              setState(() => _searchQuery = '');
+            },
+          ),
           Expanded(
             child: sessions.isEmpty
                 ? _EmptyConversations(label: l10n.homeWorkspaceNoConversations)
-                : ListView.builder(
-                    padding: const EdgeInsets.fromLTRB(8, 4, 8, 8),
-                    itemCount: sessions.length,
-                    itemBuilder: (context, index) {
-                      final session = sessions[index];
-                      return _ConversationRow(
-                        session: session,
-                        active: session.sessionId == activeSessionId,
-                        onTap: () => _openSession(context, session),
-                      );
-                    },
-                  ),
+                : filteredSessions.isEmpty
+                    ? _EmptyConversations(
+                        label: l10n.homeWorkspaceNoSearchResults,
+                      )
+                    : ListView.builder(
+                        padding: const EdgeInsets.fromLTRB(8, 4, 8, 8),
+                        itemCount: filteredSessions.length,
+                        itemBuilder: (context, index) {
+                          final session = filteredSessions[index];
+                          return SidebarSessionTile(
+                            session: session,
+                            contentLeftInset: 0,
+                            tapThrottleKeyPrefix: 'home_workspace_session',
+                            onTap: () => _openSession(context, session),
+                          );
+                        },
+                      ),
           ),
         ],
       ),
@@ -99,11 +134,11 @@ class HomeWorkspaceConversationPanel extends StatelessWidget {
     final chatCubit = context.read<ChatCubit>();
     final repo = context.read<SessionRepository>();
     final team = context.read<TeamCubit>().state.selectedTeam;
-    final teamId = team?.id ?? project.teamId;
+    final teamId = team?.id ?? widget.project.teamId;
 
     try {
       final session = await chatCubit.createSession(
-        project.projectId,
+        widget.project.projectId,
         repo,
         sessionTeamId: teamId,
         rosterMembers: team?.members ?? const [],
@@ -171,106 +206,58 @@ class _PanelHeader extends StatelessWidget {
   }
 }
 
-class _SearchBox extends StatelessWidget {
-  const _SearchBox({required this.hint});
-
-  final String hint;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final styles = AppTextStyles.of(context);
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-        decoration: BoxDecoration(
-          color: cs.surfaceContainer,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.7)),
-        ),
-        child: Row(
-          children: [
-            Icon(Icons.search_rounded, size: AppIconSizes.md, color: cs.onSurfaceVariant),
-            const SizedBox(width: 8),
-            Text(hint, style: styles.bodySmall.copyWith(
-              color: cs.onSurfaceVariant.withValues(alpha: 0.8),
-            )),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _ConversationRow extends StatefulWidget {
-  const _ConversationRow({
-    required this.session,
-    required this.active,
-    required this.onTap,
+class _ConversationSearchField extends StatelessWidget {
+  const _ConversationSearchField({
+    required this.controller,
+    required this.hint,
+    required this.onChanged,
+    required this.onClear,
   });
 
-  final AppSession session;
-  final bool active;
-  final VoidCallback onTap;
-
-  @override
-  State<_ConversationRow> createState() => _ConversationRowState();
-}
-
-class _ConversationRowState extends State<_ConversationRow> {
-  bool _hovered = false;
+  final TextEditingController controller;
+  final String hint;
+  final ValueChanged<String> onChanged;
+  final VoidCallback onClear;
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final styles = AppTextStyles.of(context);
-    final l10n = context.l10n;
-    final active = widget.active;
-    final title = widget.session.resolveDisplayTitle(
-      l10n.defaultNewChatSessionTitle,
-    );
-
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: widget.onTap,
-        child: Container(
-          margin: const EdgeInsets.symmetric(vertical: 1),
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
-          decoration: BoxDecoration(
-            color: active
-                ? cs.primary.withValues(alpha: 0.14)
-                : _hovered
-                    ? cs.onSurface.withValues(alpha: 0.05)
-                    : Colors.transparent,
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
+      child: TextField(
+        controller: controller,
+        decoration: InputDecoration(
+          hintText: hint,
+          isDense: true,
+          filled: true,
+          fillColor: cs.surfaceContainer,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          prefixIcon: Icon(
+            Icons.search_rounded,
+            size: AppIconSizes.md,
+            color: cs.onSurfaceVariant,
+          ),
+          floatingLabelBehavior: FloatingLabelBehavior.never,
+          enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(8),
+            borderSide: BorderSide(
+              color: cs.outlineVariant.withValues(alpha: 0.7),
+            ),
           ),
-          child: Row(
-            children: [
-              Icon(
-                Icons.chat_bubble_outline_rounded,
-                size: AppIconSizes.md,
-                color: active ? cs.primary : cs.onSurfaceVariant,
-              ),
-              const SizedBox(width: 9),
-              Expanded(
-                child: Text(
-                  title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: styles.body.copyWith(
-                    color: active ? cs.primary : cs.onSurface,
-                    fontWeight: active ? FontWeight.w600 : FontWeight.w400,
-                  ),
-                ),
-              ),
-            ],
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: BorderSide(color: cs.primary),
           ),
+          suffixIcon: controller.text.isNotEmpty
+              ? AppIconButton(
+                  icon: Icons.clear,
+                  iconSize: AppIconButton.kCompactIconSize,
+                  size: AppIconButton.kCompactSize,
+                  onTap: onClear,
+                )
+              : null,
         ),
+        onChanged: onChanged,
       ),
     );
   }
@@ -290,8 +277,11 @@ class _EmptyConversations extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.forum_outlined,
-              size: AppIconSizes.md, color: cs.onSurfaceVariant.withValues(alpha: 0.5)),
+          Icon(
+            Icons.forum_outlined,
+            size: AppIconSizes.md,
+            color: cs.onSurfaceVariant.withValues(alpha: 0.5),
+          ),
           const SizedBox(height: 10),
           Text(
             label,

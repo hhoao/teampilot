@@ -251,6 +251,7 @@
   "homeWorkspaceNewConversation": "新建对话",
   "homeWorkspaceNoConversations": "该项目还没有对话",
   "homeWorkspaceSearchHint": "搜索",
+  "homeWorkspaceNoSearchResults": "没有匹配的对话",
   "newProjectTooltip": "创建项目",
   "switchProjectTooltip": "切换项目",
   "create": "创建",

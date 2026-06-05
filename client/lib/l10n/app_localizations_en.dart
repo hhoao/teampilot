@@ -635,6 +635,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homeWorkspaceSearchHint => 'Search';
 
   @override
+  String get homeWorkspaceNoSearchResults =>
+      'No conversations match your search';
+
+  @override
   String get newProjectTooltip => 'Create a project';
 
   @override

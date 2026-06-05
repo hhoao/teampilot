@@ -1,15 +1,41 @@
-part of '../context_sidebar.dart';
+import 'dart:async';
+import 'dart:io';
 
-class _SessionTileEntry extends StatefulWidget {
-  const _SessionTileEntry({required this.session});
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+
+import '../cubits/chat_cubit.dart';
+import '../l10n/l10n_extensions.dart';
+import '../models/app_session.dart';
+import '../repositories/session_repository.dart';
+import '../theme/app_text_styles.dart';
+import '../utils/app_keys.dart';
+import '../utils/debounce/debounce.dart';
+import 'app_icon_button.dart';
+import 'menu/sidebar_action_menu.dart';
+
+/// Session row for sidebars: rename, delete, overflow menu, and context menu.
+class SidebarSessionTile extends StatefulWidget {
+  const SidebarSessionTile({
+    required this.session,
+    required this.onTap,
+    this.tapThrottleKeyPrefix = 'sidebar_session',
+    this.contentLeftInset = 12,
+    super.key,
+  });
 
   final AppSession session;
+  final VoidCallback onTap;
+
+  /// Prefix for [throttledTap] keys (`{prefix}_{sessionId}`).
+  final String tapThrottleKeyPrefix;
+  final double contentLeftInset;
 
   @override
-  State<_SessionTileEntry> createState() => _SessionTileEntryState();
+  State<SidebarSessionTile> createState() => _SidebarSessionTileState();
 }
 
-class _SessionTileEntryState extends State<_SessionTileEntry> {
+class _SidebarSessionTileState extends State<SidebarSessionTile> {
   var _hovered = false;
 
   /// Keeps the overflow menu mounted while the popup is open; otherwise moving
@@ -118,10 +144,10 @@ class _SessionTileEntryState extends State<_SessionTileEntry> {
         title: session.resolveDisplayTitle(l10n.defaultNewChatSessionTitle),
         selected: selected,
         rowHovered: _hovered || _menuOpen,
-        contentLeftInset: _kSidebarSessionTileInset,
+        contentLeftInset: widget.contentLeftInset,
         onTap: throttledTap(
-          'context_sidebar_session_${session.sessionId}',
-          () => _navigateToSessionInChat(context, session),
+          '${widget.tapThrottleKeyPrefix}_${session.sessionId}',
+          widget.onTap,
         ),
         onSecondaryTapDown: _showSessionContextMenuFromTap,
         onLongPress: Platform.isAndroid
@@ -197,7 +223,7 @@ class _SessionTileEntryState extends State<_SessionTileEntry> {
           ),
           FilledButton(
             onPressed: throttledAsync(
-              'context_sidebar_rename_session',
+              'sidebar_rename_session',
               () async {
                 final value = controller.text.trim();
                 if (value.isNotEmpty) {
@@ -239,7 +265,7 @@ class _SessionTileEntryState extends State<_SessionTileEntry> {
               backgroundColor: Theme.of(context).colorScheme.error,
             ),
             onPressed: throttledAsync(
-              'context_sidebar_delete_session',
+              'sidebar_delete_session',
               () async {
                 await context.read<ChatCubit>().deleteSession(
                   repo,
@@ -251,6 +277,119 @@ class _SessionTileEntryState extends State<_SessionTileEntry> {
             child: Text(l10n.delete),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _SidebarTile extends StatelessWidget {
+  // ignore: unused_element_parameter
+  const _SidebarTile({
+    required this.title,
+    required this.selected,
+    // ignore: unused_element_parameter
+    this.subtitle = '',
+    this.rowHovered = false,
+    this.onTap,
+    this.onSecondaryTapDown,
+    this.onLongPress,
+    this.trailing,
+    this.contentLeftInset = 0,
+    super.key,
+  });
+
+  final String title;
+  final String subtitle;
+  final bool selected;
+  final bool rowHovered;
+  final VoidCallback? onTap;
+  final GestureTapDownCallback? onSecondaryTapDown;
+  final VoidCallback? onLongPress;
+  final Widget? trailing;
+  final double contentLeftInset;
+
+  Color _materialFillColor(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final hoverTint = Theme.of(
+      context,
+    ).colorScheme.onSurface.withValues(alpha: 0.10);
+    if (selected) {
+      return rowHovered
+          ? Color.alphaBlend(hoverTint, cs.primaryContainer)
+          : cs.primaryContainer;
+    }
+    if (rowHovered) {
+      return Color.alphaBlend(hoverTint, cs.surfaceContainer);
+    }
+    return Colors.transparent;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textBase = isDark ? Colors.white : const Color(0xFF111827);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 2),
+      child: Material(
+        color: _materialFillColor(context),
+        borderRadius: BorderRadius.circular(8),
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: onTap,
+          onSecondaryTapDown: onSecondaryTapDown,
+          onLongPress: onLongPress,
+          child: Container(
+            padding: EdgeInsets.fromLTRB(8 + contentLeftInset, 6, 8, 6),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(8),
+              border: selected ? Border.all(color: cs.primaryContainer) : null,
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Expanded(
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(minHeight: 32),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context).textTheme.bodyMedium
+                                ?.copyWith(
+                                  fontWeight: selected
+                                      ? FontWeight.w600
+                                      : FontWeight.w400,
+                                ),
+                          ),
+                          if (subtitle.isNotEmpty) ...[
+                            const SizedBox(height: 4),
+                            Text(
+                              subtitle,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppTextStyles.of(context).caption.copyWith(
+                                color: textBase.withValues(alpha: 0.52),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                if (trailing != null) trailing!,
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

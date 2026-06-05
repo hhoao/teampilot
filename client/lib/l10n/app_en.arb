@@ -261,6 +261,7 @@
   "homeWorkspaceNewConversation": "New Conversation",
   "homeWorkspaceNoConversations": "No conversations in this project yet",
   "homeWorkspaceSearchHint": "Search",
+  "homeWorkspaceNoSearchResults": "No conversations match your search",
   "newProjectTooltip": "Create a project",
   "switchProjectTooltip": "Switch project",
   "create": "Create",
