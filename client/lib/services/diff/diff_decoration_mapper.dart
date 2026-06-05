@@ -83,19 +83,25 @@ class DiffPaneDecorations {
 }
 
 /// Single-column unified rendering: text, gutter numbers, decorations, and the
-/// unified line index where each change block begins (for navigation).
+/// change blocks in unified-line coordinates (for navigation + overview ruler).
 class UnifiedPane {
   const UnifiedPane({
     required this.text,
     required this.numbers,
     required this.decorations,
-    required this.blockStartLines,
+    required this.blocks,
   });
 
   final String text;
   final List<int?> numbers;
   final List<CodeLineDecoration> decorations;
-  final List<int> blockStartLines;
+
+  /// Change blocks with [DiffBlock.startRow]/[DiffBlock.endRow] as unified line
+  /// indices.
+  final List<DiffBlock> blocks;
+
+  /// Total unified line count.
+  int get lineCount => numbers.length;
 }
 
 DiffPaneTexts buildDiffPaneTexts(List<DiffRow> rows) {
@@ -126,9 +132,27 @@ UnifiedPane buildUnifiedPane(List<DiffRow> rows, DiffColors colors) {
   final buffer = StringBuffer();
   final numbers = <int?>[];
   final decorations = <CodeLineDecoration>[];
-  final blockStartLines = <int>[];
+  final blocks = <DiffBlock>[];
   var line = 0;
-  var inChange = false;
+  var runStart = -1;
+  var runAdd = false;
+  var runRemove = false;
+  var runModify = false;
+
+  void closeRun() {
+    if (runStart < 0) return;
+    final DiffRowKind kind;
+    if (runModify || (runAdd && runRemove)) {
+      kind = DiffRowKind.modify;
+    } else if (runAdd) {
+      kind = DiffRowKind.insert;
+    } else {
+      kind = DiffRowKind.delete;
+    }
+    blocks.add(DiffBlock(startRow: runStart, endRow: line, kind: kind));
+    runStart = -1;
+    runAdd = runRemove = runModify = false;
+  }
 
   void emit(String text, int? number) {
     if (line > 0) buffer.write('\n');
@@ -154,24 +178,24 @@ UnifiedPane buildUnifiedPane(List<DiffRow> rows, DiffColors colors) {
       );
 
   for (final row in rows) {
-    final isChange = row.kind != DiffRowKind.equal;
-    if (isChange && !inChange) {
-      blockStartLines.add(line);
+    if (row.kind == DiffRowKind.equal) {
+      closeRun();
+      emit(row.leftText ?? '', row.rightLineNo ?? row.leftLineNo);
+      line++;
+      continue;
     }
-    inChange = isChange;
-
+    if (runStart < 0) runStart = line;
     switch (row.kind) {
-      case DiffRowKind.equal:
-        emit(row.leftText ?? '', row.rightLineNo ?? row.leftLineNo);
-        line++;
       case DiffRowKind.delete:
         emit(row.leftText ?? '', row.leftLineNo);
         decorations.add(band(line, colors.removeBand));
         line++;
+        runRemove = true;
       case DiffRowKind.insert:
         emit(row.rightText ?? '', row.rightLineNo);
         decorations.add(band(line, colors.addBand));
         line++;
+        runAdd = true;
       case DiffRowKind.modify:
         emit(row.leftText ?? '', row.leftLineNo);
         decorations.add(band(line, colors.removeBand));
@@ -185,14 +209,18 @@ UnifiedPane buildUnifiedPane(List<DiffRow> rows, DiffColors colors) {
           decorations.add(inline(line, edit, colors.addInline));
         }
         line++;
+        runModify = true;
+      case DiffRowKind.equal:
+        break;
     }
   }
+  closeRun();
 
   return UnifiedPane(
     text: buffer.toString(),
     numbers: numbers,
     decorations: decorations,
-    blockStartLines: blockStartLines,
+    blocks: blocks,
   );
 }
 

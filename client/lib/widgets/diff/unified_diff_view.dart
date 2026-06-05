@@ -4,6 +4,7 @@ import 'package:re_editor/re_editor.dart';
 import '../../services/diff/diff_decoration_mapper.dart';
 import '../../services/diff/diff_model.dart';
 import '../../services/editor/file_editor_theme.dart';
+import 'diff_overview_ruler.dart';
 import 'diff_view_controller.dart';
 import 'side_by_side_diff_view.dart' show diffColorsFor;
 
@@ -69,7 +70,7 @@ class _UnifiedDiffViewState extends State<UnifiedDiffView> {
   void _publishChangeCount() {
     final controller = widget.controller;
     if (controller == null) return;
-    final count = _pane.blockStartLines.length;
+    final count = _pane.blocks.length;
     // Defer so the sibling toolbar isn't marked dirty mid-build.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) controller.changeCount = count;
@@ -80,10 +81,10 @@ class _UnifiedDiffViewState extends State<UnifiedDiffView> {
     final controller = widget.controller;
     if (controller == null) return;
     final index = controller.current;
-    if (index < 0 || index >= _pane.blockStartLines.length) return;
+    if (index < 0 || index >= _pane.blocks.length) return;
     final scroller = _scroll.verticalScroller;
     if (!scroller.hasClients) return;
-    final startLine = _pane.blockStartLines[index];
+    final startLine = _pane.blocks[index].startRow;
     final target = (5 + (startLine - 2) * _lineHeightCache)
         .clamp(0.0, scroller.position.maxScrollExtent);
     scroller.animateTo(
@@ -111,25 +112,42 @@ class _UnifiedDiffViewState extends State<UnifiedDiffView> {
     // Rebuild decorations with real theme colors against the cached structure.
     final pane = buildUnifiedPane(_rows, diffColorsFor(cs));
 
-    return CodeEditor(
-      controller: _controller,
-      scrollController: _scroll,
-      readOnly: true,
-      showCursorWhenReadOnly: false,
-      wordWrap: false,
-      style: style,
-      lineDecorations: pane.decorations,
-      indicatorBuilder: (context, editingController, chunkController, notifier) {
-        return DefaultCodeLineNumber(
-          controller: editingController,
-          notifier: notifier,
-          customLineIndex2Text: (lineIndex) {
-            if (lineIndex < 0 || lineIndex >= pane.numbers.length) return '';
-            final no = pane.numbers[lineIndex];
-            return no == null ? '' : '$no';
-          },
-        );
-      },
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Expanded(
+          child: CodeEditor(
+            controller: _controller,
+            scrollController: _scroll,
+            readOnly: true,
+            showCursorWhenReadOnly: false,
+            wordWrap: false,
+            style: style,
+            lineDecorations: pane.decorations,
+            indicatorBuilder:
+                (context, editingController, chunkController, notifier) {
+              return DefaultCodeLineNumber(
+                controller: editingController,
+                notifier: notifier,
+                customLineIndex2Text: (lineIndex) {
+                  if (lineIndex < 0 || lineIndex >= pane.numbers.length) {
+                    return '';
+                  }
+                  final no = pane.numbers[lineIndex];
+                  return no == null ? '' : '$no';
+                },
+              );
+            },
+          ),
+        ),
+        DiffOverviewRuler(
+          blocks: pane.blocks,
+          totalRows: pane.lineCount,
+          scroll: _scroll,
+          lineHeight: _lineHeightCache,
+          topPadding: 5,
+        ),
+      ],
     );
   }
 }

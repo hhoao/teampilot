@@ -4,6 +4,7 @@ import 'package:re_editor/re_editor.dart';
 import '../../services/diff/diff_decoration_mapper.dart';
 import '../../services/diff/diff_model.dart';
 import '../../services/editor/file_editor_theme.dart';
+import 'diff_overview_ruler.dart';
 import 'diff_ribbon_painter.dart';
 import 'diff_view_controller.dart';
 
@@ -150,10 +151,6 @@ class _SideBySideDiffViewState extends State<SideBySideDiffView> {
             decorations: decorations.left,
             numbers: _texts.leftNumbers,
             style: style,
-            // Hide the left pane's vertical scrollbar: scroll is synced, so a
-            // single far-right scrollbar (on the right pane) is enough and the
-            // middle gutter stays clean.
-            hideVerticalScrollbar: true,
           ),
         ),
         _ribbonGap(cs, colors, style),
@@ -165,6 +162,13 @@ class _SideBySideDiffViewState extends State<SideBySideDiffView> {
             numbers: _texts.rightNumbers,
             style: style,
           ),
+        ),
+        DiffOverviewRuler(
+          blocks: _result.blocks,
+          totalRows: _result.rows.length,
+          scroll: _rightScroll,
+          lineHeight: _lineHeightCache,
+          topPadding: _kEditorTopPadding,
         ),
       ],
     );
@@ -210,7 +214,6 @@ class _SideBySideDiffViewState extends State<SideBySideDiffView> {
     required List<CodeLineDecoration> decorations,
     required List<int?> numbers,
     required CodeEditorStyle style,
-    bool hideVerticalScrollbar = false,
   }) {
     return CodeEditor(
       controller: controller,
@@ -220,8 +223,6 @@ class _SideBySideDiffViewState extends State<SideBySideDiffView> {
       wordWrap: false,
       style: style,
       lineDecorations: decorations,
-      scrollbarBuilder:
-          hideVerticalScrollbar ? _buildScrollbarWithoutVertical : null,
       indicatorBuilder: (context, editingController, chunkController, notifier) {
         return DefaultCodeLineNumber(
           controller: editingController,
@@ -235,24 +236,6 @@ class _SideBySideDiffViewState extends State<SideBySideDiffView> {
       },
     );
   }
-}
-
-/// Scrollbar builder that suppresses the vertical scrollbar (returns the child
-/// unwrapped) while keeping a horizontal one. re-editor's default per-axis
-/// behavior is otherwise replicated.
-Widget _buildScrollbarWithoutVertical(
-  BuildContext context,
-  Widget child,
-  ScrollableDetails details,
-) {
-  if (details.direction == AxisDirection.down) {
-    return child;
-  }
-  return Scrollbar(
-    controller: details.controller,
-    scrollbarOrientation: ScrollbarOrientation.bottom,
-    child: child,
-  );
 }
 
 /// re-editor's default code-field top padding (`EdgeInsets.all(5)`); the diff

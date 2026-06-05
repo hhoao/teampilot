@@ -48,8 +48,10 @@ void main() {
 
       expect(lines, ['value old', 'value new']);
       expect(pane.numbers, [1, 1]);
-      // One change block beginning at unified line 0.
-      expect(pane.blockStartLines, [0]);
+      // One modify block spanning the two unified lines.
+      expect(pane.blocks.length, 1);
+      expect(pane.blocks.single.startRow, 0);
+      expect(pane.blocks.single.endRow, 2);
     });
 
     test('context lines carry numbers and no decorations', () {
@@ -62,10 +64,10 @@ void main() {
       expect(line0Decorations, isEmpty);
     });
 
-    test('separate changes produce separate block starts', () {
+    test('separate changes produce separate blocks', () {
       final rows = computeLineDiff('a\nb\nc\nd\ne', 'a\nB\nc\nd\nE').rows;
       final pane = buildUnifiedPane(rows, _colors);
-      expect(pane.blockStartLines.length, 2);
+      expect(pane.blocks.length, 2);
     });
   });
 
