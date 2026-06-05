@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../cubits/app_provider_cubit.dart';
 import '../cubits/app_update_cubit.dart';
 import '../cubits/chat_cubit.dart';
+import '../cubits/mailbox_cubit.dart';
 import '../cubits/member_presence_cubit.dart';
 import '../cubits/editor_cubit.dart';
 import '../cubits/config_cubit.dart';
@@ -74,6 +75,7 @@ class AppShell {
   AppShell({
     required this.chatCubit,
     required this.memberPresenceCubit,
+    required this.mailboxCubit,
     required this.editorCubit,
     required this.sessionRepo,
     required this.sshProfileRepo,
@@ -105,6 +107,7 @@ class AppShell {
   final CliToolRegistry cliToolRegistry;
   final ChatCubit chatCubit;
   final MemberPresenceCubit memberPresenceCubit;
+  final MailboxCubit mailboxCubit;
   final EditorCubit editorCubit;
   final SessionRepository sessionRepo;
   final SshProfileRepository sshProfileRepo;
@@ -487,6 +490,9 @@ Future<AppShell> buildAppShell({
   memberPresenceCubit = MemberPresenceCubit();
   chatCubit.bindPresenceCubit(memberPresenceCubit);
 
+  final mailboxCubit =
+      MailboxCubit(activeBus: () => chatCubit.activeTab?.teamBus);
+
   boot('loading layout');
   await layoutCubit.load();
   applyWorkspaceEntryMode(layoutCubit.state.preferences.workspaceEntryMode);
@@ -519,6 +525,7 @@ Future<AppShell> buildAppShell({
     cliToolRegistry: cliToolRegistry,
     chatCubit: chatCubit,
     memberPresenceCubit: memberPresenceCubit,
+    mailboxCubit: mailboxCubit,
     editorCubit: editorCubit,
     sessionRepo: sessionRepo,
     sshProfileRepo: sshProfileRepo,

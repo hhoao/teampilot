@@ -11,6 +11,7 @@ import 'package:window_manager/window_manager.dart';
 import 'app/app_shell.dart';
 import 'cubits/chat_cubit.dart';
 import 'cubits/layout_cubit.dart';
+import 'cubits/mailbox_cubit.dart';
 import 'l10n/l10n_extensions.dart';
 import 'repositories/app_settings_repository.dart';
 import 'repositories/session_repository.dart';
@@ -53,9 +54,14 @@ class _CleanupWindowListener extends WindowListener {
 /// [BlocProvider.value] does not call [ChatCubit.close]; dispose here covers
 /// hot restart and other cases where the widget tree tears down.
 class _AppShutdownScope extends StatefulWidget {
-  const _AppShutdownScope({required this.chatCubit, required this.child});
+  const _AppShutdownScope({
+    required this.chatCubit,
+    required this.mailboxCubit,
+    required this.child,
+  });
 
   final ChatCubit chatCubit;
+  final MailboxCubit mailboxCubit;
   final Widget child;
 
   @override
@@ -66,6 +72,7 @@ class _AppShutdownScopeState extends State<_AppShutdownScope> {
   @override
   void dispose() {
     unawaited(widget.chatCubit.close());
+    unawaited(widget.mailboxCubit.close());
     super.dispose();
   }
 
@@ -139,6 +146,7 @@ void main() async {
         }
         return _AppShutdownScope(
           chatCubit: shell.chatCubit,
+          mailboxCubit: shell.mailboxCubit,
           child: MultiRepositoryProvider(
             providers: [
               RepositoryProvider<SharedPreferences>.value(value: preferences),
@@ -173,6 +181,7 @@ void main() async {
                 BlocProvider.value(value: shell.teamCubit),
                 BlocProvider.value(value: shell.chatCubit),
                 BlocProvider.value(value: shell.memberPresenceCubit),
+                BlocProvider.value(value: shell.mailboxCubit),
                 BlocProvider.value(value: shell.editorCubit),
                 BlocProvider.value(value: shell.configCubit),
                 BlocProvider.value(value: shell.appProviderCubit),
