@@ -156,6 +156,30 @@ class AppPaths {
   static String teamHubFavoritesJsonForTeampilotRoot(String teampilotRoot) =>
       _pathUnderTeampilotRoot(teampilotRoot, 'team-hub/favorites.json');
 
+  static String homeWorkspaceProjectFavoritesJsonForTeampilotRoot(
+    String teampilotRoot,
+  ) =>
+      _pathUnderTeampilotRoot(
+        teampilotRoot,
+        'home-workspace/project-favorites.json',
+      );
+
+  static String homeWorkspaceRecentProjectsJsonForTeampilotRoot(
+    String teampilotRoot,
+  ) =>
+      _pathUnderTeampilotRoot(
+        teampilotRoot,
+        'home-workspace/recent-projects.json',
+      );
+
+  static String homeWorkspaceClosedProjectsJsonForTeampilotRoot(
+    String teampilotRoot,
+  ) =>
+      _pathUnderTeampilotRoot(
+        teampilotRoot,
+        'home-workspace/closed-projects.json',
+      );
+
   String get skillRepoCacheDir => skillRepoCacheDirForTeampilotRoot(basePath);
 
   String get pluginMarketplaceCacheDir =>
@@ -184,6 +208,15 @@ class AppPaths {
       teamHubRegistriesJsonForTeampilotRoot(basePath);
   String get teamHubFavoritesJson =>
       teamHubFavoritesJsonForTeampilotRoot(basePath);
+
+  String get homeWorkspaceProjectFavoritesJson =>
+      homeWorkspaceProjectFavoritesJsonForTeampilotRoot(basePath);
+
+  String get homeWorkspaceRecentProjectsJson =>
+      homeWorkspaceRecentProjectsJsonForTeampilotRoot(basePath);
+
+  String get homeWorkspaceClosedProjectsJson =>
+      homeWorkspaceClosedProjectsJsonForTeampilotRoot(basePath);
 
   /// Application-level unified provider catalog (`providers/providers.json`).
   String get providerConfigDir => _ctx.join(basePath, 'providers');

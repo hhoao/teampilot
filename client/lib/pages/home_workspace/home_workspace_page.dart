@@ -7,6 +7,8 @@ import '../../theme/workspace_surface_layers.dart';
 import '../team_config/team_config_section.dart';
 import 'home_workspace_content.dart';
 import 'home_workspace_global_section.dart';
+import 'home_workspace_library_section.dart';
+import 'home_workspace_library_view.dart';
 import 'home_workspace_sidebar.dart';
 
 /// New Apifox-style workspace home body (teams rail + right pane). The window
@@ -35,36 +37,57 @@ class _HomeWorkspacePageState extends State<HomeWorkspacePage> {
   /// Null means the team view; otherwise a global management section.
   HomeWorkspaceGlobalView? _globalView;
 
+  /// Favorites / recent library pane; mutually exclusive with [_globalView].
+  HomeWorkspaceLibraryView? _libraryView;
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final globalView = _globalView;
+    final libraryView = _libraryView;
     final teamId = context.watch<TeamCubit>().state.selectedTeam?.id ?? 'none';
-    final paneKey = ValueKey(globalView?.name ?? 'team-$teamId');
+    final paneKey = ValueKey(
+      globalView?.name ?? libraryView?.name ?? 'team-$teamId',
+    );
 
     final body = Row(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         HomeWorkspaceSidebar(
           activeGlobalView: globalView,
-          onSelectGlobalView: (view) => setState(() => _globalView = view),
+          activeLibraryView: libraryView,
+          onSelectGlobalView: (view) => setState(() {
+            _globalView = view;
+            _libraryView = null;
+          }),
+          onSelectLibraryView: (view) => setState(() {
+            _libraryView = view;
+            _globalView = null;
+          }),
           onSelectTeam: (teamId) {
             context.read<TeamCubit>().selectTeam(teamId);
-            setState(() => _globalView = null);
+            setState(() {
+              _globalView = null;
+              _libraryView = null;
+            });
           },
         ),
         Expanded(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(44, 48, 42, 18),
-            child: (globalView == null
-                    ? HomeWorkspaceContent(
+            child: (globalView != null
+                    ? HomeWorkspaceGlobalSection(view: globalView)
+                    : libraryView != null
+                    ? HomeWorkspaceLibrarySection(view: libraryView)
+                    : HomeWorkspaceContent(
                         initialSection: widget.initialSection,
                         initialMemberId: widget.initialMemberId,
-                        onSelectGlobalView: (view) =>
-                            setState(() => _globalView = view),
-                      )
-                    : HomeWorkspaceGlobalSection(view: globalView))
+                        onSelectGlobalView: (view) => setState(() {
+                          _globalView = view;
+                          _libraryView = null;
+                        }),
+                      ))
                 .animate(key: paneKey)
                 .fadeIn(duration: 180.ms, curve: Curves.easeOut)
                 .slideX(

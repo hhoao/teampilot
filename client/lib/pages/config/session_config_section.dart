@@ -359,6 +359,44 @@ class _SessionControlsState extends State<_SessionControls> {
                 installKey: AppKeys.claudeCliInstallButton,
                 showDividerBelow: true,
               ),
+              SessionCliExecutablePathSettingsRow(
+                cubit: widget.cubit,
+                cli: CliTool.codex,
+                title: l10n.cliExecutablePathLabelFor(l10n.appProviderToolCodex),
+                subtitle: isSshMode
+                    ? l10n.cliExecutablePathDescriptionSshFor(
+                        l10n.appProviderToolCodex,
+                      )
+                    : l10n.cliExecutablePathDescriptionFor(
+                        l10n.appProviderToolCodex,
+                      ),
+                fieldKey: AppKeys.codexCliExecutablePathField,
+                browseKey: AppKeys.codexCliExecutablePathBrowseButton,
+                resetKey: AppKeys.codexCliExecutablePathResetButton,
+                debouncerTag: 'session_codex_cli_executable_path',
+                installKey: AppKeys.codexCliInstallButton,
+                showDividerBelow: true,
+              ),
+              SessionCliExecutablePathSettingsRow(
+                cubit: widget.cubit,
+                cli: CliTool.opencode,
+                title: l10n.cliExecutablePathLabelFor(
+                  l10n.appProviderToolOpencode,
+                ),
+                subtitle: isSshMode
+                    ? l10n.cliExecutablePathDescriptionSshFor(
+                        l10n.appProviderToolOpencode,
+                      )
+                    : l10n.cliExecutablePathDescriptionFor(
+                        l10n.appProviderToolOpencode,
+                      ),
+                fieldKey: AppKeys.opencodeCliExecutablePathField,
+                browseKey: AppKeys.opencodeCliExecutablePathBrowseButton,
+                resetKey: AppKeys.opencodeCliExecutablePathResetButton,
+                debouncerTag: 'session_opencode_cli_executable_path',
+                installKey: AppKeys.opencodeCliInstallButton,
+                showDividerBelow: true,
+              ),
               if (isSshMode) ...[
                 SettingsLabeledStackedRow(
                   title: 'SSH 默认工作目录',

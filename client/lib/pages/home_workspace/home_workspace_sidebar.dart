@@ -8,6 +8,7 @@ import '../../theme/app_text_styles.dart';
 import '../../theme/workspace_surface_layers.dart';
 import '../../utils/app_keys.dart';
 import 'home_workspace_global_section.dart';
+import 'home_workspace_library_view.dart';
 import 'home_workspace_new_team_dialog.dart';
 
 /// Left rail of the workspace home: "My Teams" list plus global management
@@ -16,14 +17,18 @@ import 'home_workspace_new_team_dialog.dart';
 class HomeWorkspaceSidebar extends StatefulWidget {
   const HomeWorkspaceSidebar({
     this.activeGlobalView,
+    this.activeLibraryView,
     this.onSelectGlobalView,
+    this.onSelectLibraryView,
     this.onSelectTeam,
     super.key,
   });
 
   /// Currently shown global section, or null when a team is shown.
   final HomeWorkspaceGlobalView? activeGlobalView;
+  final HomeWorkspaceLibraryView? activeLibraryView;
   final ValueChanged<HomeWorkspaceGlobalView>? onSelectGlobalView;
+  final ValueChanged<HomeWorkspaceLibraryView>? onSelectLibraryView;
   final ValueChanged<String>? onSelectTeam;
 
   static const double width = 420;
@@ -44,7 +49,9 @@ class _HomeWorkspaceSidebarState extends State<HomeWorkspaceSidebar> {
     final selected = teamCubit.state.selectedTeam;
     final onTeam = widget.onSelectTeam;
     final onGlobal = widget.onSelectGlobalView;
+    final onLibrary = widget.onSelectLibraryView;
     final activeGlobalView = widget.activeGlobalView;
+    final activeLibraryView = widget.activeLibraryView;
 
     return Container(
       width: HomeWorkspaceSidebar.width,
@@ -58,6 +65,35 @@ class _HomeWorkspaceSidebarState extends State<HomeWorkspaceSidebar> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           const SizedBox(height: 48),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(32, 0, 24, 0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _ShortcutRow(
+                  icon: Icons.star_outline_rounded,
+                  label: l10n.homeWorkspaceMyFavorites,
+                  active:
+                      activeLibraryView == HomeWorkspaceLibraryView.favorites,
+                  onTap: () =>
+                      onLibrary?.call(HomeWorkspaceLibraryView.favorites),
+                ),
+                const SizedBox(height: 4),
+                _ShortcutRow(
+                  icon: Icons.history_rounded,
+                  label: l10n.homeWorkspaceRecentVisits,
+                  active: activeLibraryView == HomeWorkspaceLibraryView.recent,
+                  onTap: () => onLibrary?.call(HomeWorkspaceLibraryView.recent),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          Divider(
+            height: 1,
+            color: cs.outlineVariant.withValues(alpha: 0.5),
+          ),
+          const SizedBox(height: 8),
           Padding(
             padding: const EdgeInsets.fromLTRB(32, 0, 32, 0),
             child: _SectionHeader(
@@ -86,6 +122,7 @@ class _HomeWorkspaceSidebarState extends State<HomeWorkspaceSidebar> {
                                   team: team,
                                   selected:
                                       activeGlobalView == null &&
+                                      activeLibraryView == null &&
                                       team.id == selected?.id,
                                   onTap: () => onTeam?.call(team.id),
                                 ),

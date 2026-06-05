@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../cubits/chat_cubit.dart';
 import '../../cubits/team_cubit.dart';
+import '../../services/home_workspace/home_workspace_project_favorites_store.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/app_project.dart';
 import '../../models/app_session.dart';
@@ -41,6 +44,9 @@ class HomeWorkspaceContent extends StatefulWidget {
 }
 
 class _HomeWorkspaceContentState extends State<HomeWorkspaceContent> {
+  final _projectFavoritesStore = HomeWorkspaceProjectFavoritesStore();
+  Set<String> _favoriteProjectIds = {};
+
   // Tab 0 is Projects; the rest reuse the existing team-config sections in the
   // order the user requested: Members, Skills, Plugins, MCP, Extensions, Team.
   static const _sections = <TeamConfigSection?>[
@@ -55,6 +61,32 @@ class _HomeWorkspaceContentState extends State<HomeWorkspaceContent> {
 
   late int _tabIndex = _initialTabIndex();
   bool _gridView = true;
+
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_loadProjectFavorites());
+  }
+
+  Future<void> _loadProjectFavorites() async {
+    final ids = await _projectFavoritesStore.load();
+    if (!mounted) return;
+    setState(() => _favoriteProjectIds = ids);
+  }
+
+  Future<void> _toggleProjectFavorite(String projectId) async {
+    final nowOn = await _projectFavoritesStore.toggle(projectId);
+    if (!mounted) return;
+    setState(() {
+      final next = {..._favoriteProjectIds};
+      if (nowOn) {
+        next.add(projectId);
+      } else {
+        next.remove(projectId);
+      }
+      _favoriteProjectIds = next;
+    });
+  }
 
   int _initialTabIndex() {
     final section = widget.initialSection;
@@ -114,6 +146,8 @@ class _HomeWorkspaceContentState extends State<HomeWorkspaceContent> {
                             gridView: _gridView,
                             onToggleView: (grid) =>
                                 setState(() => _gridView = grid),
+                            favoriteProjectIds: _favoriteProjectIds,
+                            onToggleProjectFavorite: _toggleProjectFavorite,
                           )
                         : HomeWorkspaceTeamTab(
                             key: ValueKey(

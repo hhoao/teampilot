@@ -14,6 +14,7 @@ import '../services/storage/storage_resolver.dart';
 import '../services/session/session_lifecycle_service.dart';
 import '../utils/lock_pool.dart';
 import '../utils/project_path_utils.dart';
+import '../utils/project_sessions.dart';
 import 'session_repository_fs.dart';
 
 class SessionRepository {
@@ -478,6 +479,107 @@ class SessionRepository {
       );
       await fs.deleteSessionDir(sessionId);
     });
+  }
+
+  /// Duplicates project metadata and its sessions (new ids; CLI runtime reset).
+  Future<AppProject> cloneProject(
+    String sourceProjectId, {
+    String? display,
+    List<TeamMemberConfig> rosterMembers = const [],
+  }) async {
+    final fs = await _fs();
+    final index = await _loadIndex(fs);
+    AppProject? source;
+    for (final p in index.projects) {
+      if (p.projectId == sourceProjectId) {
+        source = p;
+        break;
+      }
+    }
+    if (source == null) {
+      throw StateError('Unknown projectId: $sourceProjectId');
+    }
+
+    final sourceSessions = sessionsForProject(source, await loadSessions());
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final newProject = AppProject(
+      projectId: const Uuid().v4(),
+      primaryPath: source.primaryPath,
+      teamId: source.teamId,
+      additionalPaths: List<String>.from(source.additionalPaths),
+      display: (display ?? source.display).trim(),
+      createdAt: now,
+      updatedAt: now,
+    );
+
+    final newSessionIds = <String>[];
+    for (final old in sourceSessions) {
+      final copied = await _cloneSessionRecord(
+        fs,
+        old,
+        newProject.projectId,
+        rosterMembers: rosterMembers,
+      );
+      newSessionIds.add(copied.sessionId);
+    }
+
+    final projectOut = newProject.copyWith(sessionIds: newSessionIds);
+    await _saveIndex(
+      fs,
+      AppProjectsIndex(
+        schemaVersion: index.schemaVersion,
+        projects: [...index.projects, projectOut],
+      ),
+    );
+    return projectOut;
+  }
+
+  Future<AppSession> _cloneSessionRecord(
+    SessionRepositoryFs fs,
+    AppSession source,
+    String targetProjectId, {
+    required List<TeamMemberConfig> rosterMembers,
+  }) async {
+    final now = DateTime.now().millisecondsSinceEpoch;
+    var cliTeamName = '';
+    var members = const <SessionMemberBinding>[];
+    final trimmedTeam = source.sessionTeam.trim();
+    if (trimmedTeam.isNotEmpty) {
+      final valid = rosterMembers.where((m) => m.isValid).toList();
+      if (valid.isNotEmpty) {
+        final counterCtx = await _counterContext();
+        final counter = SessionTeamCounter(
+          fs: counterCtx.fs,
+          layout: counterCtx.layout,
+        );
+        cliTeamName = await counter.nextCliTeamName(trimmedTeam);
+        members = [
+          for (final m in valid)
+            SessionMemberBinding(
+              rosterMemberId: m.id,
+              taskId: const Uuid().v4(),
+            ),
+        ];
+      }
+    }
+
+    final sessionId = const Uuid().v4();
+    final session = AppSession(
+      sessionId: sessionId,
+      projectId: targetProjectId,
+      primaryPath: source.primaryPath,
+      additionalPaths: List<String>.from(source.additionalPaths),
+      display: source.display,
+      sessionTeam: source.sessionTeam,
+      cliTeamName: cliTeamName,
+      members: members,
+      launchState: AppSessionLaunchState.created,
+      createdAt: now,
+      updatedAt: now,
+    );
+    await fs.ensureSessionsDir();
+    await _writeSession(fs, session);
+    return session;
   }
 
   Future<void> deleteProject(String projectId) async {

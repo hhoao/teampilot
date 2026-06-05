@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -5,7 +7,11 @@ import 'package:go_router/go_router.dart';
 import '../../cubits/chat_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/app_project.dart';
+import '../../models/home_closed_project_entry.dart';
 import '../../theme/workspace_surface_layers.dart';
+import '../../services/home_workspace/home_workspace_closed_projects_store.dart';
+import '../../services/home_workspace/home_workspace_recent_projects_store.dart';
+import 'home_workspace_tab_scope.dart';
 import 'home_workspace_title_bar.dart';
 
 /// Persistent chrome for the workspace-home route family. Owns the open project
@@ -27,13 +33,30 @@ class HomeWorkspaceShell extends StatefulWidget {
 }
 
 class _HomeWorkspaceShellState extends State<HomeWorkspaceShell> {
+  final _recentProjectsStore = HomeWorkspaceRecentProjectsStore();
+  final _closedProjectsStore = HomeWorkspaceClosedProjectsStore();
+
   /// Open project ids in tab order; persists across navigation.
   List<String> _openIds = const [];
+  List<HomeClosedProjectEntry> _recentlyClosed = const [];
 
   @override
   void initState() {
     super.initState();
     _ensureOpen(_projectIdFromLocation(widget.location));
+    unawaited(_reloadRecentlyClosed());
+  }
+
+  Future<void> _reloadRecentlyClosed() async {
+    final all = await _closedProjectsStore.load();
+    if (!mounted) return;
+    final open = _openIds.toSet();
+    setState(
+      () => _recentlyClosed = [
+        for (final e in all)
+          if (!open.contains(e.projectId)) e,
+      ],
+    );
   }
 
   @override
@@ -41,16 +64,21 @@ class _HomeWorkspaceShellState extends State<HomeWorkspaceShell> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.location != widget.location) {
       final id = _projectIdFromLocation(widget.location);
-      if (id != null && !_openIds.contains(id)) {
-        setState(() => _openIds = [..._openIds, id]);
+      if (id != null) {
+        if (!_openIds.contains(id)) {
+          setState(() => _openIds = [..._openIds, id]);
+        }
+        unawaited(_recentProjectsStore.recordVisit(id));
       }
     }
   }
 
   void _ensureOpen(String? id) {
-    if (id != null && !_openIds.contains(id)) {
+    if (id == null) return;
+    if (!_openIds.contains(id)) {
       _openIds = [..._openIds, id];
     }
+    unawaited(_recentProjectsStore.recordVisit(id));
   }
 
   static String? _projectIdFromLocation(String location) {
@@ -67,8 +95,26 @@ class _HomeWorkspaceShellState extends State<HomeWorkspaceShell> {
 
   void _goHome() => context.go('/home-v2');
 
+  void _openProject(String id, {required bool activate}) {
+    if (!_openIds.contains(id)) {
+      setState(() => _openIds = [..._openIds, id]);
+    }
+    unawaited(_recentProjectsStore.recordVisit(id));
+    if (activate) {
+      _selectTab(id);
+    }
+  }
+
+  Future<void> _reopenClosedProject(String id) async {
+    await _closedProjectsStore.remove(id);
+    if (!mounted) return;
+    _openProject(id, activate: true);
+    await _reloadRecentlyClosed();
+  }
+
   Future<void> _closeTab(String id) async {
     if (!_openIds.contains(id)) return;
+    final projects = context.read<ChatCubit>().state.projects;
     // Closing a project tab always terminates that project's running sessions;
     // confirm first when there are any so the user can cancel.
     final chat = context.read<ChatCubit>();
@@ -80,9 +126,20 @@ class _HomeWorkspaceShellState extends State<HomeWorkspaceShell> {
     }
     final idx = _openIds.indexOf(id);
     if (idx < 0) return;
+    final project = _resolve(projects, id);
+    if (project != null) {
+      await _closedProjectsStore.recordClosed(
+        HomeClosedProjectEntry(
+          projectId: project.projectId,
+          displayName: project.effectiveDisplay,
+          primaryPath: project.primaryPath,
+        ),
+      );
+    }
     final wasActive = id == _projectIdFromLocation(widget.location);
     final next = [..._openIds]..removeAt(idx);
     setState(() => _openIds = next);
+    await _reloadRecentlyClosed();
     if (wasActive) {
       if (next.isEmpty) {
         _goHome();
@@ -140,11 +197,23 @@ class _HomeWorkspaceShellState extends State<HomeWorkspaceShell> {
           HomeWorkspaceTitleBar(
             tabs: tabs,
             activeProjectId: activeId,
+            recentlyClosed: _recentlyClosed,
+            openProjectIds: _openIds.toSet(),
             onHomeTap: _goHome,
             onSelectTab: _selectTab,
             onCloseTab: _closeTab,
+            onReopenClosedProject: (id) => unawaited(_reopenClosedProject(id)),
           ),
-          Expanded(child: SafeArea(top: false, child: widget.child)),
+          Expanded(
+            child: SafeArea(
+              top: false,
+              child: HomeWorkspaceTabScope(
+                openProject: (id, {activate = true}) =>
+                    _openProject(id, activate: activate),
+                child: widget.child,
+              ),
+            ),
+          ),
         ],
       ),
     );

@@ -986,6 +986,36 @@ abstract class AppLocalizations {
   /// **'Always on top'**
   String get windowControlAlwaysOnTop;
 
+  /// No description provided for @homeWorkspaceMyFavorites.
+  ///
+  /// In en, this message translates to:
+  /// **'My favorites'**
+  String get homeWorkspaceMyFavorites;
+
+  /// No description provided for @homeWorkspaceRecentVisits.
+  ///
+  /// In en, this message translates to:
+  /// **'Recent'**
+  String get homeWorkspaceRecentVisits;
+
+  /// No description provided for @homeWorkspaceNoData.
+  ///
+  /// In en, this message translates to:
+  /// **'No data yet'**
+  String get homeWorkspaceNoData;
+
+  /// No description provided for @homeWorkspaceRecentlyClosed.
+  ///
+  /// In en, this message translates to:
+  /// **'Recently closed'**
+  String get homeWorkspaceRecentlyClosed;
+
+  /// No description provided for @homeWorkspaceRecentlyClosedEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No recently closed projects'**
+  String get homeWorkspaceRecentlyClosedEmpty;
+
   /// No description provided for @homeWorkspaceMyTeams.
   ///
   /// In en, this message translates to:
@@ -1231,6 +1261,54 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No conversations match your search'**
   String get homeWorkspaceNoSearchResults;
+
+  /// No description provided for @homeWorkspaceOpenProjectInNewTab.
+  ///
+  /// In en, this message translates to:
+  /// **'Open in new tab'**
+  String get homeWorkspaceOpenProjectInNewTab;
+
+  /// No description provided for @homeWorkspaceFavoriteProject.
+  ///
+  /// In en, this message translates to:
+  /// **'Favorite project'**
+  String get homeWorkspaceFavoriteProject;
+
+  /// No description provided for @homeWorkspaceUnfavoriteProject.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove from favorites'**
+  String get homeWorkspaceUnfavoriteProject;
+
+  /// No description provided for @homeWorkspaceRenameProject.
+  ///
+  /// In en, this message translates to:
+  /// **'Rename project'**
+  String get homeWorkspaceRenameProject;
+
+  /// No description provided for @homeWorkspaceCloneProject.
+  ///
+  /// In en, this message translates to:
+  /// **'Clone project'**
+  String get homeWorkspaceCloneProject;
+
+  /// No description provided for @homeWorkspaceCloneProjectDisplayName.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} (copy)'**
+  String homeWorkspaceCloneProjectDisplayName(Object name);
+
+  /// No description provided for @homeWorkspaceCloneProjectSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Cloned \"{name}\".'**
+  String homeWorkspaceCloneProjectSuccess(Object name);
+
+  /// No description provided for @homeWorkspaceCloneProjectFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not clone project'**
+  String get homeWorkspaceCloneProjectFailed;
 
   /// No description provided for @newProjectTooltip.
   ///
@@ -1628,17 +1706,35 @@ abstract class AppLocalizations {
   /// **'Installing Node.js…'**
   String get cliInstallProgressBootstrappingNode;
 
-  /// No description provided for @cliInstallProgressInstallingClaude.
+  /// No description provided for @cliInstallProgressInstallingCli.
   ///
   /// In en, this message translates to:
-  /// **'Installing Claude Code…'**
-  String get cliInstallProgressInstallingClaude;
+  /// **'Installing CLI…'**
+  String get cliInstallProgressInstallingCli;
 
   /// No description provided for @cliInstallProgressLocatingExecutable.
   ///
   /// In en, this message translates to:
-  /// **'Locating Claude Code executable…'**
+  /// **'Locating CLI executable…'**
   String get cliInstallProgressLocatingExecutable;
+
+  /// No description provided for @cliExecutablePathLabelFor.
+  ///
+  /// In en, this message translates to:
+  /// **'{cli} CLI path'**
+  String cliExecutablePathLabelFor(String cli);
+
+  /// No description provided for @cliExecutablePathDescriptionFor.
+  ///
+  /// In en, this message translates to:
+  /// **'Absolute path to the {cli} executable. Leave empty to use the one on PATH.'**
+  String cliExecutablePathDescriptionFor(String cli);
+
+  /// No description provided for @cliExecutablePathDescriptionSshFor.
+  ///
+  /// In en, this message translates to:
+  /// **'Absolute path to {cli} on the remote SSH host. Leave empty to auto-discover over SSH.'**
+  String cliExecutablePathDescriptionSshFor(String cli);
 
   /// No description provided for @claudeCliExecutablePathLabel.
   ///
@@ -1927,6 +2023,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Maximum lines kept in each session terminal buffer'**
   String get terminalScrollbackLinesDescription;
+
+  /// No description provided for @terminalParkedSendPending.
+  ///
+  /// In en, this message translates to:
+  /// **'Sent, awaiting receipt: {content}'**
+  String terminalParkedSendPending(String content);
+
+  /// No description provided for @terminalParkedSendDismiss.
+  ///
+  /// In en, this message translates to:
+  /// **'Dismiss'**
+  String get terminalParkedSendDismiss;
+
+  /// No description provided for @mailbox.
+  ///
+  /// In en, this message translates to:
+  /// **'Mailbox'**
+  String get mailbox;
+
+  /// No description provided for @mailboxEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No messages yet'**
+  String get mailboxEmpty;
 
   /// No description provided for @autoLaunchAllMembersTitle.
   ///

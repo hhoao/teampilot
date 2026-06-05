@@ -489,6 +489,21 @@ class AppLocalizationsEn extends AppLocalizations {
   String get windowControlAlwaysOnTop => 'Always on top';
 
   @override
+  String get homeWorkspaceMyFavorites => 'My favorites';
+
+  @override
+  String get homeWorkspaceRecentVisits => 'Recent';
+
+  @override
+  String get homeWorkspaceNoData => 'No data yet';
+
+  @override
+  String get homeWorkspaceRecentlyClosed => 'Recently closed';
+
+  @override
+  String get homeWorkspaceRecentlyClosedEmpty => 'No recently closed projects';
+
+  @override
   String get homeWorkspaceMyTeams => 'My Teams';
 
   @override
@@ -637,6 +652,34 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get homeWorkspaceNoSearchResults =>
       'No conversations match your search';
+
+  @override
+  String get homeWorkspaceOpenProjectInNewTab => 'Open in new tab';
+
+  @override
+  String get homeWorkspaceFavoriteProject => 'Favorite project';
+
+  @override
+  String get homeWorkspaceUnfavoriteProject => 'Remove from favorites';
+
+  @override
+  String get homeWorkspaceRenameProject => 'Rename project';
+
+  @override
+  String get homeWorkspaceCloneProject => 'Clone project';
+
+  @override
+  String homeWorkspaceCloneProjectDisplayName(Object name) {
+    return '$name (copy)';
+  }
+
+  @override
+  String homeWorkspaceCloneProjectSuccess(Object name) {
+    return 'Cloned \"$name\".';
+  }
+
+  @override
+  String get homeWorkspaceCloneProjectFailed => 'Could not clone project';
 
   @override
   String get newProjectTooltip => 'Create a project';
@@ -853,11 +896,25 @@ class AppLocalizationsEn extends AppLocalizations {
   String get cliInstallProgressBootstrappingNode => 'Installing Node.js…';
 
   @override
-  String get cliInstallProgressInstallingClaude => 'Installing Claude Code…';
+  String get cliInstallProgressInstallingCli => 'Installing CLI…';
 
   @override
-  String get cliInstallProgressLocatingExecutable =>
-      'Locating Claude Code executable…';
+  String get cliInstallProgressLocatingExecutable => 'Locating CLI executable…';
+
+  @override
+  String cliExecutablePathLabelFor(String cli) {
+    return '$cli CLI path';
+  }
+
+  @override
+  String cliExecutablePathDescriptionFor(String cli) {
+    return 'Absolute path to the $cli executable. Leave empty to use the one on PATH.';
+  }
+
+  @override
+  String cliExecutablePathDescriptionSshFor(String cli) {
+    return 'Absolute path to $cli on the remote SSH host. Leave empty to auto-discover over SSH.';
+  }
 
   @override
   String get claudeCliExecutablePathLabel => 'Claude Code CLI path';
@@ -1016,6 +1073,20 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get terminalScrollbackLinesDescription =>
       'Maximum lines kept in each session terminal buffer';
+
+  @override
+  String terminalParkedSendPending(String content) {
+    return 'Sent, awaiting receipt: $content';
+  }
+
+  @override
+  String get terminalParkedSendDismiss => 'Dismiss';
+
+  @override
+  String get mailbox => 'Mailbox';
+
+  @override
+  String get mailboxEmpty => 'No messages yet';
 
   @override
   String get autoLaunchAllMembersTitle => 'Start all members on connect';

@@ -573,6 +573,22 @@ class ChatCubit extends Cubit<ChatState>
     _emitSnapshot(await _dataStore.deleteSessionRecord(repo, sessionId));
   }
 
+  Future<AppProject> cloneProject(
+    SessionRepository repo,
+    String sourceProjectId, {
+    String? display,
+    List<TeamMemberConfig> rosterMembers = const [],
+  }) async {
+    final result = await _dataStore.cloneProject(
+      repo,
+      sourceProjectId,
+      display: display,
+      rosterMembers: rosterMembers,
+    );
+    _emitSnapshot(result.snapshot);
+    return result.project;
+  }
+
   Future<void> deleteProject(SessionRepository repo, String projectId) async {
     AppProject? project;
     for (final p in state.projects) {

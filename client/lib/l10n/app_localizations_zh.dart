@@ -471,6 +471,21 @@ class AppLocalizationsZh extends AppLocalizations {
   String get windowControlAlwaysOnTop => '置顶';
 
   @override
+  String get homeWorkspaceMyFavorites => '我的收藏';
+
+  @override
+  String get homeWorkspaceRecentVisits => '最近访问';
+
+  @override
+  String get homeWorkspaceNoData => '暂无数据';
+
+  @override
+  String get homeWorkspaceRecentlyClosed => '最近关闭';
+
+  @override
+  String get homeWorkspaceRecentlyClosedEmpty => '暂无最近关闭的项目';
+
+  @override
   String get homeWorkspaceMyTeams => '我的团队';
 
   @override
@@ -603,6 +618,34 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get homeWorkspaceNoSearchResults => '没有匹配的对话';
+
+  @override
+  String get homeWorkspaceOpenProjectInNewTab => '在新标签页中打开';
+
+  @override
+  String get homeWorkspaceFavoriteProject => '收藏项目';
+
+  @override
+  String get homeWorkspaceUnfavoriteProject => '取消收藏';
+
+  @override
+  String get homeWorkspaceRenameProject => '修改名称';
+
+  @override
+  String get homeWorkspaceCloneProject => '克隆项目';
+
+  @override
+  String homeWorkspaceCloneProjectDisplayName(Object name) {
+    return '$name（副本）';
+  }
+
+  @override
+  String homeWorkspaceCloneProjectSuccess(Object name) {
+    return '已克隆「$name」。';
+  }
+
+  @override
+  String get homeWorkspaceCloneProjectFailed => '无法克隆项目';
 
   @override
   String get newProjectTooltip => '创建项目';
@@ -814,10 +857,25 @@ class AppLocalizationsZh extends AppLocalizations {
   String get cliInstallProgressBootstrappingNode => '正在安装 Node.js…';
 
   @override
-  String get cliInstallProgressInstallingClaude => '正在安装 Claude Code…';
+  String get cliInstallProgressInstallingCli => '正在安装 CLI…';
 
   @override
-  String get cliInstallProgressLocatingExecutable => '正在定位 Claude Code 可执行文件…';
+  String get cliInstallProgressLocatingExecutable => '正在定位 CLI 可执行文件…';
+
+  @override
+  String cliExecutablePathLabelFor(String cli) {
+    return '$cli CLI 路径';
+  }
+
+  @override
+  String cliExecutablePathDescriptionFor(String cli) {
+    return '$cli 可执行文件的绝对路径。留空则使用 PATH 中查找到的版本。';
+  }
+
+  @override
+  String cliExecutablePathDescriptionSshFor(String cli) {
+    return '远程 SSH 主机上 $cli 的绝对路径。留空则通过 SSH 自动探测。';
+  }
 
   @override
   String get claudeCliExecutablePathLabel => 'Claude Code CLI 路径';
@@ -972,6 +1030,20 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get terminalScrollbackLinesDescription => '每个会话终端保留的最大行数';
+
+  @override
+  String terminalParkedSendPending(String content) {
+    return '已发送，等待接收：$content';
+  }
+
+  @override
+  String get terminalParkedSendDismiss => '关闭';
+
+  @override
+  String get mailbox => '信箱';
+
+  @override
+  String get mailboxEmpty => '暂无消息';
 
   @override
   String get autoLaunchAllMembersTitle => '连接时启动全部成员';

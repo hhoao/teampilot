@@ -1,12 +1,16 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
 import 'package:flutter/services.dart';
 import 'package:window_manager/window_manager.dart';
 
 import '../../l10n/l10n_extensions.dart';
+import '../../models/home_closed_project_entry.dart';
 import '../../services/app/platform_utils.dart';
 import '../../theme/app_text_styles.dart';
 import '../../theme/workspace_surface_layers.dart';
+import '../../widgets/menu/sidebar_action_menu.dart';
 import '../../widgets/team_pilot_brand_logo.dart';
 import '../../widgets/window_drag_area.dart';
 import '../config/config_workspace.dart';
@@ -45,9 +49,12 @@ class HomeWorkspaceTitleBar extends StatefulWidget {
   const HomeWorkspaceTitleBar({
     this.tabs = const [],
     this.activeProjectId,
+    this.recentlyClosed = const [],
+    this.openProjectIds = const {},
     this.onHomeTap,
     this.onSelectTab,
     this.onCloseTab,
+    this.onReopenClosedProject,
     super.key,
   });
 
@@ -56,9 +63,14 @@ class HomeWorkspaceTitleBar extends StatefulWidget {
 
   /// The project currently shown, or null when the Home view is shown.
   final String? activeProjectId;
+
+  /// Recently closed tabs (newest first), excluding currently open ids.
+  final List<HomeClosedProjectEntry> recentlyClosed;
+  final Set<String> openProjectIds;
   final VoidCallback? onHomeTap;
   final ValueChanged<String>? onSelectTab;
   final ValueChanged<String>? onCloseTab;
+  final ValueChanged<String>? onReopenClosedProject;
 
   @override
   State<HomeWorkspaceTitleBar> createState() => _HomeWorkspaceTitleBarState();
@@ -119,9 +131,20 @@ class _HomeWorkspaceTitleBarState extends State<HomeWorkspaceTitleBar>
             ),
             if (widget.tabs.isEmpty)
               Expanded(
-                child: showWindowControls
-                    ? const WindowDragArea(child: SizedBox.expand())
-                    : const SizedBox.expand(),
+                child: Row(
+                  children: [
+                    const SizedBox(width: 6),
+                    _RecentlyClosedOverflowButton(
+                      entries: widget.recentlyClosed,
+                      onReopen: widget.onReopenClosedProject,
+                    ),
+                    Expanded(
+                      child: showWindowControls
+                          ? const WindowDragArea(child: SizedBox.expand())
+                          : const SizedBox.expand(),
+                    ),
+                  ],
+                ),
               )
             else
               // The open project tabs share the remaining width with a single
@@ -168,6 +191,15 @@ class _HomeWorkspaceTitleBarState extends State<HomeWorkspaceTitleBar>
                                   ),
                                 ),
                               ],
+                              const SizedBox(width: 6),
+                              Align(
+                                alignment: Alignment.center,
+                                widthFactor: 1,
+                                child: _RecentlyClosedOverflowButton(
+                                  entries: widget.recentlyClosed,
+                                  onReopen: widget.onReopenClosedProject,
+                                ),
+                              ),
                             ],
                           ),
                         ),
@@ -372,6 +404,158 @@ class _ProjectTab extends StatelessWidget {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Overflow menu listing recently closed project tabs; opens on hover.
+class _RecentlyClosedOverflowButton extends StatefulWidget {
+  const _RecentlyClosedOverflowButton({
+    required this.entries,
+    this.onReopen,
+  });
+
+  final List<HomeClosedProjectEntry> entries;
+  final ValueChanged<String>? onReopen;
+
+  static const _menuMaxHeight = 320.0;
+  static const _menuWidth = 280.0;
+  static const _closeDelay = Duration(milliseconds: 180);
+
+  @override
+  State<_RecentlyClosedOverflowButton> createState() =>
+      _RecentlyClosedOverflowButtonState();
+}
+
+class _RecentlyClosedOverflowButtonState
+    extends State<_RecentlyClosedOverflowButton> {
+  final _menuController = MenuController();
+  Timer? _closeTimer;
+  var _pointerOnAnchor = false;
+  var _pointerOnMenu = false;
+
+  @override
+  void dispose() {
+    _closeTimer?.cancel();
+    super.dispose();
+  }
+
+  void _cancelCloseTimer() {
+    _closeTimer?.cancel();
+    _closeTimer = null;
+  }
+
+  void _scheduleClose() {
+    _cancelCloseTimer();
+    _closeTimer = Timer(_RecentlyClosedOverflowButton._closeDelay, () {
+      if (!_pointerOnAnchor && !_pointerOnMenu && _menuController.isOpen) {
+        _menuController.close();
+      }
+    });
+  }
+
+  void _openMenu() {
+    _cancelCloseTimer();
+    if (!_menuController.isOpen) {
+      _menuController.open();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final styles = AppTextStyles.of(context);
+    final cs = Theme.of(context).colorScheme;
+    final entries = widget.entries;
+
+    return MenuAnchor(
+      controller: _menuController,
+      style: SidebarActionMenuMetrics.menuAnchorStyle(
+        context,
+        minWidth: _RecentlyClosedOverflowButton._menuWidth,
+      ),
+      alignmentOffset: const Offset(0, 4),
+      onOpen: _cancelCloseTimer,
+      menuChildren: [
+        MouseRegion(
+          onEnter: (_) {
+            _pointerOnMenu = true;
+            _cancelCloseTimer();
+          },
+          onExit: (_) {
+            _pointerOnMenu = false;
+            _scheduleClose();
+          },
+          child: SidebarActionMenuPanel(
+            minWidth: _RecentlyClosedOverflowButton._menuWidth,
+            menuAnchorShell: true,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
+                child: Text(
+                  l10n.homeWorkspaceRecentlyClosed,
+                  style: styles.bodySmall.copyWith(
+                    color: cs.onSurfaceVariant,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              if (entries.isEmpty)
+                SidebarActionMenuItem(
+                  icon: Icons.inbox_outlined,
+                  label: l10n.homeWorkspaceRecentlyClosedEmpty,
+                  enabled: false,
+                  menuController: _menuController,
+                )
+              else
+                ConstrainedBox(
+                  constraints: const BoxConstraints(
+                    maxHeight: _RecentlyClosedOverflowButton._menuMaxHeight,
+                  ),
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        for (final entry in entries)
+                          SidebarActionMenuItem(
+                            icon: Icons.description_outlined,
+                            label: entry.displayName,
+                            subtitle: entry.primaryPath.isEmpty
+                                ? null
+                                : Text(
+                                    entry.primaryPath,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: styles.caption.copyWith(
+                                      color: cs.onSurfaceVariant,
+                                    ),
+                                  ),
+                            menuController: _menuController,
+                            onTap: () =>
+                                widget.onReopen?.call(entry.projectId),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ],
+      child: MouseRegion(
+        onEnter: (_) {
+          _pointerOnAnchor = true;
+          _openMenu();
+        },
+        onExit: (_) {
+          _pointerOnAnchor = false;
+          _scheduleClose();
+        },
+        child: _ActionGlyph(
+          icon: Icons.more_horiz,
+          tooltip: l10n.homeWorkspaceRecentlyClosed,
         ),
       ),
     );

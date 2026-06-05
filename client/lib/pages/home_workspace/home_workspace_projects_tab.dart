@@ -19,12 +19,16 @@ class HomeWorkspaceProjectsTab extends StatelessWidget {
     required this.sessions,
     required this.gridView,
     required this.onToggleView,
+    required this.favoriteProjectIds,
+    required this.onToggleProjectFavorite,
   });
 
   final List<AppProject> projects;
   final List<AppSession> sessions;
   final bool gridView;
   final ValueChanged<bool> onToggleView;
+  final Set<String> favoriteProjectIds;
+  final Future<void> Function(String projectId) onToggleProjectFavorite;
 
   @override
   Widget build(BuildContext context) {
@@ -36,7 +40,12 @@ class HomeWorkspaceProjectsTab extends StatelessWidget {
         Expanded(
           child: projects.isEmpty
               ? const HomeWorkspaceEmptyProjects()
-              : HomeWorkspaceProjectGrid(projects: projects, sessions: sessions),
+              : HomeWorkspaceProjectGrid(
+                  projects: projects,
+                  sessions: sessions,
+                  favoriteProjectIds: favoriteProjectIds,
+                  onToggleProjectFavorite: onToggleProjectFavorite,
+                ),
         ),
       ],
     );
@@ -276,13 +285,28 @@ class HomeWorkspaceProjectsPrimaryAction extends StatelessWidget {
 }
 
 class HomeWorkspaceProjectGrid extends StatelessWidget {
-  const HomeWorkspaceProjectGrid({required this.projects, required this.sessions});
+  const HomeWorkspaceProjectGrid({
+    required this.projects,
+    required this.sessions,
+    required this.favoriteProjectIds,
+    required this.onToggleProjectFavorite,
+  });
 
   final List<AppProject> projects;
   final List<AppSession> sessions;
+  final Set<String> favoriteProjectIds;
+  final Future<void> Function(String projectId) onToggleProjectFavorite;
 
   @override
   Widget build(BuildContext context) {
+    final sorted = List<AppProject>.from(projects)
+      ..sort((a, b) {
+        final af = favoriteProjectIds.contains(a.projectId);
+        final bf = favoriteProjectIds.contains(b.projectId);
+        if (af != bf) return af ? -1 : 1;
+        return b.updatedAt.compareTo(a.updatedAt);
+      });
+
     return GridView.builder(
       gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
         maxCrossAxisExtent: 460,
@@ -290,15 +314,17 @@ class HomeWorkspaceProjectGrid extends StatelessWidget {
         crossAxisSpacing: 20,
         mainAxisSpacing: 20,
       ),
-      itemCount: projects.length,
+      itemCount: sorted.length,
       itemBuilder: (context, index) {
-        final project = projects[index];
+        final project = sorted[index];
         final count = sessions
             .where((s) => s.projectId == project.projectId)
             .length;
         return HomeWorkspaceProjectCard(
           project: project,
           sessionCount: count,
+          favorited: favoriteProjectIds.contains(project.projectId),
+          onToggleFavorite: () => onToggleProjectFavorite(project.projectId),
           onTap: () => context.go('/home-v2/project/${project.projectId}'),
         );
       },

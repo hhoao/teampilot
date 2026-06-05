@@ -163,4 +163,19 @@ class SessionDataStore {
     await repo.deleteProject(projectId);
     return loadProjectData(repo);
   }
+
+  Future<({AppProject project, ChatDataSnapshot snapshot})> cloneProject(
+    SessionRepository repo,
+    String sourceProjectId, {
+    String? display,
+    List<TeamMemberConfig> rosterMembers = const [],
+  }) async {
+    final project = await repo.cloneProject(
+      sourceProjectId,
+      display: display,
+      rosterMembers: rosterMembers,
+    );
+    final snapshot = await loadProjectData(repo);
+    return (project: project, snapshot: snapshot);
+  }
 }
