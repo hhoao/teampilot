@@ -2,22 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../cubits/layout_cubit.dart';
-import '../../models/layout_preferences.dart';
 import '../split_layout.dart';
+import 'tool_view.dart';
 
 /// Vertically stacked tool panels with a persisted primary split.
 class StackedPanel extends StatelessWidget {
-  const StackedPanel({
-    required this.panels,
-    required this.preferences,
-    super.key,
-  });
+  const StackedPanel({required this.views, super.key});
 
-  final List<Widget> panels;
-  final LayoutPreferences preferences;
+  final List<ToolView> views;
 
   @override
   Widget build(BuildContext context) {
+    final panels = [for (final v in views) v.child];
     if (panels.isEmpty) return const SizedBox.shrink();
     if (panels.length == 1) return panels.single;
     return LayoutBuilder(
@@ -29,7 +25,8 @@ class StackedPanel extends StatelessWidget {
         // are stacked evenly in the lower pane (not persisted).
         return TwoPaneSplitView(
           axis: Axis.vertical,
-          initialFraction: preferences.membersSplit,
+          initialFraction:
+              context.read<LayoutCubit>().state.preferences.membersSplit,
           minSize: minTop,
           minSecondarySize: minTop,
           maxSize: maxTop,
