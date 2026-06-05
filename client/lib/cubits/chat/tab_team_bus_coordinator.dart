@@ -125,6 +125,7 @@ class TabTeamBusCoordinator implements MemberMaterializer {
     return BusUserInputRouting(
       shouldIntercept: () => bus.isWaitingForMessage(memberId),
       onUserLine: (line) => bus.deliverUserCommand(memberId, line),
+      isUnread: (id) => bus.isUnread(memberId, id),
     );
   }
 

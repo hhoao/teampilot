@@ -5,10 +5,18 @@ class BusUserInputRouting {
   const BusUserInputRouting({
     required this.shouldIntercept,
     required this.onUserLine,
+    this.isUnread,
   });
 
   final bool Function() shouldIntercept;
-  final void Function(String line) onUserLine;
+
+  /// Submits a captured line. Returns the delivered message id (empty if none),
+  /// so the terminal session can track it for the parked-send overlay.
+  final String Function(String line) onUserLine;
+
+  /// Whether a previously-delivered message id is still unread in the target
+  /// member's inbox. Null when not wired (overlay disabled).
+  final bool Function(String id)? isUnread;
 }
 
 /// 从 engine→PTY 字节流里解析「一行」。
