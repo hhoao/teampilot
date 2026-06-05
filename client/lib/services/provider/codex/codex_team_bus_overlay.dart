@@ -9,6 +9,11 @@ abstract final class CodexTeamBusOverlay {
   /// keepalives every 20s). 24h.
   static const busToolTimeoutSec = 86400;
 
+  /// Auto-run all tools on this server (list_teammates, wait_for_message, …)
+  /// without per-call approval prompts. Mirrors Claude's `mcp__teammate-bus`
+  /// allow-list in mixed mode.
+  static const defaultToolsApprovalMode = 'auto';
+
   static String build({required String memberId, required int port}) {
     final idleCommand =
         'curl -sS -X POST -H \\"X-Member: $memberId\\" '
@@ -19,6 +24,7 @@ abstract final class CodexTeamBusOverlay {
 [mcp_servers.$busMcpServerName]
 url = "http://127.0.0.1:$port/mcp"
 tool_timeout_sec = $busToolTimeoutSec
+default_tools_approval_mode = "$defaultToolsApprovalMode"
 http_headers = { "X-Member" = "$memberId" }
 
 [[hooks.Stop]]

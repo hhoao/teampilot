@@ -22,6 +22,16 @@ void main() {
       );
     });
 
+    test('auto-approves all teammate-bus MCP tools without prompting', () {
+      expect(
+        toml,
+        contains(
+          'default_tools_approval_mode = '
+          '"${CodexTeamBusOverlay.defaultToolsApprovalMode}"',
+        ),
+      );
+    });
+
     test('wires a Stop hook that curls /idle and passes the response through',
         () {
       expect(toml, contains('[[hooks.Stop]]'));
