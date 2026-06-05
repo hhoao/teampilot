@@ -1060,5 +1060,20 @@
   "initErrorCopy": "复制",
   "initErrorCopied": "已复制",
   "initErrorStackEmpty": "（堆栈为空）",
-  "initErrorVersion": "版本 {version}（{build}）"
+  "initErrorVersion": "版本 {version}（{build}）",
+  "diffIgnoreWhitespace": "忽略空白",
+  "diffPreviousChange": "上一处更改",
+  "diffNextChange": "下一处更改",
+  "diffViewSideBySide": "并排",
+  "diffViewUnified": "统一",
+  "diffOpenSourceFile": "打开源文件",
+  "diffShowAllLines": "显示全部",
+  "diffNoChanges": "没有更改",
+  "diffChangeCounter": "{current} / {total}",
+  "@diffChangeCounter": {
+    "placeholders": {
+      "current": { "type": "int" },
+      "total": { "type": "int" }
+    }
+  }
 }

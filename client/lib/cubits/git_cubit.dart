@@ -161,9 +161,18 @@ class GitCubit extends Cubit<GitState> {
   Future<void> createBranch(String name) =>
       _mutate(() => _service.createBranch(state.repoRoot, name.trim()));
 
-  Future<String?> diff(GitFileChange change) async {
+  Future<String?> diff(
+    GitFileChange change, {
+    bool ignoreWhitespace = false,
+    bool fullContext = false,
+  }) async {
     try {
-      return await _service.diff(state.repoRoot, change);
+      return await _service.diff(
+        state.repoRoot,
+        change,
+        ignoreWhitespace: ignoreWhitespace,
+        fullContext: fullContext,
+      );
     } on GitException catch (e) {
       emit(state.copyWith(errorMessage: e.message));
       return null;

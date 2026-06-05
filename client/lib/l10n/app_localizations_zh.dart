@@ -2853,4 +2853,33 @@ class AppLocalizationsZh extends AppLocalizations {
   String initErrorVersion(String version, String build) {
     return '版本 $version（$build）';
   }
+
+  @override
+  String get diffIgnoreWhitespace => '忽略空白';
+
+  @override
+  String get diffPreviousChange => '上一处更改';
+
+  @override
+  String get diffNextChange => '下一处更改';
+
+  @override
+  String get diffViewSideBySide => '并排';
+
+  @override
+  String get diffViewUnified => '统一';
+
+  @override
+  String get diffOpenSourceFile => '打开源文件';
+
+  @override
+  String get diffShowAllLines => '显示全部';
+
+  @override
+  String get diffNoChanges => '没有更改';
+
+  @override
+  String diffChangeCounter(int current, int total) {
+    return '$current / $total';
+  }
 }

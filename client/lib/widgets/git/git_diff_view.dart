@@ -2,38 +2,60 @@ import 'package:flutter/material.dart';
 
 import '../../l10n/l10n_extensions.dart';
 import '../../theme/app_text_styles.dart';
+import '../diff/diff_viewer.dart';
 
-/// Read-only unified-diff dialog with simple +/- / hunk coloring.
-///
-/// Kept deliberately lightweight (no re-editor diff editor) per the
-/// source-control panel's "simple" scope.
+/// Dialog hosting the full [DiffViewer] (side-by-side / unified, inline
+/// highlights, change navigation) for a single source-control file change.
 class GitDiffDialog extends StatelessWidget {
-  const GitDiffDialog({required this.title, required this.diff, super.key});
+  const GitDiffDialog({
+    required this.title,
+    required this.diff,
+    this.filePath,
+    this.reloadDiff,
+    this.onOpenSource,
+    super.key,
+  });
 
   final String title;
   final String diff;
+
+  /// Path used for syntax highlighting (defaults to [title]).
+  final String? filePath;
+
+  /// Re-fetches the diff text for a given ignore-whitespace setting. When null,
+  /// the ignore-whitespace toggle is hidden.
+  final Future<String?> Function(bool ignoreWhitespace, bool fullContext)?
+      reloadDiff;
+
+  /// Opens the underlying file in the editor; shown as a toolbar button.
+  final VoidCallback? onOpenSource;
 
   static Future<void> show(
     BuildContext context, {
     required String title,
     required String diff,
+    String? filePath,
+    Future<String?> Function(bool ignoreWhitespace, bool fullContext)?
+        reloadDiff,
+    VoidCallback? onOpenSource,
   }) {
     return showDialog<void>(
       context: context,
-      builder: (_) => GitDiffDialog(title: title, diff: diff),
+      builder: (_) => GitDiffDialog(
+        title: title,
+        diff: diff,
+        filePath: filePath,
+        reloadDiff: reloadDiff,
+        onOpenSource: onOpenSource,
+      ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final lines = diff.isEmpty
-        ? const <String>[]
-        : diff.replaceAll('\r\n', '\n').split('\n');
-
     return Dialog(
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 900, maxHeight: 640),
+        constraints: const BoxConstraints(maxWidth: 1100, maxHeight: 720),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -46,8 +68,8 @@ class GitDiffDialog extends StatelessWidget {
                     child: Text(
                       title,
                       style: AppTextStyles.of(context).body.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
+                            fontWeight: FontWeight.w600,
+                          ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -62,80 +84,24 @@ class GitDiffDialog extends StatelessWidget {
             ),
             const Divider(height: 1),
             Expanded(
-              child: lines.isEmpty
-                  ? Center(
-                      child: Text(
-                        context.l10n.gitNoChanges,
-                        style: AppTextStyles.of(context).bodySmall.copyWith(
-                          color: cs.onSurfaceVariant,
-                        ),
-                      ),
-                    )
-                  : Scrollbar(
-                      child: SingleChildScrollView(
-                        scrollDirection: Axis.vertical,
-                        child: SingleChildScrollView(
-                          scrollDirection: Axis.horizontal,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 12,
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              for (final line in lines)
-                                _DiffLine(line: line, cs: cs),
-                            ],
-                          ),
-                        ),
-                      ),
+              child: diff.trim().isEmpty
+                  ? Center(child: Text(context.l10n.diffNoChanges))
+                  : DiffViewer.fromUnifiedDiff(
+                      diffText: diff,
+                      filePath: filePath ?? title,
+                      reloadDiff: reloadDiff,
+                      onOpenSource: onOpenSource == null
+                          ? null
+                          : () {
+                              // Close this dialog using its own navigator, then
+                              // run the caller's action (e.g. open in editor).
+                              Navigator.of(context).pop();
+                              onOpenSource!.call();
+                            },
                     ),
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _DiffLine extends StatelessWidget {
-  const _DiffLine({required this.line, required this.cs});
-
-  final String line;
-  final ColorScheme cs;
-
-  @override
-  Widget build(BuildContext context) {
-    Color? color;
-    Color? background;
-    if (line.startsWith('+') && !line.startsWith('+++')) {
-      color = const Color(0xFF2EA043);
-      background = const Color(0x142EA043);
-    } else if (line.startsWith('-') && !line.startsWith('---')) {
-      color = cs.error;
-      background = cs.error.withValues(alpha: 0.08);
-    } else if (line.startsWith('@@')) {
-      color = cs.primary;
-    } else if (line.startsWith('diff ') ||
-        line.startsWith('index ') ||
-        line.startsWith('+++') ||
-        line.startsWith('---')) {
-      color = cs.onSurfaceVariant;
-    }
-
-    return Container(
-      color: background,
-      width: double.infinity,
-      child: Text(
-        line.isEmpty ? ' ' : line,
-        style: TextStyle(
-          fontFamily: 'monospace',
-          fontFamilyFallback: const ['Menlo', 'Consolas', 'Courier New'],
-          fontSize: 12.5,
-          height: 1.45,
-          color: color ?? cs.onSurface,
-        ),
-        softWrap: false,
       ),
     );
   }

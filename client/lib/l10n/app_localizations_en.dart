@@ -2959,4 +2959,33 @@ class AppLocalizationsEn extends AppLocalizations {
   String initErrorVersion(String version, String build) {
     return 'Version $version ($build)';
   }
+
+  @override
+  String get diffIgnoreWhitespace => 'Ignore whitespace';
+
+  @override
+  String get diffPreviousChange => 'Previous change';
+
+  @override
+  String get diffNextChange => 'Next change';
+
+  @override
+  String get diffViewSideBySide => 'Side by side';
+
+  @override
+  String get diffViewUnified => 'Unified';
+
+  @override
+  String get diffOpenSourceFile => 'Open source file';
+
+  @override
+  String get diffShowAllLines => 'Show all lines';
+
+  @override
+  String get diffNoChanges => 'No changes';
+
+  @override
+  String diffChangeCounter(int current, int total) {
+    return '$current / $total';
+  }
 }

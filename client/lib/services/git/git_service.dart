@@ -218,16 +218,37 @@ class GitService {
   };
 
   /// Unified diff for [change]. Untracked files are shown as a full addition.
-  Future<String> diff(String dir, GitFileChange change) async {
+  Future<String> diff(
+    String dir,
+    GitFileChange change, {
+    bool ignoreWhitespace = false,
+    bool fullContext = false,
+  }) async {
+    // A very large unified context makes git emit the whole file (all unchanged
+    // lines), so the viewer can show full text instead of only the hunks.
+    final context = fullContext ? '-U1000000' : null;
     if (change.kind == GitChangeKind.untracked) {
-      return _run(dir, ['diff', '--no-index', '/dev/null', change.path])
-          .catchError((Object e) {
-            // `--no-index` exits 1 when files differ; surface the diff text.
-            if (e is GitException) return e.message;
-            throw e;
-          });
+      return _run(dir, [
+        'diff',
+        '--no-index',
+        if (ignoreWhitespace) '-w',
+        if (context != null) context,
+        '/dev/null',
+        change.path,
+      ]).catchError((Object e) {
+        // `--no-index` exits 1 when files differ; surface the diff text.
+        if (e is GitException) return e.message;
+        throw e;
+      });
     }
-    final args = ['diff', if (change.staged) '--cached', '--', change.path];
+    final args = [
+      'diff',
+      if (change.staged) '--cached',
+      if (ignoreWhitespace) '-w',
+      if (context != null) context,
+      '--',
+      change.path,
+    ];
     return _run(dir, args);
   }
 

@@ -1363,5 +1363,20 @@
       "version": { "type": "String" },
       "build": { "type": "String" }
     }
+  },
+  "diffIgnoreWhitespace": "Ignore whitespace",
+  "diffPreviousChange": "Previous change",
+  "diffNextChange": "Next change",
+  "diffViewSideBySide": "Side by side",
+  "diffViewUnified": "Unified",
+  "diffOpenSourceFile": "Open source file",
+  "diffShowAllLines": "Show all lines",
+  "diffNoChanges": "No changes",
+  "diffChangeCounter": "{current} / {total}",
+  "@diffChangeCounter": {
+    "placeholders": {
+      "current": { "type": "int" },
+      "total": { "type": "int" }
+    }
   }
 }

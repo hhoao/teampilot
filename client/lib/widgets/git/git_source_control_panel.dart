@@ -2,7 +2,9 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:path/path.dart' as p;
 
+import '../../cubits/editor_cubit.dart';
 import '../../cubits/git_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/git_status.dart';
@@ -51,9 +53,22 @@ class _GitSourceControlPanelState extends State<GitSourceControlPanel> {
   }
 
   Future<void> _openDiff(GitFileChange change) async {
+    final editor = context.read<EditorCubit>();
     final diff = await _cubit.diff(change);
     if (!mounted || diff == null) return;
-    await GitDiffDialog.show(context, title: change.path, diff: diff);
+    final absolutePath = p.join(_cubit.state.repoRoot, change.path);
+    await GitDiffDialog.show(
+      context,
+      title: change.path,
+      diff: diff,
+      reloadDiff: (ignoreWhitespace, fullContext) => _cubit.diff(
+        change,
+        ignoreWhitespace: ignoreWhitespace,
+        fullContext: fullContext,
+      ),
+      // The dialog closes itself (via its own context); we just open the file.
+      onOpenSource: () => unawaited(editor.openFile(absolutePath)),
+    );
   }
 
   Future<void> _confirmDiscard(GitFileChange change) async {

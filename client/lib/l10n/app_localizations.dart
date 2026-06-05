@@ -5413,6 +5413,60 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Version {version} ({build})'**
   String initErrorVersion(String version, String build);
+
+  /// No description provided for @diffIgnoreWhitespace.
+  ///
+  /// In en, this message translates to:
+  /// **'Ignore whitespace'**
+  String get diffIgnoreWhitespace;
+
+  /// No description provided for @diffPreviousChange.
+  ///
+  /// In en, this message translates to:
+  /// **'Previous change'**
+  String get diffPreviousChange;
+
+  /// No description provided for @diffNextChange.
+  ///
+  /// In en, this message translates to:
+  /// **'Next change'**
+  String get diffNextChange;
+
+  /// No description provided for @diffViewSideBySide.
+  ///
+  /// In en, this message translates to:
+  /// **'Side by side'**
+  String get diffViewSideBySide;
+
+  /// No description provided for @diffViewUnified.
+  ///
+  /// In en, this message translates to:
+  /// **'Unified'**
+  String get diffViewUnified;
+
+  /// No description provided for @diffOpenSourceFile.
+  ///
+  /// In en, this message translates to:
+  /// **'Open source file'**
+  String get diffOpenSourceFile;
+
+  /// No description provided for @diffShowAllLines.
+  ///
+  /// In en, this message translates to:
+  /// **'Show all lines'**
+  String get diffShowAllLines;
+
+  /// No description provided for @diffNoChanges.
+  ///
+  /// In en, this message translates to:
+  /// **'No changes'**
+  String get diffNoChanges;
+
+  /// No description provided for @diffChangeCounter.
+  ///
+  /// In en, this message translates to:
+  /// **'{current} / {total}'**
+  String diffChangeCounter(int current, int total);
 }
 
 class _AppLocalizationsDelegate
