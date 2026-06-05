@@ -30,7 +30,6 @@ class _HomeWorkspaceProjectPageState extends State<HomeWorkspaceProjectPage> {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
     final l10n = context.l10n;
 
     final project = context.select<ChatCubit, AppProject?>(
@@ -49,7 +48,6 @@ class _HomeWorkspaceProjectPageState extends State<HomeWorkspaceProjectPage> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         HomeWorkspaceProjectRail(
-          brandColor: cs.primary,
           section: _section,
           onSectionChanged: (s) => setState(() => _section = s),
           onLogoTap: () => context.go('/home-v2'),

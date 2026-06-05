@@ -53,6 +53,7 @@ dependencies:
   sqlite3: ^3.3.1
   synchronized: ^3.3.1
   meta: ^1.16.0
+  flutter_svg: ^2.3.0
 dependency_overrides:
   flutter_pty:
     path: packages/flutter_pty
@@ -75,6 +76,7 @@ flutter:
   uses-material-design: true
   assets:
     - google_fonts/
+    - assets/icons/
     - assets/fonts/terminal/
     - assets/rtk/rtk-rewrite.sh
     - assets/rtk/rtk-rewrite.ps1

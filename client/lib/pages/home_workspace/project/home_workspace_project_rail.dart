@@ -9,14 +9,12 @@ import 'home_workspace_project_section.dart';
 /// 接口管理 / 自动化测试 / … rail).
 class HomeWorkspaceProjectRail extends StatelessWidget {
   const HomeWorkspaceProjectRail({
-    required this.brandColor,
     required this.section,
     required this.onSectionChanged,
     required this.onLogoTap,
     super.key,
   });
 
-  final Color brandColor;
   final HomeWorkspaceProjectSection section;
   final ValueChanged<HomeWorkspaceProjectSection> onSectionChanged;
   final VoidCallback onLogoTap;
@@ -50,7 +48,7 @@ class HomeWorkspaceProjectRail extends StatelessWidget {
             label: l10n.appTitle,
             active: false,
             onTap: onLogoTap,
-            child: TeamPilotBrandLogo(size: 24, gradientStart: brandColor),
+            child: const TeamPilotBrandLogo(size: 24),
           ),
           const SizedBox(height: 10),
         ],
