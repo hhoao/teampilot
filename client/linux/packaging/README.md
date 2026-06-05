@@ -78,5 +78,6 @@ fastforge 会自动读取并写进包名和 deb control 文件。
   下找到匹配的 desktop 文件。`.deb` 安装后会自动放置；AppImage 需要 AppImageLauncher
   或手动复制 `.desktop` 到 `~/.local/share/applications/` 并 `update-desktop-database`。
 - **AppImage 报 `FUSE` 错误**：装 `libfuse2`（Ubuntu 22.04+ 默认不带）。
-- **图标不显示**：检查 [`assets/icons/icon.png`](../../assets/icons/icon.png) 存在且非空，
-  并在 `pubspec.yaml` 的 `flutter.assets` 中已声明（如果用作运行时资源）。
+- **图标不显示**：在 `client/` 下运行 `dart run tool/sync_app_icons.dart`，确保
+  [`assets/icons/icon_bg.png`](../../assets/icons/icon_bg.png) 存在，且已同步到
+  [`linux/runner/resources/app_icon.png`](../runner/resources/app_icon.png)。

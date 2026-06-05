@@ -86,12 +86,12 @@ flutter:
 flutter_launcher_icons:
   android: true
   ios: false
-  image_path: assets/icons/icon.png
+  image_path: assets/icons/icon_bg.png
   min_sdk_android: 21
   windows:
     generate: true
-    image_path: assets/icons/icon.png
-    icon_size: 48
+    image_path: assets/icons/icon_bg.png
+    icon_size: 256
   macos:
     generate: true
-    image_path: assets/icons/icon.png
+    image_path: assets/icons/icon_bg.png
