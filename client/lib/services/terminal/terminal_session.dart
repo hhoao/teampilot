@@ -15,6 +15,7 @@ import 'terminal_transport.dart';
 import '../../models/team_config.dart';
 import '../team/terminal_activity_tracker.dart';
 import '../team_bus/bus_user_line_capture.dart';
+import 'pending_user_message.dart';
 import '../../utils/first_user_line_capture.dart';
 import '../../utils/logger.dart';
 import 'terminal_theme_mapper.dart';
@@ -88,6 +89,20 @@ class TerminalSession {
   StreamSubscription<Uint8List>? _engineOutputSubscription;
   FirstUserLineCapture? _firstUserLineCapture;
   BusUserLineCapture? _busUserLineCapture;
+  final StreamController<PendingUserMessage> _parkedSubmissions =
+      StreamController<PendingUserMessage>.broadcast();
+  BusUserInputRouting? _busRouting;
+
+  /// Lines submitted to the bus while parked. The overlay subscribes to show a
+  /// "sent, awaiting receipt" banner per message.
+  Stream<PendingUserMessage> get parkedUserSubmissions =>
+      _parkedSubmissions.stream;
+
+  /// Whether a previously-submitted parked message is still unread by its
+  /// recipient. Used by the overlay to clear the banner once consumed.
+  bool isUnreadParkedMessage(String id) =>
+      _busRouting?.isUnread?.call(id) ?? false;
+
   Timer? _confirmFallbackTimer;
   Timer? _startupDeadlineTimer;
   Timer? _ptyGeometryTimer;
@@ -273,9 +288,25 @@ class TerminalSession {
     _firstUserLineCapture = onFirstUserLineSubmitted == null
         ? null
         : FirstUserLineCapture(onFirstUserLineSubmitted);
-    _busUserLineCapture = busUserInputRouting == null
+    final incomingRouting = busUserInputRouting;
+    _busRouting = incomingRouting;
+    _busUserLineCapture = incomingRouting == null
         ? null
-        : BusUserLineCapture(busUserInputRouting);
+        : BusUserLineCapture(
+            BusUserInputRouting(
+              shouldIntercept: incomingRouting.shouldIntercept,
+              isUnread: incomingRouting.isUnread,
+              onUserLine: (line) {
+                final id = incomingRouting.onUserLine(line);
+                if (id.isNotEmpty) {
+                  _parkedSubmissions.add(
+                    PendingUserMessage(id: id, content: line),
+                  );
+                }
+                return id;
+              },
+            ),
+          );
 
     _engineOutputSubscription?.cancel();
     _engineOutputSubscription = engine.output.listen((Uint8List data) {
@@ -765,6 +796,7 @@ class TerminalSession {
   void dispose() {
     disconnect();
     engine.dispose();
+    unawaited(_parkedSubmissions.close());
   }
 
   /// Full process environment for [Pty.start], including OSC 8 identity hints.
