@@ -417,7 +417,13 @@ void main() {
     expect(find.byKey(AppKeys.chatWorkspace), findsOneWidget);
     expect(find.byKey(AppKeys.rightToolsPanel), findsOneWidget);
     expect(find.byKey(AppKeys.membersPanel), findsOneWidget);
-    expect(find.byKey(AppKeys.fileTreePanel), findsOneWidget);
+    // Tabbed right-tools layout (the default) mounts every view in an
+    // IndexedStack but keeps non-selected ones offstage; the file tree panel
+    // is available behind its tab rather than shown alongside members.
+    expect(
+      find.byKey(AppKeys.fileTreePanel, skipOffstage: false),
+      findsOneWidget,
+    );
     expect(find.text('Default Team'), findsWidgets);
     final sidebarCtx = tester.element(find.byKey(AppKeys.contextSidebar));
     expect(find.text(AppLocalizations.of(sidebarCtx).projects), findsOneWidget);

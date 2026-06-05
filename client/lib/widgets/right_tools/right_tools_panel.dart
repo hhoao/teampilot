@@ -97,9 +97,13 @@ class _RightToolsPanelState extends State<RightToolsPanel> {
       }
     }
 
-    final mailboxState = context.watch<MailboxCubit>().state;
-    final showMailbox =
-        team.teamMode == TeamMode.mixed && chatCubit.activeTab?.teamBus != null;
+    // Mailbox is an optional, mixed-mode-only view; tolerate its cubit being
+    // absent (e.g. lightweight test harnesses) rather than crashing the shell.
+    final mailboxCubit = context.watch<MailboxCubit?>();
+    final mailboxState = mailboxCubit?.state ?? const MailboxState();
+    final showMailbox = mailboxCubit != null &&
+        team.teamMode == TeamMode.mixed &&
+        chatCubit.activeTab?.teamBus != null;
 
     final views = <ToolView>[
       if (widget.preferences.membersVisible)

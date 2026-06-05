@@ -23,15 +23,19 @@ class MailboxPanel extends StatefulWidget {
 }
 
 class _MailboxPanelState extends State<MailboxPanel> {
+  late final MailboxCubit _mailboxCubit;
+
   @override
   void initState() {
     super.initState();
-    context.read<MailboxCubit>().attach();
+    // Cache the cubit: reading it from `context` in dispose() can throw once
+    // the provider is gone from the tree during teardown.
+    _mailboxCubit = context.read<MailboxCubit>()..attach();
   }
 
   @override
   void dispose() {
-    context.read<MailboxCubit>().detach();
+    _mailboxCubit.detach();
     super.dispose();
   }
 
