@@ -3,8 +3,8 @@ import 'dart:convert';
 import '../models/app_provider_config.dart';
 import '../models/llm_config.dart';
 import '../services/storage/app_storage.dart';
-import '../services/provider/claude_official_provider.dart';
-import '../services/provider/claude_provider_credentials_service.dart';
+import '../services/provider/claude/claude_official_provider.dart';
+import '../services/provider/claude/claude_provider_credentials_service.dart';
 import '../services/io/filesystem.dart';
 import '../services/provider/tool_config_generator.dart';
 

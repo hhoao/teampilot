@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/provider/codex_project_trust_toml.dart';
+import 'package:teampilot/services/provider/codex/codex_project_trust_toml.dart';
 
 void main() {
   group('CodexProjectTrustToml', () {

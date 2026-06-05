@@ -1,4 +1,4 @@
-import '../../models/app_provider_config.dart';
+import '../../../models/app_provider_config.dart';
 
 bool isOfficialClaudeProvider(AppProviderConfig provider) {
   if (provider.cli != AppProviderCli.claude) return false;

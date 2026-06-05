@@ -157,10 +157,11 @@ void main() {
     expect(TeamCli.codex.isLaunchSupported, isTrue);
   });
 
-  test('only claude needs full-screen (bracketed-paste) stdin submit', () {
+  test('alternate-screen TUIs (claude, codex) need full-screen stdin submit',
+      () {
     expect(TeamCli.claude.usesFullScreenInput, isTrue);
+    expect(TeamCli.codex.usesFullScreenInput, isTrue);
     expect(TeamCli.flashskyai.usesFullScreenInput, isFalse);
-    expect(TeamCli.codex.usesFullScreenInput, isFalse);
     expect(TeamCli.opencode.usesFullScreenInput, isFalse);
   });
 

@@ -4,7 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/app_provider_config.dart';
 import 'package:teampilot/repositories/app_provider_repository.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
-import 'package:teampilot/services/provider/claude_provider_credentials_service.dart';
+import 'package:teampilot/services/provider/claude/claude_provider_credentials_service.dart';
 import 'package:teampilot/services/storage/runtime_storage_context.dart';
 
 import '../support/in_memory_filesystem.dart';

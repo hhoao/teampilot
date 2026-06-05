@@ -1,4 +1,4 @@
-import '../../utils/project_path_utils.dart';
+import '../../../utils/project_path_utils.dart';
 
 /// Injects Codex project trust tables into `config.toml`.
 ///

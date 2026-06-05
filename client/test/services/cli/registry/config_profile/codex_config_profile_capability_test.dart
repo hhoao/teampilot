@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/cli/registry/config_profile/codex_config_profile_capability.dart';
-import 'package:teampilot/services/provider/codex_team_bus_overlay.dart';
+import 'package:teampilot/services/provider/codex/codex_team_bus_overlay.dart';
 
 void main() {
   group('CodexTeamBusOverlay', () {

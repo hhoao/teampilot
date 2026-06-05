@@ -1,7 +1,7 @@
-import '../../models/app_provider_config.dart';
-import '../../models/team_config.dart';
-import '../../repositories/app_provider_repository.dart';
-import 'tool_config_generator.dart';
+import '../../../models/app_provider_config.dart';
+import '../../../models/team_config.dart';
+import '../../../repositories/app_provider_repository.dart';
+import '../tool_config_generator.dart';
 
 /// Resolves Claude Code settings from the Claude provider catalog.
 class ClaudeProviderSettingsResolver {

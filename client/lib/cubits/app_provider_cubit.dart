@@ -6,7 +6,7 @@ import '../models/claude_credential_link_result.dart';
 import '../models/llm_config.dart';
 import '../repositories/app_provider_repository.dart';
 import '../services/storage/app_storage.dart';
-import '../services/provider/claude_provider_credentials_service.dart';
+import '../services/provider/claude/claude_provider_credentials_service.dart';
 import '../services/provider/provider_import_service.dart';
 import '../services/provider/tool_config_generator.dart';
 

@@ -1,6 +1,6 @@
-import '../../models/app_provider_config.dart';
+import '../../../models/app_provider_config.dart';
 import 'codex_toml_parser.dart';
-import 'tool_config_generator.dart';
+import '../tool_config_generator.dart';
 
 /// Chooses `auth.json` contents for Codex launch (proxy vs direct API key).
 abstract final class CodexProxyLaunchAuth {

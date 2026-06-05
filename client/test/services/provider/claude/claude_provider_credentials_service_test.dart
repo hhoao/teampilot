@@ -3,9 +3,9 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/claude_credential_link_result.dart';
 import 'package:teampilot/services/cli/cli_invocation.dart';
-import 'package:teampilot/services/provider/claude_provider_credentials_service.dart';
+import 'package:teampilot/services/provider/claude/claude_provider_credentials_service.dart';
 
-import '../../support/in_memory_filesystem.dart';
+import '../../../support/in_memory_filesystem.dart';
 
 void main() {
   late InMemoryFilesystem fs;

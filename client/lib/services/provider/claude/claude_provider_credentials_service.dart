@@ -1,10 +1,10 @@
 import 'dart:convert';
 import 'dart:io';
 
-import '../../models/claude_credential_link_result.dart';
-import '../cli/cli_invocation.dart';
-import '../io/filesystem.dart';
-import '../session/launch_command_builder.dart';
+import '../../../models/claude_credential_link_result.dart';
+import '../../cli/cli_invocation.dart';
+import '../../io/filesystem.dart';
+import '../../session/launch_command_builder.dart';
 
 typedef ClaudeCredentialProcessRunner =
     Future<ProcessResult> Function(

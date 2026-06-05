@@ -8,7 +8,7 @@ import '../../../cubits/team_cubit.dart';
 import '../../../l10n/l10n_extensions.dart';
 import '../../../services/app/onboarding_service.dart';
 import '../../../models/app_provider_config.dart';
-import '../../../services/provider/claude_official_provider.dart';
+import '../../../services/provider/claude/claude_official_provider.dart';
 import '../../../utils/app_provider_model_candidates.dart';
 import '../../../widgets/dropdown/app_dropdown_field.dart';
 import '../../../widgets/dropdown/app_dropdown_decoration.dart';

@@ -3,9 +3,9 @@ import 'dart:io' show Directory, File;
 
 import 'package:sqlite3/sqlite3.dart';
 
-import '../../models/app_provider_config.dart';
-import '../io/filesystem.dart';
-import '../storage/app_storage.dart';
+import '../../../models/app_provider_config.dart';
+import '../../io/filesystem.dart';
+import '../../storage/app_storage.dart';
 import 'codex_toml_parser.dart';
 
 /// Live `~/.codex` files plus resolved CC Switch current provider id.

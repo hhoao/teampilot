@@ -11,7 +11,7 @@ import '../../models/team_member_prompt_presets.dart';
 import '../../services/app/flashskyai_agent_catalog_service.dart';
 import '../../services/cli/registry/cli_display_name.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
-import '../../services/provider/claude_official_provider.dart';
+import '../../services/provider/claude/claude_official_provider.dart';
 import '../../services/storage/storage_resolver.dart';
 import '../../theme/app_text_styles.dart';
 import '../../utils/app_provider_model_candidates.dart';

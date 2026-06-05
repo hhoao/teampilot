@@ -1,8 +1,8 @@
-import '../../models/app_provider_config.dart';
-import '../io/filesystem.dart';
+import '../../../models/app_provider_config.dart';
+import '../../io/filesystem.dart';
 import 'codex_config_toml_composer.dart';
 import 'codex_proxy_launch_auth.dart';
-import 'tool_config_generator.dart';
+import '../tool_config_generator.dart';
 
 /// Materializes `auth.json` and `config.toml` under a Codex `CODEX_HOME`.
 final class CodexHomeProvisioner {

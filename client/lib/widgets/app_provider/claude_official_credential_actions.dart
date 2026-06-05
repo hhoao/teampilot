@@ -5,7 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../cubits/app_provider_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/app_provider_config.dart';
-import '../../services/provider/claude_official_provider.dart';
+import '../../services/provider/claude/claude_official_provider.dart';
 import '../../utils/debounce/debounce.dart';
 
 /// Compact auth status chip for Claude Official providers.

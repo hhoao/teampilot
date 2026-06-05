@@ -2,9 +2,9 @@ import 'package:flutter/foundation.dart';
 
 import '../../../../models/team_config.dart';
 import '../../../../repositories/app_provider_repository.dart';
-import '../../../provider/codex_home_provisioner.dart';
-import '../../../provider/codex_provider_settings_resolver.dart';
-import '../../../provider/codex_team_bus_overlay.dart';
+import '../../../provider/codex/codex_home_provisioner.dart';
+import '../../../provider/codex/codex_provider_settings_resolver.dart';
+import '../../../provider/codex/codex_team_bus_overlay.dart';
 import '../../../session/member_role_provision.dart';
 import '../capabilities/config_profile_capability.dart';
 

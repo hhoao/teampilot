@@ -6,11 +6,11 @@ import '../../models/app_provider_config.dart';
 import '../../models/llm_config.dart';
 import '../../repositories/app_provider_repository.dart';
 import '../storage/app_storage.dart';
-import 'claude_official_provider.dart';
+import 'claude/claude_official_provider.dart';
 import '../io/filesystem.dart';
 import 'llm_config_path_resolver.dart';
-import 'codex_cc_switch_import.dart';
-import 'codex_toml_parser.dart';
+import 'codex/codex_cc_switch_import.dart';
+import 'codex/codex_toml_parser.dart';
 
 class ProviderImportResult {
   const ProviderImportResult({

@@ -1,6 +1,6 @@
-import '../../models/app_provider_config.dart';
-import '../../models/team_config.dart';
-import '../../repositories/app_provider_repository.dart';
+import '../../../models/app_provider_config.dart';
+import '../../../models/team_config.dart';
+import '../../../repositories/app_provider_repository.dart';
 
 /// Resolves Codex providers from the app catalog for session launch.
 final class CodexProviderSettingsResolver {
