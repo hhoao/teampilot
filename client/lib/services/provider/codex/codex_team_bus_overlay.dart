@@ -11,8 +11,10 @@ abstract final class CodexTeamBusOverlay {
 
   /// Auto-run all tools on this server (list_teammates, wait_for_message, …)
   /// without per-call approval prompts. Mirrors Claude's `mcp__teammate-bus`
-  /// allow-list in mixed mode.
-  static const defaultToolsApprovalMode = 'auto';
+  /// allow-list in mixed mode. Codex values: `prompt` (ask every call),
+  /// `approve` (auto-approve, no prompt), `auto` (defer to global
+  /// approval_policy → still prompts). We want unconditional auto-approve.
+  static const defaultToolsApprovalMode = 'approve';
 
   static String build({required String memberId, required int port}) {
     final idleCommand =

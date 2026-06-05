@@ -66,6 +66,61 @@ void main() {
     });
   });
 
+  test('concurrent waiters do not complete each other (no mutual spin)', () {
+    fakeAsync((async) {
+      final box = _inbox();
+      var a = 0;
+      var b = 0;
+      // Two overlapping wait_for_message parks on the SAME inbox (e.g. a CLI
+      // re-issued wait_for_message before the previous SSE disconnect was
+      // detected). Neither should complete the other.
+      box.waitForArrival().then((_) => a++);
+      box.waitForArrival().then((_) => b++);
+      async.flushMicrotasks();
+      expect(a, 0, reason: 'parked waiter must not be woken by a second park');
+      expect(b, 0);
+
+      // A single delivery wakes both parked waiters exactly once.
+      box.deliver(_msg('1'));
+      async.elapse(const Duration(milliseconds: 50)); // debounce window
+      expect(a, 1);
+      expect(b, 1);
+    });
+  });
+
+  test('re-parking loops on one inbox settle instead of ping-ponging', () {
+    fakeAsync((async) {
+      final box = _inbox();
+      var aLoops = 0;
+      var bLoops = 0;
+      var stop = false;
+      // Simulate two receiveWork-style loops that re-park whenever they wake
+      // without consuming (inbox empty). A mutual-completion bug makes these
+      // ping-pong forever; the fix keeps them parked.
+      void loopA() {
+        box.waitForArrival().then((_) {
+          aLoops++;
+          if (!stop) loopA();
+        });
+      }
+
+      void loopB() {
+        box.waitForArrival().then((_) {
+          bLoops++;
+          if (!stop) loopB();
+        });
+      }
+
+      loopA();
+      loopB();
+      async.flushMicrotasks();
+      stop = true; // unwind any in-flight loop before asserting
+      async.flushMicrotasks();
+      expect(aLoops, 0, reason: 'no delivery yet -> no wakeups -> no spin');
+      expect(bLoops, 0);
+    });
+  });
+
   test('deliver dedupes by message id', () {
     final box = _inbox();
     box.deliver(_msg('1'));

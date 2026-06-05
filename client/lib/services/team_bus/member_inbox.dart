@@ -30,7 +30,12 @@ class MemberInbox {
   final Set<String> _knownIds = {};
   int _nextSeq = 0;
 
-  Completer<void>? _waiter;
+  // 多 waiter：同一信箱可能被 **并发** park（CLI 在上一条 wait_for_message SSE 的
+  // 断连还没被探知的 20s 窗口内又发起了新的 wait）。单 waiter + 「新 park 完成旧
+  // waiter」会让两个 receiveWork 循环互相完成对方、各自再 park —— 紧致死循环，
+  // Completer / cancel.then 监听器无界堆积，内存秒涨到 GB。改为 waiter 集合，
+  // 投递/取消/超时唤醒所有 parker，互不干扰。
+  final List<Completer<void>> _waiters = [];
   Timer? _flushTimer;
 
   bool get isEmpty => _unread.isEmpty;
@@ -66,7 +71,7 @@ class MemberInbox {
     );
     _unread.add(rec);
     _persist(() => _log?.appendMessage(memberId, rec.seq, message, rec.createdAt));
-    if (_waiter == null) return;
+    if (_waiters.isEmpty) return;
     _flushTimer?.cancel();
     _flushTimer = Timer(_debounce, _flush);
   }
@@ -97,19 +102,15 @@ class MemberInbox {
   }
 
   /// 在内存信号上挂起到下一次投递(debounce 合批)/ 取消 / 超时。不消费未读。
+  /// 并发 park 各自独立入列；唤醒只完成自己，绝不替别的 parker 收尾——避免互相
+  /// 完成 → 各自再 park 的死循环。
   Future<void> _park({Duration? timeout, CancellationToken? cancel}) {
-    final stale = _waiter;
-    if (stale != null && !stale.isCompleted) {
-      stale.complete();
-    }
     final completer = Completer<void>();
-    _waiter = completer;
+    _waiters.add(completer);
 
     void abandon() {
       if (completer.isCompleted) return;
-      if (identical(_waiter, completer)) _waiter = null;
-      _flushTimer?.cancel();
-      _flushTimer = null;
+      _waiters.remove(completer);
       completer.complete();
     }
 
@@ -141,6 +142,8 @@ class MemberInbox {
     if (restored.isEmpty) return;
     _unread.insertAll(0, restored);
     _unread.sort((a, b) => a.seq.compareTo(b.seq));
+    // 重新入列的批次要立即唤醒仍在 park 的 parker(它不会再收到新 deliver 的门铃)。
+    _wakeAll();
   }
 
   /// 分页读取(read_messages 落点)。默认只读未读、不消费;[markRead] 为真时消费
@@ -173,10 +176,18 @@ class MemberInbox {
   void dispose() {
     _flushTimer?.cancel();
     _flushTimer = null;
-    final waiter = _waiter;
-    _waiter = null;
-    if (waiter != null && !waiter.isCompleted) waiter.complete();
+    _wakeAll();
     _unread.clear();
+  }
+
+  /// 完成并清空所有 parker(投递 flush / 重新入列 / dispose 共用)。
+  void _wakeAll() {
+    if (_waiters.isEmpty) return;
+    final waiters = List<Completer<void>>.of(_waiters);
+    _waiters.clear();
+    for (final w in waiters) {
+      if (!w.isCompleted) w.complete();
+    }
   }
 
   // --- internals ---
@@ -204,10 +215,8 @@ class MemberInbox {
   }
 
   void _flush() {
-    final waiter = _waiter;
-    if (waiter == null || waiter.isCompleted) return;
-    _waiter = null;
-    waiter.complete();
+    _flushTimer = null;
+    _wakeAll();
   }
 
   void _persist(Future<void>? Function() op) {
