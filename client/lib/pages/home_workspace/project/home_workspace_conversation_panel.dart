@@ -21,7 +21,9 @@ class HomeWorkspaceConversationPanel extends StatelessWidget {
 
   final AppProject project;
 
-  static const double width = 260;
+  static const double defaultWidth = 260;
+  static const double minWidth = 200;
+  static const double maxWidth = 480;
 
   @override
   Widget build(BuildContext context) {
@@ -37,14 +39,8 @@ class HomeWorkspaceConversationPanel extends StatelessWidget {
       (c) => c.state.activeSessionId,
     );
 
-    return Container(
-      width: width,
-      decoration: BoxDecoration(
-        color: cs.surface,
-        border: Border(
-          right: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.6)),
-        ),
-      ),
+    return ColoredBox(
+      color: cs.surface,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [

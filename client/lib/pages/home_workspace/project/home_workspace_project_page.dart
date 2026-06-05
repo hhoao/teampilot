@@ -6,6 +6,8 @@ import '../../../cubits/chat_cubit.dart';
 import '../../../cubits/team_cubit.dart';
 import '../../../l10n/l10n_extensions.dart';
 import '../../../models/app_project.dart';
+import '../../../models/layout_preferences.dart';
+import '../../../widgets/resizable_split_view.dart';
 import '../../chat_page.dart';
 import 'home_workspace_conversation_panel.dart';
 import 'home_workspace_project_rail.dart';
@@ -27,6 +29,7 @@ class HomeWorkspaceProjectPage extends StatefulWidget {
 
 class _HomeWorkspaceProjectPageState extends State<HomeWorkspaceProjectPage> {
   HomeWorkspaceProjectSection _section = HomeWorkspaceProjectSection.conversations;
+  double _conversationPanelWidth = HomeWorkspaceConversationPanel.defaultWidth;
 
   @override
   Widget build(BuildContext context) {
@@ -52,10 +55,36 @@ class _HomeWorkspaceProjectPageState extends State<HomeWorkspaceProjectPage> {
           onSectionChanged: (s) => setState(() => _section = s),
           onLogoTap: () => context.go('/home-v2'),
         ),
-        if (_section == HomeWorkspaceProjectSection.conversations) ...[
-          HomeWorkspaceConversationPanel(project: project),
-          Expanded(child: ChatPage(cwd: project.primaryPath)),
-        ] else
+        if (_section == HomeWorkspaceProjectSection.conversations)
+          Expanded(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final maxW = constraints.maxWidth;
+                const minPanel = HomeWorkspaceConversationPanel.minWidth;
+                const minChat = LayoutPreferences.minWorkbenchMainWidth;
+                final maxPanel = (maxW - minChat).clamp(
+                  minPanel,
+                  HomeWorkspaceConversationPanel.maxWidth,
+                );
+                final initialPanel = _conversationPanelWidth.clamp(
+                  minPanel,
+                  maxPanel,
+                );
+                return ResizableSplitView(
+                  first: HomeWorkspaceConversationPanel(project: project),
+                  second: ChatPage(cwd: project.primaryPath),
+                  initialPrimarySize: initialPanel,
+                  minPrimarySize: minPanel,
+                  minSecondarySize: minChat,
+                  maxPrimarySize: maxPanel,
+                  onPrimarySizeChanged: (width) {
+                    setState(() => _conversationPanelWidth = width);
+                  },
+                );
+              },
+            ),
+          )
+        else
           HomeWorkspaceProjectSettingsView(project: project),
       ],
     );
