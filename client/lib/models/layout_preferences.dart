@@ -18,7 +18,7 @@ class LayoutPreferences {
     this.preset = LayoutPreset.workbench,
     this.workspaceEntryMode = WorkspaceEntryMode.home,
     this.toolPlacement = ToolPanelPlacement.right,
-    this.toolsArrangement = ToolsArrangement.stacked,
+    this.toolsArrangement = ToolsArrangement.tabs,
     this.appRailVisible = true,
     this.contextSidebarVisible = true,
     this.membersVisible = true,
@@ -55,7 +55,7 @@ class LayoutPreferences {
           ToolPanelPlacement.right,
       toolsArrangement:
           _enumValue(ToolsArrangement.values, json['toolsArrangement']) ??
-          ToolsArrangement.stacked,
+          ToolsArrangement.tabs,
       appRailVisible: json['appRailVisible'] as bool? ?? true,
       contextSidebarVisible: json['contextSidebarVisible'] as bool? ?? true,
       membersVisible: json['membersVisible'] as bool? ?? true,
