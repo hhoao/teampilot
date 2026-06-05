@@ -4,7 +4,11 @@ import 'dart:io' show Directory, File;
 import 'package:sqlite3/sqlite3.dart';
 import '../../models/app_provider_config.dart';
 import '../../models/llm_config.dart';
+import '../../models/team_config.dart';
 import '../../repositories/app_provider_repository.dart';
+import '../cli/registry/built_in_cli_tools.dart';
+import '../cli/registry/capabilities/provider_catalog_capability.dart';
+import '../cli/registry/cli_tool_registry.dart';
 import '../storage/app_storage.dart';
 import 'claude/claude_official_provider.dart';
 import '../io/filesystem.dart';
@@ -23,7 +27,7 @@ class ProviderImportResult {
     this.sources = const [],
   });
 
-  final AppProviderCli cli;
+  final CliTool cli;
   final int added;
   final int updated;
   final int skipped;
@@ -38,26 +42,77 @@ class ProviderImportService {
   ProviderImportService({
     AppProviderRepository? repository,
     String? flashskyaiExecutablePath,
+    CliToolRegistry? cliRegistry,
   }) : _repository = repository ?? AppProviderRepository(),
-       _flashskyaiExecutablePath = flashskyaiExecutablePath;
+       _flashskyaiExecutablePath = flashskyaiExecutablePath,
+       _cliRegistry = cliRegistry ?? CliToolRegistry.builtIn();
 
   final AppProviderRepository _repository;
   final String? _flashskyaiExecutablePath;
+  final CliToolRegistry _cliRegistry;
 
   Future<ProviderImportResult> importForCli(
-    AppProviderCli cli, {
+    CliTool cli, {
     required bool onlyIfEmpty,
+  }) async {
+    final cap = _cliRegistry.capability<ProviderCatalogCapability>(cli);
+    if (cap == null) {
+      return ProviderImportResult(cli: cli);
+    }
+    return cap.importForCli(onlyIfEmpty: onlyIfEmpty, importService: this);
+  }
+
+  Future<List<ProviderImportResult>> importAllCatalogClis({
+    required bool onlyIfEmpty,
+  }) async {
+    final results = <ProviderImportResult>[];
+    for (final def in _cliRegistry.withCapability<ProviderCatalogCapability>()) {
+      final cap = _cliRegistry.capability<ProviderCatalogCapability>(def.id);
+      if (cap == null) continue;
+      results.add(
+        await cap.importForCli(onlyIfEmpty: onlyIfEmpty, importService: this),
+      );
+    }
+    return results;
+  }
+
+  Future<ProviderImportResult> importFlashskyai({
+    required bool onlyIfEmpty,
+  }) =>
+      _importForCatalogCli(
+        CliTool.flashskyai,
+        _importFlashskyai,
+        onlyIfEmpty: onlyIfEmpty,
+      );
+
+  Future<ProviderImportResult> importClaude({required bool onlyIfEmpty}) =>
+      _importForCatalogCli(
+        CliTool.claude,
+        _importClaude,
+        onlyIfEmpty: onlyIfEmpty,
+        mirror: true,
+      );
+
+  Future<ProviderImportResult> importCodex({required bool onlyIfEmpty}) =>
+      _importForCatalogCli(
+        CliTool.codex,
+        _importCodex,
+        onlyIfEmpty: onlyIfEmpty,
+        mirror: true,
+      );
+
+  Future<ProviderImportResult> _importForCatalogCli(
+    CliTool cli,
+    Future<_ImportedProviders> Function() loadImported, {
+    required bool onlyIfEmpty,
+    bool mirror = false,
   }) async {
     final existing = await _repository.loadProviders(cli);
     if (onlyIfEmpty && existing.isNotEmpty) {
       return ProviderImportResult(cli: cli, skipped: existing.length);
     }
 
-    final imported = switch (cli) {
-      AppProviderCli.flashskyai => await _importFlashskyai(),
-      AppProviderCli.claude => await _importClaude(),
-      AppProviderCli.codex => await _importCodex(),
-    };
+    final imported = await loadImported();
     if (imported.providers.isEmpty) {
       return ProviderImportResult(cli: cli);
     }
@@ -77,10 +132,10 @@ class ProviderImportService {
 
     var mirrored = 0;
     var mirrorSkipped = 0;
-    if (cli == AppProviderCli.claude || cli == AppProviderCli.codex) {
-      final mirror = await _mirrorToFlashskyai(imported.providers);
-      mirrored = mirror.added;
-      mirrorSkipped = mirror.skipped;
+    if (mirror) {
+      final mirrorResult = await _mirrorToFlashskyai(imported.providers);
+      mirrored = mirrorResult.added;
+      mirrorSkipped = mirrorResult.skipped;
     }
 
     return ProviderImportResult(
@@ -120,7 +175,7 @@ class ProviderImportService {
       providers.add(
         AppProviderConfig(
           id: id,
-          cli: AppProviderCli.flashskyai,
+          cli: CliTool.flashskyai,
           name: source.name.isNotEmpty ? source.name : id,
           category: source.type == 'account'
               ? AppProviderCategory.official
@@ -181,7 +236,7 @@ class ProviderImportService {
       byId[provider.id] = provider;
       sources.add('live');
     }
-    for (final provider in await _importCcSwitch(AppProviderCli.claude)) {
+    for (final provider in await _importCcSwitch(CliTool.claude)) {
       byId[provider.id] = provider;
       sources.add('cc-switch');
     }
@@ -289,7 +344,7 @@ class ProviderImportService {
     return providers;
   }
 
-  Future<List<AppProviderConfig>> _importCcSwitch(AppProviderCli cli) async {
+  Future<List<AppProviderConfig>> _importCcSwitch(CliTool cli) async {
     final fs = AppStorage.fs;
     final ctx = fs.pathContext;
     final home = AppStorage.home.trim();
@@ -322,7 +377,7 @@ WHERE app_type = ?
         final settings = _jsonStringToMap(row['settings_config']);
         if (settings == null) continue;
         final now = _now();
-        if (cli == AppProviderCli.claude) {
+        if (cli == CliTool.claude) {
           providers.add(
             _claudeProviderFromConfig(
               id,
@@ -338,7 +393,7 @@ WHERE app_type = ?
               meta: _jsonStringToMap(row['meta']),
             ),
           );
-        } else if (cli == AppProviderCli.codex) {
+        } else if (cli == CliTool.codex) {
           final auth = _mapFrom(settings['auth']);
           final toml =
               settings['configToml']?.toString() ??
@@ -407,7 +462,7 @@ WHERE app_type = ?
         : category;
     return AppProviderConfig(
       id: id,
-      cli: AppProviderCli.claude,
+      cli: CliTool.claude,
       name: (name?.trim().isNotEmpty ?? false) ? name!.trim() : id,
       websiteUrl: websiteUrl,
       notes: notes,
@@ -450,7 +505,7 @@ WHERE app_type = ?
         '';
     return AppProviderConfig(
       id: id,
-      cli: AppProviderCli.codex,
+      cli: CliTool.codex,
       name: (name?.trim().isNotEmpty ?? false) ? name!.trim() : id,
       websiteUrl: websiteUrl,
       notes: notes,
@@ -474,7 +529,7 @@ WHERE app_type = ?
   Future<_MirrorResult> _mirrorToFlashskyai(
     List<AppProviderConfig> providers,
   ) async {
-    final existing = await _repository.loadProviders(AppProviderCli.flashskyai);
+    final existing = await _repository.loadProviders(CliTool.flashskyai);
     final byId = {for (final provider in existing) provider.id: provider};
     final existingModelIds = <String>{
       for (final provider in existing) ..._flashskyaiModelIds(provider),
@@ -497,7 +552,7 @@ WHERE app_type = ?
     }
     if (added > 0) {
       await _repository.saveProviders(
-        AppProviderCli.flashskyai,
+        CliTool.flashskyai,
         byId.values.toList(),
       );
     }
@@ -508,7 +563,7 @@ WHERE app_type = ?
     AppProviderConfig provider, {
     Set<String> reservedModelIds = const {},
   }) {
-    if (provider.cli == AppProviderCli.flashskyai) return null;
+    if (provider.cli == CliTool.flashskyai) return null;
     if (provider.id == 'default' &&
         provider.apiKey.trim().isEmpty &&
         provider.baseUrl.trim().isEmpty) {
@@ -522,7 +577,7 @@ WHERE app_type = ?
     final providerType = _providerTypeFor(provider);
     return AppProviderConfig(
       id: provider.id,
-      cli: AppProviderCli.flashskyai,
+      cli: CliTool.flashskyai,
       name: provider.name,
       notes: provider.notes,
       websiteUrl: provider.websiteUrl,
@@ -567,7 +622,7 @@ WHERE app_type = ?
   }
 
   String _providerTypeFor(AppProviderConfig provider) {
-    if (provider.cli == AppProviderCli.codex) return 'openai';
+    if (provider.cli == CliTool.codex) return 'openai';
     final url = provider.baseUrl.toLowerCase();
     if (url.contains('anthropic') || url.contains('claude')) {
       return 'anthropic';

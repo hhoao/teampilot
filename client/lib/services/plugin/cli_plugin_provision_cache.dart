@@ -1,7 +1,7 @@
 import 'dart:convert';
 import '../../models/plugin.dart';
 import 'cli_plugin_layout.dart';
-import 'cli_plugin_manifest_flavor.dart';
+import '../cli/registry/capabilities/plugin_manifest_capability.dart';
 import '../io/filesystem.dart';
 
 /// Fingerprints for skipping redundant plugin copy / registry writes on session launch.
@@ -24,13 +24,13 @@ class CliPluginProvisionCache {
     required Filesystem fs,
     required String teamPluginsDir,
     required String memberPluginsDir,
-    required CliPluginManifestFlavor flavor,
+    required PluginManifestPaths paths,
   }) async {
     final skipped = await trySkipMemberProvision(
       fs: fs,
       teamPluginsDir: teamPluginsDir,
       memberPluginsDir: memberPluginsDir,
-      flavor: flavor,
+      paths: paths,
     );
     return skipped != null;
   }
@@ -43,7 +43,7 @@ class CliPluginProvisionCache {
     required Filesystem fs,
     required String teamPluginsDir,
     required String memberPluginsDir,
-    required CliPluginManifestFlavor flavor,
+    required PluginManifestPaths paths,
   }) async {
     final stampPath = fs.pathContext.join(memberPluginsDir, memberStampFileName);
     final saved = await _readStamp(fs, stampPath);
@@ -51,7 +51,7 @@ class CliPluginProvisionCache {
       return null;
     }
 
-    if (saved['flavor'] != flavor.name) {
+    if (saved['flavor'] != paths.manifestDirName) {
       return null;
     }
 
@@ -67,7 +67,7 @@ class CliPluginProvisionCache {
       fs: fs,
       teamPluginsDir: teamPluginsDir,
       saved: saved,
-      flavor: flavor,
+      paths: paths,
     );
     if (!teamMatches) {
       return null;
@@ -100,7 +100,7 @@ class CliPluginProvisionCache {
     required Filesystem fs,
     required String teamPluginsDir,
     required Map<String, Object?> saved,
-    required CliPluginManifestFlavor flavor,
+    required PluginManifestPaths paths,
   }) async {
     final bundles = (saved['bundles'] as List? ?? const [])
         .whereType<Map>()
@@ -128,7 +128,7 @@ class CliPluginProvisionCache {
           fs: fs,
           teamPluginsDir: teamPluginsDir,
           bundle: bundle,
-          flavor: flavor,
+          paths: paths,
         );
         if (resolved == null) return false;
         source = resolved;
@@ -137,7 +137,7 @@ class CliPluginProvisionCache {
       final root = await CliPluginLayout.resolvePluginRoot(
         fs,
         source,
-        flavor: flavor,
+        paths: paths,
       );
       if (root == null) return false;
       final rootStat = await fs.stat(root);
@@ -149,7 +149,7 @@ class CliPluginProvisionCache {
       final manifest = await CliPluginLayout.readManifest(
         fs,
         root,
-        flavor: flavor,
+        paths: paths,
       );
       return manifest?.version == expectedVersion;
     });
@@ -161,7 +161,7 @@ class CliPluginProvisionCache {
     required Filesystem fs,
     required String teamPluginsDir,
     required Map<String, Object?> bundle,
-    required CliPluginManifestFlavor flavor,
+    required PluginManifestPaths paths,
   }) async {
     final ctx = fs.pathContext;
     final teamEntryName = bundle['teamEntryName'] as String?;
@@ -182,13 +182,13 @@ class CliPluginProvisionCache {
       final root = await CliPluginLayout.resolvePluginRoot(
         fs,
         child,
-        flavor: flavor,
+        paths: paths,
       );
       if (root == null) continue;
       final name = await CliPluginLayout.bundleDirName(
         fs,
         root,
-        flavor: flavor,
+        paths: paths,
       );
       if (name == dirName) return child;
     }
@@ -220,16 +220,16 @@ class CliPluginProvisionCache {
   static Future<Map<String, Object?>> buildMemberProvisionStampCached({
     required Filesystem fs,
     required String teamPluginsDir,
-    required CliPluginManifestFlavor flavor,
+    required PluginManifestPaths paths,
   }) async {
-    final key = '$teamPluginsDir:${flavor.name}';
+    final key = '$teamPluginsDir:${paths.manifestDirName}';
     if (_cachedTeamStampKey == key && _cachedTeamStamp != null) {
       return _cachedTeamStamp!;
     }
     final stamp = await buildMemberProvisionStamp(
       fs: fs,
       teamPluginsDir: teamPluginsDir,
-      flavor: flavor,
+      paths: paths,
     );
     _cachedTeamStampKey = key;
     _cachedTeamStamp = stamp;
@@ -248,14 +248,14 @@ class CliPluginProvisionCache {
   static Map<String, Object?> memberProvisionStampFromBundles({
     required String teamPluginsDir,
     required int teamPluginsMtimeMs,
-    required CliPluginManifestFlavor flavor,
+    required PluginManifestPaths paths,
     required List<Map<String, Object?>> bundles,
   }) {
     final sorted = List<Map<String, Object?>>.from(bundles)
       ..sort((a, b) => (a['dirName'] as String).compareTo(b['dirName'] as String));
     return {
       'version': stampVersion,
-      'flavor': flavor.name,
+      'flavor': paths.manifestDirName,
       'teamPluginsDir': teamPluginsDir,
       'teamPluginsMtimeMs': teamPluginsMtimeMs,
       'bundles': sorted,
@@ -266,7 +266,7 @@ class CliPluginProvisionCache {
     required Filesystem fs,
     required String teamPluginsDir,
     required String memberPluginsDir,
-    required CliPluginManifestFlavor flavor,
+    required PluginManifestPaths paths,
     List<Map<String, Object?>>? bundles,
     int? teamPluginsMtimeMs,
   }) async {
@@ -274,13 +274,13 @@ class CliPluginProvisionCache {
         ? memberProvisionStampFromBundles(
             teamPluginsDir: teamPluginsDir,
             teamPluginsMtimeMs: teamPluginsMtimeMs,
-            flavor: flavor,
+            paths: paths,
             bundles: bundles,
           )
         : await buildMemberProvisionStamp(
             fs: fs,
             teamPluginsDir: teamPluginsDir,
-            flavor: flavor,
+            paths: paths,
           );
     await fs.ensureDir(memberPluginsDir);
     await fs.atomicWrite(
@@ -296,7 +296,7 @@ class CliPluginProvisionCache {
   static Future<Map<String, Object?>> buildMemberProvisionStamp({
     required Filesystem fs,
     required String teamPluginsDir,
-    required CliPluginManifestFlavor flavor,
+    required PluginManifestPaths paths,
   }) async {
     final bundles = <Map<String, Object?>>[];
     final teamStat = await fs.stat(teamPluginsDir);
@@ -309,18 +309,18 @@ class CliPluginProvisionCache {
         final root = await CliPluginLayout.resolvePluginRoot(
           fs,
           source,
-          flavor: flavor,
+          paths: paths,
         );
         if (root == null) continue;
         final manifest = await CliPluginLayout.readManifest(
           fs,
           root,
-          flavor: flavor,
+          paths: paths,
         );
         final dirName = await CliPluginLayout.bundleDirName(
           fs,
           root,
-          flavor: flavor,
+          paths: paths,
         );
         final rootStat = await fs.stat(root);
         bundles.add({
@@ -335,7 +335,7 @@ class CliPluginProvisionCache {
     bundles.sort((a, b) => (a['dirName'] as String).compareTo(b['dirName'] as String));
     return {
       'version': stampVersion,
-      'flavor': flavor.name,
+      'flavor': paths.manifestDirName,
       'teamPluginsDir': teamPluginsDir,
       'teamPluginsMtimeMs': teamStat.mtime?.millisecondsSinceEpoch ?? 0,
       'bundles': bundles,
@@ -348,7 +348,7 @@ class CliPluginProvisionCache {
     required String pluginsDir,
     required String configDir,
     required String tool,
-    required CliPluginManifestFlavor flavor,
+    required PluginManifestPaths paths,
     required String memberProvisionStampJson,
     required List<String> enabledPluginIds,
     required List<Plugin> catalog,
@@ -362,7 +362,7 @@ class CliPluginProvisionCache {
 
     final current = buildRegistryStamp(
       tool: tool,
-      flavor: flavor,
+      paths: paths,
       memberProvisionStampJson: memberProvisionStampJson,
       enabledPluginIds: enabledPluginIds,
       catalog: catalog,
@@ -389,7 +389,7 @@ class CliPluginProvisionCache {
     required Filesystem fs,
     required String pluginsDir,
     required String tool,
-    required CliPluginManifestFlavor flavor,
+    required PluginManifestPaths paths,
     required String memberProvisionStampJson,
     required List<String> enabledPluginIds,
     required List<Plugin> catalog,
@@ -401,7 +401,7 @@ class CliPluginProvisionCache {
       const JsonEncoder.withIndent('  ').convert(
         buildRegistryStamp(
           tool: tool,
-          flavor: flavor,
+          paths: paths,
           memberProvisionStampJson: memberProvisionStampJson,
           enabledPluginIds: enabledPluginIds,
           catalog: catalog,
@@ -413,7 +413,7 @@ class CliPluginProvisionCache {
 
   static Map<String, Object?> buildRegistryStamp({
     required String tool,
-    required CliPluginManifestFlavor flavor,
+    required PluginManifestPaths paths,
     required String memberProvisionStampJson,
     required List<String> enabledPluginIds,
     required List<Plugin> catalog,
@@ -429,7 +429,7 @@ class CliPluginProvisionCache {
     return {
       'version': stampVersion,
       'tool': tool,
-      'flavor': flavor.name,
+      'flavor': paths.manifestDirName,
       'memberProvision': provisionFingerprintForRegistry(memberProvisionStampJson),
       'enabledPluginIds': ids,
       'catalog': catalogLines,
@@ -545,7 +545,7 @@ class CliPluginProvisionCache {
     final ctx = fs.pathContext;
     final manifestPath = ctx.join(
       dest,
-      CliPluginManifestFlavor.claude.manifestDirName,
+      claudePluginManifestPaths.manifestDirName,
       'marketplace.json',
     );
     if (!(await fs.stat(manifestPath)).isFile) return false;

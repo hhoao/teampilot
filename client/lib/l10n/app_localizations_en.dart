@@ -2476,6 +2476,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get appProviderToolClaude => 'Claude Code';
 
   @override
+  String get appProviderToolOpencode => 'OpenCode';
+
+  @override
   String get appProviderTeamToolSection => 'Tool providers for this team';
 
   @override

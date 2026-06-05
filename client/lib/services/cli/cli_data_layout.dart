@@ -4,17 +4,15 @@ import 'package:path/path.dart' as p;
 
 import '../../utils/lock_pool.dart';
 import '../storage/app_storage.dart';
+import '../../models/team_config.dart';
 import '../plugin/cli_plugin_layout.dart';
-import '../plugin/cli_plugin_manifest_flavor.dart';
+import '../cli/registry/capabilities/plugin_manifest_capability.dart';
 import '../io/filesystem.dart';
 import '../session/launch_command_builder.dart';
+
 /// Tools with a `config-profiles/{tool}/` tree (see [CliDataLayout]).
-const List<String> cliLayoutDefaultTools = [
-  'claude',
-  'flashskyai',
-  'codex',
-  'opencode',
-];
+final List<String> cliLayoutDefaultTools =
+    CliTool.values.map((c) => c.value).toList(growable: false);
 
 /// Canonical paths for CLI **runtime config** under TeamPilot app data.
 ///
@@ -192,11 +190,14 @@ class CliDataLayout {
   List<String> transcriptSearchRoots({
     required String teamId,
     required String runtimeSessionId,
-    Iterable<String> tools = cliLayoutDefaultTools,
+    Iterable<String>? tools,
   }) {
     final trimmedTeam = teamId.trim();
     final trimmedSession = runtimeSessionId.trim();
-    final tt = tools.map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
+    final tt = (tools ?? cliLayoutDefaultTools)
+        .map((e) => e.trim())
+        .where((e) => e.isNotEmpty)
+        .toList();
     return [
       for (final tool in tt) appToolRoot(tool),
       if (trimmedTeam.isNotEmpty)
@@ -331,13 +332,16 @@ class CliDataLayout {
     if (trimmedTeam.isEmpty || trimmedSession.isEmpty || trimmedTool.isEmpty) {
       return null;
     }
-    final flavor = cliPluginManifestFlavorForTool(trimmedTool) ??
-        CliPluginManifestFlavor.claude;
+    final paths =
+        pluginManifestPathsForTool(
+          CliTool.tryParse(trimmedTool) ?? CliTool.claude,
+        ) ??
+        claudePluginManifestPaths;
     return CliPluginLayout.copyBundlesToMember(
       fs: _fs,
       teamPluginsDir: teamPluginsDir(trimmedTeam),
       memberPluginsDir: memberPluginsDir(trimmedTeam, trimmedSession, trimmedTool),
-      flavor: flavor,
+      paths: paths,
     );
   }
 

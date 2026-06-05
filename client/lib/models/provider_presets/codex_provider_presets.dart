@@ -9,7 +9,7 @@ class CodexProviderPresets {
       label: "OpenAI Official",
       template: AppProviderConfig(
         id: "openai-official",
-        cli: AppProviderCli.codex,
+        cli: CliTool.codex,
         name: "OpenAI Official",
         websiteUrl: "https://chatgpt.com/codex",
         apiKeyUrl: "",
@@ -31,7 +31,7 @@ class CodexProviderPresets {
       label: "Shengsuanyun",
       template: AppProviderConfig(
         id: "shengsuanyun",
-        cli: AppProviderCli.codex,
+        cli: CliTool.codex,
         name: "Shengsuanyun",
         websiteUrl: "https://www.shengsuanyun.com",
         apiKeyUrl: "https://www.shengsuanyun.com/?from=CH_4HHXMRYF",
@@ -57,7 +57,7 @@ class CodexProviderPresets {
       label: "PatewayAI",
       template: AppProviderConfig(
         id: "patewayai",
-        cli: AppProviderCli.codex,
+        cli: CliTool.codex,
         name: "PatewayAI",
         websiteUrl: "https://pateway.ai",
         apiKeyUrl: "https://pateway.ai/?ch=etzpm8&aff=WB6M6F67#/",
@@ -83,7 +83,7 @@ class CodexProviderPresets {
       label: "Azure OpenAI",
       template: AppProviderConfig(
         id: "azure-openai",
-        cli: AppProviderCli.codex,
+        cli: CliTool.codex,
         name: "Azure OpenAI",
         websiteUrl:
             "https://learn.microsoft.com/en-us/azure/ai-foundry/openai/how-to/codex",
@@ -112,7 +112,7 @@ class CodexProviderPresets {
       label: "AiHubMix",
       template: AppProviderConfig(
         id: "aihubmix",
-        cli: AppProviderCli.codex,
+        cli: CliTool.codex,
         name: "AiHubMix",
         websiteUrl: "https://aihubmix.com",
         apiKeyUrl: "",
@@ -141,7 +141,7 @@ class CodexProviderPresets {
       label: "DMXAPI",
       template: AppProviderConfig(
         id: "dmxapi",
-        cli: AppProviderCli.codex,
+        cli: CliTool.codex,
         name: "DMXAPI",
         websiteUrl: "https://www.dmxapi.cn",
         apiKeyUrl: "",
@@ -167,7 +167,7 @@ class CodexProviderPresets {
       label: "PackyCode",
       template: AppProviderConfig(
         id: "packycode",
-        cli: AppProviderCli.codex,
+        cli: CliTool.codex,
         name: "PackyCode",
         websiteUrl: "https://www.packyapi.com",
         apiKeyUrl: "https://www.packyapi.com/register?aff=cc-switch",
@@ -196,7 +196,7 @@ class CodexProviderPresets {
       label: "ClaudeCN",
       template: AppProviderConfig(
         id: "claudecn",
-        cli: AppProviderCli.codex,
+        cli: CliTool.codex,
         name: "ClaudeCN",
         websiteUrl: "https://claudecn.top",
         apiKeyUrl: "https://claudecn.top/register?aff=ccswitch",
@@ -222,7 +222,7 @@ class CodexProviderPresets {
       label: "RunAPI",
       template: AppProviderConfig(
         id: "runapi",
-        cli: AppProviderCli.codex,
+        cli: CliTool.codex,
         name: "RunAPI",
         websiteUrl: "https://runapi.co",
         apiKeyUrl: "https://runapi.co",
@@ -248,7 +248,7 @@ class CodexProviderPresets {
       label: "RelaxyCode",
       template: AppProviderConfig(
         id: "relaxycode",
-        cli: AppProviderCli.codex,
+        cli: CliTool.codex,
         name: "RelaxyCode",
         websiteUrl: "https://www.relaxycode.com",
         apiKeyUrl: "https://www.relaxycode.com/register",
@@ -274,7 +274,7 @@ class CodexProviderPresets {
       label: "Cubence",
       template: AppProviderConfig(
         id: "cubence",
-        cli: AppProviderCli.codex,
+        cli: CliTool.codex,
         name: "Cubence",
         websiteUrl: "https://cubence.com",
         apiKeyUrl: "https://cubence.com/signup?code=CCSWITCH&source=ccs",
@@ -305,7 +305,7 @@ class CodexProviderPresets {
       label: "AIGoCode",
       template: AppProviderConfig(
         id: "aigocode",
-        cli: AppProviderCli.codex,
+        cli: CliTool.codex,
         name: "AIGoCode",
         websiteUrl: "https://aigocode.com",
         apiKeyUrl: "https://aigocode.com/invite/CC-SWITCH",
@@ -331,7 +331,7 @@ class CodexProviderPresets {
       label: "RightCode",
       template: AppProviderConfig(
         id: "rightcode",
-        cli: AppProviderCli.codex,
+        cli: CliTool.codex,
         name: "RightCode",
         websiteUrl: "https://www.right.codes",
         apiKeyUrl: "https://www.right.codes/register?aff=CCSWITCH",
@@ -357,7 +357,7 @@ class CodexProviderPresets {
       label: "AICodeMirror",
       template: AppProviderConfig(
         id: "aicodemirror",
-        cli: AppProviderCli.codex,
+        cli: CliTool.codex,
         name: "AICodeMirror",
         websiteUrl: "https://www.aicodemirror.com",
         apiKeyUrl: "https://www.aicodemirror.com/register?invitecode=9915W3",
@@ -386,7 +386,7 @@ class CodexProviderPresets {
       label: "AICoding",
       template: AppProviderConfig(
         id: "aicoding",
-        cli: AppProviderCli.codex,
+        cli: CliTool.codex,
         name: "AICoding",
         websiteUrl: "https://aicoding.sh",
         apiKeyUrl: "https://aicoding.sh/i/CCSWITCH",
@@ -412,7 +412,7 @@ class CodexProviderPresets {
       label: "CrazyRouter",
       template: AppProviderConfig(
         id: "crazyrouter",
-        cli: AppProviderCli.codex,
+        cli: CliTool.codex,
         name: "CrazyRouter",
         websiteUrl: "https://www.crazyrouter.com",
         apiKeyUrl:
@@ -439,7 +439,7 @@ class CodexProviderPresets {
       label: "SSSAiCode",
       template: AppProviderConfig(
         id: "sssaicode",
-        cli: AppProviderCli.codex,
+        cli: CliTool.codex,
         name: "SSSAiCode",
         websiteUrl: "https://www.sssaicode.com",
         apiKeyUrl: "https://www.sssaicode.com/register?ref=DCP0SM",
@@ -469,7 +469,7 @@ class CodexProviderPresets {
       label: "Compshare",
       template: AppProviderConfig(
         id: "compshare",
-        cli: AppProviderCli.codex,
+        cli: CliTool.codex,
         name: "Compshare",
         websiteUrl: "https://www.compshare.cn",
         apiKeyUrl:
@@ -496,7 +496,7 @@ class CodexProviderPresets {
       label: "Compshare Coding Plan",
       template: AppProviderConfig(
         id: "compshare-coding-plan",
-        cli: AppProviderCli.codex,
+        cli: CliTool.codex,
         name: "Compshare Coding Plan",
         websiteUrl: "https://www.compshare.cn",
         apiKeyUrl:
@@ -523,7 +523,7 @@ class CodexProviderPresets {
       label: "Micu",
       template: AppProviderConfig(
         id: "micu",
-        cli: AppProviderCli.codex,
+        cli: CliTool.codex,
         name: "Micu",
         websiteUrl: "https://www.micuapi.ai",
         apiKeyUrl: "https://www.micuapi.ai/register?aff=aOYQ",
@@ -549,7 +549,7 @@ class CodexProviderPresets {
       label: "CTok.ai",
       template: AppProviderConfig(
         id: "ctok-ai",
-        cli: AppProviderCli.codex,
+        cli: CliTool.codex,
         name: "CTok.ai",
         websiteUrl: "https://ctok.ai",
         apiKeyUrl: "https://ctok.ai",
@@ -575,7 +575,7 @@ class CodexProviderPresets {
       label: "LionCCAPI",
       template: AppProviderConfig(
         id: "lionccapi",
-        cli: AppProviderCli.codex,
+        cli: CliTool.codex,
         name: "LionCCAPI",
         websiteUrl: "https://vibecodingapi.ai",
         apiKeyUrl: "",
@@ -601,7 +601,7 @@ class CodexProviderPresets {
       label: "E-FlowCode",
       template: AppProviderConfig(
         id: "e-flowcode",
-        cli: AppProviderCli.codex,
+        cli: CliTool.codex,
         name: "E-FlowCode",
         websiteUrl: "https://e-flowcode.cc",
         apiKeyUrl: "https://e-flowcode.cc",
@@ -627,7 +627,7 @@ class CodexProviderPresets {
       label: "LemonData",
       template: AppProviderConfig(
         id: "lemondata",
-        cli: AppProviderCli.codex,
+        cli: CliTool.codex,
         name: "LemonData",
         websiteUrl: "https://lemondata.cc",
         apiKeyUrl: "https://lemondata.cc/r/FFX1ZDUP",
@@ -653,7 +653,7 @@ class CodexProviderPresets {
       label: "PIPELLM",
       template: AppProviderConfig(
         id: "pipellm",
-        cli: AppProviderCli.codex,
+        cli: CliTool.codex,
         name: "PIPELLM",
         websiteUrl: "https://code.pipellm.ai",
         apiKeyUrl: "https://code.pipellm.ai/login?ref=uvw650za",
@@ -679,7 +679,7 @@ class CodexProviderPresets {
       label: "OpenRouter",
       template: AppProviderConfig(
         id: "openrouter",
-        cli: AppProviderCli.codex,
+        cli: CliTool.codex,
         name: "OpenRouter",
         websiteUrl: "https://openrouter.ai",
         apiKeyUrl: "https://openrouter.ai/keys",
@@ -705,7 +705,7 @@ class CodexProviderPresets {
       label: "TheRouter",
       template: AppProviderConfig(
         id: "therouter",
-        cli: AppProviderCli.codex,
+        cli: CliTool.codex,
         name: "TheRouter",
         websiteUrl: "https://therouter.ai",
         apiKeyUrl: "https://dashboard.therouter.ai",

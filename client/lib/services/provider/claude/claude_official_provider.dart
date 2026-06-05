@@ -1,7 +1,7 @@
 import '../../../models/app_provider_config.dart';
 
 bool isOfficialClaudeProvider(AppProviderConfig provider) {
-  if (provider.cli != AppProviderCli.claude) return false;
+  if (provider.cli != CliTool.claude) return false;
   if (provider.category != AppProviderCategory.official) return false;
   return isOfficialClaudeSettings(provider.config);
 }

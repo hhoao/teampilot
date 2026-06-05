@@ -4,21 +4,27 @@ import '../../l10n/l10n_extensions.dart';
 import '../../models/app_provider_config.dart';
 import '../../models/team_config.dart';
 import '../../services/app/flashskyai_agent_catalog_service.dart';
+import '../../services/cli/registry/capabilities/provider_catalog_capability.dart';
 import '../../services/cli/registry/cli_display_name.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
 
-AppProviderCli? catalogCliForTeam(BuildContext context, TeamCli cli) =>
-    CliToolRegistryScope.maybeOf(
-      context,
-    )?.tryGet(cli.value)?.providerCatalogCli;
+CliTool? catalogCliForTeam(BuildContext context, CliTool cli) {
+  final registry = CliToolRegistryScope.maybeOf(context);
+  if (registry == null) return null;
+  return registry.capability<ProviderCatalogCapability>(cli) != null
+      ? cli
+      : null;
+}
 
 String teamCliDisplayLabel(
   BuildContext context,
   AppLocalizations l10n,
-  TeamCli cli,
+  CliTool cli,
 ) {
-  final def = CliToolRegistryScope.maybeOf(context)?.tryGet(cli.value);
-  if (def != null) return cliDisplayName(def, l10n);
+  final def = CliToolRegistryScope.maybeOf(context)?.tryGet(cli);
+  if (def != null) {
+    return cliDisplayName(def, l10n, registry: CliToolRegistryScope.maybeOf(context));
+  }
   return cli.value;
 }
 

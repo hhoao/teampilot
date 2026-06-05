@@ -334,7 +334,7 @@ class _SessionControlsState extends State<_SessionControls> {
                 ),
               SessionCliExecutablePathSettingsRow(
                 cubit: widget.cubit,
-                cli: TeamCli.flashskyai,
+                cli: CliTool.flashskyai,
                 title: l10n.cliExecutablePathLabel,
                 subtitle: isSshMode
                     ? l10n.cliExecutablePathDescriptionSsh
@@ -347,7 +347,7 @@ class _SessionControlsState extends State<_SessionControls> {
               ),
               SessionCliExecutablePathSettingsRow(
                 cubit: widget.cubit,
-                cli: TeamCli.claude,
+                cli: CliTool.claude,
                 title: l10n.claudeCliExecutablePathLabel,
                 subtitle: isSshMode
                     ? l10n.claudeCliExecutablePathDescriptionSsh

@@ -14,7 +14,7 @@ void main() {
     String name, {
     String provider = '',
     String model = '',
-    TeamCli? cli,
+    CliTool? cli,
   }) => TeamMemberConfig(
     id: name,
     name: name,
@@ -28,7 +28,7 @@ void main() {
       final team = TeamConfig(
         id: 'team',
         name: 'Team',
-        cli: TeamCli.claude,
+        cli: CliTool.claude,
         teamMode: TeamMode.native,
         providerIdsByTool: const {'claude': 'prov-1'},
         members: [member('alice')],
@@ -43,7 +43,7 @@ void main() {
       final team = TeamConfig(
         id: 'team',
         name: 'Team',
-        cli: TeamCli.claude,
+        cli: CliTool.claude,
         teamMode: TeamMode.native,
         members: [
           member('alice', provider: 'prov-1', model: 'sonnet'),
@@ -60,7 +60,7 @@ void main() {
       final team = TeamConfig(
         id: 'team',
         name: 'Team',
-        cli: TeamCli.claude,
+        cli: CliTool.claude,
         teamMode: TeamMode.native,
         members: [member('alice')],
       );
@@ -88,7 +88,7 @@ void main() {
       final team = TeamConfig(
         id: 'team',
         name: 'Team',
-        cli: TeamCli.claude,
+        cli: CliTool.claude,
         teamMode: TeamMode.native,
         members: [member('alice', model: 'sonnet')],
       );
@@ -105,7 +105,7 @@ void main() {
       final team = TeamConfig(
         id: 'team',
         name: 'Team',
-        cli: TeamCli.claude,
+        cli: CliTool.claude,
         teamMode: TeamMode.native,
         members: [member('alice', provider: 'prov-1')],
       );
@@ -123,7 +123,7 @@ void main() {
       final team = TeamConfig(
         id: 'team',
         name: 'Team',
-        cli: TeamCli.claude,
+        cli: CliTool.claude,
         teamMode: TeamMode.native,
         members: [member('alice', provider: 'official-anthropic')],
       );
@@ -139,7 +139,7 @@ void main() {
       final team = TeamConfig(
         id: 'team',
         name: 'Team',
-        cli: TeamCli.flashskyai,
+        cli: CliTool.flashskyai,
         teamMode: TeamMode.mixed,
         members: [member('alice')],
       );
@@ -164,9 +164,9 @@ void main() {
       final team = TeamConfig(
         id: 'team',
         name: 'Team',
-        cli: TeamCli.flashskyai,
+        cli: CliTool.flashskyai,
         teamMode: TeamMode.mixed,
-        members: [member('alice', cli: TeamCli.claude, provider: 'prov-x')],
+        members: [member('alice', cli: CliTool.claude, provider: 'prov-x')],
       );
 
       final result = await validator.validate(team);
@@ -181,10 +181,10 @@ void main() {
       final team = TeamConfig(
         id: 'team',
         name: 'Team',
-        cli: TeamCli.flashskyai,
+        cli: CliTool.flashskyai,
         teamMode: TeamMode.mixed,
         members: [
-          member('alice', cli: TeamCli.claude, provider: 'official-anthropic'),
+          member('alice', cli: CliTool.claude, provider: 'official-anthropic'),
         ],
       );
 
@@ -197,10 +197,10 @@ void main() {
       final team = TeamConfig(
         id: 'team',
         name: 'Team',
-        cli: TeamCli.flashskyai,
+        cli: CliTool.flashskyai,
         teamMode: TeamMode.mixed,
         members: [
-          member('alice', cli: TeamCli.claude, provider: 'p', model: 'm'),
+          member('alice', cli: CliTool.claude, provider: 'p', model: 'm'),
         ],
       );
 
@@ -214,7 +214,7 @@ void main() {
     final team = TeamConfig(
       id: 'team',
       name: 'Team',
-      cli: TeamCli.claude,
+      cli: CliTool.claude,
       teamMode: TeamMode.native,
       providerIdsByTool: const {'claude': 'prov-1'},
       members: [const TeamMemberConfig(id: '', name: '  ')],

@@ -250,7 +250,7 @@ WHERE app_type = ?
         '';
     return AppProviderConfig(
       id: id,
-      cli: AppProviderCli.codex,
+      cli: CliTool.codex,
       name: (name?.trim().isNotEmpty ?? false) ? name!.trim() : id,
       websiteUrl: websiteUrl,
       notes: notes,

@@ -26,10 +26,10 @@ Future<void> _seedClaudeProvider(
   required Map<String, Object?> env,
 }) async {
   final repository = AppProviderRepository(basePath: basePath);
-  await repository.saveProviders(AppProviderCli.claude, [
+  await repository.saveProviders(CliTool.claude, [
     AppProviderConfig(
       id: id,
-      cli: AppProviderCli.claude,
+      cli: CliTool.claude,
       name: id,
       category: AppProviderCategory.thirdParty,
       config: {'env': env},
@@ -45,10 +45,10 @@ Future<void> _seedCodexProvider(
   Map<String, Object?> meta = const {},
 }) async {
   final repository = AppProviderRepository(basePath: basePath);
-  await repository.saveProviders(AppProviderCli.codex, [
+  await repository.saveProviders(CliTool.codex, [
     AppProviderConfig(
       id: id,
-      cli: AppProviderCli.codex,
+      cli: CliTool.codex,
       name: id,
       apiKey: apiKey,
       baseUrl: 'http://127.0.0.1:15721/v1',
@@ -134,7 +134,7 @@ void main() {
   });
 
   test('ensureTeamProfile creates bare team scope dir only', () async {
-    await service.ensureTeamProfile('team-a', cli: TeamCli.flashskyai);
+    await service.ensureTeamProfile('team-a', cli: CliTool.flashskyai);
 
     final teamRoot = Directory(
       p.join(base.path, 'config-profiles', 'teams', 'team-a'),
@@ -150,7 +150,7 @@ void main() {
   test('prepareTeamLaunch for flashskyai uses team adhoc member dir', () async {
     final env = (await service.prepareTeamLaunch(
       teamId: 'team-a',
-      cli: TeamCli.flashskyai,
+      cli: CliTool.flashskyai,
       workingDirectory: '/workspace/flashskyai',
     )).environment;
 
@@ -234,11 +234,11 @@ requires_openai_auth = true
 
     final outcome = await service.prepareTeamLaunch(
       teamId: 'team-a',
-      cli: TeamCli.codex,
+      cli: CliTool.codex,
       team: TeamConfig(
         id: 'team-a',
         name: 'team-a',
-        cli: TeamCli.codex,
+        cli: CliTool.codex,
         providerIdsByTool: const {'codex': 'deepseek'},
         members: const [
           TeamMemberConfig(id: 'worker', name: 'worker', provider: 'deepseek'),
@@ -290,11 +290,11 @@ base_url = "https://api.example.com/v1"
       await service.prepareTeamLaunch(
         teamId: 'team-a',
         runtimeTeamId: 'sess-mixed-codex',
-        cli: TeamCli.codex,
+        cli: CliTool.codex,
         team: TeamConfig(
           id: 'team-a',
           name: 'team-a',
-          cli: TeamCli.codex,
+          cli: CliTool.codex,
           teamMode: TeamMode.mixed,
           providerIdsByTool: const {'codex': 'p1'},
           members: const [
@@ -336,7 +336,7 @@ base_url = "https://api.example.com/v1"
     final env = (await service.prepareTeamLaunch(
       teamId: 'team-a',
       runtimeTeamId: sessionId,
-      cli: TeamCli.claude,
+      cli: CliTool.claude,
       members: const [lead],
       member: lead,
       workingDirectory: '/workspace',
@@ -390,7 +390,7 @@ base_url = "https://api.example.com/v1"
     const team = TeamConfig(
       id: 'team-a',
       name: 'agent',
-      cli: TeamCli.claude,
+      cli: CliTool.claude,
       forceTeamLeadDelegateMode: true,
     );
     final env = (await service.prepareTeamLaunch(
@@ -444,7 +444,7 @@ base_url = "https://api.example.com/v1"
     final env = (await service.prepareTeamLaunch(
       teamId: 'team-a',
       runtimeTeamId: sessionId,
-      cli: TeamCli.flashskyai,
+      cli: CliTool.flashskyai,
       members: const [lead],
       member: lead,
       workingDirectory: '/workspace',
@@ -500,7 +500,7 @@ base_url = "https://api.example.com/v1"
       const team = TeamConfig(
         id: 'team-a',
         name: 'agent',
-        cli: TeamCli.flashskyai,
+        cli: CliTool.flashskyai,
         forceTeamLeadDelegateMode: true,
       );
       await service.prepareTeamLaunch(
@@ -547,7 +547,7 @@ base_url = "https://api.example.com/v1"
     await service.prepareTeamLaunch(
       teamId: 'team-a',
       runtimeTeamId: sessionId,
-      cli: TeamCli.claude,
+      cli: CliTool.claude,
       members: const [
         TeamMemberConfig(id: 'team-lead', name: 'team-lead'),
         dev,
@@ -581,7 +581,7 @@ base_url = "https://api.example.com/v1"
     final env = (await service.prepareTeamLaunch(
       teamId: 'team-a',
       runtimeTeamId: sessionId,
-      cli: TeamCli.claude,
+      cli: CliTool.claude,
       members: const [
         TeamMemberConfig(
           id: 'team-lead',
@@ -669,7 +669,7 @@ base_url = "https://api.example.com/v1"
     await service.prepareTeamLaunch(
       teamId: 'team-a',
       runtimeTeamId: sessionId,
-      cli: TeamCli.claude,
+      cli: CliTool.claude,
       members: members,
       workingDirectory: '/ws',
     );
@@ -686,7 +686,7 @@ base_url = "https://api.example.com/v1"
     await service.prepareTeamLaunch(
       teamId: 'team-a',
       runtimeTeamId: sessionId,
-      cli: TeamCli.claude,
+      cli: CliTool.claude,
       members: members,
       workingDirectory: '/ws',
       team: const TeamConfig(
@@ -718,7 +718,7 @@ base_url = "https://api.example.com/v1"
       final env = (await service.prepareTeamLaunch(
         teamId: 'team-a',
         runtimeTeamId: sessionId,
-        cli: TeamCli.claude,
+        cli: CliTool.claude,
         members: const [
           TeamMemberConfig(id: 'team-lead', name: 'team-lead', model: 'opus'),
           TeamMemberConfig(id: 'developer', name: 'developer', model: 'sonnet'),
@@ -731,7 +731,7 @@ base_url = "https://api.example.com/v1"
         team: TeamConfig(
           id: 'team-a',
           name: 'team-a',
-          cli: TeamCli.claude,
+          cli: CliTool.claude,
           providerIdsByTool: const {'claude': 'custom'},
         ),
       )).environment;
@@ -771,7 +771,7 @@ base_url = "https://api.example.com/v1"
     () async {
       await service.prepareTeamLaunch(
         teamId: 'team-a',
-        cli: TeamCli.claude,
+        cli: CliTool.claude,
         members: const [TeamMemberConfig(id: 'developer', name: 'developer')],
       );
 
@@ -792,7 +792,7 @@ base_url = "https://api.example.com/v1"
     await service.prepareTeamLaunch(
       teamId: 'team-a',
       runtimeTeamId: 'sess-1',
-      cli: TeamCli.claude,
+      cli: CliTool.claude,
       members: const [TeamMemberConfig(id: 'developer', name: 'developer')],
     );
 
@@ -835,7 +835,7 @@ base_url = "https://api.example.com/v1"
       await service.prepareTeamLaunch(
         teamId: 'team-a',
         runtimeTeamId: sessionId,
-        cli: TeamCli.claude,
+        cli: CliTool.claude,
         workingDirectory: '/workspace/new',
         additionalDirectories: const ['/workspace/extra'],
       );
@@ -882,7 +882,7 @@ base_url = "https://api.example.com/v1"
       await service.prepareTeamLaunch(
         teamId: 'team-a',
         runtimeTeamId: sessionId,
-        cli: TeamCli.claude,
+        cli: CliTool.claude,
         workingDirectory: r'C:\Users\haung\Documents',
       );
 
@@ -920,7 +920,7 @@ base_url = "https://api.example.com/v1"
       await service.prepareTeamLaunch(
         teamId: 'team-a',
         runtimeTeamId: sessionId,
-        cli: TeamCli.flashskyai,
+        cli: CliTool.flashskyai,
         workingDirectory: r'C:\Users\haung\Documents',
       );
 
@@ -956,7 +956,7 @@ base_url = "https://api.example.com/v1"
     await service.ensureSessionProfile(
       'team-a',
       sessionId,
-      cli: TeamCli.claude,
+      cli: CliTool.claude,
     );
 
     final metadata =

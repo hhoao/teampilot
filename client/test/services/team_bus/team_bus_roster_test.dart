@@ -48,7 +48,7 @@ void main() {
     const team = TeamConfig(
       id: 'my-team',
       name: 'My Team',
-      cli: TeamCli.claude,
+      cli: CliTool.claude,
       teamMode: TeamMode.mixed,
     );
     const member = TeamMemberConfig(
@@ -57,7 +57,7 @@ void main() {
       agentType: 'implementer',
       model: 'claude-sonnet-4-20250514',
       provider: 'anthropic',
-      cli: TeamCli.opencode,
+      cli: CliTool.opencode,
       prompt: 'You implement features.',
     );
 
@@ -152,7 +152,7 @@ void main() {
             member: const TeamMemberConfig(
               id: 'developer',
               name: 'Developer',
-              cli: TeamCli.opencode,
+              cli: CliTool.opencode,
               agentType: 'implementer',
             ),
             team: const TeamConfig(id: 'demo', name: 'Demo Team', teamMode: TeamMode.mixed),

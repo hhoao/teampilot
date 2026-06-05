@@ -38,13 +38,13 @@ class _OnboardingProviderImportStepState
     });
     try {
       final cubit = context.read<AppProviderCubit>();
-      await cubit.setSelectedCli(AppProviderCli.claude);
+      await cubit.setSelectedCli(CliTool.claude);
       final result = await cubit.importFromExternal();
       if (!mounted) return;
       setState(() {
         _importing = false;
         _imported = true;
-        _providers = cubit.state.providersFor(AppProviderCli.claude);
+        _providers = cubit.state.providersFor(CliTool.claude);
         _statusMessage = cubit.state.statusMessage;
       });
       if (!result.changed && _providers.isEmpty) {

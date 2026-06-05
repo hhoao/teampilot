@@ -70,7 +70,7 @@ void main() {
     test('writes PreToolUse hook when RTK extension enabled', () async {
       final outcome = await service.prepareTeamLaunch(
         teamId: 'team-a',
-        cli: TeamCli.flashskyai,
+        cli: CliTool.flashskyai,
       );
 
       expect(outcome.warnings, isEmpty);
@@ -110,7 +110,7 @@ void main() {
 
       final outcome = await service.prepareTeamLaunch(
         teamId: 'team-b',
-        cli: TeamCli.flashskyai,
+        cli: CliTool.flashskyai,
       );
 
       expect(outcome.warnings, contains('rtk_enabled_not_found'));

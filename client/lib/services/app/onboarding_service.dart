@@ -25,13 +25,13 @@ class OnboardingService {
     required TeamCubit teamCubit,
   }) async {
     final providerId =
-        appProviderCubit.state.selectedProviderIdByCli[AppProviderCli.claude]
+        appProviderCubit.state.selectedProviderIdByCli[CliTool.claude]
             ?.trim() ??
         '';
     if (providerId.isEmpty) return;
 
     final exists = appProviderCubit.state
-        .providersFor(AppProviderCli.claude)
+        .providersFor(CliTool.claude)
         .any((provider) => provider.id == providerId);
     if (!exists) return;
 

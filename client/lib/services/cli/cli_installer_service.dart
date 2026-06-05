@@ -42,8 +42,7 @@ class CliInstallerService {
        _cliToolRegistry = cliToolRegistry ?? _defaultCliRegistry;
 
   static final _defaultCliRegistry = () {
-    final r = CliToolRegistry();
-    registerBuiltInCliTools(r);
+    final r = CliToolRegistry.builtIn();
     return r;
   }();
 
@@ -54,13 +53,13 @@ class CliInstallerService {
   CliInstallProgressCallback? _onProgress;
 
   Future<CliInstallResult> install({
-    required TeamCli cli,
+    required CliTool cli,
     required CliInstallMode mode,
     SshProfile? sshProfile,
     CliInstallProgressCallback? onProgress,
   }) async {
     final capability =
-        _cliToolRegistry.capability<InstallerCapability>(cli.value);
+        _cliToolRegistry.capability<InstallerCapability>(cli);
     if (capability == null || !capability.supportsInstaller) {
       return const CliInstallResult(
         success: false,

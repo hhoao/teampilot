@@ -20,8 +20,7 @@ class MemberPresenceService {
        _cliToolRegistry = cliToolRegistry ?? _defaultCliRegistry;
 
   static final _defaultCliRegistry = () {
-    final r = CliToolRegistry();
-    registerBuiltInCliTools(r);
+    final r = CliToolRegistry.builtIn();
     return r;
   }();
 
@@ -30,7 +29,7 @@ class MemberPresenceService {
   final CliToolRegistry _cliToolRegistry;
 
   Future<Map<String, MemberPresence>> compute({
-    required TeamCli teamCli,
+    required CliTool teamCli,
     required List<TeamMemberConfig> members,
     required String cliTeamName,
     required String? memberToolConfigDir,
@@ -40,7 +39,7 @@ class MemberPresenceService {
     if (valid.isEmpty) return const {};
 
     final presenceCap =
-        _cliToolRegistry.capability<PresenceCapability>(teamCli.value);
+        _cliToolRegistry.capability<PresenceCapability>(teamCli);
     var claudeWorking = const <String, bool>{};
     if ((presenceCap?.usesClaudeRoster ?? false) &&
         memberToolConfigDir != null &&

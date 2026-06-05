@@ -32,7 +32,7 @@ void main() {
   test('builds flashskyai llm_config from flashskyai provider config', () {
     const provider = AppProviderConfig(
       id: 'deepseek',
-      cli: AppProviderCli.flashskyai,
+      cli: CliTool.flashskyai,
       name: 'DeepSeek',
       apiKey: 'sk-test',
       baseUrl: 'https://api.deepseek.com',
@@ -50,7 +50,7 @@ void main() {
   test('builds codex auth and config.toml for codex provider', () {
     const provider = AppProviderConfig(
       id: 'My Provider',
-      cli: AppProviderCli.codex,
+      cli: CliTool.codex,
       name: 'My Provider',
       apiKey: 'codex-key',
       baseUrl: 'https://api.example.com/v1',
@@ -70,7 +70,7 @@ void main() {
   test('uses explicit codex configToml and auth config when present', () {
     const provider = AppProviderConfig(
       id: 'openrouter',
-      cli: AppProviderCli.codex,
+      cli: CliTool.codex,
       name: 'OpenRouter',
       apiKey: 'sk-openrouter',
       config: {
@@ -100,7 +100,7 @@ requires_openai_auth = true
   test('builds claude settings.json with env overrides', () {
     const provider = AppProviderConfig(
       id: 'ds',
-      cli: AppProviderCli.claude,
+      cli: CliTool.claude,
       name: 'DeepSeek',
       defaultModel: 'deepseek-v4-pro[1m]',
       config: {
@@ -126,7 +126,7 @@ requires_openai_auth = true
   test('uses configured claude api key field', () {
     const provider = AppProviderConfig(
       id: 'claude-proxy',
-      cli: AppProviderCli.claude,
+      cli: CliTool.claude,
       name: 'Claude Proxy',
       apiKey: 'sk-claude',
       apiKeyField: 'ANTHROPIC_AUTH_TOKEN',
@@ -142,7 +142,7 @@ requires_openai_auth = true
   test('top-level apiKey overrides empty ANTHROPIC_AUTH_TOKEN in config.env', () {
     const provider = AppProviderConfig(
       id: 'deepseek',
-      cli: AppProviderCli.claude,
+      cli: CliTool.claude,
       name: 'DeepSeek',
       apiKey: 'sk-deepseek',
       apiKeyField: 'ANTHROPIC_AUTH_TOKEN',

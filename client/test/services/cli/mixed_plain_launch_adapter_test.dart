@@ -7,7 +7,7 @@ void main() {
 
   group('claude adapter', () {
     test('native keeps team flags', () {
-      const team = TeamConfig(id: 't', name: 'agent', cli: TeamCli.claude);
+      const team = TeamConfig(id: 't', name: 'agent', cli: CliTool.claude);
       final args = const ClaudeCodeCliToolAdapter().buildArguments(
         CliLaunchContext(team: team, member: member),
       );
@@ -20,7 +20,7 @@ void main() {
       const team = TeamConfig(
         id: 't',
         name: 'agent',
-        cli: TeamCli.claude,
+        cli: CliTool.claude,
         teamMode: TeamMode.mixed,
       );
       final args = const ClaudeCodeCliToolAdapter().buildArguments(
@@ -35,7 +35,7 @@ void main() {
 
   group('flashskyai adapter', () {
     test('native keeps --team/--member', () {
-      const team = TeamConfig(id: 't', name: 'agent', cli: TeamCli.flashskyai);
+      const team = TeamConfig(id: 't', name: 'agent', cli: CliTool.flashskyai);
       final args = const FlashskyaiCliToolAdapter().buildArguments(
         CliLaunchContext(team: team, member: member),
       );
@@ -47,7 +47,7 @@ void main() {
       const team = TeamConfig(
         id: 't',
         name: 'agent',
-        cli: TeamCli.flashskyai,
+        cli: CliTool.flashskyai,
         teamMode: TeamMode.mixed,
         loop: true,
       );

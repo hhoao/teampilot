@@ -61,9 +61,9 @@ class TeamInfoSectionState extends State<TeamInfoSection> {
         : (widget.team.loop! ? 'true' : 'false');
     final catalogCli = catalogCliForTeam(context, widget.team.cli);
     final showDelegateRow =
-        catalogCli == AppProviderCli.claude ||
-        catalogCli == AppProviderCli.flashskyai;
-    final showToolProviders = catalogCli == AppProviderCli.claude;
+        catalogCli == CliTool.claude ||
+        catalogCli == CliTool.flashskyai;
+    final showToolProviders = catalogCli == CliTool.claude;
 
     return SingleChildScrollView(
       child: Column(

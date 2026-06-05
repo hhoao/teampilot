@@ -2,45 +2,34 @@ import 'package:flutter/foundation.dart';
 
 import '../utils/team_member_naming.dart';
 
-/// Backend CLI for a team session (`flashskyai`, `codex`, `claude`, or `opencode`).
-enum TeamCli {
+/// Backend CLI identity (`flashskyai`, `codex`, `claude`, or `opencode`).
+///
+/// Behavior (launch support, display name, provider catalog, etc.) lives in
+/// [CliToolRegistry] capabilities — not on this enum.
+enum CliTool {
   claude('claude'),
   codex('codex'),
   flashskyai('flashskyai'),
   opencode('opencode');
 
-  const TeamCli(this.value);
+  const CliTool(this.value);
 
   final String value;
 
-  static TeamCli decode(Object? raw) => tryParse(raw?.toString()) ?? flashskyai;
+  static CliTool decode(Object? raw) => tryParse(raw?.toString()) ?? flashskyai;
 
-  static TeamCli? tryParse(String? raw) {
+  static CliTool? tryParse(String? raw) {
     final normalized = raw?.trim().toLowerCase();
     if (normalized == null || normalized.isEmpty) return null;
-    for (final cli in TeamCli.values) {
+    for (final cli in CliTool.values) {
       if (cli.value == normalized) return cli;
     }
     return null;
   }
 
-  /// Whether TeamPilot can launch a team terminal with this CLI today.
-  bool get isLaunchSupported =>
-      this == TeamCli.claude ||
-      this == TeamCli.flashskyai ||
-      this == TeamCli.opencode ||
-      this == TeamCli.codex;
-
-  /// Whether the CLI runs as a full-screen TUI (alternate screen) whose input
-  /// box treats a single chunk ending in CR as pasted text — the trailing CR
-  /// lands as a literal newline, so a plain `text\r` write never submits.
-  ///
-  /// Such CLIs need bracketed paste + a standalone CR to submit injected stdin
-  /// (see `TerminalSession.submitFullScreenInput`). Claude Code (Ink) and codex
-  /// (Ratatui) are both alternate-screen composers; line-oriented CLIs
-  /// (flashskyai) submit on a bare `\r`.
-  bool get usesFullScreenInput =>
-      this == TeamCli.claude || this == TeamCli.codex;
+  static CliTool parse(Object? raw, {CliTool? fallback}) {
+    return tryParse(raw?.toString()) ?? fallback ?? CliTool.claude;
+  }
 }
 
 /// 团队协调模式：native = 单 CLI 原生团队；mixed = 混合 CLI 走 TeamBus。
@@ -114,7 +103,7 @@ class TeamMemberConfig {
       dangerouslySkipPermissions: decodeDangerouslySkipPermissions(
         json['dangerouslySkipPermissions'],
       ),
-      cli: TeamCli.tryParse(json['cli'] as String?),
+      cli: CliTool.tryParse(json['cli'] as String?),
     );
   }
 
@@ -134,10 +123,10 @@ class TeamMemberConfig {
   final bool dangerouslySkipPermissions;
 
   /// 成员 CLI 覆盖（仅 mixed 模式生效）；null 回退 [TeamConfig.cli]。
-  final TeamCli? cli;
+  final CliTool? cli;
 
   /// 成员有效 CLI：native 一律 team.cli；mixed 用成员覆盖、否则 team 默认。
-  TeamCli cliWithin(TeamConfig team) =>
+  CliTool cliWithin(TeamConfig team) =>
       team.teamMode == TeamMode.mixed ? (cli ?? team.cli) : team.cli;
 
   bool get isValid => name.trim().isNotEmpty;
@@ -153,7 +142,7 @@ class TeamMemberConfig {
     String? prompt,
     int? joinedAt,
     bool? dangerouslySkipPermissions,
-    TeamCli? cli,
+    CliTool? cli,
     bool updateCli = false,
   }) {
     return TeamMemberConfig(
@@ -234,7 +223,7 @@ class TeamConfig {
     this.pluginIds = const [],
     this.mcpServerIds = const [],
     this.providerIdsByTool = const {},
-    this.cli = TeamCli.claude,
+    this.cli = CliTool.claude,
     this.teamMode = TeamMode.native,
     this.createdAt = 0,
     this.loop,
@@ -312,7 +301,7 @@ class TeamConfig {
       pluginIds: decodePluginIds(json['pluginIds']),
       mcpServerIds: decodeMcpServerIds(json['mcpServerIds']),
       providerIdsByTool: _decodeProviderIdsByTool(json['providerIdsByTool']),
-      cli: TeamCli.decode(json['cli']),
+      cli: CliTool.decode(json['cli']),
       teamMode: TeamMode.decode(json['teamMode']),
       createdAt: (json['createdAt'] as num?)?.toInt() ?? 0,
       loop: decodeLoop(json['loop']),
@@ -356,7 +345,7 @@ class TeamConfig {
   final Map<String, String> providerIdsByTool;
 
   /// CLI backend for this team. Set at creation; not user-editable afterward.
-  final TeamCli cli;
+  final CliTool cli;
 
   /// 协调模式（默认 native；老 team 无此字段时回退 native）。
   final TeamMode teamMode;
@@ -389,7 +378,7 @@ class TeamConfig {
     List<String>? pluginIds,
     List<String>? mcpServerIds,
     Map<String, String>? providerIdsByTool,
-    TeamCli? cli,
+    CliTool? cli,
     TeamMode? teamMode,
     int? createdAt,
     bool? loop,
@@ -437,7 +426,7 @@ class TeamConfig {
       if (pluginIds.isNotEmpty) 'pluginIds': pluginIds,
       if (mcpServerIds.isNotEmpty) 'mcpServerIds': mcpServerIds,
       if (providerIdsByTool.isNotEmpty) 'providerIdsByTool': providerIdsByTool,
-      if (cli != TeamCli.flashskyai) 'cli': cli.value,
+      if (cli != CliTool.flashskyai) 'cli': cli.value,
       if (teamMode != TeamMode.native) 'teamMode': teamMode.value,
       'createdAt': createdAt,
       if (loop != null) 'loop': loop!,

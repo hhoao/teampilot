@@ -27,7 +27,7 @@ void main() {
     );
     const capability = ClaudeConfigProfileCapability();
     const member = TeamMemberConfig(id: 'm1', name: 'Member', model: 'test');
-    const team = TeamConfig(id: 'team-a', name: 'agent', cli: TeamCli.claude);
+    const team = TeamConfig(id: 'team-a', name: 'agent', cli: CliTool.claude);
 
     final scope = resolveLaunchProfileScope(
       teamId: 'team-a',
@@ -70,10 +70,10 @@ void main() {
       const capability = ClaudeConfigProfileCapability();
       const member = TeamMemberConfig(id: 'm1', name: 'Member', model: 'test');
       final repository = AppProviderRepository(basePath: base.path);
-      await repository.saveProviders(AppProviderCli.claude, [
+      await repository.saveProviders(CliTool.claude, [
         const AppProviderConfig(
           id: 'leaky',
-          cli: AppProviderCli.claude,
+          cli: CliTool.claude,
           name: 'leaky',
           category: AppProviderCategory.thirdParty,
           config: {
@@ -88,7 +88,7 @@ void main() {
       const team = TeamConfig(
         id: 'team-a',
         name: 'agent',
-        cli: TeamCli.claude,
+        cli: CliTool.claude,
         teamMode: TeamMode.mixed,
         providerIdsByTool: {'claude': 'leaky'},
       );

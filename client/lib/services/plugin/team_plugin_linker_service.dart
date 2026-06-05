@@ -3,7 +3,7 @@ import '../../utils/logger.dart';
 import '../storage/app_storage.dart';
 import '../cli/cli_data_layout.dart';
 import 'cli_plugin_layout.dart';
-import 'cli_plugin_manifest_flavor.dart';
+import '../cli/registry/capabilities/plugin_manifest_capability.dart';
 import '../storage/storage_resolver.dart';
 import '../io/filesystem.dart';
 
@@ -122,23 +122,23 @@ class TeamPluginLinkerService {
           errors.add('${plugin.name}: source missing at $rawSource');
           continue;
         }
-        const flavor = CliPluginManifestFlavor.flashskyai;
+        const paths = flashskyaiPluginManifestPaths;
         final pluginRoot = await CliPluginLayout.resolvePluginRoot(
           fs,
           rawSource,
-          flavor: flavor,
+          paths: paths,
         );
         if (pluginRoot == null) {
           errors.add(
             '${plugin.name}: no plugin manifest under $rawSource '
-            '(expected ${flavor.manifestRelativePath})',
+            '(expected ${paths.manifestRelativePath})',
           );
           continue;
         }
         var targetName = await CliPluginLayout.bundleDirName(
           fs,
           pluginRoot,
-          flavor: flavor,
+          paths: paths,
         );
         if (usedNames.contains(targetName)) {
           final owner = plugin.marketplaceOwner ?? 'local';
@@ -154,7 +154,7 @@ class TeamPluginLinkerService {
           source: pluginRoot,
           destination: target,
         );
-        await CliPluginLayout.normalizeBundleForFlavor(fs, target, flavor);
+        await CliPluginLayout.normalizeBundleForFlavor(fs, target, paths);
         linked.add(targetName);
       } catch (e) {
         errors.add('${plugin.name}: $e');

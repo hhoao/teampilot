@@ -73,7 +73,7 @@ void main() {
       const team = TeamConfig(
         id: 'default-team',
         name: 'Default Team',
-        cli: TeamCli.claude,
+        cli: CliTool.claude,
         members: [TeamMemberConfig(id: 'team-lead', name: 'team-lead')],
       );
       await teamRepo.saveTeams([team]);
@@ -92,7 +92,7 @@ void main() {
       await appProviderCubit.upsertProvider(
         const AppProviderConfig(
           id: 'deepseek',
-          cli: AppProviderCli.claude,
+          cli: CliTool.claude,
           name: 'DeepSeek',
           baseUrl: 'https://api.deepseek.com/anthropic',
           defaultModel: 'deepseek-chat',

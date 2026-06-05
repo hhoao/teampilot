@@ -63,7 +63,7 @@ class _DelayedPresenceService extends MemberPresenceService {
 
   @override
   Future<Map<String, MemberPresence>> compute({
-    required TeamCli teamCli,
+    required CliTool teamCli,
     required List<TeamMemberConfig> members,
     required String cliTeamName,
     required String? memberToolConfigDir,

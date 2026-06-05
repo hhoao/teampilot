@@ -63,7 +63,7 @@ class AppProviderDetailPanel extends StatelessWidget {
                   ],
                 ),
               ),
-              if (provider.cli == AppProviderCli.flashskyai)
+              if (provider.cli == CliTool.flashskyai)
                 TextButton.icon(
                   onPressed: onShowModels,
                   icon: const Icon(Icons.hub_outlined, size: AppIconSizes.md),
@@ -146,7 +146,7 @@ class _ProviderJsonPreviewState extends State<_ProviderJsonPreview> {
     setState(() => _json = null);
     Future<void>.microtask(() {
       if (!mounted || generation != _loadGeneration) return;
-      final json = widget.provider.cli == AppProviderCli.flashskyai
+      final json = widget.provider.cli == CliTool.flashskyai
           ? _generator
                 .buildFlashskyaiLlmConfig(widget.provider)
                 .toMaskedJsonString()

@@ -54,7 +54,7 @@ class _OnboardingDefaultProviderStepState
   }
 
   List<AppProviderConfig> get _providers =>
-      _appProviderCubit?.state.providersFor(AppProviderCli.claude) ??
+      _appProviderCubit?.state.providersFor(CliTool.claude) ??
       const [];
 
   AppProviderConfig? get _selectedProvider {
@@ -73,9 +73,9 @@ class _OnboardingDefaultProviderStepState
 
   void _syncFromCubit() {
     final cubit = _appProviderCubit ?? context.read<AppProviderCubit>();
-    final providers = cubit.state.providersFor(AppProviderCli.claude);
+    final providers = cubit.state.providersFor(CliTool.claude);
     final selectedId =
-        cubit.state.selectedProviderIdByCli[AppProviderCli.claude];
+        cubit.state.selectedProviderIdByCli[CliTool.claude];
     final initialId =
         selectedId != null && providers.any((p) => p.id == selectedId)
         ? selectedId

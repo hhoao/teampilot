@@ -27,7 +27,7 @@ class LlmConfigWorkspace extends StatelessWidget {
     super.key,
   });
 
-  final AppProviderCli? initialCli;
+  final CliTool? initialCli;
   final bool showAddProviderOnOpen;
   final bool showHeading;
 
@@ -78,7 +78,7 @@ class LlmProviderConfigPage extends StatelessWidget {
     super.key,
   });
 
-  final AppProviderCli cli;
+  final CliTool cli;
   final String providerName;
 
   @override
@@ -117,7 +117,7 @@ class LlmProviderConfigPage extends StatelessWidget {
                 }
               },
               onShowModels: () {
-                if (provider.cli == AppProviderCli.flashskyai) {
+                if (provider.cli == CliTool.flashskyai) {
                   context.push(llmProviderModelsRoute(cli, provider.id));
                 }
               },
@@ -129,7 +129,7 @@ class LlmProviderConfigPage extends StatelessWidget {
 class LlmProviderAddPage extends StatelessWidget {
   const LlmProviderAddPage({required this.cli, super.key});
 
-  final AppProviderCli cli;
+  final CliTool cli;
 
   @override
   Widget build(BuildContext context) {
@@ -169,7 +169,7 @@ class LlmProviderEditPage extends StatelessWidget {
     super.key,
   });
 
-  final AppProviderCli cli;
+  final CliTool cli;
   final String providerName;
 
   @override
@@ -216,7 +216,7 @@ class LlmProviderModelsPage extends StatelessWidget {
     super.key,
   });
 
-  final AppProviderCli cli;
+  final CliTool cli;
   final String providerName;
 
   @override

@@ -30,14 +30,14 @@ void main() {
     await cubit.upsertProvider(
       const AppProviderConfig(
         id: 'a',
-        cli: AppProviderCli.claude,
+        cli: CliTool.claude,
         name: 'A',
       ),
     );
     await cubit.upsertProvider(
       const AppProviderConfig(
         id: 'b',
-        cli: AppProviderCli.claude,
+        cli: CliTool.claude,
         name: 'B',
       ),
     );
@@ -53,25 +53,25 @@ void main() {
     await cubit.upsertProvider(
       const AppProviderConfig(
         id: 'claude-provider',
-        cli: AppProviderCli.claude,
+        cli: CliTool.claude,
         name: 'Claude Provider',
       ),
     );
-    await cubit.setSelectedCli(AppProviderCli.codex);
+    await cubit.setSelectedCli(CliTool.codex);
     await cubit.upsertProvider(
       const AppProviderConfig(
         id: 'codex-provider',
-        cli: AppProviderCli.codex,
+        cli: CliTool.codex,
         name: 'Codex Provider',
       ),
     );
 
-    await cubit.setSelectedCli(AppProviderCli.claude);
-    expect(cubit.state.selectedCli, AppProviderCli.claude);
+    await cubit.setSelectedCli(CliTool.claude);
+    expect(cubit.state.selectedCli, CliTool.claude);
     expect(cubit.state.selectedId, 'claude-provider');
 
-    await cubit.setSelectedCli(AppProviderCli.codex);
-    expect(cubit.state.selectedCli, AppProviderCli.codex);
+    await cubit.setSelectedCli(CliTool.codex);
+    expect(cubit.state.selectedCli, CliTool.codex);
     expect(cubit.state.selectedId, 'codex-provider');
   });
 
@@ -79,7 +79,7 @@ void main() {
     await cubit.upsertProvider(
       const AppProviderConfig(
         id: 'deepseek',
-        cli: AppProviderCli.flashskyai,
+        cli: CliTool.flashskyai,
         name: 'DeepSeek',
         config: {
           'models': {
@@ -95,7 +95,7 @@ void main() {
     );
 
     final saved = (await repository.loadProviders(
-      AppProviderCli.flashskyai,
+      CliTool.flashskyai,
     )).single;
     final models = saved.config['models'] as Map;
     final model = models['deepseek-chat'] as Map;

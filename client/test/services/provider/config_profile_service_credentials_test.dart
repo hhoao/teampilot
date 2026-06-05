@@ -25,15 +25,15 @@ void main() {
   TeamConfig teamWithProvider(String teamId, String providerId) => TeamConfig(
     id: teamId,
     name: teamId,
-    cli: TeamCli.claude,
+    cli: CliTool.claude,
     providerIdsByTool: {'claude': providerId},
   );
 
   Future<void> seedOfficialProvider(String id) async {
-    await repository.saveProviders(AppProviderCli.claude, [
+    await repository.saveProviders(CliTool.claude, [
       AppProviderConfig(
         id: id,
-        cli: AppProviderCli.claude,
+        cli: CliTool.claude,
         name: id,
         category: AppProviderCategory.official,
         config: const {'env': {}},
@@ -42,17 +42,17 @@ void main() {
   }
 
   test('official launch links provider credentials into session dir', () async {
-    await repository.saveProviders(AppProviderCli.claude, [
+    await repository.saveProviders(CliTool.claude, [
       const AppProviderConfig(
         id: 'work',
-        cli: AppProviderCli.claude,
+        cli: CliTool.claude,
         name: 'work',
         category: AppProviderCategory.official,
         config: {'env': {}},
       ),
       const AppProviderConfig(
         id: 'personal',
-        cli: AppProviderCli.claude,
+        cli: CliTool.claude,
         name: 'personal',
         category: AppProviderCategory.official,
         config: {'env': {}},
@@ -76,13 +76,13 @@ void main() {
     final workOutcome = await service.prepareTeamLaunch(
       teamId: 'team-a',
       runtimeTeamId: 'session-a',
-      cli: TeamCli.claude,
+      cli: CliTool.claude,
       team: teamWithProvider('team-a', 'work'),
     );
     final personalOutcome = await service.prepareTeamLaunch(
       teamId: 'team-b',
       runtimeTeamId: 'session-b',
-      cli: TeamCli.claude,
+      cli: CliTool.claude,
       team: teamWithProvider('team-b', 'personal'),
     );
 
@@ -112,7 +112,7 @@ void main() {
     final outcome = await service.prepareTeamLaunch(
       teamId: 'team-a',
       runtimeTeamId: 'session-a',
-      cli: TeamCli.claude,
+      cli: CliTool.claude,
       team: teamWithProvider('team-a', 'work'),
     );
 

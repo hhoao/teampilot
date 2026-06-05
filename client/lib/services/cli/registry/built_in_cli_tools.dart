@@ -1,3 +1,4 @@
+import '../../../models/team_config.dart';
 import 'cli_tool_registry.dart';
 import 'tools/claude_cli_tool.dart';
 import 'tools/codex_cli_tool.dart';
@@ -9,4 +10,13 @@ void registerBuiltInCliTools(CliToolRegistry registry) {
   registry.register(const ClaudeCliTool());
   registry.register(const CodexCliTool());
   registry.register(const OpencodeCliTool());
+
+  assert(
+    CliTool.values.every((cli) => registry.tryGet(cli) != null),
+    'Every CliTool must have a registered definition',
+  );
+  assert(
+    registry.all.length == CliTool.values.length,
+    'Registry must not contain extra definitions beyond CliTool.values',
+  );
 }

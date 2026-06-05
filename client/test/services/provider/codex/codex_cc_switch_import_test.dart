@@ -115,9 +115,9 @@ rmcp_client = true
         );
 
         final service = ProviderImportService(repository: repository);
-        await service.importForCli(AppProviderCli.codex, onlyIfEmpty: false);
+        await service.importForCli(CliTool.codex, onlyIfEmpty: false);
 
-        final codex = await repository.loadProviders(AppProviderCli.codex);
+        final codex = await repository.loadProviders(CliTool.codex);
         final current = codex.singleWhere((p) => p.id == currentId);
         expect(current.baseUrl, 'http://127.0.0.1:15721/v1');
         expect(current.apiKey, 'sk-real-deepseek');
@@ -177,9 +177,9 @@ rmcp_client = true
       );
 
       final service = ProviderImportService(repository: repository);
-      await service.importForCli(AppProviderCli.codex, onlyIfEmpty: false);
+      await service.importForCli(CliTool.codex, onlyIfEmpty: false);
 
-      final codex = await repository.loadProviders(AppProviderCli.codex);
+      final codex = await repository.loadProviders(CliTool.codex);
       final other = codex.singleWhere(
         (p) => p.id == ProviderImportService.sanitizeProviderId(otherRaw),
       );

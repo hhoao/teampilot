@@ -2387,6 +2387,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get appProviderToolClaude => 'Claude Code';
 
   @override
+  String get appProviderToolOpencode => 'OpenCode';
+
+  @override
   String get appProviderTeamToolSection => '团队默认服务商';
 
   @override

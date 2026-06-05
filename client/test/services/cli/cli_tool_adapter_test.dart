@@ -71,7 +71,7 @@ void main() {
         team: const TeamConfig(
           id: 'team-1',
           name: 'agent',
-          cli: TeamCli.claude,
+          cli: CliTool.claude,
         ),
         member: const TeamMemberConfig(
           id: 'm1',
@@ -94,7 +94,7 @@ void main() {
           team: const TeamConfig(
             id: 'team-1',
             name: 'agent',
-            cli: TeamCli.claude,
+            cli: CliTool.claude,
             extraArgs: '--permission-mode acceptEdits',
             loop: true,
           ),
@@ -133,7 +133,7 @@ void main() {
         team: const TeamConfig(
           id: 'team-1',
           name: 'agent',
-          cli: TeamCli.claude,
+          cli: CliTool.claude,
         ),
         member: const TeamMemberConfig(
           id: 'team-lead',
@@ -182,7 +182,7 @@ void main() {
         team: const TeamConfig(
           id: 'team-1',
           name: 'agent',
-          cli: TeamCli.claude,
+          cli: CliTool.claude,
         ),
         member: member,
         appendSystemPromptFile: '/tmp/team/claude/prompts/team-lead/role.md',
@@ -204,7 +204,7 @@ void main() {
         team: const TeamConfig(
           id: 'team-1',
           name: 'agent',
-          cli: TeamCli.claude,
+          cli: CliTool.claude,
         ),
         member: member,
         settingsPath: '/tmp/team/claude/settings/planner.json',
@@ -226,7 +226,7 @@ void main() {
         team: const TeamConfig(
           id: 'team-1',
           name: 'agent',
-          cli: TeamCli.claude,
+          cli: CliTool.claude,
         ),
         member: member,
       ),
@@ -241,7 +241,7 @@ void main() {
         team: const TeamConfig(
           id: 'team-1',
           name: 'agent',
-          cli: TeamCli.claude,
+          cli: CliTool.claude,
         ),
         member: member,
         workingDirectory: '/home/hhoa/git/agent',
@@ -258,7 +258,7 @@ void main() {
         team: const TeamConfig(
           id: 'team-1',
           name: 'agent',
-          cli: TeamCli.claude,
+          cli: CliTool.claude,
           loop: false,
         ),
         member: member,
@@ -277,15 +277,15 @@ void main() {
     registerBuiltInCliTools(registry);
 
     expect(
-      registry.capability<LaunchArgsCapability>('flashskyai'),
+      registry.capability<LaunchArgsCapability>(CliTool.flashskyai),
       isA<FlashskyaiCliToolAdapter>(),
     );
     expect(
-      registry.capability<LaunchArgsCapability>('claude'),
+      registry.capability<LaunchArgsCapability>(CliTool.claude),
       isA<ClaudeCodeCliToolAdapter>(),
     );
     expect(
-      registry.capability<LaunchArgsCapability>('codex'),
+      registry.capability<LaunchArgsCapability>(CliTool.codex),
       isA<CodexCliToolAdapter>(),
     );
   });

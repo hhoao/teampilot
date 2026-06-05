@@ -59,8 +59,7 @@ class LaunchCommandBuilder {
   }
 
   static final _defaultCliRegistry = () {
-    final r = CliToolRegistry();
-    registerBuiltInCliTools(r);
+    final r = CliToolRegistry.builtIn();
     return r;
   }();
 
@@ -79,7 +78,7 @@ class LaunchCommandBuilder {
   }) {
     final registry = cliRegistry ?? _defaultCliRegistry;
     final launch = registry.capability<LaunchArgsCapability>(
-      member.cliWithin(team).value,
+      member.cliWithin(team),
     );
     if (launch == null) {
       throw StateError(

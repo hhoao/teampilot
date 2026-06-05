@@ -46,7 +46,7 @@ class SessionPreferences {
   /// Local PTY vs remote SSH transport for launching [flashskyai].
   final ConnectionMode connectionMode;
 
-  /// CLI executable paths keyed by [TeamCli.value]. Empty value means fall
+  /// CLI executable paths keyed by [CliTool.value]. Empty value means fall
   /// back to startup discovery, then the tool name on PATH.
   final Map<String, String> cliExecutablePaths;
 

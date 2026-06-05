@@ -1149,6 +1149,7 @@
   "appProviderToolFlashskyai": "FlashskyAI",
   "appProviderToolCodex": "Codex",
   "appProviderToolClaude": "Claude Code",
+  "appProviderToolOpencode": "OpenCode",
   "appProviderTeamToolSection": "Tool providers for this team",
   "appProviderTeamToolSubtitle": "Select which unified provider each tool uses when this team starts.",
   "appProviderTeamNone": "None",

@@ -24,7 +24,7 @@ TerminalSession defaultTerminalSessionFactory({
 
 typedef PostFrameScheduler = void Function(VoidCallback callback);
 typedef SshActiveProfileResolver = SshProfile? Function();
-typedef CliExecutableResolver = String Function(TeamCli cli);
+typedef CliExecutableResolver = String Function(CliTool cli);
 
 class ChatState extends Equatable {
   const ChatState({

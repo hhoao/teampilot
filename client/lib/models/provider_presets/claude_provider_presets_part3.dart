@@ -7,7 +7,7 @@ const List<AppProviderPreset> claudeProviderPresetsPart3 = <AppProviderPreset>[
       label: "ClaudeAPI",
       template: AppProviderConfig(
         id: "claudeapi",
-        cli: AppProviderCli.claude,
+        cli: CliTool.claude,
         name: "ClaudeAPI",
         websiteUrl: "https://claudeapi.com",
         apiKeyUrl: "https://console.claudeapi.com/register?aff=pCLD",
@@ -34,7 +34,7 @@ const List<AppProviderPreset> claudeProviderPresetsPart3 = <AppProviderPreset>[
       label: "ClaudeCN",
       template: AppProviderConfig(
         id: "claudecn",
-        cli: AppProviderCli.claude,
+        cli: CliTool.claude,
         name: "ClaudeCN",
         websiteUrl: "https://claudecn.top",
         apiKeyUrl: "https://claudecn.top/register?aff=ccswitch",
@@ -61,7 +61,7 @@ const List<AppProviderPreset> claudeProviderPresetsPart3 = <AppProviderPreset>[
       label: "RunAPI",
       template: AppProviderConfig(
         id: "runapi",
-        cli: AppProviderCli.claude,
+        cli: CliTool.claude,
         name: "RunAPI",
         websiteUrl: "https://runapi.co",
         apiKeyUrl: "https://runapi.co",
@@ -88,7 +88,7 @@ const List<AppProviderPreset> claudeProviderPresetsPart3 = <AppProviderPreset>[
       label: "RelaxyCode",
       template: AppProviderConfig(
         id: "relaxycode",
-        cli: AppProviderCli.claude,
+        cli: CliTool.claude,
         name: "RelaxyCode",
         websiteUrl: "https://www.relaxycode.com",
         apiKeyUrl: "https://www.relaxycode.com/register",
@@ -115,7 +115,7 @@ const List<AppProviderPreset> claudeProviderPresetsPart3 = <AppProviderPreset>[
       label: "Cubence",
       template: AppProviderConfig(
         id: "cubence",
-        cli: AppProviderCli.claude,
+        cli: CliTool.claude,
         name: "Cubence",
         websiteUrl: "https://cubence.com",
         apiKeyUrl: "https://cubence.com/signup?code=CCSWITCH&source=ccs",
@@ -147,7 +147,7 @@ const List<AppProviderPreset> claudeProviderPresetsPart3 = <AppProviderPreset>[
       label: "AIGoCode",
       template: AppProviderConfig(
         id: "aigocode",
-        cli: AppProviderCli.claude,
+        cli: CliTool.claude,
         name: "AIGoCode",
         websiteUrl: "https://aigocode.com",
         apiKeyUrl: "https://aigocode.com/invite/CC-SWITCH",
@@ -174,7 +174,7 @@ const List<AppProviderPreset> claudeProviderPresetsPart3 = <AppProviderPreset>[
       label: "RightCode",
       template: AppProviderConfig(
         id: "rightcode",
-        cli: AppProviderCli.claude,
+        cli: CliTool.claude,
         name: "RightCode",
         websiteUrl: "https://www.right.codes",
         apiKeyUrl: "https://www.right.codes/register?aff=CCSWITCH",
@@ -201,7 +201,7 @@ const List<AppProviderPreset> claudeProviderPresetsPart3 = <AppProviderPreset>[
       label: "AICodeMirror",
       template: AppProviderConfig(
         id: "aicodemirror",
-        cli: AppProviderCli.claude,
+        cli: CliTool.claude,
         name: "AICodeMirror",
         websiteUrl: "https://www.aicodemirror.com",
         apiKeyUrl: "https://www.aicodemirror.com/register?invitecode=9915W3",
@@ -231,7 +231,7 @@ const List<AppProviderPreset> claudeProviderPresetsPart3 = <AppProviderPreset>[
       label: "AICoding",
       template: AppProviderConfig(
         id: "aicoding",
-        cli: AppProviderCli.claude,
+        cli: CliTool.claude,
         name: "AICoding",
         websiteUrl: "https://aicoding.sh",
         apiKeyUrl: "https://aicoding.sh/i/CCSWITCH",
@@ -258,7 +258,7 @@ const List<AppProviderPreset> claudeProviderPresetsPart3 = <AppProviderPreset>[
       label: "CrazyRouter",
       template: AppProviderConfig(
         id: "crazyrouter",
-        cli: AppProviderCli.claude,
+        cli: CliTool.claude,
         name: "CrazyRouter",
         websiteUrl: "https://www.crazyrouter.com",
         apiKeyUrl:
@@ -286,7 +286,7 @@ const List<AppProviderPreset> claudeProviderPresetsPart3 = <AppProviderPreset>[
       label: "SSSAiCode",
       template: AppProviderConfig(
         id: "sssaicode",
-        cli: AppProviderCli.claude,
+        cli: CliTool.claude,
         name: "SSSAiCode",
         websiteUrl: "https://www.sssaicode.com",
         apiKeyUrl: "https://www.sssaicode.com/register?ref=DCP0SM",
@@ -317,7 +317,7 @@ const List<AppProviderPreset> claudeProviderPresetsPart3 = <AppProviderPreset>[
       label: "Compshare",
       template: AppProviderConfig(
         id: "compshare",
-        cli: AppProviderCli.claude,
+        cli: CliTool.claude,
         name: "Compshare",
         websiteUrl: "https://www.compshare.cn",
         apiKeyUrl:
@@ -345,7 +345,7 @@ const List<AppProviderPreset> claudeProviderPresetsPart3 = <AppProviderPreset>[
       label: "Compshare Coding Plan",
       template: AppProviderConfig(
         id: "compshare-coding-plan",
-        cli: AppProviderCli.claude,
+        cli: CliTool.claude,
         name: "Compshare Coding Plan",
         websiteUrl: "https://www.compshare.cn",
         apiKeyUrl:
@@ -373,7 +373,7 @@ const List<AppProviderPreset> claudeProviderPresetsPart3 = <AppProviderPreset>[
       label: "Micu",
       template: AppProviderConfig(
         id: "micu",
-        cli: AppProviderCli.claude,
+        cli: CliTool.claude,
         name: "Micu",
         websiteUrl: "https://www.micuapi.ai",
         apiKeyUrl: "https://www.micuapi.ai/register?aff=aOYQ",

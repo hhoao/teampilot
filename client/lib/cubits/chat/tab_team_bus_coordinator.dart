@@ -2,6 +2,8 @@ import 'dart:async';
 
 import '../../models/app_session.dart';
 import '../../models/team_config.dart';
+import '../../services/cli/registry/capabilities/terminal_behavior_capability.dart';
+import '../../services/cli/registry/cli_tool_registry.dart';
 import '../../services/team_bus/agent_node.dart';
 import '../../services/team_bus/bus_user_line_capture.dart';
 import '../../services/team_bus/chat_cubit_member_launcher.dart';
@@ -163,9 +165,14 @@ class TabTeamBusCoordinator implements MemberMaterializer {
     if (trimmed.isEmpty) return;
     final team = _activeTeam();
     final cli = team == null
-        ? TeamCli.flashskyai
+        ? CliTool.flashskyai
         : _shellFactory.cliForMember(team, memberId);
-    if (cli.usesFullScreenInput) {
+    final usesFullScreen =
+        CliToolRegistry.builtIn()
+            .capability<TerminalBehaviorCapability>(cli)
+            ?.usesFullScreenInput ??
+        false;
+    if (usesFullScreen) {
       unawaited(shell.submitFullScreenInput(trimmed));
     } else {
       shell.writeln(trimmed);

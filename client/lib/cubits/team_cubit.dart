@@ -11,6 +11,7 @@ import '../repositories/mcp_repository.dart';
 import '../repositories/plugin_repository.dart';
 import '../repositories/session_repository.dart';
 import '../repositories/team_repository.dart';
+import '../services/cli/registry/cli_tool_registry.dart';
 import '../services/team/default_team_project_service.dart';
 import '../services/provider/config_profile_service.dart';
 import '../services/session/session_lifecycle_service.dart';
@@ -243,7 +244,7 @@ class TeamCubit extends Cubit<TeamState> implements TeamCubitHost {
 
   Future<bool> addTeam(
     String name, {
-    TeamCli cli = TeamCli.flashskyai,
+    CliTool cli = CliTool.flashskyai,
     TeamMode teamMode = TeamMode.native,
     Map<String, String> providerIdsByTool = const {},
     List<TeamMemberConfig>? members,
@@ -257,7 +258,7 @@ class TeamCubit extends Cubit<TeamState> implements TeamCubitHost {
       emit(state.copyWith(statusMessage: 'Team "$trimmed" already exists.'));
       return false;
     }
-    if (!cli.isLaunchSupported) {
+    if (!(CliToolRegistry.builtIn().tryGet(cli)?.isLaunchSupported ?? false)) {
       emit(
         state.copyWith(
           statusMessage: 'CLI "${cli.value}" is not available for teams yet.',
@@ -300,7 +301,7 @@ class TeamCubit extends Cubit<TeamState> implements TeamCubitHost {
   /// clash) and skill/plugin/MCP ids are carried over.
   Future<String?> addClonedTeam({
     required String name,
-    required TeamCli cli,
+    required CliTool cli,
     TeamMode teamMode = TeamMode.native,
     required List<TeamMemberConfig> members,
     List<String> skillIds = const [],
@@ -310,7 +311,7 @@ class TeamCubit extends Cubit<TeamState> implements TeamCubitHost {
     String extraArgs = '',
   }) async {
     final base = name.trim().isEmpty ? 'Team' : name.trim();
-    if (!cli.isLaunchSupported) {
+    if (!(CliToolRegistry.builtIn().tryGet(cli)?.isLaunchSupported ?? false)) {
       emit(
         state.copyWith(
           statusMessage: 'CLI "${cli.value}" is not available for teams yet.',
@@ -409,7 +410,7 @@ class TeamCubit extends Cubit<TeamState> implements TeamCubitHost {
     var changed = false;
     final teams = <TeamConfig>[];
     for (final team in state.teams) {
-      if (team.cli != TeamCli.claude) {
+      if (team.cli != CliTool.claude) {
         teams.add(team);
         continue;
       }

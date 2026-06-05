@@ -10,7 +10,7 @@ import 'team_resource_sync_service.dart';
 
 typedef TeamLauncher =
     Future<void> Function(TeamConfig team, TeamMemberConfig member);
-typedef CliExecutableResolver = String Function(TeamCli cli);
+typedef CliExecutableResolver = String Function(CliTool cli);
 
 /// Builds launch environments and previews, and drives single-member /
 /// whole-team launches. Plugin state is re-synced before each launch.
@@ -36,7 +36,7 @@ class TeamLaunchService {
   final CliExecutableResolver? _cliExecutableResolver;
   final TeamLauncher? _launcher;
 
-  String _resolveExecutableFor(TeamCli cli) {
+  String _resolveExecutableFor(CliTool cli) {
     return _cliExecutableResolver?.call(cli) ?? _executableResolver();
   }
 

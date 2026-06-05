@@ -12,23 +12,23 @@ import '../services/provider/tool_config_generator.dart';
 
 class AppProviderState extends Equatable {
   const AppProviderState({
-    this.selectedCli = AppProviderCli.claude,
+    this.selectedCli = CliTool.claude,
     this.providersByCli = const {},
     this.selectedProviderIdByCli = const {},
     this.isLoading = false,
     this.statusMessage = '',
   });
 
-  final AppProviderCli selectedCli;
-  final Map<AppProviderCli, List<AppProviderConfig>> providersByCli;
-  final Map<AppProviderCli, String?> selectedProviderIdByCli;
+  final CliTool selectedCli;
+  final Map<CliTool, List<AppProviderConfig>> providersByCli;
+  final Map<CliTool, String?> selectedProviderIdByCli;
   final bool isLoading;
   final String statusMessage;
 
   List<AppProviderConfig> get providers =>
       providersByCli[selectedCli] ?? const [];
 
-  List<AppProviderConfig> providersFor(AppProviderCli cli) =>
+  List<AppProviderConfig> providersFor(CliTool cli) =>
       providersByCli[cli] ?? const [];
 
   String? get selectedId => selectedProviderIdByCli[selectedCli];
@@ -43,9 +43,9 @@ class AppProviderState extends Equatable {
   }
 
   AppProviderState copyWith({
-    AppProviderCli? selectedCli,
-    Map<AppProviderCli, List<AppProviderConfig>>? providersByCli,
-    Map<AppProviderCli, String?>? selectedProviderIdByCli,
+    CliTool? selectedCli,
+    Map<CliTool, List<AppProviderConfig>>? providersByCli,
+    Map<CliTool, String?>? selectedProviderIdByCli,
     bool? isLoading,
     String? statusMessage,
   }) {
@@ -120,11 +120,11 @@ class AppProviderCubit extends Cubit<AppProviderState> {
 
   Future<void> load() async {
     emit(state.copyWith(isLoading: true, statusMessage: ''));
-    final byCli = <AppProviderCli, List<AppProviderConfig>>{};
-    final selectedByCli = Map<AppProviderCli, String?>.from(
+    final byCli = <CliTool, List<AppProviderConfig>>{};
+    final selectedByCli = Map<CliTool, String?>.from(
       state.selectedProviderIdByCli,
     );
-    for (final cli in AppProviderCli.values) {
+    for (final cli in CliTool.values) {
       final providers = await _repository.loadProviders(cli);
       byCli[cli] = providers;
       final selected = selectedByCli[cli];
@@ -145,7 +145,7 @@ class AppProviderCubit extends Cubit<AppProviderState> {
     );
   }
 
-  Future<void> setSelectedCli(AppProviderCli cli) async {
+  Future<void> setSelectedCli(CliTool cli) async {
     if (cli == state.selectedCli && state.providersByCli.containsKey(cli)) {
       return;
     }
@@ -307,11 +307,11 @@ class AppProviderCubit extends Cubit<AppProviderState> {
     emit(state.copyWith(isLoading: true, statusMessage: ''));
     final result = await _importServiceForRequest().importForCli(cli, onlyIfEmpty: false);
 
-    final byCli = <AppProviderCli, List<AppProviderConfig>>{};
-    final selectedByCli = Map<AppProviderCli, String?>.from(
+    final byCli = <CliTool, List<AppProviderConfig>>{};
+    final selectedByCli = Map<CliTool, String?>.from(
       state.selectedProviderIdByCli,
     );
-    for (final item in AppProviderCli.values) {
+    for (final item in CliTool.values) {
       final providers = await _repository.loadProviders(item);
       byCli[item] = providers;
       final selected = selectedByCli[item];
@@ -341,7 +341,7 @@ class AppProviderCubit extends Cubit<AppProviderState> {
     Map<String, LlmModelConfig> models,
   ) async {
     final provider = state
-        .providersFor(AppProviderCli.flashskyai)
+        .providersFor(CliTool.flashskyai)
         .where((p) => p.id == providerId)
         .firstOrNull;
     if (provider == null) return;
@@ -383,11 +383,11 @@ class AppProviderCubit extends Cubit<AppProviderState> {
   }
 
   Map<String, Object?> _normalizedConfigForCli({
-    required AppProviderCli cli,
+    required CliTool cli,
     required String providerId,
     required Map<String, Object?> config,
   }) {
-    if (cli != AppProviderCli.flashskyai) return config;
+    if (cli != CliTool.flashskyai) return config;
     return _normalizeFlashskyaiModelsProvider(
       config: config,
       providerId: providerId,

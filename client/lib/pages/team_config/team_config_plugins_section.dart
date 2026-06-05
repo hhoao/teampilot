@@ -50,7 +50,7 @@ class TeamPluginsSection extends StatelessWidget {
         .length;
     final teamToolDef = CliToolRegistryScope.maybeOf(
       context,
-    )?.tryGet(team.cli.value);
+    )?.tryGet(team.cli);
     final codexUnsupported = teamToolDef?.isLaunchSupported == false;
 
     return SingleChildScrollView(

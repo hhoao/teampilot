@@ -16,7 +16,7 @@ void main() {
   );
 
   test('builds required flashskyai arguments for a member', () {
-    const team = TeamConfig(id: '1', name: 'agent', cli: TeamCli.flashskyai);
+    const team = TeamConfig(id: '1', name: 'agent', cli: CliTool.flashskyai);
 
     expect(
       LaunchCommandBuilder.buildArguments(
@@ -42,7 +42,7 @@ void main() {
   });
 
   test('omits --dir when workingDirectory is empty', () {
-    const team = TeamConfig(id: '1', name: 'agent', cli: TeamCli.flashskyai);
+    const team = TeamConfig(id: '1', name: 'agent', cli: CliTool.flashskyai);
 
     expect(LaunchCommandBuilder.buildArguments(team, member), [
       '--team',
@@ -62,7 +62,7 @@ void main() {
     const team = TeamConfig(
       id: '1',
       name: 'agent',
-      cli: TeamCli.flashskyai,
+      cli: CliTool.flashskyai,
       loop: false,
     );
 
@@ -83,7 +83,7 @@ void main() {
   });
 
   test('adds --dangerously-skip-permissions when member requests it', () {
-    const team = TeamConfig(id: '1', name: 'agent', cli: TeamCli.flashskyai);
+    const team = TeamConfig(id: '1', name: 'agent', cli: CliTool.flashskyai);
     const risky = TeamMemberConfig(
       id: 'member-1',
       name: 'planner',
@@ -112,7 +112,7 @@ void main() {
     const team = TeamConfig(
       id: '1',
       name: 'agent',
-      cli: TeamCli.flashskyai,
+      cli: CliTool.flashskyai,
       extraArgs: '--permission-mode acceptEdits',
     );
     const reviewer = TeamMemberConfig(
@@ -147,7 +147,7 @@ void main() {
     const team = TeamConfig(
       id: '1',
       name: 'hello team',
-      cli: TeamCli.flashskyai,
+      cli: CliTool.flashskyai,
     );
     const reviewer = TeamMemberConfig(id: 'member-2', name: 'code reviewer');
 
@@ -158,7 +158,7 @@ void main() {
   });
 
   test('preview honours the supplied executable path', () {
-    const team = TeamConfig(id: '1', name: 'agent', cli: TeamCli.flashskyai);
+    const team = TeamConfig(id: '1', name: 'agent', cli: CliTool.flashskyai);
     const planner = TeamMemberConfig(id: 'm', name: 'planner');
 
     expect(
@@ -178,13 +178,13 @@ void main() {
       provider: 'anthropic',
       model: 'sonnet',
       agent: 'builder',
-      cli: TeamCli.flashskyai,
+      cli: CliTool.flashskyai,
     );
-    const nativeClaude = TeamConfig(id: '1', name: 'agent', cli: TeamCli.claude);
+    const nativeClaude = TeamConfig(id: '1', name: 'agent', cli: CliTool.claude);
     const mixedClaude = TeamConfig(
       id: '1',
       name: 'agent',
-      cli: TeamCli.claude,
+      cli: CliTool.claude,
       teamMode: TeamMode.mixed,
     );
 
@@ -202,7 +202,7 @@ void main() {
   });
 
   test('preview delegates argument construction for Claude teams', () {
-    const team = TeamConfig(id: '1', name: 'agent', cli: TeamCli.claude);
+    const team = TeamConfig(id: '1', name: 'agent', cli: CliTool.claude);
     const planner = TeamMemberConfig(
       id: 'm',
       name: 'planner',
@@ -221,7 +221,7 @@ void main() {
   test(
     'launch passes Claude settings as argument and strips internal env',
     () async {
-      const team = TeamConfig(id: '1', name: 'agent', cli: TeamCli.claude);
+      const team = TeamConfig(id: '1', name: 'agent', cli: CliTool.claude);
       List<String>? capturedArgs;
       Map<String, String>? capturedEnv;
 
@@ -274,7 +274,7 @@ void main() {
   test(
     'launch passes append-system-prompt-file and strips internal env',
     () async {
-      const team = TeamConfig(id: '1', name: 'agent', cli: TeamCli.claude);
+      const team = TeamConfig(id: '1', name: 'agent', cli: CliTool.claude);
       List<String>? capturedArgs;
       Map<String, String>? capturedEnv;
 

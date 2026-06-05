@@ -79,7 +79,7 @@ class _RecordingLifecycleService extends SessionLifecycleService {
   final destroyedTeams = <String>[];
 
   @override
-  Future<void> destroyTeamCliState(String teamId) async {
+  Future<void> destroyCliToolState(String teamId) async {
     destroyedTeams.add(teamId);
   }
 }
@@ -489,7 +489,7 @@ void main() {
     final teamRoot = p.join(base.path, 'config-profiles', 'teams', 'alpha');
     expect(await Directory(teamRoot).exists(), isTrue);
     expect(await Directory(p.join(teamRoot, 'flashskyai')).exists(), isFalse);
-    expect(cubit.state.teams.single.cli, TeamCli.flashskyai);
+    expect(cubit.state.teams.single.cli, CliTool.flashskyai);
 
     await _drainAndCloseTeamCubit(cubit);
     await base.delete(recursive: true);
@@ -507,8 +507,8 @@ void main() {
       configProfileService: ConfigProfileService(basePath: base.path),
     );
 
-    expect(await cubit.addTeam('beta', cli: TeamCli.codex), isTrue);
-    expect(cubit.state.teams.single.cli, TeamCli.codex);
+    expect(await cubit.addTeam('beta', cli: CliTool.codex), isTrue);
+    expect(cubit.state.teams.single.cli, CliTool.codex);
 
     await _drainAndCloseTeamCubit(cubit);
     await base.delete(recursive: true);
@@ -523,7 +523,7 @@ void main() {
       executableResolver: () => 'flashskyai',
       pluginLinker: _RecordingPluginLinker(),
       cliExecutableResolver: (cli) =>
-          cli == TeamCli.claude ? '/opt/bin/claude' : cli.value,
+          cli == CliTool.claude ? '/opt/bin/claude' : cli.value,
       appDataBasePath: base.path,
       configProfileService: ConfigProfileService(basePath: base.path),
     );
@@ -531,7 +531,7 @@ void main() {
     const team = TeamConfig(
       id: 'claude-team',
       name: 'Claude Team',
-      cli: TeamCli.claude,
+      cli: CliTool.claude,
       members: [member],
     );
     await _repo(base).saveTeams([team]);
@@ -568,7 +568,7 @@ void main() {
     const team = TeamConfig(
       id: 'claude-team',
       name: 'Claude Team',
-      cli: TeamCli.claude,
+      cli: CliTool.claude,
       members: [member],
     );
     await repo.saveTeams([team]);
@@ -628,7 +628,7 @@ void main() {
     const team = TeamConfig(
       id: 'claude-team',
       name: 'Claude Team',
-      cli: TeamCli.claude,
+      cli: CliTool.claude,
       members: [
         TeamMemberConfig(id: 'team-lead', name: 'team-lead'),
         TeamMemberConfig(id: 'developer', name: 'developer'),
@@ -707,7 +707,7 @@ void main() {
     const team = TeamConfig(
       id: 'default-team',
       name: 'Default Team',
-      cli: TeamCli.claude,
+      cli: CliTool.claude,
       members: [TeamMemberConfig(id: 'team-lead', name: 'team-lead')],
     );
     await repo.saveTeams([team]);
@@ -740,7 +740,7 @@ void main() {
     const team = TeamConfig(
       id: 'default-team',
       name: 'Default Team',
-      cli: TeamCli.claude,
+      cli: CliTool.claude,
       members: [TeamMemberConfig(id: 'team-lead', name: 'team-lead')],
       providerIdsByTool: {'claude': 'official'},
     );

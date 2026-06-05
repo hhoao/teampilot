@@ -7,7 +7,7 @@ const List<AppProviderPreset> claudeProviderPresetsPart1 = <AppProviderPreset>[
       label: "Claude Official",
       template: AppProviderConfig(
         id: "claude-official",
-        cli: AppProviderCli.claude,
+        cli: CliTool.claude,
         name: "Claude Official",
         websiteUrl: "https://www.anthropic.com/claude-code",
         apiKeyUrl: "",
@@ -29,7 +29,7 @@ const List<AppProviderPreset> claudeProviderPresetsPart1 = <AppProviderPreset>[
       label: "Shengsuanyun",
       template: AppProviderConfig(
         id: "shengsuanyun",
-        cli: AppProviderCli.claude,
+        cli: CliTool.claude,
         name: "Shengsuanyun",
         websiteUrl: "https://www.shengsuanyun.com",
         apiKeyUrl: "https://www.shengsuanyun.com/?from=CH_4HHXMRYF",
@@ -56,7 +56,7 @@ const List<AppProviderPreset> claudeProviderPresetsPart1 = <AppProviderPreset>[
       label: "PatewayAI",
       template: AppProviderConfig(
         id: "patewayai",
-        cli: AppProviderCli.claude,
+        cli: CliTool.claude,
         name: "PatewayAI",
         websiteUrl: "https://pateway.ai",
         apiKeyUrl: "https://pateway.ai/?ch=etzpm8&aff=WB6M6F67#/",
@@ -83,7 +83,7 @@ const List<AppProviderPreset> claudeProviderPresetsPart1 = <AppProviderPreset>[
       label: "火山Agentplan",
       template: AppProviderConfig(
         id: "agentplan",
-        cli: AppProviderCli.claude,
+        cli: CliTool.claude,
         name: "火山Agentplan",
         websiteUrl:
             "https://www.volcengine.com/activity/agentplan?utm_campaign=hw&utm_content=ccswitch&utm_medium=devrel_tool_web&utm_source=OWO&utm_term=ccswitch",
@@ -117,7 +117,7 @@ const List<AppProviderPreset> claudeProviderPresetsPart1 = <AppProviderPreset>[
       label: "BytePlus",
       template: AppProviderConfig(
         id: "byteplus",
-        cli: AppProviderCli.claude,
+        cli: CliTool.claude,
         name: "BytePlus",
         websiteUrl:
             "https://www.byteplus.com/en/product/modelark?utm_campaign=hw&utm_content=ccswitch&utm_medium=devrel_tool_web&utm_source=OWO&utm_term=ccswitch",
@@ -151,7 +151,7 @@ const List<AppProviderPreset> claudeProviderPresetsPart1 = <AppProviderPreset>[
       label: "DouBaoSeed",
       template: AppProviderConfig(
         id: "doubaoseed",
-        cli: AppProviderCli.claude,
+        cli: CliTool.claude,
         name: "DouBaoSeed",
         websiteUrl:
             "https://console.volcengine.com/ark/region:ark+cn-beijing/apiKey?apikey=%7B%7D&utm_campaign=hw&utm_content=ccswitch&utm_medium=devrel_tool_web&utm_source=OWO&utm_term=ccswitch",
@@ -189,7 +189,7 @@ const List<AppProviderPreset> claudeProviderPresetsPart1 = <AppProviderPreset>[
       label: "Gemini Native",
       template: AppProviderConfig(
         id: "gemini-native",
-        cli: AppProviderCli.claude,
+        cli: CliTool.claude,
         name: "Gemini Native",
         websiteUrl: "https://ai.google.dev/gemini-api",
         apiKeyUrl: "https://aistudio.google.com/app/apikey",
@@ -221,7 +221,7 @@ const List<AppProviderPreset> claudeProviderPresetsPart1 = <AppProviderPreset>[
       label: "DeepSeek",
       template: AppProviderConfig(
         id: "deepseek",
-        cli: AppProviderCli.claude,
+        cli: CliTool.claude,
         name: "DeepSeek",
         websiteUrl: "https://platform.deepseek.com",
         apiKeyUrl: "",
@@ -253,7 +253,7 @@ const List<AppProviderPreset> claudeProviderPresetsPart1 = <AppProviderPreset>[
       label: "Zhipu GLM",
       template: AppProviderConfig(
         id: "zhipu-glm",
-        cli: AppProviderCli.claude,
+        cli: CliTool.claude,
         name: "Zhipu GLM",
         websiteUrl: "https://open.bigmodel.cn",
         apiKeyUrl: "https://www.bigmodel.cn/claude-code?ic=RRVJPB5SII",
@@ -284,7 +284,7 @@ const List<AppProviderPreset> claudeProviderPresetsPart1 = <AppProviderPreset>[
       label: "Zhipu GLM en",
       template: AppProviderConfig(
         id: "zhipu-glm-en",
-        cli: AppProviderCli.claude,
+        cli: CliTool.claude,
         name: "Zhipu GLM en",
         websiteUrl: "https://z.ai",
         apiKeyUrl: "https://z.ai/subscribe?ic=8JVLJQFSKB",
@@ -315,7 +315,7 @@ const List<AppProviderPreset> claudeProviderPresetsPart1 = <AppProviderPreset>[
       label: "Baidu Qianfan Coding Plan",
       template: AppProviderConfig(
         id: "baidu-qianfan-coding-plan",
-        cli: AppProviderCli.claude,
+        cli: CliTool.claude,
         name: "Baidu Qianfan Coding Plan",
         websiteUrl: "https://cloud.baidu.com/product/qianfan_modelbuilder",
         apiKeyUrl:
@@ -348,7 +348,7 @@ const List<AppProviderPreset> claudeProviderPresetsPart1 = <AppProviderPreset>[
       label: "Bailian",
       template: AppProviderConfig(
         id: "bailian",
-        cli: AppProviderCli.claude,
+        cli: CliTool.claude,
         name: "Bailian",
         websiteUrl: "https://bailian.console.aliyun.com",
         apiKeyUrl: "",
@@ -376,7 +376,7 @@ const List<AppProviderPreset> claudeProviderPresetsPart1 = <AppProviderPreset>[
       label: "Bailian For Coding",
       template: AppProviderConfig(
         id: "bailian-for-coding",
-        cli: AppProviderCli.claude,
+        cli: CliTool.claude,
         name: "Bailian For Coding",
         websiteUrl: "https://bailian.console.aliyun.com",
         apiKeyUrl: "",
@@ -404,7 +404,7 @@ const List<AppProviderPreset> claudeProviderPresetsPart1 = <AppProviderPreset>[
       label: "Kimi",
       template: AppProviderConfig(
         id: "kimi",
-        cli: AppProviderCli.claude,
+        cli: CliTool.claude,
         name: "Kimi",
         websiteUrl: "https://platform.moonshot.cn/console",
         apiKeyUrl: "",

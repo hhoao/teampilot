@@ -14,7 +14,7 @@ class _RecordingLifecycleService extends SessionLifecycleService {
   final destroyedTeams = <String>[];
 
   @override
-  Future<void> destroyTeamCliState(String teamId) async {
+  Future<void> destroyCliToolState(String teamId) async {
     destroyedTeams.add(teamId);
   }
 }

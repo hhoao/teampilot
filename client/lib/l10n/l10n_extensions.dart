@@ -3,7 +3,7 @@
 
 import 'package:flutter/widgets.dart';
 
-import '../models/app_provider_config.dart';
+import '../models/team_config.dart';
 import '../services/editor/editor_messages.dart';
 import 'app_localizations.dart';
 
@@ -33,11 +33,12 @@ extension AppLocalizationsX on AppLocalizations {
     return '$countPart · $proxyPart';
   }
 
-  String appProviderCliLabel(AppProviderCli cli) {
+  String appProviderToolLabel(CliTool cli) {
     return switch (cli) {
-      AppProviderCli.claude => appProviderToolClaude,
-      AppProviderCli.codex => appProviderToolCodex,
-      AppProviderCli.flashskyai => appProviderToolFlashskyai,
+      CliTool.claude => appProviderToolClaude,
+      CliTool.codex => appProviderToolCodex,
+      CliTool.flashskyai => appProviderToolFlashskyai,
+      CliTool.opencode => appProviderToolOpencode,
     };
   }
 

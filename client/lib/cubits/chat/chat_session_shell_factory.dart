@@ -50,17 +50,17 @@ class ChatSessionShellFactory {
 
   int get _scrollbackLines => _terminalScrollbackLinesResolver?.call() ?? 10000;
 
-  String _resolveExecutableFor(TeamCli cli) =>
+  String _resolveExecutableFor(CliTool cli) =>
       _cliExecutableResolver?.call(cli) ?? _executableResolver();
 
-  TeamCli cliForMember(TeamConfig team, String memberId) {
+  CliTool cliForMember(TeamConfig team, String memberId) {
     for (final m in team.members) {
       if (m.id == memberId) return m.cliWithin(team);
     }
     return team.cli;
   }
 
-  TerminalSession newSession([TeamCli cli = TeamCli.flashskyai]) {
+  TerminalSession newSession([CliTool cli = CliTool.flashskyai]) {
     final executable = _resolveExecutableFor(cli);
     final scrollback = _scrollbackLines;
     if (_useSsh) {

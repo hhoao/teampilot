@@ -3,18 +3,18 @@ import '../../models/app_provider_config.dart';
 
 // LLM 配置页统一留白（8dp 网格）。
 
-String llmCliRoute(AppProviderCli cli) => '/providers/${cli.value}';
+String llmCliRoute(CliTool cli) => '/providers/${cli.value}';
 
-String llmProviderAddRoute(AppProviderCli cli) =>
+String llmProviderAddRoute(CliTool cli) =>
     '${llmCliRoute(cli)}/provider/add';
 
-String llmProviderConfigRoute(AppProviderCli cli, String providerName) =>
+String llmProviderConfigRoute(CliTool cli, String providerName) =>
     '${llmCliRoute(cli)}/provider/${Uri.encodeComponent(providerName)}';
 
-String llmProviderEditRoute(AppProviderCli cli, String providerName) =>
+String llmProviderEditRoute(CliTool cli, String providerName) =>
     '${llmProviderConfigRoute(cli, providerName)}/edit';
 
-String llmProviderModelsRoute(AppProviderCli cli, String providerName) =>
+String llmProviderModelsRoute(CliTool cli, String providerName) =>
     '${llmProviderConfigRoute(cli, providerName)}/models';
 
 const double kLlmInsetH = 16;

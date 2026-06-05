@@ -464,8 +464,8 @@ final appRouter = GoRouter(
   ],
 );
 
-AppProviderCli _appProviderCliFromRoute(GoRouterState state) {
-  return AppProviderCli.parse(state.pathParameters['cli']);
+CliTool _appProviderCliFromRoute(GoRouterState state) {
+  return CliTool.parse(state.pathParameters['cli']);
 }
 
 Future<void> _createProject(BuildContext context) async {

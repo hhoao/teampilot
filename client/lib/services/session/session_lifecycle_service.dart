@@ -42,8 +42,7 @@ class LaunchPlan {
 
 class SessionLifecycleService {
   static final _defaultCliRegistry = () {
-    final registry = CliToolRegistry();
-    registerBuiltInCliTools(registry);
+    final registry = CliToolRegistry.builtIn();
     return registry;
   }();
 
@@ -167,7 +166,7 @@ class SessionLifecycleService {
   Future<bool> hasCliState(
     AppSession session, {
     String? teamId,
-    TeamCli? cli,
+    CliTool? cli,
     SessionMemberBinding? memberBinding,
   }) async {
     final roots = await _resolveRoots();
@@ -211,7 +210,7 @@ class SessionLifecycleService {
     await _removeTree(roots, memberRoot);
   }
 
-  Future<void> destroyTeamCliState(String teamId) async {
+  Future<void> destroyCliToolState(String teamId) async {
     final trimmedTeamId = teamId.trim();
     if (trimmedTeamId.isEmpty) return;
 
@@ -301,7 +300,7 @@ class SessionLifecycleService {
     required String teamId,
     required String runtimeSessionId,
     required String cliSessionId,
-    TeamCli? cli,
+    CliTool? cli,
   }) async {
     final id = cliSessionId.trim();
     if (id.isEmpty) {
@@ -322,8 +321,9 @@ class SessionLifecycleService {
       sessionId: id,
       bucket: bucket,
       probeHistoryFiles:
-          _cliToolRegistry
-              .capability<TranscriptProbeCapability>(cli?.value ?? '')
+          (cli == null
+                  ? null
+                  : _cliToolRegistry.capability<TranscriptProbeCapability>(cli))
               ?.probeHistoryFiles ??
           false,
     );

@@ -13,11 +13,12 @@ import '../../utils/debounce/debounce.dart';
 import '../app_icon_button.dart';
 import '../dropdown/app_dropdown_field.dart';
 
-List<AppProviderPreset> appProviderPresetsFor(AppProviderCli cli) {
+List<AppProviderPreset> appProviderPresetsFor(CliTool cli) {
   return switch (cli) {
-    AppProviderCli.claude => ClaudeProviderPresets.all,
-    AppProviderCli.codex => CodexProviderPresets.all,
-    AppProviderCli.flashskyai => FlashskyaiProviderPresets.all,
+    CliTool.claude => ClaudeProviderPresets.all,
+    CliTool.codex => CodexProviderPresets.all,
+    CliTool.flashskyai => FlashskyaiProviderPresets.all,
+    CliTool.opencode => const [],
   };
 }
 
@@ -31,9 +32,9 @@ class AppProviderFormPage extends StatefulWidget {
     super.key,
   });
 
-  final AppProviderCli cli;
+  final CliTool cli;
   final AppProviderConfig? existing;
-  final ValueChanged<AppProviderCli>? onCliChanged;
+  final ValueChanged<CliTool>? onCliChanged;
   final VoidCallback onCancel;
   final ValueChanged<AppProviderConfig> onSaved;
 
@@ -119,7 +120,7 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
     }
   }
 
-  void _syncStateForCli(AppProviderCli cli) {
+  void _syncStateForCli(CliTool cli) {
     final presetIds = appProviderPresetsFor(cli).map((p) => p.id);
     if (_presetId != 'custom' && !presetIds.contains(_presetId)) {
       _presetId = 'custom';
@@ -127,7 +128,7 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
     _config = _defaultConfig(cli);
     _apiKeyField = _defaultApiKeyField(cli);
     _claudeApiFormat = _config['apiFormat']?.toString() ?? 'anthropic';
-    if (cli != AppProviderCli.claude) {
+    if (cli != CliTool.claude) {
       _haikuModelCtl.clear();
       _sonnetModelCtl.clear();
       _opusModelCtl.clear();
@@ -268,10 +269,10 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
                 if (!_isEditing && widget.onCliChanged != null)
                   SizedBox(
                     width: 180,
-                    child: AppDropdownField<AppProviderCli>(
-                      items: AppProviderCli.values,
+                    child: AppDropdownField<CliTool>(
+                      items: CliTool.values,
                       initialItem: widget.cli,
-                      itemLabel: l10n.appProviderCliLabel,
+                      itemLabel: l10n.appProviderToolLabel,
                       onChanged: (cli) {
                         if (cli != null && cli != widget.cli) {
                           widget.onCliChanged?.call(cli);
@@ -378,7 +379,7 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
                     controller: _defaultModelCtl,
                     decoration: InputDecoration(labelText: l10n.defaultModel),
                   ),
-                  if (widget.cli == AppProviderCli.claude) ...[
+                  if (widget.cli == CliTool.claude) ...[
                     const SizedBox(height: 16),
                     _ClaudeAdvancedOptions(
                       apiFormat: _claudeApiFormat,
@@ -440,7 +441,7 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
   }
 
   Map<String, Object?> _buildConfigFromFields() {
-    if (widget.cli != AppProviderCli.claude) return _config;
+    if (widget.cli != CliTool.claude) return _config;
 
     final config = Map<String, Object?>.from(_config);
     final env = _claudeEnvFromConfig(config);
@@ -625,17 +626,18 @@ class _FieldLabel extends StatelessWidget {
   }
 }
 
-String _defaultApiKeyField(AppProviderCli cli) {
+String _defaultApiKeyField(CliTool cli) {
   return switch (cli) {
-    AppProviderCli.claude => 'ANTHROPIC_AUTH_TOKEN',
-    AppProviderCli.codex => 'OPENAI_API_KEY',
-    AppProviderCli.flashskyai => 'api_key',
+    CliTool.claude => 'ANTHROPIC_AUTH_TOKEN',
+    CliTool.codex => 'OPENAI_API_KEY',
+    CliTool.flashskyai => 'api_key',
+    CliTool.opencode => 'api_key',
   };
 }
 
-String _initialApiKeyField(AppProviderCli cli, String? raw) {
+String _initialApiKeyField(CliTool cli, String? raw) {
   final value = raw?.trim() ?? '';
-  if (cli == AppProviderCli.claude) {
+  if (cli == CliTool.claude) {
     return _claudeApiKeyFields.contains(value)
         ? value
         : _defaultApiKeyField(cli);
@@ -643,11 +645,12 @@ String _initialApiKeyField(AppProviderCli cli, String? raw) {
   return value.isEmpty ? _defaultApiKeyField(cli) : value;
 }
 
-Map<String, Object?> _defaultConfig(AppProviderCli cli) {
+Map<String, Object?> _defaultConfig(CliTool cli) {
   return switch (cli) {
-    AppProviderCli.claude => {'env': <String, Object?>{}},
-    AppProviderCli.codex => {'auth': <String, Object?>{}},
-    AppProviderCli.flashskyai => {'provider_type': 'openai'},
+    CliTool.claude => {'env': <String, Object?>{}},
+    CliTool.codex => {'auth': <String, Object?>{}},
+    CliTool.flashskyai => {'provider_type': 'openai'},
+    CliTool.opencode => const {},
   };
 }
 

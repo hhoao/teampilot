@@ -26,7 +26,7 @@ class OnboardingCliStep extends StatefulWidget {
 }
 
 class _OnboardingCliStepState extends State<OnboardingCliStep> {
-  static const _cli = TeamCli.claude;
+  static const _cli = CliTool.claude;
 
   final _controller = TextEditingController();
   var _detecting = false;

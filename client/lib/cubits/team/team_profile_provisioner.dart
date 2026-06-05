@@ -50,7 +50,7 @@ class TeamProfileProvisioner {
     );
   }
 
-  Future<void> ensureTeamProfile(String teamId, {required TeamCli cli}) async {
+  Future<void> ensureTeamProfile(String teamId, {required CliTool cli}) async {
     final profileService = await service();
     await profileService.ensureTeamProfile(teamId, cli: cli);
   }

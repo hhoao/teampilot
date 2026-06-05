@@ -154,7 +154,7 @@ Future<void> _startNewChat(
 Future<void> _promptAddTeam(BuildContext context, TeamCubit teamCubit) async {
   final l10n = context.l10n;
   final result = await showDialog<
-      ({String name, TeamCli cli, TeamMode teamMode})?>(
+      ({String name, CliTool cli, TeamMode teamMode})?>(
     context: context,
     builder: (dialogContext) => _AddTeamDialog(l10n: l10n),
   );
@@ -185,7 +185,7 @@ class _AddTeamDialog extends StatefulWidget {
 class _AddTeamDialogState extends State<_AddTeamDialog> {
   late final TextEditingController _nameController;
   TeamMode _selectedMode = TeamMode.native;
-  TeamCli _selectedCli = TeamCli.flashskyai;
+  CliTool _selectedCli = CliTool.flashskyai;
 
   @override
   void initState() {
@@ -203,7 +203,7 @@ class _AddTeamDialogState extends State<_AddTeamDialog> {
   Widget build(BuildContext context) {
     final l10n = widget.l10n;
     final launchable = CliToolRegistryScope.of(context).launchable.toList()
-      ..sort((a, b) => a.id.compareTo(b.id));
+      ..sort((a, b) => a.id.value.compareTo(b.id.value));
     return AlertDialog(
       title: Text(l10n.addTeamTitle),
       content: Column(
@@ -258,7 +258,7 @@ class _AddTeamDialogState extends State<_AddTeamDialog> {
             ),
           ),
           const SizedBox(height: 8),
-          RadioGroup<TeamCli>(
+          RadioGroup<CliTool>(
             groupValue: _selectedCli,
             onChanged: (value) {
               if (value == null) return;
@@ -267,8 +267,8 @@ class _AddTeamDialogState extends State<_AddTeamDialog> {
             child: Column(
               children: [
                 for (final def in launchable)
-                  RadioListTile<TeamCli>(
-                    value: TeamCli.decode(def.id),
+                  RadioListTile<CliTool>(
+                    value: CliTool.decode(def.id),
                     title: Text(cliDisplayName(def, l10n)),
                     dense: true,
                     contentPadding: EdgeInsets.zero,

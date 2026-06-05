@@ -17,7 +17,7 @@ void main() {
       connectionModeResolver: () => ConnectionMode.localPty,
     );
 
-    final session = factory.newSession(TeamCli.claude);
+    final session = factory.newSession(CliTool.claude);
 
     expect(session, isA<TerminalSession>());
     expect(seenExecutable, 'exec-claude');

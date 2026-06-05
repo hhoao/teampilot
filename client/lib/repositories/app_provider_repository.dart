@@ -41,7 +41,7 @@ class AppProviderRepository {
       _claudeCredentialsServiceOverride ??
       ClaudeProviderCredentialsService(fs: _fs, basePath: _basePath);
 
-  String providersPath(AppProviderCli cli) =>
+  String providersPath(CliTool cli) =>
       _fs.pathContext.join(_basePath, 'providers', cli.value, 'providers.json');
 
   String get _appFlashskyaiLlmConfigFile => _fs.pathContext.join(
@@ -51,14 +51,14 @@ class AppProviderRepository {
     'llm_config.json',
   );
 
-  Future<List<AppProviderConfig>> loadProviders(AppProviderCli cli) async {
+  Future<List<AppProviderConfig>> loadProviders(CliTool cli) async {
     final providers = await _loadProvidersFromDisk(cli);
-    if (cli != AppProviderCli.claude) return providers;
+    if (cli != CliTool.claude) return providers;
     return _probeClaudeCredentials(providers);
   }
 
   Future<List<AppProviderConfig>> _loadProvidersFromDisk(
-    AppProviderCli cli,
+    CliTool cli,
   ) async {
     final path = providersPath(cli);
     if (!(await _fs.stat(path)).isFile) return const [];
@@ -76,7 +76,7 @@ class AppProviderRepository {
   }
 
   Future<void> saveProviders(
-    AppProviderCli cli,
+    CliTool cli,
     List<AppProviderConfig> providers,
   ) async {
     final path = providersPath(cli);
@@ -107,13 +107,14 @@ class AppProviderRepository {
     );
 
     switch (cli) {
-      case AppProviderCli.codex:
+      case CliTool.codex:
         await _writeCodexNativeToolConfigs(merged);
         await _removeStaleCodexNativeToolConfigs(merged);
-      case AppProviderCli.flashskyai:
+      case CliTool.flashskyai:
         await _writeCommonFlashskyaiLlmConfig(merged);
-      case AppProviderCli.claude:
+      case CliTool.claude:
         await _removeStaleClaudeNativeDirs(merged);
+      case CliTool.opencode:
         break;
     }
   }
@@ -140,7 +141,7 @@ class AppProviderRepository {
     var changed = false;
     final probed = <AppProviderConfig>[];
     for (final provider in providers) {
-      if (provider.cli != AppProviderCli.claude ||
+      if (provider.cli != CliTool.claude ||
           !isOfficialClaudeSettings(provider.config)) {
         probed.add(provider);
         continue;
@@ -165,12 +166,12 @@ class AppProviderRepository {
       probed.add(next);
     }
     if (changed) {
-      await saveProviders(AppProviderCli.claude, probed);
+      await saveProviders(CliTool.claude, probed);
     }
     return probed;
   }
 
-  Future<AppProviderConfig?> findById(AppProviderCli cli, String id) async {
+  Future<AppProviderConfig?> findById(CliTool cli, String id) async {
     final trimmed = id.trim();
     if (trimmed.isEmpty) return null;
     final all = await loadProviders(cli);
@@ -272,7 +273,7 @@ class AppProviderRepository {
   }
 
   List<AppProviderConfig> _decodeCatalog(
-    AppProviderCli cli,
+    CliTool cli,
     Map<String, Object?> json,
   ) {
     final raw = json['providers'];

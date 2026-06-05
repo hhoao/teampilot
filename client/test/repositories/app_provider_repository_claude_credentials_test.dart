@@ -51,10 +51,10 @@ void main() {
       }),
     );
 
-    await repository.saveProviders(AppProviderCli.claude, [
+    await repository.saveProviders(CliTool.claude, [
       const AppProviderConfig(
         id: 'work',
-        cli: AppProviderCli.claude,
+        cli: CliTool.claude,
         name: 'Work',
         category: AppProviderCategory.official,
         config: {'env': {}},
@@ -88,7 +88,7 @@ void main() {
       '{"claudeAiOauth":{"accessToken":"work"}}',
     );
 
-    final providers = await repository.loadProviders(AppProviderCli.claude);
+    final providers = await repository.loadProviders(CliTool.claude);
     expect(providers.single.hasClaudeCredentialsReady, isTrue);
   });
 
@@ -122,7 +122,7 @@ void main() {
         '{"claudeAiOauth":{"accessToken":"global"}}',
       );
 
-      final providers = await repository.loadProviders(AppProviderCli.claude);
+      final providers = await repository.loadProviders(CliTool.claude);
       expect(providers.single.hasClaudeCredentialsReady, isTrue);
       expect(
         (await fs.stat(
@@ -177,7 +177,7 @@ void main() {
       '{"claudeAiOauth":{"accessToken":"global"}}',
     );
 
-    await repository.loadProviders(AppProviderCli.claude);
+    await repository.loadProviders(CliTool.claude);
 
     final bytes = await fs.readBytes(
       fs.pathContext.join(

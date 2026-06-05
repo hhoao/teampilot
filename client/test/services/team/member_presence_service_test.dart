@@ -11,7 +11,7 @@ void main() {
     shell.activityTracker.markActive();
 
     final presence = await service.compute(
-      teamCli: TeamCli.flashskyai,
+      teamCli: CliTool.flashskyai,
       members: const [
         TeamMemberConfig(id: 'team-lead', name: 'team-lead'),
       ],
@@ -33,7 +33,7 @@ void main() {
     expect(shell.activityTracker.isWorking, isTrue);
 
     final presence = await service.compute(
-      teamCli: TeamCli.flashskyai,
+      teamCli: CliTool.flashskyai,
       members: const [
         TeamMemberConfig(id: 'dev', name: 'developer'),
       ],

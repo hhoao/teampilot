@@ -16,7 +16,7 @@ class ProviderMigrationService {
 
   Future<bool> migrateIfNeeded() async {
     var changed = false;
-    for (final cli in AppProviderCli.values) {
+    for (final cli in CliTool.values) {
       final result = await _importService.importForCli(
         cli,
         onlyIfEmpty: true,

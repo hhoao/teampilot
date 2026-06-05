@@ -136,8 +136,8 @@ class _ProviderListControls extends StatelessWidget {
   final VoidCallback onAdd;
   final Future<void> Function() onImport;
   final bool isLoading;
-  final AppProviderCli selectedCli;
-  final ValueChanged<AppProviderCli> onCliChanged;
+  final CliTool selectedCli;
+  final ValueChanged<CliTool> onCliChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -191,10 +191,10 @@ class _ProviderListControls extends StatelessWidget {
         ),
         Padding(
           padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
-          child: AppDropdownField<AppProviderCli>(
-            items: AppProviderCli.values,
+          child: AppDropdownField<CliTool>(
+            items: CliTool.values,
             initialItem: selectedCli,
-            itemLabel: l10n.appProviderCliLabel,
+            itemLabel: l10n.appProviderToolLabel,
             onChanged: (cli) {
               if (cli != null) onCliChanged(cli);
             },
@@ -239,9 +239,9 @@ class _ProviderListTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final cs = Theme.of(context).colorScheme;
-    final subtitle = provider.cli == AppProviderCli.flashskyai
+    final subtitle = provider.cli == CliTool.flashskyai
         ? l10n.providerListModelCount(modelCount)
-        : l10n.appProviderCliLabel(provider.cli);
+        : l10n.appProviderToolLabel(provider.cli);
     final titleColor = selected ? cs.onPrimaryContainer : cs.onSurface;
     final subtitleColor = selected
         ? cs.onPrimaryContainer.withValues(alpha: 0.74)

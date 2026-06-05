@@ -30,7 +30,7 @@ class SessionCliExecutablePathSettingsRow extends StatefulWidget {
   });
 
   final SessionPreferencesCubit cubit;
-  final TeamCli cli;
+  final CliTool cli;
   final String title;
   final String subtitle;
   final Key fieldKey;

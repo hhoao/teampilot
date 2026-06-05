@@ -55,7 +55,7 @@ void main() {
   test('round-trips through fromJson/toJson', () {
     final team = DiscoverableTeam.fromJson(json);
     expect(team.key, 'flashskyai/team-hub/research-squad');
-    expect(team.cli, TeamCli.claude);
+    expect(team.cli, CliTool.claude);
     expect(team.teamMode, TeamMode.mixed);
     expect(team.members.single.name, 'team-lead');
     expect(team.skillDeps.single.directory, 'skills/deep-research');

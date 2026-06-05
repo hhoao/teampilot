@@ -1,1 +1,1 @@
-typedef CliToolId = String;
+export '../../../models/team_config.dart' show CliTool;

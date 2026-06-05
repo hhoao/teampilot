@@ -4,7 +4,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:teampilot/services/plugin/cli_plugin_layout.dart';
-import 'package:teampilot/services/plugin/cli_plugin_manifest_flavor.dart';
+import 'package:teampilot/services/cli/registry/capabilities/plugin_manifest_capability.dart';
 import 'package:teampilot/services/plugin/cli_plugin_provision_cache.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 
@@ -38,7 +38,7 @@ void main() {
         fs: fs,
         teamPluginsDir: teamPlugins.path,
         memberPluginsDir: memberPlugins,
-        flavor: CliPluginManifestFlavor.flashskyai,
+        paths: flashskyaiPluginManifestPaths,
       );
       final firstCopy = File(
         p.join(memberPlugins, 'demo', '.claude-plugin', 'plugin.json'),
@@ -48,7 +48,7 @@ void main() {
         fs: fs,
         teamPluginsDir: teamPlugins.path,
         memberPluginsDir: memberPlugins,
-        flavor: CliPluginManifestFlavor.flashskyai,
+        paths: flashskyaiPluginManifestPaths,
       );
       final secondCopy = File(
         p.join(memberPlugins, 'demo', '.claude-plugin', 'plugin.json'),
@@ -60,7 +60,7 @@ void main() {
           fs: fs,
           teamPluginsDir: teamPlugins.path,
           memberPluginsDir: memberPlugins,
-          flavor: CliPluginManifestFlavor.flashskyai,
+          paths: flashskyaiPluginManifestPaths,
         ),
         isTrue,
       );
@@ -81,7 +81,7 @@ void main() {
         fs: fs,
         teamPluginsDir: teamPlugins.path,
         memberPluginsDir: memberPlugins,
-        flavor: CliPluginManifestFlavor.flashskyai,
+        paths: flashskyaiPluginManifestPaths,
       );
 
       await Future<void>.delayed(const Duration(milliseconds: 10));
@@ -94,7 +94,7 @@ void main() {
           fs: fs,
           teamPluginsDir: teamPlugins.path,
           memberPluginsDir: memberPlugins,
-          flavor: CliPluginManifestFlavor.flashskyai,
+          paths: flashskyaiPluginManifestPaths,
         ),
         isFalse,
       );

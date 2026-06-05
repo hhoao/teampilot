@@ -73,12 +73,12 @@ void main() {
     );
 
     final result = await service.importForCli(
-      AppProviderCli.flashskyai,
+      CliTool.flashskyai,
       onlyIfEmpty: false,
     );
 
     expect(result.added, 1);
-    final imported = await repository.loadProviders(AppProviderCli.flashskyai);
+    final imported = await repository.loadProviders(CliTool.flashskyai);
     expect(imported.single.id, 'packycode');
     expect(imported.single.apiKey, 'fk-flash');
     expect(imported.single.baseUrl, 'https://api.packycode.com/v1');
@@ -101,12 +101,12 @@ void main() {
 
       final service = ProviderImportService(repository: repository);
       final result = await service.importForCli(
-        AppProviderCli.claude,
+        CliTool.claude,
         onlyIfEmpty: false,
       );
 
       expect(result.added, 1);
-      final claude = await repository.loadProviders(AppProviderCli.claude);
+      final claude = await repository.loadProviders(CliTool.claude);
       final official = claude.singleWhere((p) => p.id == 'default');
       expect(official.category, AppProviderCategory.official);
       expect(official.hasClaudeCredentialsReady, isTrue);
@@ -138,10 +138,10 @@ void main() {
           },
         },
       );
-      await repository.saveProviders(AppProviderCli.flashskyai, [
+      await repository.saveProviders(CliTool.flashskyai, [
         const AppProviderConfig(
           id: 'packycode',
-          cli: AppProviderCli.flashskyai,
+          cli: CliTool.flashskyai,
           name: 'Existing Packy',
           baseUrl: 'https://api.packycode.com',
         ),
@@ -168,7 +168,7 @@ void main() {
       final service = ProviderImportService(repository: repository);
 
       final result = await service.importForCli(
-        AppProviderCli.claude,
+        CliTool.claude,
         onlyIfEmpty: false,
       );
 
@@ -176,7 +176,7 @@ void main() {
       expect(result.mirroredToFlashskyai, 1);
       expect(result.mirrorSkipped, 1);
 
-      final claude = await repository.loadProviders(AppProviderCli.claude);
+      final claude = await repository.loadProviders(CliTool.claude);
       expect(claude.map((p) => p.id), containsAll(['packycode', 'router-plus']));
       expect(
         claude.singleWhere((p) => p.id == 'router-plus').apiKey,
@@ -184,7 +184,7 @@ void main() {
       );
 
       final flashskyai = await repository.loadProviders(
-        AppProviderCli.flashskyai,
+        CliTool.flashskyai,
       );
       expect(flashskyai.map((p) => p.id), containsAll(['packycode', 'router-plus']));
       expect(flashskyai.where((p) => p.id == 'packycode'), hasLength(1));
@@ -203,10 +203,10 @@ void main() {
   );
 
   test('mirrors codex provider with same baseUrl when id differs', () async {
-    await repository.saveProviders(AppProviderCli.flashskyai, [
+    await repository.saveProviders(CliTool.flashskyai, [
       const AppProviderConfig(
         id: 'same-url-existing',
-        cli: AppProviderCli.flashskyai,
+        cli: CliTool.flashskyai,
         name: 'Same URL Existing',
         baseUrl: 'https://same.example.com/v1',
       ),
@@ -230,14 +230,14 @@ wire_api = "chat"
     final service = ProviderImportService(repository: repository);
 
     final result = await service.importForCli(
-      AppProviderCli.codex,
+      CliTool.codex,
       onlyIfEmpty: false,
     );
 
     expect(result.mirroredToFlashskyai, 1);
     expect(result.mirrorSkipped, 0);
     final flashskyai = await repository.loadProviders(
-      AppProviderCli.flashskyai,
+      CliTool.flashskyai,
     );
     expect(flashskyai.map((p) => p.id), containsAll(['same-url-existing', 'deepseek']));
     final mirrored = flashskyai.singleWhere((p) => p.id == 'deepseek');
@@ -248,10 +248,10 @@ wire_api = "chat"
   test(
     'does not mirror models that already exist in flashskyai catalog',
     () async {
-      await repository.saveProviders(AppProviderCli.flashskyai, [
+      await repository.saveProviders(CliTool.flashskyai, [
         const AppProviderConfig(
           id: 'flashskyai-native',
-          cli: AppProviderCli.flashskyai,
+          cli: CliTool.flashskyai,
           name: 'FlashskyAI Native',
           baseUrl: 'https://native.example.com',
           defaultModel: 'deepseek-chat',
@@ -287,13 +287,13 @@ wire_api = "chat"
       final service = ProviderImportService(repository: repository);
 
       final result = await service.importForCli(
-        AppProviderCli.codex,
+        CliTool.codex,
         onlyIfEmpty: false,
       );
 
       expect(result.mirroredToFlashskyai, 1);
       final flashskyai = await repository.loadProviders(
-        AppProviderCli.flashskyai,
+        CliTool.flashskyai,
       );
       final mirrored = flashskyai.singleWhere((p) => p.id == 'deepseek');
       expect(mirrored.config['models'], isNot(contains('deepseek-chat')));
@@ -316,10 +316,10 @@ wire_api = "chat"
   );
 
   test('startup migration imports only empty cli catalogs', () async {
-    await repository.saveProviders(AppProviderCli.claude, [
+    await repository.saveProviders(CliTool.claude, [
       const AppProviderConfig(
         id: 'existing',
-        cli: AppProviderCli.claude,
+        cli: CliTool.claude,
         name: 'Existing',
       ),
     ]);
@@ -338,11 +338,11 @@ wire_api = "chat"
 
     expect(await service.migrateIfNeeded(), isTrue);
     expect(
-      (await repository.loadProviders(AppProviderCli.claude)).map((p) => p.id),
+      (await repository.loadProviders(CliTool.claude)).map((p) => p.id),
       ['existing'],
     );
     expect(
-      (await repository.loadProviders(AppProviderCli.codex)).map((p) => p.id),
+      (await repository.loadProviders(CliTool.codex)).map((p) => p.id),
       contains('codex-new'),
     );
   });

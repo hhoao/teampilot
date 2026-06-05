@@ -66,14 +66,14 @@ void main() {
     await seedMemberPlugin(
       teamId: 't1',
       sessionId: 's1',
-      tool: 'flashskyai',
+      tool: CliTool.flashskyai.value,
       pluginName: 'demo',
     );
 
     await registry.writeForSession(
       teamId: 't1',
       sessionId: 's1',
-      tool: 'flashskyai',
+      tool: CliTool.flashskyai,
       team: const TeamConfig(
         id: 't1',
         name: 'Team',
@@ -116,14 +116,14 @@ void main() {
     await seedMemberPlugin(
       teamId: 't1',
       sessionId: 's2',
-      tool: 'claude',
+      tool: CliTool.claude.value,
       pluginName: 'demo',
     );
 
     await registry.writeForSession(
       teamId: 't1',
       sessionId: 's2',
-      tool: 'claude',
+      tool: CliTool.claude,
     );
 
     final configDir = layout.memberToolDir('t1', 's2', 'claude');
@@ -160,14 +160,14 @@ void main() {
     await seedMemberPlugin(
       teamId: 't1',
       sessionId: 's3',
-      tool: 'flashskyai',
+      tool: CliTool.flashskyai.value,
       pluginName: 'context7',
     );
 
     await registry.writeForSession(
       teamId: 't1',
       sessionId: 's3',
-      tool: 'flashskyai',
+      tool: CliTool.flashskyai,
       team: const TeamConfig(
         id: 't1',
         name: 'Team',
@@ -257,7 +257,7 @@ void main() {
     await registry.writeForSession(
       teamId: 't1',
       sessionId: 's4',
-      tool: 'flashskyai',
+      tool: CliTool.flashskyai,
       team: const TeamConfig(
         id: 't1',
         name: 'Team',
@@ -294,7 +294,7 @@ void main() {
     await seedMemberPlugin(
       teamId: 't1',
       sessionId: 's5',
-      tool: 'flashskyai',
+      tool: CliTool.flashskyai.value,
       pluginName: 'demo',
     );
 
@@ -319,7 +319,7 @@ void main() {
     await registry.writeForSession(
       teamId: 't1',
       sessionId: 's5',
-      tool: 'flashskyai',
+      tool: CliTool.flashskyai,
       team: team,
       installedCatalog: catalog,
     );
@@ -335,7 +335,7 @@ void main() {
     await registry.writeForSession(
       teamId: 't1',
       sessionId: 's5',
-      tool: 'flashskyai',
+      tool: CliTool.flashskyai,
       team: team,
       installedCatalog: catalog,
     );

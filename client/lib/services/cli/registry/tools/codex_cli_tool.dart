@@ -1,4 +1,4 @@
-import '../../../../models/app_provider_config.dart';
+import '../../../../models/team_config.dart';
 import '../../cli_tool_adapter.dart';
 import '../cli_capability.dart';
 import '../cli_tool_definition.dart';
@@ -20,6 +20,10 @@ final class CodexCliTool implements CliToolDefinition {
     this.executableResolver = const CodexExecutableResolver(),
     this.installer = const UnsupportedInstallerCapability(),
     this.presence = const CodexPresence(),
+    this.display = const CodexDisplay(),
+    this.terminalBehavior = const CodexTerminalBehavior(),
+    this.pluginManifest = const CodexPluginManifest(),
+    this.providerCatalog = const CodexProviderCatalog(),
   });
 
   final LaunchArgsCapability launchArgs;
@@ -28,15 +32,16 @@ final class CodexCliTool implements CliToolDefinition {
   final ExecutableResolverCapability executableResolver;
   final InstallerCapability installer;
   final PresenceCapability presence;
+  final CodexDisplay display;
+  final CodexTerminalBehavior terminalBehavior;
+  final CodexPluginManifest pluginManifest;
+  final CodexProviderCatalog providerCatalog;
 
   @override
-  String get id => 'codex';
+  CliTool get id => CliTool.codex;
 
   @override
   bool get isLaunchSupported => true;
-
-  @override
-  AppProviderCli? get providerCatalogCli => AppProviderCli.codex;
 
   @override
   Iterable<CliCapability> get capabilities => [
@@ -46,5 +51,9 @@ final class CodexCliTool implements CliToolDefinition {
     executableResolver,
     installer,
     presence,
+    display,
+    terminalBehavior,
+    pluginManifest,
+    providerCatalog,
   ];
 }

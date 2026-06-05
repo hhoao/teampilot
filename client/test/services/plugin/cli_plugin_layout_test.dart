@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:teampilot/services/plugin/cli_plugin_layout.dart';
-import 'package:teampilot/services/plugin/cli_plugin_manifest_flavor.dart';
+import 'package:teampilot/services/cli/registry/capabilities/plugin_manifest_capability.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 
 import '../../support/in_memory_filesystem.dart';
@@ -32,7 +32,7 @@ void main() {
       await CliPluginLayout.normalizeBundleForFlavor(
         fs,
         root,
-        CliPluginManifestFlavor.flashskyai,
+        flashskyaiPluginManifestPaths,
       );
 
       expect(fs.symlinks['$root/.flashskyai-plugin'], '$root/.claude-plugin');
@@ -50,7 +50,7 @@ void main() {
       await CliPluginLayout.normalizeBundleForFlavor(
         fs,
         root,
-        CliPluginManifestFlavor.flashskyai,
+        flashskyaiPluginManifestPaths,
       );
 
       expect(fs.symlinks.containsKey('$root/.flashskyai-plugin'), isFalse);
@@ -75,7 +75,7 @@ void main() {
       await CliPluginLayout.normalizeBundleForFlavor(
         fs,
         root,
-        CliPluginManifestFlavor.flashskyai,
+        flashskyaiPluginManifestPaths,
       );
 
       expect(
@@ -115,7 +115,7 @@ void main() {
         fs: fs,
         teamPluginsDir: teamPlugins.path,
         memberPluginsDir: memberPlugins,
-        flavor: CliPluginManifestFlavor.flashskyai,
+        paths: flashskyaiPluginManifestPaths,
       );
 
       final copied = p.join(memberPlugins, 'demo');
@@ -147,7 +147,7 @@ void main() {
         fs: fs,
         teamPluginsDir: teamPlugins.path,
         memberPluginsDir: memberPlugins,
-        flavor: CliPluginManifestFlavor.claude,
+        paths: claudePluginManifestPaths,
       );
 
       final memberBundle = p.join(memberPlugins, 'demo');
@@ -180,7 +180,7 @@ void main() {
         fs: fs,
         teamPluginsDir: teamPlugins.path,
         memberPluginsDir: memberPlugins,
-        flavor: CliPluginManifestFlavor.flashskyai,
+        paths: flashskyaiPluginManifestPaths,
       );
 
       final memberBundle = p.join(memberPlugins, 'demo');
@@ -212,7 +212,7 @@ void main() {
         fs: fs,
         teamPluginsDir: teamPlugins,
         memberPluginsDir: memberPlugins,
-        flavor: CliPluginManifestFlavor.claude,
+        paths: claudePluginManifestPaths,
       );
 
       expect(fs.symlinks.containsKey('$memberPlugins/demo'), isFalse);

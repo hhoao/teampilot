@@ -6,6 +6,7 @@ import '../../l10n/l10n_extensions.dart';
 import '../../models/app_provider_config.dart';
 import '../../models/member_presence.dart';
 import '../../models/team_config.dart';
+import '../../services/cli/registry/capabilities/provider_catalog_capability.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../theme/workspace_surface_layers.dart';
 import '../../utils/app_keys.dart';
@@ -26,7 +27,7 @@ class MembersPanel extends StatelessWidget {
     super.key,
   });
 
-  final TeamCli teamCli;
+  final CliTool teamCli;
   final List<TeamMemberConfig> members;
   final Map<String, MemberPresence> memberPresence;
   final String selectedMemberId;
@@ -38,11 +39,12 @@ class MembersPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final l10n = context.l10n;
+    final registry = CliToolRegistryScope.maybeOf(context);
     final catalogCli =
-        CliToolRegistryScope.maybeOf(
-          context,
-        )?.tryGet(teamCli.value)?.providerCatalogCli ??
-        AppProviderCli.claude;
+        (registry != null &&
+            registry.capability<ProviderCatalogCapability>(teamCli) != null)
+        ? teamCli
+        : CliTool.claude;
     final providerLabels = {
       for (final p in context.watch<AppProviderCubit>().state.providersFor(
         catalogCli,

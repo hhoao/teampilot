@@ -163,7 +163,7 @@ class TeamMemberConfigFormState extends State<TeamMemberConfigForm> {
     final m = widget.member;
     final memberCatalogCli =
         catalogCliForTeam(context, widget.member.cli ?? widget.team.cli) ??
-        AppProviderCli.claude;
+        CliTool.claude;
     final dropdownDeco = AppDropdownDecorations.themed(context);
 
     final prov = m.provider;
@@ -204,7 +204,7 @@ class TeamMemberConfigFormState extends State<TeamMemberConfigForm> {
     final model = m.model;
     final hideModelPicker =
         catalogCliForTeam(context, widget.member.cli ?? widget.team.cli) ==
-            AppProviderCli.claude &&
+            CliTool.claude &&
         selectedAppProvider != null &&
         isOfficialClaudeProvider(selectedAppProvider);
     final cliRegistry = CliToolRegistryScope.of(context);
@@ -330,20 +330,24 @@ class TeamMemberConfigFormState extends State<TeamMemberConfigForm> {
             SettingsLabeledStackedRow(
               title: l10n.teamCliLabel,
               body: AppDropdownField<String>(
-                items: [for (final def in cliRegistry.launchable) def.id],
+                items: [
+                  for (final def in cliRegistry.launchable) def.id.value,
+                ],
                 initialItem: widget.member.cli?.value,
                 hintText: l10n.memberCliInheritHint,
                 decoration: dropdownDeco,
                 onChanged: (value) {
                   _update(
                     widget.member.copyWith(
-                      cli: value == null ? null : TeamCli.decode(value),
+                      cli: value == null ? null : CliTool.decode(value),
                       updateCli: true,
                     ),
                   );
                 },
-                itemLabel: (value) =>
-                    cliDisplayName(cliRegistry.tryGet(value)!, l10n),
+                itemLabel: (value) => cliDisplayName(
+                  cliRegistry.tryGet(CliTool.decode(value))!,
+                  l10n,
+                ),
               ),
               showDividerBelow: true,
             ),

@@ -100,7 +100,7 @@ void main() {
         team: const TeamConfig(
           id: 'team-a',
           name: 'Team A',
-          cli: TeamCli.claude,
+          cli: CliTool.claude,
           members: [TeamMemberConfig(id: 'team-lead', name: 'team-lead')],
         ),
         member: const TeamMemberConfig(id: 'team-lead', name: 'team-lead'),
@@ -127,7 +127,7 @@ void main() {
         team: const TeamConfig(
           id: 'team-a',
           name: 'Team A',
-          cli: TeamCli.flashskyai,
+          cli: CliTool.flashskyai,
           members: [TeamMemberConfig(id: 'team-lead', name: 'team-lead')],
         ),
         member: const TeamMemberConfig(id: 'team-lead', name: 'team-lead'),
@@ -166,20 +166,20 @@ void main() {
         team: const TeamConfig(
           id: 'team-a',
           name: 'Team A',
-          cli: TeamCli.flashskyai,
+          cli: CliTool.flashskyai,
           teamMode: TeamMode.mixed,
           members: [
             TeamMemberConfig(
               id: 'team-lead',
               name: 'team-lead',
-              cli: TeamCli.claude,
+              cli: CliTool.claude,
             ),
           ],
         ),
         member: const TeamMemberConfig(
           id: 'team-lead',
           name: 'team-lead',
-          cli: TeamCli.claude,
+          cli: CliTool.claude,
         ),
       );
 
@@ -238,7 +238,7 @@ void main() {
       await service().hasCliState(
         session,
         teamId: 'team-a',
-        cli: TeamCli.flashskyai,
+        cli: CliTool.flashskyai,
       ),
       isTrue,
     );
@@ -247,7 +247,7 @@ void main() {
       team: const TeamConfig(
         id: 'team-a',
         name: 'Team A',
-        cli: TeamCli.flashskyai,
+        cli: CliTool.flashskyai,
       ),
     );
     expect(plan.resume, isTrue);
@@ -282,7 +282,7 @@ void main() {
         await service().hasCliState(
           session,
           teamId: 'team-a',
-          cli: TeamCli.flashskyai,
+          cli: CliTool.flashskyai,
           memberBinding: binding,
         ),
         isTrue,
@@ -292,7 +292,7 @@ void main() {
         team: const TeamConfig(
           id: 'team-a',
           name: 'Team A',
-          cli: TeamCli.flashskyai,
+          cli: CliTool.flashskyai,
         ),
         memberBinding: binding,
       );
@@ -308,7 +308,7 @@ void main() {
       await _writeProvidersCatalog(base.path, [
         AppProviderConfig(
           id: 'deepseek',
-          cli: AppProviderCli.claude,
+          cli: CliTool.claude,
           name: 'DeepSeek',
           apiKey: 'sk-test',
           baseUrl: 'https://api.deepseek.com/anthropic',
@@ -320,7 +320,7 @@ void main() {
         team: const TeamConfig(
           id: 'team-a',
           name: 'Team A',
-          cli: TeamCli.claude,
+          cli: CliTool.claude,
           providerIdsByTool: {'claude': 'deepseek'},
           members: [
             TeamMemberConfig(id: 'team-lead', name: 'team-lead', model: 'opus'),
@@ -400,7 +400,7 @@ void main() {
     },
   );
 
-  test('destroyTeamCliState removes the whole team profile tree', () async {
+  test('destroyCliToolState removes the whole team profile tree', () async {
     final teamRoot = p.dirname(layout.teamToolDir('team-a', 'flashskyai'));
     await File(
       p.join(teamRoot, 'members', 'session-1', 'flashskyai', 'state.json'),
@@ -410,7 +410,7 @@ void main() {
     ).create(recursive: true);
 
     expect(await Directory(teamRoot).exists(), isTrue);
-    await service().destroyTeamCliState('team-a');
+    await service().destroyCliToolState('team-a');
 
     expect(await Directory(teamRoot).exists(), isFalse);
   });

@@ -7,7 +7,7 @@ const List<AppProviderPreset> claudeProviderPresetsPart4 = <AppProviderPreset>[
       label: "CTok.ai",
       template: AppProviderConfig(
         id: "ctok-ai",
-        cli: AppProviderCli.claude,
+        cli: CliTool.claude,
         name: "CTok.ai",
         websiteUrl: "https://ctok.ai",
         apiKeyUrl: "https://ctok.ai",
@@ -34,7 +34,7 @@ const List<AppProviderPreset> claudeProviderPresetsPart4 = <AppProviderPreset>[
       label: "E-FlowCode",
       template: AppProviderConfig(
         id: "e-flowcode",
-        cli: AppProviderCli.claude,
+        cli: CliTool.claude,
         name: "E-FlowCode",
         websiteUrl: "https://e-flowcode.cc",
         apiKeyUrl: "https://e-flowcode.cc",
@@ -61,7 +61,7 @@ const List<AppProviderPreset> claudeProviderPresetsPart4 = <AppProviderPreset>[
       label: "LionCCAPI",
       template: AppProviderConfig(
         id: "lionccapi",
-        cli: AppProviderCli.claude,
+        cli: CliTool.claude,
         name: "LionCCAPI",
         websiteUrl: "https://vibecodingapi.ai",
         apiKeyUrl: "",
@@ -88,7 +88,7 @@ const List<AppProviderPreset> claudeProviderPresetsPart4 = <AppProviderPreset>[
       label: "OpenRouter",
       template: AppProviderConfig(
         id: "openrouter",
-        cli: AppProviderCli.claude,
+        cli: CliTool.claude,
         name: "OpenRouter",
         websiteUrl: "https://openrouter.ai",
         apiKeyUrl: "https://openrouter.ai/keys",
@@ -119,7 +119,7 @@ const List<AppProviderPreset> claudeProviderPresetsPart4 = <AppProviderPreset>[
       label: "TheRouter",
       template: AppProviderConfig(
         id: "therouter",
-        cli: AppProviderCli.claude,
+        cli: CliTool.claude,
         name: "TheRouter",
         websiteUrl: "https://therouter.ai",
         apiKeyUrl: "https://dashboard.therouter.ai",
@@ -151,7 +151,7 @@ const List<AppProviderPreset> claudeProviderPresetsPart4 = <AppProviderPreset>[
       label: "Novita AI",
       template: AppProviderConfig(
         id: "novita-ai",
-        cli: AppProviderCli.claude,
+        cli: CliTool.claude,
         name: "Novita AI",
         websiteUrl: "https://novita.ai",
         apiKeyUrl: "https://novita.ai",
@@ -182,7 +182,7 @@ const List<AppProviderPreset> claudeProviderPresetsPart4 = <AppProviderPreset>[
       label: "GitHub Copilot",
       template: AppProviderConfig(
         id: "github-copilot",
-        cli: AppProviderCli.claude,
+        cli: CliTool.claude,
         name: "GitHub Copilot",
         websiteUrl: "https://github.com/features/copilot",
         apiKeyUrl: "",
@@ -215,7 +215,7 @@ const List<AppProviderPreset> claudeProviderPresetsPart4 = <AppProviderPreset>[
       label: "Codex",
       template: AppProviderConfig(
         id: "codex",
-        cli: AppProviderCli.claude,
+        cli: CliTool.claude,
         name: "Codex",
         websiteUrl: "https://openai.com/chatgpt/pricing",
         apiKeyUrl: "",
@@ -248,7 +248,7 @@ const List<AppProviderPreset> claudeProviderPresetsPart4 = <AppProviderPreset>[
       label: "LemonData",
       template: AppProviderConfig(
         id: "lemondata",
-        cli: AppProviderCli.claude,
+        cli: CliTool.claude,
         name: "LemonData",
         websiteUrl: "https://lemondata.cc",
         apiKeyUrl: "https://lemondata.cc/r/FFX1ZDUP",
@@ -275,7 +275,7 @@ const List<AppProviderPreset> claudeProviderPresetsPart4 = <AppProviderPreset>[
       label: "Nvidia",
       template: AppProviderConfig(
         id: "nvidia",
-        cli: AppProviderCli.claude,
+        cli: CliTool.claude,
         name: "Nvidia",
         websiteUrl: "https://build.nvidia.com",
         apiKeyUrl: "https://build.nvidia.com/settings/api-keys",
@@ -307,7 +307,7 @@ const List<AppProviderPreset> claudeProviderPresetsPart4 = <AppProviderPreset>[
       label: "PIPELLM",
       template: AppProviderConfig(
         id: "pipellm",
-        cli: AppProviderCli.claude,
+        cli: CliTool.claude,
         name: "PIPELLM",
         websiteUrl: "https://code.pipellm.ai",
         apiKeyUrl: "https://code.pipellm.ai/login?ref=uvw650za",
@@ -338,7 +338,7 @@ const List<AppProviderPreset> claudeProviderPresetsPart4 = <AppProviderPreset>[
       label: "Xiaomi MiMo",
       template: AppProviderConfig(
         id: "xiaomi-mimo",
-        cli: AppProviderCli.claude,
+        cli: CliTool.claude,
         name: "Xiaomi MiMo",
         websiteUrl: "https://platform.xiaomimimo.com",
         apiKeyUrl: "https://platform.xiaomimimo.com/#/console/api-keys",
@@ -369,7 +369,7 @@ const List<AppProviderPreset> claudeProviderPresetsPart4 = <AppProviderPreset>[
       label: "AWS Bedrock (AKSK)",
       template: AppProviderConfig(
         id: "aws-bedrock-aksk",
-        cli: AppProviderCli.claude,
+        cli: CliTool.claude,
         name: "AWS Bedrock (AKSK)",
         websiteUrl: "https://aws.amazon.com/bedrock/",
         apiKeyUrl: "",
@@ -423,7 +423,7 @@ const List<AppProviderPreset> claudeProviderPresetsPart4 = <AppProviderPreset>[
       label: "AWS Bedrock (API Key)",
       template: AppProviderConfig(
         id: "aws-bedrock-api-key",
-        cli: AppProviderCli.claude,
+        cli: CliTool.claude,
         name: "AWS Bedrock (API Key)",
         websiteUrl: "https://aws.amazon.com/bedrock/",
         apiKeyUrl: "",

@@ -30,7 +30,7 @@ void main() {
     );
 
     final result = await installer.install(
-      cli: TeamCli.claude,
+      cli: CliTool.claude,
       mode: CliInstallMode.local,
     );
 
@@ -70,7 +70,7 @@ void main() {
     );
 
     final result = await installer.install(
-      cli: TeamCli.claude,
+      cli: CliTool.claude,
       mode: CliInstallMode.local,
       onProgress: (progress) => phases.add(progress.phase),
     );
@@ -115,7 +115,7 @@ void main() {
     );
 
     final result = await installer.install(
-      cli: TeamCli.claude,
+      cli: CliTool.claude,
       mode: CliInstallMode.local,
     );
 
@@ -158,7 +158,7 @@ void main() {
     );
 
     final result = await installer.install(
-      cli: TeamCli.claude,
+      cli: CliTool.claude,
       mode: CliInstallMode.local,
     );
 
@@ -209,7 +209,7 @@ void main() {
     );
 
     final result = await installer.install(
-      cli: TeamCli.claude,
+      cli: CliTool.claude,
       mode: CliInstallMode.local,
     );
 
@@ -255,7 +255,7 @@ void main() {
     );
 
     final result = await installer.install(
-      cli: TeamCli.claude,
+      cli: CliTool.claude,
       mode: CliInstallMode.local,
     );
 
@@ -288,7 +288,7 @@ void main() {
     );
 
     final result = await installer.install(
-      cli: TeamCli.claude,
+      cli: CliTool.claude,
       mode: CliInstallMode.local,
     );
 
@@ -321,7 +321,7 @@ void main() {
     );
 
     final result = await installer.install(
-      cli: TeamCli.claude,
+      cli: CliTool.claude,
       mode: CliInstallMode.ssh,
       sshProfile: _profile,
     );
@@ -371,7 +371,7 @@ void main() {
     );
 
     final result = await installer.install(
-      cli: TeamCli.claude,
+      cli: CliTool.claude,
       mode: CliInstallMode.ssh,
       sshProfile: _profile,
     );
@@ -417,7 +417,7 @@ void main() {
     );
 
     final result = await installer.install(
-      cli: TeamCli.claude,
+      cli: CliTool.claude,
       mode: CliInstallMode.ssh,
       sshProfile: _profile,
     );
@@ -438,7 +438,7 @@ void main() {
     );
 
     final result = await installer.install(
-      cli: TeamCli.claude,
+      cli: CliTool.claude,
       mode: CliInstallMode.ssh,
     );
 

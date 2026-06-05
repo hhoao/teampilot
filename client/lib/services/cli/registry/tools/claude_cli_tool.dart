@@ -1,4 +1,4 @@
-import '../../../../models/app_provider_config.dart';
+import '../../../../models/team_config.dart';
 import '../../cli_tool_adapter.dart';
 import '../cli_capability.dart';
 import '../cli_tool_definition.dart';
@@ -20,6 +20,10 @@ final class ClaudeCliTool implements CliToolDefinition {
     this.executableResolver = const ClaudeExecutableResolver(),
     this.installer = const ClaudeInstallerCapability(),
     this.presence = const ClaudePresence(),
+    this.display = const ClaudeDisplay(),
+    this.terminalBehavior = const ClaudeTerminalBehavior(),
+    this.pluginManifest = const ClaudePluginManifest(),
+    this.providerCatalog = const ClaudeProviderCatalog(),
   });
 
   final LaunchArgsCapability launchArgs;
@@ -28,15 +32,16 @@ final class ClaudeCliTool implements CliToolDefinition {
   final ExecutableResolverCapability executableResolver;
   final InstallerCapability installer;
   final PresenceCapability presence;
+  final ClaudeDisplay display;
+  final ClaudeTerminalBehavior terminalBehavior;
+  final ClaudePluginManifest pluginManifest;
+  final ClaudeProviderCatalog providerCatalog;
 
   @override
-  String get id => 'claude';
+  CliTool get id => CliTool.claude;
 
   @override
   bool get isLaunchSupported => true;
-
-  @override
-  AppProviderCli? get providerCatalogCli => AppProviderCli.claude;
 
   @override
   Iterable<CliCapability> get capabilities => [
@@ -46,5 +51,9 @@ final class ClaudeCliTool implements CliToolDefinition {
     executableResolver,
     installer,
     presence,
+    display,
+    terminalBehavior,
+    pluginManifest,
+    providerCatalog,
   ];
 }

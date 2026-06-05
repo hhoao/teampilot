@@ -14,7 +14,7 @@ final class CodexProviderSettingsResolver {
   Future<AppProviderConfig?> findById(String? providerId) async {
     final trimmed = providerId?.trim() ?? '';
     if (trimmed.isEmpty) return null;
-    return _repository.findById(AppProviderCli.codex, trimmed);
+    return _repository.findById(CliTool.codex, trimmed);
   }
 
   Future<String?> resolveProviderId(
@@ -40,7 +40,7 @@ final class CodexProviderSettingsResolver {
       if (provider != null) return fromMember;
     }
 
-    final codexProviders = await _repository.loadProviders(AppProviderCli.codex);
+    final codexProviders = await _repository.loadProviders(CliTool.codex);
     if (codexProviders.length == 1) return codexProviders.first.id;
     return null;
   }

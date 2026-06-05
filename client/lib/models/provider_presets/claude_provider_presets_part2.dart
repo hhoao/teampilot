@@ -7,7 +7,7 @@ const List<AppProviderPreset> claudeProviderPresetsPart2 = <AppProviderPreset>[
       label: "Kimi For Coding",
       template: AppProviderConfig(
         id: "kimi-for-coding",
-        cli: AppProviderCli.claude,
+        cli: CliTool.claude,
         name: "Kimi For Coding",
         websiteUrl: "https://www.kimi.com/code/docs/",
         apiKeyUrl: "",
@@ -34,7 +34,7 @@ const List<AppProviderPreset> claudeProviderPresetsPart2 = <AppProviderPreset>[
       label: "StepFun",
       template: AppProviderConfig(
         id: "stepfun",
-        cli: AppProviderCli.claude,
+        cli: CliTool.claude,
         name: "StepFun",
         websiteUrl: "https://platform.stepfun.com/step-plan",
         apiKeyUrl: "https://platform.stepfun.com/interface-key",
@@ -65,7 +65,7 @@ const List<AppProviderPreset> claudeProviderPresetsPart2 = <AppProviderPreset>[
       label: "StepFun en",
       template: AppProviderConfig(
         id: "stepfun-en",
-        cli: AppProviderCli.claude,
+        cli: CliTool.claude,
         name: "StepFun en",
         websiteUrl: "https://platform.stepfun.ai/step-plan",
         apiKeyUrl: "https://platform.stepfun.ai/interface-key",
@@ -96,7 +96,7 @@ const List<AppProviderPreset> claudeProviderPresetsPart2 = <AppProviderPreset>[
       label: "ModelScope",
       template: AppProviderConfig(
         id: "modelscope",
-        cli: AppProviderCli.claude,
+        cli: CliTool.claude,
         name: "ModelScope",
         websiteUrl: "https://modelscope.cn",
         apiKeyUrl: "",
@@ -127,7 +127,7 @@ const List<AppProviderPreset> claudeProviderPresetsPart2 = <AppProviderPreset>[
       label: "KAT-Coder",
       template: AppProviderConfig(
         id: "kat-coder",
-        cli: AppProviderCli.claude,
+        cli: CliTool.claude,
         name: "KAT-Coder",
         websiteUrl: "https://console.streamlake.ai",
         apiKeyUrl: "https://console.streamlake.ai/console/api-key",
@@ -168,7 +168,7 @@ const List<AppProviderPreset> claudeProviderPresetsPart2 = <AppProviderPreset>[
       label: "Longcat",
       template: AppProviderConfig(
         id: "longcat",
-        cli: AppProviderCli.claude,
+        cli: CliTool.claude,
         name: "Longcat",
         websiteUrl: "https://longcat.chat/platform",
         apiKeyUrl: "https://longcat.chat/platform/api_keys",
@@ -201,7 +201,7 @@ const List<AppProviderPreset> claudeProviderPresetsPart2 = <AppProviderPreset>[
       label: "MiniMax",
       template: AppProviderConfig(
         id: "minimax",
-        cli: AppProviderCli.claude,
+        cli: CliTool.claude,
         name: "MiniMax",
         websiteUrl: "https://platform.minimaxi.com",
         apiKeyUrl: "https://platform.minimaxi.com/subscribe/coding-plan",
@@ -234,7 +234,7 @@ const List<AppProviderPreset> claudeProviderPresetsPart2 = <AppProviderPreset>[
       label: "MiniMax en",
       template: AppProviderConfig(
         id: "minimax-en",
-        cli: AppProviderCli.claude,
+        cli: CliTool.claude,
         name: "MiniMax en",
         websiteUrl: "https://platform.minimax.io",
         apiKeyUrl: "https://platform.minimax.io/subscribe/coding-plan",
@@ -267,7 +267,7 @@ const List<AppProviderPreset> claudeProviderPresetsPart2 = <AppProviderPreset>[
       label: "BaiLing",
       template: AppProviderConfig(
         id: "bailing",
-        cli: AppProviderCli.claude,
+        cli: CliTool.claude,
         name: "BaiLing",
         websiteUrl: "https://alipaytbox.yuque.com/sxs0ba/ling/get_started",
         apiKeyUrl: "",
@@ -298,7 +298,7 @@ const List<AppProviderPreset> claudeProviderPresetsPart2 = <AppProviderPreset>[
       label: "AiHubMix",
       template: AppProviderConfig(
         id: "aihubmix",
-        cli: AppProviderCli.claude,
+        cli: CliTool.claude,
         name: "AiHubMix",
         websiteUrl: "https://aihubmix.com",
         apiKeyUrl: "https://aihubmix.com",
@@ -328,7 +328,7 @@ const List<AppProviderPreset> claudeProviderPresetsPart2 = <AppProviderPreset>[
       label: "SiliconFlow",
       template: AppProviderConfig(
         id: "siliconflow",
-        cli: AppProviderCli.claude,
+        cli: CliTool.claude,
         name: "SiliconFlow",
         websiteUrl: "https://siliconflow.cn",
         apiKeyUrl: "https://cloud.siliconflow.cn/i/drGuwc9k",
@@ -359,7 +359,7 @@ const List<AppProviderPreset> claudeProviderPresetsPart2 = <AppProviderPreset>[
       label: "SiliconFlow en",
       template: AppProviderConfig(
         id: "siliconflow-en",
-        cli: AppProviderCli.claude,
+        cli: CliTool.claude,
         name: "SiliconFlow en",
         websiteUrl: "https://siliconflow.com",
         apiKeyUrl: "https://cloud.siliconflow.cn/i/drGuwc9k",
@@ -390,7 +390,7 @@ const List<AppProviderPreset> claudeProviderPresetsPart2 = <AppProviderPreset>[
       label: "DMXAPI",
       template: AppProviderConfig(
         id: "dmxapi",
-        cli: AppProviderCli.claude,
+        cli: CliTool.claude,
         name: "DMXAPI",
         websiteUrl: "https://www.dmxapi.cn",
         apiKeyUrl: "https://www.dmxapi.cn",
@@ -417,7 +417,7 @@ const List<AppProviderPreset> claudeProviderPresetsPart2 = <AppProviderPreset>[
       label: "PackyCode",
       template: AppProviderConfig(
         id: "packycode",
-        cli: AppProviderCli.claude,
+        cli: CliTool.claude,
         name: "PackyCode",
         websiteUrl: "https://www.packyapi.com",
         apiKeyUrl: "https://www.packyapi.com/register?aff=cc-switch",

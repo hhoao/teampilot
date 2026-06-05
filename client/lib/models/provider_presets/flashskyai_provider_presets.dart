@@ -13,7 +13,7 @@ class FlashskyaiProviderPresets {
       label: 'DeepSeek',
       template: AppProviderConfig(
         id: 'DeepSeek',
-        cli: AppProviderCli.flashskyai,
+        cli: CliTool.flashskyai,
         name: 'DeepSeek',
         websiteUrl: 'https://platform.deepseek.com',
         category: AppProviderCategory.cnOfficial,
@@ -47,7 +47,7 @@ class FlashskyaiProviderPresets {
       label: 'Local Ollama',
       template: AppProviderConfig(
         id: 'Local-Ollama',
-        cli: AppProviderCli.flashskyai,
+        cli: CliTool.flashskyai,
         name: 'Local-Ollama',
         category: AppProviderCategory.custom,
         apiKeyField: 'api_key',
@@ -73,7 +73,7 @@ class FlashskyaiProviderPresets {
       label: 'MiniMax',
       template: AppProviderConfig(
         id: 'Minimaxi',
-        cli: AppProviderCli.flashskyai,
+        cli: CliTool.flashskyai,
         name: 'Minimaxi',
         websiteUrl: 'https://platform.minimaxi.com',
         category: AppProviderCategory.cnOfficial,
@@ -101,7 +101,7 @@ class FlashskyaiProviderPresets {
       label: 'Aliyun DashScope',
       template: AppProviderConfig(
         id: 'aliyun',
-        cli: AppProviderCli.flashskyai,
+        cli: CliTool.flashskyai,
         name: 'aliyun',
         websiteUrl: 'https://dashscope.aliyun.com',
         category: AppProviderCategory.cloudProvider,
@@ -129,7 +129,7 @@ class FlashskyaiProviderPresets {
       label: 'NVIDIA Integrate API',
       template: AppProviderConfig(
         id: 'nvidia',
-        cli: AppProviderCli.flashskyai,
+        cli: CliTool.flashskyai,
         name: 'nvidia',
         websiteUrl: 'https://build.nvidia.com',
         category: AppProviderCategory.cloudProvider,
@@ -170,7 +170,7 @@ class FlashskyaiProviderPresets {
       label: 'SiliconFlow',
       template: AppProviderConfig(
         id: 'Siliconflow',
-        cli: AppProviderCli.flashskyai,
+        cli: CliTool.flashskyai,
         name: 'Siliconflow',
         websiteUrl: 'https://siliconflow.cn',
         apiKeyUrl: 'https://cloud.siliconflow.cn',
@@ -187,7 +187,7 @@ class FlashskyaiProviderPresets {
       label: 'Codex (account)',
       template: AppProviderConfig(
         id: 'Codex',
-        cli: AppProviderCli.flashskyai,
+        cli: CliTool.flashskyai,
         name: 'Codex',
         websiteUrl: 'https://chatgpt.com/codex',
         category: AppProviderCategory.official,
@@ -216,7 +216,7 @@ class FlashskyaiProviderPresets {
       label: 'Claude (account)',
       template: AppProviderConfig(
         id: 'Claude',
-        cli: AppProviderCli.flashskyai,
+        cli: CliTool.flashskyai,
         name: 'Claude',
         websiteUrl: 'https://www.anthropic.com/claude-code',
         category: AppProviderCategory.official,
@@ -257,7 +257,7 @@ class FlashskyaiProviderPresets {
       label: 'Gemini (account)',
       template: AppProviderConfig(
         id: 'GeminiAccount',
-        cli: AppProviderCli.flashskyai,
+        cli: CliTool.flashskyai,
         name: 'GeminiAccount',
         websiteUrl: 'https://ai.google.dev',
         category: AppProviderCategory.official,

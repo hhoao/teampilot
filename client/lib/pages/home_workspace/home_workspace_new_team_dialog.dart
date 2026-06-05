@@ -8,6 +8,7 @@ import '../../l10n/l10n_extensions.dart';
 import '../../models/app_provider_config.dart';
 import '../../models/default_team_roster.dart';
 import '../../models/team_config.dart';
+import '../../services/cli/registry/capabilities/provider_catalog_capability.dart';
 import '../../services/cli/registry/cli_display_name.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../theme/app_text_styles.dart';
@@ -17,7 +18,7 @@ import '../../widgets/settings/workspace_settings_widgets.dart';
 /// "New Team" row. Mirrors the Apifox project-creation modal: centered title +
 /// close, two big selectable mode cards (Native / Mixed), a named form row, and
 /// a single primary create action. The chosen [TeamMode] is the headline
-/// decision; the CLI backend defaults to [TeamCli.flashskyai].
+/// decision; the CLI backend defaults to [CliTool.flashskyai].
 Future<void> showHomeWorkspaceNewTeamDialog(
   BuildContext context,
   TeamCubit teamCubit,
@@ -28,7 +29,7 @@ Future<void> showHomeWorkspaceNewTeamDialog(
         ({
           String name,
           TeamMode mode,
-          TeamCli cli,
+          CliTool cli,
           Map<String, String> providerIdsByTool,
         })
       >(
@@ -61,7 +62,7 @@ class _HomeWorkspaceNewTeamDialogState
     extends State<HomeWorkspaceNewTeamDialog> {
   late final TextEditingController _nameController;
   TeamMode _mode = TeamMode.native;
-  TeamCli _cli = TeamCli.claude;
+  CliTool _cli = CliTool.claude;
   String? _providerId;
   bool _canCreate = false;
   bool _didSeedProvider = false;
@@ -91,12 +92,15 @@ class _HomeWorkspaceNewTeamDialogState
     if (canCreate != _canCreate) setState(() => _canCreate = canCreate);
   }
 
-  AppProviderCli? _providerCatalogCli(TeamCli cli) =>
-      CliToolRegistryScope.maybeOf(
-        context,
-      )?.tryGet(cli.value)?.providerCatalogCli;
+  CliTool? _providerCatalogCli(CliTool cli) {
+    final registry = CliToolRegistryScope.maybeOf(context);
+    if (registry == null) return null;
+    return registry.capability<ProviderCatalogCapability>(cli) != null
+        ? cli
+        : null;
+  }
 
-  void _syncDefaultProviderForCli(TeamCli cli) {
+  void _syncDefaultProviderForCli(CliTool cli) {
     final catalogCli = _providerCatalogCli(cli);
     if (catalogCli == null) {
       if (_providerId != null) setState(() => _providerId = null);
@@ -400,9 +404,9 @@ class _NativeTeamOptionsCard extends StatelessWidget {
     required this.onProviderChanged,
   });
 
-  final TeamCli cli;
+  final CliTool cli;
   final String? providerId;
-  final ValueChanged<TeamCli> onCliChanged;
+  final ValueChanged<CliTool> onCliChanged;
   final ValueChanged<String?> onProviderChanged;
 
   @override
@@ -410,8 +414,11 @@ class _NativeTeamOptionsCard extends StatelessWidget {
     final l10n = context.l10n;
     final registry = CliToolRegistryScope.of(context);
     final launchable = registry.launchable.toList()
-      ..sort((a, b) => a.id.compareTo(b.id));
-    final catalogCli = registry.tryGet(cli.value)?.providerCatalogCli;
+      ..sort((a, b) => a.id.value.compareTo(b.id.value));
+    final catalogCli =
+        registry.capability<ProviderCatalogCapability>(cli) != null
+        ? cli
+        : null;
     final providers = catalogCli == null
         ? const <AppProviderConfig>[]
         : context.watch<AppProviderCubit>().state.providersFor(catalogCli);
@@ -430,11 +437,11 @@ class _NativeTeamOptionsCard extends StatelessWidget {
           SettingsLabeledRow(
             title: l10n.teamCliLabel,
             subtitle: l10n.teamCliSubtitle,
-            trailing: SettingsCompactDropdown<TeamCli>(
+            trailing: SettingsCompactDropdown<CliTool>(
               value: cli,
               entries: [
                 for (final def in launchable)
-                  (TeamCli.decode(def.id), cliDisplayName(def, l10n)),
+                  (def.id, cliDisplayName(def, l10n)),
               ],
               onChanged: (value) {
                 if (value == null) return;

@@ -13,7 +13,7 @@ typedef McpDepInstaller = Future<String?> Function(McpDependencyRef ref);
 /// Creates the cloned team; returns the new team id, or null on failure.
 typedef ClonedTeamCreator = Future<String?> Function({
   required String name,
-  required TeamCli cli,
+  required CliTool cli,
   required TeamMode teamMode,
   required List<TeamMemberConfig> members,
   required List<String> skillIds,

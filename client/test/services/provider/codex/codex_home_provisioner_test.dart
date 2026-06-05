@@ -14,7 +14,7 @@ void main() {
     test('uses PROXY_MANAGED when meta.proxyTakeover is set', () {
       const provider = AppProviderConfig(
         id: 'p',
-        cli: AppProviderCli.codex,
+        cli: CliTool.codex,
         name: 'p',
         apiKey: 'sk-real',
         config: {
@@ -43,7 +43,7 @@ void main() {
     test('writes auth.json and config.toml under codex home', () async {
       const provider = AppProviderConfig(
         id: 'deepseek',
-        cli: AppProviderCli.codex,
+        cli: CliTool.codex,
         name: 'DeepSeek',
         apiKey: 'sk-test',
         baseUrl: 'https://api.deepseek.com',
@@ -77,7 +77,7 @@ base_url = "https://api.deepseek.com"
     test('appends bus overlay without dropping provider toml', () async {
       const provider = AppProviderConfig(
         id: 'p',
-        cli: AppProviderCli.codex,
+        cli: CliTool.codex,
         name: 'p',
         config: {
           'configToml': 'model = "m1"\nbase_url = "https://upstream.example.com"\n',
@@ -101,7 +101,7 @@ base_url = "https://api.deepseek.com"
     test('injects project trust for session working directory', () async {
       const provider = AppProviderConfig(
         id: 'p',
-        cli: AppProviderCli.codex,
+        cli: CliTool.codex,
         name: 'p',
         config: {'configToml': 'model = "m1"\n'},
       );

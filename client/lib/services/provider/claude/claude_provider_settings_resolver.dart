@@ -19,7 +19,7 @@ class ClaudeProviderSettingsResolver {
     final trimmed = providerId?.trim() ?? '';
     if (trimmed.isEmpty) return null;
 
-    final provider = await _repository.findById(AppProviderCli.claude, trimmed);
+    final provider = await _repository.findById(CliTool.claude, trimmed);
     if (provider == null) return null;
     return _generator.buildClaudeSettings(provider);
   }
@@ -32,7 +32,7 @@ class ClaudeProviderSettingsResolver {
       final fromMember = member.provider.trim();
       if (fromMember.isNotEmpty) {
         final provider = await _repository.findById(
-          AppProviderCli.claude,
+          CliTool.claude,
           fromMember,
         );
         if (provider != null) return fromMember;
@@ -78,6 +78,6 @@ class ClaudeProviderSettingsResolver {
   }
 
   Future<List<AppProviderConfig>> _listClaudeProviders() async {
-    return _repository.loadProviders(AppProviderCli.claude);
+    return _repository.loadProviders(CliTool.claude);
   }
 }

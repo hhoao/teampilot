@@ -66,7 +66,7 @@ class TeamConfigValidation extends Equatable {
 /// Resolves whether [providerId] (in [cli]'s catalog) is an official provider.
 /// Official providers ship their own model, so model selection is optional.
 typedef OfficialProviderResolver =
-    Future<bool> Function(TeamCli cli, String providerId);
+    Future<bool> Function(CliTool cli, String providerId);
 
 /// Pre-launch check that a team has enough provider/model/CLI configuration to
 /// start a session. Provider/model/CLI presence is checked structurally; the
@@ -153,7 +153,7 @@ class TeamConfigLaunchValidator {
 
   /// A model is required only when a non-official provider is configured but no
   /// model is selected. Official providers bundle their own model.
-  Future<bool> _needsModel(TeamCli cli, String provider, String model) async {
+  Future<bool> _needsModel(CliTool cli, String provider, String model) async {
     if (provider.trim().isEmpty) return false;
     if (model.trim().isNotEmpty) return false;
     return !await _isOfficialProvider(cli, provider);
@@ -165,14 +165,12 @@ class TeamConfigLaunchValidator {
   ) => TeamConfigIssue(kind, memberId: member.id, memberName: member.name);
 
   static Future<bool> _defaultIsOfficialProvider(
-    TeamCli cli,
+    CliTool cli,
     String providerId,
   ) async {
     final id = providerId.trim();
     if (id.isEmpty) return false;
-    final appCli = AppProviderCli.tryParse(cli.value);
-    if (appCli == null) return false;
-    final provider = await AppProviderRepository().findById(appCli, id);
+    final provider = await AppProviderRepository().findById(cli, id);
     if (provider == null) return false;
     return provider.isOfficial ||
         provider.category == AppProviderCategory.official;

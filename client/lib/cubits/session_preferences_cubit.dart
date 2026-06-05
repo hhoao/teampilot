@@ -4,7 +4,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../models/connection_mode.dart';
 import '../models/session_preferences.dart';
 import '../services/cli/cli_tool_locator.dart';
-import '../services/cli/registry/built_in_cli_tools.dart';
 import '../services/cli/registry/capabilities/executable_resolver_capability.dart';
 import '../services/cli/registry/cli_tool_registry.dart';
 import '../models/team_config.dart';
@@ -38,7 +37,7 @@ class SessionPreferencesCubit extends Cubit<SessionPreferencesState> {
   SessionPreferencesCubit({
     required SessionPreferencesRepository repository,
     String? locatedExecutable,
-    Map<TeamCli, String> locatedExecutables = const {},
+    Map<CliTool, String> locatedExecutables = const {},
     CliToolRegistry? cliToolRegistry,
   }) : _repository = repository,
        _locatedExecutables = _normalizeLocatedExecutables(
@@ -49,13 +48,12 @@ class SessionPreferencesCubit extends Cubit<SessionPreferencesState> {
        super(SessionPreferencesState());
 
   static final _defaultCliRegistry = () {
-    final r = CliToolRegistry();
-    registerBuiltInCliTools(r);
+    final r = CliToolRegistry.builtIn();
     return r;
   }();
 
   final SessionPreferencesRepository _repository;
-  final Map<TeamCli, String> _locatedExecutables;
+  final Map<CliTool, String> _locatedExecutables;
   final CliToolRegistry _cliToolRegistry;
 
   Future<void> load() async {
@@ -75,9 +73,9 @@ class SessionPreferencesCubit extends Cubit<SessionPreferencesState> {
 
   bool get isSshMode => state.preferences.connectionMode == ConnectionMode.ssh;
 
-  Future<void> setCliExecutablePathFor(TeamCli cli, String value) {
+  Future<void> setCliExecutablePathFor(CliTool cli, String value) {
     final pathKey = _cliToolRegistry
-            .capability<ExecutableResolverCapability>(cli.value)
+            .capability<ExecutableResolverCapability>(cli)
             ?.preferencesPathKey ??
         cli.value;
     final next = Map<String, String>.of(state.preferences.cliExecutablePaths);
@@ -127,7 +125,7 @@ class SessionPreferencesCubit extends Cubit<SessionPreferencesState> {
   ///   1. user-configured path (if non-empty after trim)
   ///   2. path discovered at startup (if non-null and non-empty)
   ///   3. the CLI's command name (OS resolves via PATH)
-  String resolveExecutable([TeamCli cli = TeamCli.flashskyai]) {
+  String resolveExecutable([CliTool cli = CliTool.flashskyai]) {
     final user = _userExecutableFor(cli);
     if (user.isNotEmpty) {
       return CliToolLocator.resolveSpawnExecutable(user);
@@ -137,30 +135,30 @@ class SessionPreferencesCubit extends Cubit<SessionPreferencesState> {
       return CliToolLocator.resolveSpawnExecutable(located);
     }
     final resolver =
-        _cliToolRegistry.capability<ExecutableResolverCapability>(cli.value);
+        _cliToolRegistry.capability<ExecutableResolverCapability>(cli);
     return resolver?.defaultExecutableName ?? cli.value;
   }
 
-  String _userExecutableFor(TeamCli cli) {
+  String _userExecutableFor(CliTool cli) {
     final pathKey = _cliToolRegistry
-            .capability<ExecutableResolverCapability>(cli.value)
+            .capability<ExecutableResolverCapability>(cli)
             ?.preferencesPathKey ??
         cli.value;
     return state.preferences.cliExecutablePathFor(pathKey);
   }
 
-  static Map<TeamCli, String> _normalizeLocatedExecutables({
+  static Map<CliTool, String> _normalizeLocatedExecutables({
     required String? locatedExecutable,
-    required Map<TeamCli, String> locatedExecutables,
+    required Map<CliTool, String> locatedExecutables,
   }) {
-    final normalized = <TeamCli, String>{};
+    final normalized = <CliTool, String>{};
     for (final entry in locatedExecutables.entries) {
       final value = entry.value.trim();
       if (value.isNotEmpty) normalized[entry.key] = value;
     }
     final flashskyaiLocated = locatedExecutable?.trim();
     if (flashskyaiLocated != null && flashskyaiLocated.isNotEmpty) {
-      normalized.putIfAbsent(TeamCli.flashskyai, () => flashskyaiLocated);
+      normalized.putIfAbsent(CliTool.flashskyai, () => flashskyaiLocated);
     }
     return Map.unmodifiable(normalized);
   }

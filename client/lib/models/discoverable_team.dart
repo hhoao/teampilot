@@ -243,7 +243,7 @@ class DiscoverableTeam {
     required this.category,
     required this.updatedAt,
     this.author,
-    this.cli = TeamCli.flashskyai,
+    this.cli = CliTool.flashskyai,
     this.teamMode = TeamMode.native,
     this.extraArgs = '',
     this.members = const [],
@@ -259,7 +259,7 @@ class DiscoverableTeam {
   final String category;
   final String? author;
   final int updatedAt;
-  final TeamCli cli;
+  final CliTool cli;
   final TeamMode teamMode;
   final String extraArgs;
   final List<DiscoverableTeamMember> members;
@@ -282,7 +282,7 @@ class DiscoverableTeam {
       category: json['category'] as String? ?? '',
       author: json['author'] as String?,
       updatedAt: (json['updatedAt'] as num?)?.toInt() ?? 0,
-      cli: TeamCli.decode(json['cli']),
+      cli: CliTool.decode(json['cli']),
       teamMode: TeamMode.decode(json['teamMode']),
       extraArgs: json['extraArgs'] as String? ?? '',
       members: list(json['members'], DiscoverableTeamMember.fromJson),

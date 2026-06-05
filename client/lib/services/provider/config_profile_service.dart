@@ -7,8 +7,8 @@ import '../extension/extension_detector.dart';
 import '../host/host_execution_environment.dart';
 import '../host/host_script_dialect.dart';
 import '../host/script_file_hook_provisioner.dart';
-import '../cli/registry/built_in_cli_tools.dart';
 import '../cli/registry/capabilities/config_profile_capability.dart';
+import '../cli/registry/capabilities/plugin_manifest_capability.dart';
 import '../cli/registry/cli_tool_registry.dart';
 import '../io/filesystem.dart';
 import '../mcp/mcp_registry_service.dart';
@@ -34,13 +34,7 @@ class TeamLaunchOutcome {
 
 /// Orchestrates config-profile layout, MCP/plugin merge, and per-CLI capabilities.
 class ConfigProfileService implements ConfigProfileDelegate {
-  static final _defaultCliRegistry = () {
-    final registry = CliToolRegistry();
-    registerBuiltInCliTools(registry);
-    return registry;
-  }();
-
-  static const _pluginRegistryCliIds = {'flashskyai', 'claude'};
+  static final _defaultCliRegistry = CliToolRegistry.builtIn();
 
   ConfigProfileService({
     required String basePath,
@@ -104,7 +98,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
 
   Future<void> ensureTeamProfile(
     String teamId, {
-    TeamCli cli = TeamCli.flashskyai,
+    CliTool cli = CliTool.flashskyai,
   }) async {
     final trimmed = teamId.trim();
     if (trimmed.isEmpty) return;
@@ -114,7 +108,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
   Future<void> ensureSessionProfile(
     String teamId,
     String sessionId, {
-    TeamCli cli = TeamCli.flashskyai,
+    CliTool cli = CliTool.flashskyai,
     TeamConfig? team,
     Map<String, Map<String, Object?>>? extraMcpServers,
   }) async {
@@ -138,20 +132,23 @@ class ConfigProfileService implements ConfigProfileDelegate {
           )
           .then((json) => memberProvisionJson = json),
     ]);
-    if (_pluginRegistryCliIds.contains(cli.value)) {
+    final pluginManifest =
+        _cliRegistry.capability<PluginManifestCapability>(cli);
+    if (pluginManifest?.supportsPluginRegistry == true) {
       await CliPluginRegistryService(
         fs: fs,
         teampilotRoot: basePath,
         layout: layout,
+        cliRegistry: _cliRegistry,
       ).writeForSession(
         teamId: trimmedTeamId,
         sessionId: trimmedSessionId,
-        tool: cli.value,
+        tool: cli,
         team: team,
         memberProvisionJson: memberProvisionJson,
       );
     }
-    final cap = _cliRegistry.capability<ConfigProfileCapability>(cli.value);
+    final cap = _cliRegistry.capability<ConfigProfileCapability>(cli);
     if (cap != null) {
       await cap.ensureSessionProfile(
         ConfigProfileSessionContext(
@@ -173,7 +170,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
   Future<TeamLaunchOutcome> prepareTeamLaunch({
     required String teamId,
     String runtimeTeamId = '',
-    TeamCli cli = TeamCli.flashskyai,
+    CliTool cli = CliTool.flashskyai,
     List<TeamMemberConfig> members = const [],
     TeamMemberConfig? member,
     String workingDirectory = '',
@@ -218,7 +215,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
       extraMcpServers: extraMcpServers,
     );
 
-    final cap = _cliRegistry.capability<ConfigProfileCapability>(cli.value);
+    final cap = _cliRegistry.capability<ConfigProfileCapability>(cli);
     if (cap == null) {
       return TeamLaunchOutcome(
         environment: const {},

@@ -23,7 +23,7 @@ void main() {
             width: 1000,
             height: 1400,
             child: AppProviderFormPage(
-              cli: AppProviderCli.claude,
+              cli: CliTool.claude,
               onCancel: () {},
               onSaved: (_) {},
             ),
@@ -49,7 +49,7 @@ void main() {
   testWidgets('switching cli resets preset dropdown without crashing', (
     tester,
   ) async {
-    var cli = AppProviderCli.codex;
+    var cli = CliTool.codex;
     final codexPreset = CodexProviderPresets.all.first;
 
     await tester.pumpWidget(
@@ -84,7 +84,7 @@ void main() {
     await tester.tap(find.text(codexPreset.label).last);
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byType(AppDropdownField<AppProviderCli>).first);
+    await tester.tap(find.byType(AppDropdownField<CliTool>).first);
     await tester.pumpAndSettle();
     await tester.tap(find.text('Claude Code').last);
     await tester.pumpAndSettle();
@@ -116,10 +116,10 @@ void main() {
             width: 1000,
             height: 1400,
             child: AppProviderFormPage(
-              cli: AppProviderCli.claude,
+              cli: CliTool.claude,
               existing: const AppProviderConfig(
                 id: 'deepseek',
-                cli: AppProviderCli.claude,
+                cli: CliTool.claude,
                 name: 'DeepSeek',
               ),
               onCancel: () {},

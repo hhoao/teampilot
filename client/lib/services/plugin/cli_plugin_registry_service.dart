@@ -3,8 +3,9 @@ import '../../models/plugin.dart';
 import '../../models/team_config.dart';
 import '../storage/app_storage.dart';
 import '../cli/cli_data_layout.dart';
+import '../cli/registry/capabilities/plugin_manifest_capability.dart';
+import '../cli/registry/cli_tool_registry.dart';
 import 'cli_plugin_layout.dart';
-import 'cli_plugin_manifest_flavor.dart';
 import 'cli_plugin_provision_cache.dart';
 import '../io/filesystem.dart';
 import '../../utils/logger.dart';
@@ -13,17 +14,20 @@ import '../../utils/logger.dart';
 ///
 /// Mirrors upstream behavior: `settings.json` → `enabledPlugins`, plus
 /// `plugins/installed_plugins.json` (v2) with absolute `installPath` values.
-/// FlashskyAI uses the same logic with [CliPluginManifestFlavor.flashskyai].
+/// FlashskyAI uses the same logic with [flashskyaiPluginManifestPaths].
 class CliPluginRegistryService {
   CliPluginRegistryService({
     required this.fs,
     required this.teampilotRoot,
     CliDataLayout? layout,
-  }) : _layout = layout ?? CliDataLayout(teampilotRoot: teampilotRoot, fs: fs);
+    CliToolRegistry? cliRegistry,
+  }) : _layout = layout ?? CliDataLayout(teampilotRoot: teampilotRoot, fs: fs),
+       _cliRegistry = cliRegistry ?? CliToolRegistry.builtIn();
 
   final Filesystem fs;
   final String teampilotRoot;
   final CliDataLayout _layout;
+  final CliToolRegistry _cliRegistry;
 
   static String? _cachedCatalogPath;
   static int? _cachedCatalogMtimeMs;
@@ -37,16 +41,18 @@ class CliPluginRegistryService {
   Future<void> writeForSession({
     required String teamId,
     required String sessionId,
-    required String tool,
+    required CliTool tool,
     TeamConfig? team,
     List<Plugin>? installedCatalog,
     String? memberProvisionJson,
   }) async {
-    final flavor = cliPluginManifestFlavorForTool(tool);
-    if (flavor == null) return;
+    final manifestCap = _cliRegistry.capability<PluginManifestCapability>(tool);
+    final paths = manifestCap?.paths;
+    if (manifestCap?.supportsPluginRegistry != true || paths == null) return;
 
-    final configDir = _layout.memberToolDir(teamId, sessionId, tool);
-    final memberPluginsDir = _layout.memberPluginsDir(teamId, sessionId, tool);
+    final configDir = _layout.memberToolDir(teamId, sessionId, tool.value);
+    final memberPluginsDir =
+        _layout.memberPluginsDir(teamId, sessionId, tool.value);
     final pluginsStat = await fs.stat(memberPluginsDir);
     if (!pluginsStat.isDirectory) return;
 
@@ -71,8 +77,8 @@ class CliPluginRegistryService {
       fs: fs,
       pluginsDir: pluginsDir,
       configDir: configDir,
-      tool: tool,
-      flavor: flavor,
+      tool: tool.value,
+      paths: paths,
       memberProvisionStampJson: resolvedMemberProvisionJson,
       enabledPluginIds: enabledIds,
       catalog: catalog,
@@ -110,14 +116,14 @@ class CliPluginRegistryService {
         final root = await CliPluginLayout.resolvePluginRoot(
           fs,
           bundlePath,
-          flavor: flavor,
+          paths: paths,
         );
         if (root == null) return null;
 
         final manifest = await CliPluginLayout.readManifest(
           fs,
           root,
-          flavor: flavor,
+          paths: paths,
         );
         final pluginName = manifest?.name ?? entry.name;
         final version = manifest?.version ?? '0.0.0';
@@ -186,22 +192,22 @@ class CliPluginRegistryService {
 
     final materializedMarketplaceStamps = await _writeKnownMarketplaces(
       pluginsDir: pluginsDir,
-      flavor: flavor,
+      paths: paths,
       marketplaceCtx: marketplaceCtx,
       localPlugins: localMarketplacePlugins,
     );
 
     await _mergeEnabledPluginsIntoSettings(
       configDir: configDir,
-      tool: tool,
+      tool: tool.value,
       enabledPlugins: enabledPlugins,
     );
 
     await CliPluginProvisionCache.writeRegistryStamp(
       fs: fs,
       pluginsDir: pluginsDir,
-      tool: tool,
-      flavor: flavor,
+      tool: tool.value,
+      paths: paths,
       memberProvisionStampJson: resolvedMemberProvisionJson,
       enabledPluginIds: enabledIds,
       catalog: catalog,
@@ -328,14 +334,14 @@ class CliPluginRegistryService {
         pluginsDir,
         'marketplaces',
         marketplaceKey,
-        CliPluginManifestFlavor.claude.manifestDirName,
+        claudePluginManifestPaths.manifestDirName,
         'marketplace.json',
       ),
       fs.pathContext.join(
         pluginsDir,
         'marketplaces',
         marketplaceKey,
-        CliPluginManifestFlavor.flashskyai.manifestDirName,
+        flashskyaiPluginManifestPaths.manifestDirName,
         'marketplace.json',
       ),
     ];
@@ -347,7 +353,7 @@ class CliPluginRegistryService {
           AppPaths.pluginMarketplaceCacheDirForTeampilotRoot(teampilotRoot),
           owner,
           '$marketplaceKey@$branch',
-          CliPluginManifestFlavor.claude.manifestDirName,
+          claudePluginManifestPaths.manifestDirName,
           'marketplace.json',
         ),
       );
@@ -389,7 +395,7 @@ class CliPluginRegistryService {
 
   Future<List<Map<String, Object?>>> _writeKnownMarketplaces({
     required String pluginsDir,
-    required CliPluginManifestFlavor flavor,
+    required PluginManifestPaths paths,
     required _MarketplaceLaunchContext marketplaceCtx,
     required List<Map<String, Object?>> localPlugins,
   }) async {
@@ -420,7 +426,7 @@ class CliPluginRegistryService {
           pluginsDir: pluginsDir,
           marketplaceName: name,
           teampilotCacheDir: teampilotCache,
-          flavor: flavor,
+          paths: paths,
         );
         if (cliInstallLocation == null) {
           return (stamp: stamp, knownEntry: null);
@@ -451,7 +457,7 @@ class CliPluginRegistryService {
     if (localPlugins.isNotEmpty) {
       final localInstallLocation = await _writeLocalMarketplaceStub(
         pluginsDir: pluginsDir,
-        flavor: flavor,
+        paths: paths,
         plugins: localPlugins,
       );
       known[_localMarketplaceName] = {
@@ -533,7 +539,7 @@ class CliPluginRegistryService {
     required String pluginsDir,
     required String marketplaceName,
     required String teampilotCacheDir,
-    required CliPluginManifestFlavor flavor,
+    required PluginManifestPaths paths,
   }) async {
     final ctx = fs.pathContext;
     final dest = ctx.join(pluginsDir, 'marketplaces', marketplaceName);
@@ -553,10 +559,10 @@ class CliPluginRegistryService {
       source: teampilotCacheDir,
       destination: dest,
     );
-    await CliPluginLayout.normalizeBundleForFlavor(fs, dest, flavor);
+    await CliPluginLayout.normalizeBundleForFlavor(fs, dest, paths);
     final manifestPath = ctx.join(
       dest,
-      CliPluginManifestFlavor.claude.manifestDirName,
+      claudePluginManifestPaths.manifestDirName,
       'marketplace.json',
     );
     if (!(await fs.stat(manifestPath)).isFile) {
@@ -573,10 +579,10 @@ class CliPluginRegistryService {
 
   Future<String> _writeLocalMarketplaceStub({
     required String pluginsDir,
-    required CliPluginManifestFlavor flavor,
+    required PluginManifestPaths paths,
     required List<Map<String, Object?>> plugins,
   }) async {
-    final manifestDir = flavor.manifestDirName;
+    final manifestDir = paths.manifestDirName;
     final stubRoot = fs.pathContext.join(pluginsDir, 'marketplaces', _localMarketplaceName);
     final manifestPath = fs.pathContext.join(stubRoot, manifestDir, 'marketplace.json');
     await fs.ensureDir(fs.pathContext.dirname(manifestPath));
@@ -589,7 +595,7 @@ class CliPluginRegistryService {
           'plugins': plugins,
         }),
       );
-      await CliPluginLayout.normalizeBundleForFlavor(fs, stubRoot, flavor);
+      await CliPluginLayout.normalizeBundleForFlavor(fs, stubRoot, paths);
     }
     return stubRoot;
   }

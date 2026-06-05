@@ -39,7 +39,7 @@ void main() {
       const team = TeamConfig(
         id: 'team-a',
         name: 'agent',
-        cli: TeamCli.opencode,
+        cli: CliTool.opencode,
         teamMode: TeamMode.mixed,
       );
 

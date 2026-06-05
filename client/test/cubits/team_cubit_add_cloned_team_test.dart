@@ -28,7 +28,7 @@ void main() {
 
     final id = await cubit.addClonedTeam(
       name: 'Research Squad',
-      cli: TeamCli.claude,
+      cli: CliTool.claude,
       teamMode: TeamMode.mixed,
       members: const [TeamMemberConfig(id: 'team-lead', name: 'team-lead')],
       skillIds: const ['anthropics/skills:deep-research'],
@@ -41,7 +41,7 @@ void main() {
     expect(id, isNotNull);
     final team = cubit.state.teams.firstWhere((t) => t.id == id);
     expect(team.name, 'Research Squad');
-    expect(team.cli, TeamCli.claude);
+    expect(team.cli, CliTool.claude);
     expect(team.skillIds, ['anthropics/skills:deep-research']);
     expect(team.pluginIds, ['acme/plugins/linter']);
     expect(team.mcpServerIds, ['context7']);
@@ -61,12 +61,12 @@ void main() {
 
     final first = await cubit.addClonedTeam(
       name: 'Squad',
-      cli: TeamCli.claude,
+      cli: CliTool.claude,
       members: const [TeamMemberConfig(id: 'team-lead', name: 'team-lead')],
     );
     final second = await cubit.addClonedTeam(
       name: 'Squad',
-      cli: TeamCli.claude,
+      cli: CliTool.claude,
       members: const [TeamMemberConfig(id: 'team-lead', name: 'team-lead')],
     );
 

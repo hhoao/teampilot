@@ -81,7 +81,7 @@ class LlmProvidersTabContentState extends State<LlmProvidersTabContent> {
         _modelsProviderId != null &&
         selected != null &&
         _modelsProviderId == selected.id &&
-        selected.cli == AppProviderCli.flashskyai;
+        selected.cli == CliTool.flashskyai;
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
@@ -187,7 +187,7 @@ class LlmProvidersTabContentState extends State<LlmProvidersTabContent> {
       onEdit: () => _openEditProvider(selected.id),
       onDelete: () => confirmDeleteAppProvider(context, selected.id),
       onShowModels: () {
-        if (selected.cli != AppProviderCli.flashskyai) return;
+        if (selected.cli != CliTool.flashskyai) return;
         if (useAndroidHubNavigation(context)) {
           context.push(llmProviderModelsRoute(selected.cli, selected.id));
         } else {

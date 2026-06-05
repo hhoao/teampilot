@@ -1,30 +1,9 @@
 import 'package:flutter/foundation.dart';
 
 import 'claude_credential_link_result.dart';
+import 'team_config.dart';
 
-/// CLI owner for an app-level provider. A provider belongs to exactly one CLI.
-enum AppProviderCli {
-  flashskyai('flashskyai'),
-  codex('codex'),
-  claude('claude');
-
-  const AppProviderCli(this.value);
-
-  final String value;
-
-  static AppProviderCli? tryParse(Object? raw) {
-    final normalized = raw?.toString().trim().toLowerCase();
-    if (normalized == null || normalized.isEmpty) return null;
-    for (final cli in AppProviderCli.values) {
-      if (cli.value == normalized) return cli;
-    }
-    return null;
-  }
-
-  static AppProviderCli parse(Object? raw, {AppProviderCli? fallback}) {
-    return tryParse(raw) ?? fallback ?? AppProviderCli.claude;
-  }
-}
+export 'team_config.dart' show CliTool;
 
 /// Provider category for presets and form behavior.
 enum AppProviderCategory {
@@ -78,7 +57,7 @@ class AppProviderConfig {
 
   factory AppProviderConfig.fromJson(
     Map<String, Object?> json, {
-    AppProviderCli? cliFallback,
+    CliTool? cliFallback,
   }) {
     final id = json['id'] as String? ?? '';
     final endpointRaw = json['endpointCandidates'];
@@ -91,7 +70,7 @@ class AppProviderConfig {
     final configRaw = json['config'];
     return AppProviderConfig(
       id: id,
-      cli: AppProviderCli.parse(json['cli'], fallback: cliFallback),
+      cli: CliTool.parse(json['cli'], fallback: cliFallback),
       name: json['name'] as String? ?? id,
       notes: json['notes'] as String? ?? '',
       websiteUrl: json['websiteUrl'] as String? ?? '',
@@ -147,7 +126,7 @@ class AppProviderConfig {
   };
 
   final String id;
-  final AppProviderCli cli;
+  final CliTool cli;
   final String name;
   final String notes;
   final String websiteUrl;
@@ -178,7 +157,7 @@ class AppProviderConfig {
       category == AppProviderCategory.cnOfficial;
 
   int get flashskyaiModelCount {
-    if (cli != AppProviderCli.flashskyai) return 0;
+    if (cli != CliTool.flashskyai) return 0;
     final raw = config['models'];
     if (raw is Map) return raw.length;
     if (defaultModel.trim().isNotEmpty) return 1;
@@ -187,7 +166,7 @@ class AppProviderConfig {
 
   AppProviderConfig copyWith({
     String? id,
-    AppProviderCli? cli,
+    CliTool? cli,
     String? name,
     String? notes,
     String? websiteUrl,
@@ -266,7 +245,7 @@ class AppProviderConfig {
       'config': config,
       'createdAt': createdAt,
       'updatedAt': updatedAt,
-      if (cli == AppProviderCli.claude) ...{
+      if (cli == CliTool.claude) ...{
         'credentialStatus': credentialStatus,
         if (credentialUpdatedAt > 0) 'credentialUpdatedAt': credentialUpdatedAt,
       },

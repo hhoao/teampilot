@@ -54,18 +54,11 @@ void main() {
         runtimeSessionId: 'sess-1',
       );
       expect(roots, [
-        '/tp/config-profiles/claude',
-        '/tp/config-profiles/flashskyai',
-        '/tp/config-profiles/codex',
-        '/tp/config-profiles/opencode',
-        '/tp/config-profiles/teams/team-a/claude',
-        '/tp/config-profiles/teams/team-a/flashskyai',
-        '/tp/config-profiles/teams/team-a/codex',
-        '/tp/config-profiles/teams/team-a/opencode',
-        '/tp/config-profiles/teams/team-a/members/sess-1/claude',
-        '/tp/config-profiles/teams/team-a/members/sess-1/flashskyai',
-        '/tp/config-profiles/teams/team-a/members/sess-1/codex',
-        '/tp/config-profiles/teams/team-a/members/sess-1/opencode',
+        for (final tool in cliLayoutDefaultTools) '/tp/config-profiles/$tool',
+        for (final tool in cliLayoutDefaultTools)
+          '/tp/config-profiles/teams/team-a/$tool',
+        for (final tool in cliLayoutDefaultTools)
+          '/tp/config-profiles/teams/team-a/members/sess-1/$tool',
       ]);
     });
 

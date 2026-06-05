@@ -6,7 +6,7 @@ void main() {
   test('official provider with empty env', () {
     const p = AppProviderConfig(
       id: 'work',
-      cli: AppProviderCli.claude,
+      cli: CliTool.claude,
       name: 'Work',
       category: AppProviderCategory.official,
       config: {'env': {}},
@@ -17,7 +17,7 @@ void main() {
   test('third party with base url is not official credential provider', () {
     const p = AppProviderConfig(
       id: 'ds',
-      cli: AppProviderCli.claude,
+      cli: CliTool.claude,
       name: 'DS',
       category: AppProviderCategory.thirdParty,
       baseUrl: 'https://api.deepseek.com',

@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'cli_plugin_manifest_flavor.dart';
+import '../cli/registry/capabilities/plugin_manifest_capability.dart';
 import 'cli_plugin_provision_cache.dart';
 import '../io/filesystem.dart';
 
@@ -14,12 +14,12 @@ class CliPluginLayout {
   static Future<String?> resolvePluginRoot(
     Filesystem fs,
     String dirPath, {
-    CliPluginManifestFlavor flavor = CliPluginManifestFlavor.claude,
+    PluginManifestPaths paths = claudePluginManifestPaths,
   }) async {
-    final primary = await _resolveWithManifest(fs, dirPath, flavor.manifestRelativePath);
+    final primary = await _resolveWithManifest(fs, dirPath, paths.manifestRelativePath);
     if (primary != null) return primary;
 
-    final fallbackPath = flavor.fallbackManifestRelativePath;
+    final fallbackPath = paths.fallbackManifestRelativePath;
     if (fallbackPath != null) {
       return _resolveWithManifest(fs, dirPath, fallbackPath);
     }
@@ -48,10 +48,10 @@ class CliPluginLayout {
   static Future<({String name, String version})?> readManifest(
     Filesystem fs,
     String pluginRoot, {
-    CliPluginManifestFlavor flavor = CliPluginManifestFlavor.claude,
+    PluginManifestPaths paths = claudePluginManifestPaths,
   }) async {
     final ctx = fs.pathContext;
-    for (final rel in _manifestCandidates(flavor)) {
+    for (final rel in _manifestCandidates(paths)) {
       final text = await fs.readString(ctx.join(pluginRoot, rel));
       if (text == null || text.trim().isEmpty) continue;
       try {
@@ -68,9 +68,9 @@ class CliPluginLayout {
     return null;
   }
 
-  static Iterable<String> _manifestCandidates(CliPluginManifestFlavor flavor) sync* {
-    yield flavor.manifestRelativePath;
-    final fallback = flavor.fallbackManifestRelativePath;
+  static Iterable<String> _manifestCandidates(PluginManifestPaths paths) sync* {
+    yield paths.manifestRelativePath;
+    final fallback = paths.fallbackManifestRelativePath;
     if (fallback != null) yield fallback;
   }
 
@@ -78,9 +78,9 @@ class CliPluginLayout {
   static Future<String> bundleDirName(
     Filesystem fs,
     String pluginRoot, {
-    CliPluginManifestFlavor flavor = CliPluginManifestFlavor.claude,
+    PluginManifestPaths paths = claudePluginManifestPaths,
   }) async {
-    final manifest = await readManifest(fs, pluginRoot, flavor: flavor);
+    final manifest = await readManifest(fs, pluginRoot, paths: paths);
     if (manifest != null) return manifest.name;
     return fs.pathContext.basename(pluginRoot);
   }
@@ -89,9 +89,9 @@ class CliPluginLayout {
   static Future<void> normalizeBundleForFlavor(
     Filesystem fs,
     String pluginRoot,
-    CliPluginManifestFlavor flavor,
+    PluginManifestPaths paths,
   ) async {
-    if (flavor != CliPluginManifestFlavor.flashskyai) return;
+    if (paths.manifestDirName != '.flashskyai-plugin') return;
     await _ensureFlashskyaiPluginManifest(fs, pluginRoot);
   }
 
@@ -113,7 +113,7 @@ class CliPluginLayout {
     final ctx = fs.pathContext;
     final flashskyaiManifest = ctx.join(
       pluginRoot,
-      CliPluginManifestFlavor.flashskyai.manifestRelativePath,
+      flashskyaiPluginManifestPaths.manifestRelativePath,
     );
     if ((await fs.stat(flashskyaiManifest)).isFile) return;
 
@@ -168,7 +168,7 @@ class CliPluginLayout {
     required Filesystem fs,
     required String teamPluginsDir,
     required String memberPluginsDir,
-    CliPluginManifestFlavor flavor = CliPluginManifestFlavor.claude,
+    PluginManifestPaths paths = claudePluginManifestPaths,
   }) async {
     final ctx = fs.pathContext;
     final teamStat = await fs.stat(teamPluginsDir);
@@ -178,7 +178,7 @@ class CliPluginLayout {
         fs: fs,
         teamPluginsDir: teamPluginsDir,
         memberPluginsDir: memberPluginsDir,
-        flavor: flavor,
+        paths: paths,
       );
       return await CliPluginProvisionCache.memberProvisionStampJson(
         fs: fs,
@@ -190,7 +190,7 @@ class CliPluginLayout {
       fs: fs,
       teamPluginsDir: teamPluginsDir,
       memberPluginsDir: memberPluginsDir,
-      flavor: flavor,
+      paths: paths,
     ) case final stampJson?) {
       return stampJson;
     }
@@ -206,9 +206,9 @@ class CliPluginLayout {
       teamEntries.map((entry) async {
         final source = ctx.join(teamPluginsDir, entry.name);
         if (!await isPluginBundleEntry(fs, source)) return null;
-        final root = await resolvePluginRoot(fs, source, flavor: flavor);
+        final root = await resolvePluginRoot(fs, source, paths: paths);
         if (root == null) return null;
-        final dirName = await bundleDirName(fs, root, flavor: flavor);
+        final dirName = await bundleDirName(fs, root, paths: paths);
         final dest = ctx.join(memberPluginsDir, dirName);
         var linked = await linkOrCopyTree(
           fs: fs,
@@ -217,7 +217,7 @@ class CliPluginLayout {
         );
         // Claude members must not inherit `.flashskyai-plugin` added on the team
         // root for symlinked FlashskyAI sessions — use an isolated copy instead.
-        if (flavor == CliPluginManifestFlavor.claude) {
+        if (paths.manifestDirName == '.claude-plugin') {
           if (linked) {
             await fs.removeRecursive(dest);
             linked = false;
@@ -227,11 +227,11 @@ class CliPluginLayout {
         } else if (linked) {
           // Symlinked member bundles share the team plugin root. FlashskyAI manifest
           // mirroring is a cheap symlink on the team root (also done at team install).
-          await normalizeBundleForFlavor(fs, root, flavor);
+          await normalizeBundleForFlavor(fs, root, paths);
         } else {
-          await normalizeBundleForFlavor(fs, dest, flavor);
+          await normalizeBundleForFlavor(fs, dest, paths);
         }
-        final manifest = await readManifest(fs, root, flavor: flavor);
+        final manifest = await readManifest(fs, root, paths: paths);
         final rootStat = await fs.stat(root);
         return {
           'dirName': dirName,
@@ -248,7 +248,7 @@ class CliPluginLayout {
       fs: fs,
       teamPluginsDir: teamPluginsDir,
       memberPluginsDir: memberPluginsDir,
-      flavor: flavor,
+      paths: paths,
       bundles: bundleStamps,
       teamPluginsMtimeMs: teamPluginsMtimeMs,
     );

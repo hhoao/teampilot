@@ -5,6 +5,7 @@ import '../../cubits/app_provider_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/app_provider_config.dart';
 import '../../models/team_config.dart';
+import '../../services/cli/registry/capabilities/provider_catalog_capability.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../dropdown/app_dropdown_field.dart';
 import '../dropdown/app_dropdown_decoration.dart';
@@ -23,11 +24,12 @@ class TeamToolProviderSelectors extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
+    final registry = CliToolRegistryScope.maybeOf(context);
     final providerCli =
-        CliToolRegistryScope.maybeOf(
-          context,
-        )?.tryGet(team.cli.value)?.providerCatalogCli ??
-        AppProviderCli.claude;
+        (registry != null &&
+            registry.capability<ProviderCatalogCapability>(team.cli) != null)
+        ? team.cli
+        : CliTool.claude;
     final providers = context.watch<AppProviderCubit>().state.providersFor(
       providerCli,
     );

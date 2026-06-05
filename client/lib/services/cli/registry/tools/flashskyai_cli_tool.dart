@@ -1,4 +1,4 @@
-import '../../../../models/app_provider_config.dart';
+import '../../../../models/team_config.dart';
 import '../../cli_tool_adapter.dart';
 import '../cli_capability.dart';
 import '../cli_tool_definition.dart';
@@ -20,6 +20,10 @@ final class FlashskyaiCliTool implements CliToolDefinition {
     this.executableResolver = const FlashskyaiExecutableResolver(),
     this.installer = const UnsupportedInstallerCapability(),
     this.presence = const FlashskyaiPresence(),
+    this.display = const FlashskyaiDisplay(),
+    this.terminalBehavior = const FlashskyaiTerminalBehavior(),
+    this.pluginManifest = const FlashskyaiPluginManifest(),
+    this.providerCatalog = const FlashskyaiProviderCatalog(),
   });
 
   final LaunchArgsCapability launchArgs;
@@ -28,15 +32,16 @@ final class FlashskyaiCliTool implements CliToolDefinition {
   final ExecutableResolverCapability executableResolver;
   final InstallerCapability installer;
   final PresenceCapability presence;
+  final FlashskyaiDisplay display;
+  final FlashskyaiTerminalBehavior terminalBehavior;
+  final FlashskyaiPluginManifest pluginManifest;
+  final FlashskyaiProviderCatalog providerCatalog;
 
   @override
-  String get id => 'flashskyai';
+  CliTool get id => CliTool.flashskyai;
 
   @override
   bool get isLaunchSupported => true;
-
-  @override
-  AppProviderCli? get providerCatalogCli => AppProviderCli.flashskyai;
 
   @override
   Iterable<CliCapability> get capabilities => [
@@ -46,5 +51,9 @@ final class FlashskyaiCliTool implements CliToolDefinition {
     executableResolver,
     installer,
     presence,
+    display,
+    terminalBehavior,
+    pluginManifest,
+    providerCatalog,
   ];
 }

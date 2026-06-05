@@ -48,7 +48,6 @@ import '../services/team_hub/git_registry_team_hub_source.dart';
 import '../services/team_hub/team_hub_dependency_installers.dart';
 import '../services/team_hub/team_hub_favorites_store.dart';
 import '../services/cli/cli_tool_locator.dart';
-import '../services/cli/registry/built_in_cli_tools.dart';
 import '../services/cli/registry/cli_tool_registry.dart';
 import '../services/app/connection_mode_service.dart';
 import '../services/cli/flashskyai_cli_locator.dart';
@@ -140,21 +139,20 @@ Future<AppShell> buildAppShell({
   void boot(String phase) => appLogger.i('[boot] $phase');
 
   boot('start');
-  final cliToolRegistry = CliToolRegistry();
-  registerBuiltInCliTools(cliToolRegistry);
-  final locatedExecutables = <TeamCli, String>{};
+  final cliToolRegistry = CliToolRegistry.builtIn();
+  final locatedExecutables = <CliTool, String>{};
   if (!Platform.isAndroid) {
     boot('locating CLI tools');
     final flashskyaiLocated = await FlashskyaiCliLocator.locate();
     if (flashskyaiLocated != null && flashskyaiLocated.isNotEmpty) {
-      locatedExecutables[TeamCli.flashskyai] = flashskyaiLocated;
+      locatedExecutables[CliTool.flashskyai] = flashskyaiLocated;
     }
     final claudeLocated = await const CliToolLocator('claude').locate();
     if (claudeLocated != null && claudeLocated.isNotEmpty) {
-      locatedExecutables[TeamCli.claude] = claudeLocated;
+      locatedExecutables[CliTool.claude] = claudeLocated;
     }
   }
-  final cliLocated = locatedExecutables[TeamCli.flashskyai];
+  final cliLocated = locatedExecutables[CliTool.flashskyai];
 
   final appSettings = SharedPrefsAppSettingsRepository(preferences);
   final sessionPreferencesCubit = SessionPreferencesCubit(
@@ -241,7 +239,7 @@ Future<AppShell> buildAppShell({
     credentialStore: sshCredentialStore,
     locateRemoteCliPath: remoteCliLocator.locate,
     onRemoteCliLocated: (path) =>
-        sessionPreferencesCubit.setCliExecutablePathFor(TeamCli.claude, path),
+        sessionPreferencesCubit.setCliExecutablePathFor(CliTool.claude, path),
     invalidateProfileConnection: sshClientFactory.disconnectProfile,
     enableRemoteCliDiscovery: () =>
         Platform.isAndroid &&
@@ -308,7 +306,7 @@ Future<AppShell> buildAppShell({
   appProviderCubit = AppProviderCubit(
     flashskyaiExecutablePath: sessionPreferencesCubit.resolveExecutable,
     claudeExecutablePath: () =>
-        sessionPreferencesCubit.resolveExecutable(TeamCli.claude),
+        sessionPreferencesCubit.resolveExecutable(CliTool.claude),
   );
 
   llmConfigCubit = LlmConfigCubit(

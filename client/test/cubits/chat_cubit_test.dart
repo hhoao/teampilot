@@ -306,7 +306,7 @@ void main() {
       final cubit = ChatCubit(
         executableResolver: () => 'flashskyai',
         cliExecutableResolver: (cli) =>
-            cli == TeamCli.claude ? '/opt/bin/claude' : 'flashskyai',
+            cli == CliTool.claude ? '/opt/bin/claude' : 'flashskyai',
         terminalSessionFactory:
             ({required String executable, int scrollbackLines = 10000}) {
           executables.add(executable);
@@ -318,7 +318,7 @@ void main() {
       const team = TeamConfig(
         id: 'team-a',
         name: 'A',
-        cli: TeamCli.claude,
+        cli: CliTool.claude,
         members: [TeamMemberConfig(id: 'm-lead', name: 'team-lead')],
       );
 
@@ -482,13 +482,13 @@ void main() {
         const team = TeamConfig(
           id: 'team-a',
           name: 'A',
-          cli: TeamCli.flashskyai,
+          cli: CliTool.flashskyai,
           teamMode: TeamMode.mixed,
           members: [
             TeamMemberConfig(
               id: 'm-lead',
               name: 'team-lead',
-              cli: TeamCli.claude,
+              cli: CliTool.claude,
             ),
           ],
         );
@@ -505,7 +505,7 @@ void main() {
         final cubit = ChatCubit(
           executableResolver: () => 'flashskyai',
           cliExecutableResolver: (cli) =>
-              cli == TeamCli.claude ? 'claude' : 'flashskyai',
+              cli == CliTool.claude ? 'claude' : 'flashskyai',
           sessionRepository: repo,
           terminalSessionFactory:
               ({required String executable, int scrollbackLines = 10000}) {

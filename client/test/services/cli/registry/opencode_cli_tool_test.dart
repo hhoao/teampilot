@@ -1,23 +1,28 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/session/launch_command_builder.dart';
+import 'package:teampilot/services/cli/registry/capabilities/provider_catalog_capability.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
-import 'package:teampilot/services/cli/registry/built_in_cli_tools.dart';
 
 void main() {
   test('opencode tool is registered and launch-supported', () {
-    final registry = CliToolRegistry();
-    registerBuiltInCliTools(registry);
+    final registry = CliToolRegistry.builtIn();
 
-    final tool = registry.tryGet('opencode');
+    final tool = registry.tryGet(CliTool.opencode);
     expect(tool, isNotNull);
     expect(tool!.isLaunchSupported, isTrue);
-    expect(tool.providerCatalogCli, isNull);
-    expect(registry.launchable.map((d) => d.id), contains('opencode'));
+    expect(
+      registry.capability<ProviderCatalogCapability>(CliTool.opencode),
+      isNull,
+    );
+    expect(
+      registry.launchable.map((d) => d.id),
+      contains(CliTool.opencode),
+    );
   });
 
   test('LaunchCommandBuilder builds opencode args end-to-end', () {
-    const team = TeamConfig(id: 't', name: 'agent', cli: TeamCli.opencode);
+    const team = TeamConfig(id: 't', name: 'agent', cli: CliTool.opencode);
     const member = TeamMemberConfig(
       id: 'm',
       name: 'planner',

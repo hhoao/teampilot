@@ -132,7 +132,7 @@ class TeamRepository {
 
     if (destroyCliState) {
       final cleanupTeamId = cliStateTeamId?.trim();
-      await _lifecycleService?.destroyTeamCliState(
+      await _lifecycleService?.destroyCliToolState(
         cleanupTeamId != null && cleanupTeamId.isNotEmpty
             ? cleanupTeamId
             : trimmed,

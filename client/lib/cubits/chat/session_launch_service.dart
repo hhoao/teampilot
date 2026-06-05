@@ -110,7 +110,7 @@ class SessionLaunchService implements MemberConnector {
     final ts = _h.shellFactory.newSession(
       team != null && member != null
           ? member.cliWithin(team)
-          : (team?.cli ?? TeamCli.flashskyai),
+          : (team?.cli ?? CliTool.flashskyai),
     );
     final info = ChatTabInfo(
       id: session.sessionId,

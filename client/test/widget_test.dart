@@ -758,7 +758,7 @@ void main() {
       const team = TeamConfig(
         id: 'test-team',
         name: 'Test',
-        cli: TeamCli.claude,
+        cli: CliTool.claude,
         members: [
           TeamMemberConfig(id: 'team-lead', name: 'team-lead', model: 'opus'),
           TeamMemberConfig(id: 'dev', name: 'developer', model: 'sonnet'),

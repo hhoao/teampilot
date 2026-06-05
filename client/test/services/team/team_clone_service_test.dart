@@ -9,7 +9,7 @@ DiscoverableTeam team() => const DiscoverableTeam(
       description: 'd',
       category: 'AI',
       updatedAt: 1,
-      cli: TeamCli.claude,
+      cli: CliTool.claude,
       teamMode: TeamMode.mixed,
       members: [DiscoverableTeamMember(name: 'team-lead')],
       skillDeps: [

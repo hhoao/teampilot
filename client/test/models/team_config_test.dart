@@ -142,36 +142,21 @@ void main() {
   });
 
   test('round trips cli and defaults to flashskyai for legacy json', () {
-    const team = TeamConfig(id: 'team-1', name: 'hello', cli: TeamCli.codex);
+    const team = TeamConfig(id: 'team-1', name: 'hello', cli: CliTool.codex);
     final decoded = TeamConfig.fromJson(team.toJson());
-    expect(decoded.cli, TeamCli.codex);
+    expect(decoded.cli, CliTool.codex);
 
     final legacy = TeamConfig.fromJson({'id': 't', 'name': 'T'});
-    expect(legacy.cli, TeamCli.flashskyai);
+    expect(legacy.cli, CliTool.flashskyai);
     expect(legacy.toJson().containsKey('cli'), isFalse);
   });
 
-  test('launch support includes flashskyai, claude, and codex', () {
-    expect(TeamCli.flashskyai.isLaunchSupported, isTrue);
-    expect(TeamCli.claude.isLaunchSupported, isTrue);
-    expect(TeamCli.codex.isLaunchSupported, isTrue);
-  });
+  test('opencode round-trips through json', () {
+    expect(CliTool.decode('opencode'), CliTool.opencode);
 
-  test('alternate-screen TUIs (claude, codex) need full-screen stdin submit',
-      () {
-    expect(TeamCli.claude.usesFullScreenInput, isTrue);
-    expect(TeamCli.codex.usesFullScreenInput, isTrue);
-    expect(TeamCli.flashskyai.usesFullScreenInput, isFalse);
-    expect(TeamCli.opencode.usesFullScreenInput, isFalse);
-  });
-
-  test('opencode is launch supported and round-trips through json', () {
-    expect(TeamCli.opencode.isLaunchSupported, isTrue);
-    expect(TeamCli.decode('opencode'), TeamCli.opencode);
-
-    const team = TeamConfig(id: 't', name: 'T', cli: TeamCli.opencode);
+    const team = TeamConfig(id: 't', name: 'T', cli: CliTool.opencode);
     final decoded = TeamConfig.fromJson(team.toJson());
-    expect(decoded.cli, TeamCli.opencode);
+    expect(decoded.cli, CliTool.opencode);
     expect(team.toJson()['cli'], 'opencode');
   });
 
@@ -234,21 +219,21 @@ void main() {
   });
 
   test('member.cli is honored only in mixed mode', () {
-    const nativeTeam = TeamConfig(id: 't', name: 'T', cli: TeamCli.claude);
+    const nativeTeam = TeamConfig(id: 't', name: 'T', cli: CliTool.claude);
     const mixedTeam = TeamConfig(
       id: 't',
       name: 'T',
-      cli: TeamCli.claude,
+      cli: CliTool.claude,
       teamMode: TeamMode.mixed,
     );
-    const m = TeamMemberConfig(id: 'm', name: 'a', cli: TeamCli.flashskyai);
+    const m = TeamMemberConfig(id: 'm', name: 'a', cli: CliTool.flashskyai);
     const inherit = TeamMemberConfig(id: 'm2', name: 'b');
 
-    expect(m.cliWithin(nativeTeam), TeamCli.claude); // native ignores member.cli
-    expect(m.cliWithin(mixedTeam), TeamCli.flashskyai); // mixed honors it
-    expect(inherit.cliWithin(mixedTeam), TeamCli.claude); // mixed fallback
+    expect(m.cliWithin(nativeTeam), CliTool.claude); // native ignores member.cli
+    expect(m.cliWithin(mixedTeam), CliTool.flashskyai); // mixed honors it
+    expect(inherit.cliWithin(mixedTeam), CliTool.claude); // mixed fallback
 
-    expect(TeamMemberConfig.fromJson(m.toJson()).cli, TeamCli.flashskyai);
+    expect(TeamMemberConfig.fromJson(m.toJson()).cli, CliTool.flashskyai);
     expect(m.toJson()['cli'], 'flashskyai');
     expect(inherit.toJson().containsKey('cli'), isFalse);
   });

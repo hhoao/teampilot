@@ -6,7 +6,7 @@ void main() {
   test('includes defaultModel and config models map entries', () {
     const provider = AppProviderConfig(
       id: 'deepseek',
-      cli: AppProviderCli.claude,
+      cli: CliTool.claude,
       name: 'DeepSeek',
       defaultModel: 'deepseek-v4-pro',
       config: {
@@ -28,7 +28,7 @@ void main() {
   test('appends currentModel when not already listed', () {
     const provider = AppProviderConfig(
       id: 'custom',
-      cli: AppProviderCli.claude,
+      cli: CliTool.claude,
       name: 'Custom',
       defaultModel: 'preset-model',
     );
@@ -42,7 +42,7 @@ void main() {
   test('returns empty list when provider has no model sources', () {
     const provider = AppProviderConfig(
       id: 'claude-official',
-      cli: AppProviderCli.claude,
+      cli: CliTool.claude,
       name: 'Claude Official',
     );
 

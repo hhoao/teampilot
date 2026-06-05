@@ -401,7 +401,7 @@ void main() {
     const team = TeamConfig(
       id: 'team',
       name: 'default-team-0',
-      cli: TeamCli.claude,
+      cli: CliTool.claude,
     );
     const lead = TeamMemberConfig(id: 'team-lead', name: 'team-lead');
     const dev = TeamMemberConfig(id: 'dev', name: 'developer');
@@ -467,7 +467,7 @@ void main() {
     const team = TeamConfig(
       id: 'team',
       name: 'default-team-0',
-      cli: TeamCli.flashskyai,
+      cli: CliTool.flashskyai,
     );
     const lead = TeamMemberConfig(id: 'team-lead', name: 'team-lead');
     const dev = TeamMemberConfig(id: 'dev', name: 'developer');
@@ -886,7 +886,7 @@ void main() {
     const team = TeamConfig(
       id: 'team',
       name: 'default-team-0',
-      cli: TeamCli.flashskyai,
+      cli: CliTool.flashskyai,
     );
     const member = TeamMemberConfig(id: 'member', name: 'team-lead');
     session.connect(

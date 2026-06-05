@@ -11,7 +11,7 @@ void main() {
 
   Future<SessionPreferencesCubit> makeCubit({
     String? located,
-    Map<TeamCli, String> locatedExecutables = const {},
+    Map<CliTool, String> locatedExecutables = const {},
   }) async {
     final prefs = await SharedPreferences.getInstance();
     return SessionPreferencesCubit(
@@ -25,7 +25,7 @@ void main() {
     final cubit = await makeCubit(located: '/usr/local/bin/flashskyai');
     await cubit.load();
     await cubit.setCliExecutablePathFor(
-      TeamCli.flashskyai,
+      CliTool.flashskyai,
       '/opt/custom/flashskyai',
     );
 
@@ -55,7 +55,7 @@ void main() {
   test('setCliExecutablePathFor flashskyai persists and emits new state', () async {
     final cubit = await makeCubit(located: null);
     await cubit.load();
-    await cubit.setCliExecutablePathFor(TeamCli.flashskyai, '/a/b/flashskyai');
+    await cubit.setCliExecutablePathFor(CliTool.flashskyai, '/a/b/flashskyai');
 
     expect(
       cubit.state.preferences.cliExecutablePathFor('flashskyai'),
@@ -118,7 +118,7 @@ void main() {
     () async {
       final cubit = await makeCubit(located: '/located');
       await cubit.load();
-      await cubit.setCliExecutablePathFor(TeamCli.flashskyai, '   ');
+      await cubit.setCliExecutablePathFor(CliTool.flashskyai, '   ');
 
       expect(cubit.state.preferences.cliExecutablePathFor('flashskyai'), '');
       expect(cubit.resolveExecutable(), '/located');
@@ -130,32 +130,32 @@ void main() {
     () async {
       final cubit = await makeCubit(
         locatedExecutables: const {
-          TeamCli.flashskyai: '/usr/local/bin/flashskyai',
-          TeamCli.claude: '/usr/local/bin/claude',
+          CliTool.flashskyai: '/usr/local/bin/flashskyai',
+          CliTool.claude: '/usr/local/bin/claude',
         },
       );
       await cubit.load();
 
       expect(
-        cubit.resolveExecutable(TeamCli.flashskyai),
+        cubit.resolveExecutable(CliTool.flashskyai),
         '/usr/local/bin/flashskyai',
       );
-      expect(cubit.resolveExecutable(TeamCli.claude), '/usr/local/bin/claude');
-      expect(cubit.resolveExecutable(TeamCli.codex), 'codex');
+      expect(cubit.resolveExecutable(CliTool.claude), '/usr/local/bin/claude');
+      expect(cubit.resolveExecutable(CliTool.codex), 'codex');
     },
   );
 
   test('setCliExecutablePathFor persists tool-specific paths', () async {
     final cubit = await makeCubit(
-      locatedExecutables: const {TeamCli.claude: '/usr/local/bin/claude'},
+      locatedExecutables: const {CliTool.claude: '/usr/local/bin/claude'},
     );
     await cubit.load();
-    await cubit.setCliExecutablePathFor(TeamCli.claude, ' /opt/claude ');
+    await cubit.setCliExecutablePathFor(CliTool.claude, ' /opt/claude ');
 
     expect(cubit.state.preferences.cliExecutablePaths, {
       'claude': '/opt/claude',
     });
-    expect(cubit.resolveExecutable(TeamCli.claude), '/opt/claude');
+    expect(cubit.resolveExecutable(CliTool.claude), '/opt/claude');
 
     final cubit2 = await makeCubit();
     await cubit2.load();
@@ -166,13 +166,13 @@ void main() {
 
   test('setCliExecutablePathFor clears blank non-flashskyai paths', () async {
     final cubit = await makeCubit(
-      locatedExecutables: const {TeamCli.claude: '/usr/local/bin/claude'},
+      locatedExecutables: const {CliTool.claude: '/usr/local/bin/claude'},
     );
     await cubit.load();
-    await cubit.setCliExecutablePathFor(TeamCli.claude, '/opt/claude');
-    await cubit.setCliExecutablePathFor(TeamCli.claude, '   ');
+    await cubit.setCliExecutablePathFor(CliTool.claude, '/opt/claude');
+    await cubit.setCliExecutablePathFor(CliTool.claude, '   ');
 
     expect(cubit.state.preferences.cliExecutablePaths, isEmpty);
-    expect(cubit.resolveExecutable(TeamCli.claude), '/usr/local/bin/claude');
+    expect(cubit.resolveExecutable(CliTool.claude), '/usr/local/bin/claude');
   });
 }

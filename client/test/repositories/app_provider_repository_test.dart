@@ -29,29 +29,29 @@ void main() {
   });
 
   test('loads empty list when cli providers file is missing', () async {
-    expect(await repo.loadProviders(AppProviderCli.claude), isEmpty);
-    expect(await repo.loadProviders(AppProviderCli.codex), isEmpty);
-    expect(await repo.loadProviders(AppProviderCli.flashskyai), isEmpty);
+    expect(await repo.loadProviders(CliTool.claude), isEmpty);
+    expect(await repo.loadProviders(CliTool.codex), isEmpty);
+    expect(await repo.loadProviders(CliTool.flashskyai), isEmpty);
   });
 
   test('saves and reloads providers under cli-specific catalogs', () async {
     const claudeProvider = AppProviderConfig(
       id: 'deepseek',
-      cli: AppProviderCli.claude,
+      cli: CliTool.claude,
       name: 'DeepSeek',
       baseUrl: 'https://api.deepseek.com/anthropic',
       defaultModel: 'deepseek-v4-pro',
     );
     const codexProvider = AppProviderConfig(
       id: 'deepseek',
-      cli: AppProviderCli.codex,
+      cli: CliTool.codex,
       name: 'DeepSeek',
       baseUrl: 'https://api.deepseek.com/v1',
       defaultModel: 'gpt-5.4',
     );
 
-    await repo.saveProviders(AppProviderCli.claude, [claudeProvider]);
-    await repo.saveProviders(AppProviderCli.codex, [codexProvider]);
+    await repo.saveProviders(CliTool.claude, [claudeProvider]);
+    await repo.saveProviders(CliTool.codex, [codexProvider]);
 
     expect(
       await File(
@@ -60,11 +60,11 @@ void main() {
       isFalse,
     );
     expect(
-      (await repo.loadProviders(AppProviderCli.claude)).single.baseUrl,
+      (await repo.loadProviders(CliTool.claude)).single.baseUrl,
       'https://api.deepseek.com/anthropic',
     );
     expect(
-      (await repo.loadProviders(AppProviderCli.codex)).single.baseUrl,
+      (await repo.loadProviders(CliTool.codex)).single.baseUrl,
       'https://api.deepseek.com/v1',
     );
   });
@@ -80,23 +80,23 @@ void main() {
 }
 ''');
 
-    expect(await repo.loadProviders(AppProviderCli.claude), isEmpty);
+    expect(await repo.loadProviders(CliTool.claude), isEmpty);
   });
 
   test('preserves apiKey within the same cli when edit leaves it empty', () async {
     const original = AppProviderConfig(
       id: 'deepseek',
-      cli: AppProviderCli.claude,
+      cli: CliTool.claude,
       name: 'DeepSeek',
       apiKey: 'sk-secret',
     );
-    await repo.saveProviders(AppProviderCli.claude, [original]);
+    await repo.saveProviders(CliTool.claude, [original]);
 
-    await repo.saveProviders(AppProviderCli.claude, [
+    await repo.saveProviders(CliTool.claude, [
       original.copyWith(name: 'DeepSeek Renamed', apiKey: ''),
     ]);
 
-    final loaded = await repo.loadProviders(AppProviderCli.claude);
+    final loaded = await repo.loadProviders(CliTool.claude);
     expect(loaded.single.apiKey, 'sk-secret');
     expect(loaded.single.name, 'DeepSeek Renamed');
   });
@@ -104,14 +104,14 @@ void main() {
   test('writes native codex files for codex providers only', () async {
     const provider = AppProviderConfig(
       id: 'deepseek',
-      cli: AppProviderCli.codex,
+      cli: CliTool.codex,
       name: 'DeepSeek',
       apiKey: 'sk-test',
       baseUrl: 'https://api.deepseek.com/v1',
       defaultModel: 'gpt-5.4',
     );
 
-    await repo.saveProviders(AppProviderCli.codex, [provider]);
+    await repo.saveProviders(CliTool.codex, [provider]);
 
     expect(
       await File(
@@ -130,7 +130,7 @@ void main() {
   test('writes app flashskyai llm_config.json from flashskyai catalog', () async {
     const provider = AppProviderConfig(
       id: 'deepseek',
-      cli: AppProviderCli.flashskyai,
+      cli: CliTool.flashskyai,
       name: 'DeepSeek',
       apiKey: 'sk-test',
       baseUrl: 'https://api.deepseek.com',
@@ -138,7 +138,7 @@ void main() {
       config: {'provider_type': 'openai'},
     );
 
-    await repo.saveProviders(AppProviderCli.flashskyai, [provider]);
+    await repo.saveProviders(CliTool.flashskyai, [provider]);
 
     final appFile = File(
       p.join(
@@ -180,11 +180,11 @@ void main() {
       final dynamicRepo = AppProviderRepository();
       const provider = AppProviderConfig(
         id: 'test',
-        cli: AppProviderCli.claude,
+        cli: CliTool.claude,
         name: 'Test Provider',
       );
-      await dynamicRepo.saveProviders(AppProviderCli.claude, [provider]);
-      expect(await dynamicRepo.loadProviders(AppProviderCli.claude), hasLength(1));
+      await dynamicRepo.saveProviders(CliTool.claude, [provider]);
+      expect(await dynamicRepo.loadProviders(CliTool.claude), hasLength(1));
 
       await RuntimeStorageContext.install(
         isSshMode: false,
@@ -194,7 +194,7 @@ void main() {
         windowsStorageBackend: WindowsStorageBackend.native,
       );
 
-      expect(await dynamicRepo.loadProviders(AppProviderCli.claude), isEmpty);
+      expect(await dynamicRepo.loadProviders(CliTool.claude), isEmpty);
 
       await RuntimeStorageContext.install(
         isSshMode: false,
@@ -204,19 +204,19 @@ void main() {
         windowsStorageBackend: WindowsStorageBackend.native,
       );
 
-      expect(await dynamicRepo.loadProviders(AppProviderCli.claude), hasLength(1));
+      expect(await dynamicRepo.loadProviders(CliTool.claude), hasLength(1));
     },
   );
 
   test('removes stale codex provider directories', () async {
     const provider = AppProviderConfig(
       id: 'deepseek',
-      cli: AppProviderCli.codex,
+      cli: CliTool.codex,
       name: 'DeepSeek',
       apiKey: 'sk-test',
       baseUrl: 'https://api.deepseek.com/v1',
     );
-    await repo.saveProviders(AppProviderCli.codex, [provider]);
+    await repo.saveProviders(CliTool.codex, [provider]);
 
     expect(
       await Directory(
@@ -225,7 +225,7 @@ void main() {
       isTrue,
     );
 
-    await repo.saveProviders(AppProviderCli.codex, const []);
+    await repo.saveProviders(CliTool.codex, const []);
 
     expect(
       await Directory(

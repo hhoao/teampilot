@@ -4550,6 +4550,12 @@ abstract class AppLocalizations {
   /// **'Claude Code'**
   String get appProviderToolClaude;
 
+  /// No description provided for @appProviderToolOpencode.
+  ///
+  /// In en, this message translates to:
+  /// **'OpenCode'**
+  String get appProviderToolOpencode;
+
   /// No description provided for @appProviderTeamToolSection.
   ///
   /// In en, this message translates to:
