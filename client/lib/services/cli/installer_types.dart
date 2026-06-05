@@ -5,7 +5,7 @@ enum CliInstallMode { local, ssh }
 enum CliInstallPhase {
   checkingNpm,
   bootstrappingNode,
-  installingClaude,
+  installingCli,
   locatingExecutable,
 }
 

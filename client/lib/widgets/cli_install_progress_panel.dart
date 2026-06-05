@@ -66,7 +66,7 @@ class CliInstallProgressPanel extends StatelessWidget {
     return switch (phase) {
       CliInstallPhase.checkingNpm => l10n.cliInstallProgressCheckingNpm,
       CliInstallPhase.bootstrappingNode => l10n.cliInstallProgressBootstrappingNode,
-      CliInstallPhase.installingClaude => l10n.cliInstallProgressInstallingClaude,
+      CliInstallPhase.installingCli => l10n.cliInstallProgressInstallingCli,
       CliInstallPhase.locatingExecutable =>
         l10n.cliInstallProgressLocatingExecutable,
     };

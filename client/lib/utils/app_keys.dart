@@ -75,6 +75,26 @@ class AppKeys {
     'claude-cli-executable-path-reset-button',
   );
   static const claudeCliInstallButton = Key('claude-cli-install-button');
+  static const codexCliExecutablePathField = Key(
+    'codex-cli-executable-path-field',
+  );
+  static const codexCliExecutablePathBrowseButton = Key(
+    'codex-cli-executable-path-browse-button',
+  );
+  static const codexCliExecutablePathResetButton = Key(
+    'codex-cli-executable-path-reset-button',
+  );
+  static const codexCliInstallButton = Key('codex-cli-install-button');
+  static const opencodeCliExecutablePathField = Key(
+    'opencode-cli-executable-path-field',
+  );
+  static const opencodeCliExecutablePathBrowseButton = Key(
+    'opencode-cli-executable-path-browse-button',
+  );
+  static const opencodeCliExecutablePathResetButton = Key(
+    'opencode-cli-executable-path-reset-button',
+  );
+  static const opencodeCliInstallButton = Key('opencode-cli-install-button');
   static const llmConfigPathOverrideField = Key(
     'llm-config-path-override-field',
   );

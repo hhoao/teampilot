@@ -83,7 +83,7 @@ void main() {
     ]);
     expect(phases, [
       CliInstallPhase.checkingNpm,
-      CliInstallPhase.installingClaude,
+      CliInstallPhase.installingCli,
       CliInstallPhase.locatingExecutable,
     ]);
   });

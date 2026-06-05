@@ -6,11 +6,11 @@ import '../capabilities/built_in_tool_capabilities.dart';
 import '../capabilities/config_profile_capability.dart';
 import '../capabilities/executable_resolver_capability.dart';
 import '../capabilities/installer_capability.dart';
-import '../capabilities/unsupported_installer_capability.dart';
 import '../capabilities/launch_args_capability.dart';
 import '../capabilities/presence_capability.dart';
 import '../capabilities/transcript_probe_capability.dart';
 import '../config_profile/opencode_config_profile_capability.dart';
+import '../installer/opencode_installer_capability.dart';
 
 final class OpencodeCliTool implements CliToolDefinition {
   const OpencodeCliTool({
@@ -18,7 +18,7 @@ final class OpencodeCliTool implements CliToolDefinition {
     this.configProfile = const OpencodeConfigProfileCapability(),
     this.transcriptProbe = const OpencodeTranscriptProbe(),
     this.executableResolver = const OpencodeExecutableResolver(),
-    this.installer = const UnsupportedInstallerCapability(),
+    this.installer = const OpencodeInstallerCapability(),
     this.presence = const OpencodePresence(),
     this.display = const OpencodeDisplay(),
     this.terminalBehavior = const OpencodeTerminalBehavior(),

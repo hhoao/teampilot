@@ -39,17 +39,32 @@ abstract final class SidebarActionMenuMetrics {
     );
   }
 
-  /// Transparent shell so [SidebarActionMenuPanel] draws border and shadow.
-  static MenuStyle menuAnchorStyle({required double minWidth}) {
+  /// [MenuAnchor] shell: rounded border and shadow on the menu surface itself.
+  ///
+  /// Inner [SidebarActionMenuPanel] must use [menuAnchorShell] so its
+  /// [panelDecoration] is not clipped at the corners by the anchor.
+  static MenuStyle menuAnchorStyle(
+    BuildContext context, {
+    required double minWidth,
+  }) {
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return MenuStyle(
       padding: const WidgetStatePropertyAll(EdgeInsets.zero),
       minimumSize: WidgetStatePropertyAll(Size(minWidth, 0)),
       maximumSize: WidgetStatePropertyAll(Size(minWidth * 2, double.infinity)),
-      backgroundColor: const WidgetStatePropertyAll(Colors.transparent),
+      backgroundColor: WidgetStatePropertyAll(cs.surfaceContainer),
       surfaceTintColor: const WidgetStatePropertyAll(Colors.transparent),
-      elevation: const WidgetStatePropertyAll(0),
-      shadowColor: const WidgetStatePropertyAll(Colors.transparent),
-      side: const WidgetStatePropertyAll(BorderSide.none),
+      elevation: const WidgetStatePropertyAll(8),
+      shadowColor: WidgetStatePropertyAll(
+        Colors.black.withValues(alpha: isDark ? 0.42 : 0.1),
+      ),
+      shape: WidgetStatePropertyAll(
+        RoundedRectangleBorder(
+          borderRadius: panelRadius,
+          side: BorderSide(color: cs.outlineVariant),
+        ),
+      ),
     );
   }
 }
@@ -77,31 +92,38 @@ class SidebarActionMenuPanel extends StatelessWidget {
     super.key,
     required this.children,
     this.minWidth = SidebarActionMenuMetrics.minWidth,
+    this.menuAnchorShell = false,
   });
 
   final List<Widget> children;
   final double minWidth;
 
+  /// When true, border and shadow are drawn by [menuAnchorStyle] on
+  /// [MenuAnchor]; this panel only supplies padding and content.
+  final bool menuAnchorShell;
+
   @override
   Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: SidebarActionMenuMetrics.panelDecoration(context),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(
-          SidebarActionMenuMetrics.panelPaddingHorizontal,
-          SidebarActionMenuMetrics.panelPaddingTop,
-          SidebarActionMenuMetrics.panelPaddingHorizontal,
-          SidebarActionMenuMetrics.panelPaddingBottom,
-        ),
-        child: ConstrainedBox(
-          constraints: BoxConstraints(minWidth: minWidth),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: _interleaveSidebarMenuItemGap(children),
-          ),
+    final padding = Padding(
+      padding: const EdgeInsets.fromLTRB(
+        SidebarActionMenuMetrics.panelPaddingHorizontal,
+        SidebarActionMenuMetrics.panelPaddingTop,
+        SidebarActionMenuMetrics.panelPaddingHorizontal,
+        SidebarActionMenuMetrics.panelPaddingBottom,
+      ),
+      child: ConstrainedBox(
+        constraints: BoxConstraints(minWidth: minWidth),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: _interleaveSidebarMenuItemGap(children),
         ),
       ),
+    );
+    if (menuAnchorShell) return padding;
+    return DecoratedBox(
+      decoration: SidebarActionMenuMetrics.panelDecoration(context),
+      child: padding,
     );
   }
 }
@@ -290,7 +312,10 @@ class SidebarActionMenuIconAnchor extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MenuAnchor(
-      style: SidebarActionMenuMetrics.menuAnchorStyle(minWidth: minWidth),
+      style: SidebarActionMenuMetrics.menuAnchorStyle(
+        context,
+        minWidth: minWidth,
+      ),
       onOpen: onOpen,
       onClose: onClose,
       builder: (context, controller, child) {
@@ -316,6 +341,7 @@ class SidebarActionMenuIconAnchor extends StatelessWidget {
             if (controller == null) return const SizedBox.shrink();
             return SidebarActionMenuPanel(
               minWidth: minWidth,
+              menuAnchorShell: true,
               children: buildMenuChildren(context, controller),
             );
           },

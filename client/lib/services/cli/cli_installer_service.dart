@@ -6,7 +6,6 @@ import '../../models/ssh_profile.dart';
 import '../../models/team_config.dart';
 import 'cli_tool_locator.dart';
 import 'installer_types.dart';
-import 'registry/built_in_cli_tools.dart';
 import 'registry/capabilities/installer_capability.dart';
 import 'registry/cli_tool_registry.dart';
 import 'registry/installer/installer_context.dart';

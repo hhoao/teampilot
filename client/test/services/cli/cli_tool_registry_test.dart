@@ -1,11 +1,12 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/team_config.dart';
-import 'package:teampilot/services/cli/registry/built_in_cli_tools.dart';
 import 'package:teampilot/services/cli/registry/capabilities/config_profile_capability.dart';
 import 'package:teampilot/services/cli/registry/capabilities/installer_capability.dart';
 import 'package:teampilot/services/cli/registry/capabilities/launch_args_capability.dart';
 import 'package:teampilot/services/cli/registry/capabilities/provider_catalog_capability.dart';
 import 'package:teampilot/services/cli/registry/installer/claude_installer_capability.dart';
+import 'package:teampilot/services/cli/registry/installer/codex_installer_capability.dart';
+import 'package:teampilot/services/cli/registry/installer/opencode_installer_capability.dart';
 import 'package:teampilot/services/cli/registry/cli_capability.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_definition.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
@@ -64,6 +65,22 @@ void main() {
     final registry = CliToolRegistry.builtIn();
     final installer = registry.capability<InstallerCapability>(CliTool.claude);
     expect(installer, isA<ClaudeInstallerCapability>());
+    expect(installer!.supportsInstaller, isTrue);
+  });
+
+  test('codex built-in has npm InstallerCapability with install support', () {
+    final registry = CliToolRegistry.builtIn();
+    final installer = registry.capability<InstallerCapability>(CliTool.codex);
+    expect(installer, isA<CodexInstallerCapability>());
+    expect(installer!.supportsInstaller, isTrue);
+  });
+
+  test('opencode built-in has npm InstallerCapability with install support', () {
+    final registry = CliToolRegistry.builtIn();
+    final installer = registry.capability<InstallerCapability>(
+      CliTool.opencode,
+    );
+    expect(installer, isA<OpencodeInstallerCapability>());
     expect(installer!.supportsInstaller, isTrue);
   });
 
