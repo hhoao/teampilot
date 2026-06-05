@@ -97,7 +97,11 @@ class TeamBus implements CoordinationView {
     final t = PresenceReducer.reduce(
       Presence(node.lifecycle, node.activity),
       event,
-      PresenceContext(memberId: node.memberId, hasUnread: !node.inbox.isEmpty),
+      PresenceContext(
+        memberId: node.memberId,
+        hasUnread: !node.inbox.isEmpty,
+        doorbelled: node.doorbelled,
+      ),
     );
     node.lifecycle = t.presence.lifecycle;
     node.activity = t.presence.activity;
@@ -118,6 +122,8 @@ class TeamBus implements CoordinationView {
   List<BusEffect> _observe(AgentNode node, List<BusEffect> effects) {
     for (final e in effects) {
       if (e is DoorbellEffect) {
+        // 置幂等闸：同一未读的后续 idle 边不再重复响门铃，直到成员进 wait 消费。
+        node.doorbelled = true;
         _env.events.emit(MemberDoorbelled(e.memberId));
       }
     }
@@ -182,6 +188,7 @@ class TeamBus implements CoordinationView {
     if (node == null) {
       return const <TeamMessage>[];
     }
+    node.doorbelled = false; // 进 wait = 响应了门铃并开始消费 → 解闸，读完后新邮件再响。
     _apply(node, const WaitEntered());
     try {
       final batch = await node.inbox.waitAndTake(timeout: timeout, cancel: cancel);
@@ -224,6 +231,7 @@ class TeamBus implements CoordinationView {
     if (node == null) return const EmptyWork();
     // team-lead 永不自动认领任务；非 mixed 模式 _taskQueue 为空 → 纯消息等待。
     final queue = node.profile.isTeamLead ? null : _taskQueue;
+    node.doorbelled = false; // 进 wait = 响应了门铃并开始消费 → 解闸，读完后新邮件再响。
     _apply(node, const WaitEntered());
     try {
       while (true) {

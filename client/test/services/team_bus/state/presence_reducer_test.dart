@@ -10,11 +10,16 @@ PresenceTransition _run(
   Presence s,
   BusEvent e, {
   bool hasUnread = false,
+  bool doorbelled = false,
 }) =>
     PresenceReducer.reduce(
       s,
       e,
-      PresenceContext(memberId: 'm', hasUnread: hasUnread),
+      PresenceContext(
+        memberId: 'm',
+        hasUnread: hasUnread,
+        doorbelled: doorbelled,
+      ),
     );
 
 const _declared = Presence.declared();
@@ -114,6 +119,12 @@ void main() {
       final t = _run(_active, const TurnEnded(), hasUnread: true);
       expect(t.presence, _active);
       expect(t.effects.single, isA<DoorbellEffect>());
+    });
+    test('running + unread but already doorbelled → idle, no re-ring', () {
+      final t = _run(_active, const TurnEnded(),
+          hasUnread: true, doorbelled: true);
+      expect(t.presence, _atPrompt);
+      expect(t.effects, isEmpty);
     });
     test('parked → no change (guarded)', () {
       expect(_run(_parked, const TurnEnded(), hasUnread: true).presence, _parked);

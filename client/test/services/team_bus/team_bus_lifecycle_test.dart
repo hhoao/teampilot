@@ -117,6 +117,67 @@ void main() {
   });
 
   test(
+    'repeated idle edges with one unread ring the doorbell exactly once',
+    () {
+      // A single turn-end is reported by BOTH the CLI Stop-hook /idle POST and
+      // the 1s terminal activity watcher (and the injected notice itself jolts
+      // activity). Without doorbell idempotency each onMemberIdle re-injected
+      // "[teammate-bus] You have unread teammate messages" → the user saw it
+      // twice. It must ring once per unread episode.
+      final launcher = FakeMemberLauncher();
+      final bus = TeamBus(launcher: launcher);
+      final node = AgentNode.test(
+        memberId: 'leader',
+        lifecycle: MemberLifecycle.running,
+        activity: MemberActivity.active,
+      );
+      bus.declareMember(node);
+      node.inbox.deliver(
+        TeamMessage(id: '1', from: 'w', to: 'leader', content: 'x'),
+      );
+
+      bus.onMemberIdle('leader');
+      bus.onMemberIdle('leader');
+      bus.onMemberIdle('leader');
+
+      expect(launcher.woken, hasLength(1));
+    },
+  );
+
+  test(
+    'doorbell re-arms after the member consumes via wait_for_message',
+    () async {
+      final launcher = FakeMemberLauncher();
+      final bus = TeamBus(launcher: launcher);
+      final node = AgentNode.test(
+        memberId: 'leader',
+        lifecycle: MemberLifecycle.running,
+        activity: MemberActivity.active,
+      );
+      bus.declareMember(node);
+      node.inbox.deliver(
+        TeamMessage(id: '1', from: 'w', to: 'leader', content: 'first'),
+      );
+
+      // First unread episode: rings once even across duplicate idle reports.
+      bus.onMemberIdle('leader');
+      bus.onMemberIdle('leader');
+      expect(launcher.woken, hasLength(1));
+
+      // Member responds to the nudge and drains the mailbox.
+      final batch = await bus.receive('leader');
+      expect(batch, hasLength(1));
+
+      // A brand-new message after reading must be able to ring again.
+      node.inbox.deliver(
+        TeamMessage(id: '2', from: 'w', to: 'leader', content: 'second'),
+      );
+      bus.onMemberIdle('leader');
+      expect(launcher.woken, hasLength(2));
+    },
+  );
+
+  test(
     'broadcast with materializeDeclared launches declared workers',
     () async {
       final launcher = FakeMemberLauncher();

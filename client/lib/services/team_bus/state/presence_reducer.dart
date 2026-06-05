@@ -5,9 +5,17 @@ import 'presence.dart';
 
 /// reducer 的上下文:成员 id（用于产出带 id 的效果）+ 信箱是否有未读。
 class PresenceContext {
-  const PresenceContext({required this.memberId, required this.hasUnread});
+  const PresenceContext({
+    required this.memberId,
+    required this.hasUnread,
+    this.doorbelled = false,
+  });
   final String memberId;
   final bool hasUnread;
+
+  /// 本轮未读是否已经响过门铃（见 [AgentNode.doorbelled]）。为真时 `TurnEnded`
+  /// 不再重复注入门铃 —— 把「同一 turn-end 被多个 idle 信源重复上报」收敛成一次。
+  final bool doorbelled;
 }
 
 /// 一次跃迁的结果:新在线态 + 待落地的效果列表。
@@ -76,7 +84,9 @@ abstract final class PresenceReducer {
           return _stay(s);
         }
         final ready = s.copyWith(activity: MemberActivity.turnDoneReady);
-        if (!ctx.hasUnread) return _to(ready);
+        // 已响过门铃则只落 idle 态、不重复注入 —— 同一未读的 turn-end 被两个 idle
+        // 信源（Stop-hook /idle + 终端 watcher）各上报一次时收敛成一次。
+        if (!ctx.hasUnread || ctx.doorbelled) return _to(ready);
         return PresenceTransition(
           ready.copyWith(activity: MemberActivity.active),
           [DoorbellEffect(ctx.memberId)],
