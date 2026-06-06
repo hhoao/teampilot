@@ -7,6 +7,8 @@ import '../../models/app_provider_config.dart';
 import '../../models/member_presence.dart';
 import '../../models/team_config.dart';
 import '../../services/cli/registry/capabilities/provider_catalog_capability.dart';
+import '../../services/cli/registry/cli_display_name.dart';
+import '../../services/cli/registry/cli_tool_registry.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../theme/workspace_surface_layers.dart';
 import '../../utils/app_keys.dart';
@@ -19,7 +21,7 @@ import '../team/team_lead_badge.dart';
 /// Team roster list panel.
 class MembersPanel extends StatelessWidget {
   const MembersPanel({
-    required this.teamCli,
+    required this.team,
     required this.members,
     required this.memberPresence,
     required this.selectedMemberId,
@@ -29,7 +31,7 @@ class MembersPanel extends StatelessWidget {
     super.key,
   });
 
-  final CliTool teamCli;
+  final TeamConfig team;
   final List<TeamMemberConfig> members;
   final Map<String, MemberPresence> memberPresence;
   final String selectedMemberId;
@@ -42,22 +44,7 @@ class MembersPanel extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final l10n = context.l10n;
     final registry = CliToolRegistryScope.maybeOf(context);
-    final catalogCli =
-        (registry != null &&
-            registry.capability<ProviderCatalogCapability>(teamCli) != null)
-        ? teamCli
-        : CliTool.claude;
-    final catalogProviders = context
-        .watch<AppProviderCubit>()
-        .state
-        .providersFor(catalogCli)
-        .toList(growable: false);
-    final providerLabels = {
-      for (final p in catalogProviders) p.id: p.name,
-    };
-    final providersById = {
-      for (final p in catalogProviders) p.id: p,
-    };
+    final providerState = context.watch<AppProviderCubit>().state;
     return Container(
       key: AppKeys.membersPanel,
       padding: const EdgeInsets.all(13),
@@ -95,20 +82,21 @@ class MembersPanel extends StatelessWidget {
                 final presence =
                     memberPresence[member.id] ?? const MemberPresence.offline();
                 final statusLabel = memberPresenceStatusLabel(l10n, presence);
-                final providerId = member.provider.trim();
-                final providerLabel = providerId.isEmpty
-                    ? ''
-                    : (providerLabels[providerId] ?? providerId);
+                final memberCli = member.cliWithin(team);
+                final catalogCli = _catalogCli(registry, memberCli);
+                final memberProvider = _memberProvider(
+                  providerState.providersFor(catalogCli),
+                  member.provider,
+                );
+                final brandLabel = memberProvider?.name ??
+                    _cliDisplayLabel(registry, memberCli, l10n);
                 final meta = [
-                  providerLabel,
+                  brandLabel,
                   member.model,
                 ].where((v) => v.isNotEmpty).join(' / ');
                 final subtitle = meta.isEmpty
                     ? statusLabel
                     : '$statusLabel · $meta';
-                final memberProvider = providerId.isEmpty
-                    ? null
-                    : providersById[providerId];
                 final titleColor = selected
                     ? cs.onSecondaryContainer
                     : cs.onSurface;
@@ -135,7 +123,7 @@ class MembersPanel extends StatelessWidget {
                                 borderRadius: 7,
                               )
                             : CliBrandIcon(
-                                cli: teamCli,
+                                cli: memberCli,
                                 size: 28,
                                 borderRadius: 7,
                               ),
@@ -165,4 +153,36 @@ class MembersPanel extends StatelessWidget {
       ),
     );
   }
+}
+
+CliTool _catalogCli(CliToolRegistry? registry, CliTool memberCli) {
+  if (registry != null &&
+      registry.capability<ProviderCatalogCapability>(memberCli) != null) {
+    return memberCli;
+  }
+  return CliTool.claude;
+}
+
+AppProviderConfig? _memberProvider(
+  Iterable<AppProviderConfig> catalog,
+  String provider,
+) {
+  final providerId = provider.trim();
+  if (providerId.isEmpty) return null;
+  for (final p in catalog) {
+    if (p.id == providerId) return p;
+  }
+  return null;
+}
+
+String _cliDisplayLabel(
+  CliToolRegistry? registry,
+  CliTool cli,
+  AppLocalizations l10n,
+) {
+  final def = registry?.tryGet(cli);
+  if (def != null) {
+    return cliDisplayName(def, l10n, registry: registry);
+  }
+  return cli.value;
 }

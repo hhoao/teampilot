@@ -14,6 +14,7 @@ import '../../../theme/app_text_styles.dart';
 import '../../../utils/debounce/debounce.dart';
 import '../../../widgets/project_details_dialog.dart';
 import '../../../widgets/settings/workspace_settings_widgets.dart';
+import 'project_icon_settings_row.dart';
 
 /// Project basic settings + danger zone (same layout as [TeamInfoSection]).
 class ProjectInfoSection extends StatelessWidget {
@@ -47,6 +48,7 @@ class ProjectInfoSection extends StatelessWidget {
                 SettingsGroupHeader(
                   title: l10n.homeWorkspaceProjectSettingsBasicInfo,
                 ),
+                ProjectIconSettingsRow(project: live),
                 _ProjectSettingsInlineRow(
                   label: l10n.projectDisplayName,
                   value: live.effectiveDisplay,

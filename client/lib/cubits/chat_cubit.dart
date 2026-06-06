@@ -1,18 +1,24 @@
 import 'dart:async';
 
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../models/app_project.dart';
 import '../models/connection_mode.dart';
 import '../models/app_session.dart';
+import '../models/project_icon_picker_result.dart';
+import '../models/project_icon_ref.dart';
 import '../models/team_config.dart';
 import '../repositories/project_profile_repository.dart';
 import '../repositories/session_repository.dart';
+import '../services/project/project_icon_service.dart';
+import '../services/project/project_icon_storage.dart';
 import '../services/storage/app_storage.dart';
 import '../services/session/session_lifecycle_service.dart';
 import '../services/terminal/terminal_session.dart';
 import '../services/terminal/terminal_transport_factory.dart';
+import '../widgets/project_icon_picker_dialog.dart';
 import 'chat/chat_connect_state_mixin.dart';
 import 'chat/session_data_store.dart';
 import 'chat/chat_session_shell_factory.dart';
@@ -289,6 +295,84 @@ class ChatCubit extends Cubit<ChatState>
         additionalPaths: additionalPaths,
       ),
     );
+  }
+
+  Future<void> applyProjectIcon(
+    SessionRepository repo,
+    String projectId,
+    ProjectIconRef icon,
+  ) async {
+    _emitSnapshot(
+      await _dataStore.applyProjectIcon(repo, projectId, icon),
+    );
+  }
+
+  Future<void> importCustomProjectIcon(
+    SessionRepository repo,
+    String projectId,
+    String localSourcePath,
+  ) async {
+    _emitSnapshot(
+      await _dataStore.importCustomProjectIcon(
+        repo,
+        projectId,
+        localSourcePath,
+      ),
+    );
+  }
+
+  /// Opens the icon picker and applies the user's choice.
+  ///
+  /// Returns an error message when custom import fails; otherwise `null`.
+  Future<String?> editProjectIcon(
+    BuildContext context,
+    SessionRepository repo,
+    AppProject project,
+  ) async {
+    final result = await showProjectIconPickerDialog(context, project: project);
+    return switch (result) {
+      ProjectIconPickerCancelled() => null,
+      ProjectIconPickerUploadRequested() => _pickAndImportCustomIcon(
+        repo,
+        project.projectId,
+      ),
+      ProjectIconPickerCommitted(:final icon) => _applyCommittedIcon(
+        repo,
+        project.projectId,
+        icon,
+      ),
+    };
+  }
+
+  Future<String?> _pickAndImportCustomIcon(
+    SessionRepository repo,
+    String projectId,
+  ) async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ProjectIconStorage.allowedExtensions
+          .where((ext) => ext != 'jpeg')
+          .toList(growable: false),
+    );
+    if (result == null || result.files.isEmpty) return null;
+    final path = result.files.single.path;
+    if (path == null) return null;
+
+    try {
+      await importCustomProjectIcon(repo, projectId, path);
+      return null;
+    } on ProjectIconImportException catch (error) {
+      return error.message;
+    }
+  }
+
+  Future<String?> _applyCommittedIcon(
+    SessionRepository repo,
+    String projectId,
+    ProjectIconRef icon,
+  ) async {
+    await applyProjectIcon(repo, projectId, icon);
+    return null;
   }
 
   Future<void> openSessionTab(

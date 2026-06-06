@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:teampilot/models/app_session.dart';
+import 'package:teampilot/models/project_icon_ref.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/repositories/session_repository.dart';
 import 'package:teampilot/services/session/session_lifecycle_service.dart';
@@ -218,6 +219,42 @@ void main() {
     final loaded = await repo.loadProjects();
     expect(loaded.single.display, 'My App');
     expect(loaded.single.additionalPaths, ['/b']);
+  });
+
+  test('applyProjectIcon persists preset and auto icons', () async {
+    final tmp = await Directory.systemTemp.createTemp('fs_session_repo_');
+    addTearDown(() => tmp.deleteSync(recursive: true));
+
+    final repo = SessionRepository(rootDir: tmp.path);
+    final p = await repo.createProject('/base', teamId: '');
+    expect(p.icon, ProjectIconRef.auto);
+
+    await repo.applyProjectIcon(p.projectId, const ProjectIconPreset(5));
+    var loaded = (await repo.loadProjects()).single;
+    expect(loaded.icon, const ProjectIconPreset(5));
+
+    await repo.applyProjectIcon(p.projectId, ProjectIconRef.auto);
+    loaded = (await repo.loadProjects()).single;
+    expect(loaded.icon, ProjectIconRef.auto);
+  });
+
+  test('importCustomProjectIcon persists file and preset clears custom', () async {
+    final tmp = await Directory.systemTemp.createTemp('fs_session_repo_');
+    addTearDown(() => tmp.deleteSync(recursive: true));
+
+    final iconFile = File('${tmp.path}/picked.png');
+    await iconFile.writeAsBytes([0x89, 0x50, 0x4E, 0x47]);
+
+    final repo = SessionRepository(rootDir: tmp.path);
+    final p = await repo.createProject('/base', teamId: '');
+    await repo.importCustomProjectIcon(p.projectId, iconFile.path);
+
+    var loaded = (await repo.loadProjects()).single;
+    expect(loaded.icon, ProjectIconCustom('icons/${p.projectId}.png'));
+
+    await repo.applyProjectIcon(p.projectId, const ProjectIconPreset(2));
+    loaded = (await repo.loadProjects()).single;
+    expect(loaded.icon, const ProjectIconPreset(2));
   });
 
   test('updateProjectPaths updates index', () async {

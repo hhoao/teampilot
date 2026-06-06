@@ -14,6 +14,7 @@ import '../../../widgets/project_details_dialog.dart';
 import '../../../widgets/settings/workspace_hub_shell.dart';
 import '../../../widgets/settings/workspace_settings_widgets.dart';
 import 'home_workspace_project_section.dart';
+import 'project_icon_settings_row.dart';
 
 /// Apifox-style project settings: section nav + scrollable detail cards.
 class HomeWorkspaceProjectSettingsView extends StatefulWidget {
@@ -147,6 +148,7 @@ class _ProjectSettingsBasicSection extends StatelessWidget {
               SettingsGroupHeader(
                 title: l10n.homeWorkspaceProjectSettingsBasicInfo,
               ),
+              ProjectIconSettingsRow(project: project),
               _ProjectSettingsInlineRow(
                 label: l10n.projectDisplayName,
                 value: project.effectiveDisplay,

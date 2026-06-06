@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
 
+import 'project_icon_ref.dart';
+
 @immutable
 class AppProject {
   const AppProject({
@@ -8,6 +10,7 @@ class AppProject {
     this.teamId = '',
     this.additionalPaths = const [],
     this.display = '',
+    this.icon = ProjectIconRef.auto,
     required this.createdAt,
     this.updatedAt = 0,
     this.sessionIds = const [],
@@ -28,6 +31,7 @@ class AppProject {
       teamId: json['teamId'] as String? ?? '',
       additionalPaths: paths,
       display: json['display'] as String? ?? '',
+      icon: ProjectIconRef.fromJson(json['icon']),
       createdAt: json['createdAt'] as int? ?? 0,
       updatedAt: json['updatedAt'] as int? ?? 0,
       sessionIds: sessionIds,
@@ -39,6 +43,7 @@ class AppProject {
   final String teamId;
   final List<String> additionalPaths;
   final String display;
+  final ProjectIconRef icon;
   final int createdAt;
   final int updatedAt;
   final List<String> sessionIds;
@@ -58,6 +63,7 @@ class AppProject {
     String? teamId,
     List<String>? additionalPaths,
     String? display,
+    ProjectIconRef? icon,
     int? createdAt,
     int? updatedAt,
     List<String>? sessionIds,
@@ -68,6 +74,7 @@ class AppProject {
       teamId: teamId ?? this.teamId,
       additionalPaths: additionalPaths ?? this.additionalPaths,
       display: display ?? this.display,
+      icon: icon ?? this.icon,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       sessionIds: sessionIds ?? this.sessionIds,
@@ -81,6 +88,7 @@ class AppProject {
       'teamId': teamId,
       'additionalPaths': additionalPaths,
       'display': display,
+      if (icon.toJson() case final json?) 'icon': json,
       'createdAt': createdAt,
       'updatedAt': updatedAt,
       'sessionIds': sessionIds,
@@ -97,6 +105,7 @@ class AppProject {
             teamId == other.teamId &&
             listEquals(additionalPaths, other.additionalPaths) &&
             display == other.display &&
+            icon == other.icon &&
             createdAt == other.createdAt &&
             updatedAt == other.updatedAt &&
             listEquals(sessionIds, other.sessionIds);
@@ -109,6 +118,7 @@ class AppProject {
     teamId,
     Object.hashAll(additionalPaths),
     display,
+    icon,
     createdAt,
     updatedAt,
     Object.hashAll(sessionIds),

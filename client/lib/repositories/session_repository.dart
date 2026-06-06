@@ -11,6 +11,9 @@ import '../services/io/filesystem.dart';
 import '../services/session/session_team_counter.dart';
 import '../services/storage/app_storage.dart';
 import '../services/storage/storage_resolver.dart';
+import '../models/project_icon_ref.dart';
+import '../services/project/project_icon_service.dart';
+import '../services/project/project_icon_storage.dart';
 import '../services/session/session_lifecycle_service.dart';
 import '../utils/lock_pool.dart';
 import '../utils/project_path_utils.dart';
@@ -200,6 +203,70 @@ class SessionRepository {
         updatedAt: now,
       );
     }).toList();
+    await _saveIndex(
+      fs,
+      AppProjectsIndex(schemaVersion: index.schemaVersion, projects: projects),
+    );
+  }
+
+  Future<void> applyProjectIcon(String projectId, ProjectIconRef icon) async {
+    final fs = await _fs();
+    final index = await _loadIndex(fs);
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final appProjectsDir = fs.fs.pathContext.dirname(fs.projectsFile);
+    final iconService = ProjectIconService(
+      storage: ProjectIconStorage(filesystem: fs.fs),
+    );
+    final projects = <AppProject>[];
+    for (final proj in index.projects) {
+      if (proj.projectId != projectId) {
+        projects.add(proj);
+        continue;
+      }
+      await iconService.deleteCustomFilesForTransition(
+        appProjectsDir: appProjectsDir,
+        projectId: projectId,
+        previous: proj.icon,
+        next: icon,
+      );
+      projects.add(proj.copyWith(icon: icon, updatedAt: now));
+    }
+    await _saveIndex(
+      fs,
+      AppProjectsIndex(schemaVersion: index.schemaVersion, projects: projects),
+    );
+  }
+
+  Future<void> importCustomProjectIcon(
+    String projectId,
+    String localSourcePath,
+  ) async {
+    final fs = await _fs();
+    final index = await _loadIndex(fs);
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final appProjectsDir = fs.fs.pathContext.dirname(fs.projectsFile);
+    final iconService = ProjectIconService(
+      storage: ProjectIconStorage(filesystem: fs.fs),
+    );
+    final customIcon = await iconService.importCustomFromLocalFile(
+      appProjectsDir: appProjectsDir,
+      projectId: projectId,
+      localSourcePath: localSourcePath,
+    );
+    final projects = <AppProject>[];
+    for (final proj in index.projects) {
+      if (proj.projectId != projectId) {
+        projects.add(proj);
+        continue;
+      }
+      await iconService.deleteCustomFilesForTransition(
+        appProjectsDir: appProjectsDir,
+        projectId: projectId,
+        previous: proj.icon,
+        next: customIcon,
+      );
+      projects.add(proj.copyWith(icon: customIcon, updatedAt: now));
+    }
     await _saveIndex(
       fs,
       AppProjectsIndex(schemaVersion: index.schemaVersion, projects: projects),
@@ -603,6 +670,14 @@ class SessionRepository {
       }
     }
     if (project == null) return;
+
+    await ProjectIconService(
+      storage: ProjectIconStorage(filesystem: fs.fs),
+    ).deleteAllCustomFilesForProject(
+      appProjectsDir: fs.fs.pathContext.dirname(fs.projectsFile),
+      projectId: projectId,
+      icon: project.icon,
+    );
 
     for (final sid in project.sessionIds.toList()) {
       await deleteSession(sid);

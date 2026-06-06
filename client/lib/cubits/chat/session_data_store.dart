@@ -2,6 +2,7 @@ import 'package:equatable/equatable.dart';
 
 import '../../models/app_project.dart';
 import '../../models/app_session.dart';
+import '../../models/project_icon_ref.dart';
 import '../../models/team_config.dart' show CliTool, TeamMemberConfig;
 import '../../repositories/project_profile_repository.dart';
 import '../../repositories/session_repository.dart';
@@ -159,6 +160,24 @@ class SessionDataStore {
       display: display,
       additionalPaths: additionalPaths,
     );
+    return loadProjectData(repo);
+  }
+
+  Future<ChatDataSnapshot> applyProjectIcon(
+    SessionRepository repo,
+    String projectId,
+    ProjectIconRef icon,
+  ) async {
+    await repo.applyProjectIcon(projectId, icon);
+    return loadProjectData(repo);
+  }
+
+  Future<ChatDataSnapshot> importCustomProjectIcon(
+    SessionRepository repo,
+    String projectId,
+    String localSourcePath,
+  ) async {
+    await repo.importCustomProjectIcon(projectId, localSourcePath);
     return loadProjectData(repo);
   }
 

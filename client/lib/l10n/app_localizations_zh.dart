@@ -792,6 +792,21 @@ class AppLocalizationsZh extends AppLocalizations {
   String get projectDisplayName => '显示名称';
 
   @override
+  String get projectIcon => '图标';
+
+  @override
+  String get projectIconPickerTitle => '选择项目图标';
+
+  @override
+  String get projectIconUseDefault => '使用默认';
+
+  @override
+  String get projectIconUpload => '上传图标';
+
+  @override
+  String get projectIconUploadFailed => '无法保存图标，请使用 PNG、JPG、WEBP 或 SVG。';
+
+  @override
   String get projectPrimaryPath => '主目录';
 
   @override

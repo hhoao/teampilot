@@ -123,7 +123,7 @@ class _RightToolsPanelState extends State<RightToolsPanel> {
           icon: Icons.groups_outlined,
           label: context.l10n.members,
           child: MembersPanel(
-            teamCli: team.cli,
+            team: team,
             members: members,
             memberPresence:
                 context.watch<MemberPresenceCubit>().state.presence,

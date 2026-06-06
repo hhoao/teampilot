@@ -78,6 +78,7 @@ flutter:
     - google_fonts/
     - assets/icons/
     - assets/providers/
+    - assets/geometry/
     - assets/fonts/terminal/
     - assets/rtk/rtk-rewrite.sh
     - assets/rtk/rtk-rewrite.ps1

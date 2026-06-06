@@ -832,6 +832,22 @@ class AppLocalizationsEn extends AppLocalizations {
   String get projectDisplayName => 'Display name';
 
   @override
+  String get projectIcon => 'Icon';
+
+  @override
+  String get projectIconPickerTitle => 'Choose project icon';
+
+  @override
+  String get projectIconUseDefault => 'Use default';
+
+  @override
+  String get projectIconUpload => 'Upload icon';
+
+  @override
+  String get projectIconUploadFailed =>
+      'Could not save icon. Use PNG, JPG, WEBP, or SVG.';
+
+  @override
   String get projectPrimaryPath => 'Primary directory';
 
   @override

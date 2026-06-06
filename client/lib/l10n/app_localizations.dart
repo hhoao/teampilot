@@ -1586,6 +1586,36 @@ abstract class AppLocalizations {
   /// **'Display name'**
   String get projectDisplayName;
 
+  /// No description provided for @projectIcon.
+  ///
+  /// In en, this message translates to:
+  /// **'Icon'**
+  String get projectIcon;
+
+  /// No description provided for @projectIconPickerTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose project icon'**
+  String get projectIconPickerTitle;
+
+  /// No description provided for @projectIconUseDefault.
+  ///
+  /// In en, this message translates to:
+  /// **'Use default'**
+  String get projectIconUseDefault;
+
+  /// No description provided for @projectIconUpload.
+  ///
+  /// In en, this message translates to:
+  /// **'Upload icon'**
+  String get projectIconUpload;
+
+  /// No description provided for @projectIconUploadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not save icon. Use PNG, JPG, WEBP, or SVG.'**
+  String get projectIconUploadFailed;
+
   /// No description provided for @projectPrimaryPath.
   ///
   /// In en, this message translates to:

@@ -9,6 +9,7 @@ import '../../models/app_project.dart';
 import '../../theme/app_text_styles.dart';
 import '../../theme/workspace_surface_layers.dart';
 import '../../widgets/app_icon_button.dart';
+import '../../widgets/project_icon.dart';
 import '../../widgets/menu/sidebar_action_menu.dart';
 import 'home_workspace_project_actions.dart';
 import 'home_workspace_tab_scope.dart';
@@ -86,26 +87,7 @@ class _HomeWorkspaceProjectCardState extends State<HomeWorkspaceProjectCard> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(
-                    width: 64,
-                    height: 64,
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          cs.primary.withValues(alpha: 0.85),
-                          cs.tertiary.withValues(alpha: 0.85),
-                        ],
-                      ),
-                      borderRadius: BorderRadius.circular(17),
-                    ),
-                    child: Icon(
-                      Icons.auto_stories_rounded,
-                      size: AppIconSizes.md,
-                      color: cs.onPrimary,
-                    ),
-                  ),
+                  ProjectIcon.fromProject(project),
                   const SizedBox(height: 20),
                   Text(
                     project.effectiveDisplay,

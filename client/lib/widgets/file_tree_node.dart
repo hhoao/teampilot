@@ -118,7 +118,6 @@ class FileTreeNode extends StatelessWidget {
                   ? (isExpanded ? Icons.folder_open : Icons.folder_outlined)
                   : fileIconForFileName(entry.name),
               size: AppIconSizes.md,
-              color: isDir ? const Color(0xFFE5B143) : iconMuted,
             ),
             const SizedBox(width: 6),
             Expanded(
