@@ -77,23 +77,10 @@ final class CursorConfigProfileCapability implements ConfigProfileCapability {
     final join = ctx.paths.pathContext.join;
     final pluginDir = join(cursorDir, _pluginDirName);
 
-    // Absolute paths: Cursor resolves manifest hooks/rules references and the
-    // hook command against the workspace, not the plugin root, so relative
-    // paths silently fail to load.
     final idleScriptPath = join(
       pluginDir,
       CursorTeamBusPlugin.hooksDirName,
       CursorTeamBusPlugin.idleScriptFileName,
-    );
-    final hooksJsonPath = join(
-      pluginDir,
-      CursorTeamBusPlugin.hooksDirName,
-      CursorTeamBusPlugin.hooksFileName,
-    );
-    final roleRulePath = join(
-      pluginDir,
-      CursorTeamBusPlugin.rulesDirName,
-      CursorTeamBusPlugin.roleRuleFileName,
     );
 
     await fs.atomicWrite(
@@ -103,12 +90,7 @@ final class CursorConfigProfileCapability implements ConfigProfileCapability {
         CursorTeamBusPlugin.manifestFileName,
       ),
       _jsonPretty(
-        CursorTeamBusPlugin.manifest(
-          memberId: member.id,
-          port: port,
-          hooksPath: hooksJsonPath,
-          rulesPath: roleRulePath,
-        ),
+        CursorTeamBusPlugin.manifest(memberId: member.id, port: port),
       ),
     );
     await fs.atomicWrite(
@@ -116,7 +98,11 @@ final class CursorConfigProfileCapability implements ConfigProfileCapability {
       CursorTeamBusPlugin.idleScript(memberId: member.id, port: port),
     );
     await fs.atomicWrite(
-      hooksJsonPath,
+      join(
+        pluginDir,
+        CursorTeamBusPlugin.hooksDirName,
+        CursorTeamBusPlugin.hooksFileName,
+      ),
       _jsonPretty(
         CursorTeamBusPlugin.hooksConfig(idleScriptPath: idleScriptPath),
       ),
@@ -127,7 +113,14 @@ final class CursorConfigProfileCapability implements ConfigProfileCapability {
       forceTeamLeadDelegateMode: ctx.team?.forceTeamLeadDelegateMode ?? false,
       mixed: true,
     ).trim();
-    await fs.atomicWrite(roleRulePath, _roleRule(rolePrompt));
+    await fs.atomicWrite(
+      join(
+        pluginDir,
+        CursorTeamBusPlugin.rulesDirName,
+        CursorTeamBusPlugin.roleRuleFileName,
+      ),
+      _roleRule(rolePrompt),
+    );
 
     return pluginDir;
   }

@@ -4,17 +4,12 @@ import 'package:teampilot/services/team_bus/mcp/teammate_bus_mcp_config.dart';
 
 void main() {
   group('CursorTeamBusPlugin', () {
-    test('manifest wires teammate-bus MCP and absolute hooks/rules paths', () {
-      final m = CursorTeamBusPlugin.manifest(
-        memberId: 'planner',
-        port: 4321,
-        hooksPath: '/cfg/cursor/plugin/hooks/hooks.json',
-        rulesPath: '/cfg/cursor/plugin/rules/role.mdc',
-      );
+    test('manifest wires teammate-bus MCP, hooks, and rules', () {
+      final m = CursorTeamBusPlugin.manifest(memberId: 'planner', port: 4321);
 
       expect(m['name'], 'teampilot-bus-planner');
-      expect(m['hooks'], '/cfg/cursor/plugin/hooks/hooks.json');
-      expect(m['rules'], '/cfg/cursor/plugin/rules/role.mdc');
+      expect(m['hooks'], './hooks/hooks.json');
+      expect(m['rules'], './rules/*.mdc');
 
       final servers = m['mcpServers'] as Map<String, Object?>;
       final bus = servers[teammateBusMcpServerName] as Map<String, Object?>;

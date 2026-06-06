@@ -31,21 +31,14 @@ abstract final class CursorTeamBusPlugin {
   /// `.cursor-plugin/plugin.json`: registers the teammate-bus MCP server (so the
   /// member gets `wait_for_message`/`send_message`/…), the stop hook, and the
   /// always-apply role rule.
-  ///
-  /// [hooksPath]/[rulesPath] are **absolute**: Cursor resolves the manifest's
-  /// `hooks`/`rules` references relative to the workspace (not the plugin root),
-  /// so relative `./…` paths silently fail to load. MCP works regardless since
-  /// it is an inline object, not a path reference.
   static Map<String, Object?> manifest({
     required String memberId,
     required int port,
-    required String hooksPath,
-    required String rulesPath,
   }) => {
     'name': 'teampilot-bus-$memberId',
     'description': 'TeamPilot mixed-mode team-bus wiring (generated).',
-    'hooks': hooksPath,
-    'rules': rulesPath,
+    'hooks': './$hooksDirName/$hooksFileName',
+    'rules': './$rulesDirName/*.mdc',
     'mcpServers': {
       teammateBusMcpServerName: teammateBusMcpServerConfig(
         endpoint: Uri.parse('http://127.0.0.1:$port/mcp'),
