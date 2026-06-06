@@ -10,6 +10,7 @@ import '../cli/registry/capabilities/launch_args_capability.dart';
 import '../cli/registry/cli_tool_registry.dart';
 import '../cli/cli_invocation.dart';
 import '../cli/registry/config_profile/claude_config_profile_capability.dart';
+import '../cli/registry/config_profile/cursor_config_profile_capability.dart';
 import 'member_role_provision.dart';
 
 typedef ProcessStarter =
@@ -73,6 +74,7 @@ class LaunchCommandBuilder {
     String? resumeSessionId,
     String? settingsPath,
     String? appendSystemPromptFile,
+    String? cursorPluginDir,
     bool useWslPaths = false,
     CliToolRegistry? cliRegistry,
   }) {
@@ -96,6 +98,7 @@ class LaunchCommandBuilder {
         resumeSessionId: resumeSessionId,
         settingsPath: settingsPath,
         appendSystemPromptFile: appendSystemPromptFile,
+        cursorPluginDir: cursorPluginDir,
         useWslPaths: useWslPaths,
       ),
     );
@@ -200,6 +203,7 @@ class LaunchCommandBuilder {
     final settingsPath = settingsPathFromEnvironment(normalizedEnvironment);
     final appendSystemPromptFile =
         appendSystemPromptFileFromEnvironment(normalizedEnvironment);
+    final cursorPluginDir = cursorPluginDirFromEnvironment(normalizedEnvironment);
     final env = launchEnvironmentForProcess(normalizedEnvironment);
     final args = buildArguments(
       team,
@@ -211,6 +215,7 @@ class LaunchCommandBuilder {
       resumeSessionId: resumeSessionId,
       settingsPath: settingsPath,
       appendSystemPromptFile: appendSystemPromptFile,
+      cursorPluginDir: cursorPluginDir,
       useWslPaths: invocation.usesWsl,
     );
     final launchArgs = invocation.withArgs(args, environment: env);
@@ -425,8 +430,17 @@ class LaunchCommandBuilder {
     return value == null || value.isEmpty ? null : value;
   }
 
+  static String? cursorPluginDirFromEnvironment(
+    Map<String, String>? environment,
+  ) {
+    final value =
+        environment?[CursorConfigProfileCapability.pluginDirEnvKey]?.trim();
+    return value == null || value.isEmpty ? null : value;
+  }
+
   static const _launchOnlyEnvKeys = {
     ClaudeConfigProfileCapability.settingsFileEnvKey,
+    CursorConfigProfileCapability.pluginDirEnvKey,
     MemberRoleProvision.appendSystemPromptFileEnvKey,
   };
 

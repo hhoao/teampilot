@@ -14,6 +14,7 @@ class CliLaunchContext {
     this.resumeSessionId,
     this.settingsPath,
     this.appendSystemPromptFile,
+    this.cursorPluginDir,
     this.useWslPaths = false,
   });
 
@@ -26,6 +27,10 @@ class CliLaunchContext {
   final String? resumeSessionId;
   final String? settingsPath;
   final String? appendSystemPromptFile;
+
+  /// Mixed-mode Cursor team-bus plugin dir, passed as `--plugin-dir`
+  /// (provisioned by `CursorConfigProfileCapability`).
+  final String? cursorPluginDir;
   final bool useWslPaths;
 
   String get teamName => sessionTeam ?? team.name.trim();
@@ -233,6 +238,17 @@ class CursorCliToolAdapter implements CliToolAdapter {
       ]);
     }
 
+    // Mixed mode wires the team-bus (MCP + stop hook + role rule) via a
+    // per-member plugin; identity therefore comes from the plugin's role rule,
+    // not the route-B initial prompt below.
+    final pluginDir = context.cursorPluginDir?.trim() ?? '';
+    if (pluginDir.isNotEmpty) {
+      args.addAll([
+        '--plugin-dir',
+        _normalizePathForCli(pluginDir, context.useWslPaths),
+      ]);
+    }
+
     final resume = context.resumeSessionId?.trim() ?? '';
     if (resume.isNotEmpty) {
       args.addAll(['--resume', resume]);
@@ -250,8 +266,9 @@ class CursorCliToolAdapter implements CliToolAdapter {
     _addExtraArgs(args, context.team.extraArgs);
     _addExtraArgs(args, member.extraArgs);
 
-    // Route B: seed identity as the initial prompt only on a fresh session.
-    if (resume.isEmpty) {
+    // Route B: seed identity as the initial prompt only on a fresh standalone
+    // session. In mixed mode the plugin's role rule owns identity, so skip it.
+    if (resume.isEmpty && !mixed) {
       final rolePrompt = MemberRoleProvision.composeRolePrompt(
         member: member,
         forceTeamLeadDelegateMode: context.team.forceTeamLeadDelegateMode,
