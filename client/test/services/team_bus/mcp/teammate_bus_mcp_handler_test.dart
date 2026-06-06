@@ -1,6 +1,8 @@
 import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/team_bus/agent_node.dart';
+import 'package:teampilot/services/team_bus/teammate_roster_profile.dart';
 import 'package:teampilot/services/team_bus/mcp/jsonrpc.dart';
 import 'package:teampilot/services/team_bus/mcp/teammate_bus_mcp_config.dart';
 import 'package:teampilot/services/team_bus/mcp/teammate_bus_mcp_handler.dart';
@@ -89,6 +91,70 @@ void main() {
     expect(text, contains('bus.lifecycle: declared'));
     expect(text, contains('bus.activity: none'));
     expect(text, contains('bus.unread: 1'));
+  });
+
+  test('send_message resolves agentId and reports resolution', () async {
+    final bus = TeamBus(launcher: FakeMemberLauncher())
+      ..installSessionContext(
+        const TeamSessionContext(
+          cliTeamName: 'testmixed-23',
+          teamId: 'testmixed',
+          teamName: 'TestMixed',
+        ),
+      );
+    final developer = AgentNode(
+      profile: TeammateRosterProfile.fromMember(
+        member: const TeamMemberConfig(id: 'developer', name: 'Dev'),
+        team: const TeamConfig(id: 'testmixed', name: 'TestMixed'),
+        cliTeamName: 'testmixed-23',
+        cwd: '/tmp',
+      ),
+      lifecycle: MemberLifecycle.running,
+      activity: MemberActivity.active,
+    );
+    bus.declareMember(developer);
+    final handler = TeammateBusMcpHandler(bus: bus);
+
+    final res = await handler.handle(
+      'team-lead',
+      const JsonRpcRequest(id: 10, method: 'tools/call', params: {
+        'name': 'send_message',
+        'arguments': {
+          'to': 'developer@testmixed-23',
+          'content': 'hello',
+        },
+      }),
+    );
+
+    expect(developer.inbox.isEmpty, isFalse);
+    expect(res!.result!['isError'], isFalse);
+    final text = (res.result!['content'] as List).first['text'] as String;
+    expect(text, contains('sent to developer'));
+  });
+
+  test('send_message returns tool error for unknown recipient', () async {
+    final bus = TeamBus(launcher: FakeMemberLauncher());
+    bus.declareMember(
+      AgentNode.test(
+        memberId: 'team-lead',
+        lifecycle: MemberLifecycle.running,
+        activity: MemberActivity.active,
+      ),
+    );
+    final handler = TeammateBusMcpHandler(bus: bus);
+
+    final res = await handler.handle(
+      'team-lead',
+      const JsonRpcRequest(id: 11, method: 'tools/call', params: {
+        'name': 'send_message',
+        'arguments': {'to': 'ghost', 'content': 'hi'},
+      }),
+    );
+
+    expect(res!.result!['isError'], isTrue);
+    final text = (res.result!['content'] as List).first['text'] as String;
+    expect(text, contains('unknown-member'));
+    expect(text, contains('team-lead'));
   });
 
   test('send_message routes to the target member mailbox', () async {

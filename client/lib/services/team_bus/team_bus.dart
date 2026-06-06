@@ -10,6 +10,7 @@ import 'env/bus_observation.dart';
 import 'member_launcher.dart';
 import 'persistence/bus_message_log.dart';
 import 'persistence/bus_message_page.dart';
+import 'send_outcome.dart';
 import 'state/bus_effect.dart';
 import 'state/bus_effect_dispatcher.dart';
 import 'state/bus_event.dart';
@@ -394,36 +395,67 @@ class TeamBus implements CoordinationView {
   bool isUnread(String memberId, String id) =>
       _members[memberId]?.inbox.containsUnread(id) ?? false;
 
+  /// Resolves [address] to a registered [memberId].
+  ///
+  /// Accepts roster member id (`developer`) or CLI
+  /// [TeammateRosterProfile.agentId] (`developer@my-team-1`).
+  String? resolveMemberId(String address) {
+    final trimmed = address.trim();
+    if (trimmed.isEmpty) return null;
+    if (_members.containsKey(trimmed)) return trimmed;
+    for (final node in _members.values) {
+      final agentId = node.profile.agentId.trim();
+      if (agentId.isNotEmpty && agentId == trimmed) {
+        return node.memberId;
+      }
+    }
+    final at = trimmed.lastIndexOf('@');
+    if (at <= 0) return null;
+    final name = trimmed.substring(0, at);
+    final teamSuffix = trimmed.substring(at + 1);
+    final node = _members[name];
+    if (node == null) return null;
+    final cliTeam = _sessionContext?.cliTeamName.trim() ?? '';
+    if (cliTeam.isNotEmpty && teamSuffix == cliTeam) return name;
+    return null;
+  }
+
   /// 出站投递；按 lifecycle + activity 分流。
-  Future<void> send(TeamMessage message) async {
+  Future<SendOutcome> send(TeamMessage message) async {
     if (message.hop >= maxHop) {
       _env.events.emit(MessageDropped(
         messageId: message.id,
         reason: 'over-hop(${message.hop})',
         to: message.to,
       ));
-      return;
+      return SendOutcome.dropped(
+        reason: 'over-hop(${message.hop})',
+        to: message.to,
+      );
     }
-    final target = _members[message.to];
-    if (target == null) {
+    final resolved = resolveMemberId(message.to);
+    if (resolved == null) {
       _env.events.emit(MessageDropped(
         messageId: message.id,
         reason: 'unknown-member',
         to: message.to,
       ));
-      return;
+      return SendOutcome.dropped(reason: 'unknown-member', to: message.to);
     }
+    final target = _members[resolved]!;
+    final routed = message.to == resolved ? message : message.copyWith(to: resolved);
     switch (target.lifecycle) {
       case MemberLifecycle.declared:
         // 物化（awaited PTY 拉起）→ 投递 → 完成（running+active）+ 门铃。
-        await _applyAsync(target, MaterializeStarted(message));
-        _deliverToInbox(target, message);
+        await _applyAsync(target, MaterializeStarted(routed));
+        _deliverToInbox(target, routed);
         await _applyAsync(target, const MaterializeCompleted());
       case MemberLifecycle.materializing:
       case MemberLifecycle.running:
-        _deliverToInbox(target, message);
+        _deliverToInbox(target, routed);
         _apply(target, const MailArrived()); // send 路径：仅 idle-at-prompt 响门铃
     }
+    return SendOutcome.delivered(resolved);
   }
 
   /// idle 边：turn 结束 → [MemberActivity.turnDoneReady]（或 doorbell → active）。

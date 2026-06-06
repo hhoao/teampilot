@@ -1,8 +1,10 @@
 import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/team_bus/agent_node.dart';
 import 'package:teampilot/services/team_bus/team_bus.dart';
 import 'package:teampilot/services/team_bus/team_message.dart';
+import 'package:teampilot/services/team_bus/teammate_roster_profile.dart';
 
 import 'support/fake_member_launcher.dart';
 
@@ -138,12 +140,59 @@ void main() {
     );
     bus.declareMember(busy);
 
-    await bus.send(
+    final overHop = await bus.send(
       TeamMessage(id: '1', from: 'x', to: 'leader', content: 'a', hop: 3),
     );
     expect(busy.inbox.isEmpty, isTrue); // dropped: hop >= maxHop
+    expect(overHop.delivered, isFalse);
+    expect(overHop.reason, contains('over-hop'));
 
-    await bus.send(TeamMessage(id: '2', from: 'x', to: 'ghost', content: 'a'));
+    final unknown = await bus.send(
+      TeamMessage(id: '2', from: 'x', to: 'ghost', content: 'a'),
+    );
     expect(launcher.materialized, isEmpty); // unknown target
+    expect(unknown.delivered, isFalse);
+    expect(unknown.reason, 'unknown-member');
+  });
+
+  test('send resolves agentId addresses to member id', () async {
+    final launcher = FakeMemberLauncher();
+    final bus = TeamBus(launcher: launcher)
+      ..installSessionContext(
+        const TeamSessionContext(
+          cliTeamName: 'testmixed-23',
+          teamId: 'testmixed',
+          teamName: 'TestMixed',
+        ),
+      );
+    final developer = AgentNode(
+      profile: TeammateRosterProfile.fromMember(
+        member: const TeamMemberConfig(id: 'developer', name: 'Dev'),
+        team: const TeamConfig(id: 'testmixed', name: 'TestMixed'),
+        cliTeamName: 'testmixed-23',
+        cwd: '/tmp',
+      ),
+      lifecycle: MemberLifecycle.running,
+      activity: MemberActivity.active,
+    );
+    bus.declareMember(developer);
+
+    final outcome = await bus.send(
+      TeamMessage(
+        id: '1',
+        from: 'team-lead',
+        to: 'developer@testmixed-23',
+        content: 'hi',
+      ),
+    );
+
+    expect(outcome.delivered, isTrue);
+    expect(outcome.memberId, 'developer');
+    expect(developer.inbox.isEmpty, isFalse);
+    final batch = await developer.inbox.waitAndTake(
+      timeout: const Duration(seconds: 1),
+    );
+    expect(batch.single.to, 'developer');
+    expect(batch.single.content, 'hi');
   });
 }

@@ -165,7 +165,8 @@ class TeammateBusMcpHandler {
     {
       'name': 'send_message',
       'description':
-          'Send a message to a teammate by member id (or "*" to broadcast).',
+          'Send a message to a teammate by member id or agentId '
+          '(e.g. developer or developer@team-1), or "*" to broadcast.',
       'inputSchema': {
         'type': 'object',
         'additionalProperties': false,
@@ -299,6 +300,9 @@ class TeammateBusMcpHandler {
       case 'send_message':
         final to = (args['to'] as String?)?.trim() ?? '';
         final content = args['content'] as String? ?? '';
+        if (to.isEmpty) {
+          return _toolError(req.id, 'send_message requires a non-empty "to".');
+        }
         final message = TeamMessage(
           id: idGenerator(),
           from: memberId,
@@ -307,10 +311,21 @@ class TeammateBusMcpHandler {
         );
         if (to == '*') {
           await _bus.broadcast(message, materializeDeclared: true);
-        } else {
-          await _bus.send(message);
+          return _ok(req.id, 'sent');
         }
-        return _ok(req.id, 'sent');
+        final outcome = await _bus.send(message);
+        if (!outcome.delivered) {
+          return _toolError(
+            req.id,
+            'Message not delivered (${outcome.reason}): recipient "$to" '
+            'is not on the bus.${_unknownRecipientHint()}',
+          );
+        }
+        final resolved = outcome.memberId!;
+        if (resolved == to) {
+          return _ok(req.id, 'sent');
+        }
+        return _ok(req.id, 'sent to $resolved (resolved from agentId "$to")');
       case 'read_messages':
         final afterId = (args['after_id'] as String?)?.trim();
         final limit = (args['limit'] as num?)?.toInt() ?? 20;
@@ -426,6 +441,30 @@ class TeammateBusMcpHandler {
     ],
     'isError': false,
   });
+
+  JsonRpcResponse _toolError(Object? id, String text) =>
+      JsonRpcResponse.result(id, {
+        'content': [
+          {'type': 'text', 'text': text},
+        ],
+        'isError': true,
+      });
+
+  String _unknownRecipientHint() {
+    final roster = _bus.rosterSnapshot().members;
+    if (roster.isEmpty) return '';
+    final lines = <String>[' Known recipients:'];
+    for (final t in roster) {
+      final p = t.profile;
+      final alias = p.agentId.trim();
+      if (alias.isNotEmpty && alias != p.memberId) {
+        lines.add('- ${p.memberId} (agentId: $alias)');
+      } else {
+        lines.add('- ${p.memberId}');
+      }
+    }
+    return lines.join('\n');
+  }
 
   String _encodeRoster(String callerMemberId) {
     final snapshot = _bus.rosterSnapshot();
