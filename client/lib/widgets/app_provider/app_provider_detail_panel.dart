@@ -15,6 +15,7 @@ import '../../services/provider/tool_config_generator.dart';
 import '../../theme/workspace_surface_layers.dart';
 import '../app_icon_button.dart';
 import 'claude_official_credential_actions.dart';
+import 'cursor_credential_actions.dart';
 
 class AppProviderDetailPanel extends StatelessWidget {
   const AppProviderDetailPanel({
@@ -60,6 +61,10 @@ class AppProviderDetailPanel extends StatelessWidget {
                       ClaudeOfficialCredentialStatusBadge(
                         ready: provider.hasClaudeCredentialsReady,
                       ),
+                    if (provider.cli == CliTool.cursor)
+                      CursorCredentialStatusBadge(
+                        ready: provider.hasCursorCredentialsReady,
+                      ),
                   ],
                 ),
               ),
@@ -101,6 +106,7 @@ class AppProviderDetailPanel extends StatelessWidget {
             _InfoRow(label: l10n.defaultModel, value: provider.defaultModel),
           const SizedBox(height: 24),
           ClaudeOfficialCredentialActions(provider: provider),
+          CursorCredentialActions(provider: provider),
           const SizedBox(height: 24),
           Text(l10n.jsonPreview, style: Theme.of(context).textTheme.labelLarge),
           const SizedBox(height: 8),

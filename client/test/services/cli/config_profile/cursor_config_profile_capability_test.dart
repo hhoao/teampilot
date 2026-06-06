@@ -1,0 +1,215 @@
+import 'package:flutter_test/flutter_test.dart';
+import 'package:path/path.dart' as p;
+import 'package:teampilot/models/app_provider_config.dart';
+import 'package:teampilot/models/team_config.dart';
+import 'package:teampilot/repositories/app_provider_repository.dart';
+import 'package:teampilot/services/cli/cli_data_layout.dart';
+import 'package:teampilot/services/cli/registry/capabilities/config_profile_capability.dart';
+import 'package:teampilot/services/cli/registry/config_profile/config_profile_scope.dart';
+import 'package:teampilot/services/cli/registry/config_profile/cursor_config_profile_capability.dart';
+import 'package:teampilot/services/provider/config_profile_service.dart';
+import 'package:teampilot/services/provider/cursor/cursor_home_layout.dart';
+
+import '../../../support/in_memory_filesystem.dart';
+
+void main() {
+  const capability = CursorConfigProfileCapability();
+  const layout = CursorHomeLayout();
+  const base = '/data/tp';
+  const member = TeamMemberConfig(
+    id: 'planner',
+    name: 'Planner',
+    prompt: '只做代码审查',
+  );
+
+  late InMemoryFilesystem fs;
+  late ConfigProfileService paths;
+
+  setUp(() {
+    fs = InMemoryFilesystem();
+    paths = ConfigProfileService(
+      basePath: base,
+      fs: fs,
+      layout: CliDataLayout(teampilotRoot: base, fs: fs),
+    );
+  });
+
+  LaunchProfileScope mixedScope() {
+    final scope = resolveLaunchProfileScope(
+      teamId: 'team-a',
+      runtimeTeamId: 'session-1',
+    );
+    return LaunchProfileScope(
+      teamId: scope.teamId,
+      sessionId: mixedModeMemberScopeSessionId(
+        paths.pathContext,
+        scope.sessionId,
+        member,
+      ),
+      cliTeamName: scope.cliTeamName,
+    );
+  }
+
+  String memberHome(LaunchProfileScope scope) {
+    final cursorDir = paths.sessionToolDir(
+      scope.teamId,
+      scope.sessionId,
+      CursorConfigProfileCapability.toolId,
+    );
+    return p.join(cursorDir, 'home');
+  }
+
+  group('CursorConfigProfileCapability', () {
+    test('standalone contributes CURSOR_CONFIG_DIR only', () async {
+      const team = TeamConfig(id: 'team-a', name: 'agent', cli: CliTool.cursor);
+      final scope = resolveLaunchProfileScope(
+        teamId: 'team-a',
+        runtimeTeamId: 'session-1',
+      );
+
+      final contribution = await capability.contributeLaunch(
+        ConfigProfileLaunchContext(
+          teamId: scope.teamId,
+          sessionId: scope.sessionId,
+          scope: scope,
+          team: team,
+          member: member,
+          members: const [member],
+          paths: paths,
+        ),
+      );
+
+      final cursorDir = paths.sessionToolDir(
+        scope.teamId,
+        scope.sessionId,
+        CursorConfigProfileCapability.toolId,
+      );
+      expect(contribution.environment, {'CURSOR_CONFIG_DIR': cursorDir});
+      expect(contribution.environment, isNot(contains('HOME')));
+      expect(contribution.warnings, isEmpty);
+    });
+
+    test('mixed contributes HOME and not CURSOR_CONFIG_DIR or plugin dir key',
+        () async {
+      const team = TeamConfig(
+        id: 'team-a',
+        name: 'agent',
+        cli: CliTool.cursor,
+        teamMode: TeamMode.mixed,
+      );
+      final scope = mixedScope();
+
+      final contribution = await capability.contributeLaunch(
+        ConfigProfileLaunchContext(
+          teamId: scope.teamId,
+          sessionId: scope.sessionId,
+          scope: scope,
+          team: team,
+          member: member,
+          members: const [member],
+          paths: paths,
+          busIdleUrl: 'http://127.0.0.1:5050/idle',
+        ),
+      );
+
+      final home = memberHome(scope);
+      expect(contribution.environment['HOME'], home);
+      expect(contribution.environment['USERPROFILE'], home);
+      expect(contribution.environment, isNot(contains('CURSOR_CONFIG_DIR')));
+      expect(contribution.environment.keys, isNot(contains(startsWith('TEAMPILOT_'))));
+    });
+
+    test('mixed warns when provider, credentials, and bus port are missing',
+        () async {
+      const team = TeamConfig(
+        id: 'team-a',
+        name: 'agent',
+        cli: CliTool.cursor,
+        teamMode: TeamMode.mixed,
+      );
+      final scope = mixedScope();
+
+      final contribution = await capability.contributeLaunch(
+        ConfigProfileLaunchContext(
+          teamId: scope.teamId,
+          sessionId: scope.sessionId,
+          scope: scope,
+          team: team,
+          member: member,
+          members: const [member],
+          paths: paths,
+        ),
+      );
+
+      expect(contribution.warnings, contains('cursor_provider_missing'));
+      expect(contribution.warnings, contains('cursor_bus_idle_url_missing'));
+    });
+
+    test('mixed warns cursor_credentials_missing when provider not ready',
+        () async {
+      final repository = AppProviderRepository(basePath: base, fs: fs);
+      await repository.saveProviders(CliTool.cursor, [
+        const AppProviderConfig(
+          id: 'work',
+          cli: CliTool.cursor,
+          name: 'work',
+          category: AppProviderCategory.thirdParty,
+          config: const {},
+        ),
+      ]);
+      const team = TeamConfig(
+        id: 'team-a',
+        name: 'agent',
+        cli: CliTool.cursor,
+        teamMode: TeamMode.mixed,
+        providerIdsByTool: {'cursor': 'work'},
+      );
+      final scope = mixedScope();
+
+      final contribution = await capability.contributeLaunch(
+        ConfigProfileLaunchContext(
+          teamId: scope.teamId,
+          sessionId: scope.sessionId,
+          scope: scope,
+          team: team,
+          member: member,
+          members: const [member],
+          paths: paths,
+          busIdleUrl: 'http://127.0.0.1:5050/idle',
+        ),
+      );
+
+      expect(contribution.warnings, isNot(contains('cursor_provider_missing')));
+      expect(contribution.warnings, contains('cursor_credentials_missing'));
+    });
+
+    test('mixed provisions bus overlay under member home when port set', () async {
+      const team = TeamConfig(
+        id: 'team-a',
+        name: 'agent',
+        cli: CliTool.cursor,
+        teamMode: TeamMode.mixed,
+      );
+      final scope = mixedScope();
+      final home = memberHome(scope);
+
+      await capability.contributeLaunch(
+        ConfigProfileLaunchContext(
+          teamId: scope.teamId,
+          sessionId: scope.sessionId,
+          scope: scope,
+          team: team,
+          member: member,
+          members: const [member],
+          paths: paths,
+          busIdleUrl: 'http://127.0.0.1:4321/idle',
+        ),
+      );
+
+      expect((await fs.stat(layout.roleRule(home))).isFile, isTrue);
+      expect((await fs.stat(layout.mcpConfig(home))).isFile, isTrue);
+      expect((await fs.stat(layout.hooksConfig(home))).isFile, isTrue);
+      expect((await fs.stat(layout.idleScript(home))).isFile, isTrue);
+    });
+  });
+}

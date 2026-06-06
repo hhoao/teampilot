@@ -1319,6 +1319,35 @@ class AppLocalizationsZh extends AppLocalizations {
   String get claudeOfficialCredentialsActionFailed => '凭据更新失败';
 
   @override
+  String get cursorCredentialsAuthenticated => '已认证';
+
+  @override
+  String get cursorCredentialsUnauthenticated => '未认证';
+
+  @override
+  String get cursorCredentialsLogin => 'Cursor 登录';
+
+  @override
+  String get cursorCredentialsImportGlobal => '从 ~/.cursor 导入';
+
+  @override
+  String get cursorCredentialsImportFile => '导入目录…';
+
+  @override
+  String get cursorCredentialsRevoke => '退出登录';
+
+  @override
+  String cursorCredentialsRevokeConfirm(String name) {
+    return '退出登录并删除 $name 的已保存凭据？';
+  }
+
+  @override
+  String get cursorCredentialsActionSuccess => '凭据已更新';
+
+  @override
+  String get cursorCredentialsActionFailed => '凭据更新失败';
+
+  @override
   String get claudeLaunchCredentialsMissingWarning =>
       '该 Team 绑定的 Claude Official Provider 缺少凭据，请在 Providers 设置中登录。';
 

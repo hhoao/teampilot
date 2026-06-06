@@ -101,6 +101,13 @@ class ProviderImportService {
         mirror: true,
       );
 
+  Future<ProviderImportResult> importCursor({required bool onlyIfEmpty}) =>
+      _importForCatalogCli(
+        CliTool.cursor,
+        _importCursor,
+        onlyIfEmpty: onlyIfEmpty,
+      );
+
   Future<ProviderImportResult> _importForCatalogCli(
     CliTool cli,
     Future<_ImportedProviders> Function() loadImported, {
@@ -268,6 +275,9 @@ class ProviderImportService {
     }
     return _ImportedProviders(byId.values.toList(), sources.toList());
   }
+
+  Future<_ImportedProviders> _importCursor() async =>
+      const _ImportedProviders();
 
   Future<List<AppProviderConfig>> _importClaudeLive() async {
     final fs = AppStorage.fs;

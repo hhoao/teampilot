@@ -7,6 +7,7 @@ import '../../l10n/l10n_extensions.dart';
 import '../../models/app_provider_config.dart';
 import '../../models/provider_presets/claude_provider_presets.dart';
 import '../../models/provider_presets/codex_provider_presets.dart';
+import '../../models/provider_presets/cursor_provider_presets.dart';
 import '../../models/provider_presets/flashskyai_provider_presets.dart';
 import '../../theme/workspace_surface_layers.dart';
 import '../../utils/debounce/debounce.dart';
@@ -19,7 +20,7 @@ List<AppProviderPreset> appProviderPresetsFor(CliTool cli) {
     CliTool.codex => CodexProviderPresets.all,
     CliTool.flashskyai => FlashskyaiProviderPresets.all,
     CliTool.opencode => const [],
-    CliTool.cursor => const [],
+    CliTool.cursor => CursorProviderPresets.all,
   };
 }
 

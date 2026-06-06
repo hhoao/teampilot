@@ -66,7 +66,7 @@ void main() {
     expect(args, isEmpty);
   });
 
-  test('mixed: --plugin-dir wins, identity NOT seeded as initial prompt', () {
+  test('mixed: no plugin-dir, identity NOT seeded as initial prompt', () {
     const mixedTeam = TeamConfig(
       id: 't',
       name: 'agent',
@@ -84,19 +84,17 @@ void main() {
         team: mixedTeam,
         member: member,
         workingDirectory: '/work',
-        cursorPluginDir: '/cfg/cursor/teampilot-bus-plugin',
       ),
     );
 
     expect(args, [
       '--workspace',
       '/work',
-      '--plugin-dir',
-      '/cfg/cursor/teampilot-bus-plugin',
-      '--approve-mcps',
       '--model',
       'gpt-5.2',
     ]);
+    expect(args, isNot(contains('--plugin-dir')));
+    expect(args, isNot(contains('--approve-mcps')));
     expect(args, isNot(contains('You are the planner.')));
   });
 }

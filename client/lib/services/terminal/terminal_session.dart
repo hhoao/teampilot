@@ -266,8 +266,6 @@ class TerminalSession {
         LaunchCommandBuilder.appendSystemPromptFileFromEnvironment(
           _extraEnvironment,
         );
-    final cursorPluginDir =
-        LaunchCommandBuilder.cursorPluginDirFromEnvironment(_extraEnvironment);
     _extraEnvironment = LaunchCommandBuilder.launchEnvironmentForProcess(
       _extraEnvironment,
     );
@@ -293,7 +291,6 @@ class TerminalSession {
           resumeSessionId: resumeSessionId,
           settingsPath: settingsPath,
           appendSystemPromptFile: appendSystemPromptFile,
-          cursorPluginDir: cursorPluginDir,
           useWslPaths: invocation.usesWsl,
         ),
       );

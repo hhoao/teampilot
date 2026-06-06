@@ -5,6 +5,7 @@ import '../models/llm_config.dart';
 import '../services/storage/app_storage.dart';
 import '../services/provider/claude/claude_official_provider.dart';
 import '../services/provider/claude/claude_provider_credentials_service.dart';
+import '../services/provider/cursor/cursor_provider_credentials_service.dart';
 import '../services/io/filesystem.dart';
 import '../services/provider/tool_config_generator.dart';
 
@@ -23,15 +24,18 @@ class AppProviderRepository {
     ToolConfigGenerator? generator,
     Filesystem? fs,
     ClaudeProviderCredentialsService? claudeCredentialsService,
+    CursorProviderCredentialsService? cursorCredentialsService,
   }) : _basePathOverride = basePath,
        _generator = generator ?? const ToolConfigGenerator(),
        _fsOverride = fs,
-       _claudeCredentialsServiceOverride = claudeCredentialsService;
+       _claudeCredentialsServiceOverride = claudeCredentialsService,
+       _cursorCredentialsServiceOverride = cursorCredentialsService;
 
   final String? _basePathOverride;
   final Filesystem? _fsOverride;
   final ToolConfigGenerator _generator;
   final ClaudeProviderCredentialsService? _claudeCredentialsServiceOverride;
+  final CursorProviderCredentialsService? _cursorCredentialsServiceOverride;
 
   String get _basePath => _basePathOverride ?? AppStorage.paths.basePath;
 
@@ -40,6 +44,10 @@ class AppProviderRepository {
   ClaudeProviderCredentialsService get _claudeCredentials =>
       _claudeCredentialsServiceOverride ??
       ClaudeProviderCredentialsService(fs: _fs, basePath: _basePath);
+
+  CursorProviderCredentialsService get _cursorCredentials =>
+      _cursorCredentialsServiceOverride ??
+      CursorProviderCredentialsService(fs: _fs, basePath: _basePath);
 
   String providersPath(CliTool cli) =>
       _fs.pathContext.join(_basePath, 'providers', cli.value, 'providers.json');
@@ -53,8 +61,11 @@ class AppProviderRepository {
 
   Future<List<AppProviderConfig>> loadProviders(CliTool cli) async {
     final providers = await _loadProvidersFromDisk(cli);
-    if (cli != CliTool.claude) return providers;
-    return _probeClaudeCredentials(providers);
+    return switch (cli) {
+      CliTool.claude => _probeClaudeCredentials(providers),
+      CliTool.cursor => _probeCursorCredentials(providers),
+      _ => providers,
+    };
   }
 
   Future<List<AppProviderConfig>> _loadProvidersFromDisk(
@@ -117,7 +128,7 @@ class AppProviderRepository {
       case CliTool.opencode:
         break;
       case CliTool.cursor:
-        break;
+        await _removeStaleCursorNativeDirs(merged);
     }
   }
 
@@ -127,6 +138,22 @@ class AppProviderRepository {
     final path = _fs.pathContext;
     final expected = providers.map((p) => p.id).toSet();
     final root = path.join(_basePath, 'providers', 'claude');
+    if (!(await _fs.stat(root)).isDirectory) return;
+    for (final entry in await _fs.listDir(root)) {
+      if (!entry.isDirectory) continue;
+      if (entry.name == 'providers.json') continue;
+      if (!expected.contains(entry.name)) {
+        await _fs.removeRecursive(path.join(root, entry.name));
+      }
+    }
+  }
+
+  Future<void> _removeStaleCursorNativeDirs(
+    List<AppProviderConfig> providers,
+  ) async {
+    final path = _fs.pathContext;
+    final expected = providers.map((p) => p.id).toSet();
+    final root = path.join(_basePath, 'providers', 'cursor');
     if (!(await _fs.stat(root)).isDirectory) return;
     for (final entry in await _fs.listDir(root)) {
       if (!entry.isDirectory) continue;
@@ -169,6 +196,41 @@ class AppProviderRepository {
     }
     if (changed) {
       await saveProviders(CliTool.claude, probed);
+    }
+    return probed;
+  }
+
+  Future<List<AppProviderConfig>> _probeCursorCredentials(
+    List<AppProviderConfig> providers,
+  ) async {
+    var changed = false;
+    final probed = <AppProviderConfig>[];
+    for (final provider in providers) {
+      if (provider.cli != CliTool.cursor || !provider.isOfficial) {
+        probed.add(provider);
+        continue;
+      }
+      var probe = await _cursorCredentials.probe(provider.id);
+      if (!probe.isReady) {
+        final home = AppStorage.home.trim();
+        if (home.isNotEmpty) {
+          await _cursorCredentials.importFromGlobal(
+            provider.id,
+            homeDirectory: home,
+            replace: false,
+          );
+          probe = await _cursorCredentials.probe(provider.id);
+        }
+      }
+      final next = provider.withCredentialProbe(probe);
+      if (next.credentialStatus != provider.credentialStatus ||
+          next.credentialUpdatedAt != provider.credentialUpdatedAt) {
+        changed = true;
+      }
+      probed.add(next);
+    }
+    if (changed) {
+      await saveProviders(CliTool.cursor, probed);
     }
     return probed;
   }

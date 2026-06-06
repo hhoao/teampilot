@@ -12,8 +12,8 @@ import '../capabilities/transcript_probe_capability.dart';
 import '../capabilities/unsupported_installer_capability.dart';
 import '../config_profile/cursor_config_profile_capability.dart';
 
-/// Cursor CLI (`cursor-agent`). Launchable as a standalone embedded terminal
-/// (Phase 1). Mixed-mode team-bus participation is pending Phase 2.
+/// Cursor CLI (`cursor-agent`). Standalone and mixed-mode (HOME isolation +
+/// provider auth) embedded terminal.
 final class CursorCliTool implements CliToolDefinition {
   const CursorCliTool({
     this.launchArgs = const CursorCliToolAdapter(),
@@ -25,6 +25,7 @@ final class CursorCliTool implements CliToolDefinition {
     this.display = const CursorDisplay(),
     this.terminalBehavior = const CursorTerminalBehavior(),
     this.pluginManifest = const CursorPluginManifest(),
+    this.providerCatalog = const CursorProviderCatalog(),
   });
 
   final LaunchArgsCapability launchArgs;
@@ -36,6 +37,7 @@ final class CursorCliTool implements CliToolDefinition {
   final CursorDisplay display;
   final CursorTerminalBehavior terminalBehavior;
   final CursorPluginManifest pluginManifest;
+  final CursorProviderCatalog providerCatalog;
 
   @override
   CliTool get id => CliTool.cursor;
@@ -54,5 +56,6 @@ final class CursorCliTool implements CliToolDefinition {
     display,
     terminalBehavior,
     pluginManifest,
+    providerCatalog,
   ];
 }

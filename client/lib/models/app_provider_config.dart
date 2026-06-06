@@ -151,6 +151,8 @@ class AppProviderConfig {
 
   bool get hasClaudeCredentialsReady => credentialStatus == 'ready';
 
+  bool get hasCursorCredentialsReady => credentialStatus == 'ready';
+
   bool get requiresApiKey =>
       category == AppProviderCategory.thirdParty ||
       category == AppProviderCategory.aggregator ||
@@ -245,7 +247,7 @@ class AppProviderConfig {
       'config': config,
       'createdAt': createdAt,
       'updatedAt': updatedAt,
-      if (cli == CliTool.claude) ...{
+      if (cli == CliTool.claude || cli == CliTool.cursor) ...{
         'credentialStatus': credentialStatus,
         if (credentialUpdatedAt > 0) 'credentialUpdatedAt': credentialUpdatedAt,
       },

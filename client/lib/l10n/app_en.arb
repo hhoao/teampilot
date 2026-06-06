@@ -624,6 +624,22 @@
   },
   "claudeOfficialCredentialsActionSuccess": "Credentials updated",
   "claudeOfficialCredentialsActionFailed": "Could not update credentials",
+  "cursorCredentialsAuthenticated": "Authenticated",
+  "cursorCredentialsUnauthenticated": "Unauthenticated",
+  "cursorCredentialsLogin": "Sign in with Cursor",
+  "cursorCredentialsImportGlobal": "Import from ~/.cursor",
+  "cursorCredentialsImportFile": "Import directory…",
+  "cursorCredentialsRevoke": "Sign out",
+  "cursorCredentialsRevokeConfirm": "Sign out and remove saved credentials for {name}?",
+  "@cursorCredentialsRevokeConfirm": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "cursorCredentialsActionSuccess": "Credentials updated",
+  "cursorCredentialsActionFailed": "Could not update credentials",
   "claudeLaunchCredentialsMissingWarning": "Claude Official credentials are missing for this team provider. Sign in from Providers settings.",
   "teamConfigIncompleteTitle": "Team configuration incomplete",
   "teamConfigIncompleteBody": "Team \"{team}\" is missing settings needed to launch. The session still starts, but agents may fail without them:",

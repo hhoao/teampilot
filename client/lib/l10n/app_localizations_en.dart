@@ -1371,6 +1371,35 @@ class AppLocalizationsEn extends AppLocalizations {
       'Could not update credentials';
 
   @override
+  String get cursorCredentialsAuthenticated => 'Authenticated';
+
+  @override
+  String get cursorCredentialsUnauthenticated => 'Unauthenticated';
+
+  @override
+  String get cursorCredentialsLogin => 'Sign in with Cursor';
+
+  @override
+  String get cursorCredentialsImportGlobal => 'Import from ~/.cursor';
+
+  @override
+  String get cursorCredentialsImportFile => 'Import directory…';
+
+  @override
+  String get cursorCredentialsRevoke => 'Sign out';
+
+  @override
+  String cursorCredentialsRevokeConfirm(String name) {
+    return 'Sign out and remove saved credentials for $name?';
+  }
+
+  @override
+  String get cursorCredentialsActionSuccess => 'Credentials updated';
+
+  @override
+  String get cursorCredentialsActionFailed => 'Could not update credentials';
+
+  @override
   String get claudeLaunchCredentialsMissingWarning =>
       'Claude Official credentials are missing for this team provider. Sign in from Providers settings.';
 

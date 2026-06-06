@@ -410,6 +410,8 @@ class SessionLifecycleService {
   }
 
   String _memberConfigDirFromEnv(Map<String, String> env) {
+    final home = env['HOME']?.trim() ?? '';
+    if (home.isNotEmpty) return home;
     return env['CLAUDE_CONFIG_DIR'] ??
         env[FlashskyaiConfigProfileCapability.configDirEnvKey] ??
         env[FlashskyaiConfigProfileCapability.sessionHomeDirEnvKey] ??

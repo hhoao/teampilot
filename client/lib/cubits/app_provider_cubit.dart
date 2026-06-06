@@ -7,6 +7,7 @@ import '../models/llm_config.dart';
 import '../repositories/app_provider_repository.dart';
 import '../services/storage/app_storage.dart';
 import '../services/provider/claude/claude_provider_credentials_service.dart';
+import '../services/provider/cursor/cursor_provider_credentials_service.dart';
 import '../services/provider/provider_import_service.dart';
 import '../services/provider/tool_config_generator.dart';
 
@@ -77,6 +78,8 @@ class AppProviderCubit extends Cubit<AppProviderState> {
     String? Function()? claudeExecutablePath,
     ToolConfigGenerator? generator,
     ClaudeProviderCredentialsService? claudeCredentialsService,
+    CursorProviderCredentialsService? cursorCredentialsService,
+    String? Function()? cursorExecutablePath,
     String? basePath,
   }) : _repository = repository ?? AppProviderRepository(basePath: basePath),
        _generator = generator ?? const ToolConfigGenerator(),
@@ -89,6 +92,13 @@ class AppProviderCubit extends Cubit<AppProviderState> {
              basePath: _resolveBasePath(basePath),
              resolveClaudeExecutable: claudeExecutablePath,
            ),
+       _cursorCredentials =
+           cursorCredentialsService ??
+           CursorProviderCredentialsService(
+             fs: AppStorage.fs,
+             basePath: _resolveBasePath(basePath),
+             resolveCursorExecutable: cursorExecutablePath,
+           ),
        super(const AppProviderState());
 
   final AppProviderRepository _repository;
@@ -96,6 +106,7 @@ class AppProviderCubit extends Cubit<AppProviderState> {
   final ProviderImportService? _importService;
   final String? Function()? _flashskyaiExecutablePath;
   final ClaudeProviderCredentialsService _claudeCredentials;
+  final CursorProviderCredentialsService _cursorCredentials;
 
   static String _resolveBasePath(String? basePath) {
     if (basePath != null && basePath.trim().isNotEmpty) {
@@ -296,6 +307,73 @@ class AppProviderCubit extends Cubit<AppProviderState> {
   Future<bool> _refreshClaudeCredentialStatus(String providerId) async {
     final probe = await _claudeCredentials.probe(providerId);
     final provider = state.providers
+        .where((p) => p.id == providerId)
+        .firstOrNull;
+    if (provider == null) return false;
+    return upsertProvider(provider.withCredentialProbe(probe));
+  }
+
+  Future<CredentialProbe> probeCursorCredentials(String providerId) async {
+    return _cursorCredentials.probe(providerId);
+  }
+
+  Future<bool> loginCursorProvider(String providerId) async {
+    final ok = await _cursorCredentials.runAuthLogin(providerId);
+    if (!ok) return false;
+    return _refreshCursorCredentialStatus(providerId);
+  }
+
+  Future<bool> importCursorCredentialsFromGlobal(
+    String providerId, {
+    bool replace = false,
+  }) async {
+    final home = AppStorage.home;
+    final ok = await _cursorCredentials.importFromGlobal(
+      providerId,
+      homeDirectory: home,
+      replace: replace,
+    );
+    if (!ok) return false;
+    return _refreshCursorCredentialStatus(providerId);
+  }
+
+  Future<bool> importCursorCredentialsFromDirectory(
+    String providerId,
+    String sourceCursorDir, {
+    bool replace = false,
+  }) async {
+    final ok = await _cursorCredentials.importFromCursorDirectory(
+      providerId,
+      sourceCursorDir,
+      replace: replace,
+    );
+    if (!ok) return false;
+    return _refreshCursorCredentialStatus(providerId);
+  }
+
+  Future<bool> importCursorAuthJsonFile(
+    String providerId,
+    String sourceAuthJsonPath, {
+    bool replace = false,
+  }) async {
+    final ok = await _cursorCredentials.importAuthJsonFile(
+      providerId,
+      sourceAuthJsonPath,
+      replace: replace,
+    );
+    if (!ok) return false;
+    return _refreshCursorCredentialStatus(providerId);
+  }
+
+  Future<bool> revokeCursorProvider(String providerId) async {
+    final ok = await _cursorCredentials.revokeCredentials(providerId);
+    if (!ok) return false;
+    return _refreshCursorCredentialStatus(providerId);
+  }
+
+  Future<bool> _refreshCursorCredentialStatus(String providerId) async {
+    final probe = await _cursorCredentials.probe(providerId);
+    final provider = state.providersFor(CliTool.cursor)
         .where((p) => p.id == providerId)
         .firstOrNull;
     if (provider == null) return false;

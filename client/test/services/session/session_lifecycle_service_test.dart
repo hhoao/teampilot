@@ -159,6 +159,35 @@ void main() {
   );
 
   test(
+    'prepareLaunch cursor mixed mode uses HOME as memberConfigDir',
+    () async {
+      const member = TeamMemberConfig(id: 'planner', name: 'Planner');
+      final plan = await service().prepareLaunch(
+        session: _session(id: 'mixed-session'),
+        team: const TeamConfig(
+          id: 'team-a',
+          name: 'Team A',
+          cli: CliTool.cursor,
+          teamMode: TeamMode.mixed,
+          members: [member],
+        ),
+        member: member,
+        busIdleUrl: 'http://127.0.0.1:5050/idle',
+      );
+
+      final cursorDir = layout.memberToolDir(
+        'team-a',
+        'mixed-session/planner',
+        'cursor',
+      );
+      final memberHome = p.join(cursorDir, 'home');
+      expect(plan.memberConfigDir, memberHome);
+      expect(plan.env['HOME'], memberHome);
+      expect(plan.resolvedRoots, contains(memberHome));
+    },
+  );
+
+  test(
     'prepareLaunch mixed member claude override uses claude profile dirs',
     () async {
       final plan = await service().prepareLaunch(

@@ -2540,6 +2540,60 @@ abstract class AppLocalizations {
   /// **'Could not update credentials'**
   String get claudeOfficialCredentialsActionFailed;
 
+  /// No description provided for @cursorCredentialsAuthenticated.
+  ///
+  /// In en, this message translates to:
+  /// **'Authenticated'**
+  String get cursorCredentialsAuthenticated;
+
+  /// No description provided for @cursorCredentialsUnauthenticated.
+  ///
+  /// In en, this message translates to:
+  /// **'Unauthenticated'**
+  String get cursorCredentialsUnauthenticated;
+
+  /// No description provided for @cursorCredentialsLogin.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in with Cursor'**
+  String get cursorCredentialsLogin;
+
+  /// No description provided for @cursorCredentialsImportGlobal.
+  ///
+  /// In en, this message translates to:
+  /// **'Import from ~/.cursor'**
+  String get cursorCredentialsImportGlobal;
+
+  /// No description provided for @cursorCredentialsImportFile.
+  ///
+  /// In en, this message translates to:
+  /// **'Import directory…'**
+  String get cursorCredentialsImportFile;
+
+  /// No description provided for @cursorCredentialsRevoke.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign out'**
+  String get cursorCredentialsRevoke;
+
+  /// No description provided for @cursorCredentialsRevokeConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign out and remove saved credentials for {name}?'**
+  String cursorCredentialsRevokeConfirm(String name);
+
+  /// No description provided for @cursorCredentialsActionSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Credentials updated'**
+  String get cursorCredentialsActionSuccess;
+
+  /// No description provided for @cursorCredentialsActionFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not update credentials'**
+  String get cursorCredentialsActionFailed;
+
   /// No description provided for @claudeLaunchCredentialsMissingWarning.
   ///
   /// In en, this message translates to:
