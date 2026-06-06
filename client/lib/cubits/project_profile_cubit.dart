@@ -136,7 +136,52 @@ class ProjectProfileCubit extends Cubit<ProjectProfileState> {
   Future<void> setCli(CliTool cli) async {
     final profile = state.profile;
     if (profile == null) return;
-    await _persist(profile.copyWith(cli: cli));
+    final provider = profile.providerIdsByTool[cli.value]?.trim() ?? '';
+    final model = profile.modelsByTool[cli.value]?.trim() ?? '';
+    final agent = profile.agent.copyWith(
+      provider: provider.isNotEmpty ? provider : profile.agent.provider,
+      model: model.isNotEmpty ? model : profile.agent.model,
+    );
+    await _persist(profile.copyWith(cli: cli, agent: agent));
+  }
+
+  Future<void> setCliDefaults(
+    CliTool cli, {
+    required String provider,
+    required String model,
+  }) async {
+    final profile = state.profile;
+    if (profile == null) return;
+
+    final providers = Map<String, String>.from(profile.providerIdsByTool);
+    final models = Map<String, String>.from(profile.modelsByTool);
+    final trimmedProvider = provider.trim();
+    final trimmedModel = model.trim();
+
+    if (trimmedProvider.isEmpty) {
+      providers.remove(cli.value);
+    } else {
+      providers[cli.value] = trimmedProvider;
+    }
+    if (trimmedModel.isEmpty) {
+      models.remove(cli.value);
+    } else {
+      models[cli.value] = trimmedModel;
+    }
+
+    var next = profile.copyWith(
+      providerIdsByTool: providers,
+      modelsByTool: models,
+    );
+    if (profile.cli == cli) {
+      next = next.copyWith(
+        agent: profile.agent.copyWith(
+          provider: trimmedProvider,
+          model: trimmedModel,
+        ),
+      );
+    }
+    await _persist(next);
   }
 
   Future<void> setMcpServerIds(List<String> mcpServerIds) async {

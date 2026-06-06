@@ -621,6 +621,41 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homeWorkspaceProjectAgent => 'Agent';
 
   @override
+  String get projectCliDefaultSubtitle =>
+      'Default CLI for new conversations in this project.';
+
+  @override
+  String get projectCliDefaultsTitle => 'CLI defaults';
+
+  @override
+  String get projectCliDefaultsSubtitle =>
+      'Set the default provider and model for each CLI used in this project.';
+
+  @override
+  String get projectCliProviderModelTitle => 'Provider & model';
+
+  @override
+  String get projectCliConfigure => 'Configure';
+
+  @override
+  String get projectCliConfigured => 'Configured';
+
+  @override
+  String get projectCliNotConfigured => 'Not configured';
+
+  @override
+  String get projectCliNotConfiguredHint => 'No default provider selected yet';
+
+  @override
+  String get projectCliNoProviderCatalog =>
+      'No provider setup required for this CLI';
+
+  @override
+  String projectCliConfigSummary(String provider, String model) {
+    return '$provider · $model';
+  }
+
+  @override
   String get homeWorkspaceProjectSkills => 'Skills';
 
   @override

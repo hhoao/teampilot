@@ -318,7 +318,13 @@ class SessionLaunchService implements MemberConnector {
   ) {
     final cli = session.cli;
     if (cli == null) return profile;
-    return profile.copyWith(cli: cli);
+    final provider =
+        profile.providerIdsByTool[cli.value]?.trim() ?? profile.agent.provider;
+    final model = profile.modelsByTool[cli.value]?.trim() ?? profile.agent.model;
+    return profile.copyWith(
+      cli: cli,
+      agent: profile.agent.copyWith(provider: provider, model: model),
+    );
   }
 
   AppSession? _firstSessionForProject(String projectId) {

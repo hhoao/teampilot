@@ -596,6 +596,38 @@ class AppLocalizationsZh extends AppLocalizations {
   String get homeWorkspaceProjectAgent => '智能体';
 
   @override
+  String get projectCliDefaultSubtitle => '本项目新建对话时使用的默认 CLI。';
+
+  @override
+  String get projectCliDefaultsTitle => 'CLI 默认配置';
+
+  @override
+  String get projectCliDefaultsSubtitle => '为本项目使用的每个 CLI 设置默认提供商与模型。';
+
+  @override
+  String get projectCliProviderModelTitle => '提供商与模型';
+
+  @override
+  String get projectCliConfigure => '配置';
+
+  @override
+  String get projectCliConfigured => '已配置';
+
+  @override
+  String get projectCliNotConfigured => '未配置';
+
+  @override
+  String get projectCliNotConfiguredHint => '尚未选择默认提供商';
+
+  @override
+  String get projectCliNoProviderCatalog => '此 CLI 无需配置提供商';
+
+  @override
+  String projectCliConfigSummary(String provider, String model) {
+    return '$provider · $model';
+  }
+
+  @override
   String get homeWorkspaceProjectSkills => '技能';
 
   @override

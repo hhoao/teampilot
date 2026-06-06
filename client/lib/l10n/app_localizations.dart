@@ -1220,6 +1220,66 @@ abstract class AppLocalizations {
   /// **'Agent'**
   String get homeWorkspaceProjectAgent;
 
+  /// No description provided for @projectCliDefaultSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Default CLI for new conversations in this project.'**
+  String get projectCliDefaultSubtitle;
+
+  /// No description provided for @projectCliDefaultsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'CLI defaults'**
+  String get projectCliDefaultsTitle;
+
+  /// No description provided for @projectCliDefaultsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Set the default provider and model for each CLI used in this project.'**
+  String get projectCliDefaultsSubtitle;
+
+  /// No description provided for @projectCliProviderModelTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Provider & model'**
+  String get projectCliProviderModelTitle;
+
+  /// No description provided for @projectCliConfigure.
+  ///
+  /// In en, this message translates to:
+  /// **'Configure'**
+  String get projectCliConfigure;
+
+  /// No description provided for @projectCliConfigured.
+  ///
+  /// In en, this message translates to:
+  /// **'Configured'**
+  String get projectCliConfigured;
+
+  /// No description provided for @projectCliNotConfigured.
+  ///
+  /// In en, this message translates to:
+  /// **'Not configured'**
+  String get projectCliNotConfigured;
+
+  /// No description provided for @projectCliNotConfiguredHint.
+  ///
+  /// In en, this message translates to:
+  /// **'No default provider selected yet'**
+  String get projectCliNotConfiguredHint;
+
+  /// No description provided for @projectCliNoProviderCatalog.
+  ///
+  /// In en, this message translates to:
+  /// **'No provider setup required for this CLI'**
+  String get projectCliNoProviderCatalog;
+
+  /// No description provided for @projectCliConfigSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'{provider} · {model}'**
+  String projectCliConfigSummary(String provider, String model);
+
   /// No description provided for @homeWorkspaceProjectSkills.
   ///
   /// In en, this message translates to:

@@ -37,6 +37,12 @@ String standaloneProviderId(ProjectProfile profile) {
   return profile.agent.provider.trim();
 }
 
+String standaloneModelId(ProjectProfile profile) {
+  final fromMap = profile.modelsByTool[profile.cli.value]?.trim() ?? '';
+  if (fromMap.isNotEmpty) return fromMap;
+  return profile.agent.model.trim();
+}
+
 /// Minimal [TeamConfig] for personal / standalone PTY launch args.
 TeamConfig standaloneTeamFromProfile(
   ProjectProfile profile, {
@@ -66,7 +72,7 @@ TeamMemberConfig standaloneMemberFromProfile(ProjectProfile profile) {
     id: TeamMemberNaming.slugMemberName(name),
     name: name,
     provider: standaloneProviderId(profile),
-    model: agent.model,
+    model: standaloneModelId(profile),
     agent: agent.agent,
     agentType: agent.agentType,
     extraArgs: agent.extraArgs,

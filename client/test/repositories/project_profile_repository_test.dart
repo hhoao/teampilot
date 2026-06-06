@@ -46,6 +46,16 @@ void main() {
     expect(await repo.load('missing'), isNull);
   });
 
+  test('fromJson without modelsByTool defaults to empty map', () {
+    final profile = ProjectProfile.fromJson({
+      'projectId': 'legacy',
+      'cli': 'claude',
+      'providerIdsByTool': {'claude': 'p1'},
+    });
+    expect(profile.modelsByTool, isEmpty);
+    expect(profile.providerIdsByTool, {'claude': 'p1'});
+  });
+
   test('loadOrCreate persists default when missing', () async {
     final tmp = await Directory.systemTemp.createTemp('fs_project_profile_');
     addTearDown(() => tmp.deleteSync(recursive: true));

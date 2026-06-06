@@ -104,9 +104,11 @@ class ProjectProfile {
     this.skillIds = const [],
     this.pluginIds = const [],
     this.mcpServerIds = const [],
-    this.providerIdsByTool = const {},
+    Map<String, String>? providerIdsByTool,
+    Map<String, String>? modelsByTool,
     this.updatedAt = 0,
-  });
+  }) : _providerIdsByTool = providerIdsByTool,
+       _modelsByTool = modelsByTool;
 
   factory ProjectProfile.fromJson(Map<String, Object?> json) {
     final rawAgent = json['agent'];
@@ -120,12 +122,13 @@ class ProjectProfile {
       skillIds: TeamConfig.decodeSkillIds(json['skillIds']),
       pluginIds: TeamConfig.decodePluginIds(json['pluginIds']),
       mcpServerIds: TeamConfig.decodeMcpServerIds(json['mcpServerIds']),
-      providerIdsByTool: _decodeProviderIdsByTool(json['providerIdsByTool']),
+      providerIdsByTool: _decodeStringMapByKey(json['providerIdsByTool']),
+      modelsByTool: _decodeStringMapByKey(json['modelsByTool']),
       updatedAt: (json['updatedAt'] as num?)?.toInt() ?? 0,
     );
   }
 
-  static Map<String, String> _decodeProviderIdsByTool(Object? raw) {
+  static Map<String, String> _decodeStringMapByKey(Object? raw) {
     if (raw is! Map) return const {};
     return {
       for (final entry in raw.entries)
@@ -142,7 +145,15 @@ class ProjectProfile {
   final List<String> skillIds;
   final List<String> pluginIds;
   final List<String> mcpServerIds;
-  final Map<String, String> providerIdsByTool;
+  final Map<String, String>? _providerIdsByTool;
+  final Map<String, String>? _modelsByTool;
+
+  /// Non-null even for profiles loaded before [modelsByTool] existed (hot reload).
+  Map<String, String> get providerIdsByTool => _providerIdsByTool ?? const {};
+
+  /// Non-null even for profiles loaded before [modelsByTool] existed (hot reload).
+  Map<String, String> get modelsByTool => _modelsByTool ?? const {};
+
   final int updatedAt;
 
   ProjectProfile copyWith({
@@ -153,6 +164,7 @@ class ProjectProfile {
     List<String>? pluginIds,
     List<String>? mcpServerIds,
     Map<String, String>? providerIdsByTool,
+    Map<String, String>? modelsByTool,
     int? updatedAt,
   }) {
     return ProjectProfile(
@@ -163,6 +175,7 @@ class ProjectProfile {
       pluginIds: pluginIds ?? this.pluginIds,
       mcpServerIds: mcpServerIds ?? this.mcpServerIds,
       providerIdsByTool: providerIdsByTool ?? this.providerIdsByTool,
+      modelsByTool: modelsByTool ?? this.modelsByTool,
       updatedAt: updatedAt ?? this.updatedAt,
     );
   }
@@ -176,6 +189,7 @@ class ProjectProfile {
       if (pluginIds.isNotEmpty) 'pluginIds': pluginIds,
       if (mcpServerIds.isNotEmpty) 'mcpServerIds': mcpServerIds,
       if (providerIdsByTool.isNotEmpty) 'providerIdsByTool': providerIdsByTool,
+      if (modelsByTool.isNotEmpty) 'modelsByTool': modelsByTool,
       if (updatedAt > 0) 'updatedAt': updatedAt,
     };
   }
@@ -192,6 +206,7 @@ class ProjectProfile {
             listEquals(pluginIds, other.pluginIds) &&
             listEquals(mcpServerIds, other.mcpServerIds) &&
             mapEquals(providerIdsByTool, other.providerIdsByTool) &&
+            mapEquals(modelsByTool, other.modelsByTool) &&
             updatedAt == other.updatedAt;
   }
 
@@ -204,6 +219,7 @@ class ProjectProfile {
     Object.hashAll(pluginIds),
     Object.hashAll(mcpServerIds),
     Object.hashAll(providerIdsByTool.entries),
+    Object.hashAll(modelsByTool.entries),
     updatedAt,
   );
 }
