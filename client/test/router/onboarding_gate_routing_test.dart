@@ -6,6 +6,7 @@ import 'package:teampilot/cubits/layout_cubit.dart';
 import 'package:teampilot/cubits/session_preferences_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/connection_mode.dart';
+import 'package:teampilot/models/layout_preferences.dart';
 import 'package:teampilot/pages/onboarding/onboarding_wizard.dart';
 import 'package:teampilot/repositories/app_settings_repository.dart';
 import 'package:teampilot/repositories/session_preferences_repository.dart';
@@ -14,6 +15,30 @@ import 'package:teampilot/services/app/connection_mode_service.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+
+  test('lastProject entry mode resolves project route', () {
+    expect(
+      workspaceEntryLocationFor(
+        mode: WorkspaceEntryMode.lastProject,
+        lastOpenedProjectId: 'proj-42',
+      ),
+      '/home-v2/project/proj-42',
+    );
+    expect(
+      workspaceEntryLocationFor(
+        mode: WorkspaceEntryMode.lastProject,
+        lastOpenedProjectId: '',
+      ),
+      '/home-v2',
+    );
+  });
+
+  test('legacy hub entry mode resolves to home', () {
+    final prefs = LayoutPreferences.fromJson({
+      'workspaceEntryMode': 'hub',
+    });
+    expect(prefs.workspaceEntryMode, WorkspaceEntryMode.home);
+  });
 
   testWidgets('home workspace entry shows onboarding wizard on first run', (
     tester,

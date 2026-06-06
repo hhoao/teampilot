@@ -17,7 +17,7 @@ import '../../../utils/project_sessions.dart';
 import '../../../widgets/sidebar_session_tile.dart';
 import 'project_session_actions.dart';
 
-/// Hub-style left rail: project management, new chat, and this project's sessions.
+/// Project sidebar: project management, new chat, and this project's sessions.
 class HomeWorkspaceProjectSidebar extends StatelessWidget {
   const HomeWorkspaceProjectSidebar({
     required this.project,

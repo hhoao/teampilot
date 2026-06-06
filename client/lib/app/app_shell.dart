@@ -41,6 +41,7 @@ import '../repositories/ssh_known_host_repository.dart';
 import '../repositories/ssh_profile_repository.dart';
 import '../repositories/extension_repository.dart';
 import '../repositories/team_repository.dart';
+import '../router/app_router.dart';
 import '../services/extension/builtin_manifests.dart';
 import '../services/extension/extension_acquisition_engine.dart';
 import '../services/extension/extension_provisioner.dart';
@@ -352,6 +353,8 @@ Future<AppShell> buildAppShell({
     ExtensionAcquisitionEngine(),
   );
 
+  projectProfileRepository = ProjectProfileRepository(storageRoots: storageRoots);
+
   sessionLifecycleService = SessionLifecycleService(
     llmConfigPathOverride: llmConfigPathOverrideForLaunch,
     storageRootsResolver: storageRoots.resolve,
@@ -369,6 +372,7 @@ Future<AppShell> buildAppShell({
       return (await extensionRepository.load(forceReload: true)).globalEnabled;
     },
     cliToolRegistry: cliToolRegistry,
+    projectProfileRepository: projectProfileRepository,
   );
   sessionRepo = SessionRepository(
     storageRoots: storageRoots,
@@ -381,7 +385,6 @@ Future<AppShell> buildAppShell({
 
   final pluginRepository = PluginRepository(storageRoots: storageRoots);
   final mcpRepository = McpRepository(storageRoots: storageRoots);
-  projectProfileRepository = ProjectProfileRepository(storageRoots: storageRoots);
   final projectSkillLinker = ProjectSkillLinkerService(
     storageRoots: storageRoots,
   );
@@ -528,6 +531,10 @@ Future<AppShell> buildAppShell({
 
   boot('loading layout');
   await layoutCubit.load();
+  applyWorkspaceEntryMode(
+    layoutCubit.state.preferences.workspaceEntryMode,
+    lastOpenedProjectId: layoutCubit.state.preferences.lastOpenedProjectId,
+  );
   boot('buildAppShell complete');
 
   Future<void> bootstrapAppData() async {
@@ -549,6 +556,12 @@ Future<AppShell> buildAppShell({
       chatCubit: chatCubit,
       sessionRepo: sessionRepo,
       sshProfileCubit: sshProfileCubit,
+    );
+    reapplyWorkspaceEntryFromPreferences(
+      layoutCubit.state.preferences,
+      knownProjectIds: {
+        for (final project in chatCubit.state.projects) project.projectId,
+      },
     );
   }
 

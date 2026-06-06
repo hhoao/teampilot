@@ -63,7 +63,6 @@ class LayoutCubit extends Cubit<LayoutState> {
 
   Future<void> setRegionVisibility({
     required bool appRailVisible,
-    required bool contextSidebarVisible,
     required bool membersVisible,
     required bool fileTreeVisible,
     bool? gitVisible,
@@ -71,13 +70,19 @@ class LayoutCubit extends Cubit<LayoutState> {
     return _save(
       state.preferences.copyWith(
         appRailVisible: appRailVisible,
-        contextSidebarVisible: contextSidebarVisible,
         membersVisible: membersVisible,
         fileTreeVisible: fileTreeVisible,
         gitVisible: gitVisible,
       ),
     );
   }
+
+  Future<void> setWorkspaceEntryMode(WorkspaceEntryMode mode) =>
+      _save(state.preferences.copyWith(workspaceEntryMode: mode));
+
+  Future<void> setLastOpenedProjectId(String projectId) => _save(
+    state.preferences.copyWith(lastOpenedProjectId: projectId.trim()),
+  );
 
   Future<void> setRightToolsWidth(double width) =>
       _save(state.preferences.copyWith(rightToolsWidth: width));

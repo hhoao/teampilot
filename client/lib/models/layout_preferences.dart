@@ -7,13 +7,16 @@ enum ToolPanelPlacement { right, bottom }
 
 enum ToolsArrangement { stacked, tabs }
 
+enum WorkspaceEntryMode { home, lastProject }
+
 class LayoutPreferences {
   const LayoutPreferences({
     this.preset = LayoutPreset.workbench,
     this.toolPlacement = ToolPanelPlacement.right,
     this.toolsArrangement = ToolsArrangement.tabs,
+    this.workspaceEntryMode = WorkspaceEntryMode.home,
+    this.lastOpenedProjectId = '',
     this.appRailVisible = true,
-    this.contextSidebarVisible = true,
     this.membersVisible = true,
     this.fileTreeVisible = true,
     this.gitVisible = true,
@@ -46,8 +49,11 @@ class LayoutPreferences {
       toolsArrangement:
           _enumValue(ToolsArrangement.values, json['toolsArrangement']) ??
           ToolsArrangement.tabs,
+      workspaceEntryMode: _workspaceEntryModeFromJson(
+        json['workspaceEntryMode'] as String?,
+      ),
+      lastOpenedProjectId: json['lastOpenedProjectId'] as String? ?? '',
       appRailVisible: json['appRailVisible'] as bool? ?? true,
-      contextSidebarVisible: json['contextSidebarVisible'] as bool? ?? true,
       membersVisible: json['membersVisible'] as bool? ?? true,
       fileTreeVisible: json['fileTreeVisible'] as bool? ?? true,
       gitVisible: json['gitVisible'] as bool? ?? true,
@@ -137,8 +143,9 @@ class LayoutPreferences {
   final LayoutPreset preset;
   final ToolPanelPlacement toolPlacement;
   final ToolsArrangement toolsArrangement;
+  final WorkspaceEntryMode workspaceEntryMode;
+  final String lastOpenedProjectId;
   final bool appRailVisible;
-  final bool contextSidebarVisible;
   final bool membersVisible;
   final bool fileTreeVisible;
   final bool gitVisible;
@@ -162,8 +169,9 @@ class LayoutPreferences {
     LayoutPreset? preset,
     ToolPanelPlacement? toolPlacement,
     ToolsArrangement? toolsArrangement,
+    WorkspaceEntryMode? workspaceEntryMode,
+    String? lastOpenedProjectId,
     bool? appRailVisible,
-    bool? contextSidebarVisible,
     bool? membersVisible,
     bool? fileTreeVisible,
     bool? gitVisible,
@@ -187,9 +195,9 @@ class LayoutPreferences {
       preset: preset ?? this.preset,
       toolPlacement: toolPlacement ?? this.toolPlacement,
       toolsArrangement: toolsArrangement ?? this.toolsArrangement,
+      workspaceEntryMode: workspaceEntryMode ?? this.workspaceEntryMode,
+      lastOpenedProjectId: lastOpenedProjectId ?? this.lastOpenedProjectId,
       appRailVisible: appRailVisible ?? this.appRailVisible,
-      contextSidebarVisible:
-          contextSidebarVisible ?? this.contextSidebarVisible,
       membersVisible: membersVisible ?? this.membersVisible,
       fileTreeVisible: fileTreeVisible ?? this.fileTreeVisible,
       gitVisible: gitVisible ?? this.gitVisible,
@@ -246,8 +254,9 @@ class LayoutPreferences {
       preset: preset,
       toolPlacement: toolPlacement,
       toolsArrangement: toolsArrangement,
+      workspaceEntryMode: workspaceEntryMode,
+      lastOpenedProjectId: lastOpenedProjectId,
       appRailVisible: appRailVisible,
-      contextSidebarVisible: contextSidebarVisible,
       membersVisible: true,
       fileTreeVisible: false,
       gitVisible: gitVisible,
@@ -275,8 +284,9 @@ class LayoutPreferences {
       'preset': preset.name,
       'toolPlacement': toolPlacement.name,
       'toolsArrangement': toolsArrangement.name,
+      'workspaceEntryMode': workspaceEntryMode.name,
+      'lastOpenedProjectId': lastOpenedProjectId,
       'appRailVisible': appRailVisible,
-      'contextSidebarVisible': contextSidebarVisible,
       'membersVisible': membersVisible,
       'fileTreeVisible': fileTreeVisible,
       'gitVisible': gitVisible,
@@ -324,4 +334,12 @@ String _terminalThemeModeValue(String? raw) {
     return raw!;
   }
   return 'adaptive';
+}
+
+WorkspaceEntryMode _workspaceEntryModeFromJson(String? raw) {
+  if (raw == 'lastProject') {
+    return WorkspaceEntryMode.lastProject;
+  }
+  // Legacy `hub` and unknown values open home (no redirect shim).
+  return WorkspaceEntryMode.home;
 }

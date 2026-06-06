@@ -86,9 +86,14 @@ class ProjectProfileCubit extends Cubit<ProjectProfileState> {
   final InstalledSkillsLoader _installedSkillsLoader;
   final InstalledPluginsLoader _installedPluginsLoader;
 
-  Future<void> load(String projectId) async {
+  Future<void> load(String projectId, {bool force = false}) async {
     final trimmed = projectId.trim();
     if (trimmed.isEmpty) return;
+    if (!force &&
+        state.projectId == trimmed &&
+        state.status == ProjectProfileLoadStatus.ready) {
+      return;
+    }
 
     emit(
       state.copyWith(
@@ -105,6 +110,12 @@ class ProjectProfileCubit extends Cubit<ProjectProfileState> {
           status: ProjectProfileLoadStatus.ready,
         ),
       );
+      if (profile.skillIds.isNotEmpty) {
+        await _syncSkills(profile);
+      }
+      if (profile.pluginIds.isNotEmpty) {
+        await _syncPlugins(profile);
+      }
     } on Object catch (e) {
       appLogger.e('[project-profile] load failed: $e');
       emit(

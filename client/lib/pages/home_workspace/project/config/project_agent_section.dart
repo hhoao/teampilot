@@ -75,7 +75,10 @@ class ProjectAgentConfigFormState extends State<ProjectAgentConfigForm> {
   @override
   void initState() {
     super.initState();
-    _syncControllers(widget.profile.agent);
+    final agent = widget.profile.agent;
+    _agentCtl = TextEditingController(text: agent.agent);
+    _argsCtl = TextEditingController(text: agent.extraArgs);
+    _promptCtl = TextEditingController(text: agent.prompt);
     _loadUserAgents();
   }
 
@@ -98,9 +101,15 @@ class ProjectAgentConfigFormState extends State<ProjectAgentConfigForm> {
   }
 
   void _syncControllers(ProjectAgentConfig agent) {
-    _agentCtl = TextEditingController(text: agent.agent);
-    _argsCtl = TextEditingController(text: agent.extraArgs);
-    _promptCtl = TextEditingController(text: agent.prompt);
+    if (_agentCtl.text != agent.agent) {
+      _agentCtl.text = agent.agent;
+    }
+    if (_argsCtl.text != agent.extraArgs) {
+      _argsCtl.text = agent.extraArgs;
+    }
+    if (_promptCtl.text != agent.prompt) {
+      _promptCtl.text = agent.prompt;
+    }
   }
 
   @override

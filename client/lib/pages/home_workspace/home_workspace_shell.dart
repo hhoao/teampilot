@@ -5,6 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../cubits/chat_cubit.dart';
+import '../../cubits/layout_cubit.dart';
 import '../../cubits/session_preferences_cubit.dart';
 import '../../cubits/team_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
@@ -45,7 +46,18 @@ class _HomeWorkspaceShellState extends State<HomeWorkspaceShell> {
   @override
   void initState() {
     super.initState();
-    _ensureOpen(_projectIdFromLocation(widget.location));
+    final initialProjectId = _projectIdFromLocation(widget.location);
+    _ensureOpen(initialProjectId);
+    if (initialProjectId != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        context.read<LayoutCubit>().setLastOpenedProjectId(initialProjectId);
+      });
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _syncTeamSessionScope(context);
+    });
     unawaited(_reloadRecentlyClosed());
   }
 
@@ -71,7 +83,12 @@ class _HomeWorkspaceShellState extends State<HomeWorkspaceShell> {
           setState(() => _openIds = [..._openIds, id]);
         }
         unawaited(_recentProjectsStore.recordVisit(id));
+        context.read<LayoutCubit>().setLastOpenedProjectId(id);
       }
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _syncTeamSessionScope(context);
+      });
     }
   }
 
@@ -174,17 +191,14 @@ class _HomeWorkspaceShellState extends State<HomeWorkspaceShell> {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
+  void _syncTeamSessionScope(BuildContext context) {
     final scopeOn = context
-        .watch<SessionPreferencesCubit>()
+        .read<SessionPreferencesCubit>()
         .state
         .preferences
         .scopeSessionsToSelectedTeam;
-    final selectedTeam = context.watch<TeamCubit>().state.selectedTeam;
-    final projects = context.select<ChatCubit, List<AppProject>>(
-      (c) => c.state.projects,
-    );
+    final selectedTeam = context.read<TeamCubit>().state.selectedTeam;
+    final projects = context.read<ChatCubit>().state.projects;
     final activeId = _projectIdFromLocation(widget.location);
     final activeProject =
         activeId != null ? _resolve(projects, activeId) : null;
@@ -195,6 +209,14 @@ class _HomeWorkspaceShellState extends State<HomeWorkspaceShell> {
       scopeSessionsToSelectedTeam: scopeOn,
       selectedTeamId: scopeTeamId,
     );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final projects = context.select<ChatCubit, List<AppProject>>(
+      (c) => c.state.projects,
+    );
+    final activeId = _projectIdFromLocation(widget.location);
 
     final cs = Theme.of(context).colorScheme;
     // Show every open project tab across all teams (IDE-style open editors).
@@ -210,11 +232,20 @@ class _HomeWorkspaceShellState extends State<HomeWorkspaceShell> {
           ),
     ];
 
-    return Scaffold(
-      backgroundColor: cs.workspacePage,
-      body: Column(
-        children: [
-          HomeWorkspaceTitleBar(
+    return BlocListener<SessionPreferencesCubit, SessionPreferencesState>(
+      listenWhen: (previous, next) =>
+          previous.preferences.scopeSessionsToSelectedTeam !=
+          next.preferences.scopeSessionsToSelectedTeam,
+      listener: (context, _) => _syncTeamSessionScope(context),
+      child: BlocListener<TeamCubit, TeamState>(
+        listenWhen: (previous, next) =>
+            previous.selectedTeam?.id != next.selectedTeam?.id,
+        listener: (context, _) => _syncTeamSessionScope(context),
+        child: Scaffold(
+          backgroundColor: cs.workspacePage,
+          body: Column(
+            children: [
+              HomeWorkspaceTitleBar(
             tabs: tabs,
             activeProjectId: activeId,
             recentlyClosed: _recentlyClosed,
@@ -234,7 +265,9 @@ class _HomeWorkspaceShellState extends State<HomeWorkspaceShell> {
               ),
             ),
           ),
-        ],
+            ],
+          ),
+        ),
       ),
     );
   }

@@ -6,6 +6,7 @@ import 'package:teampilot/models/app_project.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/project_profile.dart';
 import 'package:teampilot/models/team_config.dart';
+import 'package:teampilot/repositories/project_profile_repository.dart';
 import 'package:teampilot/services/cli/cli_data_layout.dart';
 import 'package:teampilot/services/session/session_lifecycle_service.dart';
 import 'package:teampilot/services/storage/storage_resolver.dart';
@@ -55,9 +56,56 @@ void main() {
     tearDownTestAppStorage();
   });
 
-  SessionLifecycleService service() => SessionLifecycleService(
+  SessionLifecycleService service({
+    ProjectProfileRepository? projectProfileRepository,
+  }) => SessionLifecycleService(
     appDataBasePath: base.path,
     storageRootsResolver: () async => _roots(base.path),
+    projectProfileRepository: projectProfileRepository,
+  );
+
+  test(
+    'prepareShellLaunch loads persisted profile from repository',
+    () async {
+      const projectId = 'personal-proj';
+      const sessionId = 'personal-sess';
+      final repo = ProjectProfileRepository(rootDir: base.path);
+      await repo.save(
+        const ProjectProfile(
+          projectId: projectId,
+          cli: CliTool.flashskyai,
+          agent: ProjectAgentConfig(
+            model: 'opus',
+            agent: 'persisted-agent',
+            provider: 'custom-provider',
+          ),
+        ),
+      );
+      const project = AppProject(
+        projectId: projectId,
+        primaryPath: '/work/personal',
+        teamId: '',
+        createdAt: 1,
+      );
+      final session = AppSession(
+        sessionId: sessionId,
+        projectId: projectId,
+        primaryPath: '/work/personal',
+        sessionTeam: '',
+        createdAt: 1,
+      );
+
+      final shellLaunch = await service(projectProfileRepository: repo)
+          .prepareShellLaunch(
+        session: session,
+        project: project,
+      );
+
+      expect(shellLaunch.launchContext.member.model, 'opus');
+      expect(shellLaunch.launchContext.member.agent, 'persisted-agent');
+      expect(shellLaunch.launchContext.member.provider, 'custom-provider');
+      expect(shellLaunch.launchContext.team.cli, CliTool.flashskyai);
+    },
   );
 
   test(

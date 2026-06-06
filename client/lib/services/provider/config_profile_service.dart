@@ -278,6 +278,12 @@ class ConfigProfileService implements ConfigProfileDelegate {
       return const TeamLaunchOutcome(environment: {});
     }
 
+    final warnings = <String>[];
+    await _infra.collectExtensionWarnings(
+      warnings,
+      projectId: trimmedProjectId,
+    );
+
     final cli = profile.cli;
     final standaloneScope = StandaloneLaunchProfileScope(
       projectId: trimmedProjectId,
@@ -331,7 +337,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
 
       return TeamLaunchOutcome(
         environment: contribution.environment,
-        warnings: contribution.warnings,
+        warnings: [...warnings, ...contribution.warnings],
       );
     });
   }

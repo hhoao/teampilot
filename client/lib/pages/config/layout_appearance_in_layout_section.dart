@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../cubits/layout_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
+import '../../models/layout_preferences.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/app_typography_scale.dart';
 import '../../utils/app_keys.dart';
@@ -55,12 +56,36 @@ class LayoutAppearanceInLayoutSection extends StatelessWidget {
           terminalThemeMode,
           langValue,
         ) = appearance;
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            SettingsGroupHeader(title: l10n.appearance),
-            SettingsLabeledRow(
-              title: l10n.themeModeTitle,
+        return BlocSelector<LayoutCubit, LayoutState, WorkspaceEntryMode>(
+          selector: (state) => state.preferences.workspaceEntryMode,
+          builder: (context, workspaceEntryMode) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                SettingsGroupHeader(title: l10n.appearance),
+                SettingsLabeledRow(
+                  title: l10n.workspaceEntryModeTitle,
+                  subtitle: l10n.workspaceEntryModeDescription,
+                  trailing: WorkspaceSettingsToggleStrip<WorkspaceEntryMode>(
+                    segments: [
+                      WorkspaceToggleSegment<WorkspaceEntryMode>(
+                        value: WorkspaceEntryMode.home,
+                        label: l10n.workspaceEntryModeHome,
+                        icon: Icons.home_outlined,
+                      ),
+                      WorkspaceToggleSegment<WorkspaceEntryMode>(
+                        value: WorkspaceEntryMode.lastProject,
+                        label: l10n.workspaceEntryModeLastProject,
+                        icon: Icons.history,
+                      ),
+                    ],
+                    selected: workspaceEntryMode,
+                    onChanged: controller.setWorkspaceEntryMode,
+                  ),
+                  showDividerBelow: true,
+                ),
+                SettingsLabeledRow(
+                  title: l10n.themeModeTitle,
               subtitle: l10n.themeModeDescription,
               trailing: WorkspaceSettingsToggleStrip<String>(
                 segments: [
@@ -140,7 +165,9 @@ class LayoutAppearanceInLayoutSection extends StatelessWidget {
               ),
               showDividerBelow: false,
             ),
-          ],
+              ],
+            );
+          },
         );
       },
     );

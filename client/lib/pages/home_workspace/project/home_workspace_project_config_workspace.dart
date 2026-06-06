@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../cubits/project_profile_cubit.dart';
 import '../../../l10n/l10n_extensions.dart';
 import '../../../models/app_project.dart';
 import '../../../utils/app_keys.dart';
@@ -34,28 +32,6 @@ class HomeWorkspaceProjectConfigWorkspace extends StatefulWidget {
 
 class _HomeWorkspaceProjectConfigWorkspaceState
     extends State<HomeWorkspaceProjectConfigWorkspace> {
-  @override
-  void initState() {
-    super.initState();
-    _loadPersonalProfile();
-  }
-
-  @override
-  void didUpdateWidget(covariant HomeWorkspaceProjectConfigWorkspace oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.project.projectId != widget.project.projectId) {
-      _loadPersonalProfile();
-    }
-  }
-
-  void _loadPersonalProfile() {
-    if (widget.project.teamId.isNotEmpty) return;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      context.read<ProjectProfileCubit>().load(widget.project.projectId);
-    });
-  }
-
   String _managePath(ProjectConfigSection section) {
     final base = '/home-v2/project/${widget.project.projectId}';
     final params = <String, String>{

@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -22,10 +23,64 @@ import '../pages/ssh_profiles_page.dart';
 import '../pages/team_config/team_config_page.dart';
 import '../widgets/android_ssh_profile_selector.dart';
 import 'android_shell_chrome.dart';
+import '../models/layout_preferences.dart';
 import '../widgets/desktop_window_title_bar.dart';
 
+final _workspaceEntryNotifier = ValueNotifier<String>('/home-v2');
+
+@visibleForTesting
+String workspaceEntryLocationFor({
+  required WorkspaceEntryMode mode,
+  String? lastOpenedProjectId,
+}) {
+  if (mode != WorkspaceEntryMode.lastProject) {
+    return '/home-v2';
+  }
+  final projectId = lastOpenedProjectId?.trim() ?? '';
+  if (projectId.isEmpty) {
+    return '/home-v2';
+  }
+  return '/home-v2/project/$projectId';
+}
+
+/// Apply the user's startup view preference. Call after [LayoutCubit.load()]
+/// during bootstrap, before the first route is resolved.
+void applyWorkspaceEntryMode(
+  WorkspaceEntryMode mode, {
+  String? lastOpenedProjectId,
+}) {
+  _workspaceEntryNotifier.value = workspaceEntryLocationFor(
+    mode: mode,
+    lastOpenedProjectId: lastOpenedProjectId,
+  );
+}
+
+/// Re-apply [lastProject] after project index loads so missing ids fall back.
+void reapplyWorkspaceEntryFromPreferences(
+  LayoutPreferences preferences, {
+  Set<String>? knownProjectIds,
+}) {
+  if (preferences.workspaceEntryMode != WorkspaceEntryMode.lastProject) {
+    return;
+  }
+  final projectId = preferences.lastOpenedProjectId.trim();
+  if (projectId.isEmpty) {
+    applyWorkspaceEntryMode(WorkspaceEntryMode.home);
+    return;
+  }
+  if (knownProjectIds != null && !knownProjectIds.contains(projectId)) {
+    applyWorkspaceEntryMode(WorkspaceEntryMode.home);
+    return;
+  }
+  applyWorkspaceEntryMode(
+    WorkspaceEntryMode.lastProject,
+    lastOpenedProjectId: projectId,
+  );
+}
+
 final appRouter = GoRouter(
-  initialLocation: '/home-v2',
+  refreshListenable: _workspaceEntryNotifier,
+  initialLocation: _workspaceEntryNotifier.value,
   routes: [
     // App-wide gates run once above both workspace shells so first-run setup
     // and SSH startup checks apply regardless of entry mode.

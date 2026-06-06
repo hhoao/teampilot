@@ -267,6 +267,19 @@ class AppLocalizationsEn extends AppLocalizations {
   String get appearance => 'Appearance';
 
   @override
+  String get workspaceEntryModeTitle => 'Startup view';
+
+  @override
+  String get workspaceEntryModeDescription =>
+      'Where the app opens after launch.';
+
+  @override
+  String get workspaceEntryModeHome => 'Home';
+
+  @override
+  String get workspaceEntryModeLastProject => 'Last project';
+
+  @override
   String get theme => 'Theme';
 
   @override

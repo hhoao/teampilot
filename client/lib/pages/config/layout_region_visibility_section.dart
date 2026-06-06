@@ -14,33 +14,25 @@ class LayoutRegionVisibilitySection extends StatelessWidget {
     final l10n = context.l10n;
     final controller = context.read<LayoutCubit>();
 
-    return BlocSelector<LayoutCubit, LayoutState, (bool, bool, bool, bool)>(
+    return BlocSelector<LayoutCubit, LayoutState, (bool, bool, bool)>(
       selector: (state) => (
-        state.preferences.contextSidebarVisible,
         state.preferences.membersVisible,
         state.preferences.fileTreeVisible,
         state.preferences.gitVisible,
       ),
       builder: (context, visibility) {
-        final (
-          contextSidebarVisible,
-          membersVisible,
-          fileTreeVisible,
-          gitVisible,
-        ) = visibility;
+        final (membersVisible, fileTreeVisible, gitVisible) = visibility;
 
         void setVisibility({
-          bool? contextSidebarVisible,
           bool? membersVisible,
           bool? fileTreeVisible,
           bool? gitVisible,
         }) {
           controller.setRegionVisibility(
             appRailVisible: true,
-            contextSidebarVisible: contextSidebarVisible ?? visibility.$1,
-            membersVisible: membersVisible ?? visibility.$2,
-            fileTreeVisible: fileTreeVisible ?? visibility.$3,
-            gitVisible: gitVisible ?? visibility.$4,
+            membersVisible: membersVisible ?? visibility.$1,
+            fileTreeVisible: fileTreeVisible ?? visibility.$2,
+            gitVisible: gitVisible ?? visibility.$3,
           );
         }
 
@@ -48,17 +40,6 @@ class LayoutRegionVisibilitySection extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             SettingsGroupHeader(title: l10n.regionVisibility),
-            SettingsLabeledRow(
-              title: l10n.teamSessions,
-              subtitle: l10n.visibilityTeamSessionsHint,
-              trailing: Switch(
-                key: AppKeys.contextSidebarVisibilitySwitch,
-                value: contextSidebarVisible,
-                onChanged: (value) =>
-                    setVisibility(contextSidebarVisible: value),
-              ),
-              showDividerBelow: true,
-            ),
             SettingsLabeledRow(
               title: l10n.members,
               subtitle: l10n.visibilityMembersHint,

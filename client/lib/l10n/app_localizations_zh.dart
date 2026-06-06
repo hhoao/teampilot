@@ -254,6 +254,18 @@ class AppLocalizationsZh extends AppLocalizations {
   String get appearance => '外观';
 
   @override
+  String get workspaceEntryModeTitle => '启动视图';
+
+  @override
+  String get workspaceEntryModeDescription => 'App 启动后默认打开的页面。';
+
+  @override
+  String get workspaceEntryModeHome => '主页';
+
+  @override
+  String get workspaceEntryModeLastProject => '恢复上次项目';
+
+  @override
   String get theme => '主题';
 
   @override

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -20,7 +22,7 @@ import 'project_config_section.dart';
 
 /// Project work page.
 ///
-/// Personal projects ([AppProject.teamId] empty): Hub-style sidebar + chat or
+/// Personal projects ([AppProject.teamId] empty): project sidebar + chat or
 /// project config (`?view=manage`).
 ///
 /// Team projects: icon rail + conversation tree + chat workbench, or project
@@ -58,26 +60,38 @@ class _HomeWorkspaceProjectPageState extends State<HomeWorkspaceProjectPage> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _loadPersonalProfile());
+    WidgetsBinding.instance.addPostFrameCallback((_) => _onProjectContextChanged());
   }
 
   @override
   void didUpdateWidget(covariant HomeWorkspaceProjectPage oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.projectId != widget.projectId ||
-        oldWidget.view != widget.view) {
-      WidgetsBinding.instance.addPostFrameCallback((_) => _loadPersonalProfile());
+    if (oldWidget.projectId != widget.projectId) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _onProjectContextChanged());
     }
   }
 
-  void _loadPersonalProfile() {
+  void _onProjectContextChanged() {
     if (!mounted) return;
     final project = _findProject(
       context.read<ChatCubit>().state.projects,
       widget.projectId,
     );
-    if (project == null || project.teamId.isNotEmpty) return;
-    context.read<ProjectProfileCubit>().load(project.projectId);
+    if (project == null) return;
+    if (project.teamId.isEmpty) {
+      _loadPersonalProfile(project.projectId);
+      return;
+    }
+    _syncSelectedTeam(project.teamId);
+  }
+
+  void _loadPersonalProfile(String projectId) {
+    final cubit = context.read<ProjectProfileCubit>();
+    if (cubit.state.projectId == projectId &&
+        cubit.state.status == ProjectProfileLoadStatus.ready) {
+      return;
+    }
+    unawaited(cubit.load(projectId));
   }
 
   @override
@@ -92,13 +106,11 @@ class _HomeWorkspaceProjectPageState extends State<HomeWorkspaceProjectPage> {
       return _MissingProject(label: l10n.homeWorkspaceEmptyProjects);
     }
 
-    final isPersonal = project.teamId.isEmpty;
-    if (!isPersonal) {
-      _syncSelectedTeam(project.teamId);
-      return _buildTeamProjectPage(context, project);
+    if (project.teamId.isEmpty) {
+      return _buildPersonalProjectPage(context, project);
     }
 
-    return _buildPersonalProjectPage(context, project);
+    return _buildTeamProjectPage(context, project);
   }
 
   Widget _buildPersonalProjectPage(BuildContext context, AppProject project) {
@@ -187,12 +199,9 @@ class _HomeWorkspaceProjectPageState extends State<HomeWorkspaceProjectPage> {
     if (teamId.isEmpty) return;
     final teamCubit = context.read<TeamCubit>();
     if (teamCubit.state.selectedTeam?.id == teamId) return;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      if (teamCubit.state.selectedTeam?.id != teamId) {
-        teamCubit.selectTeam(teamId);
-      }
-    });
+    if (teamCubit.state.selectedTeam?.id != teamId) {
+      teamCubit.selectTeam(teamId);
+    }
   }
 
   static AppProject? _findProject(List<AppProject> projects, String id) {

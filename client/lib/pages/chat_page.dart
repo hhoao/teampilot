@@ -38,16 +38,80 @@ class ChatPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final teamCubit = context.watch<TeamCubit>();
-    final chatCubit = context.watch<ChatCubit>();
-    final layoutCubit = context.watch<LayoutCubit>();
-    final preferences = layoutCubit.state.preferences;
-    final team = teamCubit.state.selectedTeam;
+    if (isPersonalProject) {
+      return _PersonalChatPage(cwd: cwd, sessionId: sessionId);
+    }
+    return _TeamChatPage(cwd: cwd, sessionId: sessionId);
+  }
+}
 
-    if (!isPersonalProject && team == null) {
+class _PersonalChatPage extends StatelessWidget {
+  const _PersonalChatPage({required this.cwd, this.sessionId});
+
+  final String cwd;
+  final String? sessionId;
+
+  @override
+  Widget build(BuildContext context) {
+    final chatCubit = context.watch<ChatCubit>();
+    final preferences = context.watch<LayoutCubit>().state.preferences;
+    return _ChatPageBody(
+      cwd: cwd,
+      sessionId: sessionId,
+      isPersonalProject: true,
+      chatCubit: chatCubit,
+      preferences: preferences,
+      team: null,
+    );
+  }
+}
+
+class _TeamChatPage extends StatelessWidget {
+  const _TeamChatPage({required this.cwd, this.sessionId});
+
+  final String cwd;
+  final String? sessionId;
+
+  @override
+  Widget build(BuildContext context) {
+    final chatCubit = context.watch<ChatCubit>();
+    final preferences = context.watch<LayoutCubit>().state.preferences;
+    final team = context.watch<TeamCubit>().state.selectedTeam;
+
+    if (team == null) {
       return const Center(child: CircularProgressIndicator());
     }
 
+    return _ChatPageBody(
+      cwd: cwd,
+      sessionId: sessionId,
+      isPersonalProject: false,
+      chatCubit: chatCubit,
+      preferences: preferences,
+      team: team,
+    );
+  }
+}
+
+class _ChatPageBody extends StatelessWidget {
+  const _ChatPageBody({
+    required this.cwd,
+    required this.sessionId,
+    required this.isPersonalProject,
+    required this.chatCubit,
+    required this.preferences,
+    required this.team,
+  });
+
+  final String cwd;
+  final String? sessionId;
+  final bool isPersonalProject;
+  final ChatCubit chatCubit;
+  final LayoutPreferences preferences;
+  final TeamConfig? team;
+
+  @override
+  Widget build(BuildContext context) {
     final toolsAsDrawer = useRightToolsAsDrawer(context);
     final rightToolsPanel = RightToolsPanel(
       cwd: cwd,
@@ -88,9 +152,9 @@ class ChatPage extends StatelessWidget {
         onRightToolsWidthChanged: toolsAsDrawer
             ? null
             : (w) => context.read<LayoutCubit>().setRightToolsWidth(w),
-        actions: isPersonalProject || team == null
+        actions: isPersonalProject
             ? const []
-            : _chatActions(context, team),
+            : _chatActions(context, team!),
         rightTools: rightTools,
         childAnimationKey: ValueKey(
           'chat-workspace-body-$activeChatAnimationId',
@@ -135,55 +199,6 @@ class ChatPage extends StatelessWidget {
     );
   }
 
-  Widget _chatLaunchListener(BuildContext context, Widget child) {
-    return BlocListener<ChatCubit, ChatState>(
-      listenWhen: (previous, next) =>
-          previous.snackbarMessage != next.snackbarMessage &&
-          next.snackbarMessage != null,
-      listener: (listenerContext, state) {
-        if (!listenerContext.mounted) return;
-        final code = state.snackbarMessage;
-        if (code == null) return;
-        final message = code == 'claude_credentials_missing'
-            ? listenerContext.l10n.claudeLaunchCredentialsMissingWarning
-            : code;
-        ScaffoldMessenger.of(
-          listenerContext,
-        ).showSnackBar(SnackBar(content: Text(message)));
-        listenerContext.read<ChatCubit>().clearSnackbarMessage();
-      },
-      child: BlocListener<EditorCubit, EditorState>(
-        listenWhen: (previous, next) =>
-            previous.snackbarMessage != next.snackbarMessage &&
-            next.snackbarMessage != null,
-        listener: (listenerContext, state) {
-          if (!listenerContext.mounted) return;
-          final code = state.snackbarMessage;
-          if (code == null) return;
-          final message = listenerContext.l10n.editorSnackbarMessage(code);
-          ScaffoldMessenger.of(
-            listenerContext,
-          ).showSnackBar(SnackBar(content: Text(message)));
-          listenerContext.read<EditorCubit>().clearSnackbarMessage();
-        },
-        child: BlocListener<ChatCubit, ChatState>(
-          listenWhen: (previous, next) =>
-              previous.teamConfigValidation != next.teamConfigValidation &&
-              next.teamConfigValidation != null,
-          listener: (listenerContext, state) {
-            final validation = state.teamConfigValidation;
-            listenerContext.read<ChatCubit>().clearTeamConfigValidation();
-            if (validation == null || !listenerContext.mounted) return;
-            unawaited(
-              showTeamConfigIncompleteDialog(listenerContext, validation),
-            );
-          },
-          child: child,
-        ),
-      ),
-    );
-  }
-
   List<Widget> _chatActions(BuildContext context, TeamConfig team) {
     return [
       IconButton.filledTonal(
@@ -212,4 +227,53 @@ class ChatPage extends StatelessWidget {
       ),
     ];
   }
+}
+
+Widget _chatLaunchListener(BuildContext context, Widget child) {
+  return BlocListener<ChatCubit, ChatState>(
+    listenWhen: (previous, next) =>
+        previous.snackbarMessage != next.snackbarMessage &&
+        next.snackbarMessage != null,
+    listener: (listenerContext, state) {
+      if (!listenerContext.mounted) return;
+      final code = state.snackbarMessage;
+      if (code == null) return;
+      final message = code == 'claude_credentials_missing'
+          ? listenerContext.l10n.claudeLaunchCredentialsMissingWarning
+          : code;
+      ScaffoldMessenger.of(
+        listenerContext,
+      ).showSnackBar(SnackBar(content: Text(message)));
+      listenerContext.read<ChatCubit>().clearSnackbarMessage();
+    },
+    child: BlocListener<EditorCubit, EditorState>(
+      listenWhen: (previous, next) =>
+          previous.snackbarMessage != next.snackbarMessage &&
+          next.snackbarMessage != null,
+      listener: (listenerContext, state) {
+        if (!listenerContext.mounted) return;
+        final code = state.snackbarMessage;
+        if (code == null) return;
+        final message = listenerContext.l10n.editorSnackbarMessage(code);
+        ScaffoldMessenger.of(
+          listenerContext,
+        ).showSnackBar(SnackBar(content: Text(message)));
+        listenerContext.read<EditorCubit>().clearSnackbarMessage();
+      },
+      child: BlocListener<ChatCubit, ChatState>(
+        listenWhen: (previous, next) =>
+            previous.teamConfigValidation != next.teamConfigValidation &&
+            next.teamConfigValidation != null,
+        listener: (listenerContext, state) {
+          final validation = state.teamConfigValidation;
+          listenerContext.read<ChatCubit>().clearTeamConfigValidation();
+          if (validation == null || !listenerContext.mounted) return;
+          unawaited(
+            showTeamConfigIncompleteDialog(listenerContext, validation),
+          );
+        },
+        child: child,
+      ),
+    ),
+  );
 }
