@@ -25,7 +25,6 @@ class TeamExtensionsSectionState extends State<TeamExtensionsSection> {
   @override
   void initState() {
     super.initState();
-    context.read<ExtensionCubit>().load();
     _loadOverrides();
   }
 
@@ -148,19 +147,25 @@ class TeamExtensionRow extends StatelessWidget {
                 ],
               ),
             ),
-            SettingsCompactDropdown<ExtensionOverrideChoice>(
-              value: choice,
-              onChanged: (c) {
-                if (c != null) onChoice(c);
-              },
-              entries: [
-                (
-                  ExtensionOverrideChoice.followGlobal,
-                  l10n.teamExtensionFollowGlobal,
-                ),
-                (ExtensionOverrideChoice.forceOn, l10n.teamExtensionForceOn),
-                (ExtensionOverrideChoice.forceOff, l10n.teamExtensionForceOff),
-              ],
+            Flexible(
+              fit: FlexFit.loose,
+              child: SettingsCompactDropdown<ExtensionOverrideChoice>(
+                value: choice,
+                onChanged: (c) {
+                  if (c != null) onChoice(c);
+                },
+                entries: [
+                  (
+                    ExtensionOverrideChoice.followGlobal,
+                    l10n.teamExtensionFollowGlobal,
+                  ),
+                  (ExtensionOverrideChoice.forceOn, l10n.teamExtensionForceOn),
+                  (
+                    ExtensionOverrideChoice.forceOff,
+                    l10n.teamExtensionForceOff,
+                  ),
+                ],
+              ),
             ),
           ],
         ),

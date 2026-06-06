@@ -346,17 +346,14 @@ class WorkspaceSplitShell extends StatelessWidget {
             ? const EdgeInsets.fromLTRB(16, 20, 16, 16)
             : const EdgeInsets.fromLTRB(24, 28, 28, 24);
 
+        // Fade only — slideX uses RenderFractionalTranslation and breaks hit
+        // testing / MouseTracker when the body is swapped during pointer events
+        // (e.g. team-config section nav).
         final animatedBody = bodyAnimationKey == null
             ? body
             : body
                   .animate(key: bodyAnimationKey)
-                  .fadeIn(duration: 180.ms, curve: Curves.easeOut)
-                  .slideX(
-                    begin: 0.025,
-                    end: 0,
-                    duration: 220.ms,
-                    curve: Curves.easeOutCubic,
-                  );
+                  .fadeIn(duration: 180.ms, curve: Curves.easeOut);
 
         return TwoPaneSplitView(
           axis: Axis.horizontal,

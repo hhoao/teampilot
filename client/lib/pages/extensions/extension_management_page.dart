@@ -57,8 +57,7 @@ class ExtensionManagementPage extends StatelessWidget {
     void select(ExtensionSection target) => onSelectSection != null
         ? onSelectSection!(target)
         : navigateExtensionSection(context, target);
-    final l10n = context.l10n;
-    return BlocListener<ExtensionCubit, ExtensionUiState>(
+    return BlocConsumer<ExtensionCubit, ExtensionUiState>(
       listenWhen: (a, b) =>
           a.errorMessage != b.errorMessage && b.errorMessage != null,
       listener: (context, state) {
@@ -71,20 +70,22 @@ class ExtensionManagementPage extends StatelessWidget {
         );
         context.read<ExtensionCubit>().clearError();
       },
-      child: WorkspaceAdaptiveSectionPage(
-        pageKey: AppKeys.extensionsWorkspace,
-        title: l10n.extensionsSettingsTitle,
-        subtitle: l10n.extensionsSettingsDescription,
-        bodyAnimationKey: ValueKey('extensions-body-${section.name}'),
-        nav: WorkspaceEnumNavPanel<ExtensionSection>(
-          sections: ExtensionSection.values,
-          current: section,
-          basePath: '/extensions',
-          descriptor: (s) => s,
-          onSelect: select,
-        ),
-        body: const ExtensionInstalledSection(),
-      ),
+      builder: (context, state) {
+        return WorkspaceAdaptiveSectionPage(
+          pageKey: AppKeys.extensionsWorkspace,
+          title: context.l10n.extensionsSettingsTitle,
+          subtitle: context.l10n.extensionsSettingsDescription,
+          bodyAnimationKey: ValueKey('extensions-body-${section.name}'),
+          nav: WorkspaceEnumNavPanel<ExtensionSection>(
+            sections: ExtensionSection.values,
+            current: section,
+            basePath: '/extensions',
+            descriptor: (s) => s,
+            onSelect: select,
+          ),
+          body: ExtensionInstalledSection(state: state),
+        );
+      },
     );
   }
 }

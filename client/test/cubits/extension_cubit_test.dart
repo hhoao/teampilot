@@ -113,6 +113,57 @@ void main() {
     expect(await cubit.teamOverrides('team-b'), isEmpty);
   });
 
+  test('load skips host probe when already ready', () async {
+    var probeCalls = 0;
+    final detector = ExtensionDetector(
+      processRunner: (exe, args, {environment}) async {
+        probeCalls++;
+        if (args.length == 1 && (args.first == 'rtk' || args.first == 'jq')) {
+          return ProcessResult(0, 0, '/usr/bin/${args.first}', '');
+        }
+        if (args.contains('--version')) return ProcessResult(0, 0, 'rtk 0.24.0', '');
+        return ProcessResult(0, 1, '', '');
+      },
+    );
+    final cubit = ExtensionCubit(
+      _repo(InMemoryFilesystem()),
+      ExtensionAcquisitionEngine(runner: (c) async => const CliInstallerCommandResult(exitCode: 0)),
+      detector: detector,
+    );
+
+    await cubit.load();
+    final afterFirst = probeCalls;
+    expect(afterFirst, greaterThan(0));
+
+    await cubit.load();
+    expect(probeCalls, afterFirst);
+  });
+
+  test('load(force: true) re-probes the host', () async {
+    var probeCalls = 0;
+    final detector = ExtensionDetector(
+      processRunner: (exe, args, {environment}) async {
+        probeCalls++;
+        if (args.length == 1 && (args.first == 'rtk' || args.first == 'jq')) {
+          return ProcessResult(0, 0, '/usr/bin/${args.first}', '');
+        }
+        if (args.contains('--version')) return ProcessResult(0, 0, 'rtk 0.24.0', '');
+        return ProcessResult(0, 1, '', '');
+      },
+    );
+    final cubit = ExtensionCubit(
+      _repo(InMemoryFilesystem()),
+      ExtensionAcquisitionEngine(runner: (c) async => const CliInstallerCommandResult(exitCode: 0)),
+      detector: detector,
+    );
+
+    await cubit.load();
+    final afterFirst = probeCalls;
+
+    await cubit.load(force: true);
+    expect(probeCalls, greaterThan(afterFirst));
+  });
+
   test('setTeamOverride(null) clears the override', () async {
     final fs = InMemoryFilesystem();
     final cubit = ExtensionCubit(

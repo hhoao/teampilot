@@ -2,6 +2,7 @@ import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../models/extension_manifest.dart';
+import '../models/extension_state.dart';
 import '../repositories/extension_repository.dart';
 import '../services/extension/extension_acquisition_engine.dart';
 import '../services/extension/extension_detector.dart';
@@ -83,23 +84,43 @@ class ExtensionCubit extends Cubit<ExtensionUiState> {
   final ExtensionRepository _repository;
   final ExtensionAcquisitionEngine _engine;
   final ExtensionDetector _detector;
+  Future<void>? _loadFuture;
 
-  Future<void> load() async {
-    emit(state.copyWith(status: ExtensionLoadStatus.loading, clearError: true));
+  /// Loads extension rows from the host. Skips work when already [ready] unless
+  /// [force] is true (e.g. after SSH / storage backend changes).
+  Future<void> load({bool force = false}) async {
+    if (!force && state.status == ExtensionLoadStatus.ready) return;
+    if (_loadFuture != null) return _loadFuture!;
+    _loadFuture = _load(force: force);
     try {
-      final rows = <ExtensionRow>[];
-      for (final manifest in _repository.manifests) {
-        rows.add(await _buildRow(manifest));
-      }
+      await _loadFuture;
+    } finally {
+      _loadFuture = null;
+    }
+  }
+
+  Future<void> _load({required bool force}) async {
+    if (!force && state.status == ExtensionLoadStatus.ready) return;
+    if (state.rows.isEmpty) {
+      emit(state.copyWith(status: ExtensionLoadStatus.loading, clearError: true));
+    }
+    try {
+      final persisted = await _repository.load(forceReload: force);
+      final rows = await Future.wait(
+        _repository.manifests.map((m) => _buildRow(m, persisted)),
+      );
       emit(state.copyWith(rows: rows, status: ExtensionLoadStatus.ready, clearError: true));
     } catch (e) {
       emit(state.copyWith(status: ExtensionLoadStatus.error, errorMessage: e.toString()));
     }
   }
 
-  Future<ExtensionRow> _buildRow(ExtensionManifest manifest) async {
+  Future<ExtensionRow> _buildRow(
+    ExtensionManifest manifest,
+    ExtensionState persisted,
+  ) async {
     final probe = await _detector.probe(manifest.detect);
-    final globalEnabled = (await _repository.load()).globalEnabled.contains(manifest.id);
+    final globalEnabled = persisted.globalEnabled.contains(manifest.id);
     final status = !probe.found
         ? ExtensionStatusCode.notInstalled
         : probe.missingRequirements.isNotEmpty
@@ -170,7 +191,8 @@ class ExtensionCubit extends Cubit<ExtensionUiState> {
 
   Future<void> _replaceRow(String id) async {
     final manifest = _repository.manifests.firstWhere((m) => m.id == id);
-    final updated = await _buildRow(manifest);
+    final persisted = await _repository.load();
+    final updated = await _buildRow(manifest, persisted);
     emit(state.copyWith(
       rows: [for (final r in state.rows) if (r.id == id) updated else r],
     ));

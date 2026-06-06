@@ -9,20 +9,10 @@ import '../skills/skill_management_cards.dart';
 
 /// Global Extensions list: install/uninstall + global enable toggle for every
 /// known extension manifest. Mirrors the Skills "Installed" section styling.
-class ExtensionInstalledSection extends StatefulWidget {
-  const ExtensionInstalledSection({super.key});
+class ExtensionInstalledSection extends StatelessWidget {
+  const ExtensionInstalledSection({super.key, required this.state});
 
-  @override
-  State<ExtensionInstalledSection> createState() =>
-      _ExtensionInstalledSectionState();
-}
-
-class _ExtensionInstalledSectionState extends State<ExtensionInstalledSection> {
-  @override
-  void initState() {
-    super.initState();
-    context.read<ExtensionCubit>().load();
-  }
+  final ExtensionUiState state;
 
   String _statusText(BuildContext context, ExtensionRow row) {
     final l10n = context.l10n;
@@ -43,64 +33,60 @@ class _ExtensionInstalledSectionState extends State<ExtensionInstalledSection> {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    return BlocBuilder<ExtensionCubit, ExtensionUiState>(
-      builder: (context, state) {
-        final loading =
-            state.status == ExtensionLoadStatus.loading && state.rows.isEmpty;
-        return SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              SkillManagementCard(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    SkillCardHeader(
-                      title: l10n.extensionsSettingsTitle,
-                      trailing: _CountBadge(count: state.rows.length),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      l10n.extensionsSettingsDescription,
-                      style: AppTextStyles.of(context).bodySmall.copyWith(
-                            color: Theme.of(context)
-                                .colorScheme
-                                .onSurface
-                                .withValues(alpha: 0.6),
-                          ),
-                    ),
-                    const SizedBox(height: 14),
-                    if (loading)
-                      const Padding(
-                        padding: EdgeInsets.all(24),
-                        child: Center(
-                          child: SizedBox(
-                            width: 24,
-                            height: 24,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          ),
-                        ),
-                      )
-                    else if (state.rows.isEmpty)
-                      SkillEmptyBlock(
-                        icon: Icons.power_outlined,
-                        title: l10n.extensionsEmptyTitle,
-                        hint: l10n.extensionsEmptyHint,
-                      )
-                    else
-                      for (final row in state.rows)
-                        _ExtensionRow(
-                          row: row,
-                          busy: state.busyIds.contains(row.id),
-                          statusText: _statusText(context, row),
-                        ),
-                  ],
+    final loading =
+        state.status == ExtensionLoadStatus.loading && state.rows.isEmpty;
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SkillManagementCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                SkillCardHeader(
+                  title: l10n.extensionsSettingsTitle,
+                  trailing: _CountBadge(count: state.rows.length),
                 ),
-              ),
-            ],
+                const SizedBox(height: 6),
+                Text(
+                  l10n.extensionsSettingsDescription,
+                  style: AppTextStyles.of(context).bodySmall.copyWith(
+                        color: Theme.of(context)
+                            .colorScheme
+                            .onSurface
+                            .withValues(alpha: 0.6),
+                      ),
+                ),
+                const SizedBox(height: 14),
+                if (loading)
+                  const Padding(
+                    padding: EdgeInsets.all(24),
+                    child: Center(
+                      child: SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                    ),
+                  )
+                else if (state.rows.isEmpty)
+                  SkillEmptyBlock(
+                    icon: Icons.power_outlined,
+                    title: l10n.extensionsEmptyTitle,
+                    hint: l10n.extensionsEmptyHint,
+                  )
+                else
+                  for (final row in state.rows)
+                    _ExtensionRow(
+                      row: row,
+                      busy: state.busyIds.contains(row.id),
+                      statusText: _statusText(context, row),
+                    ),
+              ],
+            ),
           ),
-        );
-      },
+        ],
+      ),
     );
   }
 }

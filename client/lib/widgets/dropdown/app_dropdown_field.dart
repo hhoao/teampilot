@@ -115,10 +115,6 @@ class _AppDropdownFieldState<T extends Object>
       if (!mounted) return;
       if (_popoverController.isOpen) {
         _syncOverlayWidth();
-        return;
-      }
-      if (_overlayWidth != null) {
-        setState(() => _overlayWidth = null);
       }
     });
   }
@@ -300,11 +296,23 @@ class _AppDropdownFieldState<T extends Object>
               menuOpen: isOpen,
               isHovering: _isHovering,
             ),
-            child: Row(
-              children: [
-                Expanded(child: _buildHeader(context, deco)),
-                isOpen ? deco.expandedSuffixIcon : deco.closedSuffixIcon,
-              ],
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final expand = constraints.hasBoundedWidth;
+                return Row(
+                  mainAxisSize: expand ? MainAxisSize.max : MainAxisSize.min,
+                  children: [
+                    if (expand)
+                      Expanded(child: _buildHeader(context, deco))
+                    else
+                      Flexible(
+                        fit: FlexFit.loose,
+                        child: _buildHeader(context, deco),
+                      ),
+                    isOpen ? deco.expandedSuffixIcon : deco.closedSuffixIcon,
+                  ],
+                );
+              },
             ),
           ),
         ),

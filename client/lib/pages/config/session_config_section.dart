@@ -7,6 +7,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../app/app_shell.dart';
 import '../../cubits/app_provider_cubit.dart';
 import '../../cubits/chat_cubit.dart';
+import '../../cubits/extension_cubit.dart';
 import '../../cubits/llm_config_cubit.dart';
 import '../../cubits/mcp_cubit.dart';
 import '../../cubits/plugin_cubit.dart';
@@ -177,6 +178,7 @@ class _SessionControlsState extends State<_SessionControls> {
     final sessionRepo = context.read<SessionRepository>();
     final appProviderCubit = context.read<AppProviderCubit>();
     final pluginCubit = context.read<PluginCubit>();
+    final extensionCubit = context.read<ExtensionCubit>();
     final sshProfileCubit = context.read<SshProfileCubit>();
     storageRoots.invalidate();
     await storageRoots.reinstallAndResolve();
@@ -188,6 +190,7 @@ class _SessionControlsState extends State<_SessionControls> {
       pluginCubit: pluginCubit,
       skillCubit: skillCubit,
       mcpCubit: mcpCubit,
+      extensionCubit: extensionCubit,
       chatCubit: chatCubit,
       sessionRepo: sessionRepo,
       sshProfileCubit: sshProfileCubit,
