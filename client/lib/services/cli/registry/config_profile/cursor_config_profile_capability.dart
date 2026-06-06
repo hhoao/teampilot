@@ -91,6 +91,7 @@ final class CursorConfigProfileCapability implements ConfigProfileCapability {
           busPort: port,
           forceTeamLeadDelegateMode: team?.forceTeamLeadDelegateMode ?? false,
           mixed: true,
+          workspacePath: ctx.workingDirectory ?? '',
         );
       }
 

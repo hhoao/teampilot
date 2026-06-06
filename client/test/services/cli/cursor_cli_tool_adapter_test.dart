@@ -92,9 +92,9 @@ void main() {
       '/work',
       '--model',
       'gpt-5.2',
+      '--approve-mcps',
     ]);
     expect(args, isNot(contains('--plugin-dir')));
-    expect(args, isNot(contains('--approve-mcps')));
     expect(args, isNot(contains('You are the planner.')));
   });
 }

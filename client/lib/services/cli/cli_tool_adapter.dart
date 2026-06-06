@@ -247,6 +247,12 @@ class CursorCliToolAdapter implements CliToolAdapter {
       args.add('--force');
     }
 
+    // Mixed mode registers a localhost teammate-bus MCP server; auto-approve
+    // the server trust prompt (tool-level allowlist is in cli-config.json).
+    if (mixed) {
+      args.add('--approve-mcps');
+    }
+
     _addExtraArgs(args, context.team.extraArgs);
     _addExtraArgs(args, member.extraArgs);
 

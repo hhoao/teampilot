@@ -3,9 +3,11 @@ import 'dart:convert';
 import '../../../models/team_config.dart';
 import '../../io/filesystem.dart';
 import '../../session/member_role_provision.dart';
+import 'cursor_cli_config_policy.dart';
 import 'cursor_home_bus_overlay.dart';
 import 'cursor_home_layout.dart';
 import 'cursor_provider_credentials_service.dart';
+import 'cursor_workspace_trust.dart';
 
 /// Merges provider auth and mixed-mode team-bus overlay into a member fake HOME.
 final class CursorHomeProvisioner {
@@ -28,6 +30,7 @@ final class CursorHomeProvisioner {
     required int? busPort,
     required bool forceTeamLeadDelegateMode,
     required bool mixed,
+    String workspacePath = '',
   }) async {
     await _ensureCursorDirs(memberHome);
 
@@ -36,7 +39,12 @@ final class CursorHomeProvisioner {
       await _credentials?.syncAuthToMemberHome(id, memberHome);
     }
 
-    if (!mixed || busPort == null || !member.isValid) return;
+    if (!mixed || !member.isValid) return;
+
+    await _mergeTeamBusPermissions(memberHome);
+    await _provisionWorkspaceTrust(memberHome, workspacePath);
+
+    if (busPort == null) return;
 
     await _writeBusOverlay(
       memberHome: memberHome,
@@ -56,6 +64,38 @@ final class CursorHomeProvisioner {
       _fs.pathContext.join(cursorDir, CursorHomeLayout.hooksDirName),
     );
     await _fs.ensureDir(_layout.configCursorDir(memberHome));
+  }
+
+  /// Replaces a provider cli-config symlink with a merged file that pre-allows
+  /// all teammate-bus MCP tools (`Mcp(teammate-bus:*)`).
+  Future<void> _provisionWorkspaceTrust(
+    String memberHome,
+    String workspacePath,
+  ) async {
+    final normalized = workspacePath.trim();
+    if (normalized.isEmpty) return;
+
+    final trustPath = CursorWorkspaceTrust.trustMarkerPath(
+      memberHome,
+      normalized,
+    );
+    await _fs.ensureDir(_fs.pathContext.dirname(trustPath));
+    await _fs.atomicWrite(
+      trustPath,
+      CursorWorkspaceTrust.buildTrustMarkerJson(normalized),
+    );
+  }
+
+  Future<void> _mergeTeamBusPermissions(String memberHome) async {
+    final path = _layout.cliConfig(memberHome);
+    final raw = await _fs.readString(path);
+    final existing = raw != null
+        ? CursorCliConfigPolicy.parseConfigJson(raw)
+        : null;
+    final merged = CursorCliConfigPolicy.applyMixedTeamSessionPolicy(
+      existing ?? const {},
+    );
+    await _fs.atomicWrite(path, _jsonPretty(merged));
   }
 
   Future<void> _writeBusOverlay({
