@@ -58,6 +58,8 @@ void main() {
     req.add(utf8.encode('{}'));
     final resp = await req.close();
     final body = await resp.transform(utf8.decoder).join();
+    expect(resp.statusCode, HttpStatus.ok);
+    if (body.trim().isEmpty) return <String, Object?>{};
     return jsonDecode(body) as Map<String, Object?>;
   }
 

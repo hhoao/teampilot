@@ -44,6 +44,8 @@ class TeammateBusMcpHandler {
   /// 每个成员连续 idle（未进 wait）的次数，喂给上面的保险丝。
   final Map<String, int> _idleStreak = <String, int>{};
 
+  void _noteEnteredWaitLoop(String memberId) => _idleStreak[memberId] = 0;
+
   final TeamBus _bus;
   final String Function() idGenerator;
 
@@ -121,7 +123,7 @@ class TeammateBusMcpHandler {
     CancellationToken? cancel,
   }) async {
     // 成员真的进了 wait 循环 → 健康，清零空转保险丝（见 [idleStopDecision]）。
-    _idleStreak[memberId] = 0;
+    _noteEnteredWaitLoop(memberId);
     final outcome = await _bus.receiveWork(memberId, cancel: cancel);
     switch (outcome) {
       case MessageWork(:final messages):
@@ -341,6 +343,7 @@ class TeammateBusMcpHandler {
         );
         return _ok(req.id, _encodeMessagePage(page));
       case 'wait_for_message':
+        _noteEnteredWaitLoop(memberId);
         final outcome = await _bus.receiveWork(memberId);
         switch (outcome) {
           case MessageWork(:final messages):

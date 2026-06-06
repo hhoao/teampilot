@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/team_config.dart';
@@ -346,5 +348,44 @@ void main() {
       expect(bus.listTasks(status: TaskStatus.claimed).single.assignee,
           'developer');
     });
+  });
+
+  test('wait_for_message resets idle stop fuse', () async {
+    final bus = TeamBus(launcher: FakeMemberLauncher());
+    bus.declareMember(
+      AgentNode.test(
+        memberId: 'leader',
+        lifecycle: MemberLifecycle.running,
+        activity: MemberActivity.active,
+      ),
+    );
+    final handler = TeammateBusMcpHandler(bus: bus);
+
+    for (var i = 0; i < TeammateBusMcpHandler.maxConsecutiveIdleStops; i++) {
+      expect(
+        jsonDecode(handler.idleStopDecision('leader'))['decision'],
+        'block',
+      );
+    }
+
+    await handler.handle(
+      'leader',
+      const JsonRpcRequest(id: 10, method: 'tools/call', params: {
+        'name': 'send_message',
+        'arguments': {'to': 'leader', 'content': 'go'},
+      }),
+    );
+    await handler.handle(
+      'leader',
+      const JsonRpcRequest(id: 11, method: 'tools/call', params: {
+        'name': 'wait_for_message',
+        'arguments': <String, Object?>{},
+      }),
+    );
+
+    expect(
+      jsonDecode(handler.idleStopDecision('leader'))['decision'],
+      'block',
+    );
   });
 }
