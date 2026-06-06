@@ -93,6 +93,7 @@ void main() {
       '/work',
       '--plugin-dir',
       '/cfg/cursor/teampilot-bus-plugin',
+      '--approve-mcps',
       '--model',
       'gpt-5.2',
     ]);

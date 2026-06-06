@@ -246,6 +246,9 @@ class CursorCliToolAdapter implements CliToolAdapter {
       args.addAll([
         '--plugin-dir',
         _normalizePathForCli(pluginDir, context.useWslPaths),
+        // Auto-approve the teammate-bus MCP server so wait_for_message /
+        // send_message never block on an approval prompt (codex parity).
+        '--approve-mcps',
       ]);
     }
 

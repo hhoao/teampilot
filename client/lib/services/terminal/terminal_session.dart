@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_alacritty/flutter_alacritty.dart';
@@ -8,6 +9,8 @@ import 'package:flutter_pty/flutter_pty.dart';
 import '../cli/cli_executable_validator.dart';
 import '../cli/cli_invocation.dart';
 import '../cli/cli_tool_locator.dart';
+import '../cli/registry/capabilities/terminal_behavior_capability.dart';
+import '../cli/registry/cli_tool_registry.dart';
 import '../session/launch_command_builder.dart';
 import 'local_pty_transport.dart';
 import 'pty_launch_environment.dart';
@@ -33,6 +36,51 @@ typedef TransportStarter =
 
 /// PTY attach → confirm → running. See [_handlePtyOutput] and [_confirmProcessStarted].
 enum _LaunchPhase { idle, spawning, confirming, running, failed }
+
+/// Removes OSC 997 color-scheme reports (`ESC ] 997 ; n (BEL | ESC \\)`) from an
+/// engine→PTY write. Used for CLIs whose TUI mishandles the report (cursor): the
+/// embedded terminal answers a mode-2031 subscription with OSC 997, but cursor
+/// leaks it into its input box instead of consuming it. The engine emits each
+/// report as a single write, so a sequence never straddles two chunks.
+@visibleForTesting
+Uint8List stripColorSchemeReport(Uint8List data) {
+  const esc = 0x1b, bel = 0x07, backslash = 0x5c;
+  const marker = [0x1b, 0x5d, 0x39, 0x39, 0x37]; // ESC ] 9 9 7
+  if (data.length < marker.length) return data;
+  final out = BytesBuilder(copy: false);
+  var i = 0;
+  while (i < data.length) {
+    var isMarker = i + marker.length <= data.length;
+    if (isMarker) {
+      for (var k = 0; k < marker.length; k++) {
+        if (data[i + k] != marker[k]) {
+          isMarker = false;
+          break;
+        }
+      }
+    }
+    if (!isMarker) {
+      out.addByte(data[i]);
+      i++;
+      continue;
+    }
+    var j = i + marker.length;
+    while (j < data.length) {
+      final b = data[j];
+      if (b == bel) {
+        j++;
+        break;
+      }
+      if (b == esc && j + 1 < data.length && data[j + 1] == backslash) {
+        j += 2;
+        break;
+      }
+      j++;
+    }
+    i = j;
+  }
+  return out.toBytes();
+}
 
 class TerminalSession {
   TerminalSession({
@@ -314,10 +362,22 @@ class TerminalSession {
             ),
           );
 
+    final forwardsColorScheme = (team != null && member != null)
+        ? CliToolRegistry.builtIn()
+                  .capability<TerminalBehaviorCapability>(
+                    member.cliWithin(team),
+                  )
+                  ?.forwardsColorSchemeReport ??
+              true
+        : true;
+
     _engineOutputSubscription?.cancel();
     _engineOutputSubscription = engine.output.listen((Uint8List data) {
       _firstUserLineCapture?.feed(utf8.decode(data));
-      final forward = _busUserLineCapture?.filter(data) ?? data;
+      var forward = _busUserLineCapture?.filter(data) ?? data;
+      if (!forwardsColorScheme) {
+        forward = stripColorSchemeReport(forward);
+      }
       if (forward.isNotEmpty && _transportReadyForIo && _transport != null) {
         _transport!.write(forward);
       }

@@ -153,30 +153,40 @@ final class FlashskyaiTerminalBehavior implements TerminalBehaviorCapability {
   const FlashskyaiTerminalBehavior();
   @override
   bool get usesFullScreenInput => false;
+  @override
+  bool get forwardsColorSchemeReport => true;
 }
 
 final class ClaudeTerminalBehavior implements TerminalBehaviorCapability {
   const ClaudeTerminalBehavior();
   @override
   bool get usesFullScreenInput => true;
+  @override
+  bool get forwardsColorSchemeReport => true;
 }
 
 final class CodexTerminalBehavior implements TerminalBehaviorCapability {
   const CodexTerminalBehavior();
   @override
   bool get usesFullScreenInput => true;
+  @override
+  bool get forwardsColorSchemeReport => true;
 }
 
 final class OpencodeTerminalBehavior implements TerminalBehaviorCapability {
   const OpencodeTerminalBehavior();
   @override
   bool get usesFullScreenInput => false;
+  @override
+  bool get forwardsColorSchemeReport => true;
 }
 
 final class CursorTerminalBehavior implements TerminalBehaviorCapability {
   const CursorTerminalBehavior();
   @override
   bool get usesFullScreenInput => true;
+  @override
+  bool get forwardsColorSchemeReport => false;
 }
 
 final class ClaudePluginManifest implements PluginManifestCapability {
