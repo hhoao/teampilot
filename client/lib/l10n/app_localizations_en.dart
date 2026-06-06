@@ -2561,6 +2561,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get appProviderToolOpencode => 'OpenCode';
 
   @override
+  String get appProviderToolCursor => 'Cursor';
+
+  @override
   String get appProviderTeamToolSection => 'Tool providers for this team';
 
   @override

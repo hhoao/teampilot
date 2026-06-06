@@ -19,6 +19,7 @@ List<AppProviderPreset> appProviderPresetsFor(CliTool cli) {
     CliTool.codex => CodexProviderPresets.all,
     CliTool.flashskyai => FlashskyaiProviderPresets.all,
     CliTool.opencode => const [],
+    CliTool.cursor => const [],
   };
 }
 
@@ -632,6 +633,7 @@ String _defaultApiKeyField(CliTool cli) {
     CliTool.codex => 'OPENAI_API_KEY',
     CliTool.flashskyai => 'api_key',
     CliTool.opencode => 'api_key',
+    CliTool.cursor => 'api_key',
   };
 }
 
@@ -651,6 +653,7 @@ Map<String, Object?> _defaultConfig(CliTool cli) {
     CliTool.codex => {'auth': <String, Object?>{}},
     CliTool.flashskyai => {'provider_type': 'openai'},
     CliTool.opencode => const {},
+    CliTool.cursor => const {},
   };
 }
 

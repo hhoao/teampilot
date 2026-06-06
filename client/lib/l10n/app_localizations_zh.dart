@@ -2471,6 +2471,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get appProviderToolOpencode => 'OpenCode';
 
   @override
+  String get appProviderToolCursor => 'Cursor';
+
+  @override
   String get appProviderTeamToolSection => '团队默认服务商';
 
   @override

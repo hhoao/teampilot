@@ -1,5 +1,6 @@
 import '../../models/team_config.dart';
 import '../../utils/team_member_naming.dart';
+import '../session/member_role_provision.dart';
 import 'registry/capabilities/launch_args_capability.dart';
 
 class CliLaunchContext {
@@ -203,6 +204,63 @@ class CodexCliToolAdapter implements CliToolAdapter {
 
     _addExtraArgs(args, context.team.extraArgs);
     _addExtraArgs(args, member.extraArgs);
+
+    return args;
+  }
+}
+
+/// Cursor CLI (`cursor-agent` TUI). No `--system-prompt` flag, so member
+/// identity is seeded as the leading positional prompt on a fresh launch
+/// (route B); on `--resume` it already lives in the conversation history and is
+/// not re-passed. Config isolation is via `$CURSOR_CONFIG_DIR`
+/// (see [CursorConfigProfileCapability]). Working dir is `--workspace`, model
+/// `--model`, skip-permissions `--force`. Session id is allocated out-of-band
+/// (`cursor-agent create-chat`) and replayed through [resumeSessionId].
+class CursorCliToolAdapter implements CliToolAdapter {
+  const CursorCliToolAdapter();
+
+  @override
+  List<String> buildArguments(CliLaunchContext context) {
+    final member = context.member;
+    final mixed = context.team.teamMode == TeamMode.mixed;
+    final args = <String>[];
+
+    final wd = context.workingDirectory ?? '';
+    if (wd.isNotEmpty) {
+      args.addAll([
+        '--workspace',
+        _normalizePathForCli(wd, context.useWslPaths),
+      ]);
+    }
+
+    final resume = context.resumeSessionId?.trim() ?? '';
+    if (resume.isNotEmpty) {
+      args.addAll(['--resume', resume]);
+    }
+
+    final model = member.model.trim();
+    if (model.isNotEmpty) {
+      args.addAll(['--model', model]);
+    }
+
+    if (member.dangerouslySkipPermissions) {
+      args.add('--force');
+    }
+
+    _addExtraArgs(args, context.team.extraArgs);
+    _addExtraArgs(args, member.extraArgs);
+
+    // Route B: seed identity as the initial prompt only on a fresh session.
+    if (resume.isEmpty) {
+      final rolePrompt = MemberRoleProvision.composeRolePrompt(
+        member: member,
+        forceTeamLeadDelegateMode: context.team.forceTeamLeadDelegateMode,
+        mixed: mixed,
+      ).trim();
+      if (rolePrompt.isNotEmpty) {
+        args.add(rolePrompt);
+      }
+    }
 
     return args;
   }

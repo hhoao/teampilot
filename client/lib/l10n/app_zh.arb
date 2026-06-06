@@ -907,6 +907,7 @@
   "appProviderToolCodex": "Codex",
   "appProviderToolClaude": "Claude Code",
   "appProviderToolOpencode": "OpenCode",
+  "appProviderToolCursor": "Cursor",
   "appProviderTeamToolSection": "团队默认服务商",
   "appProviderTeamToolSubtitle": "选择本团队启动时，各工具使用的统一服务商。",
   "appProviderTeamNone": "无",

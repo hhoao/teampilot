@@ -2,7 +2,8 @@ import 'package:flutter/foundation.dart';
 
 import '../utils/team_member_naming.dart';
 
-/// Backend CLI identity (`flashskyai`, `codex`, `claude`, or `opencode`).
+/// Backend CLI identity (`flashskyai`, `codex`, `claude`, `opencode`, or
+/// `cursor`).
 ///
 /// Behavior (launch support, display name, provider catalog, etc.) lives in
 /// [CliToolRegistry] capabilities — not on this enum.
@@ -10,7 +11,8 @@ enum CliTool {
   claude('claude'),
   codex('codex'),
   flashskyai('flashskyai'),
-  opencode('opencode');
+  opencode('opencode'),
+  cursor('cursor');
 
   const CliTool(this.value);
 

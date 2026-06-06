@@ -1189,6 +1189,7 @@
   "appProviderToolCodex": "Codex",
   "appProviderToolClaude": "Claude Code",
   "appProviderToolOpencode": "OpenCode",
+  "appProviderToolCursor": "Cursor",
   "appProviderTeamToolSection": "Tool providers for this team",
   "appProviderTeamToolSubtitle": "Select which unified provider each tool uses when this team starts.",
   "appProviderTeamNone": "None",

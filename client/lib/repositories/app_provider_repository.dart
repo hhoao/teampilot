@@ -116,6 +116,8 @@ class AppProviderRepository {
         await _removeStaleClaudeNativeDirs(merged);
       case CliTool.opencode:
         break;
+      case CliTool.cursor:
+        break;
     }
   }
 

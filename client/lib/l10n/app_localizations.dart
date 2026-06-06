@@ -4694,6 +4694,12 @@ abstract class AppLocalizations {
   /// **'OpenCode'**
   String get appProviderToolOpencode;
 
+  /// No description provided for @appProviderToolCursor.
+  ///
+  /// In en, this message translates to:
+  /// **'Cursor'**
+  String get appProviderToolCursor;
+
   /// No description provided for @appProviderTeamToolSection.
   ///
   /// In en, this message translates to:

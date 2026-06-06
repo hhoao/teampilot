@@ -39,6 +39,7 @@ extension AppLocalizationsX on AppLocalizations {
       CliTool.codex => appProviderToolCodex,
       CliTool.flashskyai => appProviderToolFlashskyai,
       CliTool.opencode => appProviderToolOpencode,
+      CliTool.cursor => appProviderToolCursor,
     };
   }
 

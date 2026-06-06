@@ -97,6 +97,28 @@ final class OpencodePresence implements PresenceCapability {
   bool get usesShellActivity => false;
 }
 
+final class CursorTranscriptProbe implements TranscriptProbeCapability {
+  const CursorTranscriptProbe();
+  @override
+  bool get probeHistoryFiles => false;
+}
+
+final class CursorExecutableResolver implements ExecutableResolverCapability {
+  const CursorExecutableResolver();
+  @override
+  String get defaultExecutableName => 'cursor-agent';
+  @override
+  String get preferencesPathKey => 'cursor';
+}
+
+final class CursorPresence implements PresenceCapability {
+  const CursorPresence();
+  @override
+  bool get usesClaudeRoster => false;
+  @override
+  bool get usesShellActivity => false;
+}
+
 final class FlashskyaiDisplay implements DisplayCapability {
   const FlashskyaiDisplay();
   @override
@@ -121,6 +143,12 @@ final class OpencodeDisplay implements DisplayCapability {
   String label(AppLocalizations l10n) => l10n.appProviderToolOpencode;
 }
 
+final class CursorDisplay implements DisplayCapability {
+  const CursorDisplay();
+  @override
+  String label(AppLocalizations l10n) => l10n.appProviderToolCursor;
+}
+
 final class FlashskyaiTerminalBehavior implements TerminalBehaviorCapability {
   const FlashskyaiTerminalBehavior();
   @override
@@ -143,6 +171,12 @@ final class OpencodeTerminalBehavior implements TerminalBehaviorCapability {
   const OpencodeTerminalBehavior();
   @override
   bool get usesFullScreenInput => false;
+}
+
+final class CursorTerminalBehavior implements TerminalBehaviorCapability {
+  const CursorTerminalBehavior();
+  @override
+  bool get usesFullScreenInput => true;
 }
 
 final class ClaudePluginManifest implements PluginManifestCapability {
@@ -176,6 +210,14 @@ final class CodexPluginManifest implements PluginManifestCapability {
 
 final class OpencodePluginManifest implements PluginManifestCapability {
   const OpencodePluginManifest();
+  @override
+  bool get supportsPluginRegistry => false;
+  @override
+  PluginManifestPaths? get paths => null;
+}
+
+final class CursorPluginManifest implements PluginManifestCapability {
+  const CursorPluginManifest();
   @override
   bool get supportsPluginRegistry => false;
   @override
