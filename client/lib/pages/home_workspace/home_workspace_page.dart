@@ -23,6 +23,7 @@ class HomeWorkspacePage extends StatefulWidget {
   const HomeWorkspacePage({
     this.initialSection,
     this.initialMemberId,
+    this.initialGlobalView,
     super.key,
   });
 
@@ -33,6 +34,10 @@ class HomeWorkspacePage extends StatefulWidget {
   /// Member to focus when [initialSection] is [TeamConfigSection.members].
   final String? initialMemberId;
 
+  /// Global management sidebar entry to open on first build (deep-link from
+  /// project management "manage all" actions).
+  final HomeWorkspaceGlobalView? initialGlobalView;
+
   @override
   State<HomeWorkspacePage> createState() => _HomeWorkspacePageState();
 }
@@ -41,10 +46,23 @@ class _HomeWorkspacePageState extends State<HomeWorkspacePage> {
   HomeWorkspaceScope _scope = HomeWorkspaceScope.team;
 
   /// Null means the team view; otherwise a global management section.
-  HomeWorkspaceGlobalView? _globalView;
+  late HomeWorkspaceGlobalView? _globalView = widget.initialGlobalView;
 
   /// Favorites / recent library pane; mutually exclusive with [_globalView].
   HomeWorkspaceLibraryView? _libraryView;
+
+  @override
+  void didUpdateWidget(covariant HomeWorkspacePage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.initialGlobalView == oldWidget.initialGlobalView) return;
+    setState(() {
+      _globalView = widget.initialGlobalView;
+      if (widget.initialGlobalView != null) {
+        _scope = HomeWorkspaceScope.team;
+        _libraryView = null;
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {

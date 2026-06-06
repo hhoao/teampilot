@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import '../cubits/config_cubit.dart';
 import '../models/app_provider_config.dart';
 import '../pages/config/config_workspace.dart';
+import '../pages/home_workspace/home_workspace_global_section.dart';
 import '../pages/home_workspace/home_workspace_page.dart';
 import '../pages/home_workspace/home_workspace_shell.dart';
 import '../pages/home_workspace/project/home_workspace_project_page.dart';
@@ -104,6 +105,9 @@ final appRouter = GoRouter(
                       query['section'],
                     ),
                     initialMemberId: query['member'],
+                    initialGlobalView: HomeWorkspaceGlobalView.fromSegment(
+                      query[HomeWorkspaceGlobalView.globalQueryParam],
+                    ),
                   ),
                 );
               },

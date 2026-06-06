@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_alacritty/flutter_alacritty.dart';
+import 'package:teampilot/theme/workspace_surface_layers.dart';
 
 int _packColor(Color color) => color.toARGB32() & 0xFFFFFF;
 
@@ -137,11 +138,11 @@ TerminalTheme teampilotTerminalTheme(
 
   final baseBackground = isDark
       ? Color.alphaBlend(
-          cs.surface.withValues(alpha: 0.88),
+          cs.workspaceSubtleSurface.withValues(alpha: 0.88),
           const Color(0xFF06080C),
         )
       : Color.alphaBlend(
-          cs.surface.withValues(alpha: 0.96),
+          cs.workspaceSubtleSurface.withValues(alpha: 0.96),
           const Color(0xFFF7F9FC),
         );
   final foreground = isDark ? const Color(0xFFC8CCD4) : const Color(0xFF1F2937);

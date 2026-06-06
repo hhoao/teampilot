@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../cubits/mcp_cubit.dart';
 import '../../../../cubits/project_profile_cubit.dart';
 import '../../../../l10n/l10n_extensions.dart';
+import '../../home_workspace_global_section.dart';
 import '../../../team_config/team_config_cards.dart';
 import '../../../team_config/team_config_mcp_section.dart';
 
@@ -32,7 +33,7 @@ class ProjectMcpSection extends StatelessWidget {
     }
 
     final l10n = context.l10n;
-    final onManage = () => context.go('/mcp');
+    final onManage = () => context.go(HomeWorkspaceGlobalView.mcp.homeLocation);
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textBase = isDark ? Colors.white : const Color(0xFF111827);
     final mcpState = context.watch<McpCubit>().state;

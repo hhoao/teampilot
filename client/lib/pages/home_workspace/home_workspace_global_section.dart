@@ -15,7 +15,29 @@ enum HomeWorkspaceGlobalView {
   mcp,
   extensions,
   teamHub,
-  providers,
+  providers;
+
+  /// Query key on `/home-v2` for deep-linking a global management pane.
+  static const globalQueryParam = 'global';
+
+  String get routeSegment => name;
+
+  /// `/home-v2?global=<segment>` — opens the main workspace with this sidebar
+  /// shortcut selected.
+  String get homeLocation => Uri(
+        path: '/home-v2',
+        queryParameters: {globalQueryParam: routeSegment},
+      ).toString();
+
+  /// Resolves [globalQueryParam] (e.g. `skills`, `mcp`) back to a view.
+  static HomeWorkspaceGlobalView? fromSegment(String? segment) {
+    final value = segment?.trim();
+    if (value == null || value.isEmpty) return null;
+    for (final view in values) {
+      if (view.routeSegment == value) return view;
+    }
+    return null;
+  }
 }
 
 /// Embeds an existing global management page (Skills / Plugins / MCP) — or the

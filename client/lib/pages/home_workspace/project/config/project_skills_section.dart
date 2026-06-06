@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../cubits/project_profile_cubit.dart';
 import '../../../../cubits/skill_cubit.dart';
 import '../../../../l10n/l10n_extensions.dart';
+import '../../home_workspace_global_section.dart';
 import '../../../team_config/team_config_cards.dart';
 import '../../../team_config/team_config_skills_section.dart';
 
@@ -32,7 +33,8 @@ class ProjectSkillsSection extends StatelessWidget {
     }
 
     final l10n = context.l10n;
-    final onManage = () => context.go('/skills');
+    final onManage = () =>
+        context.go(HomeWorkspaceGlobalView.skills.homeLocation);
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textBase = isDark ? Colors.white : const Color(0xFF111827);
     final skillState = context.watch<SkillCubit>().state;
