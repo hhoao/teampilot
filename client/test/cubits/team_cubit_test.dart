@@ -757,4 +757,53 @@ void main() {
     await _drainAndCloseTeamCubit(cubit);
     await dir.delete(recursive: true);
   });
+
+  test('reorderTeams persists sortOrder for all teams', () async {
+    final dir = await Directory.systemTemp.createTemp('team-reorder-');
+    final repo = _repo(dir);
+    final cubit = TeamCubit(
+      repository: repo,
+      sessionRepository: SessionRepository(),
+      reloadProjects: () async {},
+      executableResolver: () => 'flashskyai',
+      pluginLinker: _RecordingPluginLinker(),
+    );
+
+    await repo.saveTeams(const [
+      TeamConfig(
+        id: 'first',
+        name: 'First',
+        createdAt: 1,
+        members: [TeamMemberConfig(id: 'm', name: 'm')],
+      ),
+      TeamConfig(
+        id: 'second',
+        name: 'Second',
+        createdAt: 2,
+        members: [TeamMemberConfig(id: 'm', name: 'm')],
+      ),
+      TeamConfig(
+        id: 'third',
+        name: 'Third',
+        createdAt: 3,
+        members: [TeamMemberConfig(id: 'm', name: 'm')],
+      ),
+    ]);
+    await cubit.load();
+
+    await cubit.reorderTeams(0, 3);
+
+    expect(cubit.state.teams.map((t) => t.name).toList(), [
+      'Second',
+      'Third',
+      'First',
+    ]);
+    expect(cubit.state.teams.map((t) => t.sortOrder).toList(), [1, 2, 3]);
+
+    final reloaded = await repo.loadTeams();
+    expect(reloaded.map((t) => t.name).toList(), ['Second', 'Third', 'First']);
+
+    await _drainAndCloseTeamCubit(cubit);
+    await dir.delete(recursive: true);
+  });
 }

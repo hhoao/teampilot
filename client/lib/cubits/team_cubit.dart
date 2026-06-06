@@ -226,6 +226,25 @@ class TeamCubit extends Cubit<TeamState> implements TeamCubitHost {
     }
   }
 
+  Future<void> reorderTeams(int oldIndex, int newIndex) async {
+    final teams = state.teams;
+    if (oldIndex < 0 || oldIndex >= teams.length) return;
+    var targetIndex = newIndex;
+    if (targetIndex < 0 || targetIndex > teams.length) return;
+    if (targetIndex > oldIndex) targetIndex -= 1;
+    if (oldIndex == targetIndex) return;
+
+    final reordered = List<TeamConfig>.of(teams);
+    final moved = reordered.removeAt(oldIndex);
+    reordered.insert(targetIndex, moved);
+    final stamped = [
+      for (var i = 0; i < reordered.length; i++)
+        reordered[i].copyWith(sortOrder: i + 1),
+    ];
+    emit(state.copyWith(teams: stamped));
+    await _repository.saveTeams(stamped);
+  }
+
   Future<void> selectTeam(String id) async {
     if (!state.teams.any((team) => team.id == id)) return;
     final team = state.teams.firstWhere((t) => t.id == id);

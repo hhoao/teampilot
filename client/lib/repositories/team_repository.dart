@@ -50,7 +50,12 @@ class TeamRepository {
     final paths = await _paths();
     final teams = List<TeamConfig>.of(await _readUiDir(paths));
 
+    final hasCustomOrder = teams.any((team) => team.sortOrder > 0);
     teams.sort((a, b) {
+      if (hasCustomOrder) {
+        final order = a.sortOrder.compareTo(b.sortOrder);
+        if (order != 0) return order;
+      }
       if (a.createdAt != b.createdAt) {
         return a.createdAt.compareTo(b.createdAt);
       }

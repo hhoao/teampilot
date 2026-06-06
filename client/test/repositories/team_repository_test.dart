@@ -157,6 +157,28 @@ void main() {
       expect(await File(p.join(uiRoot.path, 't.json')).exists(), isTrue);
     });
 
+    test('sorts by sortOrder when any team has a custom order', () async {
+      await repo().saveTeams(const [
+        TeamConfig(
+          id: 'b',
+          name: 'b',
+          createdAt: 200,
+          sortOrder: 2,
+          members: [TeamMemberConfig(id: 'm', name: 'm')],
+        ),
+        TeamConfig(
+          id: 'a',
+          name: 'a',
+          createdAt: 100,
+          sortOrder: 1,
+          members: [TeamMemberConfig(id: 'm', name: 'm')],
+        ),
+      ]);
+
+      final loaded = await repo().loadTeams();
+      expect(loaded.map((t) => t.name).toList(), ['a', 'b']);
+    });
+
     test('stamps createdAt on first save', () async {
       const team = TeamConfig(
         id: 'demo',

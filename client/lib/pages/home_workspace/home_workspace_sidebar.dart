@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -101,88 +103,124 @@ class _HomeWorkspaceSidebarState extends State<HomeWorkspaceSidebar> {
             ),
           ),
           Expanded(
-            child: ListView(
-              padding: const EdgeInsets.fromLTRB(32, 8, 24, 8),
-
-              children: [
-                ClipRect(
-                  child: AnimatedSize(
-                    duration: const Duration(milliseconds: 220),
-                    curve: Curves.easeOutCubic,
-                    alignment: Alignment.topCenter,
-                    child: _teamsExpanded
-                        ? Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              for (final team in teams)
-                                _TeamRow(
-                                  team: team,
-                                  selected:
-                                      activeGlobalView == null &&
-                                      activeLibraryView == null &&
-                                      team.id == selected?.id,
-                                  onTap: () => onTeam?.call(team.id),
+            child: CustomScrollView(
+              slivers: [
+                if (_teamsExpanded && teams.isNotEmpty)
+                  SliverPadding(
+                    padding: const EdgeInsets.fromLTRB(32, 8, 24, 0),
+                    sliver: SliverReorderableList(
+                      itemCount: teams.length,
+                      onReorder: (oldIndex, newIndex) {
+                        unawaited(
+                          teamCubit.reorderTeams(oldIndex, newIndex),
+                        );
+                      },
+                      itemBuilder: (context, index) {
+                        final team = teams[index];
+                        return _TeamRow(
+                          key: ValueKey(team.id),
+                          index: index,
+                          team: team,
+                          selected:
+                              activeGlobalView == null &&
+                              activeLibraryView == null &&
+                              team.id == selected?.id,
+                          onTap: () => onTeam?.call(team.id),
+                        );
+                      },
+                    ),
+                  ),
+                SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(32, 0, 24, 8),
+                  sliver: SliverToBoxAdapter(
+                    child: AnimatedSize(
+                      duration: const Duration(milliseconds: 220),
+                      curve: Curves.easeOutCubic,
+                      alignment: Alignment.topCenter,
+                      child: _teamsExpanded
+                          ? Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                if (teams.isEmpty) const SizedBox(height: 8),
+                                _NewTeamRow(
+                                  label: l10n.homeWorkspaceNewTeam,
+                                  onTap: () => showHomeWorkspaceNewTeamDialog(
+                                    context,
+                                    teamCubit,
+                                  ),
                                 ),
-
-                              _NewTeamRow(
-                                label: l10n.homeWorkspaceNewTeam,
-                                onTap: () => showHomeWorkspaceNewTeamDialog(
-                                  context,
-                                  teamCubit,
-                                ),
-                              ),
-                              const SizedBox(height: 10),
-                            ],
-                          )
-                        : const SizedBox(width: double.infinity),
+                                const SizedBox(height: 10),
+                              ],
+                            )
+                          : const SizedBox(width: double.infinity),
+                    ),
                   ),
                 ),
-                const SizedBox(height: 8),
-                Divider(
-                  height: 1,
-                  color: cs.outlineVariant.withValues(alpha: 0.5),
-                ),
-                const SizedBox(height: 8),
-                _ShortcutRow(
-                  icon: Icons.travel_explore_outlined,
-                  label: l10n.teamHubNav,
-                  active: activeGlobalView == HomeWorkspaceGlobalView.teamHub,
-                  onTap: () => onGlobal?.call(HomeWorkspaceGlobalView.teamHub),
-                ),
-                const SizedBox(height: 8),
-                Divider(
-                  height: 1,
-                  color: cs.outlineVariant.withValues(alpha: 0.5),
-                ),
-                const SizedBox(height: 8),
-                _ShortcutRow(
-                  icon: Icons.extension_outlined,
-                  label: l10n.teamSkillsNav,
-                  active: activeGlobalView == HomeWorkspaceGlobalView.skills,
-                  onTap: () => onGlobal?.call(HomeWorkspaceGlobalView.skills),
-                ),
-                const SizedBox(height: 4),
-                _ShortcutRow(
-                  icon: Icons.widgets_outlined,
-                  label: l10n.teamPluginsNav,
-                  active: activeGlobalView == HomeWorkspaceGlobalView.plugins,
-                  onTap: () => onGlobal?.call(HomeWorkspaceGlobalView.plugins),
-                ),
-                const SizedBox(height: 4),
-                _ShortcutRow(
-                  icon: Icons.hub_outlined,
-                  label: l10n.teamMcpNav,
-                  active: activeGlobalView == HomeWorkspaceGlobalView.mcp,
-                  onTap: () => onGlobal?.call(HomeWorkspaceGlobalView.mcp),
-                ),
-                const SizedBox(height: 4),
-                _ShortcutRow(
-                  icon: Icons.power_outlined,
-                  label: l10n.teamExtensionsNav,
-                  active:
-                      activeGlobalView == HomeWorkspaceGlobalView.extensions,
-                  onTap: () =>
-                      onGlobal?.call(HomeWorkspaceGlobalView.extensions),
+                SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(32, 0, 24, 8),
+                  sliver: SliverToBoxAdapter(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        const SizedBox(height: 8),
+                        Divider(
+                          height: 1,
+                          color: cs.outlineVariant.withValues(alpha: 0.5),
+                        ),
+                        const SizedBox(height: 8),
+                        _ShortcutRow(
+                          icon: Icons.travel_explore_outlined,
+                          label: l10n.teamHubNav,
+                          active:
+                              activeGlobalView == HomeWorkspaceGlobalView.teamHub,
+                          onTap: () =>
+                              onGlobal?.call(HomeWorkspaceGlobalView.teamHub),
+                        ),
+                        const SizedBox(height: 8),
+                        Divider(
+                          height: 1,
+                          color: cs.outlineVariant.withValues(alpha: 0.5),
+                        ),
+                        const SizedBox(height: 8),
+                        _ShortcutRow(
+                          icon: Icons.extension_outlined,
+                          label: l10n.teamSkillsNav,
+                          active:
+                              activeGlobalView == HomeWorkspaceGlobalView.skills,
+                          onTap: () =>
+                              onGlobal?.call(HomeWorkspaceGlobalView.skills),
+                        ),
+                        const SizedBox(height: 4),
+                        _ShortcutRow(
+                          icon: Icons.widgets_outlined,
+                          label: l10n.teamPluginsNav,
+                          active: activeGlobalView ==
+                              HomeWorkspaceGlobalView.plugins,
+                          onTap: () =>
+                              onGlobal?.call(HomeWorkspaceGlobalView.plugins),
+                        ),
+                        const SizedBox(height: 4),
+                        _ShortcutRow(
+                          icon: Icons.hub_outlined,
+                          label: l10n.teamMcpNav,
+                          active:
+                              activeGlobalView == HomeWorkspaceGlobalView.mcp,
+                          onTap: () =>
+                              onGlobal?.call(HomeWorkspaceGlobalView.mcp),
+                        ),
+                        const SizedBox(height: 4),
+                        _ShortcutRow(
+                          icon: Icons.power_outlined,
+                          label: l10n.teamExtensionsNav,
+                          active: activeGlobalView ==
+                              HomeWorkspaceGlobalView.extensions,
+                          onTap: () => onGlobal?.call(
+                            HomeWorkspaceGlobalView.extensions,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -248,11 +286,14 @@ class _SectionHeader extends StatelessWidget {
 
 class _TeamRow extends StatefulWidget {
   const _TeamRow({
+    super.key,
+    required this.index,
     required this.team,
     required this.selected,
     required this.onTap,
   });
 
+  final int index;
   final TeamConfig team;
   final bool selected;
   final VoidCallback onTap;
@@ -277,30 +318,63 @@ class _TeamRowState extends State<_TeamRow> {
         : Colors.transparent;
 
     return MouseRegion(
-      cursor: SystemMouseCursors.click,
       onEnter: (_) => setState(() => _hovered = true),
       onExit: (_) => setState(() => _hovered = false),
-      child: GestureDetector(
-        onTap: widget.onTap,
-        behavior: HitTestBehavior.opaque,
-        child: Container(
-          margin: const EdgeInsets.symmetric(vertical: 4),
-          // Left inset = icon (17) + gap (8) so the icon-less team name lines up
-          // with the header label and the icon'd shortcut rows below.
-          padding: const EdgeInsets.fromLTRB(36, 10, 11, 10),
-          decoration: BoxDecoration(
-            color: background,
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Text(
-            widget.team.name,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: styles.prominent.copyWith(
-              color: selected ? cs.primary : cs.onSurface,
-              fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            ReorderableDragStartListener(
+              index: widget.index,
+              child: MouseRegion(
+                cursor: _hovered
+                    ? SystemMouseCursors.grab
+                    : SystemMouseCursors.basic,
+                child: SizedBox(
+                  width: 28,
+                  height: 40,
+                  child: AnimatedOpacity(
+                    opacity: _hovered ? 0.65 : 0,
+                    duration: const Duration(milliseconds: 120),
+                    curve: Curves.easeOut,
+                    child: Icon(
+                      Icons.drag_indicator_rounded,
+                      size: 18,
+                      color: cs.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+              ),
             ),
-          ),
+            const SizedBox(width: 4),
+            Expanded(
+              child: MouseRegion(
+                cursor: SystemMouseCursors.click,
+                child: GestureDetector(
+                  onTap: widget.onTap,
+                  behavior: HitTestBehavior.opaque,
+                  child: Container(
+                    padding: const EdgeInsets.fromLTRB(12, 10, 11, 10),
+                    decoration: BoxDecoration(
+                      color: background,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      widget.team.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: styles.prominent.copyWith(
+                        color: selected ? cs.primary : cs.onSurface,
+                        fontWeight:
+                            selected ? FontWeight.w600 : FontWeight.w400,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );

@@ -228,6 +228,7 @@ class TeamConfig {
     this.cli = CliTool.claude,
     this.teamMode = TeamMode.native,
     this.createdAt = 0,
+    this.sortOrder = 0,
     this.loop,
     this.claudeTeammateMode = 'in-process',
     this.claudeEffortLevel = 'xhigh',
@@ -306,6 +307,7 @@ class TeamConfig {
       cli: CliTool.decode(json['cli']),
       teamMode: TeamMode.decode(json['teamMode']),
       createdAt: (json['createdAt'] as num?)?.toInt() ?? 0,
+      sortOrder: (json['sortOrder'] as num?)?.toInt() ?? 0,
       loop: decodeLoop(json['loop']),
       claudeTeammateMode: json['claudeTeammateMode'] as String? ?? 'in-process',
       claudeEffortLevel: json['claudeEffortLevel'] as String? ?? 'xhigh',
@@ -353,6 +355,9 @@ class TeamConfig {
   final TeamMode teamMode;
   final int createdAt;
 
+  /// Sidebar display order; 0 means unset (fall back to [createdAt]).
+  final int sortOrder;
+
   /// When non-null, launch passes `--loop true` or `--loop false` (team mode).
   final bool? loop;
 
@@ -383,6 +388,7 @@ class TeamConfig {
     CliTool? cli,
     TeamMode? teamMode,
     int? createdAt,
+    int? sortOrder,
     bool? loop,
     bool updateLoop = false,
     String? claudeTeammateMode,
@@ -405,6 +411,7 @@ class TeamConfig {
       cli: cli ?? this.cli,
       teamMode: teamMode ?? this.teamMode,
       createdAt: createdAt ?? this.createdAt,
+      sortOrder: sortOrder ?? this.sortOrder,
       loop: updateLoop ? loop : this.loop,
       claudeTeammateMode: claudeTeammateMode ?? this.claudeTeammateMode,
       claudeEffortLevel: claudeEffortLevel ?? this.claudeEffortLevel,
@@ -431,6 +438,7 @@ class TeamConfig {
       if (cli != CliTool.flashskyai) 'cli': cli.value,
       if (teamMode != TeamMode.native) 'teamMode': teamMode.value,
       'createdAt': createdAt,
+      if (sortOrder > 0) 'sortOrder': sortOrder,
       if (loop != null) 'loop': loop!,
       if (claudeTeammateMode != 'in-process')
         'claudeTeammateMode': claudeTeammateMode,
@@ -458,6 +466,7 @@ class TeamConfig {
             cli == other.cli &&
             teamMode == other.teamMode &&
             createdAt == other.createdAt &&
+            sortOrder == other.sortOrder &&
             loop == other.loop &&
             claudeTeammateMode == other.claudeTeammateMode &&
             claudeEffortLevel == other.claudeEffortLevel &&
@@ -479,6 +488,7 @@ class TeamConfig {
     cli,
     teamMode,
     createdAt,
+    sortOrder,
     loop,
     claudeTeammateMode,
     claudeEffortLevel,
