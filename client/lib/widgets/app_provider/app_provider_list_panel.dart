@@ -6,8 +6,11 @@ import '../../l10n/l10n_extensions.dart';
 import '../../models/app_provider_config.dart';
 import '../../theme/workspace_surface_layers.dart';
 import '../../utils/app_keys.dart';
+import '../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../dropdown/app_dropdown_field.dart';
 import '../menu/sidebar_action_menu.dart';
+import 'brand_dropdown_rows.dart';
+import 'provider_brand_icon.dart';
 
 class AppProviderListPanel extends StatefulWidget {
   const AppProviderListPanel({
@@ -194,7 +197,10 @@ class _ProviderListControls extends StatelessWidget {
           child: AppDropdownField<CliTool>(
             items: CliTool.values,
             initialItem: selectedCli,
-            itemLabel: l10n.appProviderToolLabel,
+            itemBuilder: cliDropdownItemBuilder(
+              registry: CliToolRegistryScope.maybeOf(context),
+              l10n: l10n,
+            ),
             onChanged: (cli) {
               if (cli != null) onCliChanged(cli);
             },
@@ -260,6 +266,11 @@ class _ProviderListTile extends StatelessWidget {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       iconColor: titleColor,
       textColor: titleColor,
+      leading: ProviderBrandIcon.fromConfig(
+        provider,
+        size: 32,
+        borderRadius: 8,
+      ),
       title: Text(
         provider.name,
         style: TextStyle(

@@ -16,6 +16,7 @@ import '../../theme/workspace_surface_layers.dart';
 import '../app_icon_button.dart';
 import 'claude_official_credential_actions.dart';
 import 'cursor_credential_actions.dart';
+import 'provider_brand_icon.dart';
 
 class AppProviderDetailPanel extends StatelessWidget {
   const AppProviderDetailPanel({
@@ -45,6 +46,8 @@ class AppProviderDetailPanel extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
+              ProviderBrandIcon.fromConfig(provider, size: 40, borderRadius: 10),
+              const SizedBox(width: 12),
               Expanded(
                 child: Wrap(
                   spacing: 8,

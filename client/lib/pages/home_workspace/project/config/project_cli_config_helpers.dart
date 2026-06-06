@@ -1,5 +1,3 @@
-import 'package:flutter/material.dart';
-
 import '../../../../models/app_provider_config.dart';
 import '../../../../models/project_profile.dart';
 import '../../../../services/cli/registry/capabilities/provider_catalog_capability.dart';
@@ -81,11 +79,3 @@ String projectCliDefaultModelForProvider(AppProviderConfig? provider) {
   );
   return names.isNotEmpty ? names.first : '';
 }
-
-IconData cliToolIcon(CliTool cli) => switch (cli) {
-  CliTool.flashskyai => Icons.bolt_outlined,
-  CliTool.claude => Icons.terminal_outlined,
-  CliTool.codex => Icons.integration_instructions_outlined,
-  CliTool.opencode => Icons.code_outlined,
-  CliTool.cursor => Icons.mouse_outlined,
-};

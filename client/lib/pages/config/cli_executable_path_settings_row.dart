@@ -11,6 +11,7 @@ import '../../services/app/connection_mode_service.dart';
 import '../../services/cli/cli_installer_service.dart';
 import '../../services/ssh/ssh_client_factory.dart';
 import '../../utils/debounce/debounce.dart';
+import '../../widgets/cli/cli_brand_icon.dart';
 import '../../widgets/cli_install_progress_panel.dart';
 import '../../widgets/settings/workspace_settings_widgets.dart';
 import 'session_config_constants.dart';
@@ -206,6 +207,12 @@ class CliExecutablePathSettingsRowState
     return SettingsLabeledStackedRow(
       title: widget.title,
       subtitle: widget.subtitle,
+      titleLeading: CliBrandIcon(
+        cli: widget.cli,
+        label: widget.title,
+        size: 28,
+        borderRadius: 7,
+      ),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [

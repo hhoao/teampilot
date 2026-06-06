@@ -72,6 +72,7 @@ class SettingsLabeledStackedRow extends StatelessWidget {
     super.key,
     required this.title,
     this.subtitle,
+    this.titleLeading,
     this.titleTrailing,
     required this.body,
     this.helper,
@@ -81,6 +82,9 @@ class SettingsLabeledStackedRow extends StatelessWidget {
 
   final String title;
   final String? subtitle;
+
+  /// Shown before [title] on the same row.
+  final Widget? titleLeading;
 
   /// Shown on the same row as [title], aligned to the trailing edge.
   final Widget? titleTrailing;
@@ -111,12 +115,16 @@ class SettingsLabeledStackedRow extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              if (titleTrailing != null)
+              if (titleLeading != null || titleTrailing != null)
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
+                    if (titleLeading != null) ...[
+                      titleLeading!,
+                      const SizedBox(width: 10),
+                    ],
                     Expanded(child: Text(title)),
-                    titleTrailing!,
+                    if (titleTrailing != null) titleTrailing!,
                   ],
                 )
               else
@@ -150,12 +158,14 @@ class SettingsLabeledRow extends StatelessWidget {
     super.key,
     required this.title,
     this.subtitle,
+    this.titleLeading,
     required this.trailing,
     this.showDividerBelow = true,
   });
 
   final String title;
   final String? subtitle;
+  final Widget? titleLeading;
   final Widget trailing;
   final bool showDividerBelow;
 
@@ -177,6 +187,10 @@ class SettingsLabeledRow extends StatelessWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
+              if (titleLeading != null) ...[
+                titleLeading!,
+                const SizedBox(width: 12),
+              ],
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -291,12 +305,16 @@ class SettingsCompactDropdown<T extends Object> extends StatelessWidget {
     required this.entries,
     required this.onChanged,
     this.itemKeys,
+    this.itemBuilder,
+    this.listItemBuilder,
   });
 
   final T value;
   final List<(T value, String label)> entries;
   final ValueChanged<T?> onChanged;
   final Map<T, Key>? itemKeys;
+  final Widget Function(BuildContext context, T item)? itemBuilder;
+  final Widget Function(BuildContext context, T item)? listItemBuilder;
 
   @override
   Widget build(BuildContext context) {
@@ -315,7 +333,11 @@ class SettingsCompactDropdown<T extends Object> extends StatelessWidget {
         onChanged: onChanged,
         decoration: decoration,
         listItemKey: itemKeys == null ? null : (item) => itemKeys![item],
-        itemLabel: labelOf,
+        itemLabel: itemBuilder == null && listItemBuilder == null
+            ? labelOf
+            : null,
+        itemBuilder: itemBuilder,
+        listItemBuilder: listItemBuilder,
       ),
     );
   }

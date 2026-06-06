@@ -47,7 +47,7 @@ dist
 
 # Local app data written when tests run without AppStorage.init()
 config-profiles/
-providers/
+/providers/
 
 # Bundled fonts (downloaded before build — see tool/sync_bundled_google_fonts.dart)
 google_fonts/*.ttf

@@ -7,6 +7,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../cubits/app_provider_cubit.dart';
 import '../../../l10n/l10n_extensions.dart';
 import '../../../models/app_provider_config.dart';
+import '../../../widgets/app_provider/provider_brand_icon.dart';
 import '../../../widgets/settings/workspace_settings_widgets.dart';
 
 class OnboardingProviderImportStep extends StatefulWidget {
@@ -111,6 +112,11 @@ class _OnboardingProviderImportStepState
                   ),
                   for (var i = 0; i < _providers.length; i++) ...[
                     ListTile(
+                      leading: ProviderBrandIcon.fromConfig(
+                        _providers[i],
+                        size: 32,
+                        borderRadius: 8,
+                      ),
                       title: Text(_providers[i].name),
                       subtitle: Text(
                         _providers[i].defaultModel.isEmpty

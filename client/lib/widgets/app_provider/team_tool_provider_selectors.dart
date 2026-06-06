@@ -7,6 +7,7 @@ import '../../models/app_provider_config.dart';
 import '../../models/team_config.dart';
 import '../../services/cli/registry/capabilities/provider_catalog_capability.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
+import 'brand_dropdown_rows.dart';
 import '../dropdown/app_dropdown_field.dart';
 import '../dropdown/app_dropdown_decoration.dart';
 import '../settings/workspace_settings_widgets.dart';
@@ -49,14 +50,6 @@ class TeamToolProviderSelectors extends StatelessWidget {
         initialItem: effectiveSelectedId,
         hintText: l10n.appProviderTeamNone,
         decoration: AppDropdownDecorations.themed(context),
-        itemLabel: (id) {
-          if (id.isEmpty) return l10n.appProviderTeamNone;
-          return eligible
-                  .where((p) => p.id == id)
-                  .map((p) => p.name)
-                  .firstOrNull ??
-              id;
-        },
         onChanged: (id) {
           final next = Map<String, String>.from(team.providerIdsByTool);
           if (id == null || id.isEmpty) {
@@ -65,6 +58,20 @@ class TeamToolProviderSelectors extends StatelessWidget {
             next[providerCli.value] = id;
           }
           onChanged(team.copyWith(providerIdsByTool: next));
+        },
+        itemBuilder: (context, id) {
+          if (id.isEmpty) {
+            return Text(l10n.appProviderTeamNone);
+          }
+          return providerDropdownRow(
+            context,
+            label: eligible
+                    .where((p) => p.id == id)
+                    .map((p) => p.name)
+                    .firstOrNull ??
+                id,
+            provider: eligible.where((p) => p.id == id).firstOrNull,
+          );
         },
       ),
       showDividerBelow: false,

@@ -12,6 +12,9 @@ import '../../services/cli/registry/capabilities/provider_catalog_capability.dar
 import '../../services/cli/registry/cli_display_name.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../theme/app_text_styles.dart';
+import '../../widgets/app_provider/brand_dropdown_rows.dart';
+import '../../widgets/app_provider/provider_brand_icon.dart';
+import '../../widgets/cli/cli_brand_icon.dart';
 import '../../widgets/settings/workspace_settings_widgets.dart';
 
 /// Large centered "create team" modal launched from the workspace sidebar's
@@ -437,12 +440,17 @@ class _NativeTeamOptionsCard extends StatelessWidget {
           SettingsLabeledRow(
             title: l10n.teamCliLabel,
             subtitle: l10n.teamCliSubtitle,
+            titleLeading: CliBrandIcon(cli: cli, size: 28, borderRadius: 7),
             trailing: SettingsCompactDropdown<CliTool>(
               value: cli,
               entries: [
                 for (final def in launchable)
                   (def.id, cliDisplayName(def, l10n)),
               ],
+              itemBuilder: cliDropdownItemBuilder(
+                registry: registry,
+                l10n: l10n,
+              ),
               onChanged: (value) {
                 if (value == null) return;
                 onCliChanged(value);
@@ -454,6 +462,18 @@ class _NativeTeamOptionsCard extends StatelessWidget {
             SettingsLabeledRow(
               title: l10n.provider,
               subtitle: l10n.appProviderTeamToolSubtitle,
+              titleLeading: providers
+                      .where((p) => p.id == effectiveProviderId)
+                      .map(
+                        (p) => ProviderBrandIcon.fromConfig(
+                          p,
+                          size: 28,
+                          borderRadius: 7,
+                          showBorder: false,
+                        ),
+                      )
+                      .firstOrNull ??
+                  const SizedBox.shrink(),
               trailing: providerEntries.isEmpty
                   ? Text(
                       l10n.onboardingDefaultProviderEmpty,
@@ -464,6 +484,15 @@ class _NativeTeamOptionsCard extends StatelessWidget {
                   : SettingsCompactDropdown<String>(
                       value: effectiveProviderId,
                       entries: providerEntries,
+                      itemBuilder: providerDropdownItemBuilder(
+                        providers: providers,
+                        labelFor: (id) =>
+                            providers
+                                .where((p) => p.id == id)
+                                .map((p) => p.name)
+                                .firstOrNull ??
+                            id,
+                      ),
                       onChanged: (value) {
                         if (value == null) return;
                         onProviderChanged(value);

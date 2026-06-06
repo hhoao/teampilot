@@ -11,6 +11,8 @@ import '../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../theme/workspace_surface_layers.dart';
 import '../../utils/app_keys.dart';
 import '../app_icon_button.dart';
+import '../app_provider/provider_brand_icon.dart';
+import '../cli/cli_brand_icon.dart';
 import '../member_presence_indicator.dart';
 import '../team/team_lead_badge.dart';
 
@@ -45,11 +47,16 @@ class MembersPanel extends StatelessWidget {
             registry.capability<ProviderCatalogCapability>(teamCli) != null)
         ? teamCli
         : CliTool.claude;
+    final catalogProviders = context
+        .watch<AppProviderCubit>()
+        .state
+        .providersFor(catalogCli)
+        .toList(growable: false);
     final providerLabels = {
-      for (final p in context.watch<AppProviderCubit>().state.providersFor(
-        catalogCli,
-      ))
-        p.id: p.name,
+      for (final p in catalogProviders) p.id: p.name,
+    };
+    final providersById = {
+      for (final p in catalogProviders) p.id: p,
     };
     return Container(
       key: AppKeys.membersPanel,
@@ -99,6 +106,9 @@ class MembersPanel extends StatelessWidget {
                 final subtitle = meta.isEmpty
                     ? statusLabel
                     : '$statusLabel · $meta';
+                final memberProvider = providerId.isEmpty
+                    ? null
+                    : providersById[providerId];
                 final titleColor = selected
                     ? cs.onSecondaryContainer
                     : cs.onSurface;
@@ -118,6 +128,17 @@ class MembersPanel extends StatelessWidget {
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8),
                         ),
+                        leading: memberProvider != null
+                            ? ProviderBrandIcon.fromConfig(
+                                memberProvider,
+                                size: 28,
+                                borderRadius: 7,
+                              )
+                            : CliBrandIcon(
+                                cli: teamCli,
+                                size: 28,
+                                borderRadius: 7,
+                              ),
                         title: MemberTitleRow(
                           member: member,
                           fallbackName: l10n.memberName,

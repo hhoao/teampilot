@@ -17,6 +17,7 @@ import '../../theme/app_text_styles.dart';
 import '../../utils/app_provider_model_candidates.dart';
 import '../../utils/debounce/debounce.dart';
 import '../../utils/team_member_naming.dart';
+import '../../widgets/app_provider/brand_dropdown_rows.dart';
 import '../../widgets/dropdown/app_dropdown_decoration.dart';
 import '../../widgets/dropdown/app_dropdown_field.dart';
 import '../../widgets/settings/workspace_settings_widgets.dart';
@@ -344,9 +345,14 @@ class TeamMemberConfigFormState extends State<TeamMemberConfigForm> {
                     ),
                   );
                 },
-                itemLabel: (value) => cliDisplayName(
-                  cliRegistry.tryGet(CliTool.decode(value))!,
-                  l10n,
+                itemBuilder: (context, value) => cliDropdownRow(
+                  context,
+                  cli: CliTool.decode(value),
+                  label: cliDisplayName(
+                    cliRegistry.tryGet(CliTool.decode(value))!,
+                    l10n,
+                  ),
+                  registry: cliRegistry,
                 ),
               ),
               showDividerBelow: true,
@@ -388,7 +394,13 @@ class TeamMemberConfigFormState extends State<TeamMemberConfigForm> {
                 }
                 _update(m.copyWith(provider: newProv, model: newModel));
               },
-              itemLabel: (value) => providerLabels[value] ?? value,
+              itemBuilder: providerDropdownItemBuilder(
+                providers: context
+                    .read<AppProviderCubit>()
+                    .state
+                    .providersFor(memberCatalogCli),
+                labelFor: (value) => providerLabels[value] ?? value,
+              ),
             ),
             showDividerBelow: true,
           ),

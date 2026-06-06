@@ -7,6 +7,7 @@ import '../../models/app_provider_config.dart';
 import '../../models/team_config.dart';
 import '../../utils/app_keys.dart';
 import '../../widgets/app_provider/team_tool_provider_selectors.dart';
+import '../../widgets/cli/cli_brand_icon.dart';
 import '../../widgets/settings/workspace_settings_widgets.dart';
 import 'team_config_helpers.dart';
 
@@ -123,12 +124,30 @@ class TeamInfoSectionState extends State<TeamInfoSection> {
                 SettingsLabeledStackedRow(
                   title: l10n.teamCliLabel,
                   subtitle: l10n.teamCliLockedSubtitle,
-                  body: Text(
-                    teamCliDisplayLabel(context, l10n, widget.team.cli),
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.w500,
-                      color: Theme.of(context).colorScheme.onSurface,
-                    ),
+                  body: Row(
+                    children: [
+                      CliBrandIcon(
+                        cli: widget.team.cli,
+                        label: teamCliDisplayLabel(
+                          context,
+                          l10n,
+                          widget.team.cli,
+                        ),
+                        size: 28,
+                        borderRadius: 7,
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          teamCliDisplayLabel(context, l10n, widget.team.cli),
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(
+                                fontWeight: FontWeight.w500,
+                                color: Theme.of(context).colorScheme.onSurface,
+                              ),
+                        ),
+                      ),
+                    ],
                   ),
                   showDividerBelow: true,
                 ),

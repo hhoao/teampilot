@@ -12,6 +12,7 @@ import '../../models/provider_presets/flashskyai_provider_presets.dart';
 import '../../theme/workspace_surface_layers.dart';
 import '../../utils/debounce/debounce.dart';
 import '../app_icon_button.dart';
+import 'brand_dropdown_rows.dart';
 import '../dropdown/app_dropdown_field.dart';
 
 List<AppProviderPreset> appProviderPresetsFor(CliTool cli) {
@@ -274,7 +275,11 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
                     child: AppDropdownField<CliTool>(
                       items: CliTool.values,
                       initialItem: widget.cli,
-                      itemLabel: l10n.appProviderToolLabel,
+                      itemBuilder: (context, cli) => cliDropdownRow(
+                        context,
+                        cli: cli,
+                        label: l10n.appProviderToolLabel(cli),
+                      ),
                       onChanged: (cli) {
                         if (cli != null && cli != widget.cli) {
                           widget.onCliChanged?.call(cli);
@@ -303,13 +308,19 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
                   key: ValueKey('app-provider-preset-${widget.cli.value}'),
                   items: presetItems,
                   initialItem: _effectiveItem(_presetId, presetItems),
-                  itemLabel: (id) {
-                    if (id == 'custom') return l10n.appProviderPresetCustom;
-                    return appProviderPresetsFor(widget.cli)
-                            .where((p) => p.id == id)
-                            .map((p) => p.label)
-                            .firstOrNull ??
-                        id;
+                  itemBuilder: (context, id) {
+                    if (id == 'custom') {
+                      return Text(l10n.appProviderPresetCustom);
+                    }
+                    final preset = appProviderPresetsFor(widget.cli)
+                        .where((p) => p.id == id)
+                        .firstOrNull;
+                    final label = preset?.label ?? id;
+                    return providerDropdownRow(
+                      context,
+                      label: label,
+                      provider: preset?.template,
+                    );
                   },
                   onChanged: (id) {
                     if (id != null) _applyPreset(id);

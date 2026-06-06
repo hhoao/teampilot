@@ -14,6 +14,9 @@ import '../../../../services/provider/claude/claude_official_provider.dart';
 import '../../../../theme/app_text_styles.dart';
 import '../../../../widgets/dropdown/app_dropdown_decoration.dart';
 import '../../../../widgets/dropdown/app_dropdown_field.dart';
+import '../../../../widgets/app_provider/brand_dropdown_rows.dart';
+import '../../../../widgets/app_provider/provider_brand_icon.dart';
+import '../../../../widgets/cli/cli_brand_icon.dart';
 import '../../../../widgets/settings/workspace_settings_widgets.dart';
 import 'project_cli_config_helpers.dart';
 
@@ -132,22 +135,21 @@ class ProjectCliConfigRow extends StatelessWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: cs.surfaceContainerHighest.withValues(alpha: 0.65),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(
-                    color: cs.outlineVariant.withValues(alpha: 0.55),
-                  ),
-                ),
-                child: Icon(
-                  cliToolIcon(cli),
-                  size: AppIconSizes.md,
-                  color: cs.onSurfaceVariant,
-                ),
-              ),
+              configured &&
+                      selectedProvider != null &&
+                      selectedProvider.icon.isNotEmpty
+                  ? ProviderBrandIcon.fromConfig(
+                      selectedProvider,
+                      size: 40,
+                      borderRadius: 10,
+                    )
+                  : CliBrandIcon(
+                      cli: cli,
+                      definition: definition,
+                      label: title,
+                      size: 40,
+                      borderRadius: 10,
+                    ),
               const SizedBox(width: 14),
               Expanded(
                 child: Column(
@@ -405,7 +407,10 @@ class _ProjectCliConfigureDialogState extends State<ProjectCliConfigureDialog> {
                     _modelId = projectCliDefaultModelForProvider(nextProvider);
                   });
                 },
-                itemLabel: (value) => providerLabels[value] ?? value,
+                itemBuilder: providerDropdownItemBuilder(
+                  providers: providers,
+                  labelFor: (value) => providerLabels[value] ?? value,
+                ),
               ),
               showDividerBelow: hideModelPicker,
             ),

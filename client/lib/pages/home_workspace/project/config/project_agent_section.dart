@@ -13,6 +13,7 @@ import '../../../../services/cli/registry/cli_display_name.dart';
 import '../../../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../../../services/storage/storage_resolver.dart';
 import '../../../../theme/app_text_styles.dart';
+import '../../../../widgets/app_provider/brand_dropdown_rows.dart';
 import '../../../../widgets/dropdown/app_dropdown_decoration.dart';
 import '../../../../widgets/dropdown/app_dropdown_field.dart';
 import '../../../../widgets/settings/workspace_settings_widgets.dart';
@@ -164,9 +165,14 @@ class ProjectAgentConfigFormState extends State<ProjectAgentConfigForm> {
                   if (value == null) return;
                   unawaited(widget.cubit.setCli(CliTool.decode(value)));
                 },
-                itemLabel: (value) => cliDisplayName(
-                  cliRegistry.tryGet(CliTool.decode(value))!,
-                  l10n,
+                itemBuilder: (context, value) => cliDropdownRow(
+                  context,
+                  cli: CliTool.decode(value),
+                  label: cliDisplayName(
+                    cliRegistry.tryGet(CliTool.decode(value))!,
+                    l10n,
+                  ),
+                  registry: cliRegistry,
                 ),
               ),
               showDividerBelow: false,

@@ -10,8 +10,10 @@ import '../../../services/app/onboarding_service.dart';
 import '../../../models/app_provider_config.dart';
 import '../../../services/provider/claude/claude_official_provider.dart';
 import '../../../utils/app_provider_model_candidates.dart';
+import '../../../widgets/app_provider/brand_dropdown_rows.dart';
 import '../../../widgets/dropdown/app_dropdown_field.dart';
 import '../../../widgets/dropdown/app_dropdown_decoration.dart';
+import '../../../widgets/cli/cli_brand_icon.dart';
 import '../../../widgets/settings/workspace_settings_widgets.dart';
 
 class OnboardingDefaultProviderStep extends StatefulWidget {
@@ -197,6 +199,26 @@ class _OnboardingDefaultProviderStepState
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               SettingsGroupHeader(title: l10n.appProviderToolClaude),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+                child: Row(
+                  children: [
+                    CliBrandIcon(
+                      cli: CliTool.claude,
+                      label: l10n.appProviderToolClaude,
+                      size: 28,
+                      borderRadius: 7,
+                    ),
+                    const SizedBox(width: 10),
+                    Text(
+                      l10n.appProviderToolClaude,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
               SettingsLabeledRow(
                 title: l10n.provider,
                 subtitle: l10n.onboardingDefaultProviderPick,
@@ -206,6 +228,15 @@ class _OnboardingDefaultProviderStepState
                     for (final provider in providers)
                       (provider.id, provider.name),
                   ],
+                  itemBuilder: providerDropdownItemBuilder(
+                    providers: providers,
+                    labelFor: (id) =>
+                        providers
+                            .where((p) => p.id == id)
+                            .map((p) => p.name)
+                            .firstOrNull ??
+                        id,
+                  ),
                   onChanged: (value) {
                     if (value == null) return;
                     setState(() {
