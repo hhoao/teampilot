@@ -26,7 +26,7 @@ void main() {
         basePath: base.path,
         fs: fs,
         layout: CliDataLayout(teampilotRoot: base.path, fs: fs),
-        loadEnabledExtensionIds: ({teamId}) async => {'rtk'},
+        loadEnabledExtensionIds: ({teamId, projectId}) async => {'rtk'},
         extensionDetector: ExtensionDetector(
           processRunner: (executable, arguments, {environment}) async {
             // ExtensionDetector locates binaries via `which` on POSIX and `where`
@@ -104,7 +104,7 @@ void main() {
         basePath: base.path,
         fs: LocalFilesystem(),
         layout: CliDataLayout(teampilotRoot: base.path, fs: LocalFilesystem()),
-        loadEnabledExtensionIds: ({teamId}) async => {'rtk'},
+        loadEnabledExtensionIds: ({teamId, projectId}) async => {'rtk'},
         extensionDetector: ExtensionDetector(processRunner: _alwaysMissing),
       );
 

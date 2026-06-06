@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import '../../../../models/claude_credential_link_result.dart';
+import '../../../../models/project_profile.dart';
 import '../../../../models/team_config.dart';
 import '../../../../utils/team_member_naming.dart';
 import '../../../provider/claude/claude_official_provider.dart';
@@ -94,6 +95,15 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
 
   @override
   Future<void> ensureSessionProfile(ConfigProfileSessionContext ctx) async {
+    final standalone = ctx.standaloneScope;
+    final profile = ctx.profile;
+    if (standalone != null && profile != null) {
+      await _ensureSessionDefaultsAt(
+        ctx.paths,
+        standaloneSessionToolDir(ctx.paths, standalone, toolId),
+      );
+      return;
+    }
     await _ensureSessionDefaults(ctx.paths, ctx.teamId, ctx.sessionId);
   }
 
@@ -101,6 +111,12 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
   Future<ConfigProfileLaunchContribution> contributeLaunch(
     ConfigProfileLaunchContext ctx,
   ) async {
+    final standalone = ctx.standaloneScope;
+    final profile = ctx.profile;
+    if (standalone != null && profile != null) {
+      return _contributeStandaloneLaunch(ctx, standalone, profile);
+    }
+
     final delegate = ctx.paths;
     final scope = ctx.scope;
     final workingDirectory = ctx.workingDirectory ?? '';
@@ -224,12 +240,214 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
     String teamId,
     String sessionId,
   ) async {
-    final file = sessionMetadataFile(delegate, teamId, sessionId);
+    await _ensureSessionDefaultsAt(
+      delegate,
+      delegate.sessionToolDir(teamId, sessionId, toolId),
+    );
+  }
+
+  Future<void> _ensureSessionDefaultsAt(
+    ConfigProfileDelegate delegate,
+    String memberToolDir,
+  ) async {
+    final file = delegate.pathContext.join(memberToolDir, metadataFileName);
     final existing = await delegate.readMetadataFile(file, defaultMetadata);
     await delegate.writeJsonIfChanged(file, {
       ...defaultMetadata,
       ...existing,
     });
+  }
+
+  Future<ConfigProfileLaunchContribution> _contributeStandaloneLaunch(
+    ConfigProfileLaunchContext ctx,
+    StandaloneLaunchProfileScope standalone,
+    ProjectProfile profile,
+  ) async {
+    final delegate = ctx.paths;
+    final member = standaloneMemberFromProfile(profile);
+    final memberToolDir = standaloneSessionToolDir(delegate, standalone, toolId);
+    final scope = launchScopeForStandalone(standalone);
+    final workingDirectory = ctx.workingDirectory ?? '';
+    final warnings = <String>[];
+
+    final resolver = ClaudeProviderSettingsResolver(
+      basePath: delegate.basePath,
+      repository: AppProviderRepository(
+        basePath: delegate.basePath,
+        fs: delegate.fs,
+      ),
+    );
+    final providerId = standaloneProviderId(profile);
+    final settings = await resolver.resolve(
+      providerId.isNotEmpty ? providerId : null,
+    );
+    final resolvedProviderId = providerId.isNotEmpty
+        ? providerId
+        : (settings != null
+              ? (await _resolveSoleClaudeProviderId(delegate))
+              : null);
+
+    await _writeMetadataAt(
+      delegate,
+      memberToolDir,
+      workingDirectory,
+      additionalDirectories: ctx.additionalDirectories,
+    );
+    await _writeSettingsAt(
+      delegate,
+      memberToolDir,
+      scope,
+      settings,
+      effortLevel: 'xhigh',
+      standalone: true,
+    );
+    await _writeStandaloneMemberProfile(
+      delegate: delegate,
+      memberToolDir: memberToolDir,
+      scope: scope,
+      member: member,
+      providerSettings: settings,
+    );
+
+    final trimmedProviderId = resolvedProviderId?.trim() ?? '';
+    if (trimmedProviderId.isNotEmpty &&
+        settings != null &&
+        isOfficialClaudeSettings(settings)) {
+      final credentials = ClaudeProviderCredentialsService(
+        fs: delegate.fs,
+        basePath: delegate.basePath,
+      );
+      final link = await credentials.ensureLinked(
+        memberToolDir,
+        trimmedProviderId,
+      );
+      if (link == CredentialLinkResult.missing) {
+        warnings.add('claude_credentials_missing');
+      }
+    }
+
+    final environment = <String, String>{
+      'CLAUDE_CONFIG_DIR': memberToolDir,
+      if (member.isValid)
+        settingsFileEnvKey: delegate.pathContext.join(
+          memberToolDir,
+          'settings',
+          '${ClaudeTeamRosterService.safeClaudePathSegment(member.id)}.json',
+        ),
+      'CLAUDE_CODE_NO_FLICKER': '1',
+    };
+
+    if (member.isValid) {
+      final appendPath = await delegate.resolveAppendSystemPromptPath(
+        scope: scope,
+        tool: toolId,
+        member: member,
+      );
+      if (appendPath != null) {
+        environment[MemberRoleProvision.appendSystemPromptFileEnvKey] =
+            appendPath;
+      }
+    }
+
+    return ConfigProfileLaunchContribution(
+      environment: environment,
+      warnings: warnings,
+    );
+  }
+
+  Future<String?> _resolveSoleClaudeProviderId(
+    ConfigProfileDelegate delegate,
+  ) async {
+    final providers = await AppProviderRepository(
+      basePath: delegate.basePath,
+      fs: delegate.fs,
+    ).loadProviders(CliTool.claude);
+    if (providers.length == 1) return providers.first.id;
+    return null;
+  }
+
+  Future<void> _writeMetadataAt(
+    ConfigProfileDelegate delegate,
+    String memberToolDir,
+    String workingDirectory, {
+    List<String> additionalDirectories = const [],
+  }) async {
+    final metadataPath = delegate.pathContext.join(
+      memberToolDir,
+      metadataFileName,
+    );
+    final metadata = await delegate.metadataWithTrustedProjects(
+      metadataPath: metadataPath,
+      defaultMetadata: defaultMetadata,
+      defaultProjectConfig: defaultProjectConfig,
+      directories: [workingDirectory, ...additionalDirectories],
+    );
+    await delegate.fs.atomicWrite(
+      metadataPath,
+      const JsonEncoder.withIndent('  ').convert(metadata),
+    );
+  }
+
+  Future<void> _writeSettingsAt(
+    ConfigProfileDelegate delegate,
+    String memberToolDir,
+    LaunchProfileScope scope,
+    Map<String, Object?>? providerSettings, {
+    required String effortLevel,
+    String teammateMode = 'in-process',
+    bool mixed = false,
+    bool standalone = false,
+  }) async {
+    final file = delegate.pathContext.join(memberToolDir, 'settings.json');
+    final settings = _teamSettings(
+      providerSettings,
+      effortLevel: effortLevel,
+      teammateMode: teammateMode,
+      mixed: mixed,
+      standalone: standalone,
+    );
+    await delegate.writeSettingsFile(
+      file,
+      settings,
+      memberToolDir: memberToolDir,
+      tool: toolId,
+      teamId: standalone ? null : scope.teamId,
+      projectId: standalone ? scope.teamId : null,
+    );
+  }
+
+  Future<void> _writeStandaloneMemberProfile({
+    required ConfigProfileDelegate delegate,
+    required String memberToolDir,
+    required LaunchProfileScope scope,
+    required TeamMemberConfig member,
+    required Map<String, Object?>? providerSettings,
+  }) async {
+    await MemberRoleProvision.syncRolePromptFile(
+      fs: delegate.fs,
+      memberToolDir: memberToolDir,
+      member: member,
+      forceTeamLeadDelegateMode: false,
+      mixed: false,
+    );
+    final file = delegate.pathContext.join(
+      memberToolDir,
+      'settings',
+      '${ClaudeTeamRosterService.safeClaudePathSegment(member.id)}.json',
+    );
+    final settings = _memberSettings(
+      providerSettings,
+      member,
+      mixed: false,
+      standalone: true,
+    );
+    await delegate.writeSettingsFile(
+      file,
+      settings,
+      memberToolDir: memberToolDir,
+      tool: toolId,
+      projectId: scope.teamId,
+    );
   }
 
   Future<void> _writeSettings(
@@ -461,6 +679,7 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
     required String effortLevel,
     required String teammateMode,
     required bool mixed,
+    bool standalone = false,
   }) {
     final settings = <String, Object?>{
       if (providerSettings != null) ...providerSettings,
@@ -475,7 +694,7 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
         }
       }
     }
-    if (mixed) {
+    if (mixed || standalone) {
       env.remove('CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS');
     } else {
       env['CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS'] = '1';
@@ -486,7 +705,7 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
     settings['env'] = env;
     settings['effortLevel'] = effortLevel;
     settings['skipDangerousModePermissionPrompt'] = true;
-    if (mixed) {
+    if (mixed || standalone) {
       settings.remove('teammateMode');
     } else {
       settings['teammateMode'] = teammateMode;
@@ -498,12 +717,14 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
     Map<String, Object?>? providerSettings,
     TeamMemberConfig member, {
     required bool mixed,
+    bool standalone = false,
   }) {
     final settings = _teamSettings(
       providerSettings,
       effortLevel: 'xhigh',
       teammateMode: 'in-process',
       mixed: mixed,
+      standalone: standalone,
     );
     final model = member.model.trim();
     if (model.isNotEmpty) {

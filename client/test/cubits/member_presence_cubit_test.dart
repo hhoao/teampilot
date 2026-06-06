@@ -10,6 +10,7 @@ import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/repositories/session_repository.dart';
 import 'package:teampilot/services/team/member_presence_service.dart';
 import 'package:teampilot/services/team_bus/bus_user_line_capture.dart';
+import 'package:teampilot/services/session/session_lifecycle_service.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
 
 import '../support/post_frame_test_harness.dart';
@@ -28,9 +29,7 @@ class _FakeTerminalSession extends TerminalSession {
     List<String> additionalDirectories = const [],
     String? fixedSessionId,
     String? resumeSessionId,
-    TeamConfig? team,
-    TeamMemberConfig? member,
-    String? sessionTeam,
+    ShellLaunchSpec? shellLaunch,
     Map<String, String>? extraEnvironment,
     void Function()? onProcessStarted,
     void Function(String message)? onProcessFailed,

@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
 
+import '../../../../models/app_provider_config.dart';
+import '../../../../models/project_profile.dart';
 import '../../../../models/team_config.dart';
 import '../../../../repositories/app_provider_repository.dart';
 import '../../../provider/codex/codex_home_provisioner.dart';
@@ -24,6 +26,12 @@ final class CodexConfigProfileCapability implements ConfigProfileCapability {
   Future<ConfigProfileLaunchContribution> contributeLaunch(
     ConfigProfileLaunchContext ctx,
   ) async {
+    final standalone = ctx.standaloneScope;
+    final profile = ctx.profile;
+    if (standalone != null && profile != null) {
+      return _contributeStandaloneLaunch(ctx, standalone, profile);
+    }
+
     final paths = ctx.paths;
     final codexHome = paths.sessionToolDir(
       ctx.scope.teamId,
@@ -97,6 +105,77 @@ final class CodexConfigProfileCapability implements ConfigProfileCapability {
       environment: {'CODEX_HOME': codexHome},
       warnings: warnings,
     );
+  }
+
+  Future<ConfigProfileLaunchContribution> _contributeStandaloneLaunch(
+    ConfigProfileLaunchContext ctx,
+    StandaloneLaunchProfileScope standalone,
+    ProjectProfile profile,
+  ) async {
+    final paths = ctx.paths;
+    final member = standaloneMemberFromProfile(profile);
+    final codexHome = standaloneSessionToolDir(paths, standalone, toolId);
+    final warnings = <String>[];
+
+    await paths.fs.ensureDir(codexHome);
+
+    final resolver = CodexProviderSettingsResolver(
+      basePath: paths.basePath,
+      repository: AppProviderRepository(
+        basePath: paths.basePath,
+        fs: paths.fs,
+      ),
+    );
+    var provider = await resolver.findById(standaloneProviderId(profile));
+    provider ??= await _resolveSoleCodexProvider(paths);
+    if (provider == null) {
+      warnings.add('codex_provider_missing');
+    } else {
+      final trustedDirectories = <String>[
+        if ((ctx.workingDirectory ?? '').trim().isNotEmpty)
+          ctx.workingDirectory!.trim(),
+        for (final dir in ctx.additionalDirectories)
+          if (dir.trim().isNotEmpty) dir.trim(),
+      ];
+      try {
+        await CodexHomeProvisioner(fs: paths.fs).provision(
+          codexHome: codexHome,
+          provider: provider,
+          trustedProjectDirectories: trustedDirectories,
+        );
+      } on CodexHomeProvisionException catch (e) {
+        warnings.add('codex_config_invalid: $e');
+      }
+    }
+
+    if (member.isValid) {
+      final prompt = MemberRoleProvision.composeRolePrompt(
+        member: member,
+        mixed: false,
+      ).trim();
+      if (prompt.isNotEmpty) {
+        await paths.fs.atomicWrite(
+          paths.pathContext.join(codexHome, agentsFileName),
+          '$prompt\n',
+        );
+      }
+    }
+
+    return ConfigProfileLaunchContribution(
+      environment: {'CODEX_HOME': codexHome},
+      warnings: warnings,
+    );
+  }
+
+  Future<AppProviderConfig?> _resolveSoleCodexProvider(
+    ConfigProfileDelegate paths,
+  ) async {
+    final providers = await AppProviderRepository(
+      basePath: paths.basePath,
+      fs: paths.fs,
+    ).loadProviders(CliTool.codex);
+    if (providers.length == 1) return providers.first;
+    return null;
   }
 
   /// Back-compat for tests that target the team-bus overlay fragment only.

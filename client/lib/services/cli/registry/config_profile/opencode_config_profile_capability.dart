@@ -54,6 +54,19 @@ final class OpencodeConfigProfileCapability implements ConfigProfileCapability {
   Future<ConfigProfileLaunchContribution> contributeLaunch(
     ConfigProfileLaunchContext ctx,
   ) async {
+    final standalone = ctx.standaloneScope;
+    final profile = ctx.profile;
+    if (standalone != null && profile != null) {
+      final opencodeDir = standaloneSessionToolDir(
+        ctx.paths,
+        standalone,
+        'opencode',
+      );
+      return ConfigProfileLaunchContribution(
+        environment: {'OPENCODE': opencodeDir},
+      );
+    }
+
     final delegate = ctx.paths;
     final scope = ctx.scope;
     final opencodeDir = delegate.sessionToolDir(

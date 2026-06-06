@@ -21,6 +21,7 @@ class HomeWorkspaceProjectsTab extends StatelessWidget {
     required this.onToggleView,
     required this.favoriteProjectIds,
     required this.onToggleProjectFavorite,
+    this.personalScope = false,
   });
 
   final List<AppProject> projects;
@@ -29,6 +30,7 @@ class HomeWorkspaceProjectsTab extends StatelessWidget {
   final ValueChanged<bool> onToggleView;
   final Set<String> favoriteProjectIds;
   final Future<void> Function(String projectId) onToggleProjectFavorite;
+  final bool personalScope;
 
   @override
   Widget build(BuildContext context) {
@@ -38,6 +40,7 @@ class HomeWorkspaceProjectsTab extends StatelessWidget {
         HomeWorkspaceProjectsToolbar(
           gridView: gridView,
           onToggleView: onToggleView,
+          personalScope: personalScope,
         ),
         const SizedBox(height: 16),
         Expanded(
@@ -59,10 +62,12 @@ class HomeWorkspaceProjectsToolbar extends StatelessWidget {
   const HomeWorkspaceProjectsToolbar({
     required this.gridView,
     required this.onToggleView,
+    this.personalScope = false,
   });
 
   final bool gridView;
   final ValueChanged<bool> onToggleView;
+  final bool personalScope;
 
   @override
   Widget build(BuildContext context) {
@@ -101,7 +106,10 @@ class HomeWorkspaceProjectsToolbar extends StatelessWidget {
                       context,
                       chatCubit: context.read<ChatCubit>(),
                       repository: context.read<SessionRepository>(),
-                      teamCubit: context.read<TeamCubit>(),
+                      teamCubit: personalScope
+                          ? null
+                          : context.read<TeamCubit>(),
+                      sessionTeamId: personalScope ? '' : null,
                     ),
                   ),
                 ],

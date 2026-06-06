@@ -51,9 +51,7 @@ class _HomeWorkspaceConversationPanelState
 
     final sessions = sessionsForProject(
       widget.project,
-      context.select<ChatCubit, List<AppSession>>(
-        (c) => c.state.visibleSessions,
-      ),
+      context.select<ChatCubit, List<AppSession>>((c) => c.state.sessions),
     );
     final filteredSessions = filterSessionsByQuery(
       sessions,
@@ -108,12 +106,26 @@ class _HomeWorkspaceConversationPanelState
 
   void _openSession(BuildContext context, AppSession session) {
     final chatCubit = context.read<ChatCubit>();
-    final team = context.read<TeamCubit>().state.selectedTeam;
     final repo = context.read<SessionRepository>();
     final fallback = context.l10n.defaultNewChatSessionTitle;
+    final isPersonal = widget.project.teamId.isEmpty;
 
     chatCubit.selectSession(session.sessionId);
 
+    if (isPersonal) {
+      unawaited(
+        chatCubit.openSessionTab(
+          session,
+          team: null,
+          member: null,
+          repo: repo,
+          emptyDisplayTitleFallback: fallback,
+        ),
+      );
+      return;
+    }
+
+    final team = context.read<TeamCubit>().state.selectedTeam;
     final leads =
         team?.members.where((m) => m.id == 'team-lead').toList() ??
             const <TeamMemberConfig>[];
@@ -133,15 +145,16 @@ class _HomeWorkspaceConversationPanelState
   Future<void> _addConversation(BuildContext context) async {
     final chatCubit = context.read<ChatCubit>();
     final repo = context.read<SessionRepository>();
-    final team = context.read<TeamCubit>().state.selectedTeam;
-    final teamId = team?.id ?? widget.project.teamId;
+    final isPersonal = widget.project.teamId.isEmpty;
+    final team = isPersonal ? null : context.read<TeamCubit>().state.selectedTeam;
+    final teamId = isPersonal ? '' : (team?.id ?? widget.project.teamId);
 
     try {
       final session = await chatCubit.createSession(
         widget.project.projectId,
         repo,
         sessionTeamId: teamId,
-        rosterMembers: team?.members ?? const [],
+        rosterMembers: isPersonal ? const [] : (team?.members ?? const []),
       );
       if (!context.mounted) return;
       _openSession(context, session);

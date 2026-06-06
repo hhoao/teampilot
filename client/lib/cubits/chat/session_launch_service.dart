@@ -4,9 +4,11 @@ import 'package:uuid/uuid.dart';
 
 import '../../models/app_project.dart';
 import '../../models/app_session.dart';
+import '../../models/project_profile.dart';
 import '../../models/session_member_binding.dart';
 import '../../models/team_config.dart';
 import '../../repositories/session_repository.dart';
+import '../../services/cli/registry/config_profile/config_profile_context.dart';
 import '../../services/session/session_lifecycle_service.dart';
 import '../../services/team/default_team_project_service.dart';
 import '../../services/team/team_config_launch_validator.dart';
@@ -107,10 +109,29 @@ class SessionLaunchService implements MemberConnector {
       );
       return;
     }
+    final project = _projectById(session.projectId);
+    final isPersonal =
+        project != null &&
+        project.teamId.isEmpty &&
+        session.sessionTeam.trim().isEmpty;
+    ProjectProfile? personalProfile;
+    TeamMemberConfig? personalMember;
+    if (isPersonal) {
+      personalProfile = _personalProfileForSession(
+        session,
+        await _h.lifecycle.loadProjectProfile(project.projectId),
+      );
+      personalMember = standaloneMemberFromProfile(personalProfile);
+    }
+    if (!isPersonal && (team == null || member == null)) {
+      throw StateError(
+        'openSessionTab requires team and member for non-personal sessions',
+      );
+    }
+    final effectiveMember = isPersonal ? personalMember! : member!;
+    final effectiveTeam = isPersonal ? null : team;
     final ts = _h.shellFactory.newSession(
-      team != null && member != null
-          ? member.cliWithin(team)
-          : (team?.cli ?? CliTool.flashskyai),
+      isPersonal ? personalProfile!.cli : member!.cliWithin(team!),
     );
     final info = ChatTabInfo(
       id: session.sessionId,
@@ -121,12 +142,8 @@ class SessionLaunchService implements MemberConnector {
     final cliTeamName = session.cliTeamName;
     final internalTab = ChatTab(info: info, cliTeamName: cliTeamName)
       ..persistedSession = session;
-    if (team != null && member != null) {
-      internalTab.memberShells[member.id] = ts;
-      internalTab.selectedMemberId = member.id;
-    } else {
-      internalTab.resumeSession = ts;
-    }
+    internalTab.memberShells[effectiveMember.id] = ts;
+    internalTab.selectedMemberId = effectiveMember.id;
     _tabStore.append(internalTab);
     _h.applyState(
       _state.copyWith(
@@ -136,79 +153,43 @@ class SessionLaunchService implements MemberConnector {
         selectedMemberId: internalTab.selectedMemberId,
       ),
     );
-    if (team != null) {
-      _h.activeTeam = team;
+    if (effectiveTeam != null) {
+      _h.activeTeam = effectiveTeam;
       _h.pushPresenceTarget();
       // Non-blocking pre-launch config check: warn (via dialog) when the team
       // lacks a usable provider/model (and CLI, in mixed mode). Runs async (it
       // reads the provider catalog to waive model for official providers) and
       // must not delay the connect, so it is fire-and-forget.
-      unawaited(_emitTeamConfigValidation(team));
-      if (team.teamMode == TeamMode.mixed) {
-        await _h.busCoordinator.installBusForTab(internalTab, team, session);
+      unawaited(_emitTeamConfigValidation(effectiveTeam));
+      if (effectiveTeam.teamMode == TeamMode.mixed) {
+        await _h.busCoordinator.installBusForTab(
+          internalTab,
+          effectiveTeam,
+          session,
+        );
       }
     }
     // mixed：打开/恢复 tab 只建 bus + MCP，不 spawn PTY（等用户 connect 或 mailbox 物化）。
-    final connectNow = connectImmediately && team?.teamMode != TeamMode.mixed;
+    final connectNow =
+        connectImmediately && effectiveTeam?.teamMode != TeamMode.mixed;
     if (connectNow) {
       _h.beginSessionConnect(info.id);
       _h.postFrameScheduler(() async {
         try {
-          if (team != null && member != null) {
-            await _connectMemberShell(
-              tab: internalTab,
-              session: session,
-              team: team,
-              member: member,
-              shell: ts,
-              repo: repo,
-              launched: launched,
-            );
-            if (_h.autoLaunchAllMembersOnConnect?.call() == true) {
-              _launchRemainingMembersForTab(team, member.id, internalTab);
-            }
-          } else {
-            final plan = await _h.lifecycle.prepareLaunch(
-              session: session,
-              team: team,
-              member: member,
-            );
-            final configDir = plan.memberConfigDir.trim();
-            if (configDir.isNotEmpty) {
-              internalTab.memberToolConfigDir = configDir;
-            }
-            _h.emitLaunchWarnings(plan.warnings);
-            final useResume = launched && plan.resume;
-            ts.connect(
-              workingDirectory: session.primaryPath,
-              additionalDirectories: session.additionalPaths,
-              fixedSessionId: useResume ? null : plan.taskId,
-              resumeSessionId: useResume ? plan.taskId : null,
-              team: team,
-              member: member,
-              sessionTeam: cliTeamName.isNotEmpty ? cliTeamName : null,
-              extraEnvironment: plan.env.isEmpty ? null : plan.env,
-              onFirstUserLineSubmitted: _autoRenameOnFirstPrompt(
-                session.sessionId,
-              ),
-              onProcessFailed: (message) =>
-                  _h.failSessionConnect(info.id, message),
-              onProcessExited: () => _h.updateTabRunning(info.id),
-              onProcessStarted: () {
-                _h.clearLaunchError(info.id);
-                _h.finishSessionConnect(info.id);
-                if (repo == null) return;
-                unawaited(
-                  _persistSessionStarted(repo, session.sessionId).onError(
-                    (e, st) => appLogger.w(
-                      '[session] persist after start failed: $e',
-                      error: e,
-                      stackTrace: st,
-                    ),
-                  ),
-                );
-              },
-            );
+          await _connectShell(
+            tab: internalTab,
+            session: session,
+            shell: ts,
+            repo: repo,
+            launched: launched,
+            team: isPersonal ? null : team,
+            member: isPersonal ? null : member,
+            project: isPersonal ? project : null,
+            profile: isPersonal ? personalProfile : null,
+          );
+          if (!isPersonal &&
+              _h.autoLaunchAllMembersOnConnect?.call() == true) {
+            _launchRemainingMembersForTab(team!, member!.id, internalTab);
           }
           _h.updateTabRunning(info.id);
         } on Object catch (e, st) {
@@ -329,6 +310,15 @@ class SessionLaunchService implements MemberConnector {
       if (project.projectId == projectId) return project;
     }
     return null;
+  }
+
+  ProjectProfile _personalProfileForSession(
+    AppSession session,
+    ProjectProfile profile,
+  ) {
+    final cli = session.cli;
+    if (cli == null) return profile;
+    return profile.copyWith(cli: cli);
   }
 
   AppSession? _firstSessionForProject(String projectId) {
@@ -459,46 +449,96 @@ class SessionLaunchService implements MemberConnector {
     required TerminalSession shell,
     SessionRepository? repo,
     required bool launched,
+  }) => _connectShell(
+    tab: tab,
+    session: session,
+    shell: shell,
+    repo: repo,
+    launched: launched,
+    team: team,
+    member: member,
+  );
+
+  Future<void> _connectShell({
+    required ChatTab tab,
+    required AppSession session,
+    required TerminalSession shell,
+    SessionRepository? repo,
+    required bool launched,
+    TeamConfig? team,
+    TeamMemberConfig? member,
+    AppProject? project,
+    ProjectProfile? profile,
   }) async {
-    if (session.cliTeamName.isEmpty) {
+    final isPersonal = project != null;
+    if (isPersonal) {
+      if (profile == null) {
+        _h.failSessionConnect(
+          tab.info.id,
+          'Personal session is missing project profile.',
+        );
+        return;
+      }
+    } else if (team == null || member == null) {
       _h.failSessionConnect(
         tab.info.id,
-        'Session is missing CLI team identity (cliTeamName). '
-        'Create a new team session.',
+        'Team session requires team and member to connect.',
       );
       return;
     }
-    if (!session.sessionId.startsWith('local-') && session.members.isEmpty) {
-      _h.failSessionConnect(
-        tab.info.id,
-        'Session is missing member task bindings. Create a new team session.',
-      );
-      return;
+
+    if (team != null) {
+      if (session.cliTeamName.isEmpty) {
+        _h.failSessionConnect(
+          tab.info.id,
+          'Session is missing CLI team identity (cliTeamName). '
+          'Create a new team session.',
+        );
+        return;
+      }
+      if (!session.sessionId.startsWith('local-') && session.members.isEmpty) {
+        _h.failSessionConnect(
+          tab.info.id,
+          'Session is missing member task bindings. Create a new team session.',
+        );
+        return;
+      }
     }
-    final binding = await _resolveMemberBinding(
-      session: session,
-      member: member,
-      tab: tab,
-      repo: repo,
-    );
+
     final activeSession = tab.persistedSession ?? session;
-    final plan = await _h.lifecycle.prepareLaunch(
+    final SessionMemberBinding? binding = team != null && member != null
+        ? await _resolveMemberBinding(
+            session: session,
+            member: member,
+            tab: tab,
+            repo: repo,
+          )
+        : null;
+
+    final launchMember = member;
+    final mixedBus =
+        team != null &&
+        launchMember != null &&
+        team.teamMode == TeamMode.mixed &&
+        tab.mcpServer != null;
+    final shellLaunch = await _h.lifecycle.prepareShellLaunch(
       session: activeSession,
       team: team,
-      member: member,
+      member: launchMember,
       memberBinding: binding,
-      extraMcpServers: team.teamMode == TeamMode.mixed && tab.mcpServer != null
+      project: project,
+      profile: profile,
+      extraMcpServers: mixedBus
           ? {
               teammateBusMcpServerName: teammateBusMcpServerConfig(
                 endpoint: tab.mcpServer!.endpoint,
-                memberId: member.id,
+                memberId: launchMember.id,
               ),
             }
           : null,
-      busIdleUrl: team.teamMode == TeamMode.mixed && tab.mcpServer != null
-          ? tab.mcpServer!.idleEndpoint.toString()
-          : null,
+      busIdleUrl: mixedBus ? tab.mcpServer!.idleEndpoint.toString() : null,
     );
+    final plan = shellLaunch.plan;
     final configDir = plan.memberConfigDir.trim();
     if (configDir.isNotEmpty) {
       tab.memberToolConfigDir = configDir;
@@ -510,25 +550,23 @@ class SessionLaunchService implements MemberConnector {
       additionalDirectories: activeSession.additionalPaths,
       fixedSessionId: useResume ? null : plan.taskId,
       resumeSessionId: useResume ? plan.taskId : null,
-      team: team,
-      member: member,
-      sessionTeam: activeSession.cliTeamName,
+      shellLaunch: shellLaunch,
       extraEnvironment: plan.env.isEmpty ? null : plan.env,
-      busUserInputRouting: _h.busCoordinator.busUserInputRouting(
-        tab,
-        team,
-        member,
-      ),
+      busUserInputRouting: team != null && member != null
+          ? _h.busCoordinator.busUserInputRouting(tab, team, member)
+          : null,
       onFirstUserLineSubmitted: _autoRenameOnFirstPrompt(
         activeSession.sessionId,
       ),
       onProcessFailed: (message) => _h.failSessionConnect(tab.info.id, message),
       onProcessExited: () => _h.updateTabRunning(tab.info.id),
       onProcessStarted: () {
-        tab.teamBus?.markMemberRunning(member.id);
+        if (team != null && member != null) {
+          tab.teamBus?.markMemberRunning(member.id);
+          _h.busCoordinator.markMemberReady(tab.info.id, member.id);
+        }
         _h.clearLaunchError(tab.info.id);
         _h.finishSessionConnect(tab.info.id);
-        _h.busCoordinator.markMemberReady(tab.info.id, member.id);
         final r = repo ?? _h.sessionRepository;
         if (r != null && !activeSession.sessionId.startsWith('local-')) {
           unawaited(

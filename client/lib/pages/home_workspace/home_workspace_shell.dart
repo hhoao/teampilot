@@ -5,6 +5,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../cubits/chat_cubit.dart';
+import '../../cubits/session_preferences_cubit.dart';
+import '../../cubits/team_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/app_project.dart';
 import '../../models/home_closed_project_entry.dart';
@@ -91,7 +93,9 @@ class _HomeWorkspaceShellState extends State<HomeWorkspaceShell> {
     return null;
   }
 
-  void _selectTab(String id) => context.go('/home-v2/project/$id');
+  void _selectTab(String id) {
+    context.go('/home-v2/project/$id');
+  }
 
   void _goHome() => context.go('/home-v2');
 
@@ -172,11 +176,27 @@ class _HomeWorkspaceShellState extends State<HomeWorkspaceShell> {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
+    final scopeOn = context
+        .watch<SessionPreferencesCubit>()
+        .state
+        .preferences
+        .scopeSessionsToSelectedTeam;
+    final selectedTeam = context.watch<TeamCubit>().state.selectedTeam;
     final projects = context.select<ChatCubit, List<AppProject>>(
       (c) => c.state.projects,
     );
     final activeId = _projectIdFromLocation(widget.location);
+    final activeProject =
+        activeId != null ? _resolve(projects, activeId) : null;
+    final scopeTeamId = activeProject != null
+        ? (activeProject.teamId.isNotEmpty ? activeProject.teamId : '')
+        : selectedTeam?.id;
+    context.read<ChatCubit>().setTeamSessionScope(
+      scopeSessionsToSelectedTeam: scopeOn,
+      selectedTeamId: scopeTeamId,
+    );
+
+    final cs = Theme.of(context).colorScheme;
     // Show every open project tab across all teams (IDE-style open editors).
     // Selecting a tab switches the active team to the project's team via
     // HomeWorkspaceProjectPage, so the sidebar/content stay in sync.

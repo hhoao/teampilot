@@ -39,24 +39,31 @@ final List<String> cliLayoutDefaultTools =
 /// │   ├── skills/                                # optional app-wide skills
 /// │   ├── projects/                              # transcripts (see below)
 /// │   └── …                                      # tool-specific files (e.g. llm_config.json)
-/// └── teams/
-///     └── {teamId}/                              # canonical [TeamConfig.id] (slug at create/load)
-///         ├── session-counter.json               # allocates cliTeamName ({teamId}-{n})
-///         ├── {tool}/                            # team — inherits app via symlinks
-///         │   ├── agents/   → symlink to app …/agents/
-///         │   ├── skills/   → symlink (or populated dir; see [ensureTeamInheritsApp])
-///         │   └── plugins/  → team bundles (flashskyai only; [teamPluginsDir])
-///         └── members/
-///             └── {cliTeamName}/                 # e.g. my-team-3 or _adhoc
-///                 ├── {tool}/                    # non-mixed: shared session CONFIG_DIR
-///                 └── {memberId}/                # mixed: one isolated CONFIG_DIR per agent process
-///                     └── {tool}/                # member — PTY CONFIG_DIR
-///                     ├── agents/   → symlink to team …/agents/
-///                     ├── skills/   → symlink to team …/skills/
-///                     ├── plugins/  → copies/symlinks from team at launch
-///                     ├── projects/ …              # CLI transcripts (--session-id / taskId)
-///                     ├── teams/…/config.json      # Claude agent-team roster only
-///                     └── settings/, metadata, hooks …  # [ConfigProfileService]
+/// ├── teams/
+/// │   └── {teamId}/                              # canonical [TeamConfig.id] (slug at create/load)
+/// │       ├── session-counter.json               # allocates cliTeamName ({teamId}-{n})
+/// │       ├── {tool}/                            # team — inherits app via symlinks
+/// │       │   ├── agents/   → symlink to app …/agents/
+/// │       │   ├── skills/   → symlink (or populated dir; see [ensureTeamInheritsApp])
+/// │       │   └── plugins/  → team bundles (flashskyai only; [teamPluginsDir])
+/// │       └── members/
+/// │           └── {cliTeamName}/                 # e.g. my-team-3 or _adhoc
+/// │               ├── {tool}/                    # non-mixed: shared session CONFIG_DIR
+/// │               └── {memberId}/                # mixed: one isolated CONFIG_DIR per agent process
+/// │                   └── {tool}/                # member — PTY CONFIG_DIR
+/// │                   ├── agents/   → symlink to team …/agents/
+/// │                   ├── skills/   → symlink to team …/skills/
+/// │                   ├── plugins/  → copies/symlinks from team at launch
+/// │                   ├── projects/ …              # CLI transcripts (--session-id / taskId)
+/// │                   ├── teams/…/config.json      # Claude agent-team roster only
+/// │                   └── settings/, metadata, hooks …  # [ConfigProfileService]
+/// └── standalone/
+///     └── projects/{projectId}/                  # personal — [ProjectProfile] scope
+///         ├── {tool}/                            # project layer (inherits app)
+///         │   ├── skills/                        # [ProjectSkillLinkerService] (flashskyai)
+///         │   └── plugins/                       # [ProjectPluginLinkerService] (flashskyai)
+///         ├── mcp/servers.json                   # project MCP snapshot
+///         └── sessions/{sessionId}/{tool}/       # personal PTY CONFIG_DIR
 /// ```
 ///
 /// UI chat [AppSession.sessionId] (UUID) lives under its own self-contained
@@ -101,6 +108,9 @@ class CliDataLayout {
   /// Serializes [ensureTeamInheritsApp] per `(teamId, tool)` so concurrent
   /// member launches do not race on the shared team-level `agents/` / `skills/`.
   static final _teamInheritLocks = LockPool();
+
+  /// Serializes standalone project inherit per `(projectId, tool)`.
+  static final _standaloneInheritLocks = LockPool();
 
   p.Context get _pathContext => _fs.pathContext;
 
@@ -175,6 +185,59 @@ class CliDataLayout {
   String teamMcpServersFile(String teamId) =>
       _pathContext.join(teamMcpDir(teamId), 'servers.json');
 
+  /// Personal projects root: `config-profiles/standalone/projects/`.
+  String standaloneProjectsDir() =>
+      _pathContext.join(configProfilesDir, 'standalone', 'projects');
+
+  /// Personal project root:
+  /// `config-profiles/standalone/projects/{projectId}/`.
+  String standaloneProjectDir(String projectId) => _pathContext.join(
+    standaloneProjectsDir(),
+    projectId.trim(),
+  );
+
+  /// Personal project tool root:
+  /// `config-profiles/standalone/projects/{projectId}/{tool}/`.
+  String standaloneProjectToolDir(String projectId, String tool) =>
+      _pathContext.join(standaloneProjectDir(projectId), tool.trim());
+
+  /// Personal project flashskyai skills link target:
+  /// `config-profiles/standalone/projects/{projectId}/flashskyai/skills/`.
+  String standaloneProjectSkillsDir(String projectId) => _pathContext.join(
+    standaloneProjectToolDir(projectId, 'flashskyai'),
+    'skills',
+  );
+
+  /// Personal project flashskyai plugin bundles:
+  /// `config-profiles/standalone/projects/{projectId}/flashskyai/plugins/`.
+  String standaloneProjectPluginsDir(String projectId) => _pathContext.join(
+    standaloneProjectToolDir(projectId, 'flashskyai'),
+    'plugins',
+  );
+
+  /// Personal project MCP snapshot directory:
+  /// `config-profiles/standalone/projects/{projectId}/mcp/`.
+  String standaloneProjectMcpDir(String projectId) =>
+      _pathContext.join(standaloneProjectDir(projectId), 'mcp');
+
+  /// Aggregated MCP servers for a personal project:
+  /// `config-profiles/standalone/projects/{projectId}/mcp/servers.json`.
+  String standaloneProjectMcpServersFile(String projectId) =>
+      _pathContext.join(standaloneProjectMcpDir(projectId), 'servers.json');
+
+  /// Personal session layer (PTY CONFIG_DIR):
+  /// `config-profiles/standalone/projects/{projectId}/sessions/{sessionId}/{tool}/`.
+  String standaloneProjectSessionToolDir(
+    String projectId,
+    String sessionId,
+    String tool,
+  ) => _pathContext.join(
+    standaloneProjectDir(projectId),
+    'sessions',
+    sessionId.trim(),
+    tool.trim(),
+  );
+
   /// App-level FlashskyAI LLM catalog (not per-session):
   /// `config-profiles/flashskyai/llm_config.json`.
   ///
@@ -233,6 +296,9 @@ class CliDataLayout {
   static String _teamInheritLockKey(String teamId, String tool) =>
       '${teamId.trim()}|${tool.trim()}';
 
+  static String _standaloneInheritLockKey(String projectId, String tool) =>
+      'standalone|${projectId.trim()}|${tool.trim()}';
+
   /// Ensures team `{tool}/` exists and inherits app `agents/` + `skills/`.
   ///
   /// If team `skills/` already has content, it is left unchanged
@@ -267,6 +333,99 @@ class CliDataLayout {
         preservePopulatedDirectory: true,
       ),
     ]);
+  }
+
+  /// Ensures standalone project `{tool}/` exists and inherits app `agents/` +
+  /// `skills/`.
+  ///
+  /// If project `skills/` already has content, it is left unchanged
+  /// ([preservePopulatedDirectory]) so [ProjectSkillLinkerService] links are
+  /// not wiped.
+  Future<void> ensureStandaloneProjectInheritsApp(
+    String projectId,
+    String tool,
+  ) async {
+    final trimmedProject = projectId.trim();
+    final trimmedTool = tool.trim();
+    if (trimmedProject.isEmpty || trimmedTool.isEmpty) return;
+    await _standaloneInheritLocks.synchronized(
+      _standaloneInheritLockKey(trimmedProject, trimmedTool),
+      () => _ensureStandaloneProjectInheritsAppUnlocked(
+        trimmedProject,
+        trimmedTool,
+      ),
+    );
+  }
+
+  Future<void> _ensureStandaloneProjectInheritsAppUnlocked(
+    String trimmedProject,
+    String trimmedTool,
+  ) async {
+    await ensureAppToolLayout(trimmedTool);
+    final projectRoot = standaloneProjectToolDir(trimmedProject, trimmedTool);
+    await _fs.ensureDir(projectRoot);
+    await Future.wait([
+      _ensureInheritedChild(
+        childName: 'agents',
+        parentToolRoot: appToolRoot(trimmedTool),
+        ownToolRoot: projectRoot,
+      ),
+      _ensureInheritedChild(
+        childName: 'skills',
+        parentToolRoot: appToolRoot(trimmedTool),
+        ownToolRoot: projectRoot,
+        preservePopulatedDirectory: true,
+      ),
+    ]);
+  }
+
+  /// Ensures standalone session `{tool}/` exists and inherits project
+  /// `agents/` + `skills/`.
+  ///
+  /// Holds the same per-project lock through session symlinks so concurrent
+  /// session launches cannot re-enter project inherit while another session
+  /// still links.
+  Future<void> ensureStandaloneSessionInheritsProject(
+    String projectId,
+    String sessionId,
+    String tool,
+  ) async {
+    final trimmedProject = projectId.trim();
+    final trimmedSession = sessionId.trim();
+    final trimmedTool = tool.trim();
+    if (trimmedProject.isEmpty ||
+        trimmedSession.isEmpty ||
+        trimmedTool.isEmpty) {
+      return;
+    }
+    await _standaloneInheritLocks.synchronized(
+      _standaloneInheritLockKey(trimmedProject, trimmedTool),
+      () async {
+        await _ensureStandaloneProjectInheritsAppUnlocked(
+          trimmedProject,
+          trimmedTool,
+        );
+        final sessionRoot = standaloneProjectSessionToolDir(
+          trimmedProject,
+          trimmedSession,
+          trimmedTool,
+        );
+        await _fs.ensureDir(sessionRoot);
+        final projectRoot = standaloneProjectToolDir(trimmedProject, trimmedTool);
+        await Future.wait([
+          _ensureInheritedChild(
+            childName: 'agents',
+            parentToolRoot: projectRoot,
+            ownToolRoot: sessionRoot,
+          ),
+          _ensureInheritedChild(
+            childName: 'skills',
+            parentToolRoot: projectRoot,
+            ownToolRoot: sessionRoot,
+          ),
+        ]);
+      },
+    );
   }
 
   /// Ensures member `{tool}/` exists and inherits team `agents/` + `skills/`.
@@ -316,6 +475,17 @@ class CliDataLayout {
         'plugins',
       );
 
+  /// Standalone session `plugins/` dir for a tool CONFIG_DIR.
+  String standaloneProjectSessionPluginsDir(
+    String projectId,
+    String sessionId,
+    String tool,
+  ) =>
+      _pathContext.join(
+        standaloneProjectSessionToolDir(projectId, sessionId, tool),
+        'plugins',
+      );
+
   /// Copies or symlinks team plugin bundles into the member CONFIG_DIR.
   ///
   /// Source: [teamPluginsDir] (`…/flashskyai/plugins/<bundle>/`).
@@ -341,6 +511,41 @@ class CliDataLayout {
       fs: _fs,
       teamPluginsDir: teamPluginsDir(trimmedTeam),
       memberPluginsDir: memberPluginsDir(trimmedTeam, trimmedSession, trimmedTool),
+      paths: paths,
+    );
+  }
+
+  /// Copies or symlinks project plugin bundles into the standalone session CONFIG_DIR.
+  ///
+  /// Source: [standaloneProjectPluginsDir] (`…/flashskyai/plugins/<bundle>/`).
+  /// Dest: [standaloneProjectSessionPluginsDir].
+  /// Returns optional provision-stamp JSON for [CliPluginRegistryService].
+  Future<String?> provisionStandaloneSessionPluginsFromProject(
+    String projectId,
+    String sessionId,
+    String tool,
+  ) async {
+    final trimmedProject = projectId.trim();
+    final trimmedSession = sessionId.trim();
+    final trimmedTool = tool.trim();
+    if (trimmedProject.isEmpty ||
+        trimmedSession.isEmpty ||
+        trimmedTool.isEmpty) {
+      return null;
+    }
+    final paths =
+        pluginManifestPathsForTool(
+          CliTool.tryParse(trimmedTool) ?? CliTool.claude,
+        ) ??
+        claudePluginManifestPaths;
+    return CliPluginLayout.copyBundlesToMember(
+      fs: _fs,
+      teamPluginsDir: standaloneProjectPluginsDir(trimmedProject),
+      memberPluginsDir: standaloneProjectSessionPluginsDir(
+        trimmedProject,
+        trimmedSession,
+        trimmedTool,
+      ),
       paths: paths,
     );
   }

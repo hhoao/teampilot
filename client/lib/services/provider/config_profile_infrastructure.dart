@@ -29,7 +29,8 @@ final class ConfigProfileInfrastructure implements ConfigProfileDelegate {
     required this.basePath,
     required this.layout,
     Filesystem? fs,
-    Future<Set<String>> Function({String? teamId})? loadEnabledExtensionIds,
+    Future<Set<String>> Function({String? teamId, String? projectId})?
+    loadEnabledExtensionIds,
     ExtensionDetector? extensionDetector,
     List<ExtensionManifest>? extensionManifests,
     Map<String, ScriptFileHookProvisioner>? extensionHookProvisioners,
@@ -55,7 +56,8 @@ final class ConfigProfileInfrastructure implements ConfigProfileDelegate {
   @override
   final CliDataLayout layout;
   final Filesystem _fs;
-  final Future<Set<String>> Function({String? teamId})? _loadEnabledExtensionIds;
+  final Future<Set<String>> Function({String? teamId, String? projectId})?
+  _loadEnabledExtensionIds;
   final ExtensionDetector? _extensionDetector;
   final List<ExtensionManifest>? _extensionManifests;
   final Map<String, ScriptFileHookProvisioner>? _extensionHookProvisioners;
@@ -168,6 +170,7 @@ final class ConfigProfileInfrastructure implements ConfigProfileDelegate {
     String? memberToolDir,
     required String tool,
     String? teamId,
+    String? projectId,
   }) =>
       _writeSettingsFile(
         path,
@@ -175,14 +178,17 @@ final class ConfigProfileInfrastructure implements ConfigProfileDelegate {
         memberToolDir: memberToolDir,
         tool: tool,
         teamId: teamId,
+        projectId: projectId,
       );
 
   @override
   Future<bool> hasEnabledExtensionSettingsHooks(
     String tool, {
     String? teamId,
+    String? projectId,
   }) =>
-      _extensionProvisioner(teamId: teamId).hasEnabledSettingsHooksForTool(tool);
+      _extensionProvisioner(teamId: teamId, projectId: projectId)
+          .hasEnabledSettingsHooksForTool(tool);
 
   @override
   Future<Map<String, Object?>> applyExtensionSettings(
@@ -190,8 +196,9 @@ final class ConfigProfileInfrastructure implements ConfigProfileDelegate {
     String? memberToolDir, {
     required String tool,
     String? teamId,
+    String? projectId,
   }) =>
-      _extensionProvisioner(teamId: teamId).applySettings(
+      _extensionProvisioner(teamId: teamId, projectId: projectId).applySettings(
         settings,
         memberToolDir?.trim() ?? '',
         tool: tool,
@@ -257,8 +264,12 @@ final class ConfigProfileInfrastructure implements ConfigProfileDelegate {
   Future<void> collectExtensionWarnings(
     List<String> warnings, {
     String? teamId,
+    String? projectId,
   }) async {
-    warnings.addAll(await _extensionProvisioner(teamId: teamId).collectWarnings());
+    warnings.addAll(
+      await _extensionProvisioner(teamId: teamId, projectId: projectId)
+          .collectWarnings(),
+    );
   }
 
   Future<void> _writeJsonIfChanged(
@@ -279,6 +290,7 @@ final class ConfigProfileInfrastructure implements ConfigProfileDelegate {
     String? memberToolDir,
     required String tool,
     String? teamId,
+    String? projectId,
   }) async {
     final existing = await _readSettingsFile(path);
     final enabledPlugins = existing['enabledPlugins'];
@@ -291,6 +303,7 @@ final class ConfigProfileInfrastructure implements ConfigProfileDelegate {
       memberToolDir,
       tool: tool,
       teamId: teamId,
+      projectId: projectId,
     );
     await _fs.atomicWrite(
       path,
@@ -298,20 +311,28 @@ final class ConfigProfileInfrastructure implements ConfigProfileDelegate {
     );
   }
 
-  ExtensionProvisioner _extensionProvisioner({String? teamId}) {
+  ExtensionProvisioner _extensionProvisioner({
+    String? teamId,
+    String? projectId,
+  }) {
     return ExtensionProvisioner(
       manifests: _extensionManifests ?? builtInExtensionManifests(),
-      isEnabled: (id) async =>
-          (await _enabledExtensionIds(teamId: teamId)).contains(id),
+      isEnabled: (id) async => (await _enabledExtensionIds(
+        teamId: teamId,
+        projectId: projectId,
+      )).contains(id),
       detector: _extensionDetector,
       hookProvisionerFor: _hookProvisionerForAsset,
     );
   }
 
-  Future<Set<String>> _enabledExtensionIds({String? teamId}) async {
+  Future<Set<String>> _enabledExtensionIds({
+    String? teamId,
+    String? projectId,
+  }) async {
     final loader = _loadEnabledExtensionIds;
     if (loader == null) return {};
-    return loader(teamId: teamId);
+    return loader(teamId: teamId, projectId: projectId);
   }
 
   ScriptFileHookProvisioner _hookProvisionerForAsset(String scriptAsset) {

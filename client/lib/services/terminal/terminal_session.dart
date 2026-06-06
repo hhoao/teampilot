@@ -12,10 +12,10 @@ import '../cli/cli_tool_locator.dart';
 import '../cli/registry/capabilities/terminal_behavior_capability.dart';
 import '../cli/registry/cli_tool_registry.dart';
 import '../session/launch_command_builder.dart';
+import '../session/shell_launch_spec.dart';
 import 'local_pty_transport.dart';
 import 'pty_launch_environment.dart';
 import 'terminal_transport.dart';
-import '../../models/team_config.dart';
 import '../team/terminal_activity_tracker.dart';
 import '../team_bus/bus_user_line_capture.dart';
 import 'pending_user_message.dart';
@@ -235,9 +235,7 @@ class TerminalSession {
     List<String> additionalDirectories = const [],
     String? fixedSessionId,
     String? resumeSessionId,
-    TeamConfig? team,
-    TeamMemberConfig? member,
-    String? sessionTeam,
+    ShellLaunchSpec? shellLaunch,
     Map<String, String>? extraEnvironment,
     VoidCallback? onProcessStarted,
     void Function(String message)? onProcessFailed,
@@ -255,19 +253,12 @@ class TerminalSession {
       workingDirectory,
       useWslPaths: invocation.usesWsl,
     );
-    _extraEnvironment = LaunchCommandBuilder.normalizeEnvironmentForCli(
+    final normalizedEnvironment = LaunchCommandBuilder.normalizeEnvironmentForCli(
       extraEnvironment,
       useWslPaths: invocation.usesWsl,
     );
-    final settingsPath = LaunchCommandBuilder.settingsPathFromEnvironment(
-      _extraEnvironment,
-    );
-    final appendSystemPromptFile =
-        LaunchCommandBuilder.appendSystemPromptFileFromEnvironment(
-          _extraEnvironment,
-        );
     _extraEnvironment = LaunchCommandBuilder.launchEnvironmentForProcess(
-      _extraEnvironment,
+      normalizedEnvironment,
     );
     _ptyEnvironment = buildPtyEnvironment(
       _extraEnvironment,
@@ -278,35 +269,23 @@ class TerminalSession {
     _onProcessExited = onProcessExited;
     _startFailed = false;
 
-    final args = <String>[];
-    if (team != null && member != null) {
-      args.addAll(
-        LaunchCommandBuilder.buildArguments(
-          team,
-          member,
-          sessionTeam: sessionTeam,
-          workingDirectory: workingDirectory,
-          additionalDirectories: additionalDirectories,
-          fixedSessionId: fixedSessionId,
-          resumeSessionId: resumeSessionId,
-          settingsPath: settingsPath,
-          appendSystemPromptFile: appendSystemPromptFile,
-          useWslPaths: invocation.usesWsl,
-        ),
-      );
-    } else {
-      args.addAll(
-        LaunchCommandBuilder.buildSessionPrefixArgs(
-          workingDirectory: workingDirectory.isNotEmpty
-              ? workingDirectory
-              : null,
-          additionalDirectories: additionalDirectories,
-          fixedSessionId: fixedSessionId,
-          resumeSessionId: resumeSessionId,
-          useWslPaths: invocation.usesWsl,
-        ),
-      );
-    }
+    final args = shellLaunch != null
+        ? LaunchCommandBuilder.buildShellArguments(
+            shellLaunch,
+            fixedSessionId: fixedSessionId,
+            resumeSessionId: resumeSessionId,
+            environment: normalizedEnvironment,
+            useWslPaths: invocation.usesWsl,
+          )
+        : LaunchCommandBuilder.buildSessionPrefixArgs(
+            workingDirectory: workingDirectory.isNotEmpty
+                ? workingDirectory
+                : null,
+            additionalDirectories: additionalDirectories,
+            fixedSessionId: fixedSessionId,
+            resumeSessionId: resumeSessionId,
+            useWslPaths: invocation.usesWsl,
+          );
     final launchArgs = invocation.withArgs(
       args,
       environment: _extraEnvironment,
@@ -359,10 +338,12 @@ class TerminalSession {
             ),
           );
 
-    final forwardsColorScheme = (team != null && member != null)
+    final forwardsColorScheme = shellLaunch != null
         ? CliToolRegistry.builtIn()
                   .capability<TerminalBehaviorCapability>(
-                    member.cliWithin(team),
+                    shellLaunch.launchContext.member.cliWithin(
+                      shellLaunch.launchContext.team,
+                    ),
                   )
                   ?.forwardsColorSchemeReport ??
               true

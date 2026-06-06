@@ -7,6 +7,7 @@ import 'package:teampilot/services/terminal/terminal_export.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
 import 'package:teampilot/services/terminal/terminal_transport.dart';
 import 'package:teampilot/models/team_config.dart';
+import 'package:teampilot/services/session/shell_launch_spec.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../support/flush_terminal_engine.dart';
@@ -432,15 +433,22 @@ void main() {
       devSession.dispose();
     });
 
-    leadSession.connect(
-      workingDirectory: Directory.systemTemp.path,
+    final shellLaunch = ShellLaunchSpec.teamMember(
       team: team,
       member: lead,
+      workingDirectory: Directory.systemTemp.path,
+    );
+    leadSession.connect(
+      workingDirectory: Directory.systemTemp.path,
+      shellLaunch: shellLaunch,
     );
     devSession.connect(
       workingDirectory: Directory.systemTemp.path,
-      team: team,
-      member: dev,
+      shellLaunch: ShellLaunchSpec.teamMember(
+        team: team,
+        member: dev,
+        workingDirectory: Directory.systemTemp.path,
+      ),
     );
     await Future<void>.delayed(const Duration(milliseconds: 500));
 
@@ -500,13 +508,19 @@ void main() {
 
     leadSession.connect(
       workingDirectory: Directory.systemTemp.path,
-      team: team,
-      member: lead,
+      shellLaunch: ShellLaunchSpec.teamMember(
+        team: team,
+        member: lead,
+        workingDirectory: Directory.systemTemp.path,
+      ),
     );
     devSession.connect(
       workingDirectory: Directory.systemTemp.path,
-      team: team,
-      member: dev,
+      shellLaunch: ShellLaunchSpec.teamMember(
+        team: team,
+        member: dev,
+        workingDirectory: Directory.systemTemp.path,
+      ),
     );
     await Future<void>.delayed(const Duration(milliseconds: 500));
 
@@ -891,8 +905,11 @@ void main() {
     const member = TeamMemberConfig(id: 'member', name: 'team-lead');
     session.connect(
       workingDirectory: r'C:\Users\haung\git\teampilot\client',
-      team: team,
-      member: member,
+      shellLaunch: ShellLaunchSpec.teamMember(
+        team: team,
+        member: member,
+        workingDirectory: r'C:\Users\haung\git\teampilot\client',
+      ),
     );
     session.onViewportResize(80, 24);
     await Future<void>.delayed(const Duration(milliseconds: 300));

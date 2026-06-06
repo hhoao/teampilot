@@ -15,6 +15,7 @@ import 'package:teampilot/main.dart';
 import 'package:teampilot/models/layout_preferences.dart';
 import 'package:teampilot/models/llm_config.dart';
 import 'package:teampilot/models/app_project.dart';
+import 'package:teampilot/models/project_profile.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/session_member_binding.dart';
 import 'package:teampilot/models/team_config.dart';
@@ -136,11 +137,11 @@ Widget buildTestApp({
 }
 
 /// [TeamPilotApp] shares the process-wide [appRouter]. Widget tests that
-/// navigate to settings must reset the location so later tests see `/chat`.
+/// navigate to settings must reset the location so later tests see `/home-v2`.
 void resetAppRouterLocationForWidgetTests() {
   final location = appRouter.routerDelegate.currentConfiguration.uri.path;
-  if (location != '/chat') {
-    appRouter.go('/chat');
+  if (location != '/home-v2') {
+    appRouter.go('/home-v2');
   }
 }
 
@@ -262,9 +263,7 @@ class FakeTerminalSession extends TerminalSession {
     List<String> additionalDirectories = const [],
     String? fixedSessionId,
     String? resumeSessionId,
-    TeamConfig? team,
-    TeamMemberConfig? member,
-    String? sessionTeam,
+    ShellLaunchSpec? shellLaunch,
     Map<String, String>? extraEnvironment,
     void Function()? onProcessStarted,
     void Function(String message)? onProcessFailed,
@@ -275,7 +274,10 @@ class FakeTerminalSession extends TerminalSession {
     lastFixedSessionIds.add(fixedSessionId);
     lastResumeSessionIds.add(resumeSessionId);
     lastAdditionalDirectoriesLists.add(
-      List<String>.from(additionalDirectories),
+      List<String>.from(
+        shellLaunch?.launchContext.additionalDirectories ??
+            additionalDirectories,
+      ),
     );
     lastExtraEnvironments.add(
       extraEnvironment == null
@@ -286,6 +288,7 @@ class FakeTerminalSession extends TerminalSession {
     if (resumeSessionId != null && resumeSessionId.isNotEmpty) {
       resumedSessions.add(resumeSessionId);
     }
+    final member = shellLaunch?.launchContext.member;
     if (member != null) {
       connectedMembers.add(member.id);
     }
@@ -310,26 +313,41 @@ class _FixedResumeLifecycleService extends SessionLifecycleService {
   final bool resume;
 
   @override
-  Future<LaunchPlan> prepareLaunch({
+  Future<ShellLaunchSpec> prepareShellLaunch({
     required AppSession session,
     TeamConfig? team,
     TeamMemberConfig? member,
     SessionMemberBinding? memberBinding,
+    AppProject? project,
+    ProjectProfile? profile,
     String? llmConfigPathOverride,
     Map<String, Map<String, Object?>>? extraMcpServers,
     String? busIdleUrl,
   }) async {
-    final taskId = memberBinding?.taskId ?? session.sessionId;
-    final cliTeamName = session.cliTeamName.trim().isNotEmpty
-        ? session.cliTeamName.trim()
-        : session.sessionId;
-    return LaunchPlan(
-      env: const {},
-      resume: resume,
-      taskId: taskId,
-      cliTeamName: cliTeamName,
-      memberConfigDir: '',
-      resolvedRoots: const [],
+    final spec = await super.prepareShellLaunch(
+      session: session,
+      team: team,
+      member: member,
+      memberBinding: memberBinding,
+      project: project,
+      profile: profile,
+      llmConfigPathOverride: llmConfigPathOverride,
+      extraMcpServers: extraMcpServers,
+      busIdleUrl: busIdleUrl,
+    );
+    final plan = spec.plan;
+    return ShellLaunchSpec(
+      plan: LaunchPlan(
+        env: plan.env,
+        resume: resume,
+        taskId: plan.taskId,
+        cliTeamName: plan.cliTeamName,
+        memberConfigDir: plan.memberConfigDir,
+        resolvedRoots: plan.resolvedRoots,
+        warnings: plan.warnings,
+      ),
+      launchContext: spec.launchContext,
+      sessionTeam: spec.sessionTeam,
     );
   }
 }
@@ -395,7 +413,7 @@ void main() {
     resetAppRouterLocationForWidgetTests();
   });
 
-  testWidgets('renders chat workbench shell on initial route', (tester) async {
+  testWidgets('renders chat workbench shell on project route', (tester) async {
     final teamCubit = await createTeamCubitInTest(tester);
     final postFrame = PostFrameTestHarness();
     final chatCubit = ChatCubit(
@@ -409,11 +427,21 @@ void main() {
       postFrameScheduler: postFrame.scheduler,
       sessionRepository: _widgetTestSessionRepo,
     );
+    const project = AppProject(
+      projectId: 'proj-widget-test',
+      primaryPath: '/work/current',
+      teamId: 'default-team',
+      createdAt: 1,
+    );
+    chatCubit.ingestProjectSessionSnapshot(
+      projects: const [project],
+      sessions: const [],
+    );
     await pumpDesktopApp(tester, teamCubit, chatCubit: chatCubit);
+    appRouter.go('/home-v2/project/${project.projectId}');
     await tester.pump();
     await pumpPhaseTransitions(tester);
 
-    expect(find.byKey(AppKeys.contextSidebar), findsOneWidget);
     expect(find.byKey(AppKeys.chatWorkspace), findsOneWidget);
     expect(find.byKey(AppKeys.rightToolsPanel), findsOneWidget);
     expect(find.byKey(AppKeys.membersPanel), findsOneWidget);
@@ -424,9 +452,6 @@ void main() {
       find.byKey(AppKeys.fileTreePanel, skipOffstage: false),
       findsOneWidget,
     );
-    expect(find.text('Default Team'), findsWidgets);
-    final sidebarCtx = tester.element(find.byKey(AppKeys.contextSidebar));
-    expect(find.text(AppLocalizations.of(sidebarCtx).projects), findsOneWidget);
     expect(find.text('team-lead'), findsWidgets);
     expect(chatCubit.state.tabs.length, 0);
     final workbenchCtx = tester.element(find.byKey(AppKeys.chatWorkspace));
@@ -452,13 +477,13 @@ void main() {
     final teamCubit = await createTeamCubitInTest(tester);
     await pumpDesktopApp(tester, teamCubit);
 
-    await tester.tap(find.byKey(AppKeys.sidebarSettingsButton));
+    appRouter.go('/config');
     await pumpPhaseTransitions(tester);
 
     expect(find.text('Manage FlashskyAI team and model settings.'),
       findsOneWidget,
     );
-    expect(find.byIcon(Icons.groups_2_outlined), findsOneWidget);
+    expect(find.byIcon(Icons.dashboard_customize_outlined), findsWidgets);
     expect(find.byIcon(Icons.memory_outlined), findsNothing);
   });
 
@@ -518,7 +543,7 @@ void main() {
       sessionPreferencesCubit: sessionCubit,
     );
 
-    await tester.tap(find.byKey(AppKeys.sidebarSettingsButton));
+    appRouter.go('/config');
     await pumpPhaseTransitions(tester);
     await tester.tap(find.byKey(AppKeys.configCliSectionButton));
     await pumpPhaseTransitions(tester);
@@ -976,12 +1001,12 @@ void main() {
     final tmp = await Directory.systemTemp.createTemp('open_sess_');
     addTearDown(() => _deleteTempDirBestEffort(tmp));
     final repo = SessionRepository(rootDir: tmp.path);
-    final project = await repo.createProject('/wd', teamId: '');
     final team = TeamConfig(
       id: 'tid',
       name: 'TName',
       members: const [TeamMemberConfig(id: 'lid', name: 'team-lead')],
     );
+    final project = await repo.createProject('/wd', teamId: team.id);
     await repo.createSession(
       project.projectId,
       sessionTeam: team.id,
@@ -1018,12 +1043,12 @@ void main() {
     final tmp = await Directory.systemTemp.createTemp('open_sess_');
     addTearDown(() => _deleteTempDirBestEffort(tmp));
     final repo = SessionRepository(rootDir: tmp.path);
-    final project = await repo.createProject('/wd', teamId: '');
     final team = TeamConfig(
       id: 'tid',
       name: 'TName',
       members: const [TeamMemberConfig(id: 'lid', name: 'team-lead')],
     );
+    final project = await repo.createProject('/wd', teamId: team.id);
     final session = await repo.createSession(
       project.projectId,
       sessionTeam: team.id,
@@ -1063,12 +1088,12 @@ void main() {
       final tmp = await Directory.systemTemp.createTemp('open_sess_');
       addTearDown(() => _deleteTempDirBestEffort(tmp));
       final repo = SessionRepository(rootDir: tmp.path);
-      final project = await repo.createProject('/wd', teamId: '');
       final team = TeamConfig(
         id: 'tid',
         name: 'TName',
         members: const [TeamMemberConfig(id: 'lid', name: 'team-lead')],
       );
+      final project = await repo.createProject('/wd', teamId: team.id);
       final session = await repo.createSession(
         project.projectId,
         sessionTeam: team.id,
@@ -1109,14 +1134,15 @@ void main() {
       final tmp = await Directory.systemTemp.createTemp('open_sess_');
       addTearDown(() => _deleteTempDirBestEffort(tmp));
       final repo = SessionRepository(rootDir: tmp.path);
-      final project = await repo.createProject(
-        '/root', teamId: '',
-        additionalPaths: const ['/extra'],
-      );
       final team = TeamConfig(
         id: 'tid',
         name: 'TName',
         members: const [TeamMemberConfig(id: 'lid', name: 'team-lead')],
+      );
+      final project = await repo.createProject(
+        '/root',
+        teamId: team.id,
+        additionalPaths: const ['/extra'],
       );
       await repo.createSession(
         project.projectId,

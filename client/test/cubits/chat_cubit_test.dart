@@ -6,6 +6,7 @@ import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/repositories/session_repository.dart';
 import 'package:teampilot/services/team_bus/bus_user_line_capture.dart';
+import 'package:teampilot/services/session/session_lifecycle_service.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -34,9 +35,7 @@ class _FakeTerminalSession extends TerminalSession {
     List<String> additionalDirectories = const [],
     String? fixedSessionId,
     String? resumeSessionId,
-    TeamConfig? team,
-    TeamMemberConfig? member,
-    String? sessionTeam,
+    ShellLaunchSpec? shellLaunch,
     Map<String, String>? extraEnvironment,
     void Function()? onProcessStarted,
     void Function(String message)? onProcessFailed,
@@ -45,10 +44,11 @@ class _FakeTerminalSession extends TerminalSession {
     BusUserInputRouting? busUserInputRouting,
   }) {
     _connecting = true;
+    final member = shellLaunch?.launchContext.member;
     if (member != null) {
       connectedMembers.add(member.id);
     }
-    connectedSessionTeams.add(sessionTeam);
+    connectedSessionTeams.add(shellLaunch?.sessionTeam);
     _connecting = false;
     _running = true;
     onProcessStarted?.call();
@@ -182,6 +182,7 @@ void main() {
           AppProject(
             projectId: pid,
             primaryPath: '/a',
+            teamId: 'tid',
             createdAt: 1,
             updatedAt: 1,
             sessionIds: ['s1'],

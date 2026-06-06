@@ -254,21 +254,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get appearance => '外观';
 
   @override
-  String get appearancePageSubtitle => '界面外观与启动时打开的视图。';
-
-  @override
-  String get workspaceEntryModeTitle => '启动视图';
-
-  @override
-  String get workspaceEntryModeDescription => 'App 启动后默认打开的页面。';
-
-  @override
-  String get workspaceEntryModeHome => '主页';
-
-  @override
-  String get workspaceEntryModeHub => '工作区';
-
-  @override
   String get theme => '主题';
 
   @override
@@ -477,6 +462,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get homeWorkspaceRecentVisits => '最近访问';
 
   @override
+  String get homeWorkspacePersonal => '个人工作区';
+
+  @override
+  String get homeWorkspacePersonalSubtitle => '独立项目，按项目配置 Agent、技能与插件。';
+
+  @override
   String get homeWorkspaceNoData => '暂无数据';
 
   @override
@@ -578,7 +569,34 @@ class AppLocalizationsZh extends AppLocalizations {
   String get homeWorkspaceCloseProjectConfirm => '关闭并终止会话';
 
   @override
+  String get homeWorkspaceProjectManagement => '项目管理';
+
+  @override
+  String get homeWorkspaceProjectList => '项目列表';
+
+  @override
   String get homeWorkspaceConversations => '对话管理';
+
+  @override
+  String get homeWorkspaceConversationsSection => '对话';
+
+  @override
+  String get homeWorkspaceProjectAgent => '智能体';
+
+  @override
+  String get homeWorkspaceProjectSkills => '技能';
+
+  @override
+  String get homeWorkspaceProjectPlugins => '插件';
+
+  @override
+  String get homeWorkspaceProjectMcp => 'MCP';
+
+  @override
+  String get homeWorkspaceProjectExtensions => '扩展';
+
+  @override
+  String get homeWorkspaceTeamConfig => '团队配置';
 
   @override
   String get homeWorkspaceProjectSettings => '项目设置';
@@ -609,6 +627,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get homeWorkspaceNewConversation => '新建对话';
+
+  @override
+  String get homeWorkspaceNewConversationChooseCli => '选择 CLI 新建对话';
 
   @override
   String get homeWorkspaceNoConversations => '该项目还没有对话';

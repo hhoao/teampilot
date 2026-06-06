@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../cubits/chat_cubit.dart';
+import '../../../cubits/project_profile_cubit.dart';
 import '../../../cubits/team_cubit.dart';
 import '../../../l10n/l10n_extensions.dart';
 import '../../../models/app_project.dart';
@@ -10,26 +11,74 @@ import '../../../models/layout_preferences.dart';
 import '../../../widgets/resizable_split_view.dart';
 import '../../chat_page.dart';
 import 'home_workspace_conversation_panel.dart';
+import 'home_workspace_project_config_workspace.dart';
 import 'home_workspace_project_rail.dart';
 import 'home_workspace_project_section.dart';
 import 'home_workspace_project_settings_view.dart';
+import 'home_workspace_project_sidebar.dart';
+import 'project_config_section.dart';
 
-/// Apifox-style project detail page body: a narrow icon rail, the
-/// "Conversations" panel (renamed from 接口管理), and the existing chat
-/// workspace_shell on the right. The title bar/tabs come from
-/// [HomeWorkspaceShell].
+/// Project work page.
+///
+/// Personal projects ([AppProject.teamId] empty): Hub-style sidebar + chat or
+/// project config (`?view=manage`).
+///
+/// Team projects: icon rail + conversation tree + chat workbench, or project
+/// settings — unchanged from the pre–personal-workspace layout.
 class HomeWorkspaceProjectPage extends StatefulWidget {
-  const HomeWorkspaceProjectPage({required this.projectId, super.key});
+  const HomeWorkspaceProjectPage({
+    required this.projectId,
+    this.view,
+    this.configSection,
+    super.key,
+  });
 
   final String projectId;
+
+  /// `manage` shows project configuration instead of the chat workbench.
+  final String? view;
+
+  final ProjectConfigSection? configSection;
 
   @override
   State<HomeWorkspaceProjectPage> createState() => _HomeWorkspaceProjectPageState();
 }
 
 class _HomeWorkspaceProjectPageState extends State<HomeWorkspaceProjectPage> {
-  HomeWorkspaceProjectSection _section = HomeWorkspaceProjectSection.conversations;
+  double _sidebarWidth = HomeWorkspaceProjectSidebar.defaultWidth;
   double _conversationPanelWidth = HomeWorkspaceConversationPanel.defaultWidth;
+  HomeWorkspaceProjectSection _teamSection =
+      HomeWorkspaceProjectSection.conversations;
+
+  bool get _showManage => widget.view == 'manage';
+
+  ProjectConfigSection get _configSection =>
+      widget.configSection ?? ProjectConfigSection.settings;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadPersonalProfile());
+  }
+
+  @override
+  void didUpdateWidget(covariant HomeWorkspaceProjectPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.projectId != widget.projectId ||
+        oldWidget.view != widget.view) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _loadPersonalProfile());
+    }
+  }
+
+  void _loadPersonalProfile() {
+    if (!mounted) return;
+    final project = _findProject(
+      context.read<ChatCubit>().state.projects,
+      widget.projectId,
+    );
+    if (project == null || project.teamId.isNotEmpty) return;
+    context.read<ProjectProfileCubit>().load(project.projectId);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -43,19 +92,63 @@ class _HomeWorkspaceProjectPageState extends State<HomeWorkspaceProjectPage> {
       return _MissingProject(label: l10n.homeWorkspaceEmptyProjects);
     }
 
-    // Opening a project belongs to a team; keep the selected team in sync so the
-    // sidebar, team-scoped content and top tabs all reflect the project's team.
-    _syncSelectedTeam(project.teamId);
+    final isPersonal = project.teamId.isEmpty;
+    if (!isPersonal) {
+      _syncSelectedTeam(project.teamId);
+      return _buildTeamProjectPage(context, project);
+    }
 
+    return _buildPersonalProjectPage(context, project);
+  }
+
+  Widget _buildPersonalProjectPage(BuildContext context, AppProject project) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final maxW = constraints.maxWidth;
+        const minSidebar = HomeWorkspaceProjectSidebar.minWidth;
+        const minMain = LayoutPreferences.minWorkbenchMainWidth;
+        final maxSidebar = (maxW - minMain).clamp(
+          minSidebar,
+          HomeWorkspaceProjectSidebar.maxWidth,
+        );
+        final initialSidebar = _sidebarWidth.clamp(minSidebar, maxSidebar);
+        return ResizableSplitView(
+          first: HomeWorkspaceProjectSidebar(
+            project: project,
+            manageActive: _showManage,
+          ),
+          second: _showManage
+              ? HomeWorkspaceProjectConfigWorkspace(
+                  project: project,
+                  section: _configSection,
+                )
+              : ChatPage(
+                  cwd: project.primaryPath,
+                  isPersonalProject: true,
+                ),
+          initialPrimarySize: initialSidebar,
+          minPrimarySize: minSidebar,
+          minSecondarySize: minMain,
+          maxPrimarySize: maxSidebar,
+          onPrimarySizeChanged: (width) {
+            setState(() => _sidebarWidth = width);
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildTeamProjectPage(BuildContext context, AppProject project) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         HomeWorkspaceProjectRail(
-          section: _section,
-          onSectionChanged: (s) => setState(() => _section = s),
+          section: _teamSection,
+          isPersonalProject: false,
+          onSectionChanged: (section) => setState(() => _teamSection = section),
           onLogoTap: () => context.go('/home-v2'),
         ),
-        if (_section == HomeWorkspaceProjectSection.conversations)
+        if (_teamSection == HomeWorkspaceProjectSection.conversations)
           Expanded(
             child: LayoutBuilder(
               builder: (context, constraints) {
@@ -94,7 +187,6 @@ class _HomeWorkspaceProjectPageState extends State<HomeWorkspaceProjectPage> {
     if (teamId.isEmpty) return;
     final teamCubit = context.read<TeamCubit>();
     if (teamCubit.state.selectedTeam?.id == teamId) return;
-    // Defer the state change out of build to avoid mutating during a build pass.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       if (teamCubit.state.selectedTeam?.id != teamId) {

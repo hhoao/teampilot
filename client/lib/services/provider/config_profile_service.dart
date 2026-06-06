@@ -1,6 +1,7 @@
 import 'package:path/path.dart' as p;
 
 import '../../models/extension_manifest.dart';
+import '../../models/project_profile.dart';
 import '../../models/team_config.dart';
 import '../cli/cli_data_layout.dart';
 import '../extension/extension_detector.dart';
@@ -40,7 +41,8 @@ class ConfigProfileService implements ConfigProfileDelegate {
     required String basePath,
     Filesystem? fs,
     CliDataLayout? layout,
-    Future<Set<String>> Function({String? teamId})? loadEnabledExtensionIds,
+    Future<Set<String>> Function({String? teamId, String? projectId})?
+    loadEnabledExtensionIds,
     ExtensionDetector? extensionDetector,
     List<ExtensionManifest>? extensionManifests,
     Map<String, ScriptFileHookProvisioner>? extensionHookProvisioners,
@@ -71,6 +73,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
 
   final ConfigProfileInfrastructure _infra;
   final CliToolRegistry _cliRegistry;
+  StandaloneLaunchProfileScope? _activeStandaloneScope;
 
   @override
   String get basePath => _infra.basePath;
@@ -92,9 +95,24 @@ class ConfigProfileService implements ConfigProfileDelegate {
   String sessionProfileDir(String teamId, String sessionId) =>
       pathContext.join(teamScopeDir(teamId), 'members', sessionId.trim());
 
+  String standaloneProjectProfileDir(String projectId) =>
+      pathContext.join(configProfilesDir, 'standalone', 'projects', projectId.trim());
+
+  String standaloneSessionToolDir(String projectId, String sessionId, String tool) =>
+      layout.standaloneProjectSessionToolDir(projectId, sessionId, tool);
+
   @override
-  String sessionToolDir(String teamId, String sessionId, String tool) =>
-      _infra.sessionToolDir(teamId, sessionId, tool);
+  String sessionToolDir(String teamId, String sessionId, String tool) {
+    final scope = _activeStandaloneScope;
+    if (scope != null) {
+      return layout.standaloneProjectSessionToolDir(
+        scope.projectId,
+        scope.sessionId,
+        tool,
+      );
+    }
+    return _infra.sessionToolDir(teamId, sessionId, tool);
+  }
 
   Future<void> ensureTeamProfile(
     String teamId, {
@@ -165,6 +183,172 @@ class ConfigProfileService implements ConfigProfileDelegate {
       sessionId: trimmedSessionId,
       extraServers: extraMcpServers,
     );
+  }
+
+  Future<void> ensureStandaloneProjectProfile(
+    String projectId, {
+    CliTool cli = CliTool.flashskyai,
+  }) async {
+    final trimmed = projectId.trim();
+    if (trimmed.isEmpty) return;
+    await fs.ensureDir(standaloneProjectProfileDir(trimmed));
+  }
+
+  Future<void> ensureStandaloneSessionProfile(
+    String projectId,
+    String sessionId, {
+    CliTool cli = CliTool.flashskyai,
+    ProjectProfile? profile,
+    Map<String, Map<String, Object?>>? extraMcpServers,
+  }) async {
+    final trimmedProjectId = projectId.trim();
+    final trimmedSessionId = sessionId.trim();
+    if (trimmedProjectId.isEmpty || trimmedSessionId.isEmpty) return;
+
+    final standaloneScope = StandaloneLaunchProfileScope(
+      projectId: trimmedProjectId,
+      sessionId: trimmedSessionId,
+    );
+    await _withStandaloneScope(standaloneScope, () async {
+      await ensureStandaloneProjectProfile(trimmedProjectId, cli: cli);
+      String? sessionProvisionJson;
+      await Future.wait([
+        layout.ensureStandaloneSessionInheritsProject(
+          trimmedProjectId,
+          trimmedSessionId,
+          cli.value,
+        ),
+        layout
+            .provisionStandaloneSessionPluginsFromProject(
+              trimmedProjectId,
+              trimmedSessionId,
+              cli.value,
+            )
+            .then((json) => sessionProvisionJson = json),
+      ]);
+      final pluginManifest =
+          _cliRegistry.capability<PluginManifestCapability>(cli);
+      if (pluginManifest?.supportsPluginRegistry == true) {
+        await CliPluginRegistryService(
+          fs: fs,
+          teampilotRoot: basePath,
+          layout: layout,
+          cliRegistry: _cliRegistry,
+        ).writeForStandaloneSession(
+          projectId: trimmedProjectId,
+          sessionId: trimmedSessionId,
+          tool: cli,
+          profile: profile,
+          memberProvisionJson: sessionProvisionJson,
+        );
+      }
+      final cap = _cliRegistry.capability<ConfigProfileCapability>(cli);
+      if (cap != null) {
+        await cap.ensureSessionProfile(
+          ConfigProfileSessionContext(
+            teamId: '',
+            sessionId: trimmedSessionId,
+            members: const [],
+            paths: this,
+            standaloneScope: standaloneScope,
+            profile: profile,
+          ),
+        );
+      }
+      await McpRegistryService(fs: fs, layout: layout).writeForStandaloneProject(
+        projectId: trimmedProjectId,
+        sessionId: trimmedSessionId,
+        extraServers: extraMcpServers,
+      );
+    });
+  }
+
+  Future<TeamLaunchOutcome> prepareProjectLaunch({
+    required String projectId,
+    required String sessionId,
+    required ProjectProfile profile,
+    String workingDirectory = '',
+    List<String> additionalDirectories = const [],
+    Map<String, Map<String, Object?>>? extraMcpServers,
+    String? busIdleUrl,
+  }) async {
+    final trimmedProjectId = projectId.trim();
+    final trimmedSessionId = sessionId.trim();
+    if (trimmedProjectId.isEmpty || trimmedSessionId.isEmpty) {
+      return const TeamLaunchOutcome(environment: {});
+    }
+
+    final cli = profile.cli;
+    final standaloneScope = StandaloneLaunchProfileScope(
+      projectId: trimmedProjectId,
+      sessionId: trimmedSessionId,
+    );
+    final scope = LaunchProfileScope(
+      teamId: trimmedProjectId,
+      sessionId: trimmedSessionId,
+      cliTeamName: trimmedSessionId,
+    );
+
+    return _withStandaloneScope(standaloneScope, () async {
+      await ensureStandaloneSessionProfile(
+        trimmedProjectId,
+        trimmedSessionId,
+        cli: cli,
+        profile: profile,
+        extraMcpServers: extraMcpServers,
+      );
+
+      final cap = _cliRegistry.capability<ConfigProfileCapability>(cli);
+      if (cap == null) {
+        return TeamLaunchOutcome(
+          environment: const {},
+          warnings: ['unknown_cli_${cli.value}'],
+        );
+      }
+
+      ConfigProfileLaunchContribution contribution;
+      try {
+        contribution = await cap.contributeLaunch(
+          ConfigProfileLaunchContext(
+            teamId: '',
+            sessionId: trimmedSessionId,
+            scope: scope,
+            profile: profile,
+            standaloneScope: standaloneScope,
+            members: const [],
+            workingDirectory: workingDirectory,
+            additionalDirectories: additionalDirectories,
+            paths: this,
+            busIdleUrl: busIdleUrl,
+          ),
+        );
+      } on Object catch (e) {
+        return TeamLaunchOutcome(
+          environment: const {},
+          warnings: ['config_profile_${cli.value}: $e'],
+        );
+      }
+
+      return TeamLaunchOutcome(
+        environment: contribution.environment,
+        warnings: contribution.warnings,
+      );
+    });
+  }
+
+  Future<T> _withStandaloneScope<T>(
+    StandaloneLaunchProfileScope scope,
+    Future<T> Function() action,
+  ) async {
+    if (_activeStandaloneScope != null) {
+      return action();
+    }
+    _activeStandaloneScope = scope;
+    try {
+      return await action();
+    } finally {
+      _activeStandaloneScope = null;
+    }
   }
 
   Future<TeamLaunchOutcome> prepareTeamLaunch({
@@ -304,6 +488,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
     String? memberToolDir,
     required String tool,
     String? teamId,
+    String? projectId,
   }) =>
       _infra.writeSettingsFile(
         path,
@@ -311,14 +496,20 @@ class ConfigProfileService implements ConfigProfileDelegate {
         memberToolDir: memberToolDir,
         tool: tool,
         teamId: teamId,
+        projectId: projectId,
       );
 
   @override
   Future<bool> hasEnabledExtensionSettingsHooks(
     String tool, {
     String? teamId,
+    String? projectId,
   }) =>
-      _infra.hasEnabledExtensionSettingsHooks(tool, teamId: teamId);
+      _infra.hasEnabledExtensionSettingsHooks(
+        tool,
+        teamId: teamId,
+        projectId: projectId,
+      );
 
   @override
   Future<Map<String, Object?>> applyExtensionSettings(
@@ -326,12 +517,14 @@ class ConfigProfileService implements ConfigProfileDelegate {
     String? memberToolDir, {
     required String tool,
     String? teamId,
+    String? projectId,
   }) =>
       _infra.applyExtensionSettings(
         settings,
         memberToolDir,
         tool: tool,
         teamId: teamId,
+        projectId: projectId,
       );
 
   @override

@@ -6,6 +6,17 @@ import '../../../team/claude_team_roster_service.dart';
 /// Profile directory key when launching without a chat [AppSession].
 const configProfileAdhocSessionId = '_adhoc';
 
+/// Resolved launch path scope for a personal project session.
+class StandaloneLaunchProfileScope {
+  const StandaloneLaunchProfileScope({
+    required this.projectId,
+    required this.sessionId,
+  });
+
+  final String projectId;
+  final String sessionId;
+}
+
 /// Resolved launch path scope for a team session.
 class LaunchProfileScope {
   const LaunchProfileScope({

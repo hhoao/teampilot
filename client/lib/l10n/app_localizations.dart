@@ -572,36 +572,6 @@ abstract class AppLocalizations {
   /// **'Appearance'**
   String get appearance;
 
-  /// No description provided for @appearancePageSubtitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Interface appearance and the view shown on startup.'**
-  String get appearancePageSubtitle;
-
-  /// No description provided for @workspaceEntryModeTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Startup view'**
-  String get workspaceEntryModeTitle;
-
-  /// No description provided for @workspaceEntryModeDescription.
-  ///
-  /// In en, this message translates to:
-  /// **'Where the app opens after launch.'**
-  String get workspaceEntryModeDescription;
-
-  /// No description provided for @workspaceEntryModeHome.
-  ///
-  /// In en, this message translates to:
-  /// **'Home'**
-  String get workspaceEntryModeHome;
-
-  /// No description provided for @workspaceEntryModeHub.
-  ///
-  /// In en, this message translates to:
-  /// **'Workspace'**
-  String get workspaceEntryModeHub;
-
   /// No description provided for @theme.
   ///
   /// In en, this message translates to:
@@ -998,6 +968,18 @@ abstract class AppLocalizations {
   /// **'Recent'**
   String get homeWorkspaceRecentVisits;
 
+  /// No description provided for @homeWorkspacePersonal.
+  ///
+  /// In en, this message translates to:
+  /// **'Personal workspace'**
+  String get homeWorkspacePersonal;
+
+  /// No description provided for @homeWorkspacePersonalSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Solo projects with project-scoped agent, skills, and plugins.'**
+  String get homeWorkspacePersonalSubtitle;
+
   /// No description provided for @homeWorkspaceNoData.
   ///
   /// In en, this message translates to:
@@ -1184,11 +1166,65 @@ abstract class AppLocalizations {
   /// **'Close & end sessions'**
   String get homeWorkspaceCloseProjectConfirm;
 
+  /// No description provided for @homeWorkspaceProjectManagement.
+  ///
+  /// In en, this message translates to:
+  /// **'Project management'**
+  String get homeWorkspaceProjectManagement;
+
+  /// No description provided for @homeWorkspaceProjectList.
+  ///
+  /// In en, this message translates to:
+  /// **'Projects'**
+  String get homeWorkspaceProjectList;
+
   /// No description provided for @homeWorkspaceConversations.
   ///
   /// In en, this message translates to:
   /// **'Conversations'**
   String get homeWorkspaceConversations;
+
+  /// No description provided for @homeWorkspaceConversationsSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Conversations'**
+  String get homeWorkspaceConversationsSection;
+
+  /// No description provided for @homeWorkspaceProjectAgent.
+  ///
+  /// In en, this message translates to:
+  /// **'Agent'**
+  String get homeWorkspaceProjectAgent;
+
+  /// No description provided for @homeWorkspaceProjectSkills.
+  ///
+  /// In en, this message translates to:
+  /// **'Skills'**
+  String get homeWorkspaceProjectSkills;
+
+  /// No description provided for @homeWorkspaceProjectPlugins.
+  ///
+  /// In en, this message translates to:
+  /// **'Plugins'**
+  String get homeWorkspaceProjectPlugins;
+
+  /// No description provided for @homeWorkspaceProjectMcp.
+  ///
+  /// In en, this message translates to:
+  /// **'MCP'**
+  String get homeWorkspaceProjectMcp;
+
+  /// No description provided for @homeWorkspaceProjectExtensions.
+  ///
+  /// In en, this message translates to:
+  /// **'Extensions'**
+  String get homeWorkspaceProjectExtensions;
+
+  /// No description provided for @homeWorkspaceTeamConfig.
+  ///
+  /// In en, this message translates to:
+  /// **'Team config'**
+  String get homeWorkspaceTeamConfig;
 
   /// No description provided for @homeWorkspaceProjectSettings.
   ///
@@ -1243,6 +1279,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'New Conversation'**
   String get homeWorkspaceNewConversation;
+
+  /// No description provided for @homeWorkspaceNewConversationChooseCli.
+  ///
+  /// In en, this message translates to:
+  /// **'New conversation with CLI…'**
+  String get homeWorkspaceNewConversationChooseCli;
 
   /// No description provided for @homeWorkspaceNoConversations.
   ///

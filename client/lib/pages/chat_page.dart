@@ -19,14 +19,22 @@ import 'chat_workbench.dart';
 import 'workspace_shell/workspace_shell.dart';
 
 class ChatPage extends StatelessWidget {
-  const ChatPage({required this.cwd, this.sessionId, super.key});
+  const ChatPage({
+    required this.cwd,
+    this.sessionId,
+    this.isPersonalProject = false,
+    super.key,
+  });
 
   final String? sessionId;
 
   /// Working directory the file tree / git tools operate on, supplied by the
-  /// caller's context (project path for the v2 project page; active-session
-  /// cwd for the chat routes). [ChatPage] never derives it from session state.
+  /// caller (e.g. project path on the v2 project page). [ChatPage] never
+  /// derives it from session state.
   final String cwd;
+
+  /// When true, the embedded workbench runs without a selected [TeamConfig].
+  final bool isPersonalProject;
 
   @override
   Widget build(BuildContext context) {
@@ -36,7 +44,7 @@ class ChatPage extends StatelessWidget {
     final preferences = layoutCubit.state.preferences;
     final team = teamCubit.state.selectedTeam;
 
-    if (team == null) {
+    if (!isPersonalProject && team == null) {
       return const Center(child: CircularProgressIndicator());
     }
 
@@ -46,6 +54,7 @@ class ChatPage extends StatelessWidget {
       preferences: preferences,
       panelKey: AppKeys.rightToolsPanel,
       dismissDrawerOnAction: toolsAsDrawer,
+      isPersonalProject: isPersonalProject,
     );
     final activeChatAnimationId =
         chatCubit.state.activeTabIndex >= 0 &&
@@ -57,10 +66,13 @@ class ChatPage extends StatelessWidget {
       return WorkspaceShell(
         workspaceTerminalWorkingDirectory: cwd,
         showHeader: false,
-        breadcrumb: '${team.name} / Chat / Shell chat workbench',
+        breadcrumb: isPersonalProject
+            ? 'Personal / Chat / Shell chat workbench'
+            : '${team!.name} / Chat / Shell chat workbench',
         title: 'Shell chat workbench',
-        subtitle:
-            'target: ${chatCubit.selectedMemberName(team)} / shell wrapper mode',
+        subtitle: isPersonalProject
+            ? 'personal project / shell wrapper mode'
+            : 'target: ${chatCubit.selectedMemberName(team!)} / shell wrapper mode',
         tabs: chatCubit.state.tabs
             .map((t) => TabInfo(id: t.id, title: t.title))
             .toList(),
@@ -76,12 +88,17 @@ class ChatPage extends StatelessWidget {
         onRightToolsWidthChanged: toolsAsDrawer
             ? null
             : (w) => context.read<LayoutCubit>().setRightToolsWidth(w),
-        actions: _chatActions(context, team),
+        actions: isPersonalProject || team == null
+            ? const []
+            : _chatActions(context, team),
         rightTools: rightTools,
         childAnimationKey: ValueKey(
           'chat-workspace-body-$activeChatAnimationId',
         ),
-        child: ChatWorkbench(sessionId: sessionId),
+        child: ChatWorkbench(
+          sessionId: sessionId,
+          isPersonalProject: isPersonalProject,
+        ),
       );
     }
 
@@ -93,6 +110,7 @@ class ChatPage extends StatelessWidget {
               ? RightToolsPanel(
                   cwd: cwd,
                   preferences: preferences,
+                  isPersonalProject: isPersonalProject,
                   panelKey:
                       preferences.toolPlacement == ToolPanelPlacement.right
                       ? AppKeys.rightToolsPanel
@@ -193,20 +211,5 @@ class ChatPage extends StatelessWidget {
         icon: const Icon(Icons.groups_outlined),
       ),
     ];
-  }
-}
-
-/// Chat route entry that scopes the tools to the active session's cwd. Keeps
-/// the "follow the active session" behavior out of [ChatPage] itself, which
-/// only renders the cwd it is given.
-class ActiveSessionChatPage extends StatelessWidget {
-  const ActiveSessionChatPage({this.sessionId, super.key});
-
-  final String? sessionId;
-
-  @override
-  Widget build(BuildContext context) {
-    final cwd = context.select<ChatCubit, String>((c) => c.state.activeCwd);
-    return ChatPage(sessionId: sessionId, cwd: cwd);
   }
 }

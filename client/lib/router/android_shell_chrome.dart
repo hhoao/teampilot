@@ -28,7 +28,6 @@ class AndroidShellChrome {
     final l10n = context.l10n;
     if (path == '/config') return l10n.settings;
     if (path == '/config/layout') return l10n.layout;
-    if (path == '/config/appearance') return l10n.appearance;
     if (path == '/providers' || _isLlmCliRoot(path)) return l10n.llmConfig;
     if (_isLlmProviderDetail(path)) {
       if (path.endsWith('/edit')) return l10n.editProvider;

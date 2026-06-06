@@ -18,6 +18,7 @@ import '../cubits/session_preferences_cubit.dart';
 import '../cubits/extension_cubit.dart';
 import '../cubits/mcp_cubit.dart';
 import '../cubits/plugin_cubit.dart';
+import '../cubits/project_profile_cubit.dart';
 import '../cubits/skill_cubit.dart';
 import '../repositories/mcp_repository.dart';
 import '../services/mcp/team_mcp_linker_service.dart';
@@ -33,13 +34,13 @@ import '../repositories/layout_repository.dart';
 import '../repositories/session_preferences_repository.dart';
 import '../repositories/session_repository.dart';
 import '../repositories/plugin_repository.dart';
+import '../repositories/project_profile_repository.dart';
 import '../repositories/skill_repository.dart';
 import '../repositories/ssh_credential_store.dart';
 import '../repositories/ssh_known_host_repository.dart';
 import '../repositories/ssh_profile_repository.dart';
 import '../repositories/extension_repository.dart';
 import '../repositories/team_repository.dart';
-import '../router/app_router.dart';
 import '../services/extension/builtin_manifests.dart';
 import '../services/extension/extension_acquisition_engine.dart';
 import '../services/extension/extension_provisioner.dart';
@@ -65,7 +66,9 @@ import '../services/skill/skill_repo_disk_cache_service.dart';
 import '../services/skill/skill_repo_git_service.dart';
 import '../services/skill/skill_repo_service.dart';
 import '../services/ssh/ssh_client_factory.dart';
+import '../services/plugin/project_plugin_linker_service.dart';
 import '../services/plugin/team_plugin_linker_service.dart';
+import '../services/skill/project_skill_linker_service.dart';
 import '../services/skill/team_skill_linker_service.dart';
 import '../services/terminal/terminal_transport_factory.dart';
 import '../utils/logger.dart';
@@ -92,6 +95,8 @@ class AppShell {
     required this.layoutCubit,
     required this.sessionPreferencesCubit,
     required this.pluginCubit,
+    required this.projectProfileCubit,
+    required this.projectProfileRepository,
     required this.skillCubit,
     required this.mcpCubit,
     required this.teamHubCubit,
@@ -124,6 +129,8 @@ class AppShell {
   final LayoutCubit layoutCubit;
   final SessionPreferencesCubit sessionPreferencesCubit;
   final PluginCubit pluginCubit;
+  final ProjectProfileCubit projectProfileCubit;
+  final ProjectProfileRepository projectProfileRepository;
   final SkillCubit skillCubit;
   final McpCubit mcpCubit;
   final TeamHubCubit teamHubCubit;
@@ -223,6 +230,8 @@ Future<AppShell> buildAppShell({
   late final AppProviderCubit appProviderCubit;
   late final TeamCubit teamCubit;
   late final PluginCubit pluginCubit;
+  late final ProjectProfileRepository projectProfileRepository;
+  late final ProjectProfileCubit projectProfileCubit;
   late final SkillCubit skillCubit;
   late final McpCubit mcpCubit;
   late final TeamHubCubit teamHubCubit;
@@ -346,9 +355,16 @@ Future<AppShell> buildAppShell({
   sessionLifecycleService = SessionLifecycleService(
     llmConfigPathOverride: llmConfigPathOverrideForLaunch,
     storageRootsResolver: storageRoots.resolve,
-    loadEnabledExtensionIds: ({teamId}) async {
-      if (teamId != null && teamId.trim().isNotEmpty) {
-        return extensionRepository.effectiveEnabledIds(teamId.trim());
+    loadEnabledExtensionIds: ({teamId, projectId}) async {
+      final trimmedProjectId = projectId?.trim() ?? '';
+      if (trimmedProjectId.isNotEmpty) {
+        return extensionRepository.effectiveEnabledIdsForProject(
+          trimmedProjectId,
+        );
+      }
+      final trimmedTeamId = teamId?.trim() ?? '';
+      if (trimmedTeamId.isNotEmpty) {
+        return extensionRepository.effectiveEnabledIds(trimmedTeamId);
       }
       return (await extensionRepository.load(forceReload: true)).globalEnabled;
     },
@@ -365,6 +381,13 @@ Future<AppShell> buildAppShell({
 
   final pluginRepository = PluginRepository(storageRoots: storageRoots);
   final mcpRepository = McpRepository(storageRoots: storageRoots);
+  projectProfileRepository = ProjectProfileRepository(storageRoots: storageRoots);
+  final projectSkillLinker = ProjectSkillLinkerService(
+    storageRoots: storageRoots,
+  );
+  final projectPluginLinker = ProjectPluginLinkerService(
+    storageRoots: storageRoots,
+  );
   teamCubit = TeamCubit(
     repository: teamRepo,
     sessionRepository: sessionRepo,
@@ -403,6 +426,13 @@ Future<AppShell> buildAppShell({
     storageRoots: storageRoots,
     onPluginUninstalled: teamCubit.removePluginFromAllTeams,
     onPluginUpdated: teamCubit.syncTeamsUsingPlugin,
+  );
+  projectProfileCubit = ProjectProfileCubit(
+    repository: projectProfileRepository,
+    skillLinker: projectSkillLinker,
+    pluginLinker: projectPluginLinker,
+    installedSkillsLoader: () => skillRepo.loadInstalled(),
+    installedPluginsLoader: () => pluginRepository.loadAll(),
   );
   mcpCubit = McpCubit(
     mcpRepository,
@@ -498,7 +528,6 @@ Future<AppShell> buildAppShell({
 
   boot('loading layout');
   await layoutCubit.load();
-  applyWorkspaceEntryMode(layoutCubit.state.preferences.workspaceEntryMode);
   boot('buildAppShell complete');
 
   Future<void> bootstrapAppData() async {
@@ -546,6 +575,8 @@ Future<AppShell> buildAppShell({
     layoutCubit: layoutCubit,
     sessionPreferencesCubit: sessionPreferencesCubit,
     pluginCubit: pluginCubit,
+    projectProfileCubit: projectProfileCubit,
+    projectProfileRepository: projectProfileRepository,
     skillCubit: skillCubit,
     mcpCubit: mcpCubit,
     teamHubCubit: teamHubCubit,

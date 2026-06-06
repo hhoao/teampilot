@@ -247,6 +247,7 @@ class SessionRepository {
     String projectId, {
     String sessionTeam = '',
     List<TeamMemberConfig> rosterMembers = const [],
+    CliTool? cli,
   }) async {
     final fs = await _fs();
     final index = await _loadIndex(fs);
@@ -292,6 +293,7 @@ class SessionRepository {
       display: '',
       sessionTeam: sessionTeam,
       cliTeamName: cliTeamName,
+      cli: trimmedTeam.isEmpty ? cli : null,
       members: members,
       launchState: AppSessionLaunchState.created,
       createdAt: now,
@@ -460,6 +462,14 @@ class SessionRepository {
           sessionId: sessionId,
           runtimeSessionId: existing?.cliTeamName,
         );
+      } else {
+        final projectId = existing?.projectId.trim() ?? '';
+        if (projectId.isNotEmpty) {
+          await _lifecycleService?.destroyStandaloneCliState(
+            projectId: projectId,
+            sessionId: sessionId,
+          );
+        }
       }
       final index = await _loadIndex(fs);
       final now = DateTime.now().millisecondsSinceEpoch;

@@ -6,7 +6,6 @@ import 'package:teampilot/cubits/layout_cubit.dart';
 import 'package:teampilot/cubits/session_preferences_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/connection_mode.dart';
-import 'package:teampilot/models/layout_preferences.dart';
 import 'package:teampilot/pages/onboarding/onboarding_wizard.dart';
 import 'package:teampilot/repositories/app_settings_repository.dart';
 import 'package:teampilot/repositories/session_preferences_repository.dart';
@@ -20,8 +19,7 @@ void main() {
     tester,
   ) async {
     addTearDown(() {
-      applyWorkspaceEntryMode(WorkspaceEntryMode.hub);
-      appRouter.go('/chat');
+      appRouter.go('/home-v2');
     });
 
     SharedPreferences.setMockInitialValues({});
@@ -30,7 +28,6 @@ void main() {
       repository: SessionPreferencesRepository(prefs),
     );
 
-    applyWorkspaceEntryMode(WorkspaceEntryMode.home);
     appRouter.go('/home-v2');
 
     await tester.pumpWidget(

@@ -2,6 +2,40 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/extension_state.dart';
 
 void main() {
+  group('ExtensionState.effectiveEnabledForProject', () {
+    test('falls back to globalEnabled when no project override', () {
+      const state = ExtensionState(globalEnabled: {'rtk'});
+      expect(state.effectiveEnabledForProject('proj-a', 'rtk'), isTrue);
+      expect(state.effectiveEnabledForProject('proj-a', 'codegraph'), isFalse);
+    });
+
+    test('project override wins over global', () {
+      const state = ExtensionState(
+        globalEnabled: {'rtk'},
+        projectOverrides: {
+          'proj-a': {'rtk': false, 'codegraph': true},
+        },
+      );
+      expect(state.effectiveEnabledForProject('proj-a', 'rtk'), isFalse);
+      expect(state.effectiveEnabledForProject('proj-a', 'codegraph'), isTrue);
+      expect(state.effectiveEnabledForProject('proj-b', 'rtk'), isTrue);
+    });
+
+    test('project overrides are independent of team overrides', () {
+      const state = ExtensionState(
+        globalEnabled: {'rtk'},
+        teamOverrides: {
+          'team-a': {'rtk': false},
+        },
+        projectOverrides: {
+          'proj-a': {'rtk': true},
+        },
+      );
+      expect(state.effectiveEnabled('team-a', 'rtk'), isFalse);
+      expect(state.effectiveEnabledForProject('proj-a', 'rtk'), isTrue);
+    });
+  });
+
   group('ExtensionState.effectiveEnabled', () {
     test('falls back to globalEnabled when no team override', () {
       const state = ExtensionState(globalEnabled: {'rtk'});
@@ -36,12 +70,16 @@ void main() {
         teamOverrides: {
           'team-a': {'codegraph': true},
         },
+        projectOverrides: {
+          'proj-a': {'rtk': false},
+        },
       );
       final restored = ExtensionState.fromJson(state.toJson());
       expect(restored.installed['codegraph']!.version, '1.4.0');
       expect(restored.installed['codegraph']!.installedAt, 5);
       expect(restored.globalEnabled, {'rtk'});
       expect(restored.teamOverrides['team-a'], {'codegraph': true});
+      expect(restored.projectOverrides['proj-a'], {'rtk': false});
     });
 
     test('empty state round-trips to empty', () {
@@ -49,6 +87,7 @@ void main() {
       expect(restored.installed, isEmpty);
       expect(restored.globalEnabled, isEmpty);
       expect(restored.teamOverrides, isEmpty);
+      expect(restored.projectOverrides, isEmpty);
     });
   });
 
@@ -68,6 +107,14 @@ void main() {
       expect(set.teamOverrides['team-a'], {'rtk': false});
       final cleared = set.withTeamOverride('team-a', 'rtk', null);
       expect(cleared.teamOverrides['team-a'] ?? const {}, isEmpty);
+    });
+
+    test('withProjectOverride sets and clears', () {
+      const state = ExtensionState();
+      final set = state.withProjectOverride('proj-a', 'rtk', false);
+      expect(set.projectOverrides['proj-a'], {'rtk': false});
+      final cleared = set.withProjectOverride('proj-a', 'rtk', null);
+      expect(cleared.projectOverrides['proj-a'] ?? const {}, isEmpty);
     });
 
     test('withInstalled / withUninstalled', () {

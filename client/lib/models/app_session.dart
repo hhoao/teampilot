@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import 'session_member_binding.dart';
+import 'team_config.dart';
 
 enum AppSessionLaunchState { created, started }
 
@@ -14,6 +15,7 @@ class AppSession {
     this.display = '',
     this.sessionTeam = '',
     this.cliTeamName = '',
+    this.cli,
     this.members = const [],
     this.launchState = AppSessionLaunchState.created,
     required this.createdAt,
@@ -49,6 +51,7 @@ class AppSession {
       display: json['display'] as String? ?? '',
       sessionTeam: json['sessionTeam'] as String? ?? '',
       cliTeamName: json['cliTeamName'] as String? ?? '',
+      cli: CliTool.tryParse(json['cli'] as String?),
       members: members,
       launchState: launch,
       createdAt: json['createdAt'] as int? ?? 0,
@@ -67,6 +70,9 @@ class AppSession {
 
   /// CLI `--team-name` / config-profiles member dir (`{teamId}-{seq}`).
   final String cliTeamName;
+
+  /// Personal-project session override; when null, [ProjectProfile.cli] applies.
+  final CliTool? cli;
 
   /// Per-roster-member CLI `--session-id` / `--resume` task ids.
   final List<SessionMemberBinding> members;
@@ -97,6 +103,7 @@ class AppSession {
     String? display,
     String? sessionTeam,
     String? cliTeamName,
+    CliTool? cli,
     List<SessionMemberBinding>? members,
     AppSessionLaunchState? launchState,
     int? createdAt,
@@ -110,6 +117,7 @@ class AppSession {
       display: display ?? this.display,
       sessionTeam: sessionTeam ?? this.sessionTeam,
       cliTeamName: cliTeamName ?? this.cliTeamName,
+      cli: cli ?? this.cli,
       members: members ?? this.members,
       launchState: launchState ?? this.launchState,
       createdAt: createdAt ?? this.createdAt,
@@ -127,6 +135,7 @@ class AppSession {
       'display': display,
       'sessionTeam': sessionTeam,
       if (cliTeamName.isNotEmpty) 'cliTeamName': cliTeamName,
+      if (cli != null) 'cli': cli!.value,
       if (members.isNotEmpty)
         'members': members.map((m) => m.toJson()).toList(),
       'launchState': launchState.name,
@@ -147,6 +156,7 @@ class AppSession {
             display == other.display &&
             sessionTeam == other.sessionTeam &&
             cliTeamName == other.cliTeamName &&
+            cli == other.cli &&
             listEquals(members, other.members) &&
             launchState == other.launchState &&
             createdAt == other.createdAt &&
@@ -162,6 +172,7 @@ class AppSession {
     display,
     sessionTeam,
     cliTeamName,
+    cli,
     Object.hashAll(members),
     launchState,
     createdAt,

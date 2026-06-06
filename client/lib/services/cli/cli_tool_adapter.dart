@@ -33,6 +33,33 @@ class CliLaunchContext {
 
   /// CLI roster / `--agent-name` key ([TeamMemberConfig.id]).
   String get memberCliId => member.id.trim();
+
+  CliLaunchContext copyWith({
+    TeamConfig? team,
+    TeamMemberConfig? member,
+    String? sessionTeam,
+    String? workingDirectory,
+    List<String>? additionalDirectories,
+    String? fixedSessionId,
+    String? resumeSessionId,
+    String? settingsPath,
+    String? appendSystemPromptFile,
+    bool? useWslPaths,
+  }) {
+    return CliLaunchContext(
+      team: team ?? this.team,
+      member: member ?? this.member,
+      sessionTeam: sessionTeam ?? this.sessionTeam,
+      workingDirectory: workingDirectory ?? this.workingDirectory,
+      additionalDirectories: additionalDirectories ?? this.additionalDirectories,
+      fixedSessionId: fixedSessionId ?? this.fixedSessionId,
+      resumeSessionId: resumeSessionId ?? this.resumeSessionId,
+      settingsPath: settingsPath ?? this.settingsPath,
+      appendSystemPromptFile:
+          appendSystemPromptFile ?? this.appendSystemPromptFile,
+      useWslPaths: useWslPaths ?? this.useWslPaths,
+    );
+  }
 }
 
 abstract interface class CliToolAdapter implements LaunchArgsCapability {

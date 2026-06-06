@@ -1,11 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../cubits/layout_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
-import '../../models/layout_preferences.dart';
-import '../../services/app/platform_utils.dart';
 import '../../services/team/team_config_launch_validator.dart';
 import '../team_config/team_config_section.dart';
 
@@ -13,9 +9,6 @@ import '../team_config/team_config_section.dart';
 /// the user opts in, navigates to the team-config screen (deep-linked to the
 /// first affected member when one is known). Launch is never blocked by this.
 ///
-/// Navigation is layout-aware via [navigateWorkspaceRoute]: it pushes a route
-/// over the chat on Android (back button returns), and updates the split-pane
-/// on desktop.
 Future<void> showTeamConfigIncompleteDialog(
   BuildContext context,
   TeamConfigValidation validation,
@@ -35,31 +28,17 @@ Future<void> showTeamConfigIncompleteDialog(
   _openTeamConfig(context, validation.firstMemberId);
 }
 
-/// Routes to team config in a layout-aware way. The two workspace entry modes
-/// reach team config differently:
-/// - **hub**: dedicated `/team-config/*` routes (push on Android, go on desktop).
-/// - **home**: team config is embedded as tabs under `/home-v2`; deep-link via
-///   query params so the right tab (and member) opens.
+/// Routes to team config under `/home-v2`; deep-link via query params so the
+/// right tab (and member) opens.
 void _openTeamConfig(BuildContext context, String? memberId) {
   final hasMember = memberId != null && memberId.isNotEmpty;
-  final entryMode =
-      context.read<LayoutCubit>().state.preferences.workspaceEntryMode;
-
-  if (entryMode == WorkspaceEntryMode.home) {
-    final query = <String, String>{
-      'section': hasMember
-          ? TeamConfigSection.members.routeSegment
-          : TeamConfigSection.team.routeSegment,
-      if (hasMember) 'member': memberId,
-    };
-    context.go(Uri(path: '/home-v2', queryParameters: query).toString());
-    return;
-  }
-
-  navigateWorkspaceRoute(
-    context,
-    hasMember ? '/team-config/members/$memberId' : '/team-config/team',
-  );
+  final query = <String, String>{
+    'section': hasMember
+        ? TeamConfigSection.members.routeSegment
+        : TeamConfigSection.team.routeSegment,
+    if (hasMember) 'member': memberId,
+  };
+  context.go(Uri(path: '/home-v2', queryParameters: query).toString());
 }
 
 class _TeamConfigIncompleteDialog extends StatelessWidget {

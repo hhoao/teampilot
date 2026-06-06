@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
 
 import '../../../l10n/l10n_extensions.dart';
@@ -10,12 +11,14 @@ import 'home_workspace_project_section.dart';
 class HomeWorkspaceProjectRail extends StatelessWidget {
   const HomeWorkspaceProjectRail({
     required this.section,
+    required this.isPersonalProject,
     required this.onSectionChanged,
     required this.onLogoTap,
     super.key,
   });
 
   final HomeWorkspaceProjectSection section;
+  final bool isPersonalProject;
   final ValueChanged<HomeWorkspaceProjectSection> onSectionChanged;
   final VoidCallback onLogoTap;
 
@@ -24,25 +27,16 @@ class HomeWorkspaceProjectRail extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
+    final items = isPersonalProject
+        ? _personalItems(l10n)
+        : _teamItems(l10n, context);
+
     return SizedBox(
       width: width,
       child: Column(
         children: [
           const SizedBox(height: 10),
-          _RailItem(
-            icon: Icons.forum_outlined,
-            label: l10n.homeWorkspaceConversations,
-            active: section == HomeWorkspaceProjectSection.conversations,
-            onTap: () => onSectionChanged(
-              HomeWorkspaceProjectSection.conversations,
-            ),
-          ),
-          _RailItem(
-            icon: Icons.settings_outlined,
-            label: l10n.homeWorkspaceProjectSettings,
-            active: section == HomeWorkspaceProjectSection.settings,
-            onTap: () => onSectionChanged(HomeWorkspaceProjectSection.settings),
-          ),
+          for (final item in items) item,
           const Spacer(),
           _RailItem(
             label: l10n.appTitle,
@@ -56,6 +50,79 @@ class HomeWorkspaceProjectRail extends StatelessWidget {
     );
   }
 
+  List<Widget> _personalItems(AppLocalizations l10n) {
+    return [
+      _sectionItem(
+        icon: Icons.forum_outlined,
+        label: l10n.homeWorkspaceConversations,
+        value: HomeWorkspaceProjectSection.conversations,
+      ),
+      _sectionItem(
+        icon: Icons.smart_toy_outlined,
+        label: l10n.homeWorkspaceProjectAgent,
+        value: HomeWorkspaceProjectSection.agent,
+      ),
+      _sectionItem(
+        icon: Icons.extension_outlined,
+        label: l10n.homeWorkspaceProjectSkills,
+        value: HomeWorkspaceProjectSection.skills,
+      ),
+      _sectionItem(
+        icon: Icons.widgets_outlined,
+        label: l10n.homeWorkspaceProjectPlugins,
+        value: HomeWorkspaceProjectSection.plugins,
+      ),
+      _sectionItem(
+        icon: Icons.hub_outlined,
+        label: l10n.homeWorkspaceProjectMcp,
+        value: HomeWorkspaceProjectSection.mcp,
+      ),
+      _sectionItem(
+        icon: Icons.power_outlined,
+        label: l10n.homeWorkspaceProjectExtensions,
+        value: HomeWorkspaceProjectSection.extensions,
+      ),
+      _sectionItem(
+        icon: Icons.settings_outlined,
+        label: l10n.homeWorkspaceProjectSettings,
+        value: HomeWorkspaceProjectSection.settings,
+      ),
+    ];
+  }
+
+  List<Widget> _teamItems(AppLocalizations l10n, BuildContext context) {
+    return [
+      _sectionItem(
+        icon: Icons.forum_outlined,
+        label: l10n.homeWorkspaceConversations,
+        value: HomeWorkspaceProjectSection.conversations,
+      ),
+      _sectionItem(
+        icon: Icons.settings_outlined,
+        label: l10n.homeWorkspaceProjectSettings,
+        value: HomeWorkspaceProjectSection.settings,
+      ),
+      _RailItem(
+        icon: Icons.groups_outlined,
+        label: l10n.homeWorkspaceTeamConfig,
+        active: false,
+        onTap: () => context.go('/home-v2?section=members'),
+      ),
+    ];
+  }
+
+  Widget _sectionItem({
+    required IconData icon,
+    required String label,
+    required HomeWorkspaceProjectSection value,
+  }) {
+    return _RailItem(
+      icon: icon,
+      label: label,
+      active: section == value,
+      onTap: () => onSectionChanged(value),
+    );
+  }
 }
 
 class _RailItem extends StatefulWidget {

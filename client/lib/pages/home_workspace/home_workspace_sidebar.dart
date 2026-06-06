@@ -20,6 +20,8 @@ class HomeWorkspaceSidebar extends StatefulWidget {
   const HomeWorkspaceSidebar({
     this.activeGlobalView,
     this.activeLibraryView,
+    this.personalActive = false,
+    this.onSelectPersonal,
     this.onSelectGlobalView,
     this.onSelectLibraryView,
     this.onSelectTeam,
@@ -29,6 +31,8 @@ class HomeWorkspaceSidebar extends StatefulWidget {
   /// Currently shown global section, or null when a team is shown.
   final HomeWorkspaceGlobalView? activeGlobalView;
   final HomeWorkspaceLibraryView? activeLibraryView;
+  final bool personalActive;
+  final VoidCallback? onSelectPersonal;
   final ValueChanged<HomeWorkspaceGlobalView>? onSelectGlobalView;
   final ValueChanged<HomeWorkspaceLibraryView>? onSelectLibraryView;
   final ValueChanged<String>? onSelectTeam;
@@ -50,10 +54,12 @@ class _HomeWorkspaceSidebarState extends State<HomeWorkspaceSidebar> {
     final teams = teamCubit.state.teams;
     final selected = teamCubit.state.selectedTeam;
     final onTeam = widget.onSelectTeam;
+    final onPersonal = widget.onSelectPersonal;
     final onGlobal = widget.onSelectGlobalView;
     final onLibrary = widget.onSelectLibraryView;
     final activeGlobalView = widget.activeGlobalView;
     final activeLibraryView = widget.activeLibraryView;
+    final personalActive = widget.personalActive;
 
     return Container(
       width: HomeWorkspaceSidebar.width,
@@ -86,6 +92,13 @@ class _HomeWorkspaceSidebarState extends State<HomeWorkspaceSidebar> {
                   label: l10n.homeWorkspaceRecentVisits,
                   active: activeLibraryView == HomeWorkspaceLibraryView.recent,
                   onTap: () => onLibrary?.call(HomeWorkspaceLibraryView.recent),
+                ),
+                const SizedBox(height: 4),
+                _ShortcutRow(
+                  icon: Icons.person_outline_rounded,
+                  label: l10n.homeWorkspacePersonal,
+                  active: personalActive,
+                  onTap: () => onPersonal?.call(),
                 ),
               ],
             ),
@@ -122,6 +135,7 @@ class _HomeWorkspaceSidebarState extends State<HomeWorkspaceSidebar> {
                           index: index,
                           team: team,
                           selected:
+                              !personalActive &&
                               activeGlobalView == null &&
                               activeLibraryView == null &&
                               team.id == selected?.id,

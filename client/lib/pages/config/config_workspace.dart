@@ -12,14 +12,13 @@ import '../../widgets/settings/workspace_hub_shell.dart';
 import '../../widgets/settings/workspace_section_host.dart';
 import '../about_page.dart';
 import '../system/log_config_workspace.dart';
-import 'appearance_config_section.dart';
 import 'cli_config_section.dart';
 import 'layout_config_section.dart';
 import 'session_config_section.dart';
 
 /// Opens the workspace quick-settings modal from anywhere (e.g. the title bar).
 ///
-/// Self-contained sections (layout/appearance, session) render inline; sections
+/// Self-contained sections (layout, session) render inline; sections
 /// that depend on the `/config/*` route tree (about) close the dialog and
 /// navigate to the full settings route instead.
 Future<void> showWorkspaceSettingsDialog(BuildContext context) {
@@ -43,13 +42,6 @@ Future<void> showWorkspaceSettingsDialog(BuildContext context) {
         title: l10n.layout,
         subtitle: l10n.layoutPageSubtitle,
         body: const LayoutConfigWorkspace(showHeading: false),
-      ),
-      SettingsDialogEntry(
-        icon: Icons.palette_outlined,
-        navLabel: l10n.appearance,
-        title: l10n.appearance,
-        subtitle: l10n.appearancePageSubtitle,
-        body: const AppearanceConfigWorkspace(showHeading: false),
       ),
       SettingsDialogEntry(
         icon: Icons.terminal_outlined,
@@ -102,15 +94,6 @@ class ConfigSettingsHubPage extends StatelessWidget {
           onTap: throttledTap('config_hub_layout', () {
             context.read<ConfigCubit>().selectSection(ConfigSection.layout);
             context.push('/config/layout');
-          }),
-        ),
-        WorkspaceHubEntry(
-          key: AppKeys.configAppearanceSectionButton,
-          title: l10n.appearance,
-          icon: Icons.palette_outlined,
-          onTap: throttledTap('config_hub_appearance', () {
-            context.read<ConfigCubit>().selectSection(ConfigSection.appearance);
-            context.push('/config/appearance');
           }),
         ),
         WorkspaceHubEntry(
@@ -196,9 +179,6 @@ class ConfigWorkspace extends StatelessWidget {
       ),
       body: switch (currentSection) {
         ConfigSection.layout => LayoutConfigWorkspace(showHeading: showHeading),
-        ConfigSection.appearance => AppearanceConfigWorkspace(
-          showHeading: showHeading,
-        ),
         ConfigSection.session => SessionConfigWorkspace(
           showHeading: showHeading,
         ),
@@ -236,16 +216,6 @@ class ConfigNavPanel extends StatelessWidget {
           onTap: throttledTap(
             'config_nav_layout',
             () => onSelectSection(ConfigSection.layout),
-          ),
-        ),
-        WorkspaceHubEntry(
-          key: AppKeys.configAppearanceSectionButton,
-          title: l10n.appearance,
-          icon: Icons.palette_outlined,
-          selected: section == ConfigSection.appearance,
-          onTap: throttledTap(
-            'config_nav_appearance',
-            () => onSelectSection(ConfigSection.appearance),
           ),
         ),
         WorkspaceHubEntry(

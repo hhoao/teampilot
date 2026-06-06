@@ -1,11 +1,13 @@
+import '../../models/app_project.dart';
 import '../../models/app_session.dart';
+import '../../models/project_profile.dart';
 import '../../models/session_member_binding.dart';
 import '../../models/team_config.dart';
+import '../../repositories/project_profile_repository.dart';
 import '../../utils/team_member_naming.dart';
 import '../../utils/logger.dart';
 import '../storage/app_storage.dart';
 import '../cli/cli_data_layout.dart';
-import '../cli/registry/built_in_cli_tools.dart';
 import '../cli/registry/capabilities/transcript_probe_capability.dart';
 import '../cli/registry/cli_tool_registry.dart';
 import '../cli/registry/config_profile/flashskyai_config_profile_capability.dart';
@@ -13,32 +15,12 @@ import '../provider/config_profile_service.dart';
 import '../storage/storage_resolver.dart';
 import '../io/filesystem.dart';
 import '../storage/runtime_storage_context.dart';
+import '../cli/cli_tool_adapter.dart';
+import 'shell_launch_spec.dart';
+
+export 'shell_launch_spec.dart';
 
 typedef StorageRootsResolver = Future<StorageRootsSnapshot> Function();
-
-class LaunchPlan {
-  const LaunchPlan({
-    required this.env,
-    required this.resume,
-    required this.taskId,
-    required this.cliTeamName,
-    required this.memberConfigDir,
-    required this.resolvedRoots,
-    this.warnings = const [],
-  });
-
-  final Map<String, String> env;
-  final bool resume;
-
-  /// CLI `--session-id` / `--resume` id (member [SessionMemberBinding.taskId]).
-  final String taskId;
-
-  /// CLI `--team-name` and config-profiles member runtime directory.
-  final String cliTeamName;
-  final String memberConfigDir;
-  final List<String> resolvedRoots;
-  final List<String> warnings;
-}
 
 class SessionLifecycleService {
   static final _defaultCliRegistry = () {
@@ -51,28 +33,111 @@ class SessionLifecycleService {
     String? Function()? llmConfigPathOverride,
     ConfigProfileService? configProfileService,
     StorageRootsResolver? storageRootsResolver,
-    Future<Set<String>> Function({String? teamId})? loadEnabledExtensionIds,
+    Future<Set<String>> Function({String? teamId, String? projectId})?
+    loadEnabledExtensionIds,
     CliToolRegistry? cliToolRegistry,
+    ProjectProfileRepository? projectProfileRepository,
   }) : _appDataBasePath = appDataBasePath,
        _llmConfigPathOverride = llmConfigPathOverride,
        _configProfileService = configProfileService,
        _storageRootsResolver = storageRootsResolver,
        _loadEnabledExtensionIds = loadEnabledExtensionIds,
-       _cliToolRegistry = cliToolRegistry ?? _defaultCliRegistry;
+       _cliToolRegistry = cliToolRegistry ?? _defaultCliRegistry,
+       _projectProfileRepository = projectProfileRepository;
 
   final String? _appDataBasePath;
   final String? Function()? _llmConfigPathOverride;
   final ConfigProfileService? _configProfileService;
   final StorageRootsResolver? _storageRootsResolver;
-  final Future<Set<String>> Function({String? teamId})?
+  final Future<Set<String>> Function({String? teamId, String? projectId})?
   _loadEnabledExtensionIds;
   final CliToolRegistry _cliToolRegistry;
+  final ProjectProfileRepository? _projectProfileRepository;
+
+  Future<ProjectProfile> loadProjectProfile(
+    String projectId, {
+    ProjectProfile? override,
+  }) async {
+    if (override != null) return override;
+    final repo = _projectProfileRepository;
+    if (repo != null) {
+      return repo.loadOrCreate(projectId);
+    }
+    return ProjectProfile(projectId: projectId);
+  }
 
   Future<LaunchPlan> prepareLaunch({
     required AppSession session,
     TeamConfig? team,
     TeamMemberConfig? member,
     SessionMemberBinding? memberBinding,
+    AppProject? project,
+    ProjectProfile? profile,
+    String? llmConfigPathOverride,
+    Map<String, Map<String, Object?>>? extraMcpServers,
+    String? busIdleUrl,
+  }) async {
+    return (await _prepareLaunchPlan(
+      session: session,
+      team: team,
+      member: member,
+      memberBinding: memberBinding,
+      project: project,
+      profile: profile,
+      llmConfigPathOverride: llmConfigPathOverride,
+      extraMcpServers: extraMcpServers,
+      busIdleUrl: busIdleUrl,
+    )).plan;
+  }
+
+  Future<ShellLaunchSpec> prepareShellLaunch({
+    required AppSession session,
+    TeamConfig? team,
+    TeamMemberConfig? member,
+    SessionMemberBinding? memberBinding,
+    AppProject? project,
+    ProjectProfile? profile,
+    String? llmConfigPathOverride,
+    Map<String, Map<String, Object?>>? extraMcpServers,
+    String? busIdleUrl,
+  }) async {
+    final prepared = await _prepareLaunchPlan(
+      session: session,
+      team: team,
+      member: member,
+      memberBinding: memberBinding,
+      project: project,
+      profile: profile,
+      llmConfigPathOverride: llmConfigPathOverride,
+      extraMcpServers: extraMcpServers,
+      busIdleUrl: busIdleUrl,
+    );
+    return ShellLaunchSpec(
+      plan: prepared.plan,
+      launchContext: _buildShellLaunchContext(
+        session: session,
+        plan: prepared.plan,
+        isPersonal: prepared.isPersonal,
+        project: project,
+        profile: prepared.resolvedProfile,
+        team: team,
+        member: member,
+      ),
+      sessionTeam: _resolveSessionTeam(session, prepared.plan, prepared.isPersonal),
+    );
+  }
+
+  Future<({
+    LaunchPlan plan,
+    bool isPersonal,
+    ProjectProfile? resolvedProfile,
+  })> _prepareLaunchPlan({
+    required AppSession session,
+    TeamConfig? team,
+    TeamMemberConfig? member,
+    SessionMemberBinding? memberBinding,
+    AppProject? project,
+    ProjectProfile? profile,
     String? llmConfigPathOverride,
     Map<String, Map<String, Object?>>? extraMcpServers,
     String? busIdleUrl,
@@ -82,26 +147,36 @@ class SessionLifecycleService {
     final memberName = member?.name.trim() ?? '';
     final cliTeamName = session.cliTeamName.trim();
     final taskId = memberBinding?.taskId.trim() ?? sessionId;
+    final isPersonal = _isPersonalLaunch(project, session);
     appLogger.i(
       '[session-lifecycle] prepareLaunch start '
       'session=$sessionId team=$teamId member=$memberName '
-      'cliTeam=$cliTeamName task=$taskId',
+      'cliTeam=$cliTeamName task=$taskId personal=$isPersonal',
     );
     try {
       final roots = await _resolveRoots();
-      final service = await _configProfileServiceFor(roots);
-      final runtimeTeamId = cliTeamName.isNotEmpty ? cliTeamName : sessionId;
+      final service = await _configProfileServiceFor(
+        roots,
+        launchProjectId: isPersonal ? project!.projectId : null,
+      );
+      final resolvedProfile = isPersonal
+          ? await loadProjectProfile(project!.projectId, override: profile)
+          : null;
+      final runtimeTeamId = isPersonal
+          ? sessionId
+          : (cliTeamName.isNotEmpty ? cliTeamName : sessionId);
       // Mixed members run as isolated processes under per-member CONFIG_DIRs, so
       // transcripts / --resume probes must target the same nested runtime dir.
-      final runtimeSessionId =
-          team?.teamMode == TeamMode.mixed && member != null && member.isValid
+      final runtimeSessionId = isPersonal
+          ? sessionId
+          : team?.teamMode == TeamMode.mixed && member != null && member.isValid
           ? mixedModeMemberScopeSessionId(
               roots.fs.pathContext,
               runtimeTeamId,
               member,
             )
           : runtimeTeamId;
-      final cli = team?.cli;
+      final cli = isPersonal ? resolvedProfile!.cli : team?.cli;
       final cliState = session.launchState == AppSessionLaunchState.started
           ? await _findCliState(
               roots: roots,
@@ -110,14 +185,22 @@ class SessionLifecycleService {
               runtimeSessionId: runtimeSessionId,
               cliSessionId: taskId,
               cli: cli,
+              projectId: isPersonal ? project!.projectId : null,
             )
           : _CliStateProbeResult(
               exists: false,
-              rootsTried: roots.layout.transcriptSearchRoots(
-                teamId: teamId,
-                runtimeSessionId: runtimeSessionId,
-                tools: cli != null ? [cli.value] : cliLayoutDefaultTools,
-              ),
+              rootsTried: isPersonal
+                  ? _standaloneTranscriptSearchRoots(
+                      layout: roots.layout,
+                      projectId: project!.projectId,
+                      sessionId: runtimeSessionId,
+                      tools: cli != null ? [cli.value] : cliLayoutDefaultTools,
+                    )
+                  : roots.layout.transcriptSearchRoots(
+                      teamId: teamId,
+                      runtimeSessionId: runtimeSessionId,
+                      tools: cli != null ? [cli.value] : cliLayoutDefaultTools,
+                    ),
             );
       final prepared = await _prepareEnv(
         service: service,
@@ -125,6 +208,8 @@ class SessionLifecycleService {
         team: team,
         member: member,
         memberBinding: memberBinding,
+        project: project,
+        profile: resolvedProfile,
         runtimeTeamId: runtimeTeamId,
         workingDirectory: session.primaryPath,
         llmConfigPathOverride: llmConfigPathOverride,
@@ -147,14 +232,18 @@ class SessionLifecycleService {
         warnings: prepared.warnings,
       );
       appLogger.i(
-        '[session-lifecycle] prepareLaunch ready '
+        '[session-lifecycle] prepareShellLaunch ready '
         'session=$sessionId resume=${plan.resume} '
         'warnings=${plan.warnings.length}',
       );
-      return plan;
+      return (
+        plan: plan,
+        isPersonal: isPersonal,
+        resolvedProfile: resolvedProfile,
+      );
     } on Object catch (e, st) {
       appLogger.e(
-        '[session-lifecycle] prepareLaunch failed '
+        '[session-lifecycle] prepareShellLaunch failed '
         'session=$sessionId team=$teamId member=$memberName: $e',
         error: e,
         stackTrace: st,
@@ -168,20 +257,29 @@ class SessionLifecycleService {
     String? teamId,
     CliTool? cli,
     SessionMemberBinding? memberBinding,
+    AppProject? project,
+    ProjectProfile? profile,
   }) async {
     final roots = await _resolveRoots();
-    final runtimeTeamId = session.cliTeamName.trim().isNotEmpty
+    final isPersonal = _isPersonalLaunch(project, session);
+    final runtimeTeamId = isPersonal
+        ? session.sessionId.trim()
+        : session.cliTeamName.trim().isNotEmpty
         ? session.cliTeamName.trim()
         : session.sessionId.trim();
     final cliSessionId =
         memberBinding?.taskId.trim() ?? session.sessionId.trim();
+    final resolvedCli = isPersonal
+        ? (profile ?? await loadProjectProfile(project!.projectId)).cli
+        : cli;
     final probe = await _findCliState(
       roots: roots,
       session: session,
       teamId: (teamId ?? session.sessionTeam).trim(),
       runtimeSessionId: runtimeTeamId,
       cliSessionId: cliSessionId,
-      cli: cli,
+      cli: resolvedCli,
+      projectId: isPersonal ? project!.projectId : null,
     );
     return probe.exists;
   }
@@ -210,6 +308,25 @@ class SessionLifecycleService {
     await _removeTree(roots, memberRoot);
   }
 
+  Future<void> destroyStandaloneCliState({
+    required String projectId,
+    required String sessionId,
+  }) async {
+    final trimmedProjectId = projectId.trim();
+    final trimmedSessionId = sessionId.trim();
+    if (trimmedProjectId.isEmpty || trimmedSessionId.isEmpty) return;
+
+    final roots = await _resolveRoots();
+    final sessionRoot = roots.fs.pathContext.dirname(
+      roots.layout.standaloneProjectSessionToolDir(
+        trimmedProjectId,
+        trimmedSessionId,
+        'flashskyai',
+      ),
+    );
+    await _removeTree(roots, sessionRoot);
+  }
+
   Future<void> destroyCliToolState(String teamId) async {
     final trimmedTeamId = teamId.trim();
     if (trimmedTeamId.isEmpty) return;
@@ -221,18 +338,115 @@ class SessionLifecycleService {
     await _removeTree(roots, teamRoot);
   }
 
+  bool _isPersonalLaunch(AppProject? project, AppSession session) =>
+      project != null &&
+      project.teamId.isEmpty &&
+      session.sessionTeam.trim().isEmpty;
+
+  String _resolveSessionTeam(
+    AppSession session,
+    LaunchPlan plan,
+    bool isPersonal,
+  ) {
+    if (isPersonal) return plan.cliTeamName;
+    final fromSession = session.cliTeamName.trim();
+    if (fromSession.isNotEmpty) return fromSession;
+    return plan.cliTeamName;
+  }
+
+  CliLaunchContext _buildShellLaunchContext({
+    required AppSession session,
+    required LaunchPlan plan,
+    required bool isPersonal,
+    AppProject? project,
+    ProjectProfile? profile,
+    TeamConfig? team,
+    TeamMemberConfig? member,
+  }) {
+    if (isPersonal) {
+      if (project == null || profile == null) {
+        throw StateError(
+          'prepareShellLaunch requires project and profile for personal sessions',
+        );
+      }
+      final launchMember = standaloneMemberFromProfile(profile);
+      final launchTeam = standaloneTeamFromProfile(
+        profile,
+        projectId: project.projectId,
+        sessionTeamName: plan.cliTeamName,
+      );
+      return CliLaunchContext(
+        team: launchTeam,
+        member: launchMember,
+        sessionTeam: plan.cliTeamName,
+        workingDirectory: session.primaryPath,
+        additionalDirectories: session.additionalPaths,
+      );
+    }
+
+    if (team == null || member == null) {
+      throw StateError(
+        'prepareShellLaunch requires team and member for team sessions',
+      );
+    }
+
+    return CliLaunchContext(
+      team: team,
+      member: member,
+      sessionTeam: _resolveSessionTeam(session, plan, false),
+      workingDirectory: session.primaryPath,
+      additionalDirectories: session.additionalPaths,
+    );
+  }
+
+  List<String> _standaloneTranscriptSearchRoots({
+    required CliDataLayout layout,
+    required String projectId,
+    required String sessionId,
+    required Iterable<String> tools,
+  }) {
+    final tt = tools.map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
+    return [
+      for (final tool in tt) layout.appToolRoot(tool),
+      for (final tool in tt) layout.standaloneProjectToolDir(projectId, tool),
+      for (final tool in tt)
+        layout.standaloneProjectSessionToolDir(projectId, sessionId, tool),
+    ];
+  }
+
   Future<_PreparedLaunch> _prepareEnv({
     required ConfigProfileService service,
     required AppSession session,
     required TeamConfig? team,
     required TeamMemberConfig? member,
     SessionMemberBinding? memberBinding,
+    AppProject? project,
+    ProjectProfile? profile,
     required String runtimeTeamId,
     required String workingDirectory,
     required String? llmConfigPathOverride,
     Map<String, Map<String, Object?>>? extraMcpServers,
     String? busIdleUrl,
   }) async {
+    if (_isPersonalLaunch(project, session)) {
+      final personalProject = project!;
+      final resolvedProfile =
+          profile ?? await loadProjectProfile(personalProject.projectId);
+      final outcome = await service.prepareProjectLaunch(
+        projectId: personalProject.projectId,
+        sessionId: session.sessionId,
+        profile: resolvedProfile,
+        workingDirectory: workingDirectory,
+        additionalDirectories: session.additionalPaths,
+        extraMcpServers: extraMcpServers,
+        busIdleUrl: busIdleUrl,
+      );
+      return _PreparedLaunch(
+        env: outcome.environment,
+        warnings: outcome.warnings,
+      );
+    }
+
     final teamId = team?.id.trim() ?? '';
     if (team != null && teamId.isNotEmpty) {
       final launchCli = member != null ? member.cliWithin(team) : team.cli;
@@ -271,15 +485,25 @@ class SessionLifecycleService {
   }
 
   Future<ConfigProfileService> _configProfileServiceFor(
-    StorageRootsSnapshot roots,
-  ) async {
+    StorageRootsSnapshot roots, {
+    String? launchProjectId,
+  }) async {
     final injected = _configProfileService;
     if (injected != null) return injected;
+    final loader = _loadEnabledExtensionIds;
+    final trimmedProjectId = launchProjectId?.trim() ?? '';
     return ConfigProfileService(
       basePath: roots.teampilotRoot,
       fs: roots.fs,
       layout: roots.layout,
-      loadEnabledExtensionIds: _loadEnabledExtensionIds,
+      loadEnabledExtensionIds: loader == null
+          ? null
+          : ({teamId, projectId}) => loader(
+              teamId: teamId,
+              projectId: (projectId?.trim().isNotEmpty ?? false)
+                  ? projectId
+                  : (trimmedProjectId.isNotEmpty ? trimmedProjectId : null),
+            ),
       cliRegistry: _cliToolRegistry,
     );
   }
@@ -301,17 +525,27 @@ class SessionLifecycleService {
     required String runtimeSessionId,
     required String cliSessionId,
     CliTool? cli,
+    String? projectId,
   }) async {
     final id = cliSessionId.trim();
     if (id.isEmpty) {
       return const _CliStateProbeResult(exists: false);
     }
 
-    final toolRoots = roots.layout.transcriptSearchRoots(
-      teamId: teamId,
-      runtimeSessionId: runtimeSessionId,
-      tools: cli != null ? [cli.value] : cliLayoutDefaultTools,
-    );
+    final tools = cli != null ? [cli.value] : cliLayoutDefaultTools;
+    final trimmedProjectId = projectId?.trim() ?? '';
+    final toolRoots = trimmedProjectId.isNotEmpty
+        ? _standaloneTranscriptSearchRoots(
+            layout: roots.layout,
+            projectId: trimmedProjectId,
+            sessionId: runtimeSessionId,
+            tools: tools,
+          )
+        : roots.layout.transcriptSearchRoots(
+            teamId: teamId,
+            runtimeSessionId: runtimeSessionId,
+            tools: tools,
+          );
     final bucket = CliDataLayout.projectBucketForPrimaryPath(
       session.primaryPath,
     );

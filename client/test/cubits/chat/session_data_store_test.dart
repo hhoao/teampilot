@@ -50,4 +50,38 @@ void main() {
     expect(snap.visibleSessions.map((s) => s.sessionId).toList(), ['s1']);
     expect(snap.visibleProjects.map((p) => p.projectId).toList(), ['p1']);
   });
+
+  test('team scope with empty team id shows personal sessions and projects',
+      () {
+    final store = SessionDataStore()
+      ..setScope(scopeSessionsToSelectedTeam: true, selectedTeamId: '');
+    final projects = [
+      AppProject(projectId: 'personal', primaryPath: '/p', createdAt: 0),
+      AppProject(
+        projectId: 'team',
+        primaryPath: '/t',
+        teamId: 't1',
+        createdAt: 0,
+      ),
+    ];
+    final sessions = [
+      AppSession(
+        sessionId: 'solo',
+        projectId: 'personal',
+        primaryPath: '/p',
+        sessionTeam: '',
+        createdAt: 0,
+      ),
+      AppSession(
+        sessionId: 'team',
+        projectId: 'team',
+        primaryPath: '/t',
+        sessionTeam: 't1',
+        createdAt: 0,
+      ),
+    ];
+    final snap = store.deriveSnapshot(projects: projects, sessions: sessions);
+    expect(snap.visibleSessions.map((s) => s.sessionId).toList(), ['solo']);
+    expect(snap.visibleProjects.map((p) => p.projectId).toList(), ['personal']);
+  });
 }

@@ -5,7 +5,7 @@ import 'package:path/path.dart' as p;
 
 import '../../models/team_config.dart';
 import '../cli/cli_tool_adapter.dart';
-import '../cli/registry/built_in_cli_tools.dart';
+import 'shell_launch_spec.dart';
 import '../cli/registry/capabilities/launch_args_capability.dart';
 import '../cli/registry/cli_tool_registry.dart';
 import '../cli/cli_invocation.dart';
@@ -76,16 +76,7 @@ class LaunchCommandBuilder {
     bool useWslPaths = false,
     CliToolRegistry? cliRegistry,
   }) {
-    final registry = cliRegistry ?? _defaultCliRegistry;
-    final launch = registry.capability<LaunchArgsCapability>(
-      member.cliWithin(team),
-    );
-    if (launch == null) {
-      throw StateError(
-        'No LaunchArgsCapability for ${member.cliWithin(team).value}',
-      );
-    }
-    return launch.buildArguments(
+    return buildArgumentsFromContext(
       CliLaunchContext(
         team: team,
         member: member,
@@ -98,6 +89,44 @@ class LaunchCommandBuilder {
         appendSystemPromptFile: appendSystemPromptFile,
         useWslPaths: useWslPaths,
       ),
+      cliRegistry: cliRegistry,
+    );
+  }
+
+  static List<String> buildArgumentsFromContext(
+    CliLaunchContext context, {
+    CliToolRegistry? cliRegistry,
+  }) {
+    final registry = cliRegistry ?? _defaultCliRegistry;
+    final cli = context.member.cliWithin(context.team);
+    final launch = registry.capability<LaunchArgsCapability>(cli);
+    if (launch == null) {
+      throw StateError('No LaunchArgsCapability for ${cli.value}');
+    }
+    return launch.buildArguments(context);
+  }
+
+  /// CLI argv for [TerminalSession.connect] after env normalization.
+  static List<String> buildShellArguments(
+    ShellLaunchSpec spec, {
+    String? fixedSessionId,
+    String? resumeSessionId,
+    Map<String, String>? environment,
+    bool useWslPaths = false,
+    CliToolRegistry? cliRegistry,
+  }) {
+    return buildArgumentsFromContext(
+      spec.launchContext.copyWith(
+        sessionTeam: spec.sessionTeam,
+        fixedSessionId: fixedSessionId,
+        resumeSessionId: resumeSessionId,
+        settingsPath: settingsPathFromEnvironment(environment),
+        appendSystemPromptFile: appendSystemPromptFileFromEnvironment(
+          environment,
+        ),
+        useWslPaths: useWslPaths,
+      ),
+      cliRegistry: cliRegistry,
     );
   }
 

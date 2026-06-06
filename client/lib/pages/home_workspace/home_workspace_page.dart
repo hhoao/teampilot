@@ -9,7 +9,11 @@ import 'home_workspace_content.dart';
 import 'home_workspace_global_section.dart';
 import 'home_workspace_library_section.dart';
 import 'home_workspace_library_view.dart';
+import 'home_workspace_personal_content.dart';
 import 'home_workspace_sidebar.dart';
+
+/// Which primary pane [HomeWorkspacePage] shows in the right column.
+enum HomeWorkspaceScope { personal, team }
 
 /// New Apifox-style workspace home body (teams rail + right pane). The window
 /// chrome (title bar + open project tabs) is provided by [HomeWorkspaceShell].
@@ -34,6 +38,8 @@ class HomeWorkspacePage extends StatefulWidget {
 }
 
 class _HomeWorkspacePageState extends State<HomeWorkspacePage> {
+  HomeWorkspaceScope _scope = HomeWorkspaceScope.team;
+
   /// Null means the team view; otherwise a global management section.
   HomeWorkspaceGlobalView? _globalView;
 
@@ -48,7 +54,11 @@ class _HomeWorkspacePageState extends State<HomeWorkspacePage> {
     final libraryView = _libraryView;
     final teamId = context.watch<TeamCubit>().state.selectedTeam?.id ?? 'none';
     final paneKey = ValueKey(
-      globalView?.name ?? libraryView?.name ?? 'team-$teamId',
+      globalView?.name ??
+          libraryView?.name ??
+          (_scope == HomeWorkspaceScope.personal
+              ? 'personal'
+              : 'team-$teamId'),
     );
 
     final body = Row(
@@ -57,17 +67,29 @@ class _HomeWorkspacePageState extends State<HomeWorkspacePage> {
         HomeWorkspaceSidebar(
           activeGlobalView: globalView,
           activeLibraryView: libraryView,
+          personalActive:
+              _scope == HomeWorkspaceScope.personal &&
+              globalView == null &&
+              libraryView == null,
+          onSelectPersonal: () => setState(() {
+            _scope = HomeWorkspaceScope.personal;
+            _globalView = null;
+            _libraryView = null;
+          }),
           onSelectGlobalView: (view) => setState(() {
+            _scope = HomeWorkspaceScope.team;
             _globalView = view;
             _libraryView = null;
           }),
           onSelectLibraryView: (view) => setState(() {
+            _scope = HomeWorkspaceScope.team;
             _libraryView = view;
             _globalView = null;
           }),
           onSelectTeam: (teamId) {
             context.read<TeamCubit>().selectTeam(teamId);
             setState(() {
+              _scope = HomeWorkspaceScope.team;
               _globalView = null;
               _libraryView = null;
             });
@@ -80,6 +102,8 @@ class _HomeWorkspacePageState extends State<HomeWorkspacePage> {
                     ? HomeWorkspaceGlobalSection(view: globalView)
                     : libraryView != null
                     ? HomeWorkspaceLibrarySection(view: libraryView)
+                    : _scope == HomeWorkspaceScope.personal
+                    ? const HomeWorkspacePersonalContent()
                     : HomeWorkspaceContent(
                         initialSection: widget.initialSection,
                         initialMemberId: widget.initialMemberId,

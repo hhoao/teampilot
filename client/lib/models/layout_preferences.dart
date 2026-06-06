@@ -7,16 +7,9 @@ enum ToolPanelPlacement { right, bottom }
 
 enum ToolsArrangement { stacked, tabs }
 
-/// Which view the app lands on at startup.
-///
-/// * [home] — the workspace home (`/home-v2`).
-/// * [hub] — the workspace hub shell landing.
-enum WorkspaceEntryMode { home, hub }
-
 class LayoutPreferences {
   const LayoutPreferences({
     this.preset = LayoutPreset.workbench,
-    this.workspaceEntryMode = WorkspaceEntryMode.home,
     this.toolPlacement = ToolPanelPlacement.right,
     this.toolsArrangement = ToolsArrangement.tabs,
     this.appRailVisible = true,
@@ -47,9 +40,6 @@ class LayoutPreferences {
       preset:
           _enumValue(LayoutPreset.values, json['preset']) ??
           LayoutPreset.workbench,
-      workspaceEntryMode:
-          _enumValue(WorkspaceEntryMode.values, json['workspaceEntryMode']) ??
-          WorkspaceEntryMode.home,
       toolPlacement:
           _enumValue(ToolPanelPlacement.values, json['toolPlacement']) ??
           ToolPanelPlacement.right,
@@ -145,7 +135,6 @@ class LayoutPreferences {
   static const minWorkspaceHubContentWidth = 480.0;
 
   final LayoutPreset preset;
-  final WorkspaceEntryMode workspaceEntryMode;
   final ToolPanelPlacement toolPlacement;
   final ToolsArrangement toolsArrangement;
   final bool appRailVisible;
@@ -171,7 +160,6 @@ class LayoutPreferences {
 
   LayoutPreferences copyWith({
     LayoutPreset? preset,
-    WorkspaceEntryMode? workspaceEntryMode,
     ToolPanelPlacement? toolPlacement,
     ToolsArrangement? toolsArrangement,
     bool? appRailVisible,
@@ -197,7 +185,6 @@ class LayoutPreferences {
   }) {
     return LayoutPreferences(
       preset: preset ?? this.preset,
-      workspaceEntryMode: workspaceEntryMode ?? this.workspaceEntryMode,
       toolPlacement: toolPlacement ?? this.toolPlacement,
       toolsArrangement: toolsArrangement ?? this.toolsArrangement,
       appRailVisible: appRailVisible ?? this.appRailVisible,
@@ -257,7 +244,6 @@ class LayoutPreferences {
     }
     return LayoutPreferences(
       preset: preset,
-      workspaceEntryMode: workspaceEntryMode,
       toolPlacement: toolPlacement,
       toolsArrangement: toolsArrangement,
       appRailVisible: appRailVisible,
@@ -287,7 +273,6 @@ class LayoutPreferences {
   Map<String, Object?> toJson() {
     return {
       'preset': preset.name,
-      'workspaceEntryMode': workspaceEntryMode.name,
       'toolPlacement': toolPlacement.name,
       'toolsArrangement': toolsArrangement.name,
       'appRailVisible': appRailVisible,

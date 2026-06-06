@@ -27,6 +27,17 @@ final class CursorConfigProfileCapability implements ConfigProfileCapability {
   Future<ConfigProfileLaunchContribution> contributeLaunch(
     ConfigProfileLaunchContext ctx,
   ) async {
+    final standalone = ctx.standaloneScope;
+    final profile = ctx.profile;
+    if (standalone != null && profile != null) {
+      final paths = ctx.paths;
+      final cursorDir = standaloneSessionToolDir(paths, standalone, toolId);
+      await paths.fs.ensureDir(cursorDir);
+      return ConfigProfileLaunchContribution(
+        environment: CursorLaunchEnvironment.forStandaloneConfigDir(cursorDir),
+      );
+    }
+
     final paths = ctx.paths;
     final cursorDir = paths.sessionToolDir(
       ctx.scope.teamId,

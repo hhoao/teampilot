@@ -1,6 +1,10 @@
 import 'dart:io';
 
+import 'package:teampilot/models/project_profile.dart';
+import 'package:teampilot/services/cli/cli_tool_adapter.dart';
+import 'package:teampilot/services/cli/registry/config_profile/config_profile_context.dart';
 import 'package:teampilot/services/session/launch_command_builder.dart';
+import 'package:teampilot/services/session/shell_launch_spec.dart';
 import 'package:teampilot/services/cli/registry/config_profile/claude_config_profile_capability.dart';
 import 'package:teampilot/services/session/member_role_provision.dart';
 import 'package:teampilot/models/team_config.dart';
@@ -382,5 +386,60 @@ void main() {
     );
     expect(cwd, isNot(startsWith('/')));
     expect(Directory(cwd).existsSync(), isTrue);
+  });
+
+  test('ShellLaunchSpec builds full personal CLI launch args', () {
+    const profile = ProjectProfile(
+      projectId: 'proj-1',
+      cli: CliTool.claude,
+      agent: ProjectAgentConfig(model: 'sonnet', agent: 'builder'),
+      providerIdsByTool: {'claude': 'anthropic'},
+    );
+    const sessionTeam = 'sess-personal-1';
+    final shellLaunch = ShellLaunchSpec(
+      plan: LaunchPlan(
+        env: {
+          ClaudeConfigProfileCapability.settingsFileEnvKey: '/tmp/settings.json',
+        },
+        resume: false,
+        taskId: sessionTeam,
+        cliTeamName: sessionTeam,
+        memberConfigDir: '/tmp/claude',
+        resolvedRoots: const [],
+      ),
+      launchContext: CliLaunchContext(
+        team: standaloneTeamFromProfile(
+          profile,
+          projectId: profile.projectId,
+          sessionTeamName: sessionTeam,
+        ),
+        member: standaloneMemberFromProfile(profile),
+        sessionTeam: sessionTeam,
+        workingDirectory: '/home/dev/project',
+      ),
+      sessionTeam: sessionTeam,
+    );
+
+    expect(
+      LaunchCommandBuilder.buildShellArguments(
+        shellLaunch,
+        fixedSessionId: sessionTeam,
+        environment: shellLaunch.plan.env,
+      ),
+      [
+        '--session-id',
+        sessionTeam,
+        '--team-name',
+        sessionTeam,
+        '--agent-name',
+        'builder',
+        '--agent-id',
+        'builder@$sessionTeam',
+        '--model',
+        'sonnet',
+        '--settings',
+        '/tmp/settings.json',
+      ],
+    );
   });
 }

@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
 
 import '../../cubits/chat_cubit.dart';
 import '../../cubits/team_cubit.dart';
+import '../../models/team_config.dart';
 import '../../l10n/l10n_extensions.dart';
+import '../../repositories/project_profile_repository.dart';
 import '../../repositories/session_repository.dart';
 import '../../theme/app_text_styles.dart';
 import '../../theme/workspace_surface_layers.dart';
@@ -21,7 +24,9 @@ Future<void> showHomeWorkspaceNewProjectDialog(
   BuildContext context, {
   required ChatCubit chatCubit,
   required SessionRepository repository,
-  required TeamCubit teamCubit,
+  TeamCubit? teamCubit,
+  String? sessionTeamId,
+  ProjectProfileRepository? projectProfileRepository,
 }) async {
   final result =
       await showDialog<({List<String> directories, String display})>(
@@ -30,14 +35,28 @@ Future<void> showHomeWorkspaceNewProjectDialog(
     builder: (_) => const HomeWorkspaceNewProjectDialog(),
   );
   if (result == null || !context.mounted || result.directories.isEmpty) return;
-  final team = teamCubit.state.selectedTeam;
+
+  final resolvedTeamId = sessionTeamId ??
+      teamCubit?.state.selectedTeam?.id ??
+      '';
+  final rosterMembers = resolvedTeamId.isEmpty
+      ? const <TeamMemberConfig>[]
+      : teamCubit?.state.selectedTeam?.members ?? const [];
+
+  final profileRepo =
+      projectProfileRepository ??
+      (resolvedTeamId.isEmpty
+          ? context.read<ProjectProfileRepository>()
+          : null);
+
   final projectId = await chatCubit.createProjectWithFirstSession(
     result.directories.first,
     repository,
-    sessionTeamId: team?.id ?? '',
-    rosterMembers: team?.members ?? const [],
+    sessionTeamId: resolvedTeamId,
+    rosterMembers: rosterMembers,
     additionalPaths: result.directories.skip(1).toList(growable: false),
     display: result.display,
+    projectProfileRepository: profileRepo,
   );
   if (!context.mounted) return;
   context.go('/home-v2/project/$projectId');

@@ -7,6 +7,7 @@ import '../models/app_project.dart';
 import '../models/connection_mode.dart';
 import '../models/app_session.dart';
 import '../models/team_config.dart';
+import '../repositories/project_profile_repository.dart';
 import '../repositories/session_repository.dart';
 import '../services/storage/app_storage.dart';
 import '../services/session/session_lifecycle_service.dart';
@@ -223,12 +224,14 @@ class ChatCubit extends Cubit<ChatState>
     SessionRepository repo, {
     String sessionTeamId = '',
     List<TeamMemberConfig> rosterMembers = const [],
+    CliTool? cli,
   }) async {
     final session = await _dataStore.createSession(
       projectId,
       repo,
       sessionTeamId: sessionTeamId,
       rosterMembers: rosterMembers,
+      cli: cli,
     );
     _emitSnapshot(await _dataStore.loadProjectData(repo));
     return session;
@@ -244,6 +247,7 @@ class ChatCubit extends Cubit<ChatState>
     List<TeamMemberConfig> rosterMembers = const [],
     List<String> additionalPaths = const [],
     String display = '',
+    ProjectProfileRepository? projectProfileRepository,
   }) async {
     final result = await _dataStore.createProjectWithFirstSession(
       primaryPath,
@@ -252,6 +256,7 @@ class ChatCubit extends Cubit<ChatState>
       rosterMembers: rosterMembers,
       additionalPaths: additionalPaths,
       display: display,
+      projectProfileRepository: projectProfileRepository,
     );
     _emitSnapshot(result.snapshot);
     return result.projectId;

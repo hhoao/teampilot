@@ -1,0 +1,116 @@
+import 'dart:io';
+
+import 'package:flutter_test/flutter_test.dart';
+import 'package:path/path.dart' as p;
+import 'package:teampilot/models/project_profile.dart';
+import 'package:teampilot/models/team_config.dart';
+import 'package:teampilot/services/cli/cli_data_layout.dart';
+import 'package:teampilot/services/io/local_filesystem.dart';
+import 'package:teampilot/services/cli/registry/config_profile/flashskyai_config_profile_capability.dart';
+import 'package:teampilot/services/provider/config_profile_service.dart';
+import 'package:teampilot/services/storage/runtime_storage_context.dart';
+import 'package:teampilot/services/host/host_execution_environment.dart';
+
+String _standaloneSessionClaudeDir(
+  String base,
+  String projectId,
+  String sessionId,
+) =>
+    p.join(
+      base,
+      'config-profiles',
+      'standalone',
+      'projects',
+      projectId,
+      'sessions',
+      sessionId,
+      'claude',
+    );
+
+void main() {
+  late Directory base;
+  late ConfigProfileService service;
+
+  setUp(() async {
+    base = await Directory.systemTemp.createTemp('cfg_profile_standalone_');
+    final fs = LocalFilesystem();
+    service = ConfigProfileService(
+      basePath: base.path,
+      fs: fs,
+      layout: CliDataLayout(teampilotRoot: base.path, fs: fs),
+      hostEnvironment: HostExecutionEnvironment.resolve(
+        isWindowsHost: false,
+        storageMode: StorageBackendMode.native,
+      ),
+    );
+  });
+
+  tearDown(() async {
+    if (await base.exists()) await base.delete(recursive: true);
+  });
+
+  test(
+    'prepareProjectLaunch for flashskyai sets FLASHSKYAI_CONFIG_DIR under standalone session',
+    () async {
+      const projectId = 'proj-standalone-fs';
+      const sessionId = 'sess-standalone-fs';
+      const profile = ProjectProfile(
+        projectId: projectId,
+        cli: CliTool.flashskyai,
+        agent: ProjectAgentConfig(agent: 'solo'),
+      );
+
+      final outcome = await service.prepareProjectLaunch(
+        projectId: projectId,
+        sessionId: sessionId,
+        profile: profile,
+        workingDirectory: '/workspace/personal',
+      );
+
+      final flashskyaiDir = p.join(
+        base.path,
+        'config-profiles',
+        'standalone',
+        'projects',
+        projectId,
+        'sessions',
+        sessionId,
+        'flashskyai',
+      );
+      expect(await Directory(flashskyaiDir).exists(), isTrue);
+      expect(
+        outcome.environment[FlashskyaiConfigProfileCapability.configDirEnvKey],
+        flashskyaiDir,
+      );
+      expect(outcome.warnings, isEmpty);
+    },
+  );
+
+  test(
+    'prepareProjectLaunch for claude sets CLAUDE_CONFIG_DIR under standalone session',
+    () async {
+      const projectId = 'proj-standalone';
+      const sessionId = 'sess-standalone';
+      const profile = ProjectProfile(
+        projectId: projectId,
+        cli: CliTool.claude,
+      );
+
+      final outcome = await service.prepareProjectLaunch(
+        projectId: projectId,
+        sessionId: sessionId,
+        profile: profile,
+        workingDirectory: '/workspace/personal',
+      );
+
+      final claudeDir = _standaloneSessionClaudeDir(
+        base.path,
+        projectId,
+        sessionId,
+      );
+      expect(await Directory(claudeDir).exists(), isTrue);
+      expect(outcome.environment['CLAUDE_CONFIG_DIR'], claudeDir);
+      expect(outcome.warnings, isEmpty);
+    },
+  );
+}

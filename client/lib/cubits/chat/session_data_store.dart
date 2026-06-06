@@ -2,7 +2,8 @@ import 'package:equatable/equatable.dart';
 
 import '../../models/app_project.dart';
 import '../../models/app_session.dart';
-import '../../models/team_config.dart';
+import '../../models/team_config.dart' show CliTool, TeamMemberConfig;
+import '../../repositories/project_profile_repository.dart';
 import '../../repositories/session_repository.dart';
 import '../../utils/project_path_utils.dart';
 
@@ -49,14 +50,18 @@ class SessionDataStore {
   List<AppSession> _computeVisibleSessions(List<AppSession> all) {
     if (!_scopeSessionsToSelectedTeam) return all;
     final tid = _selectedTeamId;
-    if (tid == null || tid.isEmpty) return [];
+    if (tid == null || tid.isEmpty) {
+      return all.where((s) => s.sessionTeam.isEmpty).toList();
+    }
     return all.where((s) => s.sessionTeam == tid).toList();
   }
 
   List<AppProject> _computeVisibleProjects(List<AppProject> all) {
     if (!_scopeSessionsToSelectedTeam) return all;
     final tid = _selectedTeamId;
-    if (tid == null || tid.isEmpty) return [];
+    if (tid == null || tid.isEmpty) {
+      return all.where((p) => p.teamId.isEmpty).toList();
+    }
     return all.where((p) => p.teamId == tid).toList();
   }
 
@@ -85,11 +90,13 @@ class SessionDataStore {
     SessionRepository repo, {
     String sessionTeamId = '',
     List<TeamMemberConfig> rosterMembers = const [],
+    CliTool? cli,
   }) {
     return repo.createSession(
       projectId,
       sessionTeam: sessionTeamId,
       rosterMembers: rosterMembers,
+      cli: cli,
     );
   }
 
@@ -101,6 +108,7 @@ class SessionDataStore {
     List<TeamMemberConfig> rosterMembers = const [],
     List<String> additionalPaths = const [],
     String display = '',
+    ProjectProfileRepository? projectProfileRepository,
   }) async {
     final project = await repo.createProject(
       primaryPath,
@@ -108,6 +116,12 @@ class SessionDataStore {
       additionalPaths: additionalPaths,
       display: display,
     );
+    if (sessionTeamId.trim().isEmpty && projectProfileRepository != null) {
+      final profile = await projectProfileRepository.createDefault(
+        project.projectId,
+      );
+      await projectProfileRepository.save(profile);
+    }
     await repo.createSession(
       project.projectId,
       sessionTeam: sessionTeamId,

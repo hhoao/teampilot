@@ -28,12 +28,16 @@ class RightToolsPanel extends StatefulWidget {
     this.preferences = const LayoutPreferences(),
     this.panelKey = AppKeys.rightToolsPanel,
     this.dismissDrawerOnAction = false,
+    this.isPersonalProject = false,
     super.key,
   });
 
   final LayoutPreferences preferences;
   final Key panelKey;
   final bool dismissDrawerOnAction;
+
+  /// Solo project workbench — hide team members / mailbox tooling.
+  final bool isPersonalProject;
 
   /// Working directory the file tree / git panel operate on. Supplied by the
   /// caller (the project context), decoupling the tools from chat-session tab
@@ -75,7 +79,7 @@ class _RightToolsPanelState extends State<RightToolsPanel> {
     final chatCubit = context.watch<ChatCubit>();
     final team = teamCubit.state.selectedTeam;
     final teamId = team?.id;
-    if (teamId != _syncedPresenceTeamId) {
+    if (!widget.isPersonalProject && teamId != _syncedPresenceTeamId) {
       _syncedPresenceTeamId = teamId;
       final presenceCubit = _presenceCubit;
       final teamSnapshot = team;
@@ -83,14 +87,18 @@ class _RightToolsPanelState extends State<RightToolsPanel> {
         presenceCubit?.syncPresenceTeam(teamSnapshot);
       });
     }
-    if (team == null) return const SizedBox.shrink();
+    if (!widget.isPersonalProject && team == null) {
+      return const SizedBox.shrink();
+    }
 
-    final members = [...team.members]
-      ..sort((a, b) {
-        if (TeamMemberNaming.isTeamLead(a)) return -1;
-        if (TeamMemberNaming.isTeamLead(b)) return 1;
-        return a.name.compareTo(b.name);
-      });
+    final members = team == null
+        ? const <TeamMemberConfig>[]
+        : ([...team.members]
+            ..sort((a, b) {
+              if (TeamMemberNaming.isTeamLead(a)) return -1;
+              if (TeamMemberNaming.isTeamLead(b)) return 1;
+              return a.name.compareTo(b.name);
+            }));
     void maybeDismissDrawer() {
       if (widget.dismissDrawerOnAction) {
         Navigator.of(context).maybePop();
@@ -101,12 +109,16 @@ class _RightToolsPanelState extends State<RightToolsPanel> {
     // absent (e.g. lightweight test harnesses) rather than crashing the shell.
     final mailboxCubit = context.watch<MailboxCubit?>();
     final mailboxState = mailboxCubit?.state ?? const MailboxState();
-    final showMailbox = mailboxCubit != null &&
+    final showMailbox = !widget.isPersonalProject &&
+        team != null &&
+        mailboxCubit != null &&
         team.teamMode == TeamMode.mixed &&
         chatCubit.activeTab?.teamBus != null;
 
     final views = <ToolView>[
-      if (widget.preferences.membersVisible)
+      if (!widget.isPersonalProject &&
+          widget.preferences.membersVisible &&
+          team != null)
         ToolView(
           icon: Icons.groups_outlined,
           label: context.l10n.members,
@@ -146,7 +158,7 @@ class _RightToolsPanelState extends State<RightToolsPanel> {
         ToolView(
           icon: Icons.folder_outlined,
           label: context.l10n.fileTree,
-          child: FileTreePanel(team: team, cwd: widget.cwd),
+          child: FileTreePanel(cwd: widget.cwd),
         ),
       if (widget.preferences.gitVisible)
         ToolView(

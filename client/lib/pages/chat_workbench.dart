@@ -9,6 +9,7 @@ import '../cubits/editor_cubit.dart';
 import '../cubits/layout_cubit.dart';
 import '../cubits/team_cubit.dart';
 import '../l10n/l10n_extensions.dart';
+import '../models/app_session.dart';
 import '../models/team_config.dart';
 import '../repositories/session_repository.dart';
 import '../services/terminal/terminal_session.dart';
@@ -19,9 +20,14 @@ import 'chat/chat_workbench_placeholders.dart';
 import 'chat/chat_workbench_terminal.dart';
 
 class ChatWorkbench extends StatefulWidget {
-  const ChatWorkbench({this.sessionId, super.key});
+  const ChatWorkbench({
+    this.sessionId,
+    this.isPersonalProject = false,
+    super.key,
+  });
 
   final String? sessionId;
+  final bool isPersonalProject;
 
   @override
   State<ChatWorkbench> createState() => _ChatWorkbenchState();
@@ -153,6 +159,31 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
     if (mounted) setState(() {});
   }
 
+  Future<void> _reconnectPersonalSession() async {
+    final chatCubit = _chatCubit;
+    final repo = _sessionRepo;
+    if (chatCubit == null || repo == null) return;
+    final sessionId = chatCubit.state.activeSessionId;
+    if (sessionId == null) return;
+    AppSession? session;
+    for (final s in chatCubit.state.sessions) {
+      if (s.sessionId == sessionId) {
+        session = s;
+        break;
+      }
+    }
+    if (session == null) return;
+    chatCubit.disconnectSession();
+    await chatCubit.openSessionTab(
+      session,
+      team: null,
+      member: null,
+      repo: repo,
+      emptyDisplayTitleFallback: context.l10n.defaultNewChatSessionTitle,
+    );
+    if (mounted) setState(() {});
+  }
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
@@ -170,8 +201,9 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
     final chatCubit = context.watch<ChatCubit>();
     final team = teamCubit.state.selectedTeam;
     final sessionConnectInProgress = chatCubit.state.isActiveSessionConnecting;
+    final isPersonal = widget.isPersonalProject;
 
-    if (team == null) {
+    if (!isPersonal && team == null) {
       return const Center(child: CircularProgressIndicator());
     }
 
@@ -191,9 +223,15 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
                     message: context.l10n.sessionStarting,
                   )
                 : ChatWorkbenchTerminalPlaceholder(
-                    onConnect: () => unawaited(_connectSession(team)),
+                    onConnect: () => unawaited(
+                      isPersonal
+                          ? _reconnectPersonalSession()
+                          : _connectSession(team!),
+                    ),
                     connectDisabled: sessionConnectInProgress,
-                    memberName: chatCubit.selectedMemberName(team),
+                    memberName: isPersonal
+                        ? context.l10n.homeWorkspaceProjectAgent
+                        : chatCubit.selectedMemberName(team!),
                     launchError: chatCubit.activeLaunchError,
                   ),
           ),
@@ -201,7 +239,9 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
       );
     }
 
-    final session = chatCubit.ensureSession(team) ?? chatCubit.currentSession;
+    final session = isPersonal
+        ? chatCubit.currentSession
+        : (chatCubit.ensureSession(team!) ?? chatCubit.currentSession);
     if (session == null) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -241,15 +281,25 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
                       setState(() {});
                     },
                     onRestart: () async {
-                      await chatCubit.restartSession(team);
+                      if (isPersonal) {
+                        await _reconnectPersonalSession();
+                      } else {
+                        await chatCubit.restartSession(team!);
+                      }
                       if (mounted) setState(() {});
                     },
                   );
                 }()
               : ChatWorkbenchTerminalPlaceholder(
-                  onConnect: () => unawaited(_connectSession(team)),
+                  onConnect: () => unawaited(
+                    isPersonal
+                        ? _reconnectPersonalSession()
+                        : _connectSession(team!),
+                  ),
                   connectDisabled: sessionConnectInProgress,
-                  memberName: chatCubit.selectedMemberName(team),
+                  memberName: isPersonal
+                      ? context.l10n.homeWorkspaceProjectAgent
+                      : chatCubit.selectedMemberName(team!),
                   launchError: chatCubit.activeLaunchError,
                 ),
         ),

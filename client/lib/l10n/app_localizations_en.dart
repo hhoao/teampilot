@@ -267,23 +267,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get appearance => 'Appearance';
 
   @override
-  String get appearancePageSubtitle =>
-      'Interface appearance and the view shown on startup.';
-
-  @override
-  String get workspaceEntryModeTitle => 'Startup view';
-
-  @override
-  String get workspaceEntryModeDescription =>
-      'Where the app opens after launch.';
-
-  @override
-  String get workspaceEntryModeHome => 'Home';
-
-  @override
-  String get workspaceEntryModeHub => 'Workspace';
-
-  @override
   String get theme => 'Theme';
 
   @override
@@ -495,6 +478,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homeWorkspaceRecentVisits => 'Recent';
 
   @override
+  String get homeWorkspacePersonal => 'Personal workspace';
+
+  @override
+  String get homeWorkspacePersonalSubtitle =>
+      'Solo projects with project-scoped agent, skills, and plugins.';
+
+  @override
   String get homeWorkspaceNoData => 'No data yet';
 
   @override
@@ -603,7 +593,34 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homeWorkspaceCloseProjectConfirm => 'Close & end sessions';
 
   @override
+  String get homeWorkspaceProjectManagement => 'Project management';
+
+  @override
+  String get homeWorkspaceProjectList => 'Projects';
+
+  @override
   String get homeWorkspaceConversations => 'Conversations';
+
+  @override
+  String get homeWorkspaceConversationsSection => 'Conversations';
+
+  @override
+  String get homeWorkspaceProjectAgent => 'Agent';
+
+  @override
+  String get homeWorkspaceProjectSkills => 'Skills';
+
+  @override
+  String get homeWorkspaceProjectPlugins => 'Plugins';
+
+  @override
+  String get homeWorkspaceProjectMcp => 'MCP';
+
+  @override
+  String get homeWorkspaceProjectExtensions => 'Extensions';
+
+  @override
+  String get homeWorkspaceTeamConfig => 'Team config';
 
   @override
   String get homeWorkspaceProjectSettings => 'Project settings';
@@ -641,6 +658,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get homeWorkspaceNewConversation => 'New Conversation';
+
+  @override
+  String get homeWorkspaceNewConversationChooseCli =>
+      'New conversation with CLI…';
 
   @override
   String get homeWorkspaceNoConversations =>

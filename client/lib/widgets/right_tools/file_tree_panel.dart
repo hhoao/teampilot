@@ -8,7 +8,6 @@ import '../../cubits/editor_cubit.dart';
 import '../../cubits/file_tree_cubit.dart';
 import '../../cubits/layout_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
-import '../../models/team_config.dart';
 import '../../services/file_tree/file_tree_visible_rows.dart';
 import '../../services/storage/app_storage.dart';
 import '../../theme/app_icon_sizes.dart';
@@ -21,12 +20,10 @@ import 'file_tree_header_overflow_menu.dart';
 /// Project file tree panel.
 class FileTreePanel extends StatefulWidget {
   const FileTreePanel({
-    required this.team,
     required this.cwd,
     super.key,
   });
 
-  final TeamConfig team;
   final String cwd;
 
   @override

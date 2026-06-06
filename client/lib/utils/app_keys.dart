@@ -42,9 +42,6 @@ class AppKeys {
     'config-members-section-button',
   );
   static const configLayoutSectionButton = Key('config-layout-section-button');
-  static const configAppearanceSectionButton = Key(
-    'config-appearance-section-button',
-  );
   static const homeWorkspaceProvidersButton = Key(
     'home-workspace-providers-button',
   );
@@ -61,7 +58,9 @@ class AppKeys {
   static const aboutCheckUpdatesButton = Key('about-check-updates-button');
   static const aboutViewReleasesButton = Key('about-view-releases-button');
   static const aboutGitHubButton = Key('about-github-button');
-  static const aboutDownloadInstallButton = Key('about-download-install-button');
+  static const aboutDownloadInstallButton = Key(
+    'about-download-install-button',
+  );
   static const cliExecutablePathField = Key('cli-executable-path-field');
   static const cliExecutablePathBrowseButton = Key(
     'cli-executable-path-browse-button',
@@ -112,6 +111,11 @@ class AppKeys {
     'llm-config-open-session-settings-button',
   );
   static const newChatSidebarTile = Key('new-chat-sidebar-tile');
+  static const newChatCliMenuButton = Key('new-chat-cli-menu-button');
+  static const homeWorkspaceProjectManagementTile = Key(
+    'home-workspace-project-management-tile',
+  );
+  static const projectConfigWorkspace = Key('project-config-workspace');
   static const teamConfigHub = Key('team-config-hub');
   static const teamConfigWorkspace = Key('team-config-workspace');
   static const skillsHub = Key('skills-hub');
@@ -146,7 +150,9 @@ class AppKeys {
   static const openTeamLeadButton = Key('open-team-lead-button');
   static const openTeamButton = Key('open-team-button');
   static const openRightToolsButton = Key('open-right-tools-button');
-  static const rightToolsVisibilityButton = Key('right-tools-visibility-button');
+  static const rightToolsVisibilityButton = Key(
+    'right-tools-visibility-button',
+  );
 
   static const teamNameField = Key('team-name-field');
   static const teamNameDialogField = Key('team-name-dialog-field');

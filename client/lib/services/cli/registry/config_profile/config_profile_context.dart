@@ -1,12 +1,88 @@
 import 'package:path/path.dart' as p;
 
 import '../../cli_data_layout.dart';
+import '../../../../models/project_profile.dart';
 import '../../../../models/team_config.dart';
+import '../../../../utils/team_member_naming.dart';
 import '../../../io/filesystem.dart';
 import '../../../host/host_execution_environment.dart';
 import 'config_profile_scope.dart';
 
 export 'config_profile_scope.dart';
+
+/// Personal project PTY CONFIG_DIR for [tool].
+String standaloneSessionToolDir(
+  ConfigProfilePaths paths,
+  StandaloneLaunchProfileScope scope,
+  String tool,
+) =>
+    paths.layout.standaloneProjectSessionToolDir(
+      scope.projectId,
+      scope.sessionId,
+      tool,
+    );
+
+/// [LaunchProfileScope] for personal sessions (path keys only; use
+/// [standaloneSessionToolDir] for CONFIG_DIR).
+LaunchProfileScope launchScopeForStandalone(StandaloneLaunchProfileScope scope) =>
+    LaunchProfileScope(
+      teamId: scope.projectId,
+      sessionId: scope.sessionId,
+      cliTeamName: scope.sessionId,
+    );
+
+String standaloneProviderId(ProjectProfile profile) {
+  final fromMap = profile.providerIdsByTool[profile.cli.value]?.trim() ?? '';
+  if (fromMap.isNotEmpty) return fromMap;
+  return profile.agent.provider.trim();
+}
+
+/// Minimal [TeamConfig] for personal / standalone PTY launch args.
+TeamConfig standaloneTeamFromProfile(
+  ProjectProfile profile, {
+  required String projectId,
+  required String sessionTeamName,
+}) {
+  final member = standaloneMemberFromProfile(profile);
+  return TeamConfig(
+    id: projectId.trim(),
+    name: sessionTeamName.trim(),
+    cli: profile.cli,
+    members: [member],
+    skillIds: profile.skillIds,
+    pluginIds: profile.pluginIds,
+    mcpServerIds: profile.mcpServerIds,
+    providerIdsByTool: profile.providerIdsByTool,
+    teamMode: TeamMode.native,
+    forceTeamLeadDelegateMode: false,
+  );
+}
+
+/// Single-agent stand-in from [ProjectProfile.agent] for standalone launch.
+TeamMemberConfig standaloneMemberFromProfile(ProjectProfile profile) {
+  final agent = profile.agent;
+  final name = _standaloneMemberDisplayName(agent);
+  return TeamMemberConfig(
+    id: TeamMemberNaming.slugMemberName(name),
+    name: name,
+    provider: standaloneProviderId(profile),
+    model: agent.model,
+    agent: agent.agent,
+    agentType: agent.agentType,
+    extraArgs: agent.extraArgs,
+    prompt: agent.prompt,
+    dangerouslySkipPermissions: agent.dangerouslySkipPermissions,
+    cli: profile.cli,
+  );
+}
+
+String _standaloneMemberDisplayName(ProjectAgentConfig agent) {
+  final fromAgent = agent.agent.trim();
+  if (fromAgent.isNotEmpty) return fromAgent;
+  final fromType = agent.agentType.trim();
+  if (fromType.isNotEmpty) return fromType;
+  return 'agent';
+}
 
 /// Path facade for [ConfigProfileCapability] implementations.
 abstract interface class ConfigProfilePaths {
@@ -51,11 +127,13 @@ abstract interface class ConfigProfileDelegate implements ConfigProfilePaths {
     String? memberToolDir,
     required String tool,
     String? teamId,
+    String? projectId,
   });
 
   Future<bool> hasEnabledExtensionSettingsHooks(
     String tool, {
     String? teamId,
+    String? projectId,
   });
 
   Future<Map<String, Object?>> applyExtensionSettings(
@@ -63,6 +141,7 @@ abstract interface class ConfigProfileDelegate implements ConfigProfilePaths {
     String? memberToolDir, {
     required String tool,
     String? teamId,
+    String? projectId,
   });
 
   Future<Map<String, Object?>> maybeApplyTeamLeadHooks(
@@ -88,6 +167,8 @@ class ConfigProfileSessionContext {
     required this.members,
     required this.paths,
     this.team,
+    this.standaloneScope,
+    this.profile,
   });
 
   final String teamId;
@@ -95,6 +176,8 @@ class ConfigProfileSessionContext {
   final List<TeamMemberConfig> members;
   final ConfigProfileDelegate paths;
   final TeamConfig? team;
+  final StandaloneLaunchProfileScope? standaloneScope;
+  final ProjectProfile? profile;
 }
 
 class ConfigProfileLaunchContext {
@@ -110,6 +193,8 @@ class ConfigProfileLaunchContext {
     required this.paths,
     this.leadSessionId,
     this.busIdleUrl,
+    this.standaloneScope,
+    this.profile,
   });
 
   final String teamId;
@@ -123,4 +208,6 @@ class ConfigProfileLaunchContext {
   final ConfigProfileDelegate paths;
   final String? leadSessionId;
   final String? busIdleUrl;
+  final StandaloneLaunchProfileScope? standaloneScope;
+  final ProjectProfile? profile;
 }

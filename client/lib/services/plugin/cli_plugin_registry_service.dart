@@ -1,5 +1,6 @@
 import 'dart:convert';
 import '../../models/plugin.dart';
+import '../../models/project_profile.dart';
 import '../../models/team_config.dart';
 import '../storage/app_storage.dart';
 import '../cli/cli_data_layout.dart';
@@ -46,18 +47,60 @@ class CliPluginRegistryService {
     List<Plugin>? installedCatalog,
     String? memberProvisionJson,
   }) async {
+    await _writePluginRegistry(
+      configDir: _layout.memberToolDir(teamId, sessionId, tool.value),
+      memberPluginsDir:
+          _layout.memberPluginsDir(teamId, sessionId, tool.value),
+      tool: tool,
+      enabledIds: team?.pluginIds ?? const <String>[],
+      installedCatalog: installedCatalog,
+      memberProvisionJson: memberProvisionJson,
+    );
+  }
+
+  /// Registers plugins for a standalone personal project session CONFIG_DIR.
+  Future<void> writeForStandaloneSession({
+    required String projectId,
+    required String sessionId,
+    required CliTool tool,
+    ProjectProfile? profile,
+    List<Plugin>? installedCatalog,
+    String? memberProvisionJson,
+  }) async {
+    await _writePluginRegistry(
+      configDir: _layout.standaloneProjectSessionToolDir(
+        projectId,
+        sessionId,
+        tool.value,
+      ),
+      memberPluginsDir: _layout.standaloneProjectSessionPluginsDir(
+        projectId,
+        sessionId,
+        tool.value,
+      ),
+      tool: tool,
+      enabledIds: profile?.pluginIds ?? const <String>[],
+      installedCatalog: installedCatalog,
+      memberProvisionJson: memberProvisionJson,
+    );
+  }
+
+  Future<void> _writePluginRegistry({
+    required String configDir,
+    required String memberPluginsDir,
+    required CliTool tool,
+    required List<String> enabledIds,
+    List<Plugin>? installedCatalog,
+    String? memberProvisionJson,
+  }) async {
     final manifestCap = _cliRegistry.capability<PluginManifestCapability>(tool);
     final paths = manifestCap?.paths;
     if (manifestCap?.supportsPluginRegistry != true || paths == null) return;
 
-    final configDir = _layout.memberToolDir(teamId, sessionId, tool.value);
-    final memberPluginsDir =
-        _layout.memberPluginsDir(teamId, sessionId, tool.value);
     final pluginsStat = await fs.stat(memberPluginsDir);
     if (!pluginsStat.isDirectory) return;
 
     final catalog = installedCatalog ?? await _loadInstalledCatalog();
-    final enabledIds = team?.pluginIds ?? const <String>[];
     final enabledById = {
       for (final p in catalog)
         if (enabledIds.isEmpty || enabledIds.contains(p.id)) p.id: p,

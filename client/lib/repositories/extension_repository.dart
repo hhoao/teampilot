@@ -60,6 +60,9 @@ class ExtensionRepository {
   Future<void> setTeamOverride(String teamId, String id, bool? value) async =>
       save((await load()).withTeamOverride(teamId, id, value));
 
+  Future<void> setProjectOverride(String projectId, String id, bool? value) async =>
+      save((await load()).withProjectOverride(projectId, id, value));
+
   Future<void> recordInstalled(String id, String version) async => save(
         (await load()).withInstalled(
           id,
@@ -80,6 +83,15 @@ class ExtensionRepository {
     return {
       for (final manifest in _manifests)
         if (state.effectiveEnabled(teamId, manifest.id)) manifest.id,
+    };
+  }
+
+  /// Known extension ids effectively enabled for a personal [projectId].
+  Future<Set<String>> effectiveEnabledIdsForProject(String projectId) async {
+    final state = await load();
+    return {
+      for (final manifest in _manifests)
+        if (state.effectiveEnabledForProject(projectId, manifest.id)) manifest.id,
     };
   }
 }

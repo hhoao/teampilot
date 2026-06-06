@@ -26,21 +26,30 @@ class InstalledExtension {
 
 /// Persistent extension install + enablement state.
 ///
-/// Enablement model: app-level [globalEnabled] is the default; [teamOverrides]
-/// per `(teamId, extensionId)` win when present.
+/// Enablement model: app-level [globalEnabled] is the default;
+/// [teamOverrides] per `(teamId, extensionId)` and [projectOverrides] per
+/// `(projectId, extensionId)` win when present.
 class ExtensionState {
   const ExtensionState({
     this.installed = const {},
     this.globalEnabled = const {},
     this.teamOverrides = const {},
+    this.projectOverrides = const {},
   });
 
   final Map<String, InstalledExtension> installed;
   final Set<String> globalEnabled;
   final Map<String, Map<String, bool>> teamOverrides;
+  final Map<String, Map<String, bool>> projectOverrides;
 
   bool effectiveEnabled(String teamId, String extensionId) {
     final override = teamOverrides[teamId]?[extensionId];
+    if (override != null) return override;
+    return globalEnabled.contains(extensionId);
+  }
+
+  bool effectiveEnabledForProject(String projectId, String extensionId) {
+    final override = projectOverrides[projectId]?[extensionId];
     if (override != null) return override;
     return globalEnabled.contains(extensionId);
   }
@@ -71,6 +80,22 @@ class ExtensionState {
     return _copy(teamOverrides: next);
   }
 
+  /// [value] null clears the override (fall back to global).
+  ExtensionState withProjectOverride(String projectId, String id, bool? value) {
+    final next = {
+      for (final entry in projectOverrides.entries)
+        entry.key: Map<String, bool>.from(entry.value),
+    };
+    final project = next.putIfAbsent(projectId, () => <String, bool>{});
+    if (value == null) {
+      project.remove(id);
+    } else {
+      project[id] = value;
+    }
+    if (project.isEmpty) next.remove(projectId);
+    return _copy(projectOverrides: next);
+  }
+
   ExtensionState withInstalled(String id, String version, int installedAt) {
     final next = Map<String, InstalledExtension>.from(installed);
     next[id] = InstalledExtension(id: id, version: version, installedAt: installedAt);
@@ -86,11 +111,13 @@ class ExtensionState {
     Map<String, InstalledExtension>? installed,
     Set<String>? globalEnabled,
     Map<String, Map<String, bool>>? teamOverrides,
+    Map<String, Map<String, bool>>? projectOverrides,
   }) =>
       ExtensionState(
         installed: installed ?? this.installed,
         globalEnabled: globalEnabled ?? this.globalEnabled,
         teamOverrides: teamOverrides ?? this.teamOverrides,
+        projectOverrides: projectOverrides ?? this.projectOverrides,
       );
 
   Map<String, Object?> toJson() => {
@@ -102,12 +129,17 @@ class ExtensionState {
           for (final entry in teamOverrides.entries)
             entry.key: Map<String, bool>.from(entry.value),
         },
+        'projectOverrides': {
+          for (final entry in projectOverrides.entries)
+            entry.key: Map<String, bool>.from(entry.value),
+        },
       };
 
   factory ExtensionState.fromJson(Map<String, Object?> json) {
     final installedRaw = json['installed'];
     final globalRaw = json['globalEnabled'];
     final overridesRaw = json['teamOverrides'];
+    final projectOverridesRaw = json['projectOverrides'];
     return ExtensionState(
       installed: installedRaw is Map
           ? {
@@ -123,6 +155,16 @@ class ExtensionState {
       teamOverrides: overridesRaw is Map
           ? {
               for (final entry in overridesRaw.entries)
+                entry.key.toString(): {
+                  if (entry.value is Map)
+                    for (final inner in (entry.value as Map).entries)
+                      inner.key.toString(): inner.value == true,
+                },
+            }
+          : const {},
+      projectOverrides: projectOverridesRaw is Map
+          ? {
+              for (final entry in projectOverridesRaw.entries)
                 entry.key.toString(): {
                   if (entry.value is Map)
                     for (final inner in (entry.value as Map).entries)
