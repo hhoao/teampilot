@@ -395,22 +395,9 @@ class _ProjectCliConfigureDialogState extends State<ProjectCliConfigureDialog> {
                 hintText: l10n.selectProvider,
                 decoration: dropdownDeco,
                 onChanged: (value) {
-                  final newProv = value ?? '';
-                  AppProviderConfig? nextProvider;
-                  for (final provider in providers) {
-                    if (provider.id == newProv) {
-                      nextProvider = provider;
-                      break;
-                    }
-                  }
                   setState(() {
-                    _providerId = newProv;
-                    _modelId = projectCliDefaultModelForProvider(
-                      registry,
-                      widget.cli,
-                      nextProvider,
-                      providerId: newProv,
-                    );
+                    _providerId = value ?? '';
+                    _modelId = '';
                   });
                 },
                 itemBuilder: providerDropdownItemBuilder(

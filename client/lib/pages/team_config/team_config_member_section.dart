@@ -322,6 +322,8 @@ class TeamMemberConfigFormState extends State<TeamMemberConfigForm> {
                   _update(
                     widget.member.copyWith(
                       cli: value == null ? null : CliTool.decode(value),
+                      provider: '',
+                      model: '',
                       updateCli: true,
                     ),
                   );
@@ -347,36 +349,7 @@ class TeamMemberConfigFormState extends State<TeamMemberConfigForm> {
               decoration: dropdownDeco,
               onChanged: (value) {
                 final newProv = value ?? '';
-                var newModel = m.model;
-                AppProviderConfig? nextProvider;
-                for (final p
-                    in context.read<AppProviderCubit>().state.providersFor(
-                      memberCatalogCli,
-                    )) {
-                  if (p.id == newProv) {
-                    nextProvider = p;
-                    break;
-                  }
-                }
-                if (nextProvider != null && modelCapability != null) {
-                  if (modelCapability.pickerMode(nextProvider) ==
-                      ProviderModelPickerMode.hidden) {
-                    newModel = '';
-                  } else {
-                    final names = modelCapability.modelCandidates(
-                      provider: nextProvider,
-                      providerId: newProv,
-                      currentModel: m.model,
-                    );
-                    if (!names.contains(newModel)) {
-                      newModel = modelCapability.defaultModel(
-                        provider: nextProvider,
-                        providerId: newProv,
-                      );
-                    }
-                  }
-                }
-                _update(m.copyWith(provider: newProv, model: newModel));
+                _update(m.copyWith(provider: newProv, model: ''));
               },
               itemBuilder: providerDropdownItemBuilder(
                 providers: context

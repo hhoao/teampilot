@@ -66,7 +66,7 @@ class _HomeWorkspaceNewTeamDialogState
   late final TextEditingController _nameController;
   TeamMode _mode = TeamMode.native;
   CliTool _cli = CliTool.claude;
-  String? _providerId;
+  String _providerId = '';
   bool _canCreate = false;
   bool _didSeedProvider = false;
 
@@ -106,7 +106,7 @@ class _HomeWorkspaceNewTeamDialogState
   void _syncDefaultProviderForCli(CliTool cli) {
     final catalogCli = _providerCatalogCli(cli);
     if (catalogCli == null) {
-      if (_providerId != null) setState(() => _providerId = null);
+      if (_providerId.isNotEmpty) setState(() => _providerId = '');
       return;
     }
     final appProviders = context.read<AppProviderCubit>().state;
@@ -114,14 +114,14 @@ class _HomeWorkspaceNewTeamDialogState
     final global = appProviders.selectedProviderIdByCli[catalogCli];
     final next = global != null && providers.any((p) => p.id == global)
         ? global
-        : providers.firstOrNull?.id;
+        : providers.firstOrNull?.id ?? '';
     if (next != _providerId) setState(() => _providerId = next);
   }
 
   Map<String, String> _providerIdsByToolForSubmit() {
     if (_mode != TeamMode.native) return const {};
     final catalogCli = _providerCatalogCli(_cli);
-    final providerId = _providerId?.trim() ?? '';
+    final providerId = _providerId.trim();
     if (catalogCli == null || providerId.isEmpty) return const {};
     return {catalogCli.value: providerId};
   }
@@ -202,10 +202,13 @@ class _HomeWorkspaceNewTeamDialogState
                   cli: _cli,
                   providerId: _providerId,
                   onCliChanged: (cli) {
-                    setState(() => _cli = cli);
-                    _syncDefaultProviderForCli(cli);
+                    setState(() {
+                      _cli = cli;
+                      _providerId = '';
+                    });
                   },
-                  onProviderChanged: (id) => setState(() => _providerId = id),
+                  onProviderChanged: (id) =>
+                      setState(() => _providerId = id ?? ''),
                 ),
               ],
               const SizedBox(height: 24),
@@ -408,7 +411,7 @@ class _NativeTeamOptionsCard extends StatelessWidget {
   });
 
   final CliTool cli;
-  final String? providerId;
+  final String providerId;
   final ValueChanged<CliTool> onCliChanged;
   final ValueChanged<String?> onProviderChanged;
 
@@ -426,12 +429,13 @@ class _NativeTeamOptionsCard extends StatelessWidget {
         ? const <AppProviderConfig>[]
         : context.watch<AppProviderCubit>().state.providersFor(catalogCli);
     final providerEntries = [
+      ('', l10n.selectProvider),
       for (final provider in providers) (provider.id, provider.name),
     ];
     final effectiveProviderId =
-        providerId != null && providers.any((p) => p.id == providerId)
-        ? providerId!
-        : providers.firstOrNull?.id ?? '';
+        providerId.isNotEmpty && providers.any((p) => p.id == providerId)
+        ? providerId
+        : '';
 
     return SettingsSurfaceCard(
       child: Column(
@@ -493,10 +497,7 @@ class _NativeTeamOptionsCard extends StatelessWidget {
                                 .firstOrNull ??
                             id,
                       ),
-                      onChanged: (value) {
-                        if (value == null) return;
-                        onProviderChanged(value);
-                      },
+                      onChanged: onProviderChanged,
                     ),
               showDividerBelow: false,
             ),

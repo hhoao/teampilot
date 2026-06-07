@@ -89,16 +89,20 @@ class _OnboardingDefaultProviderStepState
         ? selectedId
         : providers.firstOrNull?.id;
     _selectedProviderId = initialId;
-    _loadProviderFields(_selectedProvider);
+    _loadInitialDefaultModel(_selectedProvider);
+    _loadClaudeEnvFields(_selectedProvider);
   }
 
-  void _loadProviderFields(AppProviderConfig? provider) {
-    final isOfficial = provider != null && isOfficialClaudeProvider(provider);
-    _defaultModel = isOfficial ? '' : (provider?.defaultModel ?? '');
+  void _loadClaudeEnvFields(AppProviderConfig? provider) {
     final env = _readEnv(provider);
     _haikuController.text = env['ANTHROPIC_DEFAULT_HAIKU_MODEL'] ?? '';
     _sonnetController.text = env['ANTHROPIC_DEFAULT_SONNET_MODEL'] ?? '';
     _opusController.text = env['ANTHROPIC_DEFAULT_OPUS_MODEL'] ?? '';
+  }
+
+  void _loadInitialDefaultModel(AppProviderConfig? provider) {
+    final isOfficial = provider != null && isOfficialClaudeProvider(provider);
+    _defaultModel = isOfficial ? '' : (provider?.defaultModel ?? '');
   }
 
   Map<String, String> _readEnv(AppProviderConfig? provider) {
@@ -241,7 +245,8 @@ class _OnboardingDefaultProviderStepState
                     if (value == null) return;
                     setState(() {
                       _selectedProviderId = value;
-                      _loadProviderFields(_selectedProvider);
+                      _defaultModel = '';
+                      _loadClaudeEnvFields(_selectedProvider);
                     });
                     unawaited(_applySelection());
                   },

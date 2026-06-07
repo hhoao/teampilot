@@ -138,10 +138,7 @@ class ProjectProfileCubit extends Cubit<ProjectProfileState> {
     if (profile == null) return;
     final provider = profile.providerIdsByTool[cli.value]?.trim() ?? '';
     final model = profile.modelsByTool[cli.value]?.trim() ?? '';
-    final agent = profile.agent.copyWith(
-      provider: provider.isNotEmpty ? provider : profile.agent.provider,
-      model: model.isNotEmpty ? model : profile.agent.model,
-    );
+    final agent = profile.agent.copyWith(provider: provider, model: model);
     await _persist(profile.copyWith(cli: cli, agent: agent));
   }
 

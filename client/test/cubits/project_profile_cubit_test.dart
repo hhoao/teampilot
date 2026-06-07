@@ -115,7 +115,8 @@ void main() {
 
     expect(skillLinker.syncCalls, 0);
     expect(pluginLinker.syncCalls, 0);
-    expect(cubit.state.profile?.agent.model, 'opus');
+    expect(cubit.state.profile?.agent.model, isEmpty);
+    expect(cubit.state.profile?.agent.provider, isEmpty);
     expect(cubit.state.profile?.cli, CliTool.flashskyai);
     await cubit.close();
   });
