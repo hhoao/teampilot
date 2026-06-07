@@ -8,6 +8,8 @@ import 'package:teampilot/cubits/config_cubit.dart';
 import 'package:teampilot/cubits/extension_cubit.dart';
 import 'package:teampilot/cubits/editor_cubit.dart';
 import 'package:teampilot/cubits/layout_cubit.dart';
+import 'package:teampilot/cubits/workspace_tools_cubit.dart';
+import 'package:teampilot/services/terminal/workspace_terminal_registry.dart';
 import 'package:teampilot/cubits/llm_config_cubit.dart';
 import 'package:teampilot/cubits/session_preferences_cubit.dart';
 import 'package:teampilot/cubits/team_cubit.dart';
@@ -117,6 +119,9 @@ Widget buildTestApp({
       RepositoryProvider<ConnectionModeService>.value(
         value: connectionModeService,
       ),
+      RepositoryProvider<WorkspaceTerminalRegistry>(
+        create: (_) => WorkspaceTerminalRegistry(),
+      ),
     ],
     child: MultiBlocProvider(
       providers: [
@@ -130,6 +135,7 @@ Widget buildTestApp({
         BlocProvider.value(value: sessionPreferencesCubit),
         BlocProvider(create: (_) => EditorCubit(fs: LocalFilesystem())),
         BlocProvider.value(value: extensionCubit ?? _testExtensionCubit()),
+        BlocProvider(create: (_) => WorkspaceToolsCubit()),
       ],
       child: const TeamPilotApp(),
     ),
