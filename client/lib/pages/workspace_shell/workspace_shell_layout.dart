@@ -15,6 +15,7 @@ class WorkspaceShellMainWithTerminal extends StatelessWidget {
     required this.onRightToolsWidthChanged,
     required this.childAnimationKey,
     this.workspaceTerminalWorkingDirectory,
+    this.workspaceProjectId,
   });
 
   final LayoutPreferences preferences;
@@ -23,6 +24,7 @@ class WorkspaceShellMainWithTerminal extends StatelessWidget {
   final ValueChanged<double>? onRightToolsWidthChanged;
   final Key? childAnimationKey;
   final String? workspaceTerminalWorkingDirectory;
+  final String? workspaceProjectId;
 
   @override
   Widget build(BuildContext context) {
@@ -36,6 +38,7 @@ class WorkspaceShellMainWithTerminal extends StatelessWidget {
       onRightToolsWidthChanged: onRightToolsWidthChanged,
       child: WorkspaceShellCenterColumnWithTerminal(
         workspaceTerminalWorkingDirectory: workspaceTerminalWorkingDirectory,
+        workspaceProjectId: workspaceProjectId,
         child: animatedChild,
       ),
     );
@@ -47,10 +50,12 @@ class WorkspaceShellCenterColumnWithTerminal extends StatelessWidget {
   const WorkspaceShellCenterColumnWithTerminal({
     required this.child,
     this.workspaceTerminalWorkingDirectory,
+    this.workspaceProjectId,
   });
 
   final Widget child;
   final String? workspaceTerminalWorkingDirectory;
+  final String? workspaceProjectId;
 
   @override
   Widget build(BuildContext context) {
@@ -73,12 +78,14 @@ class WorkspaceShellCenterColumnWithTerminal extends StatelessWidget {
           LayoutPreferences.minWorkspaceTerminalHeight,
           LayoutPreferences.maxWorkspaceTerminalHeight,
         );
+        final projectId = workspaceProjectId?.trim() ?? '';
         return ResizableSplitView(
           axis: Axis.vertical,
           primaryAtEnd: true,
           first: child,
           second: WorkspaceTerminalPanel(
-            key: ValueKey('workspace-terminal-$cwd'),
+            key: ValueKey('workspace-terminal-$projectId-$cwd'),
+            projectId: projectId.isNotEmpty ? projectId : cwd,
             workingDirectory: cwd,
           ),
           initialPrimarySize: terminalHeight,
