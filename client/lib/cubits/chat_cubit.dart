@@ -158,8 +158,8 @@ class ChatCubit extends Cubit<ChatState>
     _publishActiveProjectTabs(restoredIndex);
   }
 
-  /// Re-emits the active bucket's tab infos without changing the project.
-  /// Used by the launch flow after it mutates the active bucket.
+  /// Re-emits the active bucket's tab infos without changing the project, after
+  /// callers mutate the active bucket directly via [tabStore].
   void refreshActiveProjectTabs() =>
       _publishActiveProjectTabs(state.activeTabIndex);
 

@@ -36,8 +36,9 @@ import 'utils/logger.dart';
 import 'widgets/ui_warmup.dart';
 
 class _CleanupWindowListener extends WindowListener {
-  _CleanupWindowListener(this.chatCubit);
+  _CleanupWindowListener(this.chatCubit, this.workspaceTerminalRegistry);
   final ChatCubit chatCubit;
+  final WorkspaceTerminalRegistry workspaceTerminalRegistry;
 
   @override
   void onWindowClose() {
@@ -47,6 +48,7 @@ class _CleanupWindowListener extends WindowListener {
   Future<void> _shutdownAndDestroy() async {
     try {
       await chatCubit.close();
+      workspaceTerminalRegistry.disposeAll();
     } finally {
       await windowManager.destroy();
     }
@@ -59,11 +61,13 @@ class _AppShutdownScope extends StatefulWidget {
   const _AppShutdownScope({
     required this.chatCubit,
     required this.mailboxCubit,
+    required this.workspaceTerminalRegistry,
     required this.child,
   });
 
   final ChatCubit chatCubit;
   final MailboxCubit mailboxCubit;
+  final WorkspaceTerminalRegistry workspaceTerminalRegistry;
   final Widget child;
 
   @override
@@ -75,6 +79,7 @@ class _AppShutdownScopeState extends State<_AppShutdownScope> {
   void dispose() {
     unawaited(widget.chatCubit.close());
     unawaited(widget.mailboxCubit.close());
+    widget.workspaceTerminalRegistry.disposeAll();
     super.dispose();
   }
 
@@ -144,11 +149,17 @@ void main() async {
       nativeAppDataPath: nativeAppDataPath,
       childBuilder: (shell) {
         if (!Platform.isAndroid) {
-          windowManager.addListener(_CleanupWindowListener(shell.chatCubit));
+          windowManager.addListener(
+            _CleanupWindowListener(
+              shell.chatCubit,
+              shell.workspaceTerminalRegistry,
+            ),
+          );
         }
         return _AppShutdownScope(
           chatCubit: shell.chatCubit,
           mailboxCubit: shell.mailboxCubit,
+          workspaceTerminalRegistry: shell.workspaceTerminalRegistry,
           child: MultiRepositoryProvider(
             providers: [
               RepositoryProvider<SharedPreferences>.value(value: preferences),
