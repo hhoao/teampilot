@@ -148,6 +148,47 @@ class ChatCubit extends Cubit<ChatState>
     );
   }
 
+  /// Switches the active project bucket and republishes its tabs into state.
+  /// Called by the project page whenever the active project changes.
+  void setActiveProject(String projectId) {
+    final restoredIndex = _tabStore.setActiveProject(
+      projectId,
+      currentActiveIndex: state.activeTabIndex,
+    );
+    _publishActiveProjectTabs(restoredIndex);
+  }
+
+  /// Re-emits the active bucket's tab infos without changing the project.
+  /// Used by the launch flow after it mutates the active bucket.
+  void refreshActiveProjectTabs() =>
+      _publishActiveProjectTabs(state.activeTabIndex);
+
+  void _publishActiveProjectTabs(int desiredIndex) {
+    if (_tabStore.isEmpty) {
+      emit(
+        state.copyWith(
+          tabs: const [],
+          activeTabIndex: 0,
+          clearActiveSessionId: true,
+          selectedMemberId: '',
+        ),
+      );
+      _pushPresenceTarget();
+      return;
+    }
+    final index = desiredIndex.clamp(0, _tabStore.length - 1);
+    final tab = _tabStore.tabs[index];
+    emit(
+      state.copyWith(
+        tabs: _tabStore.toInfos(),
+        activeTabIndex: index,
+        activeSessionId: tab.info.id,
+        selectedMemberId: tab.selectedMemberId,
+      ),
+    );
+    _pushPresenceTarget();
+  }
+
   static void _defaultPostFrameScheduler(VoidCallback callback) {
     WidgetsBinding.instance.addPostFrameCallback((_) => callback());
   }
@@ -435,32 +476,32 @@ class ChatCubit extends Cubit<ChatState>
     _pushPresenceTarget();
   }
 
-  /// Open terminal tabs whose backing session belongs to [projectId].
-  /// `local-` scratch tabs have no project and are excluded.
-  List<int> _tabIndicesForProject(String projectId) {
-    final result = <int>[];
-    for (var i = 0; i < _tabStore.length; i++) {
-      final session = _tabStore.sessionForTab(
-        _tabStore.tabs[i],
-        state.sessions,
-      );
-      if (session != null && session.projectId == projectId) result.add(i);
-    }
-    return result;
-  }
-
-  /// Number of open terminal tabs backed by sessions in [projectId].
+  /// Number of open session-backed tabs in [projectId]'s bucket (excludes
+  /// `local-` scratch tabs, which have no persisted project session).
   int openTabCountForProject(String projectId) =>
-      _tabIndicesForProject(projectId).length;
+      _tabStore.sessionBackedCountForProject(projectId);
 
-  /// Closes (terminates) every open terminal tab belonging to [projectId].
+  /// Closes (terminates) every open tab belonging to [projectId] by dropping
+  /// its whole bucket and disposing each tab's sessions and team-bus.
   void closeTabsForProject(String projectId) {
-    // Close highest index first so earlier indices stay valid as the list
-    // shrinks; [closeTab] disposes the terminal sessions and team-bus.
-    final indices = _tabIndicesForProject(projectId)
-      ..sort((a, b) => b.compareTo(a));
-    for (final i in indices) {
-      closeTab(i);
+    final removed = _tabStore.removeProject(projectId);
+    if (removed.isEmpty) return;
+    for (final tab in removed) {
+      for (final session in tab.sessions) {
+        session.dispose();
+      }
+      // ignore: discarded_futures
+      tab.disposeBus();
+    }
+    _busCoordinator.maybeStopIdleWatch();
+    // Republish whenever the active bucket was affected: either it was the
+    // named bucket for this project, or it is the legacy empty-string bucket
+    // and tabs were removed from it (legacy path before setActiveProject).
+    final activeIsAffected =
+        projectId == _tabStore.activeProjectId ||
+        _tabStore.activeProjectId.isEmpty;
+    if (activeIsAffected) {
+      _publishActiveProjectTabs(0);
     }
   }
 
@@ -718,7 +759,7 @@ class ChatCubit extends Cubit<ChatState>
   Future<void> close() async {
     if (isClosed) return;
     _busCoordinator.disposeIdleWatch();
-    for (final tab in _tabStore.tabs) {
+    for (final tab in _tabStore.allTabs) {
       for (final session in tab.sessions) {
         session.dispose();
       }

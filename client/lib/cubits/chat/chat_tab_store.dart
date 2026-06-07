@@ -45,18 +45,57 @@ class ChatTabStore {
     _savedActiveIndex.clear();
   }
 
-  /// Removes and returns a project's bucket (for disposal by the caller).
+  /// Removes and returns all tabs belonging to [projectId] (for disposal by the
+  /// caller). Clears the named bucket and also removes matching tabs from the
+  /// legacy empty-string bucket (tabs added before [setActiveProject] was called).
   List<ChatTab> removeProject(String projectId) {
     _savedActiveIndex.remove(projectId);
-    final removed = _byProject.remove(projectId) ?? const [];
-    return List<ChatTab>.of(removed);
+    final removed = <ChatTab>[];
+    // Named bucket.
+    final named = _byProject.remove(projectId);
+    if (named != null) removed.addAll(named);
+    // Legacy bucket: tabs whose persisted session belongs to this project.
+    if (projectId.isNotEmpty) {
+      final legacy = _byProject[''];
+      if (legacy != null) {
+        final matching =
+            legacy
+                .where((t) => t.persistedSession?.projectId == projectId)
+                .toList();
+        if (matching.isNotEmpty) {
+          legacy.removeWhere((t) => t.persistedSession?.projectId == projectId);
+          removed.addAll(matching);
+        }
+      }
+    }
+    return removed;
   }
 
   /// Session-backed (non-`local-`) tab count for [projectId], across any bucket.
+  ///
+  /// Checks the named bucket first. Also scans the legacy empty-string bucket
+  /// by persisted-session projectId so that tabs opened before [setActiveProject]
+  /// is called (e.g. the connect flow before the UI switches project context)
+  /// are counted correctly.
   int sessionBackedCountForProject(String projectId) {
-    final bucket = _byProject[projectId];
-    if (bucket == null) return 0;
-    return bucket.where((t) => !t.info.id.startsWith('local-')).length;
+    int count = 0;
+    // Named bucket: tabs explicitly placed here via setActiveProject.
+    final named = _byProject[projectId];
+    if (named != null) {
+      count += named.where((t) => !t.info.id.startsWith('local-')).length;
+    }
+    // Legacy / no-active-project bucket: check persisted session's projectId.
+    if (projectId.isNotEmpty) {
+      final legacy = _byProject[''];
+      if (legacy != null) {
+        count += legacy.where(
+          (t) =>
+              !t.info.id.startsWith('local-') &&
+              t.persistedSession?.projectId == projectId,
+        ).length;
+      }
+    }
+    return count;
   }
 
   List<ChatTabInfo> toInfos() => _active.map((t) => t.info).toList();
