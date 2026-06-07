@@ -2,7 +2,10 @@ import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../models/git_status.dart';
+import '../services/git/git_changes_visible_rows.dart';
 import '../services/git/git_service.dart';
+
+export '../services/git/git_changes_visible_rows.dart' show GitChangesViewMode;
 
 class GitState extends Equatable {
   const GitState({
@@ -14,6 +17,8 @@ class GitState extends Equatable {
     this.commitMessage = '',
     this.branches = const [],
     this.errorMessage,
+    this.changesViewMode = GitChangesViewMode.list,
+    this.expandedFolderPaths = const {},
   });
 
   final String repoRoot;
@@ -26,6 +31,8 @@ class GitState extends Equatable {
   final String commitMessage;
   final List<String> branches;
   final String? errorMessage;
+  final GitChangesViewMode changesViewMode;
+  final Set<String> expandedFolderPaths;
 
   bool get isRepository => status.isRepository;
 
@@ -38,6 +45,8 @@ class GitState extends Equatable {
     String? commitMessage,
     List<String>? branches,
     String? errorMessage,
+    GitChangesViewMode? changesViewMode,
+    Set<String>? expandedFolderPaths,
     bool clearError = false,
   }) {
     return GitState(
@@ -49,6 +58,8 @@ class GitState extends Equatable {
       commitMessage: commitMessage ?? this.commitMessage,
       branches: branches ?? this.branches,
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
+      changesViewMode: changesViewMode ?? this.changesViewMode,
+      expandedFolderPaths: expandedFolderPaths ?? this.expandedFolderPaths,
     );
   }
 
@@ -62,6 +73,8 @@ class GitState extends Equatable {
     commitMessage,
     branches,
     errorMessage,
+    changesViewMode,
+    expandedFolderPaths,
   ];
 }
 
@@ -121,6 +134,30 @@ class GitCubit extends Cubit<GitState> {
 
   void setCommitMessage(String message) {
     emit(state.copyWith(commitMessage: message));
+  }
+
+  void toggleChangesViewMode() {
+    final next = state.changesViewMode == GitChangesViewMode.list
+        ? GitChangesViewMode.tree
+        : GitChangesViewMode.list;
+    var expanded = state.expandedFolderPaths;
+    if (next == GitChangesViewMode.tree && expanded.isEmpty) {
+      expanded = gitChangesDefaultExpandedFolders([
+        ...state.status.staged,
+        ...state.status.unstaged,
+      ]);
+    }
+    emit(state.copyWith(changesViewMode: next, expandedFolderPaths: expanded));
+  }
+
+  void toggleFolderExpanded(String folderPath) {
+    final next = Set<String>.from(state.expandedFolderPaths);
+    if (next.contains(folderPath)) {
+      next.remove(folderPath);
+    } else {
+      next.add(folderPath);
+    }
+    emit(state.copyWith(expandedFolderPaths: next));
   }
 
   Future<void> stage(GitFileChange change) =>

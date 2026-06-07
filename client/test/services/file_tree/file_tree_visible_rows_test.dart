@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:teampilot/cubits/file_tree_cubit.dart';
@@ -115,5 +116,29 @@ void main() {
     final target = p.join(root, 'src', 'main.dart');
     final index = visibleRowIndexForPath(rows, target, cubit.fs.pathContext);
     expect(index, 1);
+  });
+
+  test('fileTreeMinContentWidth accounts for depth and label length', () {
+    const style = TextStyle(fontSize: 14, fontWeight: FontWeight.w500);
+    const emptyStyle = TextStyle(fontSize: 12);
+    final rows = [
+      const FileTreeVisibleRow(
+        path: '/a/short.txt',
+        entry: FsDirEntry(name: 'short.txt', isDirectory: false),
+        depth: 0,
+      ),
+      const FileTreeVisibleRow(
+        path: '/a/deep/very-long-name.txt',
+        entry: FsDirEntry(name: 'very-long-name.txt', isDirectory: false),
+        depth: 4,
+      ),
+    ];
+
+    final width = fileTreeMinContentWidth(
+      rows: rows,
+      labelStyle: style,
+      emptyLabelStyle: emptyStyle,
+    );
+    expect(width, greaterThan(200));
   });
 }

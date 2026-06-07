@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -17,12 +18,14 @@ import '../app_icon_button.dart';
 import '../file_tree_node.dart';
 import 'file_tree_header_overflow_menu.dart';
 
+const _fileTreeRowPadding = EdgeInsets.symmetric(
+  horizontal: kFileTreeRowHorizontalPadding,
+  vertical: kFileTreeRowVerticalPadding,
+);
+
 /// Project file tree panel.
 class FileTreePanel extends StatefulWidget {
-  const FileTreePanel({
-    required this.cwd,
-    super.key,
-  });
+  const FileTreePanel({required this.cwd, super.key});
 
   final String cwd;
 
@@ -34,6 +37,7 @@ class _FileTreePanelState extends State<FileTreePanel> {
   final _cubit = FileTreeCubit(fs: AppStorage.fs);
   final _filterController = TextEditingController();
   final _listScrollController = ScrollController();
+  final _horizontalScrollController = ScrollController();
   EditorCubit? _editorCubit;
 
   @override
@@ -126,6 +130,7 @@ class _FileTreePanelState extends State<FileTreePanel> {
   void dispose() {
     _filterController.dispose();
     _listScrollController.dispose();
+    _horizontalScrollController.dispose();
     _cubit.close();
     super.dispose();
   }
@@ -215,7 +220,10 @@ class _FileTreePanelState extends State<FileTreePanel> {
                         controller: _filterController,
                         decoration: InputDecoration(
                           hintText: l10n.filterFiles,
-                          prefixIcon: const Icon(Icons.search, size: AppIconSizes.md),
+                          prefixIcon: const Icon(
+                            Icons.search,
+                            size: AppIconSizes.md,
+                          ),
                           floatingLabelBehavior: FloatingLabelBehavior.never,
                           suffixIcon: _filterController.text.isNotEmpty
                               ? AppIconButton(
@@ -338,35 +346,86 @@ class _FileTreePanelState extends State<FileTreePanel> {
         ).bodySmall.copyWith(color: textColor.withValues(alpha: 0.35)),
       );
     }
-    return ListView.builder(
-      controller: _listScrollController,
-      itemCount: rows.length,
-      itemExtent: kFileTreeRowExtent,
-      itemBuilder: (context, index) {
-        final row = rows[index];
-        if (row.isEmptyPlaceholder) {
-          return SizedBox(
-            height: kFileTreeRowExtent,
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: Padding(
-                padding: EdgeInsets.only(left: row.depth * 16 + 22),
-                child: Text(
-                  '(empty)',
-                  style: AppTextStyles.of(
-                    context,
-                  ).caption.copyWith(color: textColor.withValues(alpha: 0.35)),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final labelStyle = AppTextStyles.of(context).body.copyWith(
+          fontWeight: FontWeight.w500,
+        );
+        final emptyLabelStyle = AppTextStyles.of(context).caption;
+        final contentWidth = math.max(
+          constraints.maxWidth,
+          fileTreeMinContentWidth(
+            rows: rows,
+            labelStyle: labelStyle,
+            emptyLabelStyle: emptyLabelStyle,
+            textScaler: MediaQuery.textScalerOf(context),
+          ),
+        );
+
+        return Scrollbar(
+          controller: _horizontalScrollController,
+          thumbVisibility: true,
+          notificationPredicate: (notification) =>
+              notification.metrics.axis == Axis.horizontal,
+          child: SingleChildScrollView(
+            controller: _horizontalScrollController,
+            scrollDirection: Axis.horizontal,
+            child: SizedBox(
+              width: contentWidth,
+              height: constraints.maxHeight,
+              child: Scrollbar(
+                controller: _listScrollController,
+                thumbVisibility: true,
+                child: ListView.builder(
+                  controller: _listScrollController,
+                  itemCount: rows.length,
+                  itemExtent: kFileTreeRowExtent,
+                  itemBuilder: (context, index) {
+                    final row = rows[index];
+                    if (row.isEmptyPlaceholder) {
+                      return SizedBox(
+                        width: contentWidth,
+                        child: Padding(
+                          padding: _fileTreeRowPadding,
+                          child: Align(
+                            alignment: Alignment.centerLeft,
+                            child: Padding(
+                              padding: EdgeInsets.only(
+                                left:
+                                    row.depth * kFileTreeIndentWidth +
+                                    kFileTreeNodePaddingLeft +
+                                    18,
+                              ),
+                              child: Text(
+                                '(empty)',
+                                style: AppTextStyles.of(context).caption
+                                    .copyWith(
+                                      color: textColor.withValues(alpha: 0.35),
+                                    ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    }
+                    return SizedBox(
+                      width: contentWidth,
+                      child: Padding(
+                        padding: _fileTreeRowPadding,
+                        child: FileTreeNode(
+                          path: row.path,
+                          entry: row.entry,
+                          depth: row.depth,
+                          cubit: _cubit,
+                          textColor: textColor,
+                        ),
+                      ),
+                    );
+                  },
                 ),
               ),
             ),
-          );
-        }
-        return FileTreeNode(
-          path: row.path,
-          entry: row.entry,
-          depth: row.depth,
-          cubit: _cubit,
-          textColor: textColor,
+          ),
         );
       },
     );

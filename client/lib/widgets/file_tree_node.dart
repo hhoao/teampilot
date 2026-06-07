@@ -17,11 +17,10 @@ import '../services/io/filesystem.dart';
 import 'menu/sidebar_action_menu.dart';
 import '../utils/debounce/debounce.dart';
 import '../utils/file_icon.dart';
-
-const _indentWidth = 16.0;
+import 'hover_widget.dart';
 
 /// Single row in the flattened file tree (no nested children).
-class FileTreeNode extends StatelessWidget {
+class FileTreeNode extends StatefulWidget {
   const FileTreeNode({
     required this.path,
     required this.entry,
@@ -37,101 +36,127 @@ class FileTreeNode extends StatelessWidget {
   final FileTreeCubit cubit;
   final Color textColor;
 
+  @override
+  State<FileTreeNode> createState() => _FileTreeNodeState();
+}
+
+class _FileTreeNodeState extends State<FileTreeNode> {
+  var _hovered = false;
+
   bool _isActiveEditorFile(BuildContext context) {
-    if (entry.isDirectory) return false;
+    if (widget.entry.isDirectory) return false;
     final active = context.select<EditorCubit, String?>(
       (c) => c.state.activePath,
     );
     if (active == null) return false;
-    return fileTreePathsEqual(cubit.fs.pathContext, path, active);
+    return fileTreePathsEqual(widget.cubit.fs.pathContext, widget.path, active);
   }
 
   @override
   Widget build(BuildContext context) {
-    final isDir = entry.isDirectory;
-    final isExpanded = cubit.state.expandedPaths.contains(path);
+    final isDir = widget.entry.isDirectory;
+    final isExpanded = widget.cubit.state.expandedPaths.contains(widget.path);
     final isActive = _isActiveEditorFile(context);
-    final canOpenInEditor = !isDir && isEditorOpenableFilePath(path);
+    final canOpenInEditor = !isDir && isEditorOpenableFilePath(widget.path);
     final cs = Theme.of(context).colorScheme;
     final labelColor = isActive
         ? cs.onSecondaryContainer
         : isDir
-        ? textColor.withValues(alpha: 0.8)
+        ? widget.textColor.withValues(alpha: 0.8)
         : canOpenInEditor
-        ? textColor.withValues(alpha: 0.92)
+        ? widget.textColor.withValues(alpha: 0.92)
         : cs.onSurfaceVariant.withValues(alpha: 0.52);
     final iconMuted = isActive
         ? cs.onSecondaryContainer.withValues(alpha: 0.7)
         : isDir
-        ? textColor.withValues(alpha: 0.6)
+        ? widget.textColor.withValues(alpha: 0.6)
         : canOpenInEditor
-        ? textColor.withValues(alpha: 0.65)
+        ? widget.textColor.withValues(alpha: 0.65)
         : cs.onSurfaceVariant.withValues(alpha: 0.45);
+    final rowColor = isActive
+        ? cs.secondaryContainer
+        : _hovered
+        ? HoverWidget.defaultHoverColor(context)
+        : null;
 
-    return GestureDetector(
-      onTap: () {
-        if (isDir) {
-          cubit.toggleExpand(path);
-        } else {
-          _openFile(context, path);
-        }
-      },
-      onSecondaryTapDown: (details) => _showContextMenu(
-        context,
-        details,
-        path,
-        entry.name,
-        isDirectory: isDir,
-      ),
-      child: Container(
-        height: 28,
-        margin: const EdgeInsets.symmetric(vertical: 1),
-        decoration: isActive
-            ? BoxDecoration(
-                color: cs.secondaryContainer,
-                borderRadius: BorderRadius.circular(6),
-              )
-            : null,
-        padding: EdgeInsets.only(left: depth * _indentWidth + 4, right: 8),
-        child: Row(
-          children: [
-            if (isDir)
-              SizedBox(
-                width: 18,
-                height: 18,
-                child: AnimatedRotation(
-                  turns: isExpanded ? 0.25 : 0.0,
-                  duration: const Duration(milliseconds: 150),
-                  child: Icon(
-                    Icons.chevron_right,
-                    size: AppIconSizes.md,
-                    color: isActive
-                        ? iconMuted
-                        : textColor.withValues(alpha: 0.55),
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () {
+          if (isDir) {
+            widget.cubit.toggleExpand(widget.path);
+          } else {
+            _openFile(context, widget.path);
+          }
+        },
+        onSecondaryTapDown: (details) => _showContextMenu(
+          context,
+          details,
+          widget.path,
+          widget.entry.name,
+          isDirectory: isDir,
+        ),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 120),
+          width: double.infinity,
+          height: double.infinity,
+          clipBehavior: Clip.none,
+          decoration: rowColor != null
+              ? BoxDecoration(
+                  color: rowColor,
+                  borderRadius: BorderRadius.circular(6),
+                )
+              : null,
+          padding: EdgeInsets.only(
+            left: widget.depth * kFileTreeIndentWidth + kFileTreeNodePaddingLeft,
+            right: kFileTreeNodePaddingRight,
+          ),
+          child: OverflowBox(
+            maxWidth: double.infinity,
+            alignment: Alignment.centerLeft,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+              if (isDir)
+                SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: AnimatedRotation(
+                    turns: isExpanded ? 0.25 : 0.0,
+                    duration: const Duration(milliseconds: 150),
+                    child: Icon(
+                      Icons.chevron_right,
+                      size: AppIconSizes.md,
+                      color: isActive
+                          ? iconMuted
+                          : widget.textColor.withValues(alpha: 0.55),
+                    ),
                   ),
-                ),
-              )
-            else
-              const SizedBox(width: 18),
-            Icon(
-              isDir
-                  ? (isExpanded ? Icons.folder_open : Icons.folder_outlined)
-                  : fileIconForFileName(entry.name),
-              size: AppIconSizes.md,
-            ),
-            const SizedBox(width: 6),
-            Expanded(
-              child: Text(
-                entry.name,
+                )
+              else
+                const SizedBox(width: 18),
+              Icon(
+                isDir
+                    ? (isExpanded ? Icons.folder_open : Icons.folder_outlined)
+                    : fileIconForFileName(widget.entry.name),
+                size: AppIconSizes.md,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                widget.entry.name,
                 maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: AppTextStyles.of(context).bodySmall.copyWith(
+                style: AppTextStyles.of(context).body.copyWith(
                   fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
                   color: labelColor,
                 ),
               ),
+            ],
             ),
-          ],
+          ),
         ),
       ),
     );
@@ -218,7 +243,7 @@ class FileTreeNode extends StatelessWidget {
           TextButton(
             onPressed: throttledOnPressed('file_tree_delete', () {
               Navigator.pop(ctx);
-              cubit.deletePath(targetPath);
+              widget.cubit.deletePath(targetPath);
             }),
             child: Text(l10n.delete),
           ),

@@ -142,6 +142,8 @@
   "gitPush": "推送",
   "gitPull": "拉取",
   "gitRefresh": "刷新",
+  "gitChangesListView": "列表视图",
+  "gitChangesTreeView": "树形视图",
   "gitSwitchBranch": "切换分支",
   "gitCreateBranch": "新建分支",
   "gitNewBranchHint": "新分支名称",

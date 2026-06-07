@@ -379,6 +379,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get gitRefresh => 'Refresh';
 
   @override
+  String get gitChangesListView => 'List view';
+
+  @override
+  String get gitChangesTreeView => 'Tree view';
+
+  @override
   String get gitSwitchBranch => 'Switch branch';
 
   @override

@@ -145,6 +145,8 @@
   "gitPush": "Push",
   "gitPull": "Pull",
   "gitRefresh": "Refresh",
+  "gitChangesListView": "List view",
+  "gitChangesTreeView": "Tree view",
   "gitSwitchBranch": "Switch branch",
   "gitCreateBranch": "Create branch",
   "gitNewBranchHint": "New branch name",

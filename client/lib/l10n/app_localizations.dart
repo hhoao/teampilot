@@ -782,6 +782,18 @@ abstract class AppLocalizations {
   /// **'Refresh'**
   String get gitRefresh;
 
+  /// No description provided for @gitChangesListView.
+  ///
+  /// In en, this message translates to:
+  /// **'List view'**
+  String get gitChangesListView;
+
+  /// No description provided for @gitChangesTreeView.
+  ///
+  /// In en, this message translates to:
+  /// **'Tree view'**
+  String get gitChangesTreeView;
+
   /// No description provided for @gitSwitchBranch.
   ///
   /// In en, this message translates to:

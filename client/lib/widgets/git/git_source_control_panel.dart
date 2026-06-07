@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -8,11 +9,18 @@ import '../../cubits/editor_cubit.dart';
 import '../../cubits/git_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/git_status.dart';
+import '../../services/git/git_changes_visible_rows.dart';
 import '../../theme/app_text_styles.dart';
 import '../app_icon_button.dart';
 import 'git_branch_menu.dart';
+import 'git_change_folder_tile.dart';
 import 'git_change_tile.dart';
 import 'git_diff_view.dart';
+
+const _gitChangesRowPadding = EdgeInsets.symmetric(
+  horizontal: kGitChangesRowHorizontalPadding,
+  vertical: kGitChangesRowVerticalPadding,
+);
 
 /// VSCode-style "Source Control" panel for the editor workbench left rail.
 ///
@@ -30,6 +38,8 @@ class GitSourceControlPanel extends StatefulWidget {
 class _GitSourceControlPanelState extends State<GitSourceControlPanel> {
   final _cubit = GitCubit();
   final _commitController = TextEditingController();
+  final _changesScrollController = ScrollController();
+  final _horizontalScrollController = ScrollController();
 
   @override
   void initState() {
@@ -48,6 +58,8 @@ class _GitSourceControlPanelState extends State<GitSourceControlPanel> {
   @override
   void dispose() {
     _commitController.dispose();
+    _changesScrollController.dispose();
+    _horizontalScrollController.dispose();
     _cubit.close();
     super.dispose();
   }
@@ -115,8 +127,7 @@ class _GitSourceControlPanelState extends State<GitSourceControlPanel> {
       value: _cubit,
       child: BlocConsumer<GitCubit, GitState>(
         listenWhen: (prev, next) =>
-            prev.errorMessage != next.errorMessage &&
-            next.errorMessage != null,
+            prev.errorMessage != next.errorMessage && next.errorMessage != null,
         listener: (context, state) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -159,10 +170,12 @@ class _GitSourceControlPanelState extends State<GitSourceControlPanel> {
             ahead: state.status.ahead,
             behind: state.status.behind,
             busy: state.busy || state.isLoading,
+            treeView: state.changesViewMode == GitChangesViewMode.tree,
             onRefresh: () => unawaited(_cubit.refresh()),
             onPush: () => unawaited(_cubit.push()),
             onPull: () => unawaited(_cubit.pull()),
             onBranch: () => unawaited(_openBranchSheet(state)),
+            onToggleViewMode: _cubit.toggleChangesViewMode,
           ),
           const SizedBox(height: 10),
           _CommitBox(
@@ -178,67 +191,178 @@ class _GitSourceControlPanelState extends State<GitSourceControlPanel> {
           const SizedBox(height: 12),
           Expanded(
             child: state.status.hasChanges
-                ? ListView(
-                    children: [
-                      if (state.status.staged.isNotEmpty)
-                        _Section(
-                          title: l10n.gitStagedChanges,
-                          count: state.status.staged.length,
-                          action: AppIconButton(
-                            icon: Icons.remove,
-                            iconSize: AppIconButton.kCompactIconSize,
-                            size: AppIconButton.kCompactSize,
-                            tooltip: l10n.gitUnstageAll,
-                            onTap: () => unawaited(_cubit.unstageAll()),
-                          ),
-                          children: [
-                            for (final c in state.status.staged)
-                              GitChangeTile(
-                                change: c,
-                                onOpenDiff: () => unawaited(_openDiff(c)),
-                                onStage: () {},
-                                onUnstage: () => unawaited(_cubit.unstage(c)),
-                                onDiscard: () {},
-                              ),
-                          ],
-                        ),
-                      if (state.status.unstaged.isNotEmpty)
-                        _Section(
-                          title: l10n.gitChanges,
-                          count: state.status.unstaged.length,
-                          action: AppIconButton(
-                            icon: Icons.add,
-                            iconSize: AppIconButton.kCompactIconSize,
-                            size: AppIconButton.kCompactSize,
-                            tooltip: l10n.gitStageAll,
-                            onTap: () => unawaited(_cubit.stageAll()),
-                          ),
-                          children: [
-                            for (final c in state.status.unstaged)
-                              GitChangeTile(
-                                change: c,
-                                onOpenDiff: () => unawaited(_openDiff(c)),
-                                onStage: () => unawaited(_cubit.stage(c)),
-                                onUnstage: () {},
-                                onDiscard: () =>
-                                    unawaited(_confirmDiscard(c)),
-                              ),
-                          ],
-                        ),
-                    ],
-                  )
+                ? _buildChangesBody(context, state)
                 : Center(
                     child: Text(
                       l10n.gitNoChanges,
-                      style: AppTextStyles.of(context).bodySmall.copyWith(
-                        color: cs.onSurfaceVariant,
-                      ),
+                      style: AppTextStyles.of(
+                        context,
+                      ).bodySmall.copyWith(color: cs.onSurfaceVariant),
                     ),
                   ),
           ),
         ],
       ),
     );
+  }
+
+  Widget _buildChangesBody(BuildContext context, GitState state) {
+    final l10n = context.l10n;
+    final sections = <Widget>[
+      if (state.status.staged.isNotEmpty)
+        _Section(
+          title: l10n.gitStagedChanges,
+          count: state.status.staged.length,
+          action: AppIconButton(
+            icon: Icons.remove,
+            iconSize: AppIconButton.kCompactIconSize,
+            size: AppIconButton.kCompactSize,
+            tooltip: l10n.gitUnstageAll,
+            onTap: () => unawaited(_cubit.unstageAll()),
+          ),
+          children: _buildSectionChildren(
+            context,
+            state,
+            state.status.staged,
+            staged: true,
+          ),
+        ),
+      if (state.status.unstaged.isNotEmpty)
+        _Section(
+          title: l10n.gitChanges,
+          count: state.status.unstaged.length,
+          action: AppIconButton(
+            icon: Icons.add,
+            iconSize: AppIconButton.kCompactIconSize,
+            size: AppIconButton.kCompactSize,
+            tooltip: l10n.gitStageAll,
+            onTap: () => unawaited(_cubit.stageAll()),
+          ),
+          children: _buildSectionChildren(
+            context,
+            state,
+            state.status.unstaged,
+            staged: false,
+          ),
+        ),
+    ];
+
+    if (state.changesViewMode == GitChangesViewMode.list) {
+      return ListView(children: sections);
+    }
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final fileLabelStyle = AppTextStyles.of(context).bodySmall;
+        final folderLabelStyle = AppTextStyles.of(
+          context,
+        ).bodySmall.copyWith(fontWeight: FontWeight.w500);
+        final treeRows = [
+          ...visibleGitChangesRows(
+            changes: state.status.staged,
+            expandedFolderPaths: state.expandedFolderPaths,
+          ),
+          ...visibleGitChangesRows(
+            changes: state.status.unstaged,
+            expandedFolderPaths: state.expandedFolderPaths,
+          ),
+        ];
+        final contentWidth = math.max(
+          constraints.maxWidth,
+          gitChangesMinContentWidth(
+            rows: treeRows,
+            fileLabelStyle: fileLabelStyle,
+            folderLabelStyle: folderLabelStyle,
+            textScaler: MediaQuery.textScalerOf(context),
+          ),
+        );
+
+        return Scrollbar(
+          controller: _horizontalScrollController,
+          thumbVisibility: true,
+          notificationPredicate: (notification) =>
+              notification.metrics.axis == Axis.horizontal,
+          child: SingleChildScrollView(
+            controller: _horizontalScrollController,
+            scrollDirection: Axis.horizontal,
+            child: SizedBox(
+              width: contentWidth,
+              height: constraints.maxHeight,
+              child: Scrollbar(
+                controller: _changesScrollController,
+                thumbVisibility: true,
+                child: ListView(
+                  controller: _changesScrollController,
+                  children: sections,
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  List<Widget> _buildSectionChildren(
+    BuildContext context,
+    GitState state,
+    List<GitFileChange> changes, {
+    required bool staged,
+  }) {
+    if (state.changesViewMode == GitChangesViewMode.list) {
+      return [
+        for (final change in changes)
+          GitChangeTile(
+            change: change,
+            onOpenDiff: () => unawaited(_openDiff(change)),
+            onStage: staged ? () {} : () => unawaited(_cubit.stage(change)),
+            onUnstage: staged ? () => unawaited(_cubit.unstage(change)) : () {},
+            onDiscard: staged
+                ? () {}
+                : () => unawaited(_confirmDiscard(change)),
+          ),
+      ];
+    }
+
+    final rows = visibleGitChangesRows(
+      changes: changes,
+      expandedFolderPaths: state.expandedFolderPaths,
+    );
+    return [
+      for (final row in rows)
+        SizedBox(
+          width: double.infinity,
+          height: kGitChangesRowExtent,
+          child: Padding(
+            padding: _gitChangesRowPadding,
+            child: row.isFolder
+                ? GitChangeFolderTile(
+                    name: row.name!,
+                    depth: row.depth,
+                    isExpanded: state.expandedFolderPaths.contains(
+                      row.folderPath,
+                    ),
+                    onToggle: () =>
+                        _cubit.toggleFolderExpanded(row.folderPath!),
+                  )
+                : GitChangeTile(
+                    change: row.change!,
+                    depth: row.depth,
+                    treeLayout: true,
+                    onOpenDiff: () => unawaited(_openDiff(row.change!)),
+                    onStage: staged
+                        ? () {}
+                        : () => unawaited(_cubit.stage(row.change!)),
+                    onUnstage: staged
+                        ? () => unawaited(_cubit.unstage(row.change!))
+                        : () {},
+                    onDiscard: staged
+                        ? () {}
+                        : () => unawaited(_confirmDiscard(row.change!)),
+                  ),
+          ),
+        ),
+    ];
   }
 
   Widget _centeredHint(BuildContext context, IconData icon, String text) {
@@ -271,20 +395,24 @@ class _Header extends StatelessWidget {
     required this.ahead,
     required this.behind,
     required this.busy,
+    required this.treeView,
     required this.onRefresh,
     required this.onPush,
     required this.onPull,
     required this.onBranch,
+    required this.onToggleViewMode,
   });
 
   final String branch;
   final int ahead;
   final int behind;
   final bool busy;
+  final bool treeView;
   final VoidCallback onRefresh;
   final VoidCallback onPush;
   final VoidCallback onPull;
   final VoidCallback onBranch;
+  final VoidCallback onToggleViewMode;
 
   @override
   Widget build(BuildContext context) {
@@ -301,25 +429,29 @@ class _Header extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
               child: Row(
                 children: [
-                  Icon(Icons.account_tree_outlined, size: 16, color: cs.primary),
+                  Icon(
+                    Icons.account_tree_outlined,
+                    size: 16,
+                    color: cs.primary,
+                  ),
                   const SizedBox(width: 6),
                   Flexible(
                     child: Text(
                       branch,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: AppTextStyles.of(context).bodySmall.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
+                      style: AppTextStyles.of(
+                        context,
+                      ).bodySmall.copyWith(fontWeight: FontWeight.w600),
                     ),
                   ),
                   if (ahead > 0 || behind > 0) ...[
                     const SizedBox(width: 6),
                     Text(
                       l10n.gitAheadBehind(ahead, behind),
-                      style: AppTextStyles.of(context).caption.copyWith(
-                        color: cs.onSurfaceVariant,
-                      ),
+                      style: AppTextStyles.of(
+                        context,
+                      ).caption.copyWith(color: cs.onSurfaceVariant),
                     ),
                   ],
                 ],
@@ -336,6 +468,13 @@ class _Header extends StatelessWidget {
               child: CircularProgressIndicator(strokeWidth: 2),
             ),
           ),
+        AppIconButton(
+          icon: treeView ? Icons.view_list : Icons.account_tree_outlined,
+          iconSize: AppIconButton.kCompactIconSize,
+          size: AppIconButton.kCompactSize,
+          tooltip: treeView ? l10n.gitChangesListView : l10n.gitChangesTreeView,
+          onTap: onToggleViewMode,
+        ),
         AppIconButton(
           icon: Icons.download_outlined,
           iconSize: AppIconButton.kCompactIconSize,
@@ -387,10 +526,7 @@ class _CommitBox extends StatelessWidget {
           controller: controller,
           minLines: 1,
           maxLines: 4,
-          decoration: InputDecoration(
-            hintText: hint,
-            isDense: true,
-          ),
+          decoration: InputDecoration(hintText: hint, isDense: true),
           onChanged: onChanged,
         ),
         const SizedBox(height: 8),
@@ -466,9 +602,9 @@ class _CountBadge extends StatelessWidget {
       ),
       child: Text(
         '$count',
-        style: AppTextStyles.of(context).caption.copyWith(
-          color: cs.onSurfaceVariant,
-        ),
+        style: AppTextStyles.of(
+          context,
+        ).caption.copyWith(color: cs.onSurfaceVariant),
       ),
     );
   }

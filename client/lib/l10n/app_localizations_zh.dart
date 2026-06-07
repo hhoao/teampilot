@@ -363,6 +363,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get gitRefresh => '刷新';
 
   @override
+  String get gitChangesListView => '列表视图';
+
+  @override
+  String get gitChangesTreeView => '树形视图';
+
+  @override
   String get gitSwitchBranch => '切换分支';
 
   @override
