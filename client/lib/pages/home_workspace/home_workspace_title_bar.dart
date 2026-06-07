@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:io' show Platform;
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
 import 'package:flutter/services.dart';
@@ -65,12 +64,14 @@ class HomeProjectTab {
   const HomeProjectTab({
     required this.id,
     required this.name,
+    required this.kind,
     this.tooltip,
     this.closable = true,
   });
 
   final String id;
   final String name;
+  final HomeProjectTabKind kind;
 
   /// Shown on hover; defaults to [name] when omitted.
   final String? tooltip;
@@ -217,6 +218,7 @@ class _HomeWorkspaceTitleBarState extends State<HomeWorkspaceTitleBar>
                                   child: _ProjectTab(
                                     label: tab.name,
                                     tooltip: tab.tooltip ?? tab.name,
+                                    kind: tab.kind,
                                     active: tab.id == widget.activeProjectId,
                                     closable: tab.closable,
                                     onTap: () =>
@@ -365,6 +367,7 @@ class _ProjectTab extends StatefulWidget {
   const _ProjectTab({
     required this.label,
     required this.tooltip,
+    required this.kind,
     this.active = false,
     this.closable = true,
     this.onTap,
@@ -373,6 +376,7 @@ class _ProjectTab extends StatefulWidget {
 
   final String label;
   final String tooltip;
+  final HomeProjectTabKind kind;
   final bool active;
   final bool closable;
   final VoidCallback? onTap;
@@ -394,6 +398,12 @@ class _ProjectTabState extends State<_ProjectTab> {
     final styles = AppTextStyles.of(context);
     final active = widget.active;
     final Color fg = active ? cs.onSurface : cs.onSurfaceVariant;
+    final barColor = homeProjectTabBarColor(
+      kind: widget.kind,
+      colorScheme: cs,
+      active: active,
+      hovered: _hovered,
+    );
     return Tooltip(
       message: widget.tooltip,
       waitDuration: const Duration(milliseconds: 500),
@@ -406,7 +416,7 @@ class _ProjectTabState extends State<_ProjectTab> {
           child: Container(
             constraints: const BoxConstraints(maxWidth: 200),
             padding: const EdgeInsets.only(
-              left: 12,
+              left: 10,
               right: 6,
               top: 6,
               bottom: 6,
@@ -426,7 +436,19 @@ class _ProjectTabState extends State<_ProjectTab> {
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Container(
+                    width: 2,
+                    decoration: BoxDecoration(
+                      color: barColor,
+                      borderRadius: BorderRadius.circular(1),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
                 _TabChromeSlot(
                   visible: _showChrome,
                   child: Icon(
