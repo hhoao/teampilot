@@ -29,6 +29,7 @@ class RightToolsPanel extends StatefulWidget {
     this.panelKey = AppKeys.rightToolsPanel,
     this.dismissDrawerOnAction = false,
     this.isPersonalProject = false,
+    this.projectId,
     super.key,
   });
 
@@ -43,6 +44,10 @@ class RightToolsPanel extends StatefulWidget {
   /// caller (the project context), decoupling the tools from chat-session tab
   /// state.
   final String cwd;
+
+  /// Project this tools panel belongs to; scopes per-project UI state
+  /// (selected tool tab). Null on routes without a project context.
+  final String? projectId;
 
   @override
   State<RightToolsPanel> createState() => _RightToolsPanelState();
@@ -178,7 +183,7 @@ class _RightToolsPanelState extends State<RightToolsPanel> {
       key: widget.panelKey,
       color: cs.workspaceSubtleSurface,
       child: widget.preferences.toolsArrangement == ToolsArrangement.tabs
-          ? TabbedPanel(views: views)
+          ? TabbedPanel(views: views, scopeId: widget.projectId)
           : StackedPanel(views: views),
     );
   }

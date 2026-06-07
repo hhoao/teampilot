@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../cubits/workspace_tools_cubit.dart';
 import '../../theme/app_icon_sizes.dart';
 import 'tool_view.dart';
 
@@ -7,23 +9,47 @@ import 'tool_view.dart';
 /// switches the single visible view. Driven by a uniform [ToolView] list so
 /// callers control which views (and conditional ones) appear.
 class TabbedPanel extends StatefulWidget {
-  const TabbedPanel({required this.views, super.key});
+  const TabbedPanel({required this.views, this.scopeId, super.key});
 
   final List<ToolView> views;
+
+  /// When set, the selected tool index is persisted per-scope in
+  /// [WorkspaceToolsCubit] (one scope == one projectId) so it survives project
+  /// switches. When null, selection is local widget state.
+  final String? scopeId;
 
   @override
   State<TabbedPanel> createState() => _TabbedPanelState();
 }
 
 class _TabbedPanelState extends State<TabbedPanel> {
-  int _selected = 0;
+  int _localSelected = 0;
+
+  int _selectedIndex() {
+    final scope = widget.scopeId;
+    if (scope == null) return _localSelected;
+    return context.read<WorkspaceToolsCubit>().selectedIndexFor(scope);
+  }
+
+  void _select(int index) {
+    final scope = widget.scopeId;
+    if (scope == null) {
+      setState(() => _localSelected = index);
+    } else {
+      context.read<WorkspaceToolsCubit>().setSelectedIndex(scope, index);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     if (widget.views.isEmpty) return const SizedBox.shrink();
     if (widget.views.length == 1) return widget.views.single.child;
-    final selected = _selected.clamp(0, widget.views.length - 1);
+    // Rebuild on cubit changes when scoped so the selection reflects the store.
+    if (widget.scopeId != null) {
+      context.watch<WorkspaceToolsCubit>();
+    }
+    final selected = _selectedIndex().clamp(0, widget.views.length - 1);
 
     return Column(
       children: [
@@ -35,7 +61,7 @@ class _TabbedPanelState extends State<TabbedPanel> {
                 _SwitcherButton(
                   view: widget.views[i],
                   active: i == selected,
-                  onTap: () => setState(() => _selected = i),
+                  onTap: () => _select(i),
                 ),
             ],
           ),
