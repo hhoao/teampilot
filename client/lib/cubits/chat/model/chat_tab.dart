@@ -13,11 +13,16 @@ class ChatTab {
     required this.info,
     required this.cliTeamName,
     this.selectedMemberId = '',
+    this.projectId = '',
   });
 
   ChatTabInfo info;
   TerminalSession? resumeSession;
   String selectedMemberId;
+
+  /// Owning project bucket in [ChatTabStore]. Empty for legacy/local scratch
+  /// tabs created without a project context.
+  String projectId;
 
   /// CLI `--team-name` and config-profiles runtime id ([AppSession.cliTeamName]).
   final String cliTeamName;
