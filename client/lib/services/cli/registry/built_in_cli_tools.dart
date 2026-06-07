@@ -4,6 +4,7 @@ import 'tools/claude_cli_tool.dart';
 import 'tools/codex_cli_tool.dart';
 import 'tools/cursor_cli_tool.dart';
 import 'tools/flashskyai_cli_tool.dart';
+import 'capabilities/provider_model_capability.dart';
 import 'tools/opencode_cli_tool.dart';
 
 void registerBuiltInCliTools(CliToolRegistry registry) {
@@ -20,5 +21,11 @@ void registerBuiltInCliTools(CliToolRegistry registry) {
   assert(
     registry.all.length == CliTool.values.length,
     'Registry must not contain extra definitions beyond CliTool.values',
+  );
+  assert(
+    CliTool.values.every(
+      (cli) => registry.capability<ProviderModelCapability>(cli) != null,
+    ),
+    'Every CliTool must register ProviderModelCapability',
   );
 }

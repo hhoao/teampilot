@@ -8,6 +8,7 @@ import '../capabilities/executable_resolver_capability.dart';
 import '../capabilities/installer_capability.dart';
 import '../capabilities/launch_args_capability.dart';
 import '../capabilities/presence_capability.dart';
+import '../capabilities/provider_model_capability.dart';
 import '../capabilities/transcript_probe_capability.dart';
 import '../capabilities/unsupported_installer_capability.dart';
 import '../config_profile/cursor_config_profile_capability.dart';
@@ -26,6 +27,7 @@ final class CursorCliTool implements CliToolDefinition {
     this.terminalBehavior = const CursorTerminalBehavior(),
     this.pluginManifest = const CursorPluginManifest(),
     this.providerCatalog = const CursorProviderCatalog(),
+    this.providerModel = const ProviderRecordModelCapability(),
   });
 
   final LaunchArgsCapability launchArgs;
@@ -38,6 +40,7 @@ final class CursorCliTool implements CliToolDefinition {
   final CursorTerminalBehavior terminalBehavior;
   final CursorPluginManifest pluginManifest;
   final CursorProviderCatalog providerCatalog;
+  final ProviderModelCapability providerModel;
 
   @override
   CliTool get id => CliTool.cursor;
@@ -57,5 +60,6 @@ final class CursorCliTool implements CliToolDefinition {
     terminalBehavior,
     pluginManifest,
     providerCatalog,
+    providerModel,
   ];
 }

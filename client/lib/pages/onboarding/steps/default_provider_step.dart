@@ -8,10 +8,11 @@ import '../../../cubits/team_cubit.dart';
 import '../../../l10n/l10n_extensions.dart';
 import '../../../services/app/onboarding_service.dart';
 import '../../../models/app_provider_config.dart';
+import '../../../services/cli/registry/capabilities/provider_model_capability.dart';
+import '../../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../../services/provider/claude/claude_official_provider.dart';
-import '../../../utils/app_provider_model_candidates.dart';
 import '../../../widgets/app_provider/brand_dropdown_rows.dart';
-import '../../../widgets/dropdown/app_dropdown_field.dart';
+import '../../../widgets/app_provider/provider_model_picker_field.dart';
 import '../../../widgets/dropdown/app_dropdown_decoration.dart';
 import '../../../widgets/cli/cli_brand_icon.dart';
 import '../../../widgets/settings/workspace_settings_widgets.dart';
@@ -68,9 +69,14 @@ class _OnboardingDefaultProviderStepState
     return null;
   }
 
-  bool get _hideModelPicker {
+  bool _hideModelPicker(BuildContext context) {
     final provider = _selectedProvider;
-    return provider != null && isOfficialClaudeProvider(provider);
+    if (provider == null) return true;
+    final capability = CliToolRegistryScope.of(
+      context,
+    ).capability<ProviderModelCapability>(CliTool.claude);
+    if (capability == null) return true;
+    return capability.pickerMode(provider) == ProviderModelPickerMode.hidden;
   }
 
   void _syncFromCubit() {
@@ -164,13 +170,7 @@ class _OnboardingDefaultProviderStepState
     }
 
     final selectedProvider = _selectedProvider;
-    final hideModelPicker = _hideModelPicker;
-    final modelNames = selectedProvider == null || hideModelPicker
-        ? const <String>[]
-        : collectClaudeModelCandidates(
-            selectedProvider,
-            currentModel: _defaultModel,
-          );
+    final hideModelPicker = _hideModelPicker(context);
     final showClaudeModels =
         _haikuController.text.isNotEmpty ||
         _sonnetController.text.isNotEmpty ||
@@ -252,7 +252,7 @@ class _OnboardingDefaultProviderStepState
                 SettingsLabeledStackedRow(
                   title: l10n.defaultModel,
                   subtitle: l10n.onboardingDefaultProviderModelHint,
-                  body: modelNames.isEmpty
+                  body: selectedProvider == null
                       ? Text(
                           l10n.selectModel,
                           style: Theme.of(context).textTheme.bodyMedium
@@ -262,18 +262,17 @@ class _OnboardingDefaultProviderStepState
                                 ).colorScheme.onSurfaceVariant,
                               ),
                         )
-                      : AppDropdownField<String>(
-                          items: modelNames,
-                          initialItem: _defaultModel.isEmpty
-                              ? null
-                              : _defaultModel,
+                      : ProviderModelPickerField(
+                          cli: CliTool.claude,
+                          providerId: selectedProvider.id,
+                          provider: selectedProvider,
+                          value: _defaultModel,
                           hintText: l10n.selectModel,
                           decoration: dropdownDeco,
                           onChanged: (value) {
-                            setState(() => _defaultModel = value ?? '');
+                            setState(() => _defaultModel = value);
                             unawaited(_applySelection());
                           },
-                          itemLabel: (value) => value,
                         ),
                   showDividerBelow: showClaudeModels,
                 ),

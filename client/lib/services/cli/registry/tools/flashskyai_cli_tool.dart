@@ -9,6 +9,7 @@ import '../capabilities/installer_capability.dart';
 import '../capabilities/unsupported_installer_capability.dart';
 import '../capabilities/launch_args_capability.dart';
 import '../capabilities/presence_capability.dart';
+import '../capabilities/provider_model_capability.dart';
 import '../capabilities/transcript_probe_capability.dart';
 import '../config_profile/flashskyai_config_profile_capability.dart';
 
@@ -24,6 +25,7 @@ final class FlashskyaiCliTool implements CliToolDefinition {
     this.terminalBehavior = const FlashskyaiTerminalBehavior(),
     this.pluginManifest = const FlashskyaiPluginManifest(),
     this.providerCatalog = const FlashskyaiProviderCatalog(),
+    this.providerModel = const ProviderRecordModelCapability(),
   });
 
   final LaunchArgsCapability launchArgs;
@@ -36,6 +38,7 @@ final class FlashskyaiCliTool implements CliToolDefinition {
   final FlashskyaiTerminalBehavior terminalBehavior;
   final FlashskyaiPluginManifest pluginManifest;
   final FlashskyaiProviderCatalog providerCatalog;
+  final ProviderModelCapability providerModel;
 
   @override
   CliTool get id => CliTool.flashskyai;
@@ -55,5 +58,6 @@ final class FlashskyaiCliTool implements CliToolDefinition {
     terminalBehavior,
     pluginManifest,
     providerCatalog,
+    providerModel,
   ];
 }

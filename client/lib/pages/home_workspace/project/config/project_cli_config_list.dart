@@ -10,11 +10,11 @@ import '../../../../models/project_profile.dart';
 import '../../../../services/cli/registry/cli_display_name.dart';
 import '../../../../services/cli/registry/cli_tool_definition.dart';
 import '../../../../services/cli/registry/cli_tool_registry_scope.dart';
-import '../../../../services/provider/claude/claude_official_provider.dart';
 import '../../../../theme/app_text_styles.dart';
 import '../../../../widgets/dropdown/app_dropdown_decoration.dart';
 import '../../../../widgets/dropdown/app_dropdown_field.dart';
 import '../../../../widgets/app_provider/brand_dropdown_rows.dart';
+import '../../../../widgets/app_provider/provider_model_picker_field.dart';
 import '../../../../widgets/app_provider/provider_brand_icon.dart';
 import '../../../../widgets/cli/cli_brand_icon.dart';
 import '../../../../widgets/settings/workspace_settings_widgets.dart';
@@ -113,9 +113,11 @@ class ProjectCliConfigRow extends StatelessWidget {
       cli,
       providers,
     );
+    final registry = CliToolRegistryScope.of(context);
     final configured = projectCliIsConfigured(
       profile,
       cli,
+      registry,
       selectedProvider: selectedProvider,
       supportsProviderCatalog: supportsProviderCatalog,
     );
@@ -125,6 +127,11 @@ class ProjectCliConfigRow extends StatelessWidget {
       supportsProviderCatalog: supportsProviderCatalog,
       selectedProvider: selectedProvider,
       model: projectCliModelId(profile, cli),
+      hidesModelPicker: projectCliHidesModelPicker(
+        registry,
+        cli,
+        selectedProvider,
+      ),
     );
 
     return Column(
@@ -218,6 +225,7 @@ class ProjectCliConfigRow extends StatelessWidget {
     required bool supportsProviderCatalog,
     required AppProviderConfig? selectedProvider,
     required String model,
+    required bool hidesModelPicker,
   }) {
     if (!supportsProviderCatalog) {
       return l10n.projectCliNoProviderCatalog;
@@ -226,9 +234,7 @@ class ProjectCliConfigRow extends StatelessWidget {
     final providerName = selectedProvider?.name.trim() ?? '';
     if (providerName.isEmpty) return l10n.projectCliConfigured;
     final modelLabel = model.trim();
-    if (modelLabel.isEmpty &&
-        selectedProvider != null &&
-        isOfficialClaudeProvider(selectedProvider)) {
+    if (modelLabel.isEmpty && hidesModelPicker) {
       return providerName;
     }
     if (modelLabel.isEmpty) return providerName;
@@ -362,16 +368,11 @@ class _ProjectCliConfigureDialogState extends State<ProjectCliConfigureDialog> {
         _providerId: _providerId,
     };
     final selectedProvider = _selectedProvider(providers);
-    final modelNames = List<String>.of(
-      projectCliModelCandidates(
-        appProvider: selectedProvider,
-        currentModel: _modelId,
-      ),
-    )..sort();
-    final hideModelPicker =
-        widget.cli == CliTool.claude &&
-        selectedProvider != null &&
-        isOfficialClaudeProvider(selectedProvider);
+    final hideModelPicker = projectCliHidesModelPicker(
+      registry,
+      widget.cli,
+      selectedProvider,
+    );
 
     return AlertDialog(
       title: Text(title),
@@ -404,7 +405,12 @@ class _ProjectCliConfigureDialogState extends State<ProjectCliConfigureDialog> {
                   }
                   setState(() {
                     _providerId = newProv;
-                    _modelId = projectCliDefaultModelForProvider(nextProvider);
+                    _modelId = projectCliDefaultModelForProvider(
+                      registry,
+                      widget.cli,
+                      nextProvider,
+                      providerId: newProv,
+                    );
                   });
                 },
                 itemBuilder: providerDropdownItemBuilder(
@@ -417,16 +423,18 @@ class _ProjectCliConfigureDialogState extends State<ProjectCliConfigureDialog> {
             if (!hideModelPicker)
               SettingsLabeledStackedRow(
                 title: l10n.model,
-                body: AppDropdownField<String>(
+                body: ProviderModelPickerField(
                   key: ValueKey(
-                    'project-cli-model-${widget.cli.value}-$_providerId-$_modelId',
+                    'project-cli-model-$_providerId-$_modelId',
                   ),
-                  items: modelNames,
-                  initialItem: _modelId.isEmpty ? null : _modelId,
+                  cli: widget.cli,
+                  providerId: _providerId,
+                  provider: selectedProvider,
+                  value: _modelId,
                   hintText: l10n.selectModel,
                   decoration: dropdownDeco,
-                  onChanged: (value) => setState(() => _modelId = value ?? ''),
-                  itemLabel: (value) => value,
+                  onChanged: (value) =>
+                      setState(() => _modelId = value.trim()),
                 ),
                 showDividerBelow: false,
               ),

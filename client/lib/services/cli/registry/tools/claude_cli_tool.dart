@@ -8,6 +8,7 @@ import '../capabilities/executable_resolver_capability.dart';
 import '../capabilities/installer_capability.dart';
 import '../capabilities/launch_args_capability.dart';
 import '../capabilities/presence_capability.dart';
+import '../capabilities/provider_model_capability.dart';
 import '../capabilities/transcript_probe_capability.dart';
 import '../config_profile/claude_config_profile_capability.dart';
 import '../installer/claude_installer_capability.dart';
@@ -24,6 +25,7 @@ final class ClaudeCliTool implements CliToolDefinition {
     this.terminalBehavior = const ClaudeTerminalBehavior(),
     this.pluginManifest = const ClaudePluginManifest(),
     this.providerCatalog = const ClaudeProviderCatalog(),
+    this.providerModel = const ClaudeProviderModelCapability(),
   });
 
   final LaunchArgsCapability launchArgs;
@@ -36,6 +38,7 @@ final class ClaudeCliTool implements CliToolDefinition {
   final ClaudeTerminalBehavior terminalBehavior;
   final ClaudePluginManifest pluginManifest;
   final ClaudeProviderCatalog providerCatalog;
+  final ProviderModelCapability providerModel;
 
   @override
   CliTool get id => CliTool.claude;
@@ -55,5 +58,6 @@ final class ClaudeCliTool implements CliToolDefinition {
     terminalBehavior,
     pluginManifest,
     providerCatalog,
+    providerModel,
   ];
 }

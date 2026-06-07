@@ -4778,6 +4778,18 @@ abstract class AppLocalizations {
   /// **'Select a model'**
   String get selectModel;
 
+  /// No description provided for @appProviderModelEnterCustom.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter custom model ID'**
+  String get appProviderModelEnterCustom;
+
+  /// No description provided for @appProviderModelPickFromList.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose from list'**
+  String get appProviderModelPickFromList;
+
   /// No description provided for @memberOfficialClaudeModelHint.
   ///
   /// In en, this message translates to:

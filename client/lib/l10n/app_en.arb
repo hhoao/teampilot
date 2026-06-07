@@ -1223,6 +1223,8 @@
   "memberPromptPresetResearcher": "Researcher",
   "memberPromptPresetResearcherText": "Investigate and report only; do not change production code unless asked.\nOutput findings with file paths, relevant symbols, and recommended next steps.",
   "selectModel": "Select a model",
+  "appProviderModelEnterCustom": "Enter custom model ID",
+  "appProviderModelPickFromList": "Choose from list",
   "memberOfficialClaudeModelHint": "Uses your Claude account default model. Manage Official login in Providers settings.",
   "editMemberSubtitle": "Edit provider, model, agent, and command arguments.",
   "teamLeadNameRequired": "FlashskyAI team delegation expects this member to be named exactly team-lead.",

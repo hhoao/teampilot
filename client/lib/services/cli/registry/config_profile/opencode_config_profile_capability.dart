@@ -1,6 +1,12 @@
 import 'package:flutter/foundation.dart';
 
+import '../../../../models/app_provider_config.dart';
+import '../../../../models/project_profile.dart';
 import '../../../../models/team_config.dart';
+import '../../../../repositories/app_provider_repository.dart';
+import '../../../provider/opencode/opencode_provider_settings_resolver.dart';
+import '../../../session/member_role_provision.dart';
+import '../../../team_bus/mcp/teammate_bus_mcp_config.dart';
 import '../capabilities/config_profile_capability.dart';
 import 'opencode_idle_plugin.dart';
 
@@ -42,10 +48,87 @@ Map<String, Object?> mergeOpencodeIdlePlugin(
   return {...config, 'plugin': plugins};
 }
 
+/// Merges the teammate-bus remote MCP server into opencode.json `mcp` so the
+/// member can send/receive teammate messages (mixed mode).
+///
+/// opencode uses the top-level `mcp` field (not `mcpServers`) and `type:
+/// "remote"` (not `"http"`); the server must be `enabled` to load on startup.
+@visibleForTesting
+Map<String, Object?> mergeOpencodeTeammateBusMcp(
+  Map<String, Object?> config,
+  String memberId,
+  int port,
+) {
+  final servers = <String, Object?>{
+    ...((config['mcp'] as Map?)?.cast<String, Object?>() ??
+        const <String, Object?>{}),
+  };
+  servers[teammateBusMcpServerName] = <String, Object?>{
+    'type': 'remote',
+    'url': 'http://127.0.0.1:$port/mcp',
+    'enabled': true,
+    'headers': <String, Object?>{teammateBusMcpMemberHeader: memberId},
+  };
+  return {...config, 'mcp': servers};
+}
+
+/// Merges a provider's credentials into opencode.json `provider.<id>.options`.
+///
+/// opencode reads `apiKey` / `baseURL` (note the capital `URL`) from the
+/// provider's `options`; an optional `npm` (from the app provider's `config`)
+/// tells opencode which SDK to use for fully custom, non-catalog providers.
+@visibleForTesting
+Map<String, Object?> mergeOpencodeProvider(
+  Map<String, Object?> config,
+  AppProviderConfig provider,
+) {
+  final id = provider.id.trim();
+  if (id.isEmpty) return config;
+
+  final providers = <String, Object?>{
+    ...((config['provider'] as Map?)?.cast<String, Object?>() ??
+        const <String, Object?>{}),
+  };
+  final existing =
+      (providers[id] as Map?)?.cast<String, Object?>() ?? <String, Object?>{};
+  final entry = <String, Object?>{...existing};
+  final options = <String, Object?>{
+    ...((existing['options'] as Map?)?.cast<String, Object?>() ??
+        const <String, Object?>{}),
+  };
+
+  final apiKey = provider.apiKey.trim();
+  if (apiKey.isNotEmpty) options['apiKey'] = apiKey;
+  final baseUrl = provider.baseUrl.trim();
+  if (baseUrl.isNotEmpty) options['baseURL'] = baseUrl;
+
+  final npm = provider.config['npm'];
+  if (npm is String && npm.trim().isNotEmpty && entry['npm'] == null) {
+    entry['npm'] = npm.trim();
+  }
+
+  if (options.isNotEmpty) entry['options'] = options;
+  if (entry.isEmpty) return config;
+
+  providers[id] = entry;
+  return {...config, 'provider': providers};
+}
+
+/// opencode CLI launch: provisions a per-session config dir (`OPENCODE_CONFIG_DIR`)
+/// holding `opencode.json` (provider credentials, member identity via `AGENTS.md`,
+/// and in mixed mode the team-bus idle plugin + teammate-bus MCP server).
 final class OpencodeConfigProfileCapability implements ConfigProfileCapability {
   const OpencodeConfigProfileCapability();
 
+  static const toolId = 'opencode';
   static const opencodeConfigFileName = 'opencode.json';
+  static const agentsFileName = 'AGENTS.md';
+
+  /// opencode treats `OPENCODE_CONFIG_DIR` as its config root: it loads
+  /// `opencode.json` from this dir and auto-discovers `AGENTS.md` here as a
+  /// global instruction. (The bare `OPENCODE` env is an internal run marker,
+  /// not a path — setting it does nothing.)
+  static const configDirEnv = 'OPENCODE_CONFIG_DIR';
 
   @override
   Future<void> ensureSessionProfile(ConfigProfileSessionContext ctx) async {}
@@ -57,27 +140,58 @@ final class OpencodeConfigProfileCapability implements ConfigProfileCapability {
     final standalone = ctx.standaloneScope;
     final profile = ctx.profile;
     if (standalone != null && profile != null) {
-      final opencodeDir = standaloneSessionToolDir(
-        ctx.paths,
-        standalone,
-        'opencode',
+      return _contributeStandaloneLaunch(ctx, standalone, profile);
+    }
+    return _contributeTeamLaunch(ctx);
+  }
+
+  Future<ConfigProfileLaunchContribution> _contributeTeamLaunch(
+    ConfigProfileLaunchContext ctx,
+  ) async {
+    final paths = ctx.paths;
+    final opencodeDir = paths.sessionToolDir(
+      ctx.scope.teamId,
+      ctx.scope.sessionId,
+      toolId,
+    );
+    final team = ctx.team;
+    final member = ctx.member;
+    final mixed = team?.teamMode == TeamMode.mixed;
+    final warnings = <String>[];
+
+    await paths.fs.ensureDir(opencodeDir);
+
+    final configPath = paths.pathContext.join(
+      opencodeDir,
+      opencodeConfigFileName,
+    );
+    var config = await paths.readSettingsFile(configPath);
+    var changed = false;
+
+    if (team != null) {
+      final provider = await _resolver(paths).resolveForLaunch(
+        team: team,
+        member: member,
       );
-      return ConfigProfileLaunchContribution(
-        environment: {'OPENCODE': opencodeDir},
-      );
+      if (provider == null) {
+        warnings.add('opencode_provider_missing');
+      } else {
+        config = mergeOpencodeProvider(config, provider);
+        changed = true;
+      }
     }
 
-    final delegate = ctx.paths;
-    final scope = ctx.scope;
-    final opencodeDir = delegate.sessionToolDir(
-      scope.teamId,
-      scope.sessionId,
-      'opencode',
-    );
+    if (await _writeMemberIdentity(
+      paths: paths,
+      opencodeDir: opencodeDir,
+      member: member,
+      forceTeamLeadDelegateMode: team?.forceTeamLeadDelegateMode ?? false,
+      mixed: mixed,
+    )) {
+      changed = true;
+    }
 
-    final mixed = ctx.team?.teamMode == TeamMode.mixed;
     final idleUrl = ctx.busIdleUrl;
-    final member = ctx.member;
     if (mixed &&
         idleUrl != null &&
         idleUrl.isNotEmpty &&
@@ -85,50 +199,110 @@ final class OpencodeConfigProfileCapability implements ConfigProfileCapability {
         member.isValid) {
       final port = parseBusPortFromIdleUrl(idleUrl);
       if (port != null) {
-        await _writeIdlePlugin(delegate: delegate, opencodeDir: opencodeDir);
-        await _writeOpencodeConfig(
-          delegate: delegate,
-          opencodeDir: opencodeDir,
-          memberId: member.id,
-          port: port,
-        );
+        await _writeIdlePlugin(paths: paths, opencodeDir: opencodeDir);
+        config = mergeOpencodeIdlePlugin(config, member.id, port);
+        config = mergeOpencodeTeammateBusMcp(config, member.id, port);
+        changed = true;
       }
     }
 
-    return ConfigProfileLaunchContribution(
-      environment: {
-        'OPENCODE': opencodeDir,
-      },
-    );
-  }
-
-  Future<void> _writeIdlePlugin({
-    required ConfigProfileDelegate delegate,
-    required String opencodeDir,
-  }) async {
-    final pluginPath = delegate.pathContext.join(
-      opencodeDir,
-      opencodeIdlePluginFileName,
-    );
-    final existing = await delegate.fs.readString(pluginPath);
-    if (existing == opencodeIdlePluginSource) {
-      return;
+    if (changed) {
+      await paths.writeJsonIfChanged(configPath, config);
     }
-    await delegate.fs.atomicWrite(pluginPath, opencodeIdlePluginSource);
+
+    return ConfigProfileLaunchContribution(
+      environment: {configDirEnv: opencodeDir},
+      warnings: warnings,
+    );
   }
 
-  Future<void> _writeOpencodeConfig({
-    required ConfigProfileDelegate delegate,
-    required String opencodeDir,
-    required String memberId,
-    required int port,
-  }) async {
-    final configPath = delegate.pathContext.join(
+  Future<ConfigProfileLaunchContribution> _contributeStandaloneLaunch(
+    ConfigProfileLaunchContext ctx,
+    StandaloneLaunchProfileScope standalone,
+    ProjectProfile profile,
+  ) async {
+    final paths = ctx.paths;
+    final opencodeDir = standaloneSessionToolDir(paths, standalone, toolId);
+    await paths.fs.ensureDir(opencodeDir);
+
+    final configPath = paths.pathContext.join(
       opencodeDir,
       opencodeConfigFileName,
     );
-    final existing = await delegate.readSettingsFile(configPath);
-    final merged = mergeOpencodeIdlePlugin(existing, memberId, port);
-    await delegate.writeJsonIfChanged(configPath, merged);
+    var config = await paths.readSettingsFile(configPath);
+    var changed = false;
+
+    final resolver = _resolver(paths);
+    var provider = await resolver.findById(standaloneProviderId(profile));
+    provider ??= await resolver.resolveSole();
+    if (provider != null) {
+      config = mergeOpencodeProvider(config, provider);
+      changed = true;
+    }
+
+    if (await _writeMemberIdentity(
+      paths: paths,
+      opencodeDir: opencodeDir,
+      member: standaloneMemberFromProfile(profile),
+      forceTeamLeadDelegateMode: false,
+      mixed: false,
+    )) {
+      changed = true;
+    }
+
+    if (changed) {
+      await paths.writeJsonIfChanged(configPath, config);
+    }
+
+    return ConfigProfileLaunchContribution(
+      environment: {configDirEnv: opencodeDir},
+    );
+  }
+
+  OpencodeProviderSettingsResolver _resolver(ConfigProfileDelegate paths) =>
+      OpencodeProviderSettingsResolver(
+        basePath: paths.basePath,
+        repository: AppProviderRepository(
+          basePath: paths.basePath,
+          fs: paths.fs,
+        ),
+      );
+
+  /// Writes member identity to `AGENTS.md`; opencode auto-loads it from the
+  /// config dir as a global instruction. Returns whether anything was written.
+  Future<bool> _writeMemberIdentity({
+    required ConfigProfileDelegate paths,
+    required String opencodeDir,
+    required TeamMemberConfig? member,
+    required bool forceTeamLeadDelegateMode,
+    required bool mixed,
+  }) async {
+    if (member == null || !member.isValid) return false;
+    final prompt = MemberRoleProvision.composeRolePrompt(
+      member: member,
+      forceTeamLeadDelegateMode: forceTeamLeadDelegateMode,
+      mixed: mixed,
+    ).trim();
+    if (prompt.isEmpty) return false;
+    await paths.fs.atomicWrite(
+      paths.pathContext.join(opencodeDir, agentsFileName),
+      '$prompt\n',
+    );
+    return true;
+  }
+
+  Future<void> _writeIdlePlugin({
+    required ConfigProfileDelegate paths,
+    required String opencodeDir,
+  }) async {
+    final pluginPath = paths.pathContext.join(
+      opencodeDir,
+      opencodeIdlePluginFileName,
+    );
+    final existing = await paths.fs.readString(pluginPath);
+    if (existing == opencodeIdlePluginSource) {
+      return;
+    }
+    await paths.fs.atomicWrite(pluginPath, opencodeIdlePluginSource);
   }
 }

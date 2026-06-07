@@ -108,6 +108,13 @@ class ProviderImportService {
         onlyIfEmpty: onlyIfEmpty,
       );
 
+  Future<ProviderImportResult> importOpencode({required bool onlyIfEmpty}) =>
+      _importForCatalogCli(
+        CliTool.opencode,
+        _importOpencode,
+        onlyIfEmpty: onlyIfEmpty,
+      );
+
   Future<ProviderImportResult> _importForCatalogCli(
     CliTool cli,
     Future<_ImportedProviders> Function() loadImported, {
@@ -277,6 +284,12 @@ class ProviderImportService {
   }
 
   Future<_ImportedProviders> _importCursor() async =>
+      const _ImportedProviders();
+
+  // No native auto-import yet: opencode stores auth in `$XDG_DATA_HOME/opencode/
+  // auth.json`, separate from config. Providers are configured manually in the
+  // app and their credentials are written into opencode.json at launch.
+  Future<_ImportedProviders> _importOpencode() async =>
       const _ImportedProviders();
 
   Future<List<AppProviderConfig>> _importClaudeLive() async {

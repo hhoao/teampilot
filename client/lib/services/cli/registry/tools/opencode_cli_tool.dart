@@ -8,6 +8,8 @@ import '../capabilities/executable_resolver_capability.dart';
 import '../capabilities/installer_capability.dart';
 import '../capabilities/launch_args_capability.dart';
 import '../capabilities/presence_capability.dart';
+import '../capabilities/provider_catalog_capability.dart';
+import '../capabilities/provider_model_capability.dart';
 import '../capabilities/transcript_probe_capability.dart';
 import '../config_profile/opencode_config_profile_capability.dart';
 import '../installer/opencode_installer_capability.dart';
@@ -23,6 +25,8 @@ final class OpencodeCliTool implements CliToolDefinition {
     this.display = const OpencodeDisplay(),
     this.terminalBehavior = const OpencodeTerminalBehavior(),
     this.pluginManifest = const OpencodePluginManifest(),
+    this.providerCatalog = const OpencodeProviderCatalog(),
+    this.providerModel = const OpencodeProviderModelCapability(),
   });
 
   final LaunchArgsCapability launchArgs;
@@ -34,6 +38,8 @@ final class OpencodeCliTool implements CliToolDefinition {
   final OpencodeDisplay display;
   final OpencodeTerminalBehavior terminalBehavior;
   final OpencodePluginManifest pluginManifest;
+  final ProviderCatalogCapability providerCatalog;
+  final ProviderModelCapability providerModel;
 
   @override
   CliTool get id => CliTool.opencode;
@@ -52,5 +58,7 @@ final class OpencodeCliTool implements CliToolDefinition {
     display,
     terminalBehavior,
     pluginManifest,
+    providerCatalog,
+    providerModel,
   ];
 }

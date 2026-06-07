@@ -132,12 +132,6 @@ class _ChatPageBody extends StatelessWidget {
       isPersonalProject: isPersonalProject,
       projectId: projectId,
     );
-    final activeChatAnimationId =
-        chatCubit.state.activeTabIndex >= 0 &&
-            chatCubit.state.activeTabIndex < chatCubit.state.tabs.length
-        ? chatCubit.state.tabs[chatCubit.state.activeTabIndex].id
-        : sessionId ?? 'empty';
-
     Widget buildShell({Widget? rightTools}) {
       return WorkspaceShell(
         workspaceTerminalWorkingDirectory: cwd,
@@ -169,9 +163,6 @@ class _ChatPageBody extends StatelessWidget {
             ? const []
             : _chatActions(context, team!),
         rightTools: rightTools,
-        childAnimationKey: ValueKey(
-          'chat-workspace-body-$activeChatAnimationId',
-        ),
         child: ChatWorkbench(
           sessionId: sessionId,
           isPersonalProject: isPersonalProject,

@@ -931,6 +931,8 @@
   "memberPromptPresetResearcher": "调研",
   "memberPromptPresetResearcherText": "只调研并汇报，除非被要求否则不要改生产代码。\n输出需含文件路径、相关符号与建议的下一步。",
   "selectModel": "选择一个模型",
+  "appProviderModelEnterCustom": "输入自定义模型 ID",
+  "appProviderModelPickFromList": "从列表选择",
   "memberOfficialClaudeModelHint": "使用 Claude 账号默认模型；请在 Providers 设置中管理 Official 登录。",
   "editMemberSubtitle": "编辑提供商、模型、代理和命令参数。",
   "teamLeadNameRequired": "FlashskyAI 团队委托要求此成员名称必须为 team-lead。",

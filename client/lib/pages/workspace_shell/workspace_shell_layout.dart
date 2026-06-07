@@ -13,7 +13,6 @@ class WorkspaceShellMainWithTerminal extends StatelessWidget {
     required this.child,
     required this.rightTools,
     required this.onRightToolsWidthChanged,
-    required this.childAnimationKey,
     this.workspaceTerminalWorkingDirectory,
     this.workspaceProjectId,
   });
@@ -22,16 +21,11 @@ class WorkspaceShellMainWithTerminal extends StatelessWidget {
   final Widget child;
   final Widget? rightTools;
   final ValueChanged<double>? onRightToolsWidthChanged;
-  final Key? childAnimationKey;
   final String? workspaceTerminalWorkingDirectory;
   final String? workspaceProjectId;
 
   @override
   Widget build(BuildContext context) {
-    final animatedChild = childAnimationKey == null
-        ? child
-        : WorkspaceShellFadeSlideIn(key: childAnimationKey, child: child);
-
     return WorkspaceShellBody(
       preferences: preferences,
       rightTools: rightTools,
@@ -39,7 +33,7 @@ class WorkspaceShellMainWithTerminal extends StatelessWidget {
       child: WorkspaceShellCenterColumnWithTerminal(
         workspaceTerminalWorkingDirectory: workspaceTerminalWorkingDirectory,
         workspaceProjectId: workspaceProjectId,
-        child: animatedChild,
+        child: child,
       ),
     );
   }
@@ -181,35 +175,6 @@ class WorkspaceShellBody extends StatelessWidget {
           onPrimarySizeChanged: (leftWidth) {
             onRightToolsWidthChanged?.call(maxW - leftWidth);
           },
-        );
-      },
-    );
-  }
-}
-
-class WorkspaceShellFadeSlideIn extends StatelessWidget {
-  const WorkspaceShellFadeSlideIn({required this.child, super.key});
-
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    return TweenAnimationBuilder<double>(
-      key: key,
-      tween: Tween(begin: 0, end: 1),
-      duration: const Duration(milliseconds: 280),
-      curve: Curves.easeOutCubic,
-      // RepaintBoundary 让子树一次性栅格化并缓存为合成图层;
-      // 之后 Opacity 每帧只对缓存层应用 alpha,不再逐帧重绘整棵 workbench。
-      child: RepaintBoundary(child: child),
-      builder: (context, value, child) {
-        final opacity = Curves.easeOut.transform(value);
-        return Opacity(
-          opacity: opacity,
-          child: FractionalTranslation(
-            translation: Offset(0.025 * (1 - value), 0),
-            child: child,
-          ),
         );
       },
     );

@@ -1,9 +1,8 @@
 import '../../../../models/app_provider_config.dart';
 import '../../../../models/project_profile.dart';
 import '../../../../services/cli/registry/capabilities/provider_catalog_capability.dart';
+import '../../../../services/cli/registry/capabilities/provider_model_capability.dart';
 import '../../../../services/cli/registry/cli_tool_registry.dart';
-import '../../../../services/provider/claude/claude_official_provider.dart';
-import '../../../../utils/app_provider_model_candidates.dart';
 
 bool projectCliSupportsProviderCatalog(
   CliTool cli,
@@ -27,14 +26,20 @@ String projectCliModelId(ProjectProfile profile, CliTool cli) {
 
 bool projectCliIsConfigured(
   ProjectProfile profile,
-  CliTool cli, {
+  CliTool cli,
+  CliToolRegistry registry, {
   AppProviderConfig? selectedProvider,
   bool supportsProviderCatalog = true,
 }) {
   if (!supportsProviderCatalog) return true;
   final providerId = projectCliProviderId(profile, cli);
   if (providerId.isEmpty) return false;
-  if (selectedProvider != null && isOfficialClaudeProvider(selectedProvider)) {
+
+  final modelCapability = registry.capability<ProviderModelCapability>(cli);
+  if (modelCapability != null &&
+      selectedProvider != null &&
+      modelCapability.pickerMode(selectedProvider) ==
+          ProviderModelPickerMode.hidden) {
     return true;
   }
   return projectCliModelId(profile, cli).isNotEmpty;
@@ -54,28 +59,39 @@ AppProviderConfig? projectCliSelectedProvider(
 }
 
 List<String> projectCliModelCandidates({
+  required CliToolRegistry registry,
+  required CliTool cli,
+  required String providerId,
   required AppProviderConfig? appProvider,
   required String currentModel,
 }) {
-  if (appProvider == null) {
-    final trimmed = currentModel.trim();
-    return trimmed.isEmpty ? <String>[] : [trimmed];
-  }
-  return collectClaudeModelCandidates(
-    appProvider,
+  final capability = registry.capability<ProviderModelCapability>(cli);
+  if (capability == null) return const [];
+  return capability.modelCandidates(
+    provider: appProvider,
+    providerId: providerId,
     currentModel: currentModel,
   );
 }
 
-/// Default model when the user picks a different provider in the configure dialog.
-String projectCliDefaultModelForProvider(AppProviderConfig? provider) {
-  if (provider == null) return '';
-  if (isOfficialClaudeProvider(provider)) return '';
-  final defaultModel = provider.defaultModel.trim();
-  if (defaultModel.isNotEmpty) return defaultModel;
-  final names = projectCliModelCandidates(
-    appProvider: provider,
-    currentModel: '',
-  );
-  return names.isNotEmpty ? names.first : '';
+String projectCliDefaultModelForProvider(
+  CliToolRegistry registry,
+  CliTool cli,
+  AppProviderConfig? provider, {
+  required String providerId,
+}) {
+  final capability = registry.capability<ProviderModelCapability>(cli);
+  if (capability == null) return '';
+  return capability.defaultModel(provider: provider, providerId: providerId);
+}
+
+bool projectCliHidesModelPicker(
+  CliToolRegistry registry,
+  CliTool cli,
+  AppProviderConfig? provider,
+) {
+  if (provider == null) return true;
+  final capability = registry.capability<ProviderModelCapability>(cli);
+  if (capability == null) return true;
+  return capability.pickerMode(provider) == ProviderModelPickerMode.hidden;
 }

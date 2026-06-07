@@ -13,7 +13,7 @@ void main() {
     expect(tool!.isLaunchSupported, isTrue);
     expect(
       registry.capability<ProviderCatalogCapability>(CliTool.opencode),
-      isNull,
+      isNotNull,
     );
     expect(
       registry.launchable.map((d) => d.id),

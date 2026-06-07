@@ -281,3 +281,15 @@ final class CursorProviderCatalog implements ProviderCatalogCapability {
   }) =>
       importService.importCursor(onlyIfEmpty: onlyIfEmpty);
 }
+
+final class OpencodeProviderCatalog implements ProviderCatalogCapability {
+  const OpencodeProviderCatalog();
+  @override
+  CliTool get catalogCli => CliTool.opencode;
+  @override
+  Future<ProviderImportResult> importForCli({
+    required bool onlyIfEmpty,
+    required ProviderImportService importService,
+  }) =>
+      importService.importOpencode(onlyIfEmpty: onlyIfEmpty);
+}

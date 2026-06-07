@@ -2516,6 +2516,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get selectModel => '选择一个模型';
 
   @override
+  String get appProviderModelEnterCustom => '输入自定义模型 ID';
+
+  @override
+  String get appProviderModelPickFromList => '从列表选择';
+
+  @override
   String get memberOfficialClaudeModelHint =>
       '使用 Claude 账号默认模型；请在 Providers 设置中管理 Official 登录。';
 

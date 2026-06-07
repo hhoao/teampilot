@@ -1,7 +1,10 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:teampilot/cubits/app_provider_cubit.dart';
 import 'package:teampilot/models/provider_presets/claude_provider_presets.dart';
 import 'package:teampilot/models/provider_presets/codex_provider_presets.dart';
 import 'package:teampilot/models/provider_presets/flashskyai_provider_presets.dart';
+import 'package:teampilot/models/provider_presets/opencode_provider_presets.dart';
+import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/provider/tool_config_generator.dart';
 
 void main() {
@@ -36,6 +39,35 @@ void main() {
     expect(entry.type, 'account');
     expect(entry.accounts, ['~/.claude/.credentials.json']);
     expect(llm.models['Sonnet']?.provider, 'Claude');
+  });
+
+  test('opencode presets are opencode-scoped with slug-stable provider ids', () {
+    expect(OpencodeProviderPresets.all, isNotEmpty);
+    for (final preset in OpencodeProviderPresets.all) {
+      final t = preset.template;
+      expect(t.cli, CliTool.opencode, reason: preset.id);
+      // The saved id (slug of name) must equal the preset id so it survives as
+      // opencode's provider key for `--model <id>/<model>`.
+      expect(
+        AppProviderCubit.slugifyId(t.name),
+        preset.id,
+        reason: 'name "${t.name}" must slugify to id "${preset.id}"',
+      );
+    }
+  });
+
+  test('opencode custom template carries the openai-compatible npm hint', () {
+    final custom = OpencodeProviderPresets.byId('openai-compatible')!.template;
+    expect(custom.config['npm'], '@ai-sdk/openai-compatible');
+
+    final deepseek = OpencodeProviderPresets.byId('deepseek')!.template;
+    expect(deepseek.baseUrl, 'https://api.deepseek.com');
+    expect(deepseek.config.containsKey('npm'), isFalse);
+  });
+
+  test('opencode zen preset ships a default model', () {
+    final zen = OpencodeProviderPresets.byId('opencode')!.template;
+    expect(zen.defaultModel, 'claude-sonnet-4-5');
   });
 
   test('codex preset TOML is valid', () {

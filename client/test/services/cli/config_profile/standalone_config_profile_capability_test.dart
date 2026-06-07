@@ -161,7 +161,7 @@ void main() {
     expect(contribution.environment, isNot(contains('HOME')));
   });
 
-  test('opencode standalone sets OPENCODE dir without idle plugin', () async {
+  test('opencode standalone sets OPENCODE_CONFIG_DIR without idle plugin', () async {
     const projectId = 'p-oc';
     const sessionId = 's-oc';
     const profile = ProjectProfile(projectId: projectId, cli: CliTool.opencode);
@@ -181,7 +181,8 @@ void main() {
       sessionId,
       'opencode',
     );
-    expect(contribution.environment['OPENCODE'], expectedDir);
+    expect(contribution.environment['OPENCODE_CONFIG_DIR'], expectedDir);
+    expect(contribution.environment.containsKey('OPENCODE'), isFalse);
     expect(
       await File(p.join(expectedDir, opencodeIdlePluginFileName)).exists(),
       isFalse,

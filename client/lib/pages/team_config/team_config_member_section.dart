@@ -9,15 +9,15 @@ import '../../models/app_provider_config.dart';
 import '../../models/team_config.dart';
 import '../../models/team_member_prompt_presets.dart';
 import '../../services/app/flashskyai_agent_catalog_service.dart';
+import '../../services/cli/registry/capabilities/provider_model_capability.dart';
 import '../../services/cli/registry/cli_display_name.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
-import '../../services/provider/claude/claude_official_provider.dart';
 import '../../services/storage/storage_resolver.dart';
 import '../../theme/app_text_styles.dart';
-import '../../utils/app_provider_model_candidates.dart';
 import '../../utils/debounce/debounce.dart';
 import '../../utils/team_member_naming.dart';
 import '../../widgets/app_provider/brand_dropdown_rows.dart';
+import '../../widgets/app_provider/provider_model_picker_field.dart';
 import '../../widgets/dropdown/app_dropdown_decoration.dart';
 import '../../widgets/dropdown/app_dropdown_field.dart';
 import '../../widgets/settings/workspace_settings_widgets.dart';
@@ -143,21 +143,6 @@ class TeamMemberConfigFormState extends State<TeamMemberConfigForm> {
     _update(widget.member.copyWith(prompt: text));
   }
 
-  List<String> _modelNamesForClaudeProvider({
-    required String providerId,
-    required AppProviderConfig? appProvider,
-    required String currentModel,
-  }) {
-    if (appProvider == null) {
-      final trimmed = currentModel.trim();
-      return trimmed.isEmpty ? <String>[] : [trimmed];
-    }
-    return collectClaudeModelCandidates(
-      appProvider,
-      currentModel: currentModel,
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
@@ -195,20 +180,16 @@ class TeamMemberConfigFormState extends State<TeamMemberConfigForm> {
       }
     }
 
-    final modelNames = List<String>.of(
-      _modelNamesForClaudeProvider(
-        providerId: prov,
-        appProvider: selectedAppProvider,
-        currentModel: m.model,
-      ),
-    )..sort();
     final model = m.model;
-    final hideModelPicker =
-        catalogCliForTeam(context, widget.member.cli ?? widget.team.cli) ==
-            CliTool.claude &&
-        selectedAppProvider != null &&
-        isOfficialClaudeProvider(selectedAppProvider);
     final cliRegistry = CliToolRegistryScope.of(context);
+    final modelCapability = cliRegistry.capability<ProviderModelCapability>(
+      memberCatalogCli,
+    );
+    final hideModelPicker =
+        selectedAppProvider == null ||
+        modelCapability == null ||
+        modelCapability.pickerMode(selectedAppProvider) ==
+            ProviderModelPickerMode.hidden;
 
     final showCustomAgentField =
         FlashskyaiAgentCatalog.activeDropdownValue(
@@ -377,19 +358,22 @@ class TeamMemberConfigFormState extends State<TeamMemberConfigForm> {
                     break;
                   }
                 }
-                if (nextProvider != null &&
-                    isOfficialClaudeProvider(nextProvider)) {
-                  newModel = '';
-                } else {
-                  final defaultModel = nextProvider?.defaultModel.trim() ?? '';
-                  final names = _modelNamesForClaudeProvider(
-                    providerId: newProv,
-                    appProvider: nextProvider,
-                    currentModel: m.model,
-                  );
-                  final stillValid = names.contains(newModel);
-                  if (!stillValid) {
-                    newModel = defaultModel.isNotEmpty ? defaultModel : '';
+                if (nextProvider != null && modelCapability != null) {
+                  if (modelCapability.pickerMode(nextProvider) ==
+                      ProviderModelPickerMode.hidden) {
+                    newModel = '';
+                  } else {
+                    final names = modelCapability.modelCandidates(
+                      provider: nextProvider,
+                      providerId: newProv,
+                      currentModel: m.model,
+                    );
+                    if (!names.contains(newModel)) {
+                      newModel = modelCapability.defaultModel(
+                        provider: nextProvider,
+                        providerId: newProv,
+                      );
+                    }
                   }
                 }
                 _update(m.copyWith(provider: newProv, model: newModel));
@@ -407,13 +391,16 @@ class TeamMemberConfigFormState extends State<TeamMemberConfigForm> {
           if (!hideModelPicker)
             SettingsLabeledStackedRow(
               title: l10n.model,
-              body: AppDropdownField<String>(
-                items: modelNames,
-                initialItem: model.isEmpty ? null : model,
+              body: ProviderModelPickerField(
+                key: ValueKey('member-model-$prov-$model'),
+                cli: memberCatalogCli,
+                providerId: prov,
+                provider: selectedAppProvider,
+                value: model,
                 hintText: l10n.selectModel,
                 decoration: dropdownDeco,
-                onChanged: (value) => _update(m.copyWith(model: value ?? '')),
-                itemLabel: (value) => value,
+                onChanged: (value) =>
+                    _update(m.copyWith(model: value.trim())),
               ),
               showDividerBelow: true,
             ),
