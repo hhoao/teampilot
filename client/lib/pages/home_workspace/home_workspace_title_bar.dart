@@ -35,13 +35,36 @@ Future<T?> _windowManagerCall<T>(Future<T> Function() action) async {
 enum HomeProjectTabKind { personal, team }
 
 @visibleForTesting
-double homeProjectTabBarAlpha({
-  required bool active,
-  required bool hovered,
-}) {
+double homeProjectTabBarAlpha({required bool active, required bool hovered}) {
   if (active) return 1.0;
   if (hovered) return 0.7;
   return 0.4;
+}
+
+/// Hue-rotated complement of [base] on the color wheel (反色系).
+@visibleForTesting
+Color homeProjectTabComplementColor(Color base) {
+  final hsl = HSLColor.fromColor(base);
+  return hsl.withHue((hsl.hue + 180) % 360).toColor();
+}
+
+@visibleForTesting
+Color homeProjectTabKindAccentColor({
+  required HomeProjectTabKind kind,
+  required ColorScheme colorScheme,
+}) {
+  final personal = colorScheme.primary;
+  return kind == HomeProjectTabKind.personal
+      ? personal
+      : homeProjectTabComplementColor(personal);
+}
+
+@visibleForTesting
+IconData homeProjectTabKindIcon(HomeProjectTabKind kind) {
+  return switch (kind) {
+    HomeProjectTabKind.personal => Icons.person_outline_rounded,
+    HomeProjectTabKind.team => Icons.groups_2_outlined,
+  };
 }
 
 @visibleForTesting
@@ -51,12 +74,28 @@ Color homeProjectTabBarColor({
   required bool active,
   required bool hovered,
 }) {
-  final base = kind == HomeProjectTabKind.personal
-      ? colorScheme.primary
-      : colorScheme.tertiary;
-  return base.withValues(
+  return homeProjectTabKindAccentColor(
+    kind: kind,
+    colorScheme: colorScheme,
+  ).withValues(
     alpha: homeProjectTabBarAlpha(active: active, hovered: hovered),
   );
+}
+
+@visibleForTesting
+Color homeProjectTabKindIconColor({
+  required HomeProjectTabKind kind,
+  required ColorScheme colorScheme,
+  required bool active,
+  required bool hovered,
+}) {
+  final base = homeProjectTabKindAccentColor(
+    kind: kind,
+    colorScheme: colorScheme,
+  );
+  // Keep kind readable on inactive tabs; bar alone was too subtle on warm presets.
+  final alpha = active ? 1.0 : (hovered ? 0.9 : 0.8);
+  return base.withValues(alpha: alpha);
 }
 
 /// An open project tab in the title bar.
@@ -404,6 +443,12 @@ class _ProjectTabState extends State<_ProjectTab> {
       active: active,
       hovered: _hovered,
     );
+    final kindIconColor = homeProjectTabKindIconColor(
+      kind: widget.kind,
+      colorScheme: cs,
+      active: active,
+      hovered: _hovered,
+    );
     return Tooltip(
       message: widget.tooltip,
       waitDuration: const Duration(milliseconds: 500),
@@ -436,15 +481,17 @@ class _ProjectTabState extends State<_ProjectTab> {
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4),
-                  child: Container(
-                    width: 2,
+                // Fixed height: CrossAxisAlignment.stretch would expand the row
+                // to the ListView viewport height (~full title bar).
+                SizedBox(
+                  width: 3,
+                  height: AppIconSizes.md,
+                  child: DecoratedBox(
                     decoration: BoxDecoration(
                       color: barColor,
-                      borderRadius: BorderRadius.circular(1),
+                      borderRadius: BorderRadius.circular(1.5),
                     ),
                   ),
                 ),
@@ -452,9 +499,9 @@ class _ProjectTabState extends State<_ProjectTab> {
                 _TabChromeSlot(
                   visible: _showChrome,
                   child: Icon(
-                    Icons.description_outlined,
+                    homeProjectTabKindIcon(widget.kind),
                     size: AppIconSizes.md,
-                    color: fg,
+                    color: kindIconColor,
                   ),
                 ),
                 const SizedBox(width: 12),

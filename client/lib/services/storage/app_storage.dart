@@ -180,6 +180,14 @@ class AppPaths {
         'home-workspace/closed-projects.json',
       );
 
+  static String homeWorkspaceOpenProjectsJsonForTeampilotRoot(
+    String teampilotRoot,
+  ) =>
+      _pathUnderTeampilotRoot(
+        teampilotRoot,
+        'home-workspace/open-project-tabs.json',
+      );
+
   String get skillRepoCacheDir => skillRepoCacheDirForTeampilotRoot(basePath);
 
   String get pluginMarketplaceCacheDir =>
@@ -218,6 +226,9 @@ class AppPaths {
   String get homeWorkspaceClosedProjectsJson =>
       homeWorkspaceClosedProjectsJsonForTeampilotRoot(basePath);
 
+  String get homeWorkspaceOpenProjectsJson =>
+      homeWorkspaceOpenProjectsJsonForTeampilotRoot(basePath);
+
   /// Application-level unified provider catalog (`providers/providers.json`).
   String get providerConfigDir => _ctx.join(basePath, 'providers');
 
@@ -248,6 +259,15 @@ class DefaultProjectDirectory {
     await Directory(dir.path).create(recursive: true);
     _cachedPath = dir.path;
     return dir.path;
+  }
+
+  /// Working directory of the built-in personal project: `<Documents>/TeamPilot`.
+  /// Created on first access so the seeded default project always has a real dir.
+  static Future<String> resolveDefaultProjectPath() async {
+    final docs = await resolve();
+    final path = p.join(docs, 'TeamPilot');
+    await Directory(path).create(recursive: true);
+    return path;
   }
 
   @visibleForTesting

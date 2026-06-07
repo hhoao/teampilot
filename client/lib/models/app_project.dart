@@ -4,6 +4,10 @@ import 'project_icon_ref.dart';
 
 @immutable
 class AppProject {
+  /// Reserved [projectId] for the built-in personal workspace project. Seeded at
+  /// bootstrap, pinned first in the title bar, and not deletable/closable.
+  static const String defaultPersonalId = 'default-personal';
+
   const AppProject({
     required this.projectId,
     required this.primaryPath,
@@ -47,6 +51,10 @@ class AppProject {
   final int createdAt;
   final int updatedAt;
   final List<String> sessionIds;
+
+  /// The built-in personal project: pinned in the title bar, never deletable.
+  bool get isDefaultPersonal =>
+      projectId == defaultPersonalId && teamId.isEmpty;
 
   String get effectiveDisplay =>
       display.isNotEmpty ? display : _basename(primaryPath);

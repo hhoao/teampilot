@@ -22,14 +22,25 @@ void main() {
     expect(color, cs.primary);
   });
 
-  test('team tab uses tertiary at full alpha when active', () {
+  test('team tab uses complement of primary at full alpha when active', () {
     final color = homeProjectTabBarColor(
       kind: HomeProjectTabKind.team,
       colorScheme: cs,
       active: true,
       hovered: false,
     );
-    expect(color, cs.tertiary);
+    expect(color, homeProjectTabComplementColor(cs.primary));
+  });
+
+  test('kind icons match home sidebar semantics', () {
+    expect(
+      homeProjectTabKindIcon(HomeProjectTabKind.personal),
+      Icons.person_outline_rounded,
+    );
+    expect(
+      homeProjectTabKindIcon(HomeProjectTabKind.team),
+      Icons.groups_2_outlined,
+    );
   });
 
   test('inactive tab bar alpha is lower than active', () {

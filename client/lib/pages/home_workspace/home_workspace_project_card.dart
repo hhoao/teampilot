@@ -164,18 +164,20 @@ class _HomeWorkspaceProjectCardState extends State<HomeWorkspaceProjectCard> {
                                 cloneHomeWorkspaceProject(context, project),
                               ),
                             ),
-                            SidebarActionMenuItem(
-                              icon: Icons.delete_outline,
-                              label: l10n.deleteProject,
-                              destructive: true,
-                              menuController: controller,
-                              onTap: () => unawaited(
-                                confirmDeleteHomeWorkspaceProject(
-                                  context,
-                                  project,
+                            // The built-in personal project is permanent.
+                            if (!project.isDefaultPersonal)
+                              SidebarActionMenuItem(
+                                icon: Icons.delete_outline,
+                                label: l10n.deleteProject,
+                                destructive: true,
+                                menuController: controller,
+                                onTap: () => unawaited(
+                                  confirmDeleteHomeWorkspaceProject(
+                                    context,
+                                    project,
+                                  ),
                                 ),
                               ),
-                            ),
                           ],
                         ),
                       ),

@@ -115,6 +115,34 @@ class SessionRepository {
   ///
   /// When a project already exists for [primaryPath], merges non-empty
   /// [additionalPaths] (union, stable order) and non-empty [display] into the index.
+  /// Ensures the built-in personal project (fixed [AppProject.defaultPersonalId])
+  /// exists, pointing at [primaryPath]. Runs at every bootstrap so existing users
+  /// gain it too. No-op when already present (keeps the user's metadata/sessions).
+  Future<AppProject> ensureDefaultPersonalProject(String primaryPath) async {
+    final fs = await _fs();
+    final index = await _loadIndex(fs);
+    for (final existing in index.projects) {
+      if (existing.projectId == AppProject.defaultPersonalId) {
+        return existing;
+      }
+    }
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final project = AppProject(
+      projectId: AppProject.defaultPersonalId,
+      primaryPath: normalizeProjectPath(primaryPath),
+      createdAt: now,
+      updatedAt: now,
+    );
+    await _saveIndex(
+      fs,
+      AppProjectsIndex(
+        schemaVersion: index.schemaVersion,
+        projects: [project, ...index.projects],
+      ),
+    );
+    return project;
+  }
+
   Future<AppProject> createProject(
     String primaryPath, {
     required String teamId,
@@ -660,6 +688,8 @@ class SessionRepository {
   }
 
   Future<void> deleteProject(String projectId) async {
+    // The built-in personal project is permanent — guard against any caller.
+    if (projectId == AppProject.defaultPersonalId) return;
     final fs = await _fs();
     final index = await _loadIndex(fs);
     AppProject? project;

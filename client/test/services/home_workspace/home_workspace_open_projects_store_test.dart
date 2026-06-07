@@ -1,0 +1,38 @@
+import 'dart:io';
+
+import 'package:flutter_test/flutter_test.dart';
+import 'package:teampilot/services/home_workspace/home_workspace_open_projects_store.dart';
+import 'package:teampilot/services/io/local_filesystem.dart';
+import 'package:teampilot/services/storage/app_storage.dart';
+
+void main() {
+  late Directory root;
+  late HomeWorkspaceOpenProjectsStore store;
+
+  setUp(() {
+    root = Directory.systemTemp.createTempSync('open_projects_store_');
+    final paths = AppPaths(root.path);
+    final fs = LocalFilesystem(
+      pathContext: AppPaths.pathContextForDataRoot(paths.basePath),
+    );
+    store = HomeWorkspaceOpenProjectsStore(
+      fs: fs,
+      pathOverride: paths.homeWorkspaceOpenProjectsJson,
+    );
+  });
+
+  tearDown(() {
+    if (root.existsSync()) {
+      root.deleteSync(recursive: true);
+    }
+  });
+
+  test('saveOrderedIds persists tab order', () async {
+    await store.saveOrderedIds(['proj-a', 'proj-b']);
+
+    expect(await store.loadOrderedIds(), ['proj-a', 'proj-b']);
+
+    final file = File(AppPaths(root.path).homeWorkspaceOpenProjectsJson);
+    expect(file.existsSync(), isTrue);
+  });
+}

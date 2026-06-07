@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:teampilot/models/app_project.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/project_icon_ref.dart';
 import 'package:teampilot/models/team_config.dart';
@@ -100,6 +101,40 @@ void main() {
       File('${tmp.path}/sessions/${s2.sessionId}.json').existsSync(),
       isFalse,
     );
+  });
+
+  test('ensureDefaultPersonalProject seeds fixed id once, idempotently',
+      () async {
+    final tmp = await Directory.systemTemp.createTemp('fs_session_repo_');
+    addTearDown(() => tmp.deleteSync(recursive: true));
+
+    final repo = SessionRepository(rootDir: tmp.path);
+    final first = await repo.ensureDefaultPersonalProject('/docs/TeamPilot');
+    expect(first.projectId, AppProject.defaultPersonalId);
+    expect(first.isDefaultPersonal, isTrue);
+    expect(first.teamId, isEmpty);
+
+    // Second call must be a no-op (no duplicate, keeps the original record).
+    final second = await repo.ensureDefaultPersonalProject('/other/path');
+    expect(second.projectId, AppProject.defaultPersonalId);
+    expect(second.primaryPath, first.primaryPath);
+    final projects = await repo.loadProjects();
+    expect(
+      projects.where((p) => p.projectId == AppProject.defaultPersonalId).length,
+      1,
+    );
+  });
+
+  test('deleteProject is a no-op for the default personal project', () async {
+    final tmp = await Directory.systemTemp.createTemp('fs_session_repo_');
+    addTearDown(() => tmp.deleteSync(recursive: true));
+
+    final repo = SessionRepository(rootDir: tmp.path);
+    await repo.ensureDefaultPersonalProject('/docs/TeamPilot');
+
+    await repo.deleteProject(AppProject.defaultPersonalId);
+    final projects = await repo.loadProjects();
+    expect(projects.any((p) => p.isDefaultPersonal), isTrue);
   });
 
   test(
