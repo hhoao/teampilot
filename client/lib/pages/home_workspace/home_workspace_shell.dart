@@ -11,9 +11,11 @@ import '../../cubits/team_cubit.dart';
 import '../../cubits/workspace_tools_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/app_project.dart';
+import '../../models/team_config.dart';
 import '../../models/home_closed_project_entry.dart';
 import '../../theme/workspace_surface_layers.dart';
 import '../../services/home_workspace/home_workspace_closed_projects_store.dart';
+import '../../services/home_workspace/home_workspace_open_projects_store.dart';
 import '../../services/home_workspace/home_workspace_recent_projects_store.dart';
 import '../../services/terminal/workspace_terminal_registry.dart';
 import 'home_workspace_tab_scope.dart';
@@ -35,32 +37,95 @@ class HomeWorkspaceShell extends StatefulWidget {
 
   @override
   State<HomeWorkspaceShell> createState() => _HomeWorkspaceShellState();
+
+  @visibleForTesting
+  static String formatProjectTabTooltip({
+    required AppProject project,
+    required String personalKindLabel,
+    String? teamName,
+  }) {
+    final name = project.effectiveDisplay;
+    final prefix = project.teamId.isEmpty
+        ? personalKindLabel
+        : ((teamName != null && teamName.isNotEmpty)
+              ? teamName
+              : project.teamId);
+    final headline = '$prefix · $name';
+    final path = project.primaryPath.trim();
+    if (path.isEmpty || path == name) return headline;
+    return '$headline\n$path';
+  }
+
+  static String? teamNameFor(List<TeamConfig> teams, String teamId) {
+    if (teamId.isEmpty) return null;
+    for (final team in teams) {
+      if (team.id == teamId) return team.name;
+    }
+    return null;
+  }
 }
 
 class _HomeWorkspaceShellState extends State<HomeWorkspaceShell> {
   final _recentProjectsStore = HomeWorkspaceRecentProjectsStore();
   final _closedProjectsStore = HomeWorkspaceClosedProjectsStore();
+  final _openProjectsStore = HomeWorkspaceOpenProjectsStore();
 
-  /// Open project ids in tab order; persists across navigation.
-  List<String> _openIds = const [];
+  /// Open project ids in tab order; persisted across app restarts. The built-in
+  /// personal project is always pinned first and cannot be closed.
+  List<String> _openIds = const [AppProject.defaultPersonalId];
   List<HomeClosedProjectEntry> _recentlyClosed = const [];
 
   @override
   void initState() {
     super.initState();
+    unawaited(_bootstrapOpenTabs());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _syncTeamSessionScope(context);
+    });
+  }
+
+  Future<void> _bootstrapOpenTabs() async {
     final initialProjectId = _projectIdFromLocation(widget.location);
-    _ensureOpen(initialProjectId);
+    final persisted = await _openProjectsStore.loadOrderedIds();
+    if (!mounted) return;
+    setState(
+      () => _openIds = _mergeOpenIds(
+        persisted: persisted,
+        routeProjectId: initialProjectId,
+      ),
+    );
     if (initialProjectId != null) {
+      unawaited(_recentProjectsStore.recordVisit(initialProjectId));
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
         context.read<LayoutCubit>().setLastOpenedProjectId(initialProjectId);
       });
     }
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      _syncTeamSessionScope(context);
-    });
-    unawaited(_reloadRecentlyClosed());
+    await _persistOpenIds();
+    await _reloadRecentlyClosed();
+  }
+
+  static List<String> _mergeOpenIds({
+    required List<String> persisted,
+    required String? routeProjectId,
+  }) {
+    final merged = <String>[AppProject.defaultPersonalId];
+    void add(String raw) {
+      final id = raw.trim();
+      if (id.isEmpty || merged.contains(id)) return;
+      merged.add(id);
+    }
+
+    for (final id in persisted) {
+      if (id != AppProject.defaultPersonalId) add(id);
+    }
+    if (routeProjectId != null) add(routeProjectId);
+    return merged;
+  }
+
+  Future<void> _persistOpenIds() async {
+    await _openProjectsStore.saveOrderedIds(_openIds);
   }
 
   Future<void> _reloadRecentlyClosed() async {
@@ -83,6 +148,7 @@ class _HomeWorkspaceShellState extends State<HomeWorkspaceShell> {
       if (id != null) {
         if (!_openIds.contains(id)) {
           setState(() => _openIds = [..._openIds, id]);
+          unawaited(_persistOpenIds());
         }
         unawaited(_recentProjectsStore.recordVisit(id));
         context.read<LayoutCubit>().setLastOpenedProjectId(id);
@@ -92,14 +158,6 @@ class _HomeWorkspaceShellState extends State<HomeWorkspaceShell> {
         _syncTeamSessionScope(context);
       });
     }
-  }
-
-  void _ensureOpen(String? id) {
-    if (id == null) return;
-    if (!_openIds.contains(id)) {
-      _openIds = [..._openIds, id];
-    }
-    unawaited(_recentProjectsStore.recordVisit(id));
   }
 
   static String? _projectIdFromLocation(String location) {
@@ -121,6 +179,7 @@ class _HomeWorkspaceShellState extends State<HomeWorkspaceShell> {
   void _openProject(String id, {required bool activate}) {
     if (!_openIds.contains(id)) {
       setState(() => _openIds = [..._openIds, id]);
+      unawaited(_persistOpenIds());
     }
     unawaited(_recentProjectsStore.recordVisit(id));
     if (activate) {
@@ -136,45 +195,60 @@ class _HomeWorkspaceShellState extends State<HomeWorkspaceShell> {
   }
 
   Future<void> _closeTab(String id) async {
+    // The pinned personal project is permanent — never closes.
+    if (id == AppProject.defaultPersonalId) return;
     if (!_openIds.contains(id)) return;
     final projects = context.read<ChatCubit>().state.projects;
+    final project = _resolve(projects, id);
     // Closing a project tab always terminates that project's running sessions;
     // confirm first when there are any so the user can cancel.
     final chat = context.read<ChatCubit>();
+    final terminalRegistry = context.read<WorkspaceTerminalRegistry>();
+    final workspaceTools = context.read<WorkspaceToolsCubit>();
     final running = chat.openTabCountForProject(id);
     if (running > 0) {
       final confirmed = await _confirmCloseWithSessions(running);
       if (confirmed != true || !mounted) return;
       chat.closeTabsForProject(id);
     }
+    final idx = _openIds.indexOf(id);
+    if (idx < 0) return;
+    // Persist closed/open tab state before teardown so a crash or fast quit
+    // cannot drop the recently-closed entry.
+    await _closedProjectsStore.recordClosed(
+      HomeClosedProjectEntry(
+        projectId: id,
+        displayName: project?.effectiveDisplay ?? id,
+        primaryPath: project?.primaryPath ?? '',
+      ),
+    );
+    if (!mounted) return;
+    final wasActive = id == _projectIdFromLocation(widget.location);
+    final next = [..._openIds]..removeAt(idx);
+    setState(() => _openIds = next);
+    await _persistOpenIds();
+    await _reloadRecentlyClosed();
+    if (!mounted) return;
     // Tear down this project's keep-alive workspace runtime.
-    context.read<WorkspaceTerminalRegistry>().disposeProject(id);
-    context.read<WorkspaceToolsCubit>().removeProject(id);
+    terminalRegistry.disposeProject(id);
+    workspaceTools.removeProject(id);
     if (running == 0) {
       // No chat sessions to confirm/close, but still drop any chat bucket.
       chat.closeTabsForProject(id);
     }
-    final idx = _openIds.indexOf(id);
-    if (idx < 0) return;
-    final project = _resolve(projects, id);
-    if (project != null) {
-      await _closedProjectsStore.recordClosed(
-        HomeClosedProjectEntry(
-          projectId: project.projectId,
-          displayName: project.effectiveDisplay,
-          primaryPath: project.primaryPath,
-        ),
-      );
-    }
-    final wasActive = id == _projectIdFromLocation(widget.location);
-    final next = [..._openIds]..removeAt(idx);
-    setState(() => _openIds = next);
-    await _reloadRecentlyClosed();
     if (wasActive) {
-      if (next.isEmpty) {
+      // Fall back to the nearest still-resolvable tab. The pinned personal id
+      // can be a phantom (SSH/Android, where it is not seeded), so skip ids that
+      // resolve to no project and land on Home instead of an empty page.
+      final candidates = [
+        for (final e in next)
+          if (_resolve(projects, e) != null) e,
+      ];
+      if (candidates.isEmpty) {
         _goHome();
       } else {
-        _selectTab(next[idx.clamp(0, next.length - 1)]);
+        final target = idx.clamp(0, candidates.length - 1);
+        _selectTab(candidates[target]);
       }
     }
   }
@@ -228,6 +302,10 @@ class _HomeWorkspaceShellState extends State<HomeWorkspaceShell> {
     final activeId = _projectIdFromLocation(widget.location);
 
     final cs = Theme.of(context).colorScheme;
+    final l10n = context.l10n;
+    final teams = context.select<TeamCubit, List<TeamConfig>>(
+      (c) => c.state.teams,
+    );
     // Show every open project tab across all teams (IDE-style open editors).
     // Selecting a tab switches the active team to the project's team via
     // HomeWorkspaceProjectPage, so the sidebar/content stay in sync.
@@ -237,7 +315,15 @@ class _HomeWorkspaceShellState extends State<HomeWorkspaceShell> {
           HomeProjectTab(
             id: id,
             name: p.effectiveDisplay,
-            tooltip: _projectTabTooltip(p),
+            kind: p.teamId.isEmpty
+                ? HomeProjectTabKind.personal
+                : HomeProjectTabKind.team,
+            tooltip: HomeWorkspaceShell.formatProjectTabTooltip(
+              project: p,
+              personalKindLabel: l10n.homeWorkspaceProjectTabKindPersonal,
+              teamName: HomeWorkspaceShell.teamNameFor(teams, p.teamId),
+            ),
+            closable: !p.isDefaultPersonal,
           ),
     ];
 
@@ -288,10 +374,4 @@ class _HomeWorkspaceShellState extends State<HomeWorkspaceShell> {
     return null;
   }
 
-  static String _projectTabTooltip(AppProject project) {
-    final name = project.effectiveDisplay;
-    final path = project.primaryPath.trim();
-    if (path.isEmpty || path == name) return name;
-    return '$name\n$path';
-  }
 }
