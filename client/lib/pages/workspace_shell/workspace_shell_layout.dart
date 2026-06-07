@@ -199,7 +199,9 @@ class WorkspaceShellFadeSlideIn extends StatelessWidget {
       tween: Tween(begin: 0, end: 1),
       duration: const Duration(milliseconds: 280),
       curve: Curves.easeOutCubic,
-      child: child,
+      // RepaintBoundary 让子树一次性栅格化并缓存为合成图层;
+      // 之后 Opacity 每帧只对缓存层应用 alpha,不再逐帧重绘整棵 workbench。
+      child: RepaintBoundary(child: child),
       builder: (context, value, child) {
         final opacity = Curves.easeOut.transform(value);
         return Opacity(
