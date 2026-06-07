@@ -45,8 +45,8 @@ void main() {
       active: true,
       hovered: false,
     );
-    expect(inactive.alpha, lessThan(active.alpha));
-    expect(inactive.alpha, closeTo((0.4 * 255).round(), 1));
+    expect(inactive.a, lessThan(active.a));
+    expect(inactive.a, closeTo(0.4, 0.01));
   });
 
   test('inactive hovered tab bar alpha is between inactive and active', () {
@@ -62,7 +62,7 @@ void main() {
       active: false,
       hovered: false,
     );
-    expect(hovered.alpha, greaterThan(inactive.alpha));
-    expect(hovered.alpha, closeTo((0.7 * 255).round(), 1));
+    expect(hovered.a, greaterThan(inactive.a));
+    expect(hovered.a, closeTo(0.7, 0.01));
   });
 }
