@@ -500,6 +500,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homeWorkspacePersonal => 'Personal workspace';
 
   @override
+  String get homeWorkspaceProjectTabKindPersonal => 'Personal';
+
+  @override
   String get homeWorkspacePersonalSubtitle =>
       'Solo projects with project-scoped agent, skills, and plugins.';
 

@@ -1010,6 +1010,12 @@ abstract class AppLocalizations {
   /// **'Personal workspace'**
   String get homeWorkspacePersonal;
 
+  /// Short personal-project label in title-bar tab tooltips.
+  ///
+  /// In en, this message translates to:
+  /// **'Personal'**
+  String get homeWorkspaceProjectTabKindPersonal;
+
   /// No description provided for @homeWorkspacePersonalSubtitle.
   ///
   /// In en, this message translates to:

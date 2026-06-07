@@ -483,6 +483,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get homeWorkspacePersonal => '个人工作区';
 
   @override
+  String get homeWorkspaceProjectTabKindPersonal => '个人';
+
+  @override
   String get homeWorkspacePersonalSubtitle => '独立项目，按项目配置 Agent、技能与插件。';
 
   @override

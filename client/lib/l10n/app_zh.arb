@@ -201,6 +201,7 @@
   "homeWorkspaceMyFavorites": "我的收藏",
   "homeWorkspaceRecentVisits": "最近访问",
   "homeWorkspacePersonal": "个人工作区",
+  "homeWorkspaceProjectTabKindPersonal": "个人",
   "homeWorkspacePersonalSubtitle": "独立项目，按项目配置 Agent、技能与插件。",
   "homeWorkspaceNoData": "暂无数据",
   "homeWorkspaceRecentlyClosed": "最近关闭",

@@ -211,6 +211,10 @@
   "homeWorkspaceMyFavorites": "My favorites",
   "homeWorkspaceRecentVisits": "Recent",
   "homeWorkspacePersonal": "Personal workspace",
+  "homeWorkspaceProjectTabKindPersonal": "Personal",
+  "@homeWorkspaceProjectTabKindPersonal": {
+    "description": "Short personal-project label in title-bar tab tooltips."
+  },
   "homeWorkspacePersonalSubtitle": "Solo projects with project-scoped agent, skills, and plugins.",
   "homeWorkspaceNoData": "No data yet",
   "homeWorkspaceRecentlyClosed": "Recently closed",
