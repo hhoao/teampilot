@@ -13,6 +13,7 @@ import '../cubits/member_presence_cubit.dart';
 import '../cubits/editor_cubit.dart';
 import '../cubits/config_cubit.dart';
 import '../cubits/layout_cubit.dart';
+import '../cubits/workspace_tools_cubit.dart';
 import '../cubits/llm_config_cubit.dart';
 import '../cubits/session_preferences_cubit.dart';
 import '../cubits/extension_cubit.dart';
@@ -94,6 +95,7 @@ class AppShell {
     required this.appProviderCubit,
     required this.llmConfigCubit,
     required this.layoutCubit,
+    required this.workspaceToolsCubit,
     required this.sessionPreferencesCubit,
     required this.pluginCubit,
     required this.projectProfileCubit,
@@ -128,6 +130,7 @@ class AppShell {
   final AppProviderCubit appProviderCubit;
   final LlmConfigCubit llmConfigCubit;
   final LayoutCubit layoutCubit;
+  final WorkspaceToolsCubit workspaceToolsCubit;
   final SessionPreferencesCubit sessionPreferencesCubit;
   final PluginCubit pluginCubit;
   final ProjectProfileCubit projectProfileCubit;
@@ -496,6 +499,7 @@ Future<AppShell> buildAppShell({
 
   final appUpdateCubit = AppUpdateCubit();
   final layoutCubit = LayoutCubit(repository: LayoutRepository(preferences));
+  final workspaceToolsCubit = WorkspaceToolsCubit();
   final configCubit = ConfigCubit();
 
   final transportFactory = TerminalTransportFactory(
@@ -586,6 +590,7 @@ Future<AppShell> buildAppShell({
     appProviderCubit: appProviderCubit,
     llmConfigCubit: llmConfigCubit,
     layoutCubit: layoutCubit,
+    workspaceToolsCubit: workspaceToolsCubit,
     sessionPreferencesCubit: sessionPreferencesCubit,
     pluginCubit: pluginCubit,
     projectProfileCubit: projectProfileCubit,
