@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io' show Platform;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
 import 'package:flutter/services.dart';
@@ -31,15 +32,51 @@ Future<T?> _windowManagerCall<T>(Future<T> Function() action) async {
 /// pill, optional open-project tab, decorative action glyphs, and the real
 /// minimize/maximize/close controls. Reuses theme tokens only — no hardcoded
 /// brand colors.
+/// Personal vs team discriminator for title-bar project tabs.
+enum HomeProjectTabKind { personal, team }
+
+@visibleForTesting
+double homeProjectTabBarAlpha({
+  required bool active,
+  required bool hovered,
+}) {
+  if (active) return 1.0;
+  if (hovered) return 0.7;
+  return 0.4;
+}
+
+@visibleForTesting
+Color homeProjectTabBarColor({
+  required HomeProjectTabKind kind,
+  required ColorScheme colorScheme,
+  required bool active,
+  required bool hovered,
+}) {
+  final base = kind == HomeProjectTabKind.personal
+      ? colorScheme.primary
+      : colorScheme.tertiary;
+  return base.withValues(
+    alpha: homeProjectTabBarAlpha(active: active, hovered: hovered),
+  );
+}
+
 /// An open project tab in the title bar.
 class HomeProjectTab {
-  const HomeProjectTab({required this.id, required this.name, this.tooltip});
+  const HomeProjectTab({
+    required this.id,
+    required this.name,
+    this.tooltip,
+    this.closable = true,
+  });
 
   final String id;
   final String name;
 
   /// Shown on hover; defaults to [name] when omitted.
   final String? tooltip;
+
+  /// When false (the pinned personal project), no close button is shown.
+  final bool closable;
 }
 
 class HomeWorkspaceTitleBar extends StatefulWidget {
@@ -181,6 +218,7 @@ class _HomeWorkspaceTitleBarState extends State<HomeWorkspaceTitleBar>
                                     label: tab.name,
                                     tooltip: tab.tooltip ?? tab.name,
                                     active: tab.id == widget.activeProjectId,
+                                    closable: tab.closable,
                                     onTap: () =>
                                         widget.onSelectTab?.call(tab.id),
                                     onClose: () =>
@@ -328,6 +366,7 @@ class _ProjectTab extends StatefulWidget {
     required this.label,
     required this.tooltip,
     this.active = false,
+    this.closable = true,
     this.onTap,
     this.onClose,
   });
@@ -335,6 +374,7 @@ class _ProjectTab extends StatefulWidget {
   final String label;
   final String tooltip;
   final bool active;
+  final bool closable;
   final VoidCallback? onTap;
   final VoidCallback? onClose;
 
@@ -404,22 +444,25 @@ class _ProjectTabState extends State<_ProjectTab> {
                     style: styles.bodySmall.copyWith(color: fg),
                   ),
                 ),
-                const SizedBox(width: 8),
-                _TabChromeSlot(
-                  visible: _showChrome,
-                  child: InkWell(
-                    onTap: widget.onClose,
-                    borderRadius: BorderRadius.circular(5),
-                    child: Padding(
-                      padding: const EdgeInsets.all(2),
-                      child: Icon(
-                        Icons.close,
-                        size: AppIconSizes.md,
-                        color: cs.onSurfaceVariant,
+                if (widget.closable) ...[
+                  const SizedBox(width: 8),
+                  _TabChromeSlot(
+                    visible: _showChrome,
+                    child: InkWell(
+                      onTap: widget.onClose,
+                      borderRadius: BorderRadius.circular(5),
+                      child: Padding(
+                        padding: const EdgeInsets.all(2),
+                        child: Icon(
+                          Icons.close,
+                          size: AppIconSizes.md,
+                          color: cs.onSurfaceVariant,
+                        ),
                       ),
                     ),
                   ),
-                ),
+                ] else
+                  const SizedBox(width: 6),
               ],
             ),
           ),
