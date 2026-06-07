@@ -73,6 +73,7 @@ class _HomeWorkspaceProjectPageState extends State<HomeWorkspaceProjectPage> {
 
   void _onProjectContextChanged() {
     if (!mounted) return;
+    context.read<ChatCubit>().setActiveProject(widget.projectId);
     final project = _findProject(
       context.read<ChatCubit>().state.projects,
       widget.projectId,
@@ -136,6 +137,7 @@ class _HomeWorkspaceProjectPageState extends State<HomeWorkspaceProjectPage> {
                 )
               : ChatPage(
                   cwd: project.primaryPath,
+                  projectId: project.projectId,
                   isPersonalProject: true,
                 ),
           initialPrimarySize: initialSidebar,
@@ -177,7 +179,10 @@ class _HomeWorkspaceProjectPageState extends State<HomeWorkspaceProjectPage> {
                 );
                 return ResizableSplitView(
                   first: HomeWorkspaceConversationPanel(project: project),
-                  second: ChatPage(cwd: project.primaryPath),
+                  second: ChatPage(
+                    cwd: project.primaryPath,
+                    projectId: project.projectId,
+                  ),
                   initialPrimarySize: initialPanel,
                   minPrimarySize: minPanel,
                   minSecondarySize: minChat,
