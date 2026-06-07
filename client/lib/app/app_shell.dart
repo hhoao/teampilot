@@ -73,6 +73,7 @@ import '../services/plugin/team_plugin_linker_service.dart';
 import '../services/skill/project_skill_linker_service.dart';
 import '../services/skill/team_skill_linker_service.dart';
 import '../services/terminal/terminal_transport_factory.dart';
+import '../services/terminal/workspace_terminal_registry.dart';
 import '../utils/logger.dart';
 
 /// Fully wired app dependencies produced after async bootstrap.
@@ -87,6 +88,7 @@ class AppShell {
     required this.sshCredentialStore,
     required this.sshKnownHostRepo,
     required this.transportFactory,
+    required this.workspaceTerminalRegistry,
     required this.sshClientFactory,
     required this.connectionModeService,
     required this.storageRoots,
@@ -122,6 +124,7 @@ class AppShell {
   final SshCredentialStore sshCredentialStore;
   final SshKnownHostRepository sshKnownHostRepo;
   final TerminalTransportFactory transportFactory;
+  final WorkspaceTerminalRegistry workspaceTerminalRegistry;
   final SshClientFactory sshClientFactory;
   final ConnectionModeService connectionModeService;
   final StorageRoots storageRoots;
@@ -500,6 +503,7 @@ Future<AppShell> buildAppShell({
   final appUpdateCubit = AppUpdateCubit();
   final layoutCubit = LayoutCubit(repository: LayoutRepository(preferences));
   final workspaceToolsCubit = WorkspaceToolsCubit();
+  final workspaceTerminalRegistry = WorkspaceTerminalRegistry();
   final configCubit = ConfigCubit();
 
   final transportFactory = TerminalTransportFactory(
@@ -582,6 +586,7 @@ Future<AppShell> buildAppShell({
     sshCredentialStore: sshCredentialStore,
     sshKnownHostRepo: sshKnownHostRepo,
     transportFactory: transportFactory,
+    workspaceTerminalRegistry: workspaceTerminalRegistry,
     sshClientFactory: sshClientFactory,
     connectionModeService: connectionModeService,
     storageRoots: storageRoots,

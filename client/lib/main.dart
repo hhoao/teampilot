@@ -26,6 +26,7 @@ import 'services/app/connection_mode_service.dart';
 import 'services/storage/storage_resolver.dart';
 import 'services/ssh/ssh_client_factory.dart';
 import 'services/terminal/terminal_transport_factory.dart';
+import 'services/terminal/workspace_terminal_registry.dart';
 import 'services/terminal/terminal_fonts.dart';
 import 'theme/app_theme.dart';
 import 'theme/app_typography_scale.dart';
@@ -179,6 +180,9 @@ void main() async {
                 value: shell.connectionModeService,
               ),
               RepositoryProvider<StorageRoots>.value(value: shell.storageRoots),
+              RepositoryProvider<WorkspaceTerminalRegistry>.value(
+                value: shell.workspaceTerminalRegistry,
+              ),
             ],
             child: MultiBlocProvider(
               providers: [
