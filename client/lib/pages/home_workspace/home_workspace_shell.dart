@@ -6,16 +6,16 @@ import 'package:go_router/go_router.dart';
 
 import '../../cubits/chat_cubit.dart';
 import '../../cubits/layout_cubit.dart';
-import '../../cubits/workspace_tools_cubit.dart';
-import '../../services/terminal/workspace_terminal_registry.dart';
 import '../../cubits/session_preferences_cubit.dart';
 import '../../cubits/team_cubit.dart';
+import '../../cubits/workspace_tools_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/app_project.dart';
 import '../../models/home_closed_project_entry.dart';
 import '../../theme/workspace_surface_layers.dart';
 import '../../services/home_workspace/home_workspace_closed_projects_store.dart';
 import '../../services/home_workspace/home_workspace_recent_projects_store.dart';
+import '../../services/terminal/workspace_terminal_registry.dart';
 import 'home_workspace_tab_scope.dart';
 import 'home_workspace_title_bar.dart';
 

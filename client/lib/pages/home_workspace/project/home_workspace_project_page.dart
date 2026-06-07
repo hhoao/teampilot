@@ -60,20 +60,27 @@ class _HomeWorkspaceProjectPageState extends State<HomeWorkspaceProjectPage> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _onProjectContextChanged());
+    // Switch the active project bucket synchronously so the very first build of
+    // this page publishes THIS project's tabs (no one-frame stale-tab flash).
+    // Only `tabs`/`activeTabIndex` change here — no ancestor BlocBuilder selects
+    // on those, so this emit does not mark an already-built widget dirty.
+    context.read<ChatCubit>().setActiveProject(widget.projectId);
+    // Team/profile sync emits on TeamCubit/ProjectProfileCubit (which ancestors
+    // listen to); defer it past the current frame to stay build-safe.
+    WidgetsBinding.instance.addPostFrameCallback((_) => _syncProjectContext());
   }
 
   @override
   void didUpdateWidget(covariant HomeWorkspaceProjectPage oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.projectId != widget.projectId) {
-      WidgetsBinding.instance.addPostFrameCallback((_) => _onProjectContextChanged());
+      context.read<ChatCubit>().setActiveProject(widget.projectId);
+      WidgetsBinding.instance.addPostFrameCallback((_) => _syncProjectContext());
     }
   }
 
-  void _onProjectContextChanged() {
+  void _syncProjectContext() {
     if (!mounted) return;
-    context.read<ChatCubit>().setActiveProject(widget.projectId);
     final project = _findProject(
       context.read<ChatCubit>().state.projects,
       widget.projectId,

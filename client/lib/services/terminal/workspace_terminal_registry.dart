@@ -40,13 +40,14 @@ class WorkspaceTerminalEntry {
 /// One project's set of workspace-terminal tabs.
 class WorkspaceTerminalGroup {
   final List<WorkspaceTerminalEntry> _entries = [];
-  String? _activeId;
+
+  /// Id of the selected entry in this group, or null when the group is empty.
+  String? activeId;
 
   List<WorkspaceTerminalEntry> get entries => List.unmodifiable(_entries);
-  String? get activeId => _activeId;
 
   WorkspaceTerminalEntry? get activeEntry {
-    final id = _activeId;
+    final id = activeId;
     if (id == null) return null;
     for (final e in _entries) {
       if (e.id == id) return e;
@@ -54,12 +55,10 @@ class WorkspaceTerminalGroup {
     return null;
   }
 
-  set activeId(String? id) => _activeId = id;
-
   WorkspaceTerminalEntry addEntry({required String cwd, required bool select}) {
     final entry = WorkspaceTerminalEntry(id: _uuid.v4(), cwd: cwd);
     _entries.add(entry);
-    if (select) _activeId = entry.id;
+    if (select) activeId = entry.id;
     return entry;
   }
 
@@ -68,16 +67,16 @@ class WorkspaceTerminalGroup {
   bool removeEntry(String id) {
     final index = _entries.indexWhere((e) => e.id == id);
     if (index < 0) return _entries.isEmpty;
-    final wasActive = _entries[index].id == _activeId;
+    final wasActive = _entries[index].id == activeId;
     _entries[index].dispose();
     _entries.removeAt(index);
     if (_entries.isEmpty) {
-      _activeId = null;
+      activeId = null;
       return true;
     }
     if (wasActive) {
       final next = index >= _entries.length ? _entries.length - 1 : index;
-      _activeId = _entries[next].id;
+      activeId = _entries[next].id;
     }
     return false;
   }
@@ -87,7 +86,7 @@ class WorkspaceTerminalGroup {
       e.dispose();
     }
     _entries.clear();
-    _activeId = null;
+    activeId = null;
   }
 }
 
