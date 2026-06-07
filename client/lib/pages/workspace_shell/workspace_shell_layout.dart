@@ -79,13 +79,20 @@ class WorkspaceShellCenterColumnWithTerminal extends StatelessWidget {
           LayoutPreferences.maxWorkspaceTerminalHeight,
         );
         final projectId = workspaceProjectId?.trim() ?? '';
+        // Key by the registry-group identity only — NOT cwd. Keeping cwd out of
+        // the key means a same-project cwd change keeps the same panel State, so
+        // the cwd update flows through didUpdateWidget -> _syncActiveEntryCwd
+        // (which updates the active entry + reconnects). Including cwd here would
+        // recreate the State, whose bootstrap re-attaches existing terminals
+        // without updating their cwd, stranding them at the old path.
+        final terminalGroupId = projectId.isNotEmpty ? projectId : cwd;
         return ResizableSplitView(
           axis: Axis.vertical,
           primaryAtEnd: true,
           first: child,
           second: WorkspaceTerminalPanel(
-            key: ValueKey('workspace-terminal-$projectId-$cwd'),
-            projectId: projectId.isNotEmpty ? projectId : cwd,
+            key: ValueKey('workspace-terminal-$terminalGroupId'),
+            projectId: terminalGroupId,
             workingDirectory: cwd,
           ),
           initialPrimarySize: terminalHeight,
