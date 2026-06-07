@@ -23,6 +23,7 @@ class ChatPage extends StatelessWidget {
     required this.cwd,
     this.sessionId,
     this.isPersonalProject = false,
+    this.projectId,
     super.key,
   });
 
@@ -36,20 +37,25 @@ class ChatPage extends StatelessWidget {
   /// When true, the embedded workbench runs without a selected [TeamConfig].
   final bool isPersonalProject;
 
+  /// Owning project id; scopes the workspace terminal + right-tools selection.
+  /// Null on chat routes without a project context.
+  final String? projectId;
+
   @override
   Widget build(BuildContext context) {
     if (isPersonalProject) {
-      return _PersonalChatPage(cwd: cwd, sessionId: sessionId);
+      return _PersonalChatPage(cwd: cwd, sessionId: sessionId, projectId: projectId);
     }
-    return _TeamChatPage(cwd: cwd, sessionId: sessionId);
+    return _TeamChatPage(cwd: cwd, sessionId: sessionId, projectId: projectId);
   }
 }
 
 class _PersonalChatPage extends StatelessWidget {
-  const _PersonalChatPage({required this.cwd, this.sessionId});
+  const _PersonalChatPage({required this.cwd, this.sessionId, this.projectId});
 
   final String cwd;
   final String? sessionId;
+  final String? projectId;
 
   @override
   Widget build(BuildContext context) {
@@ -62,15 +68,17 @@ class _PersonalChatPage extends StatelessWidget {
       chatCubit: chatCubit,
       preferences: preferences,
       team: null,
+      projectId: projectId,
     );
   }
 }
 
 class _TeamChatPage extends StatelessWidget {
-  const _TeamChatPage({required this.cwd, this.sessionId});
+  const _TeamChatPage({required this.cwd, this.sessionId, this.projectId});
 
   final String cwd;
   final String? sessionId;
+  final String? projectId;
 
   @override
   Widget build(BuildContext context) {
@@ -89,6 +97,7 @@ class _TeamChatPage extends StatelessWidget {
       chatCubit: chatCubit,
       preferences: preferences,
       team: team,
+      projectId: projectId,
     );
   }
 }
@@ -101,6 +110,7 @@ class _ChatPageBody extends StatelessWidget {
     required this.chatCubit,
     required this.preferences,
     required this.team,
+    required this.projectId,
   });
 
   final String cwd;
@@ -109,6 +119,7 @@ class _ChatPageBody extends StatelessWidget {
   final ChatCubit chatCubit;
   final LayoutPreferences preferences;
   final TeamConfig? team;
+  final String? projectId;
 
   @override
   Widget build(BuildContext context) {
@@ -119,6 +130,7 @@ class _ChatPageBody extends StatelessWidget {
       panelKey: AppKeys.rightToolsPanel,
       dismissDrawerOnAction: toolsAsDrawer,
       isPersonalProject: isPersonalProject,
+      projectId: projectId,
     );
     final activeChatAnimationId =
         chatCubit.state.activeTabIndex >= 0 &&
@@ -129,6 +141,7 @@ class _ChatPageBody extends StatelessWidget {
     Widget buildShell({Widget? rightTools}) {
       return WorkspaceShell(
         workspaceTerminalWorkingDirectory: cwd,
+        workspaceProjectId: projectId,
         showHeader: false,
         breadcrumb: isPersonalProject
             ? 'Personal / Chat / Shell chat workbench'
@@ -175,6 +188,7 @@ class _ChatPageBody extends StatelessWidget {
                   cwd: cwd,
                   preferences: preferences,
                   isPersonalProject: isPersonalProject,
+                  projectId: projectId,
                   panelKey:
                       preferences.toolPlacement == ToolPanelPlacement.right
                       ? AppKeys.rightToolsPanel
