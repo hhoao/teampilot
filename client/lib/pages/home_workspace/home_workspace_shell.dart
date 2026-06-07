@@ -6,6 +6,8 @@ import 'package:go_router/go_router.dart';
 
 import '../../cubits/chat_cubit.dart';
 import '../../cubits/layout_cubit.dart';
+import '../../cubits/workspace_tools_cubit.dart';
+import '../../services/terminal/workspace_terminal_registry.dart';
 import '../../cubits/session_preferences_cubit.dart';
 import '../../cubits/team_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
@@ -143,6 +145,13 @@ class _HomeWorkspaceShellState extends State<HomeWorkspaceShell> {
     if (running > 0) {
       final confirmed = await _confirmCloseWithSessions(running);
       if (confirmed != true || !mounted) return;
+      chat.closeTabsForProject(id);
+    }
+    // Tear down this project's keep-alive workspace runtime.
+    context.read<WorkspaceTerminalRegistry>().disposeProject(id);
+    context.read<WorkspaceToolsCubit>().removeProject(id);
+    if (running == 0) {
+      // No chat sessions to confirm/close, but still drop any chat bucket.
       chat.closeTabsForProject(id);
     }
     final idx = _openIds.indexOf(id);
