@@ -277,6 +277,7 @@ class _HomeWorkspaceNewTeamDialogState
       );
     }
     final cli = aiSetting?.cli ?? _cli;
+    // TODO: pass the team's installed skill ids so generation can pick from them.
     return TeamDraftAllowedOptions(
       clis: [
         _cliModelOptions(
@@ -347,37 +348,39 @@ class _HomeWorkspaceNewTeamDialogState
                 style: styles.body.copyWith(color: cs.onSurfaceVariant),
               ),
               const SizedBox(height: 28),
-              if (_creationMethod == _TeamCreationMethod.custom) ...[
-                IntrinsicHeight(
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Expanded(
-                        child: _ModeCard(
-                          icon: Icons.dashboard_customize_outlined,
-                          title: l10n.teamModeNativeTitle,
-                          description: l10n.teamModeNativeDescription,
-                          badge: l10n.homeWorkspaceNewTeamRecommended,
-                          badgeIsPrimary: true,
-                          selected: _mode == TeamMode.native,
-                          onTap: () => setState(() => _mode = TeamMode.native),
-                        ),
+              // Team mode is a fundamental decision for both the custom and AI
+              // flows, so the mode cards render regardless of creation method.
+              IntrinsicHeight(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Expanded(
+                      child: _ModeCard(
+                        icon: Icons.dashboard_customize_outlined,
+                        title: l10n.teamModeNativeTitle,
+                        description: l10n.teamModeNativeDescription,
+                        badge: l10n.homeWorkspaceNewTeamRecommended,
+                        badgeIsPrimary: true,
+                        selected: _mode == TeamMode.native,
+                        onTap: () => setState(() => _mode = TeamMode.native),
                       ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: _ModeCard(
-                          icon: Icons.hub_outlined,
-                          title: l10n.teamModeMixedTitle,
-                          description: l10n.teamModeMixedDescription,
-                          badge: l10n.homeWorkspaceNewTeamModeBeta,
-                          badgeIsPrimary: false,
-                          selected: _mode == TeamMode.mixed,
-                          onTap: () => setState(() => _mode = TeamMode.mixed),
-                        ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: _ModeCard(
+                        icon: Icons.hub_outlined,
+                        title: l10n.teamModeMixedTitle,
+                        description: l10n.teamModeMixedDescription,
+                        badge: l10n.homeWorkspaceNewTeamModeBeta,
+                        badgeIsPrimary: false,
+                        selected: _mode == TeamMode.mixed,
+                        onTap: () => setState(() => _mode = TeamMode.mixed),
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
+              ),
+              if (_creationMethod == _TeamCreationMethod.custom) ...[
                 if (_mode == TeamMode.native) ...[
                   const SizedBox(height: 20),
                   _NativeTeamOptionsCard(
@@ -399,13 +402,15 @@ class _HomeWorkspaceNewTeamDialogState
                   controller: _nameController,
                   onSubmitted: (_) => _submit(),
                 ),
-              ] else
+              ] else ...[
+                const SizedBox(height: 24),
                 HomeWorkspaceTeamGenerateSection(
                   cli: _cli,
                   providerId: _providerId,
                   generating: _generating,
                   onGenerate: _onGenerate,
                 ),
+              ],
               const SizedBox(height: 28),
               Row(
                 mainAxisAlignment: MainAxisAlignment.end,

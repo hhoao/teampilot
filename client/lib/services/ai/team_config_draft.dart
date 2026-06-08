@@ -202,7 +202,10 @@ String _stripFences(String raw) {
   var text = raw.trim();
   if (text.startsWith('```')) {
     final nl = text.indexOf('\n');
-    if (nl != -1) text = text.substring(nl + 1);
+    // A fence with no newline (e.g. ```json{...}```) isn't a clean block; leave
+    // it for jsonDecode + the generator's retry rather than corrupt it.
+    if (nl == -1) return text;
+    text = text.substring(nl + 1);
     final end = text.lastIndexOf('```');
     if (end != -1) text = text.substring(0, end);
   }

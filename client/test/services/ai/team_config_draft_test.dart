@@ -131,7 +131,7 @@ void main() {
     expect(draft.members[1].id, isNot(TeamMemberNaming.teamLeadName));
   });
 
-  test('demotes a duplicate lead even when its name is not literally team-lead', () {
+  test('a non-lead member keeps its own id alongside the injected lead', () {
     const json = '{"members":[{"name":"team-lead","role":"a"},'
         '{"name":"Second Lead","role":"b"}]}';
     final draft = parseTeamConfigDraft(
