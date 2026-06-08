@@ -1,5 +1,6 @@
 import '../../../models/team_config.dart';
 import 'built_in_cli_tools.dart';
+import 'cli_bootstrap.dart';
 import 'cli_capability.dart';
 import 'cli_tool_definition.dart';
 
@@ -7,6 +8,7 @@ class CliToolRegistry {
   CliToolRegistry._();
 
   static CliToolRegistry? _builtIn;
+  CliBootstrap _bootstrap = const CliBootstrap();
 
   /// Single built-in registry for all default (non-injected) call sites.
   factory CliToolRegistry.builtIn() {
@@ -16,6 +18,14 @@ class CliToolRegistry {
       return registry;
     }();
   }
+
+  /// Injects runtime services (model catalogs, …) after storage bootstrap.
+  void configure(CliBootstrap bootstrap) {
+    _bootstrap = bootstrap;
+    registerBuiltInCliTools(this, bootstrap: _bootstrap);
+  }
+
+  CliBootstrap get bootstrap => _bootstrap;
 
   factory CliToolRegistry() => CliToolRegistry._();
 

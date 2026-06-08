@@ -8,6 +8,8 @@ import '../repositories/app_provider_repository.dart';
 import '../services/storage/app_storage.dart';
 import '../services/provider/claude/claude_provider_credentials_service.dart';
 import '../services/provider/cursor/cursor_provider_credentials_service.dart';
+import '../services/cli/registry/capabilities/provider_credential_capability.dart';
+import '../services/cli/registry/cli_tool_registry.dart';
 import '../services/provider/provider_import_service.dart';
 import '../services/provider/tool_config_generator.dart';
 
@@ -260,28 +262,61 @@ class AppProviderCubit extends Cubit<AppProviderState> {
     );
   }
 
+  Future<bool> runProviderCredentialAction({
+    required AppProviderConfig provider,
+    required ProviderCredentialActionKind kind,
+    String? pickedPath,
+    bool replace = false,
+    String? homeDirectory,
+  }) async {
+    final capability = CliToolRegistry.builtIn().capability<
+        ProviderCredentialCapability>(provider.cli);
+    if (capability == null || !capability.appliesTo(provider)) {
+      return false;
+    }
+
+    await upsertProvider(provider);
+    final ok = await capability.execute(
+      providerId: provider.id,
+      kind: kind,
+      input: ProviderCredentialActionInput(
+        pickedPath: pickedPath,
+        replace: replace,
+        homeDirectory: homeDirectory ?? AppStorage.home,
+      ),
+    );
+    if (!ok) return false;
+    return _refreshCredentialStatus(provider.cli, provider.id);
+  }
+
   Future<CredentialProbe> probeClaudeCredentials(String providerId) async {
     return _claudeCredentials.probe(providerId);
   }
 
   Future<bool> loginClaudeOfficialProvider(String providerId) async {
-    final ok = await _claudeCredentials.runAuthLogin(providerId);
-    if (!ok) return false;
-    return _refreshClaudeCredentialStatus(providerId);
+    final provider = state.providers
+        .where((p) => p.id == providerId)
+        .firstOrNull;
+    if (provider == null) return false;
+    return runProviderCredentialAction(
+      provider: provider,
+      kind: ProviderCredentialActionKind.login,
+    );
   }
 
   Future<bool> importClaudeCredentialsFromGlobal(
     String providerId, {
     bool replace = false,
   }) async {
-    final home = AppStorage.home;
-    final ok = await _claudeCredentials.importFromGlobal(
-      providerId,
-      homeDirectory: home,
+    final provider = state.providers
+        .where((p) => p.id == providerId)
+        .firstOrNull;
+    if (provider == null) return false;
+    return runProviderCredentialAction(
+      provider: provider,
+      kind: ProviderCredentialActionKind.importGlobal,
       replace: replace,
     );
-    if (!ok) return false;
-    return _refreshClaudeCredentialStatus(providerId);
   }
 
   Future<bool> importClaudeCredentialsFromFile(
@@ -289,28 +324,27 @@ class AppProviderCubit extends Cubit<AppProviderState> {
     String path, {
     bool replace = false,
   }) async {
-    final ok = await _claudeCredentials.importFromFile(
-      providerId,
-      path,
-      replace: replace,
-    );
-    if (!ok) return false;
-    return _refreshClaudeCredentialStatus(providerId);
-  }
-
-  Future<bool> revokeClaudeOfficialProvider(String providerId) async {
-    final ok = await _claudeCredentials.revokeCredentials(providerId);
-    if (!ok) return false;
-    return _refreshClaudeCredentialStatus(providerId);
-  }
-
-  Future<bool> _refreshClaudeCredentialStatus(String providerId) async {
-    final probe = await _claudeCredentials.probe(providerId);
     final provider = state.providers
         .where((p) => p.id == providerId)
         .firstOrNull;
     if (provider == null) return false;
-    return upsertProvider(provider.withCredentialProbe(probe));
+    return runProviderCredentialAction(
+      provider: provider,
+      kind: ProviderCredentialActionKind.importFile,
+      pickedPath: path,
+      replace: replace,
+    );
+  }
+
+  Future<bool> revokeClaudeOfficialProvider(String providerId) async {
+    final provider = state.providers
+        .where((p) => p.id == providerId)
+        .firstOrNull;
+    if (provider == null) return false;
+    return runProviderCredentialAction(
+      provider: provider,
+      kind: ProviderCredentialActionKind.revoke,
+    );
   }
 
   Future<CredentialProbe> probeCursorCredentials(String providerId) async {
@@ -318,23 +352,29 @@ class AppProviderCubit extends Cubit<AppProviderState> {
   }
 
   Future<bool> loginCursorProvider(String providerId) async {
-    final ok = await _cursorCredentials.runAuthLogin(providerId);
-    if (!ok) return false;
-    return _refreshCursorCredentialStatus(providerId);
+    final provider = state.providersFor(CliTool.cursor)
+        .where((p) => p.id == providerId)
+        .firstOrNull;
+    if (provider == null) return false;
+    return runProviderCredentialAction(
+      provider: provider,
+      kind: ProviderCredentialActionKind.login,
+    );
   }
 
   Future<bool> importCursorCredentialsFromGlobal(
     String providerId, {
     bool replace = false,
   }) async {
-    final home = AppStorage.home;
-    final ok = await _cursorCredentials.importFromGlobal(
-      providerId,
-      homeDirectory: home,
+    final provider = state.providersFor(CliTool.cursor)
+        .where((p) => p.id == providerId)
+        .firstOrNull;
+    if (provider == null) return false;
+    return runProviderCredentialAction(
+      provider: provider,
+      kind: ProviderCredentialActionKind.importGlobal,
       replace: replace,
     );
-    if (!ok) return false;
-    return _refreshCursorCredentialStatus(providerId);
   }
 
   Future<bool> importCursorCredentialsFromDirectory(
@@ -342,13 +382,16 @@ class AppProviderCubit extends Cubit<AppProviderState> {
     String sourceCursorDir, {
     bool replace = false,
   }) async {
-    final ok = await _cursorCredentials.importFromCursorDirectory(
-      providerId,
-      sourceCursorDir,
+    final provider = state.providersFor(CliTool.cursor)
+        .where((p) => p.id == providerId)
+        .firstOrNull;
+    if (provider == null) return false;
+    return runProviderCredentialAction(
+      provider: provider,
+      kind: ProviderCredentialActionKind.importDirectory,
+      pickedPath: sourceCursorDir,
       replace: replace,
     );
-    if (!ok) return false;
-    return _refreshCursorCredentialStatus(providerId);
   }
 
   Future<bool> importCursorAuthJsonFile(
@@ -356,24 +399,35 @@ class AppProviderCubit extends Cubit<AppProviderState> {
     String sourceAuthJsonPath, {
     bool replace = false,
   }) async {
-    final ok = await _cursorCredentials.importAuthJsonFile(
-      providerId,
-      sourceAuthJsonPath,
+    final provider = state.providersFor(CliTool.cursor)
+        .where((p) => p.id == providerId)
+        .firstOrNull;
+    if (provider == null) return false;
+    return runProviderCredentialAction(
+      provider: provider,
+      kind: ProviderCredentialActionKind.importDirectory,
+      pickedPath: sourceAuthJsonPath,
       replace: replace,
     );
-    if (!ok) return false;
-    return _refreshCursorCredentialStatus(providerId);
   }
 
   Future<bool> revokeCursorProvider(String providerId) async {
-    final ok = await _cursorCredentials.revokeCredentials(providerId);
-    if (!ok) return false;
-    return _refreshCursorCredentialStatus(providerId);
+    final provider = state.providersFor(CliTool.cursor)
+        .where((p) => p.id == providerId)
+        .firstOrNull;
+    if (provider == null) return false;
+    return runProviderCredentialAction(
+      provider: provider,
+      kind: ProviderCredentialActionKind.revoke,
+    );
   }
 
-  Future<bool> _refreshCursorCredentialStatus(String providerId) async {
-    final probe = await _cursorCredentials.probe(providerId);
-    final provider = state.providersFor(CliTool.cursor)
+  Future<bool> _refreshCredentialStatus(CliTool cli, String providerId) async {
+    final capability = CliToolRegistry.builtIn().capability<
+        ProviderCredentialCapability>(cli);
+    if (capability == null) return false;
+    final probe = await capability.probe(providerId);
+    final provider = state.providersFor(cli)
         .where((p) => p.id == providerId)
         .firstOrNull;
     if (provider == null) return false;

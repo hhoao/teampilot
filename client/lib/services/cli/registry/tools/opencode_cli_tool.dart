@@ -8,14 +8,16 @@ import '../capabilities/executable_resolver_capability.dart';
 import '../capabilities/installer_capability.dart';
 import '../capabilities/launch_args_capability.dart';
 import '../capabilities/presence_capability.dart';
+import '../../../provider/opencode/opencode_provider_credential_capability.dart';
 import '../capabilities/provider_catalog_capability.dart';
+import '../capabilities/provider_credential_capability.dart';
 import '../capabilities/provider_model_capability.dart';
 import '../capabilities/transcript_probe_capability.dart';
 import '../config_profile/opencode_config_profile_capability.dart';
 import '../installer/opencode_installer_capability.dart';
 
 final class OpencodeCliTool implements CliToolDefinition {
-  const OpencodeCliTool({
+  OpencodeCliTool({
     this.launchArgs = const OpencodeCliToolAdapter(),
     this.configProfile = const OpencodeConfigProfileCapability(),
     this.transcriptProbe = const OpencodeTranscriptProbe(),
@@ -27,7 +29,11 @@ final class OpencodeCliTool implements CliToolDefinition {
     this.pluginManifest = const OpencodePluginManifest(),
     this.providerCatalog = const OpencodeProviderCatalog(),
     this.providerModel = const OpencodeProviderModelCapability(),
-  });
+    ProviderCredentialCapability? providerCredential,
+  }) : providerCredential =
+           providerCredential ?? OpencodeProviderCredentialCapability();
+
+  final ProviderCredentialCapability providerCredential;
 
   final LaunchArgsCapability launchArgs;
   final ConfigProfileCapability configProfile;
@@ -60,5 +66,6 @@ final class OpencodeCliTool implements CliToolDefinition {
     pluginManifest,
     providerCatalog,
     providerModel,
+    providerCredential,
   ];
 }

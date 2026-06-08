@@ -1494,6 +1494,52 @@ class AppLocalizationsEn extends AppLocalizations {
   String get cursorCredentialsActionFailed => 'Could not update credentials';
 
   @override
+  String get codexCredentialsLogin => 'Sign in with OpenAI';
+
+  @override
+  String get codexCredentialsImportGlobal => 'Import from ~/.codex';
+
+  @override
+  String get codexCredentialsImportFile => 'Import auth.json…';
+
+  @override
+  String get codexCredentialsRevoke => 'Sign out';
+
+  @override
+  String codexCredentialsRevokeConfirm(String name) {
+    return 'Sign out and remove saved credentials for $name?';
+  }
+
+  @override
+  String get codexCredentialsActionSuccess => 'Credentials updated';
+
+  @override
+  String get codexCredentialsActionFailed => 'Could not update credentials';
+
+  @override
+  String get opencodeCredentialsLogin => 'Sign in with provider';
+
+  @override
+  String get opencodeCredentialsImportGlobal => 'Import from opencode auth';
+
+  @override
+  String get opencodeCredentialsImportFile => 'Import auth.json…';
+
+  @override
+  String get opencodeCredentialsRevoke => 'Sign out';
+
+  @override
+  String opencodeCredentialsRevokeConfirm(String name) {
+    return 'Sign out and remove saved credentials for $name?';
+  }
+
+  @override
+  String get opencodeCredentialsActionSuccess => 'Credentials updated';
+
+  @override
+  String get opencodeCredentialsActionFailed => 'Could not update credentials';
+
+  @override
   String get claudeLaunchCredentialsMissingWarning =>
       'Claude Official credentials are missing for this team provider. Sign in from Providers settings.';
 

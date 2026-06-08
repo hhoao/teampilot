@@ -1,7 +1,21 @@
+import 'package:flutter/foundation.dart';
+
 import '../../../../models/app_provider_config.dart';
 import '../../../provider/claude/claude_official_provider.dart';
 import '../../../provider/opencode/opencode_model_catalog.dart';
 import '../cli_capability.dart';
+
+/// Model catalog that can be refreshed asynchronously (e.g. `cursor-agent models`).
+abstract interface class RefreshableProviderModelCapability
+    implements ProviderModelCapability {
+  Listenable get catalogUpdates;
+
+  Future<void> refreshModelCatalog({
+    required String providerId,
+    String? executable,
+    bool forceRefresh = false,
+  });
+}
 
 /// How member / project UI should collect a model id for a provider.
 enum ProviderModelPickerMode {

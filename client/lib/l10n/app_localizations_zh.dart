@@ -1437,6 +1437,52 @@ class AppLocalizationsZh extends AppLocalizations {
   String get cursorCredentialsActionFailed => '凭据更新失败';
 
   @override
+  String get codexCredentialsLogin => 'OpenAI 登录';
+
+  @override
+  String get codexCredentialsImportGlobal => '从 ~/.codex 导入';
+
+  @override
+  String get codexCredentialsImportFile => '导入 auth.json…';
+
+  @override
+  String get codexCredentialsRevoke => '退出登录';
+
+  @override
+  String codexCredentialsRevokeConfirm(String name) {
+    return '退出登录并删除 $name 的已保存凭据？';
+  }
+
+  @override
+  String get codexCredentialsActionSuccess => '凭据已更新';
+
+  @override
+  String get codexCredentialsActionFailed => '凭据更新失败';
+
+  @override
+  String get opencodeCredentialsLogin => 'Provider 登录';
+
+  @override
+  String get opencodeCredentialsImportGlobal => '从 opencode 凭据导入';
+
+  @override
+  String get opencodeCredentialsImportFile => '导入 auth.json…';
+
+  @override
+  String get opencodeCredentialsRevoke => '退出登录';
+
+  @override
+  String opencodeCredentialsRevokeConfirm(String name) {
+    return '退出登录并删除 $name 的已保存凭据？';
+  }
+
+  @override
+  String get opencodeCredentialsActionSuccess => '凭据已更新';
+
+  @override
+  String get opencodeCredentialsActionFailed => '凭据更新失败';
+
+  @override
   String get claudeLaunchCredentialsMissingWarning =>
       '该 Team 绑定的 Claude Official Provider 缺少凭据，请在 Providers 设置中登录。';
 

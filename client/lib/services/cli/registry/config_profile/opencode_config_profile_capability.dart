@@ -4,6 +4,8 @@ import '../../../../models/app_provider_config.dart';
 import '../../../../models/project_profile.dart';
 import '../../../../models/team_config.dart';
 import '../../../../repositories/app_provider_repository.dart';
+import '../../../provider/opencode/opencode_auth_artifacts.dart';
+import '../../../provider/opencode/opencode_data_layout.dart';
 import '../../../provider/opencode/opencode_provider_settings_resolver.dart';
 import '../../../session/member_role_provision.dart';
 import '../../../team_bus/mcp/teammate_bus_mcp_config.dart';
@@ -129,6 +131,9 @@ final class OpencodeConfigProfileCapability implements ConfigProfileCapability {
   /// global instruction. (The bare `OPENCODE` env is an internal run marker,
   /// not a path — setting it does nothing.)
   static const configDirEnv = 'OPENCODE_CONFIG_DIR';
+  static const authContentEnv = 'OPENCODE_AUTH_CONTENT';
+
+  static const _opencodeDataLayout = OpencodeDataLayout();
 
   @override
   Future<void> ensureSessionProfile(ConfigProfileSessionContext ctx) async {}
@@ -167,16 +172,17 @@ final class OpencodeConfigProfileCapability implements ConfigProfileCapability {
     );
     var config = await paths.readSettingsFile(configPath);
     var changed = false;
+    AppProviderConfig? launchProvider;
 
     if (team != null) {
-      final provider = await _resolver(paths).resolveForLaunch(
+      launchProvider = await _resolver(paths).resolveForLaunch(
         team: team,
         member: member,
       );
-      if (provider == null) {
+      if (launchProvider == null) {
         warnings.add('opencode_provider_missing');
       } else {
-        config = mergeOpencodeProvider(config, provider);
+        config = mergeOpencodeProvider(config, launchProvider);
         changed = true;
       }
     }
@@ -210,8 +216,16 @@ final class OpencodeConfigProfileCapability implements ConfigProfileCapability {
       await paths.writeJsonIfChanged(configPath, config);
     }
 
+    final environment = <String, String>{configDirEnv: opencodeDir};
+    final authContent = launchProvider == null
+        ? null
+        : await _readStoredAuthContent(paths, launchProvider);
+    if (authContent != null) {
+      environment[authContentEnv] = authContent;
+    }
+
     return ConfigProfileLaunchContribution(
-      environment: {configDirEnv: opencodeDir},
+      environment: environment,
       warnings: warnings,
     );
   }
@@ -254,9 +268,38 @@ final class OpencodeConfigProfileCapability implements ConfigProfileCapability {
       await paths.writeJsonIfChanged(configPath, config);
     }
 
+    final environment = <String, String>{configDirEnv: opencodeDir};
+    final authContent = provider == null
+        ? null
+        : await _readStoredAuthContent(paths, provider);
+    if (authContent != null) {
+      environment[authContentEnv] = authContent;
+    }
+
     return ConfigProfileLaunchContribution(
-      environment: {configDirEnv: opencodeDir},
+      environment: environment,
     );
+  }
+
+  Future<String?> _readStoredAuthContent(
+    ConfigProfileDelegate paths,
+    AppProviderConfig provider,
+  ) async {
+    if (!provider.isOfficial) return null;
+    final providerDir = paths.pathContext.join(
+      paths.basePath,
+      'providers',
+      'opencode',
+      provider.id,
+    );
+    final authPath = _opencodeDataLayout.providerAuthJsonPath(providerDir);
+    if (!(await paths.fs.stat(authPath)).isFile) return null;
+    final content = await paths.fs.readString(authPath);
+    if (content == null || content.trim().isEmpty) return null;
+    if (!OpencodeAuthArtifacts.authJsonIndicatesReady(content, provider.id)) {
+      return null;
+    }
+    return content.trim();
   }
 
   OpencodeProviderSettingsResolver _resolver(ConfigProfileDelegate paths) =>

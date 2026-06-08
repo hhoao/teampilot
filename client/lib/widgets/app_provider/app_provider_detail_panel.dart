@@ -11,12 +11,12 @@ import '../../l10n/l10n_extensions.dart';
 import '../../models/app_provider_config.dart';
 import '../../models/llm_config.dart';
 import '../../services/provider/claude/claude_official_provider.dart';
+import '../../services/provider/codex/codex_official_provider.dart';
 import '../../services/provider/tool_config_generator.dart';
 import '../../theme/workspace_surface_layers.dart';
 import '../app_icon_button.dart';
-import 'claude_official_credential_actions.dart';
-import 'cursor_credential_actions.dart';
 import 'provider_brand_icon.dart';
+import 'provider_credential_action_bar.dart';
 
 class AppProviderDetailPanel extends StatelessWidget {
   const AppProviderDetailPanel({
@@ -60,13 +60,13 @@ class AppProviderDetailPanel extends StatelessWidget {
                         fontWeight: FontWeight.w700,
                       ),
                     ),
-                    if (isOfficialClaudeProvider(provider))
-                      ClaudeOfficialCredentialStatusBadge(
-                        ready: provider.hasClaudeCredentialsReady,
-                      ),
-                    if (provider.cli == CliTool.cursor)
-                      CursorCredentialStatusBadge(
-                        ready: provider.hasCursorCredentialsReady,
+                    if (isOfficialClaudeProvider(provider) ||
+                        (provider.cli == CliTool.cursor && provider.isOfficial) ||
+                        isOfficialCodexOAuthProvider(provider) ||
+                        (provider.cli == CliTool.opencode && provider.isOfficial))
+                      ProviderCredentialStatusBadge(
+                        cli: provider.cli,
+                        ready: provider.credentialStatus == 'ready',
                       ),
                   ],
                 ),
@@ -108,8 +108,7 @@ class AppProviderDetailPanel extends StatelessWidget {
           if (provider.defaultModel.isNotEmpty)
             _InfoRow(label: l10n.defaultModel, value: provider.defaultModel),
           const SizedBox(height: 24),
-          ClaudeOfficialCredentialActions(provider: provider),
-          CursorCredentialActions(provider: provider),
+          ProviderCredentialActionBar(provider: provider),
           const SizedBox(height: 24),
           Text(l10n.jsonPreview, style: Theme.of(context).textTheme.labelLarge),
           const SizedBox(height: 8),

@@ -1,5 +1,8 @@
+import 'dart:convert';
+
 import '../../../models/app_provider_config.dart';
 import '../../io/filesystem.dart';
+import 'codex_auth_artifacts.dart';
 import 'codex_config_toml_composer.dart';
 import 'codex_proxy_launch_auth.dart';
 import '../tool_config_generator.dart';
@@ -30,13 +33,32 @@ final class CodexHomeProvisioner {
     required AppProviderConfig provider,
     String? busOverlayToml,
     Iterable<String> trustedProjectDirectories = const [],
+    String? storedAuthPath,
   }) async {
     final store = _fs;
     if (store == null) {
       throw StateError('CodexHomeProvisioner requires a Filesystem');
     }
 
-    final auth = CodexProxyLaunchAuth.buildAuth(provider, generator: _generator);
+    var auth = CodexProxyLaunchAuth.buildAuth(provider, generator: _generator);
+    if (!CodexAuthArtifacts.mapIndicatesReady(auth) &&
+        storedAuthPath != null &&
+        storedAuthPath.trim().isNotEmpty) {
+      final bytes = await store.readBytes(storedAuthPath);
+      if (bytes != null) {
+        try {
+          final decoded = jsonDecode(utf8.decode(bytes));
+          if (decoded is Map &&
+              CodexAuthArtifacts.mapIndicatesReady(
+                decoded.cast<String, Object?>(),
+              )) {
+            auth = Map<String, Object?>.from(decoded.cast<String, Object?>());
+          }
+        } on Object {
+          // Keep generated auth when stored auth is unreadable.
+        }
+      }
+    }
     final toml = _composer.compose(
       provider: provider,
       busOverlayToml: busOverlayToml,

@@ -8,13 +8,15 @@ import '../capabilities/executable_resolver_capability.dart';
 import '../capabilities/installer_capability.dart';
 import '../capabilities/launch_args_capability.dart';
 import '../capabilities/presence_capability.dart';
+import '../capabilities/provider_credential_capability.dart';
 import '../capabilities/provider_model_capability.dart';
 import '../capabilities/transcript_probe_capability.dart';
 import '../config_profile/claude_config_profile_capability.dart';
 import '../installer/claude_installer_capability.dart';
+import '../../../provider/claude/claude_provider_credential_capability.dart';
 
 final class ClaudeCliTool implements CliToolDefinition {
-  const ClaudeCliTool({
+  ClaudeCliTool({
     this.launchArgs = const ClaudeCodeCliToolAdapter(),
     this.configProfile = const ClaudeConfigProfileCapability(),
     this.transcriptProbe = const ClaudeTranscriptProbe(),
@@ -26,7 +28,11 @@ final class ClaudeCliTool implements CliToolDefinition {
     this.pluginManifest = const ClaudePluginManifest(),
     this.providerCatalog = const ClaudeProviderCatalog(),
     this.providerModel = const ClaudeProviderModelCapability(),
-  });
+    ProviderCredentialCapability? providerCredential,
+  }) : providerCredential =
+           providerCredential ?? ClaudeProviderCredentialCapability();
+
+  final ProviderCredentialCapability providerCredential;
 
   final LaunchArgsCapability launchArgs;
   final ConfigProfileCapability configProfile;
@@ -59,5 +65,6 @@ final class ClaudeCliTool implements CliToolDefinition {
     pluginManifest,
     providerCatalog,
     providerModel,
+    providerCredential,
   ];
 }

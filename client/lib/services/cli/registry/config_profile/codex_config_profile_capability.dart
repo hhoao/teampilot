@@ -4,7 +4,9 @@ import '../../../../models/app_provider_config.dart';
 import '../../../../models/project_profile.dart';
 import '../../../../models/team_config.dart';
 import '../../../../repositories/app_provider_repository.dart';
+import '../../../provider/codex/codex_auth_artifacts.dart';
 import '../../../provider/codex/codex_home_provisioner.dart';
+import '../../../provider/codex/codex_official_provider.dart';
 import '../../../provider/codex/codex_provider_settings_resolver.dart';
 import '../../../provider/codex/codex_team_bus_overlay.dart';
 import '../../../session/member_role_provision.dart';
@@ -78,6 +80,7 @@ final class CodexConfigProfileCapability implements ConfigProfileCapability {
             provider: provider,
             busOverlayToml: busOverlay,
             trustedProjectDirectories: trustedDirectories,
+            storedAuthPath: _storedCodexAuthPath(paths, provider),
           );
         } on CodexHomeProvisionException catch (e) {
           warnings.add('codex_config_invalid: $e');
@@ -142,6 +145,7 @@ final class CodexConfigProfileCapability implements ConfigProfileCapability {
           codexHome: codexHome,
           provider: provider,
           trustedProjectDirectories: trustedDirectories,
+          storedAuthPath: _storedCodexAuthPath(paths, provider),
         );
       } on CodexHomeProvisionException catch (e) {
         warnings.add('codex_config_invalid: $e');
@@ -191,5 +195,19 @@ final class CodexConfigProfileCapability implements ConfigProfileCapability {
     final uri = Uri.tryParse(idleUrl);
     if (uri == null || !uri.hasPort) return null;
     return uri.port;
+  }
+
+  static String? _storedCodexAuthPath(
+    ConfigProfileDelegate paths,
+    AppProviderConfig provider,
+  ) {
+    if (!isOfficialCodexOAuthProvider(provider)) return null;
+    return paths.pathContext.join(
+      paths.basePath,
+      'providers',
+      'codex',
+      provider.id,
+      CodexAuthArtifacts.authFileName,
+    );
   }
 }

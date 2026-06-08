@@ -682,6 +682,34 @@
   },
   "cursorCredentialsActionSuccess": "Credentials updated",
   "cursorCredentialsActionFailed": "Could not update credentials",
+  "codexCredentialsLogin": "Sign in with OpenAI",
+  "codexCredentialsImportGlobal": "Import from ~/.codex",
+  "codexCredentialsImportFile": "Import auth.json…",
+  "codexCredentialsRevoke": "Sign out",
+  "codexCredentialsRevokeConfirm": "Sign out and remove saved credentials for {name}?",
+  "@codexCredentialsRevokeConfirm": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "codexCredentialsActionSuccess": "Credentials updated",
+  "codexCredentialsActionFailed": "Could not update credentials",
+  "opencodeCredentialsLogin": "Sign in with provider",
+  "opencodeCredentialsImportGlobal": "Import from opencode auth",
+  "opencodeCredentialsImportFile": "Import auth.json…",
+  "opencodeCredentialsRevoke": "Sign out",
+  "opencodeCredentialsRevokeConfirm": "Sign out and remove saved credentials for {name}?",
+  "@opencodeCredentialsRevokeConfirm": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "opencodeCredentialsActionSuccess": "Credentials updated",
+  "opencodeCredentialsActionFailed": "Could not update credentials",
   "claudeLaunchCredentialsMissingWarning": "Claude Official credentials are missing for this team provider. Sign in from Providers settings.",
   "teamConfigIncompleteTitle": "Team configuration incomplete",
   "teamConfigIncompleteBody": "Team \"{team}\" is missing settings needed to launch. The session still starts, but agents may fail without them:",

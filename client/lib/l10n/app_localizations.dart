@@ -2768,6 +2768,90 @@ abstract class AppLocalizations {
   /// **'Could not update credentials'**
   String get cursorCredentialsActionFailed;
 
+  /// No description provided for @codexCredentialsLogin.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in with OpenAI'**
+  String get codexCredentialsLogin;
+
+  /// No description provided for @codexCredentialsImportGlobal.
+  ///
+  /// In en, this message translates to:
+  /// **'Import from ~/.codex'**
+  String get codexCredentialsImportGlobal;
+
+  /// No description provided for @codexCredentialsImportFile.
+  ///
+  /// In en, this message translates to:
+  /// **'Import auth.json…'**
+  String get codexCredentialsImportFile;
+
+  /// No description provided for @codexCredentialsRevoke.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign out'**
+  String get codexCredentialsRevoke;
+
+  /// No description provided for @codexCredentialsRevokeConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign out and remove saved credentials for {name}?'**
+  String codexCredentialsRevokeConfirm(String name);
+
+  /// No description provided for @codexCredentialsActionSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Credentials updated'**
+  String get codexCredentialsActionSuccess;
+
+  /// No description provided for @codexCredentialsActionFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not update credentials'**
+  String get codexCredentialsActionFailed;
+
+  /// No description provided for @opencodeCredentialsLogin.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in with provider'**
+  String get opencodeCredentialsLogin;
+
+  /// No description provided for @opencodeCredentialsImportGlobal.
+  ///
+  /// In en, this message translates to:
+  /// **'Import from opencode auth'**
+  String get opencodeCredentialsImportGlobal;
+
+  /// No description provided for @opencodeCredentialsImportFile.
+  ///
+  /// In en, this message translates to:
+  /// **'Import auth.json…'**
+  String get opencodeCredentialsImportFile;
+
+  /// No description provided for @opencodeCredentialsRevoke.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign out'**
+  String get opencodeCredentialsRevoke;
+
+  /// No description provided for @opencodeCredentialsRevokeConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign out and remove saved credentials for {name}?'**
+  String opencodeCredentialsRevokeConfirm(String name);
+
+  /// No description provided for @opencodeCredentialsActionSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Credentials updated'**
+  String get opencodeCredentialsActionSuccess;
+
+  /// No description provided for @opencodeCredentialsActionFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not update credentials'**
+  String get opencodeCredentialsActionFailed;
+
   /// No description provided for @claudeLaunchCredentialsMissingWarning.
   ///
   /// In en, this message translates to:

@@ -52,7 +52,13 @@ import '../services/team_hub/git_registry_team_hub_source.dart';
 import '../services/team_hub/team_hub_dependency_installers.dart';
 import '../services/team_hub/team_hub_favorites_store.dart';
 import '../services/cli/cli_tool_locator.dart';
+import '../services/cli/registry/cli_bootstrap.dart';
 import '../services/cli/registry/cli_tool_registry.dart';
+import '../services/provider/claude/claude_provider_credentials_service.dart';
+import '../services/provider/codex/codex_provider_credentials_service.dart';
+import '../services/provider/opencode/opencode_provider_credentials_service.dart';
+import '../services/provider/cursor/cursor_agent_models_service.dart';
+import '../services/provider/cursor/cursor_provider_credentials_service.dart';
 import '../services/app/connection_mode_service.dart';
 import '../services/cli/flashskyai_cli_locator.dart';
 import '../services/storage/storage_resolver.dart';
@@ -305,6 +311,37 @@ Future<AppShell> buildAppShell({
     isSshMode: () => connectionModeService.isSshMode,
     sshProfileResolver: () => sshProfileCubit.state.selectedProfile,
     reinstallContext: reinstallStorageContext,
+  );
+  cliToolRegistry.configure(
+    CliBootstrap(
+      cursorAgentModelsService: CursorAgentModelsService(
+        storageRoots: storageRoots,
+      ),
+      claudeCredentialsService: ClaudeProviderCredentialsService(
+        fs: AppStorage.fs,
+        basePath: AppStorage.paths.basePath,
+        resolveClaudeExecutable: () =>
+            sessionPreferencesCubit.resolveExecutable(CliTool.claude),
+      ),
+      cursorCredentialsService: CursorProviderCredentialsService(
+        fs: AppStorage.fs,
+        basePath: AppStorage.paths.basePath,
+        resolveCursorExecutable: () =>
+            sessionPreferencesCubit.resolveExecutable(CliTool.cursor),
+      ),
+      codexCredentialsService: CodexProviderCredentialsService(
+        fs: AppStorage.fs,
+        basePath: AppStorage.paths.basePath,
+        resolveCodexExecutable: () =>
+            sessionPreferencesCubit.resolveExecutable(CliTool.codex),
+      ),
+      opencodeCredentialsService: OpencodeProviderCredentialsService(
+        fs: AppStorage.fs,
+        basePath: AppStorage.paths.basePath,
+        resolveOpencodeExecutable: () =>
+            sessionPreferencesCubit.resolveExecutable(CliTool.opencode),
+      ),
+    ),
   );
 
   final skillManifest = SkillManifestService(storageRoots: storageRoots);

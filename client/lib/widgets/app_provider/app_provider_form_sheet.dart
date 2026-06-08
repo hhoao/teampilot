@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../cubits/app_provider_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
@@ -11,9 +12,12 @@ import '../../models/provider_presets/cursor_provider_presets.dart';
 import '../../models/provider_presets/flashskyai_provider_presets.dart';
 import '../../models/provider_presets/opencode_provider_presets.dart';
 import '../../theme/workspace_surface_layers.dart';
+import '../../services/cli/registry/capabilities/provider_credential_capability.dart';
+import '../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../utils/debounce/debounce.dart';
 import '../app_icon_button.dart';
 import 'brand_dropdown_rows.dart';
+import 'provider_credential_action_bar.dart';
 import '../dropdown/app_dropdown_field.dart';
 
 List<AppProviderPreset> appProviderPresetsFor(CliTool cli) {
@@ -84,7 +88,7 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
     _apiKeyCtl = TextEditingController(text: _isEditing ? '' : e?.apiKey ?? '');
     _baseUrlCtl = TextEditingController(text: e?.baseUrl ?? '');
     _defaultModelCtl = TextEditingController(text: e?.defaultModel ?? '');
-    _presetId = 'custom';
+    _presetId = _initialPresetId(widget.cli, e);
     _category = e?.category ?? AppProviderCategory.custom;
     _apiKeyField = _initialApiKeyField(widget.cli, e?.apiKeyField);
     _apiKeyUrl = e?.apiKeyUrl ?? '';
@@ -220,8 +224,18 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
       config: config,
       createdAt: widget.existing?.createdAt ?? now,
       updatedAt: now,
+      credentialStatus: widget.existing?.credentialStatus ?? 'missing',
+      credentialUpdatedAt: widget.existing?.credentialUpdatedAt ?? 0,
       unknownFields: widget.existing?.unknownFields ?? const {},
     );
+  }
+
+  AppProviderConfig _credentialProvider(AppProviderState state) {
+    final draft = _buildNormalDraft();
+    final saved = state.providersFor(widget.cli)
+        .where((p) => p.id == draft.id)
+        .firstOrNull;
+    return saved ?? draft;
   }
 
   AppProviderConfig? _buildResult() {
@@ -328,6 +342,26 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
                   },
                 ),
                 const SizedBox(height: 14),
+                if (!_showAdvancedJson && _usesCredentialSetup(context)) ...[
+                  BlocBuilder<AppProviderCubit, AppProviderState>(
+                    builder: (context, state) {
+                      return ProviderCredentialActionBar(
+                        provider: _credentialProvider(state),
+                        ensureSaved: () async {
+                          final next = _buildNormalDraft();
+                          if (next.name.trim().isEmpty) return null;
+                          final cubit = context.read<AppProviderCubit>();
+                          await cubit.upsertProvider(next);
+                          return cubit.state.providersFor(widget.cli)
+                                  .where((p) => p.id == next.id)
+                                  .firstOrNull ??
+                              next;
+                        },
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 14),
+                ],
                 Material(
                   color: Colors.transparent,
                   child: SwitchListTile(
@@ -372,22 +406,26 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
                     maxLines: 4,
                     decoration: InputDecoration(labelText: l10n.notes),
                   ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: _apiKeyCtl,
-                    obscureText: true,
-                    decoration: InputDecoration(
-                      labelText: l10n.apiKey,
-                      hintText: _isEditing
-                          ? l10n.appProviderApiKeyEditHint
-                          : null,
+                  if (!_hidesApiKeyFields(context)) ...[
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: _apiKeyCtl,
+                      obscureText: true,
+                      decoration: InputDecoration(
+                        labelText: l10n.apiKey,
+                        hintText: _isEditing
+                            ? l10n.appProviderApiKeyEditHint
+                            : null,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: _baseUrlCtl,
-                    decoration: InputDecoration(labelText: l10n.baseUrl),
-                  ),
+                  ],
+                  if (!_hidesApiKeyFields(context)) ...[
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: _baseUrlCtl,
+                      decoration: InputDecoration(labelText: l10n.baseUrl),
+                    ),
+                  ],
                   const SizedBox(height: 12),
                   TextField(
                     controller: _defaultModelCtl,
@@ -452,6 +490,28 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
         ],
       ),
     );
+  }
+
+  bool _usesCredentialSetup(BuildContext context) {
+    final capability = CliToolRegistryScope.of(
+      context,
+    ).capability<ProviderCredentialCapability>(widget.cli);
+    if (capability == null) return false;
+    final draft = _buildNormalDraft();
+    if (capability.appliesTo(draft)) return true;
+    final existing = widget.existing;
+    return existing != null && capability.appliesTo(existing);
+  }
+
+  bool _hidesApiKeyFields(BuildContext context) {
+    final capability = CliToolRegistryScope.of(
+      context,
+    ).capability<ProviderCredentialCapability>(widget.cli);
+    if (capability == null) return false;
+    final draft = _buildNormalDraft();
+    if (capability.hidesApiKeyFields(draft)) return true;
+    final existing = widget.existing;
+    return existing != null && capability.hidesApiKeyFields(existing);
   }
 
   Map<String, Object?> _buildConfigFromFields() {
@@ -686,4 +746,13 @@ const _claudeApiKeyFields = ['ANTHROPIC_AUTH_TOKEN', 'ANTHROPIC_API_KEY'];
 
 T _effectiveItem<T>(T value, List<T> items) {
   return items.contains(value) ? value : items.first;
+}
+
+String _initialPresetId(CliTool cli, AppProviderConfig? existing) {
+  if (existing == null) return 'custom';
+  final presets = appProviderPresetsFor(cli);
+  for (final preset in presets) {
+    if (preset.id == existing.id) return preset.id;
+  }
+  return 'custom';
 }

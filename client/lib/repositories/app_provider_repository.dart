@@ -5,7 +5,10 @@ import '../models/llm_config.dart';
 import '../services/storage/app_storage.dart';
 import '../services/provider/claude/claude_official_provider.dart';
 import '../services/provider/claude/claude_provider_credentials_service.dart';
+import '../services/provider/codex/codex_official_provider.dart';
+import '../services/provider/codex/codex_provider_credentials_service.dart';
 import '../services/provider/cursor/cursor_provider_credentials_service.dart';
+import '../services/provider/opencode/opencode_provider_credentials_service.dart';
 import '../services/io/filesystem.dart';
 import '../services/provider/tool_config_generator.dart';
 
@@ -25,17 +28,23 @@ class AppProviderRepository {
     Filesystem? fs,
     ClaudeProviderCredentialsService? claudeCredentialsService,
     CursorProviderCredentialsService? cursorCredentialsService,
+    CodexProviderCredentialsService? codexCredentialsService,
+    OpencodeProviderCredentialsService? opencodeCredentialsService,
   }) : _basePathOverride = basePath,
        _generator = generator ?? const ToolConfigGenerator(),
        _fsOverride = fs,
        _claudeCredentialsServiceOverride = claudeCredentialsService,
-       _cursorCredentialsServiceOverride = cursorCredentialsService;
+       _cursorCredentialsServiceOverride = cursorCredentialsService,
+       _codexCredentialsServiceOverride = codexCredentialsService,
+       _opencodeCredentialsServiceOverride = opencodeCredentialsService;
 
   final String? _basePathOverride;
   final Filesystem? _fsOverride;
   final ToolConfigGenerator _generator;
   final ClaudeProviderCredentialsService? _claudeCredentialsServiceOverride;
   final CursorProviderCredentialsService? _cursorCredentialsServiceOverride;
+  final CodexProviderCredentialsService? _codexCredentialsServiceOverride;
+  final OpencodeProviderCredentialsService? _opencodeCredentialsServiceOverride;
 
   String get _basePath => _basePathOverride ?? AppStorage.paths.basePath;
 
@@ -48,6 +57,14 @@ class AppProviderRepository {
   CursorProviderCredentialsService get _cursorCredentials =>
       _cursorCredentialsServiceOverride ??
       CursorProviderCredentialsService(fs: _fs, basePath: _basePath);
+
+  CodexProviderCredentialsService get _codexCredentials =>
+      _codexCredentialsServiceOverride ??
+      CodexProviderCredentialsService(fs: _fs, basePath: _basePath);
+
+  OpencodeProviderCredentialsService get _opencodeCredentials =>
+      _opencodeCredentialsServiceOverride ??
+      OpencodeProviderCredentialsService(fs: _fs, basePath: _basePath);
 
   String providersPath(CliTool cli) =>
       _fs.pathContext.join(_basePath, 'providers', cli.value, 'providers.json');
@@ -64,6 +81,8 @@ class AppProviderRepository {
     return switch (cli) {
       CliTool.claude => _probeClaudeCredentials(providers),
       CliTool.cursor => _probeCursorCredentials(providers),
+      CliTool.codex => _probeCodexCredentials(providers),
+      CliTool.opencode => _probeOpencodeCredentials(providers),
       _ => providers,
     };
   }
@@ -235,6 +254,76 @@ class AppProviderRepository {
     return probed;
   }
 
+  Future<List<AppProviderConfig>> _probeCodexCredentials(
+    List<AppProviderConfig> providers,
+  ) async {
+    var changed = false;
+    final probed = <AppProviderConfig>[];
+    for (final provider in providers) {
+      if (!isOfficialCodexOAuthProvider(provider)) {
+        probed.add(provider);
+        continue;
+      }
+      var probe = await _codexCredentials.probe(provider.id);
+      if (!probe.isReady) {
+        final home = AppStorage.home.trim();
+        if (home.isNotEmpty) {
+          await _codexCredentials.importFromGlobal(
+            provider.id,
+            homeDirectory: home,
+            replace: false,
+          );
+          probe = await _codexCredentials.probe(provider.id);
+        }
+      }
+      final next = provider.withCredentialProbe(probe);
+      if (next.credentialStatus != provider.credentialStatus ||
+          next.credentialUpdatedAt != provider.credentialUpdatedAt) {
+        changed = true;
+      }
+      probed.add(next);
+    }
+    if (changed) {
+      await saveProviders(CliTool.codex, probed);
+    }
+    return probed;
+  }
+
+  Future<List<AppProviderConfig>> _probeOpencodeCredentials(
+    List<AppProviderConfig> providers,
+  ) async {
+    var changed = false;
+    final probed = <AppProviderConfig>[];
+    for (final provider in providers) {
+      if (provider.cli != CliTool.opencode || !provider.isOfficial) {
+        probed.add(provider);
+        continue;
+      }
+      var probe = await _opencodeCredentials.probe(provider.id);
+      if (!probe.isReady) {
+        final home = AppStorage.home.trim();
+        if (home.isNotEmpty) {
+          await _opencodeCredentials.importFromGlobal(
+            provider.id,
+            homeDirectory: home,
+            replace: false,
+          );
+          probe = await _opencodeCredentials.probe(provider.id);
+        }
+      }
+      final next = provider.withCredentialProbe(probe);
+      if (next.credentialStatus != provider.credentialStatus ||
+          next.credentialUpdatedAt != provider.credentialUpdatedAt) {
+        changed = true;
+      }
+      probed.add(next);
+    }
+    if (changed) {
+      await saveProviders(CliTool.opencode, probed);
+    }
+    return probed;
+  }
+
   Future<AppProviderConfig?> findById(CliTool cli, String id) async {
     final trimmed = id.trim();
     if (trimmed.isEmpty) return null;
@@ -264,11 +353,17 @@ class AppProviderRepository {
     for (final provider in providers) {
       final codexDir = path.join(root, provider.id);
       await _fs.ensureDir(codexDir);
-      await _generator.writeJsonAtomic(
-        path.join(codexDir, 'auth.json'),
-        _generator.buildCodexAuth(provider),
-        fs: _fs,
-      );
+      final authPath = path.join(codexDir, 'auth.json');
+      final auth = _generator.buildCodexAuth(provider);
+      if (isOfficialCodexOAuthProvider(provider) && auth.isEmpty) {
+        if ((await _fs.stat(authPath)).isFile) {
+          // Preserve OAuth credentials from `codex login` / import.
+        } else {
+          await _generator.writeJsonAtomic(authPath, auth, fs: _fs);
+        }
+      } else {
+        await _generator.writeJsonAtomic(authPath, auth, fs: _fs);
+      }
       final toml = _generator.buildCodexConfigToml(provider);
       final error = _generator.validateCodexToml(toml);
       if (error != null) {
