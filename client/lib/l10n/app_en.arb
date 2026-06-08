@@ -1518,5 +1518,38 @@
       "current": { "type": "int" },
       "total": { "type": "int" }
     }
-  }
+  },
+  "aiFeatures": "AI Features",
+  "aiFeaturesPageSubtitle": "Choose which CLI provider, model, and effort each AI feature uses.",
+  "aiFeatureCommitMessageTitle": "Commit message generation",
+  "aiFeatureCommitMessageSubtitle": "Used by the ✨ button in the source control panel.",
+  "aiFeatureTeamGenerateTitle": "Team configuration generation",
+  "aiFeatureTeamGenerateSubtitle": "Used when generating a team from a description.",
+  "aiFeatureCliLabel": "CLI",
+  "aiFeatureModelLabel": "Model",
+  "aiFeatureEffortLabel": "Effort",
+  "aiFeatureConfigSummary": "{cli} · {provider} · {model}",
+  "@aiFeatureConfigSummary": {
+    "placeholders": {
+      "cli": {
+        "type": "String"
+      },
+      "provider": {
+        "type": "String"
+      },
+      "model": {
+        "type": "String"
+      }
+    }
+  },
+  "gitGenerateCommitMessage": "Generate commit message with AI",
+  "gitGenerateCommitMessageNoProvider": "Configure an AI provider in Settings → AI Features first.",
+  "teamGenTitle": "Generate with AI",
+  "teamGenDescriptionHint": "Describe the team you want (e.g. Flutter frontend with code review and tests)",
+  "teamGenGranularityRoster": "Members only",
+  "teamGenGranularityFull": "Full team draft",
+  "teamGenButton": "Generate",
+  "teamGenNoProvider": "Configure an AI provider in Settings → AI Features first.",
+  "teamGenFailed": "Could not generate a team. Please edit manually.",
+  "teamGenApplied": "Draft applied. Review and adjust before creating."
 }

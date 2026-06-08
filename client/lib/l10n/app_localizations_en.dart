@@ -3282,4 +3282,74 @@ class AppLocalizationsEn extends AppLocalizations {
   String diffChangeCounter(int current, int total) {
     return '$current / $total';
   }
+
+  @override
+  String get aiFeatures => 'AI Features';
+
+  @override
+  String get aiFeaturesPageSubtitle =>
+      'Choose which CLI provider, model, and effort each AI feature uses.';
+
+  @override
+  String get aiFeatureCommitMessageTitle => 'Commit message generation';
+
+  @override
+  String get aiFeatureCommitMessageSubtitle =>
+      'Used by the ✨ button in the source control panel.';
+
+  @override
+  String get aiFeatureTeamGenerateTitle => 'Team configuration generation';
+
+  @override
+  String get aiFeatureTeamGenerateSubtitle =>
+      'Used when generating a team from a description.';
+
+  @override
+  String get aiFeatureCliLabel => 'CLI';
+
+  @override
+  String get aiFeatureModelLabel => 'Model';
+
+  @override
+  String get aiFeatureEffortLabel => 'Effort';
+
+  @override
+  String aiFeatureConfigSummary(String cli, String provider, String model) {
+    return '$cli · $provider · $model';
+  }
+
+  @override
+  String get gitGenerateCommitMessage => 'Generate commit message with AI';
+
+  @override
+  String get gitGenerateCommitMessageNoProvider =>
+      'Configure an AI provider in Settings → AI Features first.';
+
+  @override
+  String get teamGenTitle => 'Generate with AI';
+
+  @override
+  String get teamGenDescriptionHint =>
+      'Describe the team you want (e.g. Flutter frontend with code review and tests)';
+
+  @override
+  String get teamGenGranularityRoster => 'Members only';
+
+  @override
+  String get teamGenGranularityFull => 'Full team draft';
+
+  @override
+  String get teamGenButton => 'Generate';
+
+  @override
+  String get teamGenNoProvider =>
+      'Configure an AI provider in Settings → AI Features first.';
+
+  @override
+  String get teamGenFailed =>
+      'Could not generate a team. Please edit manually.';
+
+  @override
+  String get teamGenApplied =>
+      'Draft applied. Review and adjust before creating.';
 }

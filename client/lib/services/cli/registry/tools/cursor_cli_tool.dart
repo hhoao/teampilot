@@ -10,10 +10,12 @@ import '../capabilities/launch_args_capability.dart';
 import '../capabilities/presence_capability.dart';
 import '../../../provider/cursor/cursor_provider_credential_capability.dart';
 import '../../../provider/cursor/cursor_provider_model_capability.dart';
+import '../capabilities/headless_run_capability.dart';
 import '../capabilities/provider_credential_capability.dart';
 import '../capabilities/transcript_probe_capability.dart';
 import '../capabilities/unsupported_installer_capability.dart';
 import '../config_profile/cursor_config_profile_capability.dart';
+import '../headless/cursor_headless_run_capability.dart';
 
 /// Cursor CLI (`cursor-agent`). Standalone and mixed-mode (HOME isolation +
 /// provider auth) embedded terminal.
@@ -30,6 +32,7 @@ final class CursorCliTool implements CliToolDefinition {
     this.pluginManifest = const CursorPluginManifest(),
     this.providerCatalog = const CursorProviderCatalog(),
     CursorProviderModelCapability? providerModel,
+    this.headlessRun = const CursorHeadlessRunCapability(),
     ProviderCredentialCapability? providerCredential,
   }) : providerModel = providerModel ?? CursorProviderModelCapability(),
        providerCredential = providerCredential ?? CursorProviderCredentialCapability();
@@ -47,6 +50,7 @@ final class CursorCliTool implements CliToolDefinition {
   final CursorPluginManifest pluginManifest;
   final CursorProviderCatalog providerCatalog;
   final CursorProviderModelCapability providerModel;
+  final HeadlessRunCapability headlessRun;
 
   @override
   CliTool get id => CliTool.cursor;
@@ -68,5 +72,6 @@ final class CursorCliTool implements CliToolDefinition {
     providerCatalog,
     providerModel,
     providerCredential,
+    headlessRun,
   ];
 }

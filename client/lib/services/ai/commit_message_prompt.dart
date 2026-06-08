@@ -1,4 +1,9 @@
 /// Builds the prompt for generating a commit message from a staged diff.
+///
+/// The diff is interpolated unescaped. This is deliberate and safe here: it is a
+/// local-only desktop feature, the user authored the diff, and the generated
+/// message is always shown for review/edit before committing — no privilege
+/// boundary is crossed by adversarial diff text.
 String buildCommitMessagePrompt(String stagedDiff) {
   return '''
 You are a tool that writes a single git commit message for the staged changes.

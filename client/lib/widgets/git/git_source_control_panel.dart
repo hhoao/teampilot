@@ -5,8 +5,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:path/path.dart' as p;
 
+import '../../cubits/ai_feature_settings_cubit.dart';
 import '../../cubits/editor_cubit.dart';
 import '../../cubits/git_cubit.dart';
+import '../../cubits/app_provider_cubit.dart';
+import '../../models/ai_feature_setting.dart';
+import '../../services/ai/ai_feature_setting_resolver.dart';
+import '../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/git_status.dart';
 import '../../services/git/git_changes_visible_rows.dart';
@@ -127,13 +132,20 @@ class _GitSourceControlPanelState extends State<GitSourceControlPanel> {
       value: _cubit,
       child: BlocConsumer<GitCubit, GitState>(
         listenWhen: (prev, next) =>
-            prev.errorMessage != next.errorMessage && next.errorMessage != null,
+            (prev.errorMessage != next.errorMessage &&
+                next.errorMessage != null) ||
+            prev.commitMessage != next.commitMessage,
         listener: (context, state) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(context.l10n.gitError(state.errorMessage ?? '')),
-            ),
-          );
+          if (state.errorMessage != null) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(context.l10n.gitError(state.errorMessage ?? '')),
+              ),
+            );
+          }
+          if (_commitController.text != state.commitMessage) {
+            _commitController.text = state.commitMessage;
+          }
         },
         builder: (context, state) => _buildBody(context, state),
       ),
@@ -182,10 +194,31 @@ class _GitSourceControlPanelState extends State<GitSourceControlPanel> {
             controller: _commitController,
             hint: l10n.gitCommitMessageHint(branch),
             canCommit: state.status.staged.isNotEmpty && !state.busy,
+            canGenerate: state.status.staged.isNotEmpty && !state.busy,
+            generating: state.generatingCommitMessage,
             onChanged: _cubit.setCommitMessage,
             onCommit: () async {
               final ok = await _cubit.commit();
               if (ok) _commitController.clear();
+            },
+            onGenerate: () async {
+              final setting = resolveAiFeatureSetting(
+                stored: context
+                    .read<AiFeatureSettingsCubit>()
+                    .state
+                    .settingFor(AiFeatureId.commitMessage),
+                appProviders: context.read<AppProviderCubit>().state,
+                registry: CliToolRegistryScope.of(context),
+              );
+              if (setting.providerId.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(l10n.gitGenerateCommitMessageNoProvider),
+                  ),
+                );
+                return;
+              }
+              await _cubit.generateCommitMessage(setting);
             },
           ),
           const SizedBox(height: 12),
@@ -506,15 +539,21 @@ class _CommitBox extends StatelessWidget {
     required this.controller,
     required this.hint,
     required this.canCommit,
+    required this.canGenerate,
+    required this.generating,
     required this.onChanged,
     required this.onCommit,
+    required this.onGenerate,
   });
 
   final TextEditingController controller;
   final String hint;
   final bool canCommit;
+  final bool canGenerate;
+  final bool generating;
   final ValueChanged<String> onChanged;
   final VoidCallback onCommit;
+  final VoidCallback onGenerate;
 
   @override
   Widget build(BuildContext context) {
@@ -522,12 +561,33 @@ class _CommitBox extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        TextField(
-          controller: controller,
-          minLines: 1,
-          maxLines: 4,
-          decoration: InputDecoration(hintText: hint, isDense: true),
-          onChanged: onChanged,
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: TextField(
+                controller: controller,
+                minLines: 1,
+                maxLines: 4,
+                enabled: !generating,
+                decoration: InputDecoration(hintText: hint, isDense: true),
+                onChanged: onChanged,
+              ),
+            ),
+            const SizedBox(width: 8),
+            IconButton(
+              key: const ValueKey('git-generate-commit-button'),
+              tooltip: l10n.gitGenerateCommitMessage,
+              onPressed: (canGenerate && !generating) ? onGenerate : null,
+              icon: generating
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.auto_awesome_outlined, size: 18),
+            ),
+          ],
         ),
         const SizedBox(height: 8),
         FilledButton.icon(

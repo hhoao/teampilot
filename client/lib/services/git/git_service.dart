@@ -252,6 +252,16 @@ class GitService {
     return _run(dir, args);
   }
 
+  /// Unified diff of staged changes (`git diff --cached`), capped at
+  /// [maxChars] to bound prompt size.
+  Future<String> stagedDiff(String dir, {int maxChars = 12000}) async {
+    final out = await _run(dir, ['diff', '--cached', '--no-color']);
+    if (out.length <= maxChars) return out;
+    final dropped = out.length - maxChars;
+    return '${out.substring(0, maxChars)}\n\n'
+        '[diff truncated: $dropped more characters]';
+  }
+
   Future<void> stage(String dir, List<String> paths) =>
       _run(dir, ['add', '--', ...paths]);
 

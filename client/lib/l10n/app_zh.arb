@@ -1191,5 +1191,38 @@
       "current": { "type": "int" },
       "total": { "type": "int" }
     }
-  }
+  },
+  "aiFeatures": "AI 功能",
+  "aiFeaturesPageSubtitle": "为每个 AI 功能选择使用的 CLI provider、模型与 effort。",
+  "aiFeatureCommitMessageTitle": "提交信息生成",
+  "aiFeatureCommitMessageSubtitle": "由源代码管理面板里的 ✨ 按钮使用。",
+  "aiFeatureTeamGenerateTitle": "团队配置生成",
+  "aiFeatureTeamGenerateSubtitle": "从描述生成团队时使用。",
+  "aiFeatureCliLabel": "CLI",
+  "aiFeatureModelLabel": "模型",
+  "aiFeatureEffortLabel": "Effort",
+  "aiFeatureConfigSummary": "{cli} · {provider} · {model}",
+  "@aiFeatureConfigSummary": {
+    "placeholders": {
+      "cli": {
+        "type": "String"
+      },
+      "provider": {
+        "type": "String"
+      },
+      "model": {
+        "type": "String"
+      }
+    }
+  },
+  "gitGenerateCommitMessage": "用 AI 生成提交信息",
+  "gitGenerateCommitMessageNoProvider": "请先在 设置 → AI 功能 中配置 AI provider。",
+  "teamGenTitle": "用 AI 生成",
+  "teamGenDescriptionHint": "描述你想要的团队（例如：做 Flutter 前端、需要代码审查和测试）",
+  "teamGenGranularityRoster": "仅成员",
+  "teamGenGranularityFull": "完整团队草稿",
+  "teamGenButton": "生成",
+  "teamGenNoProvider": "请先在 设置 → AI 功能 中配置 AI provider。",
+  "teamGenFailed": "无法生成团队，请手动编辑。",
+  "teamGenApplied": "草稿已应用，创建前请检查调整。"
 }

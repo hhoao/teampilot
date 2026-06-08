@@ -2,13 +2,20 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
 
+import '../../cubits/ai_feature_settings_cubit.dart';
 import '../../cubits/app_provider_cubit.dart';
 import '../../cubits/team_cubit.dart';
+import '../../models/ai_feature_setting.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/app_provider_config.dart';
 import '../../models/default_team_roster.dart';
 import '../../models/team_config.dart';
+import '../../services/ai/ai_feature_setting_resolver.dart';
+import '../../services/ai/team_config_draft.dart';
+import '../../services/ai/team_config_generator.dart';
+import '../../services/cli/registry/capabilities/cli_effort_capability.dart';
 import '../../services/cli/registry/capabilities/provider_catalog_capability.dart';
+import '../../services/cli/registry/capabilities/provider_model_capability.dart';
 import '../../services/cli/registry/cli_display_name.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../theme/app_text_styles.dart';
@@ -16,6 +23,7 @@ import '../../widgets/app_provider/brand_dropdown_rows.dart';
 import '../../widgets/app_provider/provider_brand_icon.dart';
 import '../../widgets/cli/cli_brand_icon.dart';
 import '../../widgets/settings/workspace_settings_widgets.dart';
+import 'home_workspace_team_generate_section.dart';
 
 /// Large centered "create team" modal launched from the workspace sidebar's
 /// "New Team" row. Mirrors the Apifox project-creation modal: centered title +
@@ -34,6 +42,7 @@ Future<void> showHomeWorkspaceNewTeamDialog(
           TeamMode mode,
           CliTool cli,
           Map<String, String> providerIdsByTool,
+          List<TeamMemberConfig>? members,
         })
       >(
         context: context,
@@ -46,10 +55,12 @@ Future<void> showHomeWorkspaceNewTeamDialog(
     cli: result.cli,
     teamMode: result.mode,
     providerIdsByTool: result.providerIdsByTool,
-    members: DefaultTeamRoster.localized(
-      l10n,
-      joinedAt: DateTime.now().millisecondsSinceEpoch,
-    ),
+    members: (result.members != null && result.members!.isNotEmpty)
+        ? result.members
+        : DefaultTeamRoster.localized(
+            l10n,
+            joinedAt: DateTime.now().millisecondsSinceEpoch,
+          ),
   );
 }
 
@@ -69,6 +80,8 @@ class _HomeWorkspaceNewTeamDialogState
   String _providerId = '';
   bool _canCreate = false;
   bool _didSeedProvider = false;
+  bool _generating = false;
+  TeamConfigDraft? _draft;
 
   @override
   void initState() {
@@ -134,7 +147,89 @@ class _HomeWorkspaceNewTeamDialogState
       mode: _mode,
       cli: _cli,
       providerIdsByTool: _providerIdsByToolForSubmit(),
+      members: _draft?.members,
     ));
+  }
+
+  Future<void> _onGenerate(
+    String description,
+    TeamGenGranularity granularity,
+  ) async {
+    final l10n = context.l10n;
+    if (description.isEmpty) return;
+    final setting = resolveAiFeatureSetting(
+      stored: context
+          .read<AiFeatureSettingsCubit>()
+          .state
+          .settingFor(AiFeatureId.teamGenerate),
+      appProviders: context.read<AppProviderCubit>().state,
+      registry: CliToolRegistryScope.of(context),
+    );
+    if (setting.providerId.isEmpty) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(l10n.teamGenNoProvider)));
+      return;
+    }
+
+    final allowed = _collectAllowedOptions();
+    setState(() => _generating = true);
+    try {
+      final draft = await TeamConfigGenerator().generate(
+        setting: setting,
+        description: description,
+        allowed: allowed,
+        granularity: granularity,
+        joinedAt: DateTime.now().millisecondsSinceEpoch,
+      );
+      if (!mounted) return;
+      setState(() {
+        _draft = draft;
+        if (draft.teamName != null && _nameController.text.trim().isEmpty) {
+          _nameController.text = draft.teamName!;
+        }
+        if (draft.mode != null) _mode = draft.mode!;
+      });
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(l10n.teamGenApplied)));
+    } on Object {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(l10n.teamGenFailed)));
+    } finally {
+      if (mounted) setState(() => _generating = false);
+    }
+  }
+
+  TeamDraftAllowedOptions _collectAllowedOptions() {
+    final registry = CliToolRegistryScope.of(context);
+    final appProviders = context.read<AppProviderCubit>().state;
+    final catalogCli = _providerCatalogCli(_cli) ?? _cli;
+    final provider = appProviders
+        .providersFor(catalogCli)
+        .where((p) => p.id == _providerId)
+        .firstOrNull;
+    final modelCap = registry.capability<ProviderModelCapability>(catalogCli);
+    final effortCap = registry.capability<CliEffortCapability>(catalogCli);
+    final models = modelCap?.modelCandidates(
+          provider: provider,
+          providerId: _providerId,
+          currentModel: '',
+        ) ??
+        const <String>[];
+    final defaultModel =
+        modelCap?.defaultModel(provider: provider, providerId: _providerId) ??
+            (models.isNotEmpty ? models.first : '');
+    final efforts = effortCap?.effortCandidates(
+          model: defaultModel,
+          provider: provider,
+        ) ??
+        const <String>[];
+    return TeamDraftAllowedOptions(
+      models: models,
+      efforts: efforts,
+      skillIds: const [],
+      defaultModel: defaultModel,
+    );
   }
 
   @override
@@ -215,6 +310,13 @@ class _HomeWorkspaceNewTeamDialogState
               _NameField(
                 controller: _nameController,
                 onSubmitted: (_) => _submit(),
+              ),
+              const SizedBox(height: 20),
+              HomeWorkspaceTeamGenerateSection(
+                cli: _cli,
+                providerId: _providerId,
+                generating: _generating,
+                onGenerate: _onGenerate,
               ),
               const SizedBox(height: 28),
               Row(

@@ -1,7 +1,11 @@
 import 'package:equatable/equatable.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../models/ai_feature_setting.dart';
 import '../models/git_status.dart';
+import '../services/ai/commit_message_prompt.dart';
+import '../services/ai/headless_ai_service.dart';
 import '../services/git/git_changes_visible_rows.dart';
 import '../services/git/git_service.dart';
 
@@ -19,6 +23,7 @@ class GitState extends Equatable {
     this.errorMessage,
     this.changesViewMode = GitChangesViewMode.list,
     this.expandedFolderPaths = const {},
+    this.generatingCommitMessage = false,
   });
 
   final String repoRoot;
@@ -33,6 +38,7 @@ class GitState extends Equatable {
   final String? errorMessage;
   final GitChangesViewMode changesViewMode;
   final Set<String> expandedFolderPaths;
+  final bool generatingCommitMessage;
 
   bool get isRepository => status.isRepository;
 
@@ -47,6 +53,7 @@ class GitState extends Equatable {
     String? errorMessage,
     GitChangesViewMode? changesViewMode,
     Set<String>? expandedFolderPaths,
+    bool? generatingCommitMessage,
     bool clearError = false,
   }) {
     return GitState(
@@ -60,6 +67,8 @@ class GitState extends Equatable {
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
       changesViewMode: changesViewMode ?? this.changesViewMode,
       expandedFolderPaths: expandedFolderPaths ?? this.expandedFolderPaths,
+      generatingCommitMessage:
+          generatingCommitMessage ?? this.generatingCommitMessage,
     );
   }
 
@@ -75,6 +84,7 @@ class GitState extends Equatable {
     errorMessage,
     changesViewMode,
     expandedFolderPaths,
+    generatingCommitMessage,
   ];
 }
 
@@ -84,12 +94,17 @@ class GitState extends Equatable {
 /// operations refresh status on success and surface failures via
 /// [GitState.errorMessage]. Desktop-local only.
 class GitCubit extends Cubit<GitState> {
-  GitCubit({GitService? service})
+  GitCubit({GitService? service, HeadlessAiService? headless})
     : _service =
           service ?? GitService.debugOverrideFactory?.call() ?? GitService(),
+      _headless = headless ?? HeadlessAiService(),
       super(const GitState());
 
   final GitService _service;
+  final HeadlessAiService _headless;
+
+  @visibleForTesting
+  void debugSetState(GitState next) => emit(next);
 
   Future<void> setRepoRoot(String path) async {
     if (path == state.repoRoot) return;
@@ -197,6 +212,48 @@ class GitCubit extends Cubit<GitState> {
 
   Future<void> createBranch(String name) =>
       _mutate(() => _service.createBranch(state.repoRoot, name.trim()));
+
+  /// Generates a commit message draft from the staged diff via [setting].
+  /// Fills [GitState.commitMessage]; never commits.
+  Future<void> generateCommitMessage(AiFeatureSetting setting) async {
+    final dir = state.repoRoot;
+    if (dir.isEmpty ||
+        state.status.staged.isEmpty ||
+        state.generatingCommitMessage) {
+      return;
+    }
+    emit(state.copyWith(generatingCommitMessage: true, clearError: true));
+    try {
+      final diff = await _service.stagedDiff(dir);
+      if (diff.trim().isEmpty) {
+        emit(state.copyWith(generatingCommitMessage: false));
+        return;
+      }
+      final result = await _headless.run(
+        setting: setting,
+        prompt: buildCommitMessagePrompt(diff),
+        workingDirectory: dir,
+      );
+      emit(
+        state.copyWith(
+          commitMessage: cleanCommitMessageOutput(result.text),
+          generatingCommitMessage: false,
+        ),
+      );
+    } on GitException catch (e) {
+      emit(state.copyWith(generatingCommitMessage: false, errorMessage: e.message));
+    } on HeadlessAiException catch (e) {
+      emit(state.copyWith(generatingCommitMessage: false, errorMessage: e.message));
+    } on Object catch (e) {
+      // Never strand the spinner on an unexpected failure.
+      emit(
+        state.copyWith(
+          generatingCommitMessage: false,
+          errorMessage: e.toString(),
+        ),
+      );
+    }
+  }
 
   Future<String?> diff(
     GitFileChange change, {

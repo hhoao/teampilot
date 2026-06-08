@@ -10,10 +10,14 @@ import '../capabilities/launch_args_capability.dart';
 import '../capabilities/presence_capability.dart';
 import '../../../provider/codex/codex_provider_credential_capability.dart';
 import '../capabilities/cli_effort_capability.dart';
+import '../capabilities/headless_run_capability.dart';
 import '../capabilities/provider_credential_capability.dart';
 import '../capabilities/provider_model_capability.dart';
 import '../capabilities/transcript_probe_capability.dart';
+import '../capabilities/headless_provision_capability.dart';
 import '../config_profile/codex_config_profile_capability.dart';
+import '../headless/codex_headless_run_capability.dart';
+import '../headless/codex_headless_provision_capability.dart';
 import '../installer/codex_installer_capability.dart';
 import '../../../provider/codex/codex_effort_capability.dart';
 
@@ -31,6 +35,8 @@ final class CodexCliTool implements CliToolDefinition {
     this.providerCatalog = const CodexProviderCatalog(),
     this.providerModel = const ProviderRecordModelCapability(),
     this.effort = const CodexEffortCapability(),
+    this.headlessRun = const CodexHeadlessRunCapability(),
+    this.headlessProvision = const CodexHeadlessProvisionCapability(),
     ProviderCredentialCapability? providerCredential,
   }) : providerCredential =
            providerCredential ?? CodexProviderCredentialCapability();
@@ -49,6 +55,8 @@ final class CodexCliTool implements CliToolDefinition {
   final CodexProviderCatalog providerCatalog;
   final ProviderModelCapability providerModel;
   final CliEffortCapability effort;
+  final HeadlessRunCapability headlessRun;
+  final HeadlessProvisionCapability headlessProvision;
 
   @override
   CliTool get id => CliTool.codex;
@@ -71,5 +79,7 @@ final class CodexCliTool implements CliToolDefinition {
     providerModel,
     providerCredential,
     effort,
+    headlessRun,
+    headlessProvision,
   ];
 }

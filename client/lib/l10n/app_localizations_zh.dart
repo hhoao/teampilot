@@ -3165,4 +3165,68 @@ class AppLocalizationsZh extends AppLocalizations {
   String diffChangeCounter(int current, int total) {
     return '$current / $total';
   }
+
+  @override
+  String get aiFeatures => 'AI 功能';
+
+  @override
+  String get aiFeaturesPageSubtitle =>
+      '为每个 AI 功能选择使用的 CLI provider、模型与 effort。';
+
+  @override
+  String get aiFeatureCommitMessageTitle => '提交信息生成';
+
+  @override
+  String get aiFeatureCommitMessageSubtitle => '由源代码管理面板里的 ✨ 按钮使用。';
+
+  @override
+  String get aiFeatureTeamGenerateTitle => '团队配置生成';
+
+  @override
+  String get aiFeatureTeamGenerateSubtitle => '从描述生成团队时使用。';
+
+  @override
+  String get aiFeatureCliLabel => 'CLI';
+
+  @override
+  String get aiFeatureModelLabel => '模型';
+
+  @override
+  String get aiFeatureEffortLabel => 'Effort';
+
+  @override
+  String aiFeatureConfigSummary(String cli, String provider, String model) {
+    return '$cli · $provider · $model';
+  }
+
+  @override
+  String get gitGenerateCommitMessage => '用 AI 生成提交信息';
+
+  @override
+  String get gitGenerateCommitMessageNoProvider =>
+      '请先在 设置 → AI 功能 中配置 AI provider。';
+
+  @override
+  String get teamGenTitle => '用 AI 生成';
+
+  @override
+  String get teamGenDescriptionHint => '描述你想要的团队（例如：做 Flutter 前端、需要代码审查和测试）';
+
+  @override
+  String get teamGenGranularityRoster => '仅成员';
+
+  @override
+  String get teamGenGranularityFull => '完整团队草稿';
+
+  @override
+  String get teamGenButton => '生成';
+
+  @override
+  String get teamGenNoProvider => '请先在 设置 → AI 功能 中配置 AI provider。';
+
+  @override
+  String get teamGenFailed => '无法生成团队，请手动编辑。';
+
+  @override
+  String get teamGenApplied => '草稿已应用，创建前请检查调整。';
 }

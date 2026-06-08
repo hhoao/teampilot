@@ -5995,6 +5995,126 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{current} / {total}'**
   String diffChangeCounter(int current, int total);
+
+  /// No description provided for @aiFeatures.
+  ///
+  /// In en, this message translates to:
+  /// **'AI Features'**
+  String get aiFeatures;
+
+  /// No description provided for @aiFeaturesPageSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose which CLI provider, model, and effort each AI feature uses.'**
+  String get aiFeaturesPageSubtitle;
+
+  /// No description provided for @aiFeatureCommitMessageTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Commit message generation'**
+  String get aiFeatureCommitMessageTitle;
+
+  /// No description provided for @aiFeatureCommitMessageSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Used by the ✨ button in the source control panel.'**
+  String get aiFeatureCommitMessageSubtitle;
+
+  /// No description provided for @aiFeatureTeamGenerateTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Team configuration generation'**
+  String get aiFeatureTeamGenerateTitle;
+
+  /// No description provided for @aiFeatureTeamGenerateSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Used when generating a team from a description.'**
+  String get aiFeatureTeamGenerateSubtitle;
+
+  /// No description provided for @aiFeatureCliLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'CLI'**
+  String get aiFeatureCliLabel;
+
+  /// No description provided for @aiFeatureModelLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Model'**
+  String get aiFeatureModelLabel;
+
+  /// No description provided for @aiFeatureEffortLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Effort'**
+  String get aiFeatureEffortLabel;
+
+  /// No description provided for @aiFeatureConfigSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'{cli} · {provider} · {model}'**
+  String aiFeatureConfigSummary(String cli, String provider, String model);
+
+  /// No description provided for @gitGenerateCommitMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Generate commit message with AI'**
+  String get gitGenerateCommitMessage;
+
+  /// No description provided for @gitGenerateCommitMessageNoProvider.
+  ///
+  /// In en, this message translates to:
+  /// **'Configure an AI provider in Settings → AI Features first.'**
+  String get gitGenerateCommitMessageNoProvider;
+
+  /// No description provided for @teamGenTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Generate with AI'**
+  String get teamGenTitle;
+
+  /// No description provided for @teamGenDescriptionHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Describe the team you want (e.g. Flutter frontend with code review and tests)'**
+  String get teamGenDescriptionHint;
+
+  /// No description provided for @teamGenGranularityRoster.
+  ///
+  /// In en, this message translates to:
+  /// **'Members only'**
+  String get teamGenGranularityRoster;
+
+  /// No description provided for @teamGenGranularityFull.
+  ///
+  /// In en, this message translates to:
+  /// **'Full team draft'**
+  String get teamGenGranularityFull;
+
+  /// No description provided for @teamGenButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Generate'**
+  String get teamGenButton;
+
+  /// No description provided for @teamGenNoProvider.
+  ///
+  /// In en, this message translates to:
+  /// **'Configure an AI provider in Settings → AI Features first.'**
+  String get teamGenNoProvider;
+
+  /// No description provided for @teamGenFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not generate a team. Please edit manually.'**
+  String get teamGenFailed;
+
+  /// No description provided for @teamGenApplied.
+  ///
+  /// In en, this message translates to:
+  /// **'Draft applied. Review and adjust before creating.'**
+  String get teamGenApplied;
 }
 
 class _AppLocalizationsDelegate

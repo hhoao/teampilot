@@ -180,7 +180,7 @@ class ProjectCliConfigRow extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(width: 8),
-                        _ConfiguredBadge(configured: configured),
+                        SettingsConfiguredBadge(configured: configured),
                       ],
                     ),
                     const SizedBox(height: 4),
@@ -253,46 +253,6 @@ class ProjectCliConfigRow extends StatelessWidget {
       return l10n.projectCliConfigSummary(providerName, modelLabel);
     }
     return '${l10n.projectCliConfigSummary(providerName, modelLabel)} · $effortLabel';
-  }
-}
-
-class _ConfiguredBadge extends StatelessWidget {
-  const _ConfiguredBadge({required this.configured});
-
-  final bool configured;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = context.l10n;
-    final cs = Theme.of(context).colorScheme;
-    final styles = AppTextStyles.of(context);
-    final color = configured ? cs.tertiary : cs.onSurfaceVariant;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.14),
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: color.withValues(alpha: 0.35)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            configured ? Icons.check_circle_outline : Icons.radio_button_unchecked,
-            size: 12,
-            color: color,
-          ),
-          const SizedBox(width: 4),
-          Text(
-            configured ? l10n.projectCliConfigured : l10n.projectCliNotConfigured,
-            style: styles.caption.copyWith(
-              color: color,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
-      ),
-    );
   }
 }
 

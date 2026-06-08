@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../l10n/l10n_extensions.dart';
 import '../dropdown/app_dropdown_field.dart';
 import '../dropdown/app_dropdown_decoration.dart';
 import '../../theme/app_text_styles.dart';
@@ -293,6 +294,51 @@ class ManagementCardHeader extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// Small pill showing configured / not configured (project CLI, AI features, …).
+class SettingsConfiguredBadge extends StatelessWidget {
+  const SettingsConfiguredBadge({required this.configured, super.key});
+
+  final bool configured;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final cs = Theme.of(context).colorScheme;
+    final styles = AppTextStyles.of(context);
+    final color = configured ? cs.tertiary : cs.onSurfaceVariant;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: color.withValues(alpha: 0.35)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            configured
+                ? Icons.check_circle_outline
+                : Icons.radio_button_unchecked,
+            size: 12,
+            color: color,
+          ),
+          const SizedBox(width: 4),
+          Text(
+            configured
+                ? l10n.projectCliConfigured
+                : l10n.projectCliNotConfigured,
+            style: styles.caption.copyWith(
+              color: color,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

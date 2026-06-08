@@ -1,6 +1,11 @@
 import 'team_config_draft.dart';
 
 /// Builds the prompt that constrains AI output to legal team options.
+///
+/// The user [description] is interpolated unescaped. Acceptable: it is a
+/// local-only desktop feature, the user authored the text, the draft is shown
+/// for review before a team is created, and the parsed output is additionally
+/// clamped to a whitelist of legal models/efforts/skills by [parseTeamConfigDraft].
 String buildTeamConfigPrompt({
   required String description,
   required TeamDraftAllowedOptions allowed,

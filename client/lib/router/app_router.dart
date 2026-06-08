@@ -266,6 +266,12 @@ final appRouter = GoRouter(
               ),
             ),
             GoRoute(
+              path: '/config/ai-features',
+              pageBuilder: (context, state) => const NoTransitionPage(
+                child: ConfigWorkspace(section: ConfigSection.aiFeatures),
+              ),
+            ),
+            GoRoute(
               path: '/config/ssh-profiles',
               pageBuilder: (context, state) => const NoTransitionPage(
                 child: SshProfilesPage(embedded: true),

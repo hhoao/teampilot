@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:teampilot/l10n/app_localizations.dart';
+import 'package:teampilot/cubits/ai_feature_settings_cubit.dart';
 import 'package:teampilot/cubits/app_provider_cubit.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
 import 'package:teampilot/cubits/member_presence_cubit.dart';
@@ -97,6 +98,7 @@ Widget buildTestApp({
   LlmConfigCubit? llmConfigCubit,
   AppProviderCubit? appProviderCubit,
   AppSettingsRepository? appSettings,
+  AiFeatureSettingsCubit? aiFeatureSettingsCubit,
   ExtensionCubit? extensionCubit,
 }) {
   final connectionModeService = ConnectionModeService(
@@ -106,6 +108,8 @@ Widget buildTestApp({
   final settings =
       appSettings ??
       InMemoryAppSettingsRepository(hasCompletedOnboarding: true);
+  final aiFeatures = aiFeatureSettingsCubit ??
+      AiFeatureSettingsCubit(repository: settings);
   final chat = chatCubit ?? ChatCubit(executableResolver: _testExecutable);
   final presence = memberPresenceCubit ?? MemberPresenceCubit();
   chat.bindPresenceCubit(presence);
@@ -133,6 +137,7 @@ Widget buildTestApp({
         BlocProvider.value(value: appProviderCubit!),
         BlocProvider.value(value: layoutCubit ?? LayoutCubit()),
         BlocProvider.value(value: sessionPreferencesCubit),
+        BlocProvider.value(value: aiFeatures),
         BlocProvider(create: (_) => EditorCubit(fs: LocalFilesystem())),
         BlocProvider.value(value: extensionCubit ?? _testExtensionCubit()),
         BlocProvider(create: (_) => WorkspaceToolsCubit()),

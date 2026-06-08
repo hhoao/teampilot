@@ -11,6 +11,7 @@ import '../cubits/chat_cubit.dart';
 import '../cubits/mailbox_cubit.dart';
 import '../cubits/member_presence_cubit.dart';
 import '../cubits/editor_cubit.dart';
+import '../cubits/ai_feature_settings_cubit.dart';
 import '../cubits/config_cubit.dart';
 import '../cubits/layout_cubit.dart';
 import '../cubits/workspace_tools_cubit.dart';
@@ -115,6 +116,7 @@ class AppShell {
     required this.appUpdateCubit,
     required this.sshProfileCubit,
     required this.appSettings,
+    required this.aiFeatureSettingsCubit,
     required this.reinstallStorageContext,
     required this.bootstrapAppData,
     required this.cliToolRegistry,
@@ -151,6 +153,7 @@ class AppShell {
   final AppUpdateCubit appUpdateCubit;
   final SshProfileCubit sshProfileCubit;
   final AppSettingsRepository appSettings;
+  final AiFeatureSettingsCubit aiFeatureSettingsCubit;
   final Future<RuntimeStorageContext> Function() reinstallStorageContext;
   final Future<void> Function() bootstrapAppData;
 }
@@ -178,6 +181,8 @@ Future<AppShell> buildAppShell({
   final cliLocated = locatedExecutables[CliTool.flashskyai];
 
   final appSettings = SharedPrefsAppSettingsRepository(preferences);
+  final aiFeatureSettingsCubit = AiFeatureSettingsCubit(repository: appSettings);
+  unawaited(aiFeatureSettingsCubit.load());
   final sessionPreferencesCubit = SessionPreferencesCubit(
     repository: SessionPreferencesRepository(preferences),
     locatedExecutable: cliLocated,
@@ -652,6 +657,7 @@ Future<AppShell> buildAppShell({
     appUpdateCubit: appUpdateCubit,
     sshProfileCubit: sshProfileCubit,
     appSettings: appSettings,
+    aiFeatureSettingsCubit: aiFeatureSettingsCubit,
     reinstallStorageContext: reinstallStorageContext,
     bootstrapAppData: bootstrapAppData,
   );
