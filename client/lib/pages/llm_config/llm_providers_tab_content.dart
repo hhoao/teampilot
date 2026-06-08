@@ -133,6 +133,7 @@ class LlmProvidersTabContentState extends State<LlmProvidersTabContent> {
       return Padding(
         padding: const EdgeInsets.all(12),
         child: AppProviderFormPage(
+          key: ValueKey(appState.selectedCli),
           cli: appState.selectedCli,
           onCliChanged: (cli) async {
             await context.read<AppProviderCubit>().setSelectedCli(cli);

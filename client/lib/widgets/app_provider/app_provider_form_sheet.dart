@@ -6,16 +6,14 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../cubits/app_provider_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/app_provider_config.dart';
-import '../../models/provider_presets/claude_provider_presets.dart';
-import '../../models/provider_presets/codex_provider_presets.dart';
-import '../../models/provider_presets/cursor_provider_presets.dart';
-import '../../models/provider_presets/flashskyai_provider_presets.dart';
-import '../../models/provider_presets/opencode_provider_presets.dart';
-import '../../theme/workspace_surface_layers.dart';
 import '../../services/cli/registry/capabilities/cli_effort_capability.dart';
 import '../../services/cli/registry/capabilities/provider_credential_capability.dart';
+import '../../services/cli/registry/capabilities/provider_form_capability.dart';
 import '../../services/cli/registry/capabilities/provider_model_capability.dart';
+import '../../services/cli/registry/cli_tool_registry.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
+import '../../services/provider/codex/codex_provider_form_capability.dart';
+import '../../theme/workspace_surface_layers.dart';
 import '../../utils/debounce/debounce.dart';
 import '../app_icon_button.dart';
 import 'brand_dropdown_rows.dart';
@@ -23,16 +21,6 @@ import 'cli_effort_picker_field.dart';
 import 'provider_credential_action_bar.dart';
 import 'provider_model_picker_field.dart';
 import '../dropdown/app_dropdown_field.dart';
-
-List<AppProviderPreset> appProviderPresetsFor(CliTool cli) {
-  return switch (cli) {
-    CliTool.claude => ClaudeProviderPresets.all,
-    CliTool.codex => CodexProviderPresets.all,
-    CliTool.flashskyai => FlashskyaiProviderPresets.all,
-    CliTool.opencode => OpencodeProviderPresets.all,
-    CliTool.cursor => CursorProviderPresets.all,
-  };
-}
 
 class AppProviderFormPage extends StatefulWidget {
   const AppProviderFormPage({
@@ -61,9 +49,6 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
   late final TextEditingController _apiKeyCtl;
   late final TextEditingController _baseUrlCtl;
   late final TextEditingController _defaultModelCtl;
-  late final TextEditingController _haikuModelCtl;
-  late final TextEditingController _sonnetModelCtl;
-  late final TextEditingController _opusModelCtl;
   late final TextEditingController _jsonCtl;
 
   late String _presetId;
@@ -77,25 +62,35 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
   late String _partnerPromotionKey;
   late List<String> _endpointCandidates;
   late Map<String, Object?> _config;
-  late String _claudeApiFormat;
-  late String _codexEffort;
+  late Map<String, Object?> _extra;
   late bool _showAdvancedJson;
 
   bool get _isEditing => widget.existing != null;
+
+  CliToolRegistry _registry([BuildContext? context]) =>
+      (context != null ? CliToolRegistryScope.maybeOf(context) : null) ??
+      CliToolRegistry.builtIn();
+
+  ProviderFormCapability _formCap([BuildContext? context]) {
+    final cap = _registry(context).capability<ProviderFormCapability>(widget.cli);
+    assert(cap != null, '${widget.cli.value} missing ProviderFormCapability');
+    return cap!;
+  }
 
   @override
   void initState() {
     super.initState();
     final e = widget.existing;
+    final formCap = _formCap();
     _nameCtl = TextEditingController(text: e?.name ?? '');
     _notesCtl = TextEditingController(text: e?.notes ?? '');
     _websiteCtl = TextEditingController(text: e?.websiteUrl ?? '');
     _apiKeyCtl = TextEditingController(text: _isEditing ? '' : e?.apiKey ?? '');
     _baseUrlCtl = TextEditingController(text: e?.baseUrl ?? '');
     _defaultModelCtl = TextEditingController(text: e?.defaultModel ?? '');
-    _presetId = _initialPresetId(widget.cli, e);
+    _presetId = _initialPresetId(formCap, e);
     _category = e?.category ?? AppProviderCategory.custom;
-    _apiKeyField = _initialApiKeyField(widget.cli, e?.apiKeyField);
+    _apiKeyField = formCap.normalizeApiKeyField(e?.apiKeyField);
     _apiKeyUrl = e?.apiKeyUrl ?? '';
     _icon = e?.icon ?? '';
     _iconColor = e?.iconColor ?? '';
@@ -104,20 +99,9 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
     _partnerPromotionKey = e?.partnerPromotionKey ?? '';
     _endpointCandidates = e?.endpointCandidates.toList() ?? const [];
     _config = Map<String, Object?>.from(
-      e?.config ?? _defaultConfig(widget.cli),
+      e?.config ?? formCap.defaultConfig(),
     );
-    final env = _claudeEnvFromConfig(_config);
-    _haikuModelCtl = TextEditingController(
-      text: env['ANTHROPIC_DEFAULT_HAIKU_MODEL']?.toString() ?? '',
-    );
-    _sonnetModelCtl = TextEditingController(
-      text: env['ANTHROPIC_DEFAULT_SONNET_MODEL']?.toString() ?? '',
-    );
-    _opusModelCtl = TextEditingController(
-      text: env['ANTHROPIC_DEFAULT_OPUS_MODEL']?.toString() ?? '',
-    );
-    _claudeApiFormat = _config['apiFormat']?.toString() ?? 'anthropic';
-    _codexEffort = _config['model_reasoning_effort']?.toString() ?? '';
+    _extra = formCap.extraFromExisting(e);
     _showAdvancedJson = false;
     _jsonCtl = TextEditingController(
       text: e != null
@@ -130,24 +114,19 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
   void didUpdateWidget(covariant AppProviderFormPage oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.cli != widget.cli) {
-      _syncStateForCli(widget.cli);
+      _syncStateForCli();
     }
   }
 
-  void _syncStateForCli(CliTool cli) {
-    final presetIds = appProviderPresetsFor(cli).map((p) => p.id);
+  void _syncStateForCli() {
+    final formCap = _formCap();
+    final presetIds = formCap.presets.map((p) => p.id);
     if (_presetId != 'custom' && !presetIds.contains(_presetId)) {
       _presetId = 'custom';
     }
-    _config = _defaultConfig(cli);
-    _apiKeyField = _defaultApiKeyField(cli);
-    _claudeApiFormat = _config['apiFormat']?.toString() ?? 'anthropic';
-    _codexEffort = _config['model_reasoning_effort']?.toString() ?? '';
-    if (cli != CliTool.claude) {
-      _haikuModelCtl.clear();
-      _sonnetModelCtl.clear();
-      _opusModelCtl.clear();
-    }
+    _config = formCap.configForCliSwitch();
+    _apiKeyField = formCap.defaultApiKeyField();
+    _extra = const {};
   }
 
   @override
@@ -158,9 +137,6 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
     _apiKeyCtl.dispose();
     _baseUrlCtl.dispose();
     _defaultModelCtl.dispose();
-    _haikuModelCtl.dispose();
-    _sonnetModelCtl.dispose();
-    _opusModelCtl.dispose();
     _jsonCtl.dispose();
     super.dispose();
   }
@@ -170,9 +146,8 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
       setState(() => _presetId = presetId);
       return;
     }
-    final preset = appProviderPresetsFor(
-      widget.cli,
-    ).where((p) => p.id == presetId).firstOrNull;
+    final formCap = _formCap();
+    final preset = formCap.presets.where((p) => p.id == presetId).firstOrNull;
     if (preset == null) return;
     final t = preset.template;
     setState(() {
@@ -187,30 +162,32 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
       _partnerPromotionKey = t.partnerPromotionKey;
       _endpointCandidates = t.endpointCandidates.toList();
       _config = Map<String, Object?>.from(t.config);
-      _claudeApiFormat = _config['apiFormat']?.toString() ?? 'anthropic';
-      _codexEffort = _config['model_reasoning_effort']?.toString() ?? '';
+      _extra = formCap.extraFromPreset(preset);
       _nameCtl.text = t.name;
       _websiteCtl.text = t.websiteUrl;
       _baseUrlCtl.text = t.baseUrl;
       _defaultModelCtl.text = t.defaultModel;
-      final env = _claudeEnvFromConfig(_config);
-      _haikuModelCtl.text =
-          env['ANTHROPIC_DEFAULT_HAIKU_MODEL']?.toString() ?? '';
-      _sonnetModelCtl.text =
-          env['ANTHROPIC_DEFAULT_SONNET_MODEL']?.toString() ?? '';
-      _opusModelCtl.text =
-          env['ANTHROPIC_DEFAULT_OPUS_MODEL']?.toString() ?? '';
       _jsonCtl.text = const JsonEncoder.withIndent(
         '  ',
       ).convert(_buildNormalDraft().toJson());
     });
   }
 
+  ProviderFormInput _formInput() {
+    return ProviderFormInput(
+      baseUrl: _baseUrlCtl.text,
+      defaultModel: _defaultModelCtl.text,
+      apiKeyField: _apiKeyField,
+      config: _config,
+      extra: _extra,
+    );
+  }
+
   AppProviderConfig _buildNormalDraft() {
     final name = _nameCtl.text.trim();
     final baseId = widget.existing?.id ?? AppProviderCubit.slugifyId(name);
     final now = DateTime.now().toUtc().millisecondsSinceEpoch;
-    final config = _buildConfigFromFields();
+    final config = _formCap().buildConfig(_formInput());
     return AppProviderConfig(
       id: baseId,
       cli: widget.cli,
@@ -264,14 +241,15 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
     return _buildNormalDraft();
   }
 
+  String get _codexEffort =>
+      _extra[CodexFormExtraKeys.effort]?.toString() ?? '';
+
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final cs = Theme.of(context).colorScheme;
-    final presetItems = [
-      'custom',
-      ...appProviderPresetsFor(widget.cli).map((p) => p.id),
-    ];
+    final formCap = _formCap(context);
+    final presetItems = ['custom', ...formCap.presets.map((p) => p.id)];
 
     return Material(
       color: cs.workspaceCard,
@@ -335,7 +313,7 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
                     if (id == 'custom') {
                       return Text(l10n.appProviderPresetCustom);
                     }
-                    final preset = appProviderPresetsFor(widget.cli)
+                    final preset = formCap.presets
                         .where((p) => p.id == id)
                         .firstOrNull;
                     final label = preset?.label ?? id;
@@ -451,26 +429,27 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
                       value: _codexEffort,
                       provider: _buildNormalDraft(),
                       model: _defaultModelCtl.text,
-                      onChanged: (value) =>
-                          setState(() => _codexEffort = value),
+                      onChanged: (value) => setState(() {
+                        _extra = {
+                          ..._extra,
+                          CodexFormExtraKeys.effort: value,
+                        };
+                      }),
                     ),
                   ],
-                  if (widget.cli == CliTool.claude) ...[
-                    const SizedBox(height: 16),
-                    _ClaudeAdvancedOptions(
-                      apiFormat: _claudeApiFormat,
+                  formCap.buildExtraSection(
+                    context,
+                    ProviderFormSectionProps(
+                      config: _config,
                       apiKeyField: _apiKeyField,
-                      haikuModelCtl: _haikuModelCtl,
-                      sonnetModelCtl: _sonnetModelCtl,
-                      opusModelCtl: _opusModelCtl,
-                      onApiFormatChanged: (value) {
-                        setState(() => _claudeApiFormat = value);
-                      },
-                      onApiKeyFieldChanged: (value) {
-                        setState(() => _apiKeyField = value);
-                      },
+                      baseUrl: _baseUrlCtl.text,
+                      defaultModel: _defaultModelCtl.text,
+                      extra: _extra,
+                      onExtraChanged: (next) => setState(() => _extra = next),
+                      onApiKeyFieldChanged: (value) =>
+                          setState(() => _apiKeyField = value),
                     ),
-                  ],
+                  ),
                 ],
               ],
             ),
@@ -517,7 +496,7 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
   }
 
   bool _usesCredentialSetup(BuildContext context) {
-    final capability = CliToolRegistryScope.of(
+    final capability = _registry(
       context,
     ).capability<ProviderCredentialCapability>(widget.cli);
     if (capability == null) return false;
@@ -528,9 +507,7 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
   }
 
   bool _showsProviderEffortPicker(BuildContext context) {
-    final capability = CliToolRegistryScope.of(
-      context,
-    ).capability<CliEffortCapability>(widget.cli);
+    final capability = _registry(context).capability<CliEffortCapability>(widget.cli);
     if (capability == null) return false;
     final draft = _buildNormalDraft();
     if (capability.providerPickerPlacement(draft) !=
@@ -541,7 +518,7 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
   }
 
   bool _hidesApiKeyFields(BuildContext context) {
-    final capability = CliToolRegistryScope.of(
+    final capability = _registry(
       context,
     ).capability<ProviderCredentialCapability>(widget.cli);
     if (capability == null) return false;
@@ -549,187 +526,6 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
     if (capability.hidesApiKeyFields(draft)) return true;
     final existing = widget.existing;
     return existing != null && capability.hidesApiKeyFields(existing);
-  }
-
-  Map<String, Object?> _buildConfigFromFields() {
-    if (widget.cli == CliTool.codex) {
-      final config = Map<String, Object?>.from(_config);
-      final effort = _codexEffort.trim();
-      if (effort.isEmpty) {
-        config.remove('model_reasoning_effort');
-      } else {
-        config['model_reasoning_effort'] = effort;
-      }
-      return config;
-    }
-    if (widget.cli != CliTool.claude) return _config;
-
-    final config = Map<String, Object?>.from(_config);
-    final env = _claudeEnvFromConfig(config);
-    final baseUrl = _baseUrlCtl.text.trim();
-    final mainModel = _defaultModelCtl.text.trim();
-    final haikuModel = _haikuModelCtl.text.trim();
-    final sonnetModel = _sonnetModelCtl.text.trim();
-    final opusModel = _opusModelCtl.text.trim();
-
-    void setOrRemove(String key, String value) {
-      if (value.isEmpty) {
-        env.remove(key);
-      } else {
-        env[key] = value;
-      }
-    }
-
-    setOrRemove('ANTHROPIC_BASE_URL', baseUrl);
-    setOrRemove('ANTHROPIC_MODEL', mainModel);
-    setOrRemove('ANTHROPIC_DEFAULT_HAIKU_MODEL', haikuModel);
-    setOrRemove('ANTHROPIC_DEFAULT_SONNET_MODEL', sonnetModel);
-    setOrRemove('ANTHROPIC_DEFAULT_OPUS_MODEL', opusModel);
-
-    config['env'] = env;
-    config['apiFormat'] = _claudeApiFormat;
-    config['api_key_field'] = _apiKeyField;
-    return config;
-  }
-}
-
-class _ClaudeAdvancedOptions extends StatelessWidget {
-  const _ClaudeAdvancedOptions({
-    required this.apiFormat,
-    required this.apiKeyField,
-    required this.haikuModelCtl,
-    required this.sonnetModelCtl,
-    required this.opusModelCtl,
-    required this.onApiFormatChanged,
-    required this.onApiKeyFieldChanged,
-  });
-
-  final String apiFormat;
-  final String apiKeyField;
-  final TextEditingController haikuModelCtl;
-  final TextEditingController sonnetModelCtl;
-  final TextEditingController opusModelCtl;
-  final ValueChanged<String> onApiFormatChanged;
-  final ValueChanged<String> onApiKeyFieldChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = context.l10n;
-    final theme = Theme.of(context);
-    final cs = theme.colorScheme;
-    return Material(
-      color: Colors.transparent,
-      child: ExpansionTile(
-        initiallyExpanded: true,
-        tilePadding: EdgeInsets.zero,
-        childrenPadding: EdgeInsets.zero,
-        title: Text(
-          l10n.appProviderAdvancedOptions,
-          style: theme.textTheme.titleSmall,
-        ),
-        children: [
-          const SizedBox(height: 8),
-          _FieldLabel(l10n.appProviderClaudeApiFormat),
-          const SizedBox(height: 6),
-          AppDropdownField<String>(
-            items: _claudeApiFormats,
-            initialItem: _effectiveItem(apiFormat, _claudeApiFormats),
-            itemLabel: l10n.appProviderClaudeApiFormatOption,
-            onChanged: (value) {
-              if (value != null) onApiFormatChanged(value);
-            },
-          ),
-          const SizedBox(height: 6),
-          Text(
-            l10n.appProviderClaudeApiFormatHint,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: cs.onSurfaceVariant,
-            ),
-          ),
-          const SizedBox(height: 16),
-          _FieldLabel(l10n.appProviderClaudeAuthField),
-          const SizedBox(height: 6),
-          AppDropdownField<String>(
-            items: _claudeApiKeyFields,
-            initialItem: _effectiveItem(apiKeyField, _claudeApiKeyFields),
-            itemLabel: l10n.appProviderClaudeAuthFieldOption,
-            onChanged: (value) {
-              if (value != null) onApiKeyFieldChanged(value);
-            },
-          ),
-          const SizedBox(height: 6),
-          Text(
-            l10n.appProviderClaudeAuthFieldHint,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: cs.onSurfaceVariant,
-            ),
-          ),
-          const SizedBox(height: 16),
-          Divider(color: cs.outlineVariant),
-          const SizedBox(height: 12),
-          Text(
-            l10n.appProviderClaudeModelMapping,
-            style: theme.textTheme.titleSmall,
-          ),
-          const SizedBox(height: 6),
-          Text(
-            l10n.appProviderClaudeModelMappingHint,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: cs.onSurfaceVariant,
-            ),
-          ),
-          const SizedBox(height: 12),
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final twoColumns = constraints.maxWidth >= 680;
-              final fields = [
-                TextField(
-                  controller: haikuModelCtl,
-                  decoration: InputDecoration(
-                    labelText: l10n.appProviderClaudeHaikuModel,
-                  ),
-                ),
-                TextField(
-                  controller: sonnetModelCtl,
-                  decoration: InputDecoration(
-                    labelText: l10n.appProviderClaudeSonnetModel,
-                  ),
-                ),
-                TextField(
-                  controller: opusModelCtl,
-                  decoration: InputDecoration(
-                    labelText: l10n.appProviderClaudeOpusModel,
-                  ),
-                ),
-              ];
-              if (!twoColumns) {
-                return Column(
-                  children: [
-                    for (final field in fields) ...[
-                      field,
-                      const SizedBox(height: 12),
-                    ],
-                  ],
-                );
-              }
-              return Column(
-                children: [
-                  Row(
-                    children: [
-                      Expanded(child: fields[0]),
-                      const SizedBox(width: 12),
-                      Expanded(child: fields[1]),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  fields[2],
-                ],
-              );
-            },
-          ),
-        ],
-      ),
-    );
   }
 }
 
@@ -745,41 +541,6 @@ class _FieldLabel extends StatelessWidget {
       child: Text(text, style: Theme.of(context).textTheme.labelLarge),
     );
   }
-}
-
-String _defaultApiKeyField(CliTool cli) {
-  return switch (cli) {
-    CliTool.claude => 'ANTHROPIC_AUTH_TOKEN',
-    CliTool.codex => 'OPENAI_API_KEY',
-    CliTool.flashskyai => 'api_key',
-    CliTool.opencode => 'api_key',
-    CliTool.cursor => 'api_key',
-  };
-}
-
-String _initialApiKeyField(CliTool cli, String? raw) {
-  final value = raw?.trim() ?? '';
-  if (cli == CliTool.claude) {
-    return _claudeApiKeyFields.contains(value)
-        ? value
-        : _defaultApiKeyField(cli);
-  }
-  return value.isEmpty ? _defaultApiKeyField(cli) : value;
-}
-
-Map<String, Object?> _defaultConfig(CliTool cli) {
-  return switch (cli) {
-    CliTool.claude => {'env': <String, Object?>{}},
-    CliTool.codex => {'auth': <String, Object?>{}},
-    CliTool.flashskyai => {'provider_type': 'openai'},
-    CliTool.opencode => const {},
-    CliTool.cursor => const {},
-  };
-}
-
-Map<String, Object?> _claudeEnvFromConfig(Map<String, Object?> config) {
-  final raw = config['env'];
-  return raw is Map ? Map<String, Object?>.from(raw) : <String, Object?>{};
 }
 
 class _DefaultModelField extends StatelessWidget {
@@ -800,9 +561,8 @@ class _DefaultModelField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final draft = draftProvider();
-    final capability = CliToolRegistryScope.of(
-      context,
-    ).capability<ProviderModelCapability>(cli);
+    final registry = CliToolRegistryScope.maybeOf(context) ?? CliToolRegistry.builtIn();
+    final capability = registry.capability<ProviderModelCapability>(cli);
     if (capability != null &&
         capability.pickerMode(draft) != ProviderModelPickerMode.hidden) {
       return ProviderModelPickerField(
@@ -826,23 +586,13 @@ class _DefaultModelField extends StatelessWidget {
   }
 }
 
-const _claudeApiFormats = [
-  'anthropic',
-  'openai_chat',
-  'openai_responses',
-  'gemini_native',
-];
-
-const _claudeApiKeyFields = ['ANTHROPIC_AUTH_TOKEN', 'ANTHROPIC_API_KEY'];
-
 T _effectiveItem<T>(T value, List<T> items) {
   return items.contains(value) ? value : items.first;
 }
 
-String _initialPresetId(CliTool cli, AppProviderConfig? existing) {
+String _initialPresetId(ProviderFormCapability formCap, AppProviderConfig? existing) {
   if (existing == null) return 'custom';
-  final presets = appProviderPresetsFor(cli);
-  for (final preset in presets) {
+  for (final preset in formCap.presets) {
     if (preset.id == existing.id) return preset.id;
   }
   return 'custom';

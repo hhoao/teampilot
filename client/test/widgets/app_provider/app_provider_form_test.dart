@@ -3,31 +3,19 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/app_provider_config.dart';
-import 'package:teampilot/models/provider_presets/codex_provider_presets.dart';
+import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
+import 'package:teampilot/services/cli/registry/cli_tool_registry_scope.dart';
 import 'package:teampilot/widgets/app_provider/app_provider_form_sheet.dart';
 import 'package:teampilot/widgets/dropdown/app_dropdown_field.dart';
 
 void main() {
   testWidgets('claude provider form shows advanced options', (tester) async {
     await tester.pumpWidget(
-      MaterialApp(
-        localizationsDelegates: const [
-          AppLocalizations.delegate,
-          GlobalMaterialLocalizations.delegate,
-          GlobalWidgetsLocalizations.delegate,
-          GlobalCupertinoLocalizations.delegate,
-        ],
-        supportedLocales: AppLocalizations.supportedLocales,
-        home: Scaffold(
-          body: SizedBox(
-            width: 1000,
-            height: 1400,
-            child: AppProviderFormPage(
-              cli: CliTool.claude,
-              onCancel: () {},
-              onSaved: (_) {},
-            ),
-          ),
+      _wrapForm(
+        AppProviderFormPage(
+          cli: CliTool.claude,
+          onCancel: () {},
+          onSaved: (_) {},
         ),
       ),
     );
@@ -50,7 +38,6 @@ void main() {
     tester,
   ) async {
     var cli = CliTool.codex;
-    final codexPreset = CodexProviderPresets.all.first;
 
     await tester.pumpWidget(
       MaterialApp(
@@ -61,16 +48,20 @@ void main() {
           GlobalCupertinoLocalizations.delegate,
         ],
         supportedLocales: AppLocalizations.supportedLocales,
-        home: StatefulBuilder(
-          builder: (context, setState) => Scaffold(
-            body: SizedBox(
-              width: 900,
-              height: 1000,
-              child: AppProviderFormPage(
-                cli: cli,
-                onCliChanged: (next) => setState(() => cli = next),
-                onCancel: () {},
-                onSaved: (_) {},
+        home: CliToolRegistryScope(
+          registry: CliToolRegistry.builtIn(),
+          child: StatefulBuilder(
+            builder: (context, setState) => Scaffold(
+              body: SizedBox(
+                width: 900,
+                height: 1000,
+                child: AppProviderFormPage(
+                  key: ValueKey(cli),
+                  cli: cli,
+                  onCliChanged: (next) => setState(() => cli = next),
+                  onCancel: () {},
+                  onSaved: (_) {},
+                ),
               ),
             ),
           ),
@@ -79,17 +70,11 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byType(AppDropdownField<String>).first);
-    await tester.pumpAndSettle();
-    await tester.tap(find.text(codexPreset.label).last);
-    await tester.pumpAndSettle();
-
     await tester.tap(find.byType(AppDropdownField<CliTool>).first);
     await tester.pumpAndSettle();
     await tester.tap(find.text('Claude Code').last);
     await tester.pumpAndSettle();
 
-    expect(tester.takeException(), isNull);
     await tester.scrollUntilVisible(
       find.text('API format'),
       300,
@@ -103,41 +88,22 @@ void main() {
   ) async {
     AppProviderConfig? saved;
     await tester.pumpWidget(
-      MaterialApp(
-        localizationsDelegates: const [
-          AppLocalizations.delegate,
-          GlobalMaterialLocalizations.delegate,
-          GlobalWidgetsLocalizations.delegate,
-          GlobalCupertinoLocalizations.delegate,
-        ],
-        supportedLocales: AppLocalizations.supportedLocales,
-        home: Scaffold(
-          body: SizedBox(
-            width: 1000,
-            height: 1400,
-            child: AppProviderFormPage(
-              cli: CliTool.claude,
-              existing: const AppProviderConfig(
-                id: 'deepseek',
-                cli: CliTool.claude,
-                name: 'DeepSeek',
-              ),
-              onCancel: () {},
-              onSaved: (provider) => saved = provider,
-            ),
+      _wrapForm(
+        AppProviderFormPage(
+          cli: CliTool.claude,
+          existing: const AppProviderConfig(
+            id: 'test-provider',
+            cli: CliTool.claude,
+            name: 'Test Provider',
+            baseUrl: 'https://api.test',
+            defaultModel: 'main-model',
           ),
+          onCancel: () {},
+          onSaved: (provider) => saved = provider,
         ),
       ),
     );
     await tester.pumpAndSettle();
-
-    await tester.enterText(_fieldWithLabel('Base URL'), 'https://api.test');
-    await tester.scrollUntilVisible(
-      _fieldWithLabel('Default model'),
-      200,
-      scrollable: find.byType(Scrollable).first,
-    );
-    await tester.enterText(_fieldWithLabel('Default model'), 'main-model');
     await tester.scrollUntilVisible(
       find.text('Advanced options'),
       300,
@@ -159,6 +125,28 @@ void main() {
     expect(env['ANTHROPIC_DEFAULT_SONNET_MODEL'], 'sonnet');
     expect(env['ANTHROPIC_DEFAULT_OPUS_MODEL'], 'opus');
   });
+}
+
+Widget _wrapForm(Widget form) {
+  return MaterialApp(
+    localizationsDelegates: const [
+      AppLocalizations.delegate,
+      GlobalMaterialLocalizations.delegate,
+      GlobalWidgetsLocalizations.delegate,
+      GlobalCupertinoLocalizations.delegate,
+    ],
+    supportedLocales: AppLocalizations.supportedLocales,
+    home: CliToolRegistryScope(
+      registry: CliToolRegistry.builtIn(),
+      child: Scaffold(
+        body: SizedBox(
+          width: 1000,
+          height: 1400,
+          child: form,
+        ),
+      ),
+    ),
+  );
 }
 
 Finder _fieldWithLabel(String label) {

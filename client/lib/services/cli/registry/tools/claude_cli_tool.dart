@@ -20,7 +20,9 @@ import '../headless/claude_headless_provision_capability.dart';
 import '../installer/claude_installer_capability.dart';
 import '../../../provider/claude/claude_effort_capability.dart';
 import '../../../provider/claude/claude_provider_credential_capability.dart';
+import '../../../provider/claude/claude_provider_form_capability.dart';
 import '../../../provider/claude/claude_provider_model_capability.dart';
+import '../capabilities/provider_form_capability.dart';
 
 final class ClaudeCliTool implements CliToolDefinition {
   ClaudeCliTool({
@@ -38,11 +40,13 @@ final class ClaudeCliTool implements CliToolDefinition {
     this.effort = const ClaudeEffortCapability(),
     this.headlessRun = const ClaudeHeadlessRunCapability(),
     this.headlessProvision = const ClaudeHeadlessProvisionCapability(),
+    this.providerForm = const ClaudeProviderFormCapability(),
     ProviderCredentialCapability? providerCredential,
   }) : providerCredential =
            providerCredential ?? ClaudeProviderCredentialCapability();
 
   final ProviderCredentialCapability providerCredential;
+  final ProviderFormCapability providerForm;
 
   final LaunchArgsCapability launchArgs;
   final ConfigProfileCapability configProfile;
@@ -79,6 +83,7 @@ final class ClaudeCliTool implements CliToolDefinition {
     providerCatalog,
     providerModel,
     providerCredential,
+    providerForm,
     effort,
     headlessRun,
     headlessProvision,

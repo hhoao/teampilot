@@ -19,6 +19,8 @@ import '../config_profile/opencode_config_profile_capability.dart';
 import '../headless/opencode_headless_run_capability.dart';
 import '../headless/opencode_headless_provision_capability.dart';
 import '../installer/opencode_installer_capability.dart';
+import '../../../provider/opencode/opencode_provider_form_capability.dart';
+import '../capabilities/provider_form_capability.dart';
 
 final class OpencodeCliTool implements CliToolDefinition {
   OpencodeCliTool({
@@ -35,11 +37,13 @@ final class OpencodeCliTool implements CliToolDefinition {
     this.providerModel = const OpencodeProviderModelCapability(),
     this.headlessRun = const OpencodeHeadlessRunCapability(),
     this.headlessProvision = const OpencodeHeadlessProvisionCapability(),
+    this.providerForm = const OpencodeProviderFormCapability(),
     ProviderCredentialCapability? providerCredential,
   }) : providerCredential =
            providerCredential ?? OpencodeProviderCredentialCapability();
 
   final ProviderCredentialCapability providerCredential;
+  final ProviderFormCapability providerForm;
 
   final LaunchArgsCapability launchArgs;
   final ConfigProfileCapability configProfile;
@@ -75,6 +79,7 @@ final class OpencodeCliTool implements CliToolDefinition {
     providerCatalog,
     providerModel,
     providerCredential,
+    providerForm,
     headlessRun,
     headlessProvision,
   ];
