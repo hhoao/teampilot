@@ -3,6 +3,7 @@ import 'package:teampilot/models/ai_feature_setting.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/ai/team_config_draft.dart';
 import 'package:teampilot/services/ai/team_config_generator.dart';
+import 'package:teampilot/utils/team_member_naming.dart';
 
 const _setting = AiFeatureSetting(
   cli: CliTool.claude,
@@ -11,28 +12,57 @@ const _setting = AiFeatureSetting(
 );
 
 const _allowed = TeamDraftAllowedOptions(
-  models: ['sonnet'],
-  efforts: ['high'],
+  clis: [
+    CliModelOptions(
+      cli: CliTool.claude,
+      models: ['sonnet'],
+      efforts: ['high'],
+      defaultModel: 'sonnet',
+    ),
+  ],
   skillIds: [],
-  defaultModel: 'sonnet',
 );
 
 void main() {
   test('returns a parsed draft on first success', () async {
+    String? seenPrompt;
     final gen = TeamConfigGenerator(
-      runHeadless: ({required setting, required prompt, required expectJson}) async =>
-          '{"members":[{"name":"Dev","role":"dev","model":"sonnet"}]}',
+      runHeadless: ({required setting, required prompt, required expectJson}) async {
+        seenPrompt = prompt;
+        return '{"members":[{"name":"team-lead"},'
+            '{"name":"Dev","role":"dev","model":"sonnet"}]}';
+      },
     );
 
     final draft = await gen.generate(
       setting: _setting,
       description: 'team',
       allowed: _allowed,
-      granularity: TeamGenGranularity.rosterOnly,
+      mode: TeamMode.native,
       joinedAt: 1,
     );
 
-    expect(draft.members.single.name, 'Dev');
+    expect(seenPrompt, contains('NATIVE team'));
+    expect(draft.members.first.id, TeamMemberNaming.teamLeadName);
+    expect(draft.members.map((m) => m.name), contains('Dev'));
+  });
+
+  test('mixed mode builds the mixed prompt', () async {
+    String? seenPrompt;
+    final gen = TeamConfigGenerator(
+      runHeadless: ({required setting, required prompt, required expectJson}) async {
+        seenPrompt = prompt;
+        return '{"members":[{"name":"team-lead"}]}';
+      },
+    );
+    await gen.generate(
+      setting: _setting,
+      description: 'team',
+      allowed: _allowed,
+      mode: TeamMode.mixed,
+      joinedAt: 1,
+    );
+    expect(seenPrompt, contains('MIXED team'));
   });
 
   test('retries once on bad JSON then succeeds', () async {
@@ -42,7 +72,7 @@ void main() {
         calls++;
         return calls == 1
             ? 'garbage'
-            : '{"members":[{"name":"Dev","role":"dev","model":"sonnet"}]}';
+            : '{"members":[{"name":"team-lead"}]}';
       },
     );
 
@@ -50,12 +80,12 @@ void main() {
       setting: _setting,
       description: 'team',
       allowed: _allowed,
-      granularity: TeamGenGranularity.rosterOnly,
+      mode: TeamMode.native,
       joinedAt: 1,
     );
 
     expect(calls, 2);
-    expect(draft.members, hasLength(1));
+    expect(draft.members, isNotEmpty);
   });
 
   test('throws after two bad JSON attempts', () async {
@@ -69,7 +99,7 @@ void main() {
         setting: _setting,
         description: 'team',
         allowed: _allowed,
-        granularity: TeamGenGranularity.rosterOnly,
+        mode: TeamMode.native,
         joinedAt: 1,
       ),
       throwsA(isA<TeamDraftFormatException>()),

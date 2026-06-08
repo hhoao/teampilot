@@ -1,4 +1,5 @@
 import '../../models/ai_feature_setting.dart';
+import '../../models/team_config.dart';
 import 'headless_ai_service.dart' show HeadlessAiService;
 import 'team_config_draft.dart';
 import 'team_config_prompt.dart';
@@ -32,13 +33,13 @@ class TeamConfigGenerator {
     required AiFeatureSetting setting,
     required String description,
     required TeamDraftAllowedOptions allowed,
-    required TeamGenGranularity granularity,
+    required TeamMode mode,
     required int joinedAt,
   }) async {
     final basePrompt = buildTeamConfigPrompt(
+      mode: mode,
       description: description,
       allowed: allowed,
-      granularity: granularity,
     );
 
     for (var attempt = 0; attempt < 2; attempt++) {
@@ -55,7 +56,7 @@ class TeamConfigGenerator {
         return parseTeamConfigDraft(
           text,
           allowed: allowed,
-          granularity: granularity,
+          mode: mode,
           joinedAt: joinedAt,
         );
       } on TeamDraftFormatException {
