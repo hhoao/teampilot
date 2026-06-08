@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:path/path.dart' as p;
@@ -87,18 +88,71 @@ Future<ProcessResult> headlessDefaultProcessRun(
   return ProcessResult(process.pid, exitCode, out, err);
 }
 
+typedef HeadlessStreamRunner =
+    Future<int> Function(
+      String executable,
+      List<String> arguments, {
+      Map<String, String>? environment,
+      String? workingDirectory,
+      Duration? timeout,
+      required void Function(String line) onStdoutLine,
+    });
+
+/// Streams a one-shot CLI call, invoking [onStdoutLine] per stdout line.
+/// Kills the child on [timeout] (like [headlessDefaultProcessRun]).
+Future<int> headlessDefaultStreamRun(
+  String executable,
+  List<String> arguments, {
+  Map<String, String>? environment,
+  String? workingDirectory,
+  Duration? timeout,
+  required void Function(String line) onStdoutLine,
+}) async {
+  final process = await Process.start(
+    executable,
+    arguments,
+    environment: environment,
+    includeParentEnvironment: true,
+    workingDirectory: workingDirectory,
+  );
+  var timedOut = false;
+  Timer? killTimer;
+  if (timeout != null) {
+    killTimer = Timer(timeout, () {
+      timedOut = true;
+      process.kill(ProcessSignal.sigkill);
+    });
+  }
+  final stderrFuture = process.stderr.transform(systemEncoding.decoder).join();
+  final lines = process.stdout
+      .transform(systemEncoding.decoder)
+      .transform(const LineSplitter());
+  await for (final line in lines) {
+    onStdoutLine(line);
+  }
+  final exitCode = await process.exitCode;
+  killTimer?.cancel();
+  await stderrFuture;
+  if (timedOut) {
+    throw TimeoutException('Headless CLI process timed out', timeout);
+  }
+  return exitCode;
+}
+
 /// Runs a single one-shot CLI call for AI features. Reuses the CLI registry's
 /// [HeadlessRunCapability] per tool; all IO is injectable for tests.
 class HeadlessAiService {
   HeadlessAiService({
     CliToolRegistry? registry,
     HeadlessProcessRunner run = headlessDefaultProcessRun,
+    HeadlessStreamRunner streamRun = headlessDefaultStreamRun,
     HeadlessProviderResolver? resolveProvider,
     HeadlessExecutableResolver? resolveExecutable,
     HeadlessProvisionCapability? Function(CliTool)? resolveProvisionCapability,
     Future<Directory> Function()? tempDirFactory,
   }) : _registry = registry ?? CliToolRegistry.builtIn(),
        _run = run,
+       _streamRun = streamRun,
        _resolveProvider = resolveProvider ?? AppProviderRepository().findById,
        _resolveExecutable =
            resolveExecutable ?? ((name) => CliToolLocator(name).locate()),
@@ -109,6 +163,7 @@ class HeadlessAiService {
 
   final CliToolRegistry _registry;
   final HeadlessProcessRunner _run;
+  final HeadlessStreamRunner _streamRun;
   final HeadlessProviderResolver _resolveProvider;
   final HeadlessExecutableResolver _resolveExecutable;
 
@@ -231,6 +286,123 @@ class HeadlessAiService {
           await dir.delete(recursive: true);
         } on FileSystemException {
           // Best-effort cleanup; ignore.
+        }
+      }
+    }
+  }
+
+  /// One-shot call that streams NDJSON events. [onEvent] is invoked per stdout
+  /// line; the final text is taken from the terminal `streamResultText`, or the
+  /// accumulated stdout if the CLI doesn't stream. All IO is injectable.
+  Future<HeadlessAiResult> runStreaming({
+    required AiFeatureSetting setting,
+    required String prompt,
+    required void Function(String line) onEvent,
+    String? workingDirectory,
+    Duration timeout = const Duration(seconds: 120),
+  }) async {
+    final cli = setting.cli;
+    final cap = _registry.capability<HeadlessRunCapability>(cli);
+    if (cap == null || !cap.isSupported) {
+      throw HeadlessAiException(
+        'Headless mode is not supported for ${cli.value}.',
+      );
+    }
+
+    final provider = await _resolveProvider(cli, setting.providerId);
+    final model = setting.model.trim().isNotEmpty
+        ? setting.model.trim()
+        : (provider?.defaultModel.trim() ?? '');
+    final effort = _resolveEffort(cli, model, provider, setting.effort);
+
+    final dir = await _tempDirFactory();
+    try {
+      final ctx = HeadlessRunContext(
+        prompt: prompt,
+        model: model,
+        effort: effort,
+        configDir: dir.path,
+        workingDirectory: workingDirectory,
+        expectJson: true,
+        stream: cap.supportsStreaming,
+      );
+
+      final provisionCap = _resolveProvisionCapability != null
+          ? _resolveProvisionCapability(cli)
+          : _registry.capability<HeadlessProvisionCapability>(cli);
+      final provision = provisionCap == null
+          ? const HeadlessProvisionResult()
+          : await provisionCap.provision(
+              HeadlessProvisionContext(
+                provider: provider,
+                providerId: setting.providerId,
+                model: model,
+                effort: effort,
+                configDir: dir.path,
+                workingDirectory: workingDirectory,
+              ),
+            );
+      if (!provision.credentialsReady) {
+        throw HeadlessAiException(_credentialsMessage(cli, provision.warnings));
+      }
+
+      for (final file in cap.configFiles(ctx)) {
+        final out = File(p.join(dir.path, file.relativePath));
+        await out.parent.create(recursive: true);
+        await out.writeAsString(file.contents);
+      }
+
+      final inv = cap.buildInvocation(ctx);
+      final environment = <String, String>{
+        ...inv.environment,
+        ...provision.extraEnvironment,
+      };
+      final exe = await _resolveExecutable(inv.executable);
+      if (exe == null) {
+        throw HeadlessAiException('${inv.executable} not found on PATH.');
+      }
+
+      final buf = StringBuffer();
+      String? resultText;
+      final int exitCode;
+      try {
+        exitCode = await _streamRun(
+          exe,
+          inv.arguments,
+          environment: environment.isEmpty ? null : environment,
+          workingDirectory: ctx.workingDirectory,
+          timeout: timeout,
+          onStdoutLine: (line) {
+            final trimmed = line.trim();
+            if (trimmed.isEmpty) return;
+            buf.writeln(trimmed);
+            onEvent(trimmed);
+            final rt = cap.streamResultText(trimmed);
+            if (rt != null) resultText = rt;
+          },
+        );
+      } on TimeoutException {
+        throw HeadlessAiException(
+          'AI call timed out after ${timeout.inSeconds}s.',
+        );
+      }
+
+      if (exitCode != 0) {
+        throw HeadlessAiException('AI call failed (${cli.value}).');
+      }
+
+      final raw = buf.toString();
+      final streamed = (resultText ?? '').trim();
+      final text = streamed.isNotEmpty
+          ? streamed
+          : cap.extractText(ProcessResult(0, exitCode, raw, ''));
+      return HeadlessAiResult(text: text, rawStdout: raw, exitCode: exitCode);
+    } finally {
+      if (await dir.exists()) {
+        try {
+          await dir.delete(recursive: true);
+        } on FileSystemException {
+          // Best-effort cleanup.
         }
       }
     }

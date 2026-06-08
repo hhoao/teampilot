@@ -11,6 +11,7 @@ class HeadlessRunContext {
     required this.configDir,
     this.workingDirectory,
     this.expectJson = false,
+    this.stream = false,
   });
 
   /// The full prompt text to send to the model.
@@ -30,6 +31,9 @@ class HeadlessRunContext {
 
   /// When true, ask the CLI for machine-readable output if it supports it.
   final bool expectJson;
+
+  /// When true, request NDJSON streaming output from CLIs that support it.
+  final bool stream;
 }
 
 /// A file the service writes into [HeadlessRunContext.configDir] before running.
@@ -68,6 +72,9 @@ abstract interface class HeadlessRunCapability implements CliCapability {
   /// Whether this CLI can run a one-shot headless call.
   bool get isSupported;
 
+  /// Whether this CLI can stream NDJSON events for a one-shot call.
+  bool get supportsStreaming;
+
   /// Config files to materialize into [HeadlessRunContext.configDir] first.
   List<HeadlessConfigFile> configFiles(HeadlessRunContext ctx);
 
@@ -76,4 +83,9 @@ abstract interface class HeadlessRunCapability implements CliCapability {
 
   /// Extract the model's final text from process stdout (unwrap any envelope).
   String extractText(ProcessResult result);
+
+  /// Given one NDJSON stdout line, return the final result text if this line is
+  /// the terminal result event, else null. Only meaningful when
+  /// [supportsStreaming] and the context requested [HeadlessRunContext.stream].
+  String? streamResultText(String line);
 }

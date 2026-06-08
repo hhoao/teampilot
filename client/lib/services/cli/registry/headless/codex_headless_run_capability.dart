@@ -10,6 +10,9 @@ final class CodexHeadlessRunCapability implements HeadlessRunCapability {
   bool get isSupported => true;
 
   @override
+  bool get supportsStreaming => false;
+
+  @override
   List<HeadlessConfigFile> configFiles(HeadlessRunContext ctx) => const [];
 
   @override
@@ -32,4 +35,7 @@ final class CodexHeadlessRunCapability implements HeadlessRunCapability {
   @override
   String extractText(ProcessResult result) =>
       (result.stdout as String? ?? '').trim();
+
+  @override
+  String? streamResultText(String line) => null;
 }

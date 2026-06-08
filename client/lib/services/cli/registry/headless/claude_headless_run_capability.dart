@@ -12,6 +12,9 @@ final class ClaudeHeadlessRunCapability implements HeadlessRunCapability {
   bool get isSupported => true;
 
   @override
+  bool get supportsStreaming => true;
+
+  @override
   List<HeadlessConfigFile> configFiles(HeadlessRunContext ctx) => const [];
 
   @override
@@ -21,7 +24,9 @@ final class ClaudeHeadlessRunCapability implements HeadlessRunCapability {
     if (model.isNotEmpty) {
       args.addAll(['--model', model]);
     }
-    if (ctx.expectJson) {
+    if (ctx.stream) {
+      args.addAll(['--output-format', 'stream-json', '--verbose']);
+    } else if (ctx.expectJson) {
       args.addAll(['--output-format', 'json']);
     }
     return HeadlessInvocation(
@@ -29,6 +34,21 @@ final class ClaudeHeadlessRunCapability implements HeadlessRunCapability {
       arguments: args,
       environment: {'CLAUDE_CONFIG_DIR': ctx.configDir},
     );
+  }
+
+  @override
+  String? streamResultText(String line) {
+    try {
+      final decoded = jsonDecode(line);
+      if (decoded is Map &&
+          decoded['type'] == 'result' &&
+          decoded['result'] is String) {
+        return (decoded['result'] as String).trim();
+      }
+    } on FormatException {
+      // Not a JSON event line.
+    }
+    return null;
   }
 
   @override
