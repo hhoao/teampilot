@@ -69,6 +69,7 @@ class TeamMemberConfig {
     this.agentType = '',
     this.extraArgs = '',
     this.prompt = '',
+    this.playbook = '',
     this.joinedAt = 0,
     this.dangerouslySkipPermissions = false,
     this.cli,
@@ -102,6 +103,7 @@ class TeamMemberConfig {
       agentType: json['agentType'] as String? ?? '',
       extraArgs: json['extraArgs'] as String? ?? '',
       prompt: json['prompt'] as String? ?? '',
+      playbook: json['playbook'] as String? ?? '',
       joinedAt: (json['joinedAt'] as num?)?.toInt() ?? 0,
       dangerouslySkipPermissions: decodeDangerouslySkipPermissions(
         json['dangerouslySkipPermissions'],
@@ -120,7 +122,14 @@ class TeamMemberConfig {
   /// Claude roster `agentType` (role name); falls back to [agent] then [name].
   final String agentType;
   final String extraArgs;
+
+  /// 职责层：声明这个角色是谁、负责什么（WHAT）。写入 role.md 的 Responsibilities 段。
   final String prompt;
+
+  /// 工作方法层：声明这个角色具体怎么干活（HOW）——自由文本 SOP，可软引用 skill，
+  /// 但不绑定 skill 目录。写入 role.md 的 Working method 段，与 [prompt] 平级、语义不同。
+  final String playbook;
+
   final int joinedAt;
 
   /// When true, launch passes `--dangerously-skip-permissions` (CLI flag).
@@ -147,6 +156,7 @@ class TeamMemberConfig {
     String? agentType,
     String? extraArgs,
     String? prompt,
+    String? playbook,
     int? joinedAt,
     bool? dangerouslySkipPermissions,
     CliTool? cli,
@@ -163,6 +173,7 @@ class TeamMemberConfig {
       agentType: agentType ?? this.agentType,
       extraArgs: extraArgs ?? this.extraArgs,
       prompt: prompt ?? this.prompt,
+      playbook: playbook ?? this.playbook,
       joinedAt: joinedAt ?? this.joinedAt,
       dangerouslySkipPermissions:
           dangerouslySkipPermissions ?? this.dangerouslySkipPermissions,
@@ -181,6 +192,7 @@ class TeamMemberConfig {
       if (agentType.isNotEmpty) 'agentType': agentType,
       'extraArgs': extraArgs,
       'prompt': prompt,
+      if (playbook.isNotEmpty) 'playbook': playbook,
       'joinedAt': joinedAt,
       if (dangerouslySkipPermissions) 'dangerouslySkipPermissions': true,
       if (cli != null) 'cli': cli!.value,
@@ -201,6 +213,7 @@ class TeamMemberConfig {
             agentType == other.agentType &&
             extraArgs == other.extraArgs &&
             prompt == other.prompt &&
+            playbook == other.playbook &&
             joinedAt == other.joinedAt &&
             dangerouslySkipPermissions == other.dangerouslySkipPermissions &&
             cli == other.cli &&
@@ -217,6 +230,7 @@ class TeamMemberConfig {
     agentType,
     extraArgs,
     prompt,
+    playbook,
     joinedAt,
     dangerouslySkipPermissions,
     cli,

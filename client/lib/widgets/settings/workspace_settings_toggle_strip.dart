@@ -1,11 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:teampilot/theme/app_icon_sizes.dart';
-import 'package:toggle_switch/toggle_switch.dart';
 
-import '../../theme/app_text_styles.dart';
-import '../../theme/workspace_surface_layers.dart';
-
-const _segmentedIconSize = AppIconSizes.md;
+import '../app_toggle_switch.dart';
 
 /// One option in [WorkspaceSettingsToggleStrip].
 class WorkspaceToggleSegment<T extends Object> {
@@ -20,18 +15,24 @@ class WorkspaceToggleSegment<T extends Object> {
   final IconData icon;
 }
 
-/// Pill-shaped segmented control (uses [toggle_switch]) for settings rows.
+/// Pill-shaped segmented control for settings rows and dialogs.
 class WorkspaceSettingsToggleStrip<T extends Object> extends StatefulWidget {
   const WorkspaceSettingsToggleStrip({
     super.key,
     required this.segments,
     required this.selected,
     required this.onChanged,
+    this.alignment = Alignment.centerRight,
+    this.minWidth,
+    this.customWidths,
   });
 
   final List<WorkspaceToggleSegment<T>> segments;
   final T selected;
   final ValueChanged<T> onChanged;
+  final AlignmentGeometry alignment;
+  final double? minWidth;
+  final List<double>? customWidths;
 
   @override
   State<WorkspaceSettingsToggleStrip<T>> createState() =>
@@ -63,38 +64,16 @@ class _WorkspaceSettingsToggleStripState<T extends Object>
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textBase = isDark ? Colors.white : const Color(0xFF111827);
-    final inactiveFg = textBase.withValues(alpha: 0.72);
-    final n = widget.segments.length;
-    final minW = n == 2 ? 112.0 : 100.0;
-    final customWidths = n == 3 ? <double>[102, 102, 132] : null;
-
     return FittedBox(
       fit: BoxFit.scaleDown,
-      alignment: Alignment.centerRight,
-      child: ToggleSwitch(
-        totalSwitches: n,
+      alignment: widget.alignment,
+      child: AppToggleSwitch(
+        totalSwitches: widget.segments.length,
         initialLabelIndex: _index,
         labels: widget.segments.map((e) => e.label).toList(),
         icons: widget.segments.map((e) => e.icon).toList(),
-        cornerRadius: 30,
-        radiusStyle: true,
-        minHeight: 38,
-        minWidth: minW,
-        customWidths: customWidths,
-        fontSize:
-            Theme.of(context).textTheme.bodyMedium?.fontSize ??
-            AppTextStyles.of(context).body.fontSize!,
-        iconSize: _segmentedIconSize,
-        activeFgColor: Colors.white,
-        inactiveFgColor: inactiveFg,
-        inactiveBgColor: cs.workspaceInset,
-        dividerColor: Colors.transparent,
-        dividerMargin: 0,
-        activeBgColors: List.generate(n, (_) => <Color>[cs.primary]),
-        animate: false,
+        minWidth: widget.minWidth,
+        customWidths: widget.customWidths,
         onToggle: (index) {
           if (index == null || index < 0 || index >= widget.segments.length) {
             return;

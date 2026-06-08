@@ -1,6 +1,7 @@
 import '../../models/team_config.dart';
 import '../../utils/team_member_naming.dart';
 import '../io/filesystem.dart';
+import '../session/member_role_provision.dart';
 
 /// Merges TeamPilot member rows into Claude `teams/<name>/config.json`.
 class ClaudeTeamRosterService {
@@ -111,7 +112,7 @@ class ClaudeTeamRosterService {
       entry['backendType'] = 'in-process';
     }
 
-    final prompt = member.prompt.trim();
+    final prompt = MemberRoleProvision.composeMemberRoleBody(member).trim();
     if (prompt.isNotEmpty) {
       entry['prompt'] = prompt;
     }

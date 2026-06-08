@@ -93,11 +93,6 @@ class HomeWorkspaceProjectsToolbar extends StatelessWidget {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  HomeWorkspaceProjectsOutlinedAction(
-                    icon: Icons.file_download_outlined,
-                    label: l10n.homeWorkspaceImportProject,
-                    onTap: () => _comingSoon(context),
-                  ),
                   const SizedBox(width: 10),
                   HomeWorkspaceProjectsPrimaryAction(
                     icon: Icons.add_rounded,
@@ -229,44 +224,6 @@ class HomeWorkspaceProjectsIconChip extends StatelessWidget {
   }
 }
 
-class HomeWorkspaceProjectsOutlinedAction extends StatelessWidget {
-  const HomeWorkspaceProjectsOutlinedAction({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-  });
-
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final styles = AppTextStyles.of(context);
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
-        decoration: BoxDecoration(
-          color: cs.surfaceContainer,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.8)),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: AppIconSizes.md, color: cs.onSurfaceVariant),
-            const SizedBox(width: 7),
-            Text(label, style: styles.body.copyWith(color: cs.onSurface)),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 class HomeWorkspaceProjectsPrimaryAction extends StatelessWidget {
   const HomeWorkspaceProjectsPrimaryAction({
     required this.icon,
@@ -374,7 +331,6 @@ class HomeWorkspaceEmptyProjects extends StatelessWidget {
             l10n.homeWorkspaceEmptyProjects,
             style: styles.body.copyWith(color: cs.onSurfaceVariant),
           ),
-          const SizedBox(height: 4),
           Text(
             l10n.homeWorkspaceEmptyProjectsHint,
             style: styles.bodySmall.copyWith(

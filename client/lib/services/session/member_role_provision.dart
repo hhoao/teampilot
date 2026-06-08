@@ -110,21 +110,43 @@ This tab is **plan-and-assign only**: Bash, PowerShell, Edit, Write, NotebookEdi
     );
   }
 
-  /// Composes the full role-prompt body (member prompt + role addendum) for any
-  /// CLI. Transport-agnostic: Claude/flashskyai write it to `role.md` (fed via
-  /// `--append-system-prompt-file`), codex writes it to `$CODEX_HOME/AGENTS.md`.
-  /// Returns the empty string when there is nothing to inject.
+  /// Composes the user-authored role body — the two layers a roster member owns:
+  /// `# Responsibilities` (member.prompt, WHAT the role is) and `# Working method`
+  /// (member.playbook, HOW it operates). No mode addenda. Used standalone for the
+  /// native Claude roster entry and as the base of [composeRolePrompt].
+  /// Returns the empty string when both layers are empty.
+  static String composeMemberRoleBody(TeamMemberConfig member) {
+    final responsibilities = member.prompt.trim();
+    final method = member.playbook.trim();
+    final body = StringBuffer();
+    if (responsibilities.isNotEmpty) {
+      body.writeln('# Responsibilities');
+      body.writeln(responsibilities);
+      body.writeln();
+    }
+    if (method.isNotEmpty) {
+      body.writeln('# Working method');
+      body.writeln(method);
+      body.writeln();
+    }
+    return body.toString();
+  }
+
+  /// Composes the full role-prompt body ([composeMemberRoleBody] + mode addenda)
+  /// for any CLI. Transport-agnostic: Claude/flashskyai write it to `role.md`
+  /// (fed via `--append-system-prompt-file`), codex writes it to
+  /// `$CODEX_HOME/AGENTS.md`. Returns the empty string when there is nothing to
+  /// inject.
   static String composeRolePrompt({
     required TeamMemberConfig member,
     bool forceTeamLeadDelegateMode = false,
     bool mixed = false,
   }) {
-    final text = member.prompt.trim();
     final isLead = TeamMemberNaming.isTeamLead(member);
     final body = StringBuffer();
-    if (text.isNotEmpty) {
-      body.writeln(text);
-      body.writeln();
+    final roleBody = composeMemberRoleBody(member);
+    if (roleBody.isNotEmpty) {
+      body.write(roleBody);
     }
     if (isLead && !mixed) {
       body.writeln(teamLeadRoleAddendum.trim());
@@ -154,10 +176,10 @@ This tab is **plan-and-assign only**: Bash, PowerShell, Edit, Write, NotebookEdi
     bool mixed = false,
   }) async {
     final path = rolePromptPath(memberToolDir, member);
-    final text = member.prompt.trim();
+    final hasRoleBody = composeMemberRoleBody(member).isNotEmpty;
     final stat = await fs.stat(path);
     final isLead = TeamMemberNaming.isTeamLead(member);
-    if (text.isEmpty && !isLead && !mixed) {
+    if (!hasRoleBody && !isLead && !mixed) {
       if (stat.exists) {
         await fs.removeRecursive(path);
       }

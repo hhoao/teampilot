@@ -531,6 +531,15 @@ class AppLocalizationsZh extends AppLocalizations {
   String get homeWorkspaceNewTeamSubtitle => '选择团队协作模式，并填写团队名称。';
 
   @override
+  String get homeWorkspaceNewTeamMethodCustom => '自定义模式';
+
+  @override
+  String get homeWorkspaceNewTeamMethodAi => 'AI 生成';
+
+  @override
+  String get homeWorkspaceNewTeamSubtitleAi => '描述团队需求，用 AI 生成团队配置草稿。';
+
+  @override
   String get homeWorkspaceNewTeamRecommended => '推荐';
 
   @override
@@ -2652,21 +2661,38 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get memberPromptPresetDeveloperText =>
-      '只在约定范围内实现分配的任务。\n优先小 diff，跑相关测试，并简要说明改了哪些文件及原因。';
+      '在约定范围内实现分配的任务。未经要求，不要扩大范围或顺手重构无关代码。';
 
   @override
   String get memberPromptPresetReviewer => '审查';
 
   @override
-  String get memberPromptPresetReviewerText =>
-      '只做代码审查，除非被要求否则不要改文件。\n每条意见需包含：文件路径、行号、问题、建议改法。';
+  String get memberPromptPresetReviewerText => '只做代码审查。除非被明确要求，否则不要改动文件。';
 
   @override
   String get memberPromptPresetResearcher => '调研';
 
   @override
-  String get memberPromptPresetResearcherText =>
-      '只调研并汇报，除非被要求否则不要改生产代码。\n输出需含文件路径、相关符号与建议的下一步。';
+  String get memberPromptPresetResearcherText => '只调研并汇报。除非被要求，否则不要改动生产代码。';
+
+  @override
+  String get memberPlaybook => '工作方法';
+
+  @override
+  String get memberPlaybookSubtitle =>
+      '这个角色具体怎么干活——一套可执行的步骤（HOW）。可软引用团队 skill，但本质是自由文本指令，不绑定固定 skill。';
+
+  @override
+  String get memberPlaybookPresetDeveloperText =>
+      '测试先行：实现前先写一个会失败的测试，再用最小 diff 让它通过。每次改动后跑相关测试，并说明改了哪些文件及原因。不要把无关改动混在一起；到约定检查点要停下。若团队装有 test-driven-development skill，就遵循它。';
+
+  @override
+  String get memberPlaybookPresetReviewerText =>
+      '按序审查：①确认测试覆盖了改动；②正确性与边界情况；③可维护性及与周边代码的一致性。每条意见都要写明文件路径、行号、问题与具体改法——不要空泛夸奖，也不要只挑刺却不给改法。缺测试要显式指出。';
+
+  @override
+  String get memberPlaybookPresetResearcherText =>
+      '动手前先厘清意图：复述问题与你的假设，然后在代码库里先广度排查再深入。汇报时给出文件路径、相关符号与建议的下一步——只提建议，不改生产代码。若团队装有 brainstorming skill，先用它框定问题。';
 
   @override
   String get selectModel => '选择一个模型';

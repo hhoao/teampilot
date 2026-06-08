@@ -24,12 +24,25 @@ String teamMemberPromptPresetLabel(AppLocalizations l10n, String id) {
   };
 }
 
+/// Responsibilities text (WHAT the role is) → member.prompt.
 String teamMemberPromptPresetText(AppLocalizations l10n, String id) {
   return switch (id) {
     'team_lead' => l10n.memberPromptPresetTeamLeadText,
     'developer' => l10n.memberPromptPresetDeveloperText,
     'reviewer' => l10n.memberPromptPresetReviewerText,
     'researcher' => l10n.memberPromptPresetResearcherText,
+    _ => '',
+  };
+}
+
+/// Working-method text (HOW the role operates) → member.playbook. Paired with the
+/// prompt preset of the same [id]. team_lead has none — its method is injected by
+/// the system addendum in [MemberRoleProvision].
+String teamMemberPlaybookPresetText(AppLocalizations l10n, String id) {
+  return switch (id) {
+    'developer' => l10n.memberPlaybookPresetDeveloperText,
+    'reviewer' => l10n.memberPlaybookPresetReviewerText,
+    'researcher' => l10n.memberPlaybookPresetResearcherText,
     _ => '',
   };
 }

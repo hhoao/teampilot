@@ -551,6 +551,16 @@ class AppLocalizationsEn extends AppLocalizations {
       'Pick how the team collaborates, then name it.';
 
   @override
+  String get homeWorkspaceNewTeamMethodCustom => 'Custom';
+
+  @override
+  String get homeWorkspaceNewTeamMethodAi => 'AI generate';
+
+  @override
+  String get homeWorkspaceNewTeamSubtitleAi =>
+      'Describe your team and generate a draft with AI.';
+
+  @override
   String get homeWorkspaceNewTeamRecommended => 'Recommended';
 
   @override
@@ -2746,21 +2756,40 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get memberPromptPresetDeveloperText =>
-      'Implement assigned tasks only within the agreed scope.\nPrefer minimal diffs, run relevant tests, and report changed files with brief rationale.';
+      'Implement assigned tasks, staying within the agreed scope. Do not expand scope or refactor unrelated code without being asked.';
 
   @override
   String get memberPromptPresetReviewer => 'Reviewer';
 
   @override
   String get memberPromptPresetReviewerText =>
-      'Review code only; do not modify files unless asked.\nEach finding must include file path, line, issue, and suggested fix.';
+      'Review code only. Do not modify files unless explicitly asked.';
 
   @override
   String get memberPromptPresetResearcher => 'Researcher';
 
   @override
   String get memberPromptPresetResearcherText =>
-      'Investigate and report only; do not change production code unless asked.\nOutput findings with file paths, relevant symbols, and recommended next steps.';
+      'Investigate and report only. Do not change production code unless asked.';
+
+  @override
+  String get memberPlaybook => 'Working method';
+
+  @override
+  String get memberPlaybookSubtitle =>
+      'How this role operates—a concrete procedure (HOW). May reference a team skill, but is plain instructions, not a fixed skill.';
+
+  @override
+  String get memberPlaybookPresetDeveloperText =>
+      'Work test-first: before implementing, write a failing test, then make it pass with the smallest diff. Run the relevant tests after each change and report which files changed and why. Do not bundle unrelated edits; stop at agreed checkpoints. If a test-driven-development skill is available, follow it.';
+
+  @override
+  String get memberPlaybookPresetReviewerText =>
+      'Review in order: (1) confirm tests cover the change; (2) correctness and edge cases; (3) maintainability and consistency with surrounding code. Every finding states file path, line, the problem, and a concrete fix—no vague praise and no nit without a fix. Flag missing tests explicitly.';
+
+  @override
+  String get memberPlaybookPresetResearcherText =>
+      'Clarify intent before digging: restate the question and your assumptions, then investigate breadth-first across the codebase before going deep. Report findings with file paths, relevant symbols, and recommended next steps—propose, do not change production code. If a brainstorming skill is available, use it to frame the problem first.';
 
   @override
   String get selectModel => 'Select a model';

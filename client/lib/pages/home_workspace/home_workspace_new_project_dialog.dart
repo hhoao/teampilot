@@ -28,17 +28,15 @@ Future<void> showHomeWorkspaceNewProjectDialog(
   String? sessionTeamId,
   ProjectProfileRepository? projectProfileRepository,
 }) async {
-  final result =
-      await showDialog<({List<String> directories, String display})>(
+  final result = await showDialog<({List<String> directories, String display})>(
     context: context,
     barrierColor: Colors.black.withValues(alpha: 0.55),
     builder: (_) => const HomeWorkspaceNewProjectDialog(),
   );
   if (result == null || !context.mounted || result.directories.isEmpty) return;
 
-  final resolvedTeamId = sessionTeamId ??
-      teamCubit?.state.selectedTeam?.id ??
-      '';
+  final resolvedTeamId =
+      sessionTeamId ?? teamCubit?.state.selectedTeam?.id ?? '';
   final rosterMembers = resolvedTeamId.isEmpty
       ? const <TeamMemberConfig>[]
       : teamCubit?.state.selectedTeam?.members ?? const [];
@@ -285,8 +283,10 @@ class _DirectoryPicker extends StatelessWidget {
               const SizedBox(width: 12),
               OutlinedButton.icon(
                 onPressed: onAdd,
-                icon: Icon(Icons.drive_folder_upload_outlined,
-                    size: AppIconSizes.md),
+                icon: Icon(
+                  Icons.drive_folder_upload_outlined,
+                  size: AppIconSizes.md,
+                ),
                 label: Text(l10n.homeWorkspaceNewProjectChooseDirectory),
               ),
             ],
@@ -398,19 +398,12 @@ class _NameField extends StatelessWidget {
             l10n.projectDisplayName,
             style: styles.caption.copyWith(color: cs.onSurfaceVariant),
           ),
+          const SizedBox(height: 6),
           TextField(
             controller: controller,
             onSubmitted: onSubmitted,
             style: styles.prominent.copyWith(color: cs.onSurface),
-            decoration: InputDecoration(
-              isDense: true,
-              border: InputBorder.none,
-              contentPadding: const EdgeInsets.symmetric(vertical: 4),
-              hintText: hint,
-              hintStyle: styles.prominent.copyWith(
-                color: cs.onSurfaceVariant.withValues(alpha: 0.6),
-              ),
-            ),
+            decoration: InputDecoration(hintText: hint),
           ),
         ],
       ),

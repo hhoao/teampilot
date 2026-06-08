@@ -22,8 +22,11 @@ import '../../theme/app_text_styles.dart';
 import '../../widgets/app_provider/brand_dropdown_rows.dart';
 import '../../widgets/app_provider/provider_brand_icon.dart';
 import '../../widgets/cli/cli_brand_icon.dart';
+import '../../widgets/settings/workspace_settings_toggle_strip.dart';
 import '../../widgets/settings/workspace_settings_widgets.dart';
 import 'home_workspace_team_generate_section.dart';
+
+enum _TeamCreationMethod { custom, ai }
 
 /// Large centered "create team" modal launched from the workspace sidebar's
 /// "New Team" row. Mirrors the Apifox project-creation modal: centered title +
@@ -75,6 +78,7 @@ class HomeWorkspaceNewTeamDialog extends StatefulWidget {
 class _HomeWorkspaceNewTeamDialogState
     extends State<HomeWorkspaceNewTeamDialog> {
   late final TextEditingController _nameController;
+  _TeamCreationMethod _creationMethod = _TeamCreationMethod.custom;
   TeamMode _mode = TeamMode.native;
   CliTool _cli = CliTool.claude;
   String _providerId = '';
@@ -104,8 +108,19 @@ class _HomeWorkspaceNewTeamDialogState
   }
 
   void _syncCanCreate() {
-    final canCreate = _nameController.text.trim().isNotEmpty;
+    final canCreate = _creationMethod == _TeamCreationMethod.custom
+        ? _nameController.text.trim().isNotEmpty
+        : _draft != null && _draft!.members.isNotEmpty;
     if (canCreate != _canCreate) setState(() => _canCreate = canCreate);
+  }
+
+  String _teamNameForSubmit() {
+    if (_creationMethod == _TeamCreationMethod.custom) {
+      return _nameController.text.trim();
+    }
+    final draftName = _draft?.teamName?.trim();
+    if (draftName != null && draftName.isNotEmpty) return draftName;
+    return context.l10n.homeWorkspaceNewTeam;
   }
 
   CliTool? _providerCatalogCli(CliTool cli) {
@@ -140,7 +155,7 @@ class _HomeWorkspaceNewTeamDialogState
   }
 
   void _submit() {
-    final name = _nameController.text.trim();
+    final name = _teamNameForSubmit().trim();
     if (name.isEmpty) return;
     Navigator.of(context).pop((
       name: name,
@@ -158,20 +173,20 @@ class _HomeWorkspaceNewTeamDialogState
     final l10n = context.l10n;
     if (description.isEmpty) return;
     final setting = resolveAiFeatureSetting(
-      stored: context
-          .read<AiFeatureSettingsCubit>()
-          .state
-          .settingFor(AiFeatureId.teamGenerate),
+      stored: context.read<AiFeatureSettingsCubit>().state.settingFor(
+        AiFeatureId.teamGenerate,
+      ),
       appProviders: context.read<AppProviderCubit>().state,
       registry: CliToolRegistryScope.of(context),
     );
     if (setting.providerId.isEmpty) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(l10n.teamGenNoProvider)));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l10n.teamGenNoProvider)));
       return;
     }
 
-    final allowed = _collectAllowedOptions();
+    final allowed = _collectAllowedOptions(aiSetting: setting);
     setState(() => _generating = true);
     try {
       final draft = await TeamConfigGenerator().generate(
@@ -184,45 +199,48 @@ class _HomeWorkspaceNewTeamDialogState
       if (!mounted) return;
       setState(() {
         _draft = draft;
-        if (draft.teamName != null && _nameController.text.trim().isEmpty) {
-          _nameController.text = draft.teamName!;
-        }
+        _cli = setting.cli;
+        _providerId = setting.providerId;
         if (draft.mode != null) _mode = draft.mode!;
       });
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(l10n.teamGenApplied)));
+      _syncCanCreate();
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l10n.teamGenApplied)));
     } on Object {
       if (!mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(l10n.teamGenFailed)));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l10n.teamGenFailed)));
     } finally {
       if (mounted) setState(() => _generating = false);
     }
   }
 
-  TeamDraftAllowedOptions _collectAllowedOptions() {
+  TeamDraftAllowedOptions _collectAllowedOptions({AiFeatureSetting? aiSetting}) {
     final registry = CliToolRegistryScope.of(context);
     final appProviders = context.read<AppProviderCubit>().state;
-    final catalogCli = _providerCatalogCli(_cli) ?? _cli;
+    final cli = aiSetting?.cli ?? _cli;
+    final providerId = aiSetting?.providerId ?? _providerId;
+    final catalogCli = _providerCatalogCli(cli) ?? cli;
     final provider = appProviders
         .providersFor(catalogCli)
-        .where((p) => p.id == _providerId)
+        .where((p) => p.id == providerId)
         .firstOrNull;
     final modelCap = registry.capability<ProviderModelCapability>(catalogCli);
     final effortCap = registry.capability<CliEffortCapability>(catalogCli);
-    final models = modelCap?.modelCandidates(
+    final models =
+        modelCap?.modelCandidates(
           provider: provider,
-          providerId: _providerId,
-          currentModel: '',
+          providerId: providerId,
+          currentModel: aiSetting?.model ?? '',
         ) ??
         const <String>[];
     final defaultModel =
-        modelCap?.defaultModel(provider: provider, providerId: _providerId) ??
-            (models.isNotEmpty ? models.first : '');
-    final efforts = effortCap?.effortCandidates(
-          model: defaultModel,
-          provider: provider,
-        ) ??
+        modelCap?.defaultModel(provider: provider, providerId: providerId) ??
+        (models.isNotEmpty ? models.first : '');
+    final efforts =
+        effortCap?.effortCandidates(model: defaultModel, provider: provider) ??
         const <String>[];
     return TeamDraftAllowedOptions(
       models: models,
@@ -254,70 +272,101 @@ class _HomeWorkspaceNewTeamDialogState
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               _Header(title: l10n.homeWorkspaceNewTeam),
-              const SizedBox(height: 8),
+              const SizedBox(height: 20),
+              WorkspaceSettingsToggleStrip<_TeamCreationMethod>(
+                alignment: Alignment.center,
+                customWidths: const [156, 120],
+                segments: [
+                  WorkspaceToggleSegment(
+                    value: _TeamCreationMethod.custom,
+                    label: l10n.homeWorkspaceNewTeamMethodCustom,
+                    icon: Icons.tune_outlined,
+                  ),
+                  WorkspaceToggleSegment(
+                    value: _TeamCreationMethod.ai,
+                    label: l10n.homeWorkspaceNewTeamMethodAi,
+                    icon: Icons.auto_awesome_outlined,
+                  ),
+                ],
+                selected: _creationMethod,
+                onChanged: (method) {
+                  setState(() {
+                    _creationMethod = method;
+                    if (method == _TeamCreationMethod.custom) {
+                      _draft = null;
+                    }
+                  });
+                  _syncCanCreate();
+                },
+              ),
+              const SizedBox(height: 12),
               Text(
-                l10n.homeWorkspaceNewTeamSubtitle,
+                _creationMethod == _TeamCreationMethod.custom
+                    ? l10n.homeWorkspaceNewTeamSubtitle
+                    : l10n.homeWorkspaceNewTeamSubtitleAi,
                 textAlign: TextAlign.center,
                 style: styles.body.copyWith(color: cs.onSurfaceVariant),
               ),
               const SizedBox(height: 28),
-              IntrinsicHeight(
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Expanded(
-                      child: _ModeCard(
-                        icon: Icons.dashboard_customize_outlined,
-                        title: l10n.teamModeNativeTitle,
-                        description: l10n.teamModeNativeDescription,
-                        badge: l10n.homeWorkspaceNewTeamRecommended,
-                        badgeIsPrimary: true,
-                        selected: _mode == TeamMode.native,
-                        onTap: () => setState(() => _mode = TeamMode.native),
+              if (_creationMethod == _TeamCreationMethod.custom) ...[
+                IntrinsicHeight(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Expanded(
+                        child: _ModeCard(
+                          icon: Icons.dashboard_customize_outlined,
+                          title: l10n.teamModeNativeTitle,
+                          description: l10n.teamModeNativeDescription,
+                          badge: l10n.homeWorkspaceNewTeamRecommended,
+                          badgeIsPrimary: true,
+                          selected: _mode == TeamMode.native,
+                          onTap: () => setState(() => _mode = TeamMode.native),
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: _ModeCard(
-                        icon: Icons.hub_outlined,
-                        title: l10n.teamModeMixedTitle,
-                        description: l10n.teamModeMixedDescription,
-                        badge: l10n.homeWorkspaceNewTeamModeBeta,
-                        badgeIsPrimary: false,
-                        selected: _mode == TeamMode.mixed,
-                        onTap: () => setState(() => _mode = TeamMode.mixed),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: _ModeCard(
+                          icon: Icons.hub_outlined,
+                          title: l10n.teamModeMixedTitle,
+                          description: l10n.teamModeMixedDescription,
+                          badge: l10n.homeWorkspaceNewTeamModeBeta,
+                          badgeIsPrimary: false,
+                          selected: _mode == TeamMode.mixed,
+                          onTap: () => setState(() => _mode = TeamMode.mixed),
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-              if (_mode == TeamMode.native) ...[
-                const SizedBox(height: 20),
-                _NativeTeamOptionsCard(
+                if (_mode == TeamMode.native) ...[
+                  const SizedBox(height: 20),
+                  _NativeTeamOptionsCard(
+                    cli: _cli,
+                    providerId: _providerId,
+                    onCliChanged: (cli) {
+                      setState(() {
+                        _cli = cli;
+                        _providerId = '';
+                      });
+                      _syncDefaultProviderForCli(cli);
+                    },
+                    onProviderChanged: (id) =>
+                        setState(() => _providerId = id ?? ''),
+                  ),
+                ],
+                const SizedBox(height: 24),
+                _NameField(
+                  controller: _nameController,
+                  onSubmitted: (_) => _submit(),
+                ),
+              ] else
+                HomeWorkspaceTeamGenerateSection(
                   cli: _cli,
                   providerId: _providerId,
-                  onCliChanged: (cli) {
-                    setState(() {
-                      _cli = cli;
-                      _providerId = '';
-                    });
-                  },
-                  onProviderChanged: (id) =>
-                      setState(() => _providerId = id ?? ''),
+                  generating: _generating,
+                  onGenerate: _onGenerate,
                 ),
-              ],
-              const SizedBox(height: 24),
-              _NameField(
-                controller: _nameController,
-                onSubmitted: (_) => _submit(),
-              ),
-              const SizedBox(height: 20),
-              HomeWorkspaceTeamGenerateSection(
-                cli: _cli,
-                providerId: _providerId,
-                generating: _generating,
-                onGenerate: _onGenerate,
-              ),
               const SizedBox(height: 28),
               Row(
                 mainAxisAlignment: MainAxisAlignment.end,
@@ -568,7 +617,8 @@ class _NativeTeamOptionsCard extends StatelessWidget {
             SettingsLabeledRow(
               title: l10n.provider,
               subtitle: l10n.appProviderTeamToolSubtitle,
-              titleLeading: providers
+              titleLeading:
+                  providers
                       .where((p) => p.id == effectiveProviderId)
                       .map(
                         (p) => ProviderBrandIcon.fromConfig(
@@ -659,19 +709,15 @@ class _NameField extends StatelessWidget {
                   l10n.teamName,
                   style: styles.caption.copyWith(color: cs.onSurfaceVariant),
                 ),
+                const SizedBox(height: 6),
                 TextField(
                   controller: controller,
                   autofocus: true,
                   onSubmitted: onSubmitted,
                   style: styles.prominent.copyWith(color: cs.onSurface),
                   decoration: InputDecoration(
-                    isDense: true,
-                    border: InputBorder.none,
-                    contentPadding: const EdgeInsets.symmetric(vertical: 4),
                     hintText: l10n.homeWorkspaceNewTeamNameHint,
-                    hintStyle: styles.prominent.copyWith(
-                      color: cs.onSurfaceVariant.withValues(alpha: 0.6),
-                    ),
+                    isDense: true,
                   ),
                 ),
               ],

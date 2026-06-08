@@ -98,6 +98,7 @@ class TeamMemberConfigFormState extends State<TeamMemberConfigForm> {
   late TextEditingController _agentCtl;
   late TextEditingController _argsCtl;
   late TextEditingController _promptCtl;
+  late TextEditingController _playbookCtl;
   List<String> _userAgentIds = const [];
 
   @override
@@ -121,6 +122,7 @@ class TeamMemberConfigFormState extends State<TeamMemberConfigForm> {
     _agentCtl = TextEditingController(text: m.agent);
     _argsCtl = TextEditingController(text: m.extraArgs);
     _promptCtl = TextEditingController(text: m.prompt);
+    _playbookCtl = TextEditingController(text: m.playbook);
   }
 
   @override
@@ -129,6 +131,7 @@ class TeamMemberConfigFormState extends State<TeamMemberConfigForm> {
     _agentCtl.dispose();
     _argsCtl.dispose();
     _promptCtl.dispose();
+    _playbookCtl.dispose();
     super.dispose();
   }
 
@@ -136,13 +139,19 @@ class TeamMemberConfigFormState extends State<TeamMemberConfigForm> {
     widget.cubit.updateMember(widget.member.id, next);
   }
 
+  /// A preset is a role bundle: it fills both layers at once — responsibilities
+  /// ([prompt]) and the working method ([playbook]). team_lead has no playbook
+  /// (its method is injected by the system addendum), so that layer is cleared.
   void _applyPromptPreset(String presetId) {
     final l10n = context.l10n;
-    final text = teamMemberPromptPresetText(l10n, presetId);
-    if (text.isEmpty) return;
-    _promptCtl.text = text;
-    _promptCtl.selection = TextSelection.collapsed(offset: text.length);
-    _update(widget.member.copyWith(prompt: text));
+    final prompt = teamMemberPromptPresetText(l10n, presetId);
+    final playbook = teamMemberPlaybookPresetText(l10n, presetId);
+    if (prompt.isEmpty && playbook.isEmpty) return;
+    _promptCtl.text = prompt;
+    _promptCtl.selection = TextSelection.collapsed(offset: prompt.length);
+    _playbookCtl.text = playbook;
+    _playbookCtl.selection = TextSelection.collapsed(offset: playbook.length);
+    _update(widget.member.copyWith(prompt: prompt, playbook: playbook));
   }
 
   @override
@@ -465,6 +474,18 @@ class TeamMemberConfigFormState extends State<TeamMemberConfigForm> {
                   onChanged: (v) => _update(m.copyWith(prompt: v)),
                 ),
               ],
+            ),
+            showDividerBelow: true,
+          ),
+          SettingsLabeledStackedRow(
+            title: l10n.memberPlaybook,
+            subtitle: l10n.memberPlaybookSubtitle,
+            body: TextField(
+              controller: _playbookCtl,
+              minLines: 3,
+              maxLines: 8,
+              decoration: const InputDecoration(),
+              onChanged: (v) => _update(m.copyWith(playbook: v)),
             ),
             showDividerBelow: false,
           ),
