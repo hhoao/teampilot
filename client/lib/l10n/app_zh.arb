@@ -1230,8 +1230,6 @@
   "gitGenerateCommitMessageNoProvider": "请先在 设置 → AI 功能 中配置 AI provider。",
   "teamGenTitle": "用 AI 生成",
   "teamGenDescriptionHint": "描述你想要的团队（例如：做 Flutter 前端、需要代码审查和测试）",
-  "teamGenGranularityRoster": "仅成员",
-  "teamGenGranularityFull": "完整团队草稿",
   "teamGenButton": "生成",
   "teamGenNoProvider": "请先在 设置 → AI 功能 中配置 AI provider。",
   "teamGenFailed": "无法生成团队，请手动编辑。",

@@ -264,6 +264,8 @@ class _HomeWorkspaceNewTeamDialogState
   }) {
     final registry = CliToolRegistryScope.of(context);
     if (mode == TeamMode.mixed) {
+      // Mixed teams span CLIs, so each CLI resolves its own default provider —
+      // we deliberately don't apply the single AI-feature provider/model here.
       final clis = [
         for (final def in registry.launchable) _cliModelOptions(def.id),
       ];

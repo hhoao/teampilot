@@ -6128,18 +6128,6 @@ abstract class AppLocalizations {
   /// **'Describe the team you want (e.g. Flutter frontend with code review and tests)'**
   String get teamGenDescriptionHint;
 
-  /// No description provided for @teamGenGranularityRoster.
-  ///
-  /// In en, this message translates to:
-  /// **'Members only'**
-  String get teamGenGranularityRoster;
-
-  /// No description provided for @teamGenGranularityFull.
-  ///
-  /// In en, this message translates to:
-  /// **'Full team draft'**
-  String get teamGenGranularityFull;
-
   /// No description provided for @teamGenButton.
   ///
   /// In en, this message translates to:

@@ -3239,12 +3239,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get teamGenDescriptionHint => '描述你想要的团队（例如：做 Flutter 前端、需要代码审查和测试）';
 
   @override
-  String get teamGenGranularityRoster => '仅成员';
-
-  @override
-  String get teamGenGranularityFull => '完整团队草稿';
-
-  @override
   String get teamGenButton => '生成';
 
   @override

@@ -3362,12 +3362,6 @@ class AppLocalizationsEn extends AppLocalizations {
       'Describe the team you want (e.g. Flutter frontend with code review and tests)';
 
   @override
-  String get teamGenGranularityRoster => 'Members only';
-
-  @override
-  String get teamGenGranularityFull => 'Full team draft';
-
-  @override
   String get teamGenButton => 'Generate';
 
   @override

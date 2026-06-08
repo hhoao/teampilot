@@ -1554,8 +1554,6 @@
   "gitGenerateCommitMessageNoProvider": "Configure an AI provider in Settings → AI Features first.",
   "teamGenTitle": "Generate with AI",
   "teamGenDescriptionHint": "Describe the team you want (e.g. Flutter frontend with code review and tests)",
-  "teamGenGranularityRoster": "Members only",
-  "teamGenGranularityFull": "Full team draft",
   "teamGenButton": "Generate",
   "teamGenNoProvider": "Configure an AI provider in Settings → AI Features first.",
   "teamGenFailed": "Could not generate a team. Please edit manually.",
