@@ -22,9 +22,8 @@ Team composition rules:
 Per-field rubric (follow exactly):
 - "role": a concise noun phrase (e.g. "backend developer").
 - "responsibilities" (WHAT): terse imperative, 1-3 sentences. MUST end with an explicit "Do NOT ..." scope boundary.
-- "workingMethod" (HOW): a concrete SOP — ordered steps, checkpoints, the report format, and the escalation trigger. May soft-reference skills (e.g. "follow test-driven-development if available"). 2-5 sentences.
-- "description" (team-level): one paragraph — mission, scope boundary, and how members collaborate.
-- "model"/"effort": choose only from the allowed values listed for that member.''';
+- "workingMethod" (HOW): a concrete SOP — ordered steps, checkpoints, the report format, and the escalation trigger. Model it on the role/skill prompts of well-regarded open-source agent repos (e.g. superpowers, oh-my-openagent): phased steps, explicit gates, and red-flags. May soft-reference skills (e.g. "follow test-driven-development if available"). 2-5 sentences.
+- "description" (team-level): one paragraph — mission, scope boundary, and how members collaborate.''';
 
   static const languageLock =
       'IMPORTANT: Write EVERY generated string (names, roles, responsibilities, '

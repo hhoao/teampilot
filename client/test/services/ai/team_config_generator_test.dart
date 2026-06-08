@@ -11,18 +11,6 @@ const _setting = AiFeatureSetting(
   model: 'm',
 );
 
-const _allowed = TeamDraftAllowedOptions(
-  clis: [
-    CliModelOptions(
-      cli: CliTool.claude,
-      models: ['sonnet'],
-      efforts: ['high'],
-      defaultModel: 'sonnet',
-    ),
-  ],
-  skillIds: [],
-);
-
 void main() {
   test('returns a parsed draft on first success', () async {
     String? seenPrompt;
@@ -30,14 +18,13 @@ void main() {
       runHeadless: ({required setting, required prompt, required expectJson}) async {
         seenPrompt = prompt;
         return '{"members":[{"name":"team-lead"},'
-            '{"name":"Dev","role":"dev","model":"sonnet"}]}';
+            '{"name":"Dev","role":"dev"}]}';
       },
     );
 
     final draft = await gen.generate(
       setting: _setting,
       description: 'team',
-      allowed: _allowed,
       mode: TeamMode.native,
       joinedAt: 1,
     );
@@ -58,7 +45,6 @@ void main() {
     await gen.generate(
       setting: _setting,
       description: 'team',
-      allowed: _allowed,
       mode: TeamMode.mixed,
       joinedAt: 1,
     );
@@ -70,16 +56,13 @@ void main() {
     final gen = TeamConfigGenerator(
       runHeadless: ({required setting, required prompt, required expectJson}) async {
         calls++;
-        return calls == 1
-            ? 'garbage'
-            : '{"members":[{"name":"team-lead"}]}';
+        return calls == 1 ? 'garbage' : '{"members":[{"name":"team-lead"}]}';
       },
     );
 
     final draft = await gen.generate(
       setting: _setting,
       description: 'team',
-      allowed: _allowed,
       mode: TeamMode.native,
       joinedAt: 1,
     );
@@ -98,7 +81,6 @@ void main() {
       () => gen.generate(
         setting: _setting,
         description: 'team',
-        allowed: _allowed,
         mode: TeamMode.native,
         joinedAt: 1,
       ),

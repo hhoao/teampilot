@@ -14,12 +14,14 @@ class HomeWorkspaceTeamGenerateSection extends StatefulWidget {
     required this.providerId,
     required this.generating,
     required this.onGenerate,
+    this.enabled = true,
     super.key,
   });
 
   final CliTool cli;
   final String providerId;
   final bool generating;
+  final bool enabled;
   final TeamGenerateCallback onGenerate;
 
   @override
@@ -51,7 +53,7 @@ class _HomeWorkspaceTeamGenerateSectionState
           controller: _controller,
           minLines: 2,
           maxLines: 4,
-          enabled: !widget.generating,
+          enabled: widget.enabled && !widget.generating,
           decoration: InputDecoration(
             hintText: l10n.teamGenDescriptionHint,
             isDense: true,
@@ -60,7 +62,7 @@ class _HomeWorkspaceTeamGenerateSectionState
         const SizedBox(height: 8),
         FilledButton.icon(
           key: const ValueKey('team-gen-button'),
-          onPressed: widget.generating
+          onPressed: !widget.enabled || widget.generating
               ? null
               : () => widget.onGenerate(_controller.text.trim()),
           icon: widget.generating

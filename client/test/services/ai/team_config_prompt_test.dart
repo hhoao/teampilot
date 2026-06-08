@@ -1,44 +1,12 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/team_config.dart';
-import 'package:teampilot/services/ai/team_config_draft.dart';
 import 'package:teampilot/services/ai/team_config_prompt.dart';
 
 void main() {
-  const native = TeamDraftAllowedOptions(
-    clis: [
-      CliModelOptions(
-        cli: CliTool.claude,
-        models: ['sonnet', 'opus'],
-        efforts: ['low', 'high'],
-        defaultModel: 'sonnet',
-      ),
-    ],
-    skillIds: ['code-review'],
-  );
-
-  const mixed = TeamDraftAllowedOptions(
-    clis: [
-      CliModelOptions(
-        cli: CliTool.claude,
-        models: ['sonnet'],
-        efforts: ['high'],
-        defaultModel: 'sonnet',
-      ),
-      CliModelOptions(
-        cli: CliTool.codex,
-        models: ['gpt-x'],
-        efforts: ['medium'],
-        defaultModel: 'gpt-x',
-      ),
-    ],
-    skillIds: ['code-review'],
-  );
-
-  test('native prompt: rubric, schema fields, single cli, no cli field', () {
+  test('native prompt: rubric + schema, no cli/model/effort/skillIds fields', () {
     final p = buildTeamConfigPrompt(
       mode: TeamMode.native,
       description: 'Flutter frontend team',
-      allowed: native,
     );
     expect(p, contains('Flutter frontend team'));
     expect(p, contains('NATIVE team'));
@@ -47,36 +15,30 @@ void main() {
     expect(p, contains('"description"'));
     expect(p, contains('Do NOT'));
     expect(p, contains('exactly one member named "team-lead"'));
-    expect(p, contains('sonnet'));
-    expect(p, contains('code-review'));
+    // none of these fields are generated
     expect(p.contains('"cli"'), isFalse);
+    expect(p.contains('"model"'), isFalse);
+    expect(p.contains('"effort"'), isFalse);
+    expect(p.contains('"skillIds"'), isFalse);
   });
 
-  test('mixed prompt: bus context, per-cli model lists, cli field', () {
+  test('mixed prompt: bus context, no cli/model/effort fields', () {
     final p = buildTeamConfigPrompt(
       mode: TeamMode.mixed,
       description: 'cross-cli team',
-      allowed: mixed,
     );
     expect(p, contains('MIXED team'));
     expect(p, contains('teammate bus'));
-    expect(p, contains('"cli"'));
-    expect(p, contains('claude'));
-    expect(p, contains('codex'));
-    expect(p, contains('gpt-x'));
+    expect(p.contains('"cli"'), isFalse);
+    expect(p.contains('"model"'), isFalse);
+    expect(p.contains('"effort"'), isFalse);
   });
 
-  test('language lock is present in both modes', () {
-    final n = buildTeamConfigPrompt(
-      mode: TeamMode.native,
-      description: 'x',
-      allowed: native,
-    );
-    final m = buildTeamConfigPrompt(
-      mode: TeamMode.mixed,
-      description: 'x',
-      allowed: mixed,
-    );
+  test('rubric cites open-source playbooks; language lock in both modes', () {
+    final n = buildTeamConfigPrompt(mode: TeamMode.native, description: 'x');
+    final m = buildTeamConfigPrompt(mode: TeamMode.mixed, description: 'x');
+    expect(n, contains('superpowers'));
+    expect(m, contains('oh-my-openagent'));
     expect(n, contains('SAME language as the Description'));
     expect(m, contains('SAME language as the Description'));
   });

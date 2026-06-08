@@ -32,14 +32,12 @@ class TeamConfigGenerator {
   Future<TeamConfigDraft> generate({
     required AiFeatureSetting setting,
     required String description,
-    required TeamDraftAllowedOptions allowed,
     required TeamMode mode,
     required int joinedAt,
   }) async {
     final basePrompt = buildTeamConfigPrompt(
       mode: mode,
       description: description,
-      allowed: allowed,
     );
 
     for (var attempt = 0; attempt < 2; attempt++) {
@@ -53,12 +51,7 @@ class TeamConfigGenerator {
         expectJson: true,
       );
       try {
-        return parseTeamConfigDraft(
-          text,
-          allowed: allowed,
-          mode: mode,
-          joinedAt: joinedAt,
-        );
+        return parseTeamConfigDraft(text, joinedAt: joinedAt);
       } on TeamDraftFormatException {
         if (attempt == 1) rethrow;
       }

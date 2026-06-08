@@ -13,9 +13,7 @@ import '../../models/team_config.dart';
 import '../../services/ai/ai_feature_setting_resolver.dart';
 import '../../services/ai/team_config_draft.dart';
 import '../../services/ai/team_config_generator.dart';
-import '../../services/cli/registry/capabilities/cli_effort_capability.dart';
 import '../../services/cli/registry/capabilities/provider_catalog_capability.dart';
-import '../../services/cli/registry/capabilities/provider_model_capability.dart';
 import '../../services/cli/registry/cli_display_name.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../theme/app_text_styles.dart';
@@ -47,7 +45,6 @@ Future<void> showHomeWorkspaceNewTeamDialog(
           Map<String, String> providerIdsByTool,
           List<TeamMemberConfig>? members,
           String description,
-          List<String> skillIds,
         })
       >(
         context: context,
@@ -61,7 +58,6 @@ Future<void> showHomeWorkspaceNewTeamDialog(
     teamMode: result.mode,
     providerIdsByTool: result.providerIdsByTool,
     description: result.description,
-    skillIds: result.skillIds,
     members: (result.members != null && result.members!.isNotEmpty)
         ? result.members
         : DefaultTeamRoster.localized(
@@ -83,7 +79,7 @@ class _HomeWorkspaceNewTeamDialogState
     extends State<HomeWorkspaceNewTeamDialog> {
   late final TextEditingController _nameController;
   _TeamCreationMethod _creationMethod = _TeamCreationMethod.custom;
-  TeamMode _mode = TeamMode.native;
+  TeamMode? _mode;
   CliTool _cli = CliTool.claude;
   String _providerId = '';
   bool _canCreate = false;
@@ -112,6 +108,10 @@ class _HomeWorkspaceNewTeamDialogState
   }
 
   void _syncCanCreate() {
+    if (_mode == null) {
+      if (_canCreate) setState(() => _canCreate = false);
+      return;
+    }
     final canCreate = _creationMethod == _TeamCreationMethod.custom
         ? _nameController.text.trim().isNotEmpty
         : _draft != null && _draft!.members.isNotEmpty;
@@ -159,22 +159,24 @@ class _HomeWorkspaceNewTeamDialogState
   }
 
   void _submit() {
+    final mode = _mode;
+    if (mode == null) return;
     final name = _teamNameForSubmit().trim();
     if (name.isEmpty) return;
     Navigator.of(context).pop((
       name: name,
-      mode: _mode,
+      mode: mode,
       cli: _cli,
       providerIdsByTool: _providerIdsByToolForSubmit(),
       members: _draft?.members,
       description: _draft?.description?.trim() ?? '',
-      skillIds: _draft?.skillIds ?? const <String>[],
     ));
   }
 
   Future<void> _onGenerate(String description) async {
     final l10n = context.l10n;
-    if (description.isEmpty) return;
+    final mode = _mode;
+    if (mode == null || description.isEmpty) return;
     final setting = resolveAiFeatureSetting(
       stored: context.read<AiFeatureSettingsCubit>().state.settingFor(
         AiFeatureId.teamGenerate,
@@ -189,14 +191,12 @@ class _HomeWorkspaceNewTeamDialogState
       return;
     }
 
-    final allowed = _collectAllowedOptions(mode: _mode, aiSetting: setting);
     setState(() => _generating = true);
     try {
       final draft = await TeamConfigGenerator().generate(
         setting: setting,
         description: description,
-        allowed: allowed,
-        mode: _mode,
+        mode: mode,
         joinedAt: DateTime.now().millisecondsSinceEpoch,
       );
       if (!mounted) return;
@@ -217,77 +217,6 @@ class _HomeWorkspaceNewTeamDialogState
     } finally {
       if (mounted) setState(() => _generating = false);
     }
-  }
-
-  CliModelOptions _cliModelOptions(
-    CliTool cli, {
-    String? providerIdOverride,
-    String? preferModel,
-  }) {
-    final registry = CliToolRegistryScope.of(context);
-    final appProviders = context.read<AppProviderCubit>().state;
-    final catalogCli = _providerCatalogCli(cli) ?? cli;
-    final wantedId = (providerIdOverride ?? '').trim();
-    final provider = appProviders
-        .providersFor(catalogCli)
-        .where((p) => wantedId.isEmpty || p.id == wantedId)
-        .firstOrNull;
-    final modelCap = registry.capability<ProviderModelCapability>(catalogCli);
-    final effortCap = registry.capability<CliEffortCapability>(catalogCli);
-    final models =
-        modelCap?.modelCandidates(
-          provider: provider,
-          providerId: provider?.id ?? wantedId,
-          currentModel: preferModel ?? '',
-        ) ??
-        const <String>[];
-    final defaultModel =
-        modelCap?.defaultModel(
-          provider: provider,
-          providerId: provider?.id ?? wantedId,
-        ) ??
-        (models.isNotEmpty ? models.first : '');
-    final efforts =
-        effortCap?.effortCandidates(model: defaultModel, provider: provider) ??
-        const <String>[];
-    return CliModelOptions(
-      cli: cli,
-      models: models,
-      efforts: efforts,
-      defaultModel: defaultModel,
-    );
-  }
-
-  TeamDraftAllowedOptions _collectAllowedOptions({
-    required TeamMode mode,
-    AiFeatureSetting? aiSetting,
-  }) {
-    final registry = CliToolRegistryScope.of(context);
-    if (mode == TeamMode.mixed) {
-      // Mixed teams span CLIs, so each CLI resolves its own default provider —
-      // we deliberately don't apply the single AI-feature provider/model here.
-      final clis = [
-        for (final def in registry.launchable) _cliModelOptions(def.id),
-      ];
-      return TeamDraftAllowedOptions(
-        clis: clis.isEmpty
-            ? [_cliModelOptions(aiSetting?.cli ?? _cli)]
-            : clis,
-        skillIds: const [],
-      );
-    }
-    final cli = aiSetting?.cli ?? _cli;
-    // TODO: pass the team's installed skill ids so generation can pick from them.
-    return TeamDraftAllowedOptions(
-      clis: [
-        _cliModelOptions(
-          cli,
-          providerIdOverride: aiSetting?.providerId ?? _providerId,
-          preferModel: aiSetting?.model,
-        ),
-      ],
-      skillIds: const [],
-    );
   }
 
   @override
@@ -362,7 +291,13 @@ class _HomeWorkspaceNewTeamDialogState
                         badge: l10n.homeWorkspaceNewTeamRecommended,
                         badgeIsPrimary: true,
                         selected: _mode == TeamMode.native,
-                        onTap: () => setState(() => _mode = TeamMode.native),
+                        onTap: () {
+                          setState(() {
+                            _mode = TeamMode.native;
+                            _draft = null;
+                          });
+                          _syncCanCreate();
+                        },
                       ),
                     ),
                     const SizedBox(width: 16),
@@ -374,7 +309,13 @@ class _HomeWorkspaceNewTeamDialogState
                         badge: l10n.homeWorkspaceNewTeamModeBeta,
                         badgeIsPrimary: false,
                         selected: _mode == TeamMode.mixed,
-                        onTap: () => setState(() => _mode = TeamMode.mixed),
+                        onTap: () {
+                          setState(() {
+                            _mode = TeamMode.mixed;
+                            _draft = null;
+                          });
+                          _syncCanCreate();
+                        },
                       ),
                     ),
                   ],
@@ -408,6 +349,7 @@ class _HomeWorkspaceNewTeamDialogState
                   cli: _cli,
                   providerId: _providerId,
                   generating: _generating,
+                  enabled: _mode != null,
                   onGenerate: _onGenerate,
                 ),
               ],

@@ -11,65 +11,29 @@ class TeamDraftFormatException implements Exception {
   String toString() => 'TeamDraftFormatException: $message';
 }
 
-/// Legal model/effort values for one CLI, used to clamp parsed members.
-class CliModelOptions {
-  const CliModelOptions({
-    required this.cli,
-    required this.models,
-    required this.efforts,
-    required this.defaultModel,
-  });
-
-  final CliTool cli;
-  final List<String> models;
-  final List<String> efforts;
-  final String defaultModel;
-}
-
-/// Legal values the AI must choose from; used to clamp parsed output.
+/// A validated team draft produced from AI output.
 ///
-/// native: [clis] holds one entry (the team CLI).
-/// mixed: one entry per launch-supported CLI.
-class TeamDraftAllowedOptions {
-  const TeamDraftAllowedOptions({required this.clis, required this.skillIds});
-
-  final List<CliModelOptions> clis;
-  final List<String> skillIds;
-
-  /// The fallback CLI options. [clis] must be non-empty (native: the team CLI;
-  /// mixed: at least one launch-supported CLI).
-  CliModelOptions get primary {
-    assert(clis.isNotEmpty, 'TeamDraftAllowedOptions.clis must not be empty');
-    return clis.first;
-  }
-
-  CliModelOptions optionsFor(CliTool cli) =>
-      clis.firstWhere((o) => o.cli == cli, orElse: () => primary);
-}
-
-/// A validated, legal team draft produced from AI output.
+/// Generation produces only the team shape and prose — names, roles,
+/// responsibilities, working methods, and the team description. Model, effort,
+/// skills, and per-member CLI are NOT generated; the user configures those
+/// after the team is created.
 class TeamConfigDraft {
   const TeamConfigDraft({
     required this.members,
     this.teamName,
     this.description,
-    this.skillIds = const [],
   });
 
   final List<TeamMemberConfig> members;
   final String? teamName;
   final String? description;
-  final List<String> skillIds;
 }
 
-/// Parses [rawJson] into a clamped [TeamConfigDraft]. Illegal models fall back
-/// to the member CLI's default; illegal efforts are cleared; unknown skill ids
-/// and (in mixed) unknown clis are dropped to the primary CLI; nameless members
-/// are skipped. The result always contains exactly one `team-lead`.
+/// Parses [rawJson] into a [TeamConfigDraft]. Nameless members are skipped; the
+/// result always contains exactly one `team-lead`. Model, effort, skills, and
+/// CLI are left unset for the user to configure after creation.
 TeamConfigDraft parseTeamConfigDraft(
   String rawJson, {
-  required TeamDraftAllowedOptions allowed,
-  required TeamMode mode,
   required int joinedAt,
 }) {
   final Object? decoded;
@@ -82,7 +46,6 @@ TeamConfigDraft parseTeamConfigDraft(
     throw TeamDraftFormatException('Output JSON was not an object.');
   }
 
-  final mixed = mode == TeamMode.mixed;
   final rawMembers = decoded['members'];
   final parsed = <TeamMemberConfig>[];
   if (rawMembers is List) {
@@ -94,21 +57,6 @@ TeamConfigDraft parseTeamConfigDraft(
       final responsibilities = (raw['responsibilities'] as String? ?? '').trim();
       final workingMethod = (raw['workingMethod'] as String? ?? '').trim();
 
-      CliTool? memberCli;
-      if (mixed) {
-        final parsedCli = CliTool.tryParse(raw['cli'] as String?);
-        memberCli = (parsedCli != null &&
-                allowed.clis.any((o) => o.cli == parsedCli))
-            ? parsedCli
-            : allowed.primary.cli;
-      }
-      final opts = allowed.optionsFor(memberCli ?? allowed.primary.cli);
-      final rawModel = (raw['model'] as String? ?? '').trim();
-      final model =
-          opts.models.contains(rawModel) ? rawModel : opts.defaultModel;
-      final rawEffort = (raw['effort'] as String? ?? '').trim();
-      final effort = opts.efforts.contains(rawEffort) ? rawEffort : '';
-
       parsed.add(
         TeamMemberConfig(
           id: TeamMemberNaming.slugMemberName(name),
@@ -116,9 +64,6 @@ TeamConfigDraft parseTeamConfigDraft(
           agentType: role,
           prompt: responsibilities,
           playbook: workingMethod,
-          model: model,
-          effort: effort,
-          cli: memberCli,
           joinedAt: joinedAt,
         ),
       );
@@ -129,20 +74,11 @@ TeamConfigDraft parseTeamConfigDraft(
 
   final teamName = (decoded['teamName'] as String? ?? '').trim();
   final description = (decoded['description'] as String? ?? '').trim();
-  final rawSkills = decoded['skillIds'];
-  final skillIds = <String>[];
-  if (rawSkills is List) {
-    for (final s in rawSkills) {
-      final id = s.toString().trim();
-      if (allowed.skillIds.contains(id)) skillIds.add(id);
-    }
-  }
 
   return TeamConfigDraft(
     members: members,
     teamName: teamName.isEmpty ? null : teamName,
     description: description.isEmpty ? null : description,
-    skillIds: skillIds,
   );
 }
 

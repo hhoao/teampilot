@@ -1,115 +1,52 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/ai/team_config_draft.dart';
 import 'package:teampilot/utils/team_member_naming.dart';
 
 void main() {
-  const native = TeamDraftAllowedOptions(
-    clis: [
-      CliModelOptions(
-        cli: CliTool.claude,
-        models: ['sonnet', 'opus'],
-        efforts: ['low', 'high'],
-        defaultModel: 'sonnet',
-      ),
-    ],
-    skillIds: ['code-review', 'testing'],
-  );
-
-  const mixed = TeamDraftAllowedOptions(
-    clis: [
-      CliModelOptions(
-        cli: CliTool.claude,
-        models: ['sonnet', 'opus'],
-        efforts: ['low', 'high'],
-        defaultModel: 'sonnet',
-      ),
-      CliModelOptions(
-        cli: CliTool.codex,
-        models: ['gpt-x'],
-        efforts: ['medium'],
-        defaultModel: 'gpt-x',
-      ),
-    ],
-    skillIds: ['code-review'],
-  );
-
-  test('parses rich members and team fields, clamping invalid values', () {
+  test('parses members + team fields; model/effort/cli left unset', () {
     const json = '''
 {
   "teamName": "Frontend",
   "description": "Ship the UI.",
   "members": [
-    {"name": "team-lead", "role": "coordinator", "model": "opus", "effort": "high",
+    {"name": "team-lead", "role": "coordinator",
      "responsibilities": "Coordinate. Do NOT implement.",
      "workingMethod": "Decompose, assign, synthesize."},
-    {"name": "Bad One", "role": "dev", "model": "ghost", "effort": "ultra",
+    {"name": "Worker", "role": "dev",
      "responsibilities": "Build it.", "workingMethod": "Test first."}
-  ],
-  "skillIds": ["code-review", "unknown-skill"]
+  ]
 }
 ''';
-    final draft = parseTeamConfigDraft(
-      json,
-      allowed: native,
-      mode: TeamMode.native,
-      joinedAt: 100,
-    );
+    final draft = parseTeamConfigDraft(json, joinedAt: 100);
 
     expect(draft.teamName, 'Frontend');
     expect(draft.description, 'Ship the UI.');
     expect(draft.members, hasLength(2));
     final lead = draft.members.first;
     expect(lead.id, TeamMemberNaming.teamLeadName);
-    expect(lead.model, 'opus');
-    expect(lead.effort, 'high');
     expect(lead.prompt, 'Coordinate. Do NOT implement.');
     expect(lead.playbook, 'Decompose, assign, synthesize.');
-    expect(draft.members[1].model, 'sonnet');
-    expect(draft.members[1].effort, '');
+    // model/effort/cli are never generated — the user configures them later.
+    expect(lead.model, '');
+    expect(lead.effort, '');
+    expect(lead.cli, isNull);
     expect(draft.members[1].prompt, 'Build it.');
-    expect(draft.skillIds, ['code-review']);
-  });
-
-  test('native ignores any per-member cli', () {
-    const json = '{"members":[{"name":"team-lead"},'
-        '{"name":"Dev","cli":"codex","model":"sonnet"}]}';
-    final draft = parseTeamConfigDraft(
-      json,
-      allowed: native,
-      mode: TeamMode.native,
-      joinedAt: 1,
-    );
     expect(draft.members[1].cli, isNull);
   });
 
-  test('mixed clamps cli and resolves model/effort against that cli', () {
+  test('ignores any model/effort/cli the model emits', () {
     const json = '{"members":[{"name":"team-lead"},'
-        '{"name":"Dev","cli":"codex","model":"gpt-x","effort":"medium"},'
-        '{"name":"Ghost","cli":"opencode","model":"sonnet","effort":"low"}]}';
-    final draft = parseTeamConfigDraft(
-      json,
-      allowed: mixed,
-      mode: TeamMode.mixed,
-      joinedAt: 1,
-    );
+        '{"name":"Dev","model":"opus","effort":"high","cli":"codex"}]}';
+    final draft = parseTeamConfigDraft(json, joinedAt: 1);
     final dev = draft.members[1];
-    expect(dev.cli, CliTool.codex);
-    expect(dev.model, 'gpt-x');
-    expect(dev.effort, 'medium');
-    final ghost = draft.members[2];
-    expect(ghost.cli, CliTool.claude);
-    expect(ghost.model, 'sonnet');
+    expect(dev.model, '');
+    expect(dev.effort, '');
+    expect(dev.cli, isNull);
   });
 
   test('injects a default team-lead when none is emitted', () {
     const json = '{"members":[{"name":"Dev","role":"dev"}]}';
-    final draft = parseTeamConfigDraft(
-      json,
-      allowed: native,
-      mode: TeamMode.native,
-      joinedAt: 1,
-    );
+    final draft = parseTeamConfigDraft(json, joinedAt: 1);
     expect(draft.members.first.id, TeamMemberNaming.teamLeadName);
     expect(draft.members, hasLength(2));
   });
@@ -117,12 +54,7 @@ void main() {
   test('keeps the first lead and demotes duplicate leads to workers', () {
     const json = '{"members":[{"name":"team-lead","role":"a"},'
         '{"name":"team-lead","role":"b"}]}';
-    final draft = parseTeamConfigDraft(
-      json,
-      allowed: native,
-      mode: TeamMode.native,
-      joinedAt: 1,
-    );
+    final draft = parseTeamConfigDraft(json, joinedAt: 1);
     final leads = draft.members
         .where((m) => m.id == TeamMemberNaming.teamLeadName)
         .toList();
@@ -134,13 +66,7 @@ void main() {
   test('a non-lead member keeps its own id alongside the injected lead', () {
     const json = '{"members":[{"name":"team-lead","role":"a"},'
         '{"name":"Second Lead","role":"b"}]}';
-    final draft = parseTeamConfigDraft(
-      json,
-      allowed: native,
-      mode: TeamMode.native,
-      joinedAt: 1,
-    );
-    // Only the first member holds the reserved lead id.
+    final draft = parseTeamConfigDraft(json, joinedAt: 1);
     expect(
       draft.members.where((m) => m.id == TeamMemberNaming.teamLeadName),
       hasLength(1),
@@ -149,39 +75,24 @@ void main() {
     expect(draft.members[1].id, isNot(TeamMemberNaming.teamLeadName));
   });
 
-  test('throws TeamDraftFormatException when JSON is not an object', () {
-    expect(
-      () => parseTeamConfigDraft(
-        '[]',
-        allowed: native,
-        mode: TeamMode.native,
-        joinedAt: 1,
-      ),
-      throwsA(isA<TeamDraftFormatException>()),
-    );
-  });
-
   test('skips members without a name', () {
     const json = '{"members":[{"name":"team-lead"},{"role":"dev"},'
         '{"name":"Ok","role":"dev"}]}';
-    final draft = parseTeamConfigDraft(
-      json,
-      allowed: native,
-      mode: TeamMode.native,
-      joinedAt: 1,
-    );
+    final draft = parseTeamConfigDraft(json, joinedAt: 1);
     expect(draft.members.map((m) => m.name), contains('Ok'));
     expect(draft.members, hasLength(2));
   });
 
   test('throws TeamDraftFormatException on non-JSON', () {
     expect(
-      () => parseTeamConfigDraft(
-        'not json',
-        allowed: native,
-        mode: TeamMode.native,
-        joinedAt: 1,
-      ),
+      () => parseTeamConfigDraft('not json', joinedAt: 1),
+      throwsA(isA<TeamDraftFormatException>()),
+    );
+  });
+
+  test('throws TeamDraftFormatException when JSON is not an object', () {
+    expect(
+      () => parseTeamConfigDraft('[]', joinedAt: 1),
       throwsA(isA<TeamDraftFormatException>()),
     );
   });
