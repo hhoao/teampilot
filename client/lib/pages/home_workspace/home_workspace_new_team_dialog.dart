@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
@@ -87,6 +89,13 @@ class _HomeWorkspaceNewTeamDialogState
   bool _generating = false;
   TeamConfigDraft? _draft;
 
+  /// AI-tab description; drives the "生成" button enabled state.
+  String _aiDescription = '';
+
+  /// Non-null while streaming generation runs: 0..1 progress for the bar.
+  double? _genProgress;
+  Timer? _easeTimer;
+
   @override
   void initState() {
     super.initState();
@@ -103,6 +112,7 @@ class _HomeWorkspaceNewTeamDialogState
 
   @override
   void dispose() {
+    _easeTimer?.cancel();
     _nameController.dispose();
     super.dispose();
   }
@@ -173,10 +183,19 @@ class _HomeWorkspaceNewTeamDialogState
     ));
   }
 
-  Future<void> _onGenerate(String description) async {
+  bool get _canGenerate =>
+      _mode != null && _aiDescription.trim().isNotEmpty && !_generating;
+
+  /// AI flow: stream-generate the team, advancing the progress bar, then create
+  /// the team and close the dialog. The bar eases toward — but never reaches —
+  /// 100% until generation completes (a periodic timer keeps it moving even when
+  /// the CLI does not stream NDJSON events).
+  Future<void> _generateAndCreate() async {
     final l10n = context.l10n;
     final mode = _mode;
-    if (mode == null || description.isEmpty) return;
+    final description = _aiDescription.trim();
+    if (mode == null || description.isEmpty || _generating) return;
+
     final setting = resolveAiFeatureSetting(
       stored: context.read<AiFeatureSettingsCubit>().state.settingFor(
         AiFeatureId.teamGenerate,
@@ -191,31 +210,49 @@ class _HomeWorkspaceNewTeamDialogState
       return;
     }
 
-    setState(() => _generating = true);
+    setState(() {
+      _generating = true;
+      _genProgress = 0;
+    });
+    _easeTimer?.cancel();
+    _easeTimer = Timer.periodic(const Duration(milliseconds: 400), (_) {
+      if (!mounted) return;
+      final cur = _genProgress ?? 0;
+      final next = (cur + (0.9 - cur) * 0.05).clamp(0.0, 0.92);
+      setState(() => _genProgress = next);
+    });
+
     try {
-      final draft = await TeamConfigGenerator().generate(
+      final draft = await TeamConfigGenerator().generateStreaming(
         setting: setting,
         description: description,
         mode: mode,
         joinedAt: DateTime.now().millisecondsSinceEpoch,
+        onProgress: (p) {
+          if (!mounted) return;
+          if (p > (_genProgress ?? 0)) setState(() => _genProgress = p);
+        },
       );
+      _easeTimer?.cancel();
       if (!mounted) return;
       setState(() {
+        _genProgress = 1.0;
         _draft = draft;
         _cli = setting.cli;
         _providerId = setting.providerId;
       });
-      _syncCanCreate();
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(l10n.teamGenApplied)));
+      // Auto-create the team from the streamed draft and close the dialog.
+      _submit();
     } on Object {
+      _easeTimer?.cancel();
       if (!mounted) return;
+      setState(() {
+        _generating = false;
+        _genProgress = null;
+      });
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(l10n.teamGenFailed)));
-    } finally {
-      if (mounted) setState(() => _generating = false);
     }
   }
 
@@ -346,11 +383,10 @@ class _HomeWorkspaceNewTeamDialogState
               ] else ...[
                 const SizedBox(height: 24),
                 HomeWorkspaceTeamGenerateSection(
-                  cli: _cli,
-                  providerId: _providerId,
-                  generating: _generating,
                   enabled: _mode != null,
-                  onGenerate: _onGenerate,
+                  progress: _genProgress,
+                  onDescriptionChanged: (v) =>
+                      setState(() => _aiDescription = v),
                 ),
               ],
               const SizedBox(height: 28),
@@ -362,15 +398,37 @@ class _HomeWorkspaceNewTeamDialogState
                     child: Text(l10n.cancel),
                   ),
                   const SizedBox(width: 12),
-                  FilledButton(
-                    onPressed: _canCreate ? _submit : null,
-                    style: FilledButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 28,
-                        vertical: 14,
-                      ),
-                    ),
-                    child: Text(l10n.homeWorkspaceCreateTeam),
+                  Builder(
+                    builder: (context) {
+                      final isAi =
+                          _creationMethod == _TeamCreationMethod.ai;
+                      final enabled =
+                          isAi ? _canGenerate : (_canCreate && !_generating);
+                      return FilledButton(
+                        onPressed: enabled
+                            ? (isAi ? _generateAndCreate : _submit)
+                            : null,
+                        style: FilledButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 28,
+                            vertical: 14,
+                          ),
+                        ),
+                        child: _generating
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : Text(
+                                isAi
+                                    ? l10n.teamGenButton
+                                    : l10n.homeWorkspaceCreateTeam,
+                              ),
+                      );
+                    },
                   ),
                 ],
               ),

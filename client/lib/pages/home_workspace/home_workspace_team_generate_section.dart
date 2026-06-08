@@ -1,28 +1,25 @@
 import 'package:flutter/material.dart';
 
 import '../../l10n/l10n_extensions.dart';
-import '../../models/team_config.dart';
 
-typedef TeamGenerateCallback = void Function(String description);
+typedef TeamDescriptionChanged = void Function(String description);
 
-/// "Generate with AI" block inside the new-team dialog: a description field and
-/// a generate button. Stateless about the result; the dialog owns generation,
-/// the mode selection, and draft application.
+/// AI description input inside the new-team dialog. The dialog owns generation,
+/// mode selection, and the primary "生成" action; this widget only collects the
+/// description and renders streaming progress.
 class HomeWorkspaceTeamGenerateSection extends StatefulWidget {
   const HomeWorkspaceTeamGenerateSection({
-    required this.cli,
-    required this.providerId,
-    required this.generating,
-    required this.onGenerate,
+    required this.onDescriptionChanged,
     this.enabled = true,
+    this.progress,
     super.key,
   });
 
-  final CliTool cli;
-  final String providerId;
-  final bool generating;
   final bool enabled;
-  final TeamGenerateCallback onGenerate;
+
+  /// Non-null while generating: 0..1 value for the progress bar.
+  final double? progress;
+  final TeamDescriptionChanged onDescriptionChanged;
 
   @override
   State<HomeWorkspaceTeamGenerateSection> createState() =>
@@ -42,6 +39,7 @@ class _HomeWorkspaceTeamGenerateSectionState
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
+    final generating = widget.progress != null;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -53,27 +51,24 @@ class _HomeWorkspaceTeamGenerateSectionState
           controller: _controller,
           minLines: 2,
           maxLines: 4,
-          enabled: widget.enabled && !widget.generating,
+          enabled: widget.enabled && !generating,
+          onChanged: widget.onDescriptionChanged,
           decoration: InputDecoration(
             hintText: l10n.teamGenDescriptionHint,
             isDense: true,
           ),
         ),
-        const SizedBox(height: 8),
-        FilledButton.icon(
-          key: const ValueKey('team-gen-button'),
-          onPressed: !widget.enabled || widget.generating
-              ? null
-              : () => widget.onGenerate(_controller.text.trim()),
-          icon: widget.generating
-              ? const SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : const Icon(Icons.auto_awesome_outlined, size: 16),
-          label: Text(l10n.teamGenButton),
-        ),
+        if (generating) ...[
+          const SizedBox(height: 12),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              key: const ValueKey('team-gen-progress'),
+              value: widget.progress,
+              minHeight: 6,
+            ),
+          ),
+        ],
       ],
     );
   }
