@@ -107,6 +107,26 @@ void main() {
     await cubit.close();
   });
 
+  test('setCliDefaults persists effort in map and primary agent', () async {
+    final cubit = buildCubit();
+    await cubit.load('proj-effort');
+    await cubit.setCli(CliTool.claude);
+    await cubit.setCliDefaults(
+      CliTool.claude,
+      provider: 'p1',
+      model: 'sonnet',
+      effort: 'high',
+    );
+
+    expect(cubit.state.profile?.effortsByTool['claude'], 'high');
+    expect(cubit.state.profile?.agent.effort, 'high');
+
+    final reloaded = await repository.load('proj-effort');
+    expect(reloaded?.effortsByTool['claude'], 'high');
+    expect(reloaded?.agent.effort, 'high');
+    await cubit.close();
+  });
+
   test('updateAgent and setCli persist without linker sync', () async {
     final cubit = buildCubit();
     await cubit.load('proj-4');

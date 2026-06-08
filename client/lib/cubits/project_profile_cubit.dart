@@ -138,7 +138,12 @@ class ProjectProfileCubit extends Cubit<ProjectProfileState> {
     if (profile == null) return;
     final provider = profile.providerIdsByTool[cli.value]?.trim() ?? '';
     final model = profile.modelsByTool[cli.value]?.trim() ?? '';
-    final agent = profile.agent.copyWith(provider: provider, model: model);
+    final effort = profile.effortsByTool[cli.value]?.trim() ?? '';
+    final agent = profile.agent.copyWith(
+      provider: provider,
+      model: model,
+      effort: effort,
+    );
     await _persist(profile.copyWith(cli: cli, agent: agent));
   }
 
@@ -146,14 +151,17 @@ class ProjectProfileCubit extends Cubit<ProjectProfileState> {
     CliTool cli, {
     required String provider,
     required String model,
+    String effort = '',
   }) async {
     final profile = state.profile;
     if (profile == null) return;
 
     final providers = Map<String, String>.from(profile.providerIdsByTool);
     final models = Map<String, String>.from(profile.modelsByTool);
+    final efforts = Map<String, String>.from(profile.effortsByTool);
     final trimmedProvider = provider.trim();
     final trimmedModel = model.trim();
+    final trimmedEffort = effort.trim();
 
     if (trimmedProvider.isEmpty) {
       providers.remove(cli.value);
@@ -165,16 +173,23 @@ class ProjectProfileCubit extends Cubit<ProjectProfileState> {
     } else {
       models[cli.value] = trimmedModel;
     }
+    if (trimmedEffort.isEmpty) {
+      efforts.remove(cli.value);
+    } else {
+      efforts[cli.value] = trimmedEffort;
+    }
 
     var next = profile.copyWith(
       providerIdsByTool: providers,
       modelsByTool: models,
+      effortsByTool: efforts,
     );
     if (profile.cli == cli) {
       next = next.copyWith(
         agent: profile.agent.copyWith(
           provider: trimmedProvider,
           model: trimmedModel,
+          effort: trimmedEffort,
         ),
       );
     }

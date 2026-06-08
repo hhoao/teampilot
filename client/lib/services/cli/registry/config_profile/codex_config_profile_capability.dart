@@ -5,7 +5,9 @@ import '../../../../models/project_profile.dart';
 import '../../../../models/team_config.dart';
 import '../../../../repositories/app_provider_repository.dart';
 import '../../../provider/codex/codex_auth_artifacts.dart';
+import '../../../provider/codex/codex_effort_capability.dart';
 import '../../../provider/codex/codex_home_provisioner.dart';
+import '../capabilities/cli_effort_capability.dart';
 import '../../../provider/codex/codex_official_provider.dart';
 import '../../../provider/codex/codex_provider_settings_resolver.dart';
 import '../../../provider/codex/codex_team_bus_overlay.dart';
@@ -81,6 +83,11 @@ final class CodexConfigProfileCapability implements ConfigProfileCapability {
             busOverlayToml: busOverlay,
             trustedProjectDirectories: trustedDirectories,
             storedAuthPath: _storedCodexAuthPath(paths, provider),
+            reasoningEffortOverride: _resolveCodexEffort(
+              team: team,
+              member: member,
+              provider: provider,
+            ),
           );
         } on CodexHomeProvisionException catch (e) {
           warnings.add('codex_config_invalid: $e');
@@ -146,6 +153,14 @@ final class CodexConfigProfileCapability implements ConfigProfileCapability {
           provider: provider,
           trustedProjectDirectories: trustedDirectories,
           storedAuthPath: _storedCodexAuthPath(paths, provider),
+          reasoningEffortOverride: _resolveCodexEffort(
+            team: null,
+            member: member,
+            provider: provider,
+            profileEffort: profile.agent.effort.isNotEmpty
+                ? profile.agent.effort
+                : profile.effortsByTool[toolId],
+          ),
         );
       } on CodexHomeProvisionException catch (e) {
         warnings.add('codex_config_invalid: $e');
@@ -195,6 +210,30 @@ final class CodexConfigProfileCapability implements ConfigProfileCapability {
     final uri = Uri.tryParse(idleUrl);
     if (uri == null || !uri.hasPort) return null;
     return uri.port;
+  }
+
+  static String _resolveCodexEffort({
+    required TeamConfig? team,
+    required TeamMemberConfig? member,
+    required AppProviderConfig provider,
+    String? profileEffort,
+  }) {
+    if (profileEffort != null && profileEffort.trim().isNotEmpty) {
+      return profileEffort.trim();
+    }
+    const capability = CodexEffortCapability();
+    return resolveLaunchEffort(
+      capability: capability,
+      cli: CliTool.codex,
+      context: EffortResolveContext(
+        team: team,
+        member: member,
+        provider: provider,
+        model: member?.model.isNotEmpty == true
+            ? member!.model
+            : provider.defaultModel,
+      ),
+    );
   }
 
   static String? _storedCodexAuthPath(

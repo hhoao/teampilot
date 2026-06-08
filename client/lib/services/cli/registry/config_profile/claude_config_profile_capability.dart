@@ -4,7 +4,9 @@ import '../../../../models/claude_credential_link_result.dart';
 import '../../../../models/project_profile.dart';
 import '../../../../models/team_config.dart';
 import '../../../../utils/team_member_naming.dart';
+import '../../../provider/claude/claude_effort_capability.dart';
 import '../../../provider/claude/claude_official_provider.dart';
+import '../capabilities/cli_effort_capability.dart';
 import '../../../../repositories/app_provider_repository.dart';
 import '../../../provider/claude/claude_provider_credentials_service.dart';
 import '../../../provider/claude/claude_provider_settings_resolver.dart';
@@ -146,11 +148,16 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
       workingDirectory,
       additionalDirectories: ctx.additionalDirectories,
     );
+    final effortLevel = _resolveClaudeEffort(
+      team: team,
+      member: ctx.member,
+      model: ctx.member?.model ?? '',
+    );
     await _writeSettings(
       delegate,
       scope,
       claude?.settings,
-      effortLevel: team?.claudeEffortLevel ?? 'xhigh',
+      effortLevel: effortLevel,
       teammateMode: team?.claudeTeammateMode ?? 'in-process',
       mixed: mixed,
     );
@@ -168,6 +175,7 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
     await _writeMemberProfiles(
       delegate: delegate,
       scope: scope,
+      team: team,
       members: ctx.members,
       launchedMember: ctx.member,
       providerSettings: claude?.settings,
@@ -293,12 +301,20 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
       workingDirectory,
       additionalDirectories: ctx.additionalDirectories,
     );
+    final effortLevel = _resolveClaudeEffort(
+      team: null,
+      member: member,
+      model: member.model.isNotEmpty ? member.model : profile.agent.model,
+      profileEffort: profile.agent.effort.isNotEmpty
+          ? profile.agent.effort
+          : profile.effortsByTool[toolId],
+    );
     await _writeSettingsAt(
       delegate,
       memberToolDir,
       scope,
       settings,
-      effortLevel: 'xhigh',
+      effortLevel: effortLevel,
       standalone: true,
     );
     await _writeStandaloneMemberProfile(
@@ -307,6 +323,8 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
       scope: scope,
       member: member,
       providerSettings: settings,
+      team: null,
+      effortLevel: effortLevel,
     );
 
     final trimmedProviderId = resolvedProviderId?.trim() ?? '';
@@ -422,6 +440,8 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
     required LaunchProfileScope scope,
     required TeamMemberConfig member,
     required Map<String, Object?>? providerSettings,
+    required TeamConfig? team,
+    required String effortLevel,
   }) async {
     await MemberRoleProvision.syncRolePromptFile(
       fs: delegate.fs,
@@ -438,6 +458,7 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
     final settings = _memberSettings(
       providerSettings,
       member,
+      effortLevel: effortLevel,
       mixed: false,
       standalone: true,
     );
@@ -564,6 +585,7 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
   Future<void> _writeMemberProfiles({
     required ConfigProfileDelegate delegate,
     required LaunchProfileScope scope,
+    required TeamConfig? team,
     required List<TeamMemberConfig> members,
     required TeamMemberConfig? launchedMember,
     required Map<String, Object?>? providerSettings,
@@ -587,6 +609,7 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
       await _writeMemberProfile(
         delegate: delegate,
         scope: scope,
+        team: team,
         member: member,
         providerSettings:
             providerSettingsByMember[member.id] ?? providerSettings,
@@ -600,6 +623,7 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
   Future<void> _writeMemberProfile({
     required ConfigProfileDelegate delegate,
     required LaunchProfileScope scope,
+    required TeamConfig? team,
     required TeamMemberConfig member,
     required Map<String, Object?>? providerSettings,
     required bool forceTeamLeadDelegateMode,
@@ -625,7 +649,17 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
       scope.sessionId,
       member,
     );
-    var settings = _memberSettings(providerSettings, member, mixed: mixed);
+    final effortLevel = _resolveClaudeEffort(
+      team: team,
+      member: member,
+      model: member.model,
+    );
+    var settings = _memberSettings(
+      providerSettings,
+      member,
+      effortLevel: effortLevel,
+      mixed: mixed,
+    );
     settings = MemberRoleProvision.applyTeamSessionPolicy(settings, mixed: mixed);
     if (mixed && idleUrl != null && idleUrl.isNotEmpty) {
       settings = mergeStopIdleHook(settings, member.id, idleUrl);
@@ -713,15 +747,37 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
     return settings;
   }
 
+  static String _resolveClaudeEffort({
+    required TeamConfig? team,
+    required TeamMemberConfig? member,
+    required String model,
+    String? profileEffort,
+  }) {
+    if (profileEffort != null && profileEffort.trim().isNotEmpty) {
+      return profileEffort.trim();
+    }
+    const capability = ClaudeEffortCapability();
+    return resolveLaunchEffort(
+      capability: capability,
+      cli: CliTool.claude,
+      context: EffortResolveContext(
+        team: team,
+        member: member,
+        model: model,
+      ),
+    );
+  }
+
   static Map<String, Object?> _memberSettings(
     Map<String, Object?>? providerSettings,
     TeamMemberConfig member, {
+    required String effortLevel,
     required bool mixed,
     bool standalone = false,
   }) {
     final settings = _teamSettings(
       providerSettings,
-      effortLevel: 'xhigh',
+      effortLevel: effortLevel,
       teammateMode: 'in-process',
       mixed: mixed,
       standalone: standalone,

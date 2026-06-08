@@ -1262,6 +1262,18 @@ abstract class AppLocalizations {
   /// **'Provider & model'**
   String get projectCliProviderModelTitle;
 
+  /// No description provided for @projectCliEffortLevel.
+  ///
+  /// In en, this message translates to:
+  /// **'Reasoning effort'**
+  String get projectCliEffortLevel;
+
+  /// No description provided for @projectCliEffortLevelSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Default effort for this CLI in the project (leave empty to use provider default).'**
+  String get projectCliEffortLevelSubtitle;
+
   /// No description provided for @projectCliConfigure.
   ///
   /// In en, this message translates to:
@@ -4639,6 +4651,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'--permission-mode acceptEdits'**
   String get teamExtraArgsHint;
+
+  /// No description provided for @teamEffortLevel.
+  ///
+  /// In en, this message translates to:
+  /// **'Reasoning effort'**
+  String get teamEffortLevel;
+
+  /// No description provided for @teamEffortLevelSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Default effort for this team (Claude effortLevel / Codex model_reasoning_effort).'**
+  String get teamEffortLevelSubtitle;
+
+  /// No description provided for @memberEffortLevel.
+  ///
+  /// In en, this message translates to:
+  /// **'Member effort override'**
+  String get memberEffortLevel;
+
+  /// No description provided for @memberEffortLevelSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Overrides team default when set.'**
+  String get memberEffortLevelSubtitle;
+
+  /// No description provided for @memberEffortInheritHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Inherit team default'**
+  String get memberEffortInheritHint;
+
+  /// No description provided for @providerEffortLevel.
+  ///
+  /// In en, this message translates to:
+  /// **'Reasoning effort'**
+  String get providerEffortLevel;
 
   /// No description provided for @teamLoop.
   ///

@@ -34,6 +34,7 @@ final class CodexHomeProvisioner {
     String? busOverlayToml,
     Iterable<String> trustedProjectDirectories = const [],
     String? storedAuthPath,
+    String? reasoningEffortOverride,
   }) async {
     final store = _fs;
     if (store == null) {
@@ -63,6 +64,7 @@ final class CodexHomeProvisioner {
       provider: provider,
       busOverlayToml: busOverlayToml,
       trustedProjectDirectories: trustedProjectDirectories,
+      reasoningEffortOverride: reasoningEffortOverride,
     );
 
     final error = _generator.validateCodexToml(toml);

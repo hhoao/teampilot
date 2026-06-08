@@ -14,11 +14,13 @@ import '../../../../theme/app_text_styles.dart';
 import '../../../../widgets/dropdown/app_dropdown_decoration.dart';
 import '../../../../widgets/dropdown/app_dropdown_field.dart';
 import '../../../../widgets/app_provider/brand_dropdown_rows.dart';
+import '../../../../widgets/app_provider/cli_effort_picker_field.dart';
 import '../../../../widgets/app_provider/provider_model_picker_field.dart';
 import '../../../../widgets/app_provider/provider_brand_icon.dart';
 import '../../../../widgets/cli/cli_brand_icon.dart';
 import '../../../../widgets/settings/workspace_settings_widgets.dart';
 import 'project_cli_config_helpers.dart';
+import 'project_cli_effort_helpers.dart';
 
 /// Provider/model defaults per launchable CLI (cc-switch–style list rows).
 class ProjectCliConfigList extends StatelessWidget {
@@ -121,12 +123,15 @@ class ProjectCliConfigRow extends StatelessWidget {
       selectedProvider: selectedProvider,
       supportsProviderCatalog: supportsProviderCatalog,
     );
+    final model = projectCliModelId(profile, cli);
+    final effort = projectCliEffortId(profile, cli);
     final subtitle = _subtitle(
       l10n: l10n,
       configured: configured,
       supportsProviderCatalog: supportsProviderCatalog,
       selectedProvider: selectedProvider,
-      model: projectCliModelId(profile, cli),
+      model: model,
+      effort: effort,
       hidesModelPicker: projectCliHidesModelPicker(
         registry,
         cli,
@@ -225,6 +230,7 @@ class ProjectCliConfigRow extends StatelessWidget {
     required bool supportsProviderCatalog,
     required AppProviderConfig? selectedProvider,
     required String model,
+    required String effort,
     required bool hidesModelPicker,
   }) {
     if (!supportsProviderCatalog) {
@@ -234,11 +240,19 @@ class ProjectCliConfigRow extends StatelessWidget {
     final providerName = selectedProvider?.name.trim() ?? '';
     if (providerName.isEmpty) return l10n.projectCliConfigured;
     final modelLabel = model.trim();
+    final effortLabel = effort.trim();
     if (modelLabel.isEmpty && hidesModelPicker) {
-      return providerName;
+      if (effortLabel.isEmpty) return providerName;
+      return '$providerName · $effortLabel';
     }
-    if (modelLabel.isEmpty) return providerName;
-    return l10n.projectCliConfigSummary(providerName, modelLabel);
+    if (modelLabel.isEmpty) {
+      if (effortLabel.isEmpty) return providerName;
+      return '$providerName · $effortLabel';
+    }
+    if (effortLabel.isEmpty) {
+      return l10n.projectCliConfigSummary(providerName, modelLabel);
+    }
+    return '${l10n.projectCliConfigSummary(providerName, modelLabel)} · $effortLabel';
   }
 }
 
@@ -318,12 +332,14 @@ class ProjectCliConfigureDialog extends StatefulWidget {
 class _ProjectCliConfigureDialogState extends State<ProjectCliConfigureDialog> {
   late String _providerId;
   late String _modelId;
+  late String _effortId;
 
   @override
   void initState() {
     super.initState();
     _providerId = projectCliProviderId(widget.profile, widget.cli);
     _modelId = projectCliModelId(widget.profile, widget.cli);
+    _effortId = projectCliEffortId(widget.profile, widget.cli);
   }
 
   AppProviderConfig? _selectedProvider(Iterable<AppProviderConfig> providers) {
@@ -338,6 +354,7 @@ class _ProjectCliConfigureDialogState extends State<ProjectCliConfigureDialog> {
       widget.cli,
       provider: _providerId,
       model: _modelId,
+      effort: _effortId,
     );
     if (!mounted) return;
     Navigator.of(context).pop();
@@ -373,6 +390,12 @@ class _ProjectCliConfigureDialogState extends State<ProjectCliConfigureDialog> {
       widget.cli,
       selectedProvider,
     );
+    final showEffortPicker = projectCliShowsEffortPicker(
+      registry: registry,
+      cli: widget.cli,
+      provider: selectedProvider,
+      model: _modelId,
+    );
 
     return AlertDialog(
       title: Text(title),
@@ -398,6 +421,7 @@ class _ProjectCliConfigureDialogState extends State<ProjectCliConfigureDialog> {
                   setState(() {
                     _providerId = value ?? '';
                     _modelId = '';
+                    _effortId = '';
                   });
                 },
                 itemBuilder: providerDropdownItemBuilder(
@@ -405,7 +429,7 @@ class _ProjectCliConfigureDialogState extends State<ProjectCliConfigureDialog> {
                   labelFor: (value) => providerLabels[value] ?? value,
                 ),
               ),
-              showDividerBelow: hideModelPicker,
+              showDividerBelow: hideModelPicker || showEffortPicker,
             ),
             if (!hideModelPicker)
               SettingsLabeledStackedRow(
@@ -420,8 +444,37 @@ class _ProjectCliConfigureDialogState extends State<ProjectCliConfigureDialog> {
                   value: _modelId,
                   hintText: l10n.selectModel,
                   decoration: dropdownDeco,
+                  onChanged: (value) => setState(() {
+                    _modelId = value.trim();
+                    if (!projectCliShowsEffortPicker(
+                      registry: registry,
+                      cli: widget.cli,
+                      provider: selectedProvider,
+                      model: _modelId,
+                    )) {
+                      _effortId = '';
+                    }
+                  }),
+                ),
+                showDividerBelow: showEffortPicker,
+              ),
+            if (showEffortPicker)
+              SettingsLabeledStackedRow(
+                title: l10n.projectCliEffortLevel,
+                subtitle: l10n.projectCliEffortLevelSubtitle,
+                body: CliEffortPickerField(
+                  key: ValueKey(
+                    'project-cli-effort-$_providerId-$_modelId-$_effortId',
+                  ),
+                  cli: widget.cli,
+                  value: _effortId,
+                  provider: selectedProvider,
+                  model: _modelId,
+                  allowInherit: true,
+                  inheritLabel: l10n.memberEffortInheritHint,
+                  decoration: dropdownDeco,
                   onChanged: (value) =>
-                      setState(() => _modelId = value.trim()),
+                      setState(() => _effortId = value.trim()),
                 ),
                 showDividerBelow: false,
               ),

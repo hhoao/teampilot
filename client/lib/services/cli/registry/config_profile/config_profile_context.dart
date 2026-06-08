@@ -79,6 +79,7 @@ TeamMemberConfig standaloneMemberFromProfile(ProjectProfile profile) {
     prompt: agent.prompt,
     dangerouslySkipPermissions: agent.dangerouslySkipPermissions,
     cli: profile.cli,
+    effort: agent.effort,
   );
 }
 

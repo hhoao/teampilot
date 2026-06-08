@@ -10,7 +10,6 @@ import '../../../services/app/onboarding_service.dart';
 import '../../../models/app_provider_config.dart';
 import '../../../services/cli/registry/capabilities/provider_model_capability.dart';
 import '../../../services/cli/registry/cli_tool_registry_scope.dart';
-import '../../../services/provider/claude/claude_official_provider.dart';
 import '../../../widgets/app_provider/brand_dropdown_rows.dart';
 import '../../../widgets/app_provider/provider_model_picker_field.dart';
 import '../../../widgets/dropdown/app_dropdown_decoration.dart';
@@ -101,8 +100,21 @@ class _OnboardingDefaultProviderStepState
   }
 
   void _loadInitialDefaultModel(AppProviderConfig? provider) {
-    final isOfficial = provider != null && isOfficialClaudeProvider(provider);
-    _defaultModel = isOfficial ? '' : (provider?.defaultModel ?? '');
+    if (provider == null) {
+      _defaultModel = '';
+      return;
+    }
+    final capability = CliToolRegistryScope.of(
+      context,
+    ).capability<ProviderModelCapability>(CliTool.claude);
+    if (capability == null) {
+      _defaultModel = provider.defaultModel;
+      return;
+    }
+    _defaultModel = capability.defaultModel(
+      provider: provider,
+      providerId: provider.id,
+    );
   }
 
   Map<String, String> _readEnv(AppProviderConfig? provider) {
@@ -135,10 +147,9 @@ class _OnboardingDefaultProviderStepState
       env['ANTHROPIC_DEFAULT_OPUS_MODEL'] = _opusController.text.trim();
     }
 
-    final isOfficial = isOfficialClaudeProvider(provider);
     await cubit.upsertProvider(
       provider.copyWith(
-        defaultModel: isOfficial ? '' : _defaultModel.trim(),
+        defaultModel: _defaultModel.trim(),
         config: {...provider.config, if (env.isNotEmpty) 'env': env},
       ),
     );
@@ -245,7 +256,7 @@ class _OnboardingDefaultProviderStepState
                     if (value == null) return;
                     setState(() {
                       _selectedProviderId = value;
-                      _defaultModel = '';
+                      _loadInitialDefaultModel(_selectedProvider);
                       _loadClaudeEnvFields(_selectedProvider);
                     });
                     unawaited(_applySelection());

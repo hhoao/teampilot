@@ -617,6 +617,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get projectCliProviderModelTitle => '提供商与模型';
 
   @override
+  String get projectCliEffortLevel => '推理力度';
+
+  @override
+  String get projectCliEffortLevelSubtitle => '本项目使用该 CLI 时的默认力度（留空则使用提供商默认）。';
+
+  @override
   String get projectCliConfigure => '配置';
 
   @override
@@ -2445,6 +2451,25 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get teamExtraArgsHint => '--permission-mode acceptEdits';
+
+  @override
+  String get teamEffortLevel => '推理力度';
+
+  @override
+  String get teamEffortLevelSubtitle =>
+      '团队默认力度（Claude effortLevel / Codex model_reasoning_effort）。';
+
+  @override
+  String get memberEffortLevel => '成员力度覆盖';
+
+  @override
+  String get memberEffortLevelSubtitle => '设置后覆盖团队默认值。';
+
+  @override
+  String get memberEffortInheritHint => '继承团队默认';
+
+  @override
+  String get providerEffortLevel => '推理力度';
 
   @override
   String get teamLoop => '阶段循环';

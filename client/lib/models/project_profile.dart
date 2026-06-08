@@ -12,6 +12,7 @@ class ProjectAgentConfig {
     this.extraArgs = '',
     this.prompt = '',
     this.dangerouslySkipPermissions = false,
+    this.effort = '',
   });
 
   factory ProjectAgentConfig.fromJson(Map<String, Object?> json) {
@@ -25,6 +26,7 @@ class ProjectAgentConfig {
       dangerouslySkipPermissions: TeamMemberConfig.decodeDangerouslySkipPermissions(
         json['dangerouslySkipPermissions'],
       ),
+      effort: json['effort'] as String? ?? '',
     );
   }
 
@@ -35,6 +37,7 @@ class ProjectAgentConfig {
   final String extraArgs;
   final String prompt;
   final bool dangerouslySkipPermissions;
+  final String effort;
 
   ProjectAgentConfig copyWith({
     String? provider,
@@ -44,6 +47,7 @@ class ProjectAgentConfig {
     String? extraArgs,
     String? prompt,
     bool? dangerouslySkipPermissions,
+    String? effort,
   }) {
     return ProjectAgentConfig(
       provider: provider ?? this.provider,
@@ -54,6 +58,7 @@ class ProjectAgentConfig {
       prompt: prompt ?? this.prompt,
       dangerouslySkipPermissions:
           dangerouslySkipPermissions ?? this.dangerouslySkipPermissions,
+      effort: effort ?? this.effort,
     );
   }
 
@@ -66,6 +71,7 @@ class ProjectAgentConfig {
       'extraArgs': extraArgs,
       'prompt': prompt,
       if (dangerouslySkipPermissions) 'dangerouslySkipPermissions': true,
+      if (effort.isNotEmpty) 'effort': effort,
     };
   }
 
@@ -80,7 +86,8 @@ class ProjectAgentConfig {
             agentType == other.agentType &&
             extraArgs == other.extraArgs &&
             prompt == other.prompt &&
-            dangerouslySkipPermissions == other.dangerouslySkipPermissions;
+            dangerouslySkipPermissions == other.dangerouslySkipPermissions &&
+            effort == other.effort;
   }
 
   @override
@@ -92,6 +99,7 @@ class ProjectAgentConfig {
     extraArgs,
     prompt,
     dangerouslySkipPermissions,
+    effort,
   );
 }
 
@@ -106,9 +114,11 @@ class ProjectProfile {
     this.mcpServerIds = const [],
     Map<String, String>? providerIdsByTool,
     Map<String, String>? modelsByTool,
+    Map<String, String>? effortsByTool,
     this.updatedAt = 0,
   }) : _providerIdsByTool = providerIdsByTool,
-       _modelsByTool = modelsByTool;
+       _modelsByTool = modelsByTool,
+       _effortsByTool = effortsByTool;
 
   factory ProjectProfile.fromJson(Map<String, Object?> json) {
     final rawAgent = json['agent'];
@@ -124,6 +134,7 @@ class ProjectProfile {
       mcpServerIds: TeamConfig.decodeMcpServerIds(json['mcpServerIds']),
       providerIdsByTool: _decodeStringMapByKey(json['providerIdsByTool']),
       modelsByTool: _decodeStringMapByKey(json['modelsByTool']),
+      effortsByTool: _decodeStringMapByKey(json['effortsByTool']),
       updatedAt: (json['updatedAt'] as num?)?.toInt() ?? 0,
     );
   }
@@ -147,12 +158,15 @@ class ProjectProfile {
   final List<String> mcpServerIds;
   final Map<String, String>? _providerIdsByTool;
   final Map<String, String>? _modelsByTool;
+  final Map<String, String>? _effortsByTool;
 
   /// Non-null even for profiles loaded before [modelsByTool] existed (hot reload).
   Map<String, String> get providerIdsByTool => _providerIdsByTool ?? const {};
 
   /// Non-null even for profiles loaded before [modelsByTool] existed (hot reload).
   Map<String, String> get modelsByTool => _modelsByTool ?? const {};
+
+  Map<String, String> get effortsByTool => _effortsByTool ?? const {};
 
   final int updatedAt;
 
@@ -165,6 +179,7 @@ class ProjectProfile {
     List<String>? mcpServerIds,
     Map<String, String>? providerIdsByTool,
     Map<String, String>? modelsByTool,
+    Map<String, String>? effortsByTool,
     int? updatedAt,
   }) {
     return ProjectProfile(
@@ -176,6 +191,7 @@ class ProjectProfile {
       mcpServerIds: mcpServerIds ?? this.mcpServerIds,
       providerIdsByTool: providerIdsByTool ?? this.providerIdsByTool,
       modelsByTool: modelsByTool ?? this.modelsByTool,
+      effortsByTool: effortsByTool ?? this.effortsByTool,
       updatedAt: updatedAt ?? this.updatedAt,
     );
   }
@@ -190,6 +206,7 @@ class ProjectProfile {
       if (mcpServerIds.isNotEmpty) 'mcpServerIds': mcpServerIds,
       if (providerIdsByTool.isNotEmpty) 'providerIdsByTool': providerIdsByTool,
       if (modelsByTool.isNotEmpty) 'modelsByTool': modelsByTool,
+      if (effortsByTool.isNotEmpty) 'effortsByTool': effortsByTool,
       if (updatedAt > 0) 'updatedAt': updatedAt,
     };
   }
@@ -207,6 +224,7 @@ class ProjectProfile {
             listEquals(mcpServerIds, other.mcpServerIds) &&
             mapEquals(providerIdsByTool, other.providerIdsByTool) &&
             mapEquals(modelsByTool, other.modelsByTool) &&
+            mapEquals(effortsByTool, other.effortsByTool) &&
             updatedAt == other.updatedAt;
   }
 
@@ -220,6 +238,7 @@ class ProjectProfile {
     Object.hashAll(mcpServerIds),
     Object.hashAll(providerIdsByTool.entries),
     Object.hashAll(modelsByTool.entries),
+    Object.hashAll(effortsByTool.entries),
     updatedAt,
   );
 }

@@ -72,6 +72,7 @@ class TeamMemberConfig {
     this.joinedAt = 0,
     this.dangerouslySkipPermissions = false,
     this.cli,
+    this.effort = '',
   });
 
   static bool decodeDangerouslySkipPermissions(Object? raw) {
@@ -106,6 +107,7 @@ class TeamMemberConfig {
         json['dangerouslySkipPermissions'],
       ),
       cli: CliTool.tryParse(json['cli'] as String?),
+      effort: json['effort'] as String? ?? '',
     );
   }
 
@@ -127,6 +129,9 @@ class TeamMemberConfig {
   /// 成员 CLI 覆盖（仅 mixed 模式生效）；null 回退 [TeamConfig.cli]。
   final CliTool? cli;
 
+  /// Optional per-member effort override (`effortLevel` / `model_reasoning_effort`).
+  final String effort;
+
   /// 成员有效 CLI：native 一律 team.cli；mixed 用成员覆盖、否则 team 默认。
   CliTool cliWithin(TeamConfig team) =>
       team.teamMode == TeamMode.mixed ? (cli ?? team.cli) : team.cli;
@@ -146,6 +151,8 @@ class TeamMemberConfig {
     bool? dangerouslySkipPermissions,
     CliTool? cli,
     bool updateCli = false,
+    String? effort,
+    bool updateEffort = false,
   }) {
     return TeamMemberConfig(
       id: id ?? this.id,
@@ -160,6 +167,7 @@ class TeamMemberConfig {
       dangerouslySkipPermissions:
           dangerouslySkipPermissions ?? this.dangerouslySkipPermissions,
       cli: updateCli ? cli : this.cli,
+      effort: updateEffort ? (effort ?? '') : this.effort,
     );
   }
 
@@ -176,6 +184,7 @@ class TeamMemberConfig {
       'joinedAt': joinedAt,
       if (dangerouslySkipPermissions) 'dangerouslySkipPermissions': true,
       if (cli != null) 'cli': cli!.value,
+      if (effort.isNotEmpty) 'effort': effort,
     };
   }
 
@@ -194,7 +203,8 @@ class TeamMemberConfig {
             prompt == other.prompt &&
             joinedAt == other.joinedAt &&
             dangerouslySkipPermissions == other.dangerouslySkipPermissions &&
-            cli == other.cli;
+            cli == other.cli &&
+            effort == other.effort;
   }
 
   @override
@@ -210,6 +220,7 @@ class TeamMemberConfig {
     joinedAt,
     dangerouslySkipPermissions,
     cli,
+    effort,
   );
 }
 
@@ -232,6 +243,7 @@ class TeamConfig {
     this.loop,
     this.claudeTeammateMode = 'in-process',
     this.claudeEffortLevel = 'xhigh',
+    this.cliEffortLevels = const {},
     this.autoLaunchMembers,
     this.forceTeamLeadDelegateMode = true,
   });
@@ -311,6 +323,10 @@ class TeamConfig {
       loop: decodeLoop(json['loop']),
       claudeTeammateMode: json['claudeTeammateMode'] as String? ?? 'in-process',
       claudeEffortLevel: json['claudeEffortLevel'] as String? ?? 'xhigh',
+      cliEffortLevels: _mergeCliEffortLevels(
+        _decodeProviderIdsByTool(json['cliEffortLevels']),
+        json['claudeEffortLevel'] as String? ?? 'xhigh',
+      ),
       autoLaunchMembers: json['autoLaunchMembers'] as bool?,
       forceTeamLeadDelegateMode: decodeForceTeamLeadDelegateMode(
         json['forceTeamLeadDelegateMode'],
@@ -327,6 +343,38 @@ class TeamConfig {
             entry.value.toString().trim().isNotEmpty)
           entry.key as String: entry.value.toString().trim(),
     };
+  }
+
+  static Map<String, String> _mergeCliEffortLevels(
+    Map<String, String> fromJson,
+    String claudeEffortLevel,
+  ) {
+    final merged = Map<String, String>.from(fromJson);
+    merged.putIfAbsent(CliTool.claude.value, () => claudeEffortLevel.trim());
+    return merged;
+  }
+
+  String effortForCli(CliTool cli) {
+    final fromMap = cliEffortLevels[cli.value]?.trim() ?? '';
+    if (fromMap.isNotEmpty) return fromMap;
+    if (cli == CliTool.claude) return claudeEffortLevel;
+    return '';
+  }
+
+  TeamConfig withEffortForCli(CliTool cli, String effort) {
+    final trimmed = effort.trim();
+    final next = Map<String, String>.from(cliEffortLevels);
+    if (trimmed.isEmpty) {
+      next.remove(cli.value);
+    } else {
+      next[cli.value] = trimmed;
+    }
+    return copyWith(
+      cliEffortLevels: next,
+      claudeEffortLevel: cli == CliTool.claude
+          ? (trimmed.isEmpty ? 'xhigh' : trimmed)
+          : null,
+    );
   }
 
   /// Canonical slug ([TeamMemberNaming.slugTeamId]); used for paths and [AppSession.sessionTeam].
@@ -367,6 +415,9 @@ class TeamConfig {
   /// Claude `settings.json` `effortLevel`.
   final String claudeEffortLevel;
 
+  /// Per-CLI effort defaults (`claude` → effortLevel, `codex` → reasoning effort).
+  final Map<String, String> cliEffortLevels;
+
   /// When non-null, overrides global session pref for auto-launching members.
   final bool? autoLaunchMembers;
 
@@ -393,6 +444,7 @@ class TeamConfig {
     bool updateLoop = false,
     String? claudeTeammateMode,
     String? claudeEffortLevel,
+    Map<String, String>? cliEffortLevels,
     bool? autoLaunchMembers,
     bool updateAutoLaunchMembers = false,
     bool? forceTeamLeadDelegateMode,
@@ -415,6 +467,7 @@ class TeamConfig {
       loop: updateLoop ? loop : this.loop,
       claudeTeammateMode: claudeTeammateMode ?? this.claudeTeammateMode,
       claudeEffortLevel: claudeEffortLevel ?? this.claudeEffortLevel,
+      cliEffortLevels: cliEffortLevels ?? this.cliEffortLevels,
       autoLaunchMembers: updateAutoLaunchMembers
           ? autoLaunchMembers
           : this.autoLaunchMembers,
@@ -443,6 +496,7 @@ class TeamConfig {
       if (claudeTeammateMode != 'in-process')
         'claudeTeammateMode': claudeTeammateMode,
       if (claudeEffortLevel != 'xhigh') 'claudeEffortLevel': claudeEffortLevel,
+      if (cliEffortLevels.isNotEmpty) 'cliEffortLevels': cliEffortLevels,
       if (autoLaunchMembers != null) 'autoLaunchMembers': autoLaunchMembers!,
       if (forceTeamLeadDelegateMode)
         'forceTeamLeadDelegateMode': forceTeamLeadDelegateMode,
@@ -470,6 +524,7 @@ class TeamConfig {
             loop == other.loop &&
             claudeTeammateMode == other.claudeTeammateMode &&
             claudeEffortLevel == other.claudeEffortLevel &&
+            mapEquals(cliEffortLevels, other.cliEffortLevels) &&
             autoLaunchMembers == other.autoLaunchMembers &&
             forceTeamLeadDelegateMode == other.forceTeamLeadDelegateMode;
   }
@@ -492,6 +547,7 @@ class TeamConfig {
     loop,
     claudeTeammateMode,
     claudeEffortLevel,
+    Object.hashAll(cliEffortLevels.entries),
     autoLaunchMembers,
     forceTeamLeadDelegateMode,
   );

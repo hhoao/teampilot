@@ -12,12 +12,16 @@ import '../../models/provider_presets/cursor_provider_presets.dart';
 import '../../models/provider_presets/flashskyai_provider_presets.dart';
 import '../../models/provider_presets/opencode_provider_presets.dart';
 import '../../theme/workspace_surface_layers.dart';
+import '../../services/cli/registry/capabilities/cli_effort_capability.dart';
 import '../../services/cli/registry/capabilities/provider_credential_capability.dart';
+import '../../services/cli/registry/capabilities/provider_model_capability.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../utils/debounce/debounce.dart';
 import '../app_icon_button.dart';
 import 'brand_dropdown_rows.dart';
+import 'cli_effort_picker_field.dart';
 import 'provider_credential_action_bar.dart';
+import 'provider_model_picker_field.dart';
 import '../dropdown/app_dropdown_field.dart';
 
 List<AppProviderPreset> appProviderPresetsFor(CliTool cli) {
@@ -74,6 +78,7 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
   late List<String> _endpointCandidates;
   late Map<String, Object?> _config;
   late String _claudeApiFormat;
+  late String _codexEffort;
   late bool _showAdvancedJson;
 
   bool get _isEditing => widget.existing != null;
@@ -112,6 +117,7 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
       text: env['ANTHROPIC_DEFAULT_OPUS_MODEL']?.toString() ?? '',
     );
     _claudeApiFormat = _config['apiFormat']?.toString() ?? 'anthropic';
+    _codexEffort = _config['model_reasoning_effort']?.toString() ?? '';
     _showAdvancedJson = false;
     _jsonCtl = TextEditingController(
       text: e != null
@@ -136,6 +142,7 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
     _config = _defaultConfig(cli);
     _apiKeyField = _defaultApiKeyField(cli);
     _claudeApiFormat = _config['apiFormat']?.toString() ?? 'anthropic';
+    _codexEffort = _config['model_reasoning_effort']?.toString() ?? '';
     if (cli != CliTool.claude) {
       _haikuModelCtl.clear();
       _sonnetModelCtl.clear();
@@ -181,6 +188,7 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
       _endpointCandidates = t.endpointCandidates.toList();
       _config = Map<String, Object?>.from(t.config);
       _claudeApiFormat = _config['apiFormat']?.toString() ?? 'anthropic';
+      _codexEffort = _config['model_reasoning_effort']?.toString() ?? '';
       _nameCtl.text = t.name;
       _websiteCtl.text = t.websiteUrl;
       _baseUrlCtl.text = t.baseUrl;
@@ -427,10 +435,26 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
                     ),
                   ],
                   const SizedBox(height: 12),
-                  TextField(
+                  _DefaultModelField(
+                    cli: widget.cli,
+                    draftProvider: _buildNormalDraft,
                     controller: _defaultModelCtl,
-                    decoration: InputDecoration(labelText: l10n.defaultModel),
+                    label: l10n.defaultModel,
+                    onChanged: () => setState(() {}),
                   ),
+                  if (_showsProviderEffortPicker(context)) ...[
+                    const SizedBox(height: 12),
+                    _FieldLabel(l10n.providerEffortLevel),
+                    const SizedBox(height: 6),
+                    CliEffortPickerField(
+                      cli: widget.cli,
+                      value: _codexEffort,
+                      provider: _buildNormalDraft(),
+                      model: _defaultModelCtl.text,
+                      onChanged: (value) =>
+                          setState(() => _codexEffort = value),
+                    ),
+                  ],
                   if (widget.cli == CliTool.claude) ...[
                     const SizedBox(height: 16),
                     _ClaudeAdvancedOptions(
@@ -503,6 +527,19 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
     return existing != null && capability.appliesTo(existing);
   }
 
+  bool _showsProviderEffortPicker(BuildContext context) {
+    final capability = CliToolRegistryScope.of(
+      context,
+    ).capability<CliEffortCapability>(widget.cli);
+    if (capability == null) return false;
+    final draft = _buildNormalDraft();
+    if (capability.providerPickerPlacement(draft) !=
+        EffortPickerPlacement.provider) {
+      return false;
+    }
+    return capability.isApplicable(model: _defaultModelCtl.text);
+  }
+
   bool _hidesApiKeyFields(BuildContext context) {
     final capability = CliToolRegistryScope.of(
       context,
@@ -515,6 +552,16 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
   }
 
   Map<String, Object?> _buildConfigFromFields() {
+    if (widget.cli == CliTool.codex) {
+      final config = Map<String, Object?>.from(_config);
+      final effort = _codexEffort.trim();
+      if (effort.isEmpty) {
+        config.remove('model_reasoning_effort');
+      } else {
+        config['model_reasoning_effort'] = effort;
+      }
+      return config;
+    }
     if (widget.cli != CliTool.claude) return _config;
 
     final config = Map<String, Object?>.from(_config);
@@ -733,6 +780,50 @@ Map<String, Object?> _defaultConfig(CliTool cli) {
 Map<String, Object?> _claudeEnvFromConfig(Map<String, Object?> config) {
   final raw = config['env'];
   return raw is Map ? Map<String, Object?>.from(raw) : <String, Object?>{};
+}
+
+class _DefaultModelField extends StatelessWidget {
+  const _DefaultModelField({
+    required this.cli,
+    required this.draftProvider,
+    required this.controller,
+    required this.label,
+    required this.onChanged,
+  });
+
+  final CliTool cli;
+  final AppProviderConfig Function() draftProvider;
+  final TextEditingController controller;
+  final String label;
+  final VoidCallback onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final draft = draftProvider();
+    final capability = CliToolRegistryScope.of(
+      context,
+    ).capability<ProviderModelCapability>(cli);
+    if (capability != null &&
+        capability.pickerMode(draft) != ProviderModelPickerMode.hidden) {
+      return ProviderModelPickerField(
+        cli: cli,
+        providerId: draft.id,
+        provider: draft,
+        value: controller.text,
+        hintText: label,
+        onChanged: (value) {
+          controller.text = value;
+          onChanged();
+        },
+      );
+    }
+
+    return TextField(
+      controller: controller,
+      decoration: InputDecoration(labelText: label),
+      onChanged: (_) => onChanged(),
+    );
+  }
 }
 
 const _claudeApiFormats = [

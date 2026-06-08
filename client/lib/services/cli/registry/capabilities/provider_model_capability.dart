@@ -1,7 +1,6 @@
 import 'package:flutter/foundation.dart';
 
 import '../../../../models/app_provider_config.dart';
-import '../../../provider/claude/claude_official_provider.dart';
 import '../../../provider/opencode/opencode_model_catalog.dart';
 import '../cli_capability.dart';
 
@@ -103,34 +102,6 @@ String resolveDefaultProviderModel(ProviderModelCapability capability, {
     currentModel: '',
   );
   return candidates.isNotEmpty ? candidates.first : '';
-}
-
-final class ClaudeProviderModelCapability implements ProviderModelCapability {
-  const ClaudeProviderModelCapability();
-
-  @override
-  ProviderModelPickerMode pickerMode(AppProviderConfig provider) =>
-      isOfficialClaudeProvider(provider)
-      ? ProviderModelPickerMode.hidden
-      : ProviderModelPickerMode.catalogDropdown;
-
-  @override
-  List<String> modelCandidates({
-    required AppProviderConfig? provider,
-    required String providerId,
-    required String currentModel,
-  }) =>
-      mergeProviderModelCandidates(
-        builtInCatalog: const [],
-        provider: provider,
-        currentModel: currentModel,
-      );
-
-  @override
-  String defaultModel({
-    required AppProviderConfig? provider,
-    required String providerId,
-  }) => resolveDefaultProviderModel(this, provider: provider, providerId: providerId);
 }
 
 final class OpencodeProviderModelCapability implements ProviderModelCapability {

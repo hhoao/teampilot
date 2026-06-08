@@ -105,10 +105,13 @@ class ToolConfigGenerator {
       return existingConfigToml?.trim() ?? '';
     }
 
+    final effort =
+        provider.config['model_reasoning_effort']?.toString().trim() ?? 'high';
+
     return '''
 model_provider = "$modelProvider"
 model = "$model"
-model_reasoning_effort = "high"
+model_reasoning_effort = "$effort"
 disable_response_storage = true
 
 [model_providers.$modelProvider]

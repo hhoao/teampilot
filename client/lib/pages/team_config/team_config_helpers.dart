@@ -4,6 +4,7 @@ import '../../l10n/l10n_extensions.dart';
 import '../../models/app_provider_config.dart';
 import '../../models/team_config.dart';
 import '../../services/app/flashskyai_agent_catalog_service.dart';
+import '../../services/cli/registry/capabilities/cli_effort_capability.dart';
 import '../../services/cli/registry/capabilities/provider_catalog_capability.dart';
 import '../../services/cli/registry/cli_display_name.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
@@ -26,6 +27,26 @@ String teamCliDisplayLabel(
     return cliDisplayName(def, l10n, registry: CliToolRegistryScope.maybeOf(context));
   }
   return cli.value;
+}
+
+bool teamShowsEffortPicker(
+  BuildContext context, {
+  required CliTool cli,
+  required EffortPickerPlacement placement,
+  String model = '',
+}) {
+  final registry = CliToolRegistryScope.maybeOf(context);
+  if (registry == null) return false;
+  final capability = registry.capability<CliEffortCapability>(cli);
+  if (capability == null) return false;
+  final target = switch (placement) {
+    EffortPickerPlacement.team => capability.teamPickerPlacement(),
+    EffortPickerPlacement.member => capability.memberPickerPlacement(),
+    EffortPickerPlacement.provider => EffortPickerPlacement.hidden,
+    EffortPickerPlacement.hidden => EffortPickerPlacement.hidden,
+  };
+  if (target != placement) return false;
+  return capability.isApplicable(model: model);
 }
 
 String memberAgentDropdownItemLabel(

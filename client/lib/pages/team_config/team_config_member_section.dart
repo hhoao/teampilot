@@ -17,6 +17,8 @@ import '../../theme/app_text_styles.dart';
 import '../../utils/debounce/debounce.dart';
 import '../../utils/team_member_naming.dart';
 import '../../widgets/app_provider/brand_dropdown_rows.dart';
+import '../../services/cli/registry/capabilities/cli_effort_capability.dart';
+import '../../widgets/app_provider/cli_effort_picker_field.dart';
 import '../../widgets/app_provider/provider_model_picker_field.dart';
 import '../../widgets/dropdown/app_dropdown_decoration.dart';
 import '../../widgets/dropdown/app_dropdown_field.dart';
@@ -190,6 +192,12 @@ class TeamMemberConfigFormState extends State<TeamMemberConfigForm> {
         modelCapability == null ||
         modelCapability.pickerMode(selectedAppProvider) ==
             ProviderModelPickerMode.hidden;
+    final showMemberEffort = teamShowsEffortPicker(
+      context,
+      cli: memberCatalogCli,
+      placement: EffortPickerPlacement.member,
+      model: model,
+    );
 
     final showCustomAgentField =
         FlashskyaiAgentCatalog.activeDropdownValue(
@@ -374,6 +382,30 @@ class TeamMemberConfigFormState extends State<TeamMemberConfigForm> {
                 decoration: dropdownDeco,
                 onChanged: (value) =>
                     _update(m.copyWith(model: value.trim())),
+              ),
+              showDividerBelow: !showMemberEffort,
+            ),
+          if (showMemberEffort)
+            SettingsLabeledStackedRow(
+              title: l10n.memberEffortLevel,
+              subtitle: l10n.memberEffortLevelSubtitle,
+              body: CliEffortPickerField(
+                key: ValueKey('member-effort-$prov-$model-${m.effort}'),
+                cli: memberCatalogCli,
+                value: m.effort,
+                team: widget.team,
+                member: m,
+                provider: selectedAppProvider,
+                model: model,
+                allowInherit: true,
+                inheritLabel: l10n.memberEffortInheritHint,
+                decoration: dropdownDeco,
+                onChanged: (value) => _update(
+                  m.copyWith(
+                    effort: value,
+                    updateEffort: true,
+                  ),
+                ),
               ),
               showDividerBelow: true,
             ),

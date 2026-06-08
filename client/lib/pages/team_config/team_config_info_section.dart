@@ -6,8 +6,11 @@ import '../../l10n/l10n_extensions.dart';
 import '../../models/app_provider_config.dart';
 import '../../models/team_config.dart';
 import '../../utils/app_keys.dart';
+import '../../services/cli/registry/capabilities/cli_effort_capability.dart';
+import '../../widgets/app_provider/cli_effort_picker_field.dart';
 import '../../widgets/app_provider/team_tool_provider_selectors.dart';
 import '../../widgets/cli/cli_brand_icon.dart';
+import '../../widgets/dropdown/app_dropdown_decoration.dart';
 import '../../widgets/settings/workspace_settings_widgets.dart';
 import 'team_config_helpers.dart';
 
@@ -65,6 +68,12 @@ class TeamInfoSectionState extends State<TeamInfoSection> {
         catalogCli == CliTool.claude ||
         catalogCli == CliTool.flashskyai;
     final showToolProviders = catalogCli == CliTool.claude;
+    final showTeamEffort = teamShowsEffortPicker(
+      context,
+      cli: widget.team.cli,
+      placement: EffortPickerPlacement.team,
+    );
+    final teamEffort = widget.team.effortForCli(widget.team.cli);
 
     return SingleChildScrollView(
       child: Column(
@@ -161,8 +170,24 @@ class TeamInfoSectionState extends State<TeamInfoSection> {
                       widget.team.copyWith(extraArgs: v),
                     ),
                   ),
-                  showDividerBelow: showDelegateRow || showToolProviders,
+                  showDividerBelow:
+                      showDelegateRow || showToolProviders || showTeamEffort,
                 ),
+                if (showTeamEffort)
+                  SettingsLabeledStackedRow(
+                    title: l10n.teamEffortLevel,
+                    subtitle: l10n.teamEffortLevelSubtitle,
+                    body: CliEffortPickerField(
+                      cli: widget.team.cli,
+                      value: teamEffort,
+                      team: widget.team,
+                      decoration: AppDropdownDecorations.themed(context),
+                      onChanged: (value) => widget.cubit.updateSelected(
+                        widget.team.withEffortForCli(widget.team.cli, value),
+                      ),
+                    ),
+                    showDividerBelow: showDelegateRow || showToolProviders,
+                  ),
                 if (showDelegateRow)
                   SettingsLabeledRow(
                     title: l10n.teamLeadDelegateOnlyTitle,

@@ -644,6 +644,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get projectCliProviderModelTitle => 'Provider & model';
 
   @override
+  String get projectCliEffortLevel => 'Reasoning effort';
+
+  @override
+  String get projectCliEffortLevelSubtitle =>
+      'Default effort for this CLI in the project (leave empty to use provider default).';
+
+  @override
   String get projectCliConfigure => 'Configure';
 
   @override
@@ -2525,6 +2532,25 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get teamExtraArgsHint => '--permission-mode acceptEdits';
+
+  @override
+  String get teamEffortLevel => 'Reasoning effort';
+
+  @override
+  String get teamEffortLevelSubtitle =>
+      'Default effort for this team (Claude effortLevel / Codex model_reasoning_effort).';
+
+  @override
+  String get memberEffortLevel => 'Member effort override';
+
+  @override
+  String get memberEffortLevelSubtitle => 'Overrides team default when set.';
+
+  @override
+  String get memberEffortInheritHint => 'Inherit team default';
+
+  @override
+  String get providerEffortLevel => 'Reasoning effort';
 
   @override
   String get teamLoop => 'Phase loop';

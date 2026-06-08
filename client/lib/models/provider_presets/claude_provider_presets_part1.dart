@@ -14,7 +14,7 @@ const List<AppProviderPreset> claudeProviderPresetsPart1 = <AppProviderPreset>[
         category: AppProviderCategory.official,
         apiKeyField: "ANTHROPIC_AUTH_TOKEN",
         baseUrl: "",
-        defaultModel: "",
+        defaultModel: "sonnet",
         icon: "anthropic",
         iconColor: "#D4915D",
         isOfficial: true,
