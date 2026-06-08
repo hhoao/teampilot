@@ -46,6 +46,8 @@ Future<void> showHomeWorkspaceNewTeamDialog(
           CliTool cli,
           Map<String, String> providerIdsByTool,
           List<TeamMemberConfig>? members,
+          String description,
+          List<String> skillIds,
         })
       >(
         context: context,
@@ -58,6 +60,8 @@ Future<void> showHomeWorkspaceNewTeamDialog(
     cli: result.cli,
     teamMode: result.mode,
     providerIdsByTool: result.providerIdsByTool,
+    description: result.description,
+    skillIds: result.skillIds,
     members: (result.members != null && result.members!.isNotEmpty)
         ? result.members
         : DefaultTeamRoster.localized(
@@ -163,13 +167,12 @@ class _HomeWorkspaceNewTeamDialogState
       cli: _cli,
       providerIdsByTool: _providerIdsByToolForSubmit(),
       members: _draft?.members,
+      description: _draft?.description?.trim() ?? '',
+      skillIds: _draft?.skillIds ?? const <String>[],
     ));
   }
 
-  Future<void> _onGenerate(
-    String description,
-    TeamGenGranularity granularity,
-  ) async {
+  Future<void> _onGenerate(String description) async {
     final l10n = context.l10n;
     if (description.isEmpty) return;
     final setting = resolveAiFeatureSetting(
@@ -186,14 +189,14 @@ class _HomeWorkspaceNewTeamDialogState
       return;
     }
 
-    final allowed = _collectAllowedOptions(aiSetting: setting);
+    final allowed = _collectAllowedOptions(mode: _mode, aiSetting: setting);
     setState(() => _generating = true);
     try {
       final draft = await TeamConfigGenerator().generate(
         setting: setting,
         description: description,
         allowed: allowed,
-        granularity: granularity,
+        mode: _mode,
         joinedAt: DateTime.now().millisecondsSinceEpoch,
       );
       if (!mounted) return;
@@ -201,7 +204,6 @@ class _HomeWorkspaceNewTeamDialogState
         _draft = draft;
         _cli = setting.cli;
         _providerId = setting.providerId;
-        if (draft.mode != null) _mode = draft.mode!;
       });
       _syncCanCreate();
       ScaffoldMessenger.of(
@@ -217,36 +219,71 @@ class _HomeWorkspaceNewTeamDialogState
     }
   }
 
-  TeamDraftAllowedOptions _collectAllowedOptions({AiFeatureSetting? aiSetting}) {
+  CliModelOptions _cliModelOptions(
+    CliTool cli, {
+    String? providerIdOverride,
+    String? preferModel,
+  }) {
     final registry = CliToolRegistryScope.of(context);
     final appProviders = context.read<AppProviderCubit>().state;
-    final cli = aiSetting?.cli ?? _cli;
-    final providerId = aiSetting?.providerId ?? _providerId;
     final catalogCli = _providerCatalogCli(cli) ?? cli;
+    final wantedId = (providerIdOverride ?? '').trim();
     final provider = appProviders
         .providersFor(catalogCli)
-        .where((p) => p.id == providerId)
+        .where((p) => wantedId.isEmpty || p.id == wantedId)
         .firstOrNull;
     final modelCap = registry.capability<ProviderModelCapability>(catalogCli);
     final effortCap = registry.capability<CliEffortCapability>(catalogCli);
     final models =
         modelCap?.modelCandidates(
           provider: provider,
-          providerId: providerId,
-          currentModel: aiSetting?.model ?? '',
+          providerId: provider?.id ?? wantedId,
+          currentModel: preferModel ?? '',
         ) ??
         const <String>[];
     final defaultModel =
-        modelCap?.defaultModel(provider: provider, providerId: providerId) ??
+        modelCap?.defaultModel(
+          provider: provider,
+          providerId: provider?.id ?? wantedId,
+        ) ??
         (models.isNotEmpty ? models.first : '');
     final efforts =
         effortCap?.effortCandidates(model: defaultModel, provider: provider) ??
         const <String>[];
-    return TeamDraftAllowedOptions(
+    return CliModelOptions(
+      cli: cli,
       models: models,
       efforts: efforts,
-      skillIds: const [],
       defaultModel: defaultModel,
+    );
+  }
+
+  TeamDraftAllowedOptions _collectAllowedOptions({
+    required TeamMode mode,
+    AiFeatureSetting? aiSetting,
+  }) {
+    final registry = CliToolRegistryScope.of(context);
+    if (mode == TeamMode.mixed) {
+      final clis = [
+        for (final def in registry.launchable) _cliModelOptions(def.id),
+      ];
+      return TeamDraftAllowedOptions(
+        clis: clis.isEmpty
+            ? [_cliModelOptions(aiSetting?.cli ?? _cli)]
+            : clis,
+        skillIds: const [],
+      );
+    }
+    final cli = aiSetting?.cli ?? _cli;
+    return TeamDraftAllowedOptions(
+      clis: [
+        _cliModelOptions(
+          cli,
+          providerIdOverride: aiSetting?.providerId ?? _providerId,
+          preferModel: aiSetting?.model,
+        ),
+      ],
+      skillIds: const [],
     );
   }
 

@@ -5,7 +5,7 @@ import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/pages/home_workspace/home_workspace_team_generate_section.dart';
 
 void main() {
-  testWidgets('renders description field, granularity toggle, generate button',
+  testWidgets('renders description field and generate button, no toggle',
       (tester) async {
     await tester.pumpWidget(
       MaterialApp(
@@ -16,7 +16,7 @@ void main() {
             cli: CliTool.claude,
             providerId: 'p',
             generating: false,
-            onGenerate: (_, __) {},
+            onGenerate: (_) {},
           ),
         ),
       ),
@@ -25,13 +25,11 @@ void main() {
 
     expect(find.byKey(const ValueKey('team-gen-description')), findsOneWidget);
     expect(find.byKey(const ValueKey('team-gen-button')), findsOneWidget);
-    expect(find.text('Members only'), findsOneWidget);
+    expect(find.text('Members only'), findsNothing);
   });
 
-  testWidgets('generate button reports description + granularity',
-      (tester) async {
+  testWidgets('generate button reports the description', (tester) async {
     String? gotDescription;
-    TeamGenGranularity? gotGranularity;
     await tester.pumpWidget(
       MaterialApp(
         localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -41,10 +39,7 @@ void main() {
             cli: CliTool.claude,
             providerId: 'p',
             generating: false,
-            onGenerate: (desc, gran) {
-              gotDescription = desc;
-              gotGranularity = gran;
-            },
+            onGenerate: (desc) => gotDescription = desc,
           ),
         ),
       ),
@@ -57,6 +52,5 @@ void main() {
     await tester.pump();
 
     expect(gotDescription, 'My team');
-    expect(gotGranularity, TeamGenGranularity.rosterOnly);
   });
 }

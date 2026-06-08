@@ -2,16 +2,12 @@ import 'package:flutter/material.dart';
 
 import '../../l10n/l10n_extensions.dart';
 import '../../models/team_config.dart';
-import '../../services/ai/team_config_draft.dart';
 
-export '../../services/ai/team_config_draft.dart' show TeamGenGranularity;
+typedef TeamGenerateCallback = void Function(String description);
 
-typedef TeamGenerateCallback =
-    void Function(String description, TeamGenGranularity granularity);
-
-/// "Generate with AI" block inside the new-team dialog: a description field, a
-/// granularity toggle, and a generate button. Stateless about the result; the
-/// dialog owns generation and draft application.
+/// "Generate with AI" block inside the new-team dialog: a description field and
+/// a generate button. Stateless about the result; the dialog owns generation,
+/// the mode selection, and draft application.
 class HomeWorkspaceTeamGenerateSection extends StatefulWidget {
   const HomeWorkspaceTeamGenerateSection({
     required this.cli,
@@ -34,7 +30,6 @@ class HomeWorkspaceTeamGenerateSection extends StatefulWidget {
 class _HomeWorkspaceTeamGenerateSectionState
     extends State<HomeWorkspaceTeamGenerateSection> {
   final _controller = TextEditingController();
-  TeamGenGranularity _granularity = TeamGenGranularity.rosterOnly;
 
   @override
   void dispose() {
@@ -63,28 +58,11 @@ class _HomeWorkspaceTeamGenerateSectionState
           ),
         ),
         const SizedBox(height: 8),
-        SegmentedButton<TeamGenGranularity>(
-          segments: [
-            ButtonSegment(
-              value: TeamGenGranularity.rosterOnly,
-              label: Text(l10n.teamGenGranularityRoster),
-            ),
-            ButtonSegment(
-              value: TeamGenGranularity.fullTeam,
-              label: Text(l10n.teamGenGranularityFull),
-            ),
-          ],
-          selected: {_granularity},
-          onSelectionChanged: widget.generating
-              ? null
-              : (s) => setState(() => _granularity = s.first),
-        ),
-        const SizedBox(height: 8),
         FilledButton.icon(
           key: const ValueKey('team-gen-button'),
           onPressed: widget.generating
               ? null
-              : () => widget.onGenerate(_controller.text.trim(), _granularity),
+              : () => widget.onGenerate(_controller.text.trim()),
           icon: widget.generating
               ? const SizedBox(
                   width: 16,

@@ -267,6 +267,8 @@ class TeamCubit extends Cubit<TeamState> implements TeamCubitHost {
     TeamMode teamMode = TeamMode.native,
     Map<String, String> providerIdsByTool = const {},
     List<TeamMemberConfig>? members,
+    String description = '',
+    List<String> skillIds = const [],
   }) async {
     final trimmed = name.trim();
     if (trimmed.isEmpty) {
@@ -293,9 +295,11 @@ class TeamCubit extends Cubit<TeamState> implements TeamCubitHost {
     final team = TeamConfig(
       id: teamId,
       name: trimmed,
+      description: description.trim(),
       cli: cli,
       teamMode: teamMode,
       providerIdsByTool: providerIdsByTool,
+      skillIds: skillIds,
       createdAt: now,
       members: members ?? TeamMemberNaming.defaultRoster(joinedAt: now),
     );
