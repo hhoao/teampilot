@@ -1,77 +1,185 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/ai/team_config_draft.dart';
+import 'package:teampilot/utils/team_member_naming.dart';
 
 void main() {
-  const allowed = TeamDraftAllowedOptions(
-    models: ['sonnet', 'opus'],
-    efforts: ['low', 'high'],
+  const native = TeamDraftAllowedOptions(
+    clis: [
+      CliModelOptions(
+        cli: CliTool.claude,
+        models: ['sonnet', 'opus'],
+        efforts: ['low', 'high'],
+        defaultModel: 'sonnet',
+      ),
+    ],
     skillIds: ['code-review', 'testing'],
-    defaultModel: 'sonnet',
   );
 
-  test('parses members, clamping invalid model and effort', () {
+  const mixed = TeamDraftAllowedOptions(
+    clis: [
+      CliModelOptions(
+        cli: CliTool.claude,
+        models: ['sonnet', 'opus'],
+        efforts: ['low', 'high'],
+        defaultModel: 'sonnet',
+      ),
+      CliModelOptions(
+        cli: CliTool.codex,
+        models: ['gpt-x'],
+        efforts: ['medium'],
+        defaultModel: 'gpt-x',
+      ),
+    ],
+    skillIds: ['code-review'],
+  );
+
+  test('parses rich members and team fields, clamping invalid values', () {
     const json = '''
 {
   "teamName": "Frontend",
-  "mode": "native",
+  "description": "Ship the UI.",
   "members": [
-    {"name": "Lead Dev", "role": "lead", "model": "opus", "effort": "high"},
-    {"name": "Bad One", "role": "dev", "model": "ghost-model", "effort": "ultra"}
+    {"name": "team-lead", "role": "coordinator", "model": "opus", "effort": "high",
+     "responsibilities": "Coordinate. Do NOT implement.",
+     "workingMethod": "Decompose, assign, synthesize."},
+    {"name": "Bad One", "role": "dev", "model": "ghost", "effort": "ultra",
+     "responsibilities": "Build it.", "workingMethod": "Test first."}
   ],
   "skillIds": ["code-review", "unknown-skill"]
 }
 ''';
     final draft = parseTeamConfigDraft(
       json,
-      allowed: allowed,
-      granularity: TeamGenGranularity.fullTeam,
+      allowed: native,
+      mode: TeamMode.native,
       joinedAt: 100,
     );
 
     expect(draft.teamName, 'Frontend');
-    expect(draft.mode, TeamMode.native);
+    expect(draft.description, 'Ship the UI.');
     expect(draft.members, hasLength(2));
-    expect(draft.members[0].model, 'opus');
-    expect(draft.members[0].effort, 'high');
-    // invalid model clamps to default, invalid effort clears
+    final lead = draft.members.first;
+    expect(lead.id, TeamMemberNaming.teamLeadName);
+    expect(lead.model, 'opus');
+    expect(lead.effort, 'high');
+    expect(lead.prompt, 'Coordinate. Do NOT implement.');
+    expect(lead.playbook, 'Decompose, assign, synthesize.');
     expect(draft.members[1].model, 'sonnet');
     expect(draft.members[1].effort, '');
-    // unknown skill dropped
+    expect(draft.members[1].prompt, 'Build it.');
     expect(draft.skillIds, ['code-review']);
   });
 
-  test('roster-only ignores team name, mode, and skills', () {
-    const json = '{"teamName":"X","members":[{"name":"Dev","role":"dev"}]}';
+  test('native ignores any per-member cli', () {
+    const json = '{"members":[{"name":"team-lead"},'
+        '{"name":"Dev","cli":"codex","model":"sonnet"}]}';
     final draft = parseTeamConfigDraft(
       json,
-      allowed: allowed,
-      granularity: TeamGenGranularity.rosterOnly,
+      allowed: native,
+      mode: TeamMode.native,
       joinedAt: 1,
     );
-    expect(draft.teamName, isNull);
-    expect(draft.mode, isNull);
-    expect(draft.skillIds, isEmpty);
-    expect(draft.members.single.name, 'Dev');
+    expect(draft.members[1].cli, isNull);
+  });
+
+  test('mixed clamps cli and resolves model/effort against that cli', () {
+    const json = '{"members":[{"name":"team-lead"},'
+        '{"name":"Dev","cli":"codex","model":"gpt-x","effort":"medium"},'
+        '{"name":"Ghost","cli":"opencode","model":"sonnet","effort":"low"}]}';
+    final draft = parseTeamConfigDraft(
+      json,
+      allowed: mixed,
+      mode: TeamMode.mixed,
+      joinedAt: 1,
+    );
+    final dev = draft.members[1];
+    expect(dev.cli, CliTool.codex);
+    expect(dev.model, 'gpt-x');
+    expect(dev.effort, 'medium');
+    final ghost = draft.members[2];
+    expect(ghost.cli, CliTool.claude);
+    expect(ghost.model, 'sonnet');
+  });
+
+  test('injects a default team-lead when none is emitted', () {
+    const json = '{"members":[{"name":"Dev","role":"dev"}]}';
+    final draft = parseTeamConfigDraft(
+      json,
+      allowed: native,
+      mode: TeamMode.native,
+      joinedAt: 1,
+    );
+    expect(draft.members.first.id, TeamMemberNaming.teamLeadName);
+    expect(draft.members, hasLength(2));
+  });
+
+  test('keeps the first lead and demotes duplicate leads to workers', () {
+    const json = '{"members":[{"name":"team-lead","role":"a"},'
+        '{"name":"team-lead","role":"b"}]}';
+    final draft = parseTeamConfigDraft(
+      json,
+      allowed: native,
+      mode: TeamMode.native,
+      joinedAt: 1,
+    );
+    final leads = draft.members
+        .where((m) => m.id == TeamMemberNaming.teamLeadName)
+        .toList();
+    expect(leads, hasLength(1));
+    expect(draft.members, hasLength(2));
+    expect(draft.members[1].id, isNot(TeamMemberNaming.teamLeadName));
+  });
+
+  test('demotes a duplicate lead even when its name is not literally team-lead', () {
+    const json = '{"members":[{"name":"team-lead","role":"a"},'
+        '{"name":"Second Lead","role":"b"}]}';
+    final draft = parseTeamConfigDraft(
+      json,
+      allowed: native,
+      mode: TeamMode.native,
+      joinedAt: 1,
+    );
+    // Only the first member holds the reserved lead id.
+    expect(
+      draft.members.where((m) => m.id == TeamMemberNaming.teamLeadName),
+      hasLength(1),
+    );
+    expect(draft.members[1].name, 'Second Lead');
+    expect(draft.members[1].id, isNot(TeamMemberNaming.teamLeadName));
+  });
+
+  test('throws TeamDraftFormatException when JSON is not an object', () {
+    expect(
+      () => parseTeamConfigDraft(
+        '[]',
+        allowed: native,
+        mode: TeamMode.native,
+        joinedAt: 1,
+      ),
+      throwsA(isA<TeamDraftFormatException>()),
+    );
   });
 
   test('skips members without a name', () {
-    const json = '{"members":[{"role":"dev"},{"name":"Ok","role":"dev"}]}';
+    const json = '{"members":[{"name":"team-lead"},{"role":"dev"},'
+        '{"name":"Ok","role":"dev"}]}';
     final draft = parseTeamConfigDraft(
       json,
-      allowed: allowed,
-      granularity: TeamGenGranularity.rosterOnly,
+      allowed: native,
+      mode: TeamMode.native,
       joinedAt: 1,
     );
-    expect(draft.members.single.name, 'Ok');
+    expect(draft.members.map((m) => m.name), contains('Ok'));
+    expect(draft.members, hasLength(2));
   });
 
   test('throws TeamDraftFormatException on non-JSON', () {
     expect(
       () => parseTeamConfigDraft(
         'not json',
-        allowed: allowed,
-        granularity: TeamGenGranularity.rosterOnly,
+        allowed: native,
+        mode: TeamMode.native,
         joinedAt: 1,
       ),
       throwsA(isA<TeamDraftFormatException>()),
