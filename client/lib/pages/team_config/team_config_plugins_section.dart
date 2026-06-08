@@ -153,13 +153,19 @@ class TeamPluginsSection extends StatelessWidget {
 }
 
 class TeamPluginsEmptyBlock extends StatelessWidget {
-  const TeamPluginsEmptyBlock({super.key, 
+  const TeamPluginsEmptyBlock({super.key,
     required this.textBase,
     required this.onGoPlugins,
+    this.emptyTitle,
+    this.emptyHint,
+    this.actionLabel,
   });
 
   final Color textBase;
   final VoidCallback onGoPlugins;
+  final String? emptyTitle;
+  final String? emptyHint;
+  final String? actionLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -175,14 +181,14 @@ class TeamPluginsEmptyBlock extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           Text(
-            l10n.teamPluginsEmpty,
+            emptyTitle ?? l10n.teamPluginsEmpty,
             style: AppTextStyles.of(
               context,
             ).body.copyWith(fontWeight: FontWeight.w700, color: textBase),
           ),
           const SizedBox(height: 6),
           Text(
-            l10n.teamPluginsEmptyHint,
+            emptyHint ?? l10n.teamPluginsEmptyHint,
             textAlign: TextAlign.center,
             style: AppTextStyles.of(
               context,
@@ -192,7 +198,7 @@ class TeamPluginsEmptyBlock extends StatelessWidget {
           OutlinedButton.icon(
             onPressed: onGoPlugins,
             icon: const Icon(Icons.search, size: AppIconSizes.md),
-            label: Text(l10n.teamPluginsGoDiscovery),
+            label: Text(actionLabel ?? l10n.teamPluginsGoDiscovery),
           ),
         ],
       ),

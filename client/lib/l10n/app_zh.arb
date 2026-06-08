@@ -246,6 +246,19 @@
   "homeWorkspaceConversations": "对话管理",
   "homeWorkspaceConversationsSection": "对话",
   "homeWorkspaceProjectAgent": "智能体",
+  "projectAgentBuiltInSubtitle": "选择 Agent 角色，影响其行为与可用能力。",
+  "projectAgentExtraArgs": "额外 CLI 参数",
+  "projectAgentExtraArgsSubtitle": "附加在本项目 Agent 启动时的 CLI 参数。",
+  "projectAgentPromptSubtitle": "编写系统提示词，定义 Agent 在本项目中的职责与行为边界。",
+  "projectAgentPromptPresetGeneral": "通用",
+  "projectAgentPromptPresetGeneralText": "全面协助完成本项目中的开发任务。先理解需求与现有代码，再给出清晰方案并实施；优先小范围改动，完成后说明涉及文件与后续建议。",
+  "projectAgentPromptPresetDeveloper": "开发",
+  "projectAgentPromptPresetDeveloperText": "专注实现功能与修复问题。优先小 diff，跑相关测试，并简要说明改了哪些文件及原因。",
+  "projectAgentPromptPresetReviewer": "审查",
+  "projectAgentPromptPresetReviewerText": "只做代码审查，除非被要求否则不要改文件。\n每条意见需包含：文件路径、行号、问题、建议改法。",
+  "projectAgentPromptPresetResearcher": "调研",
+  "projectAgentPromptPresetResearcherText": "只调研并汇报，除非被要求否则不要改生产代码。\n输出需含文件路径、相关符号与建议的下一步。",
+  "projectCliEffortInheritHint": "使用提供商默认",
   "projectCliDefaultSubtitle": "本项目新建对话时使用的默认 CLI。",
   "projectCliDefaultsTitle": "CLI 默认配置",
   "projectCliDefaultsSubtitle": "为本项目使用的每个 CLI 设置默认提供商与模型。",
@@ -272,6 +285,36 @@
   "homeWorkspaceProjectPlugins": "插件",
   "homeWorkspaceProjectMcp": "MCP",
   "homeWorkspaceProjectExtensions": "扩展",
+  "projectSkillsAssignedCount": "已为本项目启用 {assigned}/{total}",
+  "@projectSkillsAssignedCount": {
+    "placeholders": {
+      "assigned": {"type": "int"},
+      "total": {"type": "int"}
+    }
+  },
+  "projectSkillsManage": "管理 Skills",
+  "projectMcpAssignedCount": "已为本项目启用 {assigned}/{total}",
+  "@projectMcpAssignedCount": {
+    "placeholders": {
+      "assigned": {"type": "int"},
+      "total": {"type": "int"}
+    }
+  },
+  "projectMcpManage": "管理 MCP",
+  "projectPluginsAssignedCount": "已为本项目选用 {assigned}/{total}",
+  "@projectPluginsAssignedCount": {
+    "placeholders": {
+      "assigned": {"type": "int"},
+      "total": {"type": "int"}
+    }
+  },
+  "projectPluginsManage": "管理插件",
+  "projectPluginsEmpty": "尚未安装插件",
+  "projectPluginsEmptyHint": "在「发现」中安装插件后，可在此处为本项目启用。",
+  "projectExtensionsTitle": "本项目的扩展",
+  "projectExtensionsSubtitle": "覆盖本项目启用哪些扩展，默认跟随全局设置。",
+  "projectExtensionEffectiveOn": "本项目已启用",
+  "projectExtensionEffectiveOff": "本项目未启用",
   "homeWorkspaceTeamConfig": "团队配置",
   "homeWorkspaceProjectSettings": "项目设置",
   "homeWorkspaceProjectSettingsSectionBasic": "基本设置",

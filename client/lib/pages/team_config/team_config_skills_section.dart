@@ -103,13 +103,15 @@ class TeamSkillsSection extends StatelessWidget {
 }
 
 class TeamSkillsEmptyBlock extends StatelessWidget {
-  const TeamSkillsEmptyBlock({super.key, 
+  const TeamSkillsEmptyBlock({super.key,
     required this.textBase,
     required this.onGoSkills,
+    this.manageButtonLabel,
   });
 
   final Color textBase;
   final VoidCallback onGoSkills;
+  final String? manageButtonLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -142,7 +144,7 @@ class TeamSkillsEmptyBlock extends StatelessWidget {
           OutlinedButton.icon(
             onPressed: onGoSkills,
             icon: const Icon(Icons.extension_outlined, size: AppIconSizes.md),
-            label: Text(l10n.teamSkillsManage),
+            label: Text(manageButtonLabel ?? l10n.teamSkillsManage),
           ),
         ],
       ),

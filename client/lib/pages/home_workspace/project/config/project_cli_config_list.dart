@@ -471,7 +471,7 @@ class _ProjectCliConfigureDialogState extends State<ProjectCliConfigureDialog> {
                   provider: selectedProvider,
                   model: _modelId,
                   allowInherit: true,
-                  inheritLabel: l10n.memberEffortInheritHint,
+                  inheritLabel: l10n.projectCliEffortInheritHint,
                   decoration: dropdownDeco,
                   onChanged: (value) =>
                       setState(() => _effortId = value.trim()),

@@ -259,6 +259,19 @@
   "homeWorkspaceConversations": "Conversations",
   "homeWorkspaceConversationsSection": "Conversations",
   "homeWorkspaceProjectAgent": "Agent",
+  "projectAgentBuiltInSubtitle": "Choose an agent role; shapes behavior and available capabilities.",
+  "projectAgentExtraArgs": "Extra CLI arguments",
+  "projectAgentExtraArgsSubtitle": "Extra flags appended when starting the agent in this project.",
+  "projectAgentPromptSubtitle": "System prompt defining the agent's role and boundaries in this project.",
+  "projectAgentPromptPresetGeneral": "General",
+  "projectAgentPromptPresetGeneralText": "Help with development in this project end to end. Understand the request and codebase, propose a clear approach, then implement with minimal diffs; summarize changed files and suggested next steps.",
+  "projectAgentPromptPresetDeveloper": "Developer",
+  "projectAgentPromptPresetDeveloperText": "Focus on implementation and fixes. Prefer minimal diffs, run relevant tests, and briefly explain changed files and rationale.",
+  "projectAgentPromptPresetReviewer": "Reviewer",
+  "projectAgentPromptPresetReviewerText": "Review code only; do not modify files unless asked.\nEach finding must include file path, line, issue, and suggested fix.",
+  "projectAgentPromptPresetResearcher": "Researcher",
+  "projectAgentPromptPresetResearcherText": "Investigate and report only; do not change production code unless asked.\nOutput findings with file paths, relevant symbols, and recommended next steps.",
+  "projectCliEffortInheritHint": "Use provider default",
   "projectCliDefaultSubtitle": "Default CLI for new conversations in this project.",
   "projectCliDefaultsTitle": "CLI defaults",
   "projectCliDefaultsSubtitle": "Set the default provider and model for each CLI used in this project.",
@@ -285,6 +298,36 @@
   "homeWorkspaceProjectPlugins": "Plugins",
   "homeWorkspaceProjectMcp": "MCP",
   "homeWorkspaceProjectExtensions": "Extensions",
+  "projectSkillsAssignedCount": "{assigned} of {total} enabled for this project",
+  "@projectSkillsAssignedCount": {
+    "placeholders": {
+      "assigned": {"type": "int"},
+      "total": {"type": "int"}
+    }
+  },
+  "projectSkillsManage": "Manage skills",
+  "projectMcpAssignedCount": "{assigned} of {total} enabled for this project",
+  "@projectMcpAssignedCount": {
+    "placeholders": {
+      "assigned": {"type": "int"},
+      "total": {"type": "int"}
+    }
+  },
+  "projectMcpManage": "Manage MCP",
+  "projectPluginsAssignedCount": "{assigned} of {total} linked to this project",
+  "@projectPluginsAssignedCount": {
+    "placeholders": {
+      "assigned": {"type": "int"},
+      "total": {"type": "int"}
+    }
+  },
+  "projectPluginsManage": "Manage plugins",
+  "projectPluginsEmpty": "No plugins installed",
+  "projectPluginsEmptyHint": "Install plugins from Discovery to enable them for this project.",
+  "projectExtensionsTitle": "Extensions for this project",
+  "projectExtensionsSubtitle": "Override which extensions run for this project. Default follows the global setting.",
+  "projectExtensionEffectiveOn": "Enabled for this project",
+  "projectExtensionEffectiveOff": "Disabled for this project",
   "homeWorkspaceTeamConfig": "Team config",
   "homeWorkspaceProjectSettings": "Project settings",
   "homeWorkspaceProjectSettingsSectionBasic": "Basic",

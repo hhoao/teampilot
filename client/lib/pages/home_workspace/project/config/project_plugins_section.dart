@@ -54,14 +54,14 @@ class ProjectPluginsSection extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 TeamConfigCardHeader(
-                  title: l10n.teamPluginsAssignedCount(
+                  title: l10n.projectPluginsAssignedCount(
                     assignedCount,
                     installed.length,
                   ),
                   trailing: OutlinedButton.icon(
                     onPressed: onManage,
                     icon: const Icon(Icons.widgets_outlined),
-                    label: Text(l10n.teamPluginsManage),
+                    label: Text(l10n.projectPluginsManage),
                   ),
                 ),
                 if (syncing) ...[
@@ -73,6 +73,9 @@ class ProjectPluginsSection extends StatelessWidget {
                   TeamPluginsEmptyBlock(
                     textBase: textBase,
                     onGoPlugins: onManage,
+                    emptyTitle: l10n.projectPluginsEmpty,
+                    emptyHint: l10n.projectPluginsEmptyHint,
+                    actionLabel: l10n.projectPluginsManage,
                   )
                 else
                   Column(

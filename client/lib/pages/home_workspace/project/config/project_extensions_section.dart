@@ -78,10 +78,10 @@ class _ProjectExtensionsSectionState extends State<ProjectExtensionsSection> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                TeamConfigCardHeader(title: l10n.teamExtensionsTitle),
+                TeamConfigCardHeader(title: l10n.projectExtensionsTitle),
                 const SizedBox(height: 6),
                 Text(
-                  l10n.teamExtensionsSubtitle,
+                  l10n.projectExtensionsSubtitle,
                   style: AppTextStyles.of(context).bodySmall.copyWith(
                     color: Theme.of(
                       context,
@@ -95,6 +95,8 @@ class _ProjectExtensionsSectionState extends State<ProjectExtensionsSection> {
                     choice: _choiceFor(row.id),
                     effective: _effective(row),
                     onChoice: (c) => _setChoice(row.id, c),
+                    effectiveOnLabel: l10n.projectExtensionEffectiveOn,
+                    effectiveOffLabel: l10n.projectExtensionEffectiveOff,
                   ),
               ],
             ),

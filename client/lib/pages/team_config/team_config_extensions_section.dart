@@ -103,17 +103,21 @@ class TeamExtensionsSectionState extends State<TeamExtensionsSection> {
 }
 
 class TeamExtensionRow extends StatelessWidget {
-  const TeamExtensionRow({super.key, 
+  const TeamExtensionRow({super.key,
     required this.row,
     required this.choice,
     required this.effective,
     required this.onChoice,
+    this.effectiveOnLabel,
+    this.effectiveOffLabel,
   });
 
   final ExtensionRow row;
   final ExtensionOverrideChoice choice;
   final bool effective;
   final ValueChanged<ExtensionOverrideChoice> onChoice;
+  final String? effectiveOnLabel;
+  final String? effectiveOffLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -138,8 +142,8 @@ class TeamExtensionRow extends StatelessWidget {
                   ),
                   Text(
                     effective
-                        ? l10n.teamExtensionEffectiveOn
-                        : l10n.teamExtensionEffectiveOff,
+                        ? (effectiveOnLabel ?? l10n.teamExtensionEffectiveOn)
+                        : (effectiveOffLabel ?? l10n.teamExtensionEffectiveOff),
                     style: AppTextStyles.of(context).bodySmall.copyWith(
                           color: cs.onSurface.withValues(alpha: 0.6),
                         ),

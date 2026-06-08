@@ -5,9 +5,9 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../cubits/project_profile_cubit.dart';
 import '../../../../l10n/l10n_extensions.dart';
+import '../../../../models/project_agent_prompt_presets.dart';
 import '../../../../models/project_profile.dart';
 import '../../../../models/team_config.dart';
-import '../../../../models/team_member_prompt_presets.dart';
 import '../../../../services/app/flashskyai_agent_catalog_service.dart';
 import '../../../../services/cli/registry/cli_display_name.dart';
 import '../../../../services/cli/registry/cli_tool_registry_scope.dart';
@@ -125,7 +125,7 @@ class ProjectAgentConfigFormState extends State<ProjectAgentConfigForm> {
 
   void _applyPromptPreset(String presetId) {
     final l10n = context.l10n;
-    final text = teamMemberPromptPresetText(l10n, presetId);
+    final text = projectAgentPromptPresetText(l10n, presetId);
     if (text.isEmpty) return;
     _promptCtl.text = text;
     _promptCtl.selection = TextSelection.collapsed(offset: text.length);
@@ -188,7 +188,7 @@ class ProjectAgentConfigFormState extends State<ProjectAgentConfigForm> {
                 SettingsGroupHeader(title: l10n.homeWorkspaceProjectAgent),
                 SettingsLabeledStackedRow(
                   title: l10n.agent,
-                  subtitle: l10n.agentBuiltInSubtitle,
+                  subtitle: l10n.projectAgentBuiltInSubtitle,
                   body: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
@@ -264,7 +264,8 @@ class ProjectAgentConfigFormState extends State<ProjectAgentConfigForm> {
                 showDividerBelow: true,
               ),
               SettingsLabeledStackedRow(
-                title: l10n.memberExtraArgs,
+                title: l10n.projectAgentExtraArgs,
+                subtitle: l10n.projectAgentExtraArgsSubtitle,
                 body: TextField(
                   controller: _argsCtl,
                   decoration: const InputDecoration(),
@@ -274,7 +275,7 @@ class ProjectAgentConfigFormState extends State<ProjectAgentConfigForm> {
               ),
               SettingsLabeledStackedRow(
                 title: l10n.prompt,
-                subtitle: l10n.memberPromptSubtitle,
+                subtitle: l10n.projectAgentPromptSubtitle,
                 body: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
@@ -282,10 +283,10 @@ class ProjectAgentConfigFormState extends State<ProjectAgentConfigForm> {
                       spacing: 6,
                       runSpacing: 6,
                       children: [
-                        for (final preset in TeamMemberPromptPreset.all)
+                        for (final preset in ProjectAgentPromptPreset.all)
                           ActionChip(
                             label: Text(
-                              teamMemberPromptPresetLabel(l10n, preset.id),
+                              projectAgentPromptPresetLabel(l10n, preset.id),
                               style: AppTextStyles.of(context).bodySmall,
                             ),
                             visualDensity: VisualDensity.compact,

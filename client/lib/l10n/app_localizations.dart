@@ -1238,6 +1238,84 @@ abstract class AppLocalizations {
   /// **'Agent'**
   String get homeWorkspaceProjectAgent;
 
+  /// No description provided for @projectAgentBuiltInSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose an agent role; shapes behavior and available capabilities.'**
+  String get projectAgentBuiltInSubtitle;
+
+  /// No description provided for @projectAgentExtraArgs.
+  ///
+  /// In en, this message translates to:
+  /// **'Extra CLI arguments'**
+  String get projectAgentExtraArgs;
+
+  /// No description provided for @projectAgentExtraArgsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Extra flags appended when starting the agent in this project.'**
+  String get projectAgentExtraArgsSubtitle;
+
+  /// No description provided for @projectAgentPromptSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'System prompt defining the agent\'s role and boundaries in this project.'**
+  String get projectAgentPromptSubtitle;
+
+  /// No description provided for @projectAgentPromptPresetGeneral.
+  ///
+  /// In en, this message translates to:
+  /// **'General'**
+  String get projectAgentPromptPresetGeneral;
+
+  /// No description provided for @projectAgentPromptPresetGeneralText.
+  ///
+  /// In en, this message translates to:
+  /// **'Help with development in this project end to end. Understand the request and codebase, propose a clear approach, then implement with minimal diffs; summarize changed files and suggested next steps.'**
+  String get projectAgentPromptPresetGeneralText;
+
+  /// No description provided for @projectAgentPromptPresetDeveloper.
+  ///
+  /// In en, this message translates to:
+  /// **'Developer'**
+  String get projectAgentPromptPresetDeveloper;
+
+  /// No description provided for @projectAgentPromptPresetDeveloperText.
+  ///
+  /// In en, this message translates to:
+  /// **'Focus on implementation and fixes. Prefer minimal diffs, run relevant tests, and briefly explain changed files and rationale.'**
+  String get projectAgentPromptPresetDeveloperText;
+
+  /// No description provided for @projectAgentPromptPresetReviewer.
+  ///
+  /// In en, this message translates to:
+  /// **'Reviewer'**
+  String get projectAgentPromptPresetReviewer;
+
+  /// No description provided for @projectAgentPromptPresetReviewerText.
+  ///
+  /// In en, this message translates to:
+  /// **'Review code only; do not modify files unless asked.\nEach finding must include file path, line, issue, and suggested fix.'**
+  String get projectAgentPromptPresetReviewerText;
+
+  /// No description provided for @projectAgentPromptPresetResearcher.
+  ///
+  /// In en, this message translates to:
+  /// **'Researcher'**
+  String get projectAgentPromptPresetResearcher;
+
+  /// No description provided for @projectAgentPromptPresetResearcherText.
+  ///
+  /// In en, this message translates to:
+  /// **'Investigate and report only; do not change production code unless asked.\nOutput findings with file paths, relevant symbols, and recommended next steps.'**
+  String get projectAgentPromptPresetResearcherText;
+
+  /// No description provided for @projectCliEffortInheritHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Use provider default'**
+  String get projectCliEffortInheritHint;
+
   /// No description provided for @projectCliDefaultSubtitle.
   ///
   /// In en, this message translates to:
@@ -1333,6 +1411,78 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Extensions'**
   String get homeWorkspaceProjectExtensions;
+
+  /// No description provided for @projectSkillsAssignedCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{assigned} of {total} enabled for this project'**
+  String projectSkillsAssignedCount(int assigned, int total);
+
+  /// No description provided for @projectSkillsManage.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage skills'**
+  String get projectSkillsManage;
+
+  /// No description provided for @projectMcpAssignedCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{assigned} of {total} enabled for this project'**
+  String projectMcpAssignedCount(int assigned, int total);
+
+  /// No description provided for @projectMcpManage.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage MCP'**
+  String get projectMcpManage;
+
+  /// No description provided for @projectPluginsAssignedCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{assigned} of {total} linked to this project'**
+  String projectPluginsAssignedCount(int assigned, int total);
+
+  /// No description provided for @projectPluginsManage.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage plugins'**
+  String get projectPluginsManage;
+
+  /// No description provided for @projectPluginsEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No plugins installed'**
+  String get projectPluginsEmpty;
+
+  /// No description provided for @projectPluginsEmptyHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Install plugins from Discovery to enable them for this project.'**
+  String get projectPluginsEmptyHint;
+
+  /// No description provided for @projectExtensionsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Extensions for this project'**
+  String get projectExtensionsTitle;
+
+  /// No description provided for @projectExtensionsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Override which extensions run for this project. Default follows the global setting.'**
+  String get projectExtensionsSubtitle;
+
+  /// No description provided for @projectExtensionEffectiveOn.
+  ///
+  /// In en, this message translates to:
+  /// **'Enabled for this project'**
+  String get projectExtensionEffectiveOn;
+
+  /// No description provided for @projectExtensionEffectiveOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Disabled for this project'**
+  String get projectExtensionEffectiveOff;
 
   /// No description provided for @homeWorkspaceTeamConfig.
   ///

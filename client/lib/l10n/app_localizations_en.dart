@@ -630,6 +630,52 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homeWorkspaceProjectAgent => 'Agent';
 
   @override
+  String get projectAgentBuiltInSubtitle =>
+      'Choose an agent role; shapes behavior and available capabilities.';
+
+  @override
+  String get projectAgentExtraArgs => 'Extra CLI arguments';
+
+  @override
+  String get projectAgentExtraArgsSubtitle =>
+      'Extra flags appended when starting the agent in this project.';
+
+  @override
+  String get projectAgentPromptSubtitle =>
+      'System prompt defining the agent\'s role and boundaries in this project.';
+
+  @override
+  String get projectAgentPromptPresetGeneral => 'General';
+
+  @override
+  String get projectAgentPromptPresetGeneralText =>
+      'Help with development in this project end to end. Understand the request and codebase, propose a clear approach, then implement with minimal diffs; summarize changed files and suggested next steps.';
+
+  @override
+  String get projectAgentPromptPresetDeveloper => 'Developer';
+
+  @override
+  String get projectAgentPromptPresetDeveloperText =>
+      'Focus on implementation and fixes. Prefer minimal diffs, run relevant tests, and briefly explain changed files and rationale.';
+
+  @override
+  String get projectAgentPromptPresetReviewer => 'Reviewer';
+
+  @override
+  String get projectAgentPromptPresetReviewerText =>
+      'Review code only; do not modify files unless asked.\nEach finding must include file path, line, issue, and suggested fix.';
+
+  @override
+  String get projectAgentPromptPresetResearcher => 'Researcher';
+
+  @override
+  String get projectAgentPromptPresetResearcherText =>
+      'Investigate and report only; do not change production code unless asked.\nOutput findings with file paths, relevant symbols, and recommended next steps.';
+
+  @override
+  String get projectCliEffortInheritHint => 'Use provider default';
+
+  @override
   String get projectCliDefaultSubtitle =>
       'Default CLI for new conversations in this project.';
 
@@ -682,6 +728,50 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get homeWorkspaceProjectExtensions => 'Extensions';
+
+  @override
+  String projectSkillsAssignedCount(int assigned, int total) {
+    return '$assigned of $total enabled for this project';
+  }
+
+  @override
+  String get projectSkillsManage => 'Manage skills';
+
+  @override
+  String projectMcpAssignedCount(int assigned, int total) {
+    return '$assigned of $total enabled for this project';
+  }
+
+  @override
+  String get projectMcpManage => 'Manage MCP';
+
+  @override
+  String projectPluginsAssignedCount(int assigned, int total) {
+    return '$assigned of $total linked to this project';
+  }
+
+  @override
+  String get projectPluginsManage => 'Manage plugins';
+
+  @override
+  String get projectPluginsEmpty => 'No plugins installed';
+
+  @override
+  String get projectPluginsEmptyHint =>
+      'Install plugins from Discovery to enable them for this project.';
+
+  @override
+  String get projectExtensionsTitle => 'Extensions for this project';
+
+  @override
+  String get projectExtensionsSubtitle =>
+      'Override which extensions run for this project. Default follows the global setting.';
+
+  @override
+  String get projectExtensionEffectiveOn => 'Enabled for this project';
+
+  @override
+  String get projectExtensionEffectiveOff => 'Disabled for this project';
 
   @override
   String get homeWorkspaceTeamConfig => 'Team config';

@@ -56,14 +56,14 @@ class ProjectSkillsSection extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 TeamConfigCardHeader(
-                  title: l10n.teamSkillsAssignedCount(
+                  title: l10n.projectSkillsAssignedCount(
                     assignedCount,
                     enabled.length,
                   ),
                   trailing: OutlinedButton.icon(
                     onPressed: onManage,
                     icon: const Icon(Icons.extension_outlined),
-                    label: Text(l10n.teamSkillsManage),
+                    label: Text(l10n.projectSkillsManage),
                   ),
                 ),
                 if (syncing) ...[
@@ -75,6 +75,7 @@ class ProjectSkillsSection extends StatelessWidget {
                   TeamSkillsEmptyBlock(
                     textBase: textBase,
                     onGoSkills: onManage,
+                    manageButtonLabel: l10n.projectSkillsManage,
                   )
                 else
                   Column(

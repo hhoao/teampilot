@@ -52,14 +52,14 @@ class ProjectMcpSection extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 TeamConfigCardHeader(
-                  title: l10n.teamMcpAssignedCount(
+                  title: l10n.projectMcpAssignedCount(
                     assignedCount,
                     enabled.length,
                   ),
                   trailing: OutlinedButton.icon(
                     onPressed: onManage,
                     icon: const Icon(Icons.hub_outlined),
-                    label: Text(l10n.teamMcpManage),
+                    label: Text(l10n.projectMcpManage),
                   ),
                 ),
                 const SizedBox(height: 14),
