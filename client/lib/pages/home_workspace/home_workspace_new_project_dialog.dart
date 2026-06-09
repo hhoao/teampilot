@@ -30,7 +30,6 @@ Future<void> showHomeWorkspaceNewProjectDialog(
 }) async {
   final result = await showDialog<({List<String> directories, String display})>(
     context: context,
-    barrierColor: Colors.black.withValues(alpha: 0.55),
     builder: (_) => const HomeWorkspaceNewProjectDialog(),
   );
   if (result == null || !context.mounted || result.directories.isEmpty) return;
@@ -121,8 +120,6 @@ class _HomeWorkspaceNewProjectDialogState
     return Dialog(
       backgroundColor: cs.workspaceCard,
       surfaceTintColor: Colors.transparent,
-      clipBehavior: Clip.antiAlias,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 640),
         child: Padding(

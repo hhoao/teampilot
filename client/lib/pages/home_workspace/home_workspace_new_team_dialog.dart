@@ -50,7 +50,6 @@ Future<void> showHomeWorkspaceNewTeamDialog(
         })
       >(
         context: context,
-        barrierColor: Colors.black.withValues(alpha: 0.55),
         builder: (_) => const HomeWorkspaceNewTeamDialog(),
       );
   if (result == null || !context.mounted) return;
@@ -267,8 +266,6 @@ class _HomeWorkspaceNewTeamDialogState
     return Dialog(
       backgroundColor: cs.workspaceCard,
       surfaceTintColor: Colors.transparent,
-      clipBehavior: Clip.antiAlias,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: ConstrainedBox(
         constraints: BoxConstraints(maxWidth: 720, maxHeight: maxDialogHeight),
         child: SingleChildScrollView(

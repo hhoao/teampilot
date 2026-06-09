@@ -88,7 +88,6 @@ class _AppUpdateDialogState extends State<AppUpdateDialog> {
     final currentApp = widget.updateInfo.currentApp;
 
     return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Container(
         constraints: BoxConstraints(
           maxWidth: 400,

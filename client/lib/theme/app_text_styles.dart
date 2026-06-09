@@ -62,8 +62,9 @@ final class AppTextStyles {
   /// 16px — in-page subtitles.
   TextStyle get subtitle => _resolve(_t.titleMedium, height: 1.25);
 
-  /// 22px — dialog titles.
-  TextStyle get dialogTitle => _resolve(_t.titleLarge, height: 1.2);
+  /// 16px semibold — dialog titles ([AlertDialog] theme uses the same scale).
+  TextStyle get dialogTitle =>
+      _resolve(_t.titleMedium, height: 1.25).copyWith(fontWeight: FontWeight.w600);
 
   TextStyle get mutedBody => body.copyWith(color: _cs.onSurfaceVariant);
 

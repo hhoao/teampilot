@@ -4,6 +4,7 @@ import 'package:flex_color_scheme/flex_color_scheme.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import 'app_dialog_theme.dart';
 import 'app_fonts.dart';
 import 'app_icon_sizes.dart';
 import 'app_outline_input_theme.dart';
@@ -245,6 +246,7 @@ ThemeData _applyTypography(
       iconTheme: AppIconSizes.iconTheme(scheme),
       textTheme: textTheme,
       extensions: [AppFontTheme.fallback, typographyTheme],
+      dialogTheme: buildAppDialogTheme(colorScheme: scheme, textTheme: textTheme),
       inputDecorationTheme: buildAppOutlineInputDecorationTheme(
         colorScheme: flexTheme.colorScheme,
         textTheme: textTheme,
@@ -280,6 +282,10 @@ ThemeData _applyTypography(
       buildAppFontTheme(uiFont: appUiFont),
       typographyTheme,
     ],
+    dialogTheme: buildAppDialogTheme(
+      colorScheme: scheme,
+      textTheme: mergedTextTheme,
+    ),
     inputDecorationTheme: buildAppOutlineInputDecorationTheme(
       colorScheme: flexTheme.colorScheme,
       textTheme: mergedTextTheme,

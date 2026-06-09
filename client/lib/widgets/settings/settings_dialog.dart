@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
+import '../../theme/app_dialog_theme.dart';
 import '../../theme/app_icon_sizes.dart';
 import '../../theme/app_text_styles.dart';
 import '../../theme/workspace_surface_layers.dart';
@@ -41,8 +42,8 @@ const double _kSettingsDialogWidth = 1160;
 const double _kSettingsDialogHeight = 960;
 
 /// Total horizontal/vertical space reserved around the dialog (matches
-/// [Dialog.insetPadding] of `EdgeInsets.all(24)`).
-const double _kSettingsDialogInset = 48;
+/// [kAppDialogInsetPadding]).
+const double _kSettingsDialogInset = kAppDialogInsetExtent;
 
 Future<void> showSettingsDialog(
   BuildContext context, {
@@ -52,7 +53,6 @@ Future<void> showSettingsDialog(
   assert(entries.isNotEmpty, 'showSettingsDialog needs at least one entry');
   return showDialog<void>(
     context: context,
-    barrierColor: Colors.black.withValues(alpha: 0.45),
     builder: (_) => _SettingsDialog(navTitle: navTitle, entries: entries),
   );
 }
@@ -72,7 +72,6 @@ class _SettingsDialogState extends State<_SettingsDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
     final media = MediaQuery.of(context);
     final dialogWidth = _kSettingsDialogWidth.clamp(
       0.0,
@@ -86,10 +85,6 @@ class _SettingsDialogState extends State<_SettingsDialog> {
     final active = widget.entries[_selected];
 
     return Dialog(
-      backgroundColor: cs.workspacePage,
-      clipBehavior: Clip.antiAlias,
-      insetPadding: const EdgeInsets.all(24),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(32)),
       child: SizedBox(
         width: dialogWidth,
         height: dialogHeight,
