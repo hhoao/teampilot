@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../cubits/chat_cubit.dart';
+import '../../../cubits/project_profile_cubit.dart';
 import '../../../cubits/team_cubit.dart';
 import '../../../l10n/l10n_extensions.dart';
 import '../../../models/app_project.dart';
@@ -61,13 +62,17 @@ Future<void> createAndOpenProjectConversation(
   final team = isPersonal ? null : context.read<TeamCubit>().state.selectedTeam;
   final teamId = isPersonal ? '' : (team?.id ?? project.teamId);
 
+  final effectiveCli = isPersonal
+      ? (cli ?? context.read<ProjectProfileCubit>().state.profile?.cli)
+      : null;
+
   try {
     final session = await chatCubit.createSession(
       project.projectId,
       repo,
       sessionTeamId: teamId,
       rosterMembers: isPersonal ? const [] : (team?.members ?? const []),
-      cli: isPersonal ? cli : null,
+      cli: effectiveCli,
     );
     if (!context.mounted) return;
     await openProjectSessionTab(context, project, session);

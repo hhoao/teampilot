@@ -41,9 +41,7 @@ class TeammateBusMcpServer {
         if (member.isNotEmpty) handler.notifyIdle(member);
         // 回 Stop-hook decision：永远把成员推回 wait_for_message（永不主动结束），
         // 仅空转保险丝（idleStopDecision 内部）触发时才放行。
-        final reply = member.isEmpty
-            ? '{}'
-            : handler.idleStopDecision(member);
+        final reply = member.isEmpty ? '{}' : handler.idleStopDecision(member);
         request.response
           ..statusCode = HttpStatus.ok
           ..headers.contentType = ContentType(
@@ -84,11 +82,19 @@ class TeammateBusMcpServer {
       final res = await handler.handle(member, rpc);
       request.response
         ..statusCode = HttpStatus.ok
-        ..headers.contentType = ContentType('application', 'json', charset: 'utf-8')
+        ..headers.contentType = ContentType(
+          'application',
+          'json',
+          charset: 'utf-8',
+        )
         ..write(res!.encode());
       await request.response.close();
     } catch (e, st) {
-      appLogger.e('[teammate-bus-mcp] request failed', error: e, stackTrace: st);
+      appLogger.e(
+        '[teammate-bus-mcp] request failed',
+        error: e,
+        stackTrace: st,
+      );
       try {
         request.response.statusCode = HttpStatus.internalServerError;
         await request.response.close();
@@ -143,17 +149,8 @@ class TeammateBusMcpServer {
           );
         }
         await response.flush();
-        appLogger.d(
-          '[teammate-bus-mcp] keepalive #$pings member=$member '
-          't=${sw.elapsed.inSeconds}s',
-        );
       } catch (e) {
         disconnectAtSec = sw.elapsed.inSeconds;
-        appLogger.w(
-          '[teammate-bus-mcp] keepalive write FAILED member=$member '
-          'after ${disconnectAtSec}s (#$pings pings, progressToken='
-          '${progressToken != null}) — client dropped the SSE: $e',
-        );
         timer.cancel();
         cancel.cancel(); // 解除阻塞中的 wait，member 不再永卡 park
       }
@@ -171,8 +168,9 @@ class TeammateBusMcpServer {
         );
       } else {
         try {
-          response
-              .write('event: message\ndata: ${delivery.response.encode()}\n\n');
+          response.write(
+            'event: message\ndata: ${delivery.response.encode()}\n\n',
+          );
           await response.flush();
           await delivery.confirm();
           appLogger.i(

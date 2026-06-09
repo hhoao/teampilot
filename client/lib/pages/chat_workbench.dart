@@ -14,6 +14,7 @@ import '../models/team_config.dart';
 import '../repositories/session_repository.dart';
 import '../services/terminal/terminal_session.dart';
 import '../services/terminal/terminal_theme_mapper.dart';
+import '../theme/workspace_surface_layers.dart';
 import '../utils/app_keys.dart';
 import '../widgets/file_editor_panel.dart';
 import 'chat/chat_workbench_placeholders.dart';
@@ -195,6 +196,7 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
       cs,
       isDark: isDark,
       mode: terminalThemeMode,
+      chrome: WorkspacePageChrome.project,
     );
     final terminalBackground = Color(0xFF000000 | terminalTheme.background);
     final teamCubit = context.watch<TeamCubit>();

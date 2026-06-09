@@ -13,6 +13,7 @@ import '../l10n/l10n_extensions.dart';
 import '../models/layout_preferences.dart';
 import '../services/terminal/terminal_fonts.dart';
 import '../services/terminal/terminal_theme_mapper.dart';
+import '../theme/workspace_surface_layers.dart';
 import '../services/terminal/terminal_uri_opener.dart';
 import '../services/terminal/workspace_terminal_registry.dart';
 import '../utils/app_keys.dart';
@@ -120,7 +121,12 @@ class _WorkspaceTerminalPanelState extends State<WorkspaceTerminalPanel> {
         .state
         .preferences
         .terminalThemeMode;
-    return teampilotTerminalTheme(cs, isDark: isDark, mode: mode);
+    return teampilotTerminalTheme(
+      cs,
+      isDark: isDark,
+      mode: mode,
+      chrome: WorkspacePageChrome.project,
+    );
   }
 
   void _connectEntry(WorkspaceTerminalEntry entry) {

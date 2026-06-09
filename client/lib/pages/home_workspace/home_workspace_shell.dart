@@ -300,6 +300,9 @@ class _HomeWorkspaceShellState extends State<HomeWorkspaceShell> {
       (c) => c.state.projects,
     );
     final activeId = _projectIdFromLocation(widget.location);
+    final pageChrome = activeId == null
+        ? WorkspacePageChrome.home
+        : WorkspacePageChrome.project;
 
     final cs = Theme.of(context).colorScheme;
     final l10n = context.l10n;
@@ -337,12 +340,13 @@ class _HomeWorkspaceShellState extends State<HomeWorkspaceShell> {
             previous.selectedTeam?.id != next.selectedTeam?.id,
         listener: (context, _) => _syncTeamSessionScope(context),
         child: Scaffold(
-          backgroundColor: cs.workspacePage,
+          backgroundColor: cs.workspacePageChrome(pageChrome),
           body: Column(
             children: [
               HomeWorkspaceTitleBar(
             tabs: tabs,
             activeProjectId: activeId,
+            pageChrome: pageChrome,
             recentlyClosed: _recentlyClosed,
             openProjectIds: _openIds.toSet(),
             onHomeTap: _goHome,

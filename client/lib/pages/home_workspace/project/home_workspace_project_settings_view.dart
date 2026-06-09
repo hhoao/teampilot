@@ -56,7 +56,6 @@ class _HomeWorkspaceProjectSettingsViewState
           Container(
             width: HomeWorkspaceProjectSettingsView.navWidth,
             decoration: BoxDecoration(
-              color: cs.surface,
               border: Border(
                 right: BorderSide(
                   color: cs.outlineVariant.withValues(alpha: 0.6),
@@ -72,49 +71,44 @@ class _HomeWorkspaceProjectSettingsViewState
                   icon: Icons.tune_outlined,
                   selected: _section == ProjectSettingsSection.basic,
                   density: WorkspaceHubNavDensity.relaxed,
-                  onTap: () => setState(
-                    () => _section = ProjectSettingsSection.basic,
-                  ),
+                  onTap: () =>
+                      setState(() => _section = ProjectSettingsSection.basic),
                 ),
                 WorkspaceHubEntry(
                   title: l10n.dangerZone,
                   icon: Icons.warning_amber_outlined,
                   selected: _section == ProjectSettingsSection.danger,
                   density: WorkspaceHubNavDensity.relaxed,
-                  onTap: () => setState(
-                    () => _section = ProjectSettingsSection.danger,
-                  ),
+                  onTap: () =>
+                      setState(() => _section = ProjectSettingsSection.danger),
                 ),
               ],
             ),
           ),
           Expanded(
-            child: ColoredBox(
-              color: cs.workspacePage,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  WorkspaceHubTitleBar(
-                    compact: true,
-                    title: l10n.homeWorkspaceProjectSettings,
-                    subtitle: project.effectiveDisplay,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                WorkspaceHubTitleBar(
+                  compact: true,
+                  title: l10n.homeWorkspaceProjectSettings,
+                  subtitle: project.effectiveDisplay,
+                ),
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.fromLTRB(24, 8, 24, 32),
+                    child: switch (_section) {
+                      ProjectSettingsSection.basic =>
+                        _ProjectSettingsBasicSection(
+                          project: project,
+                          sessionCount: sessionCount,
+                        ),
+                      ProjectSettingsSection.danger =>
+                        _ProjectSettingsDangerSection(project: project),
+                    },
                   ),
-                  Expanded(
-                    child: SingleChildScrollView(
-                      padding: const EdgeInsets.fromLTRB(24, 8, 24, 32),
-                      child: switch (_section) {
-                        ProjectSettingsSection.basic =>
-                          _ProjectSettingsBasicSection(
-                            project: project,
-                            sessionCount: sessionCount,
-                          ),
-                        ProjectSettingsSection.danger =>
-                          _ProjectSettingsDangerSection(project: project),
-                      },
-                    ),
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ],
@@ -182,11 +176,8 @@ class _ProjectSettingsBasicSection extends StatelessWidget {
                     : l10n.homeWorkspaceProjectAdditionalDirsCount(
                         project.additionalPaths.length,
                       ),
-                onEdit: () => showProjectDetailsDialog(
-                  context,
-                  project,
-                  sessionCount,
-                ),
+                onEdit: () =>
+                    showProjectDetailsDialog(context, project, sessionCount),
                 showDividerBelow: true,
               ),
               _ProjectSettingsInlineRow(
@@ -214,7 +205,10 @@ class _ProjectSettingsBasicSection extends StatelessWidget {
     );
   }
 
-  Future<void> _editDisplayName(BuildContext context, AppProject project) async {
+  Future<void> _editDisplayName(
+    BuildContext context,
+    AppProject project,
+  ) async {
     final l10n = context.l10n;
     final controller = TextEditingController(text: project.display);
     final saved = await showDialog<bool>(

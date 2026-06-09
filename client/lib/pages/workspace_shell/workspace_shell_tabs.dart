@@ -15,7 +15,10 @@ import '../../widgets/menu/sidebar_action_menu.dart';
 import 'workspace_shell_models.dart';
 
 class WorkspaceShellTabRowTrailing extends StatelessWidget {
-  const WorkspaceShellTabRowTrailing({this.actions, required this.showRightToolsToggle});
+  const WorkspaceShellTabRowTrailing({
+    this.actions,
+    required this.showRightToolsToggle,
+  });
 
   final Widget? actions;
   final bool showRightToolsToggle;
@@ -98,7 +101,6 @@ class WorkspaceShellTabRow extends StatelessWidget {
       height: 38,
       padding: const EdgeInsets.symmetric(horizontal: 6),
       decoration: BoxDecoration(
-        color: cs.workspaceCard,
         border: Border(
           bottom: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.5)),
         ),

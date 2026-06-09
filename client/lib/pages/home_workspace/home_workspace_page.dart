@@ -66,8 +66,6 @@ class _HomeWorkspacePageState extends State<HomeWorkspacePage> {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     final globalView = _globalView;
     final libraryView = _libraryView;
     final teamId = context.watch<TeamCubit>().state.selectedTeam?.id ?? 'none';
@@ -143,34 +141,6 @@ class _HomeWorkspacePageState extends State<HomeWorkspacePage> {
       ],
     );
 
-    // Float the whole workspace as a single rounded card on a subtle backdrop.
-    return ColoredBox(
-      color: cs.workspacePage,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-        child: Container(
-          clipBehavior: Clip.antiAlias,
-          decoration: BoxDecoration(
-            color: cs.workspaceCard,
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: isDark ? 0.28 : 0.08),
-                blurRadius: 18,
-                offset: const Offset(0, 6),
-              ),
-            ],
-          ),
-          // Border drawn in front of the children so the edge-to-edge sidebar /
-          // content surfaces can't paint over it; this also makes the rounded
-          // corners read against the near-identical page background.
-          foregroundDecoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.7)),
-          ),
-          child: body,
-        ),
-      ),
-    );
+    return WorkspacePageCardShell(child: body);
   }
 }

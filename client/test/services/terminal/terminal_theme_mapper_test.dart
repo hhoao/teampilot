@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_alacritty/flutter_alacritty.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/terminal/terminal_theme_mapper.dart';
+import 'package:teampilot/theme/workspace_surface_layers.dart';
 
 void main() {
   test('terminalColorsFromTheme maps palette fields', () {
@@ -55,8 +56,28 @@ void main() {
 
   test('teampilotTerminalTheme hyperlink hint uses ColorScheme primary', () {
     const cs = ColorScheme.dark(primary: Color(0xFF336699));
-    final theme = teampilotTerminalTheme(cs, isDark: true, mode: 'default');
+    final theme = teampilotTerminalTheme(cs, isDark: true, mode: 'adaptive');
     expect(theme.hintStart.bg, 0x336699);
     expect(theme.hintStart.fg, cs.onPrimary.toARGB32() & 0xFFFFFF);
+  });
+
+  test('teampilotTerminalTheme adaptive background follows page chrome', () {
+    const cs = ColorScheme.light(
+      surface: Color(0xFFFFFFFF),
+      surfaceContainer: Color(0xFFE8EAED),
+    );
+    final home = teampilotTerminalTheme(
+      cs,
+      isDark: false,
+      mode: 'adaptive',
+      chrome: WorkspacePageChrome.home,
+    );
+    final project = teampilotTerminalTheme(
+      cs,
+      isDark: false,
+      mode: 'adaptive',
+      chrome: WorkspacePageChrome.project,
+    );
+    expect(home.background, isNot(project.background));
   });
 }

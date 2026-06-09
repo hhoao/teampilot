@@ -123,6 +123,7 @@ class HomeWorkspaceTitleBar extends StatefulWidget {
   const HomeWorkspaceTitleBar({
     this.tabs = const [],
     this.activeProjectId,
+    this.pageChrome = WorkspacePageChrome.home,
     this.recentlyClosed = const [],
     this.openProjectIds = const {},
     this.onHomeTap,
@@ -137,6 +138,9 @@ class HomeWorkspaceTitleBar extends StatefulWidget {
 
   /// The project currently shown, or null when the Home view is shown.
   final String? activeProjectId;
+
+  /// Page backdrop chrome; matches [HomeWorkspaceShell] scaffold fill.
+  final WorkspacePageChrome pageChrome;
 
   /// Recently closed tabs (newest first), excluding currently open ids.
   final List<HomeClosedProjectEntry> recentlyClosed;
@@ -190,7 +194,7 @@ class _HomeWorkspaceTitleBarState extends State<HomeWorkspaceTitleBar>
     final showWindowControls = useCustomDesktopWindowTitleBar;
 
     return Material(
-      color: cs.workspacePage,
+      color: cs.workspacePageChrome(widget.pageChrome),
       child: SizedBox(
         height: kHomeWorkspaceTitleBarHeight,
         child: Row(

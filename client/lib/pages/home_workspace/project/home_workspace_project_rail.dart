@@ -58,34 +58,9 @@ class HomeWorkspaceProjectRail extends StatelessWidget {
         value: HomeWorkspaceProjectSection.conversations,
       ),
       _sectionItem(
-        icon: Icons.smart_toy_outlined,
-        label: l10n.homeWorkspaceProjectAgent,
-        value: HomeWorkspaceProjectSection.agent,
-      ),
-      _sectionItem(
-        icon: Icons.extension_outlined,
-        label: l10n.homeWorkspaceProjectSkills,
-        value: HomeWorkspaceProjectSection.skills,
-      ),
-      _sectionItem(
-        icon: Icons.widgets_outlined,
-        label: l10n.homeWorkspaceProjectPlugins,
-        value: HomeWorkspaceProjectSection.plugins,
-      ),
-      _sectionItem(
-        icon: Icons.hub_outlined,
-        label: l10n.homeWorkspaceProjectMcp,
-        value: HomeWorkspaceProjectSection.mcp,
-      ),
-      _sectionItem(
-        icon: Icons.power_outlined,
-        label: l10n.homeWorkspaceProjectExtensions,
-        value: HomeWorkspaceProjectSection.extensions,
-      ),
-      _sectionItem(
-        icon: Icons.settings_outlined,
-        label: l10n.homeWorkspaceProjectSettings,
-        value: HomeWorkspaceProjectSection.settings,
+        icon: Icons.tune_outlined,
+        label: l10n.homeWorkspaceProjectManagement,
+        value: HomeWorkspaceProjectSection.manage,
       ),
     ];
   }
@@ -101,12 +76,6 @@ class HomeWorkspaceProjectRail extends StatelessWidget {
         icon: Icons.settings_outlined,
         label: l10n.homeWorkspaceProjectSettings,
         value: HomeWorkspaceProjectSection.settings,
-      ),
-      _RailItem(
-        icon: Icons.groups_outlined,
-        label: l10n.homeWorkspaceTeamConfig,
-        active: false,
-        onTap: () => context.go('/home-v2?section=members'),
       ),
     ];
   }

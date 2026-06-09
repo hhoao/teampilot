@@ -3,7 +3,10 @@ enum HomeWorkspaceProjectSection {
   conversations,
   settings,
 
-  /// Personal projects only — project-scoped agent / CLI config.
+  /// Personal projects only — [HomeWorkspaceProjectConfigWorkspace] with in-page nav.
+  manage,
+
+  /// Sub-sections inside [manage]; not top-level rail entries.
   agent,
   skills,
   plugins,

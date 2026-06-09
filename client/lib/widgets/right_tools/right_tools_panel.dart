@@ -79,7 +79,6 @@ class _RightToolsPanelState extends State<RightToolsPanel> {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
     final teamCubit = context.watch<TeamCubit>();
     final chatCubit = context.watch<ChatCubit>();
     final team = teamCubit.state.selectedTeam;
@@ -98,12 +97,11 @@ class _RightToolsPanelState extends State<RightToolsPanel> {
 
     final members = team == null
         ? const <TeamMemberConfig>[]
-        : ([...team.members]
-            ..sort((a, b) {
-              if (TeamMemberNaming.isTeamLead(a)) return -1;
-              if (TeamMemberNaming.isTeamLead(b)) return 1;
-              return a.name.compareTo(b.name);
-            }));
+        : ([...team.members]..sort((a, b) {
+            if (TeamMemberNaming.isTeamLead(a)) return -1;
+            if (TeamMemberNaming.isTeamLead(b)) return 1;
+            return a.name.compareTo(b.name);
+          }));
     void maybeDismissDrawer() {
       if (widget.dismissDrawerOnAction) {
         Navigator.of(context).maybePop();
@@ -114,7 +112,8 @@ class _RightToolsPanelState extends State<RightToolsPanel> {
     // absent (e.g. lightweight test harnesses) rather than crashing the shell.
     final mailboxCubit = context.watch<MailboxCubit?>();
     final mailboxState = mailboxCubit?.state ?? const MailboxState();
-    final showMailbox = !widget.isPersonalProject &&
+    final showMailbox =
+        !widget.isPersonalProject &&
         team != null &&
         mailboxCubit != null &&
         team.teamMode == TeamMode.mixed &&
@@ -130,8 +129,7 @@ class _RightToolsPanelState extends State<RightToolsPanel> {
           child: MembersPanel(
             team: team,
             members: members,
-            memberPresence:
-                context.watch<MemberPresenceCubit>().state.presence,
+            memberPresence: context.watch<MemberPresenceCubit>().state.presence,
             selectedMemberId: chatCubit.state.selectedMemberId,
             onSelected: (id) {
               final member = team.members.firstWhere((m) => m.id == id);
@@ -181,7 +179,6 @@ class _RightToolsPanelState extends State<RightToolsPanel> {
     ];
     return Container(
       key: widget.panelKey,
-      color: cs.workspaceSubtleSurface,
       child: widget.preferences.toolsArrangement == ToolsArrangement.tabs
           ? TabbedPanel(views: views, scopeId: widget.projectId)
           : StackedPanel(views: views),

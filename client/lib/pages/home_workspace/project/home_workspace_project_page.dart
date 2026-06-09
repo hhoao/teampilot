@@ -10,9 +10,9 @@ import '../../../cubits/team_cubit.dart';
 import '../../../l10n/l10n_extensions.dart';
 import '../../../models/app_project.dart';
 import '../../../models/layout_preferences.dart';
+import '../../../theme/workspace_surface_layers.dart';
 import '../../../widgets/resizable_split_view.dart';
 import '../../chat_page.dart';
-import 'home_workspace_conversation_panel.dart';
 import 'home_workspace_project_config_workspace.dart';
 import 'home_workspace_project_rail.dart';
 import 'home_workspace_project_section.dart';
@@ -22,11 +22,9 @@ import 'project_config_section.dart';
 
 /// Project work page.
 ///
-/// Personal projects ([AppProject.teamId] empty): project sidebar + chat or
-/// project config (`?view=manage`).
-///
-/// Team projects: icon rail + conversation tree + chat workbench, or project
-/// settings — unchanged from the pre–personal-workspace layout.
+/// Personal and team projects share the icon rail + floated card layout.
+/// Personal [HomeWorkspaceProjectSection.manage] opens the config workspace
+/// with in-page section nav; the rail only switches conversations vs manage.
 class HomeWorkspaceProjectPage extends StatefulWidget {
   const HomeWorkspaceProjectPage({
     required this.projectId,
@@ -37,22 +35,19 @@ class HomeWorkspaceProjectPage extends StatefulWidget {
 
   final String projectId;
 
-  /// `manage` shows project configuration instead of the chat workbench.
+  /// `manage` opens [HomeWorkspaceProjectConfigWorkspace] (personal projects).
   final String? view;
 
   final ProjectConfigSection? configSection;
 
   @override
-  State<HomeWorkspaceProjectPage> createState() => _HomeWorkspaceProjectPageState();
+  State<HomeWorkspaceProjectPage> createState() =>
+      _HomeWorkspaceProjectPageState();
 }
 
 class _HomeWorkspaceProjectPageState extends State<HomeWorkspaceProjectPage> {
-  double _sidebarWidth = HomeWorkspaceProjectSidebar.defaultWidth;
-  double _conversationPanelWidth = HomeWorkspaceConversationPanel.defaultWidth;
-  HomeWorkspaceProjectSection _teamSection =
-      HomeWorkspaceProjectSection.conversations;
-
-  bool get _showManage => widget.view == 'manage';
+  double? _conversationSidebarWidth;
+  late HomeWorkspaceProjectSection _section = _sectionFromRoute();
 
   ProjectConfigSection get _configSection =>
       widget.configSection ?? ProjectConfigSection.settings;
@@ -60,13 +55,7 @@ class _HomeWorkspaceProjectPageState extends State<HomeWorkspaceProjectPage> {
   @override
   void initState() {
     super.initState();
-    // Switch the active project bucket synchronously so the very first build of
-    // this page publishes THIS project's tabs (no one-frame stale-tab flash).
-    // Only `tabs`/`activeTabIndex` change here — no ancestor BlocBuilder selects
-    // on those, so this emit does not mark an already-built widget dirty.
     context.read<ChatCubit>().setActiveProject(widget.projectId);
-    // Team/profile sync emits on TeamCubit/ProjectProfileCubit (which ancestors
-    // listen to); defer it past the current frame to stay build-safe.
     WidgetsBinding.instance.addPostFrameCallback((_) => _syncProjectContext());
   }
 
@@ -75,8 +64,21 @@ class _HomeWorkspaceProjectPageState extends State<HomeWorkspaceProjectPage> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.projectId != widget.projectId) {
       context.read<ChatCubit>().setActiveProject(widget.projectId);
-      WidgetsBinding.instance.addPostFrameCallback((_) => _syncProjectContext());
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => _syncProjectContext(),
+      );
     }
+    if (oldWidget.view != widget.view ||
+        oldWidget.configSection != widget.configSection) {
+      setState(() => _section = _sectionFromRoute());
+    }
+  }
+
+  HomeWorkspaceProjectSection _sectionFromRoute() {
+    if (widget.view == 'manage') {
+      return HomeWorkspaceProjectSection.manage;
+    }
+    return HomeWorkspaceProjectSection.conversations;
   }
 
   void _syncProjectContext() {
@@ -102,6 +104,24 @@ class _HomeWorkspaceProjectPageState extends State<HomeWorkspaceProjectPage> {
     unawaited(cubit.load(projectId));
   }
 
+  void _onSectionChanged(
+    HomeWorkspaceProjectSection section,
+    AppProject project,
+  ) {
+    setState(() => _section = section);
+    if (project.teamId.isNotEmpty) return;
+
+    final base = '/home-v2/project/${project.projectId}';
+    final path = switch (section) {
+      HomeWorkspaceProjectSection.conversations => base,
+      HomeWorkspaceProjectSection.manage => '$base?view=manage',
+      _ => base,
+    };
+    if (GoRouterState.of(context).uri.toString() != path) {
+      context.go(path);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
@@ -111,99 +131,111 @@ class _HomeWorkspaceProjectPageState extends State<HomeWorkspaceProjectPage> {
     );
 
     if (project == null) {
-      return _MissingProject(label: l10n.homeWorkspaceEmptyProjects);
+      return WorkspacePageCardShell(
+        chrome: WorkspacePageChrome.project,
+        child: _MissingProject(label: l10n.homeWorkspaceEmptyProjects),
+      );
     }
 
-    if (project.teamId.isEmpty) {
-      return _buildPersonalProjectPage(context, project);
-    }
+    final isPersonal = project.teamId.isEmpty;
+    final cardBody = isPersonal
+        ? _buildPersonalCardBody(project)
+        : _buildTeamCardBody(project);
 
-    return _buildTeamProjectPage(context, project);
+    return _buildProjectPageWithRail(
+      project: project,
+      isPersonal: isPersonal,
+      cardBody: cardBody,
+    );
   }
 
-  Widget _buildPersonalProjectPage(BuildContext context, AppProject project) {
+  Widget _buildProjectPageWithRail({
+    required AppProject project,
+    required bool isPersonal,
+    required Widget cardBody,
+  }) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        HomeWorkspaceProjectRail(
+          section: _section,
+          isPersonalProject: isPersonal,
+          onSectionChanged: (section) => _onSectionChanged(section, project),
+          onLogoTap: () => context.go('/home-v2'),
+        ),
+        Expanded(
+          child: WorkspacePageCardShell(
+            chrome: WorkspacePageChrome.project,
+            omitLeftPadding: true,
+            child: cardBody,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPersonalCardBody(AppProject project) {
+    if (_section == HomeWorkspaceProjectSection.manage) {
+      return HomeWorkspaceProjectConfigWorkspace(
+        project: project,
+        section: _configSection,
+      );
+    }
+    return _buildPersonalConversations(project);
+  }
+
+  Widget _buildPersonalConversations(AppProject project) {
+    return _buildConversationsWorkbench(
+      project: project,
+      isPersonalProject: true,
+    );
+  }
+
+  Widget _buildConversationsWorkbench({
+    required AppProject project,
+    required bool isPersonalProject,
+  }) {
     return LayoutBuilder(
       builder: (context, constraints) {
         final maxW = constraints.maxWidth;
-        const minSidebar = HomeWorkspaceProjectSidebar.minWidth;
         const minMain = LayoutPreferences.minWorkbenchMainWidth;
-        final maxSidebar = (maxW - minMain).clamp(
-          minSidebar,
-          HomeWorkspaceProjectSidebar.maxWidth,
-        );
-        final initialSidebar = _sidebarWidth.clamp(minSidebar, maxSidebar);
+        const minSidebar = HomeWorkspaceProjectSidebarLayout.minWidth;
+        const maxSidebarCap = HomeWorkspaceProjectSidebarLayout.maxWidth;
+        final maxSidebar = (maxW - minMain).clamp(minSidebar, maxSidebarCap);
+        final initialSidebar =
+            (_conversationSidebarWidth ??
+                    HomeWorkspaceProjectSidebarLayout.defaultWidth)
+                .clamp(minSidebar, maxSidebar);
         return ResizableSplitView(
-          first: HomeWorkspaceProjectSidebar(
-            project: project,
-            manageActive: _showManage,
+          first: HomeWorkspaceProjectSidebar(project: project),
+          second: ChatPage(
+            cwd: project.primaryPath,
+            projectId: project.projectId,
+            isPersonalProject: isPersonalProject,
           ),
-          second: _showManage
-              ? HomeWorkspaceProjectConfigWorkspace(
-                  project: project,
-                  section: _configSection,
-                )
-              : ChatPage(
-                  cwd: project.primaryPath,
-                  projectId: project.projectId,
-                  isPersonalProject: true,
-                ),
           initialPrimarySize: initialSidebar,
           minPrimarySize: minSidebar,
           minSecondarySize: minMain,
           maxPrimarySize: maxSidebar,
           onPrimarySizeChanged: (width) {
-            setState(() => _sidebarWidth = width);
+            setState(() => _conversationSidebarWidth = width);
           },
         );
       },
     );
   }
 
-  Widget _buildTeamProjectPage(BuildContext context, AppProject project) {
+  Widget _buildTeamCardBody(AppProject project) {
+    if (_section == HomeWorkspaceProjectSection.conversations) {
+      return _buildConversationsWorkbench(
+        project: project,
+        isPersonalProject: false,
+      );
+    }
+
     return Row(
       crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        HomeWorkspaceProjectRail(
-          section: _teamSection,
-          isPersonalProject: false,
-          onSectionChanged: (section) => setState(() => _teamSection = section),
-          onLogoTap: () => context.go('/home-v2'),
-        ),
-        if (_teamSection == HomeWorkspaceProjectSection.conversations)
-          Expanded(
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final maxW = constraints.maxWidth;
-                const minPanel = HomeWorkspaceConversationPanel.minWidth;
-                const minChat = LayoutPreferences.minWorkbenchMainWidth;
-                final maxPanel = (maxW - minChat).clamp(
-                  minPanel,
-                  HomeWorkspaceConversationPanel.maxWidth,
-                );
-                final initialPanel = _conversationPanelWidth.clamp(
-                  minPanel,
-                  maxPanel,
-                );
-                return ResizableSplitView(
-                  first: HomeWorkspaceConversationPanel(project: project),
-                  second: ChatPage(
-                    cwd: project.primaryPath,
-                    projectId: project.projectId,
-                  ),
-                  initialPrimarySize: initialPanel,
-                  minPrimarySize: minPanel,
-                  minSecondarySize: minChat,
-                  maxPrimarySize: maxPanel,
-                  onPrimarySizeChanged: (width) {
-                    setState(() => _conversationPanelWidth = width);
-                  },
-                );
-              },
-            ),
-          )
-        else
-          HomeWorkspaceProjectSettingsView(project: project),
-      ],
+      children: [HomeWorkspaceProjectSettingsView(project: project)],
     );
   }
 
