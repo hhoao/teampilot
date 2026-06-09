@@ -13,10 +13,10 @@ import 'cursor_workspace_trust.dart';
 final class CursorHomeProvisioner {
   CursorHomeProvisioner({
     required Filesystem fs,
-    CursorHomeLayout layout = const CursorHomeLayout(),
+    CursorHomeLayout? layout,
     CursorProviderCredentialsService? credentials,
   }) : _fs = fs,
-       _layout = layout,
+       _layout = layout ?? CursorHomeLayout(pathContext: fs.pathContext),
        _credentials = credentials;
 
   final Filesystem _fs;
@@ -78,6 +78,7 @@ final class CursorHomeProvisioner {
     final trustPath = CursorWorkspaceTrust.trustMarkerPath(
       memberHome,
       normalized,
+      pathContext: _fs.pathContext,
     );
     await _fs.ensureDir(_fs.pathContext.dirname(trustPath));
     await _fs.atomicWrite(

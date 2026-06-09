@@ -2,7 +2,10 @@ import 'package:path/path.dart' as p;
 
 /// Path helpers for an isolated fake `$HOME/.cursor/` layout.
 final class CursorHomeLayout {
-  const CursorHomeLayout();
+  CursorHomeLayout({p.Context? pathContext})
+    : _pathContext = pathContext ?? p.context;
+
+  final p.Context _pathContext;
 
   static const cursorDirName = '.cursor';
   static const rulesDirName = 'rules';
@@ -16,26 +19,27 @@ final class CursorHomeLayout {
   static const configCursorDirName = 'cursor';
   static const authFileName = 'auth.json';
 
-  String cursorDir(String homeRoot) => p.join(homeRoot, cursorDirName);
+  String cursorDir(String homeRoot) =>
+      _pathContext.join(homeRoot, cursorDirName);
 
   String configCursorDir(String homeRoot) =>
-      p.join(homeRoot, configDirName, configCursorDirName);
+      _pathContext.join(homeRoot, configDirName, configCursorDirName);
 
   String authJson(String homeRoot) =>
-      p.join(configCursorDir(homeRoot), authFileName);
+      _pathContext.join(configCursorDir(homeRoot), authFileName);
 
   String roleRule(String homeRoot) =>
-      p.join(cursorDir(homeRoot), rulesDirName, roleRuleFileName);
+      _pathContext.join(cursorDir(homeRoot), rulesDirName, roleRuleFileName);
 
   String hooksConfig(String homeRoot) =>
-      p.join(cursorDir(homeRoot), hooksFileName);
+      _pathContext.join(cursorDir(homeRoot), hooksFileName);
 
   String idleScript(String homeRoot) =>
-      p.join(cursorDir(homeRoot), hooksDirName, idleScriptFileName);
+      _pathContext.join(cursorDir(homeRoot), hooksDirName, idleScriptFileName);
 
   String mcpConfig(String homeRoot) =>
-      p.join(cursorDir(homeRoot), mcpFileName);
+      _pathContext.join(cursorDir(homeRoot), mcpFileName);
 
   String cliConfig(String homeRoot) =>
-      p.join(cursorDir(homeRoot), cliConfigFileName);
+      _pathContext.join(cursorDir(homeRoot), cliConfigFileName);
 }

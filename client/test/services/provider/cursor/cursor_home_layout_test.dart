@@ -4,7 +4,7 @@ import 'package:teampilot/services/provider/cursor/cursor_home_layout.dart';
 
 void main() {
   group('CursorHomeLayout', () {
-    const layout = CursorHomeLayout();
+    final layout = CursorHomeLayout();
     const homeRoot = '/fake/home';
 
     test('cursorDir joins homeRoot with .cursor', () {

@@ -27,13 +27,14 @@ class CursorProviderCredentialsService {
        _resolveCursorExecutable = resolveCursorExecutable,
        _processRunner = processRunner ?? _defaultProcessRunner;
 
-  static const _layout = CursorHomeLayout();
-
   final Filesystem _fs;
   final String _basePath;
   final String cursorExecutable;
   final String? Function()? _resolveCursorExecutable;
   final CursorCredentialProcessRunner _processRunner;
+
+  CursorHomeLayout get _layout =>
+      CursorHomeLayout(pathContext: _fs.pathContext);
 
   static Future<ProcessResult> _defaultProcessRunner(
     String executable,

@@ -1,5 +1,4 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:path/path.dart' as p;
 import 'package:teampilot/models/app_provider_config.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/repositories/app_provider_repository.dart';
@@ -12,7 +11,6 @@ import '../../../support/in_memory_filesystem.dart';
 
 void main() {
   const capability = CursorConfigProfileCapability();
-  const layout = CursorHomeLayout();
   const base = '/data/tp';
   const member = TeamMemberConfig(
     id: 'planner',
@@ -22,9 +20,11 @@ void main() {
 
   late InMemoryFilesystem fs;
   late ConfigProfileService paths;
+  late CursorHomeLayout layout;
 
   setUp(() {
     fs = InMemoryFilesystem();
+    layout = CursorHomeLayout(pathContext: fs.pathContext);
     paths = ConfigProfileService(
       basePath: base,
       fs: fs,
@@ -54,7 +54,7 @@ void main() {
       scope.sessionId,
       CursorConfigProfileCapability.toolId,
     );
-    return p.join(cursorDir, 'home');
+    return paths.pathContext.join(cursorDir, 'home');
   }
 
   group('CursorConfigProfileCapability', () {

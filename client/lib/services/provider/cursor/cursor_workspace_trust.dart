@@ -22,18 +22,34 @@ abstract final class CursorWorkspaceTrust {
     return slug;
   }
 
-  static String projectDir(String homeRoot, String workspacePath) {
+  static String projectDir(
+    String homeRoot,
+    String workspacePath, {
+    p.Context? pathContext,
+  }) {
+    final ctx = pathContext ?? p.context;
     final slug = slugifyWorkspacePath(workspacePath);
-    return p.join(homeRoot, '.cursor', projectsDirName, slug);
+    return ctx.join(homeRoot, '.cursor', projectsDirName, slug);
   }
 
-  static String trustMarkerPath(String homeRoot, String workspacePath) =>
-      p.join(projectDir(homeRoot, workspacePath), trustFileName);
+  static String trustMarkerPath(
+    String homeRoot,
+    String workspacePath, {
+    p.Context? pathContext,
+  }) =>
+      (pathContext ?? p.context).join(
+        projectDir(
+          homeRoot,
+          workspacePath,
+          pathContext: pathContext,
+        ),
+        trustFileName,
+      );
 
   static String buildTrustMarkerJson(String workspacePath) {
     return jsonEncode({
       'trustedAt': DateTime.now().toUtc().toIso8601String(),
-      'workspacePath': p.normalize(workspacePath.trim()),
+      'workspacePath': workspacePath.trim(),
       'trustMethod': trustMethod,
     });
   }

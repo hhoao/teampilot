@@ -114,10 +114,10 @@ double gitChangesMinContentWidth({
 Set<String> gitChangesDefaultExpandedFolders(List<GitFileChange> changes) {
   final paths = <String>{};
   for (final change in changes) {
-    var dir = p.dirname(change.path);
+    var dir = p.posix.dirname(change.path);
     while (dir != '.' && dir.isNotEmpty) {
-      paths.add(p.normalize(dir));
-      dir = p.dirname(dir);
+      paths.add(p.posix.normalize(dir));
+      dir = p.posix.dirname(dir);
     }
   }
   return paths;
@@ -152,8 +152,8 @@ class _GitChangesFolderNode {
 }
 
 void _insertChange(_GitChangesFolderNode root, GitFileChange change) {
-  final normalized = p.normalize(change.path);
-  final segments = p.split(normalized);
+  final normalized = p.posix.normalize(change.path);
+  final segments = p.posix.split(normalized);
   if (segments.length == 1) {
     root.files.add(change);
     return;
@@ -174,7 +174,8 @@ void _walk({
 }) {
   final folderNames = node.subfolders.keys.toList()..sort();
   for (final name in folderNames) {
-    final childPath = folderPath.isEmpty ? name : p.join(folderPath, name);
+    final childPath =
+        folderPath.isEmpty ? name : p.posix.join(folderPath, name);
     rows.add(
       GitChangesVisibleRow.folder(
         folderPath: childPath,

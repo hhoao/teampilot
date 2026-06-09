@@ -16,7 +16,7 @@ void main() {
   late InMemoryFilesystem fs;
   late CursorHomeProvisioner provisioner;
   late CursorProviderCredentialsService credentials;
-  const layout = CursorHomeLayout();
+  late CursorHomeLayout layout;
   const base = '/data/tp';
 
   const loggedInCliConfig = '''
@@ -47,6 +47,7 @@ void main() {
 
   setUp(() {
     fs = InMemoryFilesystem();
+    layout = CursorHomeLayout(pathContext: fs.pathContext);
     credentials = CursorProviderCredentialsService(fs: fs, basePath: base);
     provisioner = CursorHomeProvisioner(fs: fs, credentials: credentials);
   });
@@ -87,6 +88,7 @@ void main() {
       final trustPath = CursorWorkspaceTrust.trustMarkerPath(
         memberHome,
         workspace,
+        pathContext: fs.pathContext,
       );
       expect((await fs.stat(trustPath)).isFile, isTrue);
       final trust = jsonDecode((await fs.readString(trustPath))!) as Map;

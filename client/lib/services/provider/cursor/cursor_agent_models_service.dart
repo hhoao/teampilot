@@ -81,7 +81,6 @@ class CursorAgentModelsService {
        _basePathOverride = basePath?.trim(),
        _processRunner = processRunner ?? _defaultProcessRunner;
 
-  static const _layout = CursorHomeLayout();
   static const _globalCacheKey = '_global';
 
   final StorageRoots? _storageRoots;
@@ -281,7 +280,8 @@ class CursorAgentModelsService {
       basePath: roots.basePath,
     );
     final home = credentials.providerHome(id);
-    final authPath = _layout.authJson(home);
+    final authPath = CursorHomeLayout(pathContext: roots.fs.pathContext)
+        .authJson(home);
     final authStat = await roots.fs.stat(authPath);
     if (!authStat.isFile) return null;
 

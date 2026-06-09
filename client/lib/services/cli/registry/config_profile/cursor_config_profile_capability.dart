@@ -1,6 +1,7 @@
 import '../../../../models/team_config.dart';
 import '../../../../repositories/app_provider_repository.dart';
 import '../../../provider/cursor/cursor_home_bus_overlay.dart';
+import '../../../provider/cursor/cursor_home_layout.dart';
 import '../../../provider/cursor/cursor_home_provisioner.dart';
 import '../../../provider/cursor/cursor_launch_environment.dart';
 import '../../../provider/cursor/cursor_provider_credentials_service.dart';
@@ -62,6 +63,7 @@ final class CursorConfigProfileCapability implements ConfigProfileCapability {
       final provisioner = CursorHomeProvisioner(
         fs: paths.fs,
         credentials: credentials,
+        layout: CursorHomeLayout(pathContext: paths.pathContext),
       );
 
       String? providerId;

@@ -14,6 +14,23 @@ import '../support/post_frame_test_harness.dart';
 
 String _executable() => 'flashskyai';
 
+void _registerTempCubitCleanup({
+  required Directory tmp,
+  required ChatCubit cubit,
+  PostFrameTestHarness? postFrame,
+}) {
+  addTearDown(() async {
+    if (postFrame != null) {
+      await postFrame.flush();
+    }
+    await drainPendingAsyncWork();
+    await cubit.close();
+    if (await tmp.exists()) {
+      await tmp.delete(recursive: true);
+    }
+  });
+}
+
 
 class _FakeTerminalSession extends TerminalSession {
   _FakeTerminalSession({required super.executable});
@@ -394,7 +411,6 @@ void main() {
           members: [TeamMemberConfig(id: 'm-lead', name: 'team-lead')],
         );
         final tmp = await Directory.systemTemp.createTemp('chat_cubit_close_');
-        addTearDown(() => tmp.deleteSync(recursive: true));
         final repo = SessionRepository(rootDir: tmp.path);
         final projectA = await repo.createProject('/a', teamId: 'team-a');
         final projectB = await repo.createProject('/b', teamId: 'team-a');
@@ -417,7 +433,7 @@ void main() {
                   _FakeTerminalSession(executable: executable),
           postFrameScheduler: postFrame.scheduler,
         );
-        addTearDown(cubit.close);
+        _registerTempCubitCleanup(tmp: tmp, cubit: cubit, postFrame: postFrame);
 
         await cubit.openSessionTab(sessionA, team: team, member: team.members.first, repo: repo);
         await cubit.openSessionTab(sessionB, team: team, member: team.members.first, repo: repo);
@@ -548,7 +564,6 @@ void main() {
         final tmp = await Directory.systemTemp.createTemp(
           'chat_cubit_mixed_lead_connect_',
         );
-        addTearDown(() => tmp.deleteSync(recursive: true));
         final repo = SessionRepository(rootDir: tmp.path);
         final project = await repo.createProject('/tmp', teamId: '');
         final session = await repo.createSession(
@@ -568,7 +583,7 @@ void main() {
           },
           postFrameScheduler: postFrame.scheduler,
         );
-        addTearDown(cubit.close);
+        _registerTempCubitCleanup(tmp: tmp, cubit: cubit, postFrame: postFrame);
 
         await cubit.openSessionTab(
           session,
@@ -602,7 +617,6 @@ void main() {
           ],
         );
         final tmp = await Directory.systemTemp.createTemp('chat_cubit_mixed_');
-        addTearDown(() => tmp.deleteSync(recursive: true));
         final repo = SessionRepository(rootDir: tmp.path);
         final project = await repo.createProject('/tmp', teamId: '');
         final session = await repo.createSession(
@@ -622,7 +636,7 @@ void main() {
           },
           postFrameScheduler: postFrame.scheduler,
         );
-        addTearDown(cubit.close);
+        _registerTempCubitCleanup(tmp: tmp, cubit: cubit, postFrame: postFrame);
 
         await cubit.openSessionTab(
           session,

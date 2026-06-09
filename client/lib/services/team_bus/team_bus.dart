@@ -135,6 +135,10 @@ class TeamBus implements CoordinationView {
   bool isWaitingForMessage(String memberId) =>
       _members[memberId]?.waitingForMessage ?? false;
 
+  /// 成员是否正处于 bus 已知的回合中(Claude `isActive`;PTY 未起为否)。
+  bool isMemberInTurn(String memberId) =>
+      _members[memberId]?.claudeIsActive ?? false;
+
   /// 全队 roster（MCP `list_teammates`）；leader 在前，其余按 member id 排序。
   TeamRosterSnapshot rosterSnapshot() {
     final snapshots = _members.values

@@ -19,6 +19,7 @@ void main() {
       CursorWorkspaceTrust.trustMarkerPath(
         '/fake/home',
         '/home/hhoa/Document/testmixed',
+        pathContext: p.context,
       ),
       p.join(
         '/fake/home',

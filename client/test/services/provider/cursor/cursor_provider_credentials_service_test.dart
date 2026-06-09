@@ -11,8 +11,8 @@ import '../../../support/in_memory_filesystem.dart';
 void main() {
   late InMemoryFilesystem fs;
   late CursorProviderCredentialsService service;
+  late CursorHomeLayout layout;
   const base = '/data/tp';
-  const layout = CursorHomeLayout();
 
   const loggedInCliConfig = '''
 {"authInfo":{"userId":"u1","authId":"a1"}}
@@ -36,6 +36,7 @@ void main() {
 
   setUp(() {
     fs = InMemoryFilesystem();
+    layout = CursorHomeLayout(pathContext: fs.pathContext);
     service = CursorProviderCredentialsService(fs: fs, basePath: base);
   });
 

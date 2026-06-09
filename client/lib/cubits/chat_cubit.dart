@@ -152,16 +152,29 @@ class ChatCubit extends Cubit<ChatState>
     );
   }
 
-  /// mixed 模式:成员工作态取 TeamBus 协调真值 —— 只要在 agent 循环且未 parked 在
-  /// `wait_for_message` 即 working,唯一 idle 是阻塞在 `wait_for_message`。这让右侧
-  /// 工作栏与 `wait_for_message` 共用一个 per-member 真值,不再因团队级单一 CLI 选错
-  /// presence 信号源而把非 roster CLI 的成员误判为空闲。native 单 CLI 返回 null。
+  /// mixed 模式:成员工作态取 TeamBus 协调真值,不因团队级单一 CLI 选错 presence
+  /// 信号源而把非 roster CLI 的成员误判。判定优先级:
+  ///   1. 阻塞在 `wait_for_message` → 权威 idle;
+  ///   2. bus 已知在回合中(`isActive`) → working;
+  ///   3. 其余(典型:刚重开后停在 `turnDoneReady`,bus 不跟踪「终端起新回合」的边)
+  ///      回落到终端活动 —— 终端真在动才算 working,否则 idle。
+  /// 第 3 步修掉了「团队重开即全员误判工作中」:旧实现把一切非 `wait_for_message`
+  /// 态都判 working,而新建 bus 里没人 parked、agent 又尚未再次进 wait。
+  /// native 单 CLI 返回 null。
   MemberWorkload Function(String memberId)? _busWorkloadResolver(ChatTab tab) {
     final bus = tab.teamBus;
     if (_activeTeam?.teamMode != TeamMode.mixed || bus == null) return null;
-    return (memberId) => bus.isWaitingForMessage(memberId)
-        ? MemberWorkload.idle
-        : MemberWorkload.working;
+    return (memberId) {
+      if (bus.isWaitingForMessage(memberId)) return MemberWorkload.idle;
+      if (bus.isMemberInTurn(memberId)) {
+        return MemberWorkload.working;
+      }
+      final shell = tab.memberShells[memberId];
+      final res = (shell?.activityTracker.isWorking ?? false)
+          ? MemberWorkload.working
+          : MemberWorkload.idle;
+      return res;
+    };
   }
 
   /// Switches the active project bucket and republishes its tabs into state.
@@ -359,9 +372,7 @@ class ChatCubit extends Cubit<ChatState>
     String projectId,
     ProjectIconRef icon,
   ) async {
-    _emitSnapshot(
-      await _dataStore.applyProjectIcon(repo, projectId, icon),
-    );
+    _emitSnapshot(await _dataStore.applyProjectIcon(repo, projectId, icon));
   }
 
   Future<void> importCustomProjectIcon(
@@ -439,28 +450,26 @@ class ChatCubit extends Cubit<ChatState>
     SessionRepository? repo,
     String emptyDisplayTitleFallback = 'New Chat',
     bool connectImmediately = true,
-  }) =>
-      _launchService.openSessionTab(
-        session,
-        team: team,
-        member: member,
-        repo: repo,
-        emptyDisplayTitleFallback: emptyDisplayTitleFallback,
-        connectImmediately: connectImmediately,
-      );
+  }) => _launchService.openSessionTab(
+    session,
+    team: team,
+    member: member,
+    repo: repo,
+    emptyDisplayTitleFallback: emptyDisplayTitleFallback,
+    connectImmediately: connectImmediately,
+  );
 
   Future<void> openMemberTab(
     TeamConfig team,
     TeamMemberConfig member, {
     SessionRepository? repo,
     String? workspaceCwd,
-  }) =>
-      _launchService.openMemberTab(
-        team,
-        member,
-        repo: repo,
-        workspaceCwd: workspaceCwd,
-      );
+  }) => _launchService.openMemberTab(
+    team,
+    member,
+    repo: repo,
+    workspaceCwd: workspaceCwd,
+  );
 
   void closeTab(int index) {
     if (index < 0 || index >= _tabStore.length) return;
@@ -609,12 +618,11 @@ class ChatCubit extends Cubit<ChatState>
     TeamConfig team, {
     SessionRepository? repo,
     String? workspaceCwd,
-  }) =>
-      _launchService.launchAllMembers(
-        team,
-        repo: repo,
-        workspaceCwd: workspaceCwd,
-      );
+  }) => _launchService.launchAllMembers(
+    team,
+    repo: repo,
+    workspaceCwd: workspaceCwd,
+  );
 
   String selectedMemberName(TeamConfig team) {
     for (final m in team.members) {
@@ -626,18 +634,12 @@ class ChatCubit extends Cubit<ChatState>
   TerminalSession? ensureSession(TeamConfig team) =>
       _launchService.ensureSession(team);
 
-  Future<void> connectSession(
-    TeamConfig team, {
-    SessionRepository? repo,
-  }) =>
+  Future<void> connectSession(TeamConfig team, {SessionRepository? repo}) =>
       _launchService.connectSession(team, repo: repo);
 
   void disconnectSession() => _launchService.disconnectSession();
 
-  Future<void> restartSession(
-    TeamConfig team, {
-    SessionRepository? repo,
-  }) =>
+  Future<void> restartSession(TeamConfig team, {SessionRepository? repo}) =>
       _launchService.restartSession(team, repo: repo);
 
   @override
@@ -661,10 +663,7 @@ class ChatCubit extends Cubit<ChatState>
       }
     }
     _emitSnapshot(
-      _dataStore.deriveSnapshot(
-        projects: state.projects,
-        sessions: sessions,
-      ),
+      _dataStore.deriveSnapshot(projects: state.projects, sessions: sessions),
       base: state.copyWith(sessions: sessions, tabs: tabs),
     );
   }
@@ -687,9 +686,7 @@ class ChatCubit extends Cubit<ChatState>
     final tabs = _tabStore.tabs.map((t) => t.info).toList();
 
     if (wasActive && !_tabStore.isEmpty) {
-      final newIdx = idx < _tabStore.length
-          ? idx
-          : _tabStore.length - 1;
+      final newIdx = idx < _tabStore.length ? idx : _tabStore.length - 1;
       final nextTab = _tabStore.tabs[newIdx];
       _emitSnapshot(
         _dataStore.deriveSnapshot(projects: state.projects, sessions: sessions),

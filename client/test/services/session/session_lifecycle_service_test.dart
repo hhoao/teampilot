@@ -10,6 +10,7 @@ import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/cli/cli_data_layout.dart';
 import 'package:teampilot/services/cli/registry/config_profile/claude_config_profile_capability.dart';
 import 'package:teampilot/services/cli/registry/config_profile/flashskyai_config_profile_capability.dart';
+import 'package:teampilot/services/cli/registry/config_profile/config_profile_scope.dart';
 import 'package:teampilot/services/storage/storage_resolver.dart';
 import 'package:teampilot/services/session/session_lifecycle_service.dart';
 
@@ -161,6 +162,11 @@ void main() {
     'prepareLaunch cursor mixed mode uses HOME as memberConfigDir',
     () async {
       const member = TeamMemberConfig(id: 'planner', name: 'Planner');
+      final scopedSessionId = mixedModeMemberScopeSessionId(
+        p.context,
+        'mixed-session',
+        member,
+      );
       final plan = await service().prepareLaunch(
         session: _session(id: 'mixed-session'),
         team: const TeamConfig(
@@ -176,7 +182,7 @@ void main() {
 
       final cursorDir = layout.memberToolDir(
         'team-a',
-        'mixed-session/planner',
+        scopedSessionId,
         'cursor',
       );
       final memberHome = p.join(cursorDir, 'home');
@@ -189,6 +195,16 @@ void main() {
   test(
     'prepareLaunch mixed member claude override uses claude profile dirs',
     () async {
+      const member = TeamMemberConfig(
+        id: 'team-lead',
+        name: 'team-lead',
+        cli: CliTool.claude,
+      );
+      final scopedSessionId = mixedModeMemberScopeSessionId(
+        p.context,
+        'mixed-session',
+        member,
+      );
       final plan = await service().prepareLaunch(
         session: _session(id: 'mixed-session'),
         team: const TeamConfig(
@@ -196,19 +212,9 @@ void main() {
           name: 'Team A',
           cli: CliTool.flashskyai,
           teamMode: TeamMode.mixed,
-          members: [
-            TeamMemberConfig(
-              id: 'team-lead',
-              name: 'team-lead',
-              cli: CliTool.claude,
-            ),
-          ],
+          members: [member],
         ),
-        member: const TeamMemberConfig(
-          id: 'team-lead',
-          name: 'team-lead',
-          cli: CliTool.claude,
-        ),
+        member: member,
       );
 
       // Mixed members each own an isolated CONFIG_DIR nested under the session
@@ -216,12 +222,12 @@ void main() {
       // and X-Member identity cannot be clobbered by a sibling member launch.
       final claudeDir = layout.memberToolDir(
         'team-a',
-        'mixed-session/team-lead',
+        scopedSessionId,
         'claude',
       );
       final flashskyaiDir = layout.memberToolDir(
         'team-a',
-        'mixed-session/team-lead',
+        scopedSessionId,
         'flashskyai',
       );
       expect(plan.memberConfigDir, claudeDir);
