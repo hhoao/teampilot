@@ -25,8 +25,12 @@ void _registerTempCubitCleanup({
     }
     await drainPendingAsyncWork();
     await cubit.close();
-    if (await tmp.exists()) {
-      await tmp.delete(recursive: true);
+    try {
+      if (await tmp.exists()) {
+        await tmp.delete(recursive: true);
+      }
+    } on FileSystemException {
+      // Windows CI may retain directory handles briefly after bus teardown.
     }
   });
 }

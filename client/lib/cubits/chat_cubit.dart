@@ -776,8 +776,7 @@ class ChatCubit extends Cubit<ChatState>
       for (final session in tab.sessions) {
         session.dispose();
       }
-      // ignore: discarded_futures
-      tab.disposeBus();
+      await tab.disposeBus();
     }
     _tabStore.clear();
     await super.close();
