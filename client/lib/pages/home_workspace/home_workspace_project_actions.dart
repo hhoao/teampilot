@@ -10,6 +10,7 @@ import '../../l10n/l10n_extensions.dart';
 import '../../models/app_project.dart';
 import '../../repositories/session_repository.dart';
 import '../../utils/debounce/debounce.dart';
+import '../../widgets/app_dialog.dart';
 
 Future<void> showRenameHomeWorkspaceProjectDialog(
   BuildContext context,
@@ -19,23 +20,36 @@ Future<void> showRenameHomeWorkspaceProjectDialog(
   final controller = TextEditingController(text: project.display);
   final saved = await showDialog<bool>(
     context: context,
-    builder: (ctx) => AlertDialog(
-      title: Text(l10n.homeWorkspaceRenameProject),
-      content: TextField(
-        controller: controller,
-        autofocus: true,
-        decoration: InputDecoration(hintText: project.effectiveDisplay),
+    builder: (ctx) => AppDialog(
+      maxWidth: 480,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          AppDialogHeader(
+            title: l10n.homeWorkspaceRenameProject,
+            onClose: () => Navigator.of(ctx).pop(false),
+          ),
+          const SizedBox(height: 16),
+          TextField(
+            controller: controller,
+            autofocus: true,
+            decoration: InputDecoration(hintText: project.effectiveDisplay),
+          ),
+          AppDialogActions(
+            children: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(false),
+                child: Text(l10n.cancel),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.of(ctx).pop(true),
+                child: Text(l10n.save),
+              ),
+            ],
+          ),
+        ],
       ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(ctx).pop(false),
-          child: Text(l10n.cancel),
-        ),
-        FilledButton(
-          onPressed: () => Navigator.of(ctx).pop(true),
-          child: Text(l10n.save),
-        ),
-      ],
     ),
   );
   final display = controller.text;
@@ -88,32 +102,42 @@ Future<void> confirmDeleteHomeWorkspaceProject(
   final name = project.effectiveDisplay;
   await showDialog<void>(
     context: context,
-    builder: (ctx) => AlertDialog(
-      title: Text(l10n.deleteProject),
-      content: Text(l10n.deleteProjectConfirm(name)),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(ctx).pop(),
-          child: Text(l10n.cancel),
-        ),
-        FilledButton(
-          style: FilledButton.styleFrom(
-            backgroundColor: Theme.of(ctx).colorScheme.error,
+    builder: (ctx) => AppDialog(
+      maxWidth: 480,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          AppDialogHeader(title: l10n.deleteProject),
+          const SizedBox(height: 16),
+          Text(l10n.deleteProjectConfirm(name)),
+          AppDialogActions(
+            children: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: Text(l10n.cancel),
+              ),
+              FilledButton(
+                style: FilledButton.styleFrom(
+                  backgroundColor: Theme.of(ctx).colorScheme.error,
+                ),
+                onPressed: throttledAsync(
+                  'home_workspace_card_delete_project',
+                  () async {
+                    await context.read<ChatCubit>().deleteProject(
+                      repo,
+                      project.projectId,
+                    );
+                    if (!ctx.mounted) return;
+                    Navigator.of(ctx).pop();
+                  },
+                ),
+                child: Text(l10n.delete),
+              ),
+            ],
           ),
-          onPressed: throttledAsync(
-            'home_workspace_card_delete_project',
-            () async {
-              await context.read<ChatCubit>().deleteProject(
-                repo,
-                project.projectId,
-              );
-              if (!ctx.mounted) return;
-              Navigator.of(ctx).pop();
-            },
-          ),
-          child: Text(l10n.delete),
-        ),
-      ],
+        ],
+      ),
     ),
   );
 }

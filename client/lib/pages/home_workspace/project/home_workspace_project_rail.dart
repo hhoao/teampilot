@@ -22,7 +22,7 @@ class HomeWorkspaceProjectRail extends StatelessWidget {
   final ValueChanged<HomeWorkspaceProjectSection> onSectionChanged;
   final VoidCallback onLogoTap;
 
-  static const double width = 64;
+  static const double width = 58;
 
   @override
   Widget build(BuildContext context) {

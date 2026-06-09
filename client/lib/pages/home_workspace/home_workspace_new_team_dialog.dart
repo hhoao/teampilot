@@ -19,6 +19,7 @@ import '../../services/cli/registry/capabilities/provider_catalog_capability.dar
 import '../../services/cli/registry/cli_display_name.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../theme/app_text_styles.dart';
+import '../../widgets/app_dialog.dart';
 import '../../widgets/app_provider/brand_dropdown_rows.dart';
 import '../../widgets/app_provider/provider_brand_icon.dart';
 import '../../widgets/cli/cli_brand_icon.dart';
@@ -48,10 +49,7 @@ Future<void> showHomeWorkspaceNewTeamDialog(
           List<TeamMemberConfig>? members,
           String description,
         })
-      >(
-        context: context,
-        builder: (_) => const HomeWorkspaceNewTeamDialog(),
-      );
+      >(context: context, builder: (_) => const HomeWorkspaceNewTeamDialog());
   if (result == null || !context.mounted) return;
   await teamCubit.addTeam(
     result.name,
@@ -263,214 +261,171 @@ class _HomeWorkspaceNewTeamDialogState
 
     final maxDialogHeight = MediaQuery.sizeOf(context).height * 0.92;
 
-    return Dialog(
-      backgroundColor: cs.workspaceCard,
-      surfaceTintColor: Colors.transparent,
-      child: ConstrainedBox(
-        constraints: BoxConstraints(maxWidth: 720, maxHeight: maxDialogHeight),
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(40, 28, 40, 28),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _Header(title: l10n.homeWorkspaceNewTeam),
-              const SizedBox(height: 20),
-              WorkspaceSettingsToggleStrip<_TeamCreationMethod>(
-                alignment: Alignment.center,
-                customWidths: const [156, 120],
-                segments: [
-                  WorkspaceToggleSegment(
-                    value: _TeamCreationMethod.custom,
-                    label: l10n.homeWorkspaceNewTeamMethodCustom,
-                    icon: Icons.tune_outlined,
-                  ),
-                  WorkspaceToggleSegment(
-                    value: _TeamCreationMethod.ai,
-                    label: l10n.homeWorkspaceNewTeamMethodAi,
-                    icon: Icons.auto_awesome_outlined,
-                  ),
-                ],
-                selected: _creationMethod,
-                onChanged: (method) {
-                  setState(() {
-                    _creationMethod = method;
-                    if (method == _TeamCreationMethod.custom) {
-                      _draft = null;
-                    }
-                  });
-                  _syncCanCreate();
-                },
+    return AppDialog(
+      maxWidth: 720,
+      maxHeight: maxDialogHeight,
+      scrollable: true,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          AppDialogHeader(
+            title: l10n.homeWorkspaceNewTeam,
+            titleAlignment: Alignment.center,
+          ),
+          const SizedBox(height: 20),
+          WorkspaceSettingsToggleStrip<_TeamCreationMethod>(
+            alignment: Alignment.center,
+            customWidths: const [156, 120],
+            segments: [
+              WorkspaceToggleSegment(
+                value: _TeamCreationMethod.custom,
+                label: l10n.homeWorkspaceNewTeamMethodCustom,
+                icon: Icons.tune_outlined,
               ),
-              const SizedBox(height: 12),
-              Text(
-                _creationMethod == _TeamCreationMethod.custom
-                    ? l10n.homeWorkspaceNewTeamSubtitle
-                    : l10n.homeWorkspaceNewTeamSubtitleAi,
-                textAlign: TextAlign.center,
-                style: styles.body.copyWith(color: cs.onSurfaceVariant),
+              WorkspaceToggleSegment(
+                value: _TeamCreationMethod.ai,
+                label: l10n.homeWorkspaceNewTeamMethodAi,
+                icon: Icons.auto_awesome_outlined,
               ),
-              const SizedBox(height: 28),
-              // Team mode is a fundamental decision for both the custom and AI
-              // flows, so the mode cards render regardless of creation method.
-              IntrinsicHeight(
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Expanded(
-                      child: _ModeCard(
-                        icon: Icons.dashboard_customize_outlined,
-                        title: l10n.teamModeNativeTitle,
-                        description: l10n.teamModeNativeDescription,
-                        badge: l10n.homeWorkspaceNewTeamRecommended,
-                        badgeIsPrimary: true,
-                        selected: _mode == TeamMode.native,
-                        onTap: () {
-                          setState(() {
-                            _mode = TeamMode.native;
-                            _draft = null;
-                          });
-                          _syncCanCreate();
-                        },
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: _ModeCard(
-                        icon: Icons.hub_outlined,
-                        title: l10n.teamModeMixedTitle,
-                        description: l10n.teamModeMixedDescription,
-                        badge: l10n.homeWorkspaceNewTeamModeBeta,
-                        badgeIsPrimary: false,
-                        selected: _mode == TeamMode.mixed,
-                        onTap: () {
-                          setState(() {
-                            _mode = TeamMode.mixed;
-                            _draft = null;
-                          });
-                          _syncCanCreate();
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              if (_creationMethod == _TeamCreationMethod.custom) ...[
-                if (_mode == TeamMode.native) ...[
-                  const SizedBox(height: 20),
-                  _NativeTeamOptionsCard(
-                    cli: _cli,
-                    providerId: _providerId,
-                    onCliChanged: (cli) {
+            ],
+            selected: _creationMethod,
+            onChanged: (method) {
+              setState(() {
+                _creationMethod = method;
+                if (method == _TeamCreationMethod.custom) {
+                  _draft = null;
+                }
+              });
+              _syncCanCreate();
+            },
+          ),
+          const SizedBox(height: 12),
+          Text(
+            _creationMethod == _TeamCreationMethod.custom
+                ? l10n.homeWorkspaceNewTeamSubtitle
+                : l10n.homeWorkspaceNewTeamSubtitleAi,
+            textAlign: TextAlign.center,
+            style: styles.body.copyWith(color: cs.onSurfaceVariant),
+          ),
+          const SizedBox(height: 28),
+          // Team mode is a fundamental decision for both the custom and AI
+          // flows, so the mode cards render regardless of creation method.
+          IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(
+                  child: _ModeCard(
+                    icon: Icons.dashboard_customize_outlined,
+                    title: l10n.teamModeNativeTitle,
+                    description: l10n.teamModeNativeDescription,
+                    badge: l10n.homeWorkspaceNewTeamRecommended,
+                    badgeIsPrimary: true,
+                    selected: _mode == TeamMode.native,
+                    onTap: () {
                       setState(() {
-                        _cli = cli;
-                        _providerId = '';
+                        _mode = TeamMode.native;
+                        _draft = null;
                       });
-                      _syncDefaultProviderForCli(cli);
+                      _syncCanCreate();
                     },
-                    onProviderChanged: (id) =>
-                        setState(() => _providerId = id ?? ''),
                   ),
-                ],
-                const SizedBox(height: 24),
-                _NameField(
-                  controller: _nameController,
-                  onSubmitted: (_) => _submit(),
                 ),
-              ] else ...[
-                const SizedBox(height: 24),
-                HomeWorkspaceTeamGenerateSection(
-                  enabled: _mode != null,
-                  progress: _genProgress,
-                  onDescriptionChanged: (v) =>
-                      setState(() => _aiDescription = v),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: _ModeCard(
+                    icon: Icons.hub_outlined,
+                    title: l10n.teamModeMixedTitle,
+                    description: l10n.teamModeMixedDescription,
+                    badge: l10n.homeWorkspaceNewTeamModeBeta,
+                    badgeIsPrimary: false,
+                    selected: _mode == TeamMode.mixed,
+                    onTap: () {
+                      setState(() {
+                        _mode = TeamMode.mixed;
+                        _draft = null;
+                      });
+                      _syncCanCreate();
+                    },
+                  ),
                 ),
               ],
-              const SizedBox(height: 28),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  TextButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    child: Text(l10n.cancel),
-                  ),
-                  const SizedBox(width: 12),
-                  Builder(
-                    builder: (context) {
-                      final isAi =
-                          _creationMethod == _TeamCreationMethod.ai;
-                      final enabled =
-                          isAi ? _canGenerate : (_canCreate && !_generating);
-                      return FilledButton(
-                        onPressed: enabled
-                            ? (isAi ? _generateAndCreate : _submit)
-                            : null,
-                        style: FilledButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 28,
-                            vertical: 14,
+            ),
+          ),
+          if (_creationMethod == _TeamCreationMethod.custom) ...[
+            if (_mode == TeamMode.native) ...[
+              const SizedBox(height: 20),
+              _NativeTeamOptionsCard(
+                cli: _cli,
+                providerId: _providerId,
+                onCliChanged: (cli) {
+                  setState(() {
+                    _cli = cli;
+                    _providerId = '';
+                  });
+                  _syncDefaultProviderForCli(cli);
+                },
+                onProviderChanged: (id) =>
+                    setState(() => _providerId = id ?? ''),
+              ),
+            ],
+            const SizedBox(height: 24),
+            _NameField(
+              controller: _nameController,
+              onSubmitted: (_) => _submit(),
+            ),
+          ] else ...[
+            const SizedBox(height: 24),
+            HomeWorkspaceTeamGenerateSection(
+              enabled: _mode != null,
+              progress: _genProgress,
+              onDescriptionChanged: (v) => setState(() => _aiDescription = v),
+            ),
+          ],
+          const SizedBox(height: 28),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: Text(l10n.cancel),
+              ),
+              const SizedBox(width: 12),
+              Builder(
+                builder: (context) {
+                  final isAi = _creationMethod == _TeamCreationMethod.ai;
+                  final enabled = isAi
+                      ? _canGenerate
+                      : (_canCreate && !_generating);
+                  return FilledButton(
+                    onPressed: enabled
+                        ? (isAi ? _generateAndCreate : _submit)
+                        : null,
+                    style: FilledButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 28,
+                        vertical: 14,
+                      ),
+                    ),
+                    child: _generating
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : Text(
+                            isAi
+                                ? l10n.teamGenButton
+                                : l10n.homeWorkspaceCreateTeam,
                           ),
-                        ),
-                        child: _generating
-                            ? const SizedBox(
-                                width: 18,
-                                height: 18,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                ),
-                              )
-                            : Text(
-                                isAi
-                                    ? l10n.teamGenButton
-                                    : l10n.homeWorkspaceCreateTeam,
-                              ),
-                      );
-                    },
-                  ),
-                ],
+                  );
+                },
               ),
             ],
           ),
-        ),
+        ],
       ),
-    );
-  }
-}
-
-class _Header extends StatelessWidget {
-  const _Header({required this.title});
-
-  final String title;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final styles = AppTextStyles.of(context);
-    return Stack(
-      alignment: Alignment.center,
-      children: [
-        Text(
-          title,
-          style: styles.dialogTitle.copyWith(
-            color: cs.onSurface,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        Positioned(
-          right: 0,
-          top: 0,
-          child: IconButton(
-            tooltip: context.l10n.cancel,
-            visualDensity: VisualDensity.compact,
-            icon: Icon(
-              Icons.close_rounded,
-              size: AppIconSizes.md,
-              color: cs.onSurfaceVariant,
-            ),
-            onPressed: () => Navigator.of(context).pop(),
-          ),
-        ),
-      ],
     );
   }
 }

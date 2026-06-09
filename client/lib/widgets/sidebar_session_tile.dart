@@ -11,6 +11,7 @@ import '../repositories/session_repository.dart';
 import '../theme/app_text_styles.dart';
 import '../utils/app_keys.dart';
 import '../utils/debounce/debounce.dart';
+import 'app_dialog.dart';
 import 'app_icon_button.dart';
 import 'menu/sidebar_action_menu.dart';
 
@@ -197,48 +198,58 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
     );
     showDialog<void>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(l10n.renameConversationTitle),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          decoration: InputDecoration(labelText: l10n.conversationName),
-          onSubmitted: (value) {
-            if (value.trim().isNotEmpty) {
-              unawaited(
-                context.read<ChatCubit>().renameSession(
-                  repo,
-                  session.sessionId,
-                  value.trim(),
-                ),
-              );
-            }
-            Navigator.of(ctx).pop();
-          },
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: Text(l10n.cancel),
-          ),
-          FilledButton(
-            onPressed: throttledAsync(
-              'sidebar_rename_session',
-              () async {
-                final value = controller.text.trim();
-                if (value.isNotEmpty) {
-                  await context.read<ChatCubit>().renameSession(
-                    repo,
-                    session.sessionId,
-                    value,
+      builder: (ctx) => AppDialog(
+        maxWidth: 480,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            AppDialogHeader(title: l10n.renameConversationTitle),
+            const SizedBox(height: 16),
+            TextField(
+              controller: controller,
+              autofocus: true,
+              decoration: InputDecoration(labelText: l10n.conversationName),
+              onSubmitted: (value) {
+                if (value.trim().isNotEmpty) {
+                  unawaited(
+                    context.read<ChatCubit>().renameSession(
+                      repo,
+                      session.sessionId,
+                      value.trim(),
+                    ),
                   );
                 }
-                if (ctx.mounted) Navigator.of(ctx).pop();
+                Navigator.of(ctx).pop();
               },
             ),
-            child: Text(l10n.save),
-          ),
-        ],
+            AppDialogActions(
+              children: [
+                TextButton(
+                  onPressed: () => Navigator.of(ctx).pop(),
+                  child: Text(l10n.cancel),
+                ),
+                FilledButton(
+                  onPressed: throttledAsync(
+                    'sidebar_rename_session',
+                    () async {
+                      final value = controller.text.trim();
+                      if (value.isNotEmpty) {
+                        await context.read<ChatCubit>().renameSession(
+                          repo,
+                          session.sessionId,
+                          value,
+                        );
+                      }
+                      if (ctx.mounted) Navigator.of(ctx).pop();
+                    },
+                  ),
+                  child: Text(l10n.save),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -252,31 +263,41 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
     final name = session.resolveDisplayTitle(l10n.defaultNewChatSessionTitle);
     showDialog<void>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(l10n.deleteConversation),
-        content: Text(l10n.deleteConversationConfirm(name)),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: Text(l10n.cancel),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: Theme.of(context).colorScheme.error,
+      builder: (ctx) => AppDialog(
+        maxWidth: 480,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            AppDialogHeader(title: l10n.deleteConversation),
+            const SizedBox(height: 16),
+            Text(l10n.deleteConversationConfirm(name)),
+            AppDialogActions(
+              children: [
+                TextButton(
+                  onPressed: () => Navigator.of(ctx).pop(),
+                  child: Text(l10n.cancel),
+                ),
+                FilledButton(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: Theme.of(ctx).colorScheme.error,
+                  ),
+                  onPressed: throttledAsync(
+                    'sidebar_delete_session',
+                    () async {
+                      await context.read<ChatCubit>().deleteSession(
+                        repo,
+                        session.sessionId,
+                      );
+                      if (ctx.mounted) Navigator.of(ctx).pop();
+                    },
+                  ),
+                  child: Text(l10n.delete),
+                ),
+              ],
             ),
-            onPressed: throttledAsync(
-              'sidebar_delete_session',
-              () async {
-                await context.read<ChatCubit>().deleteSession(
-                  repo,
-                  session.sessionId,
-                );
-                if (ctx.mounted) Navigator.of(ctx).pop();
-              },
-            ),
-            child: Text(l10n.delete),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

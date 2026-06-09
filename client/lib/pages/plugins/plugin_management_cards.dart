@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../theme/app_text_styles.dart';
 import '../../theme/workspace_surface_layers.dart';
+import '../../widgets/app_dialog.dart';
 import '../../widgets/settings/workspace_settings_widgets.dart';
 
 class PluginManagementCard extends StatelessWidget {
@@ -46,43 +47,53 @@ Future<bool> pluginConfirmDialog(
   final l10n = context.l10n;
   final result = await showDialog<bool>(
     context: context,
-    builder: (ctx) => AlertDialog(
-      title: Text(title),
-      content: Column(
+    builder: (ctx) => AppDialog(
+      maxWidth: 480,
+      child: Column(
         mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(message),
-          if (detailLines != null && detailLines.isNotEmpty) ...[
-            const SizedBox(height: 12),
-            if (detailHeading != null)
-              Text(
-                detailHeading,
-                style: const TextStyle(fontWeight: FontWeight.w600),
+          AppDialogHeader(title: title),
+          const SizedBox(height: 16),
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(message),
+              if (detailLines != null && detailLines.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                if (detailHeading != null)
+                  Text(
+                    detailHeading,
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                for (final line in detailLines)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text('• $line'),
+                  ),
+              ],
+            ],
+          ),
+          AppDialogActions(
+            children: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(false),
+                child: Text(l10n.cancel),
               ),
-            for (final line in detailLines)
-              Padding(
-                padding: const EdgeInsets.only(top: 4),
-                child: Text('• $line'),
+              FilledButton(
+                style: destructive
+                    ? FilledButton.styleFrom(
+                        backgroundColor: Theme.of(ctx).colorScheme.error,
+                      )
+                    : null,
+                onPressed: () => Navigator.of(ctx).pop(true),
+                child: Text(confirmLabel),
               ),
-          ],
+            ],
+          ),
         ],
       ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(ctx).pop(false),
-          child: Text(l10n.cancel),
-        ),
-        FilledButton(
-          style: destructive
-              ? FilledButton.styleFrom(
-                  backgroundColor: Theme.of(context).colorScheme.error,
-                )
-              : null,
-          onPressed: () => Navigator.of(ctx).pop(true),
-          child: Text(confirmLabel),
-        ),
-      ],
     ),
   );
   return result ?? false;

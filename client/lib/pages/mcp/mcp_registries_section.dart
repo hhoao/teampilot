@@ -7,6 +7,7 @@ import '../../services/mcp/mcp_registry_browse_service.dart';
 import '../../services/mcp/mcp_registry_config_service.dart';
 import '../../services/mcp/smithery_mcp_service.dart';
 import '../../theme/app_text_styles.dart';
+import '../../widgets/app_dialog.dart';
 import '../../theme/workspace_surface_layers.dart';
 import 'mcp_shared_widgets.dart';
 
@@ -85,19 +86,28 @@ class _McpRegistriesSectionState extends State<McpRegistriesSection> {
     final l10n = context.l10n;
     final ok = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(l10n.mcpRegistryResetTitle),
-        content: Text(l10n.mcpRegistryResetConfirm(_sourceLabel(source.kind, l10n))),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text(l10n.cancel),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text(l10n.confirm),
-          ),
-        ],
+      builder: (ctx) => AppDialog(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            AppDialogHeader(title: l10n.mcpRegistryResetTitle),
+            const SizedBox(height: 16),
+            Text(l10n.mcpRegistryResetConfirm(_sourceLabel(source.kind, l10n))),
+            AppDialogActions(
+              children: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx, false),
+                  child: Text(l10n.cancel),
+                ),
+                FilledButton(
+                  onPressed: () => Navigator.pop(ctx, true),
+                  child: Text(l10n.confirm),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
     if (ok != true || !mounted) return;
@@ -272,16 +282,17 @@ class _RegistrySourceEditDialogState extends State<_RegistrySourceEditDialog> {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    return AlertDialog(
-      title: Text(l10n.mcpRegistryEditTitle),
-      content: SizedBox(
-        width: 420,
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              TextField(
+    return AppDialog(
+      maxWidth: 420,
+      scrollable: true,
+      maxHeight: MediaQuery.sizeOf(context).height * 0.85,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          AppDialogHeader(title: l10n.mcpRegistryEditTitle),
+          const SizedBox(height: 16),
+          TextField(
                 controller: _urlCtrl,
                 decoration: InputDecoration(
                   labelText: l10n.mcpRepoApiUrlLabel,
@@ -303,30 +314,30 @@ class _RegistrySourceEditDialogState extends State<_RegistrySourceEditDialog> {
                   ),
                 ),
               ],
+          AppDialogActions(
+            children: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text(l10n.cancel),
+              ),
+              TextButton(
+                onPressed: _testing ? null : _testConnection,
+                child: _testing
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : Text(l10n.mcpRepoTestConnection),
+              ),
+              FilledButton(
+                onPressed: _save,
+                child: Text(l10n.save),
+              ),
             ],
           ),
-        ),
+        ],
       ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: Text(l10n.cancel),
-        ),
-        TextButton(
-          onPressed: _testing ? null : _testConnection,
-          child: _testing
-              ? const SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : Text(l10n.mcpRepoTestConnection),
-        ),
-        FilledButton(
-          onPressed: _save,
-          child: Text(l10n.save),
-        ),
-      ],
     );
   }
 }

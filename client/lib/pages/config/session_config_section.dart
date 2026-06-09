@@ -15,6 +15,7 @@ import '../../cubits/session_preferences_cubit.dart';
 import '../../cubits/skill_cubit.dart';
 import '../../cubits/team_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
+import '../../widgets/app_dialog.dart';
 import '../../models/connection_mode.dart';
 import '../../models/windows_storage_backend.dart';
 import '../../repositories/session_repository.dart';
@@ -223,19 +224,32 @@ class _SessionControlsState extends State<_SessionControls> {
     if (!mounted) return;
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(l10n.windowsStorageBackendSwitchConfirmTitle),
-        content: Text(l10n.windowsStorageBackendSwitchConfirmBody),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text(l10n.cancel),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text(l10n.windowsStorageBackendSwitchConfirmAction),
-          ),
-        ],
+      builder: (ctx) => AppDialog(
+        maxWidth: 480,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            AppDialogHeader(
+              title: l10n.windowsStorageBackendSwitchConfirmTitle,
+              onClose: () => Navigator.pop(ctx, false),
+            ),
+            const SizedBox(height: 16),
+            Text(l10n.windowsStorageBackendSwitchConfirmBody),
+            AppDialogActions(
+              children: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx, false),
+                  child: Text(l10n.cancel),
+                ),
+                FilledButton(
+                  onPressed: () => Navigator.pop(ctx, true),
+                  child: Text(l10n.windowsStorageBackendSwitchConfirmAction),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
     if (confirmed != true || !mounted) return;

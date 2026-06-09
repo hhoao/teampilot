@@ -11,6 +11,7 @@ import '../../../../services/cli/registry/cli_display_name.dart';
 import '../../../../services/cli/registry/cli_tool_definition.dart';
 import '../../../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../../../theme/app_text_styles.dart';
+import '../../../../widgets/app_dialog.dart';
 import '../../../../widgets/dropdown/app_dropdown_decoration.dart';
 import '../../../../widgets/dropdown/app_dropdown_field.dart';
 import '../../../../widgets/app_provider/brand_dropdown_rows.dart';
@@ -357,16 +358,20 @@ class _ProjectCliConfigureDialogState extends State<ProjectCliConfigureDialog> {
       model: _modelId,
     );
 
-    return AlertDialog(
-      title: Text(title),
-      content: SizedBox(
-        width: 480,
-        child: SettingsSurfaceCard(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              SettingsGroupHeader(title: l10n.projectCliProviderModelTitle),
+    return AppDialog(
+      maxWidth: 480,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          AppDialogHeader(title: title),
+          const SizedBox(height: 16),
+          SettingsSurfaceCard(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                SettingsGroupHeader(title: l10n.projectCliProviderModelTitle),
               SettingsLabeledStackedRow(
                 title: l10n.provider,
                 body: AppDropdownField<String>(
@@ -441,17 +446,20 @@ class _ProjectCliConfigureDialogState extends State<ProjectCliConfigureDialog> {
             ],
           ),
         ),
+          AppDialogActions(
+            children: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: Text(l10n.cancel),
+              ),
+              FilledButton(
+                onPressed: _providerId.trim().isEmpty ? null : _save,
+                child: Text(l10n.save),
+              ),
+            ],
+          ),
+        ],
       ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: Text(l10n.cancel),
-        ),
-        FilledButton(
-          onPressed: _providerId.trim().isEmpty ? null : _save,
-          child: Text(l10n.save),
-        ),
-      ],
     );
   }
 }

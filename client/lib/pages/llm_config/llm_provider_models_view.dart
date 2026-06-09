@@ -5,6 +5,7 @@ import '../../cubits/llm_config_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/llm_config.dart';
 import '../../theme/workspace_surface_layers.dart';
+import '../../widgets/app_dialog.dart';
 import '../../widgets/app_icon_button.dart';
 import 'llm_config_routes.dart';
 import 'llm_model_edit_dialog.dart';
@@ -251,31 +252,40 @@ Future<void> _showValidationDialog(BuildContext context, LlmConfig config) {
   final messages = config.validationMessages;
   return showDialog<void>(
     context: context,
-    builder: (context) => AlertDialog(
-      title: Text(l10n.validation),
-      content: SizedBox(
-        width: 400,
-        child: messages.isEmpty
-            ? Text(l10n.allChecksPassed)
-            : ListView.separated(
-                shrinkWrap: true,
-                itemCount: messages.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 8),
-                itemBuilder: (context, index) {
-                  final body = Theme.of(context).textTheme.bodyMedium;
-                  return Text(
-                    '${index + 1}. ${messages[index]}',
-                    style: (body ?? const TextStyle()).copyWith(height: 1.35),
-                  );
-                },
+    builder: (context) => AppDialog(
+      maxWidth: 400,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          AppDialogHeader(title: l10n.validation),
+          const SizedBox(height: 16),
+          if (messages.isEmpty)
+            Text(l10n.allChecksPassed)
+          else
+            ListView.separated(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: messages.length,
+              separatorBuilder: (_, __) => const SizedBox(height: 8),
+              itemBuilder: (context, index) {
+                final body = Theme.of(context).textTheme.bodyMedium;
+                return Text(
+                  '${index + 1}. ${messages[index]}',
+                  style: (body ?? const TextStyle()).copyWith(height: 1.35),
+                );
+              },
+            ),
+          AppDialogActions(
+            children: [
+              FilledButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text(l10n.cancel),
               ),
+            ],
+          ),
+        ],
       ),
-      actions: [
-        FilledButton(
-          onPressed: () => Navigator.pop(context),
-          child: Text(l10n.cancel),
-        ),
-      ],
     ),
   );
 }

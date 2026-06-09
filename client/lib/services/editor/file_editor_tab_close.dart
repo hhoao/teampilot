@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../cubits/editor_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
+import '../../widgets/app_dialog.dart';
 
 /// Unsaved-change prompts and batch close helpers for editor tabs.
 abstract final class FileEditorTabClose {
@@ -55,21 +56,31 @@ abstract final class FileEditorTabClose {
     final l10n = context.l10n;
     final discard = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(l10n.editorUnsavedChangesTitle),
-        content: Text(
-          l10n.editorUnsavedChangesDiscardFile(editor.state.fileNameFor(path)),
+      builder: (ctx) => AppDialog(
+        maxWidth: 480,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            AppDialogHeader(title: l10n.editorUnsavedChangesTitle),
+            const SizedBox(height: 16),
+            Text(
+              l10n.editorUnsavedChangesDiscardFile(editor.state.fileNameFor(path)),
+            ),
+            AppDialogActions(
+              children: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx, false),
+                  child: Text(l10n.cancel),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx, true),
+                  child: Text(l10n.editorDiscard),
+                ),
+              ],
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text(l10n.cancel),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text(l10n.editorDiscard),
-          ),
-        ],
       ),
     );
     return discard == true;

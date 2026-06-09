@@ -7,6 +7,7 @@ import '../../cubits/plugin_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/plugin.dart';
 import '../../theme/app_text_styles.dart';
+import '../../widgets/app_dialog.dart';
 import '../../utils/skill_repo_parse.dart';
 import 'plugin_management_cards.dart';
 
@@ -76,37 +77,47 @@ class PluginMarketplacesSection extends StatelessWidget {
 
     final result = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(l10n.pluginsMarketplaceAdd),
-        content: Column(
+      builder: (ctx) => AppDialog(
+        maxWidth: 480,
+        child: Column(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            TextField(
-              controller: urlCtrl,
-              decoration: InputDecoration(
-                hintText: l10n.pluginsMarketplaceUrlHint,
-                labelText: l10n.pluginsMarketplaceUrl,
-              ),
+            AppDialogHeader(title: l10n.pluginsMarketplaceAdd),
+            const SizedBox(height: 16),
+            Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: urlCtrl,
+                  decoration: InputDecoration(
+                    hintText: l10n.pluginsMarketplaceUrlHint,
+                    labelText: l10n.pluginsMarketplaceUrl,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: branchCtrl,
+                  decoration: InputDecoration(
+                    labelText: l10n.pluginsMarketplaceBranch,
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: branchCtrl,
-              decoration: InputDecoration(
-                labelText: l10n.pluginsMarketplaceBranch,
-              ),
+            AppDialogActions(
+              children: [
+                TextButton(
+                  onPressed: () => Navigator.of(ctx).pop(false),
+                  child: Text(l10n.cancel),
+                ),
+                FilledButton(
+                  onPressed: () => Navigator.of(ctx).pop(true),
+                  child: Text(l10n.pluginsMarketplaceAdd),
+                ),
+              ],
             ),
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: Text(l10n.cancel),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: Text(l10n.pluginsMarketplaceAdd),
-          ),
-        ],
       ),
     );
 

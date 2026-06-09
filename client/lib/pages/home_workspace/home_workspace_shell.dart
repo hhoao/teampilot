@@ -18,6 +18,7 @@ import '../../services/home_workspace/home_workspace_closed_projects_store.dart'
 import '../../services/home_workspace/home_workspace_open_projects_store.dart';
 import '../../services/home_workspace/home_workspace_recent_projects_store.dart';
 import '../../services/terminal/workspace_terminal_registry.dart';
+import '../../widgets/app_dialog.dart';
 import 'home_workspace_tab_scope.dart';
 import 'home_workspace_title_bar.dart';
 
@@ -257,19 +258,32 @@ class _HomeWorkspaceShellState extends State<HomeWorkspaceShell> {
     final l10n = context.l10n;
     return showDialog<bool>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(l10n.homeWorkspaceCloseProjectTitle),
-        content: Text(l10n.homeWorkspaceCloseProjectMessage(running)),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: Text(l10n.cancel),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: Text(l10n.homeWorkspaceCloseProjectConfirm),
-          ),
-        ],
+      builder: (dialogContext) => AppDialog(
+        maxWidth: 480,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            AppDialogHeader(
+              title: l10n.homeWorkspaceCloseProjectTitle,
+              onClose: () => Navigator.of(dialogContext).pop(false),
+            ),
+            const SizedBox(height: 16),
+            Text(l10n.homeWorkspaceCloseProjectMessage(running)),
+            AppDialogActions(
+              children: [
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(false),
+                  child: Text(l10n.cancel),
+                ),
+                FilledButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(true),
+                  child: Text(l10n.homeWorkspaceCloseProjectConfirm),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

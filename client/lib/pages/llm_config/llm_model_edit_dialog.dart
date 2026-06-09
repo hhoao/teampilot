@@ -4,6 +4,7 @@ import 'package:teampilot/theme/app_icon_sizes.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/llm_config.dart';
 import '../../utils/app_keys.dart';
+import '../../widgets/app_dialog.dart';
 import '../../widgets/dropdown/app_dropdown_decoration.dart';
 import '../../widgets/dropdown/app_dropdown_field.dart';
 import 'llm_workspace_typography.dart';
@@ -67,14 +68,15 @@ class LlmModelEditDialogState extends State<LlmModelEditDialog> {
         ? _provider
         : null;
 
-    return AlertDialog(
-      title: Text(widget.title),
-      content: SizedBox(
-        width: 400,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
+    return AppDialog(
+      maxWidth: 400,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          AppDialogHeader(title: widget.title),
+          const SizedBox(height: 16),
+          TextField(
               key: AppKeys.modelNameDialogField,
               controller: _nameController,
               autofocus: true,
@@ -108,39 +110,40 @@ class LlmModelEditDialogState extends State<LlmModelEditDialog> {
               decoration: InputDecoration(labelText: l10n.modelId),
             ),
             const SizedBox(height: 14),
-            SwitchListTile(
-              contentPadding: EdgeInsets.zero,
-              key: AppKeys.modelEnabledToggle,
-              title: Text(l10n.enabled),
-              value: _enabled,
-              onChanged: (value) => setState(() => _enabled = value),
-            ),
-          ],
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: Text(l10n.cancel),
-        ),
-        FilledButton(
-          onPressed: () {
-            final name = _nameController.text.trim();
-            if (name.isEmpty) return;
-            Navigator.pop(
-              context,
-              LlmModelConfig(
-                id: isEditing ? widget.model!.id : name,
-                name: name,
-                provider: _provider,
-                model: _modelController.text.trim(),
-                enabled: _enabled,
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            key: AppKeys.modelEnabledToggle,
+            title: Text(l10n.enabled),
+            value: _enabled,
+            onChanged: (value) => setState(() => _enabled = value),
+          ),
+          AppDialogActions(
+            children: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text(l10n.cancel),
               ),
-            );
-          },
-          child: Text(l10n.save),
-        ),
-      ],
+              FilledButton(
+                onPressed: () {
+                  final name = _nameController.text.trim();
+                  if (name.isEmpty) return;
+                  Navigator.pop(
+                    context,
+                    LlmModelConfig(
+                      id: isEditing ? widget.model!.id : name,
+                      name: name,
+                      provider: _provider,
+                      model: _modelController.text.trim(),
+                      enabled: _enabled,
+                    ),
+                  );
+                },
+                child: Text(l10n.save),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }

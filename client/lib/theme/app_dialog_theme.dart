@@ -11,6 +11,14 @@ const EdgeInsets kAppDialogInsetPadding = EdgeInsets.all(24);
 /// Total horizontal/vertical inset (left + right, or top + bottom).
 const double kAppDialogInsetExtent = 48;
 
+/// Inner padding around an [AppDialog]'s content column.
+///
+/// `DialogThemeData` deliberately exposes no content padding (only
+/// `actionsPadding` / `insetPadding`), so this constant is the single source of
+/// truth for the gap between the dialog edge and its body. Override per-call via
+/// [AppDialog.contentPadding] when a dialog needs a tighter or wider frame.
+const EdgeInsets kAppDialogContentPadding = EdgeInsets.fromLTRB(32, 28, 32, 28);
+
 RoundedRectangleBorder appDialogShape([
   double radius = kAppDialogBorderRadius,
 ]) => RoundedRectangleBorder(borderRadius: BorderRadius.circular(radius));

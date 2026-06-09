@@ -87,7 +87,7 @@ class _HomeWorkspaceProjectSidebarState
     );
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 18),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [

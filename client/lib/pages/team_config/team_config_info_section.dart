@@ -11,6 +11,7 @@ import '../../widgets/app_provider/cli_effort_picker_field.dart';
 import '../../widgets/app_provider/team_tool_provider_selectors.dart';
 import '../../widgets/cli/cli_brand_icon.dart';
 import '../../widgets/dropdown/app_dropdown_decoration.dart';
+import '../../widgets/app_dialog.dart';
 import '../../widgets/settings/workspace_settings_widgets.dart';
 import 'team_config_helpers.dart';
 
@@ -249,22 +250,35 @@ class TeamConfigDangerZone extends StatelessWidget {
     final l10n = context.l10n;
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(l10n.deleteTeam),
-        content: Text(l10n.deleteTeamConfirm(team.name)),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: Text(l10n.cancel),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: Theme.of(ctx).colorScheme.error,
+      builder: (ctx) => AppDialog(
+        maxWidth: 480,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            AppDialogHeader(
+              title: l10n.deleteTeam,
+              onClose: () => Navigator.of(ctx).pop(false),
             ),
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: Text(l10n.delete),
-          ),
-        ],
+            const SizedBox(height: 16),
+            Text(l10n.deleteTeamConfirm(team.name)),
+            AppDialogActions(
+              children: [
+                TextButton(
+                  onPressed: () => Navigator.of(ctx).pop(false),
+                  child: Text(l10n.cancel),
+                ),
+                FilledButton(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: Theme.of(ctx).colorScheme.error,
+                  ),
+                  onPressed: () => Navigator.of(ctx).pop(true),
+                  child: Text(l10n.delete),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
     if (confirmed == true) {

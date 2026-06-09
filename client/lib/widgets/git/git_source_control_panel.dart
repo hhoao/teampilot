@@ -16,6 +16,7 @@ import '../../l10n/l10n_extensions.dart';
 import '../../models/git_status.dart';
 import '../../services/git/git_changes_visible_rows.dart';
 import '../../theme/app_text_styles.dart';
+import '../app_dialog.dart';
 import '../app_icon_button.dart';
 import 'git_branch_menu.dart';
 import 'git_change_folder_tile.dart';
@@ -92,19 +93,32 @@ class _GitSourceControlPanelState extends State<GitSourceControlPanel> {
     final l10n = context.l10n;
     final ok = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(l10n.gitDiscardConfirmTitle),
-        content: Text(l10n.gitDiscardConfirmBody(change.path)),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: Text(MaterialLocalizations.of(ctx).cancelButtonLabel),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: Text(l10n.gitDiscard),
-          ),
-        ],
+      builder: (ctx) => AppDialog(
+        maxWidth: 480,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            AppDialogHeader(
+              title: l10n.gitDiscardConfirmTitle,
+              onClose: () => Navigator.of(ctx).pop(false),
+            ),
+            const SizedBox(height: 16),
+            Text(l10n.gitDiscardConfirmBody(change.path)),
+            AppDialogActions(
+              children: [
+                TextButton(
+                  onPressed: () => Navigator.of(ctx).pop(false),
+                  child: Text(MaterialLocalizations.of(ctx).cancelButtonLabel),
+                ),
+                FilledButton(
+                  onPressed: () => Navigator.of(ctx).pop(true),
+                  child: Text(l10n.gitDiscard),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
     if (ok == true) {

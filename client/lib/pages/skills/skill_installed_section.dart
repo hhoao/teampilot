@@ -12,6 +12,7 @@ import '../../theme/app_text_styles.dart';
 import '../../theme/workspace_surface_layers.dart';
 import '../../utils/debounce/debounce.dart';
 import '../../utils/github_source_url.dart';
+import '../../widgets/app_dialog.dart';
 import '../../widgets/github_details_button.dart';
 import '../../widgets/settings/workspace_settings_widgets.dart';
 import 'skill_management_cards.dart';
@@ -318,76 +319,64 @@ class SkillImportUnmanagedDialogState extends State<SkillImportUnmanagedDialog> 
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    return Dialog(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 560, maxHeight: 600),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 18, 20, 14),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                l10n.skillsImportTitle,
-                style: AppTextStyles.of(
-                  context,
-                ).body.copyWith(fontWeight: FontWeight.w800),
-              ),
-              const SizedBox(height: 12),
-              Flexible(
-                child: ListView.builder(
-                  shrinkWrap: true,
-                  itemCount: widget.skills.length,
-                  itemBuilder: (context, i) {
-                    final s = widget.skills[i];
-                    final checked = _selected.contains(s.directory);
-                    return CheckboxListTile(
-                      value: checked,
-                      onChanged: (v) {
-                        setState(() {
-                          if (v ?? false) {
-                            _selected.add(s.directory);
-                          } else {
-                            _selected.remove(s.directory);
-                          }
-                        });
-                      },
-                      title: Text(s.name),
-                      subtitle: Text(
-                        s.description ?? s.path,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      controlAffinity: ListTileControlAffinity.leading,
-                    );
+    return AppDialog(
+      maxWidth: 560,
+      maxHeight: 600,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          AppDialogHeader(title: l10n.skillsImportTitle),
+          const SizedBox(height: 12),
+          Flexible(
+            child: ListView.builder(
+              shrinkWrap: true,
+              itemCount: widget.skills.length,
+              itemBuilder: (context, i) {
+                final s = widget.skills[i];
+                final checked = _selected.contains(s.directory);
+                return CheckboxListTile(
+                  value: checked,
+                  onChanged: (v) {
+                    setState(() {
+                      if (v ?? false) {
+                        _selected.add(s.directory);
+                      } else {
+                        _selected.remove(s.directory);
+                      }
+                    });
                   },
-                ),
+                  title: Text(s.name),
+                  subtitle: Text(
+                    s.description ?? s.path,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  controlAffinity: ListTileControlAffinity.leading,
+                );
+              },
+            ),
+          ),
+          AppDialogActions(
+            children: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: Text(l10n.cancel),
               ),
-              const SizedBox(height: 8),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  TextButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    child: Text(l10n.cancel),
-                  ),
-                  const SizedBox(width: 8),
-                  FilledButton(
-                    onPressed: _selected.isEmpty
-                        ? null
-                        : () {
-                            final selected = widget.skills
-                                .where((s) => _selected.contains(s.directory))
-                                .toList();
-                            Navigator.of(context).pop(selected);
-                          },
-                    child: Text(l10n.skillsImportSelected(_selected.length)),
-                  ),
-                ],
+              FilledButton(
+                onPressed: _selected.isEmpty
+                    ? null
+                    : () {
+                        final selected = widget.skills
+                            .where((s) => _selected.contains(s.directory))
+                            .toList();
+                        Navigator.of(context).pop(selected);
+                      },
+                child: Text(l10n.skillsImportSelected(_selected.length)),
               ),
             ],
           ),
-        ),
+        ],
       ),
     );
   }

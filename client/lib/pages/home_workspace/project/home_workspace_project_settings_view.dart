@@ -10,6 +10,7 @@ import '../../../models/app_project.dart';
 import '../../../repositories/session_repository.dart';
 import '../../../theme/app_text_styles.dart';
 import '../../../utils/debounce/debounce.dart';
+import '../../../widgets/app_dialog.dart';
 import '../../../widgets/project_details_dialog.dart';
 import '../../../widgets/settings/workspace_hub_shell.dart';
 import '../../../widgets/settings/workspace_settings_widgets.dart';
@@ -213,23 +214,33 @@ class _ProjectSettingsBasicSection extends StatelessWidget {
     final controller = TextEditingController(text: project.display);
     final saved = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(l10n.projectDisplayName),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          decoration: InputDecoration(hintText: project.effectiveDisplay),
+      builder: (ctx) => AppDialog(
+        maxWidth: 480,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            AppDialogHeader(title: l10n.projectDisplayName),
+            const SizedBox(height: 16),
+            TextField(
+              controller: controller,
+              autofocus: true,
+              decoration: InputDecoration(hintText: project.effectiveDisplay),
+            ),
+            AppDialogActions(
+              children: [
+                TextButton(
+                  onPressed: () => Navigator.of(ctx).pop(false),
+                  child: Text(l10n.cancel),
+                ),
+                FilledButton(
+                  onPressed: () => Navigator.of(ctx).pop(true),
+                  child: Text(l10n.save),
+                ),
+              ],
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: Text(l10n.cancel),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: Text(l10n.save),
-          ),
-        ],
       ),
     );
     final display = controller.text;
@@ -280,33 +291,43 @@ class _ProjectSettingsDangerSection extends StatelessWidget {
     final repo = context.read<SessionRepository>();
     showDialog<void>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(l10n.deleteProject),
-        content: Text(l10n.deleteProjectConfirm(name)),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: Text(l10n.cancel),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: Theme.of(ctx).colorScheme.error,
+      builder: (ctx) => AppDialog(
+        maxWidth: 480,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            AppDialogHeader(title: l10n.deleteProject),
+            const SizedBox(height: 16),
+            Text(l10n.deleteProjectConfirm(name)),
+            AppDialogActions(
+              children: [
+                TextButton(
+                  onPressed: () => Navigator.of(ctx).pop(),
+                  child: Text(l10n.cancel),
+                ),
+                FilledButton(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: Theme.of(ctx).colorScheme.error,
+                  ),
+                  onPressed: throttledAsync(
+                    'home_workspace_delete_project',
+                    () async {
+                      await context.read<ChatCubit>().deleteProject(
+                        repo,
+                        project.projectId,
+                      );
+                      if (!context.mounted) return;
+                      Navigator.of(ctx).pop();
+                      context.go('/home-v2');
+                    },
+                  ),
+                  child: Text(l10n.delete),
+                ),
+              ],
             ),
-            onPressed: throttledAsync(
-              'home_workspace_delete_project',
-              () async {
-                await context.read<ChatCubit>().deleteProject(
-                  repo,
-                  project.projectId,
-                );
-                if (!context.mounted) return;
-                Navigator.of(ctx).pop();
-                context.go('/home-v2');
-              },
-            ),
-            child: Text(l10n.delete),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

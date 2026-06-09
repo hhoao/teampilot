@@ -13,6 +13,7 @@ import 'package:teampilot/services/app/backend_app_update_service.dart';
 import 'package:teampilot/theme/app_text_styles.dart';
 import 'package:teampilot/utils/changelog_parser.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
+import 'package:teampilot/widgets/app_dialog.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 /// Backend-driven update dialog: download and install on Android and desktop.
@@ -87,45 +88,29 @@ class _AppUpdateDialogState extends State<AppUpdateDialog> {
     final latestApp = widget.updateInfo.latestApp;
     final currentApp = widget.updateInfo.currentApp;
 
-    return Dialog(
-      child: Container(
-        constraints: BoxConstraints(
-          maxWidth: 400,
-          maxHeight: MediaQuery.of(context).size.height * 0.8,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const SizedBox(height: 20),
-            Center(
-              child: Text(
-                l10n.appUpdateDialogTitle,
-                style: AppTextStyles.of(context).dialogTitle.copyWith(
-                  color: Colors.black,
-                  fontWeight: FontWeight.bold,
-                ),
+    return AppDialog(
+      maxWidth: 400,
+      maxHeight: MediaQuery.sizeOf(context).height * 0.8,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          AppDialogHeader(title: l10n.appUpdateDialogTitle),
+          Flexible(
+            child: SingleChildScrollView(
+              padding: EdgeInsets.zero,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildVersionInfo(l10n, latestApp, currentApp),
+                  if (_isDownloading || _downloadCompleted)
+                    _buildDownloadProgress(),
+                  if (latestApp != null) _buildBottomRow(l10n, latestApp),
+                ],
               ),
             ),
-            const SizedBox(height: 10),
-            Flexible(
-              child: SingleChildScrollView(
-                padding: EdgeInsets.zero,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      child: _buildVersionInfo(l10n, latestApp, currentApp),
-                    ),
-                    if (_isDownloading || _downloadCompleted)
-                      _buildDownloadProgress(),
-                    if (latestApp != null) _buildBottomRow(l10n, latestApp),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

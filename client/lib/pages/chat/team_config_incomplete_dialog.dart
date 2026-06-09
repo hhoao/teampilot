@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../l10n/l10n_extensions.dart';
 import '../../services/team/team_config_launch_validator.dart';
+import '../../widgets/app_dialog.dart';
 import '../team_config/team_config_section.dart';
 
 /// Shows the "team configuration incomplete" warning for [validation] and, when
@@ -56,68 +57,75 @@ class _TeamConfigIncompleteDialog extends StatelessWidget {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
 
-    return AlertDialog(
-      icon: Container(
-        width: 48,
-        height: 48,
-        decoration: BoxDecoration(
-          color: colors.errorContainer,
-          shape: BoxShape.circle,
-        ),
-        child: Icon(
-          Icons.tune_rounded,
-          color: colors.onErrorContainer,
-          size: 26,
-        ),
-      ),
-      title: Text(l10n.teamConfigIncompleteTitle, textAlign: TextAlign.center),
-      content: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 360),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              l10n.teamConfigIncompleteBody(teamName),
-              textAlign: TextAlign.center,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: colors.onSurfaceVariant,
-              ),
-            ),
-            const SizedBox(height: 16),
-            DecoratedBox(
+    return AppDialog(
+      maxWidth: 400,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Align(
+            child: Container(
+              width: 48,
+              height: 48,
               decoration: BoxDecoration(
-                color: colors.surfaceContainerHighest.withValues(alpha: 0.5),
-                borderRadius: BorderRadius.circular(12),
+                color: colors.errorContainer,
+                shape: BoxShape.circle,
               ),
-              child: Column(
-                children: [
-                  for (var i = 0; i < groups.length; i++) ...[
-                    if (i > 0)
-                      Divider(
-                        height: 1,
-                        indent: 48,
-                        color: colors.outlineVariant.withValues(alpha: 0.5),
-                      ),
-                    _IssueRow(group: groups[i]),
-                  ],
-                ],
+              child: Icon(
+                Icons.tune_rounded,
+                color: colors.onErrorContainer,
+                size: 26,
               ),
             ),
-          ],
-        ),
+          ),
+          const SizedBox(height: 12),
+          AppDialogHeader(
+            title: l10n.teamConfigIncompleteTitle,
+            onClose: () => Navigator.of(context).pop(false),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            l10n.teamConfigIncompleteBody(teamName),
+            textAlign: TextAlign.center,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: colors.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 16),
+          DecoratedBox(
+            decoration: BoxDecoration(
+              color: colors.surfaceContainerHighest.withValues(alpha: 0.5),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Column(
+              children: [
+                for (var i = 0; i < groups.length; i++) ...[
+                  if (i > 0)
+                    Divider(
+                      height: 1,
+                      indent: 48,
+                      color: colors.outlineVariant.withValues(alpha: 0.5),
+                    ),
+                  _IssueRow(group: groups[i]),
+                ],
+              ],
+            ),
+          ),
+          AppDialogActions(
+            children: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: Text(l10n.teamConfigIncompleteDismiss),
+              ),
+              FilledButton.icon(
+                onPressed: () => Navigator.of(context).pop(true),
+                icon: const Icon(Icons.arrow_forward_rounded, size: 18),
+                label: Text(l10n.teamConfigIncompleteGoConfigure),
+              ),
+            ],
+          ),
+        ],
       ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(false),
-          child: Text(l10n.teamConfigIncompleteDismiss),
-        ),
-        FilledButton.icon(
-          onPressed: () => Navigator.of(context).pop(true),
-          icon: const Icon(Icons.arrow_forward_rounded, size: 18),
-          label: Text(l10n.teamConfigIncompleteGoConfigure),
-        ),
-      ],
     );
   }
 }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../l10n/l10n_extensions.dart';
 import '../../theme/app_text_styles.dart';
+import '../app_dialog.dart';
 import '../diff/diff_viewer.dart';
 
 /// Dialog hosting the full [DiffViewer] (side-by-side / unified, inline
@@ -53,55 +54,50 @@ class GitDiffDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Dialog(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 1100, maxHeight: 720),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 14, 8, 10),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      title,
-                      style: AppTextStyles.of(context).body.copyWith(
-                            fontWeight: FontWeight.w600,
-                          ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.close),
-                    tooltip: MaterialLocalizations.of(context).closeButtonLabel,
-                    onPressed: () => Navigator.of(context).pop(),
-                  ),
-                ],
+    return AppDialog(
+      maxWidth: 1100,
+      maxHeight: 720,
+      contentPadding: const EdgeInsets.fromLTRB(16, 14, 8, 10),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  title,
+                  style: AppTextStyles.of(context).body.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
-            ),
-            const Divider(height: 1),
-            Expanded(
-              child: diff.trim().isEmpty
-                  ? Center(child: Text(context.l10n.diffNoChanges))
-                  : DiffViewer.fromUnifiedDiff(
-                      diffText: diff,
-                      filePath: filePath ?? title,
-                      reloadDiff: reloadDiff,
-                      onOpenSource: onOpenSource == null
-                          ? null
-                          : () {
-                              // Close this dialog using its own navigator, then
-                              // run the caller's action (e.g. open in editor).
-                              Navigator.of(context).pop();
-                              onOpenSource!.call();
-                            },
-                    ),
-            ),
-          ],
-        ),
+              IconButton(
+                icon: const Icon(Icons.close),
+                tooltip: MaterialLocalizations.of(context).closeButtonLabel,
+                onPressed: () => Navigator.of(context).pop(),
+              ),
+            ],
+          ),
+          const Divider(height: 1),
+          Expanded(
+            child: diff.trim().isEmpty
+                ? Center(child: Text(context.l10n.diffNoChanges))
+                : DiffViewer.fromUnifiedDiff(
+                    diffText: diff,
+                    filePath: filePath ?? title,
+                    reloadDiff: reloadDiff,
+                    onOpenSource: onOpenSource == null
+                        ? null
+                        : () {
+                            Navigator.of(context).pop();
+                            onOpenSource!.call();
+                          },
+                  ),
+          ),
+        ],
       ),
     );
   }

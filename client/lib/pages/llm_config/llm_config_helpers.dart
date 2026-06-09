@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../cubits/app_provider_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/app_provider_config.dart';
+import '../../widgets/app_dialog.dart';
 
 Future<String?> saveNewAppProvider(
   BuildContext context,
@@ -45,23 +46,36 @@ Future<void> confirmDeleteAppProvider(BuildContext context, String id) async {
   final hasCredentials = provider?.hasClaudeCredentialsReady ?? false;
   final confirmed = await showDialog<bool>(
     context: context,
-    builder: (context) => AlertDialog(
-      title: Text(l10n.deleteProvider),
-      content: Text(
-        hasCredentials
-            ? l10n.deleteProviderWithCredentialsConfirm(label)
-            : l10n.deleteProviderConfirm(label),
+    builder: (ctx) => AppDialog(
+      maxWidth: 480,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          AppDialogHeader(
+            title: l10n.deleteProvider,
+            onClose: () => Navigator.pop(ctx, false),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            hasCredentials
+                ? l10n.deleteProviderWithCredentialsConfirm(label)
+                : l10n.deleteProviderConfirm(label),
+          ),
+          AppDialogActions(
+            children: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: Text(l10n.cancel),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: Text(l10n.delete),
+              ),
+            ],
+          ),
+        ],
       ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context, false),
-          child: Text(l10n.cancel),
-        ),
-        FilledButton(
-          onPressed: () => Navigator.pop(context, true),
-          child: Text(l10n.delete),
-        ),
-      ],
     ),
   );
   if (confirmed == true && context.mounted) {

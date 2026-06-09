@@ -5,6 +5,7 @@ import '../../theme/app_dialog_theme.dart';
 import '../../theme/app_icon_sizes.dart';
 import '../../theme/app_text_styles.dart';
 import '../../theme/workspace_surface_layers.dart';
+import '../../widgets/app_dialog.dart';
 import 'workspace_hub_shell.dart';
 
 /// One section in the [showSettingsDialog] left nav.
@@ -83,8 +84,13 @@ class _SettingsDialogState extends State<_SettingsDialog> {
     );
 
     final active = widget.entries[_selected];
+    final cs = Theme.of(context).colorScheme;
 
-    return Dialog(
+    return AppDialog(
+      maxWidth: dialogWidth,
+      maxHeight: dialogHeight,
+      contentPadding: EdgeInsets.zero,
+      backgroundColor: cs.workspacePage,
       child: SizedBox(
         width: dialogWidth,
         height: dialogHeight,

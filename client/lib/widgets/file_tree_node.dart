@@ -17,6 +17,7 @@ import '../services/io/filesystem.dart';
 import 'menu/sidebar_action_menu.dart';
 import '../utils/debounce/debounce.dart';
 import '../utils/file_icon.dart';
+import 'app_dialog.dart';
 import 'hover_widget.dart';
 
 /// Single row in the flattened file tree (no nested children).
@@ -232,22 +233,32 @@ class _FileTreeNodeState extends State<FileTreeNode> {
     final l10n = context.l10n;
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(l10n.fileTreeDeleteItemTitle),
-        content: Text(l10n.fileTreeDeleteItemConfirm(targetName)),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: Text(l10n.cancel),
-          ),
-          TextButton(
-            onPressed: throttledOnPressed('file_tree_delete', () {
-              Navigator.pop(ctx);
-              widget.cubit.deletePath(targetPath);
-            }),
-            child: Text(l10n.delete),
-          ),
-        ],
+      builder: (ctx) => AppDialog(
+        maxWidth: 480,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            AppDialogHeader(title: l10n.fileTreeDeleteItemTitle),
+            const SizedBox(height: 16),
+            Text(l10n.fileTreeDeleteItemConfirm(targetName)),
+            AppDialogActions(
+              children: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: Text(l10n.cancel),
+                ),
+                TextButton(
+                  onPressed: throttledOnPressed('file_tree_delete', () {
+                    Navigator.pop(ctx);
+                    widget.cubit.deletePath(targetPath);
+                  }),
+                  child: Text(l10n.delete),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

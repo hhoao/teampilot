@@ -6,6 +6,7 @@ import '../models/app_project.dart';
 import '../models/project_icon_picker_result.dart';
 import '../models/project_icon_ref.dart';
 import '../utils/project_geometry_catalog.dart';
+import 'app_dialog.dart';
 import 'project_icon.dart';
 
 /// Pure UI for choosing a bundled icon; orchestration lives in [ChatCubit].
@@ -62,14 +63,14 @@ class _ProjectIconPickerDialogState extends State<_ProjectIconPickerDialog> {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
 
-    return AlertDialog(
-      title: Text(widget.title),
-      content: SizedBox(
-        width: 420,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ProjectIcon.fromProject(
+    return AppDialog(
+      maxWidth: 420,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          AppDialogHeader(title: widget.title),
+          const SizedBox(height: 16),
+          ProjectIcon.fromProject(
               widget.project,
               previewIcon: _draftIcon,
               size: 72,
@@ -143,22 +144,24 @@ class _ProjectIconPickerDialogState extends State<_ProjectIconPickerDialog> {
                 );
               },
             ),
-          ],
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () =>
-              Navigator.of(context).pop(const ProjectIconPickerCancelled()),
-          child: Text(widget.cancelLabel),
-        ),
-        FilledButton(
-          onPressed: () => Navigator.of(context).pop(
-            ProjectIconPickerCommitted(_draftIcon),
+          AppDialogActions(
+            children: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(
+                  const ProjectIconPickerCancelled(),
+                ),
+                child: Text(widget.cancelLabel),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.of(context).pop(
+                  ProjectIconPickerCommitted(_draftIcon),
+                ),
+                child: Text(widget.saveLabel),
+              ),
+            ],
           ),
-          child: Text(widget.saveLabel),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }

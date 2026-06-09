@@ -12,6 +12,7 @@ import '../services/editor/file_editor_toolbar.dart';
 import '../services/editor/file_editor_tab_close.dart';
 import '../theme/workspace_surface_layers.dart';
 import '../utils/debounce/debounce.dart';
+import 'app_dialog.dart';
 import 'file_editor/file_editor_tab.dart';
 
 class FileEditorPanel extends StatelessWidget {
@@ -330,19 +331,29 @@ class _FloatingEditorWindowState extends State<_FloatingEditorWindow> {
     if (dirty.isNotEmpty) {
       final discard = await showDialog<bool>(
         context: context,
-        builder: (ctx) => AlertDialog(
-          title: Text(l10n.editorUnsavedChangesTitle),
-          content: Text(l10n.editorUnsavedChangesDiscardMultiple(dirty.length)),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: Text(l10n.cancel),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: Text(l10n.editorDiscard),
-            ),
-          ],
+        builder: (ctx) => AppDialog(
+          maxWidth: 480,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              AppDialogHeader(title: l10n.editorUnsavedChangesTitle),
+              const SizedBox(height: 16),
+              Text(l10n.editorUnsavedChangesDiscardMultiple(dirty.length)),
+              AppDialogActions(
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(ctx, false),
+                    child: Text(l10n.cancel),
+                  ),
+                  TextButton(
+                    onPressed: () => Navigator.pop(ctx, true),
+                    child: Text(l10n.editorDiscard),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       );
       if (discard != true || !context.mounted) return;

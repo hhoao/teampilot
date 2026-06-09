@@ -121,7 +121,7 @@ class WorkspaceShellTabRow extends StatelessWidget {
                       onCloseOthers: () => onTabCloseOthers?.call(i),
                       onCloseRight: () => onTabCloseRight?.call(i),
                       textColor: textBase,
-                      activeBg: cs.primaryContainer,
+                      activeBg: cs.surfaceContainerHighest,
                       borderColor: cs.outlineVariant.withValues(alpha: 0.5),
                     ),
                 ],

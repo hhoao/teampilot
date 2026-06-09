@@ -10,6 +10,7 @@ import '../../../../models/team_config.dart';
 import '../../../../services/cli/registry/cli_display_name.dart';
 import '../../../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../../../widgets/app_provider/brand_dropdown_rows.dart';
+import '../../../../widgets/app_dialog.dart';
 import '../../../../widgets/dropdown/app_dropdown_decoration.dart';
 import '../../../../widgets/dropdown/app_dropdown_field.dart';
 import '../../../../widgets/settings/workspace_settings_widgets.dart';
@@ -81,57 +82,87 @@ Future<void> showProjectCliDefaultsDialog(
           if (state.projectId != projectId ||
               state.status == ProjectProfileLoadStatus.loading ||
               state.status == ProjectProfileLoadStatus.idle) {
-            return AlertDialog(
-              title: Text(l10n.projectCliDefaultsTitle),
-              content: const SizedBox(
-                width: 480,
-                height: 120,
-                child: Center(child: CircularProgressIndicator()),
+            return AppDialog(
+              maxWidth: 480,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  AppDialogHeader(title: l10n.projectCliDefaultsTitle),
+                  const SizedBox(height: 24),
+                  const SizedBox(
+                    height: 120,
+                    child: Center(child: CircularProgressIndicator()),
+                  ),
+                ],
               ),
             );
           }
           if (state.status == ProjectProfileLoadStatus.error) {
-            return AlertDialog(
-              title: Text(l10n.projectCliDefaultsTitle),
-              content: Text(state.errorMessage ?? 'Failed to load profile'),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(dialogContext).pop(),
-                  child: Text(l10n.cancel),
-                ),
-              ],
+            return AppDialog(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  AppDialogHeader(title: l10n.projectCliDefaultsTitle),
+                  const SizedBox(height: 16),
+                  Text(state.errorMessage ?? 'Failed to load profile'),
+                  AppDialogActions(
+                    children: [
+                      TextButton(
+                        onPressed: () => Navigator.of(dialogContext).pop(),
+                        child: Text(l10n.cancel),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             );
           }
           final profile = state.profile;
           if (profile == null) {
-            return AlertDialog(
-              title: Text(l10n.projectCliDefaultsTitle),
-              content: const SizedBox(
-                width: 480,
-                height: 120,
-                child: Center(child: CircularProgressIndicator()),
+            return AppDialog(
+              maxWidth: 480,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  AppDialogHeader(title: l10n.projectCliDefaultsTitle),
+                  const SizedBox(height: 24),
+                  const SizedBox(
+                    height: 120,
+                    child: Center(child: CircularProgressIndicator()),
+                  ),
+                ],
               ),
             );
           }
 
-          return AlertDialog(
-            title: Text(l10n.projectCliDefaultsTitle),
-            content: SizedBox(
-              width: 560,
-              child: SingleChildScrollView(
-                child: ProjectCliDefaultsSection(
+          return AppDialog(
+            maxWidth: 560,
+            scrollable: true,
+            maxHeight: MediaQuery.sizeOf(dialogContext).height * 0.85,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                AppDialogHeader(title: l10n.projectCliDefaultsTitle),
+                const SizedBox(height: 16),
+                ProjectCliDefaultsSection(
                   key: ValueKey('project-cli-defaults-${profile.projectId}'),
                   profile: profile,
                   cubit: context.read<ProjectProfileCubit>(),
                 ),
-              ),
+                AppDialogActions(
+                  children: [
+                    TextButton(
+                      onPressed: () => Navigator.of(dialogContext).pop(),
+                      child: Text(l10n.cancel),
+                    ),
+                  ],
+                ),
+              ],
             ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(dialogContext).pop(),
-                child: Text(l10n.cancel),
-              ),
-            ],
           );
         },
       );

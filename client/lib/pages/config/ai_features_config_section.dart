@@ -12,6 +12,7 @@ import '../../services/cli/registry/capabilities/provider_model_capability.dart'
 import '../../services/cli/registry/cli_display_name.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../theme/app_text_styles.dart';
+import '../../widgets/app_dialog.dart';
 import '../../widgets/app_provider/brand_dropdown_rows.dart';
 import '../../widgets/app_provider/cli_effort_picker_field.dart';
 import '../../widgets/app_provider/provider_brand_icon.dart';
@@ -373,16 +374,20 @@ class _AiFeatureConfigureDialogState extends State<AiFeatureConfigureDialog> {
       CliTool.opencode,
     ];
 
-    return AlertDialog(
-      title: Text(widget.title),
-      content: SizedBox(
-        width: 480,
-        child: SettingsSurfaceCard(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              SettingsGroupHeader(title: l10n.aiFeatures),
+    return AppDialog(
+      maxWidth: 480,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          AppDialogHeader(title: widget.title),
+          const SizedBox(height: 16),
+          SettingsSurfaceCard(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                SettingsGroupHeader(title: l10n.aiFeatures),
               SettingsLabeledRow(
                 title: l10n.aiFeatureCliLabel,
                 trailing: _aiFeatureDialogDropdown(
@@ -511,17 +516,20 @@ class _AiFeatureConfigureDialogState extends State<AiFeatureConfigureDialog> {
             ],
           ),
         ),
+          AppDialogActions(
+            children: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: Text(l10n.cancel),
+              ),
+              FilledButton(
+                onPressed: _providerId.trim().isEmpty ? null : _save,
+                child: Text(l10n.save),
+              ),
+            ],
+          ),
+        ],
       ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: Text(l10n.cancel),
-        ),
-        FilledButton(
-          onPressed: _providerId.trim().isEmpty ? null : _save,
-          child: Text(l10n.save),
-        ),
-      ],
     );
   }
 }

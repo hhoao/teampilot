@@ -11,6 +11,7 @@ import '../../services/app/platform_utils.dart';
 import '../../services/mcp/mcp_listing_install_service.dart';
 import '../../utils/app_keys.dart';
 import '../../utils/debounce/debounce.dart';
+import '../../widgets/app_dialog.dart';
 import '../../widgets/settings/workspace_hub_shell.dart';
 import '../../widgets/settings/workspace_section_host.dart';
 import '../../widgets/settings/workspace_section_navigation.dart';
@@ -163,29 +164,39 @@ class _McpManagementPageState extends State<McpManagementPage> {
 
     final overwrite = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(l10n.mcpImportExisting),
-        content: Text(
-          l10n.mcpImportSummary(
-            preview.newServers.length,
-            preview.conflicts.length,
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: Text(l10n.cancel),
-          ),
-          if (preview.conflicts.isNotEmpty)
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: Text(l10n.mcpImportOverwrite),
+      builder: (ctx) => AppDialog(
+        maxWidth: 480,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            AppDialogHeader(title: l10n.mcpImportExisting),
+            const SizedBox(height: 16),
+            Text(
+              l10n.mcpImportSummary(
+                preview.newServers.length,
+                preview.conflicts.length,
+              ),
             ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text(l10n.confirm),
-          ),
-        ],
+            AppDialogActions(
+              children: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: Text(l10n.cancel),
+                ),
+                if (preview.conflicts.isNotEmpty)
+                  TextButton(
+                    onPressed: () => Navigator.pop(ctx, true),
+                    child: Text(l10n.mcpImportOverwrite),
+                  ),
+                FilledButton(
+                  onPressed: () => Navigator.pop(ctx, false),
+                  child: Text(l10n.confirm),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
     if (!mounted) return;
@@ -203,19 +214,29 @@ class _McpManagementPageState extends State<McpManagementPage> {
     final l10n = context.l10n;
     final ok = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(l10n.mcpDeleteConfirm),
-        content: Text(server.name),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text(l10n.cancel),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text(l10n.delete),
-          ),
-        ],
+      builder: (ctx) => AppDialog(
+        maxWidth: 480,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            AppDialogHeader(title: l10n.mcpDeleteConfirm),
+            const SizedBox(height: 16),
+            Text(server.name),
+            AppDialogActions(
+              children: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx, false),
+                  child: Text(l10n.cancel),
+                ),
+                FilledButton(
+                  onPressed: () => Navigator.pop(ctx, true),
+                  child: Text(l10n.delete),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
     if (ok == true && mounted) {

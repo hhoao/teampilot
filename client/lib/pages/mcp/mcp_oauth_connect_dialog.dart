@@ -7,6 +7,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../l10n/l10n_extensions.dart';
 import '../../models/mcp_server.dart';
+import '../../widgets/app_dialog.dart';
 import '../../services/mcp/mcp_oauth_callback_server.dart';
 import '../../services/mcp/mcp_oauth_discovery.dart';
 import '../../services/mcp/mcp_oauth_flow.dart';
@@ -181,80 +182,84 @@ class _McpOAuthConnectDialogState extends State<_McpOAuthConnectDialog> {
         if (didPop || finishing) return;
         _cancel();
       },
-      child: AlertDialog(
-        title: Text(l10n.mcpOAuthConnectTitle(widget.server.name)),
-        content: SizedBox(
-          width: 480,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(l10n.mcpOAuthConnectHint),
-              if (discovering) ...[
-                const SizedBox(height: 16),
-                const LinearProgressIndicator(),
-                const SizedBox(height: 8),
-                Text(
-                  l10n.mcpOAuthDiscovering,
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-              ],
-              if (_error != null) ...[
-                const SizedBox(height: 12),
-                Text(
-                  _error!,
-                  style: TextStyle(color: Theme.of(context).colorScheme.error),
-                ),
-              ],
-              if (_authorizationUrl != null) ...[
-                const SizedBox(height: 12),
-                FilledButton.icon(
-                  onPressed: finishing ? null : _openBrowser,
-                  icon: const Icon(Icons.open_in_browser, size: AppIconSizes.md),
-                  label: Text(l10n.mcpOAuthOpenBrowser),
-                ),
-                const SizedBox(height: 8),
-                SelectableText(
-                  _authorizationUrl!.toString(),
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-              ],
-              if (_showCallbackField) ...[
-                const SizedBox(height: 12),
-                TextField(
-                  controller: _callbackController,
-                  enabled: !finishing,
-                  decoration: InputDecoration(
-                    labelText: l10n.mcpOAuthCallbackUrlLabel,
-                    hintText: l10n.mcpOAuthCallbackUrlHint,
-                  ),
-                  minLines: 2,
-                  maxLines: 4,
-                ),
-              ],
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: finishing ? null : _cancel,
-            child: Text(l10n.cancel),
-          ),
-          if (_showCallbackField)
-            FilledButton(
-              onPressed: finishing ? null : _submitManualCallback,
-              child: Text(l10n.mcpOAuthSubmitCallback),
+      child: AppDialog(
+        maxWidth: 480,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            AppDialogHeader(
+              title: l10n.mcpOAuthConnectTitle(widget.server.name),
+              onClose: finishing ? () {} : _cancel,
             ),
-          if (finishing)
-            const Padding(
-              padding: EdgeInsets.all(12),
-              child: SizedBox(
-                width: 22,
-                height: 22,
-                child: CircularProgressIndicator(strokeWidth: 2),
+            const SizedBox(height: 16),
+            Text(l10n.mcpOAuthConnectHint),
+            if (discovering) ...[
+              const SizedBox(height: 16),
+              const LinearProgressIndicator(),
+              const SizedBox(height: 8),
+              Text(
+                l10n.mcpOAuthDiscovering,
+                style: Theme.of(context).textTheme.bodySmall,
               ),
+            ],
+            if (_error != null) ...[
+              const SizedBox(height: 12),
+              Text(
+                _error!,
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              ),
+            ],
+            if (_authorizationUrl != null) ...[
+              const SizedBox(height: 12),
+              FilledButton.icon(
+                onPressed: finishing ? null : _openBrowser,
+                icon: const Icon(Icons.open_in_browser, size: AppIconSizes.md),
+                label: Text(l10n.mcpOAuthOpenBrowser),
+              ),
+              const SizedBox(height: 8),
+              SelectableText(
+                _authorizationUrl!.toString(),
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ],
+            if (_showCallbackField) ...[
+              const SizedBox(height: 12),
+              TextField(
+                controller: _callbackController,
+                enabled: !finishing,
+                decoration: InputDecoration(
+                  labelText: l10n.mcpOAuthCallbackUrlLabel,
+                  hintText: l10n.mcpOAuthCallbackUrlHint,
+                ),
+                minLines: 2,
+                maxLines: 4,
+              ),
+            ],
+            AppDialogActions(
+              children: [
+                TextButton(
+                  onPressed: finishing ? null : _cancel,
+                  child: Text(l10n.cancel),
+                ),
+                if (_showCallbackField)
+                  FilledButton(
+                    onPressed: finishing ? null : _submitManualCallback,
+                    child: Text(l10n.mcpOAuthSubmitCallback),
+                  ),
+                if (finishing)
+                  const Padding(
+                    padding: EdgeInsets.all(12),
+                    child: SizedBox(
+                      width: 22,
+                      height: 22,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                  ),
+              ],
             ),
-        ],
+          ],
+        ),
       ),
     );
   }

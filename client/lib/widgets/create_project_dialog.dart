@@ -4,6 +4,7 @@ import 'package:teampilot/theme/app_icon_sizes.dart';
 import '../l10n/l10n_extensions.dart';
 import '../utils/project_path_picker.dart';
 import '../utils/project_path_utils.dart';
+import 'app_dialog.dart';
 
 typedef CreateProjectDraft = ({
   String primaryPath,
@@ -82,16 +83,16 @@ class _CreateProjectDialogState extends State<_CreateProjectDialog> {
     final l10n = context.l10n;
     final theme = Theme.of(context);
 
-    return AlertDialog(
-      title: Text(l10n.newProject),
-      content: SizedBox(
-        width: 480,
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              TextField(
+    return AppDialog(
+      scrollable: true,
+      maxHeight: MediaQuery.sizeOf(context).height * 0.85,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          AppDialogHeader(title: l10n.newProject),
+          const SizedBox(height: 16),
+          TextField(
                 controller: _displayController,
                 decoration: InputDecoration(labelText: l10n.projectDisplayName),
               ),
@@ -157,25 +158,25 @@ class _CreateProjectDialogState extends State<_CreateProjectDialog> {
                   ),
                 ),
               const SizedBox(height: 8),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: TextButton.icon(
-                  onPressed: _addAdditional,
-                  icon: const Icon(Icons.create_new_folder_outlined, size: AppIconSizes.md),
-                  label: Text(l10n.addProjectDirectory),
-                ),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton.icon(
+              onPressed: _addAdditional,
+              icon: const Icon(Icons.create_new_folder_outlined, size: AppIconSizes.md),
+              label: Text(l10n.addProjectDirectory),
+            ),
+          ),
+          AppDialogActions(
+            children: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: Text(l10n.cancel),
               ),
+              FilledButton(onPressed: _create, child: Text(l10n.create)),
             ],
           ),
-        ),
+        ],
       ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: Text(l10n.cancel),
-        ),
-        FilledButton(onPressed: _create, child: Text(l10n.create)),
-      ],
     );
   }
 }

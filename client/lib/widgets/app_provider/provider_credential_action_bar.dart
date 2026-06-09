@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:path/path.dart' as p;
 
+import '../app_dialog.dart';
 import '../../cubits/app_provider_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/app_provider_config.dart';
@@ -257,25 +258,35 @@ class _ProviderCredentialActionBarState extends State<ProviderCredentialActionBa
     final l10n = context.l10n;
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(
-          _actionLabel(
-            l10n,
-            provider.cli,
-            ProviderCredentialActionKind.revoke,
-          ),
+      builder: (dialogContext) => AppDialog(
+        maxWidth: 480,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            AppDialogHeader(
+              title: _actionLabel(
+                l10n,
+                provider.cli,
+                ProviderCredentialActionKind.revoke,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(_revokeConfirmMessage(l10n, provider)),
+            AppDialogActions(
+              children: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogContext, false),
+                  child: Text(l10n.cancel),
+                ),
+                FilledButton(
+                  onPressed: () => Navigator.pop(dialogContext, true),
+                  child: Text(l10n.delete),
+                ),
+              ],
+            ),
+          ],
         ),
-        content: Text(_revokeConfirmMessage(l10n, provider)),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: Text(l10n.cancel),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(dialogContext, true),
-            child: Text(l10n.delete),
-          ),
-        ],
       ),
     );
     if (confirmed != true || !mounted) return;

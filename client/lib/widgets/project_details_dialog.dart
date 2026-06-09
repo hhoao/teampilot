@@ -9,6 +9,7 @@ import '../models/app_project.dart';
 import '../repositories/session_repository.dart';
 import '../utils/project_path_picker.dart';
 import '../utils/project_path_utils.dart';
+import 'app_dialog.dart';
 
 Future<void> showProjectDetailsDialog(
   BuildContext context,
@@ -117,16 +118,16 @@ class _ProjectDetailsDialogState extends State<_ProjectDetailsDialog> {
     final p = widget.project;
     final theme = Theme.of(context);
 
-    return AlertDialog(
-      title: Text(l10n.projectDetailsTitle),
-      content: SizedBox(
-        width: 480,
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              TextField(
+    return AppDialog(
+      scrollable: true,
+      maxHeight: MediaQuery.sizeOf(context).height * 0.85,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          AppDialogHeader(title: l10n.projectDetailsTitle),
+          const SizedBox(height: 16),
+          TextField(
                 controller: _displayController,
                 decoration: InputDecoration(labelText: l10n.projectDisplayName),
               ),
@@ -208,30 +209,30 @@ class _ProjectDetailsDialogState extends State<_ProjectDetailsDialog> {
                 value: _formatTimestamp(p.createdAt),
               ),
               const SizedBox(height: 8),
-              _DetailRow(
-                label: l10n.projectUpdatedAt,
-                value: _formatTimestamp(p.updatedAt),
+          _DetailRow(
+            label: l10n.projectUpdatedAt,
+            value: _formatTimestamp(p.updatedAt),
+          ),
+          AppDialogActions(
+            children: [
+              TextButton(
+                onPressed: _saving ? null : () => Navigator.of(context).pop(),
+                child: Text(l10n.cancel),
+              ),
+              FilledButton(
+                onPressed: _saving ? null : _save,
+                child: _saving
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : Text(l10n.save),
               ),
             ],
           ),
-        ),
+        ],
       ),
-      actions: [
-        TextButton(
-          onPressed: _saving ? null : () => Navigator.of(context).pop(),
-          child: Text(l10n.cancel),
-        ),
-        FilledButton(
-          onPressed: _saving ? null : _save,
-          child: _saving
-              ? const SizedBox(
-                  width: 18,
-                  height: 18,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : Text(l10n.save),
-        ),
-      ],
     );
   }
 }

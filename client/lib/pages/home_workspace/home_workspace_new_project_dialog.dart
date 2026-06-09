@@ -10,7 +10,7 @@ import '../../l10n/l10n_extensions.dart';
 import '../../repositories/project_profile_repository.dart';
 import '../../repositories/session_repository.dart';
 import '../../theme/app_text_styles.dart';
-import '../../theme/workspace_surface_layers.dart';
+import '../../widgets/app_dialog.dart';
 import '../../utils/project_path_picker.dart';
 import '../../utils/project_path_utils.dart';
 
@@ -117,101 +117,55 @@ class _HomeWorkspaceNewProjectDialogState
     final styles = AppTextStyles.of(context);
     final hasDirectory = _directories.isNotEmpty;
 
-    return Dialog(
-      backgroundColor: cs.workspaceCard,
-      surfaceTintColor: Colors.transparent,
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 640),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(40, 28, 40, 28),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+    return AppDialog(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          AppDialogHeader(title: l10n.newProject),
+          const SizedBox(height: 8),
+          Text(
+            l10n.homeWorkspaceNewProjectSubtitle,
+            textAlign: TextAlign.center,
+            style: styles.body.copyWith(color: cs.onSurfaceVariant),
+          ),
+          const SizedBox(height: 28),
+          _DirectoryPicker(
+            directories: _directories,
+            onAdd: _addDirectory,
+            onRemove: _removeDirectory,
+          ),
+          const SizedBox(height: 16),
+          _NameField(
+            controller: _nameController,
+            hint: hasDirectory
+                ? _basename(_directories.first)
+                : l10n.homeWorkspaceNewProjectNameHint,
+            onSubmitted: (_) => _submit(),
+          ),
+          const SizedBox(height: 28),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
             children: [
-              _Header(title: l10n.newProject),
-              const SizedBox(height: 8),
-              Text(
-                l10n.homeWorkspaceNewProjectSubtitle,
-                textAlign: TextAlign.center,
-                style: styles.body.copyWith(color: cs.onSurfaceVariant),
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: Text(l10n.cancel),
               ),
-              const SizedBox(height: 28),
-              _DirectoryPicker(
-                directories: _directories,
-                onAdd: _addDirectory,
-                onRemove: _removeDirectory,
-              ),
-              const SizedBox(height: 16),
-              _NameField(
-                controller: _nameController,
-                hint: hasDirectory
-                    ? _basename(_directories.first)
-                    : l10n.homeWorkspaceNewProjectNameHint,
-                onSubmitted: (_) => _submit(),
-              ),
-              const SizedBox(height: 28),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  TextButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    child: Text(l10n.cancel),
+              const SizedBox(width: 12),
+              FilledButton(
+                onPressed: hasDirectory ? _submit : null,
+                style: FilledButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 28,
+                    vertical: 14,
                   ),
-                  const SizedBox(width: 12),
-                  FilledButton(
-                    onPressed: hasDirectory ? _submit : null,
-                    style: FilledButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 28,
-                        vertical: 14,
-                      ),
-                    ),
-                    child: Text(l10n.homeWorkspaceCreateProject),
-                  ),
-                ],
+                ),
+                child: Text(l10n.homeWorkspaceCreateProject),
               ),
             ],
           ),
-        ),
+        ],
       ),
-    );
-  }
-}
-
-class _Header extends StatelessWidget {
-  const _Header({required this.title});
-
-  final String title;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final styles = AppTextStyles.of(context);
-    return Stack(
-      alignment: Alignment.center,
-      children: [
-        Text(
-          title,
-          style: styles.dialogTitle.copyWith(
-            color: cs.onSurface,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        Positioned(
-          right: 0,
-          top: 0,
-          child: IconButton(
-            tooltip: context.l10n.cancel,
-            visualDensity: VisualDensity.compact,
-            icon: Icon(
-              Icons.close_rounded,
-              size: AppIconSizes.md,
-              color: cs.onSurfaceVariant,
-            ),
-            onPressed: () => Navigator.of(context).pop(),
-          ),
-        ),
-      ],
     );
   }
 }
