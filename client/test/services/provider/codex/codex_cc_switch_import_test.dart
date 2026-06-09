@@ -274,5 +274,5 @@ class _CcSwitchRow {
   String? get icon => null;
   String? get iconColor => null;
   Map<String, Object?> get meta => const {};
-  final bool isCurrent;
+  bool get isCurrent => false;
 }

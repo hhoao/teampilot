@@ -226,7 +226,6 @@ class WorkspaceHubNavList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
     final items = entries.indexed.map((indexedEntry) {
       final (index, entry) = indexedEntry;
       final item = WorkspaceHubNavItem(
@@ -271,15 +270,13 @@ class WorkspaceHubNavList extends StatelessWidget {
       );
     }
 
-    return Container(
-      child: ListView(
-        shrinkWrap: shrinkWrap,
-        physics: scrollPhysics,
-        padding: sidebarStyle
-            ? const EdgeInsets.fromLTRB(24, 28, 18, 24)
-            : EdgeInsets.zero,
-        children: children,
-      ),
+    return ListView(
+      shrinkWrap: shrinkWrap,
+      physics: scrollPhysics,
+      padding: sidebarStyle
+          ? const EdgeInsets.fromLTRB(24, 28, 18, 24)
+          : EdgeInsets.zero,
+      children: children,
     );
   }
 }
