@@ -4,13 +4,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
 
+import '../../../cubits/app_provider_cubit.dart';
 import '../../../cubits/chat_cubit.dart';
 import '../../../cubits/project_profile_cubit.dart';
 import '../../../l10n/l10n_extensions.dart';
 import '../../../models/app_project.dart';
 import '../../../models/app_session.dart';
+import '../../../models/project_profile.dart';
 import '../../../models/team_config.dart';
 import '../../../services/cli/registry/cli_display_name.dart';
+import '../../../services/cli/registry/cli_tool_registry.dart';
 import '../../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../../theme/app_text_styles.dart';
 import '../../../utils/app_keys.dart';
@@ -21,6 +24,8 @@ import '../../../widgets/app_provider/brand_dropdown_rows.dart';
 import '../../../widgets/dropdown/app_dropdown_decoration.dart';
 import '../../../widgets/dropdown/app_dropdown_field.dart';
 import '../../../widgets/sidebar_session_tile.dart';
+import 'config/project_cli_config_helpers.dart';
+import 'config/project_cli_defaults_section.dart';
 import 'project_session_actions.dart';
 
 /// Shared resize limits for [HomeWorkspaceProjectSidebar].
@@ -82,7 +87,7 @@ class _HomeWorkspaceProjectSidebarState
     );
 
     return Padding(
-      padding: const EdgeInsets.all(13),
+      padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 18),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -105,15 +110,6 @@ class _HomeWorkspaceProjectSidebarState
                     ),
                   ),
                 ),
-                if (_isPersonal) ...[
-                  const SizedBox(width: 6),
-                  _NewConversationCliMenu(
-                    onPickCli: (cli) => throttledAsync(
-                      'project_sidebar_new_chat_cli_${cli.value}',
-                      () => _startNewConversation(context, cli: cli),
-                    ),
-                  ),
-                ],
               ],
             ),
           ),
@@ -182,50 +178,116 @@ class _DefaultCliDropdown extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final cs = Theme.of(context).colorScheme;
     final registry = CliToolRegistryScope.of(context);
     final state = context.watch<ProjectProfileCubit>().state;
+    context.watch<AppProviderCubit>();
     final ready =
         state.projectId == projectId &&
         state.status == ProjectProfileLoadStatus.ready &&
         state.profile != null;
-    final cli = state.profile?.cli ?? CliTool.claude;
+    final profile = state.profile!;
+    final providerState = context.read<AppProviderCubit>().state;
+    final configuredItems = _configuredCliValues(
+      profile: profile,
+      registry: registry,
+      providerState: providerState,
+    );
+    final selectedCli = profile.cli;
+    final initialItem = configuredItems.contains(selectedCli.value)
+        ? selectedCli.value
+        : (configuredItems.isNotEmpty ? configuredItems.first : null);
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(4, 0, 4, 0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          if (!ready)
-            const LinearProgressIndicator(minHeight: 2)
-          else
-            AppDropdownField<String>(
-              key: ValueKey('project-sidebar-cli-$projectId-${cli.value}'),
-              items: [for (final def in registry.launchable) def.id.value],
-              initialItem: cli.value,
-              decoration: AppDropdownDecorations.themed(context),
-              onChanged: (value) {
-                if (value == null) return;
-                unawaited(
-                  context.read<ProjectProfileCubit>().setCli(
-                    CliTool.decode(value),
+      child: !ready
+          ? const LinearProgressIndicator(minHeight: 2)
+          : Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Expanded(
+                  child: AppDropdownField<String>(
+                    key: ValueKey(
+                      'project-sidebar-cli-$projectId-${initialItem ?? 'none'}',
+                    ),
+                    items: configuredItems,
+                    initialItem: initialItem,
+                    hintText: l10n.projectCliNotConfiguredHint,
+                    enabled: configuredItems.isNotEmpty,
+                    onEmptyTap: () => unawaited(
+                      showProjectCliDefaultsDialog(
+                        context,
+                        projectId: projectId,
+                      ),
+                    ),
+                    decoration: AppDropdownDecorations.themed(context),
+                    onChanged: (value) {
+                      if (value == null) return;
+                      unawaited(
+                        context.read<ProjectProfileCubit>().setCli(
+                          CliTool.decode(value),
+                        ),
+                      );
+                    },
+                    itemBuilder: (context, value) {
+                      final cli = CliTool.decode(value);
+                      final definition = registry.tryGet(cli)!;
+                      return cliDropdownRow(
+                        context,
+                        cli: cli,
+                        label: cliDisplayName(definition, l10n),
+                        registry: registry,
+                      );
+                    },
                   ),
-                );
-              },
-              itemBuilder: (context, value) => cliDropdownRow(
-                context,
-                cli: CliTool.decode(value),
-                label: cliDisplayName(
-                  registry.tryGet(CliTool.decode(value))!,
-                  l10n,
                 ),
-                registry: registry,
-              ),
+                const SizedBox(width: 4),
+                AppIconButton(
+                  icon: Icons.tune_outlined,
+                  tooltip: l10n.projectCliDefaultsTitle,
+                  onTap: throttledTap(
+                    'project_sidebar_cli_configure',
+                    () => unawaited(
+                      showProjectCliDefaultsDialog(
+                        context,
+                        projectId: projectId,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
-        ],
-      ),
     );
   }
+}
+
+List<String> _configuredCliValues({
+  required ProjectProfile profile,
+  required CliToolRegistry registry,
+  required AppProviderState providerState,
+}) {
+  final values = <String>[];
+  for (final def in registry.launchable) {
+    final cli = def.id;
+    final supportsCatalog = projectCliSupportsProviderCatalog(cli, registry);
+    final providers = providerState.providersFor(cli);
+    final selectedProvider = projectCliSelectedProvider(
+      profile,
+      cli,
+      providers,
+    );
+    if (!projectCliIsConfigured(
+      profile,
+      cli,
+      registry,
+      selectedProvider: selectedProvider,
+      supportsProviderCatalog: supportsCatalog,
+    )) {
+      continue;
+    }
+    values.add(cli.value);
+  }
+  values.sort();
+  return values;
 }
 
 class _SidebarActionTile extends StatefulWidget {
@@ -284,59 +346,6 @@ class _SidebarActionTileState extends State<_SidebarActionTile> {
           ),
         ),
       ),
-    );
-  }
-}
-
-class _NewConversationCliMenu extends StatelessWidget {
-  const _NewConversationCliMenu({required this.onPickCli});
-
-  final VoidCallback Function(CliTool cli) onPickCli;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = context.l10n;
-    final cs = Theme.of(context).colorScheme;
-    final registry = CliToolRegistryScope.of(context);
-
-    return MenuAnchor(
-      builder: (context, controller, child) {
-        return Tooltip(
-          message: l10n.homeWorkspaceNewConversationChooseCli,
-          child: Material(
-            key: AppKeys.newChatCliMenuButton,
-            color: cs.primary,
-            borderRadius: BorderRadius.circular(8),
-            child: InkWell(
-              borderRadius: BorderRadius.circular(8),
-              onTap: () {
-                if (controller.isOpen) {
-                  controller.close();
-                } else {
-                  controller.open();
-                }
-              },
-              child: Center(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 10),
-                  child: Icon(
-                    Icons.add_rounded,
-                    size: AppIconSizes.md,
-                    color: cs.onPrimary,
-                  ),
-                ),
-              ),
-            ),
-          ),
-        );
-      },
-      menuChildren: [
-        for (final def in registry.launchable)
-          MenuItemButton(
-            onPressed: onPickCli(def.id),
-            child: Text(cliDisplayName(def, l10n)),
-          ),
-      ],
     );
   }
 }

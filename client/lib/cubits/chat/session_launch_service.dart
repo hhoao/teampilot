@@ -17,6 +17,7 @@ import '../../services/terminal/terminal_session.dart';
 import '../../utils/logger.dart';
 import '../../utils/project_path_utils.dart';
 import '../../utils/session_display_title.dart';
+import '../../utils/team_member_naming.dart';
 import 'chat_session_shell_factory.dart';
 import 'chat_tab_store.dart';
 import 'model/chat_state.dart';
@@ -169,9 +170,11 @@ class SessionLaunchService implements MemberConnector {
         );
       }
     }
-    // mixed：打开/恢复 tab 只建 bus + MCP，不 spawn PTY（等用户 connect 或 mailbox 物化）。
+    // mixed：非 team-lead 只建 bus + MCP，不 spawn PTY；team-lead 打开 tab 时自动 connect。
     final connectNow =
-        connectImmediately && effectiveTeam?.teamMode != TeamMode.mixed;
+        connectImmediately &&
+        (effectiveTeam?.teamMode != TeamMode.mixed ||
+            TeamMemberNaming.isTeamLead(effectiveMember));
     if (connectNow) {
       _h.beginSessionConnect(info.id);
       _h.postFrameScheduler(() async {

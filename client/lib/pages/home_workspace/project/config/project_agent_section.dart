@@ -9,16 +9,13 @@ import '../../../../models/project_agent_prompt_presets.dart';
 import '../../../../models/project_profile.dart';
 import '../../../../models/team_config.dart';
 import '../../../../services/app/flashskyai_agent_catalog_service.dart';
-import '../../../../services/cli/registry/cli_display_name.dart';
-import '../../../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../../../services/storage/storage_resolver.dart';
 import '../../../../theme/app_text_styles.dart';
-import '../../../../widgets/app_provider/brand_dropdown_rows.dart';
 import '../../../../widgets/dropdown/app_dropdown_decoration.dart';
 import '../../../../widgets/dropdown/app_dropdown_field.dart';
 import '../../../../widgets/settings/workspace_settings_widgets.dart';
 import '../../../team_config/team_config_helpers.dart';
-import 'project_cli_config_list.dart';
+import 'project_cli_defaults_section.dart';
 
 const _kAgentCardGap = 12.0;
 
@@ -138,7 +135,6 @@ class ProjectAgentConfigFormState extends State<ProjectAgentConfigForm> {
     final profile = widget.profile;
     final agent = profile.agent;
     final dropdownDeco = AppDropdownDecorations.themed(context);
-    final cliRegistry = CliToolRegistryScope.of(context);
 
     final showCustomAgentField =
         FlashskyaiAgentCatalog.activeDropdownValue(
@@ -151,35 +147,7 @@ class ProjectAgentConfigFormState extends State<ProjectAgentConfigForm> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          SettingsSurfaceCard(
-            child: SettingsLabeledStackedRow(
-              title: l10n.teamCliLabel,
-              subtitle: l10n.projectCliDefaultSubtitle,
-              body: AppDropdownField<String>(
-                items: [
-                  for (final def in cliRegistry.launchable) def.id.value,
-                ],
-                initialItem: profile.cli.value,
-                decoration: dropdownDeco,
-                onChanged: (value) {
-                  if (value == null) return;
-                  unawaited(widget.cubit.setCli(CliTool.decode(value)));
-                },
-                itemBuilder: (context, value) => cliDropdownRow(
-                  context,
-                  cli: CliTool.decode(value),
-                  label: cliDisplayName(
-                    cliRegistry.tryGet(CliTool.decode(value))!,
-                    l10n,
-                  ),
-                  registry: cliRegistry,
-                ),
-              ),
-              showDividerBelow: false,
-            ),
-          ),
-          const SizedBox(height: _kAgentCardGap),
-          ProjectCliConfigList(profile: profile, cubit: widget.cubit),
+          ProjectCliDefaultsSection(profile: profile, cubit: widget.cubit),
           const SizedBox(height: _kAgentCardGap),
           SettingsSurfaceCard(
             child: Column(

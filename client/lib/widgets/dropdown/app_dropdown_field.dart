@@ -39,6 +39,7 @@ class AppDropdownField<T extends Object> extends StatefulWidget {
     this.headerMaxLines = 1,
     this.listItemMaxLines = 1,
     this.enabled = true,
+    this.onEmptyTap,
     this.closedHeaderPadding,
     this.expandedHeaderPadding,
     this.listItemPadding,
@@ -61,6 +62,7 @@ class AppDropdownField<T extends Object> extends StatefulWidget {
   final int headerMaxLines;
   final int listItemMaxLines;
   final bool enabled;
+  final VoidCallback? onEmptyTap;
   final EdgeInsets? closedHeaderPadding;
   final EdgeInsets? expandedHeaderPadding;
   final EdgeInsets? listItemPadding;
@@ -132,6 +134,10 @@ class _AppDropdownFieldState<T extends Object>
   }
 
   void _toggleMenu() {
+    if (widget.items.isEmpty) {
+      widget.onEmptyTap?.call();
+      return;
+    }
     if (!widget.enabled) return;
     if (_popoverController.isOpen) {
       _popoverController.hide();

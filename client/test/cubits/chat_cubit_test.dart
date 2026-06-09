@@ -533,7 +533,7 @@ void main() {
     );
 
     test(
-      'mixed openSessionTab does not connect PTY until user connect',
+      'mixed openSessionTab auto-connects team-lead',
       () async {
         final fakeSessions = <_FakeTerminalSession>[];
         const team = TeamConfig(
@@ -541,11 +541,13 @@ void main() {
           name: 'A',
           teamMode: TeamMode.mixed,
           members: [
-            TeamMemberConfig(id: 'm-lead', name: 'team-lead'),
+            TeamMemberConfig(id: 'team-lead', name: 'team-lead'),
             TeamMemberConfig(id: 'm-dev', name: 'developer'),
           ],
         );
-        final tmp = await Directory.systemTemp.createTemp('chat_cubit_mixed_');
+        final tmp = await Directory.systemTemp.createTemp(
+          'chat_cubit_mixed_lead_connect_',
+        );
         addTearDown(() => tmp.deleteSync(recursive: true));
         final repo = SessionRepository(rootDir: tmp.path);
         final project = await repo.createProject('/tmp', teamId: '');
@@ -577,17 +579,72 @@ void main() {
         await postFrame.flush();
 
         expect(cubit.state.tabs.length, 1);
-        expect(cubit.isMemberRunning('m-lead'), isFalse);
+        expect(cubit.isMemberRunning('team-lead'), isTrue);
+        expect(
+          fakeSessions.expand((s) => s.connectedMembers),
+          contains('team-lead'),
+        );
+        expect(cubit.isMemberRunning('m-dev'), isFalse);
+      },
+    );
+
+    test(
+      'mixed openSessionTab does not connect non-lead until user connect',
+      () async {
+        final fakeSessions = <_FakeTerminalSession>[];
+        const team = TeamConfig(
+          id: 'team-a',
+          name: 'A',
+          teamMode: TeamMode.mixed,
+          members: [
+            TeamMemberConfig(id: 'team-lead', name: 'team-lead'),
+            TeamMemberConfig(id: 'm-dev', name: 'developer'),
+          ],
+        );
+        final tmp = await Directory.systemTemp.createTemp('chat_cubit_mixed_');
+        addTearDown(() => tmp.deleteSync(recursive: true));
+        final repo = SessionRepository(rootDir: tmp.path);
+        final project = await repo.createProject('/tmp', teamId: '');
+        final session = await repo.createSession(
+          project.projectId,
+          sessionTeam: team.id,
+          rosterMembers: team.members,
+        );
+        final postFrame = PostFrameTestHarness();
+        final cubit = ChatCubit(
+          executableResolver: () => 'true',
+          sessionRepository: repo,
+          terminalSessionFactory:
+              ({required String executable, int scrollbackLines = 10000}) {
+            final fake = _FakeTerminalSession(executable: executable);
+            fakeSessions.add(fake);
+            return fake;
+          },
+          postFrameScheduler: postFrame.scheduler,
+        );
+        addTearDown(cubit.close);
+
+        await cubit.openSessionTab(
+          session,
+          team: team,
+          member: team.members[1],
+          repo: repo,
+          connectImmediately: true,
+        );
+        await postFrame.flush();
+
+        expect(cubit.state.tabs.length, 1);
+        expect(cubit.isMemberRunning('team-lead'), isFalse);
         expect(cubit.isMemberRunning('m-dev'), isFalse);
         expect(fakeSessions.expand((s) => s.connectedMembers), isEmpty);
 
         await cubit.connectSession(team, repo: repo);
         await postFrame.flush();
 
-        expect(cubit.isMemberRunning('m-lead'), isTrue);
+        expect(cubit.isMemberRunning('m-dev'), isTrue);
         expect(
           fakeSessions.expand((s) => s.connectedMembers),
-          contains('m-lead'),
+          contains('m-dev'),
         );
       },
     );
