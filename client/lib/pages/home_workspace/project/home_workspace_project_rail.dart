@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
 
 import '../../../l10n/l10n_extensions.dart';

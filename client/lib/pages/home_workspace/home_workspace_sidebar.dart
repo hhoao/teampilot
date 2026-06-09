@@ -69,64 +69,51 @@ class _HomeWorkspaceSidebarState extends State<HomeWorkspaceSidebar> {
           right: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.6)),
         ),
       ),
+      padding: const EdgeInsets.fromLTRB(32, 48, 24, 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const SizedBox(height: 48),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(32, 0, 24, 0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _ShortcutRow(
-                  icon: Icons.star_outline_rounded,
-                  label: l10n.homeWorkspaceMyFavorites,
-                  active:
-                      activeLibraryView == HomeWorkspaceLibraryView.favorites,
-                  onTap: () =>
-                      onLibrary?.call(HomeWorkspaceLibraryView.favorites),
-                ),
-                const SizedBox(height: 4),
-                _ShortcutRow(
-                  icon: Icons.history_rounded,
-                  label: l10n.homeWorkspaceRecentVisits,
-                  active: activeLibraryView == HomeWorkspaceLibraryView.recent,
-                  onTap: () => onLibrary?.call(HomeWorkspaceLibraryView.recent),
-                ),
-                const SizedBox(height: 4),
-                _ShortcutRow(
-                  icon: Icons.person_outline_rounded,
-                  label: l10n.homeWorkspacePersonal,
-                  active: personalActive,
-                  onTap: () => onPersonal?.call(),
-                ),
-              ],
-            ),
+          _ShortcutRow(
+            icon: Icons.star_outline_rounded,
+            label: l10n.homeWorkspaceMyFavorites,
+            active: activeLibraryView == HomeWorkspaceLibraryView.favorites,
+            onTap: () => onLibrary?.call(HomeWorkspaceLibraryView.favorites),
+          ),
+          const SizedBox(height: 4),
+          _ShortcutRow(
+            icon: Icons.history_rounded,
+            label: l10n.homeWorkspaceRecentVisits,
+            active: activeLibraryView == HomeWorkspaceLibraryView.recent,
+            onTap: () => onLibrary?.call(HomeWorkspaceLibraryView.recent),
           ),
           const SizedBox(height: 12),
           Divider(height: 1, color: cs.outlineVariant.withValues(alpha: 0.5)),
           const SizedBox(height: 8),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(32, 0, 32, 0),
-            child: _SectionHeader(
-              icon: Icons.groups_2_outlined,
-              label: l10n.homeWorkspaceMyTeams,
-              expanded: _teamsExpanded,
-              onToggle: () => setState(() => _teamsExpanded = !_teamsExpanded),
-            ),
+          _ShortcutRow(
+            icon: Icons.person_outline_rounded,
+            label: l10n.homeWorkspacePersonal,
+            active: personalActive,
+            onTap: () => onPersonal?.call(),
+          ),
+          const SizedBox(height: 12),
+          Divider(height: 1, color: cs.outlineVariant.withValues(alpha: 0.5)),
+          const SizedBox(height: 8),
+          _SectionHeader(
+            icon: Icons.groups_2_outlined,
+            label: l10n.homeWorkspaceMyTeams,
+            expanded: _teamsExpanded,
+            onToggle: () => setState(() => _teamsExpanded = !_teamsExpanded),
           ),
           Expanded(
             child: CustomScrollView(
               slivers: [
                 if (_teamsExpanded && teams.isNotEmpty)
                   SliverPadding(
-                    padding: const EdgeInsets.fromLTRB(32, 8, 24, 0),
+                    padding: const EdgeInsets.fromLTRB(0, 8, 0, 0),
                     sliver: SliverReorderableList(
                       itemCount: teams.length,
                       onReorder: (oldIndex, newIndex) {
-                        unawaited(
-                          teamCubit.reorderTeams(oldIndex, newIndex),
-                        );
+                        unawaited(teamCubit.reorderTeams(oldIndex, newIndex));
                       },
                       itemBuilder: (context, index) {
                         final team = teams[index];
@@ -145,7 +132,7 @@ class _HomeWorkspaceSidebarState extends State<HomeWorkspaceSidebar> {
                     ),
                   ),
                 SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(32, 0, 24, 8),
+                  padding: const EdgeInsets.fromLTRB(0, 0, 0, 8),
                   sliver: SliverToBoxAdapter(
                     child: AnimatedSize(
                       duration: const Duration(milliseconds: 220),
@@ -171,7 +158,7 @@ class _HomeWorkspaceSidebarState extends State<HomeWorkspaceSidebar> {
                   ),
                 ),
                 SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(32, 0, 24, 8),
+                  padding: const EdgeInsets.fromLTRB(0, 0, 0, 8),
                   sliver: SliverToBoxAdapter(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -186,7 +173,8 @@ class _HomeWorkspaceSidebarState extends State<HomeWorkspaceSidebar> {
                           icon: Icons.travel_explore_outlined,
                           label: l10n.teamHubNav,
                           active:
-                              activeGlobalView == HomeWorkspaceGlobalView.teamHub,
+                              activeGlobalView ==
+                              HomeWorkspaceGlobalView.teamHub,
                           onTap: () =>
                               onGlobal?.call(HomeWorkspaceGlobalView.teamHub),
                         ),
@@ -200,7 +188,8 @@ class _HomeWorkspaceSidebarState extends State<HomeWorkspaceSidebar> {
                           icon: Icons.extension_outlined,
                           label: l10n.teamSkillsNav,
                           active:
-                              activeGlobalView == HomeWorkspaceGlobalView.skills,
+                              activeGlobalView ==
+                              HomeWorkspaceGlobalView.skills,
                           onTap: () =>
                               onGlobal?.call(HomeWorkspaceGlobalView.skills),
                         ),
@@ -208,7 +197,8 @@ class _HomeWorkspaceSidebarState extends State<HomeWorkspaceSidebar> {
                         _ShortcutRow(
                           icon: Icons.widgets_outlined,
                           label: l10n.teamPluginsNav,
-                          active: activeGlobalView ==
+                          active:
+                              activeGlobalView ==
                               HomeWorkspaceGlobalView.plugins,
                           onTap: () =>
                               onGlobal?.call(HomeWorkspaceGlobalView.plugins),
@@ -226,7 +216,8 @@ class _HomeWorkspaceSidebarState extends State<HomeWorkspaceSidebar> {
                         _ShortcutRow(
                           icon: Icons.power_outlined,
                           label: l10n.teamExtensionsNav,
-                          active: activeGlobalView ==
+                          active:
+                              activeGlobalView ==
                               HomeWorkspaceGlobalView.extensions,
                           onTap: () => onGlobal?.call(
                             HomeWorkspaceGlobalView.extensions,
@@ -240,14 +231,11 @@ class _HomeWorkspaceSidebarState extends State<HomeWorkspaceSidebar> {
             ),
           ),
           Divider(height: 1, color: cs.outlineVariant.withValues(alpha: 0.5)),
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: _ProvidersButton(
-              key: AppKeys.homeWorkspaceProvidersButton,
-              label: l10n.homeWorkspaceProviders,
-              active: activeGlobalView == HomeWorkspaceGlobalView.providers,
-              onTap: () => onGlobal?.call(HomeWorkspaceGlobalView.providers),
-            ),
+          _ProvidersButton(
+            key: AppKeys.homeWorkspaceProvidersButton,
+            label: l10n.homeWorkspaceProviders,
+            active: activeGlobalView == HomeWorkspaceGlobalView.providers,
+            onTap: () => onGlobal?.call(HomeWorkspaceGlobalView.providers),
           ),
         ],
       ),
@@ -380,8 +368,9 @@ class _TeamRowState extends State<_TeamRow> {
                       overflow: TextOverflow.ellipsis,
                       style: styles.prominent.copyWith(
                         color: selected ? cs.primary : cs.onSurface,
-                        fontWeight:
-                            selected ? FontWeight.w600 : FontWeight.w400,
+                        fontWeight: selected
+                            ? FontWeight.w600
+                            : FontWeight.w400,
                       ),
                     ),
                   ),

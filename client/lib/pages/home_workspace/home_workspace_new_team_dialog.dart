@@ -272,6 +272,7 @@ class _HomeWorkspaceNewTeamDialogState
           AppDialogHeader(
             title: l10n.homeWorkspaceNewTeam,
             titleAlignment: Alignment.center,
+            showDividerBelow: false,
           ),
           const SizedBox(height: 20),
           WorkspaceSettingsToggleStrip<_TeamCreationMethod>(

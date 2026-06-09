@@ -4,7 +4,6 @@ import 'package:teampilot/models/team_config.dart';
 import '../../services/cli/registry/cli_tool_definition.dart';
 import '../app_provider/provider_brand_icon.dart';
 import '../app_provider/provider_icon_registry.dart';
-import '../team_pilot_brand_logo.dart';
 
 /// Bundled provider icon id for a CLI, when not using the TeamPilot mark.
 String? cliBrandIconKey(CliTool cli) => switch (cli) {

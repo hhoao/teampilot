@@ -2,7 +2,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/app_provider_cubit.dart';
 import 'package:teampilot/models/ai_feature_setting.dart';
 import 'package:teampilot/models/app_provider_config.dart';
-import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/ai/ai_feature_setting_resolver.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 

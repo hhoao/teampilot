@@ -164,6 +164,14 @@ class AppPaths {
         'home-workspace/project-favorites.json',
       );
 
+  static String homeWorkspaceProjectDisplayPrefsJsonForTeampilotRoot(
+    String teampilotRoot,
+  ) =>
+      _pathUnderTeampilotRoot(
+        teampilotRoot,
+        'home-workspace/project-display-prefs.json',
+      );
+
   static String homeWorkspaceRecentProjectsJsonForTeampilotRoot(
     String teampilotRoot,
   ) =>
@@ -219,6 +227,9 @@ class AppPaths {
 
   String get homeWorkspaceProjectFavoritesJson =>
       homeWorkspaceProjectFavoritesJsonForTeampilotRoot(basePath);
+
+  String get homeWorkspaceProjectDisplayPrefsJson =>
+      homeWorkspaceProjectDisplayPrefsJsonForTeampilotRoot(basePath);
 
   String get homeWorkspaceRecentProjectsJson =>
       homeWorkspaceRecentProjectsJsonForTeampilotRoot(basePath);

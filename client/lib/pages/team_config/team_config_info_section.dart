@@ -3,7 +3,6 @@ import 'package:teampilot/theme/app_icon_sizes.dart';
 
 import '../../cubits/team_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
-import '../../models/app_provider_config.dart';
 import '../../models/team_config.dart';
 import '../../utils/app_keys.dart';
 import '../../services/cli/registry/capabilities/cli_effort_capability.dart';

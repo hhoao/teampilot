@@ -26,6 +26,7 @@ import '../../../widgets/dropdown/app_dropdown_field.dart';
 import '../../../widgets/sidebar_session_tile.dart';
 import 'config/project_cli_config_helpers.dart';
 import 'config/project_cli_defaults_section.dart';
+import 'project_search_dialog.dart';
 import 'project_session_actions.dart';
 
 /// Shared resize limits for [HomeWorkspaceProjectSidebar].
@@ -50,9 +51,6 @@ class HomeWorkspaceProjectSidebar extends StatefulWidget {
 
 class _HomeWorkspaceProjectSidebarState
     extends State<HomeWorkspaceProjectSidebar> {
-  final _searchController = TextEditingController();
-  var _searchQuery = '';
-
   bool get _isPersonal => widget.project.teamId.isEmpty;
 
   @override
@@ -67,23 +65,12 @@ class _HomeWorkspaceProjectSidebarState
   }
 
   @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final l10n = context.l10n;
     final sessions = sessionsForProject(
       widget.project,
       context.select<ChatCubit, List<AppSession>>((c) => c.state.sessions),
-    );
-    final filteredSessions = filterSessionsByQuery(
-      sessions,
-      query: _searchQuery,
-      emptyTitleFallback: l10n.defaultNewChatSessionTitle,
     );
 
     return Padding(
@@ -115,34 +102,41 @@ class _HomeWorkspaceProjectSidebarState
           ),
           const SizedBox(height: 14),
           Padding(
-            padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
-            child: Text(
-              l10n.homeWorkspaceConversationsSection,
-              style: AppTextStyles.of(context).bodySmall.copyWith(
-                color: cs.onSurfaceVariant,
-                fontWeight: FontWeight.w600,
-              ),
+            padding: const EdgeInsets.fromLTRB(4, 0, 0, 8),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    l10n.homeWorkspaceConversationsSection,
+                    style: AppTextStyles.of(context).bodySmall.copyWith(
+                      color: cs.onSurfaceVariant,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                AppIconButton(
+                  icon: Icons.search_rounded,
+                  iconSize: AppIconButton.kCompactIconSize,
+                  size: AppIconButton.kCompactSize,
+                  tooltip: l10n.projectSearchTitle,
+                  onTap: throttledTap(
+                    'project_sidebar_search',
+                    () => unawaited(
+                      showProjectSearchDialog(context, project: widget.project),
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ),
-          _ConversationSearchField(
-            controller: _searchController,
-            hint: l10n.homeWorkspaceSearchHint,
-            onChanged: (value) => setState(() => _searchQuery = value),
-            onClear: () {
-              _searchController.clear();
-              setState(() => _searchQuery = '');
-            },
           ),
           Expanded(
             child: sessions.isEmpty
                 ? _EmptyConversations(label: l10n.homeWorkspaceNoConversations)
-                : filteredSessions.isEmpty
-                ? _EmptyConversations(label: l10n.homeWorkspaceNoSearchResults)
                 : ListView.builder(
                     padding: EdgeInsets.zero,
-                    itemCount: filteredSessions.length,
+                    itemCount: sessions.length,
                     itemBuilder: (context, index) {
-                      final session = filteredSessions[index];
+                      final session = sessions[index];
                       return SidebarSessionTile(
                         session: session,
                         tapThrottleKeyPrefix: 'project_sidebar_session',
@@ -185,6 +179,13 @@ class _DefaultCliDropdown extends StatelessWidget {
         state.projectId == projectId &&
         state.status == ProjectProfileLoadStatus.ready &&
         state.profile != null;
+    if (!ready) {
+      return const Padding(
+        padding: EdgeInsets.fromLTRB(4, 0, 4, 0),
+        child: LinearProgressIndicator(minHeight: 2),
+      );
+    }
+
     final profile = state.profile!;
     final providerState = context.read<AppProviderCubit>().state;
     final configuredItems = _configuredCliValues(
@@ -199,63 +200,61 @@ class _DefaultCliDropdown extends StatelessWidget {
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(4, 0, 4, 0),
-      child: !ready
-          ? const LinearProgressIndicator(minHeight: 2)
-          : Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Expanded(
-                  child: AppDropdownField<String>(
-                    key: ValueKey(
-                      'project-sidebar-cli-$projectId-${initialItem ?? 'none'}',
-                    ),
-                    items: configuredItems,
-                    initialItem: initialItem,
-                    hintText: l10n.projectCliNotConfiguredHint,
-                    enabled: configuredItems.isNotEmpty,
-                    onEmptyTap: () => unawaited(
-                      showProjectCliDefaultsDialog(
-                        context,
-                        projectId: projectId,
-                      ),
-                    ),
-                    decoration: AppDropdownDecorations.themed(context),
-                    onChanged: (value) {
-                      if (value == null) return;
-                      unawaited(
-                        context.read<ProjectProfileCubit>().setCli(
-                          CliTool.decode(value),
-                        ),
-                      );
-                    },
-                    itemBuilder: (context, value) {
-                      final cli = CliTool.decode(value);
-                      final definition = registry.tryGet(cli)!;
-                      return cliDropdownRow(
-                        context,
-                        cli: cli,
-                        label: cliDisplayName(definition, l10n),
-                        registry: registry,
-                      );
-                    },
-                  ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Expanded(
+            child: AppDropdownField<String>(
+              key: ValueKey(
+                'project-sidebar-cli-$projectId-${initialItem ?? 'none'}',
+              ),
+              items: configuredItems,
+              initialItem: initialItem,
+              hintText: l10n.projectCliNotConfiguredHint,
+              enabled: configuredItems.isNotEmpty,
+              onEmptyTap: () => unawaited(
+                showProjectCliDefaultsDialog(
+                  context,
+                  projectId: projectId,
                 ),
-                const SizedBox(width: 4),
-                AppIconButton(
-                  icon: Icons.tune_outlined,
-                  tooltip: l10n.projectCliDefaultsTitle,
-                  onTap: throttledTap(
-                    'project_sidebar_cli_configure',
-                    () => unawaited(
-                      showProjectCliDefaultsDialog(
-                        context,
-                        projectId: projectId,
-                      ),
-                    ),
+              ),
+              decoration: AppDropdownDecorations.themed(context),
+              onChanged: (value) {
+                if (value == null) return;
+                unawaited(
+                  context.read<ProjectProfileCubit>().setCli(
+                    CliTool.decode(value),
                   ),
-                ),
-              ],
+                );
+              },
+              itemBuilder: (context, value) {
+                final cli = CliTool.decode(value);
+                final definition = registry.tryGet(cli)!;
+                return cliDropdownRow(
+                  context,
+                  cli: cli,
+                  label: cliDisplayName(definition, l10n),
+                  registry: registry,
+                );
+              },
             ),
+          ),
+          const SizedBox(width: 4),
+          AppIconButton(
+            icon: Icons.tune_outlined,
+            tooltip: l10n.projectCliDefaultsTitle,
+            onTap: throttledTap(
+              'project_sidebar_cli_configure',
+              () => unawaited(
+                showProjectCliDefaultsDialog(
+                  context,
+                  projectId: projectId,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -345,66 +344,6 @@ class _SidebarActionTileState extends State<_SidebarActionTile> {
             ),
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _ConversationSearchField extends StatelessWidget {
-  const _ConversationSearchField({
-    required this.controller,
-    required this.hint,
-    required this.onChanged,
-    required this.onClear,
-  });
-
-  final TextEditingController controller;
-  final String hint;
-  final ValueChanged<String> onChanged;
-  final VoidCallback onClear;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
-      child: TextField(
-        controller: controller,
-        decoration: InputDecoration(
-          hintText: hint,
-          isDense: true,
-          filled: true,
-          fillColor: cs.surfaceContainer,
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 10,
-            vertical: 8,
-          ),
-          prefixIcon: Icon(
-            Icons.search_rounded,
-            size: AppIconSizes.md,
-            color: cs.onSurfaceVariant,
-          ),
-          floatingLabelBehavior: FloatingLabelBehavior.never,
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-            borderSide: BorderSide(
-              color: cs.outlineVariant.withValues(alpha: 0.7),
-            ),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-            borderSide: BorderSide(color: cs.primary),
-          ),
-          suffixIcon: controller.text.isNotEmpty
-              ? AppIconButton(
-                  icon: Icons.clear,
-                  iconSize: AppIconButton.kCompactIconSize,
-                  size: AppIconButton.kCompactSize,
-                  onTap: onClear,
-                )
-              : null,
-        ),
-        onChanged: onChanged,
       ),
     );
   }

@@ -497,14 +497,17 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homeWorkspaceRecentVisits => 'Recent';
 
   @override
-  String get homeWorkspacePersonal => 'Personal workspace';
+  String get homeWorkspacePersonal => 'Simple mode';
 
   @override
   String get homeWorkspaceProjectTabKindPersonal => 'Personal';
 
   @override
+  String get homeWorkspaceDefaultPersonalProjectName => 'Personal assistant';
+
+  @override
   String get homeWorkspacePersonalSubtitle =>
-      'Solo projects with project-scoped agent, skills, and plugins.';
+      'Skip the team setup — just launch a single CLI and start chatting.';
 
   @override
   String get homeWorkspaceNoData => 'No data yet';
@@ -542,6 +545,24 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get homeWorkspaceEmptyProjectsHint =>
       'Create or import a project to get started';
+
+  @override
+  String get homeWorkspaceProjectSort => 'Sort projects';
+
+  @override
+  String get homeWorkspaceProjectSortRecentlyUpdated => 'Recently updated';
+
+  @override
+  String get homeWorkspaceProjectSortNameAsc => 'Name (A–Z)';
+
+  @override
+  String get homeWorkspaceProjectSortNameDesc => 'Name (Z–A)';
+
+  @override
+  String get homeWorkspaceProjectSortCreatedDesc => 'Date created';
+
+  @override
+  String get homeWorkspaceProjectSortSessionCountDesc => 'Session count';
 
   @override
   String get homeWorkspaceComingSoon => 'Coming soon';
@@ -837,6 +858,25 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get homeWorkspaceNoSearchResults =>
       'No conversations match your search';
+
+  @override
+  String get projectSearchTitle => 'Search';
+
+  @override
+  String get projectSearchHint => 'Search sessions and files';
+
+  @override
+  String get projectSearchFilesSection => 'Files';
+
+  @override
+  String get projectSearchSearching => 'Searching files…';
+
+  @override
+  String get projectSearchNoResults => 'No matches';
+
+  @override
+  String get projectSearchFilesTruncated =>
+      'More files match — refine your search';
 
   @override
   String get homeWorkspaceOpenProjectInNewTab => 'Open in new tab';

@@ -34,6 +34,8 @@ import 'package:teampilot/services/extension/extension_acquisition_engine.dart';
 import 'package:teampilot/services/extension/extension_detector.dart';
 import 'package:teampilot/services/cli/installer_types.dart';
 import 'package:teampilot/models/connection_mode.dart';
+import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
+import 'package:teampilot/services/cli/registry/cli_tool_registry_scope.dart';
 import 'package:teampilot/services/cli/registry/config_profile/claude_config_profile_capability.dart';
 import 'package:teampilot/services/provider/config_profile_service.dart';
 import 'package:teampilot/services/app/connection_mode_service.dart';
@@ -142,7 +144,10 @@ Widget buildTestApp({
         BlocProvider.value(value: extensionCubit ?? _testExtensionCubit()),
         BlocProvider(create: (_) => WorkspaceToolsCubit()),
       ],
-      child: const TeamPilotApp(),
+      child: CliToolRegistryScope(
+        registry: CliToolRegistry.builtIn(),
+        child: const TeamPilotApp(),
+      ),
     ),
   );
 }

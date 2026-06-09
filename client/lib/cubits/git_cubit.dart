@@ -104,24 +104,29 @@ class GitCubit extends Cubit<GitState> {
   final HeadlessAiService _headless;
 
   @visibleForTesting
-  void debugSetState(GitState next) => emit(next);
+  void debugSetState(GitState next) => _emit(next);
+
+  void _emit(GitState next) {
+    if (!isClosed) emit(next);
+  }
 
   Future<void> setRepoRoot(String path) async {
     if (path == state.repoRoot) return;
-    emit(state.copyWith(repoRoot: path, clearError: true));
+    _emit(state.copyWith(repoRoot: path, clearError: true));
     await refresh();
   }
 
   Future<void> refresh() async {
     final dir = state.repoRoot;
     if (dir.isEmpty) {
-      emit(state.copyWith(status: GitRepoStatus.notARepository));
+      _emit(state.copyWith(status: GitRepoStatus.notARepository));
       return;
     }
-    emit(state.copyWith(isLoading: true, clearError: true));
+    _emit(state.copyWith(isLoading: true, clearError: true));
     try {
       if (!await _service.isAvailable) {
-        emit(
+        if (isClosed || state.repoRoot != dir) return;
+        _emit(
           state.copyWith(
             gitAvailable: false,
             isLoading: false,
@@ -131,10 +136,12 @@ class GitCubit extends Cubit<GitState> {
         return;
       }
       final status = await _service.status(dir);
+      if (isClosed || state.repoRoot != dir) return;
       final branches = status.isRepository
           ? await _service.branches(dir)
           : const <String>[];
-      emit(
+      if (isClosed || state.repoRoot != dir) return;
+      _emit(
         state.copyWith(
           gitAvailable: true,
           isLoading: false,
@@ -143,12 +150,13 @@ class GitCubit extends Cubit<GitState> {
         ),
       );
     } on GitException catch (e) {
-      emit(state.copyWith(isLoading: false, errorMessage: e.message));
+      if (isClosed || state.repoRoot != dir) return;
+      _emit(state.copyWith(isLoading: false, errorMessage: e.message));
     }
   }
 
   void setCommitMessage(String message) {
-    emit(state.copyWith(commitMessage: message));
+    _emit(state.copyWith(commitMessage: message));
   }
 
   void toggleChangesViewMode() {
@@ -162,7 +170,7 @@ class GitCubit extends Cubit<GitState> {
         ...state.status.unstaged,
       ]);
     }
-    emit(state.copyWith(changesViewMode: next, expandedFolderPaths: expanded));
+    _emit(state.copyWith(changesViewMode: next, expandedFolderPaths: expanded));
   }
 
   void toggleFolderExpanded(String folderPath) {
@@ -172,7 +180,7 @@ class GitCubit extends Cubit<GitState> {
     } else {
       next.add(folderPath);
     }
-    emit(state.copyWith(expandedFolderPaths: next));
+    _emit(state.copyWith(expandedFolderPaths: next));
   }
 
   Future<void> stage(GitFileChange change) =>
@@ -198,7 +206,7 @@ class GitCubit extends Cubit<GitState> {
     }
     final ok = await _mutate(() => _service.commit(state.repoRoot, message));
     if (ok) {
-      emit(state.copyWith(commitMessage: ''));
+      _emit(state.copyWith(commitMessage: ''));
     }
     return ok;
   }
@@ -222,11 +230,12 @@ class GitCubit extends Cubit<GitState> {
         state.generatingCommitMessage) {
       return;
     }
-    emit(state.copyWith(generatingCommitMessage: true, clearError: true));
+    _emit(state.copyWith(generatingCommitMessage: true, clearError: true));
     try {
       final diff = await _service.stagedDiff(dir);
+      if (isClosed || state.repoRoot != dir) return;
       if (diff.trim().isEmpty) {
-        emit(state.copyWith(generatingCommitMessage: false));
+        _emit(state.copyWith(generatingCommitMessage: false));
         return;
       }
       final result = await _headless.run(
@@ -234,19 +243,23 @@ class GitCubit extends Cubit<GitState> {
         prompt: buildCommitMessagePrompt(diff),
         workingDirectory: dir,
       );
-      emit(
+      if (isClosed || state.repoRoot != dir) return;
+      _emit(
         state.copyWith(
           commitMessage: cleanCommitMessageOutput(result.text),
           generatingCommitMessage: false,
         ),
       );
     } on GitException catch (e) {
-      emit(state.copyWith(generatingCommitMessage: false, errorMessage: e.message));
+      if (isClosed) return;
+      _emit(state.copyWith(generatingCommitMessage: false, errorMessage: e.message));
     } on HeadlessAiException catch (e) {
-      emit(state.copyWith(generatingCommitMessage: false, errorMessage: e.message));
+      if (isClosed) return;
+      _emit(state.copyWith(generatingCommitMessage: false, errorMessage: e.message));
     } on Object catch (e) {
+      if (isClosed) return;
       // Never strand the spinner on an unexpected failure.
-      emit(
+      _emit(
         state.copyWith(
           generatingCommitMessage: false,
           errorMessage: e.toString(),
@@ -268,7 +281,7 @@ class GitCubit extends Cubit<GitState> {
         fullContext: fullContext,
       );
     } on GitException catch (e) {
-      emit(state.copyWith(errorMessage: e.message));
+      _emit(state.copyWith(errorMessage: e.message));
       return null;
     }
   }
@@ -277,14 +290,16 @@ class GitCubit extends Cubit<GitState> {
   /// failure. Guards against re-entrancy via [GitState.busy].
   Future<bool> _mutate(Future<void> Function() action) async {
     if (state.busy) return false;
-    emit(state.copyWith(busy: true, clearError: true));
+    _emit(state.copyWith(busy: true, clearError: true));
     try {
       await action();
       await refresh();
-      emit(state.copyWith(busy: false));
+      if (isClosed) return false;
+      _emit(state.copyWith(busy: false));
       return true;
     } on GitException catch (e) {
-      emit(state.copyWith(busy: false, errorMessage: e.message));
+      if (isClosed) return false;
+      _emit(state.copyWith(busy: false, errorMessage: e.message));
       return false;
     }
   }

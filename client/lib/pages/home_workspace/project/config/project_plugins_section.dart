@@ -33,7 +33,7 @@ class ProjectPluginsSection extends StatelessWidget {
     }
 
     final l10n = context.l10n;
-    final onManage = () =>
+    void onManage() =>
         context.go(HomeWorkspaceGlobalView.plugins.homeLocation);
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textBase = isDark ? Colors.white : const Color(0xFF111827);

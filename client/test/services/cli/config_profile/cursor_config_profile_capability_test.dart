@@ -4,8 +4,6 @@ import 'package:teampilot/models/app_provider_config.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/repositories/app_provider_repository.dart';
 import 'package:teampilot/services/cli/cli_data_layout.dart';
-import 'package:teampilot/services/cli/registry/capabilities/config_profile_capability.dart';
-import 'package:teampilot/services/cli/registry/config_profile/config_profile_scope.dart';
 import 'package:teampilot/services/cli/registry/config_profile/cursor_config_profile_capability.dart';
 import 'package:teampilot/services/provider/config_profile_service.dart';
 import 'package:teampilot/services/provider/cursor/cursor_home_layout.dart';
@@ -154,7 +152,7 @@ void main() {
           cli: CliTool.cursor,
           name: 'work',
           category: AppProviderCategory.thirdParty,
-          config: const {},
+          config: {},
         ),
       ]);
       const team = TeamConfig(

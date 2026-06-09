@@ -1007,7 +1007,7 @@ abstract class AppLocalizations {
   /// No description provided for @homeWorkspacePersonal.
   ///
   /// In en, this message translates to:
-  /// **'Personal workspace'**
+  /// **'Simple mode'**
   String get homeWorkspacePersonal;
 
   /// Short personal-project label in title-bar tab tooltips.
@@ -1016,10 +1016,16 @@ abstract class AppLocalizations {
   /// **'Personal'**
   String get homeWorkspaceProjectTabKindPersonal;
 
+  /// Name shown for the built-in personal project in simple mode.
+  ///
+  /// In en, this message translates to:
+  /// **'Personal assistant'**
+  String get homeWorkspaceDefaultPersonalProjectName;
+
   /// No description provided for @homeWorkspacePersonalSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Solo projects with project-scoped agent, skills, and plugins.'**
+  /// **'Skip the team setup — just launch a single CLI and start chatting.'**
   String get homeWorkspacePersonalSubtitle;
 
   /// No description provided for @homeWorkspaceNoData.
@@ -1093,6 +1099,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Create or import a project to get started'**
   String get homeWorkspaceEmptyProjectsHint;
+
+  /// No description provided for @homeWorkspaceProjectSort.
+  ///
+  /// In en, this message translates to:
+  /// **'Sort projects'**
+  String get homeWorkspaceProjectSort;
+
+  /// No description provided for @homeWorkspaceProjectSortRecentlyUpdated.
+  ///
+  /// In en, this message translates to:
+  /// **'Recently updated'**
+  String get homeWorkspaceProjectSortRecentlyUpdated;
+
+  /// No description provided for @homeWorkspaceProjectSortNameAsc.
+  ///
+  /// In en, this message translates to:
+  /// **'Name (A–Z)'**
+  String get homeWorkspaceProjectSortNameAsc;
+
+  /// No description provided for @homeWorkspaceProjectSortNameDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Name (Z–A)'**
+  String get homeWorkspaceProjectSortNameDesc;
+
+  /// No description provided for @homeWorkspaceProjectSortCreatedDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Date created'**
+  String get homeWorkspaceProjectSortCreatedDesc;
+
+  /// No description provided for @homeWorkspaceProjectSortSessionCountDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Session count'**
+  String get homeWorkspaceProjectSortSessionCountDesc;
 
   /// No description provided for @homeWorkspaceComingSoon.
   ///
@@ -1585,6 +1627,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No conversations match your search'**
   String get homeWorkspaceNoSearchResults;
+
+  /// No description provided for @projectSearchTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Search'**
+  String get projectSearchTitle;
+
+  /// No description provided for @projectSearchHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search sessions and files'**
+  String get projectSearchHint;
+
+  /// No description provided for @projectSearchFilesSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Files'**
+  String get projectSearchFilesSection;
+
+  /// No description provided for @projectSearchSearching.
+  ///
+  /// In en, this message translates to:
+  /// **'Searching files…'**
+  String get projectSearchSearching;
+
+  /// No description provided for @projectSearchNoResults.
+  ///
+  /// In en, this message translates to:
+  /// **'No matches'**
+  String get projectSearchNoResults;
+
+  /// No description provided for @projectSearchFilesTruncated.
+  ///
+  /// In en, this message translates to:
+  /// **'More files match — refine your search'**
+  String get projectSearchFilesTruncated;
 
   /// No description provided for @homeWorkspaceOpenProjectInNewTab.
   ///

@@ -8,7 +8,7 @@ import '../../widgets/settings/workspace_settings_toggle_strip.dart';
 import '../../widgets/settings/workspace_settings_widgets.dart';
 
 class LayoutToolSettingsSection extends StatelessWidget {
-  const LayoutToolSettingsSection();
+  const LayoutToolSettingsSection({super.key});
 
   @override
   Widget build(BuildContext context) {

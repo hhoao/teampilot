@@ -12,6 +12,7 @@ import '../../../models/app_project.dart';
 import '../../../repositories/session_repository.dart';
 import '../../../theme/app_text_styles.dart';
 import '../../../utils/debounce/debounce.dart';
+import '../../../utils/project_display_name.dart';
 import '../../../widgets/app_dialog.dart';
 import '../../../widgets/project_details_dialog.dart';
 import '../../../widgets/settings/workspace_settings_widgets.dart';
@@ -52,7 +53,7 @@ class ProjectInfoSection extends StatelessWidget {
                 ProjectIconSettingsRow(project: live),
                 _ProjectSettingsInlineRow(
                   label: l10n.projectDisplayName,
-                  value: live.effectiveDisplay,
+                  value: live.localizedName(l10n),
                   onEdit: () => _editDisplayName(context, live),
                 ),
                 _ProjectSettingsInlineRow(
@@ -136,7 +137,7 @@ class ProjectInfoSection extends StatelessWidget {
             TextField(
               controller: controller,
               autofocus: true,
-              decoration: InputDecoration(hintText: project.effectiveDisplay),
+              decoration: InputDecoration(hintText: project.localizedName(l10n)),
             ),
             AppDialogActions(
               children: [
@@ -175,7 +176,7 @@ class ProjectConfigDangerZone extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final errorColor = Theme.of(context).colorScheme.error;
-    final name = project.effectiveDisplay;
+    final name = project.localizedName(l10n);
 
     return SettingsSurfaceCard(
       child: SettingsLabeledStackedRow(

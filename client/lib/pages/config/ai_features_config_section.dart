@@ -113,9 +113,14 @@ class AiFeatureConfigRow extends StatelessWidget {
     final cli = resolved.cli;
     final cliDef = registry.tryGet(cli);
     final providers = aiFeatureProvidersForCli(cli, appProviders, registry);
-    final provider =
-        providers.where((p) => p.id == resolved.providerId).firstOrNull;
-    final hidesModelPicker = projectCliHidesModelPicker(registry, cli, provider);
+    final provider = providers
+        .where((p) => p.id == resolved.providerId)
+        .firstOrNull;
+    final hidesModelPicker = projectCliHidesModelPicker(
+      registry,
+      cli,
+      provider,
+    );
     final configured = aiFeatureIsConfigured(
       resolved: resolved,
       registry: registry,
@@ -280,7 +285,8 @@ class AiFeatureConfigureDialog extends StatefulWidget {
   final AiFeatureSetting initial;
 
   @override
-  State<AiFeatureConfigureDialog> createState() => _AiFeatureConfigureDialogState();
+  State<AiFeatureConfigureDialog> createState() =>
+      _AiFeatureConfigureDialogState();
 }
 
 class _AiFeatureConfigureDialogState extends State<AiFeatureConfigureDialog> {
@@ -322,15 +328,19 @@ class _AiFeatureConfigureDialogState extends State<AiFeatureConfigureDialog> {
   void _applyCli(CliTool nextCli) {
     final registry = CliToolRegistryScope.of(context);
     final appProviders = context.read<AppProviderCubit>().state;
-    final nextProviders =
-        aiFeatureProvidersForCli(nextCli, appProviders, registry);
+    final nextProviders = aiFeatureProvidersForCli(
+      nextCli,
+      appProviders,
+      registry,
+    );
     final nextProviderId = _defaultProviderIdForCli(
       nextCli,
       nextProviders,
       appProviders,
     );
-    final nextProvider =
-        nextProviders.where((p) => p.id == nextProviderId).firstOrNull;
+    final nextProvider = nextProviders
+        .where((p) => p.id == nextProviderId)
+        .firstOrNull;
     final modelCap = registry.capability<ProviderModelCapability>(nextCli);
     final nextModel =
         modelCap?.defaultModel(
@@ -387,135 +397,137 @@ class _AiFeatureConfigureDialogState extends State<AiFeatureConfigureDialog> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                SettingsGroupHeader(title: l10n.aiFeatures),
-              SettingsLabeledRow(
-                title: l10n.aiFeatureCliLabel,
-                trailing: _aiFeatureDialogDropdown(
-                  AppDropdownField<CliTool>(
-                    items: cliItems,
-                    initialItem: _cli,
-                    decoration: dropdownDeco,
-                    itemLabel: (c) {
-                      final def = registry.tryGet(c);
-                      return def == null ? c.value : cliDisplayName(def, l10n);
-                    },
-                    onChanged: (c) {
-                      if (c == null || c == _cli) return;
-                      _applyCli(c);
-                    },
-                  ),
-                ),
-                showDividerBelow: providers.isNotEmpty,
-              ),
-              if (providers.isEmpty)
                 SettingsLabeledRow(
-                  title: l10n.provider,
-                  trailing: Text(
-                    l10n.onboardingDefaultProviderEmpty,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                  showDividerBelow: false,
-                )
-              else ...[
-                SettingsLabeledRow(
-                  title: l10n.provider,
+                  title: l10n.aiFeatureCliLabel,
                   trailing: _aiFeatureDialogDropdown(
-                    AppDropdownField<String>(
-                      key: ValueKey(
-                        'ai-feature-dialog-provider-${widget.feature.key}-$_providerId',
-                      ),
-                      items: providerIds,
-                      initialItem: _providerId.isEmpty ? null : _providerId,
-                      hintText: l10n.selectProvider,
+                    AppDropdownField<CliTool>(
+                      items: cliItems,
+                      initialItem: _cli,
                       decoration: dropdownDeco,
-                      onChanged: (value) {
-                        if (value == null || value.isEmpty) return;
-                        final nextProvider =
-                            providers.where((p) => p.id == value).firstOrNull;
-                        final modelCap =
-                            registry.capability<ProviderModelCapability>(_cli);
-                        final nextModel =
-                            modelCap?.defaultModel(
-                              provider: nextProvider,
-                              providerId: value,
-                            ) ??
-                            '';
-                        setState(() {
-                          _providerId = value;
-                          _modelId = nextModel;
-                          _effortId = '';
-                        });
+                      itemLabel: (c) {
+                        final def = registry.tryGet(c);
+                        return def == null
+                            ? c.value
+                            : cliDisplayName(def, l10n);
                       },
-                      itemBuilder: providerDropdownItemBuilder(
-                        providers: providers,
-                        labelFor: (id) =>
-                            providers
-                                .where((p) => p.id == id)
-                                .map((p) => p.name)
-                                .firstOrNull ??
-                            id,
-                      ),
+                      onChanged: (c) {
+                        if (c == null || c == _cli) return;
+                        _applyCli(c);
+                      },
                     ),
                   ),
-                  showDividerBelow: !hideModelPicker || showEffortPicker,
+                  showDividerBelow: providers.isNotEmpty,
                 ),
-                if (!hideModelPicker)
+                if (providers.isEmpty)
                   SettingsLabeledRow(
-                    title: l10n.aiFeatureModelLabel,
-                    trailing: _aiFeatureDialogDropdown(
-                      ProviderModelPickerField(
-                        key: ValueKey(
-                          'ai-feature-dialog-model-$_providerId-$_modelId',
-                        ),
-                        cli: _cli,
-                        providerId: _providerId,
-                        provider: selectedProvider,
-                        value: _modelId,
-                        hintText: l10n.selectModel,
-                        decoration: dropdownDeco,
-                        onChanged: (value) => setState(() {
-                          _modelId = value.trim();
-                          if (!projectCliShowsEffortPicker(
-                            registry: registry,
-                            cli: _cli,
-                            provider: selectedProvider,
-                            model: _modelId,
-                          )) {
-                            _effortId = '';
-                          }
-                        }),
-                      ),
-                    ),
-                    showDividerBelow: showEffortPicker,
-                  ),
-                if (showEffortPicker)
-                  SettingsLabeledRow(
-                    title: l10n.aiFeatureEffortLabel,
-                    subtitle: l10n.projectCliEffortLevelSubtitle,
-                    trailing: _aiFeatureDialogDropdown(
-                      CliEffortPickerField(
-                        key: ValueKey(
-                          'ai-feature-dialog-effort-$_providerId-$_modelId-$_effortId',
-                        ),
-                        cli: _cli,
-                        value: _effortId,
-                        provider: selectedProvider,
-                        model: _modelId,
-                        allowInherit: true,
-                        inheritLabel: l10n.projectCliEffortInheritHint,
-                        decoration: dropdownDeco,
-                        onChanged: (value) =>
-                            setState(() => _effortId = value.trim()),
+                    title: l10n.provider,
+                    trailing: Text(
+                      l10n.onboardingDefaultProviderEmpty,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
                     ),
                     showDividerBelow: false,
+                  )
+                else ...[
+                  SettingsLabeledRow(
+                    title: l10n.provider,
+                    trailing: _aiFeatureDialogDropdown(
+                      AppDropdownField<String>(
+                        key: ValueKey(
+                          'ai-feature-dialog-provider-${widget.feature.key}-$_providerId',
+                        ),
+                        items: providerIds,
+                        initialItem: _providerId.isEmpty ? null : _providerId,
+                        hintText: l10n.selectProvider,
+                        decoration: dropdownDeco,
+                        onChanged: (value) {
+                          if (value == null || value.isEmpty) return;
+                          final nextProvider = providers
+                              .where((p) => p.id == value)
+                              .firstOrNull;
+                          final modelCap = registry
+                              .capability<ProviderModelCapability>(_cli);
+                          final nextModel =
+                              modelCap?.defaultModel(
+                                provider: nextProvider,
+                                providerId: value,
+                              ) ??
+                              '';
+                          setState(() {
+                            _providerId = value;
+                            _modelId = nextModel;
+                            _effortId = '';
+                          });
+                        },
+                        itemBuilder: providerDropdownItemBuilder(
+                          providers: providers,
+                          labelFor: (id) =>
+                              providers
+                                  .where((p) => p.id == id)
+                                  .map((p) => p.name)
+                                  .firstOrNull ??
+                              id,
+                        ),
+                      ),
+                    ),
+                    showDividerBelow: !hideModelPicker || showEffortPicker,
                   ),
+                  if (!hideModelPicker)
+                    SettingsLabeledRow(
+                      title: l10n.aiFeatureModelLabel,
+                      trailing: _aiFeatureDialogDropdown(
+                        ProviderModelPickerField(
+                          key: ValueKey(
+                            'ai-feature-dialog-model-$_providerId-$_modelId',
+                          ),
+                          cli: _cli,
+                          providerId: _providerId,
+                          provider: selectedProvider,
+                          value: _modelId,
+                          hintText: l10n.selectModel,
+                          decoration: dropdownDeco,
+                          onChanged: (value) => setState(() {
+                            _modelId = value.trim();
+                            if (!projectCliShowsEffortPicker(
+                              registry: registry,
+                              cli: _cli,
+                              provider: selectedProvider,
+                              model: _modelId,
+                            )) {
+                              _effortId = '';
+                            }
+                          }),
+                        ),
+                      ),
+                      showDividerBelow: showEffortPicker,
+                    ),
+                  if (showEffortPicker)
+                    SettingsLabeledRow(
+                      title: l10n.aiFeatureEffortLabel,
+                      subtitle: l10n.projectCliEffortLevelSubtitle,
+                      trailing: _aiFeatureDialogDropdown(
+                        CliEffortPickerField(
+                          key: ValueKey(
+                            'ai-feature-dialog-effort-$_providerId-$_modelId-$_effortId',
+                          ),
+                          cli: _cli,
+                          value: _effortId,
+                          provider: selectedProvider,
+                          model: _modelId,
+                          allowInherit: true,
+                          inheritLabel: l10n.projectCliEffortInheritHint,
+                          decoration: dropdownDeco,
+                          onChanged: (value) =>
+                              setState(() => _effortId = value.trim()),
+                        ),
+                      ),
+                      showDividerBelow: false,
+                    ),
+                ],
               ],
-            ],
+            ),
           ),
-        ),
           AppDialogActions(
             children: [
               TextButton(
@@ -538,7 +550,9 @@ const _aiFeatureDialogDropdownMinWidth = 180.0;
 
 Widget _aiFeatureDialogDropdown(Widget child) {
   return ConstrainedBox(
-    constraints: const BoxConstraints(minWidth: _aiFeatureDialogDropdownMinWidth),
+    constraints: const BoxConstraints(
+      minWidth: _aiFeatureDialogDropdownMinWidth,
+    ),
     child: child,
   );
 }

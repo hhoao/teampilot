@@ -152,4 +152,22 @@ void main() {
     expect(cubit.state.busy, isFalse);
     await cubit.close();
   });
+
+  test('refresh after close does not throw', () async {
+    final service = _SlowGitService(statusToReturn: _repoWith());
+    final cubit = GitCubit(service: service);
+    final refreshFuture = cubit.setRepoRoot('/repo');
+    await cubit.close();
+    await refreshFuture;
+  });
+}
+
+class _SlowGitService extends _FakeGitService {
+  _SlowGitService({required super.statusToReturn});
+
+  @override
+  Future<GitRepoStatus> status(String dir) async {
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+    return super.status(dir);
+  }
 }

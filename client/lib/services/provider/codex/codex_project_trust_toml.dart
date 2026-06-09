@@ -29,7 +29,7 @@ abstract final class CodexProjectTrustToml {
 
     if (blocks.isEmpty) return trimmed;
     if (trimmed.isEmpty) return blocks.join('\n\n');
-    return '${trimmed}\n\n${blocks.join('\n\n')}';
+    return '$trimmed\n\n${blocks.join('\n\n')}';
   }
 
   static bool _isDirectoryTrusted(String toml, String path) {

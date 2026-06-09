@@ -66,25 +66,82 @@ class AppDialog extends StatelessWidget {
   }
 }
 
-/// End-aligned action row for [AppDialog] footers (replaces [AlertDialog.actions]).
-class AppDialogActions extends StatelessWidget {
-  const AppDialogActions({super.key, required this.children});
+/// Section divider that spans the full [AppDialog] width inside content padding.
+///
+/// [horizontalInset] should match [AppDialog.contentPadding]'s horizontal insets
+/// when callers override the default [kAppDialogContentPadding].
+class AppDialogDivider extends StatelessWidget {
+  const AppDialogDivider({
+    super.key,
+    this.horizontalInset = kAppDialogContentHorizontalInset,
+  });
 
-  final List<Widget> children;
+  final double horizontalInset;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 24),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.end,
-        children: [
-          for (var i = 0; i < children.length; i++) ...[
-            if (i > 0) const SizedBox(width: 8),
-            children[i],
-          ],
+    final cs = Theme.of(context).colorScheme;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final fullWidth = constraints.maxWidth + horizontalInset * 2;
+        return SizedBox(
+          height: 1,
+          child: OverflowBox(
+            maxWidth: fullWidth,
+            minWidth: fullWidth,
+            alignment: Alignment.center,
+            child: Divider(
+              height: 1,
+              thickness: 1,
+              color: cs.outlineVariant.withValues(alpha: 0.5),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// End-aligned action row for [AppDialog] footers (replaces [AlertDialog.actions]).
+class AppDialogActions extends StatelessWidget {
+  const AppDialogActions({
+    super.key,
+    required this.children,
+    this.showDividerAbove = true,
+    this.horizontalInset = kAppDialogContentHorizontalInset,
+  });
+
+  final List<Widget> children;
+
+  /// When true (default), draws a full-width [AppDialogDivider] above the row.
+  final bool showDividerAbove;
+
+  /// Horizontal bleed for [AppDialogDivider]; match [AppDialog.contentPadding].
+  final double horizontalInset;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (showDividerAbove) ...[
+          const SizedBox(height: 16),
+          AppDialogDivider(horizontalInset: horizontalInset),
         ],
-      ),
+        Padding(
+          padding: EdgeInsets.only(top: showDividerAbove ? 16 : 24),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              for (var i = 0; i < children.length; i++) ...[
+                if (i > 0) const SizedBox(width: 8),
+                children[i],
+              ],
+            ],
+          ),
+        ),
+      ],
     );
   }
 }
@@ -100,6 +157,8 @@ class AppDialogHeader extends StatelessWidget {
     required this.title,
     this.onClose,
     this.titleAlignment = Alignment.topLeft,
+    this.showDividerBelow = true,
+    this.horizontalInset = kAppDialogContentHorizontalInset,
   });
 
   final String title;
@@ -111,42 +170,58 @@ class AppDialogHeader extends StatelessWidget {
   /// [Alignment.topLeft] left-aligns it (default).
   final Alignment titleAlignment;
 
+  /// When true (default), draws a full-width [AppDialogDivider] below the title.
+  final bool showDividerBelow;
+
+  /// Horizontal bleed for [AppDialogDivider]; match [AppDialog.contentPadding].
+  final double horizontalInset;
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final styles = AppTextStyles.of(context);
     final centered = titleAlignment == Alignment.center;
-    return Stack(
-      clipBehavior: Clip.none,
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Padding(
-          padding: const EdgeInsets.only(right: 40),
-          child: SizedBox(
-            width: double.infinity,
-            child: Text(
-              title,
-              textAlign: centered ? TextAlign.center : TextAlign.start,
-              style: styles.dialogTitle.copyWith(
-                color: cs.onSurface,
-                fontWeight: FontWeight.w700,
+        Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(right: 40),
+              child: SizedBox(
+                width: double.infinity,
+                child: Text(
+                  title,
+                  textAlign: centered ? TextAlign.center : TextAlign.start,
+                  style: styles.dialogTitle.copyWith(
+                    color: cs.onSurface,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
               ),
             ),
-          ),
-        ),
-        Positioned(
-          right: 0,
-          top: 0,
-          child: IconButton(
-            tooltip: context.l10n.cancel,
-            visualDensity: VisualDensity.compact,
-            icon: Icon(
-              Icons.close_rounded,
-              size: AppIconSizes.md,
-              color: cs.onSurfaceVariant,
+            Positioned(
+              right: 0,
+              top: 0,
+              child: IconButton(
+                tooltip: context.l10n.cancel,
+                visualDensity: VisualDensity.compact,
+                icon: Icon(
+                  Icons.close_rounded,
+                  size: AppIconSizes.md,
+                  color: cs.onSurfaceVariant,
+                ),
+                onPressed: onClose ?? () => Navigator.of(context).pop(),
+              ),
             ),
-            onPressed: onClose ?? () => Navigator.of(context).pop(),
-          ),
+          ],
         ),
+        if (showDividerBelow) ...[
+          const SizedBox(height: 16),
+          AppDialogDivider(horizontalInset: horizontalInset),
+        ],
       ],
     );
   }

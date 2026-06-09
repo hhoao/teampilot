@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:teampilot/theme/app_icon_sizes.dart';
 
 import '../../cubits/llm_config_cubit.dart';
 import '../../l10n/l10n_extensions.dart';

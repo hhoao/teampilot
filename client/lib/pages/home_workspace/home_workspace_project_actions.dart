@@ -10,6 +10,7 @@ import '../../l10n/l10n_extensions.dart';
 import '../../models/app_project.dart';
 import '../../repositories/session_repository.dart';
 import '../../utils/debounce/debounce.dart';
+import '../../utils/project_display_name.dart';
 import '../../widgets/app_dialog.dart';
 
 Future<void> showRenameHomeWorkspaceProjectDialog(
@@ -34,7 +35,7 @@ Future<void> showRenameHomeWorkspaceProjectDialog(
           TextField(
             controller: controller,
             autofocus: true,
-            decoration: InputDecoration(hintText: project.effectiveDisplay),
+            decoration: InputDecoration(hintText: project.localizedName(l10n)),
           ),
           AppDialogActions(
             children: [
@@ -70,7 +71,7 @@ Future<void> cloneHomeWorkspaceProject(
   final l10n = context.l10n;
   final repo = context.read<SessionRepository>();
   final team = context.read<TeamCubit>().state.selectedTeam;
-  final baseName = project.effectiveDisplay;
+  final baseName = project.localizedName(l10n);
   final display = l10n.homeWorkspaceCloneProjectDisplayName(baseName);
 
   try {
@@ -99,7 +100,7 @@ Future<void> confirmDeleteHomeWorkspaceProject(
 ) async {
   final l10n = context.l10n;
   final repo = context.read<SessionRepository>();
-  final name = project.effectiveDisplay;
+  final name = project.localizedName(l10n);
   await showDialog<void>(
     context: context,
     builder: (ctx) => AppDialog(

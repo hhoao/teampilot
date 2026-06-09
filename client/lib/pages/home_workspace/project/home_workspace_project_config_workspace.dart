@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../../l10n/l10n_extensions.dart';
 import '../../../models/app_project.dart';
 import '../../../utils/app_keys.dart';
+import '../../../utils/project_display_name.dart';
 import '../../../widgets/settings/workspace_section_host.dart';
 import 'config/project_agent_section.dart';
 import 'config/project_extensions_section.dart';
@@ -74,7 +75,7 @@ class _HomeWorkspaceProjectConfigWorkspaceState
     return WorkspaceAdaptiveSectionPage(
       pageKey: AppKeys.projectConfigWorkspace,
       title: l10n.homeWorkspaceProjectManagement,
-      subtitle: widget.project.effectiveDisplay,
+      subtitle: widget.project.localizedName(l10n),
       bodyAnimationKey: ValueKey(
         'project-config-body-${section.name}-${widget.project.projectId}',
       ),

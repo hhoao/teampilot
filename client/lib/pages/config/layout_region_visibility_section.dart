@@ -7,7 +7,7 @@ import '../../utils/app_keys.dart';
 import '../../widgets/settings/workspace_settings_widgets.dart';
 
 class LayoutRegionVisibilitySection extends StatelessWidget {
-  const LayoutRegionVisibilitySection();
+  const LayoutRegionVisibilitySection({super.key});
 
   @override
   Widget build(BuildContext context) {

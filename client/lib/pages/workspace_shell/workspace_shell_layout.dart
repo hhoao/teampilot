@@ -8,7 +8,7 @@ import '../../widgets/resizable_split_view.dart';
 import '../../widgets/workspace_terminal_panel.dart';
 
 class WorkspaceShellMainWithTerminal extends StatelessWidget {
-  const WorkspaceShellMainWithTerminal({
+  const WorkspaceShellMainWithTerminal({super.key, 
     required this.preferences,
     required this.child,
     required this.rightTools,
@@ -41,7 +41,7 @@ class WorkspaceShellMainWithTerminal extends StatelessWidget {
 
 /// Bottom terminal under the center workbench only (not under right tools).
 class WorkspaceShellCenterColumnWithTerminal extends StatelessWidget {
-  const WorkspaceShellCenterColumnWithTerminal({
+  const WorkspaceShellCenterColumnWithTerminal({super.key, 
     required this.child,
     this.workspaceTerminalWorkingDirectory,
     this.workspaceProjectId,
@@ -103,7 +103,7 @@ class WorkspaceShellCenterColumnWithTerminal extends StatelessWidget {
 }
 
 class WorkspaceShellBody extends StatelessWidget {
-  const WorkspaceShellBody({
+  const WorkspaceShellBody({super.key, 
     required this.preferences,
     required this.child,
     required this.rightTools,

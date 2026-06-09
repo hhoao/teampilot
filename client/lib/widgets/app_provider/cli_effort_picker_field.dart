@@ -65,7 +65,7 @@ class CliEffortPickerField extends StatelessWidget {
 
     return AppDropdownField<String>(
       key: ValueKey(
-        'cli-effort-$cli-${resolvedModel}-${items.join("|")}-$current',
+        'cli-effort-$cli-$resolvedModel-${items.join("|")}-$current',
       ),
       items: items,
       initialItem: current.isEmpty ? (allowInherit ? '' : null) : current,

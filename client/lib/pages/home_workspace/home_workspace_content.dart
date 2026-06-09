@@ -6,7 +6,9 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../cubits/chat_cubit.dart';
 import '../../cubits/team_cubit.dart';
+import '../../services/home_workspace/home_workspace_project_display_prefs_store.dart';
 import '../../services/home_workspace/home_workspace_project_favorites_store.dart';
+import 'home_workspace_project_sort.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/app_project.dart';
 import '../../models/app_session.dart';
@@ -45,6 +47,7 @@ class HomeWorkspaceContent extends StatefulWidget {
 
 class _HomeWorkspaceContentState extends State<HomeWorkspaceContent> {
   final _projectFavoritesStore = HomeWorkspaceProjectFavoritesStore();
+  final _displayPrefsStore = HomeWorkspaceProjectDisplayPrefsStore();
   Set<String> _favoriteProjectIds = {};
 
   // Tab 0 is Projects; the rest reuse the existing team-config sections in the
@@ -60,18 +63,43 @@ class _HomeWorkspaceContentState extends State<HomeWorkspaceContent> {
   ];
 
   late int _tabIndex = _initialTabIndex();
-  bool _gridView = true;
+  var _gridView = true;
+  var _projectSort = HomeWorkspaceProjectSort.recentlyUpdated;
 
   @override
   void initState() {
     super.initState();
     unawaited(_loadProjectFavorites());
+    unawaited(_loadDisplayPrefs());
   }
 
   Future<void> _loadProjectFavorites() async {
     final ids = await _projectFavoritesStore.load();
     if (!mounted) return;
     setState(() => _favoriteProjectIds = ids);
+  }
+
+  Future<void> _loadDisplayPrefs() async {
+    final prefs = await _displayPrefsStore.load();
+    if (!mounted) return;
+    setState(() {
+      _gridView = prefs.gridView;
+      _projectSort = prefs.sort;
+    });
+  }
+
+  Future<void> _setGridView(bool gridView) async {
+    setState(() => _gridView = gridView);
+    await _displayPrefsStore.save(
+      HomeWorkspaceProjectDisplayPrefs(gridView: gridView, sort: _projectSort),
+    );
+  }
+
+  Future<void> _setProjectSort(HomeWorkspaceProjectSort sort) async {
+    setState(() => _projectSort = sort);
+    await _displayPrefsStore.save(
+      HomeWorkspaceProjectDisplayPrefs(gridView: _gridView, sort: sort),
+    );
   }
 
   Future<void> _toggleProjectFavorite(String projectId) async {
@@ -144,8 +172,9 @@ class _HomeWorkspaceContentState extends State<HomeWorkspaceContent> {
                             projects: teamProjects,
                             sessions: sessions,
                             gridView: _gridView,
-                            onToggleView: (grid) =>
-                                setState(() => _gridView = grid),
+                            onToggleView: _setGridView,
+                            projectSort: _projectSort,
+                            onProjectSortChanged: _setProjectSort,
                             favoriteProjectIds: _favoriteProjectIds,
                             onToggleProjectFavorite: _toggleProjectFavorite,
                           )

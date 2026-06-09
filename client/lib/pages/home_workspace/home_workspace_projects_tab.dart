@@ -10,15 +10,21 @@ import '../../models/app_project.dart';
 import '../../models/app_session.dart';
 import '../../repositories/session_repository.dart';
 import '../../theme/app_text_styles.dart';
+import '../../utils/project_display_name.dart';
+import '../../widgets/menu/sidebar_action_menu.dart';
 import 'home_workspace_new_project_dialog.dart';
 import 'home_workspace_project_card.dart';
+import 'home_workspace_project_list_tile.dart';
+import 'home_workspace_project_sort.dart';
 
 class HomeWorkspaceProjectsTab extends StatelessWidget {
-  const HomeWorkspaceProjectsTab({
+  const HomeWorkspaceProjectsTab({super.key, 
     required this.projects,
     required this.sessions,
     required this.gridView,
     required this.onToggleView,
+    required this.projectSort,
+    required this.onProjectSortChanged,
     required this.favoriteProjectIds,
     required this.onToggleProjectFavorite,
     this.personalScope = false,
@@ -28,6 +34,8 @@ class HomeWorkspaceProjectsTab extends StatelessWidget {
   final List<AppSession> sessions;
   final bool gridView;
   final ValueChanged<bool> onToggleView;
+  final HomeWorkspaceProjectSort projectSort;
+  final ValueChanged<HomeWorkspaceProjectSort> onProjectSortChanged;
   final Set<String> favoriteProjectIds;
   final Future<void> Function(String projectId) onToggleProjectFavorite;
   final bool personalScope;
@@ -40,15 +48,19 @@ class HomeWorkspaceProjectsTab extends StatelessWidget {
         HomeWorkspaceProjectsToolbar(
           gridView: gridView,
           onToggleView: onToggleView,
+          projectSort: projectSort,
+          onProjectSortChanged: onProjectSortChanged,
           personalScope: personalScope,
         ),
         const SizedBox(height: 16),
         Expanded(
           child: projects.isEmpty
               ? const HomeWorkspaceEmptyProjects()
-              : HomeWorkspaceProjectGrid(
+              : HomeWorkspaceProjectCollection(
                   projects: projects,
                   sessions: sessions,
+                  gridView: gridView,
+                  projectSort: projectSort,
                   favoriteProjectIds: favoriteProjectIds,
                   onToggleProjectFavorite: onToggleProjectFavorite,
                 ),
@@ -59,14 +71,18 @@ class HomeWorkspaceProjectsTab extends StatelessWidget {
 }
 
 class HomeWorkspaceProjectsToolbar extends StatelessWidget {
-  const HomeWorkspaceProjectsToolbar({
+  const HomeWorkspaceProjectsToolbar({super.key, 
     required this.gridView,
     required this.onToggleView,
+    required this.projectSort,
+    required this.onProjectSortChanged,
     this.personalScope = false,
   });
 
   final bool gridView;
   final ValueChanged<bool> onToggleView;
+  final HomeWorkspaceProjectSort projectSort;
+  final ValueChanged<HomeWorkspaceProjectSort> onProjectSortChanged;
   final bool personalScope;
 
   @override
@@ -79,9 +95,9 @@ class HomeWorkspaceProjectsToolbar extends StatelessWidget {
           onToggleView: onToggleView,
         ),
         const SizedBox(width: 8),
-        HomeWorkspaceProjectsIconChip(
-          icon: Icons.sort_rounded,
-          onTap: () => _comingSoon(context),
+        HomeWorkspaceProjectsSortButton(
+          projectSort: projectSort,
+          onProjectSortChanged: onProjectSortChanged,
         ),
         const Spacer(),
         Flexible(
@@ -115,16 +131,71 @@ class HomeWorkspaceProjectsToolbar extends StatelessWidget {
       ],
     );
   }
+}
 
-  void _comingSoon(BuildContext context) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(context.l10n.homeWorkspaceComingSoon)),
+class HomeWorkspaceProjectsSortButton extends StatelessWidget {
+  const HomeWorkspaceProjectsSortButton({super.key, 
+    required this.projectSort,
+    required this.onProjectSortChanged,
+  });
+
+  final HomeWorkspaceProjectSort projectSort;
+  final ValueChanged<HomeWorkspaceProjectSort> onProjectSortChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    return SidebarActionMenuIconAnchor(
+      minWidth: 220,
+      triggerBuilder: (context, controller) {
+        return HomeWorkspaceProjectsIconChip(
+          icon: Icons.sort_rounded,
+          tooltip: l10n.homeWorkspaceProjectSort,
+          onTap: () {
+            if (controller.isOpen) {
+              controller.close();
+            } else {
+              controller.open();
+            }
+          },
+        );
+      },
+      buildMenuChildren: (context, controller) {
+        return [
+          for (final sort in HomeWorkspaceProjectSort.values)
+            SidebarActionMenuItem(
+              icon: _iconForSort(sort),
+              label: sort.label(l10n),
+              trailing: projectSort == sort
+                  ? Icon(
+                      Icons.check,
+                      size: AppIconSizes.md,
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.onSurface.withValues(alpha: 0.7),
+                    )
+                  : null,
+              menuController: controller,
+              onTap: () => onProjectSortChanged(sort),
+            ),
+        ];
+      },
     );
   }
+
+  static IconData _iconForSort(HomeWorkspaceProjectSort sort) =>
+      switch (sort) {
+        HomeWorkspaceProjectSort.recentlyUpdated => Icons.update_rounded,
+        HomeWorkspaceProjectSort.nameAsc => Icons.sort_by_alpha_rounded,
+        HomeWorkspaceProjectSort.nameDesc => Icons.sort_by_alpha_rounded,
+        HomeWorkspaceProjectSort.createdDesc => Icons.event_rounded,
+        HomeWorkspaceProjectSort.sessionCountDesc =>
+          Icons.forum_outlined,
+      };
 }
 
 class HomeWorkspaceProjectsViewToggle extends StatelessWidget {
-  const HomeWorkspaceProjectsViewToggle({
+  const HomeWorkspaceProjectsViewToggle({super.key, 
     required this.gridView,
     required this.onToggleView,
   });
@@ -162,7 +233,7 @@ class HomeWorkspaceProjectsViewToggle extends StatelessWidget {
 }
 
 class HomeWorkspaceProjectsToggleCell extends StatelessWidget {
-  const HomeWorkspaceProjectsToggleCell({
+  const HomeWorkspaceProjectsToggleCell({super.key, 
     required this.icon,
     required this.active,
     required this.onTap,
@@ -197,18 +268,20 @@ class HomeWorkspaceProjectsToggleCell extends StatelessWidget {
 }
 
 class HomeWorkspaceProjectsIconChip extends StatelessWidget {
-  const HomeWorkspaceProjectsIconChip({
+  const HomeWorkspaceProjectsIconChip({super.key, 
     required this.icon,
     required this.onTap,
+    this.tooltip,
   });
 
   final IconData icon;
   final VoidCallback onTap;
+  final String? tooltip;
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    return InkWell(
+    final chip = InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(8),
       child: Container(
@@ -221,11 +294,13 @@ class HomeWorkspaceProjectsIconChip extends StatelessWidget {
         child: Icon(icon, size: AppIconSizes.md, color: cs.onSurfaceVariant),
       ),
     );
+    if (tooltip == null || tooltip!.isEmpty) return chip;
+    return Tooltip(message: tooltip, child: chip);
   }
 }
 
 class HomeWorkspaceProjectsPrimaryAction extends StatelessWidget {
-  const HomeWorkspaceProjectsPrimaryAction({
+  const HomeWorkspaceProjectsPrimaryAction({super.key, 
     required this.icon,
     required this.label,
     required this.onTap,
@@ -261,29 +336,71 @@ class HomeWorkspaceProjectsPrimaryAction extends StatelessWidget {
   }
 }
 
-class HomeWorkspaceProjectGrid extends StatelessWidget {
-  const HomeWorkspaceProjectGrid({
+class HomeWorkspaceProjectCollection extends StatelessWidget {
+  const HomeWorkspaceProjectCollection({super.key, 
     required this.projects,
     required this.sessions,
+    required this.gridView,
+    required this.projectSort,
+    required this.favoriteProjectIds,
+    required this.onToggleProjectFavorite,
+    this.preserveOrder = false,
+  });
+
+  final List<AppProject> projects;
+  final List<AppSession> sessions;
+  final bool gridView;
+  final HomeWorkspaceProjectSort projectSort;
+  final Set<String> favoriteProjectIds;
+  final Future<void> Function(String projectId) onToggleProjectFavorite;
+  final bool preserveOrder;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final sessionCounts = homeWorkspaceSessionCountByProjectId(sessions);
+    final sorted = sortHomeWorkspaceProjects(
+      projects: projects,
+      sort: projectSort,
+      favoriteProjectIds: favoriteProjectIds,
+      sessionCountByProjectId: sessionCounts,
+      displayName: (project) => project.localizedName(l10n),
+      preserveOrder: preserveOrder,
+    );
+
+    if (gridView) {
+      return HomeWorkspaceProjectGrid(
+        projects: sorted,
+        sessionCounts: sessionCounts,
+        favoriteProjectIds: favoriteProjectIds,
+        onToggleProjectFavorite: onToggleProjectFavorite,
+      );
+    }
+
+    return HomeWorkspaceProjectList(
+      projects: sorted,
+      sessionCounts: sessionCounts,
+      favoriteProjectIds: favoriteProjectIds,
+      onToggleProjectFavorite: onToggleProjectFavorite,
+    );
+  }
+}
+
+class HomeWorkspaceProjectGrid extends StatelessWidget {
+  const HomeWorkspaceProjectGrid({super.key, 
+    required this.projects,
+    required this.sessionCounts,
     required this.favoriteProjectIds,
     required this.onToggleProjectFavorite,
   });
 
   final List<AppProject> projects;
-  final List<AppSession> sessions;
+  final Map<String, int> sessionCounts;
   final Set<String> favoriteProjectIds;
   final Future<void> Function(String projectId) onToggleProjectFavorite;
 
   @override
   Widget build(BuildContext context) {
-    final sorted = List<AppProject>.from(projects)
-      ..sort((a, b) {
-        final af = favoriteProjectIds.contains(a.projectId);
-        final bf = favoriteProjectIds.contains(b.projectId);
-        if (af != bf) return af ? -1 : 1;
-        return b.updatedAt.compareTo(a.updatedAt);
-      });
-
     return GridView.builder(
       gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
         maxCrossAxisExtent: 460,
@@ -291,12 +408,10 @@ class HomeWorkspaceProjectGrid extends StatelessWidget {
         crossAxisSpacing: 20,
         mainAxisSpacing: 20,
       ),
-      itemCount: sorted.length,
+      itemCount: projects.length,
       itemBuilder: (context, index) {
-        final project = sorted[index];
-        final count = sessions
-            .where((s) => s.projectId == project.projectId)
-            .length;
+        final project = projects[index];
+        final count = sessionCounts[project.projectId] ?? 0;
         return HomeWorkspaceProjectCard(
           project: project,
           sessionCount: count,
@@ -309,8 +424,41 @@ class HomeWorkspaceProjectGrid extends StatelessWidget {
   }
 }
 
+class HomeWorkspaceProjectList extends StatelessWidget {
+  const HomeWorkspaceProjectList({super.key, 
+    required this.projects,
+    required this.sessionCounts,
+    required this.favoriteProjectIds,
+    required this.onToggleProjectFavorite,
+  });
+
+  final List<AppProject> projects;
+  final Map<String, int> sessionCounts;
+  final Set<String> favoriteProjectIds;
+  final Future<void> Function(String projectId) onToggleProjectFavorite;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView.separated(
+      itemCount: projects.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 10),
+      itemBuilder: (context, index) {
+        final project = projects[index];
+        final count = sessionCounts[project.projectId] ?? 0;
+        return HomeWorkspaceProjectListTile(
+          project: project,
+          sessionCount: count,
+          favorited: favoriteProjectIds.contains(project.projectId),
+          onToggleFavorite: () => onToggleProjectFavorite(project.projectId),
+          onTap: () => context.go('/home-v2/project/${project.projectId}'),
+        );
+      },
+    );
+  }
+}
+
 class HomeWorkspaceEmptyProjects extends StatelessWidget {
-  const HomeWorkspaceEmptyProjects();
+  const HomeWorkspaceEmptyProjects({super.key});
 
   @override
   Widget build(BuildContext context) {

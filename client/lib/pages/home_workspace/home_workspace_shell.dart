@@ -11,6 +11,7 @@ import '../../cubits/team_cubit.dart';
 import '../../cubits/workspace_tools_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/app_project.dart';
+import '../../utils/project_display_name.dart';
 import '../../models/team_config.dart';
 import '../../models/home_closed_project_entry.dart';
 import '../../theme/workspace_surface_layers.dart';
@@ -44,8 +45,9 @@ class HomeWorkspaceShell extends StatefulWidget {
     required AppProject project,
     required String personalKindLabel,
     String? teamName,
+    String? displayName,
   }) {
-    final name = project.effectiveDisplay;
+    final name = displayName ?? project.effectiveDisplay;
     final prefix = project.teamId.isEmpty
         ? personalKindLabel
         : ((teamName != null && teamName.isNotEmpty)
@@ -331,7 +333,7 @@ class _HomeWorkspaceShellState extends State<HomeWorkspaceShell> {
         if (_resolve(projects, id) case final p?)
           HomeProjectTab(
             id: id,
-            name: p.effectiveDisplay,
+            name: p.localizedName(l10n),
             kind: p.teamId.isEmpty
                 ? HomeProjectTabKind.personal
                 : HomeProjectTabKind.team,
@@ -339,6 +341,7 @@ class _HomeWorkspaceShellState extends State<HomeWorkspaceShell> {
               project: p,
               personalKindLabel: l10n.homeWorkspaceProjectTabKindPersonal,
               teamName: HomeWorkspaceShell.teamNameFor(teams, p.teamId),
+              displayName: p.localizedName(l10n),
             ),
             closable: !p.isDefaultPersonal,
           ),

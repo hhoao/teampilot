@@ -10,6 +10,7 @@ import '../../../models/app_project.dart';
 import '../../../repositories/session_repository.dart';
 import '../../../theme/app_text_styles.dart';
 import '../../../utils/debounce/debounce.dart';
+import '../../../utils/project_display_name.dart';
 import '../../../widgets/app_dialog.dart';
 import '../../../widgets/project_details_dialog.dart';
 import '../../../widgets/settings/workspace_hub_shell.dart';
@@ -93,7 +94,7 @@ class _HomeWorkspaceProjectSettingsViewState
                 WorkspaceHubTitleBar(
                   compact: true,
                   title: l10n.homeWorkspaceProjectSettings,
-                  subtitle: project.effectiveDisplay,
+                  subtitle: project.localizedName(l10n),
                 ),
                 Expanded(
                   child: SingleChildScrollView(
@@ -146,7 +147,7 @@ class _ProjectSettingsBasicSection extends StatelessWidget {
               ProjectIconSettingsRow(project: project),
               _ProjectSettingsInlineRow(
                 label: l10n.projectDisplayName,
-                value: project.effectiveDisplay,
+                value: project.localizedName(l10n),
                 onEdit: () => _editDisplayName(context, project),
               ),
               _ProjectSettingsInlineRow(
@@ -225,7 +226,7 @@ class _ProjectSettingsBasicSection extends StatelessWidget {
             TextField(
               controller: controller,
               autofocus: true,
-              decoration: InputDecoration(hintText: project.effectiveDisplay),
+              decoration: InputDecoration(hintText: project.localizedName(l10n)),
             ),
             AppDialogActions(
               children: [
@@ -264,7 +265,7 @@ class _ProjectSettingsDangerSection extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final cs = Theme.of(context).colorScheme;
-    final name = project.effectiveDisplay;
+    final name = project.localizedName(l10n);
 
     return SettingsSurfaceCard(
       child: SettingsLabeledStackedRow(

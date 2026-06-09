@@ -7,7 +7,6 @@ import 'package:sqlite3/sqlite3.dart';
 import 'package:teampilot/models/app_provider_config.dart';
 import 'package:teampilot/repositories/app_provider_repository.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
-import 'package:teampilot/services/provider/codex/codex_cc_switch_import.dart';
 import 'package:teampilot/services/provider/codex/codex_toml_parser.dart';
 import 'package:teampilot/services/provider/provider_import_service.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
@@ -262,7 +261,6 @@ class _CcSwitchRow {
     required this.name,
     required this.settingsConfig,
     this.category,
-    this.isCurrent = false,
   });
 
   final String id;

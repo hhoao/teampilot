@@ -11,7 +11,7 @@ import '../../widgets/settings/workspace_settings_widgets.dart';
 import 'session_config_constants.dart';
 
 class SessionLlmConfigPathSettingsRow extends StatefulWidget {
-  const SessionLlmConfigPathSettingsRow();
+  const SessionLlmConfigPathSettingsRow({super.key});
 
   @override
   State<SessionLlmConfigPathSettingsRow> createState() =>

@@ -13,7 +13,7 @@ import '../../widgets/settings/workspace_settings_toggle_strip.dart';
 import '../../widgets/settings/workspace_settings_widgets.dart';
 
 class LayoutAppearanceInLayoutSection extends StatelessWidget {
-  const LayoutAppearanceInLayoutSection();
+  const LayoutAppearanceInLayoutSection({super.key});
 
   @override
   Widget build(BuildContext context) {

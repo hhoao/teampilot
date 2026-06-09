@@ -373,6 +373,7 @@ class TeamConfig {
     Map<String, String> fromJson,
     String claudeEffortLevel,
   ) {
+    if (fromJson.isEmpty) return const {};
     final merged = Map<String, String>.from(fromJson);
     merged.putIfAbsent(CliTool.claude.value, () => claudeEffortLevel.trim());
     return merged;

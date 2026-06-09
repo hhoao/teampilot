@@ -480,13 +480,16 @@ class AppLocalizationsZh extends AppLocalizations {
   String get homeWorkspaceRecentVisits => '最近访问';
 
   @override
-  String get homeWorkspacePersonal => '个人工作区';
+  String get homeWorkspacePersonal => '简单模式';
 
   @override
   String get homeWorkspaceProjectTabKindPersonal => '个人';
 
   @override
-  String get homeWorkspacePersonalSubtitle => '独立项目，按项目配置 Agent、技能与插件。';
+  String get homeWorkspaceDefaultPersonalProjectName => '个人助手';
+
+  @override
+  String get homeWorkspacePersonalSubtitle => '不用组队，直接拉起一个 CLI 开聊。';
 
   @override
   String get homeWorkspaceNoData => '暂无数据';
@@ -523,6 +526,24 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get homeWorkspaceEmptyProjectsHint => '新建或导入一个项目开始吧';
+
+  @override
+  String get homeWorkspaceProjectSort => '排序项目';
+
+  @override
+  String get homeWorkspaceProjectSortRecentlyUpdated => '最近更新';
+
+  @override
+  String get homeWorkspaceProjectSortNameAsc => '名称（A–Z）';
+
+  @override
+  String get homeWorkspaceProjectSortNameDesc => '名称（Z–A）';
+
+  @override
+  String get homeWorkspaceProjectSortCreatedDesc => '创建时间';
+
+  @override
+  String get homeWorkspaceProjectSortSessionCountDesc => '会话数量';
 
   @override
   String get homeWorkspaceComingSoon => '功能开发中';
@@ -684,7 +705,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get projectCliNotConfigured => '未配置';
 
   @override
-  String get projectCliNotConfiguredHint => '尚未选择默认提供商';
+  String get projectCliNotConfiguredHint => '选择提供商';
 
   @override
   String get projectCliNoProviderCatalog => '此 CLI 无需配置提供商';
@@ -792,6 +813,24 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get homeWorkspaceNoSearchResults => '没有匹配的对话';
+
+  @override
+  String get projectSearchTitle => '搜索';
+
+  @override
+  String get projectSearchHint => '搜索会话和文件';
+
+  @override
+  String get projectSearchFilesSection => '文件';
+
+  @override
+  String get projectSearchSearching => '正在搜索文件…';
+
+  @override
+  String get projectSearchNoResults => '没有匹配结果';
+
+  @override
+  String get projectSearchFilesTruncated => '还有更多文件，请细化搜索';
 
   @override
   String get homeWorkspaceOpenProjectInNewTab => '在新标签页中打开';

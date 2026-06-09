@@ -60,7 +60,7 @@ void main() {
       id: 't1',
       name: 'T1',
       providerIdsByTool: {'cursor': 'team-p'},
-      members: const [TeamMemberConfig(id: 'worker', name: 'worker')],
+      members: [TeamMemberConfig(id: 'worker', name: 'worker')],
     );
 
     expect(await resolver.resolveProviderId(team), 'team-p');
@@ -91,7 +91,7 @@ void main() {
     const team = TeamConfig(
       id: 't1',
       name: 'T1',
-      members: const [TeamMemberConfig(id: 'worker', name: 'worker')],
+      members: [TeamMemberConfig(id: 'worker', name: 'worker')],
     );
 
     expect(await resolver.resolveProviderId(team), 'only');
@@ -106,7 +106,7 @@ void main() {
     const team = TeamConfig(
       id: 't1',
       name: 'T1',
-      members: const [TeamMemberConfig(id: 'worker', name: 'worker')],
+      members: [TeamMemberConfig(id: 'worker', name: 'worker')],
     );
 
     expect(await resolver.resolveProviderId(team), isNull);

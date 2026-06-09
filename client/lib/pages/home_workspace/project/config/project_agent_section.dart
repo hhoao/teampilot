@@ -7,7 +7,6 @@ import '../../../../cubits/project_profile_cubit.dart';
 import '../../../../l10n/l10n_extensions.dart';
 import '../../../../models/project_agent_prompt_presets.dart';
 import '../../../../models/project_profile.dart';
-import '../../../../models/team_config.dart';
 import '../../../../services/app/flashskyai_agent_catalog_service.dart';
 import '../../../../services/storage/storage_resolver.dart';
 import '../../../../theme/app_text_styles.dart';

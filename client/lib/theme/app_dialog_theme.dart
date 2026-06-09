@@ -19,6 +19,9 @@ const double kAppDialogInsetExtent = 48;
 /// [AppDialog.contentPadding] when a dialog needs a tighter or wider frame.
 const EdgeInsets kAppDialogContentPadding = EdgeInsets.fromLTRB(32, 28, 32, 28);
 
+/// Horizontal inset of [kAppDialogContentPadding]; used to bleed section dividers.
+const double kAppDialogContentHorizontalInset = 32;
+
 RoundedRectangleBorder appDialogShape([
   double radius = kAppDialogBorderRadius,
 ]) => RoundedRectangleBorder(borderRadius: BorderRadius.circular(radius));

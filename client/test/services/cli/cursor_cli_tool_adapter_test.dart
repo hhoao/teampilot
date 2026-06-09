@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/cli/cli_tool_adapter.dart';
+import 'package:teampilot/services/session/member_role_provision.dart';
 
 void main() {
   const team = TeamConfig(id: 't', name: 'agent', cli: CliTool.cursor);
@@ -27,7 +28,7 @@ void main() {
       '--model',
       'gpt-5.2',
       '--force',
-      'You are the planner.',
+      MemberRoleProvision.composeRolePrompt(member: member).trim(),
     ]);
   });
 

@@ -6,7 +6,7 @@ import '../../theme/app_text_styles.dart';
 import '../../utils/debounce/debounce.dart';
 
 class ChatWorkbenchSessionLoadingView extends StatelessWidget {
-  const ChatWorkbenchSessionLoadingView({required this.message});
+  const ChatWorkbenchSessionLoadingView({super.key, required this.message});
 
   final String message;
 
@@ -37,7 +37,7 @@ class ChatWorkbenchSessionLoadingView extends StatelessWidget {
 }
 
 class ChatWorkbenchTerminalPlaceholder extends StatelessWidget {
-  const ChatWorkbenchTerminalPlaceholder({
+  const ChatWorkbenchTerminalPlaceholder({super.key, 
     required this.onConnect,
     this.connectDisabled = false,
     this.memberName,

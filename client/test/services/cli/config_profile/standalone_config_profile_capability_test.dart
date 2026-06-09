@@ -5,7 +5,6 @@ import 'package:path/path.dart' as p;
 import 'package:teampilot/models/project_profile.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/cli/cli_data_layout.dart';
-import 'package:teampilot/services/cli/registry/capabilities/config_profile_capability.dart';
 import 'package:teampilot/services/cli/registry/config_profile/claude_config_profile_capability.dart';
 import 'package:teampilot/services/cli/registry/config_profile/codex_config_profile_capability.dart';
 import 'package:teampilot/services/cli/registry/config_profile/cursor_config_profile_capability.dart';
@@ -108,7 +107,7 @@ void main() {
     const profile = ProjectProfile(
       projectId: projectId,
       cli: CliTool.flashskyai,
-      agent: const ProjectAgentConfig(agent: 'solo', model: 'test'),
+      agent: ProjectAgentConfig(agent: 'solo', model: 'test'),
     );
 
     final contribution = await const FlashskyaiConfigProfileCapability()

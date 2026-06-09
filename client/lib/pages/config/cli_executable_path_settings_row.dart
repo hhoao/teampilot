@@ -17,7 +17,7 @@ import '../../widgets/settings/workspace_settings_widgets.dart';
 import 'session_config_constants.dart';
 
 class CliExecutablePathSettingsRow extends StatefulWidget {
-  const CliExecutablePathSettingsRow({
+  const CliExecutablePathSettingsRow({super.key, 
     required this.cubit,
     required this.cli,
     required this.title,

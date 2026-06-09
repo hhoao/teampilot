@@ -15,7 +15,7 @@ import '../../widgets/menu/sidebar_action_menu.dart';
 import 'workspace_shell_models.dart';
 
 class WorkspaceShellTabRowTrailing extends StatelessWidget {
-  const WorkspaceShellTabRowTrailing({
+  const WorkspaceShellTabRowTrailing({super.key, 
     this.actions,
     required this.showRightToolsToggle,
   });
@@ -42,7 +42,7 @@ class WorkspaceShellTabRowTrailing extends StatelessWidget {
 }
 
 class WorkspaceShellRightToolsVisibilityToggle extends StatelessWidget {
-  const WorkspaceShellRightToolsVisibilityToggle();
+  const WorkspaceShellRightToolsVisibilityToggle({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -74,7 +74,7 @@ class WorkspaceShellRightToolsVisibilityToggle extends StatelessWidget {
 }
 
 class WorkspaceShellTabRow extends StatelessWidget {
-  const WorkspaceShellTabRow({
+  const WorkspaceShellTabRow({super.key, 
     required this.tabs,
     required this.activeIndex,
     this.onTabSelected,
@@ -136,7 +136,7 @@ class WorkspaceShellTabRow extends StatelessWidget {
 }
 
 class WorkspaceShellTabChip extends StatefulWidget {
-  const WorkspaceShellTabChip({
+  const WorkspaceShellTabChip({super.key, 
     required this.title,
     required this.active,
     required this.onTap,
@@ -356,7 +356,7 @@ class WorkspaceShellTabChipState extends State<WorkspaceShellTabChip> {
 }
 
 class WorkspaceShellActionsBar extends StatelessWidget {
-  const WorkspaceShellActionsBar({required this.actions});
+  const WorkspaceShellActionsBar({super.key, required this.actions});
 
   final List<Widget> actions;
 

@@ -5,7 +5,7 @@ import '../../theme/app_text_styles.dart';
 import '../../l10n/l10n_extensions.dart';
 
 class HomeWorkspaceTeamHeader extends StatelessWidget {
-  const HomeWorkspaceTeamHeader({required this.team});
+  const HomeWorkspaceTeamHeader({super.key, required this.team});
 
   final TeamConfig team;
 
@@ -40,7 +40,7 @@ class HomeWorkspaceTeamHeader extends StatelessWidget {
 }
 
 class HomeWorkspaceContentTabBar extends StatelessWidget {
-  const HomeWorkspaceContentTabBar({
+  const HomeWorkspaceContentTabBar({super.key, 
     required this.tabs,
     required this.selectedIndex,
     required this.onSelect,
@@ -69,7 +69,7 @@ class HomeWorkspaceContentTabBar extends StatelessWidget {
 }
 
 class HomeWorkspaceContentTabItem extends StatefulWidget {
-  const HomeWorkspaceContentTabItem({
+  const HomeWorkspaceContentTabItem({super.key, 
     required this.label,
     required this.selected,
     required this.onTap,

@@ -66,10 +66,8 @@ class ProjectCliConfigList extends StatelessWidget {
                 registry,
               ),
               showDividerBelow: i < launchable.length - 1,
-              onConfigure: projectCliSupportsProviderCatalog(
-                launchable[i].id,
-                registry,
-              )
+              onConfigure:
+                  projectCliSupportsProviderCatalog(launchable[i].id, registry)
                   ? () => _openConfigureDialog(
                       context,
                       cli: launchable[i].id,
@@ -265,11 +263,8 @@ Future<void> _openConfigureDialog(
 }) {
   return showDialog<void>(
     context: context,
-    builder: (ctx) => ProjectCliConfigureDialog(
-      cli: cli,
-      profile: profile,
-      cubit: cubit,
-    ),
+    builder: (ctx) =>
+        ProjectCliConfigureDialog(cli: cli, profile: profile, cubit: cubit),
   );
 }
 
@@ -326,9 +321,7 @@ class _ProjectCliConfigureDialogState extends State<ProjectCliConfigureDialog> {
     final l10n = context.l10n;
     final registry = CliToolRegistryScope.of(context);
     final def = registry.tryGet(widget.cli);
-    final title = def == null
-        ? widget.cli.value
-        : cliDisplayName(def, l10n);
+    final title = def == null ? widget.cli.value : cliDisplayName(def, l10n);
     final dropdownDeco = AppDropdownDecorations.themed(context);
     final providers = context
         .watch<AppProviderCubit>()
@@ -366,86 +359,81 @@ class _ProjectCliConfigureDialogState extends State<ProjectCliConfigureDialog> {
         children: [
           AppDialogHeader(title: title),
           const SizedBox(height: 16),
-          SettingsSurfaceCard(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                SettingsGroupHeader(title: l10n.projectCliProviderModelTitle),
-              SettingsLabeledStackedRow(
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              SettingsLabeledRow(
                 title: l10n.provider,
-                body: AppDropdownField<String>(
-                key: ValueKey(
-                  'project-cli-provider-${widget.cli.value}-$_providerId',
-                ),
-                items: providerIds,
-                initialItem: _providerId.isEmpty ? null : _providerId,
-                hintText: l10n.selectProvider,
-                decoration: dropdownDeco,
-                onChanged: (value) {
-                  setState(() {
-                    _providerId = value ?? '';
-                    _modelId = '';
-                    _effortId = '';
-                  });
-                },
-                itemBuilder: providerDropdownItemBuilder(
-                  providers: providers,
-                  labelFor: (value) => providerLabels[value] ?? value,
-                ),
-              ),
-              showDividerBelow: hideModelPicker || showEffortPicker,
-            ),
-            if (!hideModelPicker)
-              SettingsLabeledStackedRow(
-                title: l10n.model,
-                body: ProviderModelPickerField(
+                trailing: AppDropdownField<String>(
                   key: ValueKey(
-                    'project-cli-model-$_providerId-$_modelId',
+                    'project-cli-provider-${widget.cli.value}-$_providerId',
                   ),
-                  cli: widget.cli,
-                  providerId: _providerId,
-                  provider: selectedProvider,
-                  value: _modelId,
-                  hintText: l10n.selectModel,
+                  items: providerIds,
+                  initialItem: _providerId.isEmpty ? null : _providerId,
+                  hintText: l10n.selectProvider,
                   decoration: dropdownDeco,
-                  onChanged: (value) => setState(() {
-                    _modelId = value.trim();
-                    if (!projectCliShowsEffortPicker(
-                      registry: registry,
-                      cli: widget.cli,
-                      provider: selectedProvider,
-                      model: _modelId,
-                    )) {
+                  onChanged: (value) {
+                    setState(() {
+                      _providerId = value ?? '';
+                      _modelId = '';
                       _effortId = '';
-                    }
-                  }),
-                ),
-                showDividerBelow: showEffortPicker,
-              ),
-            if (showEffortPicker)
-              SettingsLabeledStackedRow(
-                title: l10n.projectCliEffortLevel,
-                subtitle: l10n.projectCliEffortLevelSubtitle,
-                body: CliEffortPickerField(
-                  key: ValueKey(
-                    'project-cli-effort-$_providerId-$_modelId-$_effortId',
+                    });
+                  },
+                  itemBuilder: providerDropdownItemBuilder(
+                    providers: providers,
+                    labelFor: (value) => providerLabels[value] ?? value,
                   ),
-                  cli: widget.cli,
-                  value: _effortId,
-                  provider: selectedProvider,
-                  model: _modelId,
-                  allowInherit: true,
-                  inheritLabel: l10n.projectCliEffortInheritHint,
-                  decoration: dropdownDeco,
-                  onChanged: (value) =>
-                      setState(() => _effortId = value.trim()),
                 ),
-                showDividerBelow: false,
+                showDividerBelow: hideModelPicker || showEffortPicker,
               ),
+              if (!hideModelPicker)
+                SettingsLabeledRow(
+                  title: l10n.model,
+                  trailing: ProviderModelPickerField(
+                    key: ValueKey('project-cli-model-$_providerId-$_modelId'),
+                    cli: widget.cli,
+                    providerId: _providerId,
+                    provider: selectedProvider,
+                    value: _modelId,
+                    hintText: l10n.selectModel,
+                    decoration: dropdownDeco,
+                    onChanged: (value) => setState(() {
+                      _modelId = value.trim();
+                      if (!projectCliShowsEffortPicker(
+                        registry: registry,
+                        cli: widget.cli,
+                        provider: selectedProvider,
+                        model: _modelId,
+                      )) {
+                        _effortId = '';
+                      }
+                    }),
+                  ),
+                  showDividerBelow: showEffortPicker,
+                ),
+              if (showEffortPicker)
+                SettingsLabeledRow(
+                  title: l10n.projectCliEffortLevel,
+                  subtitle: l10n.projectCliEffortLevelSubtitle,
+                  trailing: CliEffortPickerField(
+                    key: ValueKey(
+                      'project-cli-effort-$_providerId-$_modelId-$_effortId',
+                    ),
+                    cli: widget.cli,
+                    value: _effortId,
+                    provider: selectedProvider,
+                    model: _modelId,
+                    allowInherit: true,
+                    inheritLabel: l10n.projectCliEffortInheritHint,
+                    decoration: dropdownDeco,
+                    onChanged: (value) =>
+                        setState(() => _effortId = value.trim()),
+                  ),
+                  showDividerBelow: false,
+                ),
             ],
           ),
-        ),
           AppDialogActions(
             children: [
               TextButton(

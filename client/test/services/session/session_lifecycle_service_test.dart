@@ -10,7 +10,6 @@ import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/cli/cli_data_layout.dart';
 import 'package:teampilot/services/cli/registry/config_profile/claude_config_profile_capability.dart';
 import 'package:teampilot/services/cli/registry/config_profile/flashskyai_config_profile_capability.dart';
-import 'package:teampilot/services/provider/config_profile_service.dart';
 import 'package:teampilot/services/storage/storage_resolver.dart';
 import 'package:teampilot/services/session/session_lifecycle_service.dart';
 

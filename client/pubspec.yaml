@@ -54,6 +54,7 @@ dependencies:
   synchronized: ^3.3.1
   meta: ^1.16.0
   flutter_svg: ^2.3.0
+  intl: any
 dependency_overrides:
   flutter_pty:
     path: packages/flutter_pty
