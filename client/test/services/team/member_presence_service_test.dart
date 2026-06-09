@@ -45,6 +45,55 @@ void main() {
     expect(presence['dev']!.connection, MemberConnection.connected);
     expect(presence['dev']!.workload, MemberWorkload.working);
   });
+
+  test(
+      'mixed workloadResolver overrides CLI capability: working unless '
+      'parked in wait_for_message', () async {
+    final service = MemberPresenceService();
+    final waiting = _ConnectedShell();
+    final working = _ConnectedShell();
+
+    // teamCli=claude (usesClaudeRoster) would idle a non-claude member, but the
+    // resolver (TeamBus truth) must win and key purely off wait_for_message.
+    final presence = await service.compute(
+      teamCli: CliTool.claude,
+      members: const [
+        TeamMemberConfig(id: 'waiter', name: 'waiter'),
+        TeamMemberConfig(id: 'busy', name: 'busy'),
+      ],
+      cliTeamName: 't-1',
+      memberToolConfigDir: '/tmp/does-not-matter',
+      memberShells: {'waiter': waiting, 'busy': working},
+      workloadResolver: (id) =>
+          id == 'waiter' ? MemberWorkload.idle : MemberWorkload.working,
+    );
+
+    expect(presence['waiter']!.workload, MemberWorkload.idle);
+    expect(presence['busy']!.workload, MemberWorkload.working);
+  });
+
+  test('resolver only consulted for connected members', () async {
+    final service = MemberPresenceService();
+    final consulted = <String>[];
+
+    final presence = await service.compute(
+      teamCli: CliTool.codex,
+      members: const [
+        TeamMemberConfig(id: 'offline', name: 'offline'),
+      ],
+      cliTeamName: 't-1',
+      memberToolConfigDir: null,
+      memberShells: const {}, // no shell → offline
+      workloadResolver: (id) {
+        consulted.add(id);
+        return MemberWorkload.working;
+      },
+    );
+
+    expect(presence['offline']!.connection, MemberConnection.offline);
+    expect(presence['offline']!.workload, isNull);
+    expect(consulted, isEmpty);
+  });
 }
 
 class _ConnectedShell extends TerminalSession {

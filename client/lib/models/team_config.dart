@@ -256,13 +256,20 @@ class TeamConfig {
     this.sortOrder = 0,
     this.loop,
     this.claudeTeammateMode = 'in-process',
-    this.claudeEffortLevel = 'xhigh',
+    this.claudeEffortLevel = 'high',
     this.cliEffortLevels = const {},
     this.autoLaunchMembers,
     this.forceTeamLeadDelegateMode = true,
+    this.forceWaitBeforeStop = true,
   });
 
-  static bool decodeForceTeamLeadDelegateMode(Object? raw) {
+  static bool decodeForceTeamLeadDelegateMode(Object? raw) =>
+      _decodeDefaultTrueBool(raw);
+
+  static bool decodeForceWaitBeforeStop(Object? raw) =>
+      _decodeDefaultTrueBool(raw);
+
+  static bool _decodeDefaultTrueBool(Object? raw) {
     if (raw == null) return true;
     if (raw is bool) return raw;
     if (raw is String) {
@@ -336,14 +343,17 @@ class TeamConfig {
       sortOrder: (json['sortOrder'] as num?)?.toInt() ?? 0,
       loop: decodeLoop(json['loop']),
       claudeTeammateMode: json['claudeTeammateMode'] as String? ?? 'in-process',
-      claudeEffortLevel: json['claudeEffortLevel'] as String? ?? 'xhigh',
+      claudeEffortLevel: json['claudeEffortLevel'] as String? ?? 'high',
       cliEffortLevels: _mergeCliEffortLevels(
         _decodeProviderIdsByTool(json['cliEffortLevels']),
-        json['claudeEffortLevel'] as String? ?? 'xhigh',
+        json['claudeEffortLevel'] as String? ?? 'high',
       ),
       autoLaunchMembers: json['autoLaunchMembers'] as bool?,
       forceTeamLeadDelegateMode: decodeForceTeamLeadDelegateMode(
         json['forceTeamLeadDelegateMode'],
+      ),
+      forceWaitBeforeStop: decodeForceWaitBeforeStop(
+        json['forceWaitBeforeStop'],
       ),
     );
   }
@@ -386,7 +396,7 @@ class TeamConfig {
     return copyWith(
       cliEffortLevels: next,
       claudeEffortLevel: cli == CliTool.claude
-          ? (trimmed.isEmpty ? 'xhigh' : trimmed)
+          ? (trimmed.isEmpty ? 'high' : trimmed)
           : null,
     );
   }
@@ -438,6 +448,11 @@ class TeamConfig {
   /// When true, team-lead tab blocks Bash/Read/Edit/Write/etc. via PreToolUse hooks.
   final bool forceTeamLeadDelegateMode;
 
+  /// mixed 模式:成员 turn 结束时,Stop hook 是否把它推回 `wait_for_message`
+  /// (永不主动结束 turn)。false 时允许成员"休息"(正常停止)。仅经 TeamBus 的
+  /// stop-hook 生效;空闲检测(`/idle` → onMemberIdle)无论开关都照常上报。
+  final bool forceWaitBeforeStop;
+
   bool get isValid => name.trim().isNotEmpty;
 
   TeamConfig copyWith({
@@ -463,6 +478,8 @@ class TeamConfig {
     bool updateAutoLaunchMembers = false,
     bool? forceTeamLeadDelegateMode,
     bool updateForceTeamLeadDelegateMode = false,
+    bool? forceWaitBeforeStop,
+    bool updateForceWaitBeforeStop = false,
   }) {
     return TeamConfig(
       id: id ?? this.id,
@@ -488,6 +505,9 @@ class TeamConfig {
       forceTeamLeadDelegateMode: updateForceTeamLeadDelegateMode
           ? (forceTeamLeadDelegateMode ?? true)
           : this.forceTeamLeadDelegateMode,
+      forceWaitBeforeStop: updateForceWaitBeforeStop
+          ? (forceWaitBeforeStop ?? true)
+          : this.forceWaitBeforeStop,
     );
   }
 
@@ -509,11 +529,12 @@ class TeamConfig {
       if (loop != null) 'loop': loop!,
       if (claudeTeammateMode != 'in-process')
         'claudeTeammateMode': claudeTeammateMode,
-      if (claudeEffortLevel != 'xhigh') 'claudeEffortLevel': claudeEffortLevel,
+      if (claudeEffortLevel != 'high') 'claudeEffortLevel': claudeEffortLevel,
       if (cliEffortLevels.isNotEmpty) 'cliEffortLevels': cliEffortLevels,
       if (autoLaunchMembers != null) 'autoLaunchMembers': autoLaunchMembers!,
       if (forceTeamLeadDelegateMode)
         'forceTeamLeadDelegateMode': forceTeamLeadDelegateMode,
+      if (!forceWaitBeforeStop) 'forceWaitBeforeStop': forceWaitBeforeStop,
     };
   }
 
@@ -540,7 +561,8 @@ class TeamConfig {
             claudeEffortLevel == other.claudeEffortLevel &&
             mapEquals(cliEffortLevels, other.cliEffortLevels) &&
             autoLaunchMembers == other.autoLaunchMembers &&
-            forceTeamLeadDelegateMode == other.forceTeamLeadDelegateMode;
+            forceTeamLeadDelegateMode == other.forceTeamLeadDelegateMode &&
+            forceWaitBeforeStop == other.forceWaitBeforeStop;
   }
 
   @override
@@ -564,5 +586,6 @@ class TeamConfig {
     Object.hashAll(cliEffortLevels.entries),
     autoLaunchMembers,
     forceTeamLeadDelegateMode,
+    forceWaitBeforeStop,
   );
 }

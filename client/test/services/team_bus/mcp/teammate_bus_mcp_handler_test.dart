@@ -388,4 +388,21 @@ void main() {
       'block',
     );
   });
+
+  test('forceWaitBeforeStop=false lets members stop (no block)', () {
+    final bus = TeamBus(launcher: FakeMemberLauncher());
+    bus.declareMember(
+      AgentNode.test(
+        memberId: 'developer',
+        lifecycle: MemberLifecycle.running,
+        activity: MemberActivity.active,
+      ),
+    );
+    final handler = TeammateBusMcpHandler(bus: bus, forceWaitBeforeStop: false);
+
+    // Never blocks, even across many consecutive idle stops.
+    for (var i = 0; i < TeammateBusMcpHandler.maxConsecutiveIdleStops + 2; i++) {
+      expect(handler.idleStopDecision('developer'), '{}');
+    }
+  });
 }

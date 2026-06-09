@@ -67,6 +67,7 @@ class _DelayedPresenceService extends MemberPresenceService {
     required String cliTeamName,
     required String? memberToolConfigDir,
     required Map<String, TerminalSession> memberShells,
+    MemberWorkload Function(String memberId)? workloadResolver,
   }) async {
     computeCalls++;
     await Future<void>.delayed(_delay);

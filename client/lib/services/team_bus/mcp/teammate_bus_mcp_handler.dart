@@ -29,9 +29,16 @@ class WaitDelivery {
 /// 把 MCP JSON-RPC 调用分发到 [TeamBus]。纯逻辑，不依赖 HTTP。
 /// [memberId] 来自传输层解析的身份头。返回 null = 通知（无响应/202）。
 class TeammateBusMcpHandler {
-  TeammateBusMcpHandler({required TeamBus bus, String Function()? idGenerator})
-    : _bus = bus,
-      idGenerator = idGenerator ?? bus.newMessageId;
+  TeammateBusMcpHandler({
+    required TeamBus bus,
+    String Function()? idGenerator,
+    this.forceWaitBeforeStop = true,
+  }) : _bus = bus,
+       idGenerator = idGenerator ?? bus.newMessageId;
+
+  /// 团队配置:成员 turn 结束时是否强制推回 `wait_for_message`(见
+  /// [idleStopDecision])。false 时允许成员正常停止("休息")。
+  final bool forceWaitBeforeStop;
 
   static const protocolVersion = '2025-06-18';
   static const serverName = 'teampilot-teammate-bus';
@@ -64,7 +71,14 @@ class TeammateBusMcpHandler {
   /// [maxConsecutiveIdleStops] 次、其间一次 `wait_for_message` 都没调（[beginWait]
   /// 会清零）时，才返回 `{}` 放行 —— 这是防模型空转烧 token 的唯一逃生阀，
   /// 故意不看 Claude 的 `stop_hook_active`。
+  ///
+  /// 团队关掉 [forceWaitBeforeStop] 时直接回 `{}` 放行：成员可正常停止("休息")，
+  /// 不再被推回 `wait_for_message`。空闲上报(`/idle` → notifyIdle)不受影响。
   String idleStopDecision(String memberId) {
+    if (!forceWaitBeforeStop) {
+      _idleStreak[memberId] = 0;
+      return '{}';
+    }
     final streak = (_idleStreak[memberId] ?? 0) + 1;
     _idleStreak[memberId] = streak;
     if (streak > maxConsecutiveIdleStops) {

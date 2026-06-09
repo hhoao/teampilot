@@ -106,7 +106,10 @@ class TabTeamBusCoordinator implements MemberMaterializer {
     }
     await bus.rehydrateUnread();
     final server = TeammateBusMcpServer(
-      handler: TeammateBusMcpHandler(bus: bus),
+      handler: TeammateBusMcpHandler(
+        bus: bus,
+        forceWaitBeforeStop: team.forceWaitBeforeStop,
+      ),
     );
     await server.start();
     tab.teamBus = bus;

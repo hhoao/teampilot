@@ -68,6 +68,8 @@ class TeamInfoSectionState extends State<TeamInfoSection> {
         catalogCli == CliTool.claude ||
         catalogCli == CliTool.flashskyai;
     final showToolProviders = catalogCli == CliTool.claude;
+    // Stop-hook/bus 仅 mixed 模式接线,故此开关只在 mixed 团队出现。
+    final showForceWaitRow = widget.team.teamMode == TeamMode.mixed;
     final showTeamEffort = teamShowsEffortPicker(
       context,
       cli: widget.team.cli,
@@ -170,8 +172,10 @@ class TeamInfoSectionState extends State<TeamInfoSection> {
                       widget.team.copyWith(extraArgs: v),
                     ),
                   ),
-                  showDividerBelow:
-                      showDelegateRow || showToolProviders || showTeamEffort,
+                  showDividerBelow: showDelegateRow ||
+                      showToolProviders ||
+                      showTeamEffort ||
+                      showForceWaitRow,
                 ),
                 if (showTeamEffort)
                   SettingsLabeledStackedRow(
@@ -186,7 +190,8 @@ class TeamInfoSectionState extends State<TeamInfoSection> {
                         widget.team.withEffortForCli(widget.team.cli, value),
                       ),
                     ),
-                    showDividerBelow: showDelegateRow || showToolProviders,
+                    showDividerBelow:
+                        showDelegateRow || showForceWaitRow || showToolProviders,
                   ),
                 if (showDelegateRow)
                   SettingsLabeledRow(
@@ -198,6 +203,21 @@ class TeamInfoSectionState extends State<TeamInfoSection> {
                         widget.team.copyWith(
                           forceTeamLeadDelegateMode: value,
                           updateForceTeamLeadDelegateMode: true,
+                        ),
+                      ),
+                    ),
+                    showDividerBelow: showForceWaitRow || showToolProviders,
+                  ),
+                if (showForceWaitRow)
+                  SettingsLabeledRow(
+                    title: l10n.teamForceWaitBeforeStopTitle,
+                    subtitle: l10n.teamForceWaitBeforeStopSubtitle,
+                    trailing: Switch(
+                      value: widget.team.forceWaitBeforeStop,
+                      onChanged: (value) => widget.cubit.updateSelected(
+                        widget.team.copyWith(
+                          forceWaitBeforeStop: value,
+                          updateForceWaitBeforeStop: true,
                         ),
                       ),
                     ),

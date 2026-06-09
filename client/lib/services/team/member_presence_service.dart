@@ -1,6 +1,5 @@
 import '../../models/member_presence.dart';
 import '../../models/team_config.dart';
-import '../cli/registry/built_in_cli_tools.dart';
 import '../cli/registry/capabilities/presence_capability.dart';
 import '../cli/registry/cli_tool_registry.dart';
 import '../io/filesystem.dart';
@@ -28,12 +27,19 @@ class MemberPresenceService {
   final ClaudeRosterActivitySource _claudeRoster;
   final CliToolRegistry _cliToolRegistry;
 
+  /// [workloadResolver] (mixed 模式专属) 越过 per-CLI 能力路径,直接用 TeamBus
+  /// 的协调真值定义工作态:成员只要在 agent 循环且 **未** parked 在
+  /// `wait_for_message` 就算 working,唯一的 idle 是阻塞在 `wait_for_message`。
+  /// 这把右侧工作栏与 bus `wait_for_message` 统一到同一个 per-member 真值,
+  /// 不再受团队级单一 `teamCli` 选错信号源之累(混合队里跑非 roster CLI 的成员
+  /// 旧实现一律误判 idle)。null 时(native 单 CLI)回落到 [_workloadFor]。
   Future<Map<String, MemberPresence>> compute({
     required CliTool teamCli,
     required List<TeamMemberConfig> members,
     required String cliTeamName,
     required String? memberToolConfigDir,
     required Map<String, TerminalSession> memberShells,
+    MemberWorkload Function(String memberId)? workloadResolver,
   }) async {
     final valid = members.where((m) => m.isValid).toList();
     if (valid.isEmpty) return const {};
@@ -41,7 +47,8 @@ class MemberPresenceService {
     final presenceCap =
         _cliToolRegistry.capability<PresenceCapability>(teamCli);
     var claudeWorking = const <String, bool>{};
-    if ((presenceCap?.usesClaudeRoster ?? false) &&
+    if (workloadResolver == null &&
+        (presenceCap?.usesClaudeRoster ?? false) &&
         memberToolConfigDir != null &&
         memberToolConfigDir.trim().isNotEmpty &&
         cliTeamName.trim().isNotEmpty) {
@@ -56,12 +63,14 @@ class MemberPresenceService {
       final shell = memberShells[member.id];
       final connection = _connectionOf(shell);
       final workload = switch (connection) {
-        MemberConnection.connected => _workloadFor(
-          presenceCap: presenceCap,
-          memberId: member.id,
-          shell: shell!,
-          claudeWorking: claudeWorking,
-        ),
+        MemberConnection.connected => workloadResolver != null
+            ? workloadResolver(member.id)
+            : _workloadFor(
+                presenceCap: presenceCap,
+                memberId: member.id,
+                shell: shell!,
+                claudeWorking: claudeWorking,
+              ),
         _ => null,
       };
       out[member.id] = MemberPresence(

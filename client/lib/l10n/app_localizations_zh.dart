@@ -2590,6 +2590,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get teamLeadDelegateOnlySubtitle => '开启后将禁止队长使用一些工具。';
 
   @override
+  String get teamForceWaitBeforeStopTitle => '让成员保持在等待循环';
+
+  @override
+  String get teamForceWaitBeforeStopSubtitle =>
+      '开启后,成员结束一个回合时会被推回 wait_for_message 而不是停止,从而持续待命接收新消息和任务。关闭则允许成员“休息”(正常停止)。';
+
+  @override
   String get memberLaunchOrder => '成员启动顺序';
 
   @override

@@ -2679,6 +2679,13 @@ class AppLocalizationsEn extends AppLocalizations {
       'When enabled, the team lead is blocked from using some tools.';
 
   @override
+  String get teamForceWaitBeforeStopTitle => 'Keep members in the wait loop';
+
+  @override
+  String get teamForceWaitBeforeStopSubtitle =>
+      'When enabled, a member finishing a turn is pushed back into wait_for_message instead of stopping, so it stays available for new messages and tasks. Disable to let members rest (stop normally).';
+
+  @override
   String get memberLaunchOrder => 'Member launch order';
 
   @override

@@ -1276,6 +1276,8 @@
   "teamLeadBadge": "Leader",
   "teamLeadDelegateOnlyTitle": "Team lead: plan and delegate only",
   "teamLeadDelegateOnlySubtitle": "When enabled, the team lead is blocked from using some tools.",
+  "teamForceWaitBeforeStopTitle": "Keep members in the wait loop",
+  "teamForceWaitBeforeStopSubtitle": "When enabled, a member finishing a turn is pushed back into wait_for_message instead of stopping, so it stays available for new messages and tasks. Disable to let members rest (stop normally).",
   "memberLaunchOrder": "Member launch order",
   "saveMember": "Save Member",
   "editTeamSubtitle": "Edit team identity, working directory, and launch order.",

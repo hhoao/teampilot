@@ -17,11 +17,16 @@ class PresenceTarget {
     required this.cliTeamName,
     required this.memberToolConfigDir,
     required this.memberShells,
+    this.workloadResolver,
   });
 
   final String cliTeamName;
   final String? memberToolConfigDir;
   final Map<String, TerminalSession> memberShells;
+
+  /// mixed 模式:用 TeamBus 协调真值判定 working/idle(见
+  /// [MemberPresenceService.compute])。native 单 CLI 时为 null。
+  final MemberWorkload Function(String memberId)? workloadResolver;
 
   bool get eligible =>
       memberShells.isNotEmpty ||
@@ -163,6 +168,7 @@ class MemberPresenceCubit extends Cubit<MemberPresenceState> {
         cliTeamName: target.cliTeamName,
         memberToolConfigDir: target.memberToolConfigDir,
         memberShells: target.memberShells,
+        workloadResolver: target.workloadResolver,
       );
       if (isClosed ||
           generation != _presencePollGeneration ||

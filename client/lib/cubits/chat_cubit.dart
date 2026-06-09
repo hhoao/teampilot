@@ -7,6 +7,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../models/app_project.dart';
 import '../models/connection_mode.dart';
 import '../models/app_session.dart';
+import '../models/member_presence.dart';
 import '../models/project_icon_picker_result.dart';
 import '../models/project_icon_ref.dart';
 import '../models/team_config.dart';
@@ -137,15 +138,30 @@ class ChatCubit extends Cubit<ChatState>
     final cubit = _presenceCubit;
     if (cubit == null) return;
     final tab = _activeTab;
+    if (tab == null) {
+      cubit.updateTarget(null);
+      return;
+    }
     cubit.updateTarget(
-      tab == null
-          ? null
-          : PresenceTarget(
-              cliTeamName: tab.cliTeamName,
-              memberToolConfigDir: tab.memberToolConfigDir,
-              memberShells: tab.memberShells,
-            ),
+      PresenceTarget(
+        cliTeamName: tab.cliTeamName,
+        memberToolConfigDir: tab.memberToolConfigDir,
+        memberShells: tab.memberShells,
+        workloadResolver: _busWorkloadResolver(tab),
+      ),
     );
+  }
+
+  /// mixed 模式:成员工作态取 TeamBus 协调真值 —— 只要在 agent 循环且未 parked 在
+  /// `wait_for_message` 即 working,唯一 idle 是阻塞在 `wait_for_message`。这让右侧
+  /// 工作栏与 `wait_for_message` 共用一个 per-member 真值,不再因团队级单一 CLI 选错
+  /// presence 信号源而把非 roster CLI 的成员误判为空闲。native 单 CLI 返回 null。
+  MemberWorkload Function(String memberId)? _busWorkloadResolver(ChatTab tab) {
+    final bus = tab.teamBus;
+    if (_activeTeam?.teamMode != TeamMode.mixed || bus == null) return null;
+    return (memberId) => bus.isWaitingForMessage(memberId)
+        ? MemberWorkload.idle
+        : MemberWorkload.working;
   }
 
   /// Switches the active project bucket and republishes its tabs into state.

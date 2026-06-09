@@ -92,6 +92,18 @@ void main() {
     expect(off.toJson().containsKey('forceTeamLeadDelegateMode'), isFalse);
   });
 
+  test('forceWaitBeforeStop defaults true and round-trips when false', () {
+    const team = TeamConfig(id: 't', name: 'n');
+    expect(team.forceWaitBeforeStop, isTrue);
+    // Default true is omitted from JSON; only persisted when turned off.
+    expect(team.toJson().containsKey('forceWaitBeforeStop'), isFalse);
+    expect(TeamConfig.fromJson(team.toJson()).forceWaitBeforeStop, isTrue);
+
+    const off = TeamConfig(id: 't', name: 'n', forceWaitBeforeStop: false);
+    expect(off.toJson()['forceWaitBeforeStop'], isFalse);
+    expect(TeamConfig.fromJson(off.toJson()).forceWaitBeforeStop, isFalse);
+  });
+
   test('toJson omits loop when null', () {
     const team = TeamConfig(id: 't', name: 'n');
     expect(team.toJson().containsKey('loop'), isFalse);

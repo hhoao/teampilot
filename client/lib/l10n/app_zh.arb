@@ -973,6 +973,8 @@
   "teamLeadBadge": "Leader",
   "teamLeadDelegateOnlyTitle": "队长仅规划分派",
   "teamLeadDelegateOnlySubtitle": "开启后将禁止队长使用一些工具。",
+  "teamForceWaitBeforeStopTitle": "让成员保持在等待循环",
+  "teamForceWaitBeforeStopSubtitle": "开启后,成员结束一个回合时会被推回 wait_for_message 而不是停止,从而持续待命接收新消息和任务。关闭则允许成员“休息”(正常停止)。",
   "memberLaunchOrder": "成员启动顺序",
   "saveMember": "保存成员",
   "editTeamSubtitle": "编辑团队标识、工作目录和启动顺序。",
