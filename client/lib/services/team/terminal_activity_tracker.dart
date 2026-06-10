@@ -2,6 +2,10 @@
 ///
 /// Ignores the initial boot burst: [isWorking] stays false until output has
 /// been quiet for [idleAfter], then tracks activity the same way.
+///
+/// Note: in mixed teams presence no longer reads this for working/idle (it uses
+/// TeamBus turn truth, immune to spinner repaint). This still feeds the bus's
+/// own turn-end watch (`_tickIdleWatch`) and the native single-CLI path.
 class TerminalActivityTracker {
   TerminalActivityTracker({this.idleAfter = const Duration(milliseconds: 2500)});
 

@@ -326,6 +326,7 @@ class TerminalSession {
             BusUserInputRouting(
               shouldIntercept: incomingRouting.shouldIntercept,
               isUnread: incomingRouting.isUnread,
+              onTurnStart: incomingRouting.onTurnStart,
               onUserLine: (line) {
                 final id = incomingRouting.onUserLine(line);
                 if (id.isNotEmpty) {

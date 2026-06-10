@@ -34,6 +34,44 @@ void main() {
     expect(submitted, isNull);
   });
 
+  test('non-parked submit fires onTurnStart with bytes left untouched', () {
+    var turnStarts = 0;
+    String? submitted;
+    final capture = BusUserLineCapture(
+      BusUserInputRouting(
+        shouldIntercept: () => false, // never parked
+        onUserLine: (line) => submitted = line,
+        onTurnStart: () => turnStarts++,
+      ),
+    );
+
+    // Enter passes through unchanged (CLI submits normally), but the non-empty
+    // line raises a turn-start edge — and nothing is routed to the inbox.
+    expect(
+      capture.filter(Uint8List.fromList(utf8.encode('do it\r'))),
+      utf8.encode('do it\r'),
+    );
+    expect(turnStarts, 1);
+    expect(submitted, isNull);
+  });
+
+  test('non-parked bare Enter (empty line) does not fire onTurnStart', () {
+    var turnStarts = 0;
+    final capture = BusUserLineCapture(
+      BusUserInputRouting(
+        shouldIntercept: () => false,
+        onUserLine: (_) => '',
+        onTurnStart: () => turnStarts++,
+      ),
+    );
+
+    expect(
+      capture.filter(Uint8List.fromList(utf8.encode('\r'))),
+      utf8.encode('\r'),
+    );
+    expect(turnStarts, 0);
+  });
+
   test('backspace passes through and shrinks the buffered line', () {
     var intercept = true;
     String? submitted;

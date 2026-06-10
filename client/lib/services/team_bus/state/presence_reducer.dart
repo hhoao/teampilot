@@ -76,6 +76,16 @@ abstract final class PresenceReducer {
         }
         return _stay(s);
 
+      case TurnStarted():
+        // 用户在 prompt 直接提交 → working。未 running / 物化中 / 已 parked 不处理
+        // (parked 由 wait/mail 唤醒路径接管,不在这里抢)。已 active 则原地不动。
+        if (!s.ptyRunning ||
+            s.lifecycle == MemberLifecycle.materializing ||
+            s.isParked) {
+          return _stay(s);
+        }
+        return _to(s.copyWith(activity: MemberActivity.active));
+
       case TurnEnded():
         // declared / materializing / parked 不处理(由调用方守卫,这里也兜底)。
         if (!s.ptyRunning ||

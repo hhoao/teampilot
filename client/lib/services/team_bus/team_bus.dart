@@ -462,6 +462,15 @@ class TeamBus implements CoordinationView {
     return SendOutcome.delivered(resolved);
   }
 
+  /// working 边：用户在成员自己的 prompt 直接提交一行(未 parked)→ 标记回合开始。
+  /// presence 据此判 working,不必再靠 PTY 字节(被 spinner 污染)猜。守卫见
+  /// [PresenceReducer] 的 [TurnStarted](declared/materializing/parked 不处理)。
+  void markTurnStarted(String memberId) {
+    final node = _members[memberId];
+    if (node == null) return;
+    _apply(node, const TurnStarted());
+  }
+
   /// idle 边：turn 结束 → [MemberActivity.turnDoneReady]（或 doorbell → active）。
   void onMemberIdle(String memberId) {
     final node = _members[memberId];

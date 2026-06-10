@@ -152,29 +152,23 @@ class ChatCubit extends Cubit<ChatState>
     );
   }
 
-  /// mixed 模式:成员工作态取 TeamBus 协调真值,不因团队级单一 CLI 选错 presence
-  /// 信号源而把非 roster CLI 的成员误判。判定优先级:
-  ///   1. 阻塞在 `wait_for_message` → 权威 idle;
-  ///   2. bus 已知在回合中(`isActive`) → working;
-  ///   3. 其余(典型:刚重开后停在 `turnDoneReady`,bus 不跟踪「终端起新回合」的边)
-  ///      回落到终端活动 —— 终端真在动才算 working,否则 idle。
-  /// 第 3 步修掉了「团队重开即全员误判工作中」:旧实现把一切非 `wait_for_message`
-  /// 态都判 working,而新建 bus 里没人 parked、agent 又尚未再次进 wait。
+  /// mixed 模式:成员工作态**纯取 TeamBus 回合真值**,不再用 PTY 字节兜底 ——
+  /// 终端输出无法证明 working(spinner / 状态行重绘会把空闲成员喷成「工作中」),
+  /// 所以只认正向回合事件:
+  ///   - 阻塞在 `wait_for_message` → idle;
+  ///   - bus 在回合中(`isMemberInTurn` = `isActive`)→ working;否则 idle。
+  /// working 的 `active` 由三类正向边置位:物化完成 / 收到 mail / **用户在 prompt 直接
+  /// 提交**(`markTurnStarted`,补上了 leader 用户回合这条以前没接回 bus 的路)。idle 由
+  /// `wait` / Stop hook / `_tickIdleWatch` 的 PTY 长静默边沿漏空 —— Stop 漏发也不会卡死。
+  /// 这样空闲成员(含 leader)即便 spinner 喷输出也保持 idle,`_tickIdleWatch` 只清不设。
   /// native 单 CLI 返回 null。
   MemberWorkload Function(String memberId)? _busWorkloadResolver(ChatTab tab) {
     final bus = tab.teamBus;
     if (_activeTeam?.teamMode != TeamMode.mixed || bus == null) return null;
-    return (memberId) {
-      if (bus.isWaitingForMessage(memberId)) return MemberWorkload.idle;
-      if (bus.isMemberInTurn(memberId)) {
-        return MemberWorkload.working;
-      }
-      final shell = tab.memberShells[memberId];
-      final res = (shell?.activityTracker.isWorking ?? false)
-          ? MemberWorkload.working
-          : MemberWorkload.idle;
-      return res;
-    };
+    return (memberId) =>
+        bus.isMemberInTurn(memberId) && !bus.isWaitingForMessage(memberId)
+        ? MemberWorkload.working
+        : MemberWorkload.idle;
   }
 
   /// Switches the active project bucket and republishes its tabs into state.

@@ -6,6 +6,7 @@ class BusUserInputRouting {
     required this.shouldIntercept,
     required this.onUserLine,
     this.isUnread,
+    this.onTurnStart,
   });
 
   final bool Function() shouldIntercept;
@@ -17,6 +18,12 @@ class BusUserInputRouting {
   /// Whether a previously-delivered message id is still unread in the target
   /// member's inbox. Null when not wired (overlay disabled).
   final bool Function(String id)? isUnread;
+
+  /// Fired when the user submits a line while **not** parked — i.e. a turn the
+  /// user starts directly at the member's own prompt (the lead's main path).
+  /// Lets presence mark working off this positive edge instead of guessing from
+  /// spinner-polluted PTY bytes. Null when not wired (non-mixed).
+  final void Function()? onTurnStart;
 }
 
 /// 从 engine→PTY 字节流里解析「一行」。
@@ -34,26 +41,31 @@ class BusUserLineCapture {
   final StringBuffer _buffer = StringBuffer();
   _InputMode _mode = _InputMode.normal;
 
-  /// 返回仍应写入 PTY 的字节。park 期间 = 原样透传（回车换成 Ctrl-U）。
+  /// 返回仍应写入 PTY 的字节。
+  /// - parked(intercept): 原样透传,回车换成 Ctrl-U,行投给 bus(`onUserLine`)。
+  /// - 未 parked: 字节**完全不动**直透 PTY,只在解析出「非空提交」时触发
+  ///   `onTurnStart`(回合开始 working 边)。
   Uint8List filter(Uint8List data) {
-    if (!_routing.shouldIntercept()) {
+    final intercept = _routing.shouldIntercept();
+    if (!intercept && _routing.onTurnStart == null) {
       _buffer.clear();
       _mode = _InputMode.normal;
-      return data;
+      return data; // 无 overlay 也无 turn-start 钩子:快路径。
     }
     final out = BytesBuilder();
     for (final byte in data) {
-      final emit = _feedCodeUnit(byte);
-      if (emit != null) out.addByte(emit);
+      final emit = _feedCodeUnit(byte, intercept);
+      if (intercept && emit != null) out.addByte(emit);
     }
-    return out.toBytes();
+    // 未 parked:原字节一字不改透传,filter 仅作为 onTurnStart 的旁路探测。
+    return intercept ? out.toBytes() : data;
   }
 
-  /// 更新行缓冲 / 解析状态，返回应转发给 PTY 的字节（null = 吞掉）。
-  int? _feedCodeUnit(int codeUnit) {
+  /// 更新行缓冲 / 解析状态，返回应转发给 PTY 的字节（null = 吞掉，仅 intercept 用）。
+  int? _feedCodeUnit(int codeUnit, bool intercept) {
     switch (_mode) {
       case _InputMode.normal:
-        return _feedNormal(codeUnit);
+        return _feedNormal(codeUnit, intercept);
       case _InputMode.afterEsc:
         _feedAfterEsc(codeUnit);
         return codeUnit;
@@ -72,14 +84,15 @@ class BusUserLineCapture {
     }
   }
 
-  int? _feedNormal(int codeUnit) {
+  int? _feedNormal(int codeUnit, bool intercept) {
     if (codeUnit == 0x1b) {
       _mode = _InputMode.afterEsc;
       return codeUnit; // 透传 ESC 序列起始
     }
     if (codeUnit == 0x0d || codeUnit == 0x0a) {
-      _submit();
-      return _killLine; // 截下提交：行进 bus，Ctrl-U 清掉 CLI 输入框
+      _submit(intercept);
+      // intercept:Ctrl-U 清掉 CLI 输入框;未 parked:原回车透传(返回值被忽略)。
+      return intercept ? _killLine : codeUnit;
     }
     if (codeUnit == 0x7f || codeUnit == 0x08) {
       _backspace();
@@ -129,11 +142,15 @@ class BusUserLineCapture {
       ..write(text.substring(0, text.length - 1));
   }
 
-  void _submit() {
+  void _submit(bool intercept) {
     final line = _sanitizeLine(_buffer.toString());
     _buffer.clear();
     if (line.isEmpty) return;
-    _routing.onUserLine(line);
+    if (intercept) {
+      _routing.onUserLine(line); // parked:整行投给 bus 信箱。
+    } else {
+      _routing.onTurnStart?.call(); // 未 parked:仅标记回合开始,不取内容。
+    }
   }
 
   static String _sanitizeLine(String raw) {

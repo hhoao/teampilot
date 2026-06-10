@@ -77,6 +77,53 @@ void main() {
     expect(bus.memberById('leader')!.activity, MemberActivity.turnDoneReady);
   });
 
+  test('markTurnStarted moves running-at-prompt member to active (working)', () {
+    final bus = TeamBus(launcher: FakeMemberLauncher());
+    bus.declareMember(
+      AgentNode.test(
+        memberId: 'leader',
+        lifecycle: MemberLifecycle.running,
+        activity: MemberActivity.turnDoneReady,
+      ),
+    );
+    expect(bus.isMemberInTurn('leader'), isFalse);
+
+    bus.markTurnStarted('leader');
+
+    expect(bus.memberById('leader')!.activity, MemberActivity.active);
+    expect(bus.isMemberInTurn('leader'), isTrue);
+  });
+
+  test('markTurnStarted is a no-op for a parked (wait_for_message) member', () {
+    final bus = TeamBus(launcher: FakeMemberLauncher());
+    final node = AgentNode.test(
+      memberId: 'leader',
+      lifecycle: MemberLifecycle.running,
+      activity: MemberActivity.active,
+    );
+    bus.declareMember(node);
+    bus.receive('leader'); // enters wait_for_message → turnDoneBusWait
+    expect(bus.isWaitingForMessage('leader'), isTrue);
+
+    bus.markTurnStarted('leader');
+
+    // Parked is handled by the wait/mail wake path, not commandeered here.
+    expect(bus.isWaitingForMessage('leader'), isTrue);
+    expect(bus.isMemberInTurn('leader'), isFalse);
+  });
+
+  test('markTurnStarted is a no-op for a declared (no PTY) member', () {
+    final bus = TeamBus(launcher: FakeMemberLauncher());
+    bus.declareMember(
+      AgentNode.test(memberId: 'leader', lifecycle: MemberLifecycle.declared),
+    );
+
+    bus.markTurnStarted('leader');
+
+    expect(bus.memberById('leader')!.lifecycle, MemberLifecycle.declared);
+    expect(bus.isMemberInTurn('leader'), isFalse);
+  });
+
   test(
     'onMemberIdle with empty inbox stays quiet across repeated idle edges',
     () {

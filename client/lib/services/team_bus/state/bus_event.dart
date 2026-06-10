@@ -44,3 +44,10 @@ class WaitExited extends BusEvent {
 class TurnEnded extends BusEvent {
   const TurnEnded();
 }
+
+/// 用户在成员自己的 prompt 直接提交一行(**未** parked 在 `wait_for_message`)
+/// → 回合开始的 working 边。把"用户驱动 leader 开新回合"这个事件接回 bus，让
+/// presence 不必再靠 PTY 字节(被 spinner 重绘污染)去猜 working。
+class TurnStarted extends BusEvent {
+  const TurnStarted();
+}
