@@ -1,0 +1,5 @@
+.dart_tool/
+pubspec.lock
+build/
+teammate_bus_bridge
+teammate_bus_bridge.exe

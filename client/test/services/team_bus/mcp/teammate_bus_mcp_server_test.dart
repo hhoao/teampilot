@@ -203,4 +203,52 @@ void main() {
       expect(text['text'], contains('reply'));
     },
   );
+
+  test(
+    'stop() ends an in-flight wait_for_message stream (no orphaned keepalive)',
+    () async {
+      bus.declareMember(
+        AgentNode.test(
+          memberId: 'leader',
+          lifecycle: MemberLifecycle.running,
+          activity: MemberActivity.active,
+        ),
+      );
+      // Open a blocking wait — no message will ever arrive on this stream.
+      final req = await client.postUrl(server.endpoint);
+      req.headers.set('content-type', 'application/json');
+      req.headers.set('accept', 'application/json, text/event-stream');
+      req.headers.set('X-Member', 'leader');
+      req.add(
+        utf8.encode(
+          jsonEncode({
+            'jsonrpc': '2.0',
+            'id': 3,
+            'method': 'tools/call',
+            'params': {
+              'name': 'wait_for_message',
+              'arguments': <String, Object?>{},
+            },
+          }),
+        ),
+      );
+      final resp = await req.close();
+      // force-close severs the socket → drain ends via EOF or HttpException;
+      // either way the stream terminated (not orphaned). What must NOT happen is
+      // it hanging past the timeout.
+      final drained = resp
+          .drain<void>()
+          .catchError((Object _) {}); // connection-closed is a valid ending
+      // Let the server park inside beginWait before we tear down.
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      expect(bus.isWaitingForMessage('leader'), isTrue);
+
+      // Closing the server must cancel the parked wait and end the SSE stream —
+      // deterministically, not by waiting for a keepalive write to fail.
+      await server.stop();
+
+      await drained.timeout(const Duration(seconds: 2));
+      expect(bus.isWaitingForMessage('leader'), isFalse);
+    },
+  );
 }

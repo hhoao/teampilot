@@ -8,6 +8,8 @@ import '../../../provider/opencode/opencode_auth_artifacts.dart';
 import '../../../provider/opencode/opencode_data_layout.dart';
 import '../../../provider/opencode/opencode_provider_settings_resolver.dart';
 import '../../../session/member_role_provision.dart';
+import '../../../storage/runtime_storage_context.dart';
+import '../../../team_bus/mcp/bus_bridge_locator.dart';
 import '../../../team_bus/mcp/teammate_bus_mcp_config.dart';
 import '../capabilities/config_profile_capability.dart';
 import 'opencode_idle_plugin.dart';
@@ -50,27 +52,51 @@ Map<String, Object?> mergeOpencodeIdlePlugin(
   return {...config, 'plugin': plugins};
 }
 
-/// Merges the teammate-bus remote MCP server into opencode.json `mcp` so the
-/// member can send/receive teammate messages (mixed mode).
+/// opencode 工具调用超时(ms）。opencode 默认只有 30s（`DEFAULT_TIMEOUT`），长阻塞的
+/// `wait_for_message` 因此很快超时。opencode 用同一个 MCP SDK，超时由 config 的
+/// `timeout` 控；设大到 24h 让它不主动超时（stdio 下这是唯一上限；remote 下也把
+/// 30s 提到 24h，严格改进）。对齐 claude 的 `busToolTimeoutMs`。
+const opencodeBusToolTimeoutMs = 86400000; // 24h
+
+/// Merges the teammate-bus MCP server into opencode.json `mcp` so the member can
+/// send/receive teammate messages (mixed mode).
 ///
-/// opencode uses the top-level `mcp` field (not `mcpServers`) and `type:
-/// "remote"` (not `"http"`); the server must be `enabled` to load on startup.
+/// opencode uses the top-level `mcp` field (not `mcpServers`). 传 [bridgePath]
+/// （本地 PTY + 桥接可用）→ `type: "local"`（stdio，经 `teammate_bus_bridge` 绕开
+/// HTTP 传输超时，`wait_for_message` 真阻塞）；否则 `type: "remote"`（HTTP 回落）。
+/// 两者都带 `timeout` = [opencodeBusToolTimeoutMs]，并需 `enabled` 才会启动加载。
 @visibleForTesting
 Map<String, Object?> mergeOpencodeTeammateBusMcp(
   Map<String, Object?> config,
   String memberId,
-  int port,
-) {
+  int port, {
+  String? bridgePath,
+}) {
   final servers = <String, Object?>{
     ...((config['mcp'] as Map?)?.cast<String, Object?>() ??
         const <String, Object?>{}),
   };
-  servers[teammateBusMcpServerName] = <String, Object?>{
-    'type': 'remote',
-    'url': 'http://127.0.0.1:$port/mcp',
-    'enabled': true,
-    'headers': <String, Object?>{teammateBusMcpMemberHeader: memberId},
-  };
+  final endpoint = 'http://127.0.0.1:$port/mcp';
+  servers[teammateBusMcpServerName] = bridgePath != null
+      ? <String, Object?>{
+          'type': 'local',
+          'command': <String>[
+            bridgePath,
+            '--member',
+            memberId,
+            '--bus-url',
+            endpoint,
+          ],
+          'enabled': true,
+          'timeout': opencodeBusToolTimeoutMs,
+        }
+      : <String, Object?>{
+          'type': 'remote',
+          'url': endpoint,
+          'enabled': true,
+          'headers': <String, Object?>{teammateBusMcpMemberHeader: memberId},
+          'timeout': opencodeBusToolTimeoutMs,
+        };
   return {...config, 'mcp': servers};
 }
 
@@ -207,7 +233,16 @@ final class OpencodeConfigProfileCapability implements ConfigProfileCapability {
       if (port != null) {
         await _writeIdlePlugin(paths: paths, opencodeDir: opencodeDir);
         config = mergeOpencodeIdlePlugin(config, member.id, port);
-        config = mergeOpencodeTeammateBusMcp(config, member.id, port);
+        // 本地 PTY（native 后端）+ 桥接 exe 可用 → stdio（真无限阻塞）；否则 remote。
+        final localNative = !RuntimeStorageContext.isInstalled ||
+            RuntimeStorageContext.current.mode == StorageBackendMode.native;
+        final bridgePath = localNative ? BusBridgeLocator.resolve() : null;
+        config = mergeOpencodeTeammateBusMcp(
+          config,
+          member.id,
+          port,
+          bridgePath: bridgePath,
+        );
         changed = true;
       }
     }

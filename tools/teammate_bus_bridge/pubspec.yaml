@@ -1,0 +1,9 @@
+name: teammate_bus_bridge
+description: >
+  Standalone stdio<->HTTP bridge for the teammate-bus MCP server. Lets CLIs
+  whose HTTP MCP transport caps a single request (~6 min in Claude) block
+  indefinitely on wait_for_message by speaking stdio (no transport timeout)
+  and proxying to the app's loopback bus via dart:io HttpClient.
+publish_to: none
+environment:
+  sdk: ^3.8.1

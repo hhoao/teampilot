@@ -94,6 +94,34 @@ set(INSTALL_BUNDLE_LIB_DIR "${CMAKE_INSTALL_PREFIX}/lib")
 install(TARGETS ${BINARY_NAME} RUNTIME DESTINATION "${CMAKE_INSTALL_PREFIX}"
   COMPONENT Runtime)
 
+# === teammate_bus_bridge (stdio<->HTTP MCP bridge) ===
+# Compile the standalone bridge (tools/teammate_bus_bridge) and install it next
+# to the app executable, so BusBridgeLocator — File(Platform.resolvedExecutable)
+# .parent — finds it at runtime. Lets claude block indefinitely on
+# wait_for_message over stdio (no HTTP ~6-min single-request cap). Graceful: if
+# the Dart SDK is unavailable, skip it — the app falls back to HTTP transport.
+find_program(DART_EXECUTABLE NAMES dart)
+if(DART_EXECUTABLE)
+  set(BRIDGE_SRC "${CMAKE_CURRENT_SOURCE_DIR}/../../tools/teammate_bus_bridge")
+  set(BRIDGE_EXE "${CMAKE_BINARY_DIR}/teammate_bus_bridge")
+  add_custom_command(
+    OUTPUT "${BRIDGE_EXE}"
+    COMMAND "${DART_EXECUTABLE}" compile exe bin/teammate_bus_bridge.dart
+            -o "${BRIDGE_EXE}"
+    WORKING_DIRECTORY "${BRIDGE_SRC}"
+    DEPENDS "${BRIDGE_SRC}/bin/teammate_bus_bridge.dart"
+    COMMENT "Compiling teammate_bus_bridge (stdio<->HTTP MCP bridge)"
+    VERBATIM
+  )
+  add_custom_target(build_teammate_bus_bridge ALL DEPENDS "${BRIDGE_EXE}")
+  install(PROGRAMS "${BRIDGE_EXE}" DESTINATION "${CMAKE_INSTALL_PREFIX}"
+    COMPONENT Runtime)
+else()
+  message(WARNING
+    "dart not found: teammate_bus_bridge will NOT be bundled; claude team-bus "
+    "falls back to HTTP transport (~6-min single-request cap).")
+endif()
+
 install(FILES "${FLUTTER_ICU_DATA_FILE}" DESTINATION "${INSTALL_BUNDLE_DATA_DIR}"
   COMPONENT Runtime)
 

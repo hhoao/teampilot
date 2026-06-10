@@ -241,6 +241,7 @@
 				33CC110E2044A8840003C045 /* Bundle Framework */,
 				3399D490228B24CF009A79C7 /* ShellScript */,
 				7D01BF7F426DDF8E6E436756 /* [CP] Embed Pods Frameworks */,
+				BD0E1F2A3B4C5D6E7F8090A1 /* Bundle teammate_bus_bridge */,
 			);
 			buildRules = (
 			);
@@ -323,6 +324,21 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXShellScriptBuildPhase section */
+		BD0E1F2A3B4C5D6E7F8090A1 /* Bundle teammate_bus_bridge */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+			);
+			name = "Bundle teammate_bus_bridge";
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "set -e\n# Compile the stdio<->HTTP MCP bridge into the app bundle, next to the app\n# executable, so BusBridgeLocator (File(Platform.resolvedExecutable).parent)\n# finds it. Lets claude block indefinitely on wait_for_message over stdio (no\n# HTTP ~6-min cap). Graceful: if dart/source missing, skip (app uses HTTP).\nBRIDGE_SRC=\"$SRCROOT/../../tools/teammate_bus_bridge\"\nDART=\"$FLUTTER_ROOT/bin/dart\"\nif [ -x \"$DART\" ] && [ -f \"$BRIDGE_SRC/bin/teammate_bus_bridge.dart\" ]; then\n  \"$DART\" compile exe \"$BRIDGE_SRC/bin/teammate_bus_bridge.dart\" -o \"$BUILT_PRODUCTS_DIR/$EXECUTABLE_FOLDER_PATH/teammate_bus_bridge\"\nelse\n  echo \"warning: dart or bridge source missing; teammate_bus_bridge not bundled (claude team-bus falls back to HTTP)\"\nfi\n";
+		};
 		3399D490228B24CF009A79C7 /* ShellScript */ = {
 			isa = PBXShellScriptBuildPhase;
 			alwaysOutOfDate = 1;

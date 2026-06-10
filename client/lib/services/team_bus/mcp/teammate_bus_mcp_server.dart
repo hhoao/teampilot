@@ -22,6 +22,11 @@ class TeammateBusMcpServer {
   Uri get endpoint => Uri.parse('http://127.0.0.1:$port/mcp');
   Uri get idleEndpoint => Uri.parse('http://127.0.0.1:$port/idle');
 
+  /// 在途 `_streamLongRunning` 的取消句柄。[stop] 用它确定性地解除每条阻塞中的
+  /// `wait_for_message`——不依赖 force-close 后那次「可能根本不抛错」的 keepalive
+  /// 写来探知断连，否则 [beginWait] 永挂、keepalive Timer 永转（流被孤儿化）。
+  final Set<CancellationToken> _activeStreams = <CancellationToken>{};
+
   Future<void> start() async {
     final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
     _server = server;
@@ -29,6 +34,12 @@ class TeammateBusMcpServer {
   }
 
   Future<void> stop() async {
+    // 先解阻塞、后关 socket：每条流的 cancel 立即触发 → receiveWork 返回 EmptyWork
+    // → beginWait 返回 → finally 停掉 keepalive。先 cancel 保证收敛不靠关 socket
+    // 之后那次写抛错。toList() 快照避免 finally 同步 remove 改集合。
+    for (final cancel in _activeStreams.toList()) {
+      cancel.cancel();
+    }
     await _server?.close(force: true);
     _server = null;
   }
@@ -118,7 +129,9 @@ class TeammateBusMcpServer {
 
     // 客户端断连 → 取消阻塞中的 wait，避免 park 永挂、Future 泄漏。断连由下方
     // keepalive 的写失败探知（progressInterval 周期），随后 cancel 解除阻塞。
+    // 同时登记到 _activeStreams，让 stop()（关 session）能直接 cancel 本流。
     final cancel = CancellationToken();
+    _activeStreams.add(cancel);
 
     final progressToken = _progressToken(rpc);
     // 诊断：坐实 leader(claude) 的 wait_for_message 为何会断 —— 记录开流、每次
@@ -133,13 +146,20 @@ class TeammateBusMcpServer {
       'progressToken=${progressToken != null} '
       'interval=${progressInterval.inSeconds}s',
     );
+    // 诊断超时：client 不带 progressToken → progress 全程被跳过 → 只剩 TCP 注释
+    // 保活，逻辑超时照触发。打出原始 _meta 坐实 client 到底协商了什么。
+    appLogger.d(
+      '[teammate-bus-mcp] request _meta member=$member '
+      'id=${rpc.id} _meta=${jsonEncode(rpc.params['_meta'])}',
+    );
 
     final keepalive = Timer.periodic(progressInterval, (timer) async {
       pings++;
       try {
         // 注释保活（保 TCP）+ progress（为 opencode 续 30s 超时）。
         response.write(': ping\n\n');
-        if (progressToken != null) {
+        final sentProgress = progressToken != null;
+        if (sentProgress) {
           response.write(
             'event: message\ndata: ${jsonEncode({
               'jsonrpc': '2.0',
@@ -149,6 +169,13 @@ class TeammateBusMcpServer {
           );
         }
         await response.flush();
+        // 诊断超时：每个 tick 坐实「ping 写成功 + progress 到底发了还是因缺
+        // token 被跳过」——progress=SKIP 时 client 只靠 TCP 注释，逻辑超时照触发。
+        appLogger.d(
+          '[teammate-bus-mcp] keepalive #$pings member=$member '
+          't=${sw.elapsed.inSeconds}s ping=ok '
+          'progress=${sentProgress ? 'sent' : 'SKIP(no token)'}',
+        );
       } catch (e) {
         disconnectAtSec = sw.elapsed.inSeconds;
         timer.cancel();
@@ -187,6 +214,7 @@ class TeammateBusMcpServer {
         }
       }
     } finally {
+      _activeStreams.remove(cancel);
       keepalive.cancel();
       appLogger.i(
         '[teammate-bus-mcp] stream closed member=$member '

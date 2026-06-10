@@ -12,6 +12,8 @@ import '../../services/cli/registry/config_profile/config_profile_context.dart';
 import '../../services/session/session_lifecycle_service.dart';
 import '../../services/team/default_team_project_service.dart';
 import '../../services/team/team_config_launch_validator.dart';
+import '../../services/storage/runtime_storage_context.dart';
+import '../../services/team_bus/mcp/bus_bridge_locator.dart';
 import '../../services/team_bus/mcp/teammate_bus_mcp_config.dart';
 import '../../services/terminal/terminal_session.dart';
 import '../../utils/logger.dart';
@@ -539,9 +541,10 @@ class SessionLaunchService implements MemberConnector {
       profile: profile,
       extraMcpServers: mixedBus
           ? {
-              teammateBusMcpServerName: teammateBusMcpServerConfig(
+              teammateBusMcpServerName: _busMcpServerConfig(
                 endpoint: tab.mcpServer!.endpoint,
                 memberId: launchMember.id,
+                cli: launchMember.cliWithin(team),
               ),
             }
           : null,
@@ -590,6 +593,30 @@ class SessionLaunchService implements MemberConnector {
         }
       },
     );
+  }
+
+  /// 选择 teammate-bus MCP 的传输方式。claude + 本地 PTY（native 后端）+ 桥接 exe
+  /// 可解析 → stdio（经 `teammate_bus_bridge` 绕开 claude HTTP 的 ~6 分钟单请求死线，
+  /// 让 `wait_for_message` 真正阻塞、不再 transport dropped）。其余情况（非 claude、
+  /// SSH/WSL 远端够不到本地 loopback、或桥接未随包分发）回落到 HTTP，不破坏现状。
+  Map<String, Object?> _busMcpServerConfig({
+    required Uri endpoint,
+    required String memberId,
+    required CliTool cli,
+  }) {
+    final localNative = !RuntimeStorageContext.isInstalled ||
+        RuntimeStorageContext.current.mode == StorageBackendMode.native;
+    if (cli == CliTool.claude && localNative) {
+      final bridge = BusBridgeLocator.resolve();
+      if (bridge != null) {
+        return teammateBusMcpServerConfigStdio(
+          bridgePath: bridge,
+          endpoint: endpoint,
+          memberId: memberId,
+        );
+      }
+    }
+    return teammateBusMcpServerConfig(endpoint: endpoint, memberId: memberId);
   }
 
   void _scheduleMemberConnect(

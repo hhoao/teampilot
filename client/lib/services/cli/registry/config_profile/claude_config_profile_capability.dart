@@ -34,6 +34,12 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
   static const metadataFileName = '.claude.json';
   static const settingsFileEnvKey = 'TEAMPILOT_CLAUDE_SETTINGS_FILE';
 
+  /// MCP 工具调用超时(毫秒)。team-bus 的 `wait_for_message` 是长阻塞工具,
+  /// claude 默认的工具超时会在几分钟后掐断它(progress notification 不续命,
+  /// 见 MCP SDK `resetTimeoutOnProgress` 默认 false)。设大到 24h 让 claude 不
+  /// 主动超时,对齐 codex 的 `tool_timeout_sec`(那边单位是秒:86400)。
+  static const busToolTimeoutMs = 86400000; // 24h，单位 ms
+
   static const defaultMetadata = <String, Object?>{
     'hasCompletedOnboarding': true,
     // Follow the embedded terminal's light/dark instead of Claude's built-in
@@ -223,6 +229,7 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
         ),
       if (!mixed) 'CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS': '1',
       'CLAUDE_CODE_NO_FLICKER': '1',
+      'MCP_TOOL_TIMEOUT': '$busToolTimeoutMs',
     };
 
     if (member != null && member.isValid) {
@@ -353,6 +360,7 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
           '${ClaudeTeamRosterService.safeClaudePathSegment(member.id)}.json',
         ),
       'CLAUDE_CODE_NO_FLICKER': '1',
+      'MCP_TOOL_TIMEOUT': '$busToolTimeoutMs',
     };
 
     if (member.isValid) {
