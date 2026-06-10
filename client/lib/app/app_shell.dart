@@ -49,6 +49,7 @@ import '../services/extension/extension_acquisition_engine.dart';
 import '../services/extension/extension_provisioner.dart';
 import '../services/storage/app_storage.dart';
 import '../services/team/team_clone_service.dart';
+import '../services/team_hub/composite_team_hub_source.dart';
 import '../services/team_hub/git_registry_team_hub_source.dart';
 import '../services/team_hub/team_hub_dependency_installers.dart';
 import '../services/team_hub/team_hub_favorites_store.dart';
@@ -490,7 +491,9 @@ Future<AppShell> buildAppShell({
     onMcpDeleted: teamCubit.removeMcpFromAllTeams,
   );
 
-  final teamHubSource = GitRegistryTeamHubSource();
+  final teamHubSource = CompositeTeamHubSource.withDefaults(
+    GitRegistryTeamHubSource(),
+  );
   final teamHubFavorites = TeamHubFavoritesStore();
   final pluginDiskCache = PluginRepoDiskCacheService(
     storageRoots: storageRoots,

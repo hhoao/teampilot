@@ -168,6 +168,7 @@ class DiscoverableTeamMember {
     this.agent = '',
     this.agentType = '',
     this.prompt = '',
+    this.playbook = '',
     this.extraArgs = '',
   });
 
@@ -176,7 +177,12 @@ class DiscoverableTeamMember {
   final String model;
   final String agent;
   final String agentType;
+
+  /// Responsibilities (WHAT) — maps to [TeamMemberConfig.prompt].
   final String prompt;
+
+  /// Working method (HOW) — maps to [TeamMemberConfig.playbook].
+  final String playbook;
   final String extraArgs;
 
   factory DiscoverableTeamMember.fromJson(Map<String, Object?> json) =>
@@ -187,6 +193,7 @@ class DiscoverableTeamMember {
         agent: json['agent'] as String? ?? '',
         agentType: json['agentType'] as String? ?? '',
         prompt: json['prompt'] as String? ?? '',
+        playbook: json['playbook'] as String? ?? '',
         extraArgs: json['extraArgs'] as String? ?? '',
       );
 
@@ -197,6 +204,7 @@ class DiscoverableTeamMember {
         'agent': agent,
         if (agentType.isNotEmpty) 'agentType': agentType,
         'prompt': prompt,
+        if (playbook.isNotEmpty) 'playbook': playbook,
         'extraArgs': extraArgs,
       };
 
@@ -212,6 +220,7 @@ class DiscoverableTeamMember {
       agent: agent,
       agentType: agentType,
       prompt: prompt,
+      playbook: playbook,
       extraArgs: extraArgs,
       joinedAt: joinedAt,
     );
@@ -226,11 +235,20 @@ class DiscoverableTeamMember {
       agent == other.agent &&
       agentType == other.agentType &&
       prompt == other.prompt &&
+      playbook == other.playbook &&
       extraArgs == other.extraArgs;
 
   @override
-  int get hashCode =>
-      Object.hash(name, provider, model, agent, agentType, prompt, extraArgs);
+  int get hashCode => Object.hash(
+        name,
+        provider,
+        model,
+        agent,
+        agentType,
+        prompt,
+        playbook,
+        extraArgs,
+      );
 }
 
 /// A public team as listed in a TeamHub registry manifest.

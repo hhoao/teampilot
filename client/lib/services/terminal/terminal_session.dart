@@ -732,6 +732,7 @@ class TerminalSession {
     if (_startFailed) return;
     _startFailed = true;
     _launchPhase = _LaunchPhase.failed;
+    _spawnRequested = false;
     _cancelStartupTimers();
     _outputSubscription?.cancel();
     _outputSubscription = null;
@@ -747,6 +748,7 @@ class TerminalSession {
   }
 
   void _teardownPtyState() {
+    _spawnRequested = false;
     _cancelStartupTimers();
     _ptyGeometryTimer?.cancel();
     _ptyGeometryTimer = null;
