@@ -1,11 +1,12 @@
 import 'dart:convert';
+import 'dart:developer' as developer;
 import 'dart:io';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../utils/app_error_utils.dart';
-import '../../utils/logger_utils.dart';
 import '../storage/app_storage.dart';
 import '../io/filesystem.dart';
 
@@ -34,11 +35,11 @@ class ErrorLogService {
     try {
       _packageInfo = await PackageInfo.fromPlatform();
     } on Object catch (e, stackTrace) {
-      AppLogger.instance.e(
+      developer.log(
         '[ErrorLogService] package info unavailable',
+        name: 'teampilot',
         error: e,
         stackTrace: stackTrace,
-        recordError: false,
       );
     }
     _initialized = true;
@@ -55,13 +56,6 @@ class ErrorLogService {
     if (!decision.shouldReport) {
       return;
     }
-
-    AppLogger.instance.e(
-      error.toString(),
-      error: error,
-      stackTrace: stackTrace,
-      recordError: false,
-    );
 
     final root = _appDataRoot;
     if (root == null || root.isEmpty) {
@@ -101,11 +95,11 @@ class ErrorLogService {
       if (AppErrorUtils.isStorageError(e)) {
         return;
       }
-      AppLogger.instance.e(
+      developer.log(
         '[ErrorLogService] failed to persist error',
+        name: 'teampilot',
         error: e,
         stackTrace: st,
-        recordError: false,
       );
     }
   }

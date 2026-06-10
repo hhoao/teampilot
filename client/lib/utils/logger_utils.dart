@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:logger/logger.dart';
 import 'package:path/path.dart' as p;
 
+import '../services/app/error_log_service.dart';
 import 'app_error_utils.dart';
 
 enum AppLogLevel { debug, info, warning, error }
@@ -48,16 +49,37 @@ class AppLogger {
 
   final List<_PendingLog> _pendingFileLogs = [];
 
+  /// Frames inside [AppLogger] itself — stripped so [PrettyPrinter] shows the
+  /// real call site.
+  static const _excludePaths = [
+    'package:teampilot/utils/logger_utils.dart',
+  ];
+
+  static PrettyPrinter _printer({
+    required int methodCount,
+    required int errorMethodCount,
+    required int lineLength,
+    required bool colors,
+  }) {
+    return PrettyPrinter(
+      methodCount: methodCount,
+      errorMethodCount: errorMethodCount,
+      lineLength: lineLength,
+      colors: colors,
+      printEmojis: false,
+      dateTimeFormat: DateTimeFormat.dateAndTime,
+      excludePaths: _excludePaths,
+    );
+  }
+
   void _ensureConsoleLogger() {
     if (_consoleLogger != null) return;
     _consoleLogger = Logger(
-      printer: PrettyPrinter(
-        methodCount: 1,
-        errorMethodCount: 5,
+      printer: _printer(
+        methodCount: 2,
+        errorMethodCount: 8,
         lineLength: 100,
         colors: true,
-        printEmojis: false,
-        dateTimeFormat: DateTimeFormat.dateAndTime,
       ),
       output: ConsoleOutput(),
       filter: _ConsoleLogFilter(),
@@ -99,13 +121,11 @@ class AppLogger {
       _fileLogOutput = _FlushingFileOutput(file: _logFile!);
       await _fileLogOutput!.init();
       _fileLogger = Logger(
-        printer: PrettyPrinter(
-          methodCount: 0,
+        printer: _printer(
+          methodCount: 1,
           errorMethodCount: 8,
           lineLength: 120,
           colors: false,
-          printEmojis: false,
-          dateTimeFormat: DateTimeFormat.dateAndTime,
         ),
         output: _fileLogOutput!,
         filter: _FileLogFilter(),
@@ -126,15 +146,30 @@ class AppLogger {
   }
 
   void i(String message, {Object? error, StackTrace? stackTrace}) {
-    _log(AppLogLevel.info, message, error: error, stackTrace: stackTrace);
+    _log(
+      AppLogLevel.info,
+      message,
+      error: error,
+      stackTrace: stackTrace ?? StackTrace.current,
+    );
   }
 
   void d(String message, {Object? error, StackTrace? stackTrace}) {
-    _log(AppLogLevel.debug, message, error: error, stackTrace: stackTrace);
+    _log(
+      AppLogLevel.debug,
+      message,
+      error: error,
+      stackTrace: stackTrace ?? StackTrace.current,
+    );
   }
 
   void w(String message, {Object? error, StackTrace? stackTrace}) {
-    _log(AppLogLevel.warning, message, error: error, stackTrace: stackTrace);
+    _log(
+      AppLogLevel.warning,
+      message,
+      error: error,
+      stackTrace: stackTrace ?? StackTrace.current,
+    );
   }
 
   void e(
@@ -143,16 +178,22 @@ class AppLogger {
     StackTrace? stackTrace,
     bool recordError = true,
   }) {
+    final trace = stackTrace ?? StackTrace.current;
     if (recordError && error != null) {
       final decision = AppErrorUtils.classify(error);
       AppErrorUtils.showDecisionMessage(decision);
+      if (decision.shouldReport) {
+        unawaited(
+          ErrorLogService.instance.recordError(
+            error,
+            trace,
+            module: 'app',
+            action: message,
+          ),
+        );
+      }
     }
-    _log(
-      AppLogLevel.error,
-      message,
-      error: error,
-      stackTrace: stackTrace ?? (error != null ? StackTrace.current : null),
-    );
+    _log(AppLogLevel.error, message, error: error, stackTrace: trace);
   }
 
   void _log(
@@ -269,13 +310,11 @@ class AppLogger {
       _fileLogOutput = _FlushingFileOutput(file: _logFile!);
       await _fileLogOutput!.init();
       _fileLogger = Logger(
-        printer: PrettyPrinter(
-          methodCount: 0,
+        printer: _printer(
+          methodCount: 1,
           errorMethodCount: 8,
           lineLength: 120,
           colors: false,
-          printEmojis: false,
-          dateTimeFormat: DateTimeFormat.dateAndTime,
         ),
         output: _fileLogOutput!,
         filter: _FileLogFilter(),

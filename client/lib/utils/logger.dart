@@ -3,70 +3,12 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 
 import '../services/app/error_log_service.dart';
-import 'app_error_utils.dart';
 import 'logger_utils.dart';
 
-/// Drop-in facade matching [package:logger](https://pub.dev/packages/logger) call sites.
-class TeamPilotLogger {
-  void i(dynamic message, {Object? error, StackTrace? stackTrace}) {
-    AppLogger.instance.i(
-      message.toString(),
-      error: error,
-      stackTrace: stackTrace,
-    );
-  }
+export 'logger_utils.dart' show AppLogger;
 
-  void d(dynamic message, {Object? error, StackTrace? stackTrace}) {
-    AppLogger.instance.d(
-      message.toString(),
-      error: error,
-      stackTrace: stackTrace,
-    );
-  }
-
-  void w(dynamic message, {Object? error, StackTrace? stackTrace}) {
-    AppLogger.instance.w(
-      message.toString(),
-      error: error,
-      stackTrace: stackTrace,
-    );
-  }
-
-  void e(
-    dynamic message, {
-    Object? error,
-    StackTrace? stackTrace,
-    bool recordError = true,
-  }) {
-    final resolvedError = error;
-    final resolvedStack =
-        stackTrace ?? (resolvedError != null ? StackTrace.current : null);
-
-    if (recordError && resolvedError != null) {
-      final decision = AppErrorUtils.classify(resolvedError);
-      AppErrorUtils.showDecisionMessage(decision);
-      if (decision.shouldReport) {
-        unawaited(
-          ErrorLogService.instance.recordError(
-            resolvedError,
-            resolvedStack ?? StackTrace.current,
-            module: 'app',
-            action: message.toString(),
-          ),
-        );
-      }
-    }
-
-    AppLogger.instance.e(
-      message.toString(),
-      error: resolvedError,
-      stackTrace: resolvedStack,
-      recordError: false,
-    );
-  }
-}
-
-final appLogger = TeamPilotLogger();
+/// App-wide logger — [AppLogger.instance] is the single implementation.
+final appLogger = AppLogger.instance;
 
 /// Initializes rotating file logs and global Flutter error hooks.
 Future<void> initAppLogging(String appDataRoot) async {
