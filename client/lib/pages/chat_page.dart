@@ -145,7 +145,13 @@ class _ChatPageBody extends StatelessWidget {
             ? 'personal project / shell wrapper mode'
             : 'target: ${chatCubit.selectedMemberName(team!)} / shell wrapper mode',
         tabs: chatCubit.state.tabs
-            .map((t) => TabInfo(id: t.id, title: t.title))
+            .map(
+              (t) => TabInfo(
+                id: t.id,
+                title: t.title,
+                working: chatCubit.state.workingSessionIds.contains(t.id),
+              ),
+            )
             .toList(),
         activeTabIndex: chatCubit.state.activeTabIndex,
         onTabSelected: (index) => context.read<ChatCubit>().selectTab(index),

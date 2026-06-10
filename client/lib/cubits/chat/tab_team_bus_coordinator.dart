@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
+
 import '../../models/app_session.dart';
 import '../../models/team_config.dart';
 import '../../services/cli/registry/capabilities/terminal_behavior_capability.dart';
@@ -38,17 +40,21 @@ class TabTeamBusCoordinator implements MemberMaterializer {
     required MemberConnector connector,
     required TeamConfig? Function() activeTeam,
     required bool Function() isClosed,
+    void Function(Set<String> workingSessionIds)? onWorkingSessionsChanged,
   })  : _tabStore = tabStore,
         _shellFactory = shellFactory,
         _connector = connector,
         _activeTeam = activeTeam,
-        _isClosed = isClosed;
+        _isClosed = isClosed,
+        _onWorkingSessionsChanged = onWorkingSessionsChanged;
 
   final ChatTabStore _tabStore;
   final ChatSessionShellFactory _shellFactory;
   final MemberConnector _connector;
   final TeamConfig? Function() _activeTeam;
   final bool Function() _isClosed;
+  final void Function(Set<String> workingSessionIds)? _onWorkingSessionsChanged;
+  Set<String> _lastWorkingSessions = const {};
 
   final Map<(String, String), Completer<void>> _memberReady = {};
   Timer? _idleWatchTimer;
@@ -198,6 +204,7 @@ class TabTeamBusCoordinator implements MemberMaterializer {
       _idleWatchTimer?.cancel();
       _idleWatchTimer = null;
       _lastWorking.clear();
+      _publishWorkingSessions(const {}); // no buses left → nothing spins.
     }
   }
 
@@ -205,6 +212,7 @@ class TabTeamBusCoordinator implements MemberMaterializer {
     _idleWatchTimer?.cancel();
     _idleWatchTimer = null;
     _lastWorking.clear();
+    _publishWorkingSessions(const {});
   }
 
   bool hasTeamBusResources(String sessionId) {
@@ -224,6 +232,7 @@ class TabTeamBusCoordinator implements MemberMaterializer {
 
   void _tickIdleWatch() {
     if (_isClosed()) return;
+    final working = <String>{};
     for (final tab in _tabStore.tabs) {
       final bus = tab.teamBus;
       if (bus == null) continue;
@@ -231,13 +240,26 @@ class TabTeamBusCoordinator implements MemberMaterializer {
       if (bus.hasTaskQueue) bus.reclaimExpiredTasks();
       tab.memberShells.forEach((memberId, shell) {
         final key = '${tab.info.id}:$memberId';
-        final working = shell.activityTracker.isWorking;
+        final shellWorking = shell.activityTracker.isWorking;
         final was = _lastWorking[key] ?? false;
-        _lastWorking[key] = working;
-        if (was && !working && !bus.isWaitingForMessage(memberId)) {
+        _lastWorking[key] = shellWorking;
+        if (was && !shellWorking && !bus.isWaitingForMessage(memberId)) {
           bus.onMemberIdle(memberId);
         }
       });
+      if (bus.anyMemberInTurn) working.add(tab.info.id);
     }
+    _publishWorkingSessions(working);
+  }
+
+  /// Emits the session-level working set (only when changed) so tabs / sidebar
+  /// can spin. Computed right after the idle edges above so it reflects this
+  /// tick's transitions.
+  void _publishWorkingSessions(Set<String> working) {
+    final cb = _onWorkingSessionsChanged;
+    if (cb == null) return;
+    if (setEquals(working, _lastWorkingSessions)) return;
+    _lastWorkingSessions = working;
+    cb(working);
   }
 }

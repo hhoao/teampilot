@@ -139,6 +139,10 @@ class TeamBus implements CoordinationView {
   bool isMemberInTurn(String memberId) =>
       _members[memberId]?.claudeIsActive ?? false;
 
+  /// 队里是否**任一**成员在回合中。会话级 working 指示器(tab / 列表项 spinner)用。
+  bool get anyMemberInTurn =>
+      _members.values.any((n) => n.claudeIsActive ?? false);
+
   /// 全队 roster（MCP `list_teammates`）；leader 在前，其余按 member id 排序。
   TeamRosterSnapshot rosterSnapshot() {
     final snapshots = _members.values

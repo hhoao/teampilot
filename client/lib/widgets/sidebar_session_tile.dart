@@ -14,6 +14,7 @@ import '../utils/debounce/debounce.dart';
 import 'app_dialog.dart';
 import 'app_icon_button.dart';
 import 'menu/sidebar_action_menu.dart';
+import 'session_working_spinner.dart';
 
 /// Session row for sidebars: rename, delete, overflow menu, and context menu.
 class SidebarSessionTile extends StatefulWidget {
@@ -135,6 +136,9 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
     final selected = context.select<ChatCubit, bool>(
       (cubit) => cubit.state.activeSessionId == session.sessionId,
     );
+    final working = context.select<ChatCubit, bool>(
+      (cubit) => cubit.state.workingSessionIds.contains(session.sessionId),
+    );
     final l10n = context.l10n;
 
     return MouseRegion(
@@ -144,6 +148,7 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
         key: AppKeys.sessionTile(session.sessionId),
         title: session.resolveDisplayTitle(l10n.defaultNewChatSessionTitle),
         selected: selected,
+        working: working,
         rowHovered: _hovered || _menuOpen,
         contentLeftInset: widget.contentLeftInset,
         onTap: throttledTap(
@@ -310,6 +315,7 @@ class _SidebarTile extends StatelessWidget {
     required this.selected,
     // ignore: unused_element_parameter
     this.subtitle = '',
+    this.working = false,
     this.rowHovered = false,
     this.onTap,
     this.onSecondaryTapDown,
@@ -322,6 +328,7 @@ class _SidebarTile extends StatelessWidget {
   final String title;
   final String subtitle;
   final bool selected;
+  final bool working;
   final bool rowHovered;
   final VoidCallback? onTap;
   final GestureTapDownCallback? onSecondaryTapDown;
@@ -369,6 +376,16 @@ class _SidebarTile extends StatelessWidget {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
+                SessionWorkingIndicator(
+                  working: working,
+                  size: 13,
+                  // Selected rows sit on primaryContainer; primary washes out
+                  // there, so use the readable on-container color.
+                  color: selected ? cs.onPrimaryContainer : cs.primary,
+                  idleColor: (selected ? cs.onPrimaryContainer : cs.onSurfaceVariant)
+                      .withValues(alpha: 0.5),
+                ),
+                const SizedBox(width: 8),
                 Expanded(
                   child: Align(
                     alignment: Alignment.centerLeft,

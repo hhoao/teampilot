@@ -12,6 +12,7 @@ import '../../theme/workspace_surface_layers.dart';
 import '../../utils/app_keys.dart';
 import '../../widgets/app_icon_button.dart';
 import '../../widgets/menu/sidebar_action_menu.dart';
+import '../../widgets/session_working_spinner.dart';
 import 'workspace_shell_models.dart';
 
 class WorkspaceShellTabRowTrailing extends StatelessWidget {
@@ -115,6 +116,7 @@ class WorkspaceShellTabRow extends StatelessWidget {
                   for (var i = 0; i < tabs.length; i++)
                     WorkspaceShellTabChip(
                       title: tabs[i].title,
+                      working: tabs[i].working,
                       active: i == activeIndex,
                       onTap: () => onTabSelected?.call(i),
                       onClose: () => onTabClosed?.call(i),
@@ -136,7 +138,7 @@ class WorkspaceShellTabRow extends StatelessWidget {
 }
 
 class WorkspaceShellTabChip extends StatefulWidget {
-  const WorkspaceShellTabChip({super.key, 
+  const WorkspaceShellTabChip({super.key,
     required this.title,
     required this.active,
     required this.onTap,
@@ -146,9 +148,11 @@ class WorkspaceShellTabChip extends StatefulWidget {
     required this.textColor,
     required this.activeBg,
     required this.borderColor,
+    this.working = false,
   });
 
   final String title;
+  final bool working;
   final bool active;
   final VoidCallback onTap;
   final VoidCallback onClose;
@@ -306,6 +310,8 @@ class WorkspaceShellTabChipState extends State<WorkspaceShellTabChip> {
                 child: Row(
                   mainAxisSize: MainAxisSize.max,
                   children: [
+                    SessionWorkingIndicator(working: widget.working, size: 13),
+                    const SizedBox(width: 8),
                     Expanded(
                       child: Align(
                         alignment: Alignment.centerLeft,

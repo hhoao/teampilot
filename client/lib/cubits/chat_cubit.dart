@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -77,6 +78,7 @@ class ChatCubit extends Cubit<ChatState>
     connector: _launchService,
     activeTeam: () => _activeTeam,
     isClosed: () => isClosed,
+    onWorkingSessionsChanged: _updateWorkingSessions,
   );
   MemberPresenceCubit? _presenceCubit;
   TeamConfig? _activeTeam;
@@ -133,6 +135,14 @@ class ChatCubit extends Cubit<ChatState>
 
   /// Wired by app_shell after both cubits are constructed.
   void bindPresenceCubit(MemberPresenceCubit cubit) => _presenceCubit = cubit;
+
+  /// Pushed by [TabTeamBusCoordinator] (1s idle-watch tick) whenever the set of
+  /// sessions with a member in-turn changes. Drives the working spinner on tabs
+  /// / sidebar list items. Set is already change-filtered upstream.
+  void _updateWorkingSessions(Set<String> ids) {
+    if (isClosed || setEquals(ids, state.workingSessionIds)) return;
+    emit(state.copyWith(workingSessionIds: ids));
+  }
 
   void _pushPresenceTarget() {
     final cubit = _presenceCubit;

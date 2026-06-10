@@ -112,6 +112,31 @@ void main() {
     expect(bus.isMemberInTurn('leader'), isFalse);
   });
 
+  test('anyMemberInTurn reflects whether any member is active', () {
+    final bus = TeamBus(launcher: FakeMemberLauncher());
+    bus.declareMember(
+      AgentNode.test(
+        memberId: 'leader',
+        lifecycle: MemberLifecycle.running,
+        activity: MemberActivity.turnDoneReady,
+      ),
+    );
+    bus.declareMember(
+      AgentNode.test(
+        memberId: 'dev',
+        lifecycle: MemberLifecycle.running,
+        activity: MemberActivity.turnDoneReady,
+      ),
+    );
+    expect(bus.anyMemberInTurn, isFalse);
+
+    bus.markTurnStarted('dev');
+    expect(bus.anyMemberInTurn, isTrue);
+
+    bus.onMemberIdle('dev');
+    expect(bus.anyMemberInTurn, isFalse);
+  });
+
   test('markTurnStarted is a no-op for a declared (no PTY) member', () {
     final bus = TeamBus(launcher: FakeMemberLauncher());
     bus.declareMember(

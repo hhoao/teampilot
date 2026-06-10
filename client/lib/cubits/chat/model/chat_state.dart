@@ -41,6 +41,7 @@ class ChatState extends Equatable {
     this.sessionConnectingId,
     this.sessionLaunchError,
     this.teamConfigValidation,
+    this.workingSessionIds = const {},
   });
 
   final List<ChatTabInfo> tabs;
@@ -64,6 +65,11 @@ class ChatState extends Equatable {
   /// the workbench surfaces a "go configure" dialog. Launch is not blocked.
   final TeamConfigValidation? teamConfigValidation;
 
+  /// Session ids with at least one member currently in a turn (TeamBus truth).
+  /// Drives the working spinner on session tabs and sidebar list items. Only
+  /// open, bus-backed (mixed) sessions appear here.
+  final Set<String> workingSessionIds;
+
   ChatState copyWith({
     List<ChatTabInfo>? tabs,
     int? activeTabIndex,
@@ -83,6 +89,7 @@ class ChatState extends Equatable {
     bool clearSessionLaunchError = false,
     TeamConfigValidation? teamConfigValidation,
     bool clearTeamConfigValidation = false,
+    Set<String>? workingSessionIds,
   }) {
     return ChatState(
       tabs: tabs ?? this.tabs,
@@ -108,6 +115,7 @@ class ChatState extends Equatable {
       teamConfigValidation: clearTeamConfigValidation
           ? null
           : (teamConfigValidation ?? this.teamConfigValidation),
+      workingSessionIds: workingSessionIds ?? this.workingSessionIds,
     );
   }
 
@@ -145,5 +153,6 @@ class ChatState extends Equatable {
     sessionConnectingId,
     sessionLaunchError,
     teamConfigValidation,
+    workingSessionIds,
   ];
 }
