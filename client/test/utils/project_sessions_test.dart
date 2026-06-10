@@ -86,6 +86,19 @@ void main() {
     expect(filtered.map((s) => s.sessionId).toList(), ['abc-123']);
   });
 
+  test('groupSessionsByProjectId buckets sessions by projectId', () {
+    final all = [
+      session(id: 's1', projectId: 'p1'),
+      session(id: 's2', projectId: 'p1'),
+      session(id: 's3', projectId: 'p2'),
+    ];
+
+    final grouped = groupSessionsByProjectId(all);
+
+    expect(grouped['p1']!.map((s) => s.sessionId).toList(), ['s1', 's2']);
+    expect(grouped['p2']!.map((s) => s.sessionId).toList(), ['s3']);
+  });
+
   test('filterSessionsByQuery returns all sessions when query is blank', () {
     final sessions = [
       session(id: 's1', projectId: 'p1', display: 'One'),

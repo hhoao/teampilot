@@ -24,6 +24,20 @@ List<AppSession> sessionsForProject(
   return ordered;
 }
 
+/// All [sessions] grouped by [AppSession.projectId]. Order within each bucket
+/// matches [all] iteration order.
+Map<String, List<AppSession>> groupSessionsByProjectId(
+  List<AppSession> all,
+) {
+  final grouped = <String, List<AppSession>>{};
+  for (final session in all) {
+    final projectId = session.projectId;
+    if (projectId.isEmpty) continue;
+    grouped.putIfAbsent(projectId, () => []).add(session);
+  }
+  return grouped;
+}
+
 /// Case-insensitive filter on resolved title and session id.
 List<AppSession> filterSessionsByQuery(
   List<AppSession> sessions, {
