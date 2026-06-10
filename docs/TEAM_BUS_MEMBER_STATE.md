@@ -79,7 +79,8 @@ A member "settling" is detected by three sources, all funnelling into `TeamBus.o
 
 | Source | CLIs | Can it block the stop? |
 |--------|------|------|
-| `hooks.Stop` → POST `/idle` (http hook) | claude, flashskyai | **Yes** (response returns `decision:block`) |
+| `hooks.Stop` → POST `/idle` (http hook) | claude, flashskyai, codex | **Yes** (response returns `decision:block`; codex via `config.toml` `[[hooks.Stop]]`) |
+| `stop` hook → POST `/idle` (`$HOME/.cursor/hooks.json`) | cursor | Re-prompts: a `decision:block` reply is translated into a `followup_message` (cursor defaults `forceWaitBeforeStop=false`, so it parks at idle and waits for the doorbell instead) |
 | idle plugin `session.next.step.ended` → POST `/idle` | opencode | No (fires after the step, can't prevent stopping) |
 | Terminal watcher `ChatCubit._tickIdleWatch` (1s working→idle edge) | all (fallback) | No |
 
@@ -139,5 +140,6 @@ flowchart TD
 | `acceptsImmediateDoorbell`, `hasUnreportedWork` | `client/lib/services/team_bus/agent_node.dart` |
 | MCP tools, `/idle` death loop + `idleStreak` fuse | `client/lib/services/team_bus/mcp/teammate_bus_mcp_handler.dart`, `teammate_bus_mcp_server.dart` |
 | Stop hook writer (claude/flashskyai shared) | `client/lib/services/cli/registry/config_profile/bus_idle_stop_hook.dart` |
+| opencode idle plugin / codex & cursor bus overlays | `client/lib/services/cli/registry/config_profile/opencode_idle_plugin.dart`, `client/lib/services/provider/codex/codex_team_bus_overlay.dart`, `client/lib/services/provider/cursor/cursor_home_bus_overlay.dart` |
 | Per-process CONFIG_DIR isolation | `client/lib/services/cli/cli_data_layout.dart` |
 | mixed role notes | `client/lib/services/session/member_role_provision.dart` |

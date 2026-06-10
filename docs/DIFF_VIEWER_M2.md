@@ -1,5 +1,11 @@
 # Side-by-side Diff Viewer (M2)
 
+> **Status: shipped.** This is the original design note, kept for context. The
+> feature is implemented under `client/lib/services/diff/` and
+> `client/lib/widgets/diff/` (entry: `DiffViewer` / `SideBySideDiffView`, wired
+> from `widgets/git/git_diff_view.dart` + `git_source_control_panel.dart`). The
+> task list at the bottom is historical.
+
 IDEA-style two-pane diff: line alignment, inline char highlight, syntax color,
 connecting ribbon. Replaces/augments the unified-text `GitDiffDialog`.
 
@@ -17,17 +23,21 @@ logic** — only a painter that lets each range carry its own color, plus a prop
 ```
 client/lib/
   services/diff/
-    diff_model.dart          # DiffRow / InlineEdit / DiffBlock / DiffResult (pure)
-    diff_options.dart        # ignoreWhitespace / ignoreCase
-    diff_engine.dart         # Myers line diff + char diff + row alignment (pure)
-    line_pairing.dart        # similarity pairing for replace blocks (task 2)
-    unified_diff_parser.dart # git unified diff -> before/after (task 3)
+    diff_model.dart            # DiffRow / InlineEdit / DiffBlock / DiffResult (pure)
+    diff_options.dart          # ignoreWhitespace / ignoreCase
+    diff_engine.dart           # Myers line diff + char diff + row alignment (pure)
+    line_pairing.dart          # similarity pairing for replace blocks
+    unified_diff_parser.dart   # git unified diff -> before/after
+    diff_decoration_mapper.dart# DiffRow ranges -> re-editor diffDecorations
   widgets/diff/
-    side_by_side_diff_view.dart  # two read-only CodeEditors + scroll sync
-    diff_gutter.dart             # per-side real line numbers (blank on filler)
-    diff_ribbon_painter.dart     # connecting ribbon CustomPaint
-    diff_toolbar.dart            # ignore-ws / next-prev / viewer switch
-  packages/re-editor/            # controlled patch: diff painter + CodeEditor prop
+    diff_viewer.dart           # entry widget: mode switch (side-by-side / unified)
+    side_by_side_diff_view.dart# two read-only CodeEditors + scroll sync
+    unified_diff_view.dart     # single-pane unified fallback
+    diff_view_controller.dart  # shared diff state / navigation
+    diff_ribbon_painter.dart   # connecting ribbon CustomPaint
+    diff_overview_ruler.dart   # minimap-style change overview
+    diff_toolbar.dart          # ignore-ws / next-prev / viewer switch
+  packages/re-editor/          # controlled patch: diff painter + CodeEditor prop
 ```
 
 ## Data model (`diff_model.dart`)
@@ -71,16 +81,16 @@ switches viewer mode (keep `GitDiffDialog` as unified fallback).
 switches to it. Source data: parse git's unified diff (task 3) rather than
 re-diffing, to honor git's rename/context.
 
-## Tasks
+## Tasks (all completed)
 
-1. model + line Myers + row alignment + tests  (~1.5d)  ← current
-2. similarity pairing + inline char diff + tests  (~1d)
-3. unified diff parser + tests  (~0.5d)
-4. re-editor patch (painter + prop)  (~1d)
-5. side-by-side view + scroll sync + gutter  (~1.5d)
-6. ribbon painter  (~1d)
-7. toolbar (ignore-ws / nav / switch) + l10n  (~1d)
-8. wire source-control, fallback, polish  (~1d)
+1. ✅ model + line Myers + row alignment + tests
+2. ✅ similarity pairing + inline char diff + tests
+3. ✅ unified diff parser + tests
+4. ✅ re-editor patch (painter + prop)
+5. ✅ side-by-side view + scroll sync + gutter
+6. ✅ ribbon painter
+7. ✅ toolbar (ignore-ws / nav / switch) + l10n
+8. ✅ wire source-control, fallback, polish
 
 ## Risks
 

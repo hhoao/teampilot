@@ -1,6 +1,6 @@
 # Development guide
 
-For contributors and maintainers. End-user overview: [README.en.md](../README.en.md). Architecture and AI conventions: [AGENTS.md](../AGENTS.md).
+For contributors and maintainers. End-user overview: [README.md](../README.md). Architecture and AI conventions: [AGENTS.md](../AGENTS.md).
 
 ## Requirements
 
@@ -8,8 +8,7 @@ For contributors and maintainers. End-user overview: [README.en.md](../README.en
 |------|--------|
 | [Flutter](https://docs.flutter.dev/get-started/install) | **stable** channel; SDK `^3.8.1` in `client` |
 | Git submodules | Required on first clone for vendored `client/packages/` |
-| `flashskyai` | On **PATH** or in app settings when exercising team terminals locally |
-| `claude` | Optional; needed for Claude team / onboarding flows |
+| An agent CLI | At least one of `claude` / `codex` / `opencode` / `cursor` / `flashskyai` on **PATH** (or set in app settings) when exercising team terminals locally |
 | Targets | **Linux / macOS / Windows / Android** (same as CI) |
 
 ## First clone
@@ -150,7 +149,6 @@ OS-specific tooling matches the CI workflows. See [`client/linux/packaging/READM
 | [AGENTS.md](../AGENTS.md) | AI guide: architecture, key paths, change conventions |
 | [CODE_QUALITY.md](CODE_QUALITY.md) | File size, tests, Extension, tech-debt norms |
 | [DEBUGGING.md](DEBUGGING.md) | Debugging process (search-first, root cause) |
+| [TEAM_BUS_MEMBER_STATE.md](TEAM_BUS_MEMBER_STATE.md) | Mixed-team bus presence & member state |
 | [CLAUDE.md](../CLAUDE.md) | Claude Code entry point (links to AGENTS.md) |
-| [Plugin management design](superpowers/specs/2026-05-23-plugin-management-design.md) | Plugin architecture & storage |
-| [RTK integration design](superpowers/specs/2026-05-24-rtk-integration-design.md) | Token compression hooks |
 | [Linux packaging](../client/linux/packaging/README.md) | fastforge / deb / AppImage |
