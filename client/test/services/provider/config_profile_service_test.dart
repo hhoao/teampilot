@@ -604,8 +604,10 @@ base_url = "https://api.example.com/v1"
       'CLAUDE_CONFIG_DIR',
       'CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS',
       'CLAUDE_CODE_NO_FLICKER',
+      'MCP_TOOL_TIMEOUT',
     ]);
     expect(env['CLAUDE_CONFIG_DIR'], claudeDir);
+    expect(env['MCP_TOOL_TIMEOUT'], '86400000');
 
     final roster = File(
       p.join(claudeDir, 'teams', _rosterDirName(sessionId), 'config.json'),
