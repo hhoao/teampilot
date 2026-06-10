@@ -48,6 +48,13 @@ const double kFileTreeLeadingChromeWidth =
 /// Extra width so measured labels do not clip due to font metrics drift.
 const double kFileTreeContentWidthSlack = 12;
 
+/// Above this row count, only the widest [_kContentWidthCandidates] candidate
+/// rows (by a cheap char-width estimate) are actually shaped. Measuring every
+/// row with [TextPainter] on the layout path costs ~120ms of first-time glyph
+/// shaping on large trees (it defeats the ListView's laziness); the true widest
+/// pixel row is, in practice, always among the longest-estimated rows.
+const int _kContentWidthCandidates = 32;
+
 /// Minimum content width so the widest visible row fits without truncation.
 double fileTreeMinContentWidth({
   required List<FileTreeVisibleRow> rows,
@@ -57,12 +64,24 @@ double fileTreeMinContentWidth({
 }) {
   if (rows.isEmpty) return 0;
 
+  // Only shape the longest candidates — never the whole (possibly huge) tree.
+  final List<FileTreeVisibleRow> measured;
+  if (rows.length > _kContentWidthCandidates) {
+    measured = [...rows]
+      ..sort(
+        (a, b) => _rowWidthEstimate(b).compareTo(_rowWidthEstimate(a)),
+      );
+    measured.length = _kContentWidthCandidates;
+  } else {
+    measured = rows;
+  }
+
   final painter = TextPainter(
     textDirection: TextDirection.ltr,
     textScaler: textScaler,
   );
   var maxWidth = 0.0;
-  for (final row in rows) {
+  for (final row in measured) {
     final label = row.isEmptyPlaceholder ? '(empty)' : row.entry.name;
     final baseStyle = row.isEmptyPlaceholder ? emptyLabelStyle : labelStyle;
     var textWidth = _measureTextWidth(
@@ -90,6 +109,19 @@ double fileTreeMinContentWidth({
     maxWidth = math.max(maxWidth, rowWidth);
   }
   return maxWidth.ceilToDouble() + kFileTreeContentWidthSlack;
+}
+
+/// Cheap, shaping-free width proxy for ranking rows: indent depth plus a
+/// per-character cost (CJK/fullwidth glyphs count double). Only used to pick
+/// which rows are worth a real [TextPainter] measurement.
+double _rowWidthEstimate(FileTreeVisibleRow row) {
+  final label = row.isEmptyPlaceholder ? '(empty)' : row.entry.name;
+  var units = 0.0;
+  for (final rune in label.runes) {
+    units += rune >= 0x1100 ? 2.0 : 1.0;
+  }
+  // Indent is ~16px/level vs ~8px for a narrow glyph → weight depth ~2 units.
+  return row.depth * 2.0 + units;
 }
 
 double _measureTextWidth({

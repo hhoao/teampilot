@@ -257,7 +257,6 @@ class _FileTreePanelState extends State<FileTreePanel> {
                           'Directory unavailable',
                           style: AppTextStyles.of(context).bodySmall.copyWith(
                             color: cs.onSurfaceVariant.withValues(alpha: 0.7),
-                            fontStyle: FontStyle.italic,
                           ),
                         ),
                       const SizedBox(height: 10),
@@ -348,9 +347,9 @@ class _FileTreePanelState extends State<FileTreePanel> {
     }
     return LayoutBuilder(
       builder: (context, constraints) {
-        final labelStyle = AppTextStyles.of(context).body.copyWith(
-          fontWeight: FontWeight.w500,
-        );
+        final labelStyle = AppTextStyles.of(
+          context,
+        ).body.copyWith(fontWeight: FontWeight.w500);
         final emptyLabelStyle = AppTextStyles.of(context).caption;
         final contentWidth = math.max(
           constraints.maxWidth,

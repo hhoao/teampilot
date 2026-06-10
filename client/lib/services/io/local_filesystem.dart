@@ -66,7 +66,7 @@ class LocalFilesystem implements Filesystem {
     final type = FileSystemEntity.typeSync(path, followLinks: false);
     switch (type) {
       case FileSystemEntityType.directory:
-        await _deleteIfStillPresent(Directory(path), recursive: true);
+        await _deleteDirRecursive(path);
       case FileSystemEntityType.link:
         await _deleteIfStillPresent(Link(path));
       case FileSystemEntityType.file:
@@ -75,6 +75,26 @@ class LocalFilesystem implements Filesystem {
         break;
       default:
         break;
+    }
+  }
+
+  /// Recursively deletes a directory, tolerating the `ENOTEMPTY` race where a
+  /// concurrent writer (e.g. a second provision of the same member CONFIG_DIR)
+  /// adds an entry between Dart's directory walk and its final `rmdir`. Each
+  /// retry re-lists the tree, so a child that reappeared is picked up. The dir
+  /// still being present after a failed delete (rather than a clean
+  /// PathNotFound) is the signal to retry.
+  Future<void> _deleteDirRecursive(String path) async {
+    const maxAttempts = 8;
+    final dir = Directory(path);
+    for (var attempt = 1; ; attempt++) {
+      try {
+        await _deleteIfStillPresent(dir, recursive: true);
+        return;
+      } on FileSystemException {
+        if (!await dir.exists() || attempt >= maxAttempts) rethrow;
+        await Future<void>.delayed(Duration(milliseconds: 10 * attempt));
+      }
     }
   }
 

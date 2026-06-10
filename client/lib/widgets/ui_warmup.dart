@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_alacritty/flutter_alacritty.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import '../theme/app_text_styles.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -9,6 +10,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../cubits/session_preferences_cubit.dart';
 import '../cubits/team_cubit.dart';
 import '../models/team_config.dart';
+import 'warmup_glyphs.g.dart';
 
 class UiWarmup extends StatefulWidget {
   const UiWarmup({required this.child, super.key});
@@ -42,6 +44,22 @@ class _UiWarmupState extends State<UiWarmup> {
 
   Future<void> _runWarmup() async {
     if (!mounted) return;
+    // Load the non-Regular Noto Sans SC weights (each ~10MB, lazy-loaded by
+    // GoogleFonts) now, after first paint but before the user can click a
+    // project tab — otherwise the first title/button/label using w500–w800
+    // pays a synchronous 10MB font parse on the UI thread (~100ms jank).
+    try {
+      await GoogleFonts.pendingFonts([
+        GoogleFonts.notoSansSc(fontWeight: FontWeight.w500),
+        GoogleFonts.notoSansSc(fontWeight: FontWeight.w600),
+        GoogleFonts.notoSansSc(fontWeight: FontWeight.w700),
+        GoogleFonts.notoSansSc(fontWeight: FontWeight.w800),
+      ]);
+    } on Object {
+      // Missing bundled weights: see tool/sync_bundled_google_fonts.dart.
+    }
+    if (!mounted) return;
+    _warmGlyphs();
     setState(() => _stage = 1);
     await WidgetsBinding.instance.endOfFrame;
     if (!mounted) return;
@@ -52,6 +70,40 @@ class _UiWarmupState extends State<UiWarmup> {
       _stage = 0;
       _done = true;
     });
+  }
+
+  /// Shapes every glyph the UI can render (from the l10n bundles) across the
+  /// bundled Noto Sans SC weights, so the engine builds its HarfBuzz faces and
+  /// glyph-layout cache here at startup instead of on the first project tab
+  /// click. No [maxLines] — the whole set must wrap and shape, not truncate.
+  void _warmGlyphs() {
+    // Use the theme's already-resolved styles, NOT copyWith(fontWeight) on one
+    // base: GoogleFonts registers each weight as a distinct fontFamily/face, so
+    // copyWith would only ever warm the regular face. Iterating the real text
+    // theme warms whatever family+weight the UI actually renders with.
+    final textTheme = Theme.of(context).textTheme;
+    final styles = <TextStyle?>[
+      textTheme.displaySmall,
+      textTheme.headlineMedium,
+      textTheme.headlineSmall,
+      textTheme.titleLarge,
+      textTheme.titleMedium,
+      textTheme.titleSmall,
+      textTheme.bodyLarge,
+      textTheme.bodyMedium,
+      textTheme.bodySmall,
+      textTheme.labelLarge,
+      textTheme.labelMedium,
+      textTheme.labelSmall,
+    ];
+    for (final style in styles) {
+      if (style == null) continue;
+      final painter = TextPainter(
+        text: TextSpan(text: warmupGlyphs, style: style),
+        textDirection: TextDirection.ltr,
+      )..layout(maxWidth: 1200);
+      painter.dispose();
+    }
   }
 
   @override
@@ -106,7 +158,6 @@ class _WarmupStage extends StatelessWidget {
     final team = context.select<TeamCubit, TeamConfig?>(
       (cubit) => cubit.state.selectedTeam,
     );
-    if (team == null) return const SizedBox.shrink();
 
     return SizedBox(
       width: 1200,
@@ -128,13 +179,14 @@ class _WarmupStage extends StatelessWidget {
 class _SettingsWarmup extends StatelessWidget {
   const _SettingsWarmup({required this.team});
 
-  final TeamConfig team;
+  final TeamConfig? team;
 
   @override
   Widget build(BuildContext context) {
     final executable = context
         .read<SessionPreferencesCubit>()
         .resolveExecutable();
+    final members = team?.members ?? const <TeamMemberConfig>[];
     return Material(
       child: Row(
         children: [
@@ -157,7 +209,7 @@ class _SettingsWarmup extends StatelessWidget {
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: ListView.builder(
-                itemCount: team.members.length.clamp(0, 4) + 1,
+                itemCount: members.length.clamp(0, 4) + 1,
                 itemBuilder: (context, index) {
                   if (index == 0) {
                     return Column(
@@ -191,7 +243,7 @@ class _SettingsWarmup extends StatelessWidget {
                       ],
                     );
                   }
-                  final member = team.members[index - 1];
+                  final member = members[index - 1];
                   return _WarmupLaunchRow(
                     index: index,
                     name: member.name,

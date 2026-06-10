@@ -89,6 +89,10 @@ class _AppShutdownScopeState extends State<_AppShutdownScope> {
 
 Future<void> _preloadBundledUiFonts() async {
   try {
+    // Only Regular is awaited before first paint (keeps launch fast). The other
+    // weights are ~10MB each and loaded lazily by GoogleFonts on first use,
+    // which is what janks the first project tab click — UiWarmup preloads them
+    // right after first frame, before the user can click.
     await GoogleFonts.pendingFonts([GoogleFonts.notoSansSc()]);
   } on Object {
     // Run `dart run tool/sync_bundled_google_fonts.dart` from client/, then rebuild.

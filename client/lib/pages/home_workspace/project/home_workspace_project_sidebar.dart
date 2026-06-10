@@ -88,22 +88,13 @@ class _HomeWorkspaceProjectSidebarState
             _DefaultCliDropdown(projectId: widget.project.projectId),
             const SizedBox(height: 12),
           ],
-          IntrinsicHeight(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Expanded(
-                  child: _SidebarActionTile(
-                    key: AppKeys.newChatSidebarTile,
-                    icon: Icons.edit_outlined,
-                    label: l10n.homeWorkspaceNewConversation,
-                    onTap: throttledAsync(
-                      'project_sidebar_new_chat',
-                      () => _startNewConversation(context),
-                    ),
-                  ),
-                ),
-              ],
+          _SidebarActionTile(
+            key: AppKeys.newChatSidebarTile,
+            icon: Icons.edit_outlined,
+            label: l10n.homeWorkspaceNewConversation,
+            onTap: throttledAsync(
+              'project_sidebar_new_chat',
+              () => _startNewConversation(context),
             ),
           ),
           const SizedBox(height: 14),
