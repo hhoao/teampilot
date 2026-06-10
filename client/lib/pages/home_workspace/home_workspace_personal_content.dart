@@ -32,6 +32,8 @@ class _HomeWorkspacePersonalContentState
   Set<String> _favoriteProjectIds = {};
   var _gridView = true;
   var _projectSort = HomeWorkspaceProjectSort.recentlyUpdated;
+  List<AppProject>? _lastAllProjects;
+  List<AppProject>? _personalProjects;
 
   @override
   void initState() {
@@ -89,9 +91,14 @@ class _HomeWorkspacePersonalContentState
     final l10n = context.l10n;
     final styles = AppTextStyles.of(context);
 
-    final projects = context.select<ChatCubit, List<AppProject>>(
-      (c) => c.state.projects.where((p) => p.teamId.isEmpty).toList(),
+    final allProjects = context.select<ChatCubit, List<AppProject>>(
+      (c) => c.state.projects,
     );
+    final projects = identical(allProjects, _lastAllProjects)
+        ? _personalProjects!
+        : (_personalProjects =
+              allProjects.where((p) => p.teamId.isEmpty).toList());
+    _lastAllProjects = allProjects;
     final sessions = context.select<ChatCubit, List<AppSession>>(
       (c) => c.state.sessions,
     );

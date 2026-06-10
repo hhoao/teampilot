@@ -51,6 +51,8 @@ class HomeWorkspaceProjectSidebar extends StatefulWidget {
 
 class _HomeWorkspaceProjectSidebarState
     extends State<HomeWorkspaceProjectSidebar> {
+  static const _emptySessions = <AppSession>[];
+
   bool get _isPersonal => widget.project.teamId.isEmpty;
 
   @override
@@ -68,10 +70,14 @@ class _HomeWorkspaceProjectSidebarState
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final l10n = context.l10n;
-    final sessions = sessionsForProject(
-      widget.project,
-      context.select<ChatCubit, List<AppSession>>((c) => c.state.sessions),
-    );
+    final sessions = context.select<ChatCubit, List<AppSession>>((c) {
+      final grouped = groupSessionsByProjectId(c.state.sessions);
+      final bucket = grouped[widget.project.projectId];
+      if (bucket == null || bucket.isEmpty) {
+        return sessionsForProject(widget.project, _emptySessions);
+      }
+      return sessionsForProject(widget.project, bucket);
+    });
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
@@ -138,6 +144,9 @@ class _HomeWorkspaceProjectSidebarState
                     itemBuilder: (context, index) {
                       final session = sessions[index];
                       return SidebarSessionTile(
+                        key: ValueKey(
+                          'project-sidebar-session-${session.sessionId}',
+                        ),
                         session: session,
                         tapThrottleKeyPrefix: 'project_sidebar_session',
                         onTap: () => unawaited(
