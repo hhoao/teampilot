@@ -65,6 +65,9 @@ class _HomeWorkspaceContentState extends State<HomeWorkspaceContent> {
   late int _tabIndex = _initialTabIndex();
   var _gridView = true;
   var _projectSort = HomeWorkspaceProjectSort.recentlyUpdated;
+  List<AppProject>? _lastAllProjects;
+  String? _lastTeamId;
+  List<AppProject>? _teamProjects;
 
   @override
   void initState() {
@@ -211,6 +214,12 @@ class _HomeWorkspaceContentState extends State<HomeWorkspaceContent> {
     TeamConfig team,
     List<AppProject> projects,
   ) {
-    return projects.where((p) => p.teamId == team.id).toList();
+    if (identical(projects, _lastAllProjects) && team.id == _lastTeamId) {
+      return _teamProjects!;
+    }
+    _lastAllProjects = projects;
+    _lastTeamId = team.id;
+    _teamProjects = projects.where((p) => p.teamId == team.id).toList();
+    return _teamProjects!;
   }
 }

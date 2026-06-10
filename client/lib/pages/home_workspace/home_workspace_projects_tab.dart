@@ -10,6 +10,7 @@ import '../../models/app_project.dart';
 import '../../models/app_session.dart';
 import '../../repositories/session_repository.dart';
 import '../../theme/app_text_styles.dart';
+import '../../utils/home_workspace_project_display.dart';
 import '../../utils/project_display_name.dart';
 import '../../widgets/menu/sidebar_action_menu.dart';
 import 'home_workspace_new_project_dialog.dart';
@@ -336,7 +337,7 @@ class HomeWorkspaceProjectsPrimaryAction extends StatelessWidget {
   }
 }
 
-class HomeWorkspaceProjectCollection extends StatelessWidget {
+class HomeWorkspaceProjectCollection extends StatefulWidget {
   const HomeWorkspaceProjectCollection({super.key, 
     required this.projects,
     required this.sessions,
@@ -356,32 +357,53 @@ class HomeWorkspaceProjectCollection extends StatelessWidget {
   final bool preserveOrder;
 
   @override
+  State<HomeWorkspaceProjectCollection> createState() =>
+      _HomeWorkspaceProjectCollectionState();
+}
+
+class _HomeWorkspaceProjectCollectionState
+    extends State<HomeWorkspaceProjectCollection> {
+  HomeWorkspaceProjectDisplay? _cached;
+  List<AppProject>? _lastProjects;
+  List<AppSession>? _lastSessions;
+  HomeWorkspaceProjectSort? _lastSort;
+  Set<String>? _lastFavorites;
+
+  @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final sessionCounts = homeWorkspaceSessionCountByProjectId(sessions);
-    final sorted = sortHomeWorkspaceProjects(
-      projects: projects,
-      sort: projectSort,
-      favoriteProjectIds: favoriteProjectIds,
-      sessionCountByProjectId: sessionCounts,
+    final display = computeHomeWorkspaceProjectDisplay(
+      projects: widget.projects,
+      sessions: widget.sessions,
+      sort: widget.projectSort,
+      favoriteProjectIds: widget.favoriteProjectIds,
       displayName: (project) => project.localizedName(l10n),
-      preserveOrder: preserveOrder,
+      cached: _cached,
+      lastProjects: _lastProjects,
+      lastSessions: _lastSessions,
+      lastSort: _lastSort,
+      lastFavorites: _lastFavorites,
     );
+    _cached = display;
+    _lastProjects = widget.projects;
+    _lastSessions = widget.sessions;
+    _lastSort = widget.projectSort;
+    _lastFavorites = widget.favoriteProjectIds;
 
-    if (gridView) {
+    if (widget.gridView) {
       return HomeWorkspaceProjectGrid(
-        projects: sorted,
-        sessionCounts: sessionCounts,
-        favoriteProjectIds: favoriteProjectIds,
-        onToggleProjectFavorite: onToggleProjectFavorite,
+        projects: display.sortedProjects,
+        sessionCounts: display.sessionCounts,
+        favoriteProjectIds: widget.favoriteProjectIds,
+        onToggleProjectFavorite: widget.onToggleProjectFavorite,
       );
     }
 
     return HomeWorkspaceProjectList(
-      projects: sorted,
-      sessionCounts: sessionCounts,
-      favoriteProjectIds: favoriteProjectIds,
-      onToggleProjectFavorite: onToggleProjectFavorite,
+      projects: display.sortedProjects,
+      sessionCounts: display.sessionCounts,
+      favoriteProjectIds: widget.favoriteProjectIds,
+      onToggleProjectFavorite: widget.onToggleProjectFavorite,
     );
   }
 }
@@ -413,6 +435,7 @@ class HomeWorkspaceProjectGrid extends StatelessWidget {
         final project = projects[index];
         final count = sessionCounts[project.projectId] ?? 0;
         return HomeWorkspaceProjectCard(
+          key: ValueKey('project-card-${project.projectId}'),
           project: project,
           sessionCount: count,
           favorited: favoriteProjectIds.contains(project.projectId),
@@ -446,6 +469,7 @@ class HomeWorkspaceProjectList extends StatelessWidget {
         final project = projects[index];
         final count = sessionCounts[project.projectId] ?? 0;
         return HomeWorkspaceProjectListTile(
+          key: ValueKey('project-list-tile-${project.projectId}'),
           project: project,
           sessionCount: count,
           favorited: favoriteProjectIds.contains(project.projectId),
