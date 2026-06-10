@@ -144,6 +144,9 @@ class ChatCubit extends Cubit<ChatState>
     emit(state.copyWith(workingSessionIds: ids));
   }
 
+  @visibleForTesting
+  void updateWorkingSessionsForTest(Set<String> ids) => _updateWorkingSessions(ids);
+
   void _pushPresenceTarget() {
     final cubit = _presenceCubit;
     if (cubit == null) return;
