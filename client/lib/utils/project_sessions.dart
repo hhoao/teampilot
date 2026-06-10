@@ -8,14 +8,18 @@ List<AppSession> sessionsForProject(
 ) {
   final byId = {for (final s in all) s.sessionId: s};
   final ordered = <AppSession>[];
+  final seen = <String>{};
   for (final id in project.sessionIds) {
     final s = byId[id];
-    if (s != null) ordered.add(s);
+    if (s == null) continue;
+    ordered.add(s);
+    seen.add(id);
   }
   for (final s in all) {
     if (s.projectId != project.projectId) continue;
-    if (ordered.any((x) => x.sessionId == s.sessionId)) continue;
+    if (seen.contains(s.sessionId)) continue;
     ordered.add(s);
+    seen.add(s.sessionId);
   }
   return ordered;
 }

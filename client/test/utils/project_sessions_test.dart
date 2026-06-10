@@ -38,6 +38,24 @@ void main() {
     expect(ordered.map((s) => s.sessionId).toList(), ['s2', 's1']);
   });
 
+  test('sessionsForProject appends orphan sessions without duplicates', () {
+    final project = AppProject(
+      projectId: 'p1',
+      primaryPath: '/tmp',
+      sessionIds: const ['s1'],
+      createdAt: 1,
+    );
+    final all = [
+      session(id: 's1', projectId: 'p1', display: 'Listed'),
+      session(id: 's2', projectId: 'p1', display: 'Orphan'),
+      session(id: 's3', projectId: 'p2', display: 'Other'),
+    ];
+
+    final ordered = sessionsForProject(project, all);
+
+    expect(ordered.map((s) => s.sessionId).toList(), ['s1', 's2']);
+  });
+
   test('filterSessionsByQuery matches display title case-insensitively', () {
     final sessions = [
       session(id: 's1', projectId: 'p1', display: 'Fix Login Bug'),
