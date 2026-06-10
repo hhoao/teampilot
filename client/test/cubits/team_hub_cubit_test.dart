@@ -79,9 +79,12 @@ void main() {
     expect(cubit.visibleTeams.map((t) => t.name), ['Beta', 'Gamma', 'Alpha']);
   });
 
-  test('favoritesTeams reflects favorite keys', () async {
+  test('favoritesOnly filter narrows to favorite keys', () async {
     await cubit.load();
-    expect(cubit.favoriteTeams.map((t) => t.name), ['Alpha']);
+    cubit.setFavoritesOnly(true);
+    expect(cubit.visibleTeams.map((t) => t.name), ['Alpha']);
+    cubit.setFavoritesOnly(false);
+    expect(cubit.visibleTeams, hasLength(3));
   });
 
   test('toggleFavorite updates state', () async {

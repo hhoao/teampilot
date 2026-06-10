@@ -457,30 +457,41 @@ class _ModeCard extends StatefulWidget {
 class _ModeCardState extends State<_ModeCard> {
   bool _hovered = false;
 
+  void _setHovered(bool value) {
+    if (_hovered == value) return;
+    setState(() => _hovered = value);
+  }
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final styles = AppTextStyles.of(context);
     final selected = widget.selected;
+    final restingBg = cs.surfaceContainerHighest.withValues(alpha: 0.35);
+    final hoverTint = cs.onSurface.withValues(alpha: 0.06);
 
     final Color borderColor = selected
         ? cs.primary
-        : cs.outlineVariant.withValues(alpha: _hovered ? 0.9 : 0.6);
+        : _hovered
+        ? cs.primary.withValues(alpha: 0.45)
+        : cs.outlineVariant.withValues(alpha: 0.6);
     final Color background = selected
         ? cs.primary.withValues(alpha: 0.07)
         : _hovered
-        ? cs.onSurface.withValues(alpha: 0.03)
-        : cs.surfaceContainerHighest.withValues(alpha: 0.35);
+        ? Color.alphaBlend(hoverTint, restingBg)
+        : restingBg;
 
     return MouseRegion(
       cursor: SystemMouseCursors.click,
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
+      hitTestBehavior: HitTestBehavior.opaque,
+      onEnter: (_) => _setHovered(true),
+      onExit: (_) => _setHovered(false),
       child: GestureDetector(
         onTap: widget.onTap,
         behavior: HitTestBehavior.opaque,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 150),
+          width: double.infinity,
           padding: const EdgeInsets.fromLTRB(18, 18, 18, 20),
           decoration: BoxDecoration(
             color: background,

@@ -109,40 +109,37 @@ class MembersPanel extends StatelessWidget {
                   child: Material(
                     color: selected ? cs.secondaryContainer : cs.workspaceInset,
                     borderRadius: BorderRadius.circular(8),
-                    child: Tooltip(
-                      message: '$statusLabel · ${member.name}',
-                      child: ListTile(
-                        dense: true,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        leading: memberProvider != null
-                            ? ProviderBrandIcon.fromConfig(
-                                memberProvider,
-                                size: 28,
-                                borderRadius: 7,
-                              )
-                            : CliBrandIcon(
-                                cli: memberCli,
-                                size: 28,
-                                borderRadius: 7,
-                              ),
-                        title: MemberTitleRow(
-                          member: member,
-                          fallbackName: l10n.memberName,
-                          style: Theme.of(context).textTheme.bodyMedium,
-                          textColor: titleColor,
-                          compactBadge: true,
-                        ),
-                        textColor: titleColor,
-                        iconColor: titleColor,
-                        subtitle: Text(
-                          subtitle,
-                          style: TextStyle(color: subtitleColor),
-                        ),
-                        trailing: MemberPresenceIndicator(presence: presence),
-                        onTap: () => onSelected(member.id),
+                    child: ListTile(
+                      dense: true,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
                       ),
+                      leading: memberProvider != null
+                          ? ProviderBrandIcon.fromConfig(
+                              memberProvider,
+                              size: 28,
+                              borderRadius: 7,
+                            )
+                          : CliBrandIcon(
+                              cli: memberCli,
+                              size: 28,
+                              borderRadius: 7,
+                            ),
+                      title: MemberTitleRow(
+                        member: member,
+                        fallbackName: l10n.memberName,
+                        style: Theme.of(context).textTheme.bodyMedium,
+                        textColor: titleColor,
+                        compactBadge: true,
+                      ),
+                      textColor: titleColor,
+                      iconColor: titleColor,
+                      subtitle: Text(
+                        subtitle,
+                        style: TextStyle(color: subtitleColor),
+                      ),
+                      trailing: MemberPresenceIndicator(presence: presence),
+                      onTap: () => onSelected(member.id),
                     ),
                   ),
                 );

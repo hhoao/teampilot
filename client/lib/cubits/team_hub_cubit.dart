@@ -24,6 +24,7 @@ class TeamHubState extends Equatable {
     this.favorites = const {},
     this.installedDepIds = const {},
     this.selectedCategory,
+    this.favoritesOnly = false,
     this.search = '',
     this.sort = TeamSort.name,
     this.status = TeamHubLoadStatus.idle,
@@ -39,6 +40,9 @@ class TeamHubState extends Equatable {
   /// Local skill/plugin/MCP ids already installed (for detail-view badges).
   final Set<String> installedDepIds;
   final String? selectedCategory;
+
+  /// When true, [TeamHubCubit.visibleTeams] keeps only favorited teams.
+  final bool favoritesOnly;
   final String search;
   final TeamSort sort;
   final TeamHubLoadStatus status;
@@ -64,6 +68,7 @@ class TeamHubState extends Equatable {
     Set<String>? installedDepIds,
     String? selectedCategory,
     bool clearCategory = false,
+    bool? favoritesOnly,
     String? search,
     TeamSort? sort,
     TeamHubLoadStatus? status,
@@ -79,6 +84,7 @@ class TeamHubState extends Equatable {
         installedDepIds: installedDepIds ?? this.installedDepIds,
         selectedCategory:
             clearCategory ? null : (selectedCategory ?? this.selectedCategory),
+        favoritesOnly: favoritesOnly ?? this.favoritesOnly,
         search: search ?? this.search,
         sort: sort ?? this.sort,
         status: status ?? this.status,
@@ -94,6 +100,7 @@ class TeamHubState extends Equatable {
         favorites,
         installedDepIds,
         selectedCategory,
+        favoritesOnly,
         search,
         sort,
         status,
@@ -159,6 +166,9 @@ class TeamHubCubit extends Cubit<TeamHubState> {
       ? emit(state.copyWith(clearCategory: true))
       : emit(state.copyWith(selectedCategory: category));
 
+  void setFavoritesOnly(bool value) =>
+      emit(state.copyWith(favoritesOnly: value));
+
   void setSort(TeamSort sort) => emit(state.copyWith(sort: sort));
 
   Future<void> toggleFavorite(String key) async {
@@ -188,8 +198,7 @@ class TeamHubCubit extends Cubit<TeamHubState> {
 
   void clearError() => emit(state.copyWith(clearError: true));
 
-  /// Applies the active search query + sort to [input]. Category filtering is
-  /// the caller's choice (applied for Discovery, skipped for Favorites).
+  /// Applies the active search query + sort to [input].
   List<DiscoverableTeam> _searchAndSort(Iterable<DiscoverableTeam> input) {
     final q = state.search.trim().toLowerCase();
     final list = input.where((t) {
@@ -208,15 +217,15 @@ class TeamHubCubit extends Cubit<TeamHubState> {
     return list;
   }
 
-  /// Teams visible in the Discovery view (category + search + sort applied).
-  List<DiscoverableTeam> get visibleTeams => _searchAndSort(
-        state.selectedCategory == null
-            ? state.allTeams
-            : state.allTeams.where((t) => t.category == state.selectedCategory),
-      );
-
-  /// Favorited teams (search + sort applied; category ignored).
-  List<DiscoverableTeam> get favoriteTeams => _searchAndSort(
-        state.allTeams.where((t) => state.favorites.contains(t.key)),
-      );
+  /// Teams visible on the hub page: favorites + category + search + sort, all
+  /// applied as inline filters on a single page (no sub-navigation).
+  List<DiscoverableTeam> get visibleTeams {
+    Iterable<DiscoverableTeam> base = state.selectedCategory == null
+        ? state.allTeams
+        : state.allTeams.where((t) => t.category == state.selectedCategory);
+    if (state.favoritesOnly) {
+      base = base.where((t) => state.favorites.contains(t.key));
+    }
+    return _searchAndSort(base);
+  }
 }

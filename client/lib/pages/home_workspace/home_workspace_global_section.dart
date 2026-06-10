@@ -6,7 +6,6 @@ import '../plugins/plugin_management_page.dart';
 import '../skills/skill_management_page.dart';
 import '../llm_config/llm_config_workspace.dart';
 import '../team_hub/team_hub_page.dart';
-import '../team_hub/team_hub_section.dart';
 
 /// Which global management view is shown in the workspace-home right pane.
 enum HomeWorkspaceGlobalView {
@@ -60,7 +59,6 @@ class _HomeWorkspaceGlobalSectionState
   PluginSection _plugin = PluginSection.installed;
   McpSection _mcp = McpSection.installed;
   ExtensionSection _extension = ExtensionSection.installed;
-  TeamHubSection _teamHub = TeamHubSection.discovery;
 
   @override
   Widget build(BuildContext context) {
@@ -81,10 +79,7 @@ class _HomeWorkspaceGlobalSectionState
           section: _extension,
           onSelectSection: (s) => setState(() => _extension = s),
         ),
-      HomeWorkspaceGlobalView.teamHub => TeamHubPage(
-          section: _teamHub,
-          onSelectSection: (s) => setState(() => _teamHub = s),
-        ),
+      HomeWorkspaceGlobalView.teamHub => const TeamHubPage(),
       HomeWorkspaceGlobalView.providers => const LlmConfigWorkspace(),
     };
   }

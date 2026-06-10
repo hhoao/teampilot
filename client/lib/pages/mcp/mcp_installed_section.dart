@@ -98,7 +98,6 @@ class _McpInstalledSectionState extends State<McpInstalledSection> {
 
     return McpWorkspaceCard(
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           McpCardHeader(
             title: l10n.mcpInstalledCount(servers.length),
@@ -106,7 +105,10 @@ class _McpInstalledSectionState extends State<McpInstalledSection> {
               children: [
                 OutlinedButton.icon(
                   onPressed: toolbarBusy ? null : widget.onImport,
-                  icon: const Icon(Icons.download_outlined, size: AppIconSizes.md),
+                  icon: const Icon(
+                    Icons.download_outlined,
+                    size: AppIconSizes.md,
+                  ),
                   label: Text(l10n.mcpImportExisting),
                 ),
                 OutlinedButton.icon(
@@ -128,9 +130,7 @@ class _McpInstalledSectionState extends State<McpInstalledSection> {
               padding: const EdgeInsets.symmetric(vertical: 16),
               child: Text(
                 state.errorMessage ?? 'Error',
-                style: TextStyle(
-                  color: Theme.of(context).colorScheme.error,
-                ),
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
               ),
             )
           else if (servers.isEmpty)
@@ -157,8 +157,8 @@ class _McpInstalledSectionState extends State<McpInstalledSection> {
                         cubit.toggleEnabled(server, enabled),
                     oauthAuthenticated: mcpServerShowsOAuthConnect(server)
                         ? (_oauthStatus == null
-                            ? null
-                            : (_oauthStatus![server.id] ?? false))
+                              ? null
+                              : (_oauthStatus![server.id] ?? false))
                         : null,
                     onOAuthConnect: mcpServerShowsOAuthConnect(server)
                         ? () => _connectOAuth(server)

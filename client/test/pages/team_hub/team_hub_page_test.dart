@@ -6,7 +6,6 @@ import 'package:teampilot/cubits/team_hub_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/discoverable_team.dart';
 import 'package:teampilot/pages/team_hub/team_hub_page.dart';
-import 'package:teampilot/pages/team_hub/team_hub_section.dart';
 import 'package:teampilot/services/team/team_clone_service.dart';
 import 'package:teampilot/services/team_hub/team_hub_source.dart';
 
@@ -56,7 +55,7 @@ void main() {
           child: BlocProvider.value(
             value: cubit,
             child: const Scaffold(
-              body: TeamHubPage(section: TeamHubSection.discovery),
+              body: TeamHubPage(),
             ),
           ),
         ),
