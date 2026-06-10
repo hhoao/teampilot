@@ -89,6 +89,26 @@ You coordinate with teammates ONLY through the teammate-bus MCP tools:
 Either way, call `wait_for_message()` again afterwards. You never poll or claim manually — the bus hands you the next task or message the instant one is available.
 ''';
 
+  /// Mixed-mode addendum for **push-delivery** CLIs (e.g. cursor) whose MCP tool
+  /// calls can't block long (~60s agent cap, not configurable). They never call
+  /// `wait_for_message`; the bus injects a doorbell notice into their terminal
+  /// when mail arrives, and they pull it with the non-blocking `read_messages`.
+  static const mixedTeammatePushRoleAddendum = '''
+# Multi-agent teammate (cross-CLI bus, push delivery)
+You coordinate with teammates through the teammate-bus MCP tools:
+- `list_teammates()` — roster + live unread counts
+- `read_messages(mark_read: true)` — read AND consume your unread mail (returns immediately)
+- `send_message(to, content)` — message a teammate by member id (or `"*"` broadcast)
+- `update_task(task_id, status, result?)` — report a handed task as `done` / `failed`
+
+## Your idle model — DO NOT call wait_for_message
+Your CLI cannot block inside a tool call, so **never call `wait_for_message`** — it would time out. Instead:
+1. Do the work in front of you. When you have nothing in hand, **just stop** — end your turn normally.
+2. The bus watches your mailbox. When teammate mail or `FROM user (operator):` input arrives, it **injects a notice into your terminal** telling you to read.
+3. On that notice, call `read_messages(mark_read: true)`, handle the batch (do the task, reply via `send_message`, report via `update_task`), then stop again.
+You are event-driven: spend no turns polling. Stopping when idle is correct and expected — the bus wakes you.
+''';
+
   /// When [TeamConfig.forceTeamLeadDelegateMode] is on (also enforced via PreToolUse hook).
   static const teamLeadDelegateModeAddendum = '''
 ## Delegate-only mode (enforced)
@@ -141,6 +161,7 @@ This tab is **plan-and-assign only**: Bash, PowerShell, Edit, Write, NotebookEdi
     required TeamMemberConfig member,
     bool forceTeamLeadDelegateMode = false,
     bool mixed = false,
+    bool pushDelivery = false,
   }) {
     final isLead = TeamMemberNaming.isTeamLead(member);
     final body = StringBuffer();
@@ -156,7 +177,12 @@ This tab is **plan-and-assign only**: Bash, PowerShell, Edit, Write, NotebookEdi
         body.writeln();
       }
     }
-    if (isLead && mixed) {
+    if (mixed && pushDelivery) {
+      // push-投递 CLI（cursor）即使是 lead 也不能阻塞在 wait_for_message → 一律
+      // 用事件驱动的 push 变体（门铃 + read_messages）。
+      body.writeln(mixedTeammatePushRoleAddendum.trim());
+      body.writeln();
+    } else if (isLead && mixed) {
       body.writeln(mixedTeamLeadRoleAddendum.trim());
       body.writeln();
     } else if (mixed) {

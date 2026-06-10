@@ -115,6 +115,13 @@ class TabTeamBusCoordinator implements MemberMaterializer {
       handler: TeammateBusMcpHandler(
         bus: bus,
         forceWaitBeforeStop: team.forceWaitBeforeStop,
+        // 成员级解析：cursor 等 push-投递 CLI → false（正常停 + 门铃投递）。
+        forceWaitForMember: (memberId) =>
+            team.members
+                .where((m) => m.id == memberId)
+                .map((m) => m.effectiveForceWaitBeforeStop(team))
+                .firstOrNull ??
+            team.forceWaitBeforeStop,
       ),
     );
     await server.start();

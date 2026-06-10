@@ -48,10 +48,13 @@ class TeamBus implements CoordinationView {
   /// 新消息 id(MCP handler 复用,统一 id 源)。
   String newMessageId() => _env.ids();
 
-  /// 门铃：信箱有积压时提示 pull。
+  /// 门铃：信箱有积压时提示 pull。只对 idle-at-prompt 成员注入(parked 成员直收，
+  /// 永不响门铃)，故用**非阻塞**的 read_messages —— cursor 等 push 成员被唤醒后
+  /// 不能去调会超时的 wait_for_message；read_messages 秒回并抽干信箱。
   static const String doorbellNotice =
       '[teammate-bus] You have unread teammate messages — call '
-      'wait_for_message to read them. (From the bus, not your operator.)';
+      'read_messages(mark_read: true) to read them now, then handle them. '
+      '(From the bus, not your operator.)';
 
   /// [TeamMessage.from] when the human operator submits while the member waits.
   static const String userSenderId = 'user';

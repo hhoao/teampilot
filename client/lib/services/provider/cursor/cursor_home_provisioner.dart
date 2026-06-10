@@ -111,6 +111,8 @@ final class CursorHomeProvisioner {
       member: member,
       forceTeamLeadDelegateMode: forceTeamLeadDelegateMode,
       mixed: true,
+      // cursor 的 MCP 工具调用 ~60s 硬限 → 不能阻塞在 wait_for_message；走门铃 push。
+      pushDelivery: true,
     ).trim();
 
     await _fs.atomicWrite(

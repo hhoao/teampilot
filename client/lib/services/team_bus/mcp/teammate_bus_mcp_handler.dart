@@ -33,12 +33,22 @@ class TeammateBusMcpHandler {
     required TeamBus bus,
     String Function()? idGenerator,
     this.forceWaitBeforeStop = true,
+    bool Function(String memberId)? forceWaitForMember,
   }) : _bus = bus,
+       _forceWaitForMember = forceWaitForMember,
        idGenerator = idGenerator ?? bus.newMessageId;
 
   /// 团队配置:成员 turn 结束时是否强制推回 `wait_for_message`(见
   /// [idleStopDecision])。false 时允许成员正常停止("休息")。
   final bool forceWaitBeforeStop;
+
+  /// 成员级 forceWaitBeforeStop 解析（null=全员用 [forceWaitBeforeStop]）。cursor 等
+  /// push-投递 CLI 解析为 false:正常停到 idle-at-prompt,改由门铃(stdin 注入 +
+  /// read_messages)投递,因其 MCP 工具调用有 ~60s 硬限、无法阻塞在 wait_for_message。
+  final bool Function(String memberId)? _forceWaitForMember;
+
+  bool _resolveForceWait(String memberId) =>
+      _forceWaitForMember?.call(memberId) ?? forceWaitBeforeStop;
 
   static const protocolVersion = '2025-06-18';
   static const serverName = 'teampilot-teammate-bus';
@@ -75,7 +85,7 @@ class TeammateBusMcpHandler {
   /// 团队关掉 [forceWaitBeforeStop] 时直接回 `{}` 放行：成员可正常停止("休息")，
   /// 不再被推回 `wait_for_message`。空闲上报(`/idle` → notifyIdle)不受影响。
   String idleStopDecision(String memberId) {
-    if (!forceWaitBeforeStop) {
+    if (!_resolveForceWait(memberId)) {
       _idleStreak[memberId] = 0;
       return '{}';
     }
