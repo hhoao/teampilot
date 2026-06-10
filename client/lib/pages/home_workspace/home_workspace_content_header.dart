@@ -13,9 +13,13 @@ class HomeWorkspaceTeamHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final styles = AppTextStyles.of(context);
+    final l10n = context.l10n;
     final titleStyle = Theme.of(
       context,
     ).textTheme.titleLarge?.copyWith(color: cs.onSurface);
+    final isMixed = team.teamMode == TeamMode.mixed;
+    final modeLabel = isMixed ? l10n.teamModeMixedTitle : l10n.teamModeNativeTitle;
+    final badgeColor = isMixed ? cs.tertiary : cs.primary;
     return Row(
       children: [
         Text(team.name, style: titleStyle),
@@ -23,13 +27,13 @@ class HomeWorkspaceTeamHeader extends StatelessWidget {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
           decoration: BoxDecoration(
-            color: cs.tertiary.withValues(alpha: 0.16),
+            color: badgeColor.withValues(alpha: 0.16),
             borderRadius: BorderRadius.circular(6),
           ),
           child: Text(
-            context.l10n.homeWorkspaceOwner,
+            modeLabel,
             style: styles.caption.copyWith(
-              color: cs.tertiary,
+              color: badgeColor,
               fontWeight: FontWeight.w600,
             ),
           ),

@@ -198,6 +198,7 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
     AppLocalizations l10n,
   ) {
     final repo = context.read<SessionRepository>();
+    final chatCubit = context.read<ChatCubit>();
     final controller = TextEditingController(
       text: session.resolveDisplayTitle(l10n.defaultNewChatSessionTitle),
     );
@@ -218,7 +219,7 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
               onSubmitted: (value) {
                 if (value.trim().isNotEmpty) {
                   unawaited(
-                    context.read<ChatCubit>().renameSession(
+                    chatCubit.renameSession(
                       repo,
                       session.sessionId,
                       value.trim(),
@@ -240,7 +241,7 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
                     () async {
                       final value = controller.text.trim();
                       if (value.isNotEmpty) {
-                        await context.read<ChatCubit>().renameSession(
+                        await chatCubit.renameSession(
                           repo,
                           session.sessionId,
                           value,
@@ -265,6 +266,7 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
     AppLocalizations l10n,
   ) {
     final repo = context.read<SessionRepository>();
+    final chatCubit = context.read<ChatCubit>();
     final name = session.resolveDisplayTitle(l10n.defaultNewChatSessionTitle);
     showDialog<void>(
       context: context,
@@ -290,7 +292,7 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
                   onPressed: throttledAsync(
                     'sidebar_delete_session',
                     () async {
-                      await context.read<ChatCubit>().deleteSession(
+                      await chatCubit.deleteSession(
                         repo,
                         session.sessionId,
                       );
