@@ -20,17 +20,20 @@ HomeWorkspaceProjectDisplay computeHomeWorkspaceProjectDisplay({
   required HomeWorkspaceProjectSort sort,
   required Set<String> favoriteProjectIds,
   required String Function(AppProject project) displayName,
+  bool preserveOrder = false,
   HomeWorkspaceProjectDisplay? cached,
   List<AppProject>? lastProjects,
   List<AppSession>? lastSessions,
   HomeWorkspaceProjectSort? lastSort,
   Set<String>? lastFavorites,
+  bool? lastPreserveOrder,
 }) {
   if (cached != null &&
       identical(projects, lastProjects) &&
       identical(sessions, lastSessions) &&
       sort == lastSort &&
-      identical(favoriteProjectIds, lastFavorites)) {
+      identical(favoriteProjectIds, lastFavorites) &&
+      preserveOrder == lastPreserveOrder) {
     return cached;
   }
 
@@ -41,6 +44,7 @@ HomeWorkspaceProjectDisplay computeHomeWorkspaceProjectDisplay({
     favoriteProjectIds: favoriteProjectIds,
     sessionCountByProjectId: sessionCounts,
     displayName: displayName,
+    preserveOrder: preserveOrder,
   );
   return HomeWorkspaceProjectDisplay(
     sortedProjects: sortedProjects,

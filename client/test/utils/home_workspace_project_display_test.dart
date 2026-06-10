@@ -43,6 +43,7 @@ void main() {
       lastSessions: sessions,
       lastSort: sort,
       lastFavorites: favorites,
+      lastPreserveOrder: false,
     );
 
     expect(identical(first.sortedProjects, second.sortedProjects), isTrue);
@@ -72,5 +73,24 @@ void main() {
 
     expect(identical(before.sessionCounts, after.sessionCounts), isFalse);
     expect(after.sessionCounts['a'], 1);
+  });
+
+  test('computeHomeWorkspaceProjectDisplay preserves input order when requested', () {
+    final projects = [
+      project('b', updatedAt: 1),
+      project('a', updatedAt: 99),
+    ];
+    const sort = HomeWorkspaceProjectSort.recentlyUpdated;
+
+    final display = computeHomeWorkspaceProjectDisplay(
+      projects: projects,
+      sessions: const [],
+      sort: sort,
+      favoriteProjectIds: const {},
+      displayName: (p) => p.projectId,
+      preserveOrder: true,
+    );
+
+    expect(display.sortedProjects.map((p) => p.projectId).toList(), ['b', 'a']);
   });
 }

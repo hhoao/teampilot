@@ -368,27 +368,32 @@ class _HomeWorkspaceProjectCollectionState
   List<AppSession>? _lastSessions;
   HomeWorkspaceProjectSort? _lastSort;
   Set<String>? _lastFavorites;
+  bool? _lastPreserveOrder;
 
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
+    // Cache fields updated in build; inputs are widget props only.
     final display = computeHomeWorkspaceProjectDisplay(
       projects: widget.projects,
       sessions: widget.sessions,
       sort: widget.projectSort,
       favoriteProjectIds: widget.favoriteProjectIds,
       displayName: (project) => project.localizedName(l10n),
+      preserveOrder: widget.preserveOrder,
       cached: _cached,
       lastProjects: _lastProjects,
       lastSessions: _lastSessions,
       lastSort: _lastSort,
       lastFavorites: _lastFavorites,
+      lastPreserveOrder: _lastPreserveOrder,
     );
     _cached = display;
     _lastProjects = widget.projects;
     _lastSessions = widget.sessions;
     _lastSort = widget.projectSort;
     _lastFavorites = widget.favoriteProjectIds;
+    _lastPreserveOrder = widget.preserveOrder;
 
     if (widget.gridView) {
       return HomeWorkspaceProjectGrid(
