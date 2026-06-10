@@ -44,6 +44,7 @@ class HomeWorkspaceProjectPage extends StatefulWidget {
 
 class _HomeWorkspaceProjectPageState extends State<HomeWorkspaceProjectPage> {
   late HomeWorkspaceProjectSection _section = _sectionFromRoute();
+  var _visitedManage = false;
 
   ProjectConfigSection get _configSection =>
       widget.configSection ?? ProjectConfigSection.settings;
@@ -51,6 +52,9 @@ class _HomeWorkspaceProjectPageState extends State<HomeWorkspaceProjectPage> {
   @override
   void initState() {
     super.initState();
+    if (widget.view == 'manage') {
+      _visitedManage = true;
+    }
     context.read<ChatCubit>().setActiveProject(widget.projectId);
     WidgetsBinding.instance.addPostFrameCallback((_) => _syncProjectContext());
   }
@@ -104,7 +108,12 @@ class _HomeWorkspaceProjectPageState extends State<HomeWorkspaceProjectPage> {
     HomeWorkspaceProjectSection section,
     AppProject project,
   ) {
-    setState(() => _section = section);
+    setState(() {
+      _section = section;
+      if (section == HomeWorkspaceProjectSection.manage) {
+        _visitedManage = true;
+      }
+    });
     if (project.teamId.isNotEmpty) return;
 
     final base = '/home-v2/project/${project.projectId}';
@@ -171,19 +180,24 @@ class _HomeWorkspaceProjectPageState extends State<HomeWorkspaceProjectPage> {
   }
 
   Widget _buildPersonalCardBody(AppProject project) {
-    if (_section == HomeWorkspaceProjectSection.manage) {
-      return HomeWorkspaceProjectConfigWorkspace(
-        project: project,
-        section: _configSection,
-      );
-    }
-    return _buildPersonalConversations(project);
-  }
-
-  Widget _buildPersonalConversations(AppProject project) {
-    return HomeWorkspaceProjectSplitPane(
-      project: project,
-      isPersonalProject: true,
+    final showManage = _section == HomeWorkspaceProjectSection.manage;
+    return IndexedStack(
+      index: showManage ? 1 : 0,
+      sizing: StackFit.expand,
+      children: [
+        HomeWorkspaceProjectSplitPane(
+          key: ValueKey('personal-conversations-${project.projectId}'),
+          project: project,
+          isPersonalProject: true,
+        ),
+        if (_visitedManage)
+          HomeWorkspaceProjectConfigWorkspace(
+            project: project,
+            section: _configSection,
+          )
+        else
+          const SizedBox.shrink(),
+      ],
     );
   }
 
