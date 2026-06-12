@@ -35,15 +35,22 @@ class UiZoom extends StatelessWidget {
     final inverse = 1 / scale;
     final scaledSize = Size(size.width * inverse, size.height * inverse);
 
-    return Transform.scale(
-      scale: scale,
+    // OverflowBox MUST wrap the Transform (not the other way around): it keeps
+    // its own size equal to the real viewport, so it accepts pointer events
+    // across the whole window, then delegates into the Transform which maps them
+    // onto the enlarged child. The inverse ordering creates a dead click-zone on
+    // the right/bottom: a Transform maps an edge tap to a coordinate beyond the
+    // viewport, and a viewport-sized box then rejects it in RenderBox.hitTest's
+    // `size.contains` check before the child is ever reached.
+    return OverflowBox(
       alignment: Alignment.topLeft,
-      child: OverflowBox(
+      minWidth: scaledSize.width,
+      maxWidth: scaledSize.width,
+      minHeight: scaledSize.height,
+      maxHeight: scaledSize.height,
+      child: Transform.scale(
+        scale: scale,
         alignment: Alignment.topLeft,
-        minWidth: scaledSize.width,
-        maxWidth: scaledSize.width,
-        minHeight: scaledSize.height,
-        maxHeight: scaledSize.height,
         child: MediaQuery(
           data: mq.copyWith(
             size: scaledSize,
@@ -51,7 +58,7 @@ class UiZoom extends StatelessWidget {
             viewPadding: mq.viewPadding * inverse,
             viewInsets: mq.viewInsets * inverse,
           ),
-          child: SizedBox.fromSize(size: scaledSize, child: child),
+          child: child,
         ),
       ),
     );
