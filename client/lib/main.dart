@@ -295,6 +295,17 @@ class TeamPilotApp extends StatelessWidget {
           supportedLocales: AppLocalizations.supportedLocales,
           locale: savedLocale.isNotEmpty ? Locale(savedLocale) : null,
           builder: (context, child) {
+            // TEMP DIAGNOSTIC (removed in Task 8): records the real per-platform
+            // scaling inputs so the compact UI-scale default is measured, not
+            // guessed. Run `flutter run -d linux` and read the UI_SCALE_DIAG line.
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              final mq = MediaQuery.maybeOf(context);
+              appLogger.i(
+                'UI_SCALE_DIAG platform=${Platform.operatingSystem} '
+                'dpr=${mq?.devicePixelRatio} textScaler=${mq?.textScaler} '
+                'size=${mq?.size}',
+              );
+            });
             Widget content = UiWarmup(child: child ?? const SizedBox.shrink());
             // The native title bar is hidden (TitleBarStyle.hidden), which on
             // Linux/GTK also strips the resize-border grips. DragToResizeArea
