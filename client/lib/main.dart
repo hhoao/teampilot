@@ -35,6 +35,7 @@ import 'services/app/windows_keyboard_workaround.dart';
 import 'utils/logger.dart';
 import 'widgets/app_text_scale_boundary.dart';
 import 'widgets/ui_warmup.dart';
+import 'widgets/ui_zoom.dart';
 
 class _CleanupWindowListener extends WindowListener {
   _CleanupWindowListener(this.chatCubit, this.workspaceTerminalRegistry);
@@ -279,6 +280,11 @@ class TeamPilotApp extends StatelessWidget {
           scaleId: typographyScaleId,
           customMultiplier: typographyCustomMultiplier,
         );
+        // The interface-scale value drives a single global UI zoom (see UiZoom),
+        // not the theme — so fonts, icons, padding, and every control scale as
+        // one. The theme is built at the standard (1.0) baseline to avoid
+        // double-scaling.
+        final uiScale = typographyScale.multiplier;
 
         ThemeMode themeModeFromPrefs(String mode) => switch (mode) {
           'light' => ThemeMode.light,
@@ -289,8 +295,8 @@ class TeamPilotApp extends StatelessWidget {
         return MaterialApp.router(
           debugShowCheckedModeBanner: false,
           title: 'TeamPilot',
-          theme: buildLightTheme(colorPreset, typographyScale),
-          darkTheme: buildDarkTheme(colorPreset, typographyScale),
+          theme: buildLightTheme(colorPreset),
+          darkTheme: buildDarkTheme(colorPreset),
           themeMode: themeModeFromPrefs(themeMode),
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
@@ -310,6 +316,10 @@ class TeamPilotApp extends StatelessWidget {
             Widget content = AppTextScaleBoundary(
               child: UiWarmup(child: child ?? const SizedBox.shrink()),
             );
+            // Single global zoom: scales fonts + icons + padding + every
+            // control as one. Must sit INSIDE DragToResizeArea so the window
+            // resize handles stay mapped to the real (unscaled) window edges.
+            content = UiZoom(scale: uiScale, child: content);
             // The native title bar is hidden (TitleBarStyle.hidden), which on
             // Linux/GTK also strips the resize-border grips. DragToResizeArea
             // re-adds invisible resize handles on all edges/corners so the
