@@ -8,6 +8,7 @@ import 'app_dialog_theme.dart';
 import 'app_fonts.dart';
 import 'app_icon_sizes.dart';
 import 'app_outline_input_theme.dart';
+import 'app_spacing.dart';
 import 'app_typography_scale.dart';
 
 /// Persisted preset ids (order = settings UI order).
@@ -245,7 +246,11 @@ ThemeData _applyTypography(
       materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
       iconTheme: AppIconSizes.iconTheme(scheme),
       textTheme: textTheme,
-      extensions: [AppFontTheme.fallback, typographyTheme],
+      extensions: [
+        AppFontTheme.fallback,
+        typographyTheme,
+        AppSpacingTheme.fromScale(typographyScale),
+      ],
       dialogTheme: buildAppDialogTheme(colorScheme: scheme, textTheme: textTheme),
       inputDecorationTheme: buildAppOutlineInputDecorationTheme(
         colorScheme: flexTheme.colorScheme,
@@ -281,6 +286,7 @@ ThemeData _applyTypography(
     extensions: [
       buildAppFontTheme(uiFont: appUiFont),
       typographyTheme,
+      AppSpacingTheme.fromScale(typographyScale),
     ],
     dialogTheme: buildAppDialogTheme(
       colorScheme: scheme,
