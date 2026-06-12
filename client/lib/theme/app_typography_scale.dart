@@ -19,7 +19,7 @@ const List<String> kTypographyScaleIds = [
 const String kDefaultTypographyScaleId = 'standard';
 
 /// Allowed custom multiplier (× standard).
-const double kTypographyCustomMultiplierMin = 0.75;
+const double kTypographyCustomMultiplierMin = 0.5;
 const double kTypographyCustomMultiplierMax = 1.35;
 const double kDefaultTypographyCustomMultiplier = 1.0;
 

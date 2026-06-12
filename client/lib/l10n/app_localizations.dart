@@ -509,7 +509,7 @@ abstract class AppLocalizations {
   /// No description provided for @typographyScaleCustomHint.
   ///
   /// In en, this message translates to:
-  /// **'75–135'**
+  /// **'50–135'**
   String get typographyScaleCustomHint;
 
   /// No description provided for @themePresetGraphite.
