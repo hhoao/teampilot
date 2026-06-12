@@ -33,6 +33,7 @@ import 'theme/app_typography_scale.dart';
 import 'pages/system/error_page.dart';
 import 'services/app/windows_keyboard_workaround.dart';
 import 'utils/logger.dart';
+import 'widgets/app_text_scale_boundary.dart';
 import 'widgets/ui_warmup.dart';
 
 class _CleanupWindowListener extends WindowListener {
@@ -306,7 +307,9 @@ class TeamPilotApp extends StatelessWidget {
                 'size=${mq?.size}',
               );
             });
-            Widget content = UiWarmup(child: child ?? const SizedBox.shrink());
+            Widget content = AppTextScaleBoundary(
+              child: UiWarmup(child: child ?? const SizedBox.shrink()),
+            );
             // The native title bar is hidden (TitleBarStyle.hidden), which on
             // Linux/GTK also strips the resize-border grips. DragToResizeArea
             // re-adds invisible resize handles on all edges/corners so the
