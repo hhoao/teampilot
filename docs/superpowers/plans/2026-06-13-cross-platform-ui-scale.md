@@ -741,6 +741,12 @@ git commit -m "feat: label the scale setting as Interface scale"
 
 ## Task 7: Migrate the visible shells to spacing tokens
 
+> **SUPERSEDED (2026-06-13).** Replaced by a single root-level global zoom
+> (`UiZoom`, `lib/widgets/ui_zoom.dart`) wired in `main.dart`, which scales the
+> whole UI uniformly without migrating ~900 call-sites. The theme is built at the
+> standard (1.0) baseline; the interface-scale value feeds `UiZoom` only. See the
+> spec's "Revision 2026-06-13 — Pivot to global zoom". This task is not executed.
+
 **Why:** The `uiScale` now reaches typography, icons, and the topbar — but most paddings are still hard-coded, so they do not get denser/looser with the scale. Migrate the shells shown in the bug report so the scale visibly reaches the layout. This is mechanical and incremental; do it shell-by-shell with its own commit.
 
 **Migration recipe (apply per file):**

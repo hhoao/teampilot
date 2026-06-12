@@ -1,8 +1,33 @@
 # Cross-Platform UI Scale — Design
 
 **Date:** 2026-06-13
-**Status:** Approved (direction) — pending spec review
+**Status:** Implemented with a pivot — see Revision below
 **Owner:** TeamPilot client
+
+> ## Revision 2026-06-13 — Pivot to global zoom
+>
+> The original design (token migration: drive every spacing/icon/font off
+> `uiScale`) was implemented for the **plumbing** (Tasks 1–6: `AppSpacingTheme`,
+> `AppIconSizeTheme`, `context.uiScale`, **OS textScaler neutralization**), but
+> measurement showed it would require migrating **~900 hard-coded call-sites**
+> (146 icon sizes + 274 `EdgeInsets` + 479 `SizedBox` gaps across 104 files) for
+> the scale to visibly reach the layout — large *and* fragile (any new hard-coded
+> value silently breaks consistency).
+>
+> **New architecture:** a single root-level **global zoom** (`UiZoom`, a
+> `Transform.scale` + rescaled `MediaQuery`) scales the entire UI subtree as one
+> — fonts, icons, padding, every control — in ~30 lines, with zero per-widget
+> migration and no regression surface. The theme is built at the **standard
+> (1.0)** baseline; the interface-scale value feeds `UiZoom` only (no
+> double-scaling). The OS-textScaler neutralization (Task 3) is **kept**. The
+> token system (Tasks 1–6) remains as harmless base-scale design tokens.
+>
+> **Tradeoff accepted by user:** the embedded terminal (flutter_alacritty,
+> bitmap glyph atlas) is crisp at 100% and when zooming **out** (the user's
+> 175%→compact case); only zooming **in** past 100% can soften it. The
+> `Transform`-based zoom keeps vector text/icons crisp at any scale.
+>
+> Task 7 (token migration of shells) is **superseded** and dropped.
 
 ## 1. Problem
 
