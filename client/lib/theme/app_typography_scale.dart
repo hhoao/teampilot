@@ -18,10 +18,18 @@ const List<String> kTypographyScaleIds = [
 
 const String kDefaultTypographyScaleId = 'standard';
 
-/// Allowed custom multiplier (× standard).
+/// Allowed custom **text-size** multiplier (× standard). Max is generous so the
+/// in-app text size can replicate large OS text-scaling (e.g. GNOME 1.5).
 const double kTypographyCustomMultiplierMin = 0.5;
-const double kTypographyCustomMultiplierMax = 1.35;
+const double kTypographyCustomMultiplierMax = 2.0;
 const double kDefaultTypographyCustomMultiplier = 1.0;
+
+/// Allowed **interface zoom** (whole-UI [UiZoom]); independent of text size.
+const double kUiZoomMin = 0.5;
+const double kUiZoomMax = 1.5;
+const double kDefaultUiZoom = 1.0;
+
+double clampUiZoom(double value) => value.clamp(kUiZoomMin, kUiZoomMax);
 
 String normalizeTypographyScale(String? raw) {
   if (raw != null && kTypographyScaleIds.contains(raw)) return raw;

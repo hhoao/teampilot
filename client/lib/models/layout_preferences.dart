@@ -30,6 +30,7 @@ class LayoutPreferences {
     this.themeColorPreset = kDefaultThemeColorPreset,
     this.typographyScale = kDefaultTypographyScaleId,
     this.typographyScaleCustomMultiplier = kDefaultTypographyCustomMultiplier,
+    this.uiZoom = kDefaultUiZoom,
     this.terminalThemeMode = 'adaptive',
     this.locale = '',
     this.workspaceTerminalVisible = false,
@@ -88,6 +89,9 @@ class LayoutPreferences {
           json['typographyScaleCustomMultiplier'],
           fallback: kDefaultTypographyCustomMultiplier,
         ),
+      ),
+      uiZoom: clampUiZoom(
+        _doubleValue(json['uiZoom'], fallback: kDefaultUiZoom),
       ),
       terminalThemeMode: _terminalThemeModeValue(
         json['terminalThemeMode'] as String?,
@@ -159,6 +163,10 @@ class LayoutPreferences {
   final String themeColorPreset;
   final String typographyScale;
   final double typographyScaleCustomMultiplier;
+
+  /// Whole-UI zoom (independent of [typographyScaleCustomMultiplier], which is
+  /// text size). Drives [UiZoom]; `1.0` = native.
+  final double uiZoom;
   final String terminalThemeMode;
   final String locale;
   final bool workspaceTerminalVisible;
@@ -185,6 +193,7 @@ class LayoutPreferences {
     String? themeColorPreset,
     String? typographyScale,
     double? typographyScaleCustomMultiplier,
+    double? uiZoom,
     String? terminalThemeMode,
     String? locale,
     bool? workspaceTerminalVisible,
@@ -227,6 +236,7 @@ class LayoutPreferences {
       typographyScaleCustomMultiplier: typographyScaleCustomMultiplier == null
           ? this.typographyScaleCustomMultiplier
           : clampTypographyCustomMultiplier(typographyScaleCustomMultiplier),
+      uiZoom: uiZoom == null ? this.uiZoom : clampUiZoom(uiZoom),
       terminalThemeMode: terminalThemeMode == null
           ? this.terminalThemeMode
           : _terminalThemeModeValue(terminalThemeMode),
@@ -270,6 +280,7 @@ class LayoutPreferences {
       themeColorPreset: themeColorPreset,
       typographyScale: typographyScale,
       typographyScaleCustomMultiplier: typographyScaleCustomMultiplier,
+      uiZoom: uiZoom,
       terminalThemeMode: terminalThemeMode,
       locale: locale,
       workspaceTerminalVisible: workspaceTerminalVisible,
@@ -300,6 +311,7 @@ class LayoutPreferences {
       'themeColorPreset': themeColorPreset,
       'typographyScale': typographyScale,
       'typographyScaleCustomMultiplier': typographyScaleCustomMultiplier,
+      'uiZoom': uiZoom,
       'terminalThemeMode': terminalThemeMode,
       'locale': locale,
       'workspaceTerminalVisible': workspaceTerminalVisible,

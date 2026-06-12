@@ -244,13 +244,13 @@ ThemeData _applyTypography(
     return flexTheme.copyWith(
       visualDensity: VisualDensity.compact,
       materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-      iconTheme: AppIconSizes.iconTheme(scheme, multiplier: typographyScale.multiplier),
+      iconTheme: AppIconSizes.iconTheme(scheme),
       textTheme: textTheme,
       extensions: [
         AppFontTheme.fallback,
         typographyTheme,
-        AppSpacingTheme.fromScale(typographyScale),
-        AppIconSizeTheme.fromScale(typographyScale),
+        AppSpacingTheme.fromScale(AppTypographyScale.standard),
+        AppIconSizeTheme.resolved(),
       ],
       dialogTheme: buildAppDialogTheme(colorScheme: scheme, textTheme: textTheme),
       inputDecorationTheme: buildAppOutlineInputDecorationTheme(
@@ -281,14 +281,14 @@ ThemeData _applyTypography(
   return flexTheme.copyWith(
     visualDensity: VisualDensity.compact,
     materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-    iconTheme: AppIconSizes.iconTheme(scheme, multiplier: typographyScale.multiplier),
+    iconTheme: AppIconSizes.iconTheme(scheme),
     textTheme: mergedTextTheme,
     primaryTextTheme: primaryTextTheme,
     extensions: [
       buildAppFontTheme(uiFont: appUiFont),
       typographyTheme,
-      AppSpacingTheme.fromScale(typographyScale),
-      AppIconSizeTheme.fromScale(typographyScale),
+      AppSpacingTheme.fromScale(AppTypographyScale.standard),
+      AppIconSizeTheme.resolved(),
     ],
     dialogTheme: buildAppDialogTheme(
       colorScheme: scheme,

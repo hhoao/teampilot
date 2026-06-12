@@ -200,10 +200,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get themeColorPresetDescription => '用于按钮、开关与高亮的主色与强调色。';
 
   @override
-  String get typographyScaleTitle => '界面缩放';
+  String get typographyScaleTitle => '文字大小';
 
   @override
-  String get typographyScaleDescription => '整体界面密度（文字、间距、图标与终端），三端一致。';
+  String get typographyScaleDescription => '界面文字大小。不改变图标与间距——整体缩放请用「界面缩放」。';
 
   @override
   String get typographyScaleCompact => '紧凑';
@@ -221,7 +221,16 @@ class AppLocalizationsZh extends AppLocalizations {
   String get typographyScaleCustomLabel => '缩放比例';
 
   @override
-  String get typographyScaleCustomHint => '50–135';
+  String get typographyScaleCustomHint => '50–200';
+
+  @override
+  String get uiZoomTitle => '界面缩放';
+
+  @override
+  String get uiZoomDescription => '整体缩放界面——文字、图标与间距一起。';
+
+  @override
+  String get uiZoomHint => '50–150';
 
   @override
   String get themePresetGraphite => '石墨';

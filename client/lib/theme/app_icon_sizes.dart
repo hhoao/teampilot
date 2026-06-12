@@ -14,7 +14,7 @@ abstract final class AppIconSizes {
   AppIconSizes._();
 
   /// Global scale factor (1.0 = design baseline below).
-  static const double multiplier = 1.0;
+  static const double multiplier = 1;
 
   // --- Baseline at multiplier 1.0 ---
   //
@@ -70,9 +70,11 @@ abstract final class AppIconSizes {
   static const double hero = heroBase * multiplier;
   static const double display = displayBase * multiplier;
 
-  /// Default [IconThemeData] for app themes, scaled by [multiplier].
-  static IconThemeData iconTheme(ColorScheme scheme, {double multiplier = 1.0}) =>
-      IconThemeData(size: mdBase * multiplier, color: scheme.icon);
+  /// Default [IconThemeData] for app themes (resolved [md] = base ×
+  /// [multiplier]). Icons are governed by the icon [multiplier], NOT the
+  /// text-size scale, so they do not grow/shrink with the typography setting.
+  static IconThemeData iconTheme(ColorScheme scheme) =>
+      IconThemeData(size: md, color: scheme.icon);
 }
 
 /// Semantic icon colors aligned with [ThemeData.iconTheme].
@@ -145,9 +147,26 @@ final class AppIconSizeTheme extends ThemeExtension<AppIconSizeTheme> {
     );
   }
 
+  /// Fixed resolved sizes (base × [AppIconSizes.multiplier]); independent of the
+  /// text-size scale. Used by the theme so icons follow the icon multiplier, not
+  /// the typography setting.
+  factory AppIconSizeTheme.resolved() => const AppIconSizeTheme(
+    xxs: AppIconSizes.xxs,
+    xs: AppIconSizes.xs,
+    sm: AppIconSizes.sm,
+    md: AppIconSizes.md,
+    lg: AppIconSizes.lg,
+    xl: AppIconSizes.xl,
+    navRelaxed: AppIconSizes.navRelaxed,
+    list: AppIconSizes.list,
+    empty: AppIconSizes.empty,
+    hero: AppIconSizes.hero,
+    display: AppIconSizes.display,
+  );
+
   static AppIconSizeTheme fromContext(BuildContext context) =>
       Theme.of(context).extension<AppIconSizeTheme>() ??
-      AppIconSizeTheme.fromScale(AppTypographyScale.standard);
+      AppIconSizeTheme.resolved();
 
   @override
   AppIconSizeTheme copyWith({

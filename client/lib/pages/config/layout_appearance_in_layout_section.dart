@@ -9,6 +9,7 @@ import '../../theme/app_typography_scale.dart';
 import '../../utils/app_keys.dart';
 import '../../widgets/settings/theme_color_preset_picker.dart';
 import '../../widgets/settings/typography_scale_setting.dart';
+import '../../widgets/settings/ui_zoom_setting.dart';
 import '../../widgets/settings/workspace_settings_toggle_strip.dart';
 import '../../widgets/settings/workspace_settings_widgets.dart';
 
@@ -23,7 +24,7 @@ class LayoutAppearanceInLayoutSection extends StatelessWidget {
     return BlocSelector<
       LayoutCubit,
       LayoutState,
-      (String, String, String, double, String, String)
+      (String, String, String, double, double, String, String)
     >(
       selector: (state) {
         var themeMode = state.preferences.themeMode;
@@ -43,6 +44,7 @@ class LayoutAppearanceInLayoutSection extends StatelessWidget {
           normalizeThemeColorPreset(state.preferences.themeColorPreset),
           normalizeTypographyScale(state.preferences.typographyScale),
           state.preferences.typographyScaleCustomMultiplier,
+          clampUiZoom(state.preferences.uiZoom),
           state.preferences.terminalThemeMode,
           langValue,
         );
@@ -53,6 +55,7 @@ class LayoutAppearanceInLayoutSection extends StatelessWidget {
           colorPreset,
           typographyScale,
           typographyCustomMultiplier,
+          uiZoom,
           terminalThemeMode,
           langValue,
         ) = appearance;
@@ -127,6 +130,15 @@ class LayoutAppearanceInLayoutSection extends StatelessWidget {
                 customMultiplier: typographyCustomMultiplier,
                 onScaleIdChanged: controller.setTypographyScale,
                 onCustomMultiplierChanged: controller.setTypographyScaleCustom,
+              ),
+              showDividerBelow: true,
+            ),
+            SettingsLabeledRow(
+              title: l10n.uiZoomTitle,
+              subtitle: l10n.uiZoomDescription,
+              trailing: UiZoomSetting(
+                zoom: uiZoom,
+                onChanged: controller.setUiZoom,
               ),
               showDividerBelow: true,
             ),

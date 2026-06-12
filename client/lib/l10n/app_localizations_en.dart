@@ -211,11 +211,11 @@ class AppLocalizationsEn extends AppLocalizations {
       'Primary and accent colors for buttons, toggles, and highlights.';
 
   @override
-  String get typographyScaleTitle => 'Interface scale';
+  String get typographyScaleTitle => 'Text size';
 
   @override
   String get typographyScaleDescription =>
-      'Overall UI density (text, spacing, icons, and the terminal) — applies the same on every platform.';
+      'Size of UI text. Does not change icons or spacing — use Interface zoom for that.';
 
   @override
   String get typographyScaleCompact => 'Small';
@@ -233,7 +233,17 @@ class AppLocalizationsEn extends AppLocalizations {
   String get typographyScaleCustomLabel => 'Scale';
 
   @override
-  String get typographyScaleCustomHint => '50–135';
+  String get typographyScaleCustomHint => '50–200';
+
+  @override
+  String get uiZoomTitle => 'Interface zoom';
+
+  @override
+  String get uiZoomDescription =>
+      'Zoom the whole UI together — text, icons, and spacing.';
+
+  @override
+  String get uiZoomHint => '50–150';
 
   @override
   String get themePresetGraphite => 'Graphite';

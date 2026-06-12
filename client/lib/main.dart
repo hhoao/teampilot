@@ -279,6 +279,7 @@ class TeamPilotApp extends StatelessWidget {
         String colorPreset,
         String typographyScale,
         double typographyCustomMultiplier,
+        double uiZoom,
         String locale,
       )
     >(
@@ -295,6 +296,7 @@ class TeamPilotApp extends StatelessWidget {
           normalizeThemeColorPreset(prefs.themeColorPreset),
           normalizeTypographyScale(prefs.typographyScale),
           prefs.typographyScaleCustomMultiplier,
+          clampUiZoom(prefs.uiZoom),
           prefs.locale,
         );
       },
@@ -304,17 +306,19 @@ class TeamPilotApp extends StatelessWidget {
           colorPreset,
           typographyScaleId,
           typographyCustomMultiplier,
+          uiZoom,
           savedLocale,
         ) = themePrefs;
-        final typographyScale = typographyScaleForPreferences(
+        // Text size: scales fonts via the theme (the GNOME-text-scaling
+        // equivalent, app-owned + cross-platform).
+        final textScale = typographyScaleForPreferences(
           scaleId: typographyScaleId,
           customMultiplier: typographyCustomMultiplier,
         );
-        // The interface-scale value drives a single global UI zoom (see UiZoom),
-        // not the theme — so fonts, icons, padding, and every control scale as
-        // one. The theme is built at the standard (1.0) baseline to avoid
-        // double-scaling.
-        final uiScale = typographyScale.multiplier;
+        // Interface zoom: scales the WHOLE UI (UiZoom), independent of text
+        // size. Icons are decoupled from textScale in the theme so nothing
+        // double-scales.
+        final uiScale = uiZoom;
 
         ThemeMode themeModeFromPrefs(String mode) => switch (mode) {
           'light' => ThemeMode.light,
@@ -325,8 +329,8 @@ class TeamPilotApp extends StatelessWidget {
         return MaterialApp.router(
           debugShowCheckedModeBanner: false,
           title: 'TeamPilot',
-          theme: buildLightTheme(colorPreset),
-          darkTheme: buildDarkTheme(colorPreset),
+          theme: buildLightTheme(colorPreset, textScale),
+          darkTheme: buildDarkTheme(colorPreset, textScale),
           themeMode: themeModeFromPrefs(themeMode),
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,

@@ -467,13 +467,13 @@ abstract class AppLocalizations {
   /// No description provided for @typographyScaleTitle.
   ///
   /// In en, this message translates to:
-  /// **'Interface scale'**
+  /// **'Text size'**
   String get typographyScaleTitle;
 
   /// No description provided for @typographyScaleDescription.
   ///
   /// In en, this message translates to:
-  /// **'Overall UI density (text, spacing, icons, and the terminal) — applies the same on every platform.'**
+  /// **'Size of UI text. Does not change icons or spacing — use Interface zoom for that.'**
   String get typographyScaleDescription;
 
   /// No description provided for @typographyScaleCompact.
@@ -509,8 +509,26 @@ abstract class AppLocalizations {
   /// No description provided for @typographyScaleCustomHint.
   ///
   /// In en, this message translates to:
-  /// **'50–135'**
+  /// **'50–200'**
   String get typographyScaleCustomHint;
+
+  /// No description provided for @uiZoomTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Interface zoom'**
+  String get uiZoomTitle;
+
+  /// No description provided for @uiZoomDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Zoom the whole UI together — text, icons, and spacing.'**
+  String get uiZoomDescription;
+
+  /// No description provided for @uiZoomHint.
+  ///
+  /// In en, this message translates to:
+  /// **'50–150'**
+  String get uiZoomHint;
 
   /// No description provided for @themePresetGraphite.
   ///

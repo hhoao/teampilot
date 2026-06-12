@@ -5,24 +5,33 @@ import 'package:teampilot/theme/app_theme.dart';
 import 'package:teampilot/theme/app_typography_scale.dart';
 
 void main() {
-  test('theme carries AppSpacingTheme that scales with typography scale', () {
+  test('text theme font sizes scale with the text-size (typography) scale', () {
     final std = buildDarkTheme(null, AppTypographyScale.standard);
     final comfy = buildDarkTheme(null, AppTypographyScale.comfortable);
 
-    final stdSpacing = std.extension<AppSpacingTheme>();
-    final comfySpacing = comfy.extension<AppSpacingTheme>();
-
-    expect(stdSpacing, isNotNull);
-    expect(stdSpacing!.md, AppSpacingTheme.mdBase);
-    expect(comfySpacing!.md, greaterThan(stdSpacing.md));
-    expect(comfySpacing.scale, AppTypographyScale.comfortable.multiplier);
+    expect(
+      comfy.textTheme.bodyMedium!.fontSize!,
+      greaterThan(std.textTheme.bodyMedium!.fontSize!),
+    );
   });
 
-  testWidgets('context.uiScale reflects the active theme scale', (tester) async {
+  test('spacing tokens are fixed (independent of the text-size scale)', () {
+    final std = buildDarkTheme(null, AppTypographyScale.standard);
+    final comfy = buildDarkTheme(null, AppTypographyScale.comfortable);
+
+    // Text size scales fonts only; padding does not follow it (the whole-UI
+    // UiZoom is the knob that scales spacing).
+    expect(std.extension<AppSpacingTheme>()!.md, AppSpacingTheme.mdBase);
+    expect(comfy.extension<AppSpacingTheme>()!.md, AppSpacingTheme.mdBase);
+  });
+
+  testWidgets('context.uiScale is fixed at 1.0 (spacing is not text-scaled)', (
+    tester,
+  ) async {
     late double captured;
     await tester.pumpWidget(
       MaterialApp(
-        theme: buildDarkTheme(null, AppTypographyScale.compact),
+        theme: buildDarkTheme(null, AppTypographyScale.comfortable),
         home: Builder(
           builder: (context) {
             captured = context.uiScale;
@@ -31,6 +40,6 @@ void main() {
         ),
       ),
     );
-    expect(captured, AppTypographyScale.compact.multiplier);
+    expect(captured, 1.0);
   });
 }
