@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../models/layout_preferences.dart';
+import '../../theme/app_spacing.dart';
 import '../../theme/app_text_styles.dart';
 import '../../theme/workspace_surface_layers.dart';
 import '../../utils/app_keys.dart';
@@ -64,7 +65,7 @@ class WorkspaceShell extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textBase = isDark ? Colors.white : const Color(0xFF111827);
-    final textScale = MediaQuery.textScalerOf(context).scale(1.0);
+    final textScale = context.uiScale;
     return Column(
       children: [
         if (showHeader)
