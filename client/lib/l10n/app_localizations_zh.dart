@@ -200,10 +200,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get themeColorPresetDescription => '用于按钮、开关与高亮的主色与强调色。';
 
   @override
-  String get typographyScaleTitle => '字号';
+  String get typographyScaleTitle => '界面缩放';
 
   @override
-  String get typographyScaleDescription => '界面文字整体大小（菜单、列表、表单与终端）。';
+  String get typographyScaleDescription => '整体界面密度（文字、间距、图标与终端），三端一致。';
 
   @override
   String get typographyScaleCompact => '紧凑';

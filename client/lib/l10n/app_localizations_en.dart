@@ -211,11 +211,11 @@ class AppLocalizationsEn extends AppLocalizations {
       'Primary and accent colors for buttons, toggles, and highlights.';
 
   @override
-  String get typographyScaleTitle => 'Text size';
+  String get typographyScaleTitle => 'Interface scale';
 
   @override
   String get typographyScaleDescription =>
-      'Overall UI text scale for menus, lists, forms, and the terminal.';
+      'Overall UI density (text, spacing, icons, and the terminal) — applies the same on every platform.';
 
   @override
   String get typographyScaleCompact => 'Small';

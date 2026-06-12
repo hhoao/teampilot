@@ -467,13 +467,13 @@ abstract class AppLocalizations {
   /// No description provided for @typographyScaleTitle.
   ///
   /// In en, this message translates to:
-  /// **'Text size'**
+  /// **'Interface scale'**
   String get typographyScaleTitle;
 
   /// No description provided for @typographyScaleDescription.
   ///
   /// In en, this message translates to:
-  /// **'Overall UI text scale for menus, lists, forms, and the terminal.'**
+  /// **'Overall UI density (text, spacing, icons, and the terminal) — applies the same on every platform.'**
   String get typographyScaleDescription;
 
   /// No description provided for @typographyScaleCompact.
