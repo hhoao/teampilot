@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'app_typography_scale.dart';
+
 /// Central **icon sizes and colors** for TeamPilot UI.
 ///
 /// [buildLightTheme] / [buildDarkTheme] set [IconThemeData] to [md] + [AppIconColors.icon].
@@ -63,9 +65,9 @@ abstract final class AppIconSizes {
   static const double hero = heroBase * multiplier;
   static const double display = displayBase * multiplier;
 
-  /// Default [IconThemeData] for app themes.
-  static IconThemeData iconTheme(ColorScheme scheme) =>
-      IconThemeData(size: md, color: scheme.icon);
+  /// Default [IconThemeData] for app themes, scaled by [multiplier].
+  static IconThemeData iconTheme(ColorScheme scheme, {double multiplier = 1.0}) =>
+      IconThemeData(size: mdBase * multiplier, color: scheme.icon);
 }
 
 /// Semantic icon colors aligned with [ThemeData.iconTheme].
@@ -87,4 +89,95 @@ extension AppIconSizesContext on BuildContext {
   /// Resolved default icon color from [ThemeData.iconTheme].
   Color get appIconColor =>
       IconTheme.of(this).color ?? Theme.of(this).colorScheme.icon;
+}
+
+/// Resolved icon sizes on [ThemeData.extensions], scaled by the active
+/// [AppTypographyScale] multiplier. Read non-default roles via
+/// [BuildContext.appIconSizes]; the default size also flows through
+/// [ThemeData.iconTheme].
+@immutable
+final class AppIconSizeTheme extends ThemeExtension<AppIconSizeTheme> {
+  const AppIconSizeTheme({
+    required this.xxs,
+    required this.xs,
+    required this.sm,
+    required this.md,
+    required this.lg,
+    required this.xl,
+    required this.navRelaxed,
+    required this.list,
+    required this.empty,
+    required this.hero,
+    required this.display,
+  });
+
+  final double xxs;
+  final double xs;
+  final double sm;
+  final double md;
+  final double lg;
+  final double xl;
+  final double navRelaxed;
+  final double list;
+  final double empty;
+  final double hero;
+  final double display;
+
+  factory AppIconSizeTheme.fromScale(AppTypographyScale scale) {
+    final m = scale.multiplier;
+    return AppIconSizeTheme(
+      xxs: AppIconSizes.xxsBase * m,
+      xs: AppIconSizes.xsBase * m,
+      sm: AppIconSizes.smBase * m,
+      md: AppIconSizes.mdBase * m,
+      lg: AppIconSizes.lgBase * m,
+      xl: AppIconSizes.xlBase * m,
+      navRelaxed: AppIconSizes.navRelaxedBase * m,
+      list: AppIconSizes.listBase * m,
+      empty: AppIconSizes.emptyBase * m,
+      hero: AppIconSizes.heroBase * m,
+      display: AppIconSizes.displayBase * m,
+    );
+  }
+
+  static AppIconSizeTheme fromContext(BuildContext context) =>
+      Theme.of(context).extension<AppIconSizeTheme>() ??
+      AppIconSizeTheme.fromScale(AppTypographyScale.standard);
+
+  @override
+  AppIconSizeTheme copyWith({
+    double? xxs,
+    double? xs,
+    double? sm,
+    double? md,
+    double? lg,
+    double? xl,
+    double? navRelaxed,
+    double? list,
+    double? empty,
+    double? hero,
+    double? display,
+  }) => AppIconSizeTheme(
+    xxs: xxs ?? this.xxs,
+    xs: xs ?? this.xs,
+    sm: sm ?? this.sm,
+    md: md ?? this.md,
+    lg: lg ?? this.lg,
+    xl: xl ?? this.xl,
+    navRelaxed: navRelaxed ?? this.navRelaxed,
+    list: list ?? this.list,
+    empty: empty ?? this.empty,
+    hero: hero ?? this.hero,
+    display: display ?? this.display,
+  );
+
+  @override
+  AppIconSizeTheme lerp(ThemeExtension<AppIconSizeTheme>? other, double t) {
+    if (other is! AppIconSizeTheme) return this;
+    return t < 0.5 ? this : other;
+  }
+}
+
+extension AppIconSizeThemeContext on BuildContext {
+  AppIconSizeTheme get appIconSizes => AppIconSizeTheme.fromContext(this);
 }
