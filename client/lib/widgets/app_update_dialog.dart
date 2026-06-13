@@ -14,6 +14,8 @@ import 'package:teampilot/theme/app_text_styles.dart';
 import 'package:teampilot/utils/changelog_parser.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
 import 'package:teampilot/widgets/app_dialog.dart';
+import 'package:teampilot/widgets/app_toast/app_toast.dart';
+import 'package:teampilot/theme/app_toast_theme.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 /// Backend-driven update dialog: download and install on Android and desktop.
@@ -385,7 +387,7 @@ class _AppUpdateDialogState extends State<AppUpdateDialog> {
 
     final status = PackageInstallerStatus.byCode(statusCode);
     if (status == PackageInstallerStatus.success) {
-      _showSnackBar(l10n.appUpdateInstallComplete);
+      _showSnackBar(l10n.appUpdateInstallComplete, isSuccess: true);
       Navigator.of(context).pop();
     } else {
       _showSnackBar(l10n.appUpdateInstallFailed(status.name), isError: true);
@@ -463,7 +465,7 @@ class _AppUpdateDialogState extends State<AppUpdateDialog> {
       final uri = Uri.parse(finalUrl);
 
       if (!mounted) return;
-      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      AppToast.dismiss();
 
       final launched = await launchUrl(
         uri,
@@ -471,13 +473,13 @@ class _AppUpdateDialogState extends State<AppUpdateDialog> {
       );
       if (!mounted) return;
       if (launched) {
-        _showSnackBar(l10n.appUpdateBrowserOpened);
+        _showSnackBar(l10n.appUpdateBrowserOpened, isSuccess: true);
       } else {
         _showSnackBar(l10n.appUpdateCannotOpenDownloadLink, isError: true);
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        AppToast.dismiss();
         _showSnackBar(l10n.appUpdateBrowserOpenFailed('$e'), isError: true);
       }
     }
@@ -486,17 +488,20 @@ class _AppUpdateDialogState extends State<AppUpdateDialog> {
   void _showSnackBar(
     String message, {
     bool isError = false,
+    bool isSuccess = false,
     bool long = false,
   }) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: isError ? Colors.red : null,
-        duration: long
-            ? const Duration(seconds: 30)
-            : const Duration(seconds: 2),
-      ),
+    final variant = isError
+        ? AppToastVariant.error
+        : isSuccess
+        ? AppToastVariant.success
+        : AppToastVariant.info;
+    AppToast.show(
+      context,
+      message: message,
+      variant: variant,
+      duration: long ? const Duration(seconds: 30) : null,
     );
   }
 

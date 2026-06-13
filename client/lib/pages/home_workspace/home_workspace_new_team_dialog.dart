@@ -3,6 +3,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
+import 'package:teampilot/theme/app_toast_theme.dart';
+import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
 import '../../cubits/ai_feature_settings_cubit.dart';
 import '../../cubits/app_provider_cubit.dart';
@@ -201,9 +203,11 @@ class _HomeWorkspaceNewTeamDialogState
       registry: CliToolRegistryScope.of(context),
     );
     if (setting.providerId.isEmpty) {
-      ScaffoldMessenger.of(
+      AppToast.show(
         context,
-      ).showSnackBar(SnackBar(content: Text(l10n.teamGenNoProvider)));
+        message: l10n.teamGenNoProvider,
+        variant: AppToastVariant.error,
+      );
       return;
     }
 
@@ -247,9 +251,11 @@ class _HomeWorkspaceNewTeamDialogState
         _generating = false;
         _genProgress = null;
       });
-      ScaffoldMessenger.of(
+      AppToast.show(
         context,
-      ).showSnackBar(SnackBar(content: Text(l10n.teamGenFailed)));
+        message: l10n.teamGenFailed,
+        variant: AppToastVariant.error,
+      );
     }
   }
 

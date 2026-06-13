@@ -29,6 +29,8 @@ dependencies:
   flutter_bloc: ^9.1.0
   bloc_concurrency: ^0.3.0
   equatable: ^2.0.5
+  toastification:
+    path: packages/toastification
   go_router: ^16.3.0
   path_provider: ^2.1.2
   path: ^1.9.0

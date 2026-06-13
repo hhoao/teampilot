@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:path/path.dart' as p;
+import 'package:teampilot/theme/app_toast_theme.dart';
+import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
 import '../../l10n/l10n_extensions.dart';
 import '../../services/storage/app_storage.dart';
@@ -175,10 +177,10 @@ class LogViewerPanelState extends State<LogViewerPanel> {
     if (path == null) return;
     await Clipboard.setData(ClipboardData(text: path));
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(context.l10n.logViewerPathCopied(p.basename(path))),
-      ),
+    AppToast.show(
+      context,
+      message: context.l10n.logViewerPathCopied(p.basename(path)),
+      variant: AppToastVariant.success,
     );
   }
 
@@ -188,14 +190,18 @@ class LogViewerPanelState extends State<LogViewerPanel> {
       await AppLogger.instance.clearOldLogs();
       await _loadLogFiles();
       if (!mounted) return;
-      ScaffoldMessenger.of(
+      AppToast.show(
         context,
-      ).showSnackBar(SnackBar(content: Text(l10n.logViewerClearDone)));
+        message: l10n.logViewerClearDone,
+        variant: AppToastVariant.success,
+      );
     } on Object catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
+      AppToast.show(
         context,
-      ).showSnackBar(SnackBar(content: Text(l10n.logViewerClearFailed('$e'))));
+        message: l10n.logViewerClearFailed('$e'),
+        variant: AppToastVariant.error,
+      );
     }
   }
 

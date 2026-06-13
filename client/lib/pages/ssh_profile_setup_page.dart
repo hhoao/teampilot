@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:teampilot/theme/app_toast_theme.dart';
+import 'package:teampilot/widgets/app_toast/app_toast.dart';
 import 'package:uuid/uuid.dart';
 
 import '../models/ssh_profile.dart';
@@ -153,14 +155,18 @@ class _SshProfileSetupPageState extends State<SshProfileSetupPage> {
         privateKeyPassphrase: passphrase,
       );
       if (!mounted) return;
-      ScaffoldMessenger.of(
+      AppToast.show(
         context,
-      ).showSnackBar(const SnackBar(content: Text('SSH 连接测试成功')));
+        message: 'SSH 连接测试成功',
+        variant: AppToastVariant.success,
+      );
     } on Object catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
+      AppToast.show(
         context,
-      ).showSnackBar(SnackBar(content: Text('SSH 连接测试失败：$error')));
+        message: 'SSH 连接测试失败：$error',
+        variant: AppToastVariant.error,
+      );
     } finally {
       if (mounted) setState(() => _testing = false);
     }

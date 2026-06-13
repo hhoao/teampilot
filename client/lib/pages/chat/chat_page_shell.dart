@@ -3,6 +3,8 @@
 import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:teampilot/theme/app_toast_theme.dart';
+import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
 import '../../cubits/chat_cubit.dart';
 import '../../cubits/editor_cubit.dart';
@@ -248,9 +250,13 @@ Widget _chatLaunchListener(BuildContext context, Widget child) {
       final message = code == 'claude_credentials_missing'
           ? listenerContext.l10n.claudeLaunchCredentialsMissingWarning
           : code;
-      ScaffoldMessenger.of(
+      AppToast.show(
         listenerContext,
-      ).showSnackBar(SnackBar(content: Text(message)));
+        message: message,
+        variant: code == 'claude_credentials_missing'
+            ? AppToastVariant.warning
+            : AppToastVariant.info,
+      );
       listenerContext.read<ChatCubit>().clearSnackbarMessage();
     },
     child: BlocListener<EditorCubit, EditorState>(
@@ -262,9 +268,7 @@ Widget _chatLaunchListener(BuildContext context, Widget child) {
         final code = state.snackbarMessage;
         if (code == null) return;
         final message = listenerContext.l10n.editorSnackbarMessage(code);
-        ScaffoldMessenger.of(
-          listenerContext,
-        ).showSnackBar(SnackBar(content: Text(message)));
+        AppToast.show(listenerContext, message: message);
         listenerContext.read<EditorCubit>().clearSnackbarMessage();
       },
       child: BlocListener<ChatCubit, ChatState>(

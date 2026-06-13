@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:teampilot/theme/app_toast_theme.dart';
+import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
 import '../../cubits/mcp_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
@@ -29,8 +31,10 @@ class McpFormNavPage extends StatelessWidget {
           a.errorMessage != b.errorMessage && b.errorMessage != null,
       listener: (context, state) {
         if (!context.mounted || state.errorMessage == null) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(state.errorMessage!)),
+        AppToast.show(
+          context,
+          message: state.errorMessage!,
+          variant: AppToastVariant.error,
         );
         context.read<McpCubit>().clearError();
       },

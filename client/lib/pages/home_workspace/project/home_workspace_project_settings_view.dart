@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:teampilot/theme/app_toast_theme.dart';
+import 'package:teampilot/widgets/app_toast/app_toast.dart';
 import '../../../cubits/chat_cubit.dart';
 import '../../../l10n/l10n_extensions.dart';
 import '../../../models/app_project.dart';
@@ -414,11 +416,10 @@ String _formatTimestamp(int ms) {
 
 void _copyText(BuildContext context, String text) {
   Clipboard.setData(ClipboardData(text: text));
-  ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(
-      content: Text(context.l10n.pathCopied(text)),
-      duration: const Duration(seconds: 2),
-    ),
+  AppToast.show(
+    context,
+    message: context.l10n.pathCopied(text),
+    variant: AppToastVariant.success,
   );
 }
 

@@ -6,6 +6,7 @@ import 'package:flutter_alacritty/flutter_alacritty.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:toastification/toastification.dart';
 import 'package:window_manager/window_manager.dart';
 
 import 'app/app_shell.dart';
@@ -29,6 +30,7 @@ import 'services/terminal/terminal_transport_factory.dart';
 import 'services/terminal/workspace_terminal_registry.dart';
 import 'services/terminal/terminal_fonts.dart';
 import 'theme/app_icon_sizes.dart';
+import 'theme/app_toast_theme.dart';
 import 'theme/app_theme.dart';
 import 'theme/app_typography_scale.dart';
 import 'pages/system/error_page.dart';
@@ -315,7 +317,9 @@ class TeamPilotApp extends StatelessWidget {
           _ => ThemeMode.system,
         };
 
-        return MaterialApp.router(
+        return ToastificationWrapper(
+          config: buildAppToastificationConfig(),
+          child: MaterialApp.router(
           debugShowCheckedModeBanner: false,
           title: 'TeamPilot',
           theme: buildLightTheme(colorPreset, textScale, iconScale),
@@ -362,6 +366,7 @@ class TeamPilotApp extends StatelessWidget {
             return const Locale('en');
           },
           routerConfig: appRouter,
+        ),
         );
       },
     );

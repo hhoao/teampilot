@@ -2,6 +2,8 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:teampilot/theme/app_toast_theme.dart';
+import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
 import '../../cubits/app_provider_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
@@ -474,8 +476,10 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
                         () {
                           final result = _buildResult();
                           if (result == null) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text(l10n.invalidJson)),
+                            AppToast.show(
+                              context,
+                              message: l10n.invalidJson,
+                              variant: AppToastVariant.error,
                             );
                             return;
                           }

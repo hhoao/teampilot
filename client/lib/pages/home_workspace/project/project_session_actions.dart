@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:teampilot/theme/app_toast_theme.dart';
+import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
 import '../../../cubits/chat_cubit.dart';
 import '../../../cubits/project_profile_cubit.dart';
@@ -78,8 +80,10 @@ Future<void> createAndOpenProjectConversation(
     await openProjectSessionTab(context, project, session);
   } on Object catch (error) {
     if (!context.mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('${l10n.homeWorkspaceNewConversation}: $error')),
+    AppToast.show(
+      context,
+      message: '${l10n.homeWorkspaceNewConversation}: $error',
+      variant: AppToastVariant.error,
     );
   }
 }

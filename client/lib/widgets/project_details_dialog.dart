@@ -1,5 +1,7 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
+import 'package:teampilot/theme/app_toast_theme.dart';
+import 'package:teampilot/widgets/app_toast/app_toast.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -66,11 +68,10 @@ class _ProjectDetailsDialogState extends State<_ProjectDetailsDialog> {
   void _copyPath(String path) {
     Clipboard.setData(ClipboardData(text: path));
     final l10n = context.l10n;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(l10n.pathCopied(path)),
-        duration: const Duration(seconds: 2),
-      ),
+    AppToast.show(
+      context,
+      message: l10n.pathCopied(path),
+      variant: AppToastVariant.success,
     );
   }
 
@@ -80,14 +81,18 @@ class _ProjectDetailsDialogState extends State<_ProjectDetailsDialog> {
     final trimmed = normalizeProjectPath(path);
     final l10n = context.l10n;
     if (projectPathsEqual(trimmed, widget.project.primaryPath)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l10n.projectDirectoryAlreadyPrimary)),
+      AppToast.show(
+        context,
+        message: l10n.projectDirectoryAlreadyPrimary,
+        variant: AppToastVariant.warning,
       );
       return;
     }
     if (projectPathsContains(_additionalPaths, trimmed)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l10n.projectDirectoryAlreadyAdded)),
+      AppToast.show(
+        context,
+        message: l10n.projectDirectoryAlreadyAdded,
+        variant: AppToastVariant.warning,
       );
       return;
     }

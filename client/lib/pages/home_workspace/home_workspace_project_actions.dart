@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:teampilot/theme/app_toast_theme.dart';
+import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
 import '../../cubits/chat_cubit.dart';
 import '../../cubits/team_cubit.dart';
@@ -82,14 +84,18 @@ Future<void> cloneHomeWorkspaceProject(
       rosterMembers: team?.members ?? const [],
     );
     if (!context.mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(l10n.homeWorkspaceCloneProjectSuccess(baseName))),
+    AppToast.show(
+      context,
+      message: l10n.homeWorkspaceCloneProjectSuccess(baseName),
+      variant: AppToastVariant.success,
     );
     context.go('/home-v2/project/${cloned.projectId}');
   } on Object catch (error) {
     if (!context.mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('${l10n.homeWorkspaceCloneProjectFailed}: $error')),
+    AppToast.show(
+      context,
+      message: '${l10n.homeWorkspaceCloneProjectFailed}: $error',
+      variant: AppToastVariant.error,
     );
   }
 }
