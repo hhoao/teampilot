@@ -13,6 +13,7 @@ import '../../theme/app_text_styles.dart';
 import '../../theme/workspace_surface_layers.dart';
 import '../../widgets/menu/sidebar_action_menu.dart';
 import '../../widgets/team_pilot_brand_logo.dart';
+import '../../widgets/window_chrome_controls.dart';
 import '../../widgets/window_drag_area.dart';
 import '../config/config_workspace.dart';
 
@@ -186,6 +187,25 @@ class _HomeWorkspaceTitleBarState extends State<HomeWorkspaceTitleBar>
   @override
   void onWindowUnmaximize() => setState(() => _isMaximized = false);
 
+  Future<void> _toggleMaximize() async {
+    if (_isMaximized) {
+      await _windowManagerCall(windowManager.unmaximize);
+    } else {
+      await _windowManagerCall(windowManager.maximize);
+    }
+    await _syncMaximized();
+  }
+
+  Widget _buildWindowControls() {
+    return WindowChromeControls(
+      height: kHomeWorkspaceTitleBarHeight,
+      isMaximized: _isMaximized,
+      onMinimize: () => _windowManagerCall(windowManager.minimize),
+      onToggleMaximize: _toggleMaximize,
+      onClose: () => _windowManagerCall(windowManager.close),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -199,7 +219,9 @@ class _HomeWorkspaceTitleBarState extends State<HomeWorkspaceTitleBar>
         height: kHomeWorkspaceTitleBarHeight,
         child: Row(
           children: [
-            const SizedBox(width: 20),
+            if (showWindowControls && useMacWindowChromeStyle)
+              _buildWindowControls(),
+            SizedBox(width: useMacWindowChromeStyle ? 8 : 20),
             const _BrandMark(),
             const SizedBox(width: 24),
             _HomePill(
@@ -300,35 +322,8 @@ class _HomeWorkspaceTitleBarState extends State<HomeWorkspaceTitleBar>
               onTap: () => showWorkspaceSettingsDialog(context),
             ),
             const SizedBox(width: 10),
-            if (showWindowControls) ...[
-              _WinButton(
-                tooltip: l10n.windowControlMinimize,
-                icon: Icons.remove,
-                onPressed: () => _windowManagerCall(windowManager.minimize),
-              ),
-              _WinButton(
-                tooltip: _isMaximized
-                    ? l10n.windowControlRestore
-                    : l10n.windowControlMaximize,
-                icon: _isMaximized
-                    ? Icons.filter_none
-                    : Icons.crop_square_outlined,
-                onPressed: () async {
-                  if (_isMaximized) {
-                    await _windowManagerCall(windowManager.unmaximize);
-                  } else {
-                    await _windowManagerCall(windowManager.maximize);
-                  }
-                  await _syncMaximized();
-                },
-              ),
-              _WinButton(
-                tooltip: l10n.windowControlClose,
-                icon: Icons.close,
-                isClose: true,
-                onPressed: () => _windowManagerCall(windowManager.close),
-              ),
-            ],
+            if (showWindowControls && !useMacWindowChromeStyle)
+              _buildWindowControls(),
             const SizedBox(width: 16),
           ],
         ),
@@ -760,73 +755,5 @@ class _ActionGlyphState extends State<_ActionGlyph> {
       glyph = Tooltip(message: tooltip, child: glyph);
     }
     return glyph;
-  }
-}
-
-class _WinButton extends StatefulWidget {
-  const _WinButton({
-    required this.tooltip,
-    required this.icon,
-    required this.onPressed,
-    this.isClose = false,
-  });
-
-  final String tooltip;
-  final IconData icon;
-  final Future<void> Function() onPressed;
-  final bool isClose;
-
-  @override
-  State<_WinButton> createState() => _WinButtonState();
-}
-
-class _WinButtonState extends State<_WinButton> {
-  bool _hovered = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    Color background = Colors.transparent;
-    Color foreground = isDark
-        ? Colors.white.withValues(alpha: 0.88)
-        : const Color(0xFF374151);
-
-    if (_hovered) {
-      if (widget.isClose) {
-        background = const Color(0xFFE81123);
-        foreground = Colors.white;
-      } else {
-        background = isDark
-            ? Colors.white.withValues(alpha: 0.08)
-            : Colors.black.withValues(alpha: 0.06);
-      }
-    }
-
-    return Tooltip(
-      message: widget.tooltip,
-      child: MouseRegion(
-        onEnter: (_) => setState(() => _hovered = true),
-        onExit: (_) => setState(() => _hovered = false),
-        child: SizedBox(
-          width: 46,
-          height: kHomeWorkspaceTitleBarHeight,
-          child: Material(
-            color: background,
-            child: InkWell(
-              onTap: () => widget.onPressed(),
-              hoverColor: Colors.transparent,
-              splashColor: Colors.transparent,
-              highlightColor: Colors.transparent,
-              child: Icon(
-                widget.icon,
-                size: context.appIconSizes.md,
-                color: foreground,
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
   }
 }

@@ -14,6 +14,11 @@ ConnectionMode defaultConnectionMode() {
 /// Linux / Windows / macOS window chrome; false on Android.
 bool get useCustomDesktopWindowTitleBar => !Platform.isAndroid;
 
+/// macOS uses left-aligned traffic-light window controls instead of the
+/// Windows-style buttons on the right.
+bool get useMacWindowChromeStyle =>
+    useCustomDesktopWindowTitleBar && Platform.isMacOS;
+
 @Deprecated('Use ConnectionModeService.requiresSshProfileSetup')
 bool get requiresSshProfile => Platform.isAndroid;
 

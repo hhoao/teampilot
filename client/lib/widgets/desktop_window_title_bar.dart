@@ -1,11 +1,10 @@
 ﻿import 'package:flutter/material.dart';
-import 'package:teampilot/theme/app_icon_sizes.dart';
 import 'package:flutter/services.dart';
 import 'package:window_manager/window_manager.dart';
 
-import '../l10n/l10n_extensions.dart';
 import '../services/app/platform_utils.dart';
 import '../theme/app_text_styles.dart';
+import 'window_chrome_controls.dart';
 import 'window_drag_area.dart';
 
 /// Height of the in-app replacement for the native window title bar.
@@ -22,7 +21,8 @@ Future<T?> _windowManagerCall<T>(Future<T> Function() action) async {
 /// Desktop-only custom title bar (minimize / maximize / close).
 ///
 /// Requires [TitleBarStyle.hidden] and [windowButtonVisibility] false at startup
-/// — see [main.dart].
+/// — see [main.dart]. On macOS the controls are left-aligned traffic lights;
+/// on Linux and Windows they stay on the right in Windows style.
 class DesktopWindowTitleBar extends StatefulWidget {
   const DesktopWindowTitleBar({
     this.title = 'TeamPilot',
@@ -61,6 +61,15 @@ class _DesktopWindowTitleBarState extends State<DesktopWindowTitleBar>
     setState(() => _isMaximized = maximized);
   }
 
+  Future<void> _toggleMaximize() async {
+    if (_isMaximized) {
+      await _windowManagerCall(windowManager.unmaximize);
+    } else {
+      await _windowManagerCall(windowManager.maximize);
+    }
+    await _syncMaximized();
+  }
+
   @override
   void onWindowMaximize() {
     setState(() => _isMaximized = true);
@@ -69,6 +78,16 @@ class _DesktopWindowTitleBarState extends State<DesktopWindowTitleBar>
   @override
   void onWindowUnmaximize() {
     setState(() => _isMaximized = false);
+  }
+
+  Widget _buildWindowControls() {
+    return WindowChromeControls(
+      height: kDesktopWindowTitleBarHeight,
+      isMaximized: _isMaximized,
+      onMinimize: () => _windowManagerCall(windowManager.minimize),
+      onToggleMaximize: _toggleMaximize,
+      onClose: () => _windowManagerCall(windowManager.close),
+    );
   }
 
   @override
@@ -81,7 +100,18 @@ class _DesktopWindowTitleBarState extends State<DesktopWindowTitleBar>
     final cs = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark;
     final titleColor = isDark ? Colors.white : const Color(0xFF111827);
-    final l10n = context.l10n;
+
+    final title = Padding(
+      padding: EdgeInsets.only(left: useMacWindowChromeStyle ? 8 : 16),
+      child: Text(
+        widget.title,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: AppTextStyles.of(context).bodyStrong.copyWith(
+          color: titleColor.withValues(alpha: 0.9),
+        ),
+      ),
+    );
 
     return Material(
       color: cs.surfaceContainerLow,
@@ -97,116 +127,17 @@ class _DesktopWindowTitleBarState extends State<DesktopWindowTitleBar>
           height: kDesktopWindowTitleBarHeight,
           child: Row(
             children: [
+              if (useMacWindowChromeStyle) _buildWindowControls(),
               Expanded(
                 child: WindowDragArea(
                   child: Align(
                     alignment: Alignment.centerLeft,
-                    child: Padding(
-                      padding: const EdgeInsets.only(left: 16),
-                      child: Text(
-                        widget.title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppTextStyles.of(context).bodyStrong.copyWith(
-                          color: titleColor.withValues(alpha: 0.9),
-                        ),
-                      ),
-                    ),
+                    child: title,
                   ),
                 ),
               ),
-              _WindowChromeButton(
-                tooltip: l10n.windowControlMinimize,
-                icon: Icons.remove,
-                onPressed: () => _windowManagerCall(windowManager.minimize),
-              ),
-              _WindowChromeButton(
-                tooltip: _isMaximized
-                    ? l10n.windowControlRestore
-                    : l10n.windowControlMaximize,
-                icon: _isMaximized
-                    ? Icons.filter_none
-                    : Icons.crop_square_outlined,
-                onPressed: () async {
-                  if (_isMaximized) {
-                    await _windowManagerCall(windowManager.unmaximize);
-                  } else {
-                    await _windowManagerCall(windowManager.maximize);
-                  }
-                  await _syncMaximized();
-                },
-              ),
-              _WindowChromeButton(
-                tooltip: l10n.windowControlClose,
-                icon: Icons.close,
-                isClose: true,
-                onPressed: () => _windowManagerCall(windowManager.close),
-              ),
+              if (!useMacWindowChromeStyle) _buildWindowControls(),
             ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _WindowChromeButton extends StatefulWidget {
-  const _WindowChromeButton({
-    required this.tooltip,
-    required this.icon,
-    required this.onPressed,
-    this.isClose = false,
-  });
-
-  final String tooltip;
-  final IconData icon;
-  final Future<void> Function() onPressed;
-  final bool isClose;
-
-  @override
-  State<_WindowChromeButton> createState() => _WindowChromeButtonState();
-}
-
-class _WindowChromeButtonState extends State<_WindowChromeButton> {
-  bool _hovered = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    Color background = Colors.transparent;
-    Color foreground = isDark
-        ? Colors.white.withValues(alpha: 0.88)
-        : const Color(0xFF374151);
-
-    if (_hovered) {
-      if (widget.isClose) {
-        background = const Color(0xFFE81123);
-        foreground = Colors.white;
-      } else {
-        background = isDark
-            ? Colors.white.withValues(alpha: 0.08)
-            : Colors.black.withValues(alpha: 0.06);
-      }
-    }
-
-    return Tooltip(
-      message: widget.tooltip,
-      child: MouseRegion(
-        onEnter: (_) => setState(() => _hovered = true),
-        onExit: (_) => setState(() => _hovered = false),
-        child: SizedBox(
-          width: 46,
-          height: kDesktopWindowTitleBarHeight,
-          child: Material(
-            color: background,
-            child: InkWell(
-              onTap: () => widget.onPressed(),
-              hoverColor: Colors.transparent,
-              splashColor: Colors.transparent,
-              highlightColor: Colors.transparent,
-              child: Icon(widget.icon, size: context.appIconSizes.md, color: foreground),
-            ),
           ),
         ),
       ),
