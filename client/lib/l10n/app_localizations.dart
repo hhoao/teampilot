@@ -473,7 +473,7 @@ abstract class AppLocalizations {
   /// No description provided for @typographyScaleDescription.
   ///
   /// In en, this message translates to:
-  /// **'Size of UI text. Does not change icons or spacing — use Interface zoom for that.'**
+  /// **'Size of UI text. Standard follows your system; does not change icons or spacing.'**
   String get typographyScaleDescription;
 
   /// No description provided for @typographyScaleCompact.
@@ -521,20 +521,8 @@ abstract class AppLocalizations {
   /// No description provided for @uiZoomDescription.
   ///
   /// In en, this message translates to:
-  /// **'Zoom the whole UI together — text, icons, and spacing. Auto matches your display scaling.'**
+  /// **'Zoom the whole UI together — text, icons, and spacing. Standard follows your display scaling.'**
   String get uiZoomDescription;
-
-  /// No description provided for @uiZoomHint.
-  ///
-  /// In en, this message translates to:
-  /// **'50–150'**
-  String get uiZoomHint;
-
-  /// No description provided for @uiZoomAuto.
-  ///
-  /// In en, this message translates to:
-  /// **'Auto'**
-  String get uiZoomAuto;
 
   /// No description provided for @themePresetGraphite.
   ///

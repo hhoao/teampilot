@@ -8,7 +8,11 @@ import 'package:flutter/material.dart';
 ///
 /// Exceptions: terminal [TerminalStyle] uses [terminal]; see `chat_workbench.dart`.
 
-/// Persisted scale ids (settings UI order).
+/// Persisted scale ids (settings UI order). These are **relative** levels: the
+/// effective scale is `autoBaseline × thisMultiplier`, where the baseline is the
+/// per-system auto value (text: [autoTextScaleForSystem]; zoom:
+/// [autoUiZoomForDevicePixelRatio]). So `standard` (×1.0) == auto, `compact` is
+/// a bit tighter, `comfortable` a bit looser, `custom` a % of standard.
 const List<String> kTypographyScaleIds = [
   'compact',
   'standard',
@@ -24,24 +28,18 @@ const double kTypographyCustomMultiplierMin = 0.5;
 const double kTypographyCustomMultiplierMax = 2.0;
 const double kDefaultTypographyCustomMultiplier = 1.0;
 
-/// Allowed **interface zoom** (whole-UI [UiZoom]); independent of text size.
+/// Final-effective **interface zoom** clamp (whole-UI [UiZoom]).
 const double kUiZoomMin = 0.5;
 const double kUiZoomMax = 1.5;
 
-/// Sentinel: the zoom follows the OS display scaling automatically (see
-/// [autoUiZoomForDevicePixelRatio]). A positive value is an explicit override.
-const double kDefaultUiZoom = 0.0;
-
 double clampUiZoom(double value) => value.clamp(kUiZoomMin, kUiZoomMax);
 
-/// Stored zoom: `0` (auto) or a clamped explicit value.
-double normalizeUiZoom(double value) => value <= 0 ? 0.0 : clampUiZoom(value);
-
-/// Default whole-UI zoom for a display [devicePixelRatio]. Compensates for the
-/// OS scaling so density is consistent across platforms: e.g. Windows @150%
-/// (dpr 1.5) → ~0.67, Linux/macOS @100% (dpr 1.0) → 1.0. The user can override.
+/// `standard` whole-UI zoom baseline for a display [devicePixelRatio]. The
+/// `standard` preset maps to this; compact/comfortable/custom are relative to
+/// it. Compensates for OS scaling so density is consistent across platforms:
+/// Windows @150% (dpr 1.5) → ~0.67, Linux/macOS @100% (dpr 1.0) → 1.0.
 double autoUiZoomForDevicePixelRatio(double devicePixelRatio) =>
-    clampUiZoom(devicePixelRatio <= 0 ? 1.0 : 1.0 / devicePixelRatio);
+    devicePixelRatio <= 0 ? 1.0 : 1.0 / devicePixelRatio;
 
 String normalizeTypographyScale(String? raw) {
   if (raw != null && kTypographyScaleIds.contains(raw)) return raw;
@@ -50,6 +48,33 @@ String normalizeTypographyScale(String? raw) {
 
 double clampTypographyCustomMultiplier(double value) =>
     value.clamp(kTypographyCustomMultiplierMin, kTypographyCustomMultiplierMax);
+
+/// `standard` text-size baseline: the OS's intended *physical* text scale =
+/// [osTextScale] (e.g. GNOME text-scaling-factor; 1.0 where the OS has none) ×
+/// [devicePixelRatio] (display scaling). The `standard` preset maps to this;
+/// compact/comfortable/custom are relative to it. Combined with the standard
+/// interface zoom (1/dpr) this renders text at the size the OS would while
+/// icons/spacing stay compact. e.g. Ubuntu GNOME 1.5 @100% → 1.5; Windows @150%
+/// → 1.5.
+double autoTextScaleForSystem(double osTextScale, double devicePixelRatio) {
+  final dpr = devicePixelRatio <= 0 ? 1.0 : devicePixelRatio;
+  final os = osTextScale <= 0 ? 1.0 : osTextScale;
+  return clampTypographyCustomMultiplier(os * dpr);
+}
+
+/// Effective scale = [baseline] × the relative preset multiplier (compact 0.92,
+/// standard 1.0, comfortable 1.08, or [customMultiplier] for `custom`). So
+/// `standard` resolves to the auto baseline and the rest are relative to it.
+double resolveRelativeScale({
+  required String scaleId,
+  required double customMultiplier,
+  required double baseline,
+}) =>
+    baseline *
+    typographyScaleForPreferences(
+      scaleId: scaleId,
+      customMultiplier: customMultiplier,
+    ).multiplier;
 
 AppTypographyScale typographyScaleForId(String id) =>
     switch (normalizeTypographyScale(id)) {

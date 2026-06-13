@@ -215,7 +215,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get typographyScaleDescription =>
-      'Size of UI text. Does not change icons or spacing — use Interface zoom for that.';
+      'Size of UI text. Standard follows your system; does not change icons or spacing.';
 
   @override
   String get typographyScaleCompact => 'Small';
@@ -240,13 +240,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get uiZoomDescription =>
-      'Zoom the whole UI together — text, icons, and spacing. Auto matches your display scaling.';
-
-  @override
-  String get uiZoomHint => '50–150';
-
-  @override
-  String get uiZoomAuto => 'Auto';
+      'Zoom the whole UI together — text, icons, and spacing. Standard follows your display scaling.';
 
   @override
   String get themePresetGraphite => 'Graphite';

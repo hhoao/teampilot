@@ -279,7 +279,8 @@ class TeamPilotApp extends StatelessWidget {
         String colorPreset,
         String typographyScale,
         double typographyCustomMultiplier,
-        double uiZoom,
+        String uiZoomScale,
+        double uiZoomCustomMultiplier,
         String locale,
       )
     >(
@@ -296,7 +297,8 @@ class TeamPilotApp extends StatelessWidget {
           normalizeThemeColorPreset(prefs.themeColorPreset),
           normalizeTypographyScale(prefs.typographyScale),
           prefs.typographyScaleCustomMultiplier,
-          normalizeUiZoom(prefs.uiZoom),
+          normalizeTypographyScale(prefs.uiZoomScale),
+          prefs.uiZoomCustomMultiplier,
           prefs.locale,
         );
       },
@@ -306,19 +308,30 @@ class TeamPilotApp extends StatelessWidget {
           colorPreset,
           typographyScaleId,
           typographyCustomMultiplier,
-          uiZoom,
+          uiZoomScaleId,
+          uiZoomCustomMultiplier,
           savedLocale,
         ) = themePrefs;
-        // Text size: scales fonts via the theme (the GNOME-text-scaling
-        // equivalent, app-owned + cross-platform).
-        final textScale = typographyScaleForPreferences(
-          scaleId: typographyScaleId,
-          customMultiplier: typographyCustomMultiplier,
+        // Text size: scales fonts via the theme. `standard` == the per-system
+        // baseline (OS text-scaling × display scaling); compact/comfortable/
+        // custom are relative to it. Read system metrics from the implicit view
+        // — there is no MediaQuery ancestor above MaterialApp here.
+        final systemView =
+            WidgetsBinding.instance.platformDispatcher.implicitView;
+        final systemMq = systemView == null
+            ? const MediaQueryData()
+            : MediaQueryData.fromView(systemView);
+        final textBaseline = autoTextScaleForSystem(
+          systemMq.textScaler.scale(1.0),
+          systemMq.devicePixelRatio,
         );
-        // Interface zoom: scales the WHOLE UI (UiZoom), independent of text
-        // size. Icons are decoupled from textScale in the theme so nothing
-        // double-scales. `uiZoom == 0` means auto (per-display default computed
-        // from the real devicePixelRatio inside the builder below).
+        final textScale = AppTypographyScale(
+          multiplier: resolveRelativeScale(
+            scaleId: typographyScaleId,
+            customMultiplier: typographyCustomMultiplier,
+            baseline: textBaseline,
+          ),
+        );
 
         ThemeMode themeModeFromPrefs(String mode) => switch (mode) {
           'light' => ThemeMode.light,
@@ -336,13 +349,17 @@ class TeamPilotApp extends StatelessWidget {
           supportedLocales: AppLocalizations.supportedLocales,
           locale: savedLocale.isNotEmpty ? Locale(savedLocale) : null,
           builder: (context, child) {
-            // Auto interface-zoom default = 1 / devicePixelRatio (compensates
-            // for OS display scaling so density is consistent cross-platform);
-            // an explicit `uiZoom > 0` overrides it.
+            // Interface zoom: `standard` == the per-display baseline (1/dpr,
+            // compensating for OS display scaling); compact/comfortable/custom
+            // are relative to it.
             final dpr = MediaQuery.of(context).devicePixelRatio;
-            final effectiveZoom = uiZoom > 0
-                ? uiZoom
-                : autoUiZoomForDevicePixelRatio(dpr);
+            final effectiveZoom = clampUiZoom(
+              resolveRelativeScale(
+                scaleId: uiZoomScaleId,
+                customMultiplier: uiZoomCustomMultiplier,
+                baseline: autoUiZoomForDevicePixelRatio(dpr),
+              ),
+            );
             // TEMP DIAGNOSTIC (removed in Task 8): records the real per-platform
             // scaling inputs so the compact UI-scale default is measured, not
             // guessed. Run `flutter run -d linux` and read the UI_SCALE_DIAG line.
@@ -351,7 +368,7 @@ class TeamPilotApp extends StatelessWidget {
               appLogger.i(
                 'UI_SCALE_DIAG platform=${Platform.operatingSystem} '
                 'dpr=${mq?.devicePixelRatio} textScaler=${mq?.textScaler} '
-                'size=${mq?.size} zoom=$effectiveZoom auto=${uiZoom <= 0}',
+                'size=${mq?.size} zoom=$effectiveZoom scale=$uiZoomScaleId',
               );
             });
             Widget content = AppTextScaleBoundary(

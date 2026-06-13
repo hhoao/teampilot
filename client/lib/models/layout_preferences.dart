@@ -30,7 +30,8 @@ class LayoutPreferences {
     this.themeColorPreset = kDefaultThemeColorPreset,
     this.typographyScale = kDefaultTypographyScaleId,
     this.typographyScaleCustomMultiplier = kDefaultTypographyCustomMultiplier,
-    this.uiZoom = kDefaultUiZoom,
+    this.uiZoomScale = kDefaultTypographyScaleId,
+    this.uiZoomCustomMultiplier = kDefaultTypographyCustomMultiplier,
     this.terminalThemeMode = 'adaptive',
     this.locale = '',
     this.workspaceTerminalVisible = false,
@@ -90,8 +91,12 @@ class LayoutPreferences {
           fallback: kDefaultTypographyCustomMultiplier,
         ),
       ),
-      uiZoom: normalizeUiZoom(
-        _doubleValue(json['uiZoom'], fallback: kDefaultUiZoom),
+      uiZoomScale: normalizeTypographyScale(json['uiZoomScale'] as String?),
+      uiZoomCustomMultiplier: clampTypographyCustomMultiplier(
+        _doubleValue(
+          json['uiZoomCustomMultiplier'],
+          fallback: kDefaultTypographyCustomMultiplier,
+        ),
       ),
       terminalThemeMode: _terminalThemeModeValue(
         json['terminalThemeMode'] as String?,
@@ -164,9 +169,11 @@ class LayoutPreferences {
   final String typographyScale;
   final double typographyScaleCustomMultiplier;
 
-  /// Whole-UI zoom (independent of [typographyScaleCustomMultiplier], which is
-  /// text size). Drives [UiZoom]; `1.0` = native.
-  final double uiZoom;
+  /// Whole-UI zoom level (relative preset, independent of text size). The
+  /// effective [UiZoom] is the per-display baseline × this preset's multiplier;
+  /// `standard` == the auto baseline.
+  final String uiZoomScale;
+  final double uiZoomCustomMultiplier;
   final String terminalThemeMode;
   final String locale;
   final bool workspaceTerminalVisible;
@@ -193,7 +200,8 @@ class LayoutPreferences {
     String? themeColorPreset,
     String? typographyScale,
     double? typographyScaleCustomMultiplier,
-    double? uiZoom,
+    String? uiZoomScale,
+    double? uiZoomCustomMultiplier,
     String? terminalThemeMode,
     String? locale,
     bool? workspaceTerminalVisible,
@@ -236,7 +244,12 @@ class LayoutPreferences {
       typographyScaleCustomMultiplier: typographyScaleCustomMultiplier == null
           ? this.typographyScaleCustomMultiplier
           : clampTypographyCustomMultiplier(typographyScaleCustomMultiplier),
-      uiZoom: uiZoom == null ? this.uiZoom : normalizeUiZoom(uiZoom),
+      uiZoomScale: uiZoomScale == null
+          ? this.uiZoomScale
+          : normalizeTypographyScale(uiZoomScale),
+      uiZoomCustomMultiplier: uiZoomCustomMultiplier == null
+          ? this.uiZoomCustomMultiplier
+          : clampTypographyCustomMultiplier(uiZoomCustomMultiplier),
       terminalThemeMode: terminalThemeMode == null
           ? this.terminalThemeMode
           : _terminalThemeModeValue(terminalThemeMode),
@@ -280,7 +293,8 @@ class LayoutPreferences {
       themeColorPreset: themeColorPreset,
       typographyScale: typographyScale,
       typographyScaleCustomMultiplier: typographyScaleCustomMultiplier,
-      uiZoom: uiZoom,
+      uiZoomScale: uiZoomScale,
+      uiZoomCustomMultiplier: uiZoomCustomMultiplier,
       terminalThemeMode: terminalThemeMode,
       locale: locale,
       workspaceTerminalVisible: workspaceTerminalVisible,
@@ -311,7 +325,8 @@ class LayoutPreferences {
       'themeColorPreset': themeColorPreset,
       'typographyScale': typographyScale,
       'typographyScaleCustomMultiplier': typographyScaleCustomMultiplier,
-      'uiZoom': uiZoom,
+      'uiZoomScale': uiZoomScale,
+      'uiZoomCustomMultiplier': uiZoomCustomMultiplier,
       'terminalThemeMode': terminalThemeMode,
       'locale': locale,
       'workspaceTerminalVisible': workspaceTerminalVisible,
