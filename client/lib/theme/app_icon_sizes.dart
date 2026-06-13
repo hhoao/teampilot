@@ -17,39 +17,44 @@ abstract final class AppIconSizes {
   static const double multiplier = 1.0;
 
   // --- Baseline at multiplier 1.0 ---
+  //
+  // Tuned ~18% smaller than the original design values (md 22→18, etc.) so icons
+  // sit closer to the 14px body text (ratio ~1.3 instead of ~1.57). The global
+  // UiZoom scales icons and text together, so it cannot change this *ratio* — the
+  // refinement lives here. First-pass values; adjust together to taste.
 
   /// Ultra-dense chrome (e.g. session tab overflow).
-  static const double xxsBase = 16;
+  static const double xxsBase = 14;
 
   /// Dense chrome (e.g. editor/terminal tab actions).
-  static const double xsBase = 18;
+  static const double xsBase = 15;
 
   /// Compact list/toolbar glyph ([AppIconButton] compact preset).
-  static const double smBase = 20;
+  static const double smBase = 16;
 
   /// Default interactive icon: lists, toolbars, title bars, buttons.
-  static const double mdBase = 22;
+  static const double mdBase = 18;
 
   /// Emphasized nav / search fields.
-  static const double lgBase = 24;
+  static const double lgBase = 20;
 
   /// Dropdown suffix chevron.
-  static const double xlBase = 26;
+  static const double xlBase = 22;
 
   /// Hub nav tile at [WorkspaceHubNavDensity.relaxed].
-  static const double navRelaxedBase = 25;
+  static const double navRelaxedBase = 20;
 
   /// Inline list / card leading glyph.
-  static const double listBase = 36;
+  static const double listBase = 30;
 
   /// Empty-state illustration.
-  static const double emptyBase = 40;
+  static const double emptyBase = 34;
 
   /// Feature / settings hero icon.
-  static const double heroBase = 44;
+  static const double heroBase = 38;
 
   /// Large empty / error states.
-  static const double displayBase = 52;
+  static const double displayBase = 44;
 
   // --- Resolved sizes (const while [multiplier] is 1.0) ---
 
