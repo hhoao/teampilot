@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../l10n/l10n_extensions.dart';
@@ -119,7 +119,7 @@ class _TeamConfigIncompleteDialog extends StatelessWidget {
               ),
               FilledButton.icon(
                 onPressed: () => Navigator.of(context).pop(true),
-                icon: const Icon(Icons.arrow_forward_rounded, size: 18),
+                icon: Icon(Icons.arrow_forward_rounded, size: 18),
                 label: Text(l10n.teamConfigIncompleteGoConfigure),
               ),
             ],

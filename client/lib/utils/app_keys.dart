@@ -12,7 +12,6 @@ class AppKeys {
   static const configWorkspace = Key('config-workspace');
   static const configSettingsHub = Key('config-settings-hub');
   static const rightToolsPanel = Key('right-tools-panel');
-  static const bottomToolsPanel = Key('bottom-tools-panel');
   static const rightToolsDivider = Key('right-tools-divider');
   static const membersPanel = Key('members-panel');
   static const fileTreePanel = Key('file-tree-panel');
@@ -28,14 +27,6 @@ class AppKeys {
   );
   static const scopeSessionsToSelectedTeamSwitch = Key(
     'scope-sessions-to-selected-team-switch',
-  );
-  static const toolPlacementRightButton = Key('tool-placement-right-button');
-  static const toolPlacementBottomButton = Key('tool-placement-bottom-button');
-  static const toolsArrangementStackedButton = Key(
-    'tools-arrangement-stacked-button',
-  );
-  static const toolsArrangementTabsButton = Key(
-    'tools-arrangement-tabs-button',
   );
   static const configTeamSectionButton = Key('config-team-section-button');
   static const configMembersSectionButton = Key(

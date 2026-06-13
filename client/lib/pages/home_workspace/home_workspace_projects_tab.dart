@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -170,7 +170,7 @@ class HomeWorkspaceProjectsSortButton extends StatelessWidget {
               trailing: projectSort == sort
                   ? Icon(
                       Icons.check,
-                      size: AppIconSizes.md,
+                      size: context.appIconSizes.md,
                       color: Theme.of(
                         context,
                       ).colorScheme.onSurface.withValues(alpha: 0.7),
@@ -260,7 +260,7 @@ class HomeWorkspaceProjectsToggleCell extends StatelessWidget {
         ),
         child: Icon(
           icon,
-          size: AppIconSizes.md,
+          size: context.appIconSizes.md,
           color: active ? cs.primary : cs.onSurfaceVariant,
         ),
       ),
@@ -292,7 +292,7 @@ class HomeWorkspaceProjectsIconChip extends StatelessWidget {
           borderRadius: BorderRadius.circular(8),
           border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.7)),
         ),
-        child: Icon(icon, size: AppIconSizes.md, color: cs.onSurfaceVariant),
+        child: Icon(icon, size: context.appIconSizes.md, color: cs.onSurfaceVariant),
       ),
     );
     if (tooltip == null || tooltip!.isEmpty) return chip;
@@ -327,7 +327,7 @@ class HomeWorkspaceProjectsPrimaryAction extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: AppIconSizes.md, color: cs.onPrimary),
+            Icon(icon, size: context.appIconSizes.md, color: cs.onPrimary),
             const SizedBox(width: 7),
             Text(label, style: styles.body.copyWith(color: cs.onPrimary)),
           ],
@@ -500,7 +500,7 @@ class HomeWorkspaceEmptyProjects extends StatelessWidget {
         children: [
           Icon(
             Icons.folder_open_outlined,
-            size: AppIconSizes.md,
+            size: context.appIconSizes.md,
             color: cs.onSurfaceVariant.withValues(alpha: 0.5),
           ),
           const SizedBox(height: 14),

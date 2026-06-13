@@ -120,42 +120,6 @@ class WorkspaceShellBody extends StatelessWidget {
     if (rightTools == null || !preferences.rightToolsVisible) {
       return child;
     }
-    if (preferences.toolPlacement == ToolPanelPlacement.bottom) {
-      final toolsHeight = preferences.bottomToolsHeight.clamp(
-        LayoutPreferences.minBottomToolsHeight,
-        LayoutPreferences.maxBottomToolsHeight,
-      );
-      return LayoutBuilder(
-        builder: (context, constraints) {
-          const dividerHeight = 2.0;
-          final maxH = constraints.maxHeight;
-          final minTop =
-              (maxH - LayoutPreferences.maxBottomToolsHeight - dividerHeight)
-                  .clamp(0.0, maxH);
-          final maxTop =
-              (maxH - LayoutPreferences.minBottomToolsHeight - dividerHeight)
-                  .clamp(0.0, maxH);
-          final initialTop = (maxH - toolsHeight - dividerHeight).clamp(
-            minTop <= maxTop ? minTop : maxTop,
-            maxTop >= minTop ? maxTop : minTop,
-          );
-          return ResizableSplitView(
-            axis: Axis.vertical,
-            first: child,
-            second: rightTools!,
-            initialPrimarySize: initialTop,
-            minPrimarySize: minTop,
-            minSecondarySize: LayoutPreferences.minBottomToolsHeight,
-            maxPrimarySize: maxTop,
-            dividerThickness: dividerHeight,
-            onPrimarySizeChanged: (topHeight) {
-              final bottomHeight = maxH - topHeight - dividerHeight;
-              context.read<LayoutCubit>().setBottomToolsHeight(bottomHeight);
-            },
-          );
-        },
-      );
-    }
     final rightWidth = preferences.rightToolsWidth;
     return LayoutBuilder(
       builder: (context, constraints) {

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
 
 import '../../l10n/l10n_extensions.dart';
@@ -82,7 +82,7 @@ class ChatWorkbenchTerminalPlaceholder extends StatelessWidget {
                   padding: const EdgeInsets.all(20),
                   child: Icon(
                     Icons.forum_outlined,
-                    size: AppIconSizes.md,
+                    size: context.appIconSizes.md,
                     color: cs.primary,
                   ),
                 ),
@@ -150,7 +150,7 @@ class ChatWorkbenchTerminalPlaceholder extends StatelessWidget {
                       ),
                 icon: Icon(
                   hasError ? Icons.refresh_rounded : Icons.play_arrow_rounded,
-                  size: AppIconSizes.md,
+                  size: context.appIconSizes.md,
                 ),
                 label: Text(
                   hasError ? l10n.sessionRetryButton : l10n.sessionStartButton,

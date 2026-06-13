@@ -1,4 +1,4 @@
-import 'dart:math' as math;
+﻿import 'dart:math' as math;
 
 import 'package:flutter/painting.dart';
 import 'package:path/path.dart' as p;
@@ -43,7 +43,7 @@ const double kFileTreeNodePaddingRight = 8;
 
 /// Fixed leading chrome before the file label (chevron slot + icon + gap).
 const double kFileTreeLeadingChromeWidth =
-    18 + 22 + 6; // chevron slot + AppIconSizes.md + gap
+    18 + 22 + 6; // chevron slot + context.appIconSizes.md + gap
 
 /// Extra width so measured labels do not clip due to font metrics drift.
 const double kFileTreeContentWidthSlack = 12;

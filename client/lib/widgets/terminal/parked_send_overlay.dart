@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 
 import 'package:flutter/material.dart';
 
@@ -119,7 +119,7 @@ class _ParkedSendOverlayState extends State<ParkedSendOverlay> {
                         ),
                       ),
                       IconButton(
-                        icon: const Icon(Icons.close, size: 16),
+                        icon: Icon(Icons.close, size: 16),
                         tooltip: l10n.terminalParkedSendDismiss,
                         color: cs.onSecondaryContainer,
                         onPressed: () => _dismiss(msg),

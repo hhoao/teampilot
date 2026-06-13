@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'dart:io' show Platform, Process;
 
 import 'package:flutter/material.dart';
@@ -131,7 +131,7 @@ class _FileTreeNodeState extends State<FileTreeNode> {
                     duration: const Duration(milliseconds: 150),
                     child: Icon(
                       Icons.chevron_right,
-                      size: AppIconSizes.md,
+                      size: context.appIconSizes.md,
                       color: isActive
                           ? iconMuted
                           : widget.textColor.withValues(alpha: 0.55),
@@ -144,7 +144,7 @@ class _FileTreeNodeState extends State<FileTreeNode> {
                 isDir
                     ? (isExpanded ? Icons.folder_open : Icons.folder_outlined)
                     : fileIconForFileName(widget.entry.name),
-                size: AppIconSizes.md,
+                size: context.appIconSizes.md,
               ),
               const SizedBox(width: 6),
               Text(

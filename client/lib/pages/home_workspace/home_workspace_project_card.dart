@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -120,8 +120,7 @@ class _HomeWorkspaceProjectCardState extends State<HomeWorkspaceProjectCard> {
                         icon: Icons.open_in_new_rounded,
                         tooltip: l10n.homeWorkspaceOpenProjectInNewTab,
                         size: AppIconButton.kCompactSize,
-                        iconSize: AppIconButton.kCompactIconSize,
-                        onTap: _openInNewTab,
+                        compact: true, onTap: _openInNewTab,
                       ),
                       AppIconButton(
                         icon: widget.favorited
@@ -132,16 +131,15 @@ class _HomeWorkspaceProjectCardState extends State<HomeWorkspaceProjectCard> {
                             ? l10n.homeWorkspaceUnfavoriteProject
                             : l10n.homeWorkspaceFavoriteProject,
                         size: AppIconButton.kCompactSize,
-                        iconSize: AppIconButton.kCompactIconSize,
-                        onTap: () => unawaited(widget.onToggleFavorite()),
+                        compact: true, onTap: () => unawaited(widget.onToggleFavorite()),
                       ),
                       SizedBox(
                         width: AppIconButton.kCompactSize,
                         height: AppIconButton.kCompactSize,
                         child: SidebarActionMenuIconAnchor(
-                          icon: const Icon(
+                          icon: Icon(
                             Icons.more_horiz,
-                            size: AppIconButton.kCompactIconSize,
+                            size: context.appIconSizes.sm,
                           ),
                           onOpen: () => setState(() => _menuOpen = true),
                           onClose: () => setState(() => _menuOpen = false),
@@ -191,7 +189,7 @@ class _HomeWorkspaceProjectCardState extends State<HomeWorkspaceProjectCard> {
                   right: 0,
                   child: Icon(
                     Icons.star_rounded,
-                    size: AppIconSizes.sm,
+                    size: context.appIconSizes.sm,
                     color: cs.primary.withValues(alpha: 0.85),
                   ),
                 ),

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -91,7 +91,7 @@ class _McpDiscoverySectionState extends State<McpDiscoverySection> {
                           height: 18,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
-                      : const Icon(Icons.refresh, size: AppIconSizes.md),
+                      : Icon(Icons.refresh, size: context.appIconSizes.md),
                 ),
               ),
               const SizedBox(height: 10),
@@ -130,7 +130,7 @@ class _McpDiscoverySectionState extends State<McpDiscoverySection> {
                   onSubmitted: _onSearchChanged,
                   decoration: InputDecoration(
                     hintText: l10n.mcpRegistrySearchHint,
-                    prefixIcon: const Icon(Icons.search, size: AppIconSizes.md),
+                    prefixIcon: Icon(Icons.search, size: context.appIconSizes.md),
                     isDense: true,
                   ),
                 ),
@@ -146,7 +146,7 @@ class _McpDiscoverySectionState extends State<McpDiscoverySection> {
                       alignment: Alignment.centerLeft,
                       child: TextButton.icon(
                         onPressed: widget.onGoRegistries,
-                        icon: const Icon(Icons.settings_outlined, size: AppIconSizes.md),
+                        icon: Icon(Icons.settings_outlined, size: context.appIconSizes.md),
                         label: Text(l10n.mcpEmptyGoRegistries),
                       ),
                     ),

@@ -1,14 +1,11 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:toggle_switch/toggle_switch.dart';
 
 import '../theme/app_icon_sizes.dart';
 import '../theme/app_text_styles.dart';
 import '../theme/workspace_surface_layers.dart';
 
-/// Default icon size for [AppToggleSwitch].
-const appToggleSwitchIconSize = AppIconSizes.md;
-
-/// Default pill height for [AppToggleSwitch].
+/// Default icon size for [AppToggleSwitch] — resolved from theme in [build].
 const appToggleSwitchMinHeight = 38.0;
 
 /// Default corner radius for [AppToggleSwitch].
@@ -61,7 +58,7 @@ class AppToggleSwitch extends StatelessWidget {
       fontSize:
           Theme.of(context).textTheme.bodyMedium?.fontSize ??
           AppTextStyles.of(context).body.fontSize!,
-      iconSize: appToggleSwitchIconSize,
+      iconSize: context.appIconSizes.md,
       activeFgColor: Colors.white,
       inactiveFgColor: inactiveFg,
       inactiveBgColor: cs.workspaceInset,

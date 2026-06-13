@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
@@ -181,7 +181,7 @@ ${AppLogger.instance.getFormattedPendingLogs()}
                             onPressed: () => _copyStack(context),
                             icon: Icon(
                               _copiedStack ? Icons.check : Icons.copy,
-                              size: AppIconSizes.md,
+                              size: context.appIconSizes.md,
                             ),
                             label: Text(
                               _copiedStack
@@ -215,7 +215,7 @@ ${AppLogger.instance.getFormattedPendingLogs()}
                   Expanded(
                     child: OutlinedButton.icon(
                       onPressed: _openLogViewer,
-                      icon: const Icon(Icons.article_outlined),
+                      icon: Icon(Icons.article_outlined),
                       label: Text(l10n.initErrorViewLogs),
                     ),
                   ),

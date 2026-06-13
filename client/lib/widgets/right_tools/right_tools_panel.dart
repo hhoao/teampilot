@@ -17,7 +17,6 @@ import '../git/git_source_control_panel.dart';
 import 'file_tree_panel.dart';
 import 'mailbox_panel.dart';
 import 'members_panel.dart';
-import 'stacked_panel.dart';
 import 'tabbed_panel.dart';
 import 'tool_view.dart';
 
@@ -178,9 +177,7 @@ class _RightToolsPanelState extends State<RightToolsPanel> {
     ];
     return Container(
       key: widget.panelKey,
-      child: widget.preferences.toolsArrangement == ToolsArrangement.tabs
-          ? TabbedPanel(views: views, scopeId: widget.projectId)
-          : StackedPanel(views: views),
+      child: TabbedPanel(views: views, scopeId: widget.projectId),
     );
   }
 }

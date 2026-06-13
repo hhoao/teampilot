@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
 
 import '../../theme/app_text_styles.dart';
@@ -106,7 +106,7 @@ abstract final class AppDropdownDecorations {
     FontWeight? listItemFontWeight,
     Widget? closedSuffixIcon,
     Widget? expandedSuffixIcon,
-    double suffixIconSize = AppIconSizes.md,
+    double? suffixIconSize,
     double suffixIconOpacity = 0.55,
     double highlightAlphaDark = 0.06,
     double highlightAlphaLight = 0.04,
@@ -114,6 +114,8 @@ abstract final class AppDropdownDecorations {
     double listItemBorderRadius = 6,
     EdgeInsetsGeometry? menuPadding,
   }) {
+    final resolvedSuffixIconSize =
+        suffixIconSize ?? context.appIconSizes.md;
     final cs = Theme.of(context).colorScheme;
     final onSurface = cs.onSurface;
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -176,7 +178,7 @@ abstract final class AppDropdownDecorations {
           _suffixIcon(
             Icons.expand_more_rounded,
             onSurface,
-            suffixIconSize,
+            resolvedSuffixIconSize,
             suffixIconOpacity,
           ),
       expandedSuffixIcon:
@@ -184,10 +186,10 @@ abstract final class AppDropdownDecorations {
           _suffixIcon(
             Icons.expand_less_rounded,
             onSurface,
-            suffixIconSize,
+            resolvedSuffixIconSize,
             suffixIconOpacity,
           ),
-      suffixIconSize: suffixIconSize,
+      suffixIconSize: resolvedSuffixIconSize,
       listItemHighlightColor: highlight,
       listItemSelectedColor: selectedBg,
       listItemBorderRadius: BorderRadius.circular(listItemBorderRadius),

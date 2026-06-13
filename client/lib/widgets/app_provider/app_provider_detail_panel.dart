@@ -1,4 +1,4 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
@@ -74,7 +74,7 @@ class AppProviderDetailPanel extends StatelessWidget {
               if (provider.cli == CliTool.flashskyai)
                 TextButton.icon(
                   onPressed: onShowModels,
-                  icon: const Icon(Icons.hub_outlined, size: AppIconSizes.md),
+                  icon: Icon(Icons.hub_outlined, size: context.appIconSizes.md),
                   label: Text(l10n.providerListModelCount(modelCount)),
                 ),
               AppIconButton(

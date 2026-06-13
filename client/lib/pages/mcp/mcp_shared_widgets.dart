@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
 
 import '../../l10n/l10n_extensions.dart';
@@ -65,7 +65,7 @@ class McpEmptyBlock extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 24),
       child: Column(
         children: [
-          Icon(icon, size: AppIconSizes.md, color: textBase.withValues(alpha: 0.35)),
+          Icon(icon, size: context.appIconSizes.md, color: textBase.withValues(alpha: 0.35)),
           const SizedBox(height: 12),
           Text(
             title,
@@ -236,23 +236,23 @@ class McpInstalledServerRow extends StatelessWidget {
               IconButton(
                 tooltip: l10n.mcpOpenHomepage,
                 visualDensity: VisualDensity.compact,
-                iconSize: AppIconSizes.md,
+                iconSize: context.appIconSizes.md,
                 onPressed: busy
                     ? null
                     : () => openGithubBrowseUrl(server.homepage.trim()),
-                icon: const Icon(Icons.open_in_new),
+                icon: Icon(Icons.open_in_new),
               ),
             const SizedBox(width: 4),
 
             IconButton(
               tooltip: l10n.mcpEdit,
               onPressed: busy ? null : onEdit,
-              icon: const Icon(Icons.edit_outlined, size: AppIconSizes.md),
+              icon: Icon(Icons.edit_outlined, size: context.appIconSizes.md),
             ),
             IconButton(
               tooltip: l10n.delete,
               onPressed: busy ? null : onDelete,
-              icon: Icon(Icons.delete_outline, size: AppIconSizes.md, color: cs.error),
+              icon: Icon(Icons.delete_outline, size: context.appIconSizes.md, color: cs.error),
             ),
             Switch(
               value: server.enabled,
@@ -312,7 +312,7 @@ class McpCatalogListingTile extends StatelessWidget {
                       fit: BoxFit.cover,
                       errorBuilder: (_, __, ___) => Icon(
                         Icons.hub_outlined,
-                        size: AppIconSizes.md,
+                        size: context.appIconSizes.md,
                         color: cs.onSurface.withValues(alpha: 0.4),
                       ),
                     ),
@@ -341,10 +341,10 @@ class McpCatalogListingTile extends StatelessWidget {
                               minHeight: 32,
                             ),
                             visualDensity: VisualDensity.compact,
-                            iconSize: AppIconSizes.md,
+                            iconSize: context.appIconSizes.md,
                             tooltip: l10n.mcpOpenHomepage,
                             onPressed: onOpenHomepage,
-                            icon: const Icon(Icons.open_in_new),
+                            icon: Icon(Icons.open_in_new),
                           ),
                       ],
                     ),

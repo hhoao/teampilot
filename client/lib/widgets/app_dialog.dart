@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 
 import '../l10n/l10n_extensions.dart';
 import '../theme/app_dialog_theme.dart';
@@ -210,7 +210,7 @@ class AppDialogHeader extends StatelessWidget {
                 visualDensity: VisualDensity.compact,
                 icon: Icon(
                   Icons.close_rounded,
-                  size: AppIconSizes.md,
+                  size: context.appIconSizes.md,
                   color: cs.onSurfaceVariant,
                 ),
                 onPressed: onClose ?? () => Navigator.of(context).pop(),

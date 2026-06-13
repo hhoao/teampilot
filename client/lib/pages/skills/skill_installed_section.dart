@@ -1,4 +1,4 @@
-import 'dart:io';
+﻿import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
@@ -47,7 +47,7 @@ class SkillInstalledSection extends StatelessWidget {
                                   'skill_update_all',
                                   cubit.updateAll,
                                 ),
-                          icon: const Icon(Icons.upgrade, size: AppIconSizes.md),
+                          icon: Icon(Icons.upgrade, size: context.appIconSizes.md),
                           label: Text(
                             l10n.skillsUpdateAll(state.updates.length),
                           ),
@@ -59,7 +59,7 @@ class SkillInstalledSection extends StatelessWidget {
                                 'skill_import_disk',
                                 () => _onImportFromDisk(context),
                               ),
-                        icon: const Icon(Icons.folder_open_outlined, size: AppIconSizes.md),
+                        icon: Icon(Icons.folder_open_outlined, size: context.appIconSizes.md),
                         label: Text(l10n.skillsImportFromDisk),
                       ),
                       OutlinedButton.icon(
@@ -69,7 +69,7 @@ class SkillInstalledSection extends StatelessWidget {
                                 'skill_install_zip',
                                 () => _onInstallZip(context),
                               ),
-                        icon: const Icon(Icons.archive_outlined, size: AppIconSizes.md),
+                        icon: Icon(Icons.archive_outlined, size: context.appIconSizes.md),
                         label: Text(l10n.skillsInstallFromZip),
                       ),
                       OutlinedButton.icon(
@@ -87,7 +87,7 @@ class SkillInstalledSection extends StatelessWidget {
                                   strokeWidth: 2,
                                 ),
                               )
-                            : const Icon(Icons.refresh, size: AppIconSizes.md),
+                            : Icon(Icons.refresh, size: context.appIconSizes.md),
                         label: Text(
                           state.updatesLoading
                               ? l10n.skillsCheckingUpdates
@@ -264,14 +264,14 @@ class SkillInstalledRow extends StatelessWidget {
                         height: 16,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
-                    : const Icon(Icons.upgrade, size: AppIconSizes.md),
+                    : Icon(Icons.upgrade, size: context.appIconSizes.md),
               ),
             IconButton(
               tooltip: l10n.skillsCardUninstall,
               onPressed: busy ? null : () => _onUninstall(context, skill),
               icon: Icon(
                 Icons.delete_outline,
-                size: AppIconSizes.md,
+                size: context.appIconSizes.md,
                 color: Theme.of(context).colorScheme.error,
               ),
             ),

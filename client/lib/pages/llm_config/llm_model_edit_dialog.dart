@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
 
 import '../../l10n/l10n_extensions.dart';
@@ -60,7 +60,7 @@ class LlmModelEditDialogState extends State<LlmModelEditDialog> {
       context,
       borderRadius: 8,
       headerFontWeight: FontWeight.w500,
-      suffixIconSize: AppIconSizes.md,
+      suffixIconSize: context.appIconSizes.md,
       expandedShadowBlurRadius: 18,
       expandedShadowAlphaDark: 0.45,
     );

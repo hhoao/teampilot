@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
 import 'package:path/path.dart' as p;
 
@@ -104,7 +104,7 @@ class LogViewerToolbar extends StatelessWidget {
                   hintText: l10n.logViewerSearchHint,
                   prefixIcon: Icon(
                     Icons.search,
-                    size: AppIconSizes.md,
+                    size: context.appIconSizes.md,
                     color: cs.onSurfaceVariant,
                   ),
                 ),
@@ -253,7 +253,7 @@ class LogViewerToolbar extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     return AppIconButton(
       icon: value ? onIcon : offIcon,
-      iconSize: AppIconSizes.md,
+      iconSize: context.appIconSizes.md,
       size: 36,
       tooltip: tooltip,
       color: value ? cs.onPrimaryContainer : cs.onSurfaceVariant,

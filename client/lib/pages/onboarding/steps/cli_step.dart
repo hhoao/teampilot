@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
@@ -188,7 +188,7 @@ class _OnboardingCliStepState extends State<OnboardingCliStep> {
           if (_detectedPath != null && _detectedPath!.isNotEmpty)
             SettingsSurfaceCard(
               child: ListTile(
-                leading: const Icon(Icons.check_circle_outline),
+                leading: Icon(Icons.check_circle_outline),
                 title: Text(l10n.onboardingCliFound),
                 subtitle: Text(
                   _detectedPath!,
@@ -237,7 +237,7 @@ class _OnboardingCliStepState extends State<OnboardingCliStep> {
           children: [
             OutlinedButton.icon(
               onPressed: _detecting ? null : _detect,
-              icon: const Icon(Icons.refresh, size: AppIconSizes.md),
+              icon: Icon(Icons.refresh, size: context.appIconSizes.md),
               label: Text(l10n.onboardingCliRedetect),
             ),
             OutlinedButton.icon(
@@ -249,7 +249,7 @@ class _OnboardingCliStepState extends State<OnboardingCliStep> {
                       height: 16,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
-                  : const Icon(Icons.download_outlined, size: AppIconSizes.md),
+                  : Icon(Icons.download_outlined, size: context.appIconSizes.md),
               label: Text(
                 _installing ? l10n.cliInstallInstalling : l10n.cliInstallButton,
               ),

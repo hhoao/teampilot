@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -220,16 +220,15 @@ class _FileTreePanelState extends State<FileTreePanel> {
                         controller: _filterController,
                         decoration: InputDecoration(
                           hintText: l10n.filterFiles,
-                          prefixIcon: const Icon(
+                          prefixIcon: Icon(
                             Icons.search,
-                            size: AppIconSizes.md,
+                            size: context.appIconSizes.md,
                           ),
                           floatingLabelBehavior: FloatingLabelBehavior.never,
                           suffixIcon: _filterController.text.isNotEmpty
                               ? AppIconButton(
                                   icon: Icons.clear,
-                                  iconSize: AppIconButton.kCompactIconSize,
-                                  size: AppIconButton.kCompactSize,
+                                  compact: true, size: AppIconButton.kCompactSize,
                                   onTap: () {
                                     _filterController.clear();
                                     _cubit.setFilter('');
@@ -289,8 +288,7 @@ class _FileTreePanelState extends State<FileTreePanel> {
           final visible = layoutState.preferences.workspaceTerminalVisible;
           return AppIconButton(
             icon: visible ? Icons.terminal : Icons.terminal_outlined,
-            iconSize: AppIconButton.kCompactIconSize,
-            size: AppIconButton.kCompactSize,
+            compact: true, size: AppIconButton.kCompactSize,
             tooltip: visible
                 ? l10n.workspaceTerminalHide
                 : l10n.workspaceTerminalShow,
@@ -302,8 +300,7 @@ class _FileTreePanelState extends State<FileTreePanel> {
       ),
       AppIconButton(
         icon: Icons.my_location_outlined,
-        iconSize: AppIconButton.kCompactIconSize,
-        size: AppIconButton.kCompactSize,
+        compact: true, size: AppIconButton.kCompactSize,
         tooltip: l10n.fileTreeRevealActiveFile,
         onTap: () => unawaited(_revealActiveEditorFile()),
       ),
@@ -311,8 +308,7 @@ class _FileTreePanelState extends State<FileTreePanel> {
         icon: state.showHiddenFiles
             ? Icons.visibility_off_outlined
             : Icons.visibility_outlined,
-        iconSize: AppIconButton.kCompactIconSize,
-        size: AppIconButton.kCompactSize,
+        compact: true, size: AppIconButton.kCompactSize,
         tooltip: state.showHiddenFiles
             ? 'Hide hidden files'
             : 'Show hidden files',
@@ -320,7 +316,7 @@ class _FileTreePanelState extends State<FileTreePanel> {
       ),
       AppIconButton(
         icon: Icons.copy,
-        iconSize: AppIconSizes.md,
+        iconSize: context.appIconSizes.md,
         size: AppIconButton.kCompactSize,
         tooltip: l10n.copy,
         onTap: () {

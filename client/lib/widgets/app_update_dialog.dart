@@ -1,4 +1,4 @@
-import 'dart:io';
+﻿import 'dart:io';
 
 import 'package:android_package_installer/android_package_installer.dart';
 import 'package:flutter/foundation.dart';
@@ -197,7 +197,7 @@ class _AppUpdateDialogState extends State<AppUpdateDialog> {
                 trailing: Icon(
                   _isExpanded ? Icons.expand_less : Icons.expand_more,
                   color: Colors.grey[600],
-                  size: AppIconSizes.md,
+                  size: context.appIconSizes.md,
                 ),
                 onExpansionChanged: (expanded) {
                   setState(() => _isExpanded = expanded);
@@ -298,7 +298,7 @@ class _AppUpdateDialogState extends State<AppUpdateDialog> {
             Expanded(
               child: _buildBottomButton(
                 () => _handleBrowserDownload(latestApp),
-                const Icon(Icons.open_in_browser, size: AppIconSizes.md),
+                Icon(Icons.open_in_browser, size: context.appIconSizes.md),
                 l10n.appUpdateBrowserDownload,
               ),
             ),

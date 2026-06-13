@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -505,7 +505,7 @@ class _ModeCardState extends State<_ModeCard> {
                 children: [
                   Icon(
                     widget.icon,
-                    size: AppIconSizes.lg,
+                    size: context.appIconSizes.lg,
                     color: selected ? cs.primary : cs.onSurfaceVariant,
                   ),
                   const SizedBox(width: 10),
@@ -703,7 +703,7 @@ class _NameField extends StatelessWidget {
             ),
             child: Icon(
               Icons.groups_2_rounded,
-              size: AppIconSizes.lg,
+              size: context.appIconSizes.lg,
               color: cs.onPrimary,
             ),
           ),

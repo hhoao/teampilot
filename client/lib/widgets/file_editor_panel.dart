@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:path/path.dart' as p;
@@ -554,7 +554,7 @@ class _FloatingTitleBar extends StatelessWidget {
           children: [
             Icon(
               Icons.drag_indicator,
-              size: AppIconSizes.md,
+              size: context.appIconSizes.md,
               color: cs.onSurfaceVariant.withValues(alpha: 0.7),
             ),
             const SizedBox(width: 6),
@@ -569,7 +569,7 @@ class _FloatingTitleBar extends StatelessWidget {
             if (showDirtyActions) ...[
               IconButton(
                 tooltip: l10n.editorSave,
-                iconSize: AppIconSizes.md,
+                iconSize: context.appIconSizes.md,
                 visualDensity: VisualDensity.compact,
                 onPressed: throttledAsync(
                   'file_editor_save',
@@ -579,7 +579,7 @@ class _FloatingTitleBar extends StatelessWidget {
               ),
               IconButton(
                 tooltip: l10n.editorRevertChanges,
-                iconSize: AppIconSizes.md,
+                iconSize: context.appIconSizes.md,
                 visualDensity: VisualDensity.compact,
                 onPressed: throttledOnPressed(
                   'file_editor_revert',
@@ -593,10 +593,10 @@ class _FloatingTitleBar extends StatelessWidget {
             ],
             IconButton(
               tooltip: l10n.editorClose,
-              iconSize: AppIconSizes.md,
+              iconSize: context.appIconSizes.md,
               visualDensity: VisualDensity.compact,
               onPressed: onClose,
-              icon: const Icon(Icons.close),
+              icon: Icon(Icons.close),
             ),
           ],
         ),

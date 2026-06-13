@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 
 import '../../l10n/l10n_extensions.dart';
 import '../../theme/app_text_styles.dart';
@@ -75,7 +75,7 @@ class GitDiffDialog extends StatelessWidget {
                 ),
               ),
               IconButton(
-                icon: const Icon(Icons.close),
+                icon: Icon(Icons.close),
                 tooltip: MaterialLocalizations.of(context).closeButtonLabel,
                 onPressed: () => Navigator.of(context).pop(),
               ),

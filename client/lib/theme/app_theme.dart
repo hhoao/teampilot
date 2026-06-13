@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import 'app_dialog_theme.dart';
+import 'app_list_tile_theme.dart';
 import 'app_fonts.dart';
 import 'app_icon_sizes.dart';
 import 'app_outline_input_theme.dart';
@@ -136,6 +137,7 @@ bool _googleFontsNetworkAllowed() {
 ThemeData buildLightTheme([
   String? themeColorPreset,
   AppTypographyScale typographyScale = AppTypographyScale.standard,
+  AppTypographyScale? iconScale,
 ]) => _applyTypography(
   FlexThemeData.light(
     colors: _flexSchemeColors(normalizeThemeColorPreset(themeColorPreset)),
@@ -148,11 +150,13 @@ ThemeData buildLightTheme([
     useMaterial3: true,
   ),
   typographyScale: typographyScale,
+  iconScale: iconScale,
 );
 
 ThemeData buildDarkTheme([
   String? themeColorPreset,
   AppTypographyScale typographyScale = AppTypographyScale.standard,
+  AppTypographyScale? iconScale,
 ]) => _applyTypography(
   FlexThemeData.dark(
     colors: _flexSchemeColors(normalizeThemeColorPreset(themeColorPreset)),
@@ -167,6 +171,7 @@ ThemeData buildDarkTheme([
     useMaterial3: true,
   ),
   typographyScale: typographyScale,
+  iconScale: iconScale,
 );
 
 /// How far to pull [ColorScheme.onSurface] toward [surface] in dark mode.
@@ -214,8 +219,16 @@ ThemeData _withSoftenedForeground(ThemeData base) {
 ThemeData _applyTypography(
   ThemeData flexTheme, {
   AppTypographyScale typographyScale = AppTypographyScale.standard,
+  AppTypographyScale? iconScale,
 }) {
   flexTheme = _withSoftenedForeground(flexTheme);
+  final resolvedIconScale = iconScale ??
+      AppTypographyScale(
+        multiplier: AppIconSizes.resolveIconMultiplier(
+          effectiveTextMultiplier: typographyScale.multiplier,
+          textBaseline: 1.0,
+        ),
+      );
   final typographyTheme = AppTypographyTheme.fromScale(typographyScale);
   final useRuntimeGoogleFonts = _googleFontsNetworkAllowed();
   final compactOutlinedButton = OutlinedButtonThemeData(
@@ -244,13 +257,13 @@ ThemeData _applyTypography(
     return flexTheme.copyWith(
       visualDensity: VisualDensity.compact,
       materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-      iconTheme: AppIconSizes.iconTheme(scheme),
+      iconTheme: AppIconSizes.iconTheme(scheme, scale: resolvedIconScale),
       textTheme: textTheme,
       extensions: [
         AppFontTheme.fallback,
         typographyTheme,
         AppSpacingTheme.fromScale(AppTypographyScale.standard),
-        AppIconSizeTheme.resolved(),
+        AppIconSizeTheme.fromScale(resolvedIconScale),
       ],
       dialogTheme: buildAppDialogTheme(colorScheme: scheme, textTheme: textTheme),
       inputDecorationTheme: buildAppOutlineInputDecorationTheme(
@@ -258,6 +271,10 @@ ThemeData _applyTypography(
         textTheme: textTheme,
       ),
       outlinedButtonTheme: compactOutlinedButton,
+      listTileTheme: buildAppListTileTheme(
+        colorScheme: scheme,
+        textTheme: textTheme,
+      ),
     );
   }
   final typographySeed = ThemeData(
@@ -281,14 +298,14 @@ ThemeData _applyTypography(
   return flexTheme.copyWith(
     visualDensity: VisualDensity.compact,
     materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-    iconTheme: AppIconSizes.iconTheme(scheme),
+    iconTheme: AppIconSizes.iconTheme(scheme, scale: resolvedIconScale),
     textTheme: mergedTextTheme,
     primaryTextTheme: primaryTextTheme,
     extensions: [
       buildAppFontTheme(uiFont: appUiFont),
       typographyTheme,
       AppSpacingTheme.fromScale(AppTypographyScale.standard),
-      AppIconSizeTheme.resolved(),
+      AppIconSizeTheme.fromScale(resolvedIconScale),
     ],
     dialogTheme: buildAppDialogTheme(
       colorScheme: scheme,
@@ -299,5 +316,9 @@ ThemeData _applyTypography(
       textTheme: mergedTextTheme,
     ),
     outlinedButtonTheme: compactOutlinedButton,
+    listTileTheme: buildAppListTileTheme(
+      colorScheme: scheme,
+      textTheme: mergedTextTheme,
+    ),
   );
 }

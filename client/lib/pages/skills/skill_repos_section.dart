@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -116,7 +116,7 @@ class SkillReposSectionState extends State<SkillReposSection> {
                       _urlCtl.clear();
                       _branchCtl.text = 'main';
                     }),
-                    icon: const Icon(Icons.add, size: AppIconSizes.md),
+                    icon: Icon(Icons.add, size: context.appIconSizes.md),
                     label: Text(l10n.skillsAdd),
                   ),
                 ),
@@ -196,7 +196,7 @@ class SkillRepoRow extends StatelessWidget {
               },
               icon: Icon(
                 Icons.delete_outline,
-                size: AppIconSizes.md,
+                size: context.appIconSizes.md,
                 color: Theme.of(context).colorScheme.error,
               ),
             ),

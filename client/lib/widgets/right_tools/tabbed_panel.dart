@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../cubits/workspace_tools_cubit.dart';
@@ -113,7 +113,7 @@ class _SwitcherButton extends StatelessWidget {
           child: Stack(
             clipBehavior: Clip.none,
             children: [
-              Icon(view.icon, size: AppIconSizes.md, color: color),
+              Icon(view.icon, size: context.appIconSizes.md, color: color),
               if (view.badgeCount > 0)
                 Positioned(
                   right: -6,

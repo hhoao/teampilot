@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 
 import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
@@ -72,10 +72,7 @@ class ChatPageShell extends StatelessWidget {
                   preferences: preferences,
                   isPersonalProject: isPersonalProject,
                   projectId: projectId,
-                  panelKey:
-                      preferences.toolPlacement == ToolPanelPlacement.right
-                      ? AppKeys.rightToolsPanel
-                      : AppKeys.bottomToolsPanel,
+                  panelKey: AppKeys.rightToolsPanel,
                 )
               : null,
         ),
@@ -224,7 +221,7 @@ class _ChatWorkspaceShell extends StatelessWidget {
           }
           unawaited(context.read<ChatCubit>().openMemberTab(team, lead.first));
         }),
-        icon: const Icon(Icons.person_outline),
+        icon: Icon(Icons.person_outline),
       ),
       IconButton.filled(
         key: AppKeys.openTeamButton,
@@ -233,7 +230,7 @@ class _ChatWorkspaceShell extends StatelessWidget {
           'chat_launch_all_members',
           () => context.read<ChatCubit>().launchAllMembers(team),
         ),
-        icon: const Icon(Icons.groups_outlined),
+        icon: Icon(Icons.groups_outlined),
       ),
     ];
   }

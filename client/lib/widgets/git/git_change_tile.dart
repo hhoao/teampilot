@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:path/path.dart' as p;
 
 import '../../l10n/l10n_extensions.dart';
@@ -188,8 +188,7 @@ class _GitChangeTileState extends State<GitChangeTile> {
       return [
         AppIconButton(
           icon: Icons.remove,
-          iconSize: AppIconButton.kCompactIconSize,
-          size: AppIconButton.kCompactSize,
+          compact: true, size: AppIconButton.kCompactSize,
           tooltip: l10n.gitUnstage,
           onTap: widget.onUnstage,
         ),
@@ -198,15 +197,13 @@ class _GitChangeTileState extends State<GitChangeTile> {
     return [
       AppIconButton(
         icon: Icons.undo,
-        iconSize: AppIconButton.kCompactIconSize,
-        size: AppIconButton.kCompactSize,
+        compact: true, size: AppIconButton.kCompactSize,
         tooltip: l10n.gitDiscard,
         onTap: widget.onDiscard,
       ),
       AppIconButton(
         icon: Icons.add,
-        iconSize: AppIconButton.kCompactIconSize,
-        size: AppIconButton.kCompactSize,
+        compact: true, size: AppIconButton.kCompactSize,
         tooltip: l10n.gitStage,
         onTap: widget.onStage,
       ),

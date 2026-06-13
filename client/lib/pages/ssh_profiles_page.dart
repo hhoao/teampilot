@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../cubits/ssh_profile_cubit.dart';
@@ -32,7 +32,7 @@ class SshProfilesPage extends StatelessWidget {
         actions: [
           IconButton(
             tooltip: '新增',
-            icon: const Icon(Icons.add),
+            icon: Icon(Icons.add),
             onPressed: () => openSshProfileEditor(context),
           ),
         ],
@@ -63,7 +63,7 @@ class _SshProfilesBody extends StatelessWidget {
       return Center(
         child: FilledButton.icon(
           onPressed: onAdd,
-          icon: const Icon(Icons.add),
+          icon: Icon(Icons.add),
           label: const Text('新增 SSH Profile'),
         ),
       );
@@ -130,7 +130,7 @@ class _SshProfilesBody extends StatelessWidget {
           bottom: 16,
           child: FloatingActionButton.extended(
             onPressed: onAdd,
-            icon: const Icon(Icons.add),
+            icon: Icon(Icons.add),
             label: const Text('新增'),
           ),
         ),

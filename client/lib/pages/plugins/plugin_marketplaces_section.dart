@@ -1,4 +1,4 @@
-
+﻿
 import 'package:flutter/material.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -41,7 +41,7 @@ class PluginMarketplacesSection extends StatelessWidget {
                     ),
                     FilledButton.tonalIcon(
                       onPressed: () => _onAdd(context, cubit),
-                      icon: const Icon(Icons.add, size: AppIconSizes.md),
+                      icon: Icon(Icons.add, size: context.appIconSizes.md),
                       label: Text(l10n.pluginsMarketplaceAdd),
                     ),
                   ],
@@ -199,12 +199,12 @@ class PluginMarketplaceRow extends StatelessWidget {
             onChanged: (v) => cubit.toggleMarketplaceEnabled(marketplace, v),
           ),
           IconButton(
-            icon: const Icon(Icons.open_in_new, size: AppIconSizes.md),
+            icon: Icon(Icons.open_in_new, size: context.appIconSizes.md),
             tooltip: marketplace.githubUrl,
             onPressed: () => openPluginUrl(marketplace.githubUrl),
           ),
           IconButton(
-            icon: const Icon(Icons.delete_outline, size: AppIconSizes.md),
+            icon: Icon(Icons.delete_outline, size: context.appIconSizes.md),
             tooltip: l10n.pluginsMarketplaceRemove,
             onPressed: () => _remove(context, l10n, cubit),
           ),

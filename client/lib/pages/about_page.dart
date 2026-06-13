@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -140,7 +140,7 @@ class _AboutConfigWorkspaceState extends State<AboutConfigWorkspace> {
                                     : () => context
                                           .read<AppUpdateCubit>()
                                           .downloadAndInstall(),
-                                icon: const Icon(Icons.download_outlined),
+                                icon: Icon(Icons.download_outlined),
                                 label: Text(l10n.appUpdateDownloadInstall),
                               ),
                             if (state.availableRelease?.htmlUrl.isNotEmpty ==
@@ -168,7 +168,7 @@ class _AboutConfigWorkspaceState extends State<AboutConfigWorkspace> {
                                 );
                                 context.go('/config/logs');
                               },
-                              icon: const Icon(Icons.article_outlined),
+                              icon: Icon(Icons.article_outlined),
                               label: Text(l10n.logViewerTitle),
                             ),
                           ],

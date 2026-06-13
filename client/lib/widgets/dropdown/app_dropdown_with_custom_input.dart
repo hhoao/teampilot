@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
 
 import '../../l10n/l10n_extensions.dart';
@@ -151,7 +151,7 @@ class _AppDropdownWithCustomInputState extends State<AppDropdownWithCustomInput>
       tooltip: widget.customInputTooltip ?? l10n.appProviderModelEnterCustom,
       color: cs.primary,
       size: AppIconButton.kCompactSize,
-      iconSize: AppIconSizes.sm,
+      iconSize: context.appIconSizes.sm,
       onTap: _enterCustomMode,
     );
   }

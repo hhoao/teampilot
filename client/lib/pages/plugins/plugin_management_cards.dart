@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -136,7 +136,7 @@ class PluginEmptyBlock extends StatelessWidget {
     return Column(
       children: [
         const SizedBox(height: 10),
-        Icon(icon, size: AppIconSizes.md, color: cs.primary.withValues(alpha: 0.6)),
+        Icon(icon, size: context.appIconSizes.md, color: cs.primary.withValues(alpha: 0.6)),
         const SizedBox(height: 12),
         Text(
           title,

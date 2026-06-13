@@ -55,12 +55,6 @@ class LayoutCubit extends Cubit<LayoutState> {
   Future<void> setPreset(LayoutPreset preset) =>
       _save(state.preferences.copyWith(preset: preset));
 
-  Future<void> setToolPlacement(ToolPanelPlacement placement) =>
-      _save(state.preferences.copyWith(toolPlacement: placement));
-
-  Future<void> setToolsArrangement(ToolsArrangement arrangement) =>
-      _save(state.preferences.copyWith(toolsArrangement: arrangement));
-
   Future<void> setRegionVisibility({
     required bool appRailVisible,
     required bool membersVisible,
@@ -95,12 +89,6 @@ class LayoutCubit extends Cubit<LayoutState> {
 
   Future<void> setWorkspaceNavWidth(double width) =>
       _save(state.preferences.copyWith(workspaceNavWidth: width));
-
-  Future<void> setBottomToolsHeight(double height) =>
-      _save(state.preferences.copyWith(bottomToolsHeight: height));
-
-  Future<void> setMembersSplit(double split) =>
-      _save(state.preferences.copyWith(membersSplit: split));
 
   Future<void> setThemeMode(String mode) =>
       _save(state.preferences.copyWith(themeMode: mode));

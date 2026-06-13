@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_alacritty/flutter_alacritty.dart';
@@ -231,7 +231,7 @@ class _SettingsWarmup extends StatelessWidget {
                           maxLines: 3,
                           decoration: InputDecoration(
                             labelText: 'Extra arguments',
-                            prefixIcon: const Icon(Icons.terminal_outlined),
+                            prefixIcon: Icon(Icons.terminal_outlined),
                           ),
                         ),
                         SizedBox(height: 18),
@@ -287,7 +287,7 @@ class _WarmupSizedField extends StatelessWidget {
       child: TextField(
         decoration: InputDecoration(
           labelText: label,
-          prefixIcon: const Icon(Icons.badge_outlined),
+          prefixIcon: Icon(Icons.badge_outlined),
         ),
       ),
     );
@@ -349,7 +349,7 @@ class _WarmupLaunchRow extends StatelessWidget {
         children: [
           SizedBox(width: 26, child: Text('$index')),
           Expanded(child: Text(name)),
-          const Icon(Icons.open_in_new),
+          Icon(Icons.open_in_new),
           const SizedBox(width: 8),
           Expanded(
             flex: 2,

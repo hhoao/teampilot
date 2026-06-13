@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 
 import '../../l10n/l10n_extensions.dart';
 import 'diff_view_controller.dart';
@@ -61,12 +61,12 @@ class DiffToolbar extends StatelessWidget {
             segments: [
               ButtonSegment(
                 value: DiffViewMode.sideBySide,
-                icon: const Icon(Icons.view_column_outlined, size: 18),
+                icon: Icon(Icons.view_column_outlined, size: 18),
                 tooltip: l10n.diffViewSideBySide,
               ),
               ButtonSegment(
                 value: DiffViewMode.unified,
-                icon: const Icon(Icons.view_agenda_outlined, size: 18),
+                icon: Icon(Icons.view_agenda_outlined, size: 18),
                 tooltip: l10n.diffViewUnified,
               ),
             ],
@@ -94,7 +94,7 @@ class DiffToolbar extends StatelessWidget {
           const Spacer(),
           if (onOpenSource != null)
             IconButton(
-              icon: const Icon(Icons.open_in_new),
+              icon: Icon(Icons.open_in_new),
               tooltip: l10n.diffOpenSourceFile,
               visualDensity: VisualDensity.compact,
               onPressed: onOpenSource,
@@ -108,7 +108,7 @@ class DiffToolbar extends StatelessWidget {
               return Row(
                 children: [
                   IconButton(
-                    icon: const Icon(Icons.keyboard_arrow_up),
+                    icon: Icon(Icons.keyboard_arrow_up),
                     tooltip: l10n.diffPreviousChange,
                     visualDensity: VisualDensity.compact,
                     onPressed: enabled ? controller.previous : null,
@@ -126,7 +126,7 @@ class DiffToolbar extends StatelessWidget {
                     ),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.keyboard_arrow_down),
+                    icon: Icon(Icons.keyboard_arrow_down),
                     tooltip: l10n.diffNextChange,
                     visualDensity: VisualDensity.compact,
                     onPressed: enabled ? controller.next : null,

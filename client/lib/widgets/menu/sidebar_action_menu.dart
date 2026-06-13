@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
 
 import '../../theme/app_text_styles.dart';
@@ -13,7 +13,7 @@ abstract final class SidebarActionMenuMetrics {
   static const double itemHorizontalMargin = 6;
   static const double itemPaddingLeft = 6;
   static const double itemPaddingRight = 6;
-  static const double iconSize = AppIconSizes.md;
+  static double iconSize(BuildContext context) => context.appIconSizes.md;
   static const double iconGap = 10;
   static const double panelPaddingTop = 12;
   static const double panelPaddingHorizontal = 8;
@@ -235,14 +235,14 @@ class _SidebarActionMenuItemState extends State<SidebarActionMenuItem> {
           child: Row(
             children: [
               SizedBox(
-                width: SidebarActionMenuMetrics.iconSize,
-                height: SidebarActionMenuMetrics.iconSize,
+                width: SidebarActionMenuMetrics.iconSize(context),
+                height: SidebarActionMenuMetrics.iconSize(context),
                 child: Center(
                   child:
                       widget.iconWidget ??
                       Icon(
                         widget.icon,
-                        size: SidebarActionMenuMetrics.iconSize,
+                        size: SidebarActionMenuMetrics.iconSize(context),
                         color: iconColor,
                       ),
                 ),
@@ -466,7 +466,7 @@ Widget _specToMenuItem({
   final trailing = spec.selected
       ? Icon(
           Icons.check,
-          size: AppIconSizes.md,
+          size: context.appIconSizes.md,
           color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
         )
       : spec.trailing;
@@ -522,7 +522,7 @@ class SidebarActionMenuButton extends StatelessWidget {
     super.key,
     required this.specs,
     required this.onSelected,
-    this.icon = const Icon(Icons.more_horiz),
+    this.icon,
     this.triggerBuilder,
     this.onOpen,
     this.onClose,
@@ -533,7 +533,7 @@ class SidebarActionMenuButton extends StatelessWidget {
 
   final List<SidebarActionMenuSpec> specs;
   final ValueChanged<Object?> onSelected;
-  final Widget icon;
+  final Widget? icon;
   final Widget Function(BuildContext context, MenuController controller)?
   triggerBuilder;
   final VoidCallback? onOpen;
@@ -545,7 +545,9 @@ class SidebarActionMenuButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final anchor = SidebarActionMenuIconAnchor(
-      icon: triggerBuilder == null ? icon : null,
+      icon: triggerBuilder == null
+          ? (icon ?? Icon(Icons.more_horiz, size: context.appIconSizes.md))
+          : null,
       triggerBuilder: triggerBuilder,
       size: size,
       minWidth: minWidth,

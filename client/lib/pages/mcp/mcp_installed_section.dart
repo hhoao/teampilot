@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -105,15 +105,15 @@ class _McpInstalledSectionState extends State<McpInstalledSection> {
               children: [
                 OutlinedButton.icon(
                   onPressed: toolbarBusy ? null : widget.onImport,
-                  icon: const Icon(
+                  icon: Icon(
                     Icons.download_outlined,
-                    size: AppIconSizes.md,
+                    size: context.appIconSizes.md,
                   ),
                   label: Text(l10n.mcpImportExisting),
                 ),
                 OutlinedButton.icon(
                   onPressed: toolbarBusy ? null : widget.onAdd,
-                  icon: const Icon(Icons.add, size: AppIconSizes.md),
+                  icon: Icon(Icons.add, size: context.appIconSizes.md),
                   label: Text(l10n.mcpAddButton),
                 ),
               ],

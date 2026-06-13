@@ -1,4 +1,4 @@
-import 'package:file_picker/file_picker.dart';
+﻿import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -162,7 +162,7 @@ class SessionLlmConfigPathSettingsRowState extends State<SessionLlmConfigPathSet
             OutlinedButton.icon(
               key: AppKeys.llmConfigPathOverrideBrowseButton,
               onPressed: state.isLoading ? null : _pickFile,
-              icon: const Icon(Icons.folder_open_outlined, size: AppIconSizes.md),
+              icon: Icon(Icons.folder_open_outlined, size: context.appIconSizes.md),
               label: Text(l10n.cliExecutablePathBrowse),
             ),
           ],

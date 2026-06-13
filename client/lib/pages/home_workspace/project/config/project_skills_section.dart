@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
@@ -62,7 +62,7 @@ class ProjectSkillsSection extends StatelessWidget {
                   ),
                   trailing: OutlinedButton.icon(
                     onPressed: onManage,
-                    icon: const Icon(Icons.extension_outlined),
+                    icon: Icon(Icons.extension_outlined),
                     label: Text(l10n.projectSkillsManage),
                   ),
                 ),

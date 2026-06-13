@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -320,7 +320,7 @@ class _FileResultTileState extends State<_FileResultTile> {
               children: [
                 Icon(
                   Icons.insert_drive_file_outlined,
-                  size: AppIconSizes.md,
+                  size: context.appIconSizes.md,
                   color: cs.onSurfaceVariant,
                 ),
                 const SizedBox(width: 10),
@@ -387,7 +387,7 @@ class _SearchField extends StatelessWidget {
         ),
         prefixIcon: Icon(
           Icons.search_rounded,
-          size: AppIconSizes.md,
+          size: context.appIconSizes.md,
           color: cs.onSurfaceVariant,
         ),
         floatingLabelBehavior: FloatingLabelBehavior.never,
@@ -404,8 +404,7 @@ class _SearchField extends StatelessWidget {
         suffixIcon: controller.text.isNotEmpty
             ? AppIconButton(
                 icon: Icons.clear,
-                iconSize: AppIconButton.kCompactIconSize,
-                size: AppIconButton.kCompactSize,
+                compact: true, size: AppIconButton.kCompactSize,
                 onTap: onClear,
               )
             : null,
@@ -432,7 +431,7 @@ class _EmptyResults extends StatelessWidget {
           children: [
             Icon(
               Icons.search_off_rounded,
-              size: AppIconSizes.lg,
+              size: context.appIconSizes.lg,
               color: cs.onSurfaceVariant.withValues(alpha: 0.5),
             ),
             const SizedBox(height: 10),

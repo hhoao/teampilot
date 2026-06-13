@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
 
@@ -200,7 +200,7 @@ class ProjectCliConfigRow extends StatelessWidget {
               if (onConfigure != null)
                 OutlinedButton.icon(
                   onPressed: onConfigure,
-                  icon: const Icon(Icons.add, size: AppIconSizes.sm),
+                  icon: Icon(Icons.add, size: context.appIconSizes.sm),
                   label: Text(l10n.projectCliConfigure),
                   style: OutlinedButton.styleFrom(
                     visualDensity: VisualDensity.compact,

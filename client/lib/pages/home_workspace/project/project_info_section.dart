@@ -1,4 +1,4 @@
-import 'dart:io';
+﻿import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -188,7 +188,7 @@ class ProjectConfigDangerZone extends StatelessWidget {
             onPressed: () => _confirmDelete(context, name),
             icon: Icon(
               Icons.delete_outline,
-              size: AppIconSizes.md,
+              size: context.appIconSizes.md,
               color: errorColor,
             ),
             label: Text(l10n.deleteProject, style: TextStyle(color: errorColor)),

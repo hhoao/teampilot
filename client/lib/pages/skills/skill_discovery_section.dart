@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -95,7 +95,7 @@ class SkillDiscoverySectionState extends State<SkillDiscoverySection> {
                               height: 14,
                               child: CircularProgressIndicator(strokeWidth: 2),
                             )
-                          : const Icon(Icons.refresh, size: AppIconSizes.md),
+                          : Icon(Icons.refresh, size: context.appIconSizes.md),
                     ),
                 ],
               ),

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
 
 import '../../../l10n/l10n_extensions.dart';
@@ -159,7 +159,7 @@ class _RailItemState extends State<_RailItem> {
                     alignment: Alignment.center,
                     child:
                         widget.child ??
-                        Icon(widget.icon, size: AppIconSizes.md, color: fg),
+                        Icon(widget.icon, size: context.appIconSizes.md, color: fg),
                   ),
                 ),
                 const SizedBox(width: 8),

@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
@@ -437,7 +437,7 @@ class _WorkspaceTerminalSessionSidebar extends StatelessWidget {
                       ),
                       child: Row(
                         children: [
-                          Icon(Icons.terminal, size: AppIconSizes.md, color: itemColor),
+                          Icon(Icons.terminal, size: context.appIconSizes.md, color: itemColor),
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
@@ -455,7 +455,7 @@ class _WorkspaceTerminalSessionSidebar extends StatelessWidget {
                           ),
                           AppIconButton(
                             icon: Icons.close,
-                            iconSize: AppIconSizes.md,
+                            iconSize: context.appIconSizes.md,
                             color: itemColor,
                             size: AppIconButton.kCompactSize,
                             tooltip: l10n.workspaceTerminalCloseSession,

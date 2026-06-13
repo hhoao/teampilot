@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -214,7 +214,7 @@ class _McpOAuthConnectDialogState extends State<_McpOAuthConnectDialog> {
               const SizedBox(height: 12),
               FilledButton.icon(
                 onPressed: finishing ? null : _openBrowser,
-                icon: const Icon(Icons.open_in_browser, size: AppIconSizes.md),
+                icon: Icon(Icons.open_in_browser, size: context.appIconSizes.md),
                 label: Text(l10n.mcpOAuthOpenBrowser),
               ),
               const SizedBox(height: 8),

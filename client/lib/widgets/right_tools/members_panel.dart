@@ -110,7 +110,6 @@ class MembersPanel extends StatelessWidget {
                     color: selected ? cs.secondaryContainer : cs.workspaceInset,
                     borderRadius: BorderRadius.circular(8),
                     child: ListTile(
-                      dense: true,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8),
                       ),

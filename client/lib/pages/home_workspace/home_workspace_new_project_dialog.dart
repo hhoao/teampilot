@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
@@ -220,7 +220,7 @@ class _DirectoryPicker extends StatelessWidget {
                 ),
                 child: Icon(
                   Icons.folder_open_rounded,
-                  size: AppIconSizes.lg,
+                  size: context.appIconSizes.lg,
                   color: cs.onPrimary,
                 ),
               ),
@@ -236,7 +236,7 @@ class _DirectoryPicker extends StatelessWidget {
                 onPressed: onAdd,
                 icon: Icon(
                   Icons.drive_folder_upload_outlined,
-                  size: AppIconSizes.md,
+                  size: context.appIconSizes.md,
                 ),
                 label: Text(l10n.homeWorkspaceNewProjectChooseDirectory),
               ),
@@ -290,7 +290,7 @@ class _DirectoryRow extends StatelessWidget {
             isPrimary
                 ? Icons.star_rounded
                 : Icons.subdirectory_arrow_right_rounded,
-            size: AppIconSizes.md,
+            size: context.appIconSizes.md,
             color: isPrimary ? cs.primary : cs.onSurfaceVariant,
           ),
           const SizedBox(width: 8),
@@ -307,7 +307,7 @@ class _DirectoryRow extends StatelessWidget {
             visualDensity: VisualDensity.compact,
             icon: Icon(
               Icons.close_rounded,
-              size: AppIconSizes.sm,
+              size: context.appIconSizes.sm,
               color: cs.onSurfaceVariant,
             ),
             onPressed: onRemove,

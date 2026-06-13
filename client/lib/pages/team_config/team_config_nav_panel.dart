@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
 
 import '../../l10n/l10n_extensions.dart';
@@ -93,7 +93,7 @@ class TeamConfigMemberNavAddTile extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 14),
                 child: Row(
                   children: [
-                    Icon(Icons.add, size: AppIconSizes.md, color: muted),
+                    Icon(Icons.add, size: context.appIconSizes.md, color: muted),
                     SizedBox(width: 10),
                     Expanded(
                       child: Text(

@@ -15,7 +15,6 @@ import 'package:teampilot/cubits/llm_config_cubit.dart';
 import 'package:teampilot/cubits/session_preferences_cubit.dart';
 import 'package:teampilot/cubits/team_cubit.dart';
 import 'package:teampilot/main.dart';
-import 'package:teampilot/models/layout_preferences.dart';
 import 'package:teampilot/models/llm_config.dart';
 import 'package:teampilot/models/app_project.dart';
 import 'package:teampilot/models/project_profile.dart';
@@ -676,11 +675,6 @@ void main() {
       repository: LayoutRepository(await SharedPreferences.getInstance()),
     );
     await cubit.load();
-
-    expect(cubit.state.preferences.toolPlacement, ToolPanelPlacement.right);
-
-    await cubit.setToolPlacement(ToolPanelPlacement.bottom);
-    expect(cubit.state.preferences.toolPlacement, ToolPanelPlacement.bottom);
 
     await cubit.setThemeMode('dark');
     expect(cubit.state.preferences.themeMode, 'dark');

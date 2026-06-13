@@ -1,4 +1,4 @@
-import 'dart:io';
+﻿import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
@@ -6,7 +6,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../cubits/layout_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
-import '../../models/layout_preferences.dart';
 import '../../theme/app_text_styles.dart';
 import '../../theme/workspace_surface_layers.dart';
 import '../../utils/app_keys.dart';
@@ -53,12 +52,9 @@ class WorkspaceShellRightToolsVisibilityToggle extends StatelessWidget {
       builder: (context, state) {
         final prefs = state.preferences;
         final visible = prefs.rightToolsVisible;
-        final icon = prefs.toolPlacement == ToolPanelPlacement.bottom
-            ? Icons.splitscreen_outlined
-            : Icons.vertical_split_outlined;
         return AppIconButton(
           key: AppKeys.rightToolsVisibilityButton,
-          icon: icon,
+          icon: Icons.vertical_split_outlined,
           tooltip: visible
               ? l10n.rightToolsPanelHidden
               : l10n.rightToolsPanelVisible,
@@ -328,7 +324,7 @@ class WorkspaceShellTabChipState extends State<WorkspaceShellTabChip> {
                       SidebarActionMenuButton(
                         icon: Icon(
                           Icons.more_horiz,
-                          size: AppIconSizes.md,
+                          size: context.appIconSizes.md,
                           color: widget.textColor.withValues(alpha: 0.6),
                         ),
                         size: 32,
@@ -345,7 +341,7 @@ class WorkspaceShellTabChipState extends State<WorkspaceShellTabChip> {
                         onTap: widget.onClose,
                         child: Icon(
                           Icons.close,
-                          size: AppIconSizes.md,
+                          size: context.appIconSizes.md,
                           color: widget.textColor.withValues(alpha: 0.5),
                         ),
                       ),

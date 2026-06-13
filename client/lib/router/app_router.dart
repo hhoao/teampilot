@@ -1,4 +1,4 @@
-import 'dart:io';
+﻿import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -475,7 +475,7 @@ Widget _settingsChromeShell(
         title: Text(AndroidShellChrome.title(context, path)),
         leading: detail
             ? IconButton(
-                icon: const Icon(Icons.arrow_back),
+                icon: Icon(Icons.arrow_back),
                 onPressed: () => AndroidShellChrome.pop(context, path),
               )
             : null,

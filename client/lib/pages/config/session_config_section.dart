@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -281,12 +281,12 @@ class _SessionControlsState extends State<_SessionControls> {
                       ButtonSegment(
                         value: WindowsStorageBackend.native,
                         label: Text(l10n.windowsStorageBackendNative),
-                        icon: const Icon(Icons.folder_outlined),
+                        icon: Icon(Icons.folder_outlined),
                       ),
                       ButtonSegment(
                         value: WindowsStorageBackend.wsl,
                         label: Text(l10n.windowsStorageBackendWsl),
-                        icon: const Icon(Icons.terminal),
+                        icon: Icon(Icons.terminal),
                       ),
                     ],
                     selected: {state.preferences.windowsStorageBackend},
@@ -305,12 +305,12 @@ class _SessionControlsState extends State<_SessionControls> {
                       ButtonSegment(
                         value: ConnectionMode.localPty,
                         label: Text(l10n.connectionModeLocal),
-                        icon: const Icon(Icons.computer_outlined),
+                        icon: Icon(Icons.computer_outlined),
                       ),
                       ButtonSegment(
                         value: ConnectionMode.ssh,
                         label: Text(l10n.connectionModeSsh),
-                        icon: const Icon(Icons.dns_outlined),
+                        icon: Icon(Icons.dns_outlined),
                       ),
                     ],
                     selected: {state.preferences.connectionMode},

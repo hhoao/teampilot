@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -29,7 +29,7 @@ class SkillDiscoverySkillsShSearchBar extends StatelessWidget {
             controller: controller,
             decoration: InputDecoration(
               hintText: l10n.skillsSkillsShPlaceholder,
-              prefixIcon: const Icon(Icons.search, size: AppIconSizes.md),
+              prefixIcon: Icon(Icons.search, size: context.appIconSizes.md),
               floatingLabelBehavior: FloatingLabelBehavior.never,
             ),
             onSubmitted: (v) {
@@ -136,7 +136,7 @@ class SkillDiscoverySkillsShResults extends StatelessWidget {
                           height: 14,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
-                      : const Icon(Icons.expand_more, size: AppIconSizes.md),
+                      : Icon(Icons.expand_more, size: context.appIconSizes.md),
                   label: Text(l10n.skillsSkillsShLoadMore),
                 ),
               const SizedBox(height: 6),

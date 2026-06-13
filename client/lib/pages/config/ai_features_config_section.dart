@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
 
@@ -211,7 +211,7 @@ class AiFeatureConfigRow extends StatelessWidget {
                   title: title,
                   initial: resolved,
                 ),
-                icon: const Icon(Icons.tune, size: AppIconSizes.sm),
+                icon: Icon(Icons.tune, size: context.appIconSizes.sm),
                 label: Text(l10n.projectCliConfigure),
                 style: OutlinedButton.styleFrom(
                   visualDensity: VisualDensity.compact,

@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -8,6 +8,7 @@ import '../cubits/chat_cubit.dart';
 import '../l10n/l10n_extensions.dart';
 import '../models/app_session.dart';
 import '../repositories/session_repository.dart';
+import '../theme/app_icon_sizes.dart';
 import '../theme/app_text_styles.dart';
 import '../utils/app_keys.dart';
 import '../utils/debounce/debounce.dart';
@@ -164,9 +165,9 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
           height: AppIconButton.kDefaultSize,
           child: _showSessionActions
               ? SidebarActionMenuIconAnchor(
-                  icon: const Icon(
+                  icon: Icon(
                     Icons.more_horiz,
-                    size: AppIconButton.kDefaultIconSize,
+                    size: context.appIconSizes.md,
                   ),
                   onOpen: () => setState(() => _menuOpen = true),
                   onClose: () => setState(() => _menuOpen = false),

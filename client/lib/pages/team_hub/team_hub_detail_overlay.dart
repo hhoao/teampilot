@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 
 import '../../l10n/l10n_extensions.dart';
 import '../../models/discoverable_team.dart';
@@ -56,7 +56,7 @@ class TeamHubDetailOverlay extends StatelessWidget {
                     minWidth: _touchTarget,
                     minHeight: _touchTarget,
                   ),
-                  icon: const Icon(Icons.arrow_back_rounded),
+                  icon: Icon(Icons.arrow_back_rounded),
                   onPressed: onBack,
                 ),
               ),

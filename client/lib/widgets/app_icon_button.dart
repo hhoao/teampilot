@@ -5,12 +5,10 @@ import 'package:teampilot/theme/app_icon_sizes.dart';
 /// ink splash (AppFlowy-style).
 class AppIconButton extends StatelessWidget {
   static const double kDefaultSize = 32;
-  static const double kDefaultIconSize = AppIconSizes.md;
   static const double kDefaultBorderRadius = 6;
 
   /// Dense toolbar preset (file tree header, terminal tabs, etc.).
   static const double kCompactSize = 28;
-  static const double kCompactIconSize = AppIconSizes.sm;
 
   const AppIconButton({
     super.key,
@@ -19,7 +17,8 @@ class AppIconButton extends StatelessWidget {
     required this.onTap,
     this.tooltip,
     this.size = kDefaultSize,
-    this.iconSize = kDefaultIconSize,
+    this.iconSize,
+    this.compact = false,
     this.borderRadius = kDefaultBorderRadius,
     this.color,
     this.backgroundColor,
@@ -31,7 +30,8 @@ class AppIconButton extends StatelessWidget {
   final VoidCallback? onTap;
   final String? tooltip;
   final double size;
-  final double iconSize;
+  final double? iconSize;
+  final bool compact;
   final double borderRadius;
   final Color? color;
   final Color? backgroundColor;
@@ -39,11 +39,14 @@ class AppIconButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final sizes = context.appIconSizes;
+    final resolvedIconSize =
+        iconSize ?? (compact ? sizes.sm : sizes.md);
     final effectiveColor = color ?? context.appIconColor;
     final radius = BorderRadius.circular(borderRadius);
 
-    Widget iconChild =
-        iconWidget ?? Icon(icon, size: iconSize, color: effectiveColor);
+    Widget iconChild = iconWidget ??
+        Icon(icon, size: resolvedIconSize, color: effectiveColor);
     if (!enabled) {
       iconChild = IconTheme(
         data: IconThemeData(color: effectiveColor.withValues(alpha: 0.38)),

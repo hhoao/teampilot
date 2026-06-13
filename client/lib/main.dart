@@ -28,6 +28,7 @@ import 'services/ssh/ssh_client_factory.dart';
 import 'services/terminal/terminal_transport_factory.dart';
 import 'services/terminal/workspace_terminal_registry.dart';
 import 'services/terminal/terminal_fonts.dart';
+import 'theme/app_icon_sizes.dart';
 import 'theme/app_theme.dart';
 import 'theme/app_typography_scale.dart';
 import 'pages/system/error_page.dart';
@@ -295,11 +296,16 @@ class TeamPilotApp extends StatelessWidget {
           systemMq.textScaler.scale(1.0),
           systemMq.devicePixelRatio,
         );
-        final textScale = AppTypographyScale(
-          multiplier: resolveRelativeScale(
-            scaleId: typographyScaleId,
-            customMultiplier: typographyCustomMultiplier,
-            baseline: textBaseline,
+        final effectiveTextMult = resolveRelativeScale(
+          scaleId: typographyScaleId,
+          customMultiplier: typographyCustomMultiplier,
+          baseline: textBaseline,
+        );
+        final textScale = AppTypographyScale(multiplier: effectiveTextMult);
+        final iconScale = AppTypographyScale(
+          multiplier: AppIconSizes.resolveIconMultiplier(
+            effectiveTextMultiplier: effectiveTextMult,
+            textBaseline: textBaseline,
           ),
         );
 
@@ -312,8 +318,8 @@ class TeamPilotApp extends StatelessWidget {
         return MaterialApp.router(
           debugShowCheckedModeBanner: false,
           title: 'TeamPilot',
-          theme: buildLightTheme(colorPreset, textScale),
-          darkTheme: buildDarkTheme(colorPreset, textScale),
+          theme: buildLightTheme(colorPreset, textScale, iconScale),
+          darkTheme: buildDarkTheme(colorPreset, textScale, iconScale),
           themeMode: themeModeFromPrefs(themeMode),
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,

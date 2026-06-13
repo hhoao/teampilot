@@ -9,19 +9,16 @@ import 'app_typography_scale.dart';
 /// or disabled glyphs use [AppIconColors.iconMuted] / [AppIconColors.iconDisabled].
 /// Other size roles are available when a screen needs denser chrome or illustrations.
 ///
-/// All roles scale with [multiplier] (same pattern as [AppTypographyScale]).
+/// Baseline design tokens at multiplier 1.0. Widgets should read scaled sizes via
+/// [BuildContext.appIconSizes] (from [AppIconSizeTheme], driven by
+/// [resolveIconMultiplier] in [buildLightTheme] / [buildDarkTheme]).
 abstract final class AppIconSizes {
   AppIconSizes._();
-
-  /// Global scale factor (1.0 = design baseline below).
-  static const double multiplier = 1;
 
   // --- Baseline at multiplier 1.0 ---
   //
   // Tuned ~18% smaller than the original design values (md 22→18, etc.) so icons
-  // sit closer to the 14px body text (ratio ~1.3 instead of ~1.57). The global
-  // UiZoom scales icons and text together, so it cannot change this *ratio* — the
-  // refinement lives here. First-pass values; adjust together to taste.
+  // sit closer to the 14px body text (ratio ~1.3 instead of ~1.57).
 
   /// Ultra-dense chrome (e.g. session tab overflow).
   static const double xxsBase = 14;
@@ -56,25 +53,48 @@ abstract final class AppIconSizes {
   /// Large empty / error states.
   static const double displayBase = 44;
 
-  // --- Resolved sizes (const while [multiplier] is 1.0) ---
+  /// Global shrink on icon baselines (design tuning).
+  static const double baselineScale = 1.32;
 
-  static const double xxs = xxsBase * multiplier;
-  static const double xs = xsBase * multiplier;
-  static const double sm = smBase * multiplier;
-  static const double md = mdBase * multiplier;
-  static const double lg = lgBase * multiplier;
-  static const double xl = xlBase * multiplier;
-  static const double navRelaxed = navRelaxedBase * multiplier;
-  static const double list = listBase * multiplier;
-  static const double empty = emptyBase * multiplier;
-  static const double hero = heroBase * multiplier;
-  static const double display = displayBase * multiplier;
+  /// Portion of the **user** text-size delta (compact / comfortable / custom,
+  /// relative to the per-system auto baseline) applied to icon sizes. The OS
+  /// auto text baseline is not passed through — see [resolveIconMultiplier].
+  static const double userScaleTracking = 0.75;
 
-  /// Default [IconThemeData] for app themes (resolved [md] = base ×
-  /// [multiplier]). Icons are governed by the icon [multiplier], NOT the
-  /// text-size scale, so they do not grow/shrink with the typography setting.
-  static IconThemeData iconTheme(ColorScheme scheme) =>
-      IconThemeData(size: md, color: scheme.icon);
+  /// Maps effective text multiplier → icon multiplier.
+  ///
+  /// Text uses [effectiveTextMultiplier] (includes OS auto baseline on high-DPI).
+  /// Icons keep a fixed baseline on screen and only pick up user preset changes,
+  /// damped by [userScaleTracking] and [baselineScale].
+  static double resolveIconMultiplier({
+    required double effectiveTextMultiplier,
+    required double textBaseline,
+  }) {
+    final baseline = textBaseline <= 0 ? 1.0 : textBaseline;
+    final userRelative = effectiveTextMultiplier / baseline;
+    final userMapped = 1.0 + (userRelative - 1.0) * userScaleTracking;
+    return baselineScale * userMapped;
+  }
+
+  // --- Baseline aliases (multiplier 1.0; prefer [AppIconSizeTheme] in UI) ---
+
+  static const double xxs = xxsBase;
+  static const double xs = xsBase;
+  static const double sm = smBase;
+  static const double md = mdBase;
+  static const double lg = lgBase;
+  static const double xl = xlBase;
+  static const double navRelaxed = navRelaxedBase;
+  static const double list = listBase;
+  static const double empty = emptyBase;
+  static const double hero = heroBase;
+  static const double display = displayBase;
+
+  /// Default [IconThemeData] for app themes ([md] = [mdBase] × [scale].multiplier).
+  static IconThemeData iconTheme(
+    ColorScheme scheme, {
+    AppTypographyScale scale = AppTypographyScale.standard,
+  }) => IconThemeData(size: mdBase * scale.multiplier, color: scheme.icon);
 }
 
 /// Semantic icon colors aligned with [ThemeData.iconTheme].
@@ -147,9 +167,7 @@ final class AppIconSizeTheme extends ThemeExtension<AppIconSizeTheme> {
     );
   }
 
-  /// Fixed resolved sizes (base × [AppIconSizes.multiplier]); independent of the
-  /// text-size scale. Used by the theme so icons follow the icon multiplier, not
-  /// the typography setting.
+  /// Baseline sizes at multiplier 1.0 (tests / fallback when no extension).
   factory AppIconSizeTheme.resolved() => const AppIconSizeTheme(
     xxs: AppIconSizes.xxs,
     xs: AppIconSizes.xs,
@@ -166,7 +184,7 @@ final class AppIconSizeTheme extends ThemeExtension<AppIconSizeTheme> {
 
   static AppIconSizeTheme fromContext(BuildContext context) =>
       Theme.of(context).extension<AppIconSizeTheme>() ??
-      AppIconSizeTheme.resolved();
+      AppIconSizeTheme.fromScale(AppTypographyScale.standard);
 
   @override
   AppIconSizeTheme copyWith({

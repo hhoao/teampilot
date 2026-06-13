@@ -1,4 +1,4 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -482,7 +482,7 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
                           widget.onSaved(result);
                         },
                       ),
-                      icon: const Icon(Icons.check),
+                      icon: Icon(Icons.check),
                       label: Text(l10n.save),
                     ),
                   ),

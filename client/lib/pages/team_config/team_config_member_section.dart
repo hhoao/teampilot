@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -311,7 +311,7 @@ class TeamMemberConfigFormState extends State<TeamMemberConfigForm> {
                           ),
                           icon: Icon(
                             Icons.delete_outline,
-                            size: AppIconSizes.md,
+                            size: context.appIconSizes.md,
                             color: errorColor,
                           ),
                         ),

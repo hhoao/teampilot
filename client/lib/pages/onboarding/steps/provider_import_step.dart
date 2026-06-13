@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
@@ -97,7 +97,7 @@ class _OnboardingProviderImportStepState
           else if (_providers.isEmpty)
             SettingsSurfaceCard(
               child: ListTile(
-                leading: const Icon(Icons.info_outline),
+                leading: Icon(Icons.info_outline),
                 title: Text(l10n.onboardingProviderImportEmpty),
                 subtitle: _statusMessage.isEmpty ? null : Text(_statusMessage),
               ),
@@ -123,7 +123,7 @@ class _OnboardingProviderImportStepState
                             ? _providers[i].id
                             : _providers[i].defaultModel,
                       ),
-                      trailing: const Icon(Icons.check, size: AppIconSizes.md),
+                      trailing: Icon(Icons.check, size: context.appIconSizes.md),
                     ),
                     if (i < _providers.length - 1) const Divider(height: 1),
                   ],
@@ -136,7 +136,7 @@ class _OnboardingProviderImportStepState
             alignment: Alignment.centerLeft,
             child: OutlinedButton.icon(
               onPressed: _import,
-              icon: const Icon(Icons.refresh, size: AppIconSizes.md),
+              icon: Icon(Icons.refresh, size: context.appIconSizes.md),
               label: Text(l10n.onboardingProviderImportRescan),
             ),
           ),

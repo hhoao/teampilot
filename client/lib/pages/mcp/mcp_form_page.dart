@@ -1,4 +1,4 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
@@ -179,13 +179,13 @@ class _McpFormPageState extends State<McpFormPage> {
                         height: 16,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
-                    : Icon(_isEditing ? Icons.save : Icons.add, size: AppIconSizes.md),
+                    : Icon(_isEditing ? Icons.save : Icons.add, size: context.appIconSizes.md),
                 label: Text(_isEditing ? l10n.save : l10n.mcpFormSubmitAdd),
               ),
               IconButton(
                 tooltip: l10n.cancel,
                 onPressed: _saving ? null : widget.onCancel,
-                icon: const Icon(Icons.close),
+                icon: Icon(Icons.close),
               ),
             ],
           ),

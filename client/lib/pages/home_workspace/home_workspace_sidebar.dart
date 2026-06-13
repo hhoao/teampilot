@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
@@ -267,7 +267,7 @@ class _SectionHeader extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(8, 6, 6, 10),
         child: Row(
           children: [
-            Icon(icon, size: AppIconSizes.md, color: cs.onSurfaceVariant),
+            Icon(icon, size: context.appIconSizes.md, color: cs.onSurfaceVariant),
             const SizedBox(width: 8),
             Expanded(child: Text(label, style: styles.prominent)),
             AnimatedRotation(
@@ -275,7 +275,7 @@ class _SectionHeader extends StatelessWidget {
               duration: const Duration(milliseconds: 180),
               child: Icon(
                 Icons.expand_more_rounded,
-                size: AppIconSizes.md,
+                size: context.appIconSizes.md,
                 color: cs.onSurfaceVariant,
               ),
             ),
@@ -401,7 +401,7 @@ class _NewTeamRow extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 10),
         child: Row(
           children: [
-            Icon(Icons.add_rounded, size: AppIconSizes.md, color: cs.primary),
+            Icon(Icons.add_rounded, size: context.appIconSizes.md, color: cs.primary),
             const SizedBox(width: 8),
             Text(label, style: styles.prominent.copyWith(color: cs.primary)),
           ],
@@ -461,7 +461,7 @@ class _ShortcutRowState extends State<_ShortcutRow> {
             children: [
               Icon(
                 widget.icon,
-                size: AppIconSizes.md,
+                size: context.appIconSizes.md,
                 color: active ? cs.primary : cs.onSurfaceVariant,
               ),
               const SizedBox(width: 8),
@@ -519,7 +519,7 @@ class _ProvidersButton extends StatelessWidget {
           children: [
             Icon(
               Icons.memory_outlined,
-              size: AppIconSizes.md,
+              size: context.appIconSizes.md,
               color: active ? cs.primary : cs.onSurfaceVariant,
             ),
             const SizedBox(width: 8),

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../cubits/app_provider_cubit.dart';
@@ -165,7 +165,7 @@ class _ProviderListControls extends StatelessWidget {
               ),
               SidebarActionMenuButton(
                 tooltip: l10n.add,
-                icon: const Icon(Icons.add),
+                icon: Icon(Icons.add),
                 size: 32,
                 specs: [
                   SidebarActionMenuSpec.item(
@@ -259,7 +259,6 @@ class _ProviderListTile extends StatelessWidget {
         : cs.workspaceInset;
 
     return ListTile(
-      dense: true,
       selected: selected,
       tileColor: tileColor,
       selectedTileColor: cs.primaryContainer,

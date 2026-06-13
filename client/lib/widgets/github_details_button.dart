@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -30,7 +30,7 @@ class GithubDetailsButton extends StatelessWidget {
     }
     return TextButton.icon(
       onPressed: () => openGithubBrowseUrl(target),
-      icon: const Icon(Icons.open_in_new, size: AppIconSizes.md),
+      icon: Icon(Icons.open_in_new, size: context.appIconSizes.md),
       label: Text(label),
     );
   }

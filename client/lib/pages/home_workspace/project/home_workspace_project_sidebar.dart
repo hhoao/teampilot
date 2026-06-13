@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -113,8 +113,7 @@ class _HomeWorkspaceProjectSidebarState
                 ),
                 AppIconButton(
                   icon: Icons.search_rounded,
-                  iconSize: AppIconButton.kCompactIconSize,
-                  size: AppIconButton.kCompactSize,
+                  compact: true, size: AppIconButton.kCompactSize,
                   tooltip: l10n.projectSearchTitle,
                   onTap: throttledTap(
                     'project_sidebar_search',
@@ -329,7 +328,7 @@ class _SidebarActionTileState extends State<_SidebarActionTile> {
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
             child: Row(
               children: [
-                Icon(widget.icon, size: AppIconSizes.md, color: cs.onSurface),
+                Icon(widget.icon, size: context.appIconSizes.md, color: cs.onSurface),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
@@ -366,7 +365,7 @@ class _EmptyConversations extends StatelessWidget {
           children: [
             Icon(
               Icons.forum_outlined,
-              size: AppIconSizes.md,
+              size: context.appIconSizes.md,
               color: cs.onSurfaceVariant.withValues(alpha: 0.5),
             ),
             const SizedBox(height: 10),

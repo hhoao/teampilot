@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
 
 import 'app_dropdown_decoration.dart';
@@ -201,7 +201,7 @@ class _AppDropdownFieldState<T extends Object>
         AppDropdownDecorations.themed(
           context,
           headerFontWeight: FontWeight.w500,
-          suffixIconSize: AppIconSizes.md,
+          suffixIconSize: context.appIconSizes.md,
         );
     final headerPadding =
         widget.closedHeaderPadding ?? kAppDropdownClosedHeaderPadding;

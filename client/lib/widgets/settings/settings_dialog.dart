@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
 import '../../theme/app_dialog_theme.dart';
@@ -260,7 +260,7 @@ class _SettingsHeader extends StatelessWidget {
           IconButton(
             tooltip: MaterialLocalizations.of(context).closeButtonTooltip,
             onPressed: onClose,
-            icon: Icon(Icons.close, size: AppIconSizes.md),
+            icon: Icon(Icons.close, size: context.appIconSizes.md),
             color: cs.onSurfaceVariant,
           ),
         ],

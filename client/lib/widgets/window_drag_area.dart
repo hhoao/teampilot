@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:window_manager/window_manager.dart';
 
@@ -130,7 +130,7 @@ class _MenuRow extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, size: AppIconSizes.md),
+        Icon(icon, size: context.appIconSizes.md),
         const SizedBox(width: 12),
         Text(label),
       ],

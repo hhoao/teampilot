@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -67,7 +67,7 @@ class SkillDiscoveryReposFilters extends StatelessWidget {
           child: TextField(
             decoration: InputDecoration(
               hintText: l10n.skillsSearchPlaceholder,
-              prefixIcon: const Icon(Icons.search, size: AppIconSizes.md),
+              prefixIcon: Icon(Icons.search, size: context.appIconSizes.md),
               floatingLabelBehavior: FloatingLabelBehavior.never,
             ),
             onChanged: onSearchChanged,

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
 
 import '../theme/app_text_styles.dart';
@@ -49,7 +49,7 @@ class AndroidSshProfileSelector extends StatelessWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.dns_outlined, size: AppIconSizes.md),
+                Icon(Icons.dns_outlined, size: context.appIconSizes.md),
                 const SizedBox(width: 4),
                 ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 140),
@@ -60,7 +60,7 @@ class AndroidSshProfileSelector extends StatelessWidget {
                     style: Theme.of(context).textTheme.titleSmall,
                   ),
                 ),
-                const Icon(Icons.arrow_drop_down),
+                Icon(Icons.arrow_drop_down),
               ],
             ),
           ),

@@ -69,7 +69,6 @@ class _MailboxPanelState extends State<MailboxPanel> {
       itemBuilder: (context, i) {
         final e = entries[entries.length - 1 - i]; // newest first
         return ListTile(
-          dense: true,
           leading: Icon(
             e.isUnread
                 ? Icons.mark_email_unread_outlined

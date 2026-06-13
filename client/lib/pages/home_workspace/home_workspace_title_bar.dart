@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'dart:io' show Platform;
 
 import 'package:flutter/material.dart';
@@ -390,7 +390,7 @@ class _HomePill extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.home_filled, size: AppIconSizes.md, color: fg),
+            Icon(Icons.home_filled, size: context.appIconSizes.md, color: fg),
             const SizedBox(width: 6),
             Text(
               label,
@@ -491,7 +491,7 @@ class _ProjectTabState extends State<_ProjectTab> {
                 // to the ListView viewport height (~full title bar).
                 SizedBox(
                   width: 3,
-                  height: AppIconSizes.md,
+                  height: context.appIconSizes.md,
                   child: DecoratedBox(
                     decoration: BoxDecoration(
                       color: barColor,
@@ -504,7 +504,7 @@ class _ProjectTabState extends State<_ProjectTab> {
                   visible: _showChrome,
                   child: Icon(
                     homeProjectTabKindIcon(widget.kind),
-                    size: AppIconSizes.md,
+                    size: context.appIconSizes.md,
                     color: kindIconColor,
                   ),
                 ),
@@ -528,7 +528,7 @@ class _ProjectTabState extends State<_ProjectTab> {
                         padding: const EdgeInsets.all(2),
                         child: Icon(
                           Icons.close,
-                          size: AppIconSizes.md,
+                          size: context.appIconSizes.md,
                           color: cs.onSurfaceVariant,
                         ),
                       ),
@@ -749,7 +749,7 @@ class _ActionGlyphState extends State<_ActionGlyph> {
           ),
           child: Icon(
             widget.icon,
-            size: AppIconSizes.md,
+            size: context.appIconSizes.md,
             color: cs.onSurfaceVariant,
           ),
         ),
@@ -820,7 +820,7 @@ class _WinButtonState extends State<_WinButton> {
               highlightColor: Colors.transparent,
               child: Icon(
                 widget.icon,
-                size: AppIconSizes.md,
+                size: context.appIconSizes.md,
                 color: foreground,
               ),
             ),

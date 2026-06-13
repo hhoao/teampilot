@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -262,8 +262,7 @@ class _GitSourceControlPanelState extends State<GitSourceControlPanel> {
           count: state.status.staged.length,
           action: AppIconButton(
             icon: Icons.remove,
-            iconSize: AppIconButton.kCompactIconSize,
-            size: AppIconButton.kCompactSize,
+            compact: true, size: AppIconButton.kCompactSize,
             tooltip: l10n.gitUnstageAll,
             onTap: () => unawaited(_cubit.unstageAll()),
           ),
@@ -280,8 +279,7 @@ class _GitSourceControlPanelState extends State<GitSourceControlPanel> {
           count: state.status.unstaged.length,
           action: AppIconButton(
             icon: Icons.add,
-            iconSize: AppIconButton.kCompactIconSize,
-            size: AppIconButton.kCompactSize,
+            compact: true, size: AppIconButton.kCompactSize,
             tooltip: l10n.gitStageAll,
             onTap: () => unawaited(_cubit.stageAll()),
           ),
@@ -517,29 +515,25 @@ class _Header extends StatelessWidget {
           ),
         AppIconButton(
           icon: treeView ? Icons.view_list : Icons.account_tree_outlined,
-          iconSize: AppIconButton.kCompactIconSize,
-          size: AppIconButton.kCompactSize,
+          compact: true, size: AppIconButton.kCompactSize,
           tooltip: treeView ? l10n.gitChangesListView : l10n.gitChangesTreeView,
           onTap: onToggleViewMode,
         ),
         AppIconButton(
           icon: Icons.download_outlined,
-          iconSize: AppIconButton.kCompactIconSize,
-          size: AppIconButton.kCompactSize,
+          compact: true, size: AppIconButton.kCompactSize,
           tooltip: l10n.gitPull,
           onTap: onPull,
         ),
         AppIconButton(
           icon: Icons.upload_outlined,
-          iconSize: AppIconButton.kCompactIconSize,
-          size: AppIconButton.kCompactSize,
+          compact: true, size: AppIconButton.kCompactSize,
           tooltip: l10n.gitPush,
           onTap: onPush,
         ),
         AppIconButton(
           icon: Icons.refresh,
-          iconSize: AppIconButton.kCompactIconSize,
-          size: AppIconButton.kCompactSize,
+          compact: true, size: AppIconButton.kCompactSize,
           tooltip: l10n.gitRefresh,
           onTap: onRefresh,
         ),
@@ -599,14 +593,14 @@ class _CommitBox extends StatelessWidget {
                       height: 16,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
-                  : const Icon(Icons.auto_awesome_outlined, size: 18),
+                  : Icon(Icons.auto_awesome_outlined, size: 18),
             ),
           ],
         ),
         const SizedBox(height: 8),
         FilledButton.icon(
           onPressed: canCommit ? onCommit : null,
-          icon: const Icon(Icons.check, size: 16),
+          icon: Icon(Icons.check, size: 16),
           label: Text(l10n.gitCommit),
         ),
       ],

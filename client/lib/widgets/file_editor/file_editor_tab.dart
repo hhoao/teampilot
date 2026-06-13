@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'dart:io' show Platform;
 
 import 'package:flutter/material.dart';
@@ -129,7 +129,7 @@ class _FileEditorTabState extends State<FileEditorTab> {
               children: [
                 Icon(
                   fileIconForFileName(widget.fileName),
-                  size: AppIconSizes.sm,
+                  size: context.appIconSizes.sm,
                   color: labelColor,
                 ),
                 const SizedBox(width: 6),
@@ -147,7 +147,7 @@ class _FileEditorTabState extends State<FileEditorTab> {
                   onTap: widget.onClose,
                   child: Icon(
                     Icons.close,
-                    size: AppIconSizes.md,
+                    size: context.appIconSizes.md,
                     color: closeColor,
                   ),
                 ),
