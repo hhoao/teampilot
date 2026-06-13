@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
 
 import '../l10n/l10n_extensions.dart';
+import '../services/app/desktop_window_actions.dart';
 import '../services/app/platform_utils.dart';
 
 /// Default height for [WindowChromeControls] when embedded in
@@ -21,7 +23,7 @@ class WindowChromeControls extends StatelessWidget {
 
   final bool isMaximized;
   final Future<void> Function() onMinimize;
-  final Future<void> Function() onToggleMaximize;
+  final Future<void> Function({bool optionPressed}) onToggleMaximize;
   final Future<void> Function() onClose;
   final double height;
 
@@ -64,7 +66,7 @@ class MacTrafficLightControls extends StatefulWidget {
 
   final bool isMaximized;
   final Future<void> Function() onMinimize;
-  final Future<void> Function() onToggleMaximize;
+  final Future<void> Function({bool optionPressed}) onToggleMaximize;
   final Future<void> Function() onClose;
   final double height;
 
@@ -75,15 +77,38 @@ class MacTrafficLightControls extends StatefulWidget {
 
 class _MacTrafficLightControlsState extends State<MacTrafficLightControls> {
   bool _hovered = false;
+  bool _optionHeld = false;
 
   static const _closeColor = Color(0xFFFF5F57);
   static const _minimizeColor = Color(0xFFFEBC2E);
   static const _maximizeColor = Color(0xFF28C840);
-  static const _symbolColor = Color(0xFF3E3E3E);
+  static const _symbolColor = Color(0xFF262626);
+
+  @override
+  void initState() {
+    super.initState();
+    HardwareKeyboard.instance.addHandler(_onKeyEvent);
+  }
+
+  @override
+  void dispose() {
+    HardwareKeyboard.instance.removeHandler(_onKeyEvent);
+    super.dispose();
+  }
+
+  bool _onKeyEvent(KeyEvent event) {
+    final held = isMacOptionKeyPressed();
+    if (held != _optionHeld) {
+      setState(() => _optionHeld = held);
+    }
+    return false;
+  }
 
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
+    final diameter = context.appIconSizes.md;
+    final gap = context.appIconSizes.xxs * 0.55;
 
     return MouseRegion(
       onEnter: (_) => setState(() => _hovered = true),
@@ -96,33 +121,42 @@ class _MacTrafficLightControlsState extends State<MacTrafficLightControls> {
             mainAxisSize: MainAxisSize.min,
             children: [
               _TrafficLightButton(
+                diameter: diameter,
                 color: _closeColor,
                 tooltip: l10n.windowControlClose,
-                symbol: '×',
                 showSymbol: _hovered,
                 onPressed: widget.onClose,
+                child: _TrafficLightCloseGlyph(diameter: diameter),
               ),
-              const SizedBox(width: 8),
+              SizedBox(width: gap),
               _TrafficLightButton(
+                diameter: diameter,
                 color: _minimizeColor,
                 tooltip: l10n.windowControlMinimize,
-                symbol: '−',
                 showSymbol: _hovered,
                 onPressed: widget.onMinimize,
+                child: _TrafficLightMinimizeGlyph(diameter: diameter),
               ),
-              const SizedBox(width: 8),
+              SizedBox(width: gap),
               _TrafficLightButton(
+                diameter: diameter,
                 color: _maximizeColor,
                 tooltip: widget.isMaximized
                     ? l10n.windowControlRestore
                     : l10n.windowControlMaximize,
                 showSymbol: _hovered,
-                onPressed: widget.onToggleMaximize,
+                onPressed: () => widget.onToggleMaximize(
+                  optionPressed: isMacOptionKeyPressed(),
+                ),
                 child: widget.isMaximized
-                    ? const _TrafficLightRestoreGlyph()
-                    : Text(
-                        '+',
-                        style: _trafficLightSymbolStyle(),
+                    ? _TrafficLightRestoreGlyph(
+                        key: const Key('mac_traffic_light_restore_glyph'),
+                        diameter: diameter,
+                      )
+                    : _TrafficLightMaximizeGlyph(
+                        key: const Key('mac_traffic_light_maximize_glyph'),
+                        diameter: diameter,
+                        zoom: _optionHeld,
                       ),
               ),
             ],
@@ -133,73 +167,301 @@ class _MacTrafficLightControlsState extends State<MacTrafficLightControls> {
   }
 }
 
-class _TrafficLightRestoreGlyph extends StatelessWidget {
-  const _TrafficLightRestoreGlyph();
+double _trafficLightGlyphSize(double diameter) => diameter * 0.58;
+
+/// Restore (↗ overlapping squares) reads smaller; give it more canvas.
+double _trafficLightRestoreGlyphSize(double diameter) => diameter * 0.72;
+
+double _trafficLightStrokeWidth(double diameter) =>
+    (diameter * 0.1).clamp(1.35, 2.4);
+
+double _trafficLightRestoreStrokeWidth(double diameter) =>
+    (diameter * 0.13).clamp(1.7, 3.0);
+
+Paint _trafficLightSymbolPaint(double diameter) {
+  return Paint()
+    ..color = _MacTrafficLightControlsState._symbolColor
+    ..style = PaintingStyle.stroke
+    ..strokeWidth = _trafficLightStrokeWidth(diameter)
+    ..strokeCap = StrokeCap.round;
+}
+
+class _TrafficLightCloseGlyph extends StatelessWidget {
+  const _TrafficLightCloseGlyph({required this.diameter});
+
+  final double diameter;
 
   @override
   Widget build(BuildContext context) {
+    final size = _trafficLightGlyphSize(diameter);
     return CustomPaint(
-      size: const Size(8, 8),
-      painter: _RestoreGlyphPainter(),
+      size: Size.square(size),
+      painter: _CloseGlyphPainter(diameter: diameter),
     );
   }
 }
 
-class _RestoreGlyphPainter extends CustomPainter {
+class _CloseGlyphPainter extends CustomPainter {
+  const _CloseGlyphPainter({required this.diameter});
+
+  final double diameter;
+
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = _MacTrafficLightControlsState._symbolColor
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.2;
-
-    const inset = 0.5;
-    final w = size.width;
-    final h = size.height;
-    final halfW = w * 0.42;
-    final halfH = h * 0.42;
-
-    canvas.drawRect(
-      Rect.fromLTWH(inset, inset + 1.5, halfW, halfH),
+    final paint = _trafficLightSymbolPaint(diameter);
+    final inset = size.width * 0.28;
+    canvas.drawLine(
+      Offset(inset, inset),
+      Offset(size.width - inset, size.height - inset),
       paint,
     );
-    canvas.drawRect(
-      Rect.fromLTWH(inset + 2.5, inset, halfW, halfH),
+    canvas.drawLine(
+      Offset(size.width - inset, inset),
+      Offset(inset, size.height - inset),
       paint,
     );
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+  bool shouldRepaint(covariant _CloseGlyphPainter oldDelegate) =>
+      oldDelegate.diameter != diameter;
 }
 
-TextStyle _trafficLightSymbolStyle() {
-  return const TextStyle(
-    fontSize: 11,
-    height: 1,
-    fontWeight: FontWeight.w700,
-    color: _MacTrafficLightControlsState._symbolColor,
+class _TrafficLightMinimizeGlyph extends StatelessWidget {
+  const _TrafficLightMinimizeGlyph({required this.diameter});
+
+  final double diameter;
+
+  @override
+  Widget build(BuildContext context) {
+    final size = _trafficLightGlyphSize(diameter);
+    return CustomPaint(
+      size: Size.square(size),
+      painter: _MinimizeGlyphPainter(diameter: diameter),
+    );
+  }
+}
+
+class _MinimizeGlyphPainter extends CustomPainter {
+  const _MinimizeGlyphPainter({required this.diameter});
+
+  final double diameter;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = _trafficLightSymbolPaint(diameter);
+    final inset = size.width * 0.24;
+    canvas.drawLine(
+      Offset(inset, size.height * 0.5),
+      Offset(size.width - inset, size.height * 0.5),
+      paint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _MinimizeGlyphPainter oldDelegate) =>
+      oldDelegate.diameter != diameter;
+}
+
+/// Green button hover glyph: corner arrows (fullscreen) or zoom arrows (⌥ held).
+class _TrafficLightMaximizeGlyph extends StatelessWidget {
+  const _TrafficLightMaximizeGlyph({
+    required this.diameter,
+    required this.zoom,
+    super.key,
+  });
+
+  final double diameter;
+  final bool zoom;
+
+  @override
+  Widget build(BuildContext context) {
+    final size = _trafficLightGlyphSize(diameter);
+    return CustomPaint(
+      size: Size.square(size),
+      painter: zoom
+          ? _ZoomGlyphPainter(diameter: diameter)
+          : _ExpandGlyphPainter(diameter: diameter),
+    );
+  }
+}
+
+class _ExpandGlyphPainter extends CustomPainter {
+  const _ExpandGlyphPainter({required this.diameter});
+
+  final double diameter;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = _trafficLightSymbolPaint(diameter);
+    final pad = size.width * 0.18;
+    final arm = size.width * 0.3;
+
+    // Top-left outward corner (fullscreen).
+    canvas.drawLine(Offset(pad, pad + arm), Offset(pad, pad), paint);
+    canvas.drawLine(Offset(pad, pad), Offset(pad + arm, pad), paint);
+
+    // Bottom-right outward corner.
+    final br = Offset(size.width - pad, size.height - pad);
+    canvas.drawLine(Offset(br.dx, br.dy - arm), br, paint);
+    canvas.drawLine(br, Offset(br.dx - arm, br.dy), paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _ExpandGlyphPainter oldDelegate) =>
+      oldDelegate.diameter != diameter;
+}
+
+class _ZoomGlyphPainter extends CustomPainter {
+  const _ZoomGlyphPainter({required this.diameter});
+
+  final double diameter;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = _trafficLightSymbolPaint(diameter);
+    final pad = size.width * 0.18;
+    final arm = size.width * 0.3;
+
+    // Top-right inward corner (⌥ zoom).
+    final tr = Offset(size.width - pad, pad);
+    canvas.drawLine(tr, Offset(tr.dx - arm, tr.dy), paint);
+    canvas.drawLine(tr, Offset(tr.dx, tr.dy + arm), paint);
+
+    // Bottom-left inward corner.
+    final bl = Offset(pad, size.height - pad);
+    canvas.drawLine(bl, Offset(bl.dx + arm, bl.dy), paint);
+    canvas.drawLine(bl, Offset(bl.dx, bl.dy - arm), paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _ZoomGlyphPainter oldDelegate) =>
+      oldDelegate.diameter != diameter;
+}
+
+class _TrafficLightRestoreGlyph extends StatelessWidget {
+  const _TrafficLightRestoreGlyph({required this.diameter, super.key});
+
+  final double diameter;
+
+  @override
+  Widget build(BuildContext context) {
+    final size = _trafficLightRestoreGlyphSize(diameter);
+    return CustomPaint(
+      size: Size.square(size),
+      painter: _RestoreGlyphPainter(diameter: diameter),
+    );
+  }
+}
+
+/// Inward corner arrows on all four sides — "exit fullscreen / restore".
+class _RestoreGlyphPainter extends CustomPainter {
+  const _RestoreGlyphPainter({required this.diameter});
+
+  final double diameter;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final stroke = _trafficLightRestoreStrokeWidth(diameter);
+    final pad = size.width * 0.16;
+    final arm = size.width * 0.26;
+    final w = size.width;
+    final h = size.height;
+
+    void drawCorners(Paint paint) {
+      _drawInwardCorner(
+        canvas,
+        Offset(pad, pad),
+        arm,
+        paint,
+        axisX: 1,
+        axisY: 1,
+      );
+      _drawInwardCorner(
+        canvas,
+        Offset(w - pad, pad),
+        arm,
+        paint,
+        axisX: -1,
+        axisY: 1,
+      );
+      _drawInwardCorner(
+        canvas,
+        Offset(pad, h - pad),
+        arm,
+        paint,
+        axisX: 1,
+        axisY: -1,
+      );
+      _drawInwardCorner(
+        canvas,
+        Offset(w - pad, h - pad),
+        arm,
+        paint,
+        axisX: -1,
+        axisY: -1,
+      );
+    }
+
+    final halo = Paint()
+      ..color = const Color(0xFFFFFFFF).withValues(alpha: 0.5)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = stroke + 1.4
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+    drawCorners(halo);
+
+    final paint = Paint()
+      ..color = const Color(0xFF121212)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = stroke
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+    drawCorners(paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _RestoreGlyphPainter oldDelegate) =>
+      oldDelegate.diameter != diameter;
+}
+
+void _drawInwardCorner(
+  Canvas canvas,
+  Offset corner,
+  double arm,
+  Paint paint, {
+  required int axisX,
+  required int axisY,
+}) {
+  canvas.drawLine(
+    Offset(corner.dx + arm * axisX, corner.dy),
+    corner,
+    paint,
+  );
+  canvas.drawLine(
+    corner,
+    Offset(corner.dx, corner.dy + arm * axisY),
+    paint,
   );
 }
 
 class _TrafficLightButton extends StatelessWidget {
   const _TrafficLightButton({
+    required this.diameter,
     required this.color,
     required this.tooltip,
     required this.showSymbol,
     required this.onPressed,
-    this.symbol,
-    this.child,
+    required this.child,
   });
 
-  static const double diameter = 12;
+  final double diameter;
 
   final Color color;
   final String tooltip;
   final bool showSymbol;
   final Future<void> Function() onPressed;
-  final String? symbol;
-  final Widget? child;
+  final Widget child;
 
   @override
   Widget build(BuildContext context) {
@@ -220,13 +482,7 @@ class _TrafficLightButton extends StatelessWidget {
               width: 0.5,
             ),
           ),
-          child: showSymbol
-              ? (child ??
-                    Text(
-                      symbol!,
-                      style: _trafficLightSymbolStyle(),
-                    ))
-              : null,
+          child: showSymbol ? child : null,
         ),
       ),
     );
@@ -246,7 +502,7 @@ class WindowsStyleChromeControls extends StatelessWidget {
 
   final bool isMaximized;
   final Future<void> Function() onMinimize;
-  final Future<void> Function() onToggleMaximize;
+  final Future<void> Function({bool optionPressed}) onToggleMaximize;
   final Future<void> Function() onClose;
   final double height;
 
@@ -269,7 +525,7 @@ class WindowsStyleChromeControls extends StatelessWidget {
               ? l10n.windowControlRestore
               : l10n.windowControlMaximize,
           icon: isMaximized ? Icons.filter_none : Icons.crop_square_outlined,
-          onPressed: onToggleMaximize,
+          onPressed: () => onToggleMaximize(optionPressed: false),
         ),
         _WindowsChromeButton(
           height: height,

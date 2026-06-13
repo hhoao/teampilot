@@ -27,6 +27,20 @@ void main() {
     );
   });
 
+  test('tooltip text style scales with the text-size scale', () {
+    final std = buildDarkTheme(null, AppTypographyScale.standard);
+    final comfy = buildDarkTheme(null, AppTypographyScale.comfortable);
+
+    expect(
+      comfy.tooltipTheme.textStyle!.fontSize!,
+      greaterThan(std.tooltipTheme.textStyle!.fontSize!),
+    );
+    expect(
+      comfy.tooltipTheme.textStyle!.fontSize,
+      comfy.textTheme.bodyMedium!.fontSize,
+    );
+  });
+
   test('list tile subtitle style scales with the text-size scale', () {
     final std = buildDarkTheme(null, AppTypographyScale.standard);
     final comfy = buildDarkTheme(null, AppTypographyScale.comfortable);

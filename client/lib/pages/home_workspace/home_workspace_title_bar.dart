@@ -3,11 +3,11 @@ import 'dart:io' show Platform;
 
 import 'package:flutter/material.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
-import 'package:flutter/services.dart';
 import 'package:window_manager/window_manager.dart';
 
 import '../../l10n/l10n_extensions.dart';
 import '../../models/home_closed_project_entry.dart';
+import '../../services/app/desktop_window_actions.dart';
 import '../../services/app/platform_utils.dart';
 import '../../theme/app_text_styles.dart';
 import '../../theme/workspace_surface_layers.dart';
@@ -19,14 +19,6 @@ import '../config/config_workspace.dart';
 
 /// Height of the Apifox-style workspace title bar.
 const double kHomeWorkspaceTitleBarHeight = 58;
-
-Future<T?> _windowManagerCall<T>(Future<T> Function() action) async {
-  try {
-    return await action();
-  } on MissingPluginException {
-    return null;
-  }
-}
 
 /// Custom window title bar for the new workspace home: brand mark, a "Home"
 /// pill, optional open-project tab, decorative action glyphs, and the real
@@ -164,7 +156,7 @@ class _HomeWorkspaceTitleBarState extends State<HomeWorkspaceTitleBar>
     super.initState();
     if (!useCustomDesktopWindowTitleBar) return;
     windowManager.addListener(this);
-    _syncMaximized();
+    _syncExpanded();
   }
 
   @override
@@ -175,34 +167,40 @@ class _HomeWorkspaceTitleBarState extends State<HomeWorkspaceTitleBar>
     super.dispose();
   }
 
-  Future<void> _syncMaximized() async {
-    final maximized = await _windowManagerCall(windowManager.isMaximized);
-    if (!mounted || maximized == null) return;
-    setState(() => _isMaximized = maximized);
+  Future<void> _syncExpanded() async {
+    final expanded = await isDesktopWindowExpanded();
+    if (!mounted) return;
+    setState(() => _isMaximized = expanded);
   }
 
   @override
-  void onWindowMaximize() => setState(() => _isMaximized = true);
+  void onWindowMaximize() => unawaited(_syncExpanded());
 
   @override
-  void onWindowUnmaximize() => setState(() => _isMaximized = false);
+  void onWindowUnmaximize() => unawaited(_syncExpanded());
 
-  Future<void> _toggleMaximize() async {
-    if (_isMaximized) {
-      await _windowManagerCall(windowManager.unmaximize);
+  @override
+  void onWindowEnterFullScreen() => unawaited(_syncExpanded());
+
+  @override
+  void onWindowLeaveFullScreen() => unawaited(_syncExpanded());
+
+  Future<void> _toggleMaximize({bool optionPressed = false}) async {
+    if (Platform.isMacOS) {
+      await handleMacGreenButton(optionPressed: optionPressed);
     } else {
-      await _windowManagerCall(windowManager.maximize);
+      await toggleDesktopWindowExpand();
     }
-    await _syncMaximized();
+    await _syncExpanded();
   }
 
   Widget _buildWindowControls() {
     return WindowChromeControls(
       height: kHomeWorkspaceTitleBarHeight,
       isMaximized: _isMaximized,
-      onMinimize: () => _windowManagerCall(windowManager.minimize),
+      onMinimize: () => windowManagerCall(windowManager.minimize),
       onToggleMaximize: _toggleMaximize,
-      onClose: () => _windowManagerCall(windowManager.close),
+      onClose: () => windowManagerCall(windowManager.close),
     );
   }
 
@@ -219,6 +217,7 @@ class _HomeWorkspaceTitleBarState extends State<HomeWorkspaceTitleBar>
         height: kHomeWorkspaceTitleBarHeight,
         child: Row(
           children: [
+            SizedBox(width: 8),
             if (showWindowControls && useMacWindowChromeStyle)
               _buildWindowControls(),
             SizedBox(width: useMacWindowChromeStyle ? 8 : 20),

@@ -1,18 +1,12 @@
-﻿import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+﻿import 'dart:async';
+
+import 'package:flutter/material.dart';
 import 'package:window_manager/window_manager.dart';
 
 import '../l10n/l10n_extensions.dart';
+import '../services/app/desktop_window_actions.dart';
 import '../services/app/platform_utils.dart';
 import '../theme/app_icon_sizes.dart';
-
-Future<T?> _windowManagerCall<T>(Future<T> Function() action) async {
-  try {
-    return await action();
-  } on MissingPluginException {
-    return null;
-  }
-}
 
 /// Wraps [child] in the window-move area and restores the interactions a native
 /// title bar would provide on a frameless window:
@@ -45,10 +39,9 @@ class WindowDragArea extends StatelessWidget {
       overlay.size.height - globalPosition.dy,
     );
 
-    final maximized =
-        await _windowManagerCall(windowManager.isMaximized) ?? false;
+    final expanded = await isDesktopWindowExpanded();
     final onTop =
-        await _windowManagerCall(windowManager.isAlwaysOnTop) ?? false;
+        await windowManagerCall(windowManager.isAlwaysOnTop) ?? false;
     if (!context.mounted) return;
 
     final l10n = context.l10n;
@@ -64,12 +57,12 @@ class WindowDragArea extends StatelessWidget {
           ),
         ),
         PopupMenuItem(
-          value: maximized
+          value: expanded
               ? _WindowMenuAction.restore
               : _WindowMenuAction.maximize,
           child: _MenuRow(
-            icon: maximized ? Icons.filter_none : Icons.crop_square_outlined,
-            label: maximized
+            icon: expanded ? Icons.filter_none : Icons.crop_square_outlined,
+            label: expanded
                 ? l10n.windowControlRestore
                 : l10n.windowControlMaximize,
           ),
@@ -89,15 +82,14 @@ class WindowDragArea extends StatelessWidget {
 
     switch (selected) {
       case _WindowMenuAction.minimize:
-        await _windowManagerCall(windowManager.minimize);
+        await windowManagerCall(windowManager.minimize);
       case _WindowMenuAction.maximize:
-        await _windowManagerCall(windowManager.maximize);
       case _WindowMenuAction.restore:
-        await _windowManagerCall(windowManager.unmaximize);
+        await toggleDesktopWindowExpand();
       case _WindowMenuAction.toggleAlwaysOnTop:
-        await _windowManagerCall(() => windowManager.setAlwaysOnTop(!onTop));
+        await windowManagerCall(() => windowManager.setAlwaysOnTop(!onTop));
       case _WindowMenuAction.close:
-        await _windowManagerCall(windowManager.close);
+        await windowManagerCall(windowManager.close);
       case null:
         break;
     }

@@ -68,7 +68,7 @@ SPEC CHECKSUMS:
   FlutterMacOS: d0db08ddef1a9af05a5ec4b724367152bb0500b1
   package_info_plus: 12f1c5c2cfe8727ca46cbd0b26677728972d9a5b
   rust_lib_flutter_alacritty: e4fcb8b0170e665aa1eae60613876324cb3f0ebd
-  screen_retriever_macos: 776e0fa5d42c6163d2bf772d22478df4b302b161
+  screen_retriever_macos: 038d3f7b34a779b06f536842003e41e8ec1fb4b7
   shared_preferences_foundation: 5086985c1d43c5ba4d5e69a4e8083a389e2909e6
   url_launcher_macos: 175a54c831f4375a6cf895875f716ee5af3888ce
   window_manager: e25faf20d88283a0d46e7b1a759d07261ca27575

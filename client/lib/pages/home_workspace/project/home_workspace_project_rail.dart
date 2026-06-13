@@ -41,7 +41,7 @@ class HomeWorkspaceProjectRail extends StatelessWidget {
             label: l10n.appTitle,
             active: false,
             onTap: onLogoTap,
-            child: const TeamPilotBrandLogo(size: 24),
+            child: TeamPilotBrandLogo(),
           ),
           const SizedBox(height: 10),
         ],

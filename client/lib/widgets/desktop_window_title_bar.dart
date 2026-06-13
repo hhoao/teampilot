@@ -1,7 +1,10 @@
-﻿import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+﻿import 'dart:async';
+import 'dart:io';
+
+import 'package:flutter/material.dart';
 import 'package:window_manager/window_manager.dart';
 
+import '../services/app/desktop_window_actions.dart';
 import '../services/app/platform_utils.dart';
 import '../theme/app_text_styles.dart';
 import 'window_chrome_controls.dart';
@@ -9,14 +12,6 @@ import 'window_drag_area.dart';
 
 /// Height of the in-app replacement for the native window title bar.
 const double kDesktopWindowTitleBarHeight = 40;
-
-Future<T?> _windowManagerCall<T>(Future<T> Function() action) async {
-  try {
-    return await action();
-  } on MissingPluginException {
-    return null;
-  }
-}
 
 /// Desktop-only custom title bar (minimize / maximize / close).
 ///
@@ -44,7 +39,7 @@ class _DesktopWindowTitleBarState extends State<DesktopWindowTitleBar>
     super.initState();
     if (!useCustomDesktopWindowTitleBar) return;
     windowManager.addListener(this);
-    _syncMaximized();
+    _syncExpanded();
   }
 
   @override
@@ -55,38 +50,40 @@ class _DesktopWindowTitleBarState extends State<DesktopWindowTitleBar>
     super.dispose();
   }
 
-  Future<void> _syncMaximized() async {
-    final maximized = await _windowManagerCall(windowManager.isMaximized);
-    if (!mounted || maximized == null) return;
-    setState(() => _isMaximized = maximized);
+  Future<void> _syncExpanded() async {
+    final expanded = await isDesktopWindowExpanded();
+    if (!mounted) return;
+    setState(() => _isMaximized = expanded);
   }
 
-  Future<void> _toggleMaximize() async {
-    if (_isMaximized) {
-      await _windowManagerCall(windowManager.unmaximize);
+  Future<void> _toggleMaximize({bool optionPressed = false}) async {
+    if (Platform.isMacOS) {
+      await handleMacGreenButton(optionPressed: optionPressed);
     } else {
-      await _windowManagerCall(windowManager.maximize);
+      await toggleDesktopWindowExpand();
     }
-    await _syncMaximized();
+    await _syncExpanded();
   }
 
   @override
-  void onWindowMaximize() {
-    setState(() => _isMaximized = true);
-  }
+  void onWindowMaximize() => unawaited(_syncExpanded());
 
   @override
-  void onWindowUnmaximize() {
-    setState(() => _isMaximized = false);
-  }
+  void onWindowUnmaximize() => unawaited(_syncExpanded());
+
+  @override
+  void onWindowEnterFullScreen() => unawaited(_syncExpanded());
+
+  @override
+  void onWindowLeaveFullScreen() => unawaited(_syncExpanded());
 
   Widget _buildWindowControls() {
     return WindowChromeControls(
       height: kDesktopWindowTitleBarHeight,
       isMaximized: _isMaximized,
-      onMinimize: () => _windowManagerCall(windowManager.minimize),
+      onMinimize: () => windowManagerCall(windowManager.minimize),
       onToggleMaximize: _toggleMaximize,
-      onClose: () => _windowManagerCall(windowManager.close),
+      onClose: () => windowManagerCall(windowManager.close),
     );
   }
 

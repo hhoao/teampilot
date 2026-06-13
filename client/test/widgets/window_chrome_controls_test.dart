@@ -19,14 +19,14 @@ void main() {
         MacTrafficLightControls(
           isMaximized: false,
           onMinimize: () async {},
-          onToggleMaximize: () async {},
+          onToggleMaximize: ({bool optionPressed = false}) async {},
           onClose: () async {},
         ),
       ),
     );
 
     expect(find.byType(MacTrafficLightControls), findsOneWidget);
-    expect(find.text('×'), findsNothing);
+    expect(find.byKey(const Key('mac_traffic_light_maximize_glyph')), findsNothing);
 
     final gesture = await tester.createGesture(kind: PointerDeviceKind.mouse);
     await gesture.addPointer(location: Offset.zero);
@@ -34,9 +34,33 @@ void main() {
     await gesture.moveTo(tester.getCenter(find.byType(MacTrafficLightControls)));
     await tester.pump();
 
-    expect(find.text('×'), findsOneWidget);
-    expect(find.text('−'), findsOneWidget);
-    expect(find.text('+'), findsOneWidget);
+    expect(find.byKey(const Key('mac_traffic_light_maximize_glyph')), findsOneWidget);
+    expect(find.byType(CustomPaint), findsWidgets);
+  });
+
+  testWidgets('macOS traffic lights show restore glyph when expanded', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      wrap(
+        MacTrafficLightControls(
+          isMaximized: true,
+          onMinimize: () async {},
+          onToggleMaximize: ({bool optionPressed = false}) async {},
+          onClose: () async {},
+        ),
+      ),
+    );
+
+    expect(find.byKey(const Key('mac_traffic_light_restore_glyph')), findsNothing);
+
+    final gesture = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    await gesture.addPointer(location: Offset.zero);
+    addTearDown(gesture.removePointer);
+    await gesture.moveTo(tester.getCenter(find.byType(MacTrafficLightControls)));
+    await tester.pump();
+
+    expect(find.byKey(const Key('mac_traffic_light_restore_glyph')), findsOneWidget);
   });
 
   testWidgets('Windows chrome controls render icon buttons', (tester) async {
@@ -45,7 +69,7 @@ void main() {
         WindowsStyleChromeControls(
           isMaximized: false,
           onMinimize: () async {},
-          onToggleMaximize: () async {},
+          onToggleMaximize: ({bool optionPressed = false}) async {},
           onClose: () async {},
         ),
       ),

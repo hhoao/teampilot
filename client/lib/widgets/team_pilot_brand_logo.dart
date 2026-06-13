@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:teampilot/theme/app_icon_sizes.dart';
 
 /// Overrides for the three fills in [TeamPilotBrandLogo.assetPath].
 ///
@@ -61,7 +62,7 @@ class TeamPilotBrandLogoColors {
 /// shades.
 class TeamPilotBrandLogo extends StatelessWidget {
   const TeamPilotBrandLogo({
-    this.size = 24,
+    this.size,
     this.color,
     this.colors,
     this.gradientStart,
@@ -71,7 +72,9 @@ class TeamPilotBrandLogo extends StatelessWidget {
 
   static const String assetPath = 'assets/icons/icon.svg';
 
-  final double size;
+  /// When null, uses [BuildContext.appIconSize] (follows the app's text-size /
+  /// icon theme scale).
+  final double? size;
 
   /// Tints the whole mark to one color (skips theme three-tone mapping).
   final Color? color;
@@ -85,7 +88,8 @@ class TeamPilotBrandLogo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final mark = _buildMark(context);
+    final resolvedSize = size ?? context.appIconSize;
+    final mark = _buildMark(context, resolvedSize);
 
     final start = gradientStart;
     final end = gradientEnd;
@@ -94,12 +98,12 @@ class TeamPilotBrandLogo extends StatelessWidget {
     }
 
     final cs = Theme.of(context).colorScheme;
-    final cornerRadius = size * 7 / 24;
-    final inset = size * 4 / 24;
+    final cornerRadius = resolvedSize * 7 / 24;
+    final inset = resolvedSize * 4 / 24;
 
     return Container(
-      width: size,
-      height: size,
+      width: resolvedSize,
+      height: resolvedSize,
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
@@ -113,12 +117,12 @@ class TeamPilotBrandLogo extends StatelessWidget {
     );
   }
 
-  Widget _buildMark(BuildContext context) {
+  Widget _buildMark(BuildContext context, double resolvedSize) {
     if (color != null) {
       return SvgPicture.asset(
         assetPath,
-        width: size,
-        height: size,
+        width: resolvedSize,
+        height: resolvedSize,
         fit: BoxFit.contain,
         colorFilter: ColorFilter.mode(color!, BlendMode.srcIn),
       );
@@ -132,8 +136,8 @@ class TeamPilotBrandLogo extends StatelessWidget {
 
     return SvgPicture.asset(
       assetPath,
-      width: size,
-      height: size,
+      width: resolvedSize,
+      height: resolvedSize,
       fit: BoxFit.contain,
       colorMapper: _TeamPilotBrandLogoColorMapper(palette),
     );

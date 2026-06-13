@@ -6,6 +6,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import 'app_dialog_theme.dart';
 import 'app_list_tile_theme.dart';
+import 'app_tooltip_theme.dart';
 import 'app_fonts.dart';
 import 'app_icon_sizes.dart';
 import 'app_outline_input_theme.dart';
@@ -266,6 +267,10 @@ ThemeData _applyTypography(
         AppIconSizeTheme.fromScale(resolvedIconScale),
       ],
       dialogTheme: buildAppDialogTheme(colorScheme: scheme, textTheme: textTheme),
+      tooltipTheme: buildAppTooltipTheme(
+        textTheme: textTheme,
+        brightness: flexTheme.brightness,
+      ),
       inputDecorationTheme: buildAppOutlineInputDecorationTheme(
         colorScheme: flexTheme.colorScheme,
         textTheme: textTheme,
@@ -310,6 +315,10 @@ ThemeData _applyTypography(
     dialogTheme: buildAppDialogTheme(
       colorScheme: scheme,
       textTheme: mergedTextTheme,
+    ),
+    tooltipTheme: buildAppTooltipTheme(
+      textTheme: mergedTextTheme,
+      brightness: flexTheme.brightness,
     ),
     inputDecorationTheme: buildAppOutlineInputDecorationTheme(
       colorScheme: flexTheme.colorScheme,
