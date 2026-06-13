@@ -15,6 +15,17 @@ void main() {
     );
   });
 
+  test('button label role (labelLarge) scales with the text-size scale', () {
+    final std = buildDarkTheme(null, AppTypographyScale.standard);
+    final comfy = buildDarkTheme(null, AppTypographyScale.comfortable);
+
+    // M3 TextButton/OutlinedButton/FilledButton use labelLarge.
+    expect(
+      comfy.textTheme.labelLarge!.fontSize!,
+      greaterThan(std.textTheme.labelLarge!.fontSize!),
+    );
+  });
+
   test('spacing tokens are fixed (independent of the text-size scale)', () {
     final std = buildDarkTheme(null, AppTypographyScale.standard);
     final comfy = buildDarkTheme(null, AppTypographyScale.comfortable);

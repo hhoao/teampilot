@@ -34,6 +34,8 @@ TextTheme materializeM3TextThemeSizes(
     bodyLarge: resolve(textTheme.bodyLarge, sizes.bodyLarge),
     bodyMedium: resolve(textTheme.bodyMedium, sizes.bodyMedium),
     bodySmall: resolve(textTheme.bodySmall, sizes.bodySmall),
+    // labelLarge: M3 button labels (TextButton/OutlinedButton/FilledButton).
+    labelLarge: resolve(textTheme.labelLarge, scale.labelLarge),
     labelMedium: resolve(textTheme.labelMedium, sizes.labelMedium),
     labelSmall: resolve(textTheme.labelSmall, sizes.labelSmall),
   );

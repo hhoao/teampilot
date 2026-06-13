@@ -122,6 +122,10 @@ final class AppTypographyScale {
   static const double bodyLargeBase = 16;
   static const double bodyMediumBase = 14;
   static const double bodySmallBase = 12;
+
+  /// Button labels ([TextButton]/[OutlinedButton]/[FilledButton] use M3
+  /// `labelLarge`).
+  static const double labelLargeBase = 14;
   static const double labelMediumBase = 12;
   static const double labelSmallBase = 11;
 
@@ -138,6 +142,7 @@ final class AppTypographyScale {
   double get bodyLarge => bodyLargeBase * multiplier;
   double get bodyMedium => bodyMediumBase * multiplier;
   double get bodySmall => bodySmallBase * multiplier;
+  double get labelLarge => labelLargeBase * multiplier;
   double get labelMedium => labelMediumBase * multiplier;
   double get labelSmall => labelSmallBase * multiplier;
   double get terminal => terminalBase * multiplier * terminalMultiplier;
