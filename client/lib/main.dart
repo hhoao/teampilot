@@ -236,36 +236,6 @@ void main() async {
   );
 }
 
-/// TEMP on-screen scaling diagnostic (removed in Task 8). Rendered OUTSIDE
-/// [UiZoom] so it always reports the real, unscaled window values. `eff` is the
-/// effective logical canvas the UI lays out into (`win / zoom`).
-Widget _zoomDiagnosticBadge(BuildContext context, double uiScale) {
-  final mq = MediaQuery.maybeOf(context);
-  final size = mq?.size;
-  final effW = (size != null && uiScale != 0) ? (size.width / uiScale).round() : 0;
-  final effH = (size != null && uiScale != 0) ? (size.height / uiScale).round() : 0;
-  final text =
-      'DIAG  zoom=${(uiScale * 100).round()}%  '
-      'win=${size?.width.round()}x${size?.height.round()}  '
-      'dpr=${mq?.devicePixelRatio.toStringAsFixed(2)}  '
-      'eff=${effW}x$effH';
-  return Directionality(
-    textDirection: TextDirection.ltr,
-    child: Container(
-      color: const Color(0xCC000000),
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-      child: Text(
-        text,
-        style: const TextStyle(
-          color: Color(0xFFFFEE00),
-          fontSize: 11,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-    ),
-  );
-}
-
 class TeamPilotApp extends StatelessWidget {
   const TeamPilotApp({super.key});
 
@@ -360,17 +330,6 @@ class TeamPilotApp extends StatelessWidget {
                 baseline: autoUiZoomForDevicePixelRatio(dpr),
               ),
             );
-            // TEMP DIAGNOSTIC (removed in Task 8): records the real per-platform
-            // scaling inputs so the compact UI-scale default is measured, not
-            // guessed. Run `flutter run -d linux` and read the UI_SCALE_DIAG line.
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              final mq = MediaQuery.maybeOf(context);
-              appLogger.i(
-                'UI_SCALE_DIAG platform=${Platform.operatingSystem} '
-                'dpr=${mq?.devicePixelRatio} textScaler=${mq?.textScaler} '
-                'size=${mq?.size} zoom=$effectiveZoom scale=$uiZoomScaleId',
-              );
-            });
             Widget content = AppTextScaleBoundary(
               child: UiWarmup(child: child ?? const SizedBox.shrink()),
             );
@@ -385,22 +344,6 @@ class TeamPilotApp extends StatelessWidget {
             if (!Platform.isAndroid) {
               content = DragToResizeArea(child: content);
             }
-            // TEMP visible diagnostic (removed in Task 8): shows the live zoom %,
-            // real window size and DPR, rendered OUTSIDE UiZoom so it is always
-            // legible regardless of the zoom level.
-            content = Stack(
-              textDirection: TextDirection.ltr,
-              children: [
-                content,
-                Positioned(
-                  top: 0,
-                  left: 0,
-                  child: IgnorePointer(
-                    child: _zoomDiagnosticBadge(context, effectiveZoom),
-                  ),
-                ),
-              ],
-            );
             return content;
           },
           localeResolutionCallback: (locale, supportedLocales) {
