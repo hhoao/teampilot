@@ -148,7 +148,7 @@ class _IssueRow extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Icon(group.icon, size: 20, color: colors.onSurfaceVariant),
             const SizedBox(width: 14),
