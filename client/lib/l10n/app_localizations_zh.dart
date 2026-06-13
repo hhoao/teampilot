@@ -227,10 +227,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get uiZoomTitle => '界面缩放';
 
   @override
-  String get uiZoomDescription => '整体缩放界面——文字、图标与间距一起。';
+  String get uiZoomDescription => '整体缩放界面——文字、图标与间距一起。「自动」按系统缩放匹配。';
 
   @override
   String get uiZoomHint => '50–150';
+
+  @override
+  String get uiZoomAuto => '自动';
 
   @override
   String get themePresetGraphite => '石墨';

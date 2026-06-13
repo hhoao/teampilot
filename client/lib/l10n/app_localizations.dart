@@ -521,7 +521,7 @@ abstract class AppLocalizations {
   /// No description provided for @uiZoomDescription.
   ///
   /// In en, this message translates to:
-  /// **'Zoom the whole UI together — text, icons, and spacing.'**
+  /// **'Zoom the whole UI together — text, icons, and spacing. Auto matches your display scaling.'**
   String get uiZoomDescription;
 
   /// No description provided for @uiZoomHint.
@@ -529,6 +529,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'50–150'**
   String get uiZoomHint;
+
+  /// No description provided for @uiZoomAuto.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto'**
+  String get uiZoomAuto;
 
   /// No description provided for @themePresetGraphite.
   ///

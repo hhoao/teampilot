@@ -90,7 +90,7 @@ class LayoutPreferences {
           fallback: kDefaultTypographyCustomMultiplier,
         ),
       ),
-      uiZoom: clampUiZoom(
+      uiZoom: normalizeUiZoom(
         _doubleValue(json['uiZoom'], fallback: kDefaultUiZoom),
       ),
       terminalThemeMode: _terminalThemeModeValue(
@@ -236,7 +236,7 @@ class LayoutPreferences {
       typographyScaleCustomMultiplier: typographyScaleCustomMultiplier == null
           ? this.typographyScaleCustomMultiplier
           : clampTypographyCustomMultiplier(typographyScaleCustomMultiplier),
-      uiZoom: uiZoom == null ? this.uiZoom : clampUiZoom(uiZoom),
+      uiZoom: uiZoom == null ? this.uiZoom : normalizeUiZoom(uiZoom),
       terminalThemeMode: terminalThemeMode == null
           ? this.terminalThemeMode
           : _terminalThemeModeValue(terminalThemeMode),

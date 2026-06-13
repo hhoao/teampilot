@@ -240,10 +240,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get uiZoomDescription =>
-      'Zoom the whole UI together — text, icons, and spacing.';
+      'Zoom the whole UI together — text, icons, and spacing. Auto matches your display scaling.';
 
   @override
   String get uiZoomHint => '50–150';
+
+  @override
+  String get uiZoomAuto => 'Auto';
 
   @override
   String get themePresetGraphite => 'Graphite';

@@ -44,7 +44,7 @@ class LayoutAppearanceInLayoutSection extends StatelessWidget {
           normalizeThemeColorPreset(state.preferences.themeColorPreset),
           normalizeTypographyScale(state.preferences.typographyScale),
           state.preferences.typographyScaleCustomMultiplier,
-          clampUiZoom(state.preferences.uiZoom),
+          normalizeUiZoom(state.preferences.uiZoom),
           state.preferences.terminalThemeMode,
           langValue,
         );
@@ -136,9 +136,21 @@ class LayoutAppearanceInLayoutSection extends StatelessWidget {
             SettingsLabeledRow(
               title: l10n.uiZoomTitle,
               subtitle: l10n.uiZoomDescription,
-              trailing: UiZoomSetting(
-                zoom: uiZoom,
-                onChanged: controller.setUiZoom,
+              trailing: Builder(
+                builder: (context) {
+                  final isAuto = uiZoom <= 0;
+                  final effectiveZoom = isAuto
+                      ? autoUiZoomForDevicePixelRatio(
+                          MediaQuery.devicePixelRatioOf(context),
+                        )
+                      : uiZoom;
+                  return UiZoomSetting(
+                    zoom: effectiveZoom,
+                    isAuto: isAuto,
+                    onChanged: controller.setUiZoom,
+                    onAuto: controller.setUiZoomAuto,
+                  );
+                },
               ),
               showDividerBelow: true,
             ),

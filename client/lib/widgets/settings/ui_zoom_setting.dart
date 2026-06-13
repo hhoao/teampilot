@@ -4,19 +4,29 @@ import 'package:flutter/services.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../theme/app_typography_scale.dart';
 
-/// Whole-UI zoom control: a percent field clamped to [kUiZoomMin]–[kUiZoomMax].
+/// Whole-UI zoom control: an "Auto" chip (follow the display scaling) plus a
+/// percent override field clamped to [kUiZoomMin]–[kUiZoomMax].
 ///
 /// Independent of [TypographyScaleSetting] (which is text size); this drives the
 /// root [UiZoom] so the entire interface scales together.
 class UiZoomSetting extends StatefulWidget {
   const UiZoomSetting({
     required this.zoom,
+    required this.isAuto,
     required this.onChanged,
+    required this.onAuto,
     super.key,
   });
 
+  /// Effective zoom to display (the resolved auto value when [isAuto]).
   final double zoom;
+  final bool isAuto;
+
+  /// Set an explicit override.
   final ValueChanged<double> onChanged;
+
+  /// Reset to the automatic per-display default.
+  final VoidCallback onAuto;
 
   @override
   State<UiZoomSetting> createState() => _UiZoomSettingState();
@@ -64,21 +74,36 @@ class _UiZoomSettingState extends State<UiZoomSetting> {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    return SizedBox(
-      width: 96,
-      height: 38,
-      child: TextField(
-        controller: _percentController,
-        keyboardType: TextInputType.number,
-        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-        decoration: InputDecoration(
-          isDense: true,
-          hintText: l10n.uiZoomHint,
-          suffixText: '%',
-        ),
-        onSubmitted: (_) => _commit(),
-        onEditingComplete: _commit,
-        onTapOutside: (_) => _commit(),
+    return FittedBox(
+      fit: BoxFit.scaleDown,
+      alignment: Alignment.centerRight,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ChoiceChip(
+            label: Text(l10n.uiZoomAuto),
+            selected: widget.isAuto,
+            onSelected: (_) => widget.onAuto(),
+          ),
+          const SizedBox(width: 8),
+          SizedBox(
+            width: 96,
+            height: 38,
+            child: TextField(
+              controller: _percentController,
+              keyboardType: TextInputType.number,
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              decoration: InputDecoration(
+                isDense: true,
+                hintText: l10n.uiZoomHint,
+                suffixText: '%',
+              ),
+              onSubmitted: (_) => _commit(),
+              onEditingComplete: _commit,
+              onTapOutside: (_) => _commit(),
+            ),
+          ),
+        ],
       ),
     );
   }

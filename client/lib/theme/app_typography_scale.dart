@@ -27,9 +27,21 @@ const double kDefaultTypographyCustomMultiplier = 1.0;
 /// Allowed **interface zoom** (whole-UI [UiZoom]); independent of text size.
 const double kUiZoomMin = 0.5;
 const double kUiZoomMax = 1.5;
-const double kDefaultUiZoom = 1.0;
+
+/// Sentinel: the zoom follows the OS display scaling automatically (see
+/// [autoUiZoomForDevicePixelRatio]). A positive value is an explicit override.
+const double kDefaultUiZoom = 0.0;
 
 double clampUiZoom(double value) => value.clamp(kUiZoomMin, kUiZoomMax);
+
+/// Stored zoom: `0` (auto) or a clamped explicit value.
+double normalizeUiZoom(double value) => value <= 0 ? 0.0 : clampUiZoom(value);
+
+/// Default whole-UI zoom for a display [devicePixelRatio]. Compensates for the
+/// OS scaling so density is consistent across platforms: e.g. Windows @150%
+/// (dpr 1.5) → ~0.67, Linux/macOS @100% (dpr 1.0) → 1.0. The user can override.
+double autoUiZoomForDevicePixelRatio(double devicePixelRatio) =>
+    clampUiZoom(devicePixelRatio <= 0 ? 1.0 : 1.0 / devicePixelRatio);
 
 String normalizeTypographyScale(String? raw) {
   if (raw != null && kTypographyScaleIds.contains(raw)) return raw;

@@ -126,9 +126,13 @@ class LayoutCubit extends Cubit<LayoutState> {
     ),
   );
 
-  /// Whole-UI zoom ([UiZoom]); independent of text size.
+  /// Whole-UI zoom ([UiZoom]) explicit override; independent of text size.
   Future<void> setUiZoom(double zoom) =>
       _save(state.preferences.copyWith(uiZoom: clampUiZoom(zoom)));
+
+  /// Reset the whole-UI zoom to the automatic per-display default.
+  Future<void> setUiZoomAuto() =>
+      _save(state.preferences.copyWith(uiZoom: kDefaultUiZoom));
 
   Future<void> setTerminalThemeMode(String mode) =>
       _save(state.preferences.copyWith(terminalThemeMode: mode));

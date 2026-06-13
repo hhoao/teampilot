@@ -296,7 +296,7 @@ class TeamPilotApp extends StatelessWidget {
           normalizeThemeColorPreset(prefs.themeColorPreset),
           normalizeTypographyScale(prefs.typographyScale),
           prefs.typographyScaleCustomMultiplier,
-          clampUiZoom(prefs.uiZoom),
+          normalizeUiZoom(prefs.uiZoom),
           prefs.locale,
         );
       },
@@ -317,8 +317,8 @@ class TeamPilotApp extends StatelessWidget {
         );
         // Interface zoom: scales the WHOLE UI (UiZoom), independent of text
         // size. Icons are decoupled from textScale in the theme so nothing
-        // double-scales.
-        final uiScale = uiZoom;
+        // double-scales. `uiZoom == 0` means auto (per-display default computed
+        // from the real devicePixelRatio inside the builder below).
 
         ThemeMode themeModeFromPrefs(String mode) => switch (mode) {
           'light' => ThemeMode.light,
@@ -336,6 +336,13 @@ class TeamPilotApp extends StatelessWidget {
           supportedLocales: AppLocalizations.supportedLocales,
           locale: savedLocale.isNotEmpty ? Locale(savedLocale) : null,
           builder: (context, child) {
+            // Auto interface-zoom default = 1 / devicePixelRatio (compensates
+            // for OS display scaling so density is consistent cross-platform);
+            // an explicit `uiZoom > 0` overrides it.
+            final dpr = MediaQuery.of(context).devicePixelRatio;
+            final effectiveZoom = uiZoom > 0
+                ? uiZoom
+                : autoUiZoomForDevicePixelRatio(dpr);
             // TEMP DIAGNOSTIC (removed in Task 8): records the real per-platform
             // scaling inputs so the compact UI-scale default is measured, not
             // guessed. Run `flutter run -d linux` and read the UI_SCALE_DIAG line.
@@ -344,7 +351,7 @@ class TeamPilotApp extends StatelessWidget {
               appLogger.i(
                 'UI_SCALE_DIAG platform=${Platform.operatingSystem} '
                 'dpr=${mq?.devicePixelRatio} textScaler=${mq?.textScaler} '
-                'size=${mq?.size} zoom=$uiScale',
+                'size=${mq?.size} zoom=$effectiveZoom auto=${uiZoom <= 0}',
               );
             });
             Widget content = AppTextScaleBoundary(
@@ -353,7 +360,7 @@ class TeamPilotApp extends StatelessWidget {
             // Single global zoom: scales fonts + icons + padding + every
             // control as one. Must sit INSIDE DragToResizeArea so the window
             // resize handles stay mapped to the real (unscaled) window edges.
-            content = UiZoom(scale: uiScale, child: content);
+            content = UiZoom(scale: effectiveZoom, child: content);
             // The native title bar is hidden (TitleBarStyle.hidden), which on
             // Linux/GTK also strips the resize-border grips. DragToResizeArea
             // re-adds invisible resize handles on all edges/corners so the
@@ -372,7 +379,7 @@ class TeamPilotApp extends StatelessWidget {
                   top: 0,
                   left: 0,
                   child: IgnorePointer(
-                    child: _zoomDiagnosticBadge(context, uiScale),
+                    child: _zoomDiagnosticBadge(context, effectiveZoom),
                   ),
                 ),
               ],
