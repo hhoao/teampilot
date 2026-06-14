@@ -160,19 +160,19 @@ void main() {
     );
 
     test(
-      'ensureStandaloneSessionInheritsProject chains app → project → session',
+      'ensureStandaloneSessionInheritsProject chains agents app → project → session',
       () async {
         final layout = CliDataLayout(
           teampilotRoot: base.path,
           fs: LocalFilesystem(),
         );
         await layout.ensureAppToolLayout('flashskyai');
-        final appSkills = Directory(
-          p.join(layout.appToolRoot('flashskyai'), 'skills'),
+        final appAgents = Directory(
+          p.join(layout.appToolRoot('flashskyai'), 'agents'),
         );
-        await appSkills.create(recursive: true);
+        await appAgents.create(recursive: true);
         await File(
-          p.join(appSkills.path, 'README.md'),
+          p.join(appAgents.path, 'README.md'),
         ).writeAsString('top-level');
 
         await layout.ensureStandaloneSessionInheritsProject(
@@ -181,15 +181,24 @@ void main() {
           'flashskyai',
         );
 
+        final sessionAgents = p.join(
+          layout.standaloneProjectSessionToolDir('proj-a', 'sess-1', 'flashskyai'),
+          'agents',
+        );
+        expect(_inheritedPathExists(sessionAgents), isTrue);
+        expect(
+          await File(p.join(sessionAgents, 'README.md')).readAsString(),
+          'top-level',
+        );
+
+        // Skills are NO LONGER inherited at the session level — they are
+        // materialized into a real leaf directory by ResourceProvisioningService.
         final sessionSkills = p.join(
           layout.standaloneProjectSessionToolDir('proj-a', 'sess-1', 'flashskyai'),
           'skills',
         );
-        expect(_inheritedPathExists(sessionSkills), isTrue);
-        expect(
-          await File(p.join(sessionSkills, 'README.md')).readAsString(),
-          'top-level',
-        );
+        expect(Link(sessionSkills).existsSync(), isFalse,
+            reason: 'session skills/ must not be an inherited symlink');
       },
     );
 

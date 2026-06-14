@@ -412,18 +412,15 @@ class CliDataLayout {
         );
         await _fs.ensureDir(sessionRoot);
         final projectRoot = standaloneProjectToolDir(trimmedProject, trimmedTool);
-        await Future.wait([
-          _ensureInheritedChild(
-            childName: 'agents',
-            parentToolRoot: projectRoot,
-            ownToolRoot: sessionRoot,
-          ),
-          _ensureInheritedChild(
-            childName: 'skills',
-            parentToolRoot: projectRoot,
-            ownToolRoot: sessionRoot,
-          ),
-        ]);
+        // Skills are materialized into the leaf CONFIG_DIR as a real directory
+        // owned per-session by ResourceProvisioningService; the session no
+        // longer inherits a skills/ symlink from the project staging layer
+        // (which would otherwise be written through and clobbered).
+        await _ensureInheritedChild(
+          childName: 'agents',
+          parentToolRoot: projectRoot,
+          ownToolRoot: sessionRoot,
+        );
       },
     );
   }
@@ -452,18 +449,14 @@ class CliDataLayout {
         final memberRoot = memberToolDir(trimmedTeam, trimmedSession, trimmedTool);
         await _fs.ensureDir(memberRoot);
         final teamRoot = teamToolDir(trimmedTeam, trimmedTool);
-        await Future.wait([
-          _ensureInheritedChild(
-            childName: 'agents',
-            parentToolRoot: teamRoot,
-            ownToolRoot: memberRoot,
-          ),
-          _ensureInheritedChild(
-            childName: 'skills',
-            parentToolRoot: teamRoot,
-            ownToolRoot: memberRoot,
-          ),
-        ]);
+        // Skills are materialized into the member leaf CONFIG_DIR as a real
+        // directory owned per-member by ResourceProvisioningService; the member
+        // no longer inherits a skills/ symlink from the team staging layer.
+        await _ensureInheritedChild(
+          childName: 'agents',
+          parentToolRoot: teamRoot,
+          ownToolRoot: memberRoot,
+        );
       },
     );
   }
