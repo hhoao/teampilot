@@ -1617,5 +1617,20 @@
     "placeholders": {
       "hours": { "type": "int" }
     }
-  }
+  },
+  "memberDetailTitle": "Member detail",
+  "memberDetailViewAction": "View member detail",
+  "memberDetailOpenConfigDir": "Open config directory",
+  "memberDetailOpenInFileManager": "Open in file manager",
+  "memberDetailNeedsSession": "Open a session first",
+  "memberDetailTabOverview": "Overview",
+  "memberDetailTabSkills": "Skills",
+  "memberDetailTabMcp": "MCP",
+  "memberDetailTabPlugins": "Plugins",
+  "memberDetailTabSettings": "Settings",
+  "memberDetailSourceRuntime": "Live session config",
+  "memberDetailSourceTeam": "Team-level config (member not launched in this session)",
+  "memberDetailEmpty": "This member has no config yet in this session, and the team layer is empty.",
+  "memberDetailLoadError": "Failed to read this member's config directory.",
+  "memberDetailSectionEmpty": "None"
 }

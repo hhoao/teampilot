@@ -1284,5 +1284,20 @@
     "placeholders": {
       "hours": { "type": "int" }
     }
-  }
+  },
+  "memberDetailTitle": "成员详情",
+  "memberDetailViewAction": "查看成员详情",
+  "memberDetailOpenConfigDir": "打开配置目录",
+  "memberDetailOpenInFileManager": "在文件管理器中打开",
+  "memberDetailNeedsSession": "请先打开一个会话",
+  "memberDetailTabOverview": "概览",
+  "memberDetailTabSkills": "Skills",
+  "memberDetailTabMcp": "MCP",
+  "memberDetailTabPlugins": "插件",
+  "memberDetailTabSettings": "设置",
+  "memberDetailSourceRuntime": "运行会话配置",
+  "memberDetailSourceTeam": "团队层配置（该成员未在此会话中启动）",
+  "memberDetailEmpty": "该成员尚未在此会话中启动，且团队层无配置。",
+  "memberDetailLoadError": "读取该成员的配置目录失败。",
+  "memberDetailSectionEmpty": "无"
 }

@@ -3378,4 +3378,49 @@ class AppLocalizationsZh extends AppLocalizations {
   String notificationTimeHoursAgo(int hours) {
     return '$hours 小时前';
   }
+
+  @override
+  String get memberDetailTitle => '成员详情';
+
+  @override
+  String get memberDetailViewAction => '查看成员详情';
+
+  @override
+  String get memberDetailOpenConfigDir => '打开配置目录';
+
+  @override
+  String get memberDetailOpenInFileManager => '在文件管理器中打开';
+
+  @override
+  String get memberDetailNeedsSession => '请先打开一个会话';
+
+  @override
+  String get memberDetailTabOverview => '概览';
+
+  @override
+  String get memberDetailTabSkills => 'Skills';
+
+  @override
+  String get memberDetailTabMcp => 'MCP';
+
+  @override
+  String get memberDetailTabPlugins => '插件';
+
+  @override
+  String get memberDetailTabSettings => '设置';
+
+  @override
+  String get memberDetailSourceRuntime => '运行会话配置';
+
+  @override
+  String get memberDetailSourceTeam => '团队层配置（该成员未在此会话中启动）';
+
+  @override
+  String get memberDetailEmpty => '该成员尚未在此会话中启动，且团队层无配置。';
+
+  @override
+  String get memberDetailLoadError => '读取该成员的配置目录失败。';
+
+  @override
+  String get memberDetailSectionEmpty => '无';
 }

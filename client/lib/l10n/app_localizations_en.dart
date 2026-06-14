@@ -3508,4 +3508,52 @@ class AppLocalizationsEn extends AppLocalizations {
   String notificationTimeHoursAgo(int hours) {
     return '$hours h ago';
   }
+
+  @override
+  String get memberDetailTitle => 'Member detail';
+
+  @override
+  String get memberDetailViewAction => 'View member detail';
+
+  @override
+  String get memberDetailOpenConfigDir => 'Open config directory';
+
+  @override
+  String get memberDetailOpenInFileManager => 'Open in file manager';
+
+  @override
+  String get memberDetailNeedsSession => 'Open a session first';
+
+  @override
+  String get memberDetailTabOverview => 'Overview';
+
+  @override
+  String get memberDetailTabSkills => 'Skills';
+
+  @override
+  String get memberDetailTabMcp => 'MCP';
+
+  @override
+  String get memberDetailTabPlugins => 'Plugins';
+
+  @override
+  String get memberDetailTabSettings => 'Settings';
+
+  @override
+  String get memberDetailSourceRuntime => 'Live session config';
+
+  @override
+  String get memberDetailSourceTeam =>
+      'Team-level config (member not launched in this session)';
+
+  @override
+  String get memberDetailEmpty =>
+      'This member has no config yet in this session, and the team layer is empty.';
+
+  @override
+  String get memberDetailLoadError =>
+      'Failed to read this member\'s config directory.';
+
+  @override
+  String get memberDetailSectionEmpty => 'None';
 }

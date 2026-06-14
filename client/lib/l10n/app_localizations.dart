@@ -6385,6 +6385,96 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{hours} h ago'**
   String notificationTimeHoursAgo(int hours);
+
+  /// No description provided for @memberDetailTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Member detail'**
+  String get memberDetailTitle;
+
+  /// No description provided for @memberDetailViewAction.
+  ///
+  /// In en, this message translates to:
+  /// **'View member detail'**
+  String get memberDetailViewAction;
+
+  /// No description provided for @memberDetailOpenConfigDir.
+  ///
+  /// In en, this message translates to:
+  /// **'Open config directory'**
+  String get memberDetailOpenConfigDir;
+
+  /// No description provided for @memberDetailOpenInFileManager.
+  ///
+  /// In en, this message translates to:
+  /// **'Open in file manager'**
+  String get memberDetailOpenInFileManager;
+
+  /// No description provided for @memberDetailNeedsSession.
+  ///
+  /// In en, this message translates to:
+  /// **'Open a session first'**
+  String get memberDetailNeedsSession;
+
+  /// No description provided for @memberDetailTabOverview.
+  ///
+  /// In en, this message translates to:
+  /// **'Overview'**
+  String get memberDetailTabOverview;
+
+  /// No description provided for @memberDetailTabSkills.
+  ///
+  /// In en, this message translates to:
+  /// **'Skills'**
+  String get memberDetailTabSkills;
+
+  /// No description provided for @memberDetailTabMcp.
+  ///
+  /// In en, this message translates to:
+  /// **'MCP'**
+  String get memberDetailTabMcp;
+
+  /// No description provided for @memberDetailTabPlugins.
+  ///
+  /// In en, this message translates to:
+  /// **'Plugins'**
+  String get memberDetailTabPlugins;
+
+  /// No description provided for @memberDetailTabSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Settings'**
+  String get memberDetailTabSettings;
+
+  /// No description provided for @memberDetailSourceRuntime.
+  ///
+  /// In en, this message translates to:
+  /// **'Live session config'**
+  String get memberDetailSourceRuntime;
+
+  /// No description provided for @memberDetailSourceTeam.
+  ///
+  /// In en, this message translates to:
+  /// **'Team-level config (member not launched in this session)'**
+  String get memberDetailSourceTeam;
+
+  /// No description provided for @memberDetailEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'This member has no config yet in this session, and the team layer is empty.'**
+  String get memberDetailEmpty;
+
+  /// No description provided for @memberDetailLoadError.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to read this member\'s config directory.'**
+  String get memberDetailLoadError;
+
+  /// No description provided for @memberDetailSectionEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'None'**
+  String get memberDetailSectionEmpty;
 }
 
 class _AppLocalizationsDelegate
