@@ -1,0 +1,254 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+
+import '../../../cubits/member_config_cubit.dart';
+import '../../../l10n/l10n_extensions.dart';
+import '../../../models/team_config.dart';
+import '../../../services/cli/member_config/member_config_detail.dart';
+import '../../../services/io/sftp_filesystem.dart';
+import '../../../services/io/system_folder_opener.dart';
+import '../../../services/storage/runtime_storage_context.dart';
+
+/// Opens the read-only member config detail dialog.
+Future<void> showMemberDetailDialog(
+  BuildContext context, {
+  required TeamConfig team,
+  required TeamMemberConfig member,
+  required String cliTeamName,
+}) {
+  return showDialog<void>(
+    context: context,
+    builder: (_) => BlocProvider(
+      create: (_) => MemberConfigCubit()
+        ..load(team: team, member: member, cliTeamName: cliTeamName),
+      child: _MemberDetailDialog(memberName: member.name),
+    ),
+  );
+}
+
+class _MemberDetailDialog extends StatelessWidget {
+  const _MemberDetailDialog({required this.memberName});
+  final String memberName;
+
+  bool get _canRevealLocally =>
+      RuntimeStorageContext.current.filesystem is! SftpFilesystem;
+
+  @override
+  Widget build(BuildContext context) {
+    final state = context.watch<MemberConfigCubit>().state;
+    final l10n = context.l10n;
+
+    Widget body;
+    switch (state.status) {
+      case MemberConfigStatus.loaded:
+        final detail = state.detail!;
+        body = MemberDetailDialogBody(
+          memberName: memberName,
+          detail: detail,
+          onOpenInFileManager:
+              (_canRevealLocally && detail.resolvedDir.isNotEmpty)
+                  ? () => SystemFolderOpener().reveal(detail.resolvedDir)
+                  : null,
+        );
+      case MemberConfigStatus.error:
+        body = Center(child: Text(l10n.memberDetailLoadError));
+      case MemberConfigStatus.idle:
+      case MemberConfigStatus.loading:
+        body = const Center(child: CircularProgressIndicator());
+    }
+
+    return Dialog(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 560, maxHeight: 560),
+        child: body,
+      ),
+    );
+  }
+}
+
+/// Pure presentational body (no cubit) so it is trivially widget-testable.
+class MemberDetailDialogBody extends StatelessWidget {
+  const MemberDetailDialogBody({
+    required this.memberName,
+    required this.detail,
+    this.onOpenInFileManager,
+    super.key,
+  });
+
+  final String memberName;
+  final MemberConfigDetail detail;
+  final VoidCallback? onOpenInFileManager;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    if (!detail.hasConfig) {
+      return Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(l10n.memberDetailTitle,
+                style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 16),
+            Text(l10n.memberDetailEmpty, textAlign: TextAlign.center),
+            const SizedBox(height: 16),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton(
+                onPressed: () => Navigator.of(context).maybePop(),
+                child: Text(MaterialLocalizations.of(context).closeButtonLabel),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return DefaultTabController(
+      length: 5,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 12, 0),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    '${l10n.memberDetailTitle} · $memberName',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close),
+                  onPressed: () => Navigator.of(context).maybePop(),
+                ),
+              ],
+            ),
+          ),
+          TabBar(
+            isScrollable: true,
+            tabs: [
+              Tab(text: l10n.memberDetailTabOverview),
+              Tab(text: l10n.memberDetailTabSkills),
+              Tab(text: l10n.memberDetailTabMcp),
+              Tab(text: l10n.memberDetailTabPlugins),
+              Tab(text: l10n.memberDetailTabSettings),
+            ],
+          ),
+          Expanded(
+            child: TabBarView(
+              children: [
+                _OverviewTab(detail: detail),
+                _ListTab(
+                  empty: l10n.memberDetailSectionEmpty,
+                  items: [
+                    for (final s in detail.skills)
+                      (title: s.name, subtitle: s.description),
+                  ],
+                ),
+                _ListTab(
+                  empty: l10n.memberDetailSectionEmpty,
+                  items: [
+                    for (final m in detail.mcpServers)
+                      (title: m.name, subtitle: m.summary),
+                  ],
+                ),
+                _ListTab(
+                  empty: l10n.memberDetailSectionEmpty,
+                  items: [
+                    for (final pl in detail.plugins)
+                      (title: pl.name, subtitle: pl.version),
+                  ],
+                ),
+                _ListTab(
+                  empty: l10n.memberDetailSectionEmpty,
+                  items: [
+                    for (final e in detail.settings)
+                      (title: e.key, subtitle: e.value),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          if (onOpenInFileManager != null)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton.icon(
+                  icon: const Icon(Icons.folder_open, size: 18),
+                  label: Text(l10n.memberDetailOpenInFileManager),
+                  onPressed: onOpenInFileManager,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _OverviewTab extends StatelessWidget {
+  const _OverviewTab({required this.detail});
+  final MemberConfigDetail detail;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final source = detail.sourceLayer == MemberConfigSourceLayer.team
+        ? l10n.memberDetailSourceTeam
+        : l10n.memberDetailSourceRuntime;
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        if (detail.sourceLayer == MemberConfigSourceLayer.team)
+          Card(
+            color: Theme.of(context).colorScheme.surfaceContainerHighest,
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Text(source),
+            ),
+          ),
+        const SizedBox(height: 8),
+        _kv('CLI', detail.cli.value),
+        if (detail.provider.isNotEmpty) _kv('Provider', detail.provider),
+        if (detail.model.isNotEmpty) _kv('Model', detail.model),
+        _kv('CONFIG_DIR', detail.resolvedDir),
+      ],
+    );
+  }
+
+  Widget _kv(String k, String v) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(width: 110, child: Text(k)),
+            Expanded(child: SelectableText(v)),
+          ],
+        ),
+      );
+}
+
+class _ListTab extends StatelessWidget {
+  const _ListTab({required this.items, required this.empty});
+  final List<({String title, String subtitle})> items;
+  final String empty;
+
+  @override
+  Widget build(BuildContext context) {
+    if (items.isEmpty) {
+      return Center(child: Text(empty));
+    }
+    return ListView.builder(
+      itemCount: items.length,
+      itemBuilder: (_, i) => ListTile(
+        dense: true,
+        title: Text(items[i].title),
+        subtitle: items[i].subtitle.isEmpty ? null : Text(items[i].subtitle),
+      ),
+    );
+  }
+}
