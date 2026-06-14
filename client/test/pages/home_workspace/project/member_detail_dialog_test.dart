@@ -31,7 +31,7 @@ void main() {
 
     final l10n = AppLocalizations.of(
       tester.element(find.byType(MemberDetailDialogBody)),
-    )!;
+    );
     await tester.tap(find.text(l10n.memberDetailTabSkills));
     await tester.pumpAndSettle();
     expect(find.text('alpha'), findsOneWidget);
@@ -49,7 +49,7 @@ void main() {
     await tester.pumpAndSettle();
     final l10n = AppLocalizations.of(
       tester.element(find.byType(MemberDetailDialogBody)),
-    )!;
+    );
     expect(find.text(l10n.memberDetailEmpty), findsOneWidget);
   });
 }

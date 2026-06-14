@@ -53,7 +53,7 @@ void main() {
 
     final l10n = AppLocalizations.of(
       tester.element(find.byType(MembersPanel)),
-    )!;
+    );
 
     await tester.tap(find.byKey(const Key('member-row-m1')),
         buttons: kSecondaryButton);
