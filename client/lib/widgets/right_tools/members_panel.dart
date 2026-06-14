@@ -189,7 +189,7 @@ class MembersPanel extends StatelessWidget {
         ),
         SidebarActionMenuSpec.item(
           icon: Icons.open_in_new,
-          label: l10n.openTeam,
+          label: l10n.openMember,
           onAction: () => onOpen(member.id),
         ),
         SidebarActionMenuSpec.item(
