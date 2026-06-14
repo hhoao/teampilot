@@ -17,6 +17,7 @@ import '../capabilities/unsupported_installer_capability.dart';
 import '../config_profile/cursor_config_profile_capability.dart';
 import '../headless/cursor_headless_run_capability.dart';
 import '../../../provider/cursor/cursor_provider_form_capability.dart';
+import '../capabilities/member_config_inspection_capability.dart';
 import '../capabilities/provider_form_capability.dart';
 
 /// Cursor CLI (`cursor-agent`). Standalone and mixed-mode (HOME isolation +
@@ -31,6 +32,7 @@ final class CursorCliTool implements CliToolDefinition {
     this.presence = const CursorPresence(),
     this.display = const CursorDisplay(),
     this.terminalBehavior = const CursorTerminalBehavior(),
+    this.memberConfigInspection = const DefaultMemberConfigInspection(),
     this.pluginManifest = const CursorPluginManifest(),
     this.providerCatalog = const CursorProviderCatalog(),
     CursorProviderModelCapability? providerModel,
@@ -51,6 +53,7 @@ final class CursorCliTool implements CliToolDefinition {
   final PresenceCapability presence;
   final CursorDisplay display;
   final CursorTerminalBehavior terminalBehavior;
+  final MemberConfigInspectionCapability memberConfigInspection;
   final CursorPluginManifest pluginManifest;
   final CursorProviderCatalog providerCatalog;
   final CursorProviderModelCapability providerModel;
@@ -72,6 +75,7 @@ final class CursorCliTool implements CliToolDefinition {
     presence,
     display,
     terminalBehavior,
+    memberConfigInspection,
     pluginManifest,
     providerCatalog,
     providerModel,

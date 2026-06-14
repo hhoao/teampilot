@@ -24,6 +24,7 @@ import '../../../provider/claude/claude_effort_capability.dart';
 import '../../../provider/claude/claude_provider_credential_capability.dart';
 import '../../../provider/claude/claude_provider_form_capability.dart';
 import '../../../provider/claude/claude_provider_model_capability.dart';
+import '../capabilities/member_config_inspection_capability.dart';
 import '../capabilities/provider_form_capability.dart';
 
 final class ClaudeCliTool implements CliToolDefinition {
@@ -36,6 +37,7 @@ final class ClaudeCliTool implements CliToolDefinition {
     this.presence = const ClaudePresence(),
     this.display = const ClaudeDisplay(),
     this.terminalBehavior = const ClaudeTerminalBehavior(),
+    this.memberConfigInspection = const DefaultMemberConfigInspection(),
     this.pluginManifest = const ClaudePluginManifest(),
     this.providerCatalog = const ClaudeProviderCatalog(),
     this.providerModel = const ClaudeProviderModelCapability(),
@@ -58,6 +60,7 @@ final class ClaudeCliTool implements CliToolDefinition {
   final PresenceCapability presence;
   final ClaudeDisplay display;
   final ClaudeTerminalBehavior terminalBehavior;
+  final MemberConfigInspectionCapability memberConfigInspection;
   final ClaudePluginManifest pluginManifest;
   final ClaudeProviderCatalog providerCatalog;
   final ProviderModelCapability providerModel;
@@ -86,6 +89,7 @@ final class ClaudeCliTool implements CliToolDefinition {
     presence,
     display,
     terminalBehavior,
+    memberConfigInspection,
     pluginManifest,
     providerCatalog,
     providerModel,

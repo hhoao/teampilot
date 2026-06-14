@@ -5,6 +5,7 @@ import '../../../services/provider/cursor/cursor_provider_credential_capability.
 import '../../../services/provider/cursor/cursor_provider_model_capability.dart';
 import '../../../services/provider/opencode/opencode_provider_credential_capability.dart';
 import 'capabilities/member_agent_preset_capability.dart';
+import 'capabilities/member_config_inspection_capability.dart';
 import 'capabilities/provider_model_capability.dart';
 import 'cli_bootstrap.dart';
 import 'cli_tool_registry.dart';
@@ -64,6 +65,13 @@ void registerBuiltInCliTools(
       (cli) => registry.capability<ProviderModelCapability>(cli) != null,
     ),
     'Every CliTool must register ProviderModelCapability',
+  );
+  assert(
+    CliTool.values.every(
+      (cli) =>
+          registry.capability<MemberConfigInspectionCapability>(cli) != null,
+    ),
+    'Every CliTool must register MemberConfigInspectionCapability',
   );
   _verifyNativeTeamRegistration(registry);
   _verifyMemberAgentPresetRegistration(registry);
