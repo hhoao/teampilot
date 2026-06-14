@@ -5,7 +5,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../models/mcp_server.dart';
 import '../models/plugin.dart';
-import '../models/skill.dart';
 import '../models/team_config.dart';
 import '../repositories/mcp_repository.dart';
 import '../repositories/plugin_repository.dart';
@@ -17,7 +16,6 @@ import '../services/provider/config_profile_service.dart';
 import '../services/session/session_lifecycle_service.dart';
 import '../services/mcp/team_mcp_linker_service.dart';
 import '../services/plugin/team_plugin_linker_service.dart';
-import '../services/skill/team_skill_linker_service.dart';
 import '../utils/logger.dart';
 import '../utils/team_member_naming.dart';
 import 'team/model/team_state.dart';
@@ -30,11 +28,7 @@ import 'team/team_roster_editor.dart';
 export 'team/model/team_state.dart';
 export 'team/team_launch_service.dart' show TeamLauncher, CliExecutableResolver;
 export 'team/team_resource_sync_service.dart'
-    show
-        mergeExtensionMcp,
-        InstalledSkillsLoader,
-        InstalledPluginsLoader,
-        InstalledMcpLoader;
+    show mergeExtensionMcp, InstalledPluginsLoader, InstalledMcpLoader;
 
 /// Owns team/member roster state and coordinates resource linking
 /// ([TeamResourceSyncService]), launching ([TeamLaunchService]) and
@@ -53,8 +47,6 @@ class TeamCubit extends Cubit<TeamState> implements TeamCubitHost {
     ConfigProfileService? configProfileService,
     StorageRootsResolver? storageRootsResolver,
     SessionLifecycleService? lifecycleService,
-    TeamSkillLinkerService? skillLinker,
-    InstalledSkillsLoader? installedSkillsLoader,
     TeamPluginLinkerService? pluginLinker,
     PluginRepository? pluginRepository,
     InstalledPluginsLoader? installedPluginsLoader,
@@ -80,8 +72,6 @@ class TeamCubit extends Cubit<TeamState> implements TeamCubitHost {
              configProfileService: configProfileService,
              storageRootsResolver: storageRootsResolver,
            ),
-       _skillLinker = skillLinker ?? TeamSkillLinkerService(),
-       _installedSkillsLoader = installedSkillsLoader,
        _pluginLinker = pluginLinker ?? TeamPluginLinkerService(),
        _pluginRepository = pluginRepository ?? PluginRepository(),
        _installedPluginsLoader = installedPluginsLoader,
@@ -104,8 +94,6 @@ class TeamCubit extends Cubit<TeamState> implements TeamCubitHost {
   final ConfigProfileService? _configProfileService;
   final StorageRootsResolver? _storageRootsResolver;
   final SessionLifecycleService _lifecycle;
-  final TeamSkillLinkerService _skillLinker;
-  final InstalledSkillsLoader? _installedSkillsLoader;
   final TeamPluginLinkerService _pluginLinker;
   final PluginRepository _pluginRepository;
   final InstalledPluginsLoader? _installedPluginsLoader;
@@ -126,12 +114,10 @@ class TeamCubit extends Cubit<TeamState> implements TeamCubitHost {
   late final TeamResourceSyncService _sync = TeamResourceSyncService(
     host: this,
     provisioner: _provisioner,
-    skillLinker: _skillLinker,
     pluginLinker: _pluginLinker,
     mcpLinker: _mcpLinker,
     pluginRepository: _pluginRepository,
     mcpRepository: _mcpRepository,
-    installedSkillsLoader: _installedSkillsLoader,
     installedPluginsLoader: _installedPluginsLoader,
     installedMcpLoader: _installedMcpLoader,
     extensionMcpContributor: _extensionMcpContributor,
@@ -169,9 +155,6 @@ class TeamCubit extends Cubit<TeamState> implements TeamCubitHost {
   Future<void> launchSelectedTeam() => _launchService.launchSelectedTeam();
 
   // ===== Resource sync (delegated) =====
-
-  Future<void> syncSelectedTeamSkills({List<Skill>? installed}) =>
-      _sync.syncSkills(installed: installed);
 
   Future<void> syncSelectedTeamPlugins({List<Plugin>? installed}) =>
       _sync.syncPluginsForSelected(installed: installed);
@@ -255,7 +238,6 @@ class TeamCubit extends Cubit<TeamState> implements TeamCubitHost {
       ),
     );
     await Future.wait([
-      _sync.syncSkills(),
       _sync.syncPluginsForSelected(),
       _sync.syncMcp(),
     ]);
@@ -314,7 +296,6 @@ class TeamCubit extends Cubit<TeamState> implements TeamCubitHost {
     await _repository.saveTeams(teams);
     await _provisioner.ensureTeamProfile(team.id, cli: team.cli);
     await _seedDefaultProject(team);
-    unawaited(_sync.syncSkills());
     unawaited(_sync.syncPluginsForSelected());
     return true;
   }
@@ -378,7 +359,6 @@ class TeamCubit extends Cubit<TeamState> implements TeamCubitHost {
     await _repository.saveTeams(teams);
     await _provisioner.ensureTeamProfile(team.id, cli: team.cli);
     await _seedDefaultProject(team);
-    unawaited(_sync.syncSkills());
     unawaited(_sync.syncPluginsForSelected());
     return team.id;
   }
@@ -458,7 +438,6 @@ class TeamCubit extends Cubit<TeamState> implements TeamCubitHost {
   Future<void> updateSelected(TeamConfig updated) async {
     final selected = state.selectedTeam;
     if (selected == null) return;
-    final skillsChanged = !listEquals(selected.skillIds, updated.skillIds);
     final pluginsChanged = !listEquals(selected.pluginIds, updated.pluginIds);
     final mcpChanged = !listEquals(selected.mcpServerIds, updated.mcpServerIds);
     final normalized = _rosterEditor.normalizeTeam(
@@ -480,9 +459,6 @@ class TeamCubit extends Cubit<TeamState> implements TeamCubitHost {
       ),
     );
     await _repository.saveTeams(teams);
-    if (skillsChanged) {
-      await _sync.syncSkills();
-    }
     if (pluginsChanged) {
       await _sync.syncPluginsForSelected();
     }
@@ -505,7 +481,6 @@ class TeamCubit extends Cubit<TeamState> implements TeamCubitHost {
       ),
     );
     await _repository.saveTeams(teams);
-    unawaited(_sync.syncSkills());
     unawaited(_sync.syncPluginsForSelected());
   }
 

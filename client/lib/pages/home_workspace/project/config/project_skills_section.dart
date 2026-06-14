@@ -38,7 +38,6 @@ class ProjectSkillsSection extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textBase = isDark ? Colors.white : const Color(0xFF111827);
     final skillState = context.watch<SkillCubit>().state;
-    final syncing = profileState.isSyncingSkills;
     final enabled = skillState.installed
         .where((s) => s.enabled)
         .toList(growable: false);
@@ -66,10 +65,6 @@ class ProjectSkillsSection extends StatelessWidget {
                     label: Text(l10n.projectSkillsManage),
                   ),
                 ),
-                if (syncing) ...[
-                  const SizedBox(height: 12),
-                  const LinearProgressIndicator(),
-                ],
                 const SizedBox(height: 14),
                 if (enabled.isEmpty)
                   TeamSkillsEmptyBlock(

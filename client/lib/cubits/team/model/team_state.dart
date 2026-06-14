@@ -9,7 +9,6 @@ class TeamState extends Equatable {
     this.statusMessage = '',
     this.isLoading = true,
     this.isLaunching = false,
-    this.isSyncingSkills = false,
     this.isSyncingPlugins = false,
     this.pluginSyncConflicts = const {},
   });
@@ -19,7 +18,6 @@ class TeamState extends Equatable {
   final String statusMessage;
   final bool isLoading;
   final bool isLaunching;
-  final bool isSyncingSkills;
   final bool isSyncingPlugins;
 
   /// Plugin ids on the selected team that were linked under a fallback dir name.
@@ -38,7 +36,6 @@ class TeamState extends Equatable {
     String? statusMessage,
     bool? isLoading,
     bool? isLaunching,
-    bool? isSyncingSkills,
     bool? isSyncingPlugins,
     Map<String, String>? pluginSyncConflicts,
     bool clearSelectedTeamId = false,
@@ -51,7 +48,6 @@ class TeamState extends Equatable {
       statusMessage: statusMessage ?? this.statusMessage,
       isLoading: isLoading ?? this.isLoading,
       isLaunching: isLaunching ?? this.isLaunching,
-      isSyncingSkills: isSyncingSkills ?? this.isSyncingSkills,
       isSyncingPlugins: isSyncingPlugins ?? this.isSyncingPlugins,
       pluginSyncConflicts: pluginSyncConflicts ?? this.pluginSyncConflicts,
     );
@@ -64,7 +60,6 @@ class TeamState extends Equatable {
     statusMessage,
     isLoading,
     isLaunching,
-    isSyncingSkills,
     isSyncingPlugins,
     pluginSyncConflicts,
   ];

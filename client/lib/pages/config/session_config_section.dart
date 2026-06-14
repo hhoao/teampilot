@@ -334,9 +334,6 @@ class _SessionControlsState extends State<_SessionControls> {
                         mcpCubit.loadAll(),
                         chatCubit.loadProjectData(sessionRepo),
                       ]);
-                      await teamCubit.syncSelectedTeamSkills(
-                        installed: skillCubit.state.installed,
-                      );
                       await teamCubit.syncSelectedTeamPlugins(
                         installed: pluginCubit.state.installed,
                       );

@@ -134,7 +134,7 @@ void main() {
     });
 
     test(
-      'ensureTeamInheritsApp symlinks agents and skills from app level',
+      'ensureTeamInheritsApp symlinks agents from app level',
       () async {
         final layout = CliDataLayout(
           teampilotRoot: base.path,
@@ -154,12 +154,7 @@ void main() {
           layout.teamToolDir('team-a', 'flashskyai'),
           'agents',
         );
-        final teamSkills = p.join(
-          layout.teamToolDir('team-a', 'flashskyai'),
-          'skills',
-        );
         expect(_inheritedPathExists(teamAgents), isTrue);
-        expect(_inheritedPathExists(teamSkills), isTrue);
         if (Link(teamAgents).existsSync()) {
           expect(Link(teamAgents).targetSync(), appAgents.path);
         }
@@ -168,6 +163,18 @@ void main() {
         expect(
           await File(p.join(teamAgents, 'demo.md')).readAsString(),
           '# demo',
+        );
+
+        // Skills are NOT inherited at the team level — they are materialized
+        // into the leaf CONFIG_DIR at launch by ResourceProvisioningService.
+        final teamSkills = p.join(
+          layout.teamToolDir('team-a', 'flashskyai'),
+          'skills',
+        );
+        expect(
+          Link(teamSkills).existsSync() || Directory(teamSkills).existsSync(),
+          isFalse,
+          reason: 'team skills/ must not be an inherited symlink or dir',
         );
       },
     );
@@ -310,30 +317,6 @@ void main() {
     });
 
     test(
-      'ensureTeamInheritsApp keeps populated team skills dir from linker',
-      () async {
-        final layout = CliDataLayout(
-          teampilotRoot: base.path,
-          fs: LocalFilesystem(),
-        );
-        await layout.ensureAppToolLayout('flashskyai');
-        final teamSkills = Directory(
-          p.join(layout.teamToolDir('team-a', 'flashskyai'), 'skills'),
-        );
-        await teamSkills.create(recursive: true);
-        await Directory(p.join(teamSkills.path, 'alpha')).create();
-
-        await layout.ensureTeamInheritsApp('team-a', 'flashskyai');
-
-        expect(Link(teamSkills.path).existsSync(), isFalse);
-        expect(
-          Directory(p.join(teamSkills.path, 'alpha')).existsSync(),
-          isTrue,
-        );
-      },
-    );
-
-    test(
       'concurrent ensureTeamInheritsApp does not throw PathExistsException',
       () async {
         final layout = CliDataLayout(
@@ -348,11 +331,11 @@ void main() {
           layout.ensureTeamInheritsApp('team-a', 'flashskyai'),
         ]);
 
-        final teamSkills = p.join(
+        final teamAgents = p.join(
           layout.teamToolDir('team-a', 'flashskyai'),
-          'skills',
+          'agents',
         );
-        expect(_inheritedPathExists(teamSkills), isTrue);
+        expect(_inheritedPathExists(teamAgents), isTrue);
       },
     );
 

@@ -44,7 +44,6 @@ final List<String> cliLayoutDefaultTools =
 /// │       ├── session-counter.json               # allocates cliTeamName ({teamId}-{n})
 /// │       ├── {tool}/                            # team — inherits app via symlinks
 /// │       │   ├── agents/   → symlink to app …/agents/
-/// │       │   ├── skills/   → symlink (or populated dir; see [ensureTeamInheritsApp])
 /// │       │   └── plugins/  → team bundles (flashskyai only; [teamPluginsDir])
 /// │       └── members/
 /// │           └── {cliTeamName}/                 # e.g. my-team-3 or _adhoc
@@ -52,7 +51,7 @@ final List<String> cliLayoutDefaultTools =
 /// │               └── {memberId}/                # mixed: one isolated CONFIG_DIR per agent process
 /// │                   └── {tool}/                # member — PTY CONFIG_DIR
 /// │                   ├── agents/   → symlink to team …/agents/
-/// │                   ├── skills/   → symlink to team …/skills/
+/// │                   ├── skills/   → materialized at launch by ResourceProvisioningService
 /// │                   ├── plugins/  → copies/symlinks from team at launch
 /// │                   ├── projects/ …              # CLI transcripts (--session-id / taskId)
 /// │                   ├── teams/…/config.json      # Claude agent-team roster only
@@ -60,7 +59,6 @@ final List<String> cliLayoutDefaultTools =
 /// └── standalone/
 ///     └── projects/{projectId}/                  # personal — [ProjectProfile] scope
 ///         ├── {tool}/                            # project layer (inherits app)
-///         │   ├── skills/                        # [ProjectSkillLinkerService] (flashskyai)
 ///         │   └── plugins/                       # [ProjectPluginLinkerService] (flashskyai)
 ///         ├── mcp/servers.json                   # project MCP snapshot
 ///         └── sessions/{sessionId}/{tool}/       # personal PTY CONFIG_DIR
@@ -71,13 +69,14 @@ final List<String> cliLayoutDefaultTools =
 /// bus-mail/ + bus-tasks/), not under `members/{cliTeamName}/`. See
 /// [SessionStorageLayout].
 ///
-/// **Inheritance:** [ensureTeamInheritsApp] links `agents/` and `skills/` from app
-/// → team. [ensureMemberInheritsTeam] links the same names from team → member.
-/// Symlink preferred; copy tree if the filesystem cannot link. Team scope also
-/// gets explicit skill/plugin trees under `teams/{teamId}/flashskyai/` via
-/// [TeamSkillLinkerService] / [TeamPluginLinkerService] (sources:
-/// `skills/installed/`, `plugins/installed/`). [provisionMemberPluginsFromTeam]
-/// materializes team plugins into the member CONFIG_DIR at session launch.
+/// **Inheritance:** [ensureTeamInheritsApp] links `agents/` from app → team.
+/// [ensureMemberInheritsTeam] links `agents/` from team → member. Symlink
+/// preferred; copy tree if the filesystem cannot link. Team scope also gets
+/// explicit plugin trees under `teams/{teamId}/flashskyai/` via
+/// [TeamPluginLinkerService] (source: `plugins/installed/`).
+/// [provisionMemberPluginsFromTeam] materializes team plugins into the member
+/// CONFIG_DIR at session launch. Skills are materialized into the leaf
+/// CONFIG_DIR at launch by [ResourceProvisioningService].
 ///
 /// **PTY env (member root):** [ConfigProfileService.prepareTeamLaunch] sets
 /// `CLAUDE_CONFIG_DIR` / `FLASHSKYAI_CONFIG_DIR` (and `FLASHSKYAI_SESSION_HOME_DIR`)
@@ -159,13 +158,6 @@ class CliDataLayout {
         tool.trim(),
       );
 
-  /// Team flashskyai skills link target:
-  /// `config-profiles/teams/{teamId}/flashskyai/skills/`.
-  ///
-  /// Populated by [TeamSkillLinkerService] from `{teampilotRoot}/skills/installed/`.
-  String teamSkillsDir(String teamId) =>
-      _pathContext.join(teamToolDir(teamId, 'flashskyai'), 'skills');
-
   /// Team flashskyai plugin bundles:
   /// `config-profiles/teams/{teamId}/flashskyai/plugins/<name>/`.
   ///
@@ -200,13 +192,6 @@ class CliDataLayout {
   /// `config-profiles/standalone/projects/{projectId}/{tool}/`.
   String standaloneProjectToolDir(String projectId, String tool) =>
       _pathContext.join(standaloneProjectDir(projectId), tool.trim());
-
-  /// Personal project flashskyai skills link target:
-  /// `config-profiles/standalone/projects/{projectId}/flashskyai/skills/`.
-  String standaloneProjectSkillsDir(String projectId) => _pathContext.join(
-    standaloneProjectToolDir(projectId, 'flashskyai'),
-    'skills',
-  );
 
   /// Personal project flashskyai plugin bundles:
   /// `config-profiles/standalone/projects/{projectId}/flashskyai/plugins/`.
@@ -299,10 +284,7 @@ class CliDataLayout {
   static String _standaloneInheritLockKey(String projectId, String tool) =>
       'standalone|${projectId.trim()}|${tool.trim()}';
 
-  /// Ensures team `{tool}/` exists and inherits app `agents/` + `skills/`.
-  ///
-  /// If team `skills/` already has content, it is left unchanged
-  /// ([preservePopulatedDirectory]) so [TeamSkillLinkerService] links are not wiped.
+  /// Ensures team `{tool}/` exists and inherits app `agents/`.
   Future<void> ensureTeamInheritsApp(String teamId, String tool) async {
     final trimmedTeam = teamId.trim();
     final trimmedTool = tool.trim();
@@ -320,27 +302,14 @@ class CliDataLayout {
     await ensureAppToolLayout(trimmedTool);
     final teamRoot = teamToolDir(trimmedTeam, trimmedTool);
     await _fs.ensureDir(teamRoot);
-    await Future.wait([
-      _ensureInheritedChild(
-        childName: 'agents',
-        parentToolRoot: appToolRoot(trimmedTool),
-        ownToolRoot: teamRoot,
-      ),
-      _ensureInheritedChild(
-        childName: 'skills',
-        parentToolRoot: appToolRoot(trimmedTool),
-        ownToolRoot: teamRoot,
-        preservePopulatedDirectory: true,
-      ),
-    ]);
+    await _ensureInheritedChild(
+      childName: 'agents',
+      parentToolRoot: appToolRoot(trimmedTool),
+      ownToolRoot: teamRoot,
+    );
   }
 
-  /// Ensures standalone project `{tool}/` exists and inherits app `agents/` +
-  /// `skills/`.
-  ///
-  /// If project `skills/` already has content, it is left unchanged
-  /// ([preservePopulatedDirectory]) so [ProjectSkillLinkerService] links are
-  /// not wiped.
+  /// Ensures standalone project `{tool}/` exists and inherits app `agents/`.
   Future<void> ensureStandaloneProjectInheritsApp(
     String projectId,
     String tool,
@@ -364,19 +333,11 @@ class CliDataLayout {
     await ensureAppToolLayout(trimmedTool);
     final projectRoot = standaloneProjectToolDir(trimmedProject, trimmedTool);
     await _fs.ensureDir(projectRoot);
-    await Future.wait([
-      _ensureInheritedChild(
-        childName: 'agents',
-        parentToolRoot: appToolRoot(trimmedTool),
-        ownToolRoot: projectRoot,
-      ),
-      _ensureInheritedChild(
-        childName: 'skills',
-        parentToolRoot: appToolRoot(trimmedTool),
-        ownToolRoot: projectRoot,
-        preservePopulatedDirectory: true,
-      ),
-    ]);
+    await _ensureInheritedChild(
+      childName: 'agents',
+      parentToolRoot: appToolRoot(trimmedTool),
+      ownToolRoot: projectRoot,
+    );
   }
 
   /// Ensures standalone session `{tool}/` exists and inherits project
@@ -425,7 +386,7 @@ class CliDataLayout {
     );
   }
 
-  /// Ensures member `{tool}/` exists and inherits team `agents/` + `skills/`.
+  /// Ensures member `{tool}/` exists and inherits team `agents/`.
   ///
   /// Call [provisionMemberPluginsFromTeam] separately (session launch) for `plugins/`.
   ///

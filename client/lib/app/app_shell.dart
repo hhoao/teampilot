@@ -78,8 +78,6 @@ import '../services/skill/skill_repo_service.dart';
 import '../services/ssh/ssh_client_factory.dart';
 import '../services/plugin/project_plugin_linker_service.dart';
 import '../services/plugin/team_plugin_linker_service.dart';
-import '../services/skill/project_skill_linker_service.dart';
-import '../services/skill/team_skill_linker_service.dart';
 import '../services/terminal/terminal_transport_factory.dart';
 import '../services/terminal/workspace_terminal_registry.dart';
 import '../utils/logger.dart';
@@ -435,9 +433,6 @@ Future<AppShell> buildAppShell({
 
   final pluginRepository = PluginRepository(storageRoots: storageRoots);
   final mcpRepository = McpRepository(storageRoots: storageRoots);
-  final projectSkillLinker = ProjectSkillLinkerService(
-    storageRoots: storageRoots,
-  );
   final projectPluginLinker = ProjectPluginLinkerService(
     storageRoots: storageRoots,
   );
@@ -450,8 +445,6 @@ Future<AppShell> buildAppShell({
     llmConfigPathOverride: llmConfigPathOverrideForLaunch,
     storageRootsResolver: storageRoots.resolve,
     lifecycleService: sessionLifecycleService,
-    skillLinker: TeamSkillLinkerService(storageRoots: storageRoots),
-    installedSkillsLoader: () => skillRepo.loadInstalled(),
     pluginLinker: TeamPluginLinkerService(storageRoots: storageRoots),
     pluginRepository: pluginRepository,
     installedPluginsLoader: () => pluginRepository.loadAll(),
@@ -482,9 +475,7 @@ Future<AppShell> buildAppShell({
   );
   projectProfileCubit = ProjectProfileCubit(
     repository: projectProfileRepository,
-    skillLinker: projectSkillLinker,
     pluginLinker: projectPluginLinker,
-    installedSkillsLoader: () => skillRepo.loadInstalled(),
     installedPluginsLoader: () => pluginRepository.loadAll(),
   );
   mcpCubit = McpCubit(
@@ -692,7 +683,6 @@ Future<void> reloadRemoteBackedAppData({
     chatCubit.loadProjectData(sessionRepo),
     sshProfileCubit.load(notifyActiveProfileChanged: false),
   ]);
-  await teamCubit.syncSelectedTeamSkills(installed: skillCubit.state.installed);
   await teamCubit.syncSelectedTeamPlugins(
     installed: pluginCubit.state.installed,
   );

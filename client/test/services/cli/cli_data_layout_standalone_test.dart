@@ -46,13 +46,6 @@ void main() {
       );
     });
 
-    test('standaloneProjectSkillsDir uses flashskyai tool root', () {
-      expect(
-        layout.standaloneProjectSkillsDir('proj'),
-        '/tp/config-profiles/standalone/projects/proj/flashskyai/skills',
-      );
-    });
-
     test('standaloneProjectPluginsDir uses flashskyai tool root', () {
       expect(
         layout.standaloneProjectPluginsDir('proj'),
@@ -124,7 +117,7 @@ void main() {
     });
 
     test(
-      'ensureStandaloneProjectInheritsApp symlinks agents and skills from app',
+      'ensureStandaloneProjectInheritsApp symlinks agents from app',
       () async {
         final layout = CliDataLayout(
           teampilotRoot: base.path,
@@ -143,18 +136,26 @@ void main() {
           layout.standaloneProjectToolDir('proj-a', 'flashskyai'),
           'agents',
         );
-        final projectSkills = p.join(
-          layout.standaloneProjectToolDir('proj-a', 'flashskyai'),
-          'skills',
-        );
         expect(_inheritedPathExists(projectAgents), isTrue);
-        expect(_inheritedPathExists(projectSkills), isTrue);
         if (Link(projectAgents).existsSync()) {
           expect(Link(projectAgents).targetSync(), appAgents.path);
         }
         expect(
           await File(p.join(projectAgents, 'demo.md')).readAsString(),
           '# demo',
+        );
+
+        // Skills are NOT inherited at the project level — they are materialized
+        // into the leaf CONFIG_DIR at launch by ResourceProvisioningService.
+        final projectSkills = p.join(
+          layout.standaloneProjectToolDir('proj-a', 'flashskyai'),
+          'skills',
+        );
+        expect(
+          Link(projectSkills).existsSync() ||
+              Directory(projectSkills).existsSync(),
+          isFalse,
+          reason: 'project skills/ must not be an inherited symlink or dir',
         );
       },
     );
@@ -202,31 +203,5 @@ void main() {
       },
     );
 
-    test(
-      'ensureStandaloneProjectInheritsApp keeps populated project skills dir',
-      () async {
-        final layout = CliDataLayout(
-          teampilotRoot: base.path,
-          fs: LocalFilesystem(),
-        );
-        await layout.ensureAppToolLayout('flashskyai');
-        final projectSkills = Directory(
-          p.join(
-            layout.standaloneProjectToolDir('proj-a', 'flashskyai'),
-            'skills',
-          ),
-        );
-        await projectSkills.create(recursive: true);
-        await Directory(p.join(projectSkills.path, 'alpha')).create();
-
-        await layout.ensureStandaloneProjectInheritsApp('proj-a', 'flashskyai');
-
-        expect(Link(projectSkills.path).existsSync(), isFalse);
-        expect(
-          Directory(p.join(projectSkills.path, 'alpha')).existsSync(),
-          isTrue,
-        );
-      },
-    );
   });
 }

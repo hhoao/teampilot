@@ -1,17 +1,14 @@
 import '../../models/mcp_server.dart';
 import '../../models/plugin.dart';
-import '../../models/skill.dart';
 import '../../models/team_config.dart';
 import '../../repositories/mcp_repository.dart';
 import '../../repositories/plugin_repository.dart';
 import '../../services/mcp/team_mcp_linker_service.dart';
 import '../../services/plugin/team_plugin_linker_service.dart';
-import '../../services/skill/team_skill_linker_service.dart';
 import '../../utils/logger.dart';
 import 'team_cubit_host.dart';
 import 'team_profile_provisioner.dart';
 
-typedef InstalledSkillsLoader = Future<List<Skill>> Function();
 typedef InstalledPluginsLoader = Future<List<Plugin>> Function();
 typedef InstalledMcpLoader = Future<List<McpServer>> Function();
 
@@ -35,43 +32,37 @@ typedef InstalledMcpLoader = Future<List<McpServer>> Function();
   return (mergedCatalog, mergedIds);
 }
 
-/// Links a team's enabled skills/plugins/MCP servers into its config-profile
-/// tree, pruning ids that no longer resolve to an installed item, and owns the
+/// Links a team's enabled plugins/MCP servers into its config-profile tree,
+/// pruning ids that no longer resolve to an installed item, and owns the
 /// cross-team resource-removal flows.
 class TeamResourceSyncService {
   TeamResourceSyncService({
     required TeamCubitHost host,
     required TeamProfileProvisioner provisioner,
-    required TeamSkillLinkerService skillLinker,
     required TeamPluginLinkerService pluginLinker,
     required TeamMcpLinkerService mcpLinker,
     required PluginRepository pluginRepository,
     required McpRepository mcpRepository,
-    InstalledSkillsLoader? installedSkillsLoader,
     InstalledPluginsLoader? installedPluginsLoader,
     InstalledMcpLoader? installedMcpLoader,
     required Future<List<McpServer>> Function(String teamId)
     extensionMcpContributor,
   }) : _h = host,
        _provisioner = provisioner,
-       _skillLinker = skillLinker,
        _pluginLinker = pluginLinker,
        _mcpLinker = mcpLinker,
        _pluginRepository = pluginRepository,
        _mcpRepository = mcpRepository,
-       _installedSkillsLoader = installedSkillsLoader,
        _installedPluginsLoader = installedPluginsLoader,
        _installedMcpLoader = installedMcpLoader,
        _extensionMcpContributor = extensionMcpContributor;
 
   final TeamCubitHost _h;
   final TeamProfileProvisioner _provisioner;
-  final TeamSkillLinkerService _skillLinker;
   final TeamPluginLinkerService _pluginLinker;
   final TeamMcpLinkerService _mcpLinker;
   final PluginRepository _pluginRepository;
   final McpRepository _mcpRepository;
-  final InstalledSkillsLoader? _installedSkillsLoader;
   final InstalledPluginsLoader? _installedPluginsLoader;
   final InstalledMcpLoader? _installedMcpLoader;
   final Future<List<McpServer>> Function(String teamId) _extensionMcpContributor;
@@ -105,8 +96,6 @@ class TeamResourceSyncService {
   }
 
   Future<void> removeSkillFromAllTeams(String skillId) async {
-    final selected = _h.state.selectedTeam;
-    final syncNeeded = selected != null && selected.skillIds.contains(skillId);
     var changed = false;
     final teams = [
       for (final team in _h.state.teams)
@@ -125,9 +114,6 @@ class TeamResourceSyncService {
     if (!changed) return;
     _h.applyState(_h.state.copyWith(teams: teams));
     await _h.saveTeams(teams);
-    if (syncNeeded) {
-      await syncSkills();
-    }
   }
 
   Future<void> removePluginFromAllTeams(String pluginId) async {
@@ -162,73 +148,6 @@ class TeamResourceSyncService {
         if (team.pluginIds.contains(pluginId)) team.id,
     ];
     await syncPluginsForTeamIds(teamIds, installed: installed);
-  }
-
-  // ===== Skills =====
-
-  Future<void> syncSkills({List<Skill>? installed}) async {
-    final team = _h.state.selectedTeam;
-    if (team == null) return;
-
-    _h.applyState(_h.state.copyWith(isSyncingSkills: true));
-    try {
-      final List<Skill> catalog;
-      if (installed != null) {
-        catalog = installed;
-      } else {
-        catalog =
-            await (_installedSkillsLoader?.call() ??
-                Future.value(const <Skill>[]));
-      }
-      final enabled = catalog.where((s) => s.enabled).toList(growable: false);
-
-      var result = await _skillLinker.syncForTeam(
-        teamId: team.id,
-        skillIds: team.skillIds,
-        installed: enabled,
-      );
-
-      if (result.skippedMissingIds.isNotEmpty) {
-        final prunedIds = team.skillIds
-            .where((id) => !result.skippedMissingIds.contains(id))
-            .toList(growable: false);
-        if (prunedIds.length != team.skillIds.length) {
-          final prunedTeam = team.copyWith(skillIds: prunedIds);
-          final teams = [
-            for (final t in _h.state.teams)
-              if (t.id == team.id) prunedTeam else t,
-          ];
-          _h.applyState(_h.state.copyWith(teams: teams));
-          await _h.saveTeams(teams);
-          result = await _skillLinker.syncForTeam(
-            teamId: team.id,
-            skillIds: prunedIds,
-            installed: enabled,
-          );
-        }
-      }
-
-      var status = _h.state.statusMessage;
-      if (result.linked.isNotEmpty) {
-        status = 'Linked ${result.linked.length} skill(s) for ${team.name}.';
-      } else if (team.skillIds.isEmpty) {
-        status = 'Cleared CLI skills for ${team.name}.';
-      }
-      if (result.skippedMissingIds.isNotEmpty) {
-        status =
-            '$status Removed ${result.skippedMissingIds.length} missing skill(s).';
-      }
-      if (result.errors.isNotEmpty) {
-        status = result.errors.first;
-        appLogger.w('[team-skills] sync errors: ${result.errors}');
-      }
-      _h.applyState(_h.state.copyWith(statusMessage: status));
-    } catch (e) {
-      appLogger.e('[team-skills] sync failed: $e');
-      _h.applyState(_h.state.copyWith(statusMessage: 'Skill sync failed: $e'));
-    } finally {
-      _h.applyState(_h.state.copyWith(isSyncingSkills: false));
-    }
   }
 
   // ===== MCP =====

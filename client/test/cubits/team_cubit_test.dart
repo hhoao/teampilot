@@ -4,7 +4,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:teampilot/cubits/team_cubit.dart';
 import 'package:teampilot/models/plugin.dart';
-import 'package:teampilot/models/skill.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/repositories/session_repository.dart';
 import 'package:teampilot/repositories/team_repository.dart';
@@ -14,41 +13,9 @@ import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/storage/runtime_storage_context.dart';
 import 'package:teampilot/services/session/session_lifecycle_service.dart';
 import 'package:teampilot/services/plugin/team_plugin_linker_service.dart';
-import 'package:teampilot/services/skill/team_skill_linker_service.dart';
 import 'package:teampilot/utils/team_member_naming.dart';
 
 import '../support/post_frame_test_harness.dart';
-
-Skill _skill(String id) => Skill(
-  id: id,
-  name: id,
-  description: 'd',
-  directory: id.contains(':') ? id.split(':').last : id,
-  installedAt: 1,
-  updatedAt: 1,
-);
-
-class _RecordingLinker extends TeamSkillLinkerService {
-  _RecordingLinker()
-    : super(appSkillsRoot: '/tmp', teamSkillsRootOverride: '/tmp/cli');
-
-  final syncs =
-      <({String teamId, List<String> skillIds, List<Skill> installed})>[];
-
-  @override
-  Future<TeamSkillSyncResult> syncForTeam({
-    required String teamId,
-    required List<String> skillIds,
-    required List<Skill> installed,
-  }) async {
-    syncs.add((
-      teamId: teamId,
-      skillIds: List.of(skillIds),
-      installed: List.of(installed),
-    ));
-    return const TeamSkillSyncResult();
-  }
-}
 
 class _RecordingPluginLinker extends TeamPluginLinkerService {
   _RecordingPluginLinker()
@@ -134,84 +101,15 @@ void main() {
     await _deleteTempDirBestEffort(appDataRoot);
   });
 
-  test('selectTeam syncs skills for selected team', () async {
+  test('removeSkillFromAllTeams prunes skillIds without linker sync', () async {
     final dir = await Directory.systemTemp.createTemp('team-cubit-');
     final repo = _repo(dir);
-    final linker = _RecordingLinker();
     final cubit = TeamCubit(
       repository: repo,
       sessionRepository: SessionRepository(),
       reloadProjects: () async {},
       executableResolver: () => 'flashskyai',
       pluginLinker: _RecordingPluginLinker(),
-      skillLinker: linker,
-      installedSkillsLoader: () async => [_skill('a:foo')],
-    );
-
-    const team = TeamConfig(
-      id: 't',
-      name: 'T',
-      members: [TeamMemberConfig(id: 'm', name: 'm')],
-      skillIds: ['a:foo'],
-    );
-    await repo.saveTeams([team]);
-    await cubit.load();
-    expect(cubit.state.teams.length, 1);
-
-    linker.syncs.clear();
-    await cubit.selectTeam('t');
-
-    expect(linker.syncs, hasLength(1));
-    expect(linker.syncs.single.skillIds, ['a:foo']);
-
-    await dir.delete(recursive: true);
-  });
-
-  test('updateSelected syncs when skillIds change', () async {
-    final dir = await Directory.systemTemp.createTemp('team-cubit-');
-    final repo = _repo(dir);
-    final linker = _RecordingLinker();
-    final cubit = TeamCubit(
-      repository: repo,
-      sessionRepository: SessionRepository(),
-      reloadProjects: () async {},
-      executableResolver: () => 'flashskyai',
-      pluginLinker: _RecordingPluginLinker(),
-      skillLinker: linker,
-      installedSkillsLoader: () async => [_skill('a:foo'), _skill('b:bar')],
-    );
-
-    const team = TeamConfig(
-      id: 't',
-      name: 'T',
-      members: [TeamMemberConfig(id: 'm', name: 'm')],
-    );
-    await repo.saveTeams([team]);
-    await cubit.load();
-    linker.syncs.clear();
-
-    await cubit.updateSelected(
-      cubit.state.selectedTeam!.copyWith(skillIds: ['a:foo', 'b:bar']),
-    );
-
-    expect(linker.syncs, isNotEmpty);
-    expect(linker.syncs.last.skillIds, ['a:foo', 'b:bar']);
-
-    await dir.delete(recursive: true);
-  });
-
-  test('removeSkillFromAllTeams prunes and syncs', () async {
-    final dir = await Directory.systemTemp.createTemp('team-cubit-');
-    final repo = _repo(dir);
-    final linker = _RecordingLinker();
-    final cubit = TeamCubit(
-      repository: repo,
-      sessionRepository: SessionRepository(),
-      reloadProjects: () async {},
-      executableResolver: () => 'flashskyai',
-      pluginLinker: _RecordingPluginLinker(),
-      skillLinker: linker,
-      installedSkillsLoader: () async => [],
     );
 
     const team = TeamConfig(
@@ -223,12 +121,12 @@ void main() {
     await repo.saveTeams([team]);
     await cubit.load();
     expect(cubit.state.teams.single.skillIds, ['gone']);
-    linker.syncs.clear();
 
     await cubit.removeSkillFromAllTeams('gone');
 
     expect(cubit.state.selectedTeam?.skillIds, isEmpty);
-    expect(linker.syncs, isNotEmpty);
+    final persisted = await repo.loadTeams();
+    expect(persisted.single.skillIds, isEmpty);
 
     await dir.delete(recursive: true);
   });
@@ -479,7 +377,6 @@ void main() {
       reloadProjects: () async {},
       executableResolver: () => 'flashskyai',
       pluginLinker: _RecordingPluginLinker(),
-      skillLinker: _RecordingLinker(),
       appDataBasePath: base.path,
       configProfileService: ConfigProfileService(basePath: base.path),
     );

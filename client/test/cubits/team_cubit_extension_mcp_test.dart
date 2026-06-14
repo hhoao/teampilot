@@ -5,7 +5,6 @@ import 'package:path/path.dart' as p;
 import 'package:teampilot/cubits/team_cubit.dart';
 import 'package:teampilot/models/mcp_server.dart';
 import 'package:teampilot/models/plugin.dart';
-import 'package:teampilot/models/skill.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/repositories/session_repository.dart';
 import 'package:teampilot/repositories/team_repository.dart';
@@ -13,7 +12,6 @@ import 'package:teampilot/services/cli/cli_data_layout.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/mcp/team_mcp_linker_service.dart';
 import 'package:teampilot/services/plugin/team_plugin_linker_service.dart';
-import 'package:teampilot/services/skill/team_skill_linker_service.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
 import 'package:teampilot/services/storage/runtime_storage_context.dart';
 
@@ -57,21 +55,8 @@ class _RecordingMcpLinker extends TeamMcpLinkerService {
   }
 }
 
-/// No-op skill/plugin linkers so `selectTeam` doesn't touch the real catalogs
+/// No-op plugin linker so `selectTeam` doesn't touch the real catalogs
 /// (keeps test output free of benign linker errors).
-class _NoopSkillLinker extends TeamSkillLinkerService {
-  _NoopSkillLinker()
-      : super(appSkillsRoot: '/tmp', teamSkillsRootOverride: '/tmp/cli');
-
-  @override
-  Future<TeamSkillSyncResult> syncForTeam({
-    required String teamId,
-    required List<String> skillIds,
-    required List<Skill> installed,
-  }) async =>
-      const TeamSkillSyncResult();
-}
-
 class _NoopPluginLinker extends TeamPluginLinkerService {
   _NoopPluginLinker() : super(appPluginsRoot: '/tmp');
 
@@ -170,10 +155,8 @@ void main() {
         reloadProjects: () async {},
         executableResolver: () => 'flashskyai',
         mcpLinker: linker,
-        skillLinker: _NoopSkillLinker(),
         pluginLinker: _NoopPluginLinker(),
         installedMcpLoader: () async => [_userServer],
-        installedSkillsLoader: () async => [],
         installedPluginsLoader: () async => [],
         extensionMcpContributor: (teamId) async => [_extServer],
       );
@@ -215,10 +198,8 @@ void main() {
         reloadProjects: () async {},
         executableResolver: () => 'flashskyai',
         mcpLinker: linker,
-        skillLinker: _NoopSkillLinker(),
         pluginLinker: _NoopPluginLinker(),
         installedMcpLoader: () async => [_userServer],
-        installedSkillsLoader: () async => [],
         installedPluginsLoader: () async => [],
         extensionMcpContributor: (teamId) async => [_extServer],
       );
