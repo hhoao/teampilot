@@ -4,6 +4,7 @@ import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/cubits/ai_feature_settings_cubit.dart';
 import 'package:teampilot/cubits/app_provider_cubit.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
+import 'package:teampilot/cubits/notification_cubit.dart';
 import 'package:teampilot/cubits/member_presence_cubit.dart';
 import 'package:teampilot/cubits/config_cubit.dart';
 import 'package:teampilot/cubits/extension_cubit.dart';
@@ -142,6 +143,7 @@ Widget buildTestApp({
         BlocProvider(create: (_) => EditorCubit(fs: LocalFilesystem())),
         BlocProvider.value(value: extensionCubit ?? _testExtensionCubit()),
         BlocProvider(create: (_) => WorkspaceToolsCubit()),
+        BlocProvider(create: (_) => NotificationCubit()),
       ],
       child: CliToolRegistryScope(
         registry: CliToolRegistry.builtIn(),

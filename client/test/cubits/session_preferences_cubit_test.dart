@@ -29,7 +29,7 @@ void main() {
       '/opt/custom/flashskyai',
     );
 
-    expect(cubit.resolveExecutable(), '/opt/custom/flashskyai');
+    expect(cubit.resolveExecutable(CliTool.flashskyai), '/opt/custom/flashskyai');
   });
 
   test(
@@ -38,7 +38,7 @@ void main() {
       final cubit = await makeCubit(located: '/usr/local/bin/flashskyai');
       await cubit.load();
 
-      expect(cubit.resolveExecutable(), '/usr/local/bin/flashskyai');
+      expect(cubit.resolveExecutable(CliTool.flashskyai), '/usr/local/bin/flashskyai');
     },
   );
 
@@ -48,7 +48,7 @@ void main() {
       final cubit = await makeCubit(located: null);
       await cubit.load();
 
-      expect(cubit.resolveExecutable(), 'flashskyai');
+      expect(cubit.resolveExecutable(CliTool.flashskyai), 'flashskyai');
     },
   );
 
@@ -121,7 +121,7 @@ void main() {
       await cubit.setCliExecutablePathFor(CliTool.flashskyai, '   ');
 
       expect(cubit.state.preferences.cliExecutablePathFor('flashskyai'), '');
-      expect(cubit.resolveExecutable(), '/located');
+      expect(cubit.resolveExecutable(CliTool.flashskyai), '/located');
     },
   );
 

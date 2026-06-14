@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../../l10n/l10n_extensions.dart';
-import '../../models/app_provider_config.dart';
 import '../../models/team_config.dart';
 import '../../services/app/flashskyai_agent_catalog_service.dart';
 import '../../services/cli/registry/capabilities/cli_effort_capability.dart';

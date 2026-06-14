@@ -123,7 +123,7 @@ void main() {
           version: Version(1, 2, 3),
           kind: AppUpdateInstallKind.windowsSetup,
         ),
-        '${appUpdateReleaseArtifactSlug}-1.2.3-windows-setup.exe',
+        '$appUpdateReleaseArtifactSlug-1.2.3-windows-setup.exe',
       );
     });
   });
@@ -239,7 +239,7 @@ void main() {
       expect(available.release.version, Version(1, 1, 0));
       expect(
         available.release.assetName,
-        '${appUpdateReleaseArtifactSlug}-1.1.0-windows-setup.exe',
+        '$appUpdateReleaseArtifactSlug-1.1.0-windows-setup.exe',
       );
       expect(
         available.release.downloadUrl,
