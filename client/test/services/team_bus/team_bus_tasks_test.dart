@@ -17,6 +17,14 @@ AgentNode _runningWorker(String id) => AgentNode.test(
       activity: MemberActivity.active,
     );
 
+AgentNode _declaredWorker(String id) => AgentNode.test(memberId: id);
+
+AgentNode _parkedWorker(String id) => AgentNode.test(
+      memberId: id,
+      lifecycle: MemberLifecycle.running,
+      activity: MemberActivity.turnDoneBusWait,
+    );
+
 void main() {
   test('a bus without a task queue exposes no work-queue surface', () {
     final bus = TeamBus(launcher: FakeMemberLauncher());
@@ -100,6 +108,67 @@ void main() {
 
       expect(got, isNull); // lead stays parked; task untouched
       expect(bus.listTasks(status: TaskStatus.pending).single.title, 'a');
+    });
+  });
+
+  test('add_tasks materializes a declared worker so it can come online', () {
+    fakeAsync((async) {
+      final launcher = FakeMemberLauncher();
+      final bus = _busWithQueue(launcher);
+      bus.declareMember(_declaredWorker('w1'));
+
+      bus.addTasks('lead', [const TeamTaskDraft(title: 'a', brief: 'do a')]);
+      async.flushMicrotasks();
+
+      // Declared worker is brought online (PTY launch) so it can wait_for_message
+      // and claim — without this, the task would sit unclaimed (the bug).
+      expect(launcher.materialized.single.memberId, 'w1');
+    });
+  });
+
+  test('add_tasks never materializes the team lead', () {
+    fakeAsync((async) {
+      final launcher = FakeMemberLauncher();
+      final bus = _busWithQueue(launcher);
+      bus.declareMember(AgentNode.test(memberId: 'lead', isTeamLead: true));
+      bus.declareMember(_declaredWorker('w1'));
+
+      bus.addTasks('lead', [const TeamTaskDraft(title: 'a', brief: 'do a')]);
+      async.flushMicrotasks();
+
+      expect(launcher.materialized.map((m) => m.memberId), ['w1']);
+    });
+  });
+
+  test('add_tasks caps materialization at the claimable task count', () {
+    fakeAsync((async) {
+      final launcher = FakeMemberLauncher();
+      final bus = _busWithQueue(launcher);
+      bus.declareMember(_declaredWorker('w1'));
+      bus.declareMember(_declaredWorker('w2'));
+      bus.declareMember(_declaredWorker('w3'));
+
+      // One task → only one worker brought online; no over-provisioning.
+      bus.addTasks('lead', [const TeamTaskDraft(title: 'a', brief: 'do a')]);
+      async.flushMicrotasks();
+
+      expect(launcher.materialized.length, 1);
+    });
+  });
+
+  test('add_tasks skips materialization when a parked worker can claim', () {
+    fakeAsync((async) {
+      final launcher = FakeMemberLauncher();
+      final bus = _busWithQueue(launcher);
+      bus.declareMember(_parkedWorker('w1')); // already running, in wait_for_message
+      bus.declareMember(_declaredWorker('w2'));
+
+      // The parked worker is woken by the queue waiter and claims; the declared
+      // worker needn't be launched (budget = claimable 1 − parked 1 = 0).
+      bus.addTasks('lead', [const TeamTaskDraft(title: 'a', brief: 'do a')]);
+      async.flushMicrotasks();
+
+      expect(launcher.materialized, isEmpty);
     });
   });
 

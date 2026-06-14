@@ -458,7 +458,7 @@ class TeamBus implements CoordinationView {
     switch (target.lifecycle) {
       case MemberLifecycle.declared:
         // 物化（awaited PTY 拉起）→ 投递 → 完成（running+active）+ 门铃。
-        await _applyAsync(target, MaterializeStarted(routed));
+        await _bringOnline(target, routed);
         _deliverToInbox(target, routed);
         await _applyAsync(target, const MaterializeCompleted());
       case MemberLifecycle.materializing:
@@ -467,6 +467,18 @@ class TeamBus implements CoordinationView {
         _apply(target, const MailArrived()); // send 路径：仅 idle-at-prompt 响门铃
     }
     return SendOutcome.delivered(resolved);
+  }
+
+  /// **物化漏斗（唯一入口）**：把一个 declared 成员拉起上线（declared → materializing
+  /// → PTY running）。消息路径（[send]）与任务队列路径（[addTasks]）共用此处——任何
+  /// 「产生需求、需要成员上线」的地方都必须经由它，结构上杜绝某条投递路径漏接生命
+  /// 周期（历史 bug：`add_tasks` 漏接 → leader 派任务但 declared worker 不启动、无人
+  /// 认领）。物化后由 [PtySpawned]（扩展侧 `markMemberRunning`）转 running；本方法不
+  /// 调 [MaterializeCompleted]，调用方按需自行决定后续（send 要 active+门铃，队列则让
+  /// worker 自然进 `wait_for_message` 拉取）。[bootstrap] 内容仅供 launcher 调度连接。
+  Future<void> _bringOnline(AgentNode node, TeamMessage bootstrap) async {
+    if (node.lifecycle != MemberLifecycle.declared) return;
+    await _applyAsync(node, MaterializeStarted(bootstrap));
   }
 
   /// working 边：用户在成员自己的 prompt 直接提交一行(未 parked)→ 标记回合开始。
@@ -533,10 +545,53 @@ class TeamBus implements CoordinationView {
   /// 是否装配了共享任务队列（仅 mixed 模式接线）。
   bool get hasTaskQueue => _taskQueue != null;
 
-  /// leader 批量入队任务（`add_tasks` 落点）。入队会触发队列内部 waiter，统一 idle
-  /// 原语 [receiveWork] 中阻塞的空闲 worker 由此被即时唤醒并自动认领（无需 nudge）。
-  List<TeamTask> addTasks(String createdBy, List<TeamTaskDraft> drafts) =>
-      _taskQueue?.addTasks(createdBy, drafts) ?? const [];
+  /// leader 批量入队任务（`add_tasks` 落点）。入队后两条认领来源汇合：
+  /// ① 已 running 且 parked 的空闲 worker —— 由 [TaskQueue] 内部 waiter（`_wake` →
+  ///    `waitForClaimable`）即时唤醒，在统一 idle 原语 [receiveWork] 里自动认领；
+  /// ② declared（尚未启动）的 worker —— 经 [_materializeWorkersForQueue] 按需拉起
+  ///    上线，进入 `wait_for_message` 后认领。②与 [send] 共用 [_bringOnline] 物化
+  ///    漏斗，修复「leader 派任务但 declared worker 不启动、无人认领」。
+  List<TeamTask> addTasks(String createdBy, List<TeamTaskDraft> drafts) {
+    final queue = _taskQueue;
+    if (queue == null) return const [];
+    final created = queue.addTasks(createdBy, drafts);
+    if (created.isNotEmpty) {
+      // fire-and-forget：入队即返回（MCP 响应无需等 worker 上线），物化在后台进行，
+      // 语义同 [_apply] 的 unawaited dispatch。
+      unawaited(_materializeWorkersForQueue(createdBy));
+    }
+    return created;
+  }
+
+  /// 按需物化：把 declared 的非 leader worker 拉起上线，使其进入 `wait_for_message`
+  /// 并自动认领队列任务。物化上限 = 可认领任务数 − 已 parked 的 running worker 数
+  /// （后者会被 `_wake` 即时唤醒认领，不必重复物化）。如此避免给少量任务过度供给：
+  /// 停着的 worker 几乎零成本，但冷启动有 token/延迟代价。串行拉起以免资源尖峰。
+  Future<void> _materializeWorkersForQueue(String createdBy) async {
+    final queue = _taskQueue;
+    if (queue == null) return;
+    final parked = _members.values
+        .where((n) => !n.profile.isTeamLead && n.waitingForMessage)
+        .length;
+    var budget = queue.claimableCount - parked;
+    if (budget <= 0) return;
+    for (final node in _members.values) {
+      if (budget <= 0) break;
+      if (node.profile.isTeamLead) continue;
+      if (node.lifecycle != MemberLifecycle.declared) continue;
+      await _bringOnline(
+        node,
+        TeamMessage(
+          id: _env.ids(),
+          from: createdBy,
+          to: node.memberId,
+          content: '[teammate-bus] Queued work is available — call '
+              'wait_for_message to claim your next task.',
+        ),
+      );
+      budget--;
+    }
+  }
 
   /// 原子认领下一个任务（[receiveWork] 内部复用；无可认领返回 null）。
   TeamTask? claimNextTask(String memberId) => _taskQueue?.claimNext(memberId);
