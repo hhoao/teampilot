@@ -25,6 +25,7 @@ import 'router/app_router.dart';
 import 'services/cli/registry/cli_tool_registry_scope.dart';
 import 'services/storage/app_storage.dart';
 import 'services/app/connection_mode_service.dart';
+import 'services/app/desktop_window_actions.dart';
 import 'services/storage/storage_resolver.dart';
 import 'services/ssh/ssh_client_factory.dart';
 import 'services/terminal/terminal_transport_factory.dart';
@@ -96,6 +97,62 @@ class _AppShutdownScopeState extends State<_AppShutdownScope> {
 
   @override
   Widget build(BuildContext context) => widget.child;
+}
+
+/// Wraps [child] with [DragToResizeArea] only when the window is not maximized
+/// or in fullscreen, so resize cursors don't appear on window edges that can't
+/// be dragged.
+class _DragToResizeWrapper extends StatefulWidget {
+  const _DragToResizeWrapper({required this.child});
+
+  final Widget child;
+
+  @override
+  State<_DragToResizeWrapper> createState() => _DragToResizeWrapperState();
+}
+
+class _DragToResizeWrapperState extends State<_DragToResizeWrapper>
+    with WindowListener {
+  bool _isMaximized = false;
+
+  @override
+  void initState() {
+    super.initState();
+    windowManager.addListener(this);
+    _syncExpanded();
+  }
+
+  @override
+  void dispose() {
+    windowManager.removeListener(this);
+    super.dispose();
+  }
+
+  Future<void> _syncExpanded() async {
+    final expanded = await isDesktopWindowExpanded();
+    if (!mounted) return;
+    setState(() => _isMaximized = expanded);
+  }
+
+  @override
+  void onWindowMaximize() => unawaited(_syncExpanded());
+
+  @override
+  void onWindowUnmaximize() => unawaited(_syncExpanded());
+
+  @override
+  void onWindowEnterFullScreen() => unawaited(_syncExpanded());
+
+  @override
+  void onWindowLeaveFullScreen() => unawaited(_syncExpanded());
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isMaximized) {
+      return widget.child;
+    }
+    return DragToResizeArea(child: widget.child);
+  }
 }
 
 Future<void> _preloadBundledUiFonts() async {
@@ -360,7 +417,7 @@ class TeamPilotApp extends StatelessWidget {
             // re-adds invisible resize handles on all edges/corners so the
             // frameless window can still be resized from its borders.
             if (!Platform.isAndroid) {
-              content = DragToResizeArea(child: content);
+              content = _DragToResizeWrapper(child: content);
             }
             return content;
           },
