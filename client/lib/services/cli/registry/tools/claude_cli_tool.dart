@@ -3,6 +3,7 @@ import '../../cli_tool_adapter.dart';
 import '../cli_capability.dart';
 import '../cli_tool_definition.dart';
 import '../capabilities/built_in_tool_capabilities.dart';
+import '../capabilities/native_team_capability.dart';
 import '../capabilities/config_profile_capability.dart';
 import '../capabilities/executable_resolver_capability.dart';
 import '../capabilities/installer_capability.dart';
@@ -69,8 +70,11 @@ final class ClaudeCliTool implements CliToolDefinition {
   @override
   bool get isLaunchSupported => true;
 
+  static const _nativeTeam = NativeTeamSupport();
+
   @override
   Iterable<CliCapability> get capabilities => [
+    _nativeTeam,
     launchArgs,
     configProfile,
     transcriptProbe,

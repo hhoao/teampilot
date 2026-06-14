@@ -10,6 +10,7 @@ import '../cubits/app_update_cubit.dart';
 import '../cubits/chat_cubit.dart';
 import '../cubits/mailbox_cubit.dart';
 import '../cubits/member_presence_cubit.dart';
+import '../cubits/notification_cubit.dart';
 import '../cubits/editor_cubit.dart';
 import '../cubits/ai_feature_settings_cubit.dart';
 import '../cubits/config_cubit.dart';
@@ -67,6 +68,7 @@ import '../services/storage/storage_resolver.dart';
 import '../services/provider/provider_migration_service.dart';
 import '../services/cli/remote_flashskyai_cli_locator.dart';
 import '../services/storage/runtime_storage_context.dart';
+import '../services/notification/notification_recorder.dart';
 import '../services/session/session_lifecycle_service.dart';
 import '../services/skill/skill_fetch_service.dart';
 import '../services/plugin/plugin_repo_disk_cache_service.dart';
@@ -90,6 +92,7 @@ class AppShell {
     required this.chatCubit,
     required this.memberPresenceCubit,
     required this.mailboxCubit,
+    required this.notificationCubit,
     required this.editorCubit,
     required this.sessionRepo,
     required this.sshProfileRepo,
@@ -127,6 +130,7 @@ class AppShell {
   final ChatCubit chatCubit;
   final MemberPresenceCubit memberPresenceCubit;
   final MailboxCubit mailboxCubit;
+  final NotificationCubit notificationCubit;
   final EditorCubit editorCubit;
   final SessionRepository sessionRepo;
   final SshProfileRepository sshProfileRepo;
@@ -582,6 +586,10 @@ Future<AppShell> buildAppShell({
   final mailboxCubit =
       MailboxCubit(activeBus: () => chatCubit.activeTab?.teamBus);
 
+  final notificationCubit = NotificationCubit();
+  await notificationCubit.load();
+  NotificationRecorder.install(notificationCubit);
+
   boot('loading layout');
   await layoutCubit.load();
   applyWorkspaceEntryMode(
@@ -633,6 +641,7 @@ Future<AppShell> buildAppShell({
     chatCubit: chatCubit,
     memberPresenceCubit: memberPresenceCubit,
     mailboxCubit: mailboxCubit,
+    notificationCubit: notificationCubit,
     editorCubit: editorCubit,
     sessionRepo: sessionRepo,
     sshProfileRepo: sshProfileRepo,

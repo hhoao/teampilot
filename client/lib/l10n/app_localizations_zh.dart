@@ -3301,4 +3301,35 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get teamGenApplied => '草稿已应用，创建前请检查调整。';
+
+  @override
+  String get notificationCenterTitle => '通知';
+
+  @override
+  String get notificationEmpty => '暂无通知';
+
+  @override
+  String get notificationMarkAllRead => '全部标为已读';
+
+  @override
+  String get notificationClearAll => '清空';
+
+  @override
+  String get notificationMarkRead => '标为已读';
+
+  @override
+  String get notificationDelete => '删除';
+
+  @override
+  String get notificationTimeJustNow => '刚刚';
+
+  @override
+  String notificationTimeMinutesAgo(int minutes) {
+    return '$minutes 分钟前';
+  }
+
+  @override
+  String notificationTimeHoursAgo(int hours) {
+    return '$hours 小时前';
+  }
 }

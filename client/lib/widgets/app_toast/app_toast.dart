@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:toastification/toastification.dart';
 
 import '../../router/app_router.dart';
+import '../../services/notification/notification_recorder.dart';
 import '../../theme/app_toast_theme.dart';
 
 /// Optional action button on a toast.
@@ -127,6 +128,13 @@ abstract final class AppToast {
         },
       ),
     );
+
+    if (variant != AppToastVariant.info) {
+      NotificationRecorder.maybeCurrent?.record(
+        message: message,
+        variant: variant,
+      );
+    }
   }
 
   static Widget _buildTitle({

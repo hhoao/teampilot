@@ -34,7 +34,8 @@ enum CliTool {
   }
 }
 
-/// 团队协调模式：native = 单 CLI 原生团队；mixed = 混合 CLI 走 TeamBus。
+/// 团队协调模式：native = 单 CLI 原生团队（须注册 [NativeTeamCapability]）；
+/// mixed = 混合 CLI 走 TeamBus。
 enum TeamMode {
   native('native'),
   mixed('mixed');

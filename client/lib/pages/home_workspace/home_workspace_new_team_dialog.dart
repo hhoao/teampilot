@@ -144,6 +144,19 @@ class _HomeWorkspaceNewTeamDialogState
         : null;
   }
 
+  void _ensureNativeTeamCli() {
+    final registry = CliToolRegistryScope.maybeOf(context);
+    if (registry == null) return;
+    if (registry.supportsNativeTeam(_cli)) return;
+    final fallback = registry.nativeTeamLaunchable.firstOrNull?.id;
+    if (fallback == null || fallback == _cli) return;
+    setState(() {
+      _cli = fallback;
+      _providerId = '';
+    });
+    _syncDefaultProviderForCli(fallback);
+  }
+
   void _syncDefaultProviderForCli(CliTool cli) {
     final catalogCli = _providerCatalogCli(cli);
     if (catalogCli == null) {
@@ -335,6 +348,7 @@ class _HomeWorkspaceNewTeamDialogState
                         _mode = TeamMode.native;
                         _draft = null;
                       });
+                      _ensureNativeTeamCli();
                       _syncCanCreate();
                     },
                   ),
@@ -584,7 +598,7 @@ class _NativeTeamOptionsCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final registry = CliToolRegistryScope.of(context);
-    final launchable = registry.launchable.toList()
+    final nativeTeamClis = registry.nativeTeamLaunchable.toList()
       ..sort((a, b) => a.id.value.compareTo(b.id.value));
     final catalogCli =
         registry.capability<ProviderCatalogCapability>(cli) != null
@@ -613,7 +627,7 @@ class _NativeTeamOptionsCard extends StatelessWidget {
             trailing: SettingsCompactDropdown<CliTool>(
               value: cli,
               entries: [
-                for (final def in launchable)
+                for (final def in nativeTeamClis)
                   (def.id, cliDisplayName(def, l10n)),
               ],
               itemBuilder: cliDropdownItemBuilder(

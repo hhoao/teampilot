@@ -3429,4 +3429,35 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get teamGenApplied =>
       'Draft applied. Review and adjust before creating.';
+
+  @override
+  String get notificationCenterTitle => 'Notifications';
+
+  @override
+  String get notificationEmpty => 'No notifications';
+
+  @override
+  String get notificationMarkAllRead => 'Mark all as read';
+
+  @override
+  String get notificationClearAll => 'Clear';
+
+  @override
+  String get notificationMarkRead => 'Mark as read';
+
+  @override
+  String get notificationDelete => 'Delete';
+
+  @override
+  String get notificationTimeJustNow => 'Just now';
+
+  @override
+  String notificationTimeMinutesAgo(int minutes) {
+    return '$minutes min ago';
+  }
+
+  @override
+  String notificationTimeHoursAgo(int hours) {
+    return '$hours h ago';
+  }
 }

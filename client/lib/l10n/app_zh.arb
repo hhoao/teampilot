@@ -1250,5 +1250,24 @@
   "teamGenButton": "生成",
   "teamGenNoProvider": "请先在 设置 → AI 功能 中配置 AI provider。",
   "teamGenFailed": "无法生成团队，请手动编辑。",
-  "teamGenApplied": "草稿已应用，创建前请检查调整。"
+  "teamGenApplied": "草稿已应用，创建前请检查调整。",
+  "notificationCenterTitle": "通知",
+  "notificationEmpty": "暂无通知",
+  "notificationMarkAllRead": "全部标为已读",
+  "notificationClearAll": "清空",
+  "notificationMarkRead": "标为已读",
+  "notificationDelete": "删除",
+  "notificationTimeJustNow": "刚刚",
+  "notificationTimeMinutesAgo": "{minutes} 分钟前",
+  "@notificationTimeMinutesAgo": {
+    "placeholders": {
+      "minutes": { "type": "int" }
+    }
+  },
+  "notificationTimeHoursAgo": "{hours} 小时前",
+  "@notificationTimeHoursAgo": {
+    "placeholders": {
+      "hours": { "type": "int" }
+    }
+  }
 }

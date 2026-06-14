@@ -1577,5 +1577,24 @@
   "teamGenButton": "Generate",
   "teamGenNoProvider": "Configure an AI provider in Settings → AI Features first.",
   "teamGenFailed": "Could not generate a team. Please edit manually.",
-  "teamGenApplied": "Draft applied. Review and adjust before creating."
+  "teamGenApplied": "Draft applied. Review and adjust before creating.",
+  "notificationCenterTitle": "Notifications",
+  "notificationEmpty": "No notifications",
+  "notificationMarkAllRead": "Mark all as read",
+  "notificationClearAll": "Clear",
+  "notificationMarkRead": "Mark as read",
+  "notificationDelete": "Delete",
+  "notificationTimeJustNow": "Just now",
+  "notificationTimeMinutesAgo": "{minutes} min ago",
+  "@notificationTimeMinutesAgo": {
+    "placeholders": {
+      "minutes": { "type": "int" }
+    }
+  },
+  "notificationTimeHoursAgo": "{hours} h ago",
+  "@notificationTimeHoursAgo": {
+    "placeholders": {
+      "hours": { "type": "int" }
+    }
+  }
 }

@@ -6253,6 +6253,60 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Draft applied. Review and adjust before creating.'**
   String get teamGenApplied;
+
+  /// No description provided for @notificationCenterTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Notifications'**
+  String get notificationCenterTitle;
+
+  /// No description provided for @notificationEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No notifications'**
+  String get notificationEmpty;
+
+  /// No description provided for @notificationMarkAllRead.
+  ///
+  /// In en, this message translates to:
+  /// **'Mark all as read'**
+  String get notificationMarkAllRead;
+
+  /// No description provided for @notificationClearAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear'**
+  String get notificationClearAll;
+
+  /// No description provided for @notificationMarkRead.
+  ///
+  /// In en, this message translates to:
+  /// **'Mark as read'**
+  String get notificationMarkRead;
+
+  /// No description provided for @notificationDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get notificationDelete;
+
+  /// No description provided for @notificationTimeJustNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Just now'**
+  String get notificationTimeJustNow;
+
+  /// No description provided for @notificationTimeMinutesAgo.
+  ///
+  /// In en, this message translates to:
+  /// **'{minutes} min ago'**
+  String notificationTimeMinutesAgo(int minutes);
+
+  /// No description provided for @notificationTimeHoursAgo.
+  ///
+  /// In en, this message translates to:
+  /// **'{hours} h ago'**
+  String notificationTimeHoursAgo(int hours);
 }
 
 class _AppLocalizationsDelegate

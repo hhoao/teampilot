@@ -13,6 +13,7 @@ import 'app/app_shell.dart';
 import 'cubits/chat_cubit.dart';
 import 'cubits/layout_cubit.dart';
 import 'cubits/mailbox_cubit.dart';
+import 'cubits/notification_cubit.dart';
 import 'l10n/l10n_extensions.dart';
 import 'repositories/app_settings_repository.dart';
 import 'repositories/project_profile_repository.dart';
@@ -28,6 +29,7 @@ import 'services/storage/storage_resolver.dart';
 import 'services/ssh/ssh_client_factory.dart';
 import 'services/terminal/terminal_transport_factory.dart';
 import 'services/terminal/workspace_terminal_registry.dart';
+import 'services/notification/notification_recorder.dart';
 import 'services/terminal/terminal_fonts.dart';
 import 'theme/app_icon_sizes.dart';
 import 'theme/app_toast_theme.dart';
@@ -66,12 +68,14 @@ class _AppShutdownScope extends StatefulWidget {
   const _AppShutdownScope({
     required this.chatCubit,
     required this.mailboxCubit,
+    required this.notificationCubit,
     required this.workspaceTerminalRegistry,
     required this.child,
   });
 
   final ChatCubit chatCubit;
   final MailboxCubit mailboxCubit;
+  final NotificationCubit notificationCubit;
   final WorkspaceTerminalRegistry workspaceTerminalRegistry;
   final Widget child;
 
@@ -84,6 +88,8 @@ class _AppShutdownScopeState extends State<_AppShutdownScope> {
   void dispose() {
     unawaited(widget.chatCubit.close());
     unawaited(widget.mailboxCubit.close());
+    unawaited(widget.notificationCubit.close());
+    NotificationRecorder.install(null);
     widget.workspaceTerminalRegistry.disposeAll();
     super.dispose();
   }
@@ -168,6 +174,7 @@ void main() async {
         return _AppShutdownScope(
           chatCubit: shell.chatCubit,
           mailboxCubit: shell.mailboxCubit,
+          notificationCubit: shell.notificationCubit,
           workspaceTerminalRegistry: shell.workspaceTerminalRegistry,
           child: MultiRepositoryProvider(
             providers: [
@@ -210,6 +217,7 @@ void main() async {
                 BlocProvider.value(value: shell.chatCubit),
                 BlocProvider.value(value: shell.memberPresenceCubit),
                 BlocProvider.value(value: shell.mailboxCubit),
+                BlocProvider.value(value: shell.notificationCubit),
                 BlocProvider.value(value: shell.editorCubit),
                 BlocProvider.value(value: shell.configCubit),
                 BlocProvider.value(value: shell.appProviderCubit),

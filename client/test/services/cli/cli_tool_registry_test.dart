@@ -8,6 +8,8 @@ import 'package:teampilot/services/cli/registry/capabilities/provider_model_capa
 import 'package:teampilot/services/cli/registry/installer/claude_installer_capability.dart';
 import 'package:teampilot/services/cli/registry/installer/codex_installer_capability.dart';
 import 'package:teampilot/services/cli/registry/installer/opencode_installer_capability.dart';
+import 'package:teampilot/services/cli/registry/built_in_cli_tools.dart';
+import 'package:teampilot/services/cli/registry/capabilities/native_team_capability.dart';
 import 'package:teampilot/services/cli/registry/cli_capability.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_definition.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
@@ -45,6 +47,38 @@ void main() {
     registry.register(const _FakeTool(CliTool.claude, true, []));
     registry.register(const _FakeTool(CliTool.codex, false, []));
     expect(registry.launchable.map((d) => d.id), [CliTool.claude]);
+  });
+
+  test('nativeTeamLaunchable requires NativeTeamCapability', () {
+    final registry = CliToolRegistry();
+    registry.register(
+      const _FakeTool(CliTool.claude, true, [NativeTeamSupport()]),
+    );
+    registry.register(const _FakeTool(CliTool.codex, true, []));
+    registry.register(
+      const _FakeTool(CliTool.flashskyai, true, [NativeTeamSupport()]),
+    );
+    expect(
+      registry.nativeTeamLaunchable.map((d) => d.id),
+      [CliTool.claude, CliTool.flashskyai],
+    );
+    expect(registry.supportsNativeTeam(CliTool.codex), isFalse);
+    expect(registry.supportsNativeTeam(CliTool.claude), isTrue);
+  });
+
+  test('built-in native team CLIs are claude and flashskyai only', () {
+    final registry = CliToolRegistry();
+    registerBuiltInCliTools(registry);
+    expect(
+      registry.nativeTeamLaunchable.map((d) => d.id).toSet(),
+      {CliTool.claude, CliTool.flashskyai},
+    );
+    expect(registry.supportsNativeTeam(CliTool.codex), isFalse);
+
+    expect(
+      CliToolRegistry.builtIn().nativeTeamLaunchable.map((d) => d.id).toSet(),
+      {CliTool.claude, CliTool.flashskyai},
+    );
   });
 
   test('built-in registry covers every CliTool value', () {

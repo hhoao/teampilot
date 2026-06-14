@@ -495,7 +495,7 @@ void main() {
     await base.delete(recursive: true);
   });
 
-  test('addTeam accepts codex now that it is launch-supported', () async {
+  test('addTeam rejects codex in native team mode', () async {
     final base = await Directory.systemTemp.createTemp('team_profile_cli_');
     final cubit = TeamCubit(
       repository: _repo(base),
@@ -507,8 +507,39 @@ void main() {
       configProfileService: ConfigProfileService(basePath: base.path),
     );
 
-    expect(await cubit.addTeam('beta', cli: CliTool.codex), isTrue);
+    expect(await cubit.addTeam('beta', cli: CliTool.codex), isFalse);
+    expect(cubit.state.teams, isEmpty);
+    expect(
+      cubit.state.statusMessage,
+      'CLI "codex" does not support native team mode.',
+    );
+
+    await _drainAndCloseTeamCubit(cubit);
+    await base.delete(recursive: true);
+  });
+
+  test('addTeam accepts codex in mixed team mode', () async {
+    final base = await Directory.systemTemp.createTemp('team_profile_cli_');
+    final cubit = TeamCubit(
+      repository: _repo(base),
+      sessionRepository: SessionRepository(),
+      reloadProjects: () async {},
+      executableResolver: () => 'flashskyai',
+      pluginLinker: _RecordingPluginLinker(),
+      appDataBasePath: base.path,
+      configProfileService: ConfigProfileService(basePath: base.path),
+    );
+
+    expect(
+      await cubit.addTeam(
+        'beta',
+        cli: CliTool.codex,
+        teamMode: TeamMode.mixed,
+      ),
+      isTrue,
+    );
     expect(cubit.state.teams.single.cli, CliTool.codex);
+    expect(cubit.state.teams.single.teamMode, TeamMode.mixed);
 
     await _drainAndCloseTeamCubit(cubit);
     await base.delete(recursive: true);

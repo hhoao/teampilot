@@ -1,5 +1,6 @@
 import '../../../models/team_config.dart';
 import 'built_in_cli_tools.dart';
+import 'capabilities/native_team_capability.dart';
 import 'cli_bootstrap.dart';
 import 'cli_capability.dart';
 import 'cli_tool_definition.dart';
@@ -48,6 +49,14 @@ class CliToolRegistry {
 
   Iterable<CliToolDefinition> get launchable =>
       _definitions.values.where((d) => d.isLaunchSupported);
+
+  /// CLIs that may back [TeamMode.native] (first-party multi-agent teams).
+  Iterable<CliToolDefinition> get nativeTeamLaunchable => launchable.where(
+    (d) => capability<NativeTeamCapability>(d.id) != null,
+  );
+
+  bool supportsNativeTeam(CliTool id) =>
+      capability<NativeTeamCapability>(id) != null;
 
   Iterable<CliToolDefinition> get all => _definitions.values;
 
