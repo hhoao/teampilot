@@ -24,10 +24,12 @@ void main() {
           .subdirFor(ResourceKind.skill),
       'skill',
     );
-    expect(
-      registry.capability<ResourceCapability>(CliTool.flashskyai)!
-          .subdirFor(ResourceKind.skill),
-      'skills',
-    );
+    for (final cli in CliTool.values.where((c) => c != CliTool.opencode)) {
+      expect(
+        registry.capability<ResourceCapability>(cli)!.subdirFor(ResourceKind.skill),
+        'skills',
+        reason: '$cli should use the default skills subdir',
+      );
+    }
   });
 }
