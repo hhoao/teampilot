@@ -38,6 +38,7 @@ class TeamBus implements CoordinationView {
   }) : _env = environment ?? BusEnvironment(ids: idGenerator, clock: clock),
        _messageLog = messageLog,
        _taskQueue = taskQueue,
+       _launcher = launcher,
        _dispatcher = BusEffectDispatcher(
          launcher: launcher,
          doorbellNotice: doorbellNotice,
@@ -57,12 +58,20 @@ class TeamBus implements CoordinationView {
       'read_messages(mark_read: true) to read them now, then handle them. '
       '(From the bus, not your operator.)';
 
+  /// 队列有可认领任务、要敲一个 idle-at-prompt 的 worker 开工时注入的提示。与
+  /// [doorbellNotice]（邮件→read_messages）区分：这里要 worker 去 `wait_for_message`，
+  /// 它会原子认领下一个队列任务。
+  static const String taskDoorbellNotice =
+      '[teammate-bus] Queued work is available — call wait_for_message now to '
+      'claim and start your next task. (From the bus, not your operator.)';
+
   /// [TeamMessage.from] when the human operator submits while the member waits.
   static const String userSenderId = 'user';
 
   final BusEnvironment _env;
   final BusMessageLog? _messageLog;
   final TaskQueue? _taskQueue;
+  final MemberLauncher _launcher;
   final BusEffectDispatcher _dispatcher;
   late final CoordinationPolicy _coordination;
   final int maxHop;
@@ -594,28 +603,45 @@ class TeamBus implements CoordinationView {
     if (queue == null) return const [];
     final created = queue.addTasks(createdBy, drafts);
     if (created.isNotEmpty) {
-      // fire-and-forget：入队即返回（MCP 响应无需等 worker 上线），物化在后台进行，
+      // fire-and-forget：入队即返回（MCP 响应无需等 worker 就绪），engage 在后台进行，
       // 语义同 [_apply] 的 unawaited dispatch。
-      unawaited(_materializeWorkersForQueue(createdBy));
+      unawaited(_engageWorkersForQueue(createdBy));
     }
     return created;
   }
 
-  /// 按需物化：把 declared 的非 leader worker 拉起上线，使其进入 `wait_for_message`
-  /// 并自动认领队列任务。物化上限 = 可认领任务数 − 已 parked 的 running worker 数
-  /// （后者会被 `_wake` 即时唤醒认领，不必重复物化）。如此避免给少量任务过度供给：
-  /// 停着的 worker 几乎零成本，但冷启动有 token/延迟代价。串行拉起以免资源尖峰。
-  Future<void> _materializeWorkersForQueue(String createdBy) async {
+  /// 入队后按需「叫醒」非 leader worker 去认领，覆盖其全部生命周期状态——这是
+  /// `add_tasks` 真正让成员开工的关键（[TaskQueue] 的 `_wake` 只能唤醒**已 parked**
+  /// 在 `receiveWork` 的 worker，够不到刚启动、停在 prompt 从未进过 wait 的 worker）：
+  ///
+  /// - **parked**（`waitingForMessage`）→ 已被 `queue._wake` 即时唤醒认领，不在此处理；
+  /// - **running 且 atPrompt**（启动后没人给初始 prompt → 停在 prompt，从未进 wait）→
+  ///   响门铃（注入 stdin）催它调 `wait_for_message`，与 [send] 对 atPrompt 的处理对齐；
+  /// - **declared**（尚未启动）→ 物化拉起上线。
+  ///
+  /// 引擎成员上限 = 可认领任务数 − 已 parked 数，避免给少量任务过度供给。**优先**敲
+  /// 已在跑的 atPrompt worker（几乎零成本）再冷启动 declared（有 token/延迟代价）。
+  Future<void> _engageWorkersForQueue(String createdBy) async {
     final queue = _taskQueue;
     if (queue == null) return;
-    final parked = _members.values
-        .where((n) => !n.profile.isTeamLead && n.waitingForMessage)
-        .length;
+    final workers = _members.values.where((n) => !n.profile.isTeamLead);
+    final parked = workers.where((n) => n.waitingForMessage).length;
     var budget = queue.claimableCount - parked;
     if (budget <= 0) return;
-    for (final node in _members.values) {
+
+    // 第一轮：敲已在跑、停在 prompt 的 worker（便宜，无冷启动）。
+    for (final node in workers) {
       if (budget <= 0) break;
-      if (node.profile.isTeamLead) continue;
+      if (node.lifecycle != MemberLifecycle.running) continue;
+      if (node.activity != MemberActivity.turnDoneReady) continue; // atPrompt
+      if (node.doorbelled) continue; // 已敲过、尚未消费
+      node.doorbelled = true;
+      _launcher.wake(node.memberId, taskDoorbellNotice);
+      budget--;
+    }
+    // 第二轮：冷启动尚未上线（declared）的 worker。
+    for (final node in workers) {
+      if (budget <= 0) break;
       if (node.lifecycle != MemberLifecycle.declared) continue;
       await _bringOnline(
         node,
@@ -623,8 +649,7 @@ class TeamBus implements CoordinationView {
           id: _env.ids(),
           from: createdBy,
           to: node.memberId,
-          content: '[teammate-bus] Queued work is available — call '
-              'wait_for_message to claim your next task.',
+          content: taskDoorbellNotice,
         ),
       );
       budget--;

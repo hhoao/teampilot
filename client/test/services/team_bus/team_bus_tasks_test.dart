@@ -26,6 +26,13 @@ AgentNode _parkedWorker(String id) => AgentNode.test(
       activity: MemberActivity.turnDoneBusWait,
     );
 
+// Launched but never entered wait_for_message (no initial prompt kicked it off).
+AgentNode _idleAtPromptWorker(String id) => AgentNode.test(
+      memberId: id,
+      lifecycle: MemberLifecycle.running,
+      activity: MemberActivity.turnDoneReady,
+    );
+
 void main() {
   test('a bus without a task queue exposes no work-queue surface', () {
     final bus = TeamBus(launcher: FakeMemberLauncher());
@@ -124,6 +131,39 @@ void main() {
       // Declared worker is brought online (PTY launch) so it can wait_for_message
       // and claim — without this, the task would sit unclaimed (the bug).
       expect(launcher.materialized.single.memberId, 'w1');
+    });
+  });
+
+  test('add_tasks doorbells a running idle-at-prompt worker to claim', () {
+    fakeAsync((async) {
+      final launcher = FakeMemberLauncher();
+      final bus = _busWithQueue(launcher);
+      // Worker launched eagerly but never entered wait_for_message → stuck at
+      // prompt. queue._wake can't reach it; only a doorbell kicks it to claim.
+      bus.declareMember(_idleAtPromptWorker('w1'));
+
+      bus.addTasks('lead', [const TeamTaskDraft(title: 'a', brief: 'do a')]);
+      async.flushMicrotasks();
+
+      expect(launcher.materialized, isEmpty); // already running, no cold start
+      expect(launcher.woken.single.memberId, 'w1');
+      expect(launcher.woken.single.notice, TeamBus.taskDoorbellNotice);
+    });
+  });
+
+  test('add_tasks prefers doorbelling a running worker over cold-starting one', () {
+    fakeAsync((async) {
+      final launcher = FakeMemberLauncher();
+      final bus = _busWithQueue(launcher);
+      bus.declareMember(_idleAtPromptWorker('running'));
+      bus.declareMember(_declaredWorker('cold'));
+
+      // One task, two idle workers → engage the cheap running one, not cold start.
+      bus.addTasks('lead', [const TeamTaskDraft(title: 'a', brief: 'do a')]);
+      async.flushMicrotasks();
+
+      expect(launcher.woken.single.memberId, 'running');
+      expect(launcher.materialized, isEmpty);
     });
   });
 
