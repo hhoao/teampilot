@@ -90,4 +90,57 @@ void main() {
       );
     },
   );
+
+  test(
+    'missing skill source dir produces a warning in TeamLaunchOutcome',
+    () async {
+      final root = AppStorage.paths.basePath;
+      final fs = AppStorage.fs;
+      final layout = CliDataLayout(teampilotRoot: root, fs: fs);
+
+      // --- Construct the service: skill 'ghost' references a non-existent dir ---
+      final service = ConfigProfileService(
+        basePath: root,
+        fs: fs,
+        layout: layout,
+        hostEnvironment: HostExecutionEnvironment.resolve(
+          isWindowsHost: false,
+          storageMode: StorageBackendMode.native,
+        ),
+        loadInstalledSkills: () async => [
+          Skill(
+            id: 'ghost',
+            name: 'Ghost',
+            description: '',
+            directory: 'missing-skill', // source directory intentionally absent
+            installedAt: 0,
+            updatedAt: 0,
+          ),
+        ],
+      );
+
+      // --- Profile with skill 'ghost' enabled ---
+      const profile = ProjectProfile(
+        projectId: 'p2',
+        cli: CliTool.flashskyai,
+        skillIds: ['ghost'],
+      );
+
+      // --- Act ---
+      final outcome = await service.prepareProjectLaunch(
+        projectId: 'p2',
+        sessionId: 's2',
+        profile: profile,
+      );
+
+      // --- Assert: warning mentioning the missing skill id must surface ---
+      expect(
+        outcome.warnings,
+        anyElement(contains('ghost')),
+        reason:
+            'a skill whose source directory is missing must produce a warning '
+            'in the returned TeamLaunchOutcome.warnings',
+      );
+    },
+  );
 }

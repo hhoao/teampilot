@@ -242,21 +242,6 @@ class ConfigProfileService implements ConfigProfileDelegate {
             )
             .then((json) => sessionProvisionJson = json),
       ]);
-      if (profile != null) {
-        await ResourceProvisioningService(
-          fs: fs,
-          registry: _cliRegistry,
-        ).provisionForLaunch(
-          scope: PersonalResourceScope(profile: profile),
-          cli: cli,
-          configDir: layout.standaloneProjectSessionToolDir(
-            trimmedProjectId,
-            trimmedSessionId,
-            cli.value,
-          ),
-          catalog: await _skillCatalog(),
-        );
-      }
       final pluginManifest =
           _cliRegistry.capability<PluginManifestCapability>(cli);
       if (pluginManifest?.supportsPluginRegistry == true) {
@@ -335,11 +320,28 @@ class ConfigProfileService implements ConfigProfileDelegate {
         extraMcpServers: extraMcpServers,
       );
 
+      // Provision skills/plugins into the leaf CONFIG_DIR and collect any
+      // "source missing" / "link failed" warnings so callers can surface them.
+      final provisionResult = await ResourceProvisioningService(
+        fs: fs,
+        registry: _cliRegistry,
+      ).provisionForLaunch(
+        scope: PersonalResourceScope(profile: profile),
+        cli: cli,
+        configDir: layout.standaloneProjectSessionToolDir(
+          trimmedProjectId,
+          trimmedSessionId,
+          cli.value,
+        ),
+        catalog: await _skillCatalog(),
+      );
+      warnings.addAll(provisionResult.warnings);
+
       final cap = _cliRegistry.capability<ConfigProfileCapability>(cli);
       if (cap == null) {
         return TeamLaunchOutcome(
           environment: const {},
-          warnings: ['unknown_cli_${cli.value}'],
+          warnings: [...warnings, 'unknown_cli_${cli.value}'],
         );
       }
 
@@ -362,7 +364,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
       } on Object catch (e) {
         return TeamLaunchOutcome(
           environment: const {},
-          warnings: ['config_profile_${cli.value}: $e'],
+          warnings: [...warnings, 'config_profile_${cli.value}: $e'],
         );
       }
 
