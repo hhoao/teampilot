@@ -2,6 +2,7 @@ import 'package:path/path.dart' as p;
 
 import '../../models/extension_manifest.dart';
 import '../../models/project_profile.dart';
+import '../../models/skill.dart';
 import '../../models/team_config.dart';
 import '../cli/cli_data_layout.dart';
 import '../extension/extension_detector.dart';
@@ -14,6 +15,8 @@ import '../cli/registry/cli_tool_registry.dart';
 import '../io/filesystem.dart';
 import '../mcp/mcp_registry_service.dart';
 import '../plugin/cli_plugin_registry_service.dart';
+import '../resource/resource_provisioning_service.dart';
+import '../resource/resource_scope.dart';
 import '../storage/app_storage.dart';
 import 'config_profile_infrastructure.dart';
 
@@ -53,6 +56,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
     loadTeamLeadDelegateHookScript,
     HostExecutionEnvironment? hostEnvironment,
     CliToolRegistry? cliRegistry,
+    Future<List<Skill>> Function()? loadInstalledSkills,
   }) : _infra = ConfigProfileInfrastructure(
          basePath: basePath,
          layout:
@@ -69,11 +73,23 @@ class ConfigProfileService implements ConfigProfileDelegate {
          loadTeamLeadDelegateHookScript: loadTeamLeadDelegateHookScript,
          hostEnvironment: hostEnvironment,
        ),
-       _cliRegistry = cliRegistry ?? _defaultCliRegistry;
+       _cliRegistry = cliRegistry ?? _defaultCliRegistry,
+       _loadInstalledSkills = loadInstalledSkills;
 
   final ConfigProfileInfrastructure _infra;
   final CliToolRegistry _cliRegistry;
+  final Future<List<Skill>> Function()? _loadInstalledSkills;
   StandaloneLaunchProfileScope? _activeStandaloneScope;
+
+  Future<ResourceCatalog> _skillCatalog() async {
+    final skills =
+        await (_loadInstalledSkills?.call() ?? Future.value(const <Skill>[]));
+    return ResourceCatalog(
+      skills: skills,
+      skillsRoot: AppPaths.skillsDirForTeampilotRoot(basePath),
+      pathContext: fs.pathContext,
+    );
+  }
 
   @override
   String get basePath => _infra.basePath;
@@ -226,6 +242,21 @@ class ConfigProfileService implements ConfigProfileDelegate {
             )
             .then((json) => sessionProvisionJson = json),
       ]);
+      if (profile != null) {
+        await ResourceProvisioningService(
+          fs: fs,
+          registry: _cliRegistry,
+        ).provisionForLaunch(
+          scope: PersonalResourceScope(profile: profile),
+          cli: cli,
+          configDir: layout.standaloneProjectSessionToolDir(
+            trimmedProjectId,
+            trimmedSessionId,
+            cli.value,
+          ),
+          catalog: await _skillCatalog(),
+        );
+      }
       final pluginManifest =
           _cliRegistry.capability<PluginManifestCapability>(cli);
       if (pluginManifest?.supportsPluginRegistry == true) {

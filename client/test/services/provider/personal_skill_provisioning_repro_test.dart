@@ -6,6 +6,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:teampilot/models/project_profile.dart';
+import 'package:teampilot/models/skill.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/cli/cli_data_layout.dart';
 import 'package:teampilot/services/provider/config_profile_service.dart';
@@ -15,9 +16,8 @@ import 'package:teampilot/services/host/host_execution_environment.dart';
 
 import '../../support/post_frame_test_harness.dart';
 
-/// RED repro: enabled skills are NOT materialized into the personal-mode
-/// session leaf CONFIG_DIR at launch.  This test must remain failing until
-/// the provisioning fix is implemented.
+/// Repro (now GREEN): enabled skills ARE materialized into the personal-mode
+/// session leaf CONFIG_DIR at launch via ResourceProvisioningService.
 void main() {
   setUp(() {
     setUpTestAppStorage();
@@ -40,7 +40,7 @@ void main() {
       await Directory(skillDir).create(recursive: true);
       await File(p.join(skillDir, 'SKILL.md')).writeAsString('# demo-skill');
 
-      // --- Construct the service (current API — no loadInstalledSkills param) ---
+      // --- Construct the service with loadInstalledSkills injected ---
       final service = ConfigProfileService(
         basePath: root,
         fs: fs,
@@ -49,6 +49,16 @@ void main() {
           isWindowsHost: false,
           storageMode: StorageBackendMode.native,
         ),
+        loadInstalledSkills: () async => [
+          Skill(
+            id: 'demo',
+            name: 'Demo',
+            description: '',
+            directory: 'demo-skill',
+            installedAt: 0,
+            updatedAt: 0,
+          ),
+        ],
       );
 
       // --- Profile with skill 'demo' enabled ---
