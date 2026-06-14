@@ -456,6 +456,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get memberCliInheritHint => 'Inherit team default';
 
   @override
+  String get memberLaunchConfigTitle => 'Model settings';
+
+  @override
+  String get memberLaunchConfigSubtitle =>
+      'CLI backend, provider, model, and effort for this member.';
+
+  @override
   String get teamCliSubtitle =>
       'Chosen when the team is created and cannot be changed later.';
 
@@ -669,7 +676,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get projectAgentBuiltInSubtitle =>
-      'Choose an agent role; shapes behavior and available capabilities.';
+      'Maps to flashskyai --agent when that CLI is active.';
 
   @override
   String get projectAgentExtraArgs => 'Extra CLI arguments';
@@ -677,6 +684,10 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get projectAgentExtraArgsSubtitle =>
       'Extra flags appended when starting the agent in this project.';
+
+  @override
+  String get projectAdvancedSettingsSubtitle =>
+      'Agent preset and extra CLI flags for this project.';
 
   @override
   String get projectAgentPromptSubtitle =>
@@ -2756,10 +2767,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get model => 'Model';
 
   @override
-  String get agent => 'Agent';
+  String get agent => 'Agent preset';
 
   @override
-  String get selectAgent => 'Select an agent';
+  String get selectAgent => 'Select preset';
 
   @override
   String get agentBuiltInNone => 'Default';
@@ -2772,6 +2783,17 @@ class AppLocalizationsEn extends AppLocalizations {
       'Which agent role this member uses; shapes behavior and capabilities.';
 
   @override
+  String get agentFlashskyaiPresetSubtitle =>
+      'Passed as flashskyai --agent; pick a built-in or custom sub-agent.';
+
+  @override
+  String get agentClaudeTypeSubtitle =>
+      'Written to the Claude team roster as agentType; leave empty to use the member id.';
+
+  @override
+  String get agentClaudeTypeHint => 'e.g. Explore, Plan, or a custom type';
+
+  @override
   String get agentCustomIdHint => 'Custom agent id';
 
   @override
@@ -2780,6 +2802,13 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get memberExtraArgsSubtitle =>
       'Extra flags applied only when this member starts.';
+
+  @override
+  String get workspaceAdvancedSettings => 'Advanced';
+
+  @override
+  String get workspaceAdvancedSettingsSubtitle =>
+      'Agent preset and extra CLI flags for this member.';
 
   @override
   String get memberDangerouslySkipPermissions => 'Skip all permission checks';
@@ -2860,7 +2889,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get editMemberSubtitle =>
-      'Edit provider, model, agent, and command arguments.';
+      'Edit provider, model, optional agent preset, and command arguments.';
 
   @override
   String get teamLeadNameRequired =>

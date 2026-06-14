@@ -9,6 +9,7 @@ import 'package:teampilot/services/cli/registry/installer/claude_installer_capab
 import 'package:teampilot/services/cli/registry/installer/codex_installer_capability.dart';
 import 'package:teampilot/services/cli/registry/installer/opencode_installer_capability.dart';
 import 'package:teampilot/services/cli/registry/built_in_cli_tools.dart';
+import 'package:teampilot/services/cli/registry/capabilities/member_agent_preset_capability.dart';
 import 'package:teampilot/services/cli/registry/capabilities/native_team_capability.dart';
 import 'package:teampilot/services/cli/registry/cli_capability.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_definition.dart';
@@ -64,6 +65,24 @@ void main() {
     );
     expect(registry.supportsNativeTeam(CliTool.codex), isFalse);
     expect(registry.supportsNativeTeam(CliTool.claude), isTrue);
+  });
+
+  test('built-in member agent preset CLIs are claude and flashskyai only', () {
+    final registry = CliToolRegistry();
+    registerBuiltInCliTools(registry);
+    expect(registry.supportsMemberAgentPreset(CliTool.codex), isFalse);
+    expect(
+      registry.withCapability<MemberAgentPresetCapability>().map((d) => d.id).toSet(),
+      {CliTool.claude, CliTool.flashskyai},
+    );
+    expect(
+      registry.memberAgentPresetStyle(CliTool.claude),
+      MemberAgentPresetStyle.claudeAgentType,
+    );
+    expect(
+      registry.memberAgentPresetStyle(CliTool.flashskyai),
+      MemberAgentPresetStyle.flashskyaiCatalog,
+    );
   });
 
   test('built-in native team CLIs are claude and flashskyai only', () {

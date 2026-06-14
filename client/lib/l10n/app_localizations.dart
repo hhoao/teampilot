@@ -926,6 +926,18 @@ abstract class AppLocalizations {
   /// **'Inherit team default'**
   String get memberCliInheritHint;
 
+  /// No description provided for @memberLaunchConfigTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Model settings'**
+  String get memberLaunchConfigTitle;
+
+  /// No description provided for @memberLaunchConfigSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'CLI backend, provider, model, and effort for this member.'**
+  String get memberLaunchConfigSubtitle;
+
   /// No description provided for @teamCliSubtitle.
   ///
   /// In en, this message translates to:
@@ -1313,7 +1325,7 @@ abstract class AppLocalizations {
   /// No description provided for @projectAgentBuiltInSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Choose an agent role; shapes behavior and available capabilities.'**
+  /// **'Maps to flashskyai --agent when that CLI is active.'**
   String get projectAgentBuiltInSubtitle;
 
   /// No description provided for @projectAgentExtraArgs.
@@ -1327,6 +1339,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Extra flags appended when starting the agent in this project.'**
   String get projectAgentExtraArgsSubtitle;
+
+  /// No description provided for @projectAdvancedSettingsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Agent preset and extra CLI flags for this project.'**
+  String get projectAdvancedSettingsSubtitle;
 
   /// No description provided for @projectAgentPromptSubtitle.
   ///
@@ -5051,13 +5069,13 @@ abstract class AppLocalizations {
   /// No description provided for @agent.
   ///
   /// In en, this message translates to:
-  /// **'Agent'**
+  /// **'Agent preset'**
   String get agent;
 
   /// No description provided for @selectAgent.
   ///
   /// In en, this message translates to:
-  /// **'Select an agent'**
+  /// **'Select preset'**
   String get selectAgent;
 
   /// No description provided for @agentBuiltInNone.
@@ -5078,6 +5096,24 @@ abstract class AppLocalizations {
   /// **'Which agent role this member uses; shapes behavior and capabilities.'**
   String get agentBuiltInSubtitle;
 
+  /// No description provided for @agentFlashskyaiPresetSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Passed as flashskyai --agent; pick a built-in or custom sub-agent.'**
+  String get agentFlashskyaiPresetSubtitle;
+
+  /// No description provided for @agentClaudeTypeSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Written to the Claude team roster as agentType; leave empty to use the member id.'**
+  String get agentClaudeTypeSubtitle;
+
+  /// No description provided for @agentClaudeTypeHint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. Explore, Plan, or a custom type'**
+  String get agentClaudeTypeHint;
+
   /// No description provided for @agentCustomIdHint.
   ///
   /// In en, this message translates to:
@@ -5095,6 +5131,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Extra flags applied only when this member starts.'**
   String get memberExtraArgsSubtitle;
+
+  /// No description provided for @workspaceAdvancedSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Advanced'**
+  String get workspaceAdvancedSettings;
+
+  /// No description provided for @workspaceAdvancedSettingsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Agent preset and extra CLI flags for this member.'**
+  String get workspaceAdvancedSettingsSubtitle;
 
   /// No description provided for @memberDangerouslySkipPermissions.
   ///
@@ -5231,7 +5279,7 @@ abstract class AppLocalizations {
   /// No description provided for @editMemberSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Edit provider, model, agent, and command arguments.'**
+  /// **'Edit provider, model, optional agent preset, and command arguments.'**
   String get editMemberSubtitle;
 
   /// No description provided for @teamLeadNameRequired.

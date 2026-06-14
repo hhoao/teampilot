@@ -17,6 +17,56 @@ CliTool? catalogCliForTeam(BuildContext context, CliTool cli) {
       : null;
 }
 
+bool memberSupportsAgentPreset(BuildContext context, CliTool cli) {
+  final registry = CliToolRegistryScope.maybeOf(context);
+  if (registry == null) return false;
+  return registry.supportsMemberAgentPreset(cli);
+}
+
+/// Pure visibility rule for member agent-preset UI (testable without [BuildContext]).
+bool computeMemberShowsAgentPreset({
+  required TeamConfig team,
+  required TeamMemberConfig member,
+  required bool Function(CliTool cli) supportsPreset,
+}) {
+  if (team.teamMode == TeamMode.mixed) {
+    final override = member.cli;
+    if (override == null) return false;
+    return supportsPreset(override);
+  }
+  return supportsPreset(member.cliWithin(team));
+}
+
+/// Whether the member editor should show the agent-preset row.
+///
+/// Native teams always use [TeamConfig.cli]. Mixed teams only show the row
+/// after the member explicitly picks a CLI — "inherit team default" is not
+/// enough, or users see agent presets while the CLI dropdown still looks empty.
+bool memberShowsAgentPresetUi(
+  BuildContext context, {
+  required TeamConfig team,
+  required TeamMemberConfig member,
+}) {
+  final registry = CliToolRegistryScope.maybeOf(context);
+  if (registry == null) return false;
+  return computeMemberShowsAgentPreset(
+    team: team,
+    member: member,
+    supportsPreset: registry.supportsMemberAgentPreset,
+  );
+}
+
+/// CLI backing [memberShowsAgentPresetUi] when true.
+CliTool? memberAgentPresetCli({
+  required TeamConfig team,
+  required TeamMemberConfig member,
+}) {
+  if (team.teamMode == TeamMode.mixed) {
+    return member.cli;
+  }
+  return member.cliWithin(team);
+}
+
 String teamCliDisplayLabel(
   BuildContext context,
   AppLocalizations l10n,

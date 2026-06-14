@@ -1,5 +1,6 @@
 import '../../../models/team_config.dart';
 import 'built_in_cli_tools.dart';
+import 'capabilities/member_agent_preset_capability.dart';
 import 'capabilities/native_team_capability.dart';
 import 'cli_bootstrap.dart';
 import 'cli_capability.dart';
@@ -57,6 +58,12 @@ class CliToolRegistry {
 
   bool supportsNativeTeam(CliTool id) =>
       capability<NativeTeamCapability>(id) != null;
+
+  MemberAgentPresetStyle? memberAgentPresetStyle(CliTool id) =>
+      capability<MemberAgentPresetCapability>(id)?.style;
+
+  bool supportsMemberAgentPreset(CliTool id) =>
+      memberAgentPresetStyle(id) != null;
 
   Iterable<CliToolDefinition> get all => _definitions.values;
 

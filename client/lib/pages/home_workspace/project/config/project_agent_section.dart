@@ -8,12 +8,11 @@ import '../../../../l10n/l10n_extensions.dart';
 import '../../../../models/project_agent_prompt_presets.dart';
 import '../../../../models/project_profile.dart';
 import '../../../../services/app/flashskyai_agent_catalog_service.dart';
+import '../../../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../../../services/storage/storage_resolver.dart';
 import '../../../../theme/app_text_styles.dart';
-import '../../../../widgets/dropdown/app_dropdown_decoration.dart';
-import '../../../../widgets/dropdown/app_dropdown_field.dart';
+import '../../../../widgets/cli/member_agent_preset_field.dart';
 import '../../../../widgets/settings/workspace_settings_widgets.dart';
-import '../../../team_config/team_config_helpers.dart';
 import 'project_cli_defaults_section.dart';
 
 const _kAgentCardGap = 12.0;
@@ -133,14 +132,9 @@ class ProjectAgentConfigFormState extends State<ProjectAgentConfigForm> {
     final l10n = context.l10n;
     final profile = widget.profile;
     final agent = profile.agent;
-    final dropdownDeco = AppDropdownDecorations.themed(context);
-
-    final showCustomAgentField =
-        FlashskyaiAgentCatalog.activeDropdownValue(
-          agent.agent,
-          userAgentIds: _userAgentIds,
-        ) ==
-        FlashskyaiAgentCatalog.customDropdownValue;
+    final cliRegistry = CliToolRegistryScope.of(context);
+    final showAgentPreset = cliRegistry.supportsMemberAgentPreset(profile.cli);
+    final agentPresetStyle = cliRegistry.memberAgentPresetStyle(profile.cli);
 
     return SingleChildScrollView(
       child: Column(
@@ -153,127 +147,87 @@ class ProjectAgentConfigFormState extends State<ProjectAgentConfigForm> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 SettingsGroupHeader(title: l10n.homeWorkspaceProjectAgent),
-                SettingsLabeledStackedRow(
-                  title: l10n.agent,
-                  subtitle: l10n.projectAgentBuiltInSubtitle,
-                  body: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    AppDropdownField<String>(
-                      key: ValueKey(
-                        'project-agent-dd-${profile.projectId}-${agent.agent}-${_userAgentIds.join(",")}',
-                      ),
-                      items: FlashskyaiAgentCatalog.dropdownValues(
-                        userAgentIds: _userAgentIds,
-                      ),
-                      initialItem: FlashskyaiAgentCatalog.activeDropdownValue(
-                        agent.agent,
-                        userAgentIds: _userAgentIds,
-                      ),
-                      hintText: l10n.selectAgent,
-                      decoration: dropdownDeco,
-                      headerMaxLines: 2,
-                      listItemMaxLines: 2,
-                      itemLabel: (value) => memberAgentDropdownItemLabel(
-                        context,
-                        l10n,
-                        value,
-                        userAgentIds: _userAgentIds,
-                      ),
-                      onChanged: (value) async {
-                        final v =
-                            value ?? FlashskyaiAgentCatalog.noneDropdownValue;
-                        if (v == FlashskyaiAgentCatalog.noneDropdownValue) {
-                          _agentCtl.clear();
-                          await _updateAgent(agent.copyWith(agent: ''));
-                        } else if (v ==
-                            FlashskyaiAgentCatalog.customDropdownValue) {
-                          final current = agent.agent.trim();
-                          final next =
-                              FlashskyaiAgentCatalog.isKnownAgentId(
-                                current,
-                                userAgentIds: _userAgentIds,
-                              )
-                              ? ''
-                              : current;
-                          _agentCtl.text = next;
-                          await _updateAgent(agent.copyWith(agent: next));
-                        } else {
-                          _agentCtl.text = v;
-                          await _updateAgent(agent.copyWith(agent: v));
-                        }
-                      },
+                SettingsLabeledRow(
+                  title: l10n.memberDangerouslySkipPermissions,
+                  subtitle: l10n.memberDangerouslySkipPermissionsHint,
+                  trailing: Switch(
+                    value: agent.dangerouslySkipPermissions,
+                    onChanged: (v) => _updateAgent(
+                      agent.copyWith(dangerouslySkipPermissions: v),
                     ),
-                    if (showCustomAgentField) ...[
+                  ),
+                  showDividerBelow: true,
+                ),
+                SettingsLabeledStackedRow(
+                  title: l10n.prompt,
+                  subtitle: l10n.projectAgentPromptSubtitle,
+                  body: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 6,
+                        children: [
+                          for (final preset in ProjectAgentPromptPreset.all)
+                            ActionChip(
+                              label: Text(
+                                projectAgentPromptPresetLabel(l10n, preset.id),
+                                style: AppTextStyles.of(context).bodySmall,
+                              ),
+                              visualDensity: VisualDensity.compact,
+                              padding: const EdgeInsets.symmetric(horizontal: 4),
+                              onPressed: () => _applyPromptPreset(preset.id),
+                            ),
+                        ],
+                      ),
                       const SizedBox(height: 8),
                       TextField(
-                        controller: _agentCtl,
-                        decoration: InputDecoration(
-                          hintText: l10n.agentCustomIdHint,
-                          floatingLabelBehavior: FloatingLabelBehavior.never,
-                        ),
-                        onChanged: (v) => _updateAgent(agent.copyWith(agent: v)),
+                        controller: _promptCtl,
+                        minLines: 3,
+                        maxLines: 6,
+                        decoration: const InputDecoration(),
+                        onChanged: (v) =>
+                            _updateAgent(agent.copyWith(prompt: v)),
                       ),
                     ],
-                  ],
-                ),
-                showDividerBelow: true,
-              ),
-              SettingsLabeledRow(
-                title: l10n.memberDangerouslySkipPermissions,
-                subtitle: l10n.memberDangerouslySkipPermissionsHint,
-                trailing: Switch(
-                  value: agent.dangerouslySkipPermissions,
-                  onChanged: (v) => _updateAgent(
-                    agent.copyWith(dangerouslySkipPermissions: v),
                   ),
+                  showDividerBelow: true,
                 ),
-                showDividerBelow: true,
-              ),
-              SettingsLabeledStackedRow(
-                title: l10n.projectAgentExtraArgs,
-                subtitle: l10n.projectAgentExtraArgsSubtitle,
-                body: TextField(
-                  controller: _argsCtl,
-                  decoration: const InputDecoration(),
-                  onChanged: (v) => _updateAgent(agent.copyWith(extraArgs: v)),
-                ),
-                showDividerBelow: true,
-              ),
-              SettingsLabeledStackedRow(
-                title: l10n.prompt,
-                subtitle: l10n.projectAgentPromptSubtitle,
-                body: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                SettingsAdvancedExpansion(
+                  title: l10n.workspaceAdvancedSettings,
+                  subtitle: l10n.projectAdvancedSettingsSubtitle,
                   children: [
-                    Wrap(
-                      spacing: 6,
-                      runSpacing: 6,
-                      children: [
-                        for (final preset in ProjectAgentPromptPreset.all)
-                          ActionChip(
-                            label: Text(
-                              projectAgentPromptPresetLabel(l10n, preset.id),
-                              style: AppTextStyles.of(context).bodySmall,
-                            ),
-                            visualDensity: VisualDensity.compact,
-                            padding: const EdgeInsets.symmetric(horizontal: 4),
-                            onPressed: () => _applyPromptPreset(preset.id),
-                          ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    TextField(
-                      controller: _promptCtl,
-                      minLines: 3,
-                      maxLines: 6,
-                      decoration: const InputDecoration(),
-                      onChanged: (v) => _updateAgent(agent.copyWith(prompt: v)),
+                    if (showAgentPreset && agentPresetStyle != null)
+                      SettingsLabeledStackedRow(
+                        title: l10n.agent,
+                        subtitle: memberAgentPresetSubtitle(
+                          l10n,
+                          agentPresetStyle,
+                        ),
+                        body: MemberAgentPresetField(
+                          cli: profile.cli,
+                          agent: agent.agent,
+                          userAgentIds: _userAgentIds,
+                          customAgentController: _agentCtl,
+                          fieldKeyPrefix: 'project-${profile.projectId}',
+                          onAgentChanged: (value) =>
+                              _updateAgent(agent.copyWith(agent: value)),
+                        ),
+                        showDividerBelow: true,
+                      ),
+                    SettingsLabeledStackedRow(
+                      title: l10n.projectAgentExtraArgs,
+                      subtitle: l10n.projectAgentExtraArgsSubtitle,
+                      body: TextField(
+                        controller: _argsCtl,
+                        decoration: const InputDecoration(),
+                        onChanged: (v) =>
+                            _updateAgent(agent.copyWith(extraArgs: v)),
+                      ),
+                      showDividerBelow: false,
                     ),
                   ],
                 ),
-                showDividerBelow: false,
-              ),
               ],
             ),
           ),
