@@ -22,11 +22,16 @@ class ResourceResolver {
       TeamResourceScope(:final team) => team.skillIds,
     };
     if (ids.isEmpty) return const [];
-    final byId = {for (final s in catalog.skills) s.id: s};
+    // Honor the global enable toggle: a skill disabled in the library is an
+    // "off switch" everywhere, even if a project/team still lists it in skillIds.
+    final byId = {
+      for (final s in catalog.skills)
+        if (s.enabled) s.id: s,
+    };
     final refs = <ResourceRef>[];
     for (final id in ids) {
       final skill = byId[id];
-      if (skill == null) continue; // unknown / uninstalled — dropped
+      if (skill == null) continue; // unknown / uninstalled / disabled — dropped
       refs.add(ResourceRef(
         id: skill.id,
         linkName: skill.directory,
