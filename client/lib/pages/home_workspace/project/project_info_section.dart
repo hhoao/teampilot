@@ -1,6 +1,4 @@
-﻿import 'dart:io';
-
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -18,6 +16,7 @@ import '../../../utils/project_display_name.dart';
 import '../../../widgets/app_dialog.dart';
 import '../../../widgets/project_details_dialog.dart';
 import '../../../widgets/settings/workspace_settings_widgets.dart';
+import '../../../services/io/system_folder_opener.dart';
 import 'project_icon_settings_row.dart';
 
 /// Project basic settings + danger zone (same layout as [TeamInfoSection]).
@@ -339,10 +338,5 @@ void _copyText(BuildContext context, String text) {
 }
 
 void _openFolder(String path) {
-  final command = Platform.isMacOS
-      ? 'open'
-      : Platform.isWindows
-      ? 'start'
-      : 'xdg-open';
-  Process.run(command, [path]);
+  SystemFolderOpener().reveal(path);
 }
