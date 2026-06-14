@@ -438,6 +438,19 @@ class ConfigProfileService implements ConfigProfileDelegate {
       extraMcpServers: extraMcpServers,
     );
 
+    if (team != null) {
+      final provisionResult = await ResourceProvisioningService(
+        fs: fs,
+        registry: _cliRegistry,
+      ).provisionForLaunch(
+        scope: TeamResourceScope(team: team, member: member),
+        cli: cli,
+        configDir: layout.memberToolDir(scope.teamId, scope.sessionId, cli.value),
+        catalog: await _skillCatalog(),
+      );
+      warnings.addAll(provisionResult.warnings);
+    }
+
     final cap = _cliRegistry.capability<ConfigProfileCapability>(cli);
     if (cap == null) {
       return TeamLaunchOutcome(
