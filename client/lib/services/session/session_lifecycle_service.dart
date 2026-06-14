@@ -2,6 +2,7 @@ import '../../models/app_project.dart';
 import '../../models/app_session.dart';
 import '../../models/project_profile.dart';
 import '../../models/session_member_binding.dart';
+import '../../models/skill.dart';
 import '../../models/team_config.dart';
 import '../../repositories/project_profile_repository.dart';
 import '../../utils/team_member_naming.dart';
@@ -37,13 +38,15 @@ class SessionLifecycleService {
     loadEnabledExtensionIds,
     CliToolRegistry? cliToolRegistry,
     ProjectProfileRepository? projectProfileRepository,
+    Future<List<Skill>> Function()? loadInstalledSkills,
   }) : _appDataBasePath = appDataBasePath,
        _llmConfigPathOverride = llmConfigPathOverride,
        _configProfileService = configProfileService,
        _storageRootsResolver = storageRootsResolver,
        _loadEnabledExtensionIds = loadEnabledExtensionIds,
        _cliToolRegistry = cliToolRegistry ?? _defaultCliRegistry,
-       _projectProfileRepository = projectProfileRepository;
+       _projectProfileRepository = projectProfileRepository,
+       _loadInstalledSkills = loadInstalledSkills;
 
   final String? _appDataBasePath;
   final String? Function()? _llmConfigPathOverride;
@@ -53,6 +56,7 @@ class SessionLifecycleService {
   _loadEnabledExtensionIds;
   final CliToolRegistry _cliToolRegistry;
   final ProjectProfileRepository? _projectProfileRepository;
+  final Future<List<Skill>> Function()? _loadInstalledSkills;
 
   Future<ProjectProfile> loadProjectProfile(
     String projectId, {
@@ -505,6 +509,7 @@ class SessionLifecycleService {
                   : (trimmedProjectId.isNotEmpty ? trimmedProjectId : null),
             ),
       cliRegistry: _cliToolRegistry,
+      loadInstalledSkills: _loadInstalledSkills,
     );
   }
 

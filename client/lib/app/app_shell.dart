@@ -422,6 +422,7 @@ Future<AppShell> buildAppShell({
     },
     cliToolRegistry: cliToolRegistry,
     projectProfileRepository: projectProfileRepository,
+    loadInstalledSkills: () => skillRepo.loadInstalled(),
   );
   sessionRepo = SessionRepository(
     storageRoots: storageRoots,
