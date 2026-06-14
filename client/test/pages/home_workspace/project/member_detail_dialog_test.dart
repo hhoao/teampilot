@@ -52,4 +52,29 @@ void main() {
     );
     expect(find.text(l10n.memberDetailEmpty), findsOneWidget);
   });
+
+  testWidgets('shows a warning banner when a section failed to parse',
+      (tester) async {
+    const detail = MemberConfigDetail(
+      cli: CliTool.claude,
+      resolvedDir: '/x',
+      sourceLayer: MemberConfigSourceLayer.runtime,
+      warnings: [SectionWarning(section: 'settings', message: 'bad json')],
+    );
+    await tester.pumpWidget(_host(
+      MemberDetailDialogBody(
+        memberName: 'Backend',
+        detail: detail,
+        onOpenInFileManager: () {},
+      ),
+    ));
+    await tester.pumpAndSettle();
+    final l10n = AppLocalizations.of(
+      tester.element(find.byType(MemberDetailDialogBody)),
+    );
+    // Switch to the Settings tab (last tab) and confirm the warning shows.
+    await tester.tap(find.text(l10n.memberDetailTabSettings));
+    await tester.pumpAndSettle();
+    expect(find.text(l10n.memberDetailLoadError), findsOneWidget);
+  });
 }

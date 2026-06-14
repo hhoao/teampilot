@@ -79,6 +79,9 @@ class MemberDetailDialogBody extends StatelessWidget {
   final MemberConfigDetail detail;
   final VoidCallback? onOpenInFileManager;
 
+  bool _hasWarning(String section) =>
+      detail.warnings.any((w) => w.section == section);
+
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
@@ -143,6 +146,7 @@ class MemberDetailDialogBody extends StatelessWidget {
                 _OverviewTab(detail: detail),
                 _ListTab(
                   empty: l10n.memberDetailSectionEmpty,
+                  hasWarning: _hasWarning('skills'),
                   items: [
                     for (final s in detail.skills)
                       (title: s.name, subtitle: s.description),
@@ -150,6 +154,7 @@ class MemberDetailDialogBody extends StatelessWidget {
                 ),
                 _ListTab(
                   empty: l10n.memberDetailSectionEmpty,
+                  hasWarning: _hasWarning('mcp'),
                   items: [
                     for (final m in detail.mcpServers)
                       (title: m.name, subtitle: m.summary),
@@ -157,6 +162,7 @@ class MemberDetailDialogBody extends StatelessWidget {
                 ),
                 _ListTab(
                   empty: l10n.memberDetailSectionEmpty,
+                  hasWarning: _hasWarning('plugins'),
                   items: [
                     for (final pl in detail.plugins)
                       (title: pl.name, subtitle: pl.version),
@@ -164,6 +170,7 @@ class MemberDetailDialogBody extends StatelessWidget {
                 ),
                 _ListTab(
                   empty: l10n.memberDetailSectionEmpty,
+                  hasWarning: _hasWarning('settings'),
                   items: [
                     for (final e in detail.settings)
                       (title: e.key, subtitle: e.value),
@@ -233,22 +240,57 @@ class _OverviewTab extends StatelessWidget {
 }
 
 class _ListTab extends StatelessWidget {
-  const _ListTab({required this.items, required this.empty});
+  const _ListTab({
+    required this.items,
+    required this.empty,
+    this.hasWarning = false,
+  });
   final List<({String title, String subtitle})> items;
   final String empty;
+  final bool hasWarning;
 
   @override
   Widget build(BuildContext context) {
-    if (items.isEmpty) {
-      return Center(child: Text(empty));
-    }
-    return ListView.builder(
-      itemCount: items.length,
-      itemBuilder: (_, i) => ListTile(
-        dense: true,
-        title: Text(items[i].title),
-        subtitle: items[i].subtitle.isEmpty ? null : Text(items[i].subtitle),
-      ),
+    final l10n = context.l10n;
+    final cs = Theme.of(context).colorScheme;
+    final content = items.isEmpty
+        ? Center(child: Text(empty))
+        : ListView.builder(
+            itemCount: items.length,
+            itemBuilder: (_, i) => ListTile(
+              dense: true,
+              title: Text(items[i].title),
+              subtitle:
+                  items[i].subtitle.isEmpty ? null : Text(items[i].subtitle),
+            ),
+          );
+    if (!hasWarning) return content;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Container(
+          margin: const EdgeInsets.all(12),
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: cs.errorContainer,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.warning_amber_rounded,
+                  size: 18, color: cs.onErrorContainer),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  l10n.memberDetailLoadError,
+                  style: TextStyle(color: cs.onErrorContainer),
+                ),
+              ),
+            ],
+          ),
+        ),
+        Expanded(child: content),
+      ],
     );
   }
 }
