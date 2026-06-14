@@ -170,43 +170,60 @@ class MembersPanel extends StatelessWidget {
     );
   }
 
-  void _showMemberMenu(
+  Future<void> _showMemberMenu(
     BuildContext context,
     AppLocalizations l10n,
     TeamMemberConfig member,
     TapDownDetails details,
-  ) {
-    showSidebarActionMenuFromSpecsAtTap<void>(
+  ) async {
+    // Dispatch via the menu's return value (not inline `onAction`): actions that
+    // push a route — e.g. the detail dialog — must run AFTER the menu route has
+    // popped, otherwise the menu's own pop tears down the route we just pushed.
+    final action = await showSidebarActionMenuFromSpecsAtTap<_MemberMenuAction>(
       context: context,
       tapDetails: details,
       specs: [
         SidebarActionMenuSpec.item(
+          value: _MemberMenuAction.viewDetail,
           icon: Icons.info_outline,
           label: l10n.memberDetailViewAction,
           enabled: canViewDetail,
           tooltip: canViewDetail ? null : l10n.memberDetailNeedsSession,
-          onAction: () => onViewDetail(member.id),
         ),
         SidebarActionMenuSpec.item(
+          value: _MemberMenuAction.open,
           icon: Icons.open_in_new,
           label: l10n.openMember,
-          onAction: () => onOpen(member.id),
         ),
         SidebarActionMenuSpec.item(
+          value: _MemberMenuAction.openConfigDir,
           icon: Icons.folder_open,
           label: l10n.memberDetailOpenConfigDir,
-          onAction: () => onOpenConfigDir(member.id),
         ),
         const SidebarActionMenuSpec.divider(),
         SidebarActionMenuSpec.item(
+          value: _MemberMenuAction.launchAll,
           icon: Icons.play_arrow,
           label: l10n.openTeam,
-          onAction: onLaunchAll,
         ),
       ],
     );
+    switch (action) {
+      case _MemberMenuAction.viewDetail:
+        onViewDetail(member.id);
+      case _MemberMenuAction.open:
+        onOpen(member.id);
+      case _MemberMenuAction.openConfigDir:
+        onOpenConfigDir(member.id);
+      case _MemberMenuAction.launchAll:
+        onLaunchAll();
+      case null:
+        break;
+    }
   }
 }
+
+enum _MemberMenuAction { viewDetail, open, openConfigDir, launchAll }
 
 CliTool _catalogCli(CliToolRegistry? registry, CliTool memberCli) {
   if (registry != null &&

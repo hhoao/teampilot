@@ -62,4 +62,79 @@ void main() {
     expect(find.text(l10n.memberDetailViewAction), findsOneWidget);
     expect(find.text(l10n.memberDetailOpenConfigDir), findsOneWidget);
   });
+
+  testWidgets('tapping view-detail dispatches after the menu closes', (tester) async {
+    final providerCubit = AppProviderCubit();
+    addTearDown(providerCubit.close);
+
+    String? viewedId;
+    await tester.pumpWidget(_host(
+      MembersPanel(
+        team: _team,
+        members: const [_member],
+        memberPresence: const {},
+        selectedMemberId: '',
+        onSelected: (_) {},
+        onOpen: (_) {},
+        onLaunchAll: () {},
+        canViewDetail: true,
+        onViewDetail: (id) => viewedId = id,
+        onOpenConfigDir: (_) {},
+      ),
+      providerCubit,
+    ));
+    await tester.pumpAndSettle();
+
+    final l10n = AppLocalizations.of(
+      tester.element(find.byType(MembersPanel)),
+    );
+
+    await tester.tap(find.byKey(const Key('member-row-m1')),
+        buttons: kSecondaryButton);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text(l10n.memberDetailViewAction));
+    await tester.pumpAndSettle();
+
+    // Action fires for the right member, and the menu has been dismissed
+    // (so it cannot tear down a route the action pushes).
+    expect(viewedId, 'm1');
+    expect(find.text(l10n.memberDetailOpenConfigDir), findsNothing);
+  });
+
+  testWidgets('disabled view-detail does not dispatch', (tester) async {
+    final providerCubit = AppProviderCubit();
+    addTearDown(providerCubit.close);
+
+    var viewed = false;
+    await tester.pumpWidget(_host(
+      MembersPanel(
+        team: _team,
+        members: const [_member],
+        memberPresence: const {},
+        selectedMemberId: '',
+        onSelected: (_) {},
+        onOpen: (_) {},
+        onLaunchAll: () {},
+        canViewDetail: false,
+        onViewDetail: (_) => viewed = true,
+        onOpenConfigDir: (_) {},
+      ),
+      providerCubit,
+    ));
+    await tester.pumpAndSettle();
+
+    final l10n = AppLocalizations.of(
+      tester.element(find.byType(MembersPanel)),
+    );
+
+    await tester.tap(find.byKey(const Key('member-row-m1')),
+        buttons: kSecondaryButton);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text(l10n.memberDetailViewAction));
+    await tester.pumpAndSettle();
+
+    expect(viewed, isFalse);
+  });
 }
