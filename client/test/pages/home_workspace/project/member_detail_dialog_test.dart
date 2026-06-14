@@ -27,13 +27,15 @@ void main() {
         onOpenInFileManager: () {},
       ),
     ));
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
 
     final l10n = AppLocalizations.of(
       tester.element(find.byType(MemberDetailDialogBody)),
     );
     await tester.tap(find.text(l10n.memberDetailTabSkills));
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
     expect(find.text('alpha'), findsOneWidget);
   });
 
@@ -46,7 +48,8 @@ void main() {
         onOpenInFileManager: () {},
       ),
     ));
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
     final l10n = AppLocalizations.of(
       tester.element(find.byType(MemberDetailDialogBody)),
     );
@@ -68,13 +71,15 @@ void main() {
         onOpenInFileManager: () {},
       ),
     ));
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
     final l10n = AppLocalizations.of(
       tester.element(find.byType(MemberDetailDialogBody)),
     );
     // Switch to the Settings tab (last tab) and confirm the warning shows.
     await tester.tap(find.text(l10n.memberDetailTabSettings));
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
     expect(find.text(l10n.memberDetailLoadError), findsOneWidget);
   });
 }
