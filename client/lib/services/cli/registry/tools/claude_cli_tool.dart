@@ -23,6 +23,8 @@ import '../../../provider/claude/claude_provider_credential_capability.dart';
 import '../../../provider/claude/claude_provider_form_capability.dart';
 import '../../../provider/claude/claude_provider_model_capability.dart';
 import '../capabilities/provider_form_capability.dart';
+import '../capabilities/resource_capability.dart';
+import '../resources/default_resource_capability.dart';
 
 final class ClaudeCliTool implements CliToolDefinition {
   ClaudeCliTool({
@@ -41,6 +43,7 @@ final class ClaudeCliTool implements CliToolDefinition {
     this.headlessRun = const ClaudeHeadlessRunCapability(),
     this.headlessProvision = const ClaudeHeadlessProvisionCapability(),
     this.providerForm = const ClaudeProviderFormCapability(),
+    this.resource = const DefaultResourceCapability(),
     ProviderCredentialCapability? providerCredential,
   }) : providerCredential =
            providerCredential ?? ClaudeProviderCredentialCapability();
@@ -62,6 +65,7 @@ final class ClaudeCliTool implements CliToolDefinition {
   final CliEffortCapability effort;
   final HeadlessRunCapability headlessRun;
   final HeadlessProvisionCapability headlessProvision;
+  final ResourceCapability resource;
 
   @override
   CliTool get id => CliTool.claude;
@@ -87,5 +91,6 @@ final class ClaudeCliTool implements CliToolDefinition {
     effort,
     headlessRun,
     headlessProvision,
+    resource,
   ];
 }

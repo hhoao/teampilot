@@ -21,6 +21,8 @@ import '../headless/opencode_headless_provision_capability.dart';
 import '../installer/opencode_installer_capability.dart';
 import '../../../provider/opencode/opencode_provider_form_capability.dart';
 import '../capabilities/provider_form_capability.dart';
+import '../capabilities/resource_capability.dart';
+import '../resources/opencode_resource_capability.dart';
 
 final class OpencodeCliTool implements CliToolDefinition {
   OpencodeCliTool({
@@ -38,6 +40,7 @@ final class OpencodeCliTool implements CliToolDefinition {
     this.headlessRun = const OpencodeHeadlessRunCapability(),
     this.headlessProvision = const OpencodeHeadlessProvisionCapability(),
     this.providerForm = const OpencodeProviderFormCapability(),
+    this.resource = const OpencodeResourceCapability(),
     ProviderCredentialCapability? providerCredential,
   }) : providerCredential =
            providerCredential ?? OpencodeProviderCredentialCapability();
@@ -58,6 +61,7 @@ final class OpencodeCliTool implements CliToolDefinition {
   final ProviderModelCapability providerModel;
   final HeadlessRunCapability headlessRun;
   final HeadlessProvisionCapability headlessProvision;
+  final ResourceCapability resource;
 
   @override
   CliTool get id => CliTool.opencode;
@@ -82,5 +86,6 @@ final class OpencodeCliTool implements CliToolDefinition {
     providerForm,
     headlessRun,
     headlessProvision,
+    resource,
   ];
 }

@@ -18,6 +18,8 @@ import '../config_profile/cursor_config_profile_capability.dart';
 import '../headless/cursor_headless_run_capability.dart';
 import '../../../provider/cursor/cursor_provider_form_capability.dart';
 import '../capabilities/provider_form_capability.dart';
+import '../capabilities/resource_capability.dart';
+import '../resources/default_resource_capability.dart';
 
 /// Cursor CLI (`cursor-agent`). Standalone and mixed-mode (HOME isolation +
 /// provider auth) embedded terminal.
@@ -36,6 +38,7 @@ final class CursorCliTool implements CliToolDefinition {
     CursorProviderModelCapability? providerModel,
     this.headlessRun = const CursorHeadlessRunCapability(),
     this.providerForm = const CursorProviderFormCapability(),
+    this.resource = const DefaultResourceCapability(),
     ProviderCredentialCapability? providerCredential,
   }) : providerModel = providerModel ?? CursorProviderModelCapability(),
        providerCredential = providerCredential ?? CursorProviderCredentialCapability();
@@ -55,6 +58,7 @@ final class CursorCliTool implements CliToolDefinition {
   final CursorProviderCatalog providerCatalog;
   final CursorProviderModelCapability providerModel;
   final HeadlessRunCapability headlessRun;
+  final ResourceCapability resource;
 
   @override
   CliTool get id => CliTool.cursor;
@@ -78,5 +82,6 @@ final class CursorCliTool implements CliToolDefinition {
     providerCredential,
     providerForm,
     headlessRun,
+    resource,
   ];
 }

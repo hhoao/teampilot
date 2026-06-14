@@ -18,6 +18,8 @@ import '../headless/flashskyai_headless_run_capability.dart';
 import '../headless/flashskyai_headless_provision_capability.dart';
 import '../../../provider/flashskyai/flashskyai_provider_form_capability.dart';
 import '../capabilities/provider_form_capability.dart';
+import '../capabilities/resource_capability.dart';
+import '../resources/default_resource_capability.dart';
 
 final class FlashskyaiCliTool implements CliToolDefinition {
   const FlashskyaiCliTool({
@@ -35,6 +37,7 @@ final class FlashskyaiCliTool implements CliToolDefinition {
     this.headlessRun = const FlashskyaiHeadlessRunCapability(),
     this.headlessProvision = const FlashskyaiHeadlessProvisionCapability(),
     this.providerForm = const FlashskyaiProviderFormCapability(),
+    this.resource = const DefaultResourceCapability(),
   });
 
   final LaunchArgsCapability launchArgs;
@@ -51,6 +54,7 @@ final class FlashskyaiCliTool implements CliToolDefinition {
   final HeadlessRunCapability headlessRun;
   final HeadlessProvisionCapability headlessProvision;
   final ProviderFormCapability providerForm;
+  final ResourceCapability resource;
 
   @override
   CliTool get id => CliTool.flashskyai;
@@ -74,5 +78,6 @@ final class FlashskyaiCliTool implements CliToolDefinition {
     providerForm,
     headlessRun,
     headlessProvision,
+    resource,
   ];
 }

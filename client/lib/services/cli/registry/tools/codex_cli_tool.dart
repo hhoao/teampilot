@@ -22,6 +22,8 @@ import '../installer/codex_installer_capability.dart';
 import '../../../provider/codex/codex_effort_capability.dart';
 import '../../../provider/codex/codex_provider_form_capability.dart';
 import '../capabilities/provider_form_capability.dart';
+import '../capabilities/resource_capability.dart';
+import '../resources/default_resource_capability.dart';
 
 final class CodexCliTool implements CliToolDefinition {
   CodexCliTool({
@@ -40,6 +42,7 @@ final class CodexCliTool implements CliToolDefinition {
     this.headlessRun = const CodexHeadlessRunCapability(),
     this.headlessProvision = const CodexHeadlessProvisionCapability(),
     this.providerForm = const CodexProviderFormCapability(),
+    this.resource = const DefaultResourceCapability(),
     ProviderCredentialCapability? providerCredential,
   }) : providerCredential =
            providerCredential ?? CodexProviderCredentialCapability();
@@ -61,6 +64,7 @@ final class CodexCliTool implements CliToolDefinition {
   final CliEffortCapability effort;
   final HeadlessRunCapability headlessRun;
   final HeadlessProvisionCapability headlessProvision;
+  final ResourceCapability resource;
 
   @override
   CliTool get id => CliTool.codex;
@@ -86,5 +90,6 @@ final class CodexCliTool implements CliToolDefinition {
     effort,
     headlessRun,
     headlessProvision,
+    resource,
   ];
 }
