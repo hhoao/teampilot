@@ -164,6 +164,72 @@ void main() {
     expect(probeCalls, greaterThan(afterFirst));
   });
 
+  test('dependency-missing row carries the missing requirement names', () async {
+    // rtk present, jq absent.
+    final detector = ExtensionDetector(
+      processRunner: (exe, args, {environment}) async {
+        if (args.length == 1 && args.first == 'rtk') {
+          return ProcessResult(0, 0, '/usr/bin/rtk', '');
+        }
+        if (args.contains('--version')) {
+          return ProcessResult(0, 0, 'rtk 0.24.0', '');
+        }
+        return ProcessResult(0, 1, '', '');
+      },
+    );
+    final cubit = ExtensionCubit(
+      _repo(InMemoryFilesystem()),
+      ExtensionAcquisitionEngine(
+          runner: (c) async => const CliInstallerCommandResult(exitCode: 0)),
+      detector: detector,
+    );
+
+    await cubit.load();
+
+    final rtk = cubit.state.rows.firstWhere((r) => r.id == 'rtk');
+    expect(rtk.status, ExtensionStatusCode.dependencyMissing);
+    expect(rtk.missingRequirements, ['jq']);
+  });
+
+  test('recheck re-probes a single row after a dependency appears', () async {
+    var jqPresent = false;
+    final detector = ExtensionDetector(
+      processRunner: (exe, args, {environment}) async {
+        if (args.length == 1 && args.first == 'rtk') {
+          return ProcessResult(0, 0, '/usr/bin/rtk', '');
+        }
+        if (args.length == 1 && args.first == 'jq') {
+          return jqPresent
+              ? ProcessResult(0, 0, '/usr/bin/jq', '')
+              : ProcessResult(0, 1, '', '');
+        }
+        if (args.contains('--version')) {
+          return ProcessResult(0, 0, 'rtk 0.24.0', '');
+        }
+        return ProcessResult(0, 1, '', '');
+      },
+    );
+    final cubit = ExtensionCubit(
+      _repo(InMemoryFilesystem()),
+      ExtensionAcquisitionEngine(
+          runner: (c) async => const CliInstallerCommandResult(exitCode: 0)),
+      detector: detector,
+    );
+    await cubit.load();
+    expect(
+      cubit.state.rows.firstWhere((r) => r.id == 'rtk').status,
+      ExtensionStatusCode.dependencyMissing,
+    );
+
+    jqPresent = true;
+    await cubit.recheck('rtk');
+
+    final rtk = cubit.state.rows.firstWhere((r) => r.id == 'rtk');
+    expect(rtk.status, ExtensionStatusCode.ready);
+    expect(rtk.missingRequirements, isEmpty);
+    expect(cubit.state.busyIds, isEmpty);
+  });
+
   test('setTeamOverride(null) clears the override', () async {
     final fs = InMemoryFilesystem();
     final cubit = ExtensionCubit(

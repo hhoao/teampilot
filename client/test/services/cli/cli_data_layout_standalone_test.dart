@@ -160,19 +160,19 @@ void main() {
     );
 
     test(
-      'ensureStandaloneSessionInheritsProject chains app → project → session',
+      'ensureStandaloneSessionInheritsProject chains app → project → session agents only',
       () async {
         final layout = CliDataLayout(
           teampilotRoot: base.path,
           fs: LocalFilesystem(),
         );
         await layout.ensureAppToolLayout('flashskyai');
-        final appSkills = Directory(
-          p.join(layout.appToolRoot('flashskyai'), 'skills'),
+        final appAgents = Directory(
+          p.join(layout.appToolRoot('flashskyai'), 'agents'),
         );
-        await appSkills.create(recursive: true);
+        await appAgents.create(recursive: true);
         await File(
-          p.join(appSkills.path, 'README.md'),
+          p.join(appAgents.path, 'README.md'),
         ).writeAsString('top-level');
 
         await layout.ensureStandaloneSessionInheritsProject(
@@ -181,14 +181,59 @@ void main() {
           'flashskyai',
         );
 
+        // Agents are inherited via symlink.
+        final sessionAgents = p.join(
+          layout.standaloneProjectSessionToolDir('proj-a', 'sess-1', 'flashskyai'),
+          'agents',
+        );
+        expect(_inheritedPathExists(sessionAgents), isTrue);
+        expect(
+          await File(p.join(sessionAgents, 'README.md')).readAsString(),
+          'top-level',
+        );
+
+        // Skills are NOT inherited — they are provisioned separately.
         final sessionSkills = p.join(
           layout.standaloneProjectSessionToolDir('proj-a', 'sess-1', 'flashskyai'),
           'skills',
         );
-        expect(_inheritedPathExists(sessionSkills), isTrue);
+        expect(_inheritedPathExists(sessionSkills), isFalse);
+      },
+    );
+
+    test(
+      'provisionStandaloneSessionSkillsFromProject copies project skills into session',
+      () async {
+        final layout = CliDataLayout(
+          teampilotRoot: base.path,
+          fs: LocalFilesystem(),
+        );
+        // Set up project skills at standalone project path.
+        final projectSkills = Directory(
+          layout.standaloneProjectSkillsDir('proj-a'),
+        );
+        await projectSkills.create(recursive: true);
+        final skillDir = Directory(p.join(projectSkills.path, 'my-skill'));
+        await skillDir.create();
+        await File(p.join(skillDir.path, 'instructions.md'))
+            .writeAsString('# project skill');
+
+        // Provision for claude.
+        await layout.provisionStandaloneSessionSkillsFromProject(
+          'proj-a',
+          'sess-1',
+          'claude',
+        );
+
+        final sessionSkills = p.join(
+          layout.standaloneProjectSessionToolDir('proj-a', 'sess-1', 'claude'),
+          'skills',
+          'my-skill',
+        );
+        expect(Directory(sessionSkills).existsSync(), isTrue);
         expect(
-          await File(p.join(sessionSkills, 'README.md')).readAsString(),
-          'top-level',
+          await File(p.join(sessionSkills, 'instructions.md')).readAsString(),
+          '# project skill',
         );
       },
     );

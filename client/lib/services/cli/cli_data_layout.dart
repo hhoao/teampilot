@@ -159,12 +159,12 @@ class CliDataLayout {
         tool.trim(),
       );
 
-  /// Team flashskyai skills link target:
-  /// `config-profiles/teams/{teamId}/flashskyai/skills/`.
+  /// Team skills link target:
+  /// `config-profiles/teams/{teamId}/skills/`.
   ///
   /// Populated by [TeamSkillLinkerService] from `{teampilotRoot}/skills/installed/`.
   String teamSkillsDir(String teamId) =>
-      _pathContext.join(teamToolDir(teamId, 'flashskyai'), 'skills');
+      _pathContext.join(configProfilesDir, 'teams', teamId.trim(), 'skills');
 
   /// Team flashskyai plugin bundles:
   /// `config-profiles/teams/{teamId}/flashskyai/plugins/<name>/`.
@@ -379,8 +379,11 @@ class CliDataLayout {
     ]);
   }
 
-  /// Ensures standalone session `{tool}/` exists and inherits project
-  /// `agents/` + `skills/`.
+  /// Ensures standalone session `{tool}/` exists and inherits project `agents/`.
+  ///
+  /// Call [provisionStandaloneSessionPluginsFromProject] and
+  /// [provisionStandaloneSessionSkillsFromProject] separately (session launch)
+  /// for `plugins/` + `skills/`.
   ///
   /// Holds the same per-project lock through session symlinks so concurrent
   /// session launches cannot re-enter project inherit while another session
@@ -412,25 +415,19 @@ class CliDataLayout {
         );
         await _fs.ensureDir(sessionRoot);
         final projectRoot = standaloneProjectToolDir(trimmedProject, trimmedTool);
-        await Future.wait([
-          _ensureInheritedChild(
-            childName: 'agents',
-            parentToolRoot: projectRoot,
-            ownToolRoot: sessionRoot,
-          ),
-          _ensureInheritedChild(
-            childName: 'skills',
-            parentToolRoot: projectRoot,
-            ownToolRoot: sessionRoot,
-          ),
-        ]);
+        await _ensureInheritedChild(
+          childName: 'agents',
+          parentToolRoot: projectRoot,
+          ownToolRoot: sessionRoot,
+        );
       },
     );
   }
 
-  /// Ensures member `{tool}/` exists and inherits team `agents/` + `skills/`.
+  /// Ensures member `{tool}/` exists and inherits team `agents/`.
   ///
-  /// Call [provisionMemberPluginsFromTeam] separately (session launch) for `plugins/`.
+  /// Call [provisionMemberPluginsFromTeam] and [provisionMemberSkillsFromTeam]
+  /// separately (session launch) for `plugins/` + `skills/`.
   ///
   /// Holds the same per-team lock through member symlinks so concurrent member
   /// launches cannot re-enter team inherit while another member still links.
@@ -452,18 +449,11 @@ class CliDataLayout {
         final memberRoot = memberToolDir(trimmedTeam, trimmedSession, trimmedTool);
         await _fs.ensureDir(memberRoot);
         final teamRoot = teamToolDir(trimmedTeam, trimmedTool);
-        await Future.wait([
-          _ensureInheritedChild(
-            childName: 'agents',
-            parentToolRoot: teamRoot,
-            ownToolRoot: memberRoot,
-          ),
-          _ensureInheritedChild(
-            childName: 'skills',
-            parentToolRoot: teamRoot,
-            ownToolRoot: memberRoot,
-          ),
-        ]);
+        await _ensureInheritedChild(
+          childName: 'agents',
+          parentToolRoot: teamRoot,
+          ownToolRoot: memberRoot,
+        );
       },
     );
   }
@@ -515,6 +505,45 @@ class CliDataLayout {
     );
   }
 
+  /// Copies or symlinks team skills into the member CONFIG_DIR.
+  ///
+  /// Source: [teamSkillsDir] (`…/teams/{teamId}/skills/<skill>/`).
+  /// Dest: `…/members/{session}/{tool}/skills/<skill>/`.
+  Future<void> provisionMemberSkillsFromTeam(
+    String teamId,
+    String sessionId,
+    String tool,
+  ) async {
+    final trimmedTeam = teamId.trim();
+    final trimmedSession = sessionId.trim();
+    final trimmedTool = tool.trim();
+    if (trimmedTeam.isEmpty || trimmedSession.isEmpty || trimmedTool.isEmpty) return;
+
+    final teamSkills = teamSkillsDir(trimmedTeam);
+    final memberSkillsDir = _pathContext.join(
+      memberToolDir(trimmedTeam, trimmedSession, trimmedTool), 'skills');
+
+    if (!(await _fs.stat(teamSkills)).isDirectory) {
+      await _fs.ensureDir(memberSkillsDir);
+      return;
+    }
+
+    if ((await _fs.stat(memberSkillsDir)).exists) {
+      await _fs.removeRecursive(memberSkillsDir);
+    }
+    await _fs.ensureDir(memberSkillsDir);
+
+    for (final entry in await _fs.listDir(teamSkills)) {
+      if (!entry.isDirectory) continue;
+      final source = _pathContext.join(teamSkills, entry.name);
+      final dest = _pathContext.join(memberSkillsDir, entry.name);
+      final linked = await _fs.createSymlink(target: source, linkPath: dest);
+      if (!linked) {
+        await _fs.copyTree(source: source, destination: dest);
+      }
+    }
+  }
+
   /// Copies or symlinks project plugin bundles into the standalone session CONFIG_DIR.
   ///
   /// Source: [standaloneProjectPluginsDir] (`…/flashskyai/plugins/<bundle>/`).
@@ -548,6 +577,55 @@ class CliDataLayout {
       ),
       paths: paths,
     );
+  }
+
+  /// Copies or symlinks project skills into the standalone session CONFIG_DIR.
+  ///
+  /// Source: [standaloneProjectSkillsDir] (`…/flashskyai/skills/<skill>/`).
+  /// Dest: `…/sessions/{sessionId}/{tool}/skills/<skill>/`.
+  Future<void> provisionStandaloneSessionSkillsFromProject(
+    String projectId,
+    String sessionId,
+    String tool,
+  ) async {
+    final trimmedProject = projectId.trim();
+    final trimmedSession = sessionId.trim();
+    final trimmedTool = tool.trim();
+    if (trimmedProject.isEmpty ||
+        trimmedSession.isEmpty ||
+        trimmedTool.isEmpty) {
+      return;
+    }
+
+    final projectSkills = standaloneProjectSkillsDir(trimmedProject);
+    final sessionSkillsDir = _pathContext.join(
+      standaloneProjectSessionToolDir(
+        trimmedProject,
+        trimmedSession,
+        trimmedTool,
+      ),
+      'skills',
+    );
+
+    if (!(await _fs.stat(projectSkills)).isDirectory) {
+      await _fs.ensureDir(sessionSkillsDir);
+      return;
+    }
+
+    if ((await _fs.stat(sessionSkillsDir)).exists) {
+      await _fs.removeRecursive(sessionSkillsDir);
+    }
+    await _fs.ensureDir(sessionSkillsDir);
+
+    for (final entry in await _fs.listDir(projectSkills)) {
+      if (!entry.isDirectory) continue;
+      final source = _pathContext.join(projectSkills, entry.name);
+      final dest = _pathContext.join(sessionSkillsDir, entry.name);
+      final linked = await _fs.createSymlink(target: source, linkPath: dest);
+      if (!linked) {
+        await _fs.copyTree(source: source, destination: dest);
+      }
+    }
   }
 
   Future<void> _ensureInheritedChild({

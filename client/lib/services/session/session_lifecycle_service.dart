@@ -176,7 +176,17 @@ class SessionLifecycleService {
               member,
             )
           : runtimeTeamId;
-      final cli = isPersonal ? resolvedProfile!.cli : team?.cli;
+      // Mixed-mode members run (and store transcripts) under their own
+      // `member.cliWithin(team)` override, which can differ from `team.cli`
+      // (the latter defaults to flashskyai when the team JSON omits `cli`).
+      // Probe the member's effective CLI so `--resume` finds the prior
+      // transcript instead of falling back to `--session-id` (which the running
+      // CLI rejects as "Session ID … is already in use").
+      final cli = isPersonal
+          ? resolvedProfile!.cli
+          : (team != null && member != null && member.isValid
+              ? member.cliWithin(team)
+              : team?.cli);
       final cliState = session.launchState == AppSessionLaunchState.started
           ? await _findCliState(
               roots: roots,

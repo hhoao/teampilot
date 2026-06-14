@@ -149,6 +149,25 @@ class AppLocalizationsEn extends AppLocalizations {
   String get extensionStatusDependencyMissing => 'Missing dependency';
 
   @override
+  String extensionStatusDependencyMissingNamed(String deps) {
+    return 'Missing: $deps';
+  }
+
+  @override
+  String extensionDependencyMissingHint(String deps) {
+    return 'Needs $deps on your PATH. Install it, then re-check.';
+  }
+
+  @override
+  String get extensionCopyCommand => 'Copy';
+
+  @override
+  String get extensionCommandCopied => 'Command copied to clipboard';
+
+  @override
+  String get extensionRecheck => 'Re-check';
+
+  @override
   String get extensionStatusVersionTooOld => 'Installed version is too old';
 
   @override

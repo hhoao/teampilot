@@ -356,6 +356,36 @@ abstract class AppLocalizations {
   /// **'Missing dependency'**
   String get extensionStatusDependencyMissing;
 
+  /// No description provided for @extensionStatusDependencyMissingNamed.
+  ///
+  /// In en, this message translates to:
+  /// **'Missing: {deps}'**
+  String extensionStatusDependencyMissingNamed(String deps);
+
+  /// No description provided for @extensionDependencyMissingHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Needs {deps} on your PATH. Install it, then re-check.'**
+  String extensionDependencyMissingHint(String deps);
+
+  /// No description provided for @extensionCopyCommand.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy'**
+  String get extensionCopyCommand;
+
+  /// No description provided for @extensionCommandCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Command copied to clipboard'**
+  String get extensionCommandCopied;
+
+  /// No description provided for @extensionRecheck.
+  ///
+  /// In en, this message translates to:
+  /// **'Re-check'**
+  String get extensionRecheck;
+
   /// No description provided for @extensionStatusVersionTooOld.
   ///
   /// In en, this message translates to:

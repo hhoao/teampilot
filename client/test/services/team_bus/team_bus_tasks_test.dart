@@ -1,6 +1,7 @@
 import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/team_bus/agent_node.dart';
+import 'package:teampilot/services/team_bus/idle_notification.dart';
 import 'package:teampilot/services/team_bus/tasks/task_queue.dart';
 import 'package:teampilot/services/team_bus/tasks/team_task.dart';
 import 'package:teampilot/services/team_bus/team_bus.dart';
@@ -169,6 +170,56 @@ void main() {
       async.flushMicrotasks();
 
       expect(launcher.materialized, isEmpty);
+    });
+  });
+
+  test('receiveWork notifies the lead when a worker goes idle with no work', () {
+    fakeAsync((async) {
+      final bus = _busWithQueue(FakeMemberLauncher());
+      final lead = AgentNode.test(
+        memberId: 'lead',
+        lifecycle: MemberLifecycle.running,
+        activity: MemberActivity.active,
+        isTeamLead: true,
+      );
+      bus.declareMember(lead);
+      bus.declareMember(_runningWorker('w1'));
+
+      // Worker waits with nothing to do → blocks → announces idle to the lead
+      // (the Claude Code "transition to idle → notify leader" moment).
+      bus.receiveWork('w1');
+      async.flushMicrotasks();
+
+      expect(lead.inbox.isEmpty, isFalse);
+      final note = IdleNotification.parseTeamMessageContent(
+        lead.inbox.peekAll().single.content,
+      );
+      expect(note, isNotNull);
+      expect(note!.from, 'w1');
+      expect(note.idleReason, IdleReason.available);
+    });
+  });
+
+  test('a worker that claims work does not announce idle', () {
+    fakeAsync((async) {
+      final bus = _busWithQueue(FakeMemberLauncher());
+      final lead = AgentNode.test(
+        memberId: 'lead',
+        lifecycle: MemberLifecycle.running,
+        activity: MemberActivity.active,
+        isTeamLead: true,
+      );
+      bus.declareMember(lead);
+      bus.declareMember(_runningWorker('w1'));
+      bus.addTasks('lead', [const TeamTaskDraft(title: 'a', brief: 'do a')]);
+
+      // Work is available → claims immediately, never blocks → no idle ping.
+      WorkBatch? got;
+      bus.receiveWork('w1').then((b) => got = b);
+      async.flushMicrotasks();
+
+      expect(got, isA<TaskWork>());
+      expect(lead.inbox.isEmpty, isTrue);
     });
   });
 

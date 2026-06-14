@@ -140,6 +140,25 @@ class AppLocalizationsZh extends AppLocalizations {
   String get extensionStatusDependencyMissing => '缺少依赖';
 
   @override
+  String extensionStatusDependencyMissingNamed(String deps) {
+    return '缺少：$deps';
+  }
+
+  @override
+  String extensionDependencyMissingHint(String deps) {
+    return '需要 PATH 中有 $deps。安装后点击重新检测。';
+  }
+
+  @override
+  String get extensionCopyCommand => '复制';
+
+  @override
+  String get extensionCommandCopied => '命令已复制到剪贴板';
+
+  @override
+  String get extensionRecheck => '重新检测';
+
+  @override
   String get extensionStatusVersionTooOld => '已安装版本过旧';
 
   @override

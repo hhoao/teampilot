@@ -7,6 +7,7 @@ import 'coordination/coordination_policy.dart';
 import 'coordination/leader_star_coordination_policy.dart';
 import 'env/bus_environment.dart';
 import 'env/bus_observation.dart';
+import 'idle_notification.dart';
 import 'member_launcher.dart';
 import 'persistence/bus_message_log.dart';
 import 'persistence/bus_message_page.dart';
@@ -245,6 +246,9 @@ class TeamBus implements CoordinationView {
     final queue = node.profile.isTeamLead ? null : _taskQueue;
     node.doorbelled = false; // 进 wait = 响应了门铃并开始消费 → 解闸，读完后新邮件再响。
     _apply(node, const WaitEntered());
+    // 本次 wait 是否已向 leader 上报过「我空闲了」（每个真正阻塞的 wait 期上报一次，
+    // spurious wake 后重判不重复上报）。
+    var announcedIdle = false;
     try {
       while (true) {
         if (cancel?.isCancelled ?? false) return const EmptyWork();
@@ -261,7 +265,13 @@ class TeamBus implements CoordinationView {
           final task = queue.claimNext(memberId);
           if (task != null) return TaskWork(task);
         }
-        // 3) 两者皆空 → race 信箱到达 / 队列可认领 / 取消，醒来重判。
+        // 3) 两者皆空 → 真正空闲。对齐 Claude Code「转 idle → 通知 leader → 再等待」：
+        // 这是 bus 里精确的「worker 现在没活干」时刻，比被 parked 守卫挡掉的外部
+        // onMemberIdle 可靠。随后 race 信箱到达 / 队列可认领 / 取消，醒来重判。
+        if (!announcedIdle) {
+          announcedIdle = true;
+          _announceWorkerIdleToLead(node);
+        }
         final wake = Completer<void>();
         void signal() {
           if (!wake.isCompleted) wake.complete();
@@ -279,6 +289,34 @@ class TeamBus implements CoordinationView {
     } finally {
       _apply(node, const WaitExited());
     }
+  }
+
+  /// worker 进入 `wait_for_message` 且确无可干（消息空 + 队列无可认领）→ 真正空闲时，
+  /// 向 team-lead 推一条 idle/available 通知。**对齐 Claude Code**「转 idle → 通知
+  /// leader → 再等待」（inProcessRunner 在 isIdle 转换处 sendIdleNotification）。
+  ///
+  /// 替代被两道门焊死的旧路径：外部 [onMemberIdle] 对 parked worker 有 `waitingForMessage`
+  /// 守卫、星型策略又有 `_unreported` 闸（仅消息投递置位，队列认领从不置位）——故纯队列
+  /// worker 完成后回到 wait 永不上报、对 leader 隐形。这里在 bus 精确知晓「现在没活干」
+  /// 的一刻直接上报，绕开二者。投递走 [_deliverToMember]（eager 门铃）唤醒 leader。
+  void _announceWorkerIdleToLead(AgentNode node) {
+    if (node.profile.isTeamLead) return;
+    final leaderId = teamLeadId;
+    if (leaderId == null || leaderId == node.memberId) return;
+    final notice = IdleNotification.fromWorker(
+      memberId: node.memberId,
+      displayName: node.profile.effectiveDisplayName,
+      timestampMs: _env.clock(),
+    ).encode();
+    _deliverToMember(
+      leaderId,
+      TeamMessage(
+        id: _env.ids(),
+        from: node.memberId,
+        to: leaderId,
+        content: notice,
+      ),
+    );
   }
 
   /// 任务结果写回失败（客户端断连）→ 退回 pending，避免卡在没收到它的 worker 上。
@@ -596,7 +634,9 @@ class TeamBus implements CoordinationView {
   /// 原子认领下一个任务（[receiveWork] 内部复用；无可认领返回 null）。
   TeamTask? claimNextTask(String memberId) => _taskQueue?.claimNext(memberId);
 
-  /// worker 汇报任务终态（`update_task` 落点）。
+  /// worker 汇报任务终态（`update_task` 落点）。leader 经由 worker 进入 wait_for_message
+  /// 时的 idle 通知（[_announceWorkerIdleToLead]）感知进度，对齐 Claude Code——
+  /// `update_task` 本身只落库，不单独通知（CC 同样不自动把结果推给 leader）。
   bool updateTask(
     String taskId,
     TaskStatus status, {

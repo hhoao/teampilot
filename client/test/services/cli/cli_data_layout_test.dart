@@ -173,33 +173,100 @@ void main() {
     );
 
     test(
-      'ensureMemberInheritsTeam chains app → team → member symlinks',
+      'ensureMemberInheritsTeam chains app → team → member agents symlink only',
       () async {
         final layout = CliDataLayout(
           teampilotRoot: base.path,
           fs: LocalFilesystem(),
         );
         await layout.ensureAppToolLayout('flashskyai');
-        final appSkills = Directory(
-          p.join(layout.appToolRoot('flashskyai'), 'skills'),
+        final appAgents = Directory(
+          p.join(layout.appToolRoot('flashskyai'), 'agents'),
         );
-        await appSkills.create(recursive: true);
+        await appAgents.create(recursive: true);
         await File(
-          p.join(appSkills.path, 'README.md'),
+          p.join(appAgents.path, 'README.md'),
         ).writeAsString('top-level');
 
         await layout.ensureMemberInheritsTeam('team-a', 'sess-1', 'flashskyai');
 
+        // Agents are inherited via symlink.
+        final memberAgents = _posixPath.join(
+          layout.memberToolDir('team-a', 'sess-1', 'flashskyai'),
+          'agents',
+        );
+        expect(_inheritedPathExists(memberAgents), isTrue);
+        expect(
+          await File(p.join(memberAgents, 'README.md')).readAsString(),
+          'top-level',
+        );
+
+        // Skills are NOT inherited — they are provisioned separately.
         final memberSkills = _posixPath.join(
           layout.memberToolDir('team-a', 'sess-1', 'flashskyai'),
           'skills',
         );
-        expect(_inheritedPathExists(memberSkills), isTrue);
-        // Member -> team -> app: reading through both yields original file.
-        expect(
-          await File(p.join(memberSkills, 'README.md')).readAsString(),
-          'top-level',
+        expect(_inheritedPathExists(memberSkills), isFalse);
+      },
+    );
+
+    test(
+      'provisionMemberSkillsFromTeam copies team-level skills into member dir',
+      () async {
+        final layout = CliDataLayout(
+          teampilotRoot: base.path,
+          fs: LocalFilesystem(),
         );
+        // Set up team skills at new team-level path.
+        final teamSkills = Directory(layout.teamSkillsDir('team-a'));
+        await teamSkills.create(recursive: true);
+        final skillDir = Directory(p.join(teamSkills.path, 'some-skill'));
+        await skillDir.create();
+        await File(p.join(skillDir.path, 'prompt.md'))
+            .writeAsString('# team skill');
+
+        // Provision for claude (non-flashskyai).
+        await layout.provisionMemberSkillsFromTeam(
+          'team-a',
+          'sess-1',
+          'claude',
+        );
+
+        final memberSkills = p.join(
+          layout.memberToolDir('team-a', 'sess-1', 'claude'),
+          'skills',
+          'some-skill',
+        );
+        expect(Directory(memberSkills).existsSync(), isTrue);
+        expect(
+          await File(p.join(memberSkills, 'prompt.md')).readAsString(),
+          '# team skill',
+        );
+      },
+    );
+
+    test(
+      'provisionMemberSkillsFromTeam handles empty team skills dir',
+      () async {
+        final layout = CliDataLayout(
+          teampilotRoot: base.path,
+          fs: LocalFilesystem(),
+        );
+        final teamSkills = Directory(layout.teamSkillsDir('team-a'));
+        await teamSkills.create(recursive: true);
+
+        await layout.provisionMemberSkillsFromTeam(
+          'team-a',
+          'sess-1',
+          'flashskyai',
+        );
+
+        final memberSkills = p.join(
+          layout.memberToolDir('team-a', 'sess-1', 'flashskyai'),
+          'skills',
+        );
+        // Should create empty skills dir, not fail.
+        expect(Directory(memberSkills).existsSync(), isTrue);
       },
     );
 
@@ -355,6 +422,10 @@ void main() {
           fs: LocalFilesystem(),
         );
         await layout.ensureAppToolLayout('flashskyai');
+        final appAgents = Directory(
+          p.join(layout.appToolRoot('flashskyai'), 'agents'),
+        );
+        await appAgents.create(recursive: true);
 
         await Future.wait([
           layout.ensureMemberInheritsTeam('team-a', 'member-1', 'flashskyai'),
@@ -363,50 +434,15 @@ void main() {
         ]);
 
         for (final sessionId in ['member-1', 'member-2', 'member-3']) {
-          final memberSkills = p.join(
+          final memberAgents = p.join(
             layout.memberToolDir('team-a', sessionId, 'flashskyai'),
-            'skills',
+            'agents',
           );
-          expect(_inheritedPathExists(memberSkills), isTrue);
+          expect(_inheritedPathExists(memberAgents), isTrue);
         }
       },
     );
 
-    test(
-      'ensureMemberInheritsTeam tolerates existing team skills symlinks on Windows',
-      () async {
-        if (!Platform.isWindows) return;
-
-        final fs = LocalFilesystem();
-        final layout = CliDataLayout(teampilotRoot: base.path, fs: fs);
-        await layout.ensureAppToolLayout('claude');
-        final appSkills = Directory(
-          p.join(layout.appToolRoot('claude'), 'skills'),
-        );
-        await appSkills.create(recursive: true);
-        await File(p.join(appSkills.path, 'probe.md')).writeAsString('ok');
-
-        final teamSkills = p.join(
-          layout.teamToolDir('team-a', 'claude'),
-          'skills',
-        );
-        await Directory(p.dirname(teamSkills)).create(recursive: true);
-        await Link(teamSkills).create(appSkills.path);
-        await expectLater(fs.ensureDir(teamSkills), completes);
-
-        await layout.ensureMemberInheritsTeam('team-a', 'sess-1', 'claude');
-
-        final memberSkills = p.join(
-          layout.memberToolDir('team-a', 'sess-1', 'claude'),
-          'skills',
-        );
-        expect(_inheritedPathExists(memberSkills), isTrue);
-        expect(
-          await File(p.join(memberSkills, 'probe.md')).readAsString(),
-          'ok',
-        );
-      },
-    );
   });
 }
 

@@ -142,6 +142,11 @@ class ConfigProfileService implements ConfigProfileDelegate {
         trimmedSessionId,
         cli.value,
       ),
+      layout.provisionMemberSkillsFromTeam(
+        trimmedTeamId,
+        trimmedSessionId,
+        cli.value,
+      ),
       layout
           .provisionMemberPluginsFromTeam(
             trimmedTeamId,
@@ -214,6 +219,11 @@ class ConfigProfileService implements ConfigProfileDelegate {
       String? sessionProvisionJson;
       await Future.wait([
         layout.ensureStandaloneSessionInheritsProject(
+          trimmedProjectId,
+          trimmedSessionId,
+          cli.value,
+        ),
+        layout.provisionStandaloneSessionSkillsFromProject(
           trimmedProjectId,
           trimmedSessionId,
           cli.value,

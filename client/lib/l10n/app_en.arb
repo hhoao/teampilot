@@ -46,6 +46,17 @@
     "placeholders": { "version": { "type": "String" } }
   },
   "extensionStatusDependencyMissing": "Missing dependency",
+  "extensionStatusDependencyMissingNamed": "Missing: {deps}",
+  "@extensionStatusDependencyMissingNamed": {
+    "placeholders": { "deps": { "type": "String" } }
+  },
+  "extensionDependencyMissingHint": "Needs {deps} on your PATH. Install it, then re-check.",
+  "@extensionDependencyMissingHint": {
+    "placeholders": { "deps": { "type": "String" } }
+  },
+  "extensionCopyCommand": "Copy",
+  "extensionCommandCopied": "Command copied to clipboard",
+  "extensionRecheck": "Re-check",
   "extensionStatusVersionTooOld": "Installed version is too old",
   "extensionKindMcpServer": "Code intelligence (MCP)",
   "extensionKindSettingsHook": "Token savings (hook)",
