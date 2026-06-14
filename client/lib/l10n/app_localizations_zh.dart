@@ -140,6 +140,25 @@ class AppLocalizationsZh extends AppLocalizations {
   String get extensionStatusDependencyMissing => '缺少依赖';
 
   @override
+  String extensionStatusDependencyMissingNamed(String deps) {
+    return '缺少：$deps';
+  }
+
+  @override
+  String extensionDependencyMissingHint(String deps) {
+    return '需要 PATH 中有 $deps。安装后点击重新检测。';
+  }
+
+  @override
+  String get extensionCopyCommand => '复制';
+
+  @override
+  String get extensionCommandCopied => '命令已复制到剪贴板';
+
+  @override
+  String get extensionRecheck => '重新检测';
+
+  @override
   String get extensionStatusVersionTooOld => '已安装版本过旧';
 
   @override
@@ -439,6 +458,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get memberCliInheritHint => '继承团队默认';
 
   @override
+  String get memberLaunchConfigTitle => '模型配置';
+
+  @override
+  String get memberLaunchConfigSubtitle => '本成员的 CLI 后端、提供商、模型与 Effort。';
+
+  @override
   String get teamCliSubtitle => '创建团队时选定，之后不可更改。';
 
   @override
@@ -641,13 +666,17 @@ class AppLocalizationsZh extends AppLocalizations {
   String get homeWorkspaceProjectAgent => '智能体';
 
   @override
-  String get projectAgentBuiltInSubtitle => '选择 Agent 角色，影响其行为与可用能力。';
+  String get projectAgentBuiltInSubtitle =>
+      '当前 CLI 为 flashskyai 时，对应其 --agent 参数。';
 
   @override
   String get projectAgentExtraArgs => '额外 CLI 参数';
 
   @override
   String get projectAgentExtraArgsSubtitle => '附加在本项目 Agent 启动时的 CLI 参数。';
+
+  @override
+  String get projectAdvancedSettingsSubtitle => '本项目的 Agent 预设与额外 CLI 参数。';
 
   @override
   String get projectAgentPromptSubtitle => '编写系统提示词，定义 Agent 在本项目中的职责与行为边界。';
@@ -2663,10 +2692,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get model => '模型';
 
   @override
-  String get agent => '代理';
+  String get agent => 'Agent 预设';
 
   @override
-  String get selectAgent => '选择 Agent';
+  String get selectAgent => '选择预设';
 
   @override
   String get agentBuiltInNone => '默认';
@@ -2678,6 +2707,17 @@ class AppLocalizationsZh extends AppLocalizations {
   String get agentBuiltInSubtitle => '指定该成员以哪种 Agent 身份协作，影响其行为与可用能力。';
 
   @override
+  String get agentFlashskyaiPresetSubtitle =>
+      '对应 flashskyai 的 --agent 参数，可选内置或自定义子 Agent。';
+
+  @override
+  String get agentClaudeTypeSubtitle =>
+      '写入 Claude 团队 roster 的 agentType；留空则使用成员 ID。';
+
+  @override
+  String get agentClaudeTypeHint => '例如 Explore、Plan 或自定义类型';
+
+  @override
   String get agentCustomIdHint => '自定义 Agent 标识';
 
   @override
@@ -2685,6 +2725,12 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get memberExtraArgsSubtitle => '仅附加在该成员的 CLI 启动参数。';
+
+  @override
+  String get workspaceAdvancedSettings => '高级配置';
+
+  @override
+  String get workspaceAdvancedSettingsSubtitle => 'Agent 预设与本成员的额外 CLI 参数。';
 
   @override
   String get memberDangerouslySkipPermissions => '跳过所有权限检查';
@@ -2760,7 +2806,7 @@ class AppLocalizationsZh extends AppLocalizations {
       '使用 Claude 账号默认模型；请在 Providers 设置中管理 Official 登录。';
 
   @override
-  String get editMemberSubtitle => '编辑提供商、模型、代理和命令参数。';
+  String get editMemberSubtitle => '编辑提供商、模型、可选 Agent 预设与命令参数。';
 
   @override
   String get teamLeadNameRequired => 'FlashskyAI 团队委托要求此成员名称必须为 team-lead。';
@@ -3301,4 +3347,80 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get teamGenApplied => '草稿已应用，创建前请检查调整。';
+
+  @override
+  String get notificationCenterTitle => '通知';
+
+  @override
+  String get notificationEmpty => '暂无通知';
+
+  @override
+  String get notificationMarkAllRead => '全部标为已读';
+
+  @override
+  String get notificationClearAll => '清空';
+
+  @override
+  String get notificationMarkRead => '标为已读';
+
+  @override
+  String get notificationDelete => '删除';
+
+  @override
+  String get notificationTimeJustNow => '刚刚';
+
+  @override
+  String notificationTimeMinutesAgo(int minutes) {
+    return '$minutes 分钟前';
+  }
+
+  @override
+  String notificationTimeHoursAgo(int hours) {
+    return '$hours 小时前';
+  }
+
+  @override
+  String get memberDetailTitle => '成员详情';
+
+  @override
+  String get memberDetailViewAction => '查看成员详情';
+
+  @override
+  String get memberDetailOpenConfigDir => '打开配置目录';
+
+  @override
+  String get memberDetailOpenInFileManager => '在文件管理器中打开';
+
+  @override
+  String get memberDetailNeedsSession => '请先打开一个会话';
+
+  @override
+  String get memberDetailTabOverview => '概览';
+
+  @override
+  String get memberDetailTabSkills => 'Skills';
+
+  @override
+  String get memberDetailTabMcp => 'MCP';
+
+  @override
+  String get memberDetailTabPlugins => '插件';
+
+  @override
+  String get memberDetailTabSettings => '设置';
+
+  @override
+  String get memberDetailSourceRuntime => '运行会话配置';
+
+  @override
+  String get memberDetailSourceTeam => '团队层配置（该成员未在此会话中启动）';
+
+  @override
+  String get memberDetailEmpty => '该成员尚未在此会话中启动，且团队层无配置。';
+
+  @override
+  String get memberDetailLoadError => '读取该成员的配置目录失败。';
+
+  @override
+  String get memberDetailSectionEmpty => '无';
 }

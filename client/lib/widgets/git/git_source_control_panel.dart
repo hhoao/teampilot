@@ -4,6 +4,8 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:path/path.dart' as p;
+import 'package:teampilot/theme/app_toast_theme.dart';
+import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
 import '../../cubits/ai_feature_settings_cubit.dart';
 import '../../cubits/editor_cubit.dart';
@@ -151,10 +153,10 @@ class _GitSourceControlPanelState extends State<GitSourceControlPanel> {
             prev.commitMessage != next.commitMessage,
         listener: (context, state) {
           if (state.errorMessage != null) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(context.l10n.gitError(state.errorMessage ?? '')),
-              ),
+            AppToast.show(
+              context,
+              message: context.l10n.gitError(state.errorMessage ?? ''),
+              variant: AppToastVariant.error,
             );
           }
           if (_commitController.text != state.commitMessage) {
@@ -225,10 +227,10 @@ class _GitSourceControlPanelState extends State<GitSourceControlPanel> {
                 registry: CliToolRegistryScope.of(context),
               );
               if (setting.providerId.isEmpty) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(l10n.gitGenerateCommitMessageNoProvider),
-                  ),
+                AppToast.show(
+                  context,
+                  message: l10n.gitGenerateCommitMessageNoProvider,
+                  variant: AppToastVariant.error,
                 );
                 return;
               }

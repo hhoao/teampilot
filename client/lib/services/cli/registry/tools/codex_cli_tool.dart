@@ -21,6 +21,7 @@ import '../headless/codex_headless_provision_capability.dart';
 import '../installer/codex_installer_capability.dart';
 import '../../../provider/codex/codex_effort_capability.dart';
 import '../../../provider/codex/codex_provider_form_capability.dart';
+import '../capabilities/member_config_inspection_capability.dart';
 import '../capabilities/provider_form_capability.dart';
 import '../capabilities/resource_capability.dart';
 import '../resources/default_resource_capability.dart';
@@ -35,6 +36,7 @@ final class CodexCliTool implements CliToolDefinition {
     this.presence = const CodexPresence(),
     this.display = const CodexDisplay(),
     this.terminalBehavior = const CodexTerminalBehavior(),
+    this.memberConfigInspection = const DefaultMemberConfigInspection(),
     this.pluginManifest = const CodexPluginManifest(),
     this.providerCatalog = const CodexProviderCatalog(),
     this.providerModel = const ProviderRecordModelCapability(),
@@ -58,6 +60,7 @@ final class CodexCliTool implements CliToolDefinition {
   final PresenceCapability presence;
   final CodexDisplay display;
   final CodexTerminalBehavior terminalBehavior;
+  final MemberConfigInspectionCapability memberConfigInspection;
   final CodexPluginManifest pluginManifest;
   final CodexProviderCatalog providerCatalog;
   final ProviderModelCapability providerModel;
@@ -82,6 +85,7 @@ final class CodexCliTool implements CliToolDefinition {
     presence,
     display,
     terminalBehavior,
+    memberConfigInspection,
     pluginManifest,
     providerCatalog,
     providerModel,

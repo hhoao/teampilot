@@ -3,6 +3,8 @@ import '../../cli_tool_adapter.dart';
 import '../cli_capability.dart';
 import '../cli_tool_definition.dart';
 import '../capabilities/built_in_tool_capabilities.dart';
+import '../capabilities/member_agent_preset_capability.dart';
+import '../capabilities/native_team_capability.dart';
 import '../capabilities/config_profile_capability.dart';
 import '../capabilities/executable_resolver_capability.dart';
 import '../capabilities/installer_capability.dart';
@@ -22,6 +24,7 @@ import '../../../provider/claude/claude_effort_capability.dart';
 import '../../../provider/claude/claude_provider_credential_capability.dart';
 import '../../../provider/claude/claude_provider_form_capability.dart';
 import '../../../provider/claude/claude_provider_model_capability.dart';
+import '../capabilities/member_config_inspection_capability.dart';
 import '../capabilities/provider_form_capability.dart';
 import '../capabilities/resource_capability.dart';
 import '../resources/default_resource_capability.dart';
@@ -36,6 +39,7 @@ final class ClaudeCliTool implements CliToolDefinition {
     this.presence = const ClaudePresence(),
     this.display = const ClaudeDisplay(),
     this.terminalBehavior = const ClaudeTerminalBehavior(),
+    this.memberConfigInspection = const DefaultMemberConfigInspection(),
     this.pluginManifest = const ClaudePluginManifest(),
     this.providerCatalog = const ClaudeProviderCatalog(),
     this.providerModel = const ClaudeProviderModelCapability(),
@@ -59,6 +63,7 @@ final class ClaudeCliTool implements CliToolDefinition {
   final PresenceCapability presence;
   final ClaudeDisplay display;
   final ClaudeTerminalBehavior terminalBehavior;
+  final MemberConfigInspectionCapability memberConfigInspection;
   final ClaudePluginManifest pluginManifest;
   final ClaudeProviderCatalog providerCatalog;
   final ProviderModelCapability providerModel;
@@ -73,8 +78,13 @@ final class ClaudeCliTool implements CliToolDefinition {
   @override
   bool get isLaunchSupported => true;
 
+  static const _nativeTeam = NativeTeamSupport();
+  static const _memberAgentPreset = ClaudeMemberAgentPreset();
+
   @override
   Iterable<CliCapability> get capabilities => [
+    _nativeTeam,
+    _memberAgentPreset,
     launchArgs,
     configProfile,
     transcriptProbe,
@@ -83,6 +93,7 @@ final class ClaudeCliTool implements CliToolDefinition {
     presence,
     display,
     terminalBehavior,
+    memberConfigInspection,
     pluginManifest,
     providerCatalog,
     providerModel,

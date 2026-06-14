@@ -3,6 +3,8 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:teampilot/theme/app_toast_theme.dart';
+import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
 import '../../app/app_shell.dart';
 import '../../cubits/app_provider_cubit.dart';
@@ -214,8 +216,10 @@ class _SessionControlsState extends State<_SessionControls> {
       );
       if (!available) {
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(l10n.windowsStorageBackendWslUnavailable)),
+        AppToast.show(
+          context,
+          message: l10n.windowsStorageBackendWslUnavailable,
+          variant: AppToastVariant.error,
         );
         return;
       }

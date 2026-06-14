@@ -340,8 +340,11 @@ class CliDataLayout {
     );
   }
 
-  /// Ensures standalone session `{tool}/` exists and inherits project
-  /// `agents/` + `skills/`.
+  /// Ensures standalone session `{tool}/` exists and inherits project `agents/`.
+  ///
+  /// Call [provisionStandaloneSessionPluginsFromProject] separately (session
+  /// launch) for `plugins/`. Skills are materialized into the leaf CONFIG_DIR by
+  /// `ResourceProvisioningService`.
   ///
   /// Holds the same per-project lock through session symlinks so concurrent
   /// session launches cannot re-enter project inherit while another session
@@ -388,7 +391,9 @@ class CliDataLayout {
 
   /// Ensures member `{tool}/` exists and inherits team `agents/`.
   ///
-  /// Call [provisionMemberPluginsFromTeam] separately (session launch) for `plugins/`.
+  /// Call [provisionMemberPluginsFromTeam] separately (session launch) for
+  /// `plugins/`. Skills are materialized into the leaf CONFIG_DIR by
+  /// `ResourceProvisioningService`.
   ///
   /// Holds the same per-team lock through member symlinks so concurrent member
   /// launches cannot re-enter team inherit while another member still links.

@@ -245,7 +245,7 @@ class TeamCubit extends Cubit<TeamState> implements TeamCubitHost {
 
   Future<bool> addTeam(
     String name, {
-    CliTool cli = CliTool.flashskyai,
+    CliTool cli = CliTool.claude,
     TeamMode teamMode = TeamMode.native,
     Map<String, String> providerIdsByTool = const {},
     List<TeamMemberConfig>? members,
@@ -261,10 +261,12 @@ class TeamCubit extends Cubit<TeamState> implements TeamCubitHost {
       emit(state.copyWith(statusMessage: 'Team "$trimmed" already exists.'));
       return false;
     }
-    if (!(CliToolRegistry.builtIn().tryGet(cli)?.isLaunchSupported ?? false)) {
+    if (!_teamCliAllowed(cli: cli, teamMode: teamMode)) {
       emit(
         state.copyWith(
-          statusMessage: 'CLI "${cli.value}" is not available for teams yet.',
+          statusMessage: teamMode == TeamMode.native
+              ? 'CLI "${cli.value}" does not support native team mode.'
+              : 'CLI "${cli.value}" is not available for teams yet.',
         ),
       );
       return false;
@@ -315,10 +317,12 @@ class TeamCubit extends Cubit<TeamState> implements TeamCubitHost {
     String extraArgs = '',
   }) async {
     final base = name.trim().isEmpty ? 'Team' : name.trim();
-    if (!(CliToolRegistry.builtIn().tryGet(cli)?.isLaunchSupported ?? false)) {
+    if (!_teamCliAllowed(cli: cli, teamMode: teamMode)) {
       emit(
         state.copyWith(
-          statusMessage: 'CLI "${cli.value}" is not available for teams yet.',
+          statusMessage: teamMode == TeamMode.native
+              ? 'CLI "${cli.value}" does not support native team mode.'
+              : 'CLI "${cli.value}" is not available for teams yet.',
         ),
       );
       return null;
@@ -539,5 +543,15 @@ class TeamCubit extends Cubit<TeamState> implements TeamCubitHost {
     if (!changed) return;
     emit(state.copyWith(teams: teams));
     await _repository.saveTeams(teams);
+  }
+
+  bool _teamCliAllowed({required CliTool cli, required TeamMode teamMode}) {
+    final registry = CliToolRegistry.builtIn();
+    final def = registry.tryGet(cli);
+    if (def == null || !def.isLaunchSupported) return false;
+    if (teamMode == TeamMode.native && !registry.supportsNativeTeam(cli)) {
+      return false;
+    }
+    return true;
   }
 }

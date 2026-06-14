@@ -6,6 +6,7 @@ import 'package:path/path.dart' as p;
 import 'package:pub_semver/pub_semver.dart';
 import '../../config/app_update_config.dart';
 import '../../models/app_release_info.dart';
+import '../github/github_http.dart';
 import 'app_update_asset_selector.dart';
 
 typedef AppUpdateHttpClient = http.Client;
@@ -18,6 +19,7 @@ class AppUpdateService {
     PackageInfoLoader? packageInfoLoader,
     AppUpdateInstallKind Function()? installKindResolver,
     String? userAgent,
+    String? githubToken,
     String? githubOwner,
     String? githubRepo,
   }) : _httpClient = httpClient ?? http.Client(),
@@ -27,6 +29,7 @@ class AppUpdateService {
        _installKindResolver =
            installKindResolver ?? resolveAppUpdateInstallKind,
        _userAgent = userAgent,
+       _githubToken = githubToken,
        _githubOwner = githubOwner,
        _githubRepo = githubRepo;
 
@@ -35,6 +38,7 @@ class AppUpdateService {
   final PackageInfoLoader _packageInfoLoader;
   final AppUpdateInstallKind Function() _installKindResolver;
   final String? _userAgent;
+  final String? _githubToken;
   final String? _githubOwner;
   final String? _githubRepo;
 
@@ -90,21 +94,36 @@ class AppUpdateService {
   Future<AppReleaseInfo> _fetchLatestRelease({
     bool preferAndroidArm64 = true,
   }) async {
+    try {
+      return await _fetchLatestReleaseFromApi(
+        preferAndroidArm64: preferAndroidArm64,
+      );
+    } on AppUpdateException catch (e) {
+      if (!e.isRateLimited) rethrow;
+      return _fetchLatestReleaseFallback(
+        preferAndroidArm64: preferAndroidArm64,
+      );
+    }
+  }
+
+  Future<AppReleaseInfo> _fetchLatestReleaseFromApi({
+    bool preferAndroidArm64 = true,
+  }) async {
     final url = appUpdateLatestReleaseApiUrl(
       owner: _githubOwner,
       repo: _githubRepo,
     );
-    final info = await _packageInfoLoader();
     final response = await _httpClient.get(
       Uri.parse(url),
-      headers: {
-        'Accept': 'application/vnd.github+json',
-        'User-Agent': _userAgent ?? 'TeamPilot/${info.version}',
-      },
+      headers: await _apiHeaders(),
     );
     if (response.statusCode != 200) {
       throw AppUpdateException(
-        'GitHub API returned ${response.statusCode}. Try again later.',
+        githubApiErrorMessage(
+          response.statusCode,
+          responseHeaders: response.headers,
+        ),
+        isRateLimited: githubApiStatusIsRateLimited(response.statusCode),
       );
     }
 
@@ -115,6 +134,115 @@ class AppUpdateService {
       throw AppUpdateException('Invalid response from GitHub Releases API.');
     }
 
+    return _releaseInfoFromApiBody(
+      body,
+      preferAndroidArm64: preferAndroidArm64,
+    );
+  }
+
+  Future<AppReleaseInfo> _fetchLatestReleaseFallback({
+    bool preferAndroidArm64 = true,
+  }) async {
+    final owner = _githubOwner ?? appUpdateGitHubOwner;
+    final repo = _githubRepo ?? appUpdateGitHubRepo;
+    final tagName = await _resolveLatestReleaseTagName(owner: owner, repo: repo);
+    if (tagName == null) {
+      throw AppUpdateException(
+        'Could not resolve the latest release without GitHub API access. '
+        'Try again later or set GITHUB_TOKEN.',
+      );
+    }
+
+    final versionString = parseReleaseVersionFromTag(tagName);
+    final Version version;
+    try {
+      version = Version.parse(versionString);
+    } on FormatException {
+      throw AppUpdateException('Unrecognized release version: $tagName');
+    }
+
+    final kind = _installKindResolver();
+    final androidSuffix = kind == AppUpdateInstallKind.androidApk
+        ? androidApkAbiSuffix(preferArm64: preferAndroidArm64)
+        : androidApkAbiSuffix();
+    final assetName = buildExpectedReleaseAssetName(
+      version: version,
+      kind: kind,
+      androidAbiSuffix: androidSuffix,
+    );
+    final downloadUrl = githubReleaseAssetDownloadUrl(
+      owner: owner,
+      repo: repo,
+      tagName: tagName,
+      assetName: assetName,
+    );
+
+    final headers = await _httpHeaders();
+    final head = await _httpClient.head(Uri.parse(downloadUrl), headers: headers);
+    if (head.statusCode != 200) {
+      throw AppUpdateAssetNotFoundException(kind, [assetName]);
+    }
+
+    final fileSize = int.tryParse(head.headers['content-length'] ?? '') ?? 0;
+    return AppReleaseInfo(
+      version: version,
+      tagName: tagName,
+      releaseNotes: '',
+      downloadUrl: downloadUrl,
+      assetName: assetName,
+      fileSize: fileSize,
+      htmlUrl: 'https://github.com/$owner/$repo/releases/tag/$tagName',
+    );
+  }
+
+  Future<String?> _resolveLatestReleaseTagName({
+    required String owner,
+    required String repo,
+  }) async {
+    final pageUrl = appUpdateLatestReleasePageUrl(owner: owner, repo: repo);
+    final headers = await _httpHeaders();
+    final request = http.Request('GET', Uri.parse(pageUrl))
+      ..followRedirects = false
+      ..headers.addAll(headers);
+    final streamed = await _httpClient.send(request);
+    await streamed.stream.drain();
+
+    if (streamed.statusCode >= 300 && streamed.statusCode < 400) {
+      final location = streamed.headers['location'];
+      if (location != null) {
+        final tag = parseReleaseTagFromGithubUrl(location);
+        if (tag != null) return tag;
+      }
+    }
+
+    final atomUrl = 'https://github.com/$owner/$repo/releases.atom';
+    final atomResponse = await _httpClient.get(
+      Uri.parse(atomUrl),
+      headers: headers,
+    );
+    if (atomResponse.statusCode != 200) return null;
+    return _parseLatestTagFromAtom(atomResponse.body);
+  }
+
+  String? _parseLatestTagFromAtom(String body) {
+    final linkMatch = RegExp(
+      r'<link[^>]+href="https://github\.com/[^"]+/releases/tag/([^"?#]+)"',
+    ).firstMatch(body);
+    final fromLink = linkMatch?.group(1)?.trim();
+    if (fromLink != null && fromLink.isNotEmpty) return fromLink;
+
+    final titleMatch = RegExp(r'<entry>\s*<title>([^<]+)</title>').firstMatch(
+      body,
+    );
+    final title = titleMatch?.group(1)?.trim();
+    if (title != null && title.isNotEmpty) return title;
+    return null;
+  }
+
+  AppReleaseInfo _releaseInfoFromApiBody(
+    Map<String, dynamic> body, {
+    required bool preferAndroidArm64,
+  }) {
     final tagName = body['tag_name'] as String? ?? '';
     if (tagName.isEmpty) {
       throw AppUpdateException('Release is missing tag_name.');
@@ -180,14 +308,31 @@ class AppUpdateService {
     );
   }
 
+  Future<Map<String, String>> _apiHeaders() async {
+    return githubApiHeaders(
+      userAgent: await _resolvedUserAgent(),
+      token: _githubToken,
+    );
+  }
+
+  Future<Map<String, String>> _httpHeaders() async {
+    return githubHttpHeaders(userAgent: await _resolvedUserAgent());
+  }
+
+  Future<String> _resolvedUserAgent() async {
+    final override = _userAgent;
+    if (override != null) return override;
+    final info = await _packageInfoLoader();
+    return 'TeamPilot/${info.version}';
+  }
+
   /// Downloads [release] to a temp file; [onProgress] receives 0.0–1.0 when size known.
   Future<File> downloadRelease(
     AppReleaseInfo release, {
     void Function(double progress)? onProgress,
   }) async {
     final request = http.Request('GET', Uri.parse(release.downloadUrl));
-    final info = await _packageInfoLoader();
-    request.headers['User-Agent'] = _userAgent ?? 'TeamPilot/${info.version}';
+    request.headers.addAll(await _httpHeaders());
 
     final streamed = await _httpClient.send(request);
     if (streamed.statusCode != 200) {
@@ -227,9 +372,10 @@ class AppUpdateService {
 }
 
 class AppUpdateException implements Exception {
-  AppUpdateException(this.message);
+  AppUpdateException(this.message, {this.isRateLimited = false});
 
   final String message;
+  final bool isRateLimited;
 
   @override
   String toString() => message;

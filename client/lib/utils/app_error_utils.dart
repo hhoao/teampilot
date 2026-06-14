@@ -1,10 +1,10 @@
 import 'dart:io';
 
-import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 
-import '../router/app_router.dart';
+import '../widgets/app_toast/app_toast.dart';
+import '../theme/app_toast_theme.dart';
 
 enum AppErrorKind {
   unexpected,
@@ -31,9 +31,6 @@ class AppErrorDecision {
 
 /// Classifies errors for logging, deduplication, and optional UI hints.
 class AppErrorUtils {
-  static DateTime? _lastShownAt;
-  static String? _lastShownMessage;
-
   static AppErrorDecision classify(Object error) {
     if (_isCancelledError(error)) {
       return const AppErrorDecision(
@@ -89,31 +86,9 @@ class AppErrorUtils {
   }
 
   static void showUserMessage(String message) {
-    final trimmed = message.trim();
-    if (trimmed.isEmpty) return;
-
-    final now = DateTime.now();
-    if (_lastShownMessage == trimmed &&
-        _lastShownAt != null &&
-        now.difference(_lastShownAt!) < const Duration(seconds: 2)) {
-      return;
-    }
-
-    final context = appRouter.routerDelegate.navigatorKey.currentContext;
-    if (context == null || !context.mounted) {
-      return;
-    }
-
-    _lastShownMessage = trimmed;
-    _lastShownAt = now;
-
-    final messenger = ScaffoldMessenger.of(context);
-    messenger.hideCurrentSnackBar();
-    messenger.showSnackBar(
-      SnackBar(
-        content: Text(trimmed),
-        behavior: SnackBarBehavior.floating,
-      ),
+    AppToast.showGlobal(
+      message: message,
+      variant: AppToastVariant.error,
     );
   }
 

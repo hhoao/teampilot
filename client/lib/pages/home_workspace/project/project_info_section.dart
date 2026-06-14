@@ -1,10 +1,10 @@
-﻿import 'dart:io';
-
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
+import 'package:teampilot/theme/app_toast_theme.dart';
+import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
 import '../../../cubits/chat_cubit.dart';
 import '../../../l10n/l10n_extensions.dart';
@@ -16,6 +16,7 @@ import '../../../utils/project_display_name.dart';
 import '../../../widgets/app_dialog.dart';
 import '../../../widgets/project_details_dialog.dart';
 import '../../../widgets/settings/workspace_settings_widgets.dart';
+import '../../../services/io/system_folder_opener.dart';
 import 'project_icon_settings_row.dart';
 
 /// Project basic settings + danger zone (same layout as [TeamInfoSection]).
@@ -329,19 +330,13 @@ String _formatTimestamp(int ms) {
 
 void _copyText(BuildContext context, String text) {
   Clipboard.setData(ClipboardData(text: text));
-  ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(
-      content: Text(context.l10n.pathCopied(text)),
-      duration: const Duration(seconds: 2),
-    ),
+  AppToast.show(
+    context,
+    message: context.l10n.pathCopied(text),
+    variant: AppToastVariant.success,
   );
 }
 
 void _openFolder(String path) {
-  final command = Platform.isMacOS
-      ? 'open'
-      : Platform.isWindows
-      ? 'start'
-      : 'xdg-open';
-  Process.run(command, [path]);
+  SystemFolderOpener().reveal(path);
 }

@@ -16,6 +16,7 @@ import '../app_icon_button.dart';
 import '../app_provider/provider_brand_icon.dart';
 import '../cli/cli_brand_icon.dart';
 import '../member_presence_indicator.dart';
+import '../menu/sidebar_action_menu.dart';
 import '../team/team_lead_badge.dart';
 
 /// Team roster list panel.
@@ -28,6 +29,9 @@ class MembersPanel extends StatelessWidget {
     required this.onSelected,
     required this.onOpen,
     required this.onLaunchAll,
+    required this.canViewDetail,
+    required this.onViewDetail,
+    required this.onOpenConfigDir,
     super.key,
   });
 
@@ -38,6 +42,11 @@ class MembersPanel extends StatelessWidget {
   final ValueChanged<String> onSelected;
   final ValueChanged<String> onOpen;
   final VoidCallback onLaunchAll;
+
+  /// Whether "view detail" is enabled (true when a session/tab is active).
+  final bool canViewDetail;
+  final ValueChanged<String> onViewDetail;
+  final ValueChanged<String> onOpenConfigDir;
 
   @override
   Widget build(BuildContext context) {
@@ -106,39 +115,50 @@ class MembersPanel extends StatelessWidget {
                 return Container(
                   key: AppKeys.memberRow(member.id),
                   margin: const EdgeInsets.only(bottom: 8),
-                  child: Material(
-                    color: selected ? cs.secondaryContainer : cs.workspaceInset,
-                    borderRadius: BorderRadius.circular(8),
-                    child: ListTile(
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      leading: memberProvider != null
-                          ? ProviderBrandIcon.fromConfig(
-                              memberProvider,
-                              size: 28,
-                              borderRadius: 7,
-                            )
-                          : CliBrandIcon(
-                              cli: memberCli,
-                              size: 28,
-                              borderRadius: 7,
-                            ),
-                      title: MemberTitleRow(
-                        member: member,
-                        fallbackName: l10n.memberName,
-                        style: Theme.of(context).textTheme.bodyMedium,
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onSecondaryTapDown: (d) =>
+                        _showMemberMenu(context, l10n, member, d),
+                    onLongPressStart: (d) => _showMemberMenu(
+                      context,
+                      l10n,
+                      member,
+                      TapDownDetails(globalPosition: d.globalPosition),
+                    ),
+                    child: Material(
+                      color: selected ? cs.secondaryContainer : cs.workspaceInset,
+                      borderRadius: BorderRadius.circular(8),
+                      child: ListTile(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        leading: memberProvider != null
+                            ? ProviderBrandIcon.fromConfig(
+                                memberProvider,
+                                size: 28,
+                                borderRadius: 7,
+                              )
+                            : CliBrandIcon(
+                                cli: memberCli,
+                                size: 28,
+                                borderRadius: 7,
+                              ),
+                        title: MemberTitleRow(
+                          member: member,
+                          fallbackName: l10n.memberName,
+                          style: Theme.of(context).textTheme.bodyMedium,
+                          textColor: titleColor,
+                          compactBadge: true,
+                        ),
                         textColor: titleColor,
-                        compactBadge: true,
+                        iconColor: titleColor,
+                        subtitle: Text(
+                          subtitle,
+                          style: TextStyle(color: subtitleColor),
+                        ),
+                        trailing: MemberPresenceIndicator(presence: presence),
+                        onTap: () => onSelected(member.id),
                       ),
-                      textColor: titleColor,
-                      iconColor: titleColor,
-                      subtitle: Text(
-                        subtitle,
-                        style: TextStyle(color: subtitleColor),
-                      ),
-                      trailing: MemberPresenceIndicator(presence: presence),
-                      onTap: () => onSelected(member.id),
                     ),
                   ),
                 );
@@ -149,7 +169,61 @@ class MembersPanel extends StatelessWidget {
       ),
     );
   }
+
+  Future<void> _showMemberMenu(
+    BuildContext context,
+    AppLocalizations l10n,
+    TeamMemberConfig member,
+    TapDownDetails details,
+  ) async {
+    // Dispatch via the menu's return value (not inline `onAction`): actions that
+    // push a route — e.g. the detail dialog — must run AFTER the menu route has
+    // popped, otherwise the menu's own pop tears down the route we just pushed.
+    final action = await showSidebarActionMenuFromSpecsAtTap<_MemberMenuAction>(
+      context: context,
+      tapDetails: details,
+      specs: [
+        SidebarActionMenuSpec.item(
+          value: _MemberMenuAction.viewDetail,
+          icon: Icons.info_outline,
+          label: l10n.memberDetailViewAction,
+          enabled: canViewDetail,
+          tooltip: canViewDetail ? null : l10n.memberDetailNeedsSession,
+        ),
+        SidebarActionMenuSpec.item(
+          value: _MemberMenuAction.open,
+          icon: Icons.open_in_new,
+          label: l10n.openMember,
+        ),
+        SidebarActionMenuSpec.item(
+          value: _MemberMenuAction.openConfigDir,
+          icon: Icons.folder_open,
+          label: l10n.memberDetailOpenConfigDir,
+        ),
+        const SidebarActionMenuSpec.divider(),
+        SidebarActionMenuSpec.item(
+          value: _MemberMenuAction.launchAll,
+          icon: Icons.play_arrow,
+          label: l10n.openTeam,
+        ),
+      ],
+    );
+    switch (action) {
+      case _MemberMenuAction.viewDetail:
+        onViewDetail(member.id);
+      case _MemberMenuAction.open:
+        onOpen(member.id);
+      case _MemberMenuAction.openConfigDir:
+        onOpenConfigDir(member.id);
+      case _MemberMenuAction.launchAll:
+        onLaunchAll();
+      case null:
+        break;
+    }
+  }
 }
+
+enum _MemberMenuAction { viewDetail, open, openConfigDir, launchAll }
 
 CliTool _catalogCli(CliToolRegistry? registry, CliTool memberCli) {
   if (registry != null &&

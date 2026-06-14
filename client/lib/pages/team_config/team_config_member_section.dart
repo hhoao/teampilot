@@ -2,30 +2,22 @@
 import 'package:teampilot/theme/app_icon_sizes.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../cubits/app_provider_cubit.dart';
 import '../../cubits/team_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
-import '../../models/app_provider_config.dart';
 import '../../models/team_config.dart';
 import '../../models/team_member_prompt_presets.dart';
 import '../../services/app/flashskyai_agent_catalog_service.dart';
-import '../../services/cli/registry/capabilities/provider_model_capability.dart';
-import '../../services/cli/registry/cli_display_name.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../services/storage/storage_resolver.dart';
 import '../../theme/app_text_styles.dart';
 import '../../utils/debounce/debounce.dart';
 import '../../utils/team_member_naming.dart';
-import '../../widgets/app_provider/brand_dropdown_rows.dart';
-import '../../services/cli/registry/capabilities/cli_effort_capability.dart';
-import '../../widgets/app_provider/cli_effort_picker_field.dart';
-import '../../widgets/app_provider/provider_model_picker_field.dart';
-import '../../widgets/dropdown/app_dropdown_decoration.dart';
-import '../../widgets/dropdown/app_dropdown_field.dart';
+import '../../widgets/cli/member_agent_preset_field.dart';
 import '../../widgets/settings/workspace_settings_widgets.dart';
 import '../../widgets/team/team_lead_badge.dart';
 import 'team_config_helpers.dart';
 import 'team_config_member_dialogs.dart';
+import 'team_member_launch_config_section.dart';
 
 class TeamMemberDetailSection extends StatelessWidget {
   const TeamMemberDetailSection({
@@ -158,126 +150,25 @@ class TeamMemberConfigFormState extends State<TeamMemberConfigForm> {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final m = widget.member;
-    final memberCatalogCli =
-        catalogCliForTeam(context, widget.member.cli ?? widget.team.cli) ??
-        CliTool.claude;
-    final dropdownDeco = AppDropdownDecorations.themed(context);
 
-    final prov = m.provider;
-    final appProviders = context
-        .watch<AppProviderCubit>()
-        .state
-        .providersFor(memberCatalogCli)
-        .toList(growable: false);
-    final providerIds = appProviders.map((p) => p.id).toList()..sort();
-    if (prov.trim().isNotEmpty && !providerIds.contains(prov)) {
-      providerIds.add(prov);
-    }
-    final providerLabels = {
-      for (final p in appProviders) p.id: p.name,
-      if (prov.trim().isNotEmpty && !appProviders.any((p) => p.id == prov))
-        prov: prov,
-    };
-
-    AppProviderConfig? selectedAppProvider;
-    if (prov.trim().isNotEmpty) {
-      for (final p in context.read<AppProviderCubit>().state.providersFor(
-        memberCatalogCli,
-      )) {
-        if (p.id == prov) {
-          selectedAppProvider = p;
-          break;
-        }
-      }
-    }
-
-    final model = m.model;
-    final cliRegistry = CliToolRegistryScope.of(context);
-    final modelCapability = cliRegistry.capability<ProviderModelCapability>(
-      memberCatalogCli,
-    );
-    final hideModelPicker =
-        selectedAppProvider == null ||
-        modelCapability == null ||
-        modelCapability.pickerMode(selectedAppProvider) ==
-            ProviderModelPickerMode.hidden;
-    final showMemberEffort = teamShowsEffortPicker(
+    final showMemberAgentPreset = memberShowsAgentPresetUi(
       context,
-      cli: memberCatalogCli,
-      placement: EffortPickerPlacement.member,
-      model: model,
+      team: widget.team,
+      member: m,
     );
-
-    final showCustomAgentField =
-        FlashskyaiAgentCatalog.activeDropdownValue(
-          m.agent,
-          userAgentIds: _userAgentIds,
-        ) ==
-        FlashskyaiAgentCatalog.customDropdownValue;
+    final agentPresetCli = memberAgentPresetCli(
+      team: widget.team,
+      member: m,
+    );
+    final memberAgentStyle = showMemberAgentPreset && agentPresetCli != null
+        ? CliToolRegistryScope.of(context).memberAgentPresetStyle(
+            agentPresetCli,
+          )
+        : null;
 
     final canDelete =
         widget.team.members.length > 1 && !TeamMemberNaming.isTeamLead(m);
     final errorColor = Theme.of(context).colorScheme.error;
-
-    Widget agentBody() => Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        AppDropdownField<String>(
-          key: ValueKey(
-            'member-agent-dd-${widget.member.id}-${m.agent}-${_userAgentIds.join(",")}',
-          ),
-          items: FlashskyaiAgentCatalog.dropdownValues(
-            userAgentIds: _userAgentIds,
-          ),
-          initialItem: FlashskyaiAgentCatalog.activeDropdownValue(
-            m.agent,
-            userAgentIds: _userAgentIds,
-          ),
-          hintText: l10n.selectAgent,
-          decoration: dropdownDeco,
-          headerMaxLines: 2,
-          listItemMaxLines: 2,
-          itemLabel: (value) => memberAgentDropdownItemLabel(
-            context,
-            l10n,
-            value,
-            userAgentIds: _userAgentIds,
-          ),
-          onChanged: (value) {
-            final v = value ?? FlashskyaiAgentCatalog.noneDropdownValue;
-            if (v == FlashskyaiAgentCatalog.noneDropdownValue) {
-              _agentCtl.clear();
-              _update(m.copyWith(agent: ''));
-            } else if (v == FlashskyaiAgentCatalog.customDropdownValue) {
-              final current = m.agent.trim();
-              final next =
-                  FlashskyaiAgentCatalog.isKnownAgentId(
-                    current,
-                    userAgentIds: _userAgentIds,
-                  )
-                  ? ''
-                  : current;
-              _agentCtl.text = next;
-              _update(m.copyWith(agent: next));
-            } else {
-              _agentCtl.text = v;
-              _update(m.copyWith(agent: v));
-            }
-          },
-        ),
-        if (showCustomAgentField) ...[
-          const SizedBox(height: 8),
-          TextField(
-            controller: _agentCtl,
-            decoration: InputDecoration(
-              hintText: l10n.agentCustomIdHint,
-              floatingLabelBehavior: FloatingLabelBehavior.never,
-            ),
-            onChanged: (v) => _update(m.copyWith(agent: v)),
-          ),
-        ],
-      ],
-    );
 
     return SettingsSurfaceCard(
       child: Column(
@@ -325,103 +216,10 @@ class TeamMemberConfigFormState extends State<TeamMemberConfigForm> {
             ),
             showDividerBelow: true,
           ),
-          if (widget.team.teamMode == TeamMode.mixed)
-            SettingsLabeledStackedRow(
-              title: l10n.teamCliLabel,
-              body: AppDropdownField<String>(
-                items: [
-                  for (final def in cliRegistry.launchable) def.id.value,
-                ],
-                initialItem: widget.member.cli?.value,
-                hintText: l10n.memberCliInheritHint,
-                decoration: dropdownDeco,
-                onChanged: (value) {
-                  _update(
-                    widget.member.copyWith(
-                      cli: value == null ? null : CliTool.decode(value),
-                      provider: '',
-                      model: '',
-                      updateCli: true,
-                    ),
-                  );
-                },
-                itemBuilder: (context, value) => cliDropdownRow(
-                  context,
-                  cli: CliTool.decode(value),
-                  label: cliDisplayName(
-                    cliRegistry.tryGet(CliTool.decode(value))!,
-                    l10n,
-                  ),
-                  registry: cliRegistry,
-                ),
-              ),
-              showDividerBelow: true,
-            ),
-          SettingsLabeledStackedRow(
-            title: l10n.provider,
-            body: AppDropdownField<String>(
-              items: providerIds,
-              initialItem: prov.isEmpty ? null : prov,
-              hintText: l10n.selectProvider,
-              decoration: dropdownDeco,
-              onChanged: (value) {
-                final newProv = value ?? '';
-                _update(m.copyWith(provider: newProv, model: ''));
-              },
-              itemBuilder: providerDropdownItemBuilder(
-                providers: context
-                    .read<AppProviderCubit>()
-                    .state
-                    .providersFor(memberCatalogCli),
-                labelFor: (value) => providerLabels[value] ?? value,
-              ),
-            ),
-            showDividerBelow: true,
-          ),
-          if (!hideModelPicker)
-            SettingsLabeledStackedRow(
-              title: l10n.model,
-              body: ProviderModelPickerField(
-                key: ValueKey('member-model-$prov-$model'),
-                cli: memberCatalogCli,
-                providerId: prov,
-                provider: selectedAppProvider,
-                value: model,
-                hintText: l10n.selectModel,
-                decoration: dropdownDeco,
-                onChanged: (value) =>
-                    _update(m.copyWith(model: value.trim())),
-              ),
-              showDividerBelow: !showMemberEffort,
-            ),
-          if (showMemberEffort)
-            SettingsLabeledStackedRow(
-              title: l10n.memberEffortLevel,
-              subtitle: l10n.memberEffortLevelSubtitle,
-              body: CliEffortPickerField(
-                key: ValueKey('member-effort-$prov-$model-${m.effort}'),
-                cli: memberCatalogCli,
-                value: m.effort,
-                team: widget.team,
-                member: m,
-                provider: selectedAppProvider,
-                model: model,
-                allowInherit: true,
-                inheritLabel: l10n.memberEffortInheritHint,
-                decoration: dropdownDeco,
-                onChanged: (value) => _update(
-                  m.copyWith(
-                    effort: value,
-                    updateEffort: true,
-                  ),
-                ),
-              ),
-              showDividerBelow: true,
-            ),
-          SettingsLabeledStackedRow(
-            title: l10n.agent,
-            subtitle: l10n.agentBuiltInSubtitle,
-            body: agentBody(),
+          MemberLaunchConfigRow(
+            team: widget.team,
+            member: m,
+            cubit: widget.cubit,
             showDividerBelow: true,
           ),
           SettingsLabeledRow(
@@ -431,15 +229,6 @@ class TeamMemberConfigFormState extends State<TeamMemberConfigForm> {
               value: m.dangerouslySkipPermissions,
               onChanged: (v) =>
                   _update(m.copyWith(dangerouslySkipPermissions: v)),
-            ),
-            showDividerBelow: true,
-          ),
-          SettingsLabeledStackedRow(
-            title: l10n.memberExtraArgs,
-            body: TextField(
-              controller: _argsCtl,
-              decoration: const InputDecoration(),
-              onChanged: (v) => _update(m.copyWith(extraArgs: v)),
             ),
             showDividerBelow: true,
           ),
@@ -487,7 +276,40 @@ class TeamMemberConfigFormState extends State<TeamMemberConfigForm> {
               decoration: const InputDecoration(),
               onChanged: (v) => _update(m.copyWith(playbook: v)),
             ),
-            showDividerBelow: false,
+            showDividerBelow: true,
+          ),
+          SettingsAdvancedExpansion(
+            title: l10n.workspaceAdvancedSettings,
+            subtitle: l10n.workspaceAdvancedSettingsSubtitle,
+            children: [
+              if (showMemberAgentPreset &&
+                  memberAgentStyle != null &&
+                  agentPresetCli != null)
+                SettingsLabeledStackedRow(
+                  title: l10n.agent,
+                  subtitle: memberAgentPresetSubtitle(l10n, memberAgentStyle),
+                  body: MemberAgentPresetField(
+                    cli: agentPresetCli,
+                    agent: m.agent,
+                    userAgentIds: _userAgentIds,
+                    customAgentController: _agentCtl,
+                    fieldKeyPrefix: 'member-${widget.member.id}',
+                    onAgentChanged: (value) =>
+                        _update(m.copyWith(agent: value)),
+                  ),
+                  showDividerBelow: true,
+                ),
+              SettingsLabeledStackedRow(
+                title: l10n.memberExtraArgs,
+                subtitle: l10n.memberExtraArgsSubtitle,
+                body: TextField(
+                  controller: _argsCtl,
+                  decoration: const InputDecoration(),
+                  onChanged: (v) => _update(m.copyWith(extraArgs: v)),
+                ),
+                showDividerBelow: false,
+              ),
+            ],
           ),
         ],
       ),

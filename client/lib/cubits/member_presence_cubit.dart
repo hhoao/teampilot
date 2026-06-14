@@ -139,11 +139,11 @@ class MemberPresenceCubit extends Cubit<MemberPresenceState> {
     _presencePollTimer = null;
     final team = _presenceTeam;
     if (team == null || team.members.isEmpty) {
-      if (state.presence.isNotEmpty) _emitMemberPresence(const {});
+      // Keep last-known presence; polling resumes when team becomes available.
       return;
     }
     if (!_shouldPollPresence()) {
-      if (state.presence.isNotEmpty) _emitMemberPresence(const {});
+      // Keep last-known presence; polling resumes when target becomes eligible.
       return;
     }
     final generation = _presencePollGeneration;

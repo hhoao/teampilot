@@ -1,6 +1,8 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:teampilot/theme/app_toast_theme.dart';
+import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
 import '../../cubits/mcp_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
@@ -82,8 +84,10 @@ class _McpInstalledSectionState extends State<McpInstalledSection> {
     await _reloadOAuthStatus();
     if (!mounted) return;
     widget.onOAuthConnected();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(context.l10n.mcpOAuthConnectSuccess)),
+    AppToast.show(
+      context,
+      message: context.l10n.mcpOAuthConnectSuccess,
+      variant: AppToastVariant.success,
     );
   }
 

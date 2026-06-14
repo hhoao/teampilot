@@ -3,6 +3,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
+import 'package:teampilot/theme/app_toast_theme.dart';
+import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
 import '../../cubits/ai_feature_settings_cubit.dart';
 import '../../cubits/app_provider_cubit.dart';
@@ -33,7 +35,7 @@ enum _TeamCreationMethod { custom, ai }
 /// "New Team" row. Mirrors the Apifox project-creation modal: centered title +
 /// close, two big selectable mode cards (Native / Mixed), a named form row, and
 /// a single primary create action. The chosen [TeamMode] is the headline
-/// decision; the CLI backend defaults to [CliTool.flashskyai].
+/// decision; the CLI backend defaults to [CliTool.claude].
 Future<void> showHomeWorkspaceNewTeamDialog(
   BuildContext context,
   TeamCubit teamCubit,
@@ -142,6 +144,19 @@ class _HomeWorkspaceNewTeamDialogState
         : null;
   }
 
+  void _ensureNativeTeamCli() {
+    final registry = CliToolRegistryScope.maybeOf(context);
+    if (registry == null) return;
+    if (registry.supportsNativeTeam(_cli)) return;
+    final fallback = registry.nativeTeamLaunchable.firstOrNull?.id;
+    if (fallback == null || fallback == _cli) return;
+    setState(() {
+      _cli = fallback;
+      _providerId = '';
+    });
+    _syncDefaultProviderForCli(fallback);
+  }
+
   void _syncDefaultProviderForCli(CliTool cli) {
     final catalogCli = _providerCatalogCli(cli);
     if (catalogCli == null) {
@@ -201,9 +216,11 @@ class _HomeWorkspaceNewTeamDialogState
       registry: CliToolRegistryScope.of(context),
     );
     if (setting.providerId.isEmpty) {
-      ScaffoldMessenger.of(
+      AppToast.show(
         context,
-      ).showSnackBar(SnackBar(content: Text(l10n.teamGenNoProvider)));
+        message: l10n.teamGenNoProvider,
+        variant: AppToastVariant.error,
+      );
       return;
     }
 
@@ -247,9 +264,11 @@ class _HomeWorkspaceNewTeamDialogState
         _generating = false;
         _genProgress = null;
       });
-      ScaffoldMessenger.of(
+      AppToast.show(
         context,
-      ).showSnackBar(SnackBar(content: Text(l10n.teamGenFailed)));
+        message: l10n.teamGenFailed,
+        variant: AppToastVariant.error,
+      );
     }
   }
 
@@ -329,6 +348,7 @@ class _HomeWorkspaceNewTeamDialogState
                         _mode = TeamMode.native;
                         _draft = null;
                       });
+                      _ensureNativeTeamCli();
                       _syncCanCreate();
                     },
                   ),
@@ -578,7 +598,7 @@ class _NativeTeamOptionsCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final registry = CliToolRegistryScope.of(context);
-    final launchable = registry.launchable.toList()
+    final nativeTeamClis = registry.nativeTeamLaunchable.toList()
       ..sort((a, b) => a.id.value.compareTo(b.id.value));
     final catalogCli =
         registry.capability<ProviderCatalogCapability>(cli) != null
@@ -607,7 +627,7 @@ class _NativeTeamOptionsCard extends StatelessWidget {
             trailing: SettingsCompactDropdown<CliTool>(
               value: cli,
               entries: [
-                for (final def in launchable)
+                for (final def in nativeTeamClis)
                   (def.id, cliDisplayName(def, l10n)),
               ],
               itemBuilder: cliDropdownItemBuilder(

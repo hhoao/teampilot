@@ -160,7 +160,7 @@ void main() {
 
     final legacy = TeamConfig.fromJson({'id': 't', 'name': 'T'});
     expect(legacy.cli, CliTool.flashskyai);
-    expect(legacy.toJson().containsKey('cli'), isFalse);
+    expect(legacy.toJson()['cli'], 'flashskyai');
   });
 
   test('opencode round-trips through json', () {

@@ -132,7 +132,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
 
   Future<void> ensureTeamProfile(
     String teamId, {
-    CliTool cli = CliTool.flashskyai,
+    CliTool cli = CliTool.claude,
   }) async {
     final trimmed = teamId.trim();
     if (trimmed.isEmpty) return;
@@ -142,7 +142,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
   Future<void> ensureSessionProfile(
     String teamId,
     String sessionId, {
-    CliTool cli = CliTool.flashskyai,
+    CliTool cli = CliTool.claude,
     TeamConfig? team,
     Map<String, Map<String, Object?>>? extraMcpServers,
   }) async {
@@ -203,7 +203,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
 
   Future<void> ensureStandaloneProjectProfile(
     String projectId, {
-    CliTool cli = CliTool.flashskyai,
+    CliTool cli = CliTool.claude,
   }) async {
     final trimmed = projectId.trim();
     if (trimmed.isEmpty) return;
@@ -213,7 +213,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
   Future<void> ensureStandaloneSessionProfile(
     String projectId,
     String sessionId, {
-    CliTool cli = CliTool.flashskyai,
+    CliTool cli = CliTool.claude,
     ProjectProfile? profile,
     Map<String, Map<String, Object?>>? extraMcpServers,
   }) async {
@@ -393,7 +393,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
   Future<TeamLaunchOutcome> prepareTeamLaunch({
     required String teamId,
     String runtimeTeamId = '',
-    CliTool cli = CliTool.flashskyai,
+    CliTool cli = CliTool.claude,
     List<TeamMemberConfig> members = const [],
     TeamMemberConfig? member,
     String workingDirectory = '',

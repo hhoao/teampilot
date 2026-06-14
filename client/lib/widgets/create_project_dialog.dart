@@ -1,5 +1,7 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
+import 'package:teampilot/theme/app_toast_theme.dart';
+import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
 import '../l10n/l10n_extensions.dart';
 import '../utils/project_path_picker.dart';
@@ -49,14 +51,18 @@ class _CreateProjectDialogState extends State<_CreateProjectDialog> {
     final l10n = context.l10n;
     final trimmed = normalizeProjectPath(path);
     if (_primaryPath.isNotEmpty && projectPathsEqual(trimmed, _primaryPath)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l10n.projectDirectoryAlreadyPrimary)),
+      AppToast.show(
+        context,
+        message: l10n.projectDirectoryAlreadyPrimary,
+        variant: AppToastVariant.warning,
       );
       return;
     }
     if (projectPathsContains(_additionalPaths, trimmed)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l10n.projectDirectoryAlreadyAdded)),
+      AppToast.show(
+        context,
+        message: l10n.projectDirectoryAlreadyAdded,
+        variant: AppToastVariant.warning,
       );
       return;
     }
@@ -66,9 +72,11 @@ class _CreateProjectDialogState extends State<_CreateProjectDialog> {
   void _create() {
     final l10n = context.l10n;
     if (_primaryPath.isEmpty) {
-      ScaffoldMessenger.of(
+      AppToast.show(
         context,
-      ).showSnackBar(SnackBar(content: Text(l10n.projectPrimaryPathRequired)));
+        message: l10n.projectPrimaryPathRequired,
+        variant: AppToastVariant.error,
+      );
       return;
     }
     Navigator.of(context).pop((

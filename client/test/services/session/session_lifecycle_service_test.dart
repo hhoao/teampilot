@@ -240,6 +240,69 @@ void main() {
     },
   );
 
+  test(
+    'prepareLaunch resumes mixed member whose CLI override differs from '
+    'team.cli',
+    () async {
+      // Regression: a mixed team JSON without a top-level `cli` defaults
+      // team.cli to flashskyai, while members override `cli: claude`. The
+      // member launches (and stores transcripts) under its claude scope, so the
+      // resume probe must follow `member.cliWithin(team)` — not team.cli — or it
+      // falls back to `--session-id`, which the running CLI rejects as
+      // "Session ID ... is already in use".
+      const taskId = '8c30aef6-19f6-469c-9b53-bcbda18b6fd2';
+      const member = TeamMemberConfig(
+        id: 'team-lead',
+        name: 'team-lead',
+        cli: CliTool.claude,
+      );
+      final session = _session(
+        id: 'mixed-session',
+        launchState: AppSessionLaunchState.started,
+      ).copyWith(cliTeamName: 'team-a-4');
+      final scopedSessionId = mixedModeMemberScopeSessionId(
+        p.context,
+        'team-a-4',
+        member,
+      );
+      final bucket = CliDataLayout.projectBucketForPrimaryPath(
+        session.primaryPath,
+      );
+      // Transcript lives under the member's *claude* scope, matching how the
+      // member actually launched.
+      final transcript = File(
+        p.join(
+          layout.memberToolDir('team-a', scopedSessionId, 'claude'),
+          'projects',
+          bucket,
+          '$taskId.jsonl',
+        ),
+      );
+      await transcript.parent.create(recursive: true);
+      await transcript.writeAsString('{}\n');
+
+      const binding = SessionMemberBinding(
+        rosterMemberId: 'team-lead',
+        taskId: taskId,
+      );
+      final plan = await service().prepareLaunch(
+        session: session,
+        team: const TeamConfig(
+          id: 'team-a',
+          name: 'Team A',
+          cli: CliTool.flashskyai, // team default; member overrides to claude
+          teamMode: TeamMode.mixed,
+          members: [member],
+        ),
+        member: member,
+        memberBinding: binding,
+      );
+
+      expect(plan.resume, isTrue);
+      expect(plan.taskId, taskId);
+    },
+  );
+
   test('prepareLaunch preserves llm override for non-team launches', () async {
     final plan = await SessionLifecycleService(
       appDataBasePath: base.path,

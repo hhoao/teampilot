@@ -1,5 +1,7 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
+import 'package:teampilot/theme/app_toast_theme.dart';
+import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
 import '../../l10n/l10n_extensions.dart';
 import '../../models/mcp_registry_source.dart';
@@ -165,8 +167,10 @@ class _McpRegistriesSectionState extends State<McpRegistriesSection> {
     );
     await _persist(next);
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(l10n.mcpRepoConfigSaved)),
+    AppToast.show(
+      context,
+      message: l10n.mcpRepoConfigSaved,
+      variant: AppToastVariant.success,
     );
   }
 
@@ -257,13 +261,17 @@ class _RegistrySourceEditDialogState extends State<_RegistrySourceEditDialog> {
         await widget.registry.search('', baseUrl: url, pageSize: 1);
       }
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l10n.mcpRepoTestOk)),
+      AppToast.show(
+        context,
+        message: l10n.mcpRepoTestOk,
+        variant: AppToastVariant.success,
       );
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l10n.mcpRepoTestFailed(e.toString()))),
+      AppToast.show(
+        context,
+        message: l10n.mcpRepoTestFailed(e.toString()),
+        variant: AppToastVariant.error,
       );
     } finally {
       if (mounted) setState(() => _testing = false);

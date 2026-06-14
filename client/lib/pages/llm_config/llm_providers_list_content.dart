@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:teampilot/theme/app_toast_theme.dart';
+import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
 import '../../cubits/app_provider_cubit.dart';
 import '../../cubits/llm_config_cubit.dart';
@@ -57,9 +59,13 @@ class LlmProvidersListContent extends StatelessWidget {
                 result.mirroredToFlashskyai,
                 result.mirrorSkipped,
               );
-        ScaffoldMessenger.of(
+        AppToast.show(
           context,
-        ).showSnackBar(SnackBar(content: Text(message)));
+          message: message,
+          variant: changed == 0 && result.mirroredToFlashskyai == 0
+              ? AppToastVariant.warning
+              : AppToastVariant.success,
+        );
       },
       onEdit: (provider) {
         if (onEdit != null) {

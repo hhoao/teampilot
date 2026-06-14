@@ -6,12 +6,14 @@ import 'package:flutter_alacritty/flutter_alacritty.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:toastification/toastification.dart';
 import 'package:window_manager/window_manager.dart';
 
 import 'app/app_shell.dart';
 import 'cubits/chat_cubit.dart';
 import 'cubits/layout_cubit.dart';
 import 'cubits/mailbox_cubit.dart';
+import 'cubits/notification_cubit.dart';
 import 'l10n/l10n_extensions.dart';
 import 'repositories/app_settings_repository.dart';
 import 'repositories/project_profile_repository.dart';
@@ -23,12 +25,15 @@ import 'router/app_router.dart';
 import 'services/cli/registry/cli_tool_registry_scope.dart';
 import 'services/storage/app_storage.dart';
 import 'services/app/connection_mode_service.dart';
+import 'services/app/desktop_window_actions.dart';
 import 'services/storage/storage_resolver.dart';
 import 'services/ssh/ssh_client_factory.dart';
 import 'services/terminal/terminal_transport_factory.dart';
 import 'services/terminal/workspace_terminal_registry.dart';
+import 'services/notification/notification_recorder.dart';
 import 'services/terminal/terminal_fonts.dart';
 import 'theme/app_icon_sizes.dart';
+import 'theme/app_toast_theme.dart';
 import 'theme/app_theme.dart';
 import 'theme/app_typography_scale.dart';
 import 'pages/system/error_page.dart';
@@ -64,12 +69,14 @@ class _AppShutdownScope extends StatefulWidget {
   const _AppShutdownScope({
     required this.chatCubit,
     required this.mailboxCubit,
+    required this.notificationCubit,
     required this.workspaceTerminalRegistry,
     required this.child,
   });
 
   final ChatCubit chatCubit;
   final MailboxCubit mailboxCubit;
+  final NotificationCubit notificationCubit;
   final WorkspaceTerminalRegistry workspaceTerminalRegistry;
   final Widget child;
 
@@ -82,12 +89,70 @@ class _AppShutdownScopeState extends State<_AppShutdownScope> {
   void dispose() {
     unawaited(widget.chatCubit.close());
     unawaited(widget.mailboxCubit.close());
+    unawaited(widget.notificationCubit.close());
+    NotificationRecorder.install(null);
     widget.workspaceTerminalRegistry.disposeAll();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) => widget.child;
+}
+
+/// Wraps [child] with [DragToResizeArea] only when the window is not maximized
+/// or in fullscreen, so resize cursors don't appear on window edges that can't
+/// be dragged.
+class _DragToResizeWrapper extends StatefulWidget {
+  const _DragToResizeWrapper({required this.child});
+
+  final Widget child;
+
+  @override
+  State<_DragToResizeWrapper> createState() => _DragToResizeWrapperState();
+}
+
+class _DragToResizeWrapperState extends State<_DragToResizeWrapper>
+    with WindowListener {
+  bool _isMaximized = false;
+
+  @override
+  void initState() {
+    super.initState();
+    windowManager.addListener(this);
+    _syncExpanded();
+  }
+
+  @override
+  void dispose() {
+    windowManager.removeListener(this);
+    super.dispose();
+  }
+
+  Future<void> _syncExpanded() async {
+    final expanded = await isDesktopWindowExpanded();
+    if (!mounted) return;
+    setState(() => _isMaximized = expanded);
+  }
+
+  @override
+  void onWindowMaximize() => unawaited(_syncExpanded());
+
+  @override
+  void onWindowUnmaximize() => unawaited(_syncExpanded());
+
+  @override
+  void onWindowEnterFullScreen() => unawaited(_syncExpanded());
+
+  @override
+  void onWindowLeaveFullScreen() => unawaited(_syncExpanded());
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isMaximized) {
+      return widget.child;
+    }
+    return DragToResizeArea(child: widget.child);
+  }
 }
 
 Future<void> _preloadBundledUiFonts() async {
@@ -166,6 +231,7 @@ void main() async {
         return _AppShutdownScope(
           chatCubit: shell.chatCubit,
           mailboxCubit: shell.mailboxCubit,
+          notificationCubit: shell.notificationCubit,
           workspaceTerminalRegistry: shell.workspaceTerminalRegistry,
           child: MultiRepositoryProvider(
             providers: [
@@ -208,6 +274,7 @@ void main() async {
                 BlocProvider.value(value: shell.chatCubit),
                 BlocProvider.value(value: shell.memberPresenceCubit),
                 BlocProvider.value(value: shell.mailboxCubit),
+                BlocProvider.value(value: shell.notificationCubit),
                 BlocProvider.value(value: shell.editorCubit),
                 BlocProvider.value(value: shell.configCubit),
                 BlocProvider.value(value: shell.appProviderCubit),
@@ -315,7 +382,9 @@ class TeamPilotApp extends StatelessWidget {
           _ => ThemeMode.system,
         };
 
-        return MaterialApp.router(
+        return ToastificationWrapper(
+          config: buildAppToastificationConfig(),
+          child: MaterialApp.router(
           debugShowCheckedModeBanner: false,
           title: 'TeamPilot',
           theme: buildLightTheme(colorPreset, textScale, iconScale),
@@ -348,7 +417,7 @@ class TeamPilotApp extends StatelessWidget {
             // re-adds invisible resize handles on all edges/corners so the
             // frameless window can still be resized from its borders.
             if (!Platform.isAndroid) {
-              content = DragToResizeArea(child: content);
+              content = _DragToResizeWrapper(child: content);
             }
             return content;
           },
@@ -362,6 +431,7 @@ class TeamPilotApp extends StatelessWidget {
             return const Locale('en');
           },
           routerConfig: appRouter,
+        ),
         );
       },
     );

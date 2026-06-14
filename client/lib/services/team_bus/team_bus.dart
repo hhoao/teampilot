@@ -7,6 +7,7 @@ import 'coordination/coordination_policy.dart';
 import 'coordination/leader_star_coordination_policy.dart';
 import 'env/bus_environment.dart';
 import 'env/bus_observation.dart';
+import 'idle_notification.dart';
 import 'member_launcher.dart';
 import 'persistence/bus_message_log.dart';
 import 'persistence/bus_message_page.dart';
@@ -37,6 +38,7 @@ class TeamBus implements CoordinationView {
   }) : _env = environment ?? BusEnvironment(ids: idGenerator, clock: clock),
        _messageLog = messageLog,
        _taskQueue = taskQueue,
+       _launcher = launcher,
        _dispatcher = BusEffectDispatcher(
          launcher: launcher,
          doorbellNotice: doorbellNotice,
@@ -56,12 +58,20 @@ class TeamBus implements CoordinationView {
       'read_messages(mark_read: true) to read them now, then handle them. '
       '(From the bus, not your operator.)';
 
+  /// 队列有可认领任务、要敲一个 idle-at-prompt 的 worker 开工时注入的提示。与
+  /// [doorbellNotice]（邮件→read_messages）区分：这里要 worker 去 `wait_for_message`，
+  /// 它会原子认领下一个队列任务。
+  static const String taskDoorbellNotice =
+      '[teammate-bus] Queued work is available — call wait_for_message now to '
+      'claim and start your next task. (From the bus, not your operator.)';
+
   /// [TeamMessage.from] when the human operator submits while the member waits.
   static const String userSenderId = 'user';
 
   final BusEnvironment _env;
   final BusMessageLog? _messageLog;
   final TaskQueue? _taskQueue;
+  final MemberLauncher _launcher;
   final BusEffectDispatcher _dispatcher;
   late final CoordinationPolicy _coordination;
   final int maxHop;
@@ -245,6 +255,9 @@ class TeamBus implements CoordinationView {
     final queue = node.profile.isTeamLead ? null : _taskQueue;
     node.doorbelled = false; // 进 wait = 响应了门铃并开始消费 → 解闸，读完后新邮件再响。
     _apply(node, const WaitEntered());
+    // 本次 wait 是否已向 leader 上报过「我空闲了」（每个真正阻塞的 wait 期上报一次，
+    // spurious wake 后重判不重复上报）。
+    var announcedIdle = false;
     try {
       while (true) {
         if (cancel?.isCancelled ?? false) return const EmptyWork();
@@ -261,7 +274,13 @@ class TeamBus implements CoordinationView {
           final task = queue.claimNext(memberId);
           if (task != null) return TaskWork(task);
         }
-        // 3) 两者皆空 → race 信箱到达 / 队列可认领 / 取消，醒来重判。
+        // 3) 两者皆空 → 真正空闲。对齐 Claude Code「转 idle → 通知 leader → 再等待」：
+        // 这是 bus 里精确的「worker 现在没活干」时刻，比被 parked 守卫挡掉的外部
+        // onMemberIdle 可靠。随后 race 信箱到达 / 队列可认领 / 取消，醒来重判。
+        if (!announcedIdle) {
+          announcedIdle = true;
+          _announceWorkerIdleToLead(node);
+        }
         final wake = Completer<void>();
         void signal() {
           if (!wake.isCompleted) wake.complete();
@@ -279,6 +298,34 @@ class TeamBus implements CoordinationView {
     } finally {
       _apply(node, const WaitExited());
     }
+  }
+
+  /// worker 进入 `wait_for_message` 且确无可干（消息空 + 队列无可认领）→ 真正空闲时，
+  /// 向 team-lead 推一条 idle/available 通知。**对齐 Claude Code**「转 idle → 通知
+  /// leader → 再等待」（inProcessRunner 在 isIdle 转换处 sendIdleNotification）。
+  ///
+  /// 替代被两道门焊死的旧路径：外部 [onMemberIdle] 对 parked worker 有 `waitingForMessage`
+  /// 守卫、星型策略又有 `_unreported` 闸（仅消息投递置位，队列认领从不置位）——故纯队列
+  /// worker 完成后回到 wait 永不上报、对 leader 隐形。这里在 bus 精确知晓「现在没活干」
+  /// 的一刻直接上报，绕开二者。投递走 [_deliverToMember]（eager 门铃）唤醒 leader。
+  void _announceWorkerIdleToLead(AgentNode node) {
+    if (node.profile.isTeamLead) return;
+    final leaderId = teamLeadId;
+    if (leaderId == null || leaderId == node.memberId) return;
+    final notice = IdleNotification.fromWorker(
+      memberId: node.memberId,
+      displayName: node.profile.effectiveDisplayName,
+      timestampMs: _env.clock(),
+    ).encode();
+    _deliverToMember(
+      leaderId,
+      TeamMessage(
+        id: _env.ids(),
+        from: node.memberId,
+        to: leaderId,
+        content: notice,
+      ),
+    );
   }
 
   /// 任务结果写回失败（客户端断连）→ 退回 pending，避免卡在没收到它的 worker 上。
@@ -458,7 +505,7 @@ class TeamBus implements CoordinationView {
     switch (target.lifecycle) {
       case MemberLifecycle.declared:
         // 物化（awaited PTY 拉起）→ 投递 → 完成（running+active）+ 门铃。
-        await _applyAsync(target, MaterializeStarted(routed));
+        await _bringOnline(target, routed);
         _deliverToInbox(target, routed);
         await _applyAsync(target, const MaterializeCompleted());
       case MemberLifecycle.materializing:
@@ -467,6 +514,18 @@ class TeamBus implements CoordinationView {
         _apply(target, const MailArrived()); // send 路径：仅 idle-at-prompt 响门铃
     }
     return SendOutcome.delivered(resolved);
+  }
+
+  /// **物化漏斗（唯一入口）**：把一个 declared 成员拉起上线（declared → materializing
+  /// → PTY running）。消息路径（[send]）与任务队列路径（[addTasks]）共用此处——任何
+  /// 「产生需求、需要成员上线」的地方都必须经由它，结构上杜绝某条投递路径漏接生命
+  /// 周期（历史 bug：`add_tasks` 漏接 → leader 派任务但 declared worker 不启动、无人
+  /// 认领）。物化后由 [PtySpawned]（扩展侧 `markMemberRunning`）转 running；本方法不
+  /// 调 [MaterializeCompleted]，调用方按需自行决定后续（send 要 active+门铃，队列则让
+  /// worker 自然进 `wait_for_message` 拉取）。[bootstrap] 内容仅供 launcher 调度连接。
+  Future<void> _bringOnline(AgentNode node, TeamMessage bootstrap) async {
+    if (node.lifecycle != MemberLifecycle.declared) return;
+    await _applyAsync(node, MaterializeStarted(bootstrap));
   }
 
   /// working 边：用户在成员自己的 prompt 直接提交一行(未 parked)→ 标记回合开始。
@@ -533,15 +592,76 @@ class TeamBus implements CoordinationView {
   /// 是否装配了共享任务队列（仅 mixed 模式接线）。
   bool get hasTaskQueue => _taskQueue != null;
 
-  /// leader 批量入队任务（`add_tasks` 落点）。入队会触发队列内部 waiter，统一 idle
-  /// 原语 [receiveWork] 中阻塞的空闲 worker 由此被即时唤醒并自动认领（无需 nudge）。
-  List<TeamTask> addTasks(String createdBy, List<TeamTaskDraft> drafts) =>
-      _taskQueue?.addTasks(createdBy, drafts) ?? const [];
+  /// leader 批量入队任务（`add_tasks` 落点）。入队后两条认领来源汇合：
+  /// ① 已 running 且 parked 的空闲 worker —— 由 [TaskQueue] 内部 waiter（`_wake` →
+  ///    `waitForClaimable`）即时唤醒，在统一 idle 原语 [receiveWork] 里自动认领；
+  /// ② declared（尚未启动）的 worker —— 经 [_materializeWorkersForQueue] 按需拉起
+  ///    上线，进入 `wait_for_message` 后认领。②与 [send] 共用 [_bringOnline] 物化
+  ///    漏斗，修复「leader 派任务但 declared worker 不启动、无人认领」。
+  List<TeamTask> addTasks(String createdBy, List<TeamTaskDraft> drafts) {
+    final queue = _taskQueue;
+    if (queue == null) return const [];
+    final created = queue.addTasks(createdBy, drafts);
+    if (created.isNotEmpty) {
+      // fire-and-forget：入队即返回（MCP 响应无需等 worker 就绪），engage 在后台进行，
+      // 语义同 [_apply] 的 unawaited dispatch。
+      unawaited(_engageWorkersForQueue(createdBy));
+    }
+    return created;
+  }
+
+  /// 入队后按需「叫醒」非 leader worker 去认领，覆盖其全部生命周期状态——这是
+  /// `add_tasks` 真正让成员开工的关键（[TaskQueue] 的 `_wake` 只能唤醒**已 parked**
+  /// 在 `receiveWork` 的 worker，够不到刚启动、停在 prompt 从未进过 wait 的 worker）：
+  ///
+  /// - **parked**（`waitingForMessage`）→ 已被 `queue._wake` 即时唤醒认领，不在此处理；
+  /// - **running 且 atPrompt**（启动后没人给初始 prompt → 停在 prompt，从未进 wait）→
+  ///   响门铃（注入 stdin）催它调 `wait_for_message`，与 [send] 对 atPrompt 的处理对齐；
+  /// - **declared**（尚未启动）→ 物化拉起上线。
+  ///
+  /// 引擎成员上限 = 可认领任务数 − 已 parked 数，避免给少量任务过度供给。**优先**敲
+  /// 已在跑的 atPrompt worker（几乎零成本）再冷启动 declared（有 token/延迟代价）。
+  Future<void> _engageWorkersForQueue(String createdBy) async {
+    final queue = _taskQueue;
+    if (queue == null) return;
+    final workers = _members.values.where((n) => !n.profile.isTeamLead);
+    final parked = workers.where((n) => n.waitingForMessage).length;
+    var budget = queue.claimableCount - parked;
+    if (budget <= 0) return;
+
+    // 第一轮：敲已在跑、停在 prompt 的 worker（便宜，无冷启动）。
+    for (final node in workers) {
+      if (budget <= 0) break;
+      if (node.lifecycle != MemberLifecycle.running) continue;
+      if (node.activity != MemberActivity.turnDoneReady) continue; // atPrompt
+      if (node.doorbelled) continue; // 已敲过、尚未消费
+      node.doorbelled = true;
+      _launcher.wake(node.memberId, taskDoorbellNotice);
+      budget--;
+    }
+    // 第二轮：冷启动尚未上线（declared）的 worker。
+    for (final node in workers) {
+      if (budget <= 0) break;
+      if (node.lifecycle != MemberLifecycle.declared) continue;
+      await _bringOnline(
+        node,
+        TeamMessage(
+          id: _env.ids(),
+          from: createdBy,
+          to: node.memberId,
+          content: taskDoorbellNotice,
+        ),
+      );
+      budget--;
+    }
+  }
 
   /// 原子认领下一个任务（[receiveWork] 内部复用；无可认领返回 null）。
   TeamTask? claimNextTask(String memberId) => _taskQueue?.claimNext(memberId);
 
-  /// worker 汇报任务终态（`update_task` 落点）。
+  /// worker 汇报任务终态（`update_task` 落点）。leader 经由 worker 进入 wait_for_message
+  /// 时的 idle 通知（[_announceWorkerIdleToLead]）感知进度，对齐 Claude Code——
+  /// `update_task` 本身只落库，不单独通知（CC 同样不自动把结果推给 leader）。
   bool updateTask(
     String taskId,
     TaskStatus status, {

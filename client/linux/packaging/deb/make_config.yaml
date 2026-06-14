@@ -1,13 +1,13 @@
 display_name: TeamPilot
 package_name: teampilot
 installed_size: 100000
-description: FlashSky AI TeamPilot client
+description: TeamPilot desktop client
 maintainer:
   name: hhoa
   email: m45937494@gmail.com
 section: utility
 priority: optional
-homepage: https://github.com/hhoao/flashskyai-ui
+homepage: https://github.com/hhoao/teampilot
 icon: assets/icons/icon_bg.png
 dependencies:
   - libgtk-3-0

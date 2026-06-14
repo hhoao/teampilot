@@ -4,6 +4,8 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:teampilot/theme/app_toast_theme.dart';
+import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
 import '../../cubits/editor_cubit.dart';
 import '../../cubits/file_tree_cubit.dart';
@@ -73,8 +75,10 @@ class _FileTreePanelState extends State<FileTreePanel> {
     final ok = await _cubit.revealPath(active);
     if (!mounted) return;
     if (!ok) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.l10n.fileTreeRevealFailed)),
+      AppToast.show(
+        context,
+        message: context.l10n.fileTreeRevealFailed,
+        variant: AppToastVariant.error,
       );
       return;
     }

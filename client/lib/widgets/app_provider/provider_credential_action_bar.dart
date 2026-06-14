@@ -2,6 +2,8 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:path/path.dart' as p;
+import 'package:teampilot/theme/app_toast_theme.dart';
+import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
 import '../app_dialog.dart';
 import '../../cubits/app_provider_cubit.dart';
@@ -122,8 +124,10 @@ class _ProviderCredentialActionBarState extends State<ProviderCredentialActionBa
         final saved = await ensureSaved();
         if (!mounted) return;
         if (saved == null) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(l10n.providerName)),
+          AppToast.show(
+            context,
+            message: l10n.providerName,
+            variant: AppToastVariant.error,
           );
           return;
         }
@@ -301,14 +305,12 @@ class _ProviderCredentialActionBarState extends State<ProviderCredentialActionBa
 
   void _showResult(bool ok) {
     final l10n = context.l10n;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          ok
-              ? _successMessage(l10n, widget.provider.cli)
-              : _failureMessage(l10n, widget.provider.cli),
-        ),
-      ),
+    AppToast.show(
+      context,
+      message: ok
+          ? _successMessage(l10n, widget.provider.cli)
+          : _failureMessage(l10n, widget.provider.cli),
+      variant: ok ? AppToastVariant.success : AppToastVariant.error,
     );
   }
 }

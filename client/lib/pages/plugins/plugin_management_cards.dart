@@ -1,5 +1,7 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
+import 'package:teampilot/theme/app_toast_theme.dart';
+import 'package:teampilot/widgets/app_toast/app_toast.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../l10n/l10n_extensions.dart';
@@ -98,10 +100,12 @@ Future<bool> pluginConfirmDialog(
   return result ?? false;
 }
 
-void showPluginSnack(BuildContext context, String message) {
-  ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(content: Text(message), duration: const Duration(seconds: 3)),
-  );
+void showPluginSnack(
+  BuildContext context,
+  String message, {
+  AppToastVariant variant = AppToastVariant.info,
+}) {
+  AppToast.show(context, message: message, variant: variant);
 }
 
 Future<void> openPluginUrl(String url) async {

@@ -10,6 +10,9 @@ import '../../cubits/team_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/layout_preferences.dart';
 import '../../models/team_config.dart';
+import '../../pages/home_workspace/project/member_detail_dialog.dart';
+import '../../services/cli/member_config/member_config_inspector.dart';
+import '../../services/io/system_folder_opener.dart';
 import '../../utils/app_keys.dart';
 import '../../utils/debounce/debounce.dart';
 import '../../utils/team_member_naming.dart';
@@ -153,6 +156,33 @@ class _RightToolsPanelState extends State<RightToolsPanel> {
               await cubit.launchAllMembers(team, workspaceCwd: widget.cwd);
               maybeDismissDrawer();
             }),
+            canViewDetail: chatCubit.activeTab != null,
+            onViewDetail: (id) {
+              final member = team.members.firstWhere((m) => m.id == id);
+              final cliTeamName = chatCubit.activeTab?.cliTeamName ?? '';
+              unawaited(showMemberDetailDialog(
+                context,
+                team: team,
+                member: member,
+                cliTeamName: cliTeamName,
+              ));
+              maybeDismissDrawer();
+            },
+            onOpenConfigDir: (id) {
+              final member = team.members.firstWhere((m) => m.id == id);
+              final cliTeamName = chatCubit.activeTab?.cliTeamName ?? '';
+              unawaited(() async {
+                final detail = await MemberConfigInspector().inspect(
+                  team: team,
+                  member: member,
+                  cliTeamName: cliTeamName,
+                );
+                if (detail.resolvedDir.isNotEmpty) {
+                  await SystemFolderOpener().reveal(detail.resolvedDir);
+                }
+              }());
+              maybeDismissDrawer();
+            },
           ),
         ),
       if (widget.preferences.fileTreeVisible)

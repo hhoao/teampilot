@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:fake_async/fake_async.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
 import 'package:teampilot/cubits/member_presence_cubit.dart';
@@ -143,6 +144,155 @@ void main() {
 
         unawaited(chatCubit.close());
         unawaited(presenceCubit.close());
+      });
+    });
+
+    // ── hysteresis: keep last-known presence on transient ineligibility ──
+
+    test('keeps presence when updateTarget(null), resumes when target restored',
+        () {
+      fakeAsync((async) {
+        final service = _DelayedPresenceService({
+          'm-lead': const MemberPresence(
+            connection: MemberConnection.connected,
+            workload: MemberWorkload.working,
+          ),
+        });
+        final cubit = MemberPresenceCubit(memberPresenceService: service);
+        addTearDown(() async {
+          await cubit.close();
+        });
+
+        const team = TeamConfig(
+          id: 'team-a',
+          name: 'A',
+          members: [TeamMemberConfig(id: 'm-lead', name: 'team-lead')],
+        );
+
+        cubit.attachPresenceUi();
+        cubit.syncPresenceTeam(team);
+
+        final shell = _FakeTerminalSession(executable: 'test');
+        cubit.updateTarget(PresenceTarget(
+          cliTeamName: 'team-a-1',
+          memberToolConfigDir: '/tmp/cfg',
+          memberShells: {'m-lead': shell},
+        ));
+
+        // Manually run a frame to process post-frame callbacks from
+        // _schedulePresencePollingRestart. SchedulerBinding won't auto-fire
+        // frames in fakeAsync.
+        void pumpFrame() {
+          SchedulerBinding.instance.handleBeginFrame(Duration.zero);
+          SchedulerBinding.instance.handleDrawFrame();
+        }
+
+        pumpFrame();
+        // Advance past the 80ms service delay so compute completes.
+        async.elapse(const Duration(milliseconds: 100));
+        async.flushMicrotasks();
+        // Process post-frame callback that _emitMemberPresence scheduled.
+        pumpFrame();
+
+        expect(service.computeCalls, greaterThan(0));
+        expect(
+          cubit.state.presence['m-lead']?.connection,
+          MemberConnection.connected,
+        );
+        final callsAfterFirstPoll = service.computeCalls;
+
+        // Transient ineligibility: null target should NOT clear presence.
+        cubit.updateTarget(null);
+        pumpFrame();
+        async.elapse(const Duration(seconds: 2));
+        async.flushMicrotasks();
+
+        expect(service.computeCalls, callsAfterFirstPoll); // no new polls
+        expect(cubit.state.presence, isNotEmpty); // presence KEPT (not cleared)
+
+        // Restore target → polling resumes.
+        cubit.updateTarget(PresenceTarget(
+          cliTeamName: 'team-a-1',
+          memberToolConfigDir: '/tmp/cfg',
+          memberShells: {'m-lead': shell},
+        ));
+        pumpFrame();
+        async.elapse(const Duration(milliseconds: 100));
+        async.flushMicrotasks();
+        pumpFrame();
+
+        expect(service.computeCalls, greaterThan(callsAfterFirstPoll));
+        expect(cubit.state.presence, isNotEmpty);
+      });
+    });
+
+    test('stopPresencePolling clears presence', () {
+      fakeAsync((async) {
+        final service = _DelayedPresenceService({
+          'm-lead': const MemberPresence(
+            connection: MemberConnection.connected,
+            workload: MemberWorkload.working,
+          ),
+        });
+        final cubit = MemberPresenceCubit(memberPresenceService: service);
+        addTearDown(() async {
+          await cubit.close();
+        });
+
+        const team = TeamConfig(
+          id: 'team-a',
+          name: 'A',
+          members: [TeamMemberConfig(id: 'm-lead', name: 'team-lead')],
+        );
+
+        cubit.attachPresenceUi();
+        cubit.syncPresenceTeam(team);
+
+        final shell = _FakeTerminalSession(executable: 'test');
+        cubit.updateTarget(PresenceTarget(
+          cliTeamName: 'team-a-1',
+          memberToolConfigDir: '/tmp/cfg',
+          memberShells: {'m-lead': shell},
+        ));
+
+        // stopPresencePolling synchronously clears state.
+        cubit.stopPresencePolling();
+        expect(cubit.state.presence, isEmpty);
+      });
+    });
+
+    test('detachPresenceUi clears presence', () {
+      fakeAsync((async) {
+        final service = _DelayedPresenceService({
+          'm-lead': const MemberPresence(
+            connection: MemberConnection.connected,
+            workload: MemberWorkload.working,
+          ),
+        });
+        final cubit = MemberPresenceCubit(memberPresenceService: service);
+        addTearDown(() async {
+          await cubit.close();
+        });
+
+        const team = TeamConfig(
+          id: 'team-a',
+          name: 'A',
+          members: [TeamMemberConfig(id: 'm-lead', name: 'team-lead')],
+        );
+
+        cubit.attachPresenceUi();
+        cubit.syncPresenceTeam(team);
+
+        final shell = _FakeTerminalSession(executable: 'test');
+        cubit.updateTarget(PresenceTarget(
+          cliTeamName: 'team-a-1',
+          memberToolConfigDir: '/tmp/cfg',
+          memberShells: {'m-lead': shell},
+        ));
+
+        // detachPresenceUi synchronously clears state.
+        cubit.detachPresenceUi();
+        expect(cubit.state.presence, isEmpty);
       });
     });
 

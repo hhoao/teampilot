@@ -26,6 +26,7 @@ class ExtensionRow extends Equatable {
     required this.installed,
     required this.status,
     this.version,
+    this.missingRequirements = const [],
   });
 
   final String id;
@@ -37,9 +38,22 @@ class ExtensionRow extends Equatable {
   final ExtensionStatusCode status;
   final String? version;
 
+  /// Companion binaries the probe found absent on the host (e.g. `jq` for RTK).
+  /// Non-empty only when [status] is [ExtensionStatusCode.dependencyMissing].
+  final List<String> missingRequirements;
+
   @override
-  List<Object?> get props =>
-      [id, name, description, homepage, globalEnabled, installed, status, version];
+  List<Object?> get props => [
+        id,
+        name,
+        description,
+        homepage,
+        globalEnabled,
+        installed,
+        status,
+        version,
+        missingRequirements,
+      ];
 }
 
 class ExtensionUiState extends Equatable {
@@ -137,12 +151,19 @@ class ExtensionCubit extends Cubit<ExtensionUiState> {
       installed: probe.found,
       status: status,
       version: probe.version,
+      missingRequirements: probe.missingRequirements,
     );
   }
 
   String _description(ExtensionManifest manifest) {
     final effect = manifest.effects.isEmpty ? '' : manifest.effects.first.kind;
     return effect;
+  }
+
+  /// Re-probes a single extension in place (e.g. after the user installs a
+  /// missing dependency), without reloading the whole list.
+  Future<void> recheck(String id) async {
+    await _withBusy(id, () => _replaceRow(id));
   }
 
   Future<void> setGlobalEnabled(String id, bool enabled) async {

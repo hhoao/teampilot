@@ -1,6 +1,8 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:teampilot/theme/app_toast_theme.dart';
+import 'package:teampilot/widgets/app_toast/app_toast.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../config/app_update_config.dart';
@@ -59,9 +61,11 @@ class _AboutConfigWorkspaceState extends State<AboutConfigWorkspace> {
           child: BlocConsumer<AppUpdateCubit, AppUpdateState>(
             listener: (context, state) {
               if (state.status == AppUpdateStatus.upToDate) {
-                ScaffoldMessenger.of(
+                AppToast.show(
                   context,
-                ).showSnackBar(SnackBar(content: Text(l10n.appUpdateUpToDate)));
+                  message: l10n.appUpdateUpToDate,
+                  variant: AppToastVariant.success,
+                );
               }
             },
             builder: (context, state) {

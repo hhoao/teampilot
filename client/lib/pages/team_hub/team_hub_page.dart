@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:teampilot/theme/app_toast_theme.dart';
+import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
 import '../../cubits/team_hub_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
@@ -37,7 +39,6 @@ class _TeamHubPageState extends State<TeamHubPage> {
 
   Future<void> _clone(TeamHubCubit cubit, DiscoverableTeam team) async {
     final l10n = context.l10n;
-    final messenger = ScaffoldMessenger.of(context);
     try {
       final result = await cubit.clone(team);
       if (!mounted) return;
@@ -46,19 +47,21 @@ class _TeamHubPageState extends State<TeamHubPage> {
         _detail = null;
       });
       final failed = result.failedDeps.length;
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text(
-            failed == 0
-                ? l10n.teamHubCloneSuccess(team.name)
-                : l10n.teamHubClonePartial(team.name, failed),
-          ),
-        ),
+      AppToast.show(
+        context,
+        message: failed == 0
+            ? l10n.teamHubCloneSuccess(team.name)
+            : l10n.teamHubClonePartial(team.name, failed),
+        variant: failed == 0
+            ? AppToastVariant.success
+            : AppToastVariant.warning,
       );
     } on CloneException {
       if (!mounted) return;
-      messenger.showSnackBar(
-        SnackBar(content: Text(l10n.teamHubCloneFailed)),
+      AppToast.show(
+        context,
+        message: l10n.teamHubCloneFailed,
+        variant: AppToastVariant.error,
       );
     }
   }
@@ -70,8 +73,10 @@ class _TeamHubPageState extends State<TeamHubPage> {
           a.errorMessage != b.errorMessage && b.errorMessage != null,
       listener: (context, state) {
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(context.l10n.teamHubLoadError)),
+        AppToast.show(
+          context,
+          message: context.l10n.teamHubLoadError,
+          variant: AppToastVariant.error,
         );
         context.read<TeamHubCubit>().clearError();
       },

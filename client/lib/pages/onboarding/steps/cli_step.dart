@@ -3,6 +3,8 @@
 import 'package:flutter/material.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:teampilot/theme/app_toast_theme.dart';
+import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
 import '../../../cubits/session_preferences_cubit.dart';
 import '../../../cubits/ssh_profile_cubit.dart';
@@ -131,9 +133,13 @@ class _OnboardingCliStepState extends State<OnboardingCliStep> {
         await _detect();
       }
       if (!mounted) return;
-      ScaffoldMessenger.of(
+      AppToast.show(
         context,
-      ).showSnackBar(SnackBar(content: Text(result.message)));
+        message: result.message,
+        variant: result.success
+            ? AppToastVariant.success
+            : AppToastVariant.error,
+      );
     } finally {
       if (mounted) {
         setState(() {

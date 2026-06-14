@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:io';
 import 'dart:typed_data';
 import 'package:archive/archive.dart';
 import 'package:http/http.dart' as http;
@@ -7,32 +6,9 @@ import 'package:path/path.dart' as p;
 
 import '../../models/skill.dart';
 import '../../utils/logger.dart';
+import '../github/github_http.dart';
 import '../io/filesystem.dart';
 import 'skill_repo_git_service.dart';
-
-/// GitHub REST API rejects requests without a valid User-Agent (HTTP fallback).
-const _githubUserAgent = 'flashskyai-ui-skill-sync/1.0';
-
-Map<String, String> _githubApiHeaders() {
-  final headers = <String, String>{
-    'Accept': 'application/vnd.github+json',
-    'X-GitHub-Api-Version': '2022-11-28',
-    'User-Agent': _githubUserAgent,
-  };
-  try {
-    final token =
-        Platform.environment['GITHUB_TOKEN'] ??
-        Platform.environment['GH_TOKEN'];
-    if (token != null && token.trim().isNotEmpty) {
-      headers['Authorization'] = 'Bearer ${token.trim()}';
-    }
-  } catch (_) {}
-  return headers;
-}
-
-Map<String, String> _githubHttpHeaders() => {
-  'User-Agent': _githubUserAgent,
-};
 
 class SkillFetchException implements Exception {
   SkillFetchException(this.message, [this.cause]);
@@ -215,7 +191,7 @@ class SkillFetchService {
       'https://api.github.com/repos/$owner/$name/commits/$ref',
     );
     try {
-      final resp = await _client.get(url, headers: _githubApiHeaders());
+      final resp = await _client.get(url, headers: githubApiHeaders());
       if (resp.statusCode != 200) {
         appLogger.d(
           '[SkillFetch] API commit SHA $owner/$name@$branch: HTTP ${resp.statusCode}',
@@ -286,7 +262,7 @@ class SkillFetchService {
     );
     final http.Response resp;
     try {
-      resp = await _client.get(url, headers: _githubHttpHeaders());
+      resp = await _client.get(url, headers: githubHttpHeaders());
     } catch (e) {
       throw SkillFetchException(
         'Network error for ${repo.fullName}@$branch: $e',
@@ -317,7 +293,7 @@ class SkillFetchService {
     );
     final http.Response resp;
     try {
-      resp = await _client.get(url, headers: _githubHttpHeaders());
+      resp = await _client.get(url, headers: githubHttpHeaders());
     } catch (e) {
       throw SkillFetchException(
         'Network error (zip) for ${repo.fullName}@$branch: $e',
@@ -386,7 +362,7 @@ class SkillFetchService {
     final url = Uri.parse(
       'https://raw.githubusercontent.com/$owner/$name/$branch/$directory/SKILL.md',
     );
-    final resp = await _client.get(url, headers: _githubHttpHeaders());
+    final resp = await _client.get(url, headers: githubHttpHeaders());
     if (resp.statusCode == 404) return null;
     if (resp.statusCode != 200) {
       throw SkillFetchException(

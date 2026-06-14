@@ -125,7 +125,7 @@ class SessionPreferencesCubit extends Cubit<SessionPreferencesState> {
   ///   1. user-configured path (if non-empty after trim)
   ///   2. path discovered at startup (if non-null and non-empty)
   ///   3. the CLI's command name (OS resolves via PATH)
-  String resolveExecutable([CliTool cli = CliTool.flashskyai]) {
+  String resolveExecutable([CliTool cli = CliTool.claude]) {
     final user = _userExecutableFor(cli);
     if (user.isNotEmpty) {
       return CliToolLocator.resolveSpawnExecutable(user);

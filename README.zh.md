@@ -72,7 +72,7 @@
 
 ## 安装
 
-在 [GitHub Releases](https://github.com/hhoa/flashskyai-ui/releases) 打开最新版本，按系统下载对应文件（文件名形如 `teampilot-<版本>-…`）。
+在 [GitHub Releases](https://github.com/hhoao/teampilot/releases) 打开最新版本，按系统下载对应文件（文件名形如 `teampilot-<版本>-…`）。
 
 ### Linux
 

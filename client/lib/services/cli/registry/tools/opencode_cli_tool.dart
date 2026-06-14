@@ -20,6 +20,7 @@ import '../headless/opencode_headless_run_capability.dart';
 import '../headless/opencode_headless_provision_capability.dart';
 import '../installer/opencode_installer_capability.dart';
 import '../../../provider/opencode/opencode_provider_form_capability.dart';
+import '../capabilities/member_config_inspection_capability.dart';
 import '../capabilities/provider_form_capability.dart';
 import '../capabilities/resource_capability.dart';
 import '../resources/opencode_resource_capability.dart';
@@ -34,6 +35,7 @@ final class OpencodeCliTool implements CliToolDefinition {
     this.presence = const OpencodePresence(),
     this.display = const OpencodeDisplay(),
     this.terminalBehavior = const OpencodeTerminalBehavior(),
+    this.memberConfigInspection = const DefaultMemberConfigInspection(),
     this.pluginManifest = const OpencodePluginManifest(),
     this.providerCatalog = const OpencodeProviderCatalog(),
     this.providerModel = const OpencodeProviderModelCapability(),
@@ -56,6 +58,7 @@ final class OpencodeCliTool implements CliToolDefinition {
   final PresenceCapability presence;
   final OpencodeDisplay display;
   final OpencodeTerminalBehavior terminalBehavior;
+  final MemberConfigInspectionCapability memberConfigInspection;
   final OpencodePluginManifest pluginManifest;
   final ProviderCatalogCapability providerCatalog;
   final ProviderModelCapability providerModel;
@@ -79,6 +82,7 @@ final class OpencodeCliTool implements CliToolDefinition {
     presence,
     display,
     terminalBehavior,
+    memberConfigInspection,
     pluginManifest,
     providerCatalog,
     providerModel,

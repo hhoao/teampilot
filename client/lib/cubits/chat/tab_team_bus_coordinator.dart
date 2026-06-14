@@ -182,9 +182,7 @@ class TabTeamBusCoordinator implements MemberMaterializer {
     final trimmed = text.trim();
     if (trimmed.isEmpty) return;
     final team = _activeTeam();
-    final cli = team == null
-        ? CliTool.flashskyai
-        : _shellFactory.cliForMember(team, memberId);
+    final cli = team == null ? CliTool.claude : _shellFactory.cliForMember(team, memberId);
     final usesFullScreen =
         CliToolRegistry.builtIn()
             .capability<TerminalBehaviorCapability>(cli)

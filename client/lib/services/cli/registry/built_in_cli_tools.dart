@@ -4,13 +4,15 @@ import '../../../services/provider/codex/codex_provider_credential_capability.da
 import '../../../services/provider/cursor/cursor_provider_credential_capability.dart';
 import '../../../services/provider/cursor/cursor_provider_model_capability.dart';
 import '../../../services/provider/opencode/opencode_provider_credential_capability.dart';
+import 'capabilities/member_agent_preset_capability.dart';
+import 'capabilities/member_config_inspection_capability.dart';
+import 'capabilities/provider_model_capability.dart';
 import 'cli_bootstrap.dart';
 import 'cli_tool_registry.dart';
 import 'tools/claude_cli_tool.dart';
 import 'tools/codex_cli_tool.dart';
 import 'tools/cursor_cli_tool.dart';
 import 'tools/flashskyai_cli_tool.dart';
-import 'capabilities/provider_model_capability.dart';
 import 'tools/opencode_cli_tool.dart';
 
 void registerBuiltInCliTools(
@@ -64,4 +66,40 @@ void registerBuiltInCliTools(
     ),
     'Every CliTool must register ProviderModelCapability',
   );
+  assert(
+    CliTool.values.every(
+      (cli) =>
+          registry.capability<MemberConfigInspectionCapability>(cli) != null,
+    ),
+    'Every CliTool must register MemberConfigInspectionCapability',
+  );
+  _verifyNativeTeamRegistration(registry);
+  _verifyMemberAgentPresetRegistration(registry);
+}
+
+void _verifyMemberAgentPresetRegistration(CliToolRegistry registry) {
+  const allowed = {CliTool.claude, CliTool.flashskyai};
+  final presetIds = {
+    for (final def in registry.withCapability<MemberAgentPresetCapability>())
+      def.id,
+  };
+  if (presetIds.length != allowed.length || !allowed.every(presetIds.contains)) {
+    throw StateError(
+      'Member agent preset is limited to CLIs with MemberAgentPresetCapability; '
+      'got ${presetIds.map((c) => c.value).join(', ')}',
+    );
+  }
+}
+
+void _verifyNativeTeamRegistration(CliToolRegistry registry) {
+  const allowed = {CliTool.claude, CliTool.flashskyai};
+  final nativeIds = {
+    for (final def in registry.nativeTeamLaunchable) def.id,
+  };
+  if (nativeIds.length != allowed.length || !allowed.every(nativeIds.contains)) {
+    throw StateError(
+      'Native team mode is limited to CLIs with NativeTeamCapability; '
+      'got ${nativeIds.map((c) => c.value).join(', ')}',
+    );
+  }
 }

@@ -72,7 +72,7 @@ Configure under **Settings → Team configuration** (route `/team-config`). Team
 
 ## Installation
 
-Open the latest [GitHub Release](https://github.com/hhoa/flashskyai-ui/releases) and download the asset for your system (names look like `teampilot-<version>-…`).
+Open the latest [GitHub Release](https://github.com/hhoao/teampilot/releases) and download the asset for your system (names look like `teampilot-<version>-…`).
 
 ### Linux
 

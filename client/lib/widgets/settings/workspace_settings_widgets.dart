@@ -264,10 +264,9 @@ class ManagementCardHeader extends StatelessWidget {
       title,
       maxLines: 2,
       overflow: TextOverflow.ellipsis,
-      style: AppTextStyles.of(context).sectionTitle.copyWith(
-        fontWeight: FontWeight.w800,
-        color: textBase,
-      ),
+      style: AppTextStyles.of(
+        context,
+      ).sectionTitle.copyWith(fontWeight: FontWeight.w800, color: textBase),
     );
 
     if (trailing == null) {
@@ -384,6 +383,52 @@ class SettingsCompactDropdown<T extends Object> extends StatelessWidget {
             : null,
         itemBuilder: itemBuilder,
         listItemBuilder: listItemBuilder,
+      ),
+    );
+  }
+}
+
+/// Collapsed-by-default panel for infrequently edited member/project options.
+class SettingsAdvancedExpansion extends StatelessWidget {
+  const SettingsAdvancedExpansion({
+    super.key,
+    required this.title,
+    this.subtitle,
+    required this.children,
+  });
+
+  final String title;
+  final String? subtitle;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    if (children.isEmpty) return const SizedBox.shrink();
+
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    return Material(
+      color: Colors.transparent,
+      child: ExpansionTile(
+        initiallyExpanded: false,
+        tilePadding: _settingRowPadding,
+        expandedAlignment: Alignment.centerLeft,
+        childrenPadding: EdgeInsets.zero,
+        collapsedShape: const RoundedRectangleBorder(side: BorderSide.none),
+        shape: const RoundedRectangleBorder(side: BorderSide.none),
+        title: Text(title, style: theme.textTheme.titleSmall),
+        subtitle: _hasSettingsSubtitle(subtitle)
+            ? Padding(
+                padding: const EdgeInsets.only(top: _titleSubtitleGap),
+                child: Text(
+                  subtitle!,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: cs.onSurfaceVariant,
+                  ),
+                ),
+              )
+            : null,
+        children: children,
       ),
     );
   }

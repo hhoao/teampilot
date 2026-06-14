@@ -46,6 +46,17 @@
     "placeholders": { "version": { "type": "String" } }
   },
   "extensionStatusDependencyMissing": "Missing dependency",
+  "extensionStatusDependencyMissingNamed": "Missing: {deps}",
+  "@extensionStatusDependencyMissingNamed": {
+    "placeholders": { "deps": { "type": "String" } }
+  },
+  "extensionDependencyMissingHint": "Needs {deps} on your PATH. Install it, then re-check.",
+  "@extensionDependencyMissingHint": {
+    "placeholders": { "deps": { "type": "String" } }
+  },
+  "extensionCopyCommand": "Copy",
+  "extensionCommandCopied": "Command copied to clipboard",
+  "extensionRecheck": "Re-check",
   "extensionStatusVersionTooOld": "Installed version is too old",
   "extensionKindMcpServer": "Code intelligence (MCP)",
   "extensionKindSettingsHook": "Token savings (hook)",
@@ -190,6 +201,10 @@
   "@teamModeMixed": {},
   "memberCliInheritHint": "Inherit team default",
   "@memberCliInheritHint": {},
+  "memberLaunchConfigTitle": "Model settings",
+  "@memberLaunchConfigTitle": {},
+  "memberLaunchConfigSubtitle": "CLI backend, provider, model, and effort for this member.",
+  "@memberLaunchConfigSubtitle": {},
   "teamCliSubtitle": "Chosen when the team is created and cannot be changed later.",
   "teamCliComingSoon": "Coming soon",
   "teamCliLockedSubtitle": "Set when this team was created.",
@@ -274,9 +289,10 @@
   "homeWorkspaceConversations": "Conversations",
   "homeWorkspaceConversationsSection": "Conversations",
   "homeWorkspaceProjectAgent": "Agent",
-  "projectAgentBuiltInSubtitle": "Choose an agent role; shapes behavior and available capabilities.",
+  "projectAgentBuiltInSubtitle": "Maps to flashskyai --agent when that CLI is active.",
   "projectAgentExtraArgs": "Extra CLI arguments",
   "projectAgentExtraArgsSubtitle": "Extra flags appended when starting the agent in this project.",
+  "projectAdvancedSettingsSubtitle": "Agent preset and extra CLI flags for this project.",
   "projectAgentPromptSubtitle": "System prompt defining the agent's role and boundaries in this project.",
   "projectAgentPromptPresetGeneral": "General",
   "projectAgentPromptPresetGeneralText": "Help with development in this project end to end. Understand the request and codebase, propose a clear approach, then implement with minimal diffs; summarize changed files and suggested next steps.",
@@ -1303,14 +1319,19 @@
   "memberNameSubtitle": "Display only in TeamPilot (sidebar, member list). To define responsibilities and boundaries, edit the prompt below.",
   "provider": "Provider",
   "model": "Model",
-  "agent": "Agent",
-  "selectAgent": "Select an agent",
+  "agent": "Agent preset",
+  "selectAgent": "Select preset",
   "agentBuiltInNone": "Default",
   "agentBuiltInCustom": "Custom…",
   "agentBuiltInSubtitle": "Which agent role this member uses; shapes behavior and capabilities.",
+  "agentFlashskyaiPresetSubtitle": "Passed as flashskyai --agent; pick a built-in or custom sub-agent.",
+  "agentClaudeTypeSubtitle": "Written to the Claude team roster as agentType; leave empty to use the member id.",
+  "agentClaudeTypeHint": "e.g. Explore, Plan, or a custom type",
   "agentCustomIdHint": "Custom agent id",
   "memberExtraArgs": "Member extra CLI arguments",
   "memberExtraArgsSubtitle": "Extra flags applied only when this member starts.",
+  "workspaceAdvancedSettings": "Advanced",
+  "workspaceAdvancedSettingsSubtitle": "Agent preset and extra CLI flags for this member.",
   "memberDangerouslySkipPermissions": "Skip all permission checks",
   "memberDangerouslySkipPermissionsHint": "Only for isolated / no-network sandboxes. Extremely risky otherwise.",
   "prompt": "Prompt",
@@ -1333,7 +1354,7 @@
   "appProviderModelEnterCustom": "Enter custom model ID",
   "appProviderModelPickFromList": "Choose from list",
   "memberOfficialClaudeModelHint": "Uses your Claude account default model. Manage Official login in Providers settings.",
-  "editMemberSubtitle": "Edit provider, model, agent, and command arguments.",
+  "editMemberSubtitle": "Edit provider, model, optional agent preset, and command arguments.",
   "teamLeadNameRequired": "FlashskyAI team delegation expects this member to be named exactly team-lead.",
   "teamLeadNotice": "FlashskyAI team delegation expects this member to be named exactly team-lead.",
   "membersAndFileTree": "Members and File Tree",
@@ -1577,5 +1598,39 @@
   "teamGenButton": "Generate",
   "teamGenNoProvider": "Configure an AI provider in Settings → AI Features first.",
   "teamGenFailed": "Could not generate a team. Please edit manually.",
-  "teamGenApplied": "Draft applied. Review and adjust before creating."
+  "teamGenApplied": "Draft applied. Review and adjust before creating.",
+  "notificationCenterTitle": "Notifications",
+  "notificationEmpty": "No notifications",
+  "notificationMarkAllRead": "Mark all as read",
+  "notificationClearAll": "Clear",
+  "notificationMarkRead": "Mark as read",
+  "notificationDelete": "Delete",
+  "notificationTimeJustNow": "Just now",
+  "notificationTimeMinutesAgo": "{minutes} min ago",
+  "@notificationTimeMinutesAgo": {
+    "placeholders": {
+      "minutes": { "type": "int" }
+    }
+  },
+  "notificationTimeHoursAgo": "{hours} h ago",
+  "@notificationTimeHoursAgo": {
+    "placeholders": {
+      "hours": { "type": "int" }
+    }
+  },
+  "memberDetailTitle": "Member detail",
+  "memberDetailViewAction": "View member detail",
+  "memberDetailOpenConfigDir": "Open config directory",
+  "memberDetailOpenInFileManager": "Open in file manager",
+  "memberDetailNeedsSession": "Open a session first",
+  "memberDetailTabOverview": "Overview",
+  "memberDetailTabSkills": "Skills",
+  "memberDetailTabMcp": "MCP",
+  "memberDetailTabPlugins": "Plugins",
+  "memberDetailTabSettings": "Settings",
+  "memberDetailSourceRuntime": "Live session config",
+  "memberDetailSourceTeam": "Team-level config (member not launched in this session)",
+  "memberDetailEmpty": "This member has no config yet in this session, and the team layer is empty.",
+  "memberDetailLoadError": "Failed to read this member's config directory.",
+  "memberDetailSectionEmpty": "None"
 }

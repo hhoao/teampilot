@@ -60,7 +60,7 @@ class ChatSessionShellFactory {
     return team.cli;
   }
 
-  TerminalSession newSession([CliTool cli = CliTool.flashskyai]) {
+  TerminalSession newSession([CliTool cli = CliTool.claude]) {
     final executable = _resolveExecutableFor(cli);
     final scrollback = _scrollbackLines;
     if (_useSsh) {

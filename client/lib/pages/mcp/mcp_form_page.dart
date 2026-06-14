@@ -3,6 +3,8 @@
 import 'package:flutter/material.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:teampilot/theme/app_toast_theme.dart';
+import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
 import '../../cubits/mcp_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
@@ -140,9 +142,7 @@ class _McpFormPageState extends State<McpFormPage> {
     }
     final message = cubit.state.errorMessage;
     if (message != null) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(message)));
+      AppToast.show(context, message: message, variant: AppToastVariant.error);
     }
   }
 

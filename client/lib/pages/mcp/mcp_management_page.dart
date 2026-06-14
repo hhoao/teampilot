@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:teampilot/theme/app_toast_theme.dart';
+import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
 import '../../cubits/mcp_cubit.dart';
 import '../../cubits/mcp_discovery_cubit.dart';
@@ -138,14 +140,16 @@ class _McpManagementPageState extends State<McpManagementPage> {
     final ok = await cubit.upsert(draft);
     if (!mounted) return;
     if (ok) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.l10n.mcpCatalogAdded)),
+      AppToast.show(
+        context,
+        message: context.l10n.mcpCatalogAdded,
+        variant: AppToastVariant.success,
       );
       return;
     }
     final message = cubit.state.errorMessage;
     if (message != null) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+      AppToast.show(context, message: message, variant: AppToastVariant.error);
       navigateMcpEdit(context, draft);
     }
   }
@@ -156,8 +160,10 @@ class _McpManagementPageState extends State<McpManagementPage> {
     final preview = await cubit.previewImport();
     if (!mounted) return;
     if (preview.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l10n.mcpImportEmpty)),
+      AppToast.show(
+        context,
+        message: l10n.mcpImportEmpty,
+        variant: AppToastVariant.warning,
       );
       return;
     }
@@ -205,8 +211,10 @@ class _McpManagementPageState extends State<McpManagementPage> {
       overwriteConflicts: overwrite == true,
     );
     if (!mounted || !ok) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(l10n.mcpImportDone)),
+    AppToast.show(
+      context,
+      message: l10n.mcpImportDone,
+      variant: AppToastVariant.success,
     );
   }
 
@@ -251,8 +259,10 @@ class _McpManagementPageState extends State<McpManagementPage> {
           a.errorMessage != b.errorMessage && b.errorMessage != null,
       listener: (context, state) {
         if (!context.mounted || state.errorMessage == null) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(state.errorMessage!)),
+        AppToast.show(
+          context,
+          message: state.errorMessage!,
+          variant: AppToastVariant.error,
         );
         context.read<McpCubit>().clearError();
       },

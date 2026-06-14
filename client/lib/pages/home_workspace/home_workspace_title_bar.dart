@@ -12,6 +12,7 @@ import '../../services/app/platform_utils.dart';
 import '../../theme/app_text_styles.dart';
 import '../../theme/workspace_surface_layers.dart';
 import '../../widgets/menu/sidebar_action_menu.dart';
+import '../../widgets/notification/notification_bell_button.dart';
 import '../../widgets/team_pilot_brand_logo.dart';
 import '../../widgets/window_chrome_controls.dart';
 import '../../widgets/window_drag_area.dart';
@@ -315,6 +316,7 @@ class _HomeWorkspaceTitleBarState extends State<HomeWorkspaceTitleBar>
                 ),
               ),
             const SizedBox(width: 8),
+            const NotificationBellButton(),
             _ActionGlyph(
               icon: Icons.settings_outlined,
               tooltip: l10n.settings,

@@ -3,6 +3,8 @@ import '../../cli_tool_adapter.dart';
 import '../cli_capability.dart';
 import '../cli_tool_definition.dart';
 import '../capabilities/built_in_tool_capabilities.dart';
+import '../capabilities/member_agent_preset_capability.dart';
+import '../capabilities/native_team_capability.dart';
 import '../capabilities/config_profile_capability.dart';
 import '../capabilities/executable_resolver_capability.dart';
 import '../capabilities/installer_capability.dart';
@@ -17,6 +19,7 @@ import '../config_profile/flashskyai_config_profile_capability.dart';
 import '../headless/flashskyai_headless_run_capability.dart';
 import '../headless/flashskyai_headless_provision_capability.dart';
 import '../../../provider/flashskyai/flashskyai_provider_form_capability.dart';
+import '../capabilities/member_config_inspection_capability.dart';
 import '../capabilities/provider_form_capability.dart';
 import '../capabilities/resource_capability.dart';
 import '../resources/default_resource_capability.dart';
@@ -31,6 +34,7 @@ final class FlashskyaiCliTool implements CliToolDefinition {
     this.presence = const FlashskyaiPresence(),
     this.display = const FlashskyaiDisplay(),
     this.terminalBehavior = const FlashskyaiTerminalBehavior(),
+    this.memberConfigInspection = const DefaultMemberConfigInspection(),
     this.pluginManifest = const FlashskyaiPluginManifest(),
     this.providerCatalog = const FlashskyaiProviderCatalog(),
     this.providerModel = const ProviderRecordModelCapability(),
@@ -48,6 +52,7 @@ final class FlashskyaiCliTool implements CliToolDefinition {
   final PresenceCapability presence;
   final FlashskyaiDisplay display;
   final FlashskyaiTerminalBehavior terminalBehavior;
+  final MemberConfigInspectionCapability memberConfigInspection;
   final FlashskyaiPluginManifest pluginManifest;
   final FlashskyaiProviderCatalog providerCatalog;
   final ProviderModelCapability providerModel;
@@ -62,8 +67,13 @@ final class FlashskyaiCliTool implements CliToolDefinition {
   @override
   bool get isLaunchSupported => true;
 
+  static const _nativeTeam = NativeTeamSupport();
+  static const _memberAgentPreset = FlashskyaiMemberAgentPreset();
+
   @override
   Iterable<CliCapability> get capabilities => [
+    _nativeTeam,
+    _memberAgentPreset,
     launchArgs,
     configProfile,
     transcriptProbe,
@@ -72,6 +82,7 @@ final class FlashskyaiCliTool implements CliToolDefinition {
     presence,
     display,
     terminalBehavior,
+    memberConfigInspection,
     pluginManifest,
     providerCatalog,
     providerModel,

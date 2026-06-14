@@ -15,7 +15,7 @@ For contributors and maintainers. End-user overview: [README.md](../README.md). 
 
 ```bash
 git clone <repo-url>
-cd flashskyai-ui
+cd teampilot
 git submodule update --init --recursive
 ```
 

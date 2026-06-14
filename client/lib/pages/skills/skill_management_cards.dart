@@ -1,5 +1,7 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
+import 'package:teampilot/theme/app_toast_theme.dart';
+import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
 import '../../l10n/l10n_extensions.dart';
 import '../../theme/app_text_styles.dart';
@@ -97,10 +99,12 @@ Future<bool> skillConfirmDialog(
   return result ?? false;
 }
 
-void showSkillSnack(BuildContext context, String message) {
-  ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(content: Text(message), duration: const Duration(seconds: 3)),
-  );
+void showSkillSnack(
+  BuildContext context,
+  String message, {
+  AppToastVariant variant = AppToastVariant.info,
+}) {
+  AppToast.show(context, message: message, variant: variant);
 }
 
 class SkillEmptyBlock extends StatelessWidget {

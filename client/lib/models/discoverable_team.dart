@@ -261,7 +261,7 @@ class DiscoverableTeam {
     required this.category,
     required this.updatedAt,
     this.author,
-    this.cli = CliTool.flashskyai,
+    this.cli = CliTool.claude,
     this.teamMode = TeamMode.native,
     this.extraArgs = '',
     this.members = const [],

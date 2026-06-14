@@ -356,6 +356,36 @@ abstract class AppLocalizations {
   /// **'Missing dependency'**
   String get extensionStatusDependencyMissing;
 
+  /// No description provided for @extensionStatusDependencyMissingNamed.
+  ///
+  /// In en, this message translates to:
+  /// **'Missing: {deps}'**
+  String extensionStatusDependencyMissingNamed(String deps);
+
+  /// No description provided for @extensionDependencyMissingHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Needs {deps} on your PATH. Install it, then re-check.'**
+  String extensionDependencyMissingHint(String deps);
+
+  /// No description provided for @extensionCopyCommand.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy'**
+  String get extensionCopyCommand;
+
+  /// No description provided for @extensionCommandCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Command copied to clipboard'**
+  String get extensionCommandCopied;
+
+  /// No description provided for @extensionRecheck.
+  ///
+  /// In en, this message translates to:
+  /// **'Re-check'**
+  String get extensionRecheck;
+
   /// No description provided for @extensionStatusVersionTooOld.
   ///
   /// In en, this message translates to:
@@ -926,6 +956,18 @@ abstract class AppLocalizations {
   /// **'Inherit team default'**
   String get memberCliInheritHint;
 
+  /// No description provided for @memberLaunchConfigTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Model settings'**
+  String get memberLaunchConfigTitle;
+
+  /// No description provided for @memberLaunchConfigSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'CLI backend, provider, model, and effort for this member.'**
+  String get memberLaunchConfigSubtitle;
+
   /// No description provided for @teamCliSubtitle.
   ///
   /// In en, this message translates to:
@@ -1313,7 +1355,7 @@ abstract class AppLocalizations {
   /// No description provided for @projectAgentBuiltInSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Choose an agent role; shapes behavior and available capabilities.'**
+  /// **'Maps to flashskyai --agent when that CLI is active.'**
   String get projectAgentBuiltInSubtitle;
 
   /// No description provided for @projectAgentExtraArgs.
@@ -1327,6 +1369,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Extra flags appended when starting the agent in this project.'**
   String get projectAgentExtraArgsSubtitle;
+
+  /// No description provided for @projectAdvancedSettingsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Agent preset and extra CLI flags for this project.'**
+  String get projectAdvancedSettingsSubtitle;
 
   /// No description provided for @projectAgentPromptSubtitle.
   ///
@@ -5051,13 +5099,13 @@ abstract class AppLocalizations {
   /// No description provided for @agent.
   ///
   /// In en, this message translates to:
-  /// **'Agent'**
+  /// **'Agent preset'**
   String get agent;
 
   /// No description provided for @selectAgent.
   ///
   /// In en, this message translates to:
-  /// **'Select an agent'**
+  /// **'Select preset'**
   String get selectAgent;
 
   /// No description provided for @agentBuiltInNone.
@@ -5078,6 +5126,24 @@ abstract class AppLocalizations {
   /// **'Which agent role this member uses; shapes behavior and capabilities.'**
   String get agentBuiltInSubtitle;
 
+  /// No description provided for @agentFlashskyaiPresetSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Passed as flashskyai --agent; pick a built-in or custom sub-agent.'**
+  String get agentFlashskyaiPresetSubtitle;
+
+  /// No description provided for @agentClaudeTypeSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Written to the Claude team roster as agentType; leave empty to use the member id.'**
+  String get agentClaudeTypeSubtitle;
+
+  /// No description provided for @agentClaudeTypeHint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. Explore, Plan, or a custom type'**
+  String get agentClaudeTypeHint;
+
   /// No description provided for @agentCustomIdHint.
   ///
   /// In en, this message translates to:
@@ -5095,6 +5161,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Extra flags applied only when this member starts.'**
   String get memberExtraArgsSubtitle;
+
+  /// No description provided for @workspaceAdvancedSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Advanced'**
+  String get workspaceAdvancedSettings;
+
+  /// No description provided for @workspaceAdvancedSettingsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Agent preset and extra CLI flags for this member.'**
+  String get workspaceAdvancedSettingsSubtitle;
 
   /// No description provided for @memberDangerouslySkipPermissions.
   ///
@@ -5231,7 +5309,7 @@ abstract class AppLocalizations {
   /// No description provided for @editMemberSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Edit provider, model, agent, and command arguments.'**
+  /// **'Edit provider, model, optional agent preset, and command arguments.'**
   String get editMemberSubtitle;
 
   /// No description provided for @teamLeadNameRequired.
@@ -6253,6 +6331,150 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Draft applied. Review and adjust before creating.'**
   String get teamGenApplied;
+
+  /// No description provided for @notificationCenterTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Notifications'**
+  String get notificationCenterTitle;
+
+  /// No description provided for @notificationEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No notifications'**
+  String get notificationEmpty;
+
+  /// No description provided for @notificationMarkAllRead.
+  ///
+  /// In en, this message translates to:
+  /// **'Mark all as read'**
+  String get notificationMarkAllRead;
+
+  /// No description provided for @notificationClearAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear'**
+  String get notificationClearAll;
+
+  /// No description provided for @notificationMarkRead.
+  ///
+  /// In en, this message translates to:
+  /// **'Mark as read'**
+  String get notificationMarkRead;
+
+  /// No description provided for @notificationDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get notificationDelete;
+
+  /// No description provided for @notificationTimeJustNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Just now'**
+  String get notificationTimeJustNow;
+
+  /// No description provided for @notificationTimeMinutesAgo.
+  ///
+  /// In en, this message translates to:
+  /// **'{minutes} min ago'**
+  String notificationTimeMinutesAgo(int minutes);
+
+  /// No description provided for @notificationTimeHoursAgo.
+  ///
+  /// In en, this message translates to:
+  /// **'{hours} h ago'**
+  String notificationTimeHoursAgo(int hours);
+
+  /// No description provided for @memberDetailTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Member detail'**
+  String get memberDetailTitle;
+
+  /// No description provided for @memberDetailViewAction.
+  ///
+  /// In en, this message translates to:
+  /// **'View member detail'**
+  String get memberDetailViewAction;
+
+  /// No description provided for @memberDetailOpenConfigDir.
+  ///
+  /// In en, this message translates to:
+  /// **'Open config directory'**
+  String get memberDetailOpenConfigDir;
+
+  /// No description provided for @memberDetailOpenInFileManager.
+  ///
+  /// In en, this message translates to:
+  /// **'Open in file manager'**
+  String get memberDetailOpenInFileManager;
+
+  /// No description provided for @memberDetailNeedsSession.
+  ///
+  /// In en, this message translates to:
+  /// **'Open a session first'**
+  String get memberDetailNeedsSession;
+
+  /// No description provided for @memberDetailTabOverview.
+  ///
+  /// In en, this message translates to:
+  /// **'Overview'**
+  String get memberDetailTabOverview;
+
+  /// No description provided for @memberDetailTabSkills.
+  ///
+  /// In en, this message translates to:
+  /// **'Skills'**
+  String get memberDetailTabSkills;
+
+  /// No description provided for @memberDetailTabMcp.
+  ///
+  /// In en, this message translates to:
+  /// **'MCP'**
+  String get memberDetailTabMcp;
+
+  /// No description provided for @memberDetailTabPlugins.
+  ///
+  /// In en, this message translates to:
+  /// **'Plugins'**
+  String get memberDetailTabPlugins;
+
+  /// No description provided for @memberDetailTabSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Settings'**
+  String get memberDetailTabSettings;
+
+  /// No description provided for @memberDetailSourceRuntime.
+  ///
+  /// In en, this message translates to:
+  /// **'Live session config'**
+  String get memberDetailSourceRuntime;
+
+  /// No description provided for @memberDetailSourceTeam.
+  ///
+  /// In en, this message translates to:
+  /// **'Team-level config (member not launched in this session)'**
+  String get memberDetailSourceTeam;
+
+  /// No description provided for @memberDetailEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'This member has no config yet in this session, and the team layer is empty.'**
+  String get memberDetailEmpty;
+
+  /// No description provided for @memberDetailLoadError.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to read this member\'s config directory.'**
+  String get memberDetailLoadError;
+
+  /// No description provided for @memberDetailSectionEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'None'**
+  String get memberDetailSectionEmpty;
 }
 
 class _AppLocalizationsDelegate
