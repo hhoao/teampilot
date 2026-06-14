@@ -215,28 +215,40 @@ class _OverviewTab extends StatelessWidget {
             color: Theme.of(context).colorScheme.surfaceContainerHighest,
             child: Padding(
               padding: const EdgeInsets.all(12),
-              child: Text(source),
+              child: Text(source, style: Theme.of(context).textTheme.bodyMedium),
             ),
           ),
         const SizedBox(height: 8),
-        _kv('CLI', detail.cli.value),
-        if (detail.provider.isNotEmpty) _kv('Provider', detail.provider),
-        if (detail.model.isNotEmpty) _kv('Model', detail.model),
-        _kv('CONFIG_DIR', detail.resolvedDir),
+        _kv(context, 'CLI', detail.cli.value),
+        if (detail.provider.isNotEmpty) _kv(context, 'Provider', detail.provider),
+        if (detail.model.isNotEmpty) _kv(context, 'Model', detail.model),
+        _kv(context, 'CONFIG_DIR', detail.resolvedDir),
       ],
     );
   }
 
-  Widget _kv(String k, String v) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 4),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            SizedBox(width: 110, child: Text(k)),
-            Expanded(child: SelectableText(v)),
-          ],
-        ),
-      );
+  Widget _kv(BuildContext context, String k, String v) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 110,
+            child: Text(
+              k,
+              style: theme.textTheme.bodyMedium
+                  ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+            ),
+          ),
+          Expanded(
+            child: SelectableText(v, style: theme.textTheme.bodyMedium),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _ListTab extends StatelessWidget {
@@ -253,15 +265,22 @@ class _ListTab extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final cs = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
     final content = items.isEmpty
-        ? Center(child: Text(empty))
+        ? Center(
+            child: Text(empty, style: theme.textTheme.bodyMedium),
+          )
         : ListView.builder(
             itemCount: items.length,
             itemBuilder: (_, i) => ListTile(
-              dense: true,
-              title: Text(items[i].title),
-              subtitle:
-                  items[i].subtitle.isEmpty ? null : Text(items[i].subtitle),
+              title: Text(items[i].title, style: theme.textTheme.bodyMedium),
+              subtitle: items[i].subtitle.isEmpty
+                  ? null
+                  : Text(
+                      items[i].subtitle,
+                      style: theme.textTheme.bodySmall
+                          ?.copyWith(color: cs.onSurfaceVariant),
+                    ),
             ),
           );
     if (!hasWarning) return content;
