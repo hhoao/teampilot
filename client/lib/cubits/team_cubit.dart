@@ -263,7 +263,7 @@ class TeamCubit extends Cubit<TeamState> implements TeamCubitHost {
 
   Future<bool> addTeam(
     String name, {
-    CliTool cli = CliTool.flashskyai,
+    CliTool cli = CliTool.claude,
     TeamMode teamMode = TeamMode.native,
     Map<String, String> providerIdsByTool = const {},
     List<TeamMemberConfig>? members,

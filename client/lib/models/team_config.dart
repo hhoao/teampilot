@@ -18,7 +18,7 @@ enum CliTool {
 
   final String value;
 
-  static CliTool decode(Object? raw) => tryParse(raw?.toString()) ?? flashskyai;
+  static CliTool decode(Object? raw) => tryParse(raw?.toString()) ?? claude;
 
   static CliTool? tryParse(String? raw) {
     final normalized = raw?.trim().toLowerCase();
@@ -366,7 +366,9 @@ class TeamConfig {
       pluginIds: decodePluginIds(json['pluginIds']),
       mcpServerIds: decodeMcpServerIds(json['mcpServerIds']),
       providerIdsByTool: _decodeProviderIdsByTool(json['providerIdsByTool']),
-      cli: CliTool.decode(json['cli']),
+      cli: json.containsKey('cli')
+          ? CliTool.parse(json['cli'])
+          : CliTool.flashskyai,
       teamMode: TeamMode.decode(json['teamMode']),
       createdAt: (json['createdAt'] as num?)?.toInt() ?? 0,
       sortOrder: (json['sortOrder'] as num?)?.toInt() ?? 0,
@@ -552,7 +554,7 @@ class TeamConfig {
       if (pluginIds.isNotEmpty) 'pluginIds': pluginIds,
       if (mcpServerIds.isNotEmpty) 'mcpServerIds': mcpServerIds,
       if (providerIdsByTool.isNotEmpty) 'providerIdsByTool': providerIdsByTool,
-      if (cli != CliTool.flashskyai) 'cli': cli.value,
+      'cli': cli.value,
       if (teamMode != TeamMode.native) 'teamMode': teamMode.value,
       'createdAt': createdAt,
       if (sortOrder > 0) 'sortOrder': sortOrder,

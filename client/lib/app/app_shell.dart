@@ -179,14 +179,14 @@ Future<AppShell> buildAppShell({
       locatedExecutables[CliTool.claude] = claudeLocated;
     }
   }
-  final cliLocated = locatedExecutables[CliTool.flashskyai];
+  final claudeLocated = locatedExecutables[CliTool.claude];
+  final flashskyaiLocated = locatedExecutables[CliTool.flashskyai];
 
   final appSettings = SharedPrefsAppSettingsRepository(preferences);
   final aiFeatureSettingsCubit = AiFeatureSettingsCubit(repository: appSettings);
   unawaited(aiFeatureSettingsCubit.load());
   final sessionPreferencesCubit = SessionPreferencesCubit(
     repository: SessionPreferencesRepository(preferences),
-    locatedExecutable: cliLocated,
     locatedExecutables: locatedExecutables,
     cliToolRegistry: cliToolRegistry,
   );
@@ -224,7 +224,7 @@ Future<AppShell> buildAppShell({
     nativeHome:
         Platform.environment['HOME'] ?? Platform.environment['USERPROFILE'],
     nativeCwd: defaultProjectDirectory,
-    wslDistro: RuntimeStorageContext.parseWslDistro(cliLocated),
+    wslDistro: RuntimeStorageContext.parseWslDistro(claudeLocated),
     windowsStorageBackend: windowsStorageBackend(),
   );
   boot(
@@ -236,7 +236,7 @@ Future<AppShell> buildAppShell({
 
   if (!Platform.isAndroid) {
     unawaited(
-      ProviderMigrationService(cliExecutablePath: cliLocated).migrateIfNeeded(),
+      ProviderMigrationService(cliExecutablePath: flashskyaiLocated).migrateIfNeeded(),
     );
   }
 

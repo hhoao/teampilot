@@ -1,5 +1,9 @@
 import 'dart:io';
 
+import 'package:pub_semver/pub_semver.dart';
+
+import '../../config/app_update_config.dart';
+
 /// Which release binary this install expects (aligned with CI asset names).
 enum AppUpdateInstallKind {
   windowsSetup,
@@ -27,6 +31,45 @@ AppUpdateInstallKind resolveAppUpdateInstallKind() {
 /// Android APK ABI suffix used in release filenames (`teampilot-*-arm64-v8a.apk`).
 String androidApkAbiSuffix({bool preferArm64 = true}) {
   return preferArm64 ? 'arm64-v8a' : 'armeabi-v7a';
+}
+
+/// Extracts a release tag from a GitHub release page or redirect URL.
+String? parseReleaseTagFromGithubUrl(String url) {
+  final uri = Uri.tryParse(url);
+  if (uri == null) return null;
+  final match = RegExp(r'/releases/tag/([^/?#]+)').firstMatch(uri.path);
+  final tag = match?.group(1)?.trim();
+  if (tag == null || tag.isEmpty) return null;
+  return tag;
+}
+
+/// Builds the GitHub `releases/download/{tag}/{asset}` URL for [assetName].
+String githubReleaseAssetDownloadUrl({
+  required String owner,
+  required String repo,
+  required String tagName,
+  required String assetName,
+}) {
+  final encodedTag = Uri.encodeComponent(tagName);
+  final encodedAsset = Uri.encodeComponent(assetName);
+  return 'https://github.com/$owner/$repo/releases/download/$encodedTag/$encodedAsset';
+}
+
+/// Expected CI release filename for [version] (inverse of [selectReleaseAssetName]).
+String buildExpectedReleaseAssetName({
+  required Version version,
+  required AppUpdateInstallKind kind,
+  String slug = appUpdateReleaseArtifactSlug,
+  String androidAbiSuffix = 'arm64-v8a',
+}) {
+  final v = version.toString();
+  return switch (kind) {
+    AppUpdateInstallKind.windowsSetup => '$slug-$v-windows-setup.exe',
+    AppUpdateInstallKind.linuxAppImage => '$slug-$v-linux.AppImage',
+    AppUpdateInstallKind.linuxDeb => '$slug-$v-linux.deb',
+    AppUpdateInstallKind.macosDmg => '$slug-$v.dmg',
+    AppUpdateInstallKind.androidApk => '$slug-$v-$androidAbiSuffix.apk',
+  };
 }
 
 /// Strips a leading `v` from a Git tag (`v1.0.1` → `1.0.1`).

@@ -35,7 +35,7 @@ enum _TeamCreationMethod { custom, ai }
 /// "New Team" row. Mirrors the Apifox project-creation modal: centered title +
 /// close, two big selectable mode cards (Native / Mixed), a named form row, and
 /// a single primary create action. The chosen [TeamMode] is the headline
-/// decision; the CLI backend defaults to [CliTool.flashskyai].
+/// decision; the CLI backend defaults to [CliTool.claude].
 Future<void> showHomeWorkspaceNewTeamDialog(
   BuildContext context,
   TeamCubit teamCubit,

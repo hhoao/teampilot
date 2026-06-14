@@ -489,7 +489,7 @@ void main() {
     final teamRoot = p.join(base.path, 'config-profiles', 'teams', 'alpha');
     expect(await Directory(teamRoot).exists(), isTrue);
     expect(await Directory(p.join(teamRoot, 'flashskyai')).exists(), isFalse);
-    expect(cubit.state.teams.single.cli, CliTool.flashskyai);
+    expect(cubit.state.teams.single.cli, CliTool.claude);
 
     await _drainAndCloseTeamCubit(cubit);
     await base.delete(recursive: true);

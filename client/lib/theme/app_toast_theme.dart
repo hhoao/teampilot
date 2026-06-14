@@ -1,9 +1,9 @@
-import 'dart:io' show Platform;
-
 import 'package:flutter/material.dart';
 import 'package:toastification/toastification.dart';
 
 import 'app_spacing.dart';
+import '../services/app/platform_utils.dart';
+import '../widgets/desktop_window_title_bar.dart';
 import 'workspace_surface_layers.dart';
 
 /// Default toast corner radius — matches [_subThemes.defaultRadius] in app_theme.
@@ -47,9 +47,7 @@ Color appToastAccentColor(ColorScheme scheme, AppToastVariant variant) =>
 /// Global toastification defaults for [ToastificationWrapper].
 ToastificationConfig buildAppToastificationConfig() {
   return ToastificationConfig(
-    alignment: Platform.isAndroid
-        ? Alignment.bottomCenter
-        : AlignmentDirectional.bottomEnd,
+    alignment: AlignmentDirectional.topEnd,
     itemWidth: kAppToastMaxWidth,
     maxToastLimit: 1,
     animationDuration: const Duration(milliseconds: 200),
@@ -57,17 +55,25 @@ ToastificationConfig buildAppToastificationConfig() {
     maxDescriptionLines: 1,
     marginBuilder: (context, alignment) {
       final spacing = AppSpacingTheme.fromContext(context);
-      final bottom = spacing.lg + MediaQuery.viewPaddingOf(context).bottom;
       final horizontal = spacing.lg;
       final y = alignment.resolve(Directionality.of(context)).y;
-      if (y >= 0.5) {
+      if (y <= -0.5) {
+        var top = spacing.lg + MediaQuery.viewPaddingOf(context).top;
+        if (useCustomDesktopWindowTitleBar) {
+          top += kDesktopWindowTitleBarHeight;
+        }
         return EdgeInsets.only(
           left: horizontal,
           right: horizontal,
-          bottom: bottom,
+          top: top,
         );
       }
-      return EdgeInsets.only(top: spacing.lg);
+      final bottom = spacing.lg + MediaQuery.viewPaddingOf(context).bottom;
+      return EdgeInsets.only(
+        left: horizontal,
+        right: horizontal,
+        bottom: bottom,
+      );
     },
   );
 }

@@ -10,8 +10,11 @@ const String appUpdateGitHubOwner = String.fromEnvironment(
 
 const String appUpdateGitHubRepo = String.fromEnvironment(
   'APP_UPDATE_GITHUB_REPO',
-  defaultValue: 'flashskyai-ui',
+  defaultValue: 'teampilot',
 );
+
+/// Prefix used in CI release asset filenames (`teampilot-1.0.0-linux.deb`, …).
+const String appUpdateReleaseArtifactSlug = 'teampilot';
 
 String appUpdateLatestReleaseApiUrl({
   String? owner,
@@ -20,6 +23,12 @@ String appUpdateLatestReleaseApiUrl({
   final o = owner ?? appUpdateGitHubOwner;
   final r = repo ?? appUpdateGitHubRepo;
   return 'https://api.github.com/repos/$o/$r/releases/latest';
+}
+
+String appUpdateLatestReleasePageUrl({String? owner, String? repo}) {
+  final o = owner ?? appUpdateGitHubOwner;
+  final r = repo ?? appUpdateGitHubRepo;
+  return 'https://github.com/$o/$r/releases/latest';
 }
 
 String appUpdateGitHubRepoPageUrl({String? owner, String? repo}) {
