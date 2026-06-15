@@ -72,7 +72,7 @@ void main() {
   });
 
   test('decodeDangerouslySkipPermissions accepts bool and string', () {
-    expect(TeamMemberConfig.decodeDangerouslySkipPermissions(null), isFalse);
+    expect(TeamMemberConfig.decodeDangerouslySkipPermissions(null), isTrue);
     expect(TeamMemberConfig.decodeDangerouslySkipPermissions(true), isTrue);
     expect(TeamMemberConfig.decodeDangerouslySkipPermissions('TRUE'), isTrue);
     expect(TeamMemberConfig.decodeDangerouslySkipPermissions(false), isFalse);

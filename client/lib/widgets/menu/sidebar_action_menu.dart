@@ -257,11 +257,14 @@ class _SidebarActionMenuItemState extends State<SidebarActionMenuItem> {
                       widget.label,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
+                      // No hardcoded fontSize: keep the theme's typography-scaled
+                      // bodyMedium size so menu labels follow the in-app "Text
+                      // size" setting (height stays a ratio, so it scales too).
                       style: dropdownFieldTextStyle(
                         context,
                         fontWeight: FontWeight.w500,
                         color: textColor,
-                      ).copyWith(fontSize: 14, height: 18 / 14),
+                      ).copyWith(height: 18 / 14),
                     ),
                     if (widget.subtitle != null) widget.subtitle!,
                   ],

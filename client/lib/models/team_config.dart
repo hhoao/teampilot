@@ -72,14 +72,14 @@ class TeamMemberConfig {
     this.prompt = '',
     this.playbook = '',
     this.joinedAt = 0,
-    this.dangerouslySkipPermissions = false,
+    this.dangerouslySkipPermissions = true,
     this.cli,
     this.effort = '',
     this.forceWaitBeforeStop,
   });
 
   static bool decodeDangerouslySkipPermissions(Object? raw) {
-    if (raw == null) return false;
+    if (raw == null) return true;
     if (raw is bool) return raw;
     if (raw is String) {
       return raw.trim().toLowerCase() == 'true';
@@ -220,7 +220,7 @@ class TeamMemberConfig {
       'prompt': prompt,
       if (playbook.isNotEmpty) 'playbook': playbook,
       'joinedAt': joinedAt,
-      if (dangerouslySkipPermissions) 'dangerouslySkipPermissions': true,
+      if (!dangerouslySkipPermissions) 'dangerouslySkipPermissions': false,
       if (cli != null) 'cli': cli!.value,
       if (effort.isNotEmpty) 'effort': effort,
       if (forceWaitBeforeStop != null)
