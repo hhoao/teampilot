@@ -781,6 +781,11 @@ class AppLocalizationsEn extends AppLocalizations {
       'No provider setup required for this CLI';
 
   @override
+  String projectCliConfigSummary(String provider, String model) {
+    return '$provider · $model';
+  }
+
+  @override
   String get projectCliAddPresetTitle => 'Add Preset';
 
   @override
@@ -800,8 +805,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get projectCliDeletePresetTitle => 'Delete Preset';
 
   @override
-  String projectCliDeletePresetConfirm(String name) =>
-      "Delete preset '$name'? This cannot be undone.";
+  String projectCliDeletePresetConfirm(String name) {
+    return 'Delete preset \'$name\'? This cannot be undone.';
+  }
 
   @override
   String get projectCliPresetLabel => 'Active Preset';
@@ -811,11 +817,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get projectCliManagePresets => 'Manage';
-
-  @override
-  String projectCliConfigSummary(String provider, String model) {
-    return '$provider · $model';
-  }
 
   @override
   String get homeWorkspaceProjectSkills => 'Skills';

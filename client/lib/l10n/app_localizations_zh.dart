@@ -746,6 +746,11 @@ class AppLocalizationsZh extends AppLocalizations {
   String get projectCliNoProviderCatalog => '此 CLI 无需配置提供商';
 
   @override
+  String projectCliConfigSummary(String provider, String model) {
+    return '$provider · $model';
+  }
+
+  @override
   String get projectCliAddPresetTitle => '添加预设';
 
   @override
@@ -764,7 +769,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get projectCliDeletePresetTitle => '删除预设';
 
   @override
-  String projectCliDeletePresetConfirm(String name) => "删除预设'$name'？此操作不可撤销。";
+  String projectCliDeletePresetConfirm(String name) {
+    return '删除预设\'$name\'？此操作不可撤销。';
+  }
 
   @override
   String get projectCliPresetLabel => '当前预设';
@@ -774,11 +781,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get projectCliManagePresets => '管理';
-
-  @override
-  String projectCliConfigSummary(String provider, String model) {
-    return '$provider · $model';
-  }
 
   @override
   String get homeWorkspaceProjectSkills => '技能';

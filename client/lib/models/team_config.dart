@@ -68,6 +68,7 @@ class TeamMemberConfig {
     this.model = '',
     this.agent = '',
     this.agentType = '',
+    this.capabilities = const {},
     this.extraArgs = '',
     this.prompt = '',
     this.playbook = '',
@@ -103,6 +104,10 @@ class TeamMemberConfig {
       model: json['model'] as String? ?? '',
       agent: json['agent'] as String? ?? '',
       agentType: json['agentType'] as String? ?? '',
+      capabilities: {
+        for (final c in (json['capabilities'] as List?) ?? const [])
+          if (c is String && c.trim().isNotEmpty) c.trim(),
+      },
       extraArgs: json['extraArgs'] as String? ?? '',
       prompt: json['prompt'] as String? ?? '',
       playbook: json['playbook'] as String? ?? '',
@@ -126,6 +131,11 @@ class TeamMemberConfig {
 
   /// Claude roster `agentType` (role name); falls back to [agent] then [name].
   final String agentType;
+
+  /// Capability tags used by TeamBus task routing (mixed mode). Empty ⇒ derived
+  /// from [agentType]/[agent] in [TeammateRosterProfile]. Subset-matched against
+  /// a task's required capabilities.
+  final Set<String> capabilities;
   final String extraArgs;
 
   /// 职责层：声明这个角色是谁、负责什么（WHAT）。写入 role.md 的 Responsibilities 段。
@@ -175,6 +185,7 @@ class TeamMemberConfig {
     String? model,
     String? agent,
     String? agentType,
+    Set<String>? capabilities,
     String? extraArgs,
     String? prompt,
     String? playbook,
@@ -194,6 +205,7 @@ class TeamMemberConfig {
       model: model ?? this.model,
       agent: agent ?? this.agent,
       agentType: agentType ?? this.agentType,
+      capabilities: capabilities ?? this.capabilities,
       extraArgs: extraArgs ?? this.extraArgs,
       prompt: prompt ?? this.prompt,
       playbook: playbook ?? this.playbook,
@@ -216,6 +228,7 @@ class TeamMemberConfig {
       'model': model,
       'agent': agent,
       if (agentType.isNotEmpty) 'agentType': agentType,
+      if (capabilities.isNotEmpty) 'capabilities': capabilities.toList(),
       'extraArgs': extraArgs,
       'prompt': prompt,
       if (playbook.isNotEmpty) 'playbook': playbook,
@@ -239,6 +252,8 @@ class TeamMemberConfig {
             model == other.model &&
             agent == other.agent &&
             agentType == other.agentType &&
+            capabilities.length == other.capabilities.length &&
+            capabilities.containsAll(other.capabilities) &&
             extraArgs == other.extraArgs &&
             prompt == other.prompt &&
             playbook == other.playbook &&
@@ -257,6 +272,7 @@ class TeamMemberConfig {
     model,
     agent,
     agentType,
+    Object.hashAllUnordered(capabilities),
     extraArgs,
     prompt,
     playbook,

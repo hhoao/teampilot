@@ -20,6 +20,7 @@ class TeammateRosterProfile {
     this.taskId = '',
     this.cwd = '',
     this.backendType = '',
+    this.capabilities = const {},
   });
 
   /// 测试 / 最小节点（仅 member id）。
@@ -28,6 +29,7 @@ class TeammateRosterProfile {
     String? displayName,
     String? cli,
     bool isTeamLead = false,
+    Set<String> capabilities = const {},
   }) {
     return TeammateRosterProfile(
       memberId: memberId,
@@ -38,6 +40,7 @@ class TeammateRosterProfile {
       agentType: TeamMemberNaming.isTeamLeadName(memberId)
           ? TeamMemberNaming.teamLeadName
           : memberId,
+      capabilities: capabilities,
     );
   }
 
@@ -57,6 +60,14 @@ class TeammateRosterProfile {
         ? member.joinedAt
         : DateTime.now().millisecondsSinceEpoch;
     final cli = member.cliWithin(team);
+    final caps = member.capabilities.isNotEmpty
+        ? member.capabilities
+        : <String>{
+            if (member.agentType.trim().isNotEmpty)
+              member.agentType.trim()
+            else if (member.agent.trim().isNotEmpty)
+              member.agent.trim(),
+          };
     return TeammateRosterProfile(
       memberId: rosterName,
       displayName: member.name,
@@ -78,6 +89,7 @@ class TeammateRosterProfile {
       taskId: taskId?.trim() ?? '',
       cwd: cwd.trim(),
       backendType: cli.value,
+      capabilities: caps,
     );
   }
 
@@ -97,6 +109,9 @@ class TeammateRosterProfile {
   final String taskId;
   final String cwd;
   final String backendType;
+
+  /// Capability tags for TeamBus task routing. Derived from [TeamMemberConfig].
+  final Set<String> capabilities;
 
   String get effectiveDisplayName {
     final name = displayName.trim();

@@ -1502,22 +1502,71 @@ abstract class AppLocalizations {
   /// **'No provider setup required for this CLI'**
   String get projectCliNoProviderCatalog;
 
-  String get projectCliAddPresetTitle;
-  String get projectCliEditPresetTitle;
-  String get projectCliPresetNameLabel;
-  String get projectCliPresetsManageTitle;
-  String get projectCliPresetsEmptyHint;
-  String get projectCliDeletePresetTitle;
-  String projectCliDeletePresetConfirm(String name);
-  String get projectCliPresetLabel;
-  String get projectCliNoPresetHint;
-  String get projectCliManagePresets;
-
   /// No description provided for @projectCliConfigSummary.
   ///
   /// In en, this message translates to:
   /// **'{provider} · {model}'**
   String projectCliConfigSummary(String provider, String model);
+
+  /// No description provided for @projectCliAddPresetTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Preset'**
+  String get projectCliAddPresetTitle;
+
+  /// No description provided for @projectCliEditPresetTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit Preset'**
+  String get projectCliEditPresetTitle;
+
+  /// No description provided for @projectCliPresetNameLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Preset Name'**
+  String get projectCliPresetNameLabel;
+
+  /// No description provided for @projectCliPresetsManageTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage Presets'**
+  String get projectCliPresetsManageTitle;
+
+  /// No description provided for @projectCliPresetsEmptyHint.
+  ///
+  /// In en, this message translates to:
+  /// **'No presets yet. Create one to get started.'**
+  String get projectCliPresetsEmptyHint;
+
+  /// No description provided for @projectCliDeletePresetTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete Preset'**
+  String get projectCliDeletePresetTitle;
+
+  /// No description provided for @projectCliDeletePresetConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete preset \'{name}\'? This cannot be undone.'**
+  String projectCliDeletePresetConfirm(String name);
+
+  /// No description provided for @projectCliPresetLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Active Preset'**
+  String get projectCliPresetLabel;
+
+  /// No description provided for @projectCliNoPresetHint.
+  ///
+  /// In en, this message translates to:
+  /// **'No preset selected'**
+  String get projectCliNoPresetHint;
+
+  /// No description provided for @projectCliManagePresets.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage'**
+  String get projectCliManagePresets;
 
   /// No description provided for @homeWorkspaceProjectSkills.
   ///

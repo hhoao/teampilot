@@ -20,6 +20,7 @@ class AgentNode {
     String? displayName,
     String? cli,
     bool isTeamLead = false,
+    Set<String> capabilities = const {},
   }) {
     return AgentNode(
       profile: TeammateRosterProfile.minimal(
@@ -27,6 +28,7 @@ class AgentNode {
         displayName: displayName,
         cli: cli,
         isTeamLead: isTeamLead,
+        capabilities: capabilities,
       ),
       lifecycle: lifecycle,
       activity: activity,
