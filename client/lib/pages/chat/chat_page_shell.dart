@@ -180,6 +180,8 @@ class _ChatWorkspaceShell extends StatelessWidget {
                   id: t.id,
                   title: t.title,
                   working: model.workingSessionIds.contains(t.id),
+                  icon: Icons.terminal_rounded,
+                  accentColor: Theme.of(context).colorScheme.primary,
                 ),
               )
               .toList(),
