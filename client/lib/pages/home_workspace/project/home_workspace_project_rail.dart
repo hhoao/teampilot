@@ -4,6 +4,8 @@ import 'package:teampilot/theme/app_icon_sizes.dart';
 import '../../../l10n/l10n_extensions.dart';
 import '../../../widgets/team_pilot_brand_logo.dart';
 import 'home_workspace_project_section.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../cubits/layout_cubit.dart';
 
 /// Narrow vertical icon rail on the left of the project page (mirrors Apifox's
 /// 接口管理 / 自动化测试 / … rail).
@@ -37,6 +39,24 @@ class HomeWorkspaceProjectRail extends StatelessWidget {
           const SizedBox(height: 10),
           for (final item in items) item,
           const Spacer(),
+          BlocBuilder<LayoutCubit, LayoutState>(
+            buildWhen: (previous, next) =>
+                previous.preferences.workspaceTerminalVisible !=
+                next.preferences.workspaceTerminalVisible,
+            builder: (context, state) {
+              final visible = state.preferences.workspaceTerminalVisible;
+              return _RailItem(
+                icon: visible ? Icons.terminal : Icons.terminal_outlined,
+                label: visible
+                    ? l10n.workspaceTerminalHide
+                    : l10n.workspaceTerminalShow,
+                active: visible,
+                onTap: () => context
+                    .read<LayoutCubit>()
+                    .setWorkspaceTerminalVisible(!visible),
+              );
+            },
+          ),
           _RailItem(
             label: l10n.appTitle,
             active: false,

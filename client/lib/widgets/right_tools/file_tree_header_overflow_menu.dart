@@ -5,17 +5,15 @@ import '../../l10n/app_localizations.dart';
 import '../app_icon_button.dart';
 import '../menu/sidebar_action_menu.dart';
 
-enum FileTreeHeaderAction { terminal, reveal, toggleHidden, copy }
+enum FileTreeHeaderAction { reveal, toggleHidden, copy }
 
 /// Compact header overflow menu when the file-tree panel is too narrow for
 /// inline action buttons.
 class FileTreeHeaderOverflowMenu extends StatelessWidget {
   const FileTreeHeaderOverflowMenu({
     required this.l10n,
-    required this.workspaceTerminalVisible,
     required this.showHiddenFiles,
     required this.canCopy,
-    required this.onToggleTerminal,
     required this.onReveal,
     required this.onToggleHidden,
     required this.onCopy,
@@ -23,10 +21,8 @@ class FileTreeHeaderOverflowMenu extends StatelessWidget {
   });
 
   final AppLocalizations l10n;
-  final bool workspaceTerminalVisible;
   final bool showHiddenFiles;
   final bool canCopy;
-  final VoidCallback onToggleTerminal;
   final VoidCallback onReveal;
   final VoidCallback onToggleHidden;
   final VoidCallback onCopy;
@@ -38,15 +34,6 @@ class FileTreeHeaderOverflowMenu extends StatelessWidget {
       icon: Icon(Icons.more_vert, size: context.appIconSizes.sm),
       size: AppIconButton.kCompactSize,
       specs: [
-        SidebarActionMenuSpec.item(
-          value: FileTreeHeaderAction.terminal,
-          icon: workspaceTerminalVisible
-              ? Icons.terminal
-              : Icons.terminal_outlined,
-          label: workspaceTerminalVisible
-              ? l10n.workspaceTerminalHide
-              : l10n.workspaceTerminalShow,
-        ),
         SidebarActionMenuSpec.item(
           value: FileTreeHeaderAction.reveal,
           icon: Icons.my_location_outlined,
@@ -68,8 +55,6 @@ class FileTreeHeaderOverflowMenu extends StatelessWidget {
       ],
       onSelected: (action) {
         switch (action as FileTreeHeaderAction) {
-          case FileTreeHeaderAction.terminal:
-            onToggleTerminal();
           case FileTreeHeaderAction.reveal:
             onReveal();
           case FileTreeHeaderAction.toggleHidden:

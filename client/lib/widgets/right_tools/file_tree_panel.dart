@@ -9,7 +9,7 @@ import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
 import '../../cubits/editor_cubit.dart';
 import '../../cubits/file_tree_cubit.dart';
-import '../../cubits/layout_cubit.dart';
+
 import '../../l10n/l10n_extensions.dart';
 import '../../services/file_tree/file_tree_visible_rows.dart';
 import '../../services/storage/app_storage.dart';
@@ -180,35 +180,19 @@ class _FileTreePanelState extends State<FileTreePanel> {
                             state: state,
                           )
                         else
-                          BlocBuilder<LayoutCubit, LayoutState>(
-                            buildWhen: (previous, next) =>
-                                previous.preferences.workspaceTerminalVisible !=
-                                next.preferences.workspaceTerminalVisible,
-                            builder: (context, layoutState) {
-                              final terminalVisible = layoutState
-                                  .preferences
-                                  .workspaceTerminalVisible;
-                              return FileTreeHeaderOverflowMenu(
-                                l10n: l10n,
-                                workspaceTerminalVisible: terminalVisible,
-                                showHiddenFiles: state.showHiddenFiles,
-                                canCopy: state.rootPath.isNotEmpty,
-                                onToggleTerminal: () => context
-                                    .read<LayoutCubit>()
-                                    .setWorkspaceTerminalVisible(
-                                      !terminalVisible,
-                                    ),
-                                onReveal: () =>
-                                    unawaited(_revealActiveEditorFile()),
-                                onToggleHidden: _cubit.toggleShowHidden,
-                                onCopy: () {
-                                  if (state.rootPath.isNotEmpty) {
-                                    Clipboard.setData(
-                                      ClipboardData(text: state.rootPath),
-                                    );
-                                  }
-                                },
-                              );
+                          FileTreeHeaderOverflowMenu(
+                            l10n: l10n,
+                            showHiddenFiles: state.showHiddenFiles,
+                            canCopy: state.rootPath.isNotEmpty,
+                            onReveal: () =>
+                                unawaited(_revealActiveEditorFile()),
+                            onToggleHidden: _cubit.toggleShowHidden,
+                            onCopy: () {
+                              if (state.rootPath.isNotEmpty) {
+                                Clipboard.setData(
+                                  ClipboardData(text: state.rootPath),
+                                );
+                              }
                             },
                           ),
                       ],
@@ -284,24 +268,6 @@ class _FileTreePanelState extends State<FileTreePanel> {
     required FileTreeState state,
   }) {
     return [
-      BlocBuilder<LayoutCubit, LayoutState>(
-        buildWhen: (previous, next) =>
-            previous.preferences.workspaceTerminalVisible !=
-            next.preferences.workspaceTerminalVisible,
-        builder: (context, layoutState) {
-          final visible = layoutState.preferences.workspaceTerminalVisible;
-          return AppIconButton(
-            icon: visible ? Icons.terminal : Icons.terminal_outlined,
-            compact: true, size: AppIconButton.kCompactSize,
-            tooltip: visible
-                ? l10n.workspaceTerminalHide
-                : l10n.workspaceTerminalShow,
-            onTap: () => context
-                .read<LayoutCubit>()
-                .setWorkspaceTerminalVisible(!visible),
-          );
-        },
-      ),
       AppIconButton(
         icon: Icons.my_location_outlined,
         compact: true, size: AppIconButton.kCompactSize,
