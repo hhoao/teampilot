@@ -104,7 +104,9 @@ class DiffToolbar extends StatelessWidget {
             builder: (context, _) {
               final total = controller.changeCount;
               final enabled = total > 0;
-              final current = controller.current < 0 ? 0 : controller.current + 1;
+              final current = controller.current < 0
+                  ? 0
+                  : controller.current + 1;
               return Row(
                 children: [
                   IconButton(
@@ -121,8 +123,8 @@ class DiffToolbar extends StatelessWidget {
                           : l10n.diffNoChanges,
                       textAlign: TextAlign.center,
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: cs.onSurfaceVariant,
-                          ),
+                        color: cs.onSurfaceVariant,
+                      ),
                     ),
                   ),
                   IconButton(

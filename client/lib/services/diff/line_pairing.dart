@@ -45,12 +45,27 @@ class PairOp {
       'PairOp(${kind.name}, L$leftIndex R$rightIndex)';
 }
 
+/// Largest similarity matrix (`dels.length * ins.length` cells) we will build.
+/// Bounds the DP table's memory/allocation, which is O(n·m) regardless of line
+/// length (so many tiny lines don't blow up RAM). ~50×50.
+const int _kMaxPairingCells = 2500;
+
+/// Budget for the similarity matrix's *compute* cost. Each cell `[i][j]` runs an
+/// O(len(del_i)·len(ins_j)) char-LCS, so the whole matrix costs
+/// `(Σ del lengths)·(Σ ins lengths)`. A handful of enormous lines (minified JS,
+/// lockfiles, long JSON rows) blow this up even when the cell count is tiny — a
+/// single 49k-char line takes ~12 s — so we cap the product, not just the cell
+/// count or the total char count. ~1e7 keeps the worst case in the low tens of
+/// ms; above it we fall back to plain delete+insert.
+const int _kMaxPairingWork = 10000000;
+
 /// Aligns [dels] against [ins] preserving order, matching a deleted line to an
 /// inserted line as a modify only when their similarity reaches [threshold].
 ///
 /// Uses Needleman–Wunsch-style DP maximizing the total similarity of matched
-/// pairs; unmatched lines become delete/insert ops. Change blocks are small so
-/// the O(n·m) table is cheap.
+/// pairs; unmatched lines become delete/insert ops. The O(n·m·L²) similarity
+/// table is only built for blocks within [_kMaxPairingCells]/[_kMaxPairingChars];
+/// larger blocks fall back to plain delete+insert to keep the UI responsive.
 List<PairOp> pairChangeBlock(
   List<String> dels,
   List<String> ins, {
@@ -64,6 +79,13 @@ List<PairOp> pairChangeBlock(
   }
   if (m == 0) {
     return [for (var i = 0; i < n; i++) PairOp(kind: PairOpKind.delete, leftIndex: i)];
+  }
+
+  if (_exceedsPairingBudget(dels, ins, n, m)) {
+    return [
+      for (var i = 0; i < n; i++) PairOp(kind: PairOpKind.delete, leftIndex: i),
+      for (var j = 0; j < m; j++) PairOp(kind: PairOpKind.insert, rightIndex: j),
+    ];
   }
 
   final sim = List.generate(
@@ -128,6 +150,26 @@ List<PairOp> pairChangeBlock(
     }
   }
   return ops;
+}
+
+/// Whether a change block is too large to pair by similarity without stalling
+/// the UI — too many cells (DP memory) or too much char-LCS work (compute).
+bool _exceedsPairingBudget(
+  List<String> dels,
+  List<String> ins,
+  int n,
+  int m,
+) {
+  if (n * m > _kMaxPairingCells) return true;
+  var delChars = 0;
+  for (final line in dels) {
+    delChars += line.length;
+  }
+  var insChars = 0;
+  for (final line in ins) {
+    insChars += line.length;
+  }
+  return delChars * insChars > _kMaxPairingWork;
 }
 
 /// Character-LCS similarity in [0, 1]: `2·lcs / (len(a) + len(b))`.

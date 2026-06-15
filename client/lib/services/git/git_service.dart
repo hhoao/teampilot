@@ -32,6 +32,16 @@ class GitService {
   final ProcessRunner _runner;
   final CliToolLocator _gitLocator;
 
+  /// git emits UTF-8 (diff content, paths, branch names) regardless of the host
+  /// locale, but `Process.run` defaults to `systemEncoding` — the Windows ANSI
+  /// code page (e.g. GBK), which mangles non-ASCII text into mojibake. Decode as
+  /// UTF-8, tolerating malformed bytes so a non-UTF-8 file's diff never throws.
+  static const Encoding _textEncoding = Utf8Codec(allowMalformed: true);
+
+  /// Prepended to every invocation so non-ASCII paths arrive as literal UTF-8
+  /// instead of git's default octal-escaped `"\344\270\255…"` quoting.
+  static const List<String> _quotePathOff = ['-c', 'core.quotePath=false'];
+
   String? _gitExecutable;
 
   Future<String?> get _git async {
@@ -47,7 +57,12 @@ class GitService {
     if (git == null) {
       throw GitException('git executable not found on PATH');
     }
-    final result = await _runner(git, ['-C', dir, ...args]);
+    final result = await _runner(
+      git,
+      [..._quotePathOff, '-C', dir, ...args],
+      stdoutEncoding: _textEncoding,
+      stderrEncoding: _textEncoding,
+    );
     if (result.exitCode != 0) {
       final err = (result.stderr as String?)?.trim();
       final out = (result.stdout as String?)?.trim();

@@ -78,5 +78,69 @@ void main() {
       final strict = pairChangeBlock(dels, ins, threshold: 0.9);
       expect(strict.any((o) => o.kind == PairOpKind.modify), isFalse);
     });
+
+    test('oversized block skips similarity pairing (bounded cost)', () {
+      // A large contiguous modify block. The full O(n·m·L²) similarity matrix
+      // would take seconds and freeze the UI; the cap must short-circuit it to
+      // plain delete+insert and stay near-instant.
+      const n = 400;
+      final dels = [
+        for (var i = 0; i < n; i++) 'final value$i = compute(x$i, y$i, a);',
+      ];
+      final ins = [
+        for (var i = 0; i < n; i++) 'final value$i = compute(x$i, y$i, B);',
+      ];
+
+      final sw = Stopwatch()..start();
+      final ops = pairChangeBlock(dels, ins);
+      sw.stop();
+
+      expect(ops.any((o) => o.kind == PairOpKind.modify), isFalse,
+          reason: 'oversized blocks must not build the similarity matrix');
+      expect(ops.where((o) => o.kind == PairOpKind.delete).length, n);
+      expect(ops.where((o) => o.kind == PairOpKind.insert).length, n);
+      expect(sw.elapsedMilliseconds, lessThan(100),
+          reason: 'must avoid the quadratic similarity matrix');
+    });
+
+    test('very long lines skip similarity pairing even with few lines', () {
+      // Few lines but each enormous: the per-cell char-LCS is O(L²), so the
+      // character budget (not just the cell count) must trigger the fallback.
+      final longA = List.filled(60000, 'a').join();
+      final longB = '${longA}b';
+
+      final sw = Stopwatch()..start();
+      final ops = pairChangeBlock([longA, longA], [longB, longB]);
+      sw.stop();
+
+      expect(ops.any((o) => o.kind == PairOpKind.modify), isFalse);
+      expect(sw.elapsedMilliseconds, lessThan(100));
+    });
+
+    test('one huge changed line skips similarity pairing', () {
+      // A single line each side (cell count = 1) but each ~20k chars. The cost
+      // of one similarity cell is O(La·Lb), so the work budget — not the cell
+      // count or the total char count — must trigger the fallback.
+      final a = List.filled(20000, 'a').join();
+      final b = '${List.filled(20000, 'a').join()}b';
+
+      final sw = Stopwatch()..start();
+      final ops = pairChangeBlock([a], [b]);
+      sw.stop();
+
+      expect(ops.any((o) => o.kind == PairOpKind.modify), isFalse);
+      expect(ops.map((o) => o.kind),
+          [PairOpKind.delete, PairOpKind.insert]);
+      expect(sw.elapsedMilliseconds, lessThan(100));
+    });
+
+    test('blocks within the cap still pair as modifies', () {
+      // A 40×40 block is under the cap, so similarity pairing still applies.
+      const n = 40;
+      final dels = [for (var i = 0; i < n; i++) 'final value$i = compute(a);'];
+      final ins = [for (var i = 0; i < n; i++) 'final value$i = compute(b);'];
+      final ops = pairChangeBlock(dels, ins);
+      expect(ops.where((o) => o.kind == PairOpKind.modify).length, n);
+    });
   });
 }

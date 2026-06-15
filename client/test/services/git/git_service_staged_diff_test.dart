@@ -29,7 +29,9 @@ void main() {
     final out = await service.stagedDiff('/repo');
 
     expect(out, 'diff body');
-    expect(runner.calls.single.sublist(2), ['diff', '--cached', '--no-color']);
+    final argv = runner.calls.single;
+    expect(argv.sublist(argv.indexOf('-C') + 2),
+        ['diff', '--cached', '--no-color']);
   });
 
   test('stagedDiff truncates oversized output', () async {

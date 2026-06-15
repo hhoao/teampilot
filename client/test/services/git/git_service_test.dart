@@ -5,14 +5,21 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/git_status.dart';
 import 'package:teampilot/services/git/git_service.dart';
 
-/// Fake [ProcessRunner]: answers the locate probe with a git path, records
-/// `git -C <dir> …` invocations, and returns mapped results by command prefix.
+/// Fake [ProcessRunner]: answers the locate probe with a git path, records the
+/// git subcommand (the args after `-C <dir>`, ignoring leading global `-c` flags)
+/// and returns mapped results by command prefix.
 class _FakeRunner {
   _FakeRunner(this.responses);
 
   /// Keyed by the command after `-C <dir>` (prefix match). Missing keys → ok.
   final Map<String, ProcessResult> responses;
+
+  /// The subcommand of each invocation, i.e. the args following `-C <dir>`.
   final List<List<String>> calls = [];
+
+  /// Full argv of the last recorded invocation (incl. global flags).
+  List<String>? lastArgs;
+  Encoding? lastStdoutEncoding;
 
   Future<ProcessResult> call(
     String executable,
@@ -20,12 +27,16 @@ class _FakeRunner {
     Encoding? stdoutEncoding,
     Encoding? stderrEncoding,
   }) async {
-    if (!arguments.contains('-C')) {
+    final cIdx = arguments.indexOf('-C');
+    if (cIdx < 0) {
       // Locate probe (`which git` etc.).
       return ProcessResult(0, 0, '/usr/bin/git\n', '');
     }
-    calls.add(arguments);
-    final key = arguments.sublist(2).join(' ');
+    lastArgs = arguments;
+    lastStdoutEncoding = stdoutEncoding;
+    final cmd = arguments.sublist(cIdx + 2);
+    calls.add(cmd);
+    final key = cmd.join(' ');
     for (final entry in responses.entries) {
       if (key.startsWith(entry.key)) return entry.value;
     }
@@ -115,11 +126,11 @@ void main() {
       await service.stageAll('/repo');
       await service.unstageAll('/repo');
 
-      expect(runner.calls[0], ['-C', '/repo', 'add', '--', 'a.txt']);
-      expect(runner.calls[1], ['-C', '/repo', 'reset', '-q', 'HEAD', '--', 'a.txt']);
-      expect(runner.calls[2], ['-C', '/repo', 'commit', '-m', 'msg']);
-      expect(runner.calls[3], ['-C', '/repo', 'add', '-A']);
-      expect(runner.calls[4], ['-C', '/repo', 'reset', '-q', 'HEAD']);
+      expect(runner.calls[0], ['add', '--', 'a.txt']);
+      expect(runner.calls[1], ['reset', '-q', 'HEAD', '--', 'a.txt']);
+      expect(runner.calls[2], ['commit', '-m', 'msg']);
+      expect(runner.calls[3], ['add', '-A']);
+      expect(runner.calls[4], ['reset', '-q', 'HEAD']);
     });
 
     test('discard chooses restore for tracked and clean for untracked', () async {
@@ -143,8 +154,8 @@ void main() {
         ),
       );
 
-      expect(runner.calls[0], ['-C', '/repo', 'restore', '--', 'a.txt']);
-      expect(runner.calls[1], ['-C', '/repo', 'clean', '-f', '--', 'b.txt']);
+      expect(runner.calls[0], ['restore', '--', 'a.txt']);
+      expect(runner.calls[1], ['clean', '-f', '--', 'b.txt']);
     });
 
     test('throws GitException with stderr on non-zero exit', () async {
@@ -163,6 +174,28 @@ void main() {
           ),
         ),
       );
+    });
+  });
+
+  group('text encoding', () {
+    test('decodes git output as lenient UTF-8 with quotePath disabled', () async {
+      final runner = _FakeRunner({_inRepo: _ok('true\n'), 'status': _ok('')});
+      final service = GitService(runner: runner.call);
+
+      await service.status('/repo');
+
+      // Non-ASCII paths must arrive literally, not octal-escaped.
+      expect(runner.lastArgs, isNotNull);
+      final argv = runner.lastArgs!;
+      final cIdx = argv.indexOf('-C');
+      expect(argv.sublist(0, cIdx), ['-c', 'core.quotePath=false']);
+
+      // Output decoded as UTF-8 (git emits UTF-8, not the host ANSI codepage)…
+      final enc = runner.lastStdoutEncoding;
+      expect(enc, isNotNull);
+      expect(enc!.name, 'utf-8');
+      // …tolerating malformed bytes so a non-UTF-8 file's diff never throws.
+      expect(enc.decode(const [0xff, 0xfe]), isNotEmpty);
     });
   });
 
