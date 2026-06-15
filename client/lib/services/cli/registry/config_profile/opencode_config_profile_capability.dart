@@ -292,7 +292,7 @@ final class OpencodeConfigProfileCapability implements ConfigProfileCapability {
     if (await _writeMemberIdentity(
       paths: paths,
       opencodeDir: opencodeDir,
-      member: standaloneMemberFromProfile(profile, preset: null),
+      member: standaloneMemberFromProfile(profile, preset: ctx.preset),
       forceTeamLeadDelegateMode: false,
       mixed: false,
     )) {

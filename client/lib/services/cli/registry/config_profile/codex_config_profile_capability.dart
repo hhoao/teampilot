@@ -123,7 +123,7 @@ final class CodexConfigProfileCapability implements ConfigProfileCapability {
     ProjectProfile profile,
   ) async {
     final paths = ctx.paths;
-    final member = standaloneMemberFromProfile(profile, preset: null);
+    final member = standaloneMemberFromProfile(profile, preset: ctx.preset);
     final codexHome = standaloneSessionToolDir(paths, standalone, toolId);
     final warnings = <String>[];
 
@@ -157,7 +157,7 @@ final class CodexConfigProfileCapability implements ConfigProfileCapability {
             team: null,
             member: member,
             provider: provider,
-            profileEffort: '', // TODO: migrate to presets — profile.agent.effort / profile.effortsByTool
+            profileEffort: ctx.preset?.effort ?? '',
           ),
         );
       } on CodexHomeProvisionException catch (e) {

@@ -132,7 +132,7 @@ final class FlashskyaiConfigProfileCapability
     ProjectProfile profile,
   ) async {
     final delegate = ctx.paths;
-    final member = standaloneMemberFromProfile(profile, preset: null);
+    final member = standaloneMemberFromProfile(profile, preset: ctx.preset);
     final memberToolDir = standaloneSessionToolDir(delegate, standalone, toolId);
     final scope = launchScopeForStandalone(standalone);
     final workingDirectory = ctx.workingDirectory ?? '';

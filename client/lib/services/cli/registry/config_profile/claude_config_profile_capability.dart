@@ -279,7 +279,7 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
     ProjectProfile profile,
   ) async {
     final delegate = ctx.paths;
-    final member = standaloneMemberFromProfile(profile, preset: null);
+    final member = standaloneMemberFromProfile(profile, preset: ctx.preset);
     final memberToolDir = standaloneSessionToolDir(delegate, standalone, toolId);
     final scope = launchScopeForStandalone(standalone);
     final workingDirectory = ctx.workingDirectory ?? '';
@@ -311,8 +311,8 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
     final effortLevel = _resolveClaudeEffort(
       team: null,
       member: member,
-      model: member.model.isNotEmpty ? member.model : '', // TODO: migrate to presets — profile.agent.model
-      profileEffort: '', // TODO: migrate to presets — profile.agent.effort / profile.effortsByTool
+      model: ctx.preset?.model ?? member.model,
+      profileEffort: ctx.preset?.effort ?? '',
     );
     await _writeSettingsAt(
       delegate,
