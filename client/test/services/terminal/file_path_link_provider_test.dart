@@ -125,19 +125,19 @@ void main() {
   });
 
   test('directory is not a clickable file', () async {
-    // Register no files — /proj/lib/thing is not found (and even if /proj/lib
-    // were a directory, /proj/lib/thing is a different, unregistered path).
+    // Register the resolved path as a real DIRECTORY so validation actually
+    // exercises the `stat.isFile` guard (an existing dir must NOT enable).
     final fs = _fsWithFiles([]);
+    fs.directories.add(_resolved('lib/widgets.dart'));
     final provider = FilePathLinkProvider(fs: fs, launchCwd: '/proj');
 
-    final spans = provider.scan('see lib/thing here').toList();
-    final span = spans.firstWhere(
-      (s) => s.payload == 'lib/thing',
-      orElse: () => spans.first,
-    );
-    provider.scan('see lib/thing here').toList();
+    final span = provider
+        .scan('see lib/widgets.dart here')
+        .firstWhere((s) => s.payload == 'lib/widgets.dart');
+    provider.scan('see lib/widgets.dart here').toList();
     await Future<void>.delayed(const Duration(milliseconds: 20));
 
-    expect(provider.isEnabled(span), isFalse);
+    expect(provider.isEnabled(span), isFalse,
+        reason: 'an existing directory must not be a clickable file');
   });
 }
