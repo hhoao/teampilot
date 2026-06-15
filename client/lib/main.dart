@@ -290,6 +290,7 @@ void main() async {
                 BlocProvider.value(value: shell.extensionCubit),
                 BlocProvider.value(value: shell.appUpdateCubit),
                 BlocProvider.value(value: shell.sshProfileCubit),
+                BlocProvider.value(value: shell.cliPresetsCubit),
                 BlocProvider.value(value: shell.aiFeatureSettingsCubit),
               ],
               child: CliToolRegistryScope(

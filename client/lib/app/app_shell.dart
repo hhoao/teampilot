@@ -22,6 +22,8 @@ import '../cubits/extension_cubit.dart';
 import '../cubits/mcp_cubit.dart';
 import '../cubits/plugin_cubit.dart';
 import '../cubits/project_profile_cubit.dart';
+import '../cubits/cli_presets_cubit.dart';
+import '../repositories/cli_presets_repository.dart';
 import '../cubits/skill_cubit.dart';
 import '../repositories/mcp_repository.dart';
 import '../services/mcp/team_mcp_linker_service.dart';
@@ -111,6 +113,7 @@ class AppShell {
     required this.pluginCubit,
     required this.projectProfileCubit,
     required this.projectProfileRepository,
+    required this.cliPresetsCubit,
     required this.skillCubit,
     required this.mcpCubit,
     required this.teamHubCubit,
@@ -149,6 +152,7 @@ class AppShell {
   final PluginCubit pluginCubit;
   final ProjectProfileCubit projectProfileCubit;
   final ProjectProfileRepository projectProfileRepository;
+  final CliPresetsCubit cliPresetsCubit;
   final SkillCubit skillCubit;
   final McpCubit mcpCubit;
   final TeamHubCubit teamHubCubit;
@@ -253,6 +257,7 @@ Future<AppShell> buildAppShell({
   late final PluginCubit pluginCubit;
   late final ProjectProfileRepository projectProfileRepository;
   late final ProjectProfileCubit projectProfileCubit;
+  late final CliPresetsCubit cliPresetsCubit;
   late final SkillCubit skillCubit;
   late final McpCubit mcpCubit;
   late final TeamHubCubit teamHubCubit;
@@ -482,6 +487,12 @@ Future<AppShell> buildAppShell({
     pluginLinker: projectPluginLinker,
     installedPluginsLoader: () => pluginRepository.loadAll(),
   );
+  final cliPresetsRepository = CliPresetsRepository(
+    fs: AppStorage.fs,
+    presetsPath: AppStorage.paths.cliPresetsJson,
+  );
+  cliPresetsCubit = CliPresetsCubit(repository: cliPresetsRepository);
+  unawaited(cliPresetsCubit.load());
   mcpCubit = McpCubit(
     mcpRepository,
     onMcpDeleted: teamCubit.removeMcpFromAllTeams,
@@ -654,6 +665,7 @@ Future<AppShell> buildAppShell({
     pluginCubit: pluginCubit,
     projectProfileCubit: projectProfileCubit,
     projectProfileRepository: projectProfileRepository,
+    cliPresetsCubit: cliPresetsCubit,
     skillCubit: skillCubit,
     mcpCubit: mcpCubit,
     teamHubCubit: teamHubCubit,

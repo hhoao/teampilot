@@ -45,6 +45,9 @@ class AppPaths {
   String get notificationsJson =>
       notificationsJsonForTeampilotRoot(basePath);
 
+  String get cliPresetsJson =>
+      _ctx.join(basePath, 'cli-presets.json');
+
   /// Linux desktop / `path_provider` app-data id (e.g. `~/.local/share/com.hhoa.teampilot`).
   static const teampilotAppDataDirName = 'com.hhoa.teampilot';
 
