@@ -1422,6 +1422,24 @@ class AppLocalizationsEn extends AppLocalizations {
   String get mailboxEmpty => 'No messages yet';
 
   @override
+  String get board => 'Board';
+
+  @override
+  String get boardEmpty => 'No tasks yet';
+
+  @override
+  String get boardPending => 'Pending';
+
+  @override
+  String get boardClaimed => 'In progress';
+
+  @override
+  String get boardDone => 'Done';
+
+  @override
+  String get visibilityBoardHint => 'Show the task board for mixed-mode teams.';
+
+  @override
   String get autoLaunchAllMembersTitle => 'Start all members on connect';
 
   @override

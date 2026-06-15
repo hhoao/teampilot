@@ -2642,6 +2642,42 @@ abstract class AppLocalizations {
   /// **'No messages yet'**
   String get mailboxEmpty;
 
+  /// No description provided for @board.
+  ///
+  /// In en, this message translates to:
+  /// **'Board'**
+  String get board;
+
+  /// No description provided for @boardEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No tasks yet'**
+  String get boardEmpty;
+
+  /// No description provided for @boardPending.
+  ///
+  /// In en, this message translates to:
+  /// **'Pending'**
+  String get boardPending;
+
+  /// No description provided for @boardClaimed.
+  ///
+  /// In en, this message translates to:
+  /// **'In progress'**
+  String get boardClaimed;
+
+  /// No description provided for @boardDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get boardDone;
+
+  /// No description provided for @visibilityBoardHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Show the task board for mixed-mode teams.'**
+  String get visibilityBoardHint;
+
   /// No description provided for @autoLaunchAllMembersTitle.
   ///
   /// In en, this message translates to:

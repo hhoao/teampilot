@@ -81,7 +81,7 @@ class BoardCubit extends Cubit<BoardState> {
     _attached = false;
     _timer?.cancel();
     _timer = null;
-    if (state != BoardState.empty) emit(BoardState.empty);
+    if (!isClosed && state != BoardState.empty) emit(BoardState.empty);
   }
 
   Future<void> _tick() async {

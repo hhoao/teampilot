@@ -1362,6 +1362,24 @@ class AppLocalizationsZh extends AppLocalizations {
   String get mailboxEmpty => '暂无消息';
 
   @override
+  String get board => '看板';
+
+  @override
+  String get boardEmpty => '暂无任务';
+
+  @override
+  String get boardPending => '待认领';
+
+  @override
+  String get boardClaimed => '进行中';
+
+  @override
+  String get boardDone => '已完成';
+
+  @override
+  String get visibilityBoardHint => '显示混合模式团队的任务看板。';
+
+  @override
   String get autoLaunchAllMembersTitle => '连接时启动全部成员';
 
   @override
