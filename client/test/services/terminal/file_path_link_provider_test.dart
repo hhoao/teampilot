@@ -1,10 +1,41 @@
+import 'dart:io' show Platform;
+
 import 'package:flutter_test/flutter_test.dart';
+import 'package:path/path.dart' as p;
 import 'package:teampilot/services/io/filesystem.dart';
 import 'package:teampilot/services/terminal/file_path_link_provider.dart';
+import 'package:teampilot/services/terminal/terminal_uri_opener.dart';
+
+import '../../support/in_memory_filesystem.dart';
 
 class _NeverFs implements Filesystem {
   @override
   dynamic noSuchMethod(Invocation i) => throw UnimplementedError();
+}
+
+/// Returns the absolute path that [TerminalUriOpener.resolveLocalFilePath]
+/// would produce for [relative] when the cwd is [cwd].
+/// This is platform-sensitive (backslashes on Windows).
+String _resolved(String relative, {String cwd = '/proj'}) =>
+    TerminalUriOpener.resolveLocalFilePath(relative, workingDirectory: cwd)!;
+
+/// An [InMemoryFilesystem] with platform-correct path keys for test files.
+/// Registers [relative] paths resolved against [cwd] using the same logic
+/// that [FilePathLinkProvider] uses, so stat lookups always match.
+InMemoryFilesystem _fsWithFiles(
+  List<String> relativePaths, {
+  String cwd = '/proj',
+}) {
+  final fs = InMemoryFilesystem(
+    pathContext: p.Context(
+      style: Platform.isWindows ? p.Style.windows : p.Style.posix,
+    ),
+  );
+  for (final rel in relativePaths) {
+    final abs = _resolved(rel, cwd: cwd);
+    fs.files[abs] = '';
+  }
+  return fs;
 }
 
 void main() {
@@ -36,8 +67,77 @@ void main() {
     expect(line.substring(span.start, span.end), 'client/lib/foo.dart');
   });
 
-  test('isEnabled is false in Task 8 (validation added later)', () {
+  test('isEnabled is false before async validation settles', () {
+    // Synchronous check: _NeverFs throws UnimplementedError (caught in _validate),
+    // so no confirmation happens before the event loop runs.
     final span = p.scan('Read(lib/a.dart)').first;
     expect(p.isEnabled(span), isFalse);
+  });
+
+  // ---- Task 9: async filesystem validation tests ----
+
+  test('candidate becomes enabled after fs confirms existence, and notifies',
+      () async {
+    final fs = _fsWithFiles(['client/lib/foo.dart']);
+    final provider = FilePathLinkProvider(fs: fs, launchCwd: '/proj');
+
+    final span = provider
+        .scan('Read(client/lib/foo.dart)')
+        .firstWhere((s) => s.payload == 'client/lib/foo.dart');
+    expect(provider.isEnabled(span), isFalse); // not validated yet
+
+    var notified = 0;
+    provider.addListener(() => notified++);
+
+    // scan triggers fire-and-forget validation
+    provider.scan('Read(client/lib/foo.dart)').toList();
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+
+    expect(notified, greaterThan(0));
+    expect(provider.isEnabled(span), isTrue);
+  });
+
+  test('non-existent path never enables', () async {
+    final fs = _fsWithFiles([]); // no files registered
+    final provider = FilePathLinkProvider(fs: fs, launchCwd: '/proj');
+
+    final span = provider.scan('Read(nope/x.dart)').first;
+    provider.scan('Read(nope/x.dart)').toList();
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+
+    expect(provider.isEnabled(span), isFalse);
+  });
+
+  test('a path with :line suffix validates against the stripped file path',
+      () async {
+    final fs = _fsWithFiles(['lib/main.dart']);
+    final provider = FilePathLinkProvider(fs: fs, launchCwd: '/proj');
+
+    final span = provider
+        .scan('Update(lib/main.dart:42)')
+        .firstWhere((s) => s.payload.endsWith(':42'));
+    provider.scan('Update(lib/main.dart:42)').toList();
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+
+    expect(provider.isEnabled(span), isTrue,
+        reason: 'suffix stripped before stat; payload keeps :42');
+    expect(span.payload, 'lib/main.dart:42');
+  });
+
+  test('directory is not a clickable file', () async {
+    // Register no files — /proj/lib/thing is not found (and even if /proj/lib
+    // were a directory, /proj/lib/thing is a different, unregistered path).
+    final fs = _fsWithFiles([]);
+    final provider = FilePathLinkProvider(fs: fs, launchCwd: '/proj');
+
+    final spans = provider.scan('see lib/thing here').toList();
+    final span = spans.firstWhere(
+      (s) => s.payload == 'lib/thing',
+      orElse: () => spans.first,
+    );
+    provider.scan('see lib/thing here').toList();
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+
+    expect(provider.isEnabled(span), isFalse);
   });
 }

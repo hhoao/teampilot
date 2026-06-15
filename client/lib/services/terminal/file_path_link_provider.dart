@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter_alacritty/links/terminal_link_provider.dart';
 
 import '../io/filesystem.dart';
+import 'terminal_uri_opener.dart';
 
-/// Detects file paths in terminal output and (with async validation in later
-/// tasks) makes only existing files clickable. Injected into TerminalView as a
+/// Detects file paths in terminal output and makes only existing files
+/// clickable via async filesystem validation. Injected into TerminalView as a
 /// [TerminalLinkProvider]. Path semantics + filesystem validation live here in
 /// TeamPilot, keeping flutter_alacritty IO-free.
 class FilePathLinkProvider extends TerminalLinkProvider {
@@ -20,12 +23,70 @@ class FilePathLinkProvider extends TerminalLinkProvider {
     r'(?::\d+(?::\d+)?)?',
   );
 
+  // Cache: keys are "$cwd $payload" strings.
+  final Set<String> _confirmed = {};
+  final Map<String, DateTime> _negativeUntil = {};
+  final Set<String> _inFlight = {};
+
+  static const Duration _negativeTtl = Duration(seconds: 5);
+  static const int _maxConcurrent = 8;
+
+  String _cwd() => launchCwd; // Task 10 will prefer engine.cwd
+
+  String _key(String payload) => '${_cwd()} $payload';
+
+  /// Strips a trailing `:line` or `:line:col` suffix so the base file path can
+  /// be stat'd. The regex is anchored at `$` and requires at least one digit
+  /// after the colon, so Windows drive letters like `C:\x` are unaffected
+  /// (`C:` has no digit immediately after the colon).
+  static final RegExp _lineSuffixRe = RegExp(r':\d+(?::\d+)?$');
+
+  String _filePart(String payload) => payload.replaceFirst(_lineSuffixRe, '');
+
+  @override
+  bool isEnabled(LinkSpan span) => _confirmed.contains(_key(span.payload));
+
   @override
   Iterable<LinkSpan> scan(String lineText) sync* {
     for (final m in _pattern.allMatches(lineText)) {
       final raw = m.group(0)!;
       if (!_looksLikePath(raw)) continue;
+      _maybeValidate(raw);
       yield LinkSpan(start: m.start, end: m.end, payload: raw);
+    }
+  }
+
+  void _maybeValidate(String payload) {
+    final key = _key(payload);
+    if (_confirmed.contains(key) || _inFlight.contains(key)) return;
+    final neg = _negativeUntil[key];
+    if (neg != null && DateTime.now().isBefore(neg)) return;
+    if (_inFlight.length >= _maxConcurrent) return; // best-effort; next scan retries
+    _inFlight.add(key);
+    unawaited(_validate(key, payload));
+  }
+
+  Future<void> _validate(String key, String payload) async {
+    try {
+      final resolved = TerminalUriOpener.resolveLocalFilePath(
+        _filePart(payload),
+        workingDirectory: _cwd(),
+      );
+      if (resolved == null) {
+        _negativeUntil[key] = DateTime.now().add(_negativeTtl);
+        return;
+      }
+      final stat = await fs.stat(resolved);
+      if (stat.exists && stat.isFile) {
+        _confirmed.add(key);
+        notifyListeners();
+      } else {
+        _negativeUntil[key] = DateTime.now().add(_negativeTtl);
+      }
+    } catch (_) {
+      _negativeUntil[key] = DateTime.now().add(_negativeTtl);
+    } finally {
+      _inFlight.remove(key);
     }
   }
 
@@ -38,7 +99,4 @@ class FilePathLinkProvider extends TerminalLinkProvider {
     final ext = RegExp(r'\.[A-Za-z][A-Za-z0-9]{0,8}$');
     return ext.hasMatch(core) && !RegExp(r'^\d+(\.\d+)+$').hasMatch(core);
   }
-
-  @override
-  bool isEnabled(LinkSpan span) => false; // Task 9 adds real validation
 }
