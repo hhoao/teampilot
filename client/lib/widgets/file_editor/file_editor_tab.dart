@@ -6,7 +6,7 @@ import 'package:teampilot/theme/app_icon_sizes.dart';
 
 import '../../l10n/l10n_extensions.dart';
 import '../../theme/app_text_styles.dart';
-import '../../utils/file_icon.dart';
+import '../file_icon_widget.dart';
 import '../menu/sidebar_action_menu.dart';
 
 /// Single open-file tab in the editor tab bar (icon, label, close, context menu).
@@ -127,10 +127,9 @@ class _FileEditorTabState extends State<FileEditorTab> {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(
-                  fileIconForFileName(widget.fileName),
+                FileIconWidget(
+                  fileName: widget.fileName,
                   size: context.appIconSizes.sm,
-                  color: labelColor,
                 ),
                 const SizedBox(width: 6),
                 Text(
