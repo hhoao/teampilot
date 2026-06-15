@@ -147,6 +147,91 @@ void main() {
       });
     });
 
+    // ── project switch: overlapping panel attach/detach must not drop UI ──
+
+    test(
+        'survives project switch: new panel attaches before old panel detaches',
+        () {
+      fakeAsync((async) {
+        final service = _DelayedPresenceService({
+          'm-lead': const MemberPresence(
+            connection: MemberConnection.connected,
+            workload: MemberWorkload.working,
+          ),
+        });
+        final cubit = MemberPresenceCubit(memberPresenceService: service);
+        addTearDown(() async {
+          await cubit.close();
+        });
+
+        const team = TeamConfig(
+          id: 'team-a',
+          name: 'A',
+          members: [TeamMemberConfig(id: 'm-lead', name: 'team-lead')],
+        );
+
+        final shell = _FakeTerminalSession(executable: 'test');
+        PresenceTarget target() => PresenceTarget(
+              cliTeamName: 'team-a-1',
+              memberToolConfigDir: '/tmp/cfg',
+              memberShells: {'m-lead': shell},
+            );
+
+        void pumpFrame() {
+          SchedulerBinding.instance.handleBeginFrame(Duration.zero);
+          SchedulerBinding.instance.handleDrawFrame();
+        }
+
+        // Two RightToolsPanel instances (one per project page) share the single
+        // global cubit. Each panel owns its attach/detach.
+        final panelA = Object();
+        final panelB = Object();
+
+        // Project A page mounted → polling starts, presence populated.
+        cubit.attachPresenceUi(panelA);
+        cubit.syncPresenceTeam(team);
+        cubit.updateTarget(target());
+        pumpFrame();
+        async.elapse(const Duration(milliseconds: 100));
+        async.flushMicrotasks();
+        pumpFrame();
+        expect(
+          cubit.state.presence['m-lead']?.connection,
+          MemberConnection.connected,
+        );
+        final callsAfterA = service.computeCalls;
+
+        // Switch to project B. Flutter inflates project B's panel (attach)
+        // during the build, then finalizeTree disposes project A's panel
+        // (detach) AFTER. The cubit must stay attached throughout.
+        cubit.attachPresenceUi(panelB);
+        cubit.updateTarget(target());
+        cubit.detachPresenceUi(panelA);
+
+        // Presence must NOT be cleared by the late detach.
+        expect(
+          cubit.state.presence,
+          isNotEmpty,
+          reason: 'project switch must not drop member presence to offline',
+        );
+
+        // Polling must keep running for the still-mounted project B panel.
+        pumpFrame();
+        async.elapse(const Duration(seconds: 2));
+        async.flushMicrotasks();
+        pumpFrame();
+        expect(
+          service.computeCalls,
+          greaterThan(callsAfterA),
+          reason: 'polling must keep running after a project switch',
+        );
+        expect(
+          cubit.state.presence['m-lead']?.connection,
+          MemberConnection.connected,
+        );
+      });
+    });
+
     // ── hysteresis: keep last-known presence on transient ineligibility ──
 
     test('keeps presence when updateTarget(null), resumes when target restored',

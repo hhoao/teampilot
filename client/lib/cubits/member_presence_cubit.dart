@@ -56,7 +56,16 @@ class MemberPresenceCubit extends Cubit<MemberPresenceState> {
   TeamConfig? _presenceTeam;
   PresenceTarget? _target;
   int _presencePollGeneration = 0;
-  bool _presenceUiAttached = false;
+
+  /// Per-owner UI attachment tokens (one [RightToolsPanel] per project page).
+  /// Refcounted instead of a single bool: during a project switch Flutter
+  /// inflates the new page's panel (attach) BEFORE finalizeTree disposes the
+  /// old page's panel (detach). A bool would let that late detach clobber the
+  /// new attach, stopping polling and emitting empty presence — every member
+  /// stuck at "offline". Staying attached while ANY owner remains avoids that.
+  final Set<Object> _presenceUiOwners = <Object>{};
+  late final Object _defaultUiOwner = Object();
+  bool get _presenceUiAttached => _presenceUiOwners.isNotEmpty;
   bool _presenceTickInFlight = false;
 
   MemberPresence memberPresenceFor(String memberId) =>
@@ -68,22 +77,26 @@ class MemberPresenceCubit extends Cubit<MemberPresenceState> {
     _schedulePresencePollingRestart();
   }
 
-  void attachPresenceUi() {
-    if (_presenceUiAttached) return;
-    _presenceUiAttached = true;
-    _schedulePresencePollingRestart();
+  /// [owner] identifies the attaching UI (pass the [State] of each
+  /// [RightToolsPanel]). Omit it for single-owner callers/tests.
+  void attachPresenceUi([Object? owner]) {
+    final wasAttached = _presenceUiAttached;
+    if (!_presenceUiOwners.add(owner ?? _defaultUiOwner)) return;
+    if (!wasAttached) _schedulePresencePollingRestart();
   }
 
-  void detachPresenceUi() {
-    if (!_presenceUiAttached) return;
-    _presenceUiAttached = false;
+  void detachPresenceUi([Object? owner]) {
+    if (!_presenceUiOwners.remove(owner ?? _defaultUiOwner)) return;
+    // Another panel (e.g. the next project page) is still attached — keep
+    // polling and keep the current presence rather than clearing it.
+    if (_presenceUiAttached) return;
     _invalidatePresencePolls();
     if (state.presence.isNotEmpty) _emitMemberPresence(const {});
   }
 
   void stopPresencePolling() {
     _presenceTeam = null;
-    _presenceUiAttached = false;
+    _presenceUiOwners.clear();
     _invalidatePresencePolls();
     if (state.presence.isNotEmpty) _emitMemberPresence(const {});
   }
