@@ -4,12 +4,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
 
-import '../../../cubits/app_provider_cubit.dart';
 import '../../../cubits/chat_cubit.dart';
+import '../../../cubits/cli_presets_cubit.dart';
 import '../../../cubits/project_profile_cubit.dart';
 import '../../../l10n/l10n_extensions.dart';
 import '../../../models/app_project.dart';
 import '../../../models/app_session.dart';
+import '../../../models/cli_preset.dart';
 import '../../../models/project_profile.dart';
 import '../../../models/team_config.dart';
 import '../../../services/cli/registry/cli_display_name.dart';
@@ -21,8 +22,8 @@ import '../../../utils/app_session_sort.dart';
 import '../../../utils/debounce/debounce.dart';
 import '../../../utils/project_sessions.dart';
 import '../../../widgets/app_icon_button.dart';
-import '../../../widgets/app_provider/brand_dropdown_rows.dart';
 import '../../../widgets/menu/sidebar_action_menu.dart';
+import 'config/cli_presets_manage_dialog.dart';
 import '../../../widgets/dropdown/app_dropdown_decoration.dart';
 import '../../../widgets/dropdown/app_dropdown_field.dart';
 import '../../../widgets/sidebar_session_tile.dart';
@@ -90,7 +91,7 @@ class _HomeWorkspaceProjectSidebarState
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           if (_isPersonal) ...[
-            _DefaultCliDropdown(projectId: widget.project.projectId),
+            _PresetDropdown(projectId: widget.project.projectId),
             const SizedBox(height: 12),
           ],
           _SidebarActionTile(
@@ -185,39 +186,51 @@ class _HomeWorkspaceProjectSidebarState
   }
 }
 
-class _DefaultCliDropdown extends StatelessWidget {
-  const _DefaultCliDropdown({required this.projectId});
+class _PresetDropdown extends StatelessWidget {
+  const _PresetDropdown({required this.projectId});
 
   final String projectId;
 
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final registry = CliToolRegistryScope.of(context);
-    final state = context.watch<ProjectProfileCubit>().state;
-    context.watch<AppProviderCubit>();
-    final ready =
-        state.projectId == projectId &&
-        state.status == ProjectProfileLoadStatus.ready &&
-        state.profile != null;
-    if (!ready) {
+    final presetsState = context.watch<CliPresetsCubit>().state;
+    final profileState = context.watch<ProjectProfileCubit>().state;
+    final ready = profileState.status == ProjectProfileLoadStatus.ready &&
+        profileState.profile != null;
+
+    if (!ready || presetsState.status == CliPresetsLoadStatus.loading) {
       return const Padding(
         padding: EdgeInsets.fromLTRB(4, 0, 4, 0),
         child: LinearProgressIndicator(minHeight: 2),
       );
     }
 
-    final profile = state.profile!;
-    final providerState = context.read<AppProviderCubit>().state;
-    final configuredItems = _configuredCliValues(
-      profile: profile,
-      registry: registry,
-      providerState: providerState,
-    );
-    final selectedCli = CliTool.claude; // TODO: migrate to presets — was profile.cli
-    final initialItem = configuredItems.contains(selectedCli.value)
-        ? selectedCli.value
-        : (configuredItems.isNotEmpty ? configuredItems.first : null);
+    final profile = profileState.profile!;
+    final presets = presetsState.presets;
+    final activePreset = presetsState.presetById(profile.activePresetId ?? '');
+
+    if (presets.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(4, 0, 4, 0),
+        child: OutlinedButton.icon(
+          onPressed: () {
+            showDialog<void>(
+              context: context,
+              builder: (_) => const CliPresetsManageDialog(),
+            );
+          },
+          icon: const Icon(Icons.add, size: 18),
+          label: Text(l10n.projectCliAddPresetTitle),
+          style: OutlinedButton.styleFrom(
+            visualDensity: VisualDensity.compact,
+          ),
+        ),
+      );
+    }
+
+    final presetNames = presets.map((p) => p.id).toList();
+    final initialId = activePreset?.id ?? presets.first.id;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(4, 0, 4, 0),
@@ -226,51 +239,33 @@ class _DefaultCliDropdown extends StatelessWidget {
         children: [
           Expanded(
             child: AppDropdownField<String>(
-              key: ValueKey(
-                'project-sidebar-cli-$projectId-${initialItem ?? 'none'}',
-              ),
-              items: configuredItems,
-              initialItem: initialItem,
-              hintText: l10n.projectCliNotConfiguredHint,
-              enabled: configuredItems.isNotEmpty,
-              onEmptyTap: () => unawaited(
-                showProjectCliDefaultsDialog(
-                  context,
-                  projectId: projectId,
-                ),
-              ),
+              key: ValueKey('project-sidebar-preset-$projectId-$initialId'),
+              items: presetNames,
+              initialItem: initialId,
               decoration: AppDropdownDecorations.themed(context),
               onChanged: (value) {
                 if (value == null) return;
-                // TODO: migrate to presets — setCli removed; uses setActivePreset now
-                // unawaited(
-                //   context.read<ProjectProfileCubit>().setCli(
-                //     CliTool.decode(value),
-                //   ),
-                // );
+                context.read<ProjectProfileCubit>().setActivePreset(value);
               },
-              itemBuilder: (context, value) {
-                final cli = CliTool.decode(value);
-                final definition = registry.tryGet(cli)!;
-                return cliDropdownRow(
-                  context,
-                  cli: cli,
-                  label: cliDisplayName(definition, l10n),
-                  registry: registry,
-                );
+              itemBuilder: (context, presetId) {
+                final preset = presetsState.presetById(presetId);
+                if (preset == null) {
+                  return Text(presetId, style: AppTextStyles.of(context).bodySmall);
+                }
+                return _PresetDropdownItem(preset: preset);
               },
             ),
           ),
           const SizedBox(width: 4),
           AppIconButton(
             icon: Icons.tune_outlined,
-            tooltip: l10n.projectCliDefaultsTitle,
+            tooltip: l10n.projectCliPresetsManageTitle,
             onTap: throttledTap(
-              'project_sidebar_cli_configure',
+              'project_sidebar_presets_manage',
               () => unawaited(
-                showProjectCliDefaultsDialog(
-                  context,
-                  projectId: projectId,
+                showDialog<void>(
+                  context: context,
+                  builder: (_) => const CliPresetsManageDialog(),
                 ),
               ),
             ),
@@ -281,34 +276,34 @@ class _DefaultCliDropdown extends StatelessWidget {
   }
 }
 
-List<String> _configuredCliValues({
-  required ProjectProfile profile,
-  required CliToolRegistry registry,
-  required AppProviderState providerState,
-}) {
-  final values = <String>[];
-  for (final def in registry.launchable) {
-    final cli = def.id;
-    final supportsCatalog = projectCliSupportsProviderCatalog(cli, registry);
-    final providers = providerState.providersFor(cli);
-    final selectedProvider = projectCliSelectedProvider(
-      profile,
-      cli,
-      providers,
+class _PresetDropdownItem extends StatelessWidget {
+  const _PresetDropdownItem({required this.preset});
+
+  final CliPreset preset;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final registry = CliToolRegistryScope.of(context);
+    final def = registry.tryGet(preset.cli);
+    final cliName = def != null ? cliDisplayName(def, l10n) : preset.cli.value;
+    final cs = Theme.of(context).colorScheme;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          preset.name,
+          style: AppTextStyles.of(context).prominent.copyWith(color: cs.onSurface),
+        ),
+        Text(
+          cliName,
+          style: AppTextStyles.of(context).bodySmall.copyWith(color: cs.onSurfaceVariant),
+        ),
+      ],
     );
-    if (!projectCliIsConfigured(
-      profile,
-      cli,
-      registry,
-      selectedProvider: selectedProvider,
-      supportsProviderCatalog: supportsCatalog,
-    )) {
-      continue;
-    }
-    values.add(cli.value);
   }
-  values.sort();
-  return values;
 }
 
 class _SidebarActionTile extends StatefulWidget {
