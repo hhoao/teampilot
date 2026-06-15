@@ -8,6 +8,7 @@ import 'package:flutter_alacritty/links/url_link_provider.dart';
 import 'package:teampilot/services/terminal/file_path_link_provider.dart';
 import 'package:teampilot/services/terminal/terminal_export.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
+import 'package:teampilot/services/terminal/terminal_uri_opener.dart';
 import 'package:teampilot/services/terminal/terminal_transport.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/session/shell_launch_spec.dart';
@@ -1092,6 +1093,21 @@ void main() {
       for (final p in providers) {
         expect(() => p.addListener(() {}), throwsFlutterError);
       }
+    });
+
+    test('parseOsc7Cwd maps a file:// report to a local path', () {
+      // Compare against the same resolver the parser uses so the expectation
+      // holds on both Windows and POSIX path styles.
+      final expected = TerminalUriOpener.resolveLocalFilePath(
+        'file://localhost/tmp/proj',
+      );
+      expect(TerminalSession.parseOsc7Cwd('file://localhost/tmp/proj'), expected);
+      expect(expected, isNotNull);
+    });
+
+    test('parseOsc7Cwd returns null for empty or unparseable reports', () {
+      expect(TerminalSession.parseOsc7Cwd(''), isNull);
+      expect(TerminalSession.parseOsc7Cwd('   '), isNull);
     });
   });
 }

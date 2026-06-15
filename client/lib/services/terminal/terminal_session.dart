@@ -5,8 +5,6 @@ import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_alacritty/flutter_alacritty.dart';
-import 'package:flutter_alacritty/links/terminal_link_provider.dart';
-import 'package:flutter_alacritty/links/url_link_provider.dart';
 import 'package:flutter_pty/flutter_pty.dart';
 import '../cli/cli_executable_validator.dart';
 import '../cli/cli_invocation.dart';
@@ -28,6 +26,7 @@ import 'terminal_theme_mapper.dart';
 import 'workspace_interactive_shell.dart';
 import '../storage/app_storage.dart';
 import 'file_path_link_provider.dart';
+import 'terminal_uri_opener.dart';
 
 typedef TransportStarter =
     Future<TerminalTransport> Function(
@@ -153,19 +152,40 @@ class TerminalSession {
   String _launchCwd = '';
 
   List<TerminalLinkProvider>? _linkProviders;
+  ValueNotifier<String?>? _osc7Cwd;
 
   /// Link providers for this session's TerminalView: clickable URLs + file
-  /// paths (validated against the filesystem, resolved against the session cwd).
-  List<TerminalLinkProvider> get linkProviders => _linkProviders ??= [
-        UrlLinkProvider(),
-        FilePathLinkProvider(
-          fs: AppStorage.fs,
-          launchCwd: _launchCwd,
-          // TODO: pass cwd: engine.cwd once OSC 7 cwd tracking lands so relative
-          // paths track `cd` inside the shell; until then we use the launch cwd.
-          cwd: null,
-        ),
-      ];
+  /// paths (validated against the filesystem, resolved against the live cwd).
+  List<TerminalLinkProvider> get linkProviders =>
+      _linkProviders ??= _buildLinkProviders();
+
+  List<TerminalLinkProvider> _buildLinkProviders() {
+    // Track the shell's cwd from OSC 7 (`file://host/path`) reports so relative
+    // path links re-resolve after `cd`. Falls back to the launch cwd whenever
+    // the report is absent or not a parseable local path.
+    final cwd = ValueNotifier<String?>(parseOsc7Cwd(engine.workingDir.value));
+    engine.workingDir.addListener(_syncOsc7Cwd);
+    _osc7Cwd = cwd;
+    return [
+      UrlLinkProvider(),
+      FilePathLinkProvider(
+        fs: AppStorage.fs,
+        launchCwd: _launchCwd,
+        cwd: cwd,
+      ),
+    ];
+  }
+
+  void _syncOsc7Cwd() =>
+      _osc7Cwd?.value = parseOsc7Cwd(engine.workingDir.value);
+
+  /// Parses an OSC 7 working-directory report (`file://host/path`) into a local
+  /// directory path, or `null` when it is empty, remote, or unparseable.
+  @visibleForTesting
+  static String? parseOsc7Cwd(String raw) {
+    if (raw.trim().isEmpty) return null;
+    return TerminalUriOpener.resolveLocalFilePath(raw);
+  }
 
   /// Lines submitted to the bus while parked. The overlay subscribes to show a
   /// "sent, awaiting receipt" banner per message.
@@ -880,15 +900,18 @@ class TerminalSession {
 
   void dispose() {
     disconnect();
-    engine.dispose();
-    unawaited(_parkedSubmissions.close());
     final providers = _linkProviders;
     if (providers != null) {
+      engine.workingDir.removeListener(_syncOsc7Cwd);
       for (final p in providers) {
         p.dispose();
       }
       _linkProviders = null;
     }
+    _osc7Cwd?.dispose();
+    _osc7Cwd = null;
+    engine.dispose();
+    unawaited(_parkedSubmissions.close());
   }
 
   /// Full process environment for [Pty.start], including OSC 8 identity hints.
