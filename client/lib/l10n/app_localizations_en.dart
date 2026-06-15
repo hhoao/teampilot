@@ -781,6 +781,38 @@ class AppLocalizationsEn extends AppLocalizations {
       'No provider setup required for this CLI';
 
   @override
+  String get projectCliAddPresetTitle => 'Add Preset';
+
+  @override
+  String get projectCliEditPresetTitle => 'Edit Preset';
+
+  @override
+  String get projectCliPresetNameLabel => 'Preset Name';
+
+  @override
+  String get projectCliPresetsManageTitle => 'Manage Presets';
+
+  @override
+  String get projectCliPresetsEmptyHint =>
+      'No presets yet. Create one to get started.';
+
+  @override
+  String get projectCliDeletePresetTitle => 'Delete Preset';
+
+  @override
+  String projectCliDeletePresetConfirm(String name) =>
+      "Delete preset '$name'? This cannot be undone.";
+
+  @override
+  String get projectCliPresetLabel => 'Active Preset';
+
+  @override
+  String get projectCliNoPresetHint => 'No preset selected';
+
+  @override
+  String get projectCliManagePresets => 'Manage';
+
+  @override
   String projectCliConfigSummary(String provider, String model) {
     return '$provider · $model';
   }

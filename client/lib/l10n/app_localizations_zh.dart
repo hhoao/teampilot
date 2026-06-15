@@ -746,6 +746,36 @@ class AppLocalizationsZh extends AppLocalizations {
   String get projectCliNoProviderCatalog => '此 CLI 无需配置提供商';
 
   @override
+  String get projectCliAddPresetTitle => '添加预设';
+
+  @override
+  String get projectCliEditPresetTitle => '编辑预设';
+
+  @override
+  String get projectCliPresetNameLabel => '预设名称';
+
+  @override
+  String get projectCliPresetsManageTitle => '管理预设';
+
+  @override
+  String get projectCliPresetsEmptyHint => '还没有预设，创建一个开始使用';
+
+  @override
+  String get projectCliDeletePresetTitle => '删除预设';
+
+  @override
+  String projectCliDeletePresetConfirm(String name) => "删除预设'$name'？此操作不可撤销。";
+
+  @override
+  String get projectCliPresetLabel => '当前预设';
+
+  @override
+  String get projectCliNoPresetHint => '未选择预设';
+
+  @override
+  String get projectCliManagePresets => '管理';
+
+  @override
   String projectCliConfigSummary(String provider, String model) {
     return '$provider · $model';
   }

@@ -306,6 +306,23 @@
       }
     }
   },
+  "projectCliAddPresetTitle": "添加预设",
+  "projectCliEditPresetTitle": "编辑预设",
+  "projectCliPresetNameLabel": "预设名称",
+  "projectCliPresetsManageTitle": "管理预设",
+  "projectCliPresetsEmptyHint": "还没有预设，创建一个开始使用",
+  "projectCliDeletePresetTitle": "删除预设",
+  "projectCliDeletePresetConfirm": "删除预设'{name}'？此操作不可撤销。",
+  "@projectCliDeletePresetConfirm": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "projectCliPresetLabel": "当前预设",
+  "projectCliNoPresetHint": "未选择预设",
+  "projectCliManagePresets": "管理",
   "homeWorkspaceProjectSkills": "技能",
   "homeWorkspaceProjectPlugins": "插件",
   "homeWorkspaceProjectMcp": "MCP",

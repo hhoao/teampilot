@@ -325,6 +325,23 @@
       }
     }
   },
+  "projectCliAddPresetTitle": "Add Preset",
+  "projectCliEditPresetTitle": "Edit Preset",
+  "projectCliPresetNameLabel": "Preset Name",
+  "projectCliPresetsManageTitle": "Manage Presets",
+  "projectCliPresetsEmptyHint": "No presets yet. Create one to get started.",
+  "projectCliDeletePresetTitle": "Delete Preset",
+  "projectCliDeletePresetConfirm": "Delete preset '{name}'? This cannot be undone.",
+  "@projectCliDeletePresetConfirm": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "projectCliPresetLabel": "Active Preset",
+  "projectCliNoPresetHint": "No preset selected",
+  "projectCliManagePresets": "Manage",
   "homeWorkspaceProjectSkills": "Skills",
   "homeWorkspaceProjectPlugins": "Plugins",
   "homeWorkspaceProjectMcp": "MCP",

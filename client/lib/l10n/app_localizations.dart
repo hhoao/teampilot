@@ -1502,6 +1502,17 @@ abstract class AppLocalizations {
   /// **'No provider setup required for this CLI'**
   String get projectCliNoProviderCatalog;
 
+  String get projectCliAddPresetTitle;
+  String get projectCliEditPresetTitle;
+  String get projectCliPresetNameLabel;
+  String get projectCliPresetsManageTitle;
+  String get projectCliPresetsEmptyHint;
+  String get projectCliDeletePresetTitle;
+  String projectCliDeletePresetConfirm(String name);
+  String get projectCliPresetLabel;
+  String get projectCliNoPresetHint;
+  String get projectCliManagePresets;
+
   /// No description provided for @projectCliConfigSummary.
   ///
   /// In en, this message translates to:
