@@ -1,5 +1,6 @@
 import 'dart:io' show Platform;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:teampilot/services/io/filesystem.dart';
@@ -140,4 +141,70 @@ void main() {
     expect(provider.isEnabled(span), isFalse,
         reason: 'an existing directory must not be a clickable file');
   });
+
+  // ---- Task 10: injected live cwd tests ----
+
+  test('prefers injected cwd over launchCwd when set', () async {
+    // foo.dart exists under /run/app, NOT under /proj.
+    final fs = _fsWithFiles(['lib/a.dart'], cwd: '/run/app');
+    final cwd = ValueNotifier<String?>('/run/app');
+    addTearDown(cwd.dispose);
+    final provider = FilePathLinkProvider(fs: fs, launchCwd: '/proj', cwd: cwd);
+    final span = provider.scan('Read(lib/a.dart)').first;
+    provider.scan('Read(lib/a.dart)').toList();
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+    expect(provider.isEnabled(span), isTrue,
+        reason: 'should resolve against injected cwd /run/app');
+  });
+
+  test('falls back to launchCwd when injected cwd is null/empty', () async {
+    final fs = _fsWithFiles(['lib/a.dart']); // exists under /proj
+    final cwd = ValueNotifier<String?>(null);
+    addTearDown(cwd.dispose);
+    final provider = FilePathLinkProvider(fs: fs, launchCwd: '/proj', cwd: cwd);
+    final span = provider.scan('Read(lib/a.dart)').first;
+    provider.scan('Read(lib/a.dart)').toList();
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+    expect(provider.isEnabled(span), isTrue, reason: 'null cwd => launchCwd /proj');
+  });
+
+  test('cwd change clears negatives, notifies, and re-validates under new cwd',
+      () async {
+    // a.dart exists ONLY under /run/app.
+    final fs = _fsWithFiles(['lib/a.dart'], cwd: '/run/app');
+    final cwd = ValueNotifier<String?>('/proj');
+    addTearDown(cwd.dispose);
+    final provider = FilePathLinkProvider(fs: fs, launchCwd: '/proj', cwd: cwd);
+    final span = provider.scan('Read(lib/a.dart)').first;
+    provider.scan('Read(lib/a.dart)').toList();
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+    expect(provider.isEnabled(span), isFalse); // /proj/lib/a.dart absent
+
+    var notified = 0;
+    provider.addListener(() => notified++);
+    cwd.value = '/run/app'; // triggers _onCwdChanged
+    expect(notified, greaterThan(0), reason: 'cwd change must notify');
+    // The view would re-scan on notify; emulate that here:
+    provider.scan('Read(lib/a.dart)').toList();
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+    expect(provider.isEnabled(span), isTrue,
+        reason: 'after cwd change, path resolves under /run/app');
+  });
+
+  test('removes its cwd listener on dispose', () {
+    final cwd = _ProbeNotifier('/proj');
+    addTearDown(cwd.dispose);
+    final provider =
+        FilePathLinkProvider(fs: _NeverFs(), launchCwd: '/proj', cwd: cwd);
+    expect(cwd.listened, isTrue);
+    provider.dispose();
+    expect(cwd.listened, isFalse);
+  });
+}
+
+/// Exposes [ChangeNotifier.hasListeners] (protected) for the dispose test —
+/// legal because the getter is accessed from within a ChangeNotifier subclass.
+class _ProbeNotifier extends ValueNotifier<String?> {
+  _ProbeNotifier(super.value);
+  bool get listened => hasListeners;
 }

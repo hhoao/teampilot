@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_alacritty/links/terminal_link_provider.dart';
 
 import '../io/filesystem.dart';
@@ -10,10 +11,17 @@ import 'terminal_uri_opener.dart';
 /// [TerminalLinkProvider]. Path semantics + filesystem validation live here in
 /// TeamPilot, keeping flutter_alacritty IO-free.
 class FilePathLinkProvider extends TerminalLinkProvider {
-  FilePathLinkProvider({required this.fs, required this.launchCwd});
+  FilePathLinkProvider({
+    required this.fs,
+    required this.launchCwd,
+    ValueListenable<String?>? cwd,
+  }) : _cwdListenable = cwd {
+    _cwdListenable?.addListener(_onCwdChanged);
+  }
 
   final Filesystem fs;
   final String launchCwd;
+  final ValueListenable<String?>? _cwdListenable;
 
   // Matches an optional anchor (./ ../ / or a Windows drive), then path-ish
   // segments, then an optional :line[:col] suffix.
@@ -31,7 +39,22 @@ class FilePathLinkProvider extends TerminalLinkProvider {
   static const Duration _negativeTtl = Duration(seconds: 5);
   static const int _maxConcurrent = 8;
 
-  String _cwd() => launchCwd; // Task 10 will prefer engine.cwd
+  String _cwd() {
+    final live = _cwdListenable?.value;
+    return (live != null && live.isNotEmpty) ? live : launchCwd;
+  }
+
+  void _onCwdChanged() {
+    _negativeUntil.clear();
+    _inFlight.clear();
+    notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _cwdListenable?.removeListener(_onCwdChanged);
+    super.dispose();
+  }
 
   String _key(String payload) => '${_cwd()} $payload';
 
