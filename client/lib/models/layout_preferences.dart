@@ -14,6 +14,7 @@ class LayoutPreferences {
     this.membersVisible = true,
     this.fileTreeVisible = true,
     this.gitVisible = true,
+    this.boardVisible = true,
     this.rightToolsVisible = true,
     this.rightToolsWidth = defaultRightToolsWidth,
     this.sidebarWidth = defaultSidebarWidth,
@@ -45,6 +46,7 @@ class LayoutPreferences {
       membersVisible: json['membersVisible'] as bool? ?? true,
       fileTreeVisible: json['fileTreeVisible'] as bool? ?? true,
       gitVisible: json['gitVisible'] as bool? ?? true,
+      boardVisible: json['boardVisible'] as bool? ?? true,
       rightToolsVisible: json['rightToolsVisible'] as bool? ?? true,
       rightToolsWidth: _doubleValue(
         json['rightToolsWidth'],
@@ -132,6 +134,7 @@ class LayoutPreferences {
   final bool membersVisible;
   final bool fileTreeVisible;
   final bool gitVisible;
+  final bool boardVisible;
   final bool rightToolsVisible;
   final double rightToolsWidth;
   final double sidebarWidth;
@@ -160,6 +163,7 @@ class LayoutPreferences {
     bool? membersVisible,
     bool? fileTreeVisible,
     bool? gitVisible,
+    bool? boardVisible,
     bool? rightToolsVisible,
     double? rightToolsWidth,
     double? sidebarWidth,
@@ -184,6 +188,7 @@ class LayoutPreferences {
       membersVisible: membersVisible ?? this.membersVisible,
       fileTreeVisible: fileTreeVisible ?? this.fileTreeVisible,
       gitVisible: gitVisible ?? this.gitVisible,
+      boardVisible: boardVisible ?? this.boardVisible,
       rightToolsVisible: rightToolsVisible ?? this.rightToolsVisible,
       rightToolsWidth: (rightToolsWidth ?? this.rightToolsWidth).clamp(
         minRightToolsWidth,
@@ -242,6 +247,7 @@ class LayoutPreferences {
       membersVisible: true,
       fileTreeVisible: false,
       gitVisible: gitVisible,
+      boardVisible: boardVisible,
       rightToolsVisible: rightToolsVisible,
       rightToolsWidth: rightToolsWidth,
       sidebarWidth: sidebarWidth,
@@ -261,6 +267,7 @@ class LayoutPreferences {
     );
   }
 
+
   Map<String, Object?> toJson() {
     return {
       'preset': preset.name,
@@ -270,6 +277,7 @@ class LayoutPreferences {
       'membersVisible': membersVisible,
       'fileTreeVisible': fileTreeVisible,
       'gitVisible': gitVisible,
+      'boardVisible': boardVisible,
       'rightToolsVisible': rightToolsVisible,
       'rightToolsWidth': rightToolsWidth,
       'sidebarWidth': sidebarWidth,

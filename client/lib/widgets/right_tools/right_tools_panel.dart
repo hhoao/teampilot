@@ -124,8 +124,8 @@ class _RightToolsPanelState extends State<RightToolsPanel> {
 
     // Board is mixed-mode-only and consumes the same TeamBus as mailbox; it
     // shares mailbox's gate (the unread badge is mailbox-specific and doesn't
-    // affect whether the bus exists).
-    final showBoard = showMailbox;
+    // affect whether the bus exists). Also gated on the layout preference.
+    final showBoard = showMailbox && widget.preferences.boardVisible;
 
     // Rebuild when the user switches tool tabs so that the active tool can
     // enable/disable auto-refresh behaviour.

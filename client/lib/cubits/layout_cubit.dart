@@ -60,6 +60,7 @@ class LayoutCubit extends Cubit<LayoutState> {
     required bool membersVisible,
     required bool fileTreeVisible,
     bool? gitVisible,
+    bool? boardVisible,
   }) {
     return _save(
       state.preferences.copyWith(
@@ -67,6 +68,7 @@ class LayoutCubit extends Cubit<LayoutState> {
         membersVisible: membersVisible,
         fileTreeVisible: fileTreeVisible,
         gitVisible: gitVisible,
+        boardVisible: boardVisible,
       ),
     );
   }

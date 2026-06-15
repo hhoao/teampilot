@@ -14,25 +14,29 @@ class LayoutRegionVisibilitySection extends StatelessWidget {
     final l10n = context.l10n;
     final controller = context.read<LayoutCubit>();
 
-    return BlocSelector<LayoutCubit, LayoutState, (bool, bool, bool)>(
+    return BlocSelector<LayoutCubit, LayoutState, (bool, bool, bool, bool)>(
       selector: (state) => (
         state.preferences.membersVisible,
         state.preferences.fileTreeVisible,
         state.preferences.gitVisible,
+        state.preferences.boardVisible,
       ),
       builder: (context, visibility) {
-        final (membersVisible, fileTreeVisible, gitVisible) = visibility;
+        final (membersVisible, fileTreeVisible, gitVisible, boardVisible) =
+            visibility;
 
         void setVisibility({
           bool? membersVisible,
           bool? fileTreeVisible,
           bool? gitVisible,
+          bool? boardVisible,
         }) {
           controller.setRegionVisibility(
             appRailVisible: true,
             membersVisible: membersVisible ?? visibility.$1,
             fileTreeVisible: fileTreeVisible ?? visibility.$2,
             gitVisible: gitVisible ?? visibility.$3,
+            boardVisible: boardVisible ?? visibility.$4,
           );
         }
 
@@ -66,6 +70,16 @@ class LayoutRegionVisibilitySection extends StatelessWidget {
               trailing: Switch(
                 value: gitVisible,
                 onChanged: (value) => setVisibility(gitVisible: value),
+              ),
+              showDividerBelow: true,
+            ),
+            SettingsLabeledRow(
+              title: l10n.board,
+              subtitle: l10n.visibilityBoardHint,
+              trailing: Switch(
+                key: AppKeys.boardVisibilitySwitch,
+                value: boardVisible,
+                onChanged: (value) => setVisibility(boardVisible: value),
               ),
               showDividerBelow: false,
             ),
