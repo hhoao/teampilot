@@ -35,9 +35,14 @@ const _gitChangesRowPadding = EdgeInsets.symmetric(
 /// Self-contained like `_FileTreePanel`: builds its own [GitCubit] and tracks
 /// the active session cwd via [cwd]. Desktop-local git only.
 class GitSourceControlPanel extends StatefulWidget {
-  const GitSourceControlPanel({required this.cwd, super.key});
+  const GitSourceControlPanel({required this.cwd, this.isActive = false, super.key});
 
   final String cwd;
+
+  /// When true, the panel automatically refreshes git status on a periodic
+  /// timer. The caller should set this to true when this tool tab is the
+  /// currently selected tab in the right-tools panel.
+  final bool isActive;
 
   @override
   State<GitSourceControlPanel> createState() => _GitSourceControlPanelState();
@@ -49,10 +54,16 @@ class _GitSourceControlPanelState extends State<GitSourceControlPanel> {
   final _changesScrollController = ScrollController();
   final _horizontalScrollController = ScrollController();
 
+  static const _refreshInterval = Duration(seconds: 15);
+  Timer? _refreshTimer;
+
   @override
   void initState() {
     super.initState();
     unawaited(_cubit.setRepoRoot(widget.cwd));
+    if (widget.isActive) {
+      _startAutoRefresh();
+    }
   }
 
   @override
@@ -61,10 +72,29 @@ class _GitSourceControlPanelState extends State<GitSourceControlPanel> {
     if (widget.cwd != oldWidget.cwd) {
       unawaited(_cubit.setRepoRoot(widget.cwd));
     }
+    if (widget.isActive && !oldWidget.isActive) {
+      _cubit.refresh();
+      _startAutoRefresh();
+    } else if (!widget.isActive && oldWidget.isActive) {
+      _cancelAutoRefresh();
+    }
+  }
+
+  void _startAutoRefresh() {
+    _cancelAutoRefresh();
+    _refreshTimer = Timer.periodic(_refreshInterval, (_) {
+      _cubit.refresh();
+    });
+  }
+
+  void _cancelAutoRefresh() {
+    _refreshTimer?.cancel();
+    _refreshTimer = null;
   }
 
   @override
   void dispose() {
+    _cancelAutoRefresh();
     _commitController.dispose();
     _changesScrollController.dispose();
     _horizontalScrollController.dispose();
