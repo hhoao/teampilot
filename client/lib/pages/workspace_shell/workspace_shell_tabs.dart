@@ -94,8 +94,6 @@ class WorkspaceShellTabRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textBase = isDark ? Colors.white : const Color(0xFF111827);
     return Container(
       height: 38,
       padding: const EdgeInsets.symmetric(horizontal: 6),
@@ -120,9 +118,8 @@ class WorkspaceShellTabRow extends StatelessWidget {
                       onClose: () => onTabClosed?.call(i),
                       onCloseOthers: () => onTabCloseOthers?.call(i),
                       onCloseRight: () => onTabCloseRight?.call(i),
-                      textColor: textBase,
-                      activeBg: cs.surfaceContainerHighest,
-                      borderColor: cs.outlineVariant.withValues(alpha: 0.5),
+                      icon: tabs[i].icon,
+                      accentColor: tabs[i].accentColor,
                     ),
                 ],
               ),
@@ -144,10 +141,9 @@ class WorkspaceShellTabChip extends StatefulWidget {
     required this.onClose,
     this.onCloseOthers,
     this.onCloseRight,
-    required this.textColor,
-    required this.activeBg,
-    required this.borderColor,
     this.working = false,
+    this.icon = Icons.terminal_rounded,
+    this.accentColor,
   });
 
   final String title;
@@ -157,9 +153,8 @@ class WorkspaceShellTabChip extends StatefulWidget {
   final VoidCallback onClose;
   final VoidCallback? onCloseOthers;
   final VoidCallback? onCloseRight;
-  final Color textColor;
-  final Color activeBg;
-  final Color borderColor;
+  final IconData icon;
+  final Color? accentColor;
 
   @override
   State<WorkspaceShellTabChip> createState() => WorkspaceShellTabChipState();
@@ -239,122 +234,164 @@ class WorkspaceShellTabChipState extends State<WorkspaceShellTabChip> {
     _showTabContextMenu(center);
   }
 
-  /// Touch platforms have no hover; keep tab actions visible on Android.
-  bool get _showTabActions =>
-      _hovered || _overflowMenuOpen || Platform.isAndroid;
-
-  /// Whole-tab hover from [MouseRegion]. Avoids [InkWell] + nested
-  /// overflow menu ink fighting (hover patch only behind title text).
-  Color _tabMaterialColor(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final hoverTint = Theme.of(
-      context,
-    ).colorScheme.onSurface.withValues(alpha: 0.10);
-    if (widget.active) {
-      return _hovered
-          ? Color.alphaBlend(hoverTint, widget.activeBg)
-          : widget.activeBg;
-    }
-    if (_hovered) {
-      return Color.alphaBlend(hoverTint, cs.workspaceCard);
-    }
-    return Colors.transparent;
-  }
+  /// Touch platforms have no hover; keep tab chrome visible on Android.
+  bool get _showChrome =>
+      widget.active || _hovered || _overflowMenuOpen || Platform.isAndroid;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(right: 2),
-      child: Tooltip(
-        message: widget.title,
-        child: MouseRegion(
-          onEnter: (_) => setState(() => _hovered = true),
-          onExit: (_) => setState(() => _hovered = false),
-          child: Material(
-            color: _tabMaterialColor(context),
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(10)),
-            child: GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: widget.onTap,
-              onSecondaryTapDown: _showTabContextMenuFromTap,
-              onLongPress: Platform.isAndroid
-                  ? _showTabContextMenuAtChipCenter
-                  : null,
-              child: Container(
-                width: 200,
-                padding: const EdgeInsets.only(left: 12, right: 12),
-                height: 38,
-                decoration: BoxDecoration(
-                  border: Border(
-                    left: BorderSide(
-                      color: widget.active
-                          ? widget.borderColor
-                          : Colors.transparent,
-                    ),
-                    right: BorderSide(
-                      color: widget.active
-                          ? widget.borderColor
-                          : Colors.transparent,
-                    ),
-                    top: BorderSide(
-                      color: widget.active
-                          ? widget.borderColor
-                          : Colors.transparent,
-                    ),
-                  ),
-                  borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(10),
-                  ),
+    final cs = Theme.of(context).colorScheme;
+    final styles = AppTextStyles.of(context);
+    final active = widget.active;
+    final Color fg = active ? cs.onSurface : cs.onSurfaceVariant;
+    final Color accent = widget.accentColor ?? cs.primary;
+    final double barAlpha = active ? 1.0 : (_hovered ? 0.7 : 0.4);
+    final Color barColor = accent.withValues(alpha: barAlpha);
+    final double iconAlpha = active ? 1.0 : (_hovered ? 0.9 : 0.8);
+    final Color iconColor = accent.withValues(alpha: iconAlpha);
+
+    return Tooltip(
+      message: widget.title,
+      waitDuration: const Duration(milliseconds: 500),
+      child: MouseRegion(
+        onEnter: (_) => setState(() => _hovered = true),
+        onExit: (_) => setState(() => _hovered = false),
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: widget.onTap,
+          onSecondaryTapDown: _showTabContextMenuFromTap,
+          onLongPress: Platform.isAndroid
+              ? _showTabContextMenuAtChipCenter
+              : null,
+          child: InkWell(
+            onTap: widget.onTap,
+            borderRadius: BorderRadius.circular(8),
+            child: Container(
+              constraints: const BoxConstraints(maxWidth: 200),
+              padding: const EdgeInsets.only(
+                left: 10,
+                right: 6,
+                top: 6,
+                bottom: 6,
+              ),
+              decoration: BoxDecoration(
+                color: active
+                    ? cs.surfaceContainerHigh
+                    : _hovered
+                        ? cs.onSurface.withValues(alpha: 0.05)
+                        : Colors.transparent,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: active
+                      ? cs.outlineVariant.withValues(alpha: 0.7)
+                      : Colors.transparent,
                 ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.max,
-                  children: [
-                    SessionWorkingIndicator(working: widget.working, size: 13),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Align(
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          widget.title,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: AppTextStyles.of(context).body,
-                        ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  // Left accent bar
+                  SizedBox(
+                    width: 3,
+                    height: context.appIconSizes.md,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: barColor,
+                        borderRadius: BorderRadius.circular(1.5),
                       ),
                     ),
-                    if (_showTabActions) ...[
-                      const SizedBox(width: 4),
-                      SidebarActionMenuButton(
-                        icon: Icon(
-                          Icons.more_horiz,
-                          size: context.appIconSizes.md,
-                          color: widget.textColor.withValues(alpha: 0.6),
-                        ),
-                        size: 32,
-                        onOpen: () => setState(() => _overflowMenuOpen = true),
-                        onClose: () =>
-                            setState(() => _overflowMenuOpen = false),
-                        specs: _tabMenuSpecs(context),
-                        onSelected: (value) {
-                          setState(() => _overflowMenuOpen = false);
-                          _handleTabMenuSelection(value as String);
-                        },
+                  ),
+                  const SizedBox(width: 8),
+                  // Working indicator always visible when working;
+                  // icon fades with chrome when idle.
+                  if (widget.working)
+                    SessionWorkingIndicator(
+                      working: true,
+                      size: context.appIconSizes.md,
+                      color: iconColor,
+                    )
+                  else
+                    _TabChromeSlot(
+                      visible: _showChrome,
+                      child: Icon(
+                        widget.icon,
+                        size: context.appIconSizes.md,
+                        color: iconColor,
                       ),
-                      GestureDetector(
-                        onTap: widget.onClose,
+                    ),
+                  const SizedBox(width: 12),
+                  // Title
+                  Flexible(
+                    child: Text(
+                      widget.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: styles.bodySmall.copyWith(color: fg),
+                    ),
+                  ),
+                  // Overflow menu button
+                  _TabChromeSlot(
+                    visible: _showChrome,
+                    child: SidebarActionMenuButton(
+                      icon: Icon(
+                        Icons.more_horiz,
+                        size: context.appIconSizes.md,
+                        color: cs.onSurfaceVariant.withValues(alpha: 0.6),
+                      ),
+                      size: 32,
+                      onOpen: () => setState(() => _overflowMenuOpen = true),
+                      onClose: () =>
+                          setState(() => _overflowMenuOpen = false),
+                      specs: _tabMenuSpecs(context),
+                      onSelected: (value) {
+                        setState(() => _overflowMenuOpen = false);
+                        _handleTabMenuSelection(value as String);
+                      },
+                    ),
+                  ),
+                  // Close button
+                  _TabChromeSlot(
+                    visible: _showChrome,
+                    child: InkWell(
+                      onTap: widget.onClose,
+                      borderRadius: BorderRadius.circular(5),
+                      child: Padding(
+                        padding: const EdgeInsets.all(2),
                         child: Icon(
                           Icons.close,
                           size: context.appIconSizes.md,
-                          color: widget.textColor.withValues(alpha: 0.5),
+                          color: cs.onSurfaceVariant,
                         ),
                       ),
-                    ],
-                  ],
-                ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Keeps tab chrome in the layout while hiding it visually until hover/active.
+class _TabChromeSlot extends StatelessWidget {
+  const _TabChromeSlot({required this.visible, required this.child});
+
+  final bool visible;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return IgnorePointer(
+      ignoring: !visible,
+      child: AnimatedOpacity(
+        opacity: visible ? 1 : 0,
+        duration: const Duration(milliseconds: 120),
+        curve: Curves.easeOut,
+        child: child,
       ),
     );
   }
