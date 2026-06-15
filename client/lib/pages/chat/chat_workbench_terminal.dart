@@ -69,6 +69,7 @@ class ChatWorkbenchRunningTerminal extends StatelessWidget {
             padding: const EdgeInsets.all(16),
             textStyle: appTerminalTextStyle(context),
             autofocus: !findVisible,
+            linkProviders: session.linkProviders,
             onViewportResize: session.onViewportResize,
             onTapDown: (_, offset) {
               if (!HardwareKeyboard.instance.isControlPressed &&

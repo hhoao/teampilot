@@ -335,8 +335,11 @@ class _WorkspaceTerminalView extends StatelessWidget {
         padding: const EdgeInsets.all(8),
         textStyle: appTerminalTextStyle(context),
         autofocus: true,
+        linkProviders: entry.session.linkProviders,
         onViewportResize: entry.session.onViewportResize,
         onLinkActivate: (uri) {
+          // TODO: pass openInEditor once an EditorCubit is available in this
+          // widget tree; until then existing files open via the OS fallback.
           unawaited(TerminalUriOpener.open(uri, workingDirectory: entry.cwd));
         },
         onSecondaryTapDown: (details, offset) {

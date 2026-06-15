@@ -3,6 +3,9 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:flutter_alacritty/links/terminal_link_provider.dart';
+import 'package:flutter_alacritty/links/url_link_provider.dart';
+import 'package:teampilot/services/terminal/file_path_link_provider.dart';
 import 'package:teampilot/services/terminal/terminal_export.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
 import 'package:teampilot/services/terminal/terminal_transport.dart';
@@ -1042,5 +1045,53 @@ void main() {
 
     final writes = handle.writes.map(utf8.decode).toList();
     expect(writes, ['hello team\r']);
+  });
+
+  group('linkProviders', () {
+    TerminalSession _makeSession() => TerminalSession(
+          executable: _ptyTestExecutable,
+          validateLaunch: false,
+          transportStarter: (
+            executable, {
+            required arguments,
+            required workingDirectory,
+            required columns,
+            required rows,
+            environment,
+          }) =>
+              Future.value(_FakeTransport()),
+        );
+
+    test('returns a UrlLinkProvider and a FilePathLinkProvider', () {
+      final session = _makeSession();
+      addTearDown(session.dispose);
+
+      final providers = session.linkProviders;
+      expect(providers, hasLength(2));
+      expect(providers[0], isA<UrlLinkProvider>());
+      expect(providers[1], isA<FilePathLinkProvider>());
+    });
+
+    test('returns the same list instance on repeated access (lazy/cached)', () {
+      final session = _makeSession();
+      addTearDown(session.dispose);
+
+      final first = session.linkProviders;
+      final second = session.linkProviders;
+      expect(identical(first, second), isTrue);
+    });
+
+    test('dispose clears and disposes the providers', () {
+      final session = _makeSession();
+
+      // Force allocation before dispose.
+      final providers = List<TerminalLinkProvider>.from(session.linkProviders);
+      session.dispose();
+
+      // A disposed ChangeNotifier throws FlutterError on addListener.
+      for (final p in providers) {
+        expect(() => p.addListener(() {}), throwsFlutterError);
+      }
+    });
   });
 }

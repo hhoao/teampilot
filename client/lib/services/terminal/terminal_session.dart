@@ -5,6 +5,8 @@ import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_alacritty/flutter_alacritty.dart';
+import 'package:flutter_alacritty/links/terminal_link_provider.dart';
+import 'package:flutter_alacritty/links/url_link_provider.dart';
 import 'package:flutter_pty/flutter_pty.dart';
 import '../cli/cli_executable_validator.dart';
 import '../cli/cli_invocation.dart';
@@ -20,9 +22,12 @@ import '../team/terminal_activity_tracker.dart';
 import '../team_bus/bus_user_line_capture.dart';
 import 'pending_user_message.dart';
 import '../../utils/first_user_line_capture.dart';
+import '../../utils/every_user_line_capture.dart';
 import '../../utils/logger.dart';
 import 'terminal_theme_mapper.dart';
 import 'workspace_interactive_shell.dart';
+import '../storage/app_storage.dart';
+import 'file_path_link_provider.dart';
 
 typedef TransportStarter =
     Future<TerminalTransport> Function(
@@ -136,10 +141,31 @@ class TerminalSession {
   StreamSubscription<String>? _outputSubscription;
   StreamSubscription<Uint8List>? _engineOutputSubscription;
   FirstUserLineCapture? _firstUserLineCapture;
+  EveryUserLineCapture? _everyUserLineCapture;
   BusUserLineCapture? _busUserLineCapture;
   final StreamController<PendingUserMessage> _parkedSubmissions =
       StreamController<PendingUserMessage>.broadcast();
   BusUserInputRouting? _busRouting;
+
+  /// The working directory most recently passed to [connect]. Used as
+  /// [FilePathLinkProvider.launchCwd] so file-path links resolve correctly.
+  /// Empty string until the first [connect] call.
+  String _launchCwd = '';
+
+  List<TerminalLinkProvider>? _linkProviders;
+
+  /// Link providers for this session's TerminalView: clickable URLs + file
+  /// paths (validated against the filesystem, resolved against the session cwd).
+  List<TerminalLinkProvider> get linkProviders => _linkProviders ??= [
+        UrlLinkProvider(),
+        FilePathLinkProvider(
+          fs: AppStorage.fs,
+          launchCwd: _launchCwd,
+          // TODO: pass cwd: engine.cwd once OSC 7 cwd tracking lands so relative
+          // paths track `cd` inside the shell; until then we use the launch cwd.
+          cwd: null,
+        ),
+      ];
 
   /// Lines submitted to the bus while parked. The overlay subscribes to show a
   /// "sent, awaiting receipt" banner per message.
@@ -241,11 +267,13 @@ class TerminalSession {
     void Function(String message)? onProcessFailed,
     VoidCallback? onProcessExited,
     void Function(String line)? onFirstUserLineSubmitted,
+    void Function(String line)? onEveryUserLineSubmitted,
     BusUserInputRouting? busUserInputRouting,
   }) {
     if (_running || _starting) {
       disconnect();
     }
+    _launchCwd = workingDirectory;
     final invocation = parseExecutable
         ? CliInvocation.fromExecutable(executable)
         : CliInvocation(executable: executable);
@@ -318,6 +346,9 @@ class TerminalSession {
     _firstUserLineCapture = onFirstUserLineSubmitted == null
         ? null
         : FirstUserLineCapture(onFirstUserLineSubmitted);
+    _everyUserLineCapture = onEveryUserLineSubmitted == null
+        ? null
+        : EveryUserLineCapture(onEveryUserLineSubmitted);
     final incomingRouting = busUserInputRouting;
     _busRouting = incomingRouting;
     _busUserLineCapture = incomingRouting == null
@@ -353,6 +384,7 @@ class TerminalSession {
     _engineOutputSubscription?.cancel();
     _engineOutputSubscription = engine.output.listen((Uint8List data) {
       _firstUserLineCapture?.feed(utf8.decode(data));
+      _everyUserLineCapture?.feed(utf8.decode(data));
       var forward = _busUserLineCapture?.filter(data) ?? data;
       if (!forwardsColorScheme) {
         forward = stripColorSchemeReport(forward);
@@ -417,6 +449,7 @@ class TerminalSession {
     _beginStartup(executable);
 
     _firstUserLineCapture = null;
+    _everyUserLineCapture = null;
     _busUserLineCapture = null;
 
     _engineOutputSubscription?.cancel();
@@ -836,6 +869,7 @@ class TerminalSession {
     _onProcessExited = null;
     _ptyEnvironment = null;
     _firstUserLineCapture = null;
+    _everyUserLineCapture = null;
     _busUserLineCapture = null;
     _engineOutputSubscription?.cancel();
     _engineOutputSubscription = null;
@@ -847,6 +881,13 @@ class TerminalSession {
     disconnect();
     engine.dispose();
     unawaited(_parkedSubmissions.close());
+    final providers = _linkProviders;
+    if (providers != null) {
+      for (final p in providers) {
+        p.dispose();
+      }
+      _linkProviders = null;
+    }
   }
 
   /// Full process environment for [Pty.start], including OSC 8 identity hints.
