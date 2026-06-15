@@ -47,6 +47,12 @@ class AgentNode {
   /// 进入 `wait_for_message`（[MemberInbox] 消费路径）时清零 —— 读完后新邮件照常再响。
   bool doorbelled = false;
 
+  /// 上一次响门铃的时钟（ms，`BusEnvironment.clock`）。看门狗
+  /// [TeamBus.reengageIdleWorkers] 用它节流重敲：worker 停在 prompt 却迟迟没消费
+  /// （首个回车被全屏 TUI 输入框吞掉的竞态）时，按间隔补敲，治「永久卡在 prompt」。
+  /// 真正消费（进 wait / 抽干未读）后清零。null = 本轮还没敲过。
+  int? doorbelledAt;
+
   String get memberId => profile.memberId;
 
   bool get ptyRunning =>

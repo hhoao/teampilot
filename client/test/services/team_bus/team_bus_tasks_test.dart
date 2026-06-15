@@ -263,6 +263,81 @@ void main() {
     });
   });
 
+  test('reengageIdleWorkers re-rings a stranded task worker after the retry interval', () {
+    fakeAsync((async) {
+      var now = 0;
+      final launcher = FakeMemberLauncher();
+      final bus = TeamBus(
+        launcher: launcher,
+        taskQueue: TaskQueue(),
+        clock: () => now,
+      );
+      bus.declareMember(_idleAtPromptWorker('w1'));
+
+      bus.addTasks('lead', [const TeamTaskDraft(title: 'a', brief: 'do a')]);
+      async.flushMicrotasks();
+      expect(launcher.woken.length, 1); // initial queue doorbell
+
+      // First CR was swallowed by the input box → worker still at prompt, task
+      // still claimable. A watchdog tick before the retry window stays quiet.
+      bus.reengageIdleWorkers();
+      expect(launcher.woken.length, 1);
+
+      // After the retry interval the watchdog re-rings — this is the retry the
+      // mail doorbell gets for free (re-ring per message) but the queue lacked.
+      now += TeamBus.doorbellRetryMs;
+      bus.reengageIdleWorkers();
+      expect(launcher.woken.length, 2);
+      expect(launcher.woken.last.notice, TeamBus.taskDoorbellNotice);
+    });
+  });
+
+  test('reengageIdleWorkers stops once the worker claims (enters wait)', () {
+    fakeAsync((async) {
+      var now = 0;
+      final launcher = FakeMemberLauncher();
+      final bus = TeamBus(
+        launcher: launcher,
+        taskQueue: TaskQueue(),
+        clock: () => now,
+      );
+      bus.declareMember(_idleAtPromptWorker('w1'));
+      bus.addTasks('lead', [const TeamTaskDraft(title: 'a', brief: 'do a')]);
+      async.flushMicrotasks();
+      expect(launcher.woken.length, 1);
+
+      // Worker responds: enters wait_for_message and claims the task.
+      bus.receiveWork('w1');
+      async.flushMicrotasks();
+
+      // No claimable work remains → watchdog must not keep ringing.
+      now += TeamBus.doorbellRetryMs * 3;
+      bus.reengageIdleWorkers();
+      expect(launcher.woken.length, 1);
+    });
+  });
+
+  test('reengageIdleWorkers re-rings a stranded unread-mail worker with the read notice', () {
+    fakeAsync((async) {
+      var now = 0;
+      final launcher = FakeMemberLauncher();
+      final bus = TeamBus(launcher: launcher, clock: () => now);
+      final w = _idleAtPromptWorker('w1');
+      bus.declareMember(w);
+      w.inbox
+          .deliver(TeamMessage(id: 'm1', from: 'lead', to: 'w1', content: 'hi'));
+
+      // First ring, then a swallowed CR keeps the worker at prompt with unread.
+      bus.reengageIdleWorkers();
+      expect(launcher.woken.single.notice, TeamBus.doorbellNotice);
+
+      now += TeamBus.doorbellRetryMs;
+      bus.reengageIdleWorkers();
+      expect(launcher.woken.length, 2);
+      expect(launcher.woken.last.notice, TeamBus.doorbellNotice);
+    });
+  });
+
   test('releaseTask returns a claimed task to pending', () {
     final bus = _busWithQueue(FakeMemberLauncher());
     final id = bus

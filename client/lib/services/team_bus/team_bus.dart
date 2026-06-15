@@ -18,6 +18,7 @@ import 'state/bus_event.dart';
 import 'state/presence.dart';
 import 'state/presence_reducer.dart';
 import 'tasks/task_queue.dart';
+import 'tasks/task_router.dart';
 import 'tasks/team_task.dart';
 import 'team_message.dart';
 import 'teammate_roster_profile.dart';
@@ -45,7 +46,16 @@ class TeamBus implements CoordinationView {
        ) {
     _coordination = coordination ??
         LeaderStarCoordinationPolicy(environment: _env);
+    if (_taskQueue != null) {
+      _reconcileTimer = Timer.periodic(
+        const Duration(seconds: 15),
+        (_) => reconcileTasks(),
+      );
+    }
   }
+
+  /// 定时推进任务路由阶段（仅在装配了任务队列时启动）。
+  Timer? _reconcileTimer;
 
   /// 新消息 id(MCP handler 复用,统一 id 源)。
   String newMessageId() => _env.ids();
@@ -67,6 +77,11 @@ class TeamBus implements CoordinationView {
 
   /// [TeamMessage.from] when the human operator submits while the member waits.
   static const String userSenderId = 'user';
+
+  /// 门铃重敲间隔（ms）。worker 被敲后仍停在 prompt、仍欠一记门铃（有未读 / 队列有
+  /// 可认领）超过这么久，看门狗 [reengageIdleWorkers] 就补敲一次——补上全屏 TUI
+  /// 输入框偶发吞掉首个回车导致的「永久卡在 prompt」。
+  static const int doorbellRetryMs = 5 * 1000;
 
   final BusEnvironment _env;
   final BusMessageLog? _messageLog;
@@ -138,6 +153,7 @@ class TeamBus implements CoordinationView {
       if (e is DoorbellEffect) {
         // 置幂等闸：同一未读的后续 idle 边不再重复响门铃，直到成员进 wait 消费。
         node.doorbelled = true;
+        node.doorbelledAt = _env.clock(); // 看门狗按此节流重敲（治回车被吞）。
         _env.events.emit(MemberDoorbelled(e.memberId));
       }
     }
@@ -211,6 +227,7 @@ class TeamBus implements CoordinationView {
       return const <TeamMessage>[];
     }
     node.doorbelled = false; // 进 wait = 响应了门铃并开始消费 → 解闸，读完后新邮件再响。
+    node.doorbelledAt = null; // 已开工，看门狗停止重敲。
     _apply(node, const WaitEntered());
     try {
       final batch = await node.inbox.waitAndTake(timeout: timeout, cancel: cancel);
@@ -254,6 +271,7 @@ class TeamBus implements CoordinationView {
     // team-lead 永不自动认领任务；非 mixed 模式 _taskQueue 为空 → 纯消息等待。
     final queue = node.profile.isTeamLead ? null : _taskQueue;
     node.doorbelled = false; // 进 wait = 响应了门铃并开始消费 → 解闸，读完后新邮件再响。
+    node.doorbelledAt = null; // 已开工，看门狗停止重敲。
     _apply(node, const WaitEntered());
     // 本次 wait 是否已向 leader 上报过「我空闲了」（每个真正阻塞的 wait 期上报一次，
     // spurious wake 后重判不重复上报）。
@@ -271,7 +289,7 @@ class TeamBus implements CoordinationView {
         }
         // 2) 否则原子认领一个队列任务（worker only）。
         if (queue != null) {
-          final task = queue.claimNext(memberId);
+          final task = queue.claimNext(memberId, node.profile.capabilities);
           if (task != null) return TaskWork(task);
         }
         // 3) 两者皆空 → 真正空闲。对齐 Claude Code「转 idle → 通知 leader → 再等待」：
@@ -343,12 +361,19 @@ class TeamBus implements CoordinationView {
     if (node == null) {
       return const BusMessagePage(messages: [], hasMore: false);
     }
-    return node.inbox.readPage(
+    final page = await node.inbox.readPage(
       afterId: afterId,
       limit: limit,
       unreadOnly: unreadOnly,
       markRead: markRead,
     );
+    // push CLI（cursor 等永不进 wait）靠 read_messages 消费未读。抽干后解闸，
+    // 否则 _onMail 的「已响过就不重发」抑制会把它后续的邮件门铃也压住（饿死）。
+    if (markRead && node.inbox.isEmpty) {
+      node.doorbelled = false;
+      node.doorbelledAt = null;
+    }
+    return page;
   }
 
   /// 打开 session：回放每个成员的日志，重建未读集；并回放共享任务队列。
@@ -624,40 +649,144 @@ class TeamBus implements CoordinationView {
   Future<void> _engageWorkersForQueue(String createdBy) async {
     final queue = _taskQueue;
     if (queue == null) return;
-    final workers = _members.values.where((n) => !n.profile.isTeamLead);
-    final parked = workers.where((n) => n.waitingForMessage).length;
-    var budget = queue.claimableCount - parked;
-    if (budget <= 0) return;
+    final workers =
+        _members.values.where((n) => !n.profile.isTeamLead).toList();
+    for (final task in queue.list(status: TaskStatus.pending)) {
+      if (_hasParkedEligibleWorker(workers, task)) continue;
 
-    // 第一轮：敲已在跑、停在 prompt 的 worker（便宜，无冷启动）。
-    for (final node in workers) {
-      if (budget <= 0) break;
-      if (node.lifecycle != MemberLifecycle.running) continue;
-      if (node.activity != MemberActivity.turnDoneReady) continue; // atPrompt
-      if (node.doorbelled) continue; // 已敲过、尚未消费
-      node.doorbelled = true;
-      _launcher.wake(node.memberId, taskDoorbellNotice);
-      budget--;
-    }
-    // 第二轮：冷启动尚未上线（declared）的 worker。
-    for (final node in workers) {
-      if (budget <= 0) break;
-      if (node.lifecycle != MemberLifecycle.declared) continue;
-      await _bringOnline(
-        node,
-        TeamMessage(
-          id: _env.ids(),
-          from: createdBy,
-          to: node.memberId,
-          content: taskDoorbellNotice,
-        ),
-      );
-      budget--;
+      // 第一轮：敲已在跑、停在 prompt 的合格 worker（便宜，无冷启动）。
+      AgentNode? running;
+      for (final n in workers) {
+        if (n.lifecycle != MemberLifecycle.running) continue;
+        if (n.activity != MemberActivity.turnDoneReady) continue; // atPrompt
+        if (_recentlyDoorbelled(n)) continue; // 未到重敲窗口（治回车被吞 → 卡死）
+        if (!TaskRouter.eligible(n.memberId, n.profile.capabilities, task)) {
+          continue;
+        }
+        running = n;
+        break;
+      }
+      if (running != null) {
+        running.doorbelledAt = _env.clock();
+        _launcher.wake(running.memberId, taskDoorbellNotice);
+        continue;
+      }
+
+      // 第二轮：冷启动尚未上线、合格的 declared worker。
+      AgentNode? declared;
+      for (final n in workers) {
+        if (n.lifecycle != MemberLifecycle.declared) continue;
+        if (!TaskRouter.eligible(n.memberId, n.profile.capabilities, task)) {
+          continue;
+        }
+        declared = n;
+        break;
+      }
+      if (declared != null) {
+        await _bringOnline(
+          declared,
+          TeamMessage(
+            id: _env.ids(),
+            from: createdBy,
+            to: declared.memberId,
+            content: taskDoorbellNotice,
+          ),
+        );
+      }
+      // 否则：无合格成员可上线 → 留给 [reconcileTasks] 最终降级。
     }
   }
 
-  /// 原子认领下一个任务（[receiveWork] 内部复用；无可认领返回 null）。
-  TeamTask? claimNextTask(String memberId) => _taskQueue?.claimNext(memberId);
+  /// 距上次门铃是否还在重敲窗口内（[doorbellRetryMs] 节流，避免每个 tick 轰炸）。
+  bool _recentlyDoorbelled(AgentNode node) {
+    final at = node.doorbelledAt;
+    return at != null && _env.clock() - at < doorbellRetryMs;
+  }
+
+  /// **门铃看门狗**（1s idle watcher 周期调用）：重敲仍停在 prompt、却还欠一记门铃的
+  /// running worker。邮件门铃靠「每来一条新消息重响」白拿这种重试，队列门铃没有 ——
+  /// 全屏 TUI 输入框偶发把注入的首个回车吞成换行时，worker 永远进不了
+  /// `wait_for_message`、`doorbelledAt` 也永不清零，文字就此卡在输入框。这里按
+  /// [doorbellRetryMs] 节流补敲，直到 worker 真正消费（进 wait / 抽干未读）后
+  /// `doorbelledAt` 清零、条件不再满足自然停。消息优先于队列任务（与 [receiveWork]
+  /// 一致）。只管已 running 的 worker —— declared 的冷启动由 [addTasks] / [reconcileTasks]
+  /// 负责。
+  void reengageIdleWorkers() {
+    final queue = _taskQueue;
+    for (final node in _members.values) {
+      if (node.profile.isTeamLead) continue;
+      if (node.lifecycle != MemberLifecycle.running) continue;
+      if (node.activity != MemberActivity.turnDoneReady) continue; // atPrompt
+      if (_recentlyDoorbelled(node)) continue;
+      final String notice;
+      if (!node.inbox.isEmpty) {
+        notice = doorbellNotice;
+      } else if (queue != null && _hasEligiblePendingTask(node, queue)) {
+        notice = taskDoorbellNotice;
+      } else {
+        continue; // 没有欠它的门铃。
+      }
+      node.doorbelledAt = _env.clock();
+      _launcher.wake(node.memberId, notice);
+    }
+  }
+
+  bool _hasEligiblePendingTask(AgentNode node, TaskQueue queue) {
+    for (final task in queue.list(status: TaskStatus.pending)) {
+      if (TaskRouter.eligible(node.memberId, node.profile.capabilities, task)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  bool _hasParkedEligibleWorker(List<AgentNode> workers, TeamTask task) {
+    for (final n in workers) {
+      if (!n.waitingForMessage) continue;
+      if (TaskRouter.eligible(n.memberId, n.profile.capabilities, task)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /// 推进任务路由阶段（定时 + 事件驱动）。降级后重新尝试 engage。
+  List<TeamTask> reconcileTasks() {
+    final queue = _taskQueue;
+    if (queue == null) return const [];
+    final changed = queue.reconcile(_env.clock(), _hasEligibleLiveMember);
+    if (changed.isNotEmpty) {
+      unawaited(_engageWorkersForQueue(_teamLeadMemberId() ?? ''));
+    }
+    return changed;
+  }
+
+  /// 是否存在能领该任务的**在线**（running/materializing）非 leader 成员。declared
+  /// 不算「在线」——它要靠 engage 拉起；拉不起来才该降级。
+  bool _hasEligibleLiveMember(TeamTask task) {
+    for (final n in _members.values) {
+      if (n.profile.isTeamLead) continue;
+      if (!n.ptyRunning) continue;
+      if (TaskRouter.eligible(n.memberId, n.profile.capabilities, task)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /// 原子认领下一个对该成员合格的任务（[receiveWork] 内部复用；无可认领返回 null）。
+  TeamTask? claimNextTask(String memberId) =>
+      _taskQueue?.claimNext(memberId, _capsOf(memberId));
+
+  /// pull 式自取：worker 主动认领指定任务（MCP `claim_task` 落点）。
+  TeamTask? claimSpecificTask(String taskId, String memberId) =>
+      _taskQueue?.claimSpecific(taskId, memberId, _capsOf(memberId));
+
+  /// 成员能力（MCP `list_tasks` 标注 eligible_for_you / match_score 用）。
+  Set<String> capabilitiesOf(String memberId) => _capsOf(memberId);
+
+  Set<String> _capsOf(String memberId) =>
+      _members[memberId]?.profile.capabilities ?? const {};
 
   /// worker 汇报任务终态（`update_task` 落点）。leader 经由 worker 进入 wait_for_message
   /// 时的 idle 通知（[_announceWorkerIdleToLead]）感知进度，对齐 Claude Code——
@@ -688,6 +817,7 @@ class TeamBus implements CoordinationView {
 
   /// 关闭 session：释放每个信箱的 Timer / 挂起 waiter，防泄漏。
   void dispose() {
+    _reconcileTimer?.cancel();
     for (final node in _members.values) {
       node.inbox.dispose();
     }

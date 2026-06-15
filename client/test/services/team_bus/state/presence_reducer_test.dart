@@ -95,6 +95,23 @@ void main() {
       final t = _run(_atPrompt, const MailArrived(eager: true));
       expect(t.effects, isEmpty);
     });
+
+    test('non-eager + at-prompt but already doorbelled → no re-ring', () {
+      // Back-to-back messages to an idle worker that has not yet consumed must
+      // not inject a second "go read_messages" notice (the duplicate the user
+      // sees). Lost-CR redelivery is the watchdog's job, not a re-ring per msg.
+      final t =
+          _run(_atPrompt, const MailArrived(), hasUnread: true, doorbelled: true);
+      expect(t.presence, _atPrompt);
+      expect(t.effects, isEmpty);
+    });
+
+    test('eager overrides doorbelled suppression', () {
+      // idle-notify / explicit user command still ring even if already nudged.
+      final t = _run(_atPrompt, const MailArrived(eager: true),
+          hasUnread: true, doorbelled: true);
+      expect(t.effects.single, isA<DoorbellEffect>());
+    });
   });
 
   group('wait lifecycle', () {

@@ -125,6 +125,11 @@ abstract final class PresenceReducer {
     // 非 eager(send):仅 idle-at-prompt 响,不打断进行中的回合。
     final shouldDoorbell = eager || s.atPrompt;
     if (!shouldDoorbell) return _stay(s);
+    // 已响过一记「去 read_messages」、worker 尚未消费 → 不重复注入：back-to-back
+    // 邮件会让原本「每来一条就重响」的逻辑把同一条提示打好几遍（用户看到的「重发」）。
+    // 真没送达（回车被吞）由看门狗 [TeamBus.reengageIdleWorkers] 超时重敲兜底。
+    // eager（idle-notify / 用户显式命令）仍照响。
+    if (ctx.doorbelled && !eager) return _stay(s);
     return PresenceTransition(
       s.copyWith(activity: MemberActivity.active),
       [DoorbellEffect(ctx.memberId)],
