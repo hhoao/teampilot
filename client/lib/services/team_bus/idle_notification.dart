@@ -138,7 +138,12 @@ class IdleNotification {
       buffer.write('\nfailureReason: $failureReason');
     }
     buffer.write(
-      '\n(hint: teammate finished a turn and is available — assign via send_message or reply)',
+      '\n(hint: this teammate has STOPPED and has NO work in progress — this does '
+      'NOT mean they are still busy. Take action now, do NOT silently go back to '
+      'wait_for_message: if you delegated via the work queue, call '
+      'list_tasks(status: done) to read their result; if you delegated via '
+      'send_message, call read_messages to see their reply; if there is no '
+      'result yet, send_message to ask for status or assign the next task.)',
     );
     return buffer.toString();
   }
