@@ -4,40 +4,71 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:teampilot/models/app_project.dart';
 import 'package:teampilot/models/app_session.dart';
+import 'package:teampilot/models/cli_preset.dart';
 import 'package:teampilot/models/project_profile.dart';
 import 'package:teampilot/models/team_config.dart';
+import 'package:teampilot/repositories/cli_presets_repository.dart';
 import 'package:teampilot/repositories/project_profile_repository.dart';
 import 'package:teampilot/services/cli/cli_data_layout.dart';
 import 'package:teampilot/services/session/session_lifecycle_service.dart';
 import 'package:teampilot/services/storage/storage_resolver.dart';
 
+import '../../support/in_memory_filesystem.dart';
 import '../../support/post_frame_test_harness.dart';
 
 StorageRootsSnapshot _roots(String basePath) => StorageRootsSnapshot(
-  storageIsRemote: false,
-  teampilotRoot: basePath,
-  teamsUiDir: p.join(basePath, 'teams'),
-  skillsRoot: p.join(basePath, 'skills', 'installed'),
-  skillBackupsDir: p.join(basePath, 'skills', 'backups'),
-  appProjectsDir: p.join(basePath, 'projects'),
-  skillReposConfigPath: p.join(basePath, 'skills', 'repos.json'),
-  pluginsRoot: p.join(basePath, 'plugins', 'installed'),
-  pluginBackupsDir: p.join(basePath, 'plugins', 'backups'),
-  pluginsJsonPath: p.join(basePath, 'plugins', 'plugins.json'),
-  pluginMarketplacesConfigPath: p.join(
-    basePath,
-    'plugins',
-    'marketplaces.json',
-  ),
-  pluginMarketplaceCacheDir: p.join(basePath, 'plugins', 'marketplace-cache'),
-  pluginExternalCacheDir: p.join(basePath, 'plugins', 'external-cache'),
-  mcpServersJsonPath: p.join(basePath, 'mcp', 'mcp_servers.json'),
-  mcpRegistrySourcesConfigPath: p.join(
-    basePath,
-    'mcp',
-    'registry_sources.json',
-  ),
-);
+	  storageIsRemote: false,
+	  teampilotRoot: basePath,
+	  teamsUiDir: p.join(basePath, 'teams'),
+	  skillsRoot: p.join(basePath, 'skills', 'installed'),
+	  skillBackupsDir: p.join(basePath, 'skills', 'backups'),
+	  appProjectsDir: p.join(basePath, 'projects'),
+	  skillReposConfigPath: p.join(basePath, 'skills', 'repos.json'),
+	  pluginsRoot: p.join(basePath, 'plugins', 'installed'),
+	  pluginBackupsDir: p.join(basePath, 'plugins', 'backups'),
+	  pluginsJsonPath: p.join(basePath, 'plugins', 'plugins.json'),
+	  pluginMarketplacesConfigPath: p.join(
+	    basePath,
+	    'plugins',
+	    'marketplaces.json',
+	  ),
+	  pluginMarketplaceCacheDir: p.join(basePath, 'plugins', 'marketplace-cache'),
+	  pluginExternalCacheDir: p.join(basePath, 'plugins', 'external-cache'),
+	  mcpServersJsonPath: p.join(basePath, 'mcp', 'mcp_servers.json'),
+	  mcpRegistrySourcesConfigPath: p.join(
+	    basePath,
+	    'mcp',
+	    'registry_sources.json',
+	  ),
+	);
+
+/// Creates an [InMemoryFilesystem]-backed [CliPresetsRepository] seeded with
+/// a single preset so that [SessionLifecycleService] can resolve it via
+/// [ProjectProfile.activePresetId].
+Future<CliPresetsRepository> _seededPresetsRepo({
+  required String presetId,
+  required String name,
+  required CliTool cli,
+  required String provider,
+  required String model,
+  String effort = '',
+}) async {
+  final fs = InMemoryFilesystem();
+  final presetsPath = '/cli-presets.json';
+  final preset = CliPreset(
+    id: presetId,
+    name: name,
+    cli: cli,
+    provider: provider,
+    model: model,
+    effort: effort,
+    createdAt: 1,
+    updatedAt: 1,
+  );
+  final repo = CliPresetsRepository(fs: fs, presetsPath: presetsPath);
+  await repo.save([preset]);
+  return repo;
+}
 
 void main() {
   late Directory base;
@@ -58,10 +89,12 @@ void main() {
 
   SessionLifecycleService service({
     ProjectProfileRepository? projectProfileRepository,
+    CliPresetsRepository? cliPresetsRepository,
   }) => SessionLifecycleService(
     appDataBasePath: base.path,
     storageRootsResolver: () async => _roots(base.path),
     projectProfileRepository: projectProfileRepository,
+    cliPresetsRepository: cliPresetsRepository,
   );
 
   test(
@@ -70,11 +103,20 @@ void main() {
       const projectId = 'personal-proj';
       const sessionId = 'personal-sess';
       final repo = ProjectProfileRepository(rootDir: base.path);
+      // Seed a preset for flashskyai so the resolved member/provider/model/cli
+      // come from the active preset instead of the (now-removed) profile fields.
+      final presetsRepo = await _seededPresetsRepo(
+        presetId: 'preset-fs',
+        name: 'FlashskyAI Work',
+        cli: CliTool.flashskyai,
+        provider: 'custom-provider',
+        model: 'opus',
+      );
       await repo.save(
-        const ProjectProfile(
+        ProjectProfile(
           projectId: projectId,
-          // TODO: migrate to presets — cli, model, provider removed
-          agent: ProjectAgentConfig(
+          activePresetId: 'preset-fs',
+          agent: const ProjectAgentConfig(
             agent: 'persisted-agent',
           ),
         ),
@@ -93,8 +135,10 @@ void main() {
         createdAt: 1,
       );
 
-      final shellLaunch = await service(projectProfileRepository: repo)
-          .prepareShellLaunch(
+      final shellLaunch = await service(
+        projectProfileRepository: repo,
+        cliPresetsRepository: presetsRepo,
+      ).prepareShellLaunch(
         session: session,
         project: project,
       );
@@ -113,7 +157,6 @@ void main() {
       const sessionId = 'personal-sess';
       const profile = ProjectProfile(
         projectId: projectId,
-        // TODO: migrate to presets — cli, model removed
         agent: ProjectAgentConfig(agent: 'solo'),
       );
       const project = AppProject(
@@ -155,9 +198,17 @@ void main() {
     () async {
       const projectId = 'personal-proj';
       const sessionId = 'personal-sess';
+      // Seed a claude preset so the resolved model/provider/cli match.
+      final presetsRepo = await _seededPresetsRepo(
+        presetId: 'preset-claude',
+        name: 'Claude Work',
+        cli: CliTool.claude,
+        provider: 'anthropic',
+        model: 'sonnet',
+      );
       const profile = ProjectProfile(
         projectId: projectId,
-        // TODO: migrate to presets — cli, model, provider removed
+        activePresetId: 'preset-claude',
         agent: ProjectAgentConfig(
           agent: 'solo',
         ),
@@ -176,7 +227,9 @@ void main() {
         createdAt: 1,
       );
 
-      final shellLaunch = await service().prepareShellLaunch(
+      final shellLaunch = await service(
+        cliPresetsRepository: presetsRepo,
+      ).prepareShellLaunch(
         session: session,
         project: project,
         profile: profile,
