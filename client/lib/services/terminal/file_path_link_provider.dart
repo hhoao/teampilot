@@ -73,7 +73,7 @@ class FilePathLinkProvider extends TerminalLinkProvider {
         workingDirectory: _cwd(),
       );
       if (resolved == null) {
-        _negativeUntil[key] = DateTime.now().add(_negativeTtl);
+        _recordNegative(key);
         return;
       }
       final stat = await fs.stat(resolved);
@@ -81,13 +81,22 @@ class FilePathLinkProvider extends TerminalLinkProvider {
         _confirmed.add(key);
         notifyListeners();
       } else {
-        _negativeUntil[key] = DateTime.now().add(_negativeTtl);
+        _recordNegative(key);
       }
     } catch (_) {
-      _negativeUntil[key] = DateTime.now().add(_negativeTtl);
+      _recordNegative(key);
     } finally {
       _inFlight.remove(key);
     }
+  }
+
+  /// Records a TTL'd negative result, evicting already-expired entries first so
+  /// the map stays bounded over a long session (it only holds tokens that
+  /// failed within the last [_negativeTtl]).
+  void _recordNegative(String key) {
+    final now = DateTime.now();
+    _negativeUntil.removeWhere((_, expiry) => now.isAfter(expiry));
+    _negativeUntil[key] = now.add(_negativeTtl);
   }
 
   /// Shape heuristic to cut obvious non-paths before the (later) fs check.
