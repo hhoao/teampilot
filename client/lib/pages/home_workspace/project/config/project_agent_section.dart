@@ -3,18 +3,22 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../../cubits/cli_presets_cubit.dart';
 import '../../../../cubits/project_profile_cubit.dart';
 import '../../../../l10n/l10n_extensions.dart';
+import '../../../../models/cli_preset.dart';
 import '../../../../models/project_agent_prompt_presets.dart';
 import '../../../../models/project_profile.dart';
 import '../../../../models/team_config.dart';
 import '../../../../services/app/flashskyai_agent_catalog_service.dart';
+import '../../../../services/cli/registry/cli_display_name.dart';
+import '../../../../services/cli/registry/cli_tool_registry.dart';
 import '../../../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../../../services/storage/storage_resolver.dart';
 import '../../../../theme/app_text_styles.dart';
 import '../../../../widgets/cli/member_agent_preset_field.dart';
 import '../../../../widgets/settings/workspace_settings_widgets.dart';
-import 'project_cli_defaults_section.dart';
+import 'cli_presets_manage_dialog.dart';
 
 const _kAgentCardGap = 12.0;
 
@@ -134,18 +138,17 @@ class ProjectAgentConfigFormState extends State<ProjectAgentConfigForm> {
     final profile = widget.profile;
     final agent = profile.agent;
     final cliRegistry = CliToolRegistryScope.of(context);
-    final showAgentPreset = cliRegistry.supportsMemberAgentPreset(
-      CliTool.claude, // TODO: migrate to presets — was profile.cli
-    );
-    final agentPresetStyle = cliRegistry.memberAgentPresetStyle(
-      CliTool.claude, // TODO: migrate to presets — was profile.cli
-    );
+    final presetsCubit = context.read<CliPresetsCubit>();
+    final activePreset = presetsCubit.state.presetById(profile.activePresetId ?? '');
+    final effectiveCli = activePreset?.cli ?? CliTool.claude;
+    final showAgentPreset = cliRegistry.supportsMemberAgentPreset(effectiveCli);
+    final agentPresetStyle = cliRegistry.memberAgentPresetStyle(effectiveCli);
 
     return SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          ProjectCliDefaultsSection(profile: profile, cubit: widget.cubit),
+          _PresetInfoRow(profile: profile),
           const SizedBox(height: _kAgentCardGap),
           SettingsSurfaceCard(
             child: Column(
@@ -210,7 +213,7 @@ class ProjectAgentConfigFormState extends State<ProjectAgentConfigForm> {
                           agentPresetStyle,
                         ),
                         body: MemberAgentPresetField(
-                          cli: CliTool.claude, // TODO: migrate to presets — was profile.cli
+                          cli: effectiveCli,
                           agent: agent.agent,
                           userAgentIds: _userAgentIds,
                           customAgentController: _agentCtl,
@@ -239,5 +242,44 @@ class ProjectAgentConfigFormState extends State<ProjectAgentConfigForm> {
         ],
       ),
     );
+  }
+}
+
+class _PresetInfoRow extends StatelessWidget {
+  const _PresetInfoRow({required this.profile});
+
+  final ProjectProfile profile;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final presetsCubit = context.watch<CliPresetsCubit>();
+    final preset = presetsCubit.state.presetById(profile.activePresetId ?? '');
+    final registry = CliToolRegistryScope.of(context);
+
+    return SettingsSurfaceCard(
+      child: SettingsLabeledRow(
+        title: l10n.projectCliPresetLabel,
+        subtitle: preset != null
+            ? _presetSubtitle(preset, registry, l10n)
+            : l10n.projectCliNoPresetHint,
+        trailing: TextButton(
+          onPressed: () {
+            showDialog<void>(
+              context: context,
+              builder: (_) => const CliPresetsManageDialog(),
+            );
+          },
+          child: Text(l10n.projectCliManagePresets),
+        ),
+        showDividerBelow: false,
+      ),
+    );
+  }
+
+  String _presetSubtitle(CliPreset preset, CliToolRegistry registry, AppLocalizations l10n) {
+    final def = registry.tryGet(preset.cli);
+    final cliName = def != null ? cliDisplayName(def, l10n) : preset.cli.value;
+    return cliName;
   }
 }
