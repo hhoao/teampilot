@@ -32,8 +32,8 @@ class FilePathLinkProvider extends TerminalLinkProvider {
   /// Shape heuristic to cut obvious non-paths before the (later) fs check.
   bool _looksLikePath(String s) {
     final core = s.split(':').first; // ignore :line[:col] for the shape test
+    // Any separator => path-shaped (covers ./ ../ absolute and multi-segment).
     if (core.contains('/') || core.contains(r'\')) return true;
-    if (core.startsWith('./') || core.startsWith('../')) return true;
     // Single token: require a real file extension, and reject version-ish runs.
     final ext = RegExp(r'\.[A-Za-z][A-Za-z0-9]{0,8}$');
     return ext.hasMatch(core) && !RegExp(r'^\d+(\.\d+)+$').hasMatch(core);
