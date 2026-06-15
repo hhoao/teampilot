@@ -45,6 +45,14 @@ class FileTaskLog implements TaskLog {
       'by': task.createdBy,
       'deps': task.dependsOn,
       'createdAt': task.createdAt,
+      'reqCaps': task.requiredCapabilities.toList(),
+      'prefCaps': task.preferredCapabilities.toList(),
+      'assignee': task.preferredAssignee,
+      'stage': task.routing.stage.name,
+      'escalatedAt': task.routing.escalatedAt,
+      'reserveWindowMs': task.routing.reserveWindowMs,
+      'widenAfterMs': task.routing.widenAfterMs,
+      'openAfterMs': task.routing.openAfterMs,
     });
   }
 
@@ -72,6 +80,12 @@ class FileTaskLog implements TaskLog {
   @override
   Future<void> appendReclaim(String taskId, int at) {
     return _append({'t': 'reclaim', 'id': taskId, 'at': at});
+  }
+
+  @override
+  Future<void> appendEscalate(String taskId, RoutingStage stage, int at) {
+    return _append(
+        {'t': 'escalate', 'id': taskId, 'stage': stage.name, 'at': at});
   }
 
   @override
@@ -105,6 +119,23 @@ class FileTaskLog implements TaskLog {
               for (final d in (e['deps'] as List?) ?? const [])
                 if (d is String) d,
             ],
+            requiredCapabilities: {
+              for (final c in (e['reqCaps'] as List?) ?? const [])
+                if (c is String) c,
+            },
+            preferredCapabilities: {
+              for (final c in (e['prefCaps'] as List?) ?? const [])
+                if (c is String) c,
+            },
+            preferredAssignee: e['assignee'] as String?,
+            routing: RoutingPolicy(
+              stage: RoutingPolicy.parseStage(e['stage'] as String?),
+              escalatedAt: (e['escalatedAt'] as num?)?.toInt() ?? 0,
+              reserveWindowMs:
+                  (e['reserveWindowMs'] as num?)?.toInt() ?? 45 * 1000,
+              widenAfterMs: (e['widenAfterMs'] as num?)?.toInt() ?? 120 * 1000,
+              openAfterMs: (e['openAfterMs'] as num?)?.toInt() ?? 300 * 1000,
+            ),
           );
         case 'claim':
           final t = byId[id];
@@ -127,6 +158,16 @@ class FileTaskLog implements TaskLog {
         case 'reclaim':
           final t = byId[id];
           if (t != null) byId[id] = t.copyWith(status: TaskStatus.pending);
+        case 'escalate':
+          final t = byId[id];
+          if (t != null) {
+            byId[id] = t.copyWith(
+              routing: t.routing.copyWith(
+                stage: RoutingPolicy.parseStage(e['stage'] as String?),
+                escalatedAt: (e['at'] as num?)?.toInt(),
+              ),
+            );
+          }
       }
     }
     return byId.values.toList()..sort((a, b) => a.seq.compareTo(b.seq));

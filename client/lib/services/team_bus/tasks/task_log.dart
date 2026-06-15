@@ -16,6 +16,9 @@ abstract interface class TaskLog {
   /// 追加一条租约回收事件（claimed → pending）。
   Future<void> appendReclaim(String taskId, int at);
 
+  /// 追加一条路由阶段升级事件（单调推进）。
+  Future<void> appendEscalate(String taskId, RoutingStage stage, int at);
+
   /// 回放全部事件，按 seq 升序返回当前任务表。
   Future<List<TeamTask>> load();
 }

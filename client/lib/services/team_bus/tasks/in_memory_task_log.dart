@@ -41,6 +41,15 @@ class InMemoryTaskLog implements TaskLog {
   }
 
   @override
+  Future<void> appendEscalate(String taskId, RoutingStage stage, int at) async {
+    final t = _tasks[taskId];
+    if (t == null) return;
+    _tasks[taskId] = t.copyWith(
+      routing: t.routing.copyWith(stage: stage, escalatedAt: at),
+    );
+  }
+
+  @override
   Future<List<TeamTask>> load() async {
     return _tasks.values.toList()..sort((a, b) => a.seq.compareTo(b.seq));
   }
