@@ -413,6 +413,7 @@ class TerminalSession {
     if (_running || _starting) {
       disconnect();
     }
+    _launchCwd = workingDirectory;
     final executable = WorkspaceInteractiveShell.executable();
     final ptyWorkingDirectory = workingDirectory.trim().isNotEmpty
         ? LaunchCommandBuilder.workingDirectoryForProcess(

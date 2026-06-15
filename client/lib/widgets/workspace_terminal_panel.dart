@@ -8,6 +8,7 @@ import 'package:flutter_alacritty/input/paste.dart' as alacritty_paste;
 import 'package:flutter_alacritty/input/term_mode.dart' show anyMouse;
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../cubits/editor_cubit.dart';
 import '../cubits/layout_cubit.dart';
 import '../l10n/l10n_extensions.dart';
 import '../models/layout_preferences.dart';
@@ -338,9 +339,12 @@ class _WorkspaceTerminalView extends StatelessWidget {
         linkProviders: entry.session.linkProviders,
         onViewportResize: entry.session.onViewportResize,
         onLinkActivate: (uri) {
-          // TODO: pass openInEditor once an EditorCubit is available in this
-          // widget tree; until then existing files open via the OS fallback.
-          unawaited(TerminalUriOpener.open(uri, workingDirectory: entry.cwd));
+          final editorCubit = context.read<EditorCubit>();
+          unawaited(TerminalUriOpener.open(
+            uri,
+            workingDirectory: entry.cwd,
+            openInEditor: (path) => editorCubit.openFile(path),
+          ));
         },
         onSecondaryTapDown: (details, offset) {
           onContextMenu(details.globalPosition, offset);
