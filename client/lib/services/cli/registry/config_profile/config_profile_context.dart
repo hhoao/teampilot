@@ -1,6 +1,7 @@
 import 'package:path/path.dart' as p;
 
 import '../../cli_data_layout.dart';
+import '../../../../models/cli_preset.dart';
 import '../../../../models/project_profile.dart';
 import '../../../../models/team_config.dart';
 import '../../../../utils/team_member_naming.dart';
@@ -31,30 +32,40 @@ LaunchProfileScope launchScopeForStandalone(StandaloneLaunchProfileScope scope) 
       cliTeamName: scope.sessionId,
     );
 
-// TODO: migrate to presets — resolve from active preset instead of profile maps
-String standaloneProviderId(/* CliPreset? preset */) {
-  // TODO: return preset?.provider.trim() ?? '';
-  return '';
+/// Resolve CLI/provider/model/effort for a personal project from its active preset.
+/// Returns null if no preset is active, not found, or [activePresetId] is empty.
+CliPreset? resolveActivePreset(String? activePresetId, List<CliPreset> presets) {
+  if (activePresetId == null || activePresetId.isEmpty) return null;
+  for (final p in presets) {
+    if (p.id == activePresetId) return p;
+  }
+  return null;
 }
 
-// TODO: migrate to presets — resolve from active preset instead of profile maps
-String standaloneModelId(/* CliPreset? preset */) {
-  // TODO: return preset?.model.trim() ?? '';
-  return '';
+String standaloneProviderId(CliPreset? preset) {
+  return preset?.provider.trim() ?? '';
+}
+
+String standaloneModelId(CliPreset? preset) {
+  return preset?.model.trim() ?? '';
+}
+
+CliTool standaloneCli(CliPreset? preset, {CliTool fallback = CliTool.claude}) {
+  return preset?.cli ?? fallback;
 }
 
 /// Minimal [TeamConfig] for personal / standalone PTY launch args.
-/// TODO: migrate to presets — accept CliPreset? parameter for cli/provider/model/effort
 TeamConfig standaloneTeamFromProfile(
   ProjectProfile profile, {
   required String projectId,
   required String sessionTeamName,
+  required CliPreset? preset,
 }) {
-  final member = standaloneMemberFromProfile(profile);
+  final member = standaloneMemberFromProfile(profile, preset: preset);
   return TeamConfig(
     id: projectId.trim(),
     name: sessionTeamName.trim(),
-    cli: CliTool.claude, // TODO: preset?.cli ?? CliTool.claude
+    cli: preset?.cli ?? CliTool.claude,
     members: [member],
     skillIds: profile.skillIds,
     pluginIds: profile.pluginIds,
@@ -65,22 +76,24 @@ TeamConfig standaloneTeamFromProfile(
 }
 
 /// Single-agent stand-in from [ProjectProfile.agent] for standalone launch.
-/// TODO: migrate to presets — accept CliPreset? parameter
-TeamMemberConfig standaloneMemberFromProfile(ProjectProfile profile) {
+TeamMemberConfig standaloneMemberFromProfile(
+  ProjectProfile profile, {
+  required CliPreset? preset,
+}) {
   final agent = profile.agent;
   final name = _standaloneMemberDisplayName(agent);
   return TeamMemberConfig(
     id: TeamMemberNaming.slugMemberName(name),
     name: name,
-    provider: '', // TODO: preset?.provider.trim() ?? ''
-    model: '', // TODO: preset?.model.trim() ?? ''
+    provider: preset?.provider.trim() ?? '',
+    model: preset?.model.trim() ?? '',
     agent: agent.agent,
     agentType: agent.agentType,
     extraArgs: agent.extraArgs,
     prompt: agent.prompt,
     dangerouslySkipPermissions: agent.dangerouslySkipPermissions,
-    cli: CliTool.claude, // TODO: preset?.cli ?? CliTool.claude
-    effort: '', // TODO: preset?.effort.trim() ?? ''
+    cli: preset?.cli ?? CliTool.claude,
+    effort: preset?.effort.trim() ?? '',
   );
 }
 
@@ -203,6 +216,7 @@ class ConfigProfileLaunchContext {
     this.busIdleUrl,
     this.standaloneScope,
     this.profile,
+    this.preset,
   });
 
   final String teamId;
@@ -218,4 +232,5 @@ class ConfigProfileLaunchContext {
   final String? busIdleUrl;
   final StandaloneLaunchProfileScope? standaloneScope;
   final ProjectProfile? profile;
+  final CliPreset? preset;
 }

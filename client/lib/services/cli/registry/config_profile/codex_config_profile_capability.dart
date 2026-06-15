@@ -123,7 +123,7 @@ final class CodexConfigProfileCapability implements ConfigProfileCapability {
     ProjectProfile profile,
   ) async {
     final paths = ctx.paths;
-    final member = standaloneMemberFromProfile(profile);
+    final member = standaloneMemberFromProfile(profile, preset: null);
     final codexHome = standaloneSessionToolDir(paths, standalone, toolId);
     final warnings = <String>[];
 
@@ -136,7 +136,7 @@ final class CodexConfigProfileCapability implements ConfigProfileCapability {
         fs: paths.fs,
       ),
     );
-    var provider = await resolver.findById(standaloneProviderId());
+    var provider = await resolver.findById(standaloneProviderId(ctx.preset));
     provider ??= await _resolveSoleCodexProvider(paths);
     if (provider == null) {
       warnings.add('codex_provider_missing');

@@ -385,11 +385,12 @@ class SessionLifecycleService {
           'prepareShellLaunch requires project and profile for personal sessions',
         );
       }
-      final launchMember = standaloneMemberFromProfile(profile);
+      final launchMember = standaloneMemberFromProfile(profile, preset: null);
       final launchTeam = standaloneTeamFromProfile(
         profile,
         projectId: project.projectId,
         sessionTeamName: plan.cliTeamName,
+        preset: null,
       );
       return CliLaunchContext(
         team: launchTeam,

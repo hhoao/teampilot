@@ -279,7 +279,7 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
     ProjectProfile profile,
   ) async {
     final delegate = ctx.paths;
-    final member = standaloneMemberFromProfile(profile);
+    final member = standaloneMemberFromProfile(profile, preset: null);
     final memberToolDir = standaloneSessionToolDir(delegate, standalone, toolId);
     final scope = launchScopeForStandalone(standalone);
     final workingDirectory = ctx.workingDirectory ?? '';
@@ -292,7 +292,7 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
         fs: delegate.fs,
       ),
     );
-    final providerId = standaloneProviderId();
+    final providerId = standaloneProviderId(ctx.preset);
     final settings = await resolver.resolve(
       providerId.isNotEmpty ? providerId : null,
     );

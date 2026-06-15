@@ -125,7 +125,7 @@ class SessionLaunchService implements MemberConnector {
         session,
         await _h.lifecycle.loadProjectProfile(project.projectId),
       );
-      personalMember = standaloneMemberFromProfile(personalProfile);
+      personalMember = standaloneMemberFromProfile(personalProfile, preset: null);
     }
     if (!isPersonal && (team == null || member == null)) {
       throw StateError(

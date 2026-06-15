@@ -282,7 +282,7 @@ final class OpencodeConfigProfileCapability implements ConfigProfileCapability {
     var changed = false;
 
     final resolver = _resolver(paths);
-    var provider = await resolver.findById(standaloneProviderId());
+    var provider = await resolver.findById(standaloneProviderId(ctx.preset));
     provider ??= await resolver.resolveSole();
     if (provider != null) {
       config = mergeOpencodeProvider(config, provider);
@@ -292,7 +292,7 @@ final class OpencodeConfigProfileCapability implements ConfigProfileCapability {
     if (await _writeMemberIdentity(
       paths: paths,
       opencodeDir: opencodeDir,
-      member: standaloneMemberFromProfile(profile),
+      member: standaloneMemberFromProfile(profile, preset: null),
       forceTeamLeadDelegateMode: false,
       mixed: false,
     )) {
