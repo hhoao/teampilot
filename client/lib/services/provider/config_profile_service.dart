@@ -1,5 +1,6 @@
 import 'package:path/path.dart' as p;
 
+import '../../models/cli_preset.dart';
 import '../../models/extension_manifest.dart';
 import '../../models/project_profile.dart';
 import '../../models/skill.dart';
@@ -287,6 +288,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
     List<String> additionalDirectories = const [],
     Map<String, Map<String, Object?>>? extraMcpServers,
     String? busIdleUrl,
+    CliPreset? preset,
   }) async {
     final trimmedProjectId = projectId.trim();
     final trimmedSessionId = sessionId.trim();
@@ -300,8 +302,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
       projectId: trimmedProjectId,
     );
 
-    // TODO: migrate to presets — get CLI from active preset
-    final cli = CliTool.claude;
+    final cli = preset?.cli ?? CliTool.claude;
     final standaloneScope = StandaloneLaunchProfileScope(
       projectId: trimmedProjectId,
       sessionId: trimmedSessionId,
@@ -360,6 +361,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
             additionalDirectories: additionalDirectories,
             paths: this,
             busIdleUrl: busIdleUrl,
+            preset: preset,
           ),
         );
       } on Object catch (e) {

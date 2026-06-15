@@ -243,6 +243,8 @@ class TabTeamBusCoordinator implements MemberMaterializer {
       if (bus == null) continue;
       // 租约回收：claimed 超时且认领者掉线的任务退回 pending（仅 mixed 模式有队列）。
       if (bus.hasTaskQueue) bus.reclaimExpiredTasks();
+      // 门铃看门狗：补敲首个回车被全屏 TUI 输入框吞掉、卡在 prompt 的 worker。
+      bus.reengageIdleWorkers();
       tab.memberShells.forEach((memberId, shell) {
         final key = '${tab.info.id}:$memberId';
         final shellWorking = shell.activityTracker.isWorking;

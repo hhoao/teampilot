@@ -411,6 +411,10 @@ Future<AppShell> buildAppShell({
 
   projectProfileRepository = ProjectProfileRepository(storageRoots: storageRoots);
 
+  final cliPresetsRepo = CliPresetsRepository(
+    fs: AppStorage.fs,
+    presetsPath: AppStorage.paths.cliPresetsJson,
+  );
   sessionLifecycleService = SessionLifecycleService(
     llmConfigPathOverride: llmConfigPathOverrideForLaunch,
     storageRootsResolver: storageRoots.resolve,
@@ -430,6 +434,7 @@ Future<AppShell> buildAppShell({
     cliToolRegistry: cliToolRegistry,
     projectProfileRepository: projectProfileRepository,
     loadInstalledSkills: () => skillRepo.loadInstalled(),
+    cliPresetsRepository: cliPresetsRepo,
   );
   sessionRepo = SessionRepository(
     storageRoots: storageRoots,
@@ -487,11 +492,7 @@ Future<AppShell> buildAppShell({
     pluginLinker: projectPluginLinker,
     installedPluginsLoader: () => pluginRepository.loadAll(),
   );
-  final cliPresetsRepository = CliPresetsRepository(
-    fs: AppStorage.fs,
-    presetsPath: AppStorage.paths.cliPresetsJson,
-  );
-  cliPresetsCubit = CliPresetsCubit(repository: cliPresetsRepository);
+  cliPresetsCubit = CliPresetsCubit(repository: cliPresetsRepo);
   unawaited(cliPresetsCubit.load());
   mcpCubit = McpCubit(
     mcpRepository,

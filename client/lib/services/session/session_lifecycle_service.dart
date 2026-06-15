@@ -1,9 +1,11 @@
 import '../../models/app_project.dart';
 import '../../models/app_session.dart';
+import '../../models/cli_preset.dart';
 import '../../models/project_profile.dart';
 import '../../models/session_member_binding.dart';
 import '../../models/skill.dart';
 import '../../models/team_config.dart';
+import '../../repositories/cli_presets_repository.dart';
 import '../../repositories/project_profile_repository.dart';
 import '../../utils/team_member_naming.dart';
 import '../../utils/logger.dart';
@@ -11,6 +13,7 @@ import '../storage/app_storage.dart';
 import '../cli/cli_data_layout.dart';
 import '../cli/registry/capabilities/transcript_probe_capability.dart';
 import '../cli/registry/cli_tool_registry.dart';
+import '../cli/registry/config_profile/config_profile_context.dart';
 import '../cli/registry/config_profile/flashskyai_config_profile_capability.dart';
 import '../provider/config_profile_service.dart';
 import '../storage/storage_resolver.dart';
@@ -39,6 +42,7 @@ class SessionLifecycleService {
     CliToolRegistry? cliToolRegistry,
     ProjectProfileRepository? projectProfileRepository,
     Future<List<Skill>> Function()? loadInstalledSkills,
+    CliPresetsRepository? cliPresetsRepository,
   }) : _appDataBasePath = appDataBasePath,
        _llmConfigPathOverride = llmConfigPathOverride,
        _configProfileService = configProfileService,
@@ -46,7 +50,8 @@ class SessionLifecycleService {
        _loadEnabledExtensionIds = loadEnabledExtensionIds,
        _cliToolRegistry = cliToolRegistry ?? _defaultCliRegistry,
        _projectProfileRepository = projectProfileRepository,
-       _loadInstalledSkills = loadInstalledSkills;
+       _loadInstalledSkills = loadInstalledSkills,
+       _cliPresetsRepository = cliPresetsRepository;
 
   final String? _appDataBasePath;
   final String? Function()? _llmConfigPathOverride;
@@ -57,6 +62,7 @@ class SessionLifecycleService {
   final CliToolRegistry _cliToolRegistry;
   final ProjectProfileRepository? _projectProfileRepository;
   final Future<List<Skill>> Function()? _loadInstalledSkills;
+  final CliPresetsRepository? _cliPresetsRepository;
 
   Future<ProjectProfile> loadProjectProfile(
     String projectId, {
@@ -126,6 +132,7 @@ class SessionLifecycleService {
         profile: prepared.resolvedProfile,
         team: team,
         member: member,
+        preset: prepared.activePreset,
       ),
       sessionTeam: _resolveSessionTeam(session, prepared.plan, prepared.isPersonal),
     );
@@ -135,6 +142,7 @@ class SessionLifecycleService {
     LaunchPlan plan,
     bool isPersonal,
     ProjectProfile? resolvedProfile,
+    CliPreset? activePreset,
   })> _prepareLaunchPlan({
     required AppSession session,
     TeamConfig? team,
@@ -166,6 +174,20 @@ class SessionLifecycleService {
       final resolvedProfile = isPersonal
           ? await loadProjectProfile(project!.projectId, override: profile)
           : null;
+
+      // Resolve active preset for personal projects
+      CliPreset? activePreset;
+      if (isPersonal && resolvedProfile != null) {
+        final repo = _cliPresetsRepository;
+        if (repo != null) {
+          final presets = await repo.load();
+          activePreset = resolveActivePreset(
+            resolvedProfile.activePresetId,
+            presets,
+          );
+        }
+      }
+
       final runtimeTeamId = isPersonal
           ? sessionId
           : (cliTeamName.isNotEmpty ? cliTeamName : sessionId);
@@ -187,8 +209,7 @@ class SessionLifecycleService {
       // transcript instead of falling back to `--session-id` (which the running
       // CLI rejects as "Session ID … is already in use").
       final cli = isPersonal
-          // TODO: migrate to presets — was resolvedProfile!.cli
-          ? CliTool.claude
+          ? (activePreset?.cli ?? CliTool.claude)
           : (team != null && member != null && member.isValid
               ? member.cliWithin(team)
               : team?.cli);
@@ -230,6 +251,7 @@ class SessionLifecycleService {
         llmConfigPathOverride: llmConfigPathOverride,
         extraMcpServers: extraMcpServers,
         busIdleUrl: busIdleUrl,
+        preset: activePreset,
       );
       final memberConfigDir = _memberConfigDirFromEnv(prepared.env);
       final resolvedRoots = <String>{
@@ -255,6 +277,7 @@ class SessionLifecycleService {
         plan: plan,
         isPersonal: isPersonal,
         resolvedProfile: resolvedProfile,
+        activePreset: activePreset,
       );
     } on Object catch (e, st) {
       appLogger.e(
@@ -284,10 +307,19 @@ class SessionLifecycleService {
         : session.sessionId.trim();
     final cliSessionId =
         memberBinding?.taskId.trim() ?? session.sessionId.trim();
-    final resolvedCli = isPersonal
-        // TODO: migrate to presets — was profile.cli
-        ? CliTool.claude
-        : cli;
+    CliTool? resolvedCli;
+    if (isPersonal && profile?.activePresetId != null) {
+      final repo = _cliPresetsRepository;
+      if (repo != null) {
+        final presets = await repo.load();
+        final activePreset = resolveActivePreset(profile!.activePresetId, presets);
+        resolvedCli = activePreset?.cli ?? CliTool.claude;
+      } else {
+        resolvedCli = CliTool.claude;
+      }
+    } else {
+      resolvedCli = isPersonal ? CliTool.claude : cli;
+    }
     final probe = await _findCliState(
       roots: roots,
       session: session,
@@ -378,6 +410,7 @@ class SessionLifecycleService {
     ProjectProfile? profile,
     TeamConfig? team,
     TeamMemberConfig? member,
+    CliPreset? preset,
   }) {
     if (isPersonal) {
       if (project == null || profile == null) {
@@ -385,12 +418,12 @@ class SessionLifecycleService {
           'prepareShellLaunch requires project and profile for personal sessions',
         );
       }
-      final launchMember = standaloneMemberFromProfile(profile, preset: null);
+      final launchMember = standaloneMemberFromProfile(profile, preset: preset);
       final launchTeam = standaloneTeamFromProfile(
         profile,
         projectId: project.projectId,
         sessionTeamName: plan.cliTeamName,
-        preset: null,
+        preset: preset,
       );
       return CliLaunchContext(
         team: launchTeam,
@@ -444,6 +477,7 @@ class SessionLifecycleService {
     required String? llmConfigPathOverride,
     Map<String, Map<String, Object?>>? extraMcpServers,
     String? busIdleUrl,
+    CliPreset? preset,
   }) async {
     if (_isPersonalLaunch(project, session)) {
       final personalProject = project!;
@@ -457,6 +491,7 @@ class SessionLifecycleService {
         additionalDirectories: session.additionalPaths,
         extraMcpServers: extraMcpServers,
         busIdleUrl: busIdleUrl,
+        preset: preset,
       );
       return _PreparedLaunch(
         env: outcome.environment,

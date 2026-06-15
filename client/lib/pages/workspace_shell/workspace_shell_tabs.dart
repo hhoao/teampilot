@@ -278,8 +278,8 @@ class WorkspaceShellTabChipState extends State<WorkspaceShellTabChip> {
                 color: active
                     ? cs.surfaceContainerHigh
                     : _hovered
-                        ? cs.onSurface.withValues(alpha: 0.05)
-                        : Colors.transparent,
+                    ? cs.onSurface.withValues(alpha: 0.05)
+                    : Colors.transparent,
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(
                   color: active
@@ -328,26 +328,6 @@ class WorkspaceShellTabChipState extends State<WorkspaceShellTabChip> {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: styles.bodySmall.copyWith(color: fg),
-                    ),
-                  ),
-                  // Overflow menu button
-                  _TabChromeSlot(
-                    visible: _showChrome,
-                    child: SidebarActionMenuButton(
-                      icon: Icon(
-                        Icons.more_horiz,
-                        size: context.appIconSizes.md,
-                        color: cs.onSurfaceVariant.withValues(alpha: 0.6),
-                      ),
-                      size: 32,
-                      onOpen: () => setState(() => _overflowMenuOpen = true),
-                      onClose: () =>
-                          setState(() => _overflowMenuOpen = false),
-                      specs: _tabMenuSpecs(context),
-                      onSelected: (value) {
-                        setState(() => _overflowMenuOpen = false);
-                        _handleTabMenuSelection(value as String);
-                      },
                     ),
                   ),
                   // Close button

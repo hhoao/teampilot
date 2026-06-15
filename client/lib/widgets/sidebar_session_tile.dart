@@ -23,7 +23,7 @@ class SidebarSessionTile extends StatefulWidget {
     required this.session,
     required this.onTap,
     this.tapThrottleKeyPrefix = 'sidebar_session',
-    this.contentLeftInset = 12,
+    this.contentLeftInset = 0,
     this.index = -1,
     super.key,
   });
@@ -154,9 +154,7 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
       leadingWidget = ReorderableDragStartListener(
         index: widget.index,
         child: MouseRegion(
-          cursor: _hovered
-              ? SystemMouseCursors.grab
-              : SystemMouseCursors.basic,
+          cursor: _hovered ? SystemMouseCursors.grab : SystemMouseCursors.basic,
           child: SizedBox(
             width: 24,
             height: 24,
@@ -172,7 +170,9 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
                       size: 13,
                       color: selected ? cs.onPrimaryContainer : cs.primary,
                       idleColor:
-                          (selected ? cs.onPrimaryContainer : cs.onSurfaceVariant)
+                          (selected
+                                  ? cs.onPrimaryContainer
+                                  : cs.onSurfaceVariant)
                               .withValues(alpha: 0.5),
                     ),
                   ),
@@ -221,17 +221,15 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
         children: [
           if (session.pinned || _showSessionActions)
             AppIconButton(
-              icon: session.pinned
-                  ? Icons.push_pin
-                  : Icons.push_pin_outlined,
+              icon: session.pinned ? Icons.push_pin : Icons.push_pin_outlined,
               compact: true,
               size: AppIconButton.kCompactSize,
-              tooltip:
-                  session.pinned ? l10n.unpinConversation : l10n.pinConversation,
+              tooltip: session.pinned
+                  ? l10n.unpinConversation
+                  : l10n.pinConversation,
               color: session.pinned ? cs.primary : null,
-              onTap: () => context
-                  .read<ChatCubit>()
-                  .toggleSessionPin(session.sessionId),
+              onTap: () =>
+                  context.read<ChatCubit>().toggleSessionPin(session.sessionId),
             ),
           if (_showSessionActions)
             AppIconButton(
@@ -254,16 +252,14 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
                     icon: Icons.drive_file_rename_outline,
                     label: l10n.renameConversation,
                     menuController: controller,
-                    onTap: () =>
-                        _showRenameDialog(context, session, l10n),
+                    onTap: () => _showRenameDialog(context, session, l10n),
                   ),
                   SidebarActionMenuItem(
                     icon: Icons.delete_outline,
                     label: l10n.deleteConversation,
                     destructive: true,
                     menuController: controller,
-                    onTap: () =>
-                        _showDeleteDialog(context, session, l10n),
+                    onTap: () => _showDeleteDialog(context, session, l10n),
                   ),
                 ],
               ),
