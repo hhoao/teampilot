@@ -187,7 +187,8 @@ class SessionLifecycleService {
       // transcript instead of falling back to `--session-id` (which the running
       // CLI rejects as "Session ID … is already in use").
       final cli = isPersonal
-          ? resolvedProfile!.cli
+          // TODO: migrate to presets — was resolvedProfile!.cli
+          ? CliTool.claude
           : (team != null && member != null && member.isValid
               ? member.cliWithin(team)
               : team?.cli);
@@ -284,7 +285,8 @@ class SessionLifecycleService {
     final cliSessionId =
         memberBinding?.taskId.trim() ?? session.sessionId.trim();
     final resolvedCli = isPersonal
-        ? (profile ?? await loadProjectProfile(project!.projectId)).cli
+        // TODO: migrate to presets — was profile.cli
+        ? CliTool.claude
         : cli;
     final probe = await _findCliState(
       roots: roots,

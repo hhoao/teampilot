@@ -300,7 +300,8 @@ class ConfigProfileService implements ConfigProfileDelegate {
       projectId: trimmedProjectId,
     );
 
-    final cli = profile.cli;
+    // TODO: migrate to presets — get CLI from active preset
+    final cli = CliTool.claude;
     final standaloneScope = StandaloneLaunchProfileScope(
       projectId: trimmedProjectId,
       sessionId: trimmedSessionId,

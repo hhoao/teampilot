@@ -65,7 +65,8 @@ Future<void> createAndOpenProjectConversation(
   final teamId = isPersonal ? '' : (team?.id ?? project.teamId);
 
   final effectiveCli = isPersonal
-      ? (cli ?? context.read<ProjectProfileCubit>().state.profile?.cli)
+      // TODO: migrate to presets — was profile?.cli
+      ? (cli ?? CliTool.claude)
       : null;
 
   try {

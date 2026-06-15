@@ -42,7 +42,7 @@ class ProjectCliDefaultsSection extends StatelessWidget {
             subtitle: l10n.projectCliDefaultSubtitle,
             body: AppDropdownField<String>(
               items: [for (final def in cliRegistry.launchable) def.id.value],
-              initialItem: profile.cli.value,
+              initialItem: CliTool.claude.value, // TODO: migrate to presets — was profile.cli.value
               decoration: dropdownDeco,
               onChanged: (value) {
                 if (value == null) return;

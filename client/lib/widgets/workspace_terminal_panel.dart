@@ -1,6 +1,7 @@
 ﻿import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_alacritty/flutter_alacritty.dart';
@@ -298,9 +299,11 @@ class _WorkspaceTerminalPanelState extends State<WorkspaceTerminalPanel> {
               context.read<LayoutCubit>().setWorkspaceTerminalVisible(false),
         ),
         initialPrimarySize: sessionSidebarWidth,
-        minPrimarySize: LayoutPreferences.minWorkspaceTerminalSessionSidebarWidth,
+        minPrimarySize:
+            LayoutPreferences.minWorkspaceTerminalSessionSidebarWidth,
         minSecondarySize: LayoutPreferences.minWorkspaceTerminalMainWidth,
-        maxPrimarySize: LayoutPreferences.maxWorkspaceTerminalSessionSidebarWidth,
+        maxPrimarySize:
+            LayoutPreferences.maxWorkspaceTerminalSessionSidebarWidth,
         onPrimarySizeChanged: (width) {
           context.read<LayoutCubit>().setWorkspaceTerminalSessionSidebarWidth(
             width,
@@ -333,18 +336,20 @@ class _WorkspaceTerminalView extends StatelessWidget {
         controller: entry.controller,
         theme: theme,
         backgroundOpacity: 0.98,
-        padding: const EdgeInsets.all(8),
+        padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 8),
         textStyle: appTerminalTextStyle(context),
         autofocus: true,
         linkProviders: entry.session.linkProviders,
         onViewportResize: entry.session.onViewportResize,
         onLinkActivate: (uri) {
           final editorCubit = context.read<EditorCubit>();
-          unawaited(TerminalUriOpener.open(
-            uri,
-            workingDirectory: entry.cwd,
-            openInEditor: (path) => editorCubit.openFile(path),
-          ));
+          unawaited(
+            TerminalUriOpener.open(
+              uri,
+              workingDirectory: entry.cwd,
+              openInEditor: (path) => editorCubit.openFile(path),
+            ),
+          );
         },
         onSecondaryTapDown: (details, offset) {
           onContextMenu(details.globalPosition, offset);
@@ -433,8 +438,28 @@ class _WorkspaceTerminalSessionSidebar extends StatelessWidget {
                 final entry = entries[index];
                 final selected = entry.id == activeEntryId;
                 final itemColor = selected ? foreground : muted;
-                return Material(
-                  color: selected ? selectedFill : Colors.transparent,
+                final itemTextStyle = Theme.of(context).textTheme.bodySmall
+                        ?.copyWith(
+                          fontWeight:
+                              selected ? FontWeight.w600 : FontWeight.w500,
+                          color: itemColor,
+                        ) ??
+                    const TextStyle();
+                return TweenAnimationBuilder<Color?>(
+                  tween: ColorTween(
+                    begin: selected
+                        ? Colors.transparent
+                        : selectedFill,
+                    end: selected ? selectedFill : Colors.transparent,
+                  ),
+                  duration: 200.ms,
+                  curve: Curves.easeOutCubic,
+                  builder: (context, color, child) {
+                    return Material(
+                      color: color,
+                      child: child,
+                    );
+                  },
                   child: InkWell(
                     onTap: () => onSelect(entry.id),
                     child: Padding(
@@ -444,20 +469,20 @@ class _WorkspaceTerminalSessionSidebar extends StatelessWidget {
                       ),
                       child: Row(
                         children: [
-                          Icon(Icons.terminal, size: context.appIconSizes.md, color: itemColor),
+                          Icon(
+                            Icons.terminal,
+                            size: context.appIconSizes.md,
+                            color: itemColor,
+                          ),
                           const SizedBox(width: 8),
                           Expanded(
-                            child: Text(
-                              entry.title(),
+                            child: AnimatedDefaultTextStyle(
+                              duration: 200.ms,
+                              curve: Curves.easeOutCubic,
+                              style: itemTextStyle,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: Theme.of(context).textTheme.bodySmall
-                                  ?.copyWith(
-                                    fontWeight: selected
-                                        ? FontWeight.w600
-                                        : FontWeight.w500,
-                                    color: itemColor,
-                                  ),
+                              child: Text(entry.title()),
                             ),
                           ),
                           AppIconButton(

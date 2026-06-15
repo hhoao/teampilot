@@ -135,7 +135,8 @@ class SessionLaunchService implements MemberConnector {
     final effectiveMember = isPersonal ? personalMember! : member!;
     final effectiveTeam = isPersonal ? null : team;
     final ts = _h.shellFactory.newSession(
-      isPersonal ? personalProfile!.cli : member!.cliWithin(team!),
+      // TODO: migrate to presets
+      isPersonal ? CliTool.claude : member!.cliWithin(team!),
     );
     final info = ChatTabInfo(
       id: session.sessionId,
@@ -318,19 +319,14 @@ class SessionLaunchService implements MemberConnector {
     return null;
   }
 
+  // TODO: migrate to presets — CLI/provider/model resolution now from active preset
   ProjectProfile _personalProfileForSession(
     AppSession session,
     ProjectProfile profile,
   ) {
-    final cli = session.cli;
-    if (cli == null) return profile;
-    final provider =
-        profile.providerIdsByTool[cli.value]?.trim() ?? profile.agent.provider;
-    final model = profile.modelsByTool[cli.value]?.trim() ?? profile.agent.model;
-    return profile.copyWith(
-      cli: cli,
-      agent: profile.agent.copyWith(provider: provider, model: model),
-    );
+    // With presets, CLI selection is handled by activePresetId.
+    // The session's cli field is no longer used for provider/model resolution.
+    return profile;
   }
 
   AppSession? _firstSessionForProject(String projectId) {

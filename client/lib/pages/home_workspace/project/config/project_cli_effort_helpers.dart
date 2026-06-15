@@ -25,10 +25,8 @@ bool projectCliShowsEffortPicker({
   return capability.isApplicable(model: resolvedModel);
 }
 
+// TODO: migrate to presets — profile.effortsByTool / profile.cli / agent.effort removed
 String projectCliEffortId(ProjectProfile profile, CliTool cli) {
-  final fromMap = profile.effortsByTool[cli.value]?.trim() ?? '';
-  if (fromMap.isNotEmpty) return fromMap;
-  if (profile.cli == cli) return profile.agent.effort.trim();
   return '';
 }
 

@@ -56,7 +56,7 @@ void main() {
       const sessionId = 'sess-standalone-fs';
       const profile = ProjectProfile(
         projectId: projectId,
-        cli: CliTool.flashskyai,
+        // TODO: migrate to presets — cli removed
         agent: ProjectAgentConfig(agent: 'solo'),
       );
 
@@ -93,7 +93,7 @@ void main() {
       const sessionId = 'sess-standalone';
       const profile = ProjectProfile(
         projectId: projectId,
-        cli: CliTool.claude,
+        // TODO: migrate to presets — cli removed
       );
 
       final outcome = await service.prepareProjectLaunch(

@@ -26,7 +26,7 @@ if ($blocked -contains $tool) {
     hookSpecificOutput = [ordered]@{
       hookEventName          = 'PreToolUse'
       permissionDecision     = 'deny'
-      permissionDecisionReason = "Team lead delegate-only mode is on: $tool is disabled in this tab. Plan here; assign via SendMessage to roster teammate names and the shared task list (TaskCreate/TaskUpdate)."
+      permissionDecisionReason = "Team lead delegate-only mode is on: $tool is disabled in this tab. Inspect with Read/Glob/Grep and plan here, then hand all execution to your teammates through your team's messaging and shared task list — do not run it yourself."
     }
   }
   $obj | ConvertTo-Json -Compress -Depth 5

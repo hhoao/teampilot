@@ -66,7 +66,7 @@ class ChatWorkbenchRunningTerminal extends StatelessWidget {
             controller: terminalController,
             theme: terminalTheme,
             backgroundOpacity: 0.98,
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 16),
             textStyle: appTerminalTextStyle(context),
             autofocus: !findVisible,
             linkProviders: session.linkProviders,

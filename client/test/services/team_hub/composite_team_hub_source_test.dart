@@ -47,12 +47,13 @@ void main() {
     expect(teams.last.key, remoteOther.key);
   });
 
-  test('built-in superpowers trio is mixed with three roster members', () {
+  test('built-in superpowers quartet is mixed with four roster members', () {
     final team = kSuperpowersTrioTeamTemplate;
     expect(team.teamMode, TeamMode.mixed);
-    expect(team.members, hasLength(3));
+    expect(team.members, hasLength(4));
     expect(team.members.first.name, 'team-lead');
-    expect(team.members[1].name, 'builder');
+    expect(team.members[1].name, 'architect');
+    expect(team.members[2].name, 'builder');
     expect(team.members.last.name, 'reviewer');
     expect(team.skillDeps, isNotEmpty);
     expect(

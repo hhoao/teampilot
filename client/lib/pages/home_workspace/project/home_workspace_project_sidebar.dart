@@ -214,7 +214,7 @@ class _DefaultCliDropdown extends StatelessWidget {
       registry: registry,
       providerState: providerState,
     );
-    final selectedCli = profile.cli;
+    final selectedCli = CliTool.claude; // TODO: migrate to presets — was profile.cli
     final initialItem = configuredItems.contains(selectedCli.value)
         ? selectedCli.value
         : (configuredItems.isNotEmpty ? configuredItems.first : null);

@@ -31,19 +31,20 @@ LaunchProfileScope launchScopeForStandalone(StandaloneLaunchProfileScope scope) 
       cliTeamName: scope.sessionId,
     );
 
-String standaloneProviderId(ProjectProfile profile) {
-  final fromMap = profile.providerIdsByTool[profile.cli.value]?.trim() ?? '';
-  if (fromMap.isNotEmpty) return fromMap;
-  return profile.agent.provider.trim();
+// TODO: migrate to presets — resolve from active preset instead of profile maps
+String standaloneProviderId(/* CliPreset? preset */) {
+  // TODO: return preset?.provider.trim() ?? '';
+  return '';
 }
 
-String standaloneModelId(ProjectProfile profile) {
-  final fromMap = profile.modelsByTool[profile.cli.value]?.trim() ?? '';
-  if (fromMap.isNotEmpty) return fromMap;
-  return profile.agent.model.trim();
+// TODO: migrate to presets — resolve from active preset instead of profile maps
+String standaloneModelId(/* CliPreset? preset */) {
+  // TODO: return preset?.model.trim() ?? '';
+  return '';
 }
 
 /// Minimal [TeamConfig] for personal / standalone PTY launch args.
+/// TODO: migrate to presets — accept CliPreset? parameter for cli/provider/model/effort
 TeamConfig standaloneTeamFromProfile(
   ProjectProfile profile, {
   required String projectId,
@@ -53,33 +54,33 @@ TeamConfig standaloneTeamFromProfile(
   return TeamConfig(
     id: projectId.trim(),
     name: sessionTeamName.trim(),
-    cli: profile.cli,
+    cli: CliTool.claude, // TODO: preset?.cli ?? CliTool.claude
     members: [member],
     skillIds: profile.skillIds,
     pluginIds: profile.pluginIds,
     mcpServerIds: profile.mcpServerIds,
-    providerIdsByTool: profile.providerIdsByTool,
     teamMode: TeamMode.native,
     forceTeamLeadDelegateMode: false,
   );
 }
 
 /// Single-agent stand-in from [ProjectProfile.agent] for standalone launch.
+/// TODO: migrate to presets — accept CliPreset? parameter
 TeamMemberConfig standaloneMemberFromProfile(ProjectProfile profile) {
   final agent = profile.agent;
   final name = _standaloneMemberDisplayName(agent);
   return TeamMemberConfig(
     id: TeamMemberNaming.slugMemberName(name),
     name: name,
-    provider: standaloneProviderId(profile),
-    model: standaloneModelId(profile),
+    provider: '', // TODO: preset?.provider.trim() ?? ''
+    model: '', // TODO: preset?.model.trim() ?? ''
     agent: agent.agent,
     agentType: agent.agentType,
     extraArgs: agent.extraArgs,
     prompt: agent.prompt,
     dangerouslySkipPermissions: agent.dangerouslySkipPermissions,
-    cli: profile.cli,
-    effort: agent.effort,
+    cli: CliTool.claude, // TODO: preset?.cli ?? CliTool.claude
+    effort: '', // TODO: preset?.effort.trim() ?? ''
   );
 }
 

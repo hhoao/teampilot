@@ -100,7 +100,7 @@ Provider catalogs: `providers/{tool}/providers.json` per CLI (`AppProviderReposi
 
 ### TeamHub (discoverable teams)
 
-`client/lib/services/team_hub/` provides shareable team templates. `CompositeTeamHubSource.withDefaults(GitRegistryTeamHubSource())` merges **built-in templates** (`builtin_team_templates.dart`, e.g. the Superpowers Trio mixed-CLI team) with a remote git registry (raw GitHub). Built-in keys (`teampilot/builtin/*`) win on collision and surface first. UI under `client/lib/pages/team_hub/`; state in `TeamHubCubit`.
+`client/lib/services/team_hub/` provides shareable team templates. `CompositeTeamHubSource.withDefaults(GitRegistryTeamHubSource())` merges **built-in templates** (`builtin_team_templates.dart`, e.g. the Superpowers Quartet mixed-CLI team) with a remote git registry (raw GitHub). Built-in keys (`teampilot/builtin/*`) win on collision and surface first. UI under `client/lib/pages/team_hub/`; state in `TeamHubCubit`.
 
 ### Team session CLI identity
 

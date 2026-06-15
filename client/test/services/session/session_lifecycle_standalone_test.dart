@@ -73,11 +73,9 @@ void main() {
       await repo.save(
         const ProjectProfile(
           projectId: projectId,
-          cli: CliTool.flashskyai,
+          // TODO: migrate to presets — cli, model, provider removed
           agent: ProjectAgentConfig(
-            model: 'opus',
             agent: 'persisted-agent',
-            provider: 'custom-provider',
           ),
         ),
       );
@@ -115,8 +113,8 @@ void main() {
       const sessionId = 'personal-sess';
       const profile = ProjectProfile(
         projectId: projectId,
-        cli: CliTool.claude,
-        agent: ProjectAgentConfig(model: 'sonnet', agent: 'solo'),
+        // TODO: migrate to presets — cli, model removed
+        agent: ProjectAgentConfig(agent: 'solo'),
       );
       const project = AppProject(
         projectId: projectId,
@@ -159,11 +157,9 @@ void main() {
       const sessionId = 'personal-sess';
       const profile = ProjectProfile(
         projectId: projectId,
-        cli: CliTool.claude,
+        // TODO: migrate to presets — cli, model, provider removed
         agent: ProjectAgentConfig(
-          model: 'sonnet',
           agent: 'solo',
-          provider: 'anthropic',
         ),
       );
       const project = AppProject(

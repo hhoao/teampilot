@@ -56,7 +56,7 @@ void main() {
       sessionId: 's',
       profile: const ProjectProfile(
         projectId: 'p',
-        cli: CliTool.flashskyai,
+        // TODO: migrate to presets — cli removed
         skillIds: ['demo'],
       ),
     );

@@ -14,51 +14,80 @@ SkillDependencyRef _superpowersSkill(String slug, String displayName) =>
       name: displayName,
     );
 
-/// Three-member mixed team that mirrors the Superpowers workflow:
-/// lead (brainstorm gate + bus dispatch) → builder (plan + execute) → reviewer
+/// Four-member mixed team that mirrors the Superpowers workflow with a
+/// delegate-only lead: lead (pure bus dispatch) → architect (brainstorm gate +
+/// plan) → builder (execute with TDD, parallel-dispatch) → reviewer
 /// (traceability + verification). Members coordinate only via teammate-bus MCP.
+///
+/// The lead's delegate-only hook blocks Skill/workflow/Write/Edit/Bash, so it
+/// can neither brainstorm nor dispatch parallel agents itself — those duties
+/// live on the architect and builder, who are unrestricted.
 final DiscoverableTeam kSuperpowersTrioTeamTemplate = DiscoverableTeam(
   key: '$kBuiltinTeamHubKeyPrefix/superpowers-trio',
-  name: 'Superpowers Trio',
+  name: 'Superpowers Quartet',
   description:
       'A mixed-CLI team that runs the Superpowers pipeline end-to-end: '
-      'the lead holds the brainstorm gate and dispatches bus tasks; the builder '
-      'writes plans and executes with TDD; the reviewer validates traceability '
-      '(user ask ↔ design ↔ plan ↔ diff ↔ test evidence) before sign-off. '
-      'Configure per-member CLI and models after cloning — coordination is '
-      'always through the teammate bus (wait_for_message / send_message).',
+      'the lead is dispatch-only and routes bus tasks; the architect holds the '
+      'brainstorm gate and writes the plan; the builder executes with TDD and '
+      'dispatches parallel agents for independent tasks; the reviewer validates '
+      'traceability (user ask ↔ design ↔ plan ↔ diff ↔ test evidence) before '
+      'sign-off. Configure per-member CLI and models after cloning — '
+      'coordination is always through the teammate bus '
+      '(wait_for_message / send_message).',
   category: 'Workflow',
   author: 'TeamPilot',
-  updatedAt: 1_748_400_000_000, // 2025-05-28 — stable sort bump when edited
+  updatedAt: 1_781_481_600_000, // 2026-06-15 — stable sort bump when edited
   cli: CliTool.flashskyai,
   teamMode: TeamMode.mixed,
   members: [
     DiscoverableTeamMember(
       name: 'team-lead',
       prompt:
-          'Run the Superpowers workflow gate: clarify scope, decompose work '
-          'into bus tasks with acceptance criteria, assign builder and reviewer, '
-          'and synthesize the final user-facing answer. '
-          'Do NOT implement code or perform final quality sign-off yourself.',
+          'Coordinate the Superpowers pipeline as a pure dispatcher: receive '
+          'the user request, decompose it into bus tasks with acceptance '
+          'criteria, route work between architect, builder, and reviewer, relay '
+          'the architect\'s clarifying questions back to the user, track phase '
+          'gates, and synthesize the final user-facing answer. '
+          'Do NOT brainstorm, write plans, implement code, or review — '
+          'delegate-only mode blocks those tools in this tab anyway.',
       playbook:
-          'Idle loop: wait_for_message only. On user input, follow '
-          'brainstorming if available, confirm the design with the user, then '
-          'assign plan+execute to builder and review to reviewer. Track phase '
-          'gates (design approved → plan ready → implementation done → review '
-          'pass). Use dispatching-parallel-agents when tasks are independent. '
-          'Never stand down; escalate blockers to the user.',
+          'Idle loop: wait_for_message only. On user input, assign design+plan '
+          'to architect; once the design is approved and the plan is ready, '
+          'assign execution to builder and review to reviewer. Coordinate ONLY '
+          'via send_message and update_task (Skill / workflow / Write / Edit / '
+          'Bash are disabled here). Track phase gates (design approved → plan '
+          'ready → implementation done → review pass) and relay questions and '
+          'blockers between members and the user. Never stand down; escalate '
+          'blockers to the user.',
+    ),
+    DiscoverableTeamMember(
+      name: 'architect',
+      prompt:
+          'Own the design and planning phases the lead cannot run: clarify '
+          'scope through brainstorming with the user, lock an approved design, '
+          'then turn it into an implementation plan with acceptance criteria. '
+          'Do NOT implement production code or expand scope — hand the approved '
+          'design and plan back to the lead for dispatch.',
+      playbook:
+          'On assignment from the lead: follow brainstorming, surfacing '
+          'clarifying questions back through the lead to the user until the '
+          'design is approved, then writing-plans. Deliver a phased plan the '
+          'builder can execute as independent tasks where possible. Report the '
+          'approved design and plan via update_task; never write production '
+          'code.',
     ),
     DiscoverableTeamMember(
       name: 'builder',
       prompt:
-          'Turn the approved design into an implementation plan, then execute it '
-          'with test-first discipline within assigned scope. '
+          'Turn the architect\'s approved plan into working code with '
+          'test-first discipline within assigned scope. '
           'Do NOT expand scope, skip verification commands, or sign off your '
           'own work.',
       playbook:
-          'On assignment from the lead: follow writing-plans, then '
-          'executing-plans with test-driven-development and systematic-debugging '
-          'when stuck. Smallest correct diff; run the suite before '
+          'On assignment from the lead: follow executing-plans with '
+          'test-driven-development and systematic-debugging when stuck. When the '
+          'plan has independent tasks, use dispatching-parallel-agents to run '
+          'them concurrently. Smallest correct diff; run the suite before '
           'update_task(done). Report changed files and command evidence. On '
           'review failures, fix and resubmit without renegotiating scope.',
     ),

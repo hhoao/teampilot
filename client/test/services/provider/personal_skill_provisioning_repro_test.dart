@@ -64,7 +64,7 @@ void main() {
       // --- Profile with skill 'demo' enabled ---
       const profile = ProjectProfile(
         projectId: 'p1',
-        cli: CliTool.flashskyai,
+        // TODO: migrate to presets — cli removed
         skillIds: ['demo'],
       );
 
@@ -122,7 +122,7 @@ void main() {
       // --- Profile with skill 'ghost' enabled ---
       const profile = ProjectProfile(
         projectId: 'p2',
-        cli: CliTool.flashskyai,
+        // TODO: migrate to presets — cli removed
         skillIds: ['ghost'],
       );
 

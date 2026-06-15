@@ -292,7 +292,7 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
         fs: delegate.fs,
       ),
     );
-    final providerId = standaloneProviderId(profile);
+    final providerId = standaloneProviderId();
     final settings = await resolver.resolve(
       providerId.isNotEmpty ? providerId : null,
     );
@@ -311,10 +311,8 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
     final effortLevel = _resolveClaudeEffort(
       team: null,
       member: member,
-      model: member.model.isNotEmpty ? member.model : profile.agent.model,
-      profileEffort: profile.agent.effort.isNotEmpty
-          ? profile.agent.effort
-          : profile.effortsByTool[toolId],
+      model: member.model.isNotEmpty ? member.model : '', // TODO: migrate to presets — profile.agent.model
+      profileEffort: '', // TODO: migrate to presets — profile.agent.effort / profile.effortsByTool
     );
     await _writeSettingsAt(
       delegate,

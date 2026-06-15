@@ -75,7 +75,7 @@ void main() {
       () async {
     const projectId = 'p-claude';
     const sessionId = 's-claude';
-    const profile = ProjectProfile(projectId: projectId, cli: CliTool.claude);
+    const profile = ProjectProfile(projectId: projectId); // TODO: migrate to presets — cli removed
 
     final contribution = await const ClaudeConfigProfileCapability()
         .contributeLaunch(
@@ -106,8 +106,8 @@ void main() {
     const sessionId = 's-fs';
     const profile = ProjectProfile(
       projectId: projectId,
-      cli: CliTool.flashskyai,
-      agent: ProjectAgentConfig(agent: 'solo', model: 'test'),
+      // TODO: migrate to presets — cli removed
+      agent: ProjectAgentConfig(agent: 'solo') // TODO: migrate to presets — model removed,
     );
 
     final contribution = await const FlashskyaiConfigProfileCapability()
@@ -139,7 +139,7 @@ void main() {
   test('cursor standalone uses CURSOR_CONFIG_DIR only', () async {
     const projectId = 'p-cursor';
     const sessionId = 's-cursor';
-    const profile = ProjectProfile(projectId: projectId, cli: CliTool.cursor);
+    const profile = ProjectProfile(projectId: projectId); // TODO: migrate to presets — cli removed
 
     final contribution = await const CursorConfigProfileCapability()
         .contributeLaunch(
@@ -163,7 +163,7 @@ void main() {
   test('opencode standalone sets OPENCODE_CONFIG_DIR without idle plugin', () async {
     const projectId = 'p-oc';
     const sessionId = 's-oc';
-    const profile = ProjectProfile(projectId: projectId, cli: CliTool.opencode);
+    const profile = ProjectProfile(projectId: projectId); // TODO: migrate to presets — cli removed
 
     final contribution = await const OpencodeConfigProfileCapability()
         .contributeLaunch(
@@ -191,7 +191,7 @@ void main() {
   test('codex standalone sets CODEX_HOME without bus overlay', () async {
     const projectId = 'p-codex';
     const sessionId = 's-codex';
-    const profile = ProjectProfile(projectId: projectId, cli: CliTool.codex);
+    const profile = ProjectProfile(projectId: projectId); // TODO: migrate to presets — cli removed
 
     final contribution = await const CodexConfigProfileCapability().contributeLaunch(
       standaloneContext(

@@ -257,9 +257,12 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
       key: AppKeys.chatWorkspace,
       color: cs.surface,
       child: WorkspaceEditorOverlay(
-        terminalChild: Container(
-          color: terminalBackground,
-          child: sessionConnectInProgress
+        terminalChild: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 180),
+          child: Container(
+            key: ValueKey(session.hashCode),
+            color: terminalBackground,
+            child: sessionConnectInProgress
               ? ChatWorkbenchSessionLoadingView(
                   message: context.l10n.sessionStarting,
                 )
@@ -305,6 +308,7 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
                   launchError: chatCubit.activeLaunchError,
                 ),
         ),
+      ),
       ),
     );
   }

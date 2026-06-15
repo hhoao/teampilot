@@ -68,10 +68,16 @@ class _TabbedPanelState extends State<TabbedPanel> {
         ),
         Divider(height: 1, thickness: 1, color: cs.outlineVariant),
         Expanded(
-          child: IndexedStack(
-            index: selected,
-            sizing: StackFit.expand,
-            children: [for (final v in widget.views) v.child],
+          child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 200),
+            switchInCurve: Curves.easeOut,
+            switchOutCurve: Curves.easeIn,
+            transitionBuilder: (child, animation) =>
+                FadeTransition(opacity: animation, child: child),
+            child: KeyedSubtree(
+              key: ValueKey(selected),
+              child: widget.views[selected].child,
+            ),
           ),
         ),
       ],

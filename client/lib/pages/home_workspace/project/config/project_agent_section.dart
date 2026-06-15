@@ -7,6 +7,7 @@ import '../../../../cubits/project_profile_cubit.dart';
 import '../../../../l10n/l10n_extensions.dart';
 import '../../../../models/project_agent_prompt_presets.dart';
 import '../../../../models/project_profile.dart';
+import '../../../../models/team_config.dart';
 import '../../../../services/app/flashskyai_agent_catalog_service.dart';
 import '../../../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../../../services/storage/storage_resolver.dart';
@@ -133,8 +134,12 @@ class ProjectAgentConfigFormState extends State<ProjectAgentConfigForm> {
     final profile = widget.profile;
     final agent = profile.agent;
     final cliRegistry = CliToolRegistryScope.of(context);
-    final showAgentPreset = cliRegistry.supportsMemberAgentPreset(profile.cli);
-    final agentPresetStyle = cliRegistry.memberAgentPresetStyle(profile.cli);
+    final showAgentPreset = cliRegistry.supportsMemberAgentPreset(
+      CliTool.claude, // TODO: migrate to presets — was profile.cli
+    );
+    final agentPresetStyle = cliRegistry.memberAgentPresetStyle(
+      CliTool.claude, // TODO: migrate to presets — was profile.cli
+    );
 
     return SingleChildScrollView(
       child: Column(
@@ -205,7 +210,7 @@ class ProjectAgentConfigFormState extends State<ProjectAgentConfigForm> {
                           agentPresetStyle,
                         ),
                         body: MemberAgentPresetField(
-                          cli: profile.cli,
+                          cli: CliTool.claude, // TODO: migrate to presets — was profile.cli
                           agent: agent.agent,
                           userAgentIds: _userAgentIds,
                           customAgentController: _agentCtl,

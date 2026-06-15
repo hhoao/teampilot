@@ -73,7 +73,6 @@ class ProjectProfileRepository {
   Future<ProjectProfile> createDefault(String projectId) async {
     return ProjectProfile(
       projectId: projectId,
-      cli: CliTool.claude,
     );
   }
 

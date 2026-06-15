@@ -10,17 +10,13 @@ bool projectCliSupportsProviderCatalog(
 ) =>
     registry.capability<ProviderCatalogCapability>(cli) != null;
 
+// TODO: migrate to presets — profile.providerIdsByTool / profile.cli / agent.provider removed
 String projectCliProviderId(ProjectProfile profile, CliTool cli) {
-  final fromMap = profile.providerIdsByTool[cli.value]?.trim() ?? '';
-  if (fromMap.isNotEmpty) return fromMap;
-  if (profile.cli == cli) return profile.agent.provider.trim();
   return '';
 }
 
+// TODO: migrate to presets — profile.modelsByTool / profile.cli / agent.model removed
 String projectCliModelId(ProjectProfile profile, CliTool cli) {
-  final fromMap = profile.modelsByTool[cli.value]?.trim() ?? '';
-  if (fromMap.isNotEmpty) return fromMap;
-  if (profile.cli == cli) return profile.agent.model.trim();
   return '';
 }
 

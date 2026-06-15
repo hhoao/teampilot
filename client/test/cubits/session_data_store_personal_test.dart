@@ -51,7 +51,8 @@ void main() {
     final profile = await profileRepo.load(result.projectId);
     expect(profile, isNotNull);
     expect(profile!.projectId, result.projectId);
-    expect(profile.cli, CliTool.claude);
+    // TODO: migrate to presets — .cli removed
+    // expect(profile.cli, CliTool.claude);
 
     final sessions = result.snapshot.sessions
         .where((s) => s.projectId == result.projectId)

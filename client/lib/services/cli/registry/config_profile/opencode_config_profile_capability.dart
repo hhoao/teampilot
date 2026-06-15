@@ -282,7 +282,7 @@ final class OpencodeConfigProfileCapability implements ConfigProfileCapability {
     var changed = false;
 
     final resolver = _resolver(paths);
-    var provider = await resolver.findById(standaloneProviderId(profile));
+    var provider = await resolver.findById(standaloneProviderId());
     provider ??= await resolver.resolveSole();
     if (provider != null) {
       config = mergeOpencodeProvider(config, provider);

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../cubits/chat_cubit.dart';
@@ -102,8 +103,8 @@ class WorkspaceShellCenterColumnWithTerminal extends StatelessWidget {
   }
 }
 
-class WorkspaceShellBody extends StatelessWidget {
-  const WorkspaceShellBody({super.key, 
+class WorkspaceShellBody extends StatefulWidget {
+  const WorkspaceShellBody({super.key,
     required this.preferences,
     required this.child,
     required this.rightTools,
@@ -116,19 +117,82 @@ class WorkspaceShellBody extends StatelessWidget {
   final ValueChanged<double>? onRightToolsWidthChanged;
 
   @override
-  Widget build(BuildContext context) {
-    if (rightTools == null || !preferences.rightToolsVisible) {
-      return child;
+  State<WorkspaceShellBody> createState() => _WorkspaceShellBodyState();
+}
+
+class _WorkspaceShellBodyState extends State<WorkspaceShellBody>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<double> _fadeAnimation;
+  late final Animation<Offset> _slideAnimation;
+  bool _panelVisible = false;
+
+  bool get _hasPanel => widget.rightTools != null;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: 250.ms,
+      vsync: this,
+    );
+    _fadeAnimation = CurvedAnimation(
+      parent: _controller,
+      curve: Curves.easeOutCubic,
+    );
+    _slideAnimation = Tween<Offset>(
+      begin: const Offset(0.1, 0.0),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(
+      parent: _controller,
+      curve: Curves.easeOutCubic,
+    ));
+
+    _panelVisible = _hasPanel && widget.preferences.rightToolsVisible;
+    if (_panelVisible) {
+      _controller.value = 1.0;
     }
-    final rightWidth = preferences.rightToolsWidth;
+  }
+
+  @override
+  void didUpdateWidget(WorkspaceShellBody oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final visible = _hasPanel && widget.preferences.rightToolsVisible;
+    if (visible != _panelVisible) {
+      _panelVisible = visible;
+      if (visible) {
+        _controller.forward();
+      } else {
+        _controller.reverse();
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // When the panel is not visible and the dismiss animation has finished,
+    // render only the center child — nothing else in the tree.
+    if (!_panelVisible && _controller.isDismissed) {
+      return widget.child;
+    }
+
+    final rightWidth = widget.preferences.rightToolsWidth;
     return LayoutBuilder(
       builder: (context, constraints) {
         final maxW = constraints.maxWidth;
         const minCenter = 150.0;
         final minTools = LayoutPreferences.minRightToolsWidth;
-        return ResizableSplitView(
-          first: child,
-          second: rightTools!,
+        // Build the split view unconditionally while animating so the panel
+        // widget stays alive during the exit transition.
+        final splitView = ResizableSplitView(
+          first: widget.child,
+          second: widget.rightTools!,
           initialPrimarySize: (maxW - rightWidth).clamp(
             minCenter,
             maxW - minTools,
@@ -137,8 +201,22 @@ class WorkspaceShellBody extends StatelessWidget {
           minSecondarySize: minTools,
           maxPrimarySize: (maxW - minTools).clamp(minCenter, maxW),
           onPrimarySizeChanged: (leftWidth) {
-            onRightToolsWidthChanged?.call(maxW - leftWidth);
+            widget.onRightToolsWidthChanged?.call(maxW - leftWidth);
           },
+        );
+
+        return AnimatedBuilder(
+          animation: _controller,
+          builder: (context, child) {
+            return SlideTransition(
+              position: _slideAnimation,
+              child: FadeTransition(
+                opacity: _fadeAnimation,
+                child: child,
+              ),
+            );
+          },
+          child: splitView,
         );
       },
     );

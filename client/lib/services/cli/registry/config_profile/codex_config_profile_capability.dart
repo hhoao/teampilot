@@ -136,7 +136,7 @@ final class CodexConfigProfileCapability implements ConfigProfileCapability {
         fs: paths.fs,
       ),
     );
-    var provider = await resolver.findById(standaloneProviderId(profile));
+    var provider = await resolver.findById(standaloneProviderId());
     provider ??= await _resolveSoleCodexProvider(paths);
     if (provider == null) {
       warnings.add('codex_provider_missing');
@@ -157,9 +157,7 @@ final class CodexConfigProfileCapability implements ConfigProfileCapability {
             team: null,
             member: member,
             provider: provider,
-            profileEffort: profile.agent.effort.isNotEmpty
-                ? profile.agent.effort
-                : profile.effortsByTool[toolId],
+            profileEffort: '', // TODO: migrate to presets — profile.agent.effort / profile.effortsByTool
           ),
         );
       } on CodexHomeProvisionException catch (e) {

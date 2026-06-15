@@ -389,11 +389,10 @@ void main() {
   });
 
   test('ShellLaunchSpec builds full personal CLI launch args', () {
+    // TODO: migrate to presets — cli, model, providerIdsByTool removed
     const profile = ProjectProfile(
       projectId: 'proj-1',
-      cli: CliTool.claude,
-      agent: ProjectAgentConfig(model: 'sonnet', agent: 'builder'),
-      providerIdsByTool: {'claude': 'anthropic'},
+      agent: ProjectAgentConfig(agent: 'builder'),
     );
     const sessionTeam = 'sess-personal-1';
     final shellLaunch = ShellLaunchSpec(

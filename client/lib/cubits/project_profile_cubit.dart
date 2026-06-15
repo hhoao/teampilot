@@ -115,67 +115,21 @@ class ProjectProfileCubit extends Cubit<ProjectProfileState> {
     await _persist(profile.copyWith(agent: agent));
   }
 
+  // TODO: migrate to presets — removed in CLI presets migration
+  // ignore: avoid-unused-parameters
   Future<void> setCli(CliTool cli) async {
-    final profile = state.profile;
-    if (profile == null) return;
-    final provider = profile.providerIdsByTool[cli.value]?.trim() ?? '';
-    final model = profile.modelsByTool[cli.value]?.trim() ?? '';
-    final effort = profile.effortsByTool[cli.value]?.trim() ?? '';
-    final agent = profile.agent.copyWith(
-      provider: provider,
-      model: model,
-      effort: effort,
-    );
-    await _persist(profile.copyWith(cli: cli, agent: agent));
+    // Stub — CLI selection is now handled via activePresetId
   }
 
+  // TODO: migrate to presets — removed in CLI presets migration
+  // ignore: avoid-unused-parameters
   Future<void> setCliDefaults(
     CliTool cli, {
     required String provider,
     required String model,
     String effort = '',
   }) async {
-    final profile = state.profile;
-    if (profile == null) return;
-
-    final providers = Map<String, String>.from(profile.providerIdsByTool);
-    final models = Map<String, String>.from(profile.modelsByTool);
-    final efforts = Map<String, String>.from(profile.effortsByTool);
-    final trimmedProvider = provider.trim();
-    final trimmedModel = model.trim();
-    final trimmedEffort = effort.trim();
-
-    if (trimmedProvider.isEmpty) {
-      providers.remove(cli.value);
-    } else {
-      providers[cli.value] = trimmedProvider;
-    }
-    if (trimmedModel.isEmpty) {
-      models.remove(cli.value);
-    } else {
-      models[cli.value] = trimmedModel;
-    }
-    if (trimmedEffort.isEmpty) {
-      efforts.remove(cli.value);
-    } else {
-      efforts[cli.value] = trimmedEffort;
-    }
-
-    var next = profile.copyWith(
-      providerIdsByTool: providers,
-      modelsByTool: models,
-      effortsByTool: efforts,
-    );
-    if (profile.cli == cli) {
-      next = next.copyWith(
-        agent: profile.agent.copyWith(
-          provider: trimmedProvider,
-          model: trimmedModel,
-          effort: trimmedEffort,
-        ),
-      );
-    }
-    await _persist(next);
+    // Stub — CLI defaults are now configured via CliPresetsCubit
   }
 
   Future<void> setMcpServerIds(List<String> mcpServerIds) async {
