@@ -23,6 +23,12 @@ import 'app_icon_button.dart';
 import 'menu/sidebar_action_menu.dart';
 import 'resizable_split_view.dart';
 
+/// Stable key for the workspace terminal's `TerminalView`. Shared across all
+/// entries so switching tabs swaps the engine on a reused view (warm glyph
+/// cache) instead of remounting and painting partial text. See
+/// `chatWorkbenchTerminalViewKey` for the chat-workbench counterpart.
+const Key kWorkspaceTerminalViewKey = ValueKey('workspace-terminal-view');
+
 /// VS Code–style bottom panel: main terminal + session list (not chat agent PTY).
 class WorkspaceTerminalPanel extends StatefulWidget {
   const WorkspaceTerminalPanel({
@@ -332,7 +338,7 @@ class _WorkspaceTerminalView extends StatelessWidget {
       color: background,
       child: TerminalView(
         entry.session.engine,
-        key: ValueKey(entry.id),
+        key: kWorkspaceTerminalViewKey,
         controller: entry.controller,
         theme: theme,
         backgroundOpacity: 0.98,
