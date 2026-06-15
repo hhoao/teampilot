@@ -16,8 +16,8 @@ import '../services/file_tree/file_tree_visible_rows.dart';
 import '../services/io/filesystem.dart';
 import 'menu/sidebar_action_menu.dart';
 import '../utils/debounce/debounce.dart';
-import '../utils/file_icon.dart';
 import 'app_dialog.dart';
+import 'file_icon_widget.dart';
 import 'hover_widget.dart';
 
 /// Single row in the flattened file tree (no nested children).
@@ -140,12 +140,16 @@ class _FileTreeNodeState extends State<FileTreeNode> {
                 )
               else
                 const SizedBox(width: 18),
-              Icon(
-                isDir
-                    ? (isExpanded ? Icons.folder_open : Icons.folder_outlined)
-                    : fileIconForFileName(widget.entry.name),
-                size: context.appIconSizes.md,
-              ),
+              if (isDir)
+                Icon(
+                  isExpanded ? Icons.folder_open : Icons.folder_outlined,
+                  size: context.appIconSizes.md,
+                )
+              else
+                FileIconWidget(
+                  fileName: widget.entry.name,
+                  size: context.appIconSizes.md,
+                ),
               const SizedBox(width: 6),
               Text(
                 widget.entry.name,
