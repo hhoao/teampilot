@@ -199,6 +199,24 @@ void consumeChatWorkbenchRouteSession({
   }
 }
 
+/// Key for the `AnimatedSwitcher` terminal child in the chat workbench.
+///
+/// The running terminal uses a STABLE key (independent of which session/member
+/// is shown) so switching members reuses the same `TerminalView` element. That
+/// triggers the submodule's engine-swap path (`didUpdateWidget`) instead of a
+/// remount, keeping the glyph cache and viewport geometry warm — otherwise a
+/// freshly mounted `TerminalView` paints partial text while its empty glyph
+/// cache warms up over several frames. Loading / placeholder keep their own
+/// keys so transitions to/from them still cross-fade.
+Key chatWorkbenchTerminalViewKey({
+  required bool loading,
+  required bool running,
+}) {
+  if (loading) return const ValueKey('chat-terminal-loading');
+  if (running) return const ValueKey('chat-terminal-running');
+  return const ValueKey('chat-terminal-placeholder');
+}
+
 TerminalController bindChatWorkbenchTerminalController(
   TerminalController current,
   TerminalEngine engine,

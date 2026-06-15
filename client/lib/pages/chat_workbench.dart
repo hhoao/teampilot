@@ -260,7 +260,10 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
         terminalChild: AnimatedSwitcher(
           duration: const Duration(milliseconds: 180),
           child: Container(
-            key: ValueKey(session.hashCode),
+            key: chatWorkbenchTerminalViewKey(
+              loading: sessionConnectInProgress,
+              running: session.isRunning,
+            ),
             color: terminalBackground,
             child: sessionConnectInProgress
               ? ChatWorkbenchSessionLoadingView(
