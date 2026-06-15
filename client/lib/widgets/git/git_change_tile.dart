@@ -6,6 +6,7 @@ import '../../models/git_status.dart';
 import '../../services/git/git_changes_visible_rows.dart';
 import '../../theme/app_text_styles.dart';
 import '../app_icon_button.dart';
+import '../file_icon_widget.dart';
 import '../hover_widget.dart';
 
 /// One changed file row in the source control panel.
@@ -109,12 +110,7 @@ class _GitChangeTileState extends State<GitChangeTile> {
         mainAxisSize: MainAxisSize.min,
         children: [
           const SizedBox(width: 16),
-          Icon(
-            change.kind == GitChangeKind.untracked
-                ? Icons.insert_drive_file_outlined
-                : Icons.description_outlined,
-            color: cs.onSurfaceVariant,
-          ),
+          FileIconWidget(fileName: name),
           const SizedBox(width: 6),
           Text(name, maxLines: 1, style: AppTextStyles.of(context).body),
           const SizedBox(width: 8),
@@ -136,13 +132,7 @@ class _GitChangeTileState extends State<GitChangeTile> {
     return Row(
       children: [
         const SizedBox(width: 2),
-        Icon(
-          change.kind == GitChangeKind.untracked
-              ? Icons.insert_drive_file_outlined
-              : Icons.description_outlined,
-          size: 16,
-          color: cs.onSurfaceVariant,
-        ),
+        FileIconWidget(fileName: name),
         const SizedBox(width: 6),
         Expanded(
           child: Row(
