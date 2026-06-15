@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../cubits/app_provider_cubit.dart';
 import '../cubits/app_update_cubit.dart';
 import '../cubits/chat_cubit.dart';
+import '../cubits/board_cubit.dart';
 import '../cubits/mailbox_cubit.dart';
 import '../cubits/member_presence_cubit.dart';
 import '../cubits/notification_cubit.dart';
@@ -92,6 +93,7 @@ class AppShell {
     required this.chatCubit,
     required this.memberPresenceCubit,
     required this.mailboxCubit,
+    required this.boardCubit,
     required this.notificationCubit,
     required this.editorCubit,
     required this.sessionRepo,
@@ -131,6 +133,7 @@ class AppShell {
   final ChatCubit chatCubit;
   final MemberPresenceCubit memberPresenceCubit;
   final MailboxCubit mailboxCubit;
+  final BoardCubit boardCubit;
   final NotificationCubit notificationCubit;
   final EditorCubit editorCubit;
   final SessionRepository sessionRepo;
@@ -590,6 +593,9 @@ Future<AppShell> buildAppShell({
   final mailboxCubit =
       MailboxCubit(activeBus: () => chatCubit.activeTab?.teamBus);
 
+  final boardCubit =
+      BoardCubit(activeBus: () => chatCubit.activeTab?.teamBus);
+
   final notificationCubit = NotificationCubit();
   await notificationCubit.load();
   NotificationRecorder.install(notificationCubit);
@@ -645,6 +651,7 @@ Future<AppShell> buildAppShell({
     chatCubit: chatCubit,
     memberPresenceCubit: memberPresenceCubit,
     mailboxCubit: mailboxCubit,
+    boardCubit: boardCubit,
     notificationCubit: notificationCubit,
     editorCubit: editorCubit,
     sessionRepo: sessionRepo,
