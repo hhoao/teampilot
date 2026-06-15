@@ -34,24 +34,24 @@ void main() {
     final q = makeQueue();
     q.addTasks('lead', [draft('a'), draft('b')]);
 
-    final first = q.claimNext('w1');
+    final first = q.claimNext('w1', const {});
     expect(first!.title, 'a');
     expect(first.status, TaskStatus.claimed);
     expect(first.assignee, 'w1');
 
-    final second = q.claimNext('w2');
+    final second = q.claimNext('w2', const {});
     expect(second!.title, 'b');
     expect(second.assignee, 'w2');
 
-    expect(q.claimNext('w3'), isNull); // nothing left
+    expect(q.claimNext('w3', const {}), isNull); // nothing left
   });
 
   test('two claimers never get the same task', () {
     final q = makeQueue();
     q.addTasks('lead', [draft('only')]);
 
-    final a = q.claimNext('w1');
-    final b = q.claimNext('w2');
+    final a = q.claimNext('w1', const {});
+    final b = q.claimNext('w2', const {});
 
     expect(a, isNotNull);
     expect(b, isNull);
@@ -65,19 +65,19 @@ void main() {
 
     // child blocked: only root is claimable
     expect(q.claimableCount, 1);
-    final root = q.claimNext('w1');
+    final root = q.claimNext('w1', const {});
     expect(root!.title, 'root');
-    expect(q.claimNext('w2'), isNull); // child still blocked (root not done)
+    expect(q.claimNext('w2', const {}), isNull); // child still blocked (root not done)
 
     q.update(rootId, TaskStatus.done, byMember: 'w1');
-    final child = q.claimNext('w2');
+    final child = q.claimNext('w2', const {});
     expect(child!.title, 'child');
   });
 
   test('update rejects a non-claimer and accepts the claimer', () {
     final q = makeQueue();
     final id = q.addTasks('lead', [draft('a')]).single.id;
-    q.claimNext('w1');
+    q.claimNext('w1', const {});
 
     expect(q.update(id, TaskStatus.done, byMember: 'intruder'), isFalse);
     expect(q.update(id, TaskStatus.done, byMember: 'w1', result: 'ok'), isTrue);
@@ -87,7 +87,7 @@ void main() {
   test('reclaimExpired requeues a dead worker\'s task past the lease', () {
     final q = makeQueue();
     q.addTasks('lead', [draft('a')]);
-    q.claimNext('w1');
+    q.claimNext('w1', const {});
 
     now += 60 * 1000; // 60s, under default-ish lease handled by arg below
 
@@ -98,14 +98,14 @@ void main() {
     // dead → reclaimed back to pending
     reclaimed = q.reclaimExpired(leaseMs: 30 * 1000, isAlive: (_) => false);
     expect(reclaimed.single.status, TaskStatus.pending);
-    expect(q.claimNext('w2'), isNotNull); // claimable again
+    expect(q.claimNext('w2', const {}), isNotNull); // claimable again
   });
 
   test('rehydrate replays the log into a fresh queue', () async {
     final log = InMemoryTaskLog();
     final q1 = makeQueue(log: log);
     final ids = q1.addTasks('lead', [draft('a'), draft('b')]);
-    q1.claimNext('w1'); // claim 'a'
+    q1.claimNext('w1', const {}); // claim 'a'
     q1.update(ids.first.id, TaskStatus.done, byMember: 'w1', result: 'done-a');
 
     final q2 = makeQueue(log: log);

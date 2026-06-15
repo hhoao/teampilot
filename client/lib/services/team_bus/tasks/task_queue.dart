@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:uuid/uuid.dart';
 
 import 'task_log.dart';
+import 'task_router.dart';
 import 'team_task.dart';
 
 /// 跨 CLI bus（mixed 模式）的 **pull 式共享任务队列**：leader 入队，空闲 worker
@@ -42,6 +43,9 @@ class TaskQueue {
   List<TeamTask> addTasks(String createdBy, List<TeamTaskDraft> drafts) {
     final created = <TeamTask>[];
     for (final d in drafts) {
+      final stage = d.preferredAssignee != null
+          ? RoutingStage.reserved
+          : RoutingStage.matched;
       final task = TeamTask(
         id: _ids(),
         seq: _nextSeq++,
@@ -50,6 +54,10 @@ class TaskQueue {
         createdBy: createdBy,
         createdAt: _clock(),
         dependsOn: List.unmodifiable(d.dependsOn),
+        requiredCapabilities: d.requiredCapabilities,
+        preferredCapabilities: d.preferredCapabilities,
+        preferredAssignee: d.preferredAssignee,
+        routing: RoutingPolicy(stage: stage, escalatedAt: _clock()),
       );
       _tasks[task.id] = task;
       created.add(task);
@@ -59,24 +67,48 @@ class TaskQueue {
     return created;
   }
 
-  /// 原子认领下一个可执行任务（FIFO + 依赖全 done）。无可认领返回 null。
+  /// 原子认领下一个**对该成员合格**的可执行任务（deps 全 done）。合格集内按
+  /// (score 降序, seq 升序) 排序。无可认领返回 null。
   /// **此方法体内不得有 await**——保证选择 + 标记在同一微任务内完成。
-  TeamTask? claimNext(String memberId) {
-    final ordered = _tasks.values.toList()
-      ..sort((a, b) => a.seq.compareTo(b.seq));
-    for (final t in ordered) {
-      if (!t.isClaimable) continue;
-      if (!_depsSatisfied(t)) continue;
-      final claimed = t.copyWith(
-        status: TaskStatus.claimed,
-        assignee: memberId,
-        claimedAt: _clock(),
-      );
-      _tasks[t.id] = claimed;
-      _persist(() => _log?.appendClaim(t.id, memberId, claimed.claimedAt!));
-      return claimed;
+  TeamTask? claimNext(String memberId, Set<String> memberCaps) {
+    final candidates = _tasks.values
+        .where((t) => t.isClaimable && _depsSatisfied(t))
+        .toList()
+      ..sort((a, b) {
+        final sa = TaskRouter.score(memberCaps, a);
+        final sb = TaskRouter.score(memberCaps, b);
+        if (sa != sb) return sb.compareTo(sa);
+        return a.seq.compareTo(b.seq);
+      });
+    for (final t in candidates) {
+      if (!TaskRouter.eligible(memberId, memberCaps, t)) continue;
+      return _markClaimed(t, memberId);
     }
     return null;
+  }
+
+  /// pull 式自取：认领一个指定任务（worker 主动从看板挑）。不存在/已被领/被依赖卡住/
+  /// 不合格则返回 null。同样同步原子。
+  TeamTask? claimSpecific(
+    String taskId,
+    String memberId,
+    Set<String> memberCaps,
+  ) {
+    final t = _tasks[taskId];
+    if (t == null || !t.isClaimable || !_depsSatisfied(t)) return null;
+    if (!TaskRouter.eligible(memberId, memberCaps, t)) return null;
+    return _markClaimed(t, memberId);
+  }
+
+  TeamTask _markClaimed(TeamTask t, String memberId) {
+    final claimed = t.copyWith(
+      status: TaskStatus.claimed,
+      assignee: memberId,
+      claimedAt: _clock(),
+    );
+    _tasks[t.id] = claimed;
+    _persist(() => _log?.appendClaim(t.id, memberId, claimed.claimedAt!));
+    return claimed;
   }
 
   /// 释放认领但未完成的任务，退回 pending（统一 idle 原语在结果写回失败/客户端断连
@@ -127,6 +159,29 @@ class TaskQueue {
     }
     if (reclaimed.isNotEmpty) _wake();
     return reclaimed;
+  }
+
+  /// 推进每个 pending 任务的路由阶段（单调）。[hasEligibleLiveMember] 由调用方注入,
+  /// 表示「当前是否存在能领该任务的在线成员」——为 false 且超时才降级要求。返回阶段
+  /// 发生变化的任务,并唤醒等待者（让更宽的合格 worker 来认领）。
+  List<TeamTask> reconcile(
+    int now,
+    bool Function(TeamTask) hasEligibleLiveMember,
+  ) {
+    final changed = <TeamTask>[];
+    for (final t in _tasks.values.toList()) {
+      if (t.status != TaskStatus.pending) continue;
+      final next = TaskRouter.nextStage(t, now, hasEligibleLiveMember(t));
+      if (next == t.routing.stage) continue;
+      final updated = t.copyWith(
+        routing: t.routing.copyWith(stage: next, escalatedAt: now),
+      );
+      _tasks[t.id] = updated;
+      _persist(() => _log?.appendEscalate(t.id, next, now));
+      changed.add(updated);
+    }
+    if (changed.isNotEmpty) _wake();
+    return changed;
   }
 
   /// 任务快照（看板 / `list_tasks`）；[status] 非空时过滤，按 seq 升序。
