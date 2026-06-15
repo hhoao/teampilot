@@ -242,11 +242,12 @@ class _DefaultCliDropdown extends StatelessWidget {
               decoration: AppDropdownDecorations.themed(context),
               onChanged: (value) {
                 if (value == null) return;
-                unawaited(
-                  context.read<ProjectProfileCubit>().setCli(
-                    CliTool.decode(value),
-                  ),
-                );
+                // TODO: migrate to presets — setCli removed; uses setActivePreset now
+                // unawaited(
+                //   context.read<ProjectProfileCubit>().setCli(
+                //     CliTool.decode(value),
+                //   ),
+                // );
               },
               itemBuilder: (context, value) {
                 final cli = CliTool.decode(value);

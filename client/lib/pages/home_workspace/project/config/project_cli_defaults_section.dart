@@ -46,7 +46,8 @@ class ProjectCliDefaultsSection extends StatelessWidget {
               decoration: dropdownDeco,
               onChanged: (value) {
                 if (value == null) return;
-                unawaited(cubit.setCli(CliTool.decode(value)));
+                // TODO: migrate to presets — setCli removed
+                // unawaited(cubit.setCli(CliTool.decode(value)));
               },
               itemBuilder: (context, value) => cliDropdownRow(
                 context,

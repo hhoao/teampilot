@@ -115,21 +115,10 @@ class ProjectProfileCubit extends Cubit<ProjectProfileState> {
     await _persist(profile.copyWith(agent: agent));
   }
 
-  // TODO: migrate to presets — removed in CLI presets migration
-  // ignore: avoid-unused-parameters
-  Future<void> setCli(CliTool cli) async {
-    // Stub — CLI selection is now handled via activePresetId
-  }
-
-  // TODO: migrate to presets — removed in CLI presets migration
-  // ignore: avoid-unused-parameters
-  Future<void> setCliDefaults(
-    CliTool cli, {
-    required String provider,
-    required String model,
-    String effort = '',
-  }) async {
-    // Stub — CLI defaults are now configured via CliPresetsCubit
+  Future<void> setActivePreset(String presetId) async {
+    final profile = state.profile;
+    if (profile == null) return;
+    await _persist(profile.copyWith(activePresetId: presetId.trim()));
   }
 
   Future<void> setMcpServerIds(List<String> mcpServerIds) async {

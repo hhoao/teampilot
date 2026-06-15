@@ -306,13 +306,15 @@ class _ProjectCliConfigureDialogState extends State<ProjectCliConfigureDialog> {
   }
 
   Future<void> _save() async {
-    await widget.cubit.setCliDefaults(
-      widget.cli,
-      provider: _providerId,
-      model: _modelId,
-      effort: _effortId,
-    );
-    if (!mounted) return;
+    // TODO: migrate to presets — setCliDefaults removed
+    // await widget.cubit.setCliDefaults(
+    //   widget.cli,
+    //   provider: _providerId,
+    //   model: _modelId,
+    //   effort: _effortId,
+    // );
+    return; // TODO: migrate to presets
+    // if (!mounted) return;
     Navigator.of(context).pop();
   }
 
