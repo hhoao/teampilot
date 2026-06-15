@@ -659,7 +659,7 @@ class TeamBus implements CoordinationView {
       for (final n in workers) {
         if (n.lifecycle != MemberLifecycle.running) continue;
         if (n.activity != MemberActivity.turnDoneReady) continue; // atPrompt
-        if (_recentlyDoorbelled(n)) continue; // 未到重敲窗口（治回车被吞 → 卡死）
+        if (n.doorbelledAt != null) continue; // 本轮已敲过；重试交给看门狗（只补回车）
         if (!TaskRouter.eligible(n.memberId, n.profile.capabilities, task)) {
           continue;
         }
@@ -726,8 +726,14 @@ class TeamBus implements CoordinationView {
       } else {
         continue; // 没有欠它的门铃。
       }
+      // 首次响铃才注入提示全文；之后只补回车提交已卡在框里的那条——重打全文会让同一
+      // 条提示在输入框里叠成好几份（用户看到的「短时间发好几条」）。
+      if (node.doorbelledAt == null) {
+        _launcher.wake(node.memberId, notice);
+      } else {
+        _launcher.nudgeSubmit(node.memberId);
+      }
       node.doorbelledAt = _env.clock();
-      _launcher.wake(node.memberId, notice);
     }
   }
 

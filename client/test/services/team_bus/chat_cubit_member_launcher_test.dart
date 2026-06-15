@@ -12,6 +12,10 @@ class _Spy implements MemberMaterializer {
   void injectMemberStdin(String s, String m, String t) {
     calls.add('inject:$s:$m:$t');
   }
+  @override
+  void submitMemberPending(String s, String m) {
+    calls.add('submit:$s:$m');
+  }
 }
 
 void main() {
@@ -21,10 +25,12 @@ void main() {
 
     await l.materialize('worker', const TeamMessage(id: '1', from: 'lead', to: 'worker', content: 'do X'));
     l.wake('worker', 'ding');
+    l.nudgeSubmit('worker');
 
     expect(spy.calls, [
       'materialize:sess:worker:do X',
       'inject:sess:worker:ding',
+      'submit:sess:worker',
     ]);
   });
 }

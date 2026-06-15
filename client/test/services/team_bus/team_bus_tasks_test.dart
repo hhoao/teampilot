@@ -276,19 +276,27 @@ void main() {
 
       bus.addTasks('lead', [const TeamTaskDraft(title: 'a', brief: 'do a')]);
       async.flushMicrotasks();
-      expect(launcher.woken.length, 1); // initial queue doorbell
+      expect(launcher.woken.length, 1); // initial queue doorbell (full notice)
 
       // First CR was swallowed by the input box → worker still at prompt, task
       // still claimable. A watchdog tick before the retry window stays quiet.
       bus.reengageIdleWorkers();
       expect(launcher.woken.length, 1);
+      expect(launcher.nudged, isEmpty);
 
-      // After the retry interval the watchdog re-rings — this is the retry the
-      // mail doorbell gets for free (re-ring per message) but the queue lacked.
+      // After the retry interval the watchdog retries — but with a bare CR
+      // (nudgeSubmit), NOT a re-pasted notice. Re-pasting would stack duplicate
+      // copies in the input box (the "several in a short time" the user saw).
       now += TeamBus.doorbellRetryMs;
       bus.reengageIdleWorkers();
-      expect(launcher.woken.length, 2);
-      expect(launcher.woken.last.notice, TeamBus.taskDoorbellNotice);
+      expect(launcher.woken.length, 1); // no second full-notice paste
+      expect(launcher.nudged, ['w1']);
+
+      // Still stuck a window later → another CR, still no re-paste.
+      now += TeamBus.doorbellRetryMs;
+      bus.reengageIdleWorkers();
+      expect(launcher.woken.length, 1);
+      expect(launcher.nudged, ['w1', 'w1']);
     });
   });
 
@@ -327,14 +335,15 @@ void main() {
       w.inbox
           .deliver(TeamMessage(id: 'm1', from: 'lead', to: 'w1', content: 'hi'));
 
-      // First ring, then a swallowed CR keeps the worker at prompt with unread.
+      // First time the watchdog sees it (never doorbelled) → inject full notice.
       bus.reengageIdleWorkers();
       expect(launcher.woken.single.notice, TeamBus.doorbellNotice);
 
+      // Swallowed CR → retry submits with a bare CR, not a second notice paste.
       now += TeamBus.doorbellRetryMs;
       bus.reengageIdleWorkers();
-      expect(launcher.woken.length, 2);
-      expect(launcher.woken.last.notice, TeamBus.doorbellNotice);
+      expect(launcher.woken.length, 1);
+      expect(launcher.nudged, ['w1']);
     });
   });
 

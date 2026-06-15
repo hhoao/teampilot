@@ -195,6 +195,16 @@ class TabTeamBusCoordinator implements MemberMaterializer {
     }
   }
 
+  @override
+  void submitMemberPending(String sessionId, String memberId) {
+    // 门铃重试：只补回车，提交已卡在框里的上一条提示，绝不重打全文（见
+    // [MemberLauncher.nudgeSubmit]）。CR-only 在全屏 / 普通 CLI 都安全（空 prompt
+    // 上回车是 no-op）。
+    final shell = _tabStore.bySessionId(sessionId)?.memberShells[memberId];
+    if (shell == null) return;
+    unawaited(shell.submitPendingCr());
+  }
+
   void ensureIdleWatch() {
     if (_idleWatchTimer != null) return;
     _idleWatchTimer = Timer.periodic(

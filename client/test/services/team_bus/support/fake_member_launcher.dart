@@ -5,6 +5,7 @@ import 'package:teampilot/services/team_bus/team_message.dart';
 class FakeMemberLauncher implements MemberLauncher {
   final List<({String memberId, TeamMessage bootstrap})> materialized = [];
   final List<({String memberId, String notice})> woken = [];
+  final List<String> nudged = [];
 
   @override
   Future<void> materialize(String memberId, TeamMessage bootstrap) async {
@@ -14,5 +15,10 @@ class FakeMemberLauncher implements MemberLauncher {
   @override
   void wake(String memberId, String notice) {
     woken.add((memberId: memberId, notice: notice));
+  }
+
+  @override
+  void nudgeSubmit(String memberId) {
+    nudged.add(memberId);
   }
 }

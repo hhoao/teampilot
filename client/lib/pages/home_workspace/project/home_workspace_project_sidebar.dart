@@ -22,12 +22,12 @@ import '../../../utils/app_session_sort.dart';
 import '../../../utils/debounce/debounce.dart';
 import '../../../utils/project_sessions.dart';
 import '../../../widgets/app_icon_button.dart';
+import '../../../widgets/cli/cli_brand_icon.dart';
 import '../../../widgets/menu/sidebar_action_menu.dart';
 import 'config/cli_presets_manage_dialog.dart';
 import '../../../widgets/dropdown/app_dropdown_decoration.dart';
 import '../../../widgets/dropdown/app_dropdown_field.dart';
 import '../../../widgets/sidebar_session_tile.dart';
-import 'config/project_cli_config_helpers.dart';
 import 'project_search_dialog.dart';
 import 'project_session_actions.dart';
 
@@ -285,20 +285,25 @@ class _PresetDropdownItem extends StatelessWidget {
     final l10n = context.l10n;
     final registry = CliToolRegistryScope.of(context);
     final def = registry.tryGet(preset.cli);
-    final cliName = def != null ? cliDisplayName(def, l10n) : preset.cli.value;
     final cs = Theme.of(context).colorScheme;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(
-          preset.name,
-          style: AppTextStyles.of(context).prominent.copyWith(color: cs.onSurface),
+        CliBrandIcon(
+          cli: preset.cli,
+          definition: def,
+          size: 22,
+          borderRadius: 6,
         ),
-        Text(
-          cliName,
-          style: AppTextStyles.of(context).bodySmall.copyWith(color: cs.onSurfaceVariant),
+        const SizedBox(width: 10),
+        Flexible(
+          child: Text(
+            preset.name,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: AppTextStyles.of(context).prominent.copyWith(color: cs.onSurface),
+          ),
         ),
       ],
     );

@@ -106,6 +106,7 @@ Future<void> confirmDeleteHomeWorkspaceProject(
 ) async {
   final l10n = context.l10n;
   final repo = context.read<SessionRepository>();
+  final chatCubit = context.read<ChatCubit>();
   final name = project.localizedName(l10n);
   await showDialog<void>(
     context: context,
@@ -131,7 +132,7 @@ Future<void> confirmDeleteHomeWorkspaceProject(
                 onPressed: throttledAsync(
                   'home_workspace_card_delete_project',
                   () async {
-                    await context.read<ChatCubit>().deleteProject(
+                    await chatCubit.deleteProject(
                       repo,
                       project.projectId,
                     );

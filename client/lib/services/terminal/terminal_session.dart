@@ -846,6 +846,19 @@ class TerminalSession {
     return next;
   }
 
+  /// Submit whatever is already sitting in the input box with a standalone CR,
+  /// without re-typing any text. Used to retry a doorbell whose earlier CR was
+  /// swallowed by the full-screen input box's paste coalescing — re-pasting the
+  /// whole notice would just stack duplicate copies in the box. Serialized
+  /// through the same [_ptySubmitChain] so it never interleaves with a paste.
+  Future<void> submitPendingCr() {
+    final next = _ptySubmitChain.then((_) async {
+      writeToPty('\r');
+    });
+    _ptySubmitChain = next.catchError((_) {});
+    return next;
+  }
+
   void _writeOutput(String text) {
     if (text.isNotEmpty && isConnected) {
       activityTracker.markActive();
