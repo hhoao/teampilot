@@ -28,7 +28,6 @@ import '../../../widgets/dropdown/app_dropdown_decoration.dart';
 import '../../../widgets/dropdown/app_dropdown_field.dart';
 import '../../../widgets/sidebar_session_tile.dart';
 import 'config/project_cli_config_helpers.dart';
-import 'config/project_cli_defaults_section.dart';
 import 'project_search_dialog.dart';
 import 'project_session_actions.dart';
 
