@@ -7,6 +7,7 @@ import '../../cubits/chat_cubit.dart';
 import '../../cubits/mailbox_cubit.dart';
 import '../../cubits/member_presence_cubit.dart';
 import '../../cubits/team_cubit.dart';
+import '../../cubits/workspace_tools_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/layout_preferences.dart';
 import '../../models/team_config.dart';
@@ -120,91 +121,102 @@ class _RightToolsPanelState extends State<RightToolsPanel> {
         team.teamMode == TeamMode.mixed &&
         chatCubit.activeTab?.teamBus != null;
 
-    final views = <ToolView>[
-      if (!widget.isPersonalProject &&
-          widget.preferences.membersVisible &&
-          team != null)
-        ToolView(
-          icon: Icons.groups_outlined,
-          label: context.l10n.members,
-          child: MembersPanel(
-            team: team,
-            members: members,
-            memberPresence: context.watch<MemberPresenceCubit>().state.presence,
-            selectedMemberId: chatCubit.state.selectedMemberId,
-            onSelected: (id) {
-              final member = team.members.firstWhere((m) => m.id == id);
-              final cubit = _chatCubit;
-              if (cubit == null) return;
-              unawaited(
-                cubit.openMemberTab(team, member, workspaceCwd: widget.cwd),
-              );
-              maybeDismissDrawer();
-            },
-            onOpen: (id) {
-              final member = team.members.firstWhere((m) => m.id == id);
-              final cubit = _chatCubit;
-              if (cubit == null) return;
-              unawaited(
-                cubit.openMemberTab(team, member, workspaceCwd: widget.cwd),
-              );
-              maybeDismissDrawer();
-            },
-            onLaunchAll: throttledAsync('right_tools_launch_all', () async {
-              final cubit = _chatCubit;
-              if (cubit == null) return;
-              await cubit.launchAllMembers(team, workspaceCwd: widget.cwd);
-              maybeDismissDrawer();
-            }),
-            canViewDetail: chatCubit.activeTab != null,
-            onViewDetail: (id) {
-              final member = team.members.firstWhere((m) => m.id == id);
-              final cliTeamName = chatCubit.activeTab?.cliTeamName ?? '';
-              unawaited(showMemberDetailDialog(
-                context,
+    // Rebuild when the user switches tool tabs so that the active tool can
+    // enable/disable auto-refresh behaviour.
+    context.watch<WorkspaceToolsCubit>();
+    final selectedIndex = widget.projectId != null
+        ? context.read<WorkspaceToolsCubit>().selectedIndexFor(widget.projectId!)
+        : 0;
+
+    final views = <ToolView>[];
+    if (!widget.isPersonalProject &&
+        widget.preferences.membersVisible &&
+        team != null) {
+      views.add(ToolView(
+        icon: Icons.groups_outlined,
+        label: context.l10n.members,
+        child: MembersPanel(
+          team: team,
+          members: members,
+          memberPresence: context.watch<MemberPresenceCubit>().state.presence,
+          selectedMemberId: chatCubit.state.selectedMemberId,
+          onSelected: (id) {
+            final member = team.members.firstWhere((m) => m.id == id);
+            final cubit = _chatCubit;
+            if (cubit == null) return;
+            unawaited(
+              cubit.openMemberTab(team, member, workspaceCwd: widget.cwd),
+            );
+            maybeDismissDrawer();
+          },
+          onOpen: (id) {
+            final member = team.members.firstWhere((m) => m.id == id);
+            final cubit = _chatCubit;
+            if (cubit == null) return;
+            unawaited(
+              cubit.openMemberTab(team, member, workspaceCwd: widget.cwd),
+            );
+            maybeDismissDrawer();
+          },
+          onLaunchAll: throttledAsync('right_tools_launch_all', () async {
+            final cubit = _chatCubit;
+            if (cubit == null) return;
+            await cubit.launchAllMembers(team, workspaceCwd: widget.cwd);
+            maybeDismissDrawer();
+          }),
+          canViewDetail: chatCubit.activeTab != null,
+          onViewDetail: (id) {
+            final member = team.members.firstWhere((m) => m.id == id);
+            final cliTeamName = chatCubit.activeTab?.cliTeamName ?? '';
+            unawaited(showMemberDetailDialog(
+              context,
+              team: team,
+              member: member,
+              cliTeamName: cliTeamName,
+            ));
+            maybeDismissDrawer();
+          },
+          onOpenConfigDir: (id) {
+            final member = team.members.firstWhere((m) => m.id == id);
+            final cliTeamName = chatCubit.activeTab?.cliTeamName ?? '';
+            unawaited(() async {
+              final detail = await MemberConfigInspector().inspect(
                 team: team,
                 member: member,
                 cliTeamName: cliTeamName,
-              ));
-              maybeDismissDrawer();
-            },
-            onOpenConfigDir: (id) {
-              final member = team.members.firstWhere((m) => m.id == id);
-              final cliTeamName = chatCubit.activeTab?.cliTeamName ?? '';
-              unawaited(() async {
-                final detail = await MemberConfigInspector().inspect(
-                  team: team,
-                  member: member,
-                  cliTeamName: cliTeamName,
-                );
-                if (detail.resolvedDir.isNotEmpty) {
-                  await SystemFolderOpener().reveal(detail.resolvedDir);
-                }
-              }());
-              maybeDismissDrawer();
-            },
-          ),
+              );
+              if (detail.resolvedDir.isNotEmpty) {
+                await SystemFolderOpener().reveal(detail.resolvedDir);
+              }
+            }());
+            maybeDismissDrawer();
+          },
         ),
-      if (widget.preferences.fileTreeVisible)
-        ToolView(
-          icon: Icons.folder_outlined,
-          label: context.l10n.fileTree,
-          child: FileTreePanel(cwd: widget.cwd),
-        ),
-      if (widget.preferences.gitVisible)
-        ToolView(
-          icon: Icons.account_tree_outlined,
-          label: context.l10n.sourceControl,
-          child: GitSourceControlPanel(cwd: widget.cwd),
-        ),
-      if (showMailbox)
-        ToolView(
-          icon: Icons.mail_outline,
-          label: context.l10n.mailbox,
-          badgeCount: mailboxState.totalUnread,
-          child: MailboxPanel(team: team, cwd: widget.cwd),
-        ),
-    ];
+      ));
+    }
+    if (widget.preferences.fileTreeVisible) {
+      views.add(ToolView(
+        icon: Icons.folder_outlined,
+        label: context.l10n.fileTree,
+        child: FileTreePanel(cwd: widget.cwd),
+      ));
+    }
+    if (widget.preferences.gitVisible) {
+      final isGitActive = selectedIndex == views.length;
+      views.add(ToolView(
+        icon: Icons.account_tree_outlined,
+        label: context.l10n.sourceControl,
+        child: GitSourceControlPanel(cwd: widget.cwd, isActive: isGitActive),
+      ));
+    }
+    if (showMailbox) {
+      views.add(ToolView(
+        icon: Icons.mail_outline,
+        label: context.l10n.mailbox,
+        badgeCount: mailboxState.totalUnread,
+        child: MailboxPanel(team: team, cwd: widget.cwd),
+      ));
+    }
     return Container(
       key: widget.panelKey,
       child: TabbedPanel(views: views, scopeId: widget.projectId),

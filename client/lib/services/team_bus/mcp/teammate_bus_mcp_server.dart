@@ -140,7 +140,7 @@ class TeammateBusMcpServer {
     final sw = Stopwatch()..start();
     var pings = 0;
     var disconnectAtSec = -1;
-    appLogger.i(
+    appLogger.d(
       '[teammate-bus-mcp] stream open member=$member '
       'tool=${rpc.params['name']} id=${rpc.id} '
       'progressToken=${progressToken != null} '
@@ -209,11 +209,6 @@ class TeammateBusMcpServer {
     } finally {
       _activeStreams.remove(cancel);
       keepalive.cancel();
-      appLogger.i(
-        '[teammate-bus-mcp] stream closed member=$member '
-        'total=${sw.elapsed.inSeconds}s pings=$pings '
-        'disconnectAt=${disconnectAtSec < 0 ? 'n/a' : '${disconnectAtSec}s'}',
-      );
       try {
         await response.close();
       } catch (_) {}

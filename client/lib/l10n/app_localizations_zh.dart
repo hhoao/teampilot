@@ -1034,6 +1034,21 @@ class AppLocalizationsZh extends AppLocalizations {
   String get deleteConversation => '删除对话';
 
   @override
+  String get pinConversation => '置顶对话';
+
+  @override
+  String get unpinConversation => '取消置顶';
+
+  @override
+  String get sessionSortRecentlyUpdated => '最近更新';
+
+  @override
+  String get sessionSortCreatedDesc => '创建时间';
+
+  @override
+  String get sessionSortTooltip => '排序对话';
+
+  @override
   String get renameConversationTitle => '重命名对话';
 
   @override

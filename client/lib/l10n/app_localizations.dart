@@ -2036,6 +2036,36 @@ abstract class AppLocalizations {
   /// **'Delete conversation'**
   String get deleteConversation;
 
+  /// No description provided for @pinConversation.
+  ///
+  /// In en, this message translates to:
+  /// **'Pin conversation'**
+  String get pinConversation;
+
+  /// No description provided for @unpinConversation.
+  ///
+  /// In en, this message translates to:
+  /// **'Unpin conversation'**
+  String get unpinConversation;
+
+  /// No description provided for @sessionSortRecentlyUpdated.
+  ///
+  /// In en, this message translates to:
+  /// **'Recently updated'**
+  String get sessionSortRecentlyUpdated;
+
+  /// No description provided for @sessionSortCreatedDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Date created'**
+  String get sessionSortCreatedDesc;
+
+  /// No description provided for @sessionSortTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Sort conversations'**
+  String get sessionSortTooltip;
+
   /// No description provided for @renameConversationTitle.
   ///
   /// In en, this message translates to:

@@ -1087,6 +1087,21 @@ class AppLocalizationsEn extends AppLocalizations {
   String get deleteConversation => 'Delete conversation';
 
   @override
+  String get pinConversation => 'Pin conversation';
+
+  @override
+  String get unpinConversation => 'Unpin conversation';
+
+  @override
+  String get sessionSortRecentlyUpdated => 'Recently updated';
+
+  @override
+  String get sessionSortCreatedDesc => 'Date created';
+
+  @override
+  String get sessionSortTooltip => 'Sort conversations';
+
+  @override
   String get renameConversationTitle => 'Rename Conversation';
 
   @override

@@ -86,6 +86,7 @@ class SessionLaunchService implements MemberConnector {
 
   static const _uuid = Uuid();
   final _teamConfigValidator = TeamConfigLaunchValidator();
+  final _lastTouchTimes = <String, int>{};
 
   ChatState get _state => _h.state;
   ChatTabStore get _tabStore => _h.tabStore;
@@ -570,6 +571,9 @@ class SessionLaunchService implements MemberConnector {
       onFirstUserLineSubmitted: _autoRenameOnFirstPrompt(
         activeSession.sessionId,
       ),
+      onEveryUserLineSubmitted: _autoTouchOnEveryPrompt(
+        activeSession.sessionId,
+      ),
       onProcessFailed: (message) => _h.failSessionConnect(tab.info.id, message),
       onProcessExited: () => _h.updateTabRunning(tab.info.id),
       onProcessStarted: () {
@@ -837,6 +841,30 @@ class SessionLaunchService implements MemberConnector {
     if (repo == null) return null;
     return (line) {
       unawaited(_maybeAutoRenameSessionFromFirstPrompt(repo, sessionId, line));
+    };
+  }
+
+  /// Bumps session updatedAt on every user-submitted line (debounced per
+  /// session: at most once every 5 seconds). Called from the PTY engine output
+  /// listener via [EveryUserLineCapture].
+  void Function(String line)? _autoTouchOnEveryPrompt(String sessionId) {
+    if (sessionId.startsWith('local-')) return null;
+    final repo = _h.sessionRepository;
+    if (repo == null) return null;
+    return (line) {
+      final now = DateTime.now().millisecondsSinceEpoch;
+      final last = _lastTouchTimes[sessionId] ?? 0;
+      if (now - last < 5000) return;
+      _lastTouchTimes[sessionId] = now;
+      unawaited(repo.touchSession(sessionId));
+      // Lightweight in-memory update — no full disk reload.
+      if (_h.isClosed) return;
+      _h.applyState(_state.copyWith(
+        sessions: _state.sessions.map((s) {
+          if (s.sessionId != sessionId) return s;
+          return s.copyWith(updatedAt: now);
+        }).toList(),
+      ));
     };
   }
 

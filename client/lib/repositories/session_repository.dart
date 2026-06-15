@@ -507,6 +507,29 @@ class SessionRepository {
     });
   }
 
+  Future<void> touchSession(String sessionId) {
+    return _withSessionFile(sessionId, () async {
+      final fs = await _fs();
+      final existing = await _readSession(fs, sessionId);
+      if (existing == null) return;
+      final now = DateTime.now().millisecondsSinceEpoch;
+      await _writeSession(fs, existing.copyWith(updatedAt: now));
+    });
+  }
+
+  Future<void> toggleSessionPin(String sessionId) {
+    return _withSessionFile(sessionId, () async {
+      final fs = await _fs();
+      final existing = await _readSession(fs, sessionId);
+      if (existing == null) return;
+      final now = DateTime.now().millisecondsSinceEpoch;
+      await _writeSession(
+        fs,
+        existing.copyWith(pinned: !existing.pinned, updatedAt: now),
+      );
+    });
+  }
+
   /// Persists stable UI team id ([AppSession.sessionTeam], [TeamConfig.id]).
   Future<void> updateSessionTeam(String sessionId, String sessionTeam) {
     return _withSessionFile(sessionId, () async {

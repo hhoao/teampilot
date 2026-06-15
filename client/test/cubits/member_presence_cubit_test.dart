@@ -36,6 +36,7 @@ class _FakeTerminalSession extends TerminalSession {
     void Function(String message)? onProcessFailed,
     void Function()? onProcessExited,
     void Function(String line)? onFirstUserLineSubmitted,
+    void Function(String line)? onEveryUserLineSubmitted,
     BusUserInputRouting? busUserInputRouting,
   }) {
     _running = true;

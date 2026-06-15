@@ -17,10 +17,12 @@ import '../../../services/cli/registry/cli_tool_registry.dart';
 import '../../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../../theme/app_text_styles.dart';
 import '../../../utils/app_keys.dart';
+import '../../../utils/app_session_sort.dart';
 import '../../../utils/debounce/debounce.dart';
 import '../../../utils/project_sessions.dart';
 import '../../../widgets/app_icon_button.dart';
 import '../../../widgets/app_provider/brand_dropdown_rows.dart';
+import '../../../widgets/menu/sidebar_action_menu.dart';
 import '../../../widgets/dropdown/app_dropdown_decoration.dart';
 import '../../../widgets/dropdown/app_dropdown_field.dart';
 import '../../../widgets/sidebar_session_tile.dart';
@@ -55,6 +57,8 @@ class _HomeWorkspaceProjectSidebarState
 
   bool get _isPersonal => widget.project.teamId.isEmpty;
 
+  AppSessionSort _sessionSort = AppSessionSort.recentlyUpdated;
+
   @override
   void initState() {
     super.initState();
@@ -70,7 +74,7 @@ class _HomeWorkspaceProjectSidebarState
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final l10n = context.l10n;
-    final sessions = context.select<ChatCubit, List<AppSession>>((c) {
+    final rawSessions = context.select<ChatCubit, List<AppSession>>((c) {
       final grouped = groupSessionsByProjectId(c.state.sessions);
       final bucket = grouped[widget.project.projectId];
       if (bucket == null || bucket.isEmpty) {
@@ -78,6 +82,7 @@ class _HomeWorkspaceProjectSidebarState
       }
       return sessionsForProject(widget.project, bucket);
     });
+    final sortedSessions = sortAppSessions(rawSessions, sort: _sessionSort);
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
@@ -111,6 +116,11 @@ class _HomeWorkspaceProjectSidebarState
                     ),
                   ),
                 ),
+                _SessionSortButton(
+                  sort: _sessionSort,
+                  onChanged: (s) => setState(() => _sessionSort = s),
+                ),
+                const SizedBox(width: 2),
                 AppIconButton(
                   icon: Icons.search_rounded,
                   compact: true, size: AppIconButton.kCompactSize,
@@ -126,18 +136,30 @@ class _HomeWorkspaceProjectSidebarState
             ),
           ),
           Expanded(
-            child: sessions.isEmpty
+            child: sortedSessions.isEmpty
                 ? _EmptyConversations(label: l10n.homeWorkspaceNoConversations)
-                : ListView.builder(
+                : ReorderableListView.builder(
                     padding: EdgeInsets.zero,
-                    itemCount: sessions.length,
+                    buildDefaultDragHandles: false,
+                    itemCount: sortedSessions.length,
+                    onReorder: (oldIndex, newIndex) {
+                      final chatCubit = context.read<ChatCubit>();
+                      if (oldIndex < sortedSessions.length) {
+                        unawaited(
+                          chatCubit.touchSession(
+                            sortedSessions[oldIndex].sessionId,
+                          ),
+                        );
+                      }
+                    },
                     itemBuilder: (context, index) {
-                      final session = sessions[index];
+                      final session = sortedSessions[index];
                       return SidebarSessionTile(
                         key: ValueKey(
                           'project-sidebar-session-${session.sessionId}',
                         ),
                         session: session,
+                        index: index,
                         tapThrottleKeyPrefix: 'project_sidebar_session',
                         onTap: () => unawaited(
                           openProjectSessionTab(
@@ -346,6 +368,69 @@ class _SidebarActionTileState extends State<_SidebarActionTile> {
       ),
     );
   }
+}
+
+class _SessionSortButton extends StatelessWidget {
+  const _SessionSortButton({required this.sort, required this.onChanged});
+
+  final AppSessionSort sort;
+  final ValueChanged<AppSessionSort> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    return SidebarActionMenuIconAnchor(
+      size: AppIconButton.kCompactSize,
+      triggerBuilder: (context, controller) => AppIconButton(
+        icon: Icons.sort_rounded,
+        compact: true,
+        size: AppIconButton.kCompactSize,
+        tooltip: l10n.sessionSortTooltip,
+        onTap: () {
+          if (controller.isOpen) {
+            controller.close();
+          } else {
+            controller.open();
+          }
+        },
+      ),
+      buildMenuChildren: (context, controller) {
+        return [
+          for (final value in AppSessionSort.values)
+            SidebarActionMenuItem(
+              icon: _iconForSessionSort(value),
+              label: _labelForSessionSort(value, l10n),
+              trailing: sort == value
+                  ? Icon(
+                      Icons.check,
+                      size: context.appIconSizes.md,
+                      color: Theme.of(context)
+                          .colorScheme
+                          .onSurface
+                          .withValues(alpha: 0.7),
+                    )
+                  : null,
+              menuController: controller,
+              onTap: () => onChanged(value),
+            ),
+        ];
+      },
+    );
+  }
+
+  static String _labelForSessionSort(
+    AppSessionSort sort,
+    AppLocalizations l10n,
+  ) =>
+      switch (sort) {
+        AppSessionSort.recentlyUpdated => l10n.sessionSortRecentlyUpdated,
+        AppSessionSort.createdDesc => l10n.sessionSortCreatedDesc,
+      };
+
+  static IconData _iconForSessionSort(AppSessionSort sort) => switch (sort) {
+    AppSessionSort.recentlyUpdated => Icons.update_rounded,
+    AppSessionSort.createdDesc => Icons.event_rounded,
+  };
 }
 
 class _EmptyConversations extends StatelessWidget {

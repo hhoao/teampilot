@@ -469,6 +469,11 @@
   "unknownFolder": "Unknown",
   "renameConversation": "Rename conversation",
   "deleteConversation": "Delete conversation",
+  "pinConversation": "Pin conversation",
+  "unpinConversation": "Unpin conversation",
+  "sessionSortRecentlyUpdated": "Recently updated",
+  "sessionSortCreatedDesc": "Date created",
+  "sessionSortTooltip": "Sort conversations",
   "renameConversationTitle": "Rename Conversation",
   "deleteConversationConfirm": "Delete conversation \"{name}\"? This cannot be undone.",
   "@deleteConversationConfirm": {

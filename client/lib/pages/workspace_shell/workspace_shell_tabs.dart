@@ -15,7 +15,8 @@ import '../../widgets/session_working_spinner.dart';
 import 'workspace_shell_models.dart';
 
 class WorkspaceShellTabRowTrailing extends StatelessWidget {
-  const WorkspaceShellTabRowTrailing({super.key, 
+  const WorkspaceShellTabRowTrailing({
+    super.key,
     this.actions,
     required this.showRightToolsToggle,
   });
@@ -71,7 +72,8 @@ class WorkspaceShellRightToolsVisibilityToggle extends StatelessWidget {
 }
 
 class WorkspaceShellTabRow extends StatelessWidget {
-  const WorkspaceShellTabRow({super.key, 
+  const WorkspaceShellTabRow({
+    super.key,
     required this.tabs,
     required this.activeIndex,
     this.onTabSelected,
@@ -134,7 +136,8 @@ class WorkspaceShellTabRow extends StatelessWidget {
 }
 
 class WorkspaceShellTabChip extends StatefulWidget {
-  const WorkspaceShellTabChip({super.key,
+  const WorkspaceShellTabChip({
+    super.key,
     required this.title,
     required this.active,
     required this.onTap,

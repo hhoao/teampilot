@@ -24,6 +24,7 @@ class SidebarSessionTile extends StatefulWidget {
     required this.onTap,
     this.tapThrottleKeyPrefix = 'sidebar_session',
     this.contentLeftInset = 12,
+    this.index = -1,
     super.key,
   });
 
@@ -33,6 +34,10 @@ class SidebarSessionTile extends StatefulWidget {
   /// Prefix for [throttledTap] keys (`{prefix}_{sessionId}`).
   final String tapThrottleKeyPrefix;
   final double contentLeftInset;
+
+  /// Index in the parent [ReorderableListView]. When >= 0, a drag handle is
+  /// shown on hover so the user can reorder sessions by dragging.
+  final int index;
 
   @override
   State<SidebarSessionTile> createState() => _SidebarSessionTileState();
@@ -141,6 +146,131 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
       (cubit) => cubit.state.workingSessionIds.contains(session.sessionId),
     );
     final l10n = context.l10n;
+    final cs = Theme.of(context).colorScheme;
+
+    // Leading area: shared 24×24 slot — indicator (idle) ↔ drag handle (hover).
+    final Widget leadingWidget;
+    if (widget.index >= 0) {
+      leadingWidget = ReorderableDragStartListener(
+        index: widget.index,
+        child: MouseRegion(
+          cursor: _hovered
+              ? SystemMouseCursors.grab
+              : SystemMouseCursors.basic,
+          child: SizedBox(
+            width: 24,
+            height: 24,
+            child: Stack(
+              children: [
+                AnimatedOpacity(
+                  opacity: _showSessionActions ? 0 : 1,
+                  duration: const Duration(milliseconds: 120),
+                  curve: Curves.easeOut,
+                  child: Center(
+                    child: SessionWorkingIndicator(
+                      working: working,
+                      size: 13,
+                      color: selected ? cs.onPrimaryContainer : cs.primary,
+                      idleColor:
+                          (selected ? cs.onPrimaryContainer : cs.onSurfaceVariant)
+                              .withValues(alpha: 0.5),
+                    ),
+                  ),
+                ),
+                AnimatedOpacity(
+                  opacity: _showSessionActions ? 0.65 : 0,
+                  duration: const Duration(milliseconds: 120),
+                  curve: Curves.easeOut,
+                  child: Center(
+                    child: Icon(
+                      Icons.drag_indicator_rounded,
+                      size: 18,
+                      color: cs.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    } else {
+      leadingWidget = SizedBox(
+        width: 24,
+        height: 24,
+        child: Center(
+          child: SessionWorkingIndicator(
+            working: working,
+            size: 13,
+            color: selected ? cs.onPrimaryContainer : cs.primary,
+            idleColor: (selected ? cs.onPrimaryContainer : cs.onSurfaceVariant)
+                .withValues(alpha: 0.5),
+          ),
+        ),
+      );
+    }
+
+    // Trailing row: pin, delete, overflow menu (hover-revealed, no gap when
+    // hidden — uses `if` + AnimatedSize instead of AnimatedOpacity).
+    final trailing = AnimatedSize(
+      duration: const Duration(milliseconds: 120),
+      curve: Curves.easeOut,
+      alignment: Alignment.centerRight,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (session.pinned || _showSessionActions)
+            AppIconButton(
+              icon: session.pinned
+                  ? Icons.push_pin
+                  : Icons.push_pin_outlined,
+              compact: true,
+              size: AppIconButton.kCompactSize,
+              tooltip:
+                  session.pinned ? l10n.unpinConversation : l10n.pinConversation,
+              color: session.pinned ? cs.primary : null,
+              onTap: () => context
+                  .read<ChatCubit>()
+                  .toggleSessionPin(session.sessionId),
+            ),
+          if (_showSessionActions)
+            AppIconButton(
+              icon: Icons.delete_outline,
+              compact: true,
+              size: AppIconButton.kCompactSize,
+              tooltip: l10n.deleteConversation,
+              onTap: () => _showDeleteDialog(context, session, l10n),
+            ),
+          if (_showSessionActions)
+            SizedBox(
+              width: AppIconButton.kDefaultSize,
+              height: AppIconButton.kDefaultSize,
+              child: SidebarActionMenuIconAnchor(
+                icon: Icon(Icons.more_horiz, size: context.appIconSizes.md),
+                onOpen: () => setState(() => _menuOpen = true),
+                onClose: () => setState(() => _menuOpen = false),
+                buildMenuChildren: (context, controller) => [
+                  SidebarActionMenuItem(
+                    icon: Icons.drive_file_rename_outline,
+                    label: l10n.renameConversation,
+                    menuController: controller,
+                    onTap: () =>
+                        _showRenameDialog(context, session, l10n),
+                  ),
+                  SidebarActionMenuItem(
+                    icon: Icons.delete_outline,
+                    label: l10n.deleteConversation,
+                    destructive: true,
+                    menuController: controller,
+                    onTap: () =>
+                        _showDeleteDialog(context, session, l10n),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
 
     return MouseRegion(
       onEnter: (_) => setState(() => _hovered = true),
@@ -149,9 +279,9 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
         key: AppKeys.sessionTile(session.sessionId),
         title: session.resolveDisplayTitle(l10n.defaultNewChatSessionTitle),
         selected: selected,
-        working: working,
         rowHovered: _hovered || _menuOpen,
         contentLeftInset: widget.contentLeftInset,
+        leading: leadingWidget,
         onTap: throttledTap(
           '${widget.tapThrottleKeyPrefix}_${session.sessionId}',
           widget.onTap,
@@ -160,35 +290,7 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
         onLongPress: Platform.isAndroid
             ? _showSessionContextMenuAtCenter
             : null,
-        trailing: SizedBox(
-          width: AppIconButton.kDefaultSize,
-          height: AppIconButton.kDefaultSize,
-          child: _showSessionActions
-              ? SidebarActionMenuIconAnchor(
-                  icon: Icon(
-                    Icons.more_horiz,
-                    size: context.appIconSizes.md,
-                  ),
-                  onOpen: () => setState(() => _menuOpen = true),
-                  onClose: () => setState(() => _menuOpen = false),
-                  buildMenuChildren: (context, controller) => [
-                    SidebarActionMenuItem(
-                      icon: Icons.drive_file_rename_outline,
-                      label: l10n.renameConversation,
-                      menuController: controller,
-                      onTap: () => _showRenameDialog(context, session, l10n),
-                    ),
-                    SidebarActionMenuItem(
-                      icon: Icons.delete_outline,
-                      label: l10n.deleteConversation,
-                      destructive: true,
-                      menuController: controller,
-                      onTap: () => _showDeleteDialog(context, session, l10n),
-                    ),
-                  ],
-                )
-              : null,
-        ),
+        trailing: trailing,
       ),
     );
   }
@@ -237,20 +339,17 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
                   child: Text(l10n.cancel),
                 ),
                 FilledButton(
-                  onPressed: throttledAsync(
-                    'sidebar_rename_session',
-                    () async {
-                      final value = controller.text.trim();
-                      if (value.isNotEmpty) {
-                        await chatCubit.renameSession(
-                          repo,
-                          session.sessionId,
-                          value,
-                        );
-                      }
-                      if (ctx.mounted) Navigator.of(ctx).pop();
-                    },
-                  ),
+                  onPressed: throttledAsync('sidebar_rename_session', () async {
+                    final value = controller.text.trim();
+                    if (value.isNotEmpty) {
+                      await chatCubit.renameSession(
+                        repo,
+                        session.sessionId,
+                        value,
+                      );
+                    }
+                    if (ctx.mounted) Navigator.of(ctx).pop();
+                  }),
                   child: Text(l10n.save),
                 ),
               ],
@@ -290,16 +389,10 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
                   style: FilledButton.styleFrom(
                     backgroundColor: Theme.of(ctx).colorScheme.error,
                   ),
-                  onPressed: throttledAsync(
-                    'sidebar_delete_session',
-                    () async {
-                      await chatCubit.deleteSession(
-                        repo,
-                        session.sessionId,
-                      );
-                      if (ctx.mounted) Navigator.of(ctx).pop();
-                    },
-                  ),
+                  onPressed: throttledAsync('sidebar_delete_session', () async {
+                    await chatCubit.deleteSession(repo, session.sessionId);
+                    if (ctx.mounted) Navigator.of(ctx).pop();
+                  }),
                   child: Text(l10n.delete),
                 ),
               ],
@@ -318,11 +411,11 @@ class _SidebarTile extends StatelessWidget {
     required this.selected,
     // ignore: unused_element_parameter
     this.subtitle = '',
-    this.working = false,
     this.rowHovered = false,
     this.onTap,
     this.onSecondaryTapDown,
     this.onLongPress,
+    this.leading,
     this.trailing,
     this.contentLeftInset = 0,
     super.key,
@@ -331,11 +424,11 @@ class _SidebarTile extends StatelessWidget {
   final String title;
   final String subtitle;
   final bool selected;
-  final bool working;
   final bool rowHovered;
   final VoidCallback? onTap;
   final GestureTapDownCallback? onSecondaryTapDown;
   final VoidCallback? onLongPress;
+  final Widget? leading;
   final Widget? trailing;
   final double contentLeftInset;
 
@@ -379,15 +472,7 @@ class _SidebarTile extends StatelessWidget {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                SessionWorkingIndicator(
-                  working: working,
-                  size: 13,
-                  // Selected rows sit on primaryContainer; primary washes out
-                  // there, so use the readable on-container color.
-                  color: selected ? cs.onPrimaryContainer : cs.primary,
-                  idleColor: (selected ? cs.onPrimaryContainer : cs.onSurfaceVariant)
-                      .withValues(alpha: 0.5),
-                ),
+                if (leading != null) leading!,
                 const SizedBox(width: 8),
                 Expanded(
                   child: Align(

@@ -675,6 +675,20 @@ class ChatCubit extends Cubit<ChatState>
     );
   }
 
+  Future<void> touchSession(String sessionId) async {
+    final repo = _sessionRepository;
+    if (repo == null) return;
+    await repo.touchSession(sessionId);
+    _emitSnapshot(await _dataStore.loadProjectData(repo));
+  }
+
+  Future<void> toggleSessionPin(String sessionId) async {
+    final repo = _sessionRepository;
+    if (repo == null) return;
+    await repo.toggleSessionPin(sessionId);
+    _emitSnapshot(await _dataStore.loadProjectData(repo));
+  }
+
   Future<void> deleteSession(SessionRepository repo, String sessionId) async {
     final wasActive = state.activeSessionId == sessionId;
     final sessions = state.sessions

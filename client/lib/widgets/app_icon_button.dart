@@ -54,29 +54,30 @@ class AppIconButton extends StatelessWidget {
       );
     }
 
-    Widget child = Container(
+    Widget ink = Ink(
       width: size,
       height: size,
-      alignment: Alignment.center,
       decoration: BoxDecoration(
         borderRadius: radius,
         color: backgroundColor,
       ),
-      child: iconChild,
+      child: InkWell(
+        borderRadius: radius,
+        hoverColor: effectiveColor.withValues(alpha: 0.12),
+        splashColor: effectiveColor.withValues(alpha: 0.2),
+        onTap: enabled ? onTap : null,
+        child: Center(child: iconChild),
+      ),
     );
 
     if (tooltip != null && tooltip!.isNotEmpty) {
-      child = Tooltip(message: tooltip!, child: child);
+      ink = Tooltip(message: tooltip!, child: ink);
     }
 
     return Material(
       color: Colors.transparent,
       borderRadius: radius,
-      child: InkWell(
-        borderRadius: radius,
-        onTap: enabled ? onTap : null,
-        child: child,
-      ),
+      child: ink,
     );
   }
 }

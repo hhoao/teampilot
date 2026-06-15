@@ -20,6 +20,7 @@ class AppSession {
     this.launchState = AppSessionLaunchState.created,
     required this.createdAt,
     this.updatedAt = 0,
+    this.pinned = false,
   });
 
   factory AppSession.fromJson(Map<String, Object?> json) {
@@ -56,6 +57,7 @@ class AppSession {
       launchState: launch,
       createdAt: json['createdAt'] as int? ?? 0,
       updatedAt: json['updatedAt'] as int? ?? 0,
+      pinned: json['pinned'] as bool? ?? false,
     );
   }
 
@@ -80,6 +82,7 @@ class AppSession {
   final AppSessionLaunchState launchState;
   final int createdAt;
   final int updatedAt;
+  final bool pinned;
 
   String resolveDisplayTitle(String whenDisplayEmpty) =>
       display.isNotEmpty ? display : whenDisplayEmpty;
@@ -108,6 +111,7 @@ class AppSession {
     AppSessionLaunchState? launchState,
     int? createdAt,
     int? updatedAt,
+    bool? pinned,
   }) {
     return AppSession(
       sessionId: sessionId ?? this.sessionId,
@@ -122,6 +126,7 @@ class AppSession {
       launchState: launchState ?? this.launchState,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      pinned: pinned ?? this.pinned,
     );
   }
 
@@ -141,6 +146,7 @@ class AppSession {
       'launchState': launchState.name,
       'createdAt': createdAt,
       'updatedAt': updatedAt,
+      'pinned': pinned,
     };
   }
 
@@ -160,7 +166,8 @@ class AppSession {
             listEquals(members, other.members) &&
             launchState == other.launchState &&
             createdAt == other.createdAt &&
-            updatedAt == other.updatedAt;
+            updatedAt == other.updatedAt &&
+            pinned == other.pinned;
   }
 
   @override
@@ -177,5 +184,6 @@ class AppSession {
     launchState,
     createdAt,
     updatedAt,
+    pinned,
   );
 }
