@@ -19,6 +19,7 @@ import '../../utils/debounce/debounce.dart';
 import '../../utils/team_member_naming.dart';
 import '../git/git_source_control_panel.dart';
 import 'file_tree_panel.dart';
+import 'board_panel.dart';
 import 'mailbox_panel.dart';
 import 'members_panel.dart';
 import 'tabbed_panel.dart';
@@ -121,6 +122,11 @@ class _RightToolsPanelState extends State<RightToolsPanel> {
         team.teamMode == TeamMode.mixed &&
         chatCubit.activeTab?.teamBus != null;
 
+    // Board is mixed-mode-only and consumes the same TeamBus as mailbox; it
+    // shares mailbox's gate (the unread badge is mailbox-specific and doesn't
+    // affect whether the bus exists).
+    final showBoard = showMailbox;
+
     // Rebuild when the user switches tool tabs so that the active tool can
     // enable/disable auto-refresh behaviour.
     context.watch<WorkspaceToolsCubit>();
@@ -215,6 +221,13 @@ class _RightToolsPanelState extends State<RightToolsPanel> {
         label: context.l10n.mailbox,
         badgeCount: mailboxState.totalUnread,
         child: MailboxPanel(team: team, cwd: widget.cwd),
+      ));
+    }
+    if (showBoard) {
+      views.add(ToolView(
+        icon: Icons.view_kanban_outlined,
+        label: context.l10n.board,
+        child: BoardPanel(team: team, cwd: widget.cwd),
       ));
     }
     return Container(
