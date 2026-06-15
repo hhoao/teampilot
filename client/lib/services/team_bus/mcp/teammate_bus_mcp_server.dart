@@ -169,13 +169,6 @@ class TeammateBusMcpServer {
           );
         }
         await response.flush();
-        // 诊断超时：每个 tick 坐实「ping 写成功 + progress 到底发了还是因缺
-        // token 被跳过」——progress=SKIP 时 client 只靠 TCP 注释，逻辑超时照触发。
-        appLogger.d(
-          '[teammate-bus-mcp] keepalive #$pings member=$member '
-          't=${sw.elapsed.inSeconds}s ping=ok '
-          'progress=${sentProgress ? 'sent' : 'SKIP(no token)'}',
-        );
       } catch (e) {
         disconnectAtSec = sw.elapsed.inSeconds;
         timer.cancel();

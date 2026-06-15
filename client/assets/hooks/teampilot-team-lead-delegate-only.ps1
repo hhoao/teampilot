@@ -1,5 +1,7 @@
 # TeamPilot PreToolUse: team-lead delegate-only mode — block local execution tools.
 $ErrorActionPreference = 'Stop'
+# Emit UTF-8 so non-ASCII chars (em-dash, quotes) in deny reasons reach Claude intact.
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 
 $inputRaw = [Console]::In.ReadToEnd()
 if ([string]::IsNullOrWhiteSpace($inputRaw)) { exit 0 }

@@ -1,5 +1,7 @@
 # TeamPilot PreToolUse: block team-lead self-targeting on SendMessage / TaskUpdate / Agent.
 $ErrorActionPreference = 'Stop'
+# Emit UTF-8 so non-ASCII chars (em-dash, quotes) in deny reasons reach Claude intact.
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 
 $inputRaw = [Console]::In.ReadToEnd()
 if ([string]::IsNullOrWhiteSpace($inputRaw)) { exit 0 }
