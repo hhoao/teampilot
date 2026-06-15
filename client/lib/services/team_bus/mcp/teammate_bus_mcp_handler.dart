@@ -3,6 +3,7 @@ import 'dart:convert';
 import '../cancellation.dart';
 import '../persistence/bus_message_page.dart';
 import '../idle_notification.dart';
+import '../tasks/task_router.dart';
 import '../tasks/team_task.dart';
 import '../team_bus.dart';
 import '../team_message.dart';
@@ -251,7 +252,10 @@ class TeammateBusMcpHandler {
           'receive them automatically via their own wait_for_message (FIFO, '
           'deps-gated, auto-claimed). Each task: title (one line), brief (full '
           'instructions), optional depends_on (task ids that must be done '
-          'first).',
+          'first). Optionally route by capability: required_capabilities (hard '
+          'filter — only members with all of them claim it), '
+          'preferred_capabilities (ranking among eligible), and '
+          'preferred_assignee (member id given first dibs).',
       'inputSchema': {
         'type': 'object',
         'additionalProperties': false,
@@ -268,6 +272,15 @@ class TeammateBusMcpHandler {
                   'type': 'array',
                   'items': {'type': 'string'},
                 },
+                'required_capabilities': {
+                  'type': 'array',
+                  'items': {'type': 'string'},
+                },
+                'preferred_capabilities': {
+                  'type': 'array',
+                  'items': {'type': 'string'},
+                },
+                'preferred_assignee': {'type': 'string'},
               },
               'required': ['title', 'brief'],
             },
@@ -308,6 +321,22 @@ class TeammateBusMcpHandler {
           'status': {'type': 'string'},
         },
         'required': <String>[],
+      },
+    },
+    {
+      'name': 'claim_task',
+      'description':
+          'Worker: self-pick a specific task you are eligible for from the '
+          'board (use list_tasks to see eligible_for_you/match_score). Claims '
+          'it atomically; fails if it is gone, already claimed, blocked, or you '
+          'are not eligible.',
+      'inputSchema': {
+        'type': 'object',
+        'additionalProperties': false,
+        'properties': {
+          'task_id': {'type': 'string'},
+        },
+        'required': ['task_id'],
       },
     },
   ];
@@ -396,6 +425,21 @@ class TeammateBusMcpHandler {
                   for (final d in (item['depends_on'] as List?) ?? const [])
                     if (d is String) d,
                 ],
+                requiredCapabilities: {
+                  for (final c
+                      in (item['required_capabilities'] as List?) ?? const [])
+                    if (c is String && c.trim().isNotEmpty) c.trim(),
+                },
+                preferredCapabilities: {
+                  for (final c
+                      in (item['preferred_capabilities'] as List?) ?? const [])
+                    if (c is String && c.trim().isNotEmpty) c.trim(),
+                },
+                preferredAssignee:
+                    ((item['preferred_assignee'] as String?)?.trim() ?? '')
+                            .isEmpty
+                        ? null
+                        : (item['preferred_assignee'] as String).trim(),
               ),
         ];
         final created = _bus.addTasks(memberId, drafts);
@@ -428,16 +472,34 @@ class TeammateBusMcpHandler {
         final status = (filter == null || filter.isEmpty)
             ? null
             : TaskStatus.parse(filter);
-        return _ok(req.id, _encodeTasks(_bus.listTasks(status: status)));
+        return _ok(
+            req.id, _encodeTasks(_bus.listTasks(status: status), memberId));
+      case 'claim_task':
+        if (!_bus.hasTaskQueue) {
+          return JsonRpcResponse.error(req.id, -32602, 'No task queue');
+        }
+        final taskId = (args['task_id'] as String?)?.trim() ?? '';
+        final claimed = _bus.claimSpecificTask(taskId, memberId);
+        if (claimed == null) {
+          return _toolError(
+            req.id,
+            'Could not claim "$taskId" (gone, already claimed, blocked, or you '
+            'are not eligible).',
+          );
+        }
+        return _ok(req.id, _encodeTaskAssignment(claimed));
       default:
         return JsonRpcResponse.error(req.id, -32602, 'Unknown tool: $name');
     }
   }
 
-  String _encodeTasks(List<TeamTask> tasks) {
+  String _encodeTasks(List<TeamTask> tasks, String memberId) {
     if (tasks.isEmpty) return 'No tasks on the queue.';
+    final caps = _bus.capabilitiesOf(memberId);
     final buffer = StringBuffer('Work queue (${tasks.length}):\n\n');
-    buffer.write(tasks.map((t) => _formatTask(t)).join('\n\n'));
+    buffer.write(tasks
+        .map((t) => _formatTask(t, memberId: memberId, memberCaps: caps))
+        .join('\n\n'));
     return buffer.toString().trimRight();
   }
 
@@ -450,12 +512,23 @@ class TeammateBusMcpHandler {
         'then call wait_for_message again.';
   }
 
-  String _formatTask(TeamTask t, {bool full = false}) {
+  String _formatTask(
+    TeamTask t, {
+    bool full = false,
+    String? memberId,
+    Set<String>? memberCaps,
+  }) {
     final lines = <String>[
       '--- ${t.id} [${t.status.name}] ---',
       'title: ${t.title}',
       if (t.assignee != null) 'assignee: ${t.assignee}',
       if (t.dependsOn.isNotEmpty) 'depends_on: ${t.dependsOn.join(', ')}',
+      if (t.requiredCapabilities.isNotEmpty)
+        'required_capabilities: ${t.requiredCapabilities.join(', ')}',
+      if (memberId != null && memberCaps != null) ...[
+        'eligible_for_you: ${TaskRouter.eligible(memberId, memberCaps, t)}',
+        'match_score: ${TaskRouter.score(memberCaps, t)}',
+      ],
       if (t.result != null && t.result!.isNotEmpty) 'result: ${t.result}',
       if (full) 'brief:\n${t.brief}',
     ];

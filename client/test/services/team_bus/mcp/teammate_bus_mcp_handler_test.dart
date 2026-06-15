@@ -306,7 +306,7 @@ void main() {
     expect((entry['headers'] as Map)['X-Member'], 'worker-1');
   });
 
-  test('tools/list with a task queue adds queue tools and no claim_task',
+  test('tools/list with a task queue adds queue tools incl claim_task',
       () async {
     final bus = TeamBus(launcher: FakeMemberLauncher(), taskQueue: TaskQueue());
     final res = await TeammateBusMcpHandler(bus: bus).handle(
@@ -316,8 +316,80 @@ void main() {
     final names = [
       for (final t in res!.result!['tools'] as List) (t as Map)['name'],
     ];
-    expect(names, containsAll(['add_tasks', 'update_task', 'list_tasks']));
-    expect(names, isNot(contains('claim_task')));
+    expect(names,
+        containsAll(['add_tasks', 'update_task', 'list_tasks', 'claim_task']));
+  });
+
+  test('add_tasks parses capabilities and preferred assignee', () async {
+    final bus = TeamBus(launcher: FakeMemberLauncher(), taskQueue: TaskQueue());
+    final handler = TeammateBusMcpHandler(bus: bus);
+    final res = await handler.handle(
+      'lead',
+      const JsonRpcRequest(id: 30, method: 'tools/call', params: {
+        'name': 'add_tasks',
+        'arguments': {
+          'tasks': [
+            {
+              'title': 'api',
+              'brief': 'build it',
+              'required_capabilities': ['backend'],
+              'preferred_capabilities': ['rust'],
+              'preferred_assignee': 'dev2',
+            }
+          ],
+        },
+      }),
+    );
+    expect(res!.result!['isError'] as bool, isFalse);
+    final task = bus.listTasks().single;
+    expect(task.requiredCapabilities, {'backend'});
+    expect(task.preferredCapabilities, {'rust'});
+    expect(task.preferredAssignee, 'dev2');
+  });
+
+  test('claim_task lets an eligible worker self-pick; rejects ineligible',
+      () async {
+    final bus = TeamBus(launcher: FakeMemberLauncher(), taskQueue: TaskQueue());
+    bus.declareMember(AgentNode.test(
+      memberId: 'be',
+      lifecycle: MemberLifecycle.running,
+      activity: MemberActivity.active,
+      capabilities: {'backend'},
+    ));
+    bus.declareMember(AgentNode.test(
+      memberId: 'fe',
+      lifecycle: MemberLifecycle.running,
+      activity: MemberActivity.active,
+      capabilities: {'frontend'},
+    ));
+    final handler = TeammateBusMcpHandler(bus: bus);
+    final id = bus
+        .addTasks('lead', [
+          const TeamTaskDraft(title: 'api', brief: 'b',
+              requiredCapabilities: {'backend'})
+        ])
+        .single
+        .id;
+
+    final bad = await handler.handle(
+      'fe',
+      JsonRpcRequest(id: 31, method: 'tools/call', params: {
+        'name': 'claim_task',
+        'arguments': {'task_id': id},
+      }),
+    );
+    expect(((bad!.result!['content'] as List).first as Map)['text'] as String,
+        contains('not eligible'));
+
+    final ok = await handler.handle(
+      'be',
+      JsonRpcRequest(id: 32, method: 'tools/call', params: {
+        'name': 'claim_task',
+        'arguments': {'task_id': id},
+      }),
+    );
+    expect(ok!.result!['isError'] as bool, isFalse);
+    expect(bus.listTasks(status: TaskStatus.claimed).single.assignee, 'be');
   });
 
   test('wait_for_message hands a worker a queued task (auto-claimed)', () {
