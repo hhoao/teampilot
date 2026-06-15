@@ -155,6 +155,10 @@ First launch can run the built-in CLI detection. Installers are built by CI; bui
 
 Embedded terminals use **[flutter_alacritty](https://github.com/hhoao/flutter_alacritty)** — a Flutter widget backed by an Alacritty-based Rust engine .
 
+## Acknowledgements
+
+- File icons: [Material Icon Theme](https://github.com/material-extensions/vscode-material-icon-theme) (MIT) by Philipp Kief / material-extensions.
+
 ## License
 
 This project is licensed under the [MIT License](LICENSE).

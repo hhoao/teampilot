@@ -27,8 +27,14 @@ Work inside `client`:
 cd client
 flutter pub get
 dart run tool/sync_bundled_google_fonts.dart   # first run / after clean: Noto Sans SC (~50MB, gitignored)
+dart run tool/sync_material_icons.dart      # file type icons: regenerates lib/utils/file_icon_mapping.g.dart and assets/file_icons/*.svg
 flutter run -d linux      # or macos, windows, android
 ```
+
+- File type icons (VSCode Material Icon Theme): `dart run tool/sync_material_icons.dart`
+  — regenerates `lib/utils/file_icon_mapping.g.dart` and `assets/file_icons/*.svg`
+  from the `material-icon-theme` npm package. Use `--npm-package <path>` to point
+  at a pre-extracted package, `--force` to skip the version cache check.
 
 Runtime font fetching is disabled; Simplified Chinese needs bundled fonts under `client/google_fonts/`.
 

@@ -155,6 +155,10 @@ Android 版**不运行本机 PTY**，需通过 **SSH** 连接已安装目标 Age
 
 内嵌终端使用 **[flutter_alacritty](https://github.com/hhoao/flutter_alacritty)** — 一个基于 Alacritty 的 Rust 引擎驱动的 Flutter 组件。
 
+## 致谢
+
+- 文件图标：[Material Icon Theme](https://github.com/material-extensions/vscode-material-icon-theme)（MIT 协议），作者 Philipp Kief / material-extensions。
+
 ## 许可证
 
 [MIT License](LICENSE)。
