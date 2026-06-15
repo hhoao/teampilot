@@ -219,11 +219,24 @@ class LocalFilesystem implements Filesystem {
       entries.add(
         FsDirEntry(
           name: pathContext.basename(entity.path),
-          isDirectory: entity is Directory,
+          isDirectory: _entryIsDirectory(entity),
         ),
       );
     }
     return entries;
+  }
+
+  /// Whether a listed entry resolves to a directory. `Directory.list` with
+  /// `followLinks: false` returns symlinks/junctions as [Link]; on Windows
+  /// linked dirs (skills, plugins, agents) are junctions, so we resolve the
+  /// target type to avoid treating a linked directory as a non-directory.
+  bool _entryIsDirectory(FileSystemEntity entity) {
+    if (entity is Directory) return true;
+    if (entity is Link) {
+      return FileSystemEntity.typeSync(entity.path, followLinks: true) ==
+          FileSystemEntityType.directory;
+    }
+    return false;
   }
 
   @override
@@ -355,7 +368,7 @@ class LocalFilesystem implements Filesystem {
       entries.add(
         FsDirEntry(
           name: pathContext.relative(entity.path, from: path),
-          isDirectory: entity is Directory,
+          isDirectory: _entryIsDirectory(entity),
         ),
       );
     }
