@@ -26,6 +26,7 @@ class NotificationBellButton extends StatelessWidget {
       style: SidebarActionMenuMetrics.menuAnchorStyle(
         context,
         minWidth: _dropdownWidth,
+        maxWidth: _dropdownWidth,
       ),
       alignmentOffset: Offset(-(_dropdownWidth - _bellWidth), 8),
       builder: (context, controller, child) {
