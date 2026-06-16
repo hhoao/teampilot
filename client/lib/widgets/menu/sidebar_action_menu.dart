@@ -122,7 +122,7 @@ class SidebarActionMenuPanel extends StatelessWidget {
       child: ConstrainedBox(
         constraints: BoxConstraints(
           minWidth: minWidth,
-          if (maxWidth != null) maxWidth: maxWidth!,
+          maxWidth: maxWidth ?? double.infinity,
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
