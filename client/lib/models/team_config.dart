@@ -76,6 +76,7 @@ class TeamMemberConfig {
     this.dangerouslySkipPermissions = true,
     this.cli,
     this.effort = '',
+    this.replicas = 1,
     this.forceWaitBeforeStop,
   });
 
@@ -117,6 +118,7 @@ class TeamMemberConfig {
       ),
       cli: CliTool.tryParse(json['cli'] as String?),
       effort: json['effort'] as String? ?? '',
+      replicas: (json['replicas'] as num?)?.toInt() ?? 1,
       forceWaitBeforeStop: json['forceWaitBeforeStop'] is bool
           ? json['forceWaitBeforeStop'] as bool
           : null,
@@ -155,6 +157,11 @@ class TeamMemberConfig {
 
   /// Optional per-member effort override (`effortLevel` / `model_reasoning_effort`).
   final String effort;
+
+  /// Fixed instance/pool size for this member type (mixed-mode replicas).
+  /// `1` (default) = a singleton; `> 1` = an interchangeable pool. See
+  /// [MemberInstance] / `expandTeamRoster`.
+  final int replicas;
 
   /// 成员级 [TeamConfig.forceWaitBeforeStop] 覆盖（null=未设，回退 CLI 默认/团队值）。
   /// 见 [effectiveForceWaitBeforeStop]。
@@ -195,6 +202,7 @@ class TeamMemberConfig {
     bool updateCli = false,
     String? effort,
     bool updateEffort = false,
+    int? replicas,
     bool? forceWaitBeforeStop,
     bool updateForceWaitBeforeStop = false,
   }) {
@@ -214,6 +222,7 @@ class TeamMemberConfig {
           dangerouslySkipPermissions ?? this.dangerouslySkipPermissions,
       cli: updateCli ? cli : this.cli,
       effort: updateEffort ? (effort ?? '') : this.effort,
+      replicas: replicas ?? this.replicas,
       forceWaitBeforeStop: updateForceWaitBeforeStop
           ? forceWaitBeforeStop
           : this.forceWaitBeforeStop,
@@ -236,6 +245,7 @@ class TeamMemberConfig {
       if (!dangerouslySkipPermissions) 'dangerouslySkipPermissions': false,
       if (cli != null) 'cli': cli!.value,
       if (effort.isNotEmpty) 'effort': effort,
+      if (replicas != 1) 'replicas': replicas,
       if (forceWaitBeforeStop != null)
         'forceWaitBeforeStop': forceWaitBeforeStop,
     };
@@ -261,6 +271,7 @@ class TeamMemberConfig {
             dangerouslySkipPermissions == other.dangerouslySkipPermissions &&
             cli == other.cli &&
             effort == other.effort &&
+            replicas == other.replicas &&
             forceWaitBeforeStop == other.forceWaitBeforeStop;
   }
 
@@ -280,6 +291,7 @@ class TeamMemberConfig {
     dangerouslySkipPermissions,
     cli,
     effort,
+    replicas,
     forceWaitBeforeStop,
   );
 }
