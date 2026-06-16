@@ -5288,6 +5288,18 @@ abstract class AppLocalizations {
   /// **'Extra flags applied only when this member starts.'**
   String get memberExtraArgsSubtitle;
 
+  /// No description provided for @memberReplicas.
+  ///
+  /// In en, this message translates to:
+  /// **'Replicas'**
+  String get memberReplicas;
+
+  /// No description provided for @memberReplicasSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Run this role as N interchangeable instances (pods) that share its task queue. 1 = a single instance.'**
+  String get memberReplicasSubtitle;
+
   /// No description provided for @workspaceAdvancedSettings.
   ///
   /// In en, this message translates to:

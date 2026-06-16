@@ -1358,6 +1358,8 @@
   "agentCustomIdHint": "Custom agent id",
   "memberExtraArgs": "Member extra CLI arguments",
   "memberExtraArgsSubtitle": "Extra flags applied only when this member starts.",
+  "memberReplicas": "Replicas",
+  "memberReplicasSubtitle": "Run this role as N interchangeable instances (pods) that share its task queue. 1 = a single instance.",
   "workspaceAdvancedSettings": "Advanced",
   "workspaceAdvancedSettingsSubtitle": "Agent preset and extra CLI flags for this member.",
   "memberDangerouslySkipPermissions": "Skip all permission checks",

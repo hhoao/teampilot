@@ -2792,6 +2792,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get memberExtraArgsSubtitle => '仅附加在该成员的 CLI 启动参数。';
 
   @override
+  String get memberReplicas => '副本数';
+
+  @override
+  String get memberReplicasSubtitle =>
+      '把该角色作为 N 个可互换实例(pod)运行，共享其任务队列。1 = 单实例。';
+
+  @override
   String get workspaceAdvancedSettings => '高级配置';
 
   @override

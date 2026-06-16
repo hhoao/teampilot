@@ -2889,6 +2889,13 @@ class AppLocalizationsEn extends AppLocalizations {
       'Extra flags applied only when this member starts.';
 
   @override
+  String get memberReplicas => 'Replicas';
+
+  @override
+  String get memberReplicasSubtitle =>
+      'Run this role as N interchangeable instances (pods) that share its task queue. 1 = a single instance.';
+
+  @override
   String get workspaceAdvancedSettings => 'Advanced';
 
   @override

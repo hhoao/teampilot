@@ -1046,6 +1046,8 @@
   "agentCustomIdHint": "自定义 Agent 标识",
   "memberExtraArgs": "成员额外 CLI 参数",
   "memberExtraArgsSubtitle": "仅附加在该成员的 CLI 启动参数。",
+  "memberReplicas": "副本数",
+  "memberReplicasSubtitle": "把该角色作为 N 个可互换实例(pod)运行，共享其任务队列。1 = 单实例。",
   "workspaceAdvancedSettings": "高级配置",
   "workspaceAdvancedSettingsSubtitle": "Agent 预设与本成员的额外 CLI 参数。",
   "memberDangerouslySkipPermissions": "跳过所有权限检查",
