@@ -4,6 +4,7 @@ import 'package:uuid/uuid.dart';
 
 import '../models/app_project.dart';
 import '../models/app_session.dart';
+import '../models/member_instance.dart';
 import '../models/session_member_binding.dart';
 import '../models/team_config.dart';
 import '../services/cli/cli_data_layout.dart';
@@ -373,8 +374,12 @@ class SessionRepository {
       );
       cliTeamName = await counter.nextCliTeamName(trimmedTeam);
       members = [
-        for (final m in valid)
-          SessionMemberBinding(rosterMemberId: m.id, taskId: const Uuid().v4()),
+        for (final inst in expandTeamRoster(valid))
+          SessionMemberBinding(
+            rosterMemberId: inst.instanceId,
+            typeId: inst.type.id,
+            taskId: const Uuid().v4(),
+          ),
       ];
     }
 
@@ -442,8 +447,9 @@ class SessionRepository {
 
   Future<SessionMemberBinding> ensureMemberBinding(
     String sessionId,
-    String rosterMemberId,
-  ) {
+    String rosterMemberId, {
+    String? typeId,
+  }) {
     return _withSessionFile(sessionId, () async {
       final fs = await _fs();
       final existing = await _readSession(fs, sessionId);
@@ -464,6 +470,7 @@ class SessionRepository {
       final now = DateTime.now().millisecondsSinceEpoch;
       final binding = SessionMemberBinding(
         rosterMemberId: trimmedMemberId,
+        typeId: (typeId ?? trimmedMemberId).trim(),
         taskId: const Uuid().v4(),
       );
       await _writeSession(
@@ -682,9 +689,10 @@ class SessionRepository {
         );
         cliTeamName = await counter.nextCliTeamName(trimmedTeam);
         members = [
-          for (final m in valid)
+          for (final inst in expandTeamRoster(valid))
             SessionMemberBinding(
-              rosterMemberId: m.id,
+              rosterMemberId: inst.instanceId,
+              typeId: inst.type.id,
               taskId: const Uuid().v4(),
             ),
         ];
