@@ -17,6 +17,7 @@ void main() {
     provider: 'anthropic',
     model: 'sonnet',
     agent: 'builder',
+    dangerouslySkipPermissions: false,
   );
 
   test('builds required flashskyai arguments for a member', () {
@@ -123,6 +124,7 @@ void main() {
       id: 'member-2',
       name: 'reviewer',
       extraArgs: '--continue --system-prompt "be careful"',
+      dangerouslySkipPermissions: false,
     );
 
     expect(
@@ -153,7 +155,7 @@ void main() {
       name: 'hello team',
       cli: CliTool.flashskyai,
     );
-    const reviewer = TeamMemberConfig(id: 'member-2', name: 'code reviewer');
+    const reviewer = TeamMemberConfig(id: 'member-2', name: 'code reviewer', dangerouslySkipPermissions: false);
 
     expect(
       LaunchCommandBuilder.preview(team, reviewer, executable: 'flashskyai'),
@@ -163,7 +165,7 @@ void main() {
 
   test('preview honours the supplied executable path', () {
     const team = TeamConfig(id: '1', name: 'agent', cli: CliTool.flashskyai);
-    const planner = TeamMemberConfig(id: 'm', name: 'planner');
+    const planner = TeamMemberConfig(id: 'm', name: 'planner', dangerouslySkipPermissions: false);
 
     expect(
       LaunchCommandBuilder.preview(
@@ -213,6 +215,7 @@ void main() {
       provider: 'anthropic',
       model: 'sonnet',
       agent: 'builder',
+      dangerouslySkipPermissions: false,
     );
 
     expect(
@@ -435,8 +438,6 @@ void main() {
         'builder',
         '--agent-id',
         'builder@$sessionTeam',
-        '--model',
-        'sonnet',
         '--settings',
         '/tmp/settings.json',
       ],

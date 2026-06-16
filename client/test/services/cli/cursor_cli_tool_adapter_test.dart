@@ -38,6 +38,7 @@ void main() {
       name: 'planner',
       model: 'gpt-5.2',
       prompt: 'You are the planner.',
+      dangerouslySkipPermissions: false,
     );
     final args = const CursorCliToolAdapter().buildArguments(
       CliLaunchContext(
@@ -59,7 +60,7 @@ void main() {
   });
 
   test('emits nothing when no workspace/model/prompt and not resuming', () {
-    const member = TeamMemberConfig(id: 'm', name: 'planner');
+    const member = TeamMemberConfig(id: 'm', name: 'planner', dangerouslySkipPermissions: false);
     final args = const CursorCliToolAdapter().buildArguments(
       CliLaunchContext(team: team, member: member),
     );
@@ -79,6 +80,7 @@ void main() {
       name: 'planner',
       model: 'gpt-5.2',
       prompt: 'You are the planner.',
+      dangerouslySkipPermissions: false,
     );
     final args = const CursorCliToolAdapter().buildArguments(
       CliLaunchContext(

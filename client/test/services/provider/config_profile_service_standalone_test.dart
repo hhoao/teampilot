@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
+import 'package:teampilot/models/cli_preset.dart';
 import 'package:teampilot/models/project_profile.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/cli/cli_data_layout.dart';
@@ -56,8 +57,16 @@ void main() {
       const sessionId = 'sess-standalone-fs';
       const profile = ProjectProfile(
         projectId: projectId,
-        // TODO: migrate to presets — cli removed
         agent: ProjectAgentConfig(agent: 'solo'),
+      );
+      const flashskyaiPreset = CliPreset(
+        id: 'p-fs',
+        name: 'FlashskyAI',
+        cli: CliTool.flashskyai,
+        provider: '',
+        model: '',
+        createdAt: 0,
+        updatedAt: 0,
       );
 
       final outcome = await service.prepareProjectLaunch(
@@ -65,6 +74,7 @@ void main() {
         sessionId: sessionId,
         profile: profile,
         workingDirectory: '/workspace/personal',
+        preset: flashskyaiPreset,
       );
 
       final flashskyaiDir = p.join(

@@ -463,12 +463,12 @@ void main() {
     expect(find.byKey(AppKeys.chatWorkspace), findsOneWidget);
     expect(find.byKey(AppKeys.rightToolsPanel), findsOneWidget);
     expect(find.byKey(AppKeys.membersPanel), findsOneWidget);
-    // Tabbed right-tools layout (the default) mounts every view in an
-    // IndexedStack but keeps non-selected ones offstage; the file tree panel
-    // is available behind its tab rather than shown alongside members.
+    // Tabbed right-tools layout uses AnimatedSwitcher: only the selected tab
+    // is built; the file tree panel is behind its tab and not in the tree
+    // until selected.
     expect(
       find.byKey(AppKeys.fileTreePanel, skipOffstage: false),
-      findsOneWidget,
+      findsNothing,
     );
     expect(find.text('team-lead'), findsWidgets);
     expect(chatCubit.state.tabs.length, 0);

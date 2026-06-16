@@ -906,7 +906,7 @@ void main() {
       name: 'default-team-0',
       cli: CliTool.flashskyai,
     );
-    const member = TeamMemberConfig(id: 'member', name: 'team-lead');
+    const member = TeamMemberConfig(id: 'member', name: 'team-lead', dangerouslySkipPermissions: false);
     session.connect(
       workingDirectory: r'C:\Users\haung\git\teampilot\client',
       shellLaunch: ShellLaunchSpec.teamMember(

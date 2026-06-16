@@ -8,6 +8,7 @@ import 'package:teampilot/cubits/editor_cubit.dart';
 import 'package:teampilot/cubits/layout_cubit.dart';
 import 'package:teampilot/cubits/member_presence_cubit.dart';
 import 'package:teampilot/cubits/team_cubit.dart';
+import 'package:teampilot/cubits/workspace_tools_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/pages/chat/chat_page_shell.dart';
 import 'package:teampilot/repositories/session_repository.dart';
@@ -106,6 +107,7 @@ void main() {
                 BlocProvider.value(value: layoutCubit),
                 BlocProvider.value(value: editorCubit),
                 BlocProvider.value(value: presenceCubit),
+                BlocProvider.value(value: WorkspaceToolsCubit()),
               ],
               child: Scaffold(
                 body: _ShellRebuildProbe(

@@ -8,6 +8,7 @@ import 'package:teampilot/cubits/editor_cubit.dart';
 import 'package:teampilot/cubits/layout_cubit.dart';
 import 'package:teampilot/cubits/member_presence_cubit.dart';
 import 'package:teampilot/cubits/team_cubit.dart';
+import 'package:teampilot/cubits/workspace_tools_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/pages/chat_page.dart';
 import 'package:teampilot/pages/workspace_shell/workspace_shell.dart';
@@ -84,6 +85,7 @@ void main() {
               BlocProvider.value(value: layoutCubit),
               BlocProvider.value(value: editorCubit),
               BlocProvider.value(value: presenceCubit),
+              BlocProvider.value(value: WorkspaceToolsCubit()),
             ],
             child: const Scaffold(
               body: ChatPage(
