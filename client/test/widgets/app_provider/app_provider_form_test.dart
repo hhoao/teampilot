@@ -27,11 +27,14 @@ void main() {
     );
 
     expect(find.text('Advanced options'), findsOneWidget);
-    expect(find.text('API format'), findsOneWidget);
     expect(find.text('Authentication field'), findsOneWidget);
-    expect(find.text('Haiku default model'), findsOneWidget);
-    expect(find.text('Sonnet default model'), findsOneWidget);
-    expect(find.text('Opus default model'), findsOneWidget);
+    // The dead 'API format' field was removed too.
+    expect(find.text('API format'), findsNothing);
+    // Legacy per-tier model-mapping fields were removed; tiers now come from
+    // the model list (⭐ main / ⚡ background).
+    expect(find.text('Haiku default model'), findsNothing);
+    expect(find.text('Sonnet default model'), findsNothing);
+    expect(find.text('Opus default model'), findsNothing);
   });
 
   testWidgets('switching cli resets preset dropdown without crashing', (
@@ -76,14 +79,14 @@ void main() {
     await tester.pumpAndSettle();
 
     await tester.scrollUntilVisible(
-      find.text('API format'),
+      find.text('Advanced options'),
       300,
       scrollable: find.byType(Scrollable).first,
     );
-    expect(find.text('API format'), findsOneWidget);
+    expect(find.text('Advanced options'), findsOneWidget);
   });
 
-  testWidgets('claude provider form saves model mapping into env', (
+  testWidgets('claude provider form drops legacy per-tier mapping fields', (
     tester,
   ) async {
     AppProviderConfig? saved;
@@ -109,21 +112,27 @@ void main() {
       300,
       scrollable: find.byType(Scrollable).first,
     );
-    await tester.enterText(_fieldWithLabel('Haiku default model'), 'haiku');
-    await tester.enterText(_fieldWithLabel('Sonnet default model'), 'sonnet');
-    await tester.enterText(_fieldWithLabel('Opus default model'), 'opus');
+
+    // The raw per-tier mapping fields are gone; tiers come from the model list.
+    expect(find.text('Haiku default model'), findsNothing);
+    expect(find.text('Sonnet default model'), findsNothing);
+    expect(find.text('Opus default model'), findsNothing);
 
     await tester.tap(find.widgetWithText(FilledButton, 'Save'));
     await tester.pump();
 
-    final env = saved!.config['env'] as Map<String, Object?>;
-    expect(saved!.config['apiFormat'], 'anthropic');
-    expect(saved!.config['api_key_field'], 'ANTHROPIC_AUTH_TOKEN');
-    expect(env['ANTHROPIC_BASE_URL'], 'https://api.test');
-    expect(env['ANTHROPIC_MODEL'], 'main-model');
-    expect(env['ANTHROPIC_DEFAULT_HAIKU_MODEL'], 'haiku');
-    expect(env['ANTHROPIC_DEFAULT_SONNET_MODEL'], 'sonnet');
-    expect(env['ANTHROPIC_DEFAULT_OPUS_MODEL'], 'opus');
+    // Endpoint/model stay on the canonical top-level fields ...
+    expect(saved!.baseUrl, 'https://api.test');
+    expect(saved!.defaultModel, 'main-model');
+    expect(saved!.apiKeyField, 'ANTHROPIC_AUTH_TOKEN');
+    // ... and the record is slim: no frozen derived env, apiFormat, or the
+    // duplicate api_key_field. The launch materializer derives env from above.
+    final env = (saved!.config['env'] as Map?) ?? const {};
+    expect(saved!.config.containsKey('apiFormat'), isFalse);
+    expect(saved!.config.containsKey('api_key_field'), isFalse);
+    expect(env.containsKey('ANTHROPIC_BASE_URL'), isFalse);
+    expect(env.containsKey('ANTHROPIC_MODEL'), isFalse);
+    expect(env.containsKey('ANTHROPIC_DEFAULT_HAIKU_MODEL'), isFalse);
   });
 }
 
@@ -146,11 +155,5 @@ Widget _wrapForm(Widget form) {
         ),
       ),
     ),
-  );
-}
-
-Finder _fieldWithLabel(String label) {
-  return find.byWidgetPredicate(
-    (widget) => widget is TextField && widget.decoration?.labelText == label,
   );
 }

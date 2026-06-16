@@ -6,52 +6,44 @@ void main() {
   const capability = ClaudeProviderFormCapability();
 
   group('ClaudeProviderFormCapability', () {
-    test('buildConfig writes env aliases and api format', () {
+    test('buildConfig does not freeze derived endpoint/model/credential env', () {
       final config = capability.buildConfig(
         const ProviderFormInput(
           baseUrl: 'https://api.example.com',
           defaultModel: 'claude-sonnet',
           apiKeyField: 'ANTHROPIC_API_KEY',
           config: {'env': <String, Object?>{}},
-          extra: {
-            ClaudeFormExtraKeys.apiFormat: 'openai_chat',
-            ClaudeFormExtraKeys.haikuModel: 'haiku-1',
-            ClaudeFormExtraKeys.sonnetModel: 'sonnet-1',
-            ClaudeFormExtraKeys.opusModel: 'opus-1',
-          },
+          extra: {},
         ),
       );
 
       final env = config['env'] as Map<String, Object?>;
-      expect(env['ANTHROPIC_BASE_URL'], 'https://api.example.com');
-      expect(env['ANTHROPIC_MODEL'], 'claude-sonnet');
-      expect(env['ANTHROPIC_DEFAULT_HAIKU_MODEL'], 'haiku-1');
-      expect(env['ANTHROPIC_DEFAULT_SONNET_MODEL'], 'sonnet-1');
-      expect(env['ANTHROPIC_DEFAULT_OPUS_MODEL'], 'opus-1');
-      expect(config['apiFormat'], 'openai_chat');
-      expect(config['api_key_field'], 'ANTHROPIC_API_KEY');
+      // Endpoint/model/credential live on canonical top-level fields and are
+      // materialized at launch (see buildClaudeSettings) — the form must not
+      // bake any derived env or the duplicate api_key_field into the record.
+      expect(env.containsKey('ANTHROPIC_BASE_URL'), isFalse);
+      expect(env.containsKey('ANTHROPIC_MODEL'), isFalse);
+      expect(env.containsKey('ANTHROPIC_DEFAULT_HAIKU_MODEL'), isFalse);
+      expect(config.containsKey('api_key_field'), isFalse);
+      // apiFormat was dead config (never consumed at launch) and was removed.
+      expect(config.containsKey('apiFormat'), isFalse);
     });
 
-    test('buildConfig removes empty env entries', () {
+    test('buildConfig preserves user-authored custom env keys', () {
       final config = capability.buildConfig(
         ProviderFormInput(
-          baseUrl: '',
-          defaultModel: '',
+          baseUrl: 'https://api.example.com',
+          defaultModel: 'claude-sonnet',
           apiKeyField: 'ANTHROPIC_AUTH_TOKEN',
           config: {
-            'env': {
-              'ANTHROPIC_BASE_URL': 'https://old.example',
-              'ANTHROPIC_DEFAULT_HAIKU_MODEL': 'old-haiku',
-            },
+            'env': {'DISABLE_AUTOUPDATER': '1'},
           },
           extra: const {},
         ),
       );
 
       final env = config['env'] as Map<String, Object?>;
-      expect(env.containsKey('ANTHROPIC_BASE_URL'), isFalse);
-      expect(env.containsKey('ANTHROPIC_MODEL'), isFalse);
-      expect(env.containsKey('ANTHROPIC_DEFAULT_HAIKU_MODEL'), isFalse);
+      expect(env['DISABLE_AUTOUPDATER'], '1');
     });
 
     test('normalizeApiKeyField falls back for unknown values', () {

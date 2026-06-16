@@ -148,4 +148,101 @@ void main() {
       );
     },
   );
+
+  test(
+    'member override keeps the provider background (haiku) model',
+    () async {
+      final base = await Directory.systemTemp.createTemp('claude_cap_tier_');
+      addTearDown(() async {
+        if (await base.exists()) await base.delete(recursive: true);
+      });
+
+      final fs = LocalFilesystem();
+      final service = ConfigProfileService(
+        basePath: base.path,
+        fs: fs,
+        layout: RuntimeLayout(teampilotRoot: base.path, fs: fs),
+      );
+      const capability = ClaudeConfigProfileCapability();
+      final repository = AppProviderRepository(basePath: base.path);
+      await repository.saveProviders(CliTool.claude, [
+        const AppProviderConfig(
+          id: 'tiered',
+          cli: CliTool.claude,
+          name: 'tiered',
+          category: AppProviderCategory.thirdParty,
+          baseUrl: 'https://api.example.com/anthropic',
+          defaultModel: 'provider-main',
+          config: {
+            'env': {'ANTHROPIC_BASE_URL': 'https://api.example.com/anthropic'},
+            'models': {
+              'cheap': {
+                'name': 'Cheap',
+                'model': 'cheap-model',
+                'enabled': true,
+                'role': 'background',
+              },
+            },
+          },
+        ),
+      ]);
+      const member = TeamMemberConfig(
+        id: 'm1',
+        name: 'Member',
+        model: 'member-main',
+      );
+      const team = TeamConfig(
+        id: 'team-a',
+        name: 'agent',
+        cli: CliTool.claude,
+        teamMode: TeamMode.mixed,
+        providerIdsByTool: {'claude': 'tiered'},
+      );
+
+      final scope = resolveLaunchProfileScope(
+        projectId: 'project-1',
+        teamId: 'team-a',
+        appSessionId: 'session-1',
+        cliTeamName: 'session-1',
+        memberId: 'm1',
+      );
+
+      await capability.contributeLaunch(
+        ConfigProfileLaunchContext(
+          projectId: 'project-1',
+          teamId: 'team-a',
+          sessionId: scope.sessionId,
+          scope: scope,
+          team: team,
+          member: member,
+          members: const [member],
+          workingDirectory: '/workspace/project',
+          paths: service,
+        ),
+      );
+
+      final settingsPath = p.join(
+        base.path,
+        'workspace',
+        'projects',
+        'project-1',
+        'sessions',
+        'session-1',
+        'runtime',
+        'm1',
+        'claude',
+        'settings',
+        'm1.json',
+      );
+      final settings =
+          jsonDecode(await File(settingsPath).readAsString()) as Map;
+      final env = settings['env'] as Map;
+      // Selected member model drives the main tiers ...
+      expect(env['ANTHROPIC_MODEL'], 'member-main');
+      expect(env['ANTHROPIC_DEFAULT_SONNET_MODEL'], 'member-main');
+      expect(env['ANTHROPIC_DEFAULT_OPUS_MODEL'], 'member-main');
+      // ... while the provider's background model survives on the haiku tier.
+      expect(env['ANTHROPIC_DEFAULT_HAIKU_MODEL'], 'cheap-model');
+    },
+  );
 }

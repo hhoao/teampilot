@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 
 import '../../l10n/l10n_extensions.dart';
+import '../../models/app_provider_config.dart';
+import '../../models/cli_preset.dart';
 import '../../models/team_config.dart';
 import '../../services/app/flashskyai_agent_catalog_service.dart';
 import '../../services/cli/registry/capabilities/cli_effort_capability.dart';
 import '../../services/cli/registry/capabilities/provider_catalog_capability.dart';
 import '../../services/cli/registry/cli_display_name.dart';
+import '../../services/cli/registry/cli_tool_registry.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
 
 CliTool? catalogCliForTeam(BuildContext context, CliTool cli) {
@@ -73,7 +76,11 @@ String teamCliDisplayLabel(
 ) {
   final def = CliToolRegistryScope.maybeOf(context)?.tryGet(cli);
   if (def != null) {
-    return cliDisplayName(def, l10n, registry: CliToolRegistryScope.maybeOf(context));
+    return cliDisplayName(
+      def,
+      l10n,
+      registry: CliToolRegistryScope.maybeOf(context),
+    );
   }
   return cli.value;
 }
@@ -96,6 +103,35 @@ bool teamShowsEffortPicker(
   };
   if (target != placement) return false;
   return capability.isApplicable(model: model);
+}
+
+/// Summary line for the team default preset row (CLI · provider · model · effort).
+String teamPresetConfigLine({
+  required AppLocalizations l10n,
+  required CliToolRegistry registry,
+  required CliPreset preset,
+  AppProviderConfig? provider,
+  required bool hidesModelPicker,
+}) {
+  final def = registry.tryGet(preset.cli);
+  final cliLabel = def == null ? preset.cli.value : cliDisplayName(def, l10n);
+  final providerName = provider?.name.trim() ?? preset.provider.trim();
+  final modelLabel = preset.model.trim();
+  final effortLabel = preset.effort.trim();
+
+  if (providerName.isEmpty) return cliLabel;
+  if (modelLabel.isEmpty && hidesModelPicker) {
+    if (effortLabel.isEmpty) return '$cliLabel · $providerName';
+    return '$cliLabel · $providerName · $effortLabel';
+  }
+  if (modelLabel.isEmpty) {
+    if (effortLabel.isEmpty) return '$cliLabel · $providerName';
+    return '$cliLabel · $providerName · $effortLabel';
+  }
+  if (effortLabel.isEmpty) {
+    return l10n.aiFeatureConfigSummary(cliLabel, providerName, modelLabel);
+  }
+  return '${l10n.aiFeatureConfigSummary(cliLabel, providerName, modelLabel)} · $effortLabel';
 }
 
 String memberAgentDropdownItemLabel(

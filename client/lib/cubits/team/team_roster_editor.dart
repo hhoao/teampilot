@@ -42,7 +42,10 @@ class TeamRosterEditor {
     if (hasLead) return team;
     final now = DateTime.now().millisecondsSinceEpoch;
     return team.copyWith(
-      members: [defaultMember(now: now), ...team.members],
+      members: [
+        defaultMember(now: now),
+        ...team.members,
+      ],
     );
   }
 
@@ -80,7 +83,10 @@ class TeamRosterEditor {
       name: TeamMemberNaming.defaultWorkerName,
       joinedAt: now,
     );
-    return (team: team.copyWith(members: [...team.members, member]), added: member);
+    return (
+      team: team.copyWith(members: [...team.members, member]),
+      added: member,
+    );
   }
 
   /// Validates and applies an update to the member with [memberId].
@@ -123,9 +129,7 @@ class TeamRosterEditor {
       );
     }
     if (team.members.length == 1) {
-      return const MemberMutation.reject(
-        'A team needs at least one member.',
-      );
+      return const MemberMutation.reject('A team needs at least one member.');
     }
     final deleted = team.members.firstWhere((m) => m.id == memberId);
     return MemberMutation.update(

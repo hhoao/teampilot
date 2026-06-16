@@ -43,12 +43,7 @@ const List<AppProviderPreset> claudeProviderPresetsPart1 = <AppProviderPreset>[
         isPartner: true,
         partnerPromotionKey: "shengsuanyun",
         endpointCandidates: [],
-        config: {
-          "env": {
-            "ANTHROPIC_BASE_URL": "https://router.shengsuanyun.com/api",
-            "ANTHROPIC_AUTH_TOKEN": "",
-          },
-        },
+        config: {}
       ),
     ),
     AppProviderPreset(
@@ -70,12 +65,7 @@ const List<AppProviderPreset> claudeProviderPresetsPart1 = <AppProviderPreset>[
         isPartner: true,
         partnerPromotionKey: "patewayai",
         endpointCandidates: [],
-        config: {
-          "env": {
-            "ANTHROPIC_BASE_URL": "https://api.pateway.ai",
-            "ANTHROPIC_API_KEY": "",
-          },
-        },
+        config: {}
       ),
     ),
     AppProviderPreset(
@@ -99,17 +89,7 @@ const List<AppProviderPreset> claudeProviderPresetsPart1 = <AppProviderPreset>[
         isPartner: true,
         partnerPromotionKey: "volcengine_agentplan",
         endpointCandidates: [],
-        config: {
-          "env": {
-            "ANTHROPIC_BASE_URL":
-                "https://ark.cn-beijing.volces.com/api/coding",
-            "ANTHROPIC_AUTH_TOKEN": "",
-            "ANTHROPIC_MODEL": "ark-code-latest",
-            "ANTHROPIC_DEFAULT_HAIKU_MODEL": "ark-code-latest",
-            "ANTHROPIC_DEFAULT_SONNET_MODEL": "ark-code-latest",
-            "ANTHROPIC_DEFAULT_OPUS_MODEL": "ark-code-latest",
-          },
-        },
+        config: {}
       ),
     ),
     AppProviderPreset(
@@ -133,17 +113,7 @@ const List<AppProviderPreset> claudeProviderPresetsPart1 = <AppProviderPreset>[
         isPartner: true,
         partnerPromotionKey: "byteplus",
         endpointCandidates: [],
-        config: {
-          "env": {
-            "ANTHROPIC_BASE_URL":
-                "https://ark.ap-southeast.bytepluses.com/api/coding",
-            "ANTHROPIC_AUTH_TOKEN": "",
-            "ANTHROPIC_MODEL": "ark-code-latest",
-            "ANTHROPIC_DEFAULT_HAIKU_MODEL": "ark-code-latest",
-            "ANTHROPIC_DEFAULT_SONNET_MODEL": "ark-code-latest",
-            "ANTHROPIC_DEFAULT_OPUS_MODEL": "ark-code-latest",
-          },
-        },
+        config: {}
       ),
     ),
     AppProviderPreset(
@@ -169,19 +139,9 @@ const List<AppProviderPreset> claudeProviderPresetsPart1 = <AppProviderPreset>[
         endpointCandidates: [],
         config: {
           "env": {
-            "ANTHROPIC_BASE_URL":
-                "https://ark.cn-beijing.volces.com/api/compatible",
-            "ANTHROPIC_AUTH_TOKEN": "",
             "API_TIMEOUT_MS": "3000000",
-            "ANTHROPIC_MODEL": "doubao-seed-2-0-code-preview-latest",
-            "ANTHROPIC_DEFAULT_SONNET_MODEL":
-                "doubao-seed-2-0-code-preview-latest",
-            "ANTHROPIC_DEFAULT_OPUS_MODEL":
-                "doubao-seed-2-0-code-preview-latest",
-            "ANTHROPIC_DEFAULT_HAIKU_MODEL":
-                "doubao-seed-2-0-code-preview-latest",
           },
-        },
+        }
       ),
     ),
     AppProviderPreset(
@@ -204,16 +164,12 @@ const List<AppProviderPreset> claudeProviderPresetsPart1 = <AppProviderPreset>[
         partnerPromotionKey: "",
         endpointCandidates: ["https://generativelanguage.googleapis.com"],
         config: {
-          "env": {
-            "ANTHROPIC_BASE_URL": "https://generativelanguage.googleapis.com",
-            "ANTHROPIC_API_KEY": "",
-            "ANTHROPIC_MODEL": "gemini-3.1-pro",
-            "ANTHROPIC_DEFAULT_HAIKU_MODEL": "gemini-3-flash",
-            "ANTHROPIC_DEFAULT_SONNET_MODEL": "gemini-3.1-pro",
-            "ANTHROPIC_DEFAULT_OPUS_MODEL": "gemini-3.1-pro",
+          "models": {
+            "gemini-3.1-pro": {"name": "gemini-3.1-pro", "model": "gemini-3.1-pro", "enabled": true},
+            "gemini-3-flash": {"name": "gemini-3-flash", "model": "gemini-3-flash", "enabled": true, "role": "background"},
           },
           "apiFormat": "gemini_native",
-        },
+        }
       ),
     ),
     AppProviderPreset(
@@ -236,16 +192,12 @@ const List<AppProviderPreset> claudeProviderPresetsPart1 = <AppProviderPreset>[
         partnerPromotionKey: "",
         endpointCandidates: [],
         config: {
-          "env": {
-            "ANTHROPIC_BASE_URL": "https://api.deepseek.com/anthropic",
-            "ANTHROPIC_AUTH_TOKEN": "",
-            "ANTHROPIC_MODEL": "deepseek-v4-pro",
-            "ANTHROPIC_DEFAULT_HAIKU_MODEL": "deepseek-v4-flash",
-            "ANTHROPIC_DEFAULT_SONNET_MODEL": "deepseek-v4-pro",
-            "ANTHROPIC_DEFAULT_OPUS_MODEL": "deepseek-v4-pro",
+          "models": {
+            "deepseek-v4-pro": {"name": "deepseek-v4-pro", "model": "deepseek-v4-pro", "enabled": true},
+            "deepseek-v4-flash": {"name": "deepseek-v4-flash", "model": "deepseek-v4-flash", "enabled": true, "role": "background"},
           },
           "modelsUrl": "https://api.deepseek.com/models",
-        },
+        }
       ),
     ),
     AppProviderPreset(
@@ -267,16 +219,7 @@ const List<AppProviderPreset> claudeProviderPresetsPart1 = <AppProviderPreset>[
         isPartner: false,
         partnerPromotionKey: "",
         endpointCandidates: [],
-        config: {
-          "env": {
-            "ANTHROPIC_BASE_URL": "https://open.bigmodel.cn/api/anthropic",
-            "ANTHROPIC_AUTH_TOKEN": "",
-            "ANTHROPIC_MODEL": "glm-5",
-            "ANTHROPIC_DEFAULT_HAIKU_MODEL": "glm-5",
-            "ANTHROPIC_DEFAULT_SONNET_MODEL": "glm-5",
-            "ANTHROPIC_DEFAULT_OPUS_MODEL": "glm-5",
-          },
-        },
+        config: {}
       ),
     ),
     AppProviderPreset(
@@ -298,16 +241,7 @@ const List<AppProviderPreset> claudeProviderPresetsPart1 = <AppProviderPreset>[
         isPartner: false,
         partnerPromotionKey: "",
         endpointCandidates: [],
-        config: {
-          "env": {
-            "ANTHROPIC_BASE_URL": "https://api.z.ai/api/anthropic",
-            "ANTHROPIC_AUTH_TOKEN": "",
-            "ANTHROPIC_MODEL": "glm-5",
-            "ANTHROPIC_DEFAULT_HAIKU_MODEL": "glm-5",
-            "ANTHROPIC_DEFAULT_SONNET_MODEL": "glm-5",
-            "ANTHROPIC_DEFAULT_OPUS_MODEL": "glm-5",
-          },
-        },
+        config: {}
       ),
     ),
     AppProviderPreset(
@@ -330,17 +264,7 @@ const List<AppProviderPreset> claudeProviderPresetsPart1 = <AppProviderPreset>[
         isPartner: false,
         partnerPromotionKey: "",
         endpointCandidates: ["https://qianfan.baidubce.com/anthropic/coding"],
-        config: {
-          "env": {
-            "ANTHROPIC_BASE_URL":
-                "https://qianfan.baidubce.com/anthropic/coding",
-            "ANTHROPIC_AUTH_TOKEN": "",
-            "ANTHROPIC_MODEL": "qianfan-code-latest",
-            "ANTHROPIC_DEFAULT_HAIKU_MODEL": "qianfan-code-latest",
-            "ANTHROPIC_DEFAULT_SONNET_MODEL": "qianfan-code-latest",
-            "ANTHROPIC_DEFAULT_OPUS_MODEL": "qianfan-code-latest",
-          },
-        },
+        config: {}
       ),
     ),
     AppProviderPreset(
@@ -362,13 +286,7 @@ const List<AppProviderPreset> claudeProviderPresetsPart1 = <AppProviderPreset>[
         isPartner: false,
         partnerPromotionKey: "",
         endpointCandidates: [],
-        config: {
-          "env": {
-            "ANTHROPIC_BASE_URL":
-                "https://dashscope.aliyuncs.com/apps/anthropic",
-            "ANTHROPIC_AUTH_TOKEN": "",
-          },
-        },
+        config: {}
       ),
     ),
     AppProviderPreset(
@@ -390,13 +308,7 @@ const List<AppProviderPreset> claudeProviderPresetsPart1 = <AppProviderPreset>[
         isPartner: false,
         partnerPromotionKey: "",
         endpointCandidates: [],
-        config: {
-          "env": {
-            "ANTHROPIC_BASE_URL":
-                "https://coding.dashscope.aliyuncs.com/apps/anthropic",
-            "ANTHROPIC_AUTH_TOKEN": "",
-          },
-        },
+        config: {}
       ),
     ),
     AppProviderPreset(
@@ -418,16 +330,7 @@ const List<AppProviderPreset> claudeProviderPresetsPart1 = <AppProviderPreset>[
         isPartner: false,
         partnerPromotionKey: "",
         endpointCandidates: [],
-        config: {
-          "env": {
-            "ANTHROPIC_BASE_URL": "https://api.moonshot.cn/anthropic",
-            "ANTHROPIC_AUTH_TOKEN": "",
-            "ANTHROPIC_MODEL": "kimi-k2.6",
-            "ANTHROPIC_DEFAULT_HAIKU_MODEL": "kimi-k2.6",
-            "ANTHROPIC_DEFAULT_SONNET_MODEL": "kimi-k2.6",
-            "ANTHROPIC_DEFAULT_OPUS_MODEL": "kimi-k2.6",
-          },
-        },
+        config: {}
       ),
     ),
 ];

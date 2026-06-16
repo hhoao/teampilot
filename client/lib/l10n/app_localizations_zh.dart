@@ -783,6 +783,52 @@ class AppLocalizationsZh extends AppLocalizations {
   String get projectCliManagePresets => '管理';
 
   @override
+  String get teamDefaultPresetLabel => '默认模型预设';
+
+  @override
+  String get teamDefaultPresetSubtitle => '可选的默认预设，未单独设置的成员将继承此配置。';
+
+  @override
+  String get teamDefaultPresetNone => '无';
+
+  @override
+  String get teamDefaultPresetChange => '更改';
+
+  @override
+  String get teamDefaultPresetManage => '管理';
+
+  @override
+  String get presetPickerTitle => '选择预设';
+
+  @override
+  String get presetPickerNoneOption => '无（不设默认）';
+
+  @override
+  String get memberPresetLabel => '预设';
+
+  @override
+  String get memberPresetInheritTeam => '继承团队默认';
+
+  @override
+  String get memberPresetInheritTeamNone => '团队未设置默认';
+
+  @override
+  String get memberPresetSelectPreset => '选择预设';
+
+  @override
+  String get memberPresetCustom => '自定义配置';
+
+  @override
+  String memberPresetViaPreset(String presetName) {
+    return '$presetName（通过预设）';
+  }
+
+  @override
+  String memberPresetViaTeamDefault(String presetName) {
+    return '$presetName（通过团队默认）';
+  }
+
+  @override
   String get homeWorkspaceProjectSkills => '技能';
 
   @override
@@ -1817,6 +1863,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get noModelsConfigured => '未配置模型';
+
+  @override
+  String get providerModelBackgroundTier => '用于后台/快速任务（Claude haiku 档）';
 
   @override
   String get missingProvider => '缺少提供商：';
@@ -2905,18 +2954,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get appProviderPresetCustom => '自定义';
 
   @override
-  String get appProviderClaudeApiFormatAnthropic => 'Anthropic Messages（原生）';
-
-  @override
-  String get appProviderClaudeApiFormatOpenaiChat => 'OpenAI Chat Completions';
-
-  @override
-  String get appProviderClaudeApiFormatOpenaiResponses => 'OpenAI Responses';
-
-  @override
-  String get appProviderClaudeApiFormatGeminiNative => 'Gemini Native';
-
-  @override
   String get appProviderClaudeAuthTokenDefault => 'ANTHROPIC_AUTH_TOKEN（默认）';
 
   @override
@@ -2959,32 +2996,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get appProviderTeamNone => '无';
 
   @override
-  String get appProviderClaudeApiFormat => 'API 格式';
-
-  @override
-  String get appProviderClaudeApiFormatHint => '选择服务商 API 的输入格式。';
-
-  @override
   String get appProviderClaudeAuthField => '认证字段';
 
   @override
   String get appProviderClaudeAuthFieldHint => '选择写入 settings 的认证环境变量。';
-
-  @override
-  String get appProviderClaudeModelMapping => '模型映射';
-
-  @override
-  String get appProviderClaudeModelMappingHint =>
-      '原生 Claude 服务商可留空；仅在服务商将 Claude 模型角色映射为不同模型名称时填写。';
-
-  @override
-  String get appProviderClaudeHaikuModel => 'Haiku 默认模型';
-
-  @override
-  String get appProviderClaudeSonnetModel => 'Sonnet 默认模型';
-
-  @override
-  String get appProviderClaudeOpusModel => 'Opus 默认模型';
 
   @override
   String get notes => '备注';

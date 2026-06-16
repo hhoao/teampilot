@@ -100,7 +100,8 @@ class TeamCubit extends Cubit<TeamState> implements TeamCubitHost {
   final TeamMcpLinkerService _mcpLinker;
   final McpRepository _mcpRepository;
   final InstalledMcpLoader? _installedMcpLoader;
-  final Future<List<McpServer>> Function(String teamId) _extensionMcpContributor;
+  final Future<List<McpServer>> Function(String teamId)
+  _extensionMcpContributor;
   final TeamLauncher? _launcher;
 
   final TeamRosterEditor _rosterEditor = const TeamRosterEditor();
@@ -140,7 +141,8 @@ class TeamCubit extends Cubit<TeamState> implements TeamCubitHost {
   }
 
   @override
-  Future<void> saveTeams(List<TeamConfig> teams) => _repository.saveTeams(teams);
+  Future<void> saveTeams(List<TeamConfig> teams) =>
+      _repository.saveTeams(teams);
 
   // ===== Launch / preview (delegated) =====
 
@@ -237,10 +239,7 @@ class TeamCubit extends Cubit<TeamState> implements TeamCubitHost {
         statusMessage: 'Selected ${team.name}.',
       ),
     );
-    await Future.wait([
-      _sync.syncPluginsForSelected(),
-      _sync.syncMcp(),
-    ]);
+    await Future.wait([_sync.syncPluginsForSelected(), _sync.syncMcp()]);
   }
 
   Future<bool> addTeam(
@@ -513,6 +512,42 @@ class TeamCubit extends Cubit<TeamState> implements TeamCubitHost {
       return;
     }
     await updateSelected(mutation.team!);
+  }
+
+  /// Sets the active preset for the selected team.
+  ///
+  /// [presetId] may be a preset UUID, `null` (clear), or empty (clear).
+  void setTeamActivePreset(String? presetId) {
+    final team = state.selectedTeam;
+    if (team == null) return;
+    final effectiveId = (presetId == null || presetId.trim().isEmpty)
+        ? null
+        : presetId.trim();
+    updateSelected(
+      team.copyWith(activePresetId: effectiveId, updateActivePresetId: true),
+    );
+  }
+
+  /// Sets the active preset for a member of the selected team.
+  ///
+  /// [presetId] may be a preset UUID ([CliPreset.id]),
+  /// [TeamConfig.inheritPresetId] to inherit the team default, `null` (clear),
+  /// or empty (clear).
+  void setMemberActivePreset(String memberId, String? presetId) {
+    final team = state.selectedTeam;
+    if (team == null) return;
+    final member = team.members.cast<TeamMemberConfig?>().firstWhere(
+      (m) => m!.id == memberId,
+      orElse: () => null,
+    );
+    if (member == null) return;
+    final effectiveId = (presetId == null || presetId.trim().isEmpty)
+        ? null
+        : presetId.trim();
+    updateMember(
+      memberId,
+      member.copyWith(activePresetId: effectiveId, updateActivePresetId: true),
+    );
   }
 
   Future<void> deleteMember(String memberId) async {

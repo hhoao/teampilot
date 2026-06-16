@@ -819,6 +819,53 @@ class AppLocalizationsEn extends AppLocalizations {
   String get projectCliManagePresets => 'Manage';
 
   @override
+  String get teamDefaultPresetLabel => 'Default Model Preset';
+
+  @override
+  String get teamDefaultPresetSubtitle =>
+      'Optional default preset applied to members that don\'t override it.';
+
+  @override
+  String get teamDefaultPresetNone => 'None';
+
+  @override
+  String get teamDefaultPresetChange => 'Change';
+
+  @override
+  String get teamDefaultPresetManage => 'Manage';
+
+  @override
+  String get presetPickerTitle => 'Select Preset';
+
+  @override
+  String get presetPickerNoneOption => 'None (no default)';
+
+  @override
+  String get memberPresetLabel => 'Preset';
+
+  @override
+  String get memberPresetInheritTeam => 'Inherit team default';
+
+  @override
+  String get memberPresetInheritTeamNone => 'No team default set';
+
+  @override
+  String get memberPresetSelectPreset => 'Select a preset';
+
+  @override
+  String get memberPresetCustom => 'Custom configuration';
+
+  @override
+  String memberPresetViaPreset(String presetName) {
+    return '$presetName (via preset)';
+  }
+
+  @override
+  String memberPresetViaTeamDefault(String presetName) {
+    return '$presetName (via team default)';
+  }
+
+  @override
   String get homeWorkspaceProjectSkills => 'Skills';
 
   @override
@@ -1885,6 +1932,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get noModelsConfigured => 'No models configured';
+
+  @override
+  String get providerModelBackgroundTier =>
+      'Use for background/fast tasks (Claude haiku tier)';
 
   @override
   String get missingProvider => 'Missing provider:';
@@ -3012,19 +3063,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get appProviderPresetCustom => 'Custom';
 
   @override
-  String get appProviderClaudeApiFormatAnthropic =>
-      'Anthropic Messages (native)';
-
-  @override
-  String get appProviderClaudeApiFormatOpenaiChat => 'OpenAI Chat Completions';
-
-  @override
-  String get appProviderClaudeApiFormatOpenaiResponses => 'OpenAI Responses';
-
-  @override
-  String get appProviderClaudeApiFormatGeminiNative => 'Gemini Native';
-
-  @override
   String get appProviderClaudeAuthTokenDefault =>
       'ANTHROPIC_AUTH_TOKEN (default)';
 
@@ -3069,34 +3107,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get appProviderTeamNone => 'None';
 
   @override
-  String get appProviderClaudeApiFormat => 'API format';
-
-  @override
-  String get appProviderClaudeApiFormatHint =>
-      'Select the provider API input format.';
-
-  @override
   String get appProviderClaudeAuthField => 'Authentication field';
 
   @override
   String get appProviderClaudeAuthFieldHint =>
       'Select the authentication environment variable written to settings.';
-
-  @override
-  String get appProviderClaudeModelMapping => 'Model mapping';
-
-  @override
-  String get appProviderClaudeModelMappingHint =>
-      'Leave these empty for native Claude providers. Fill them only when a provider maps Claude model roles to different model names.';
-
-  @override
-  String get appProviderClaudeHaikuModel => 'Haiku default model';
-
-  @override
-  String get appProviderClaudeSonnetModel => 'Sonnet default model';
-
-  @override
-  String get appProviderClaudeOpusModel => 'Opus default model';
 
   @override
   String get notes => 'Notes';

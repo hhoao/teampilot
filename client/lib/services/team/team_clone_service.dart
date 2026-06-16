@@ -11,17 +11,18 @@ typedef PluginDepInstaller = Future<String?> Function(PluginDependencyRef ref);
 typedef McpDepInstaller = Future<String?> Function(McpDependencyRef ref);
 
 /// Creates the cloned team; returns the new team id, or null on failure.
-typedef ClonedTeamCreator = Future<String?> Function({
-  required String name,
-  required CliTool cli,
-  required TeamMode teamMode,
-  required List<TeamMemberConfig> members,
-  required List<String> skillIds,
-  required List<String> pluginIds,
-  required List<String> mcpServerIds,
-  required String description,
-  required String extraArgs,
-});
+typedef ClonedTeamCreator =
+    Future<String?> Function({
+      required String name,
+      required CliTool cli,
+      required TeamMode teamMode,
+      required List<TeamMemberConfig> members,
+      required List<String> skillIds,
+      required List<String> pluginIds,
+      required List<String> mcpServerIds,
+      required String description,
+      required String extraArgs,
+    });
 
 enum DependencyKind { skill, plugin, mcp }
 

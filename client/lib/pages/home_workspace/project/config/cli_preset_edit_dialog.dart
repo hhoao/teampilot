@@ -20,13 +20,14 @@ import 'project_cli_config_helpers.dart';
 import 'project_cli_effort_helpers.dart';
 
 class CliPresetEditDialog extends StatefulWidget {
-  const CliPresetEditDialog({
-    this.existing,
-    super.key,
-  });
+  const CliPresetEditDialog({this.existing, this.lockCli, super.key});
 
   /// If non-null, editing an existing preset.
   final CliPreset? existing;
+
+  /// When non-null, the CLI dropdown is disabled and forced to this value.
+  /// Used in native mode to lock presets to the team CLI.
+  final CliTool? lockCli;
 
   bool get isEditing => existing != null;
 
@@ -46,7 +47,7 @@ class _CliPresetEditDialogState extends State<CliPresetEditDialog> {
     super.initState();
     final p = widget.existing;
     _nameCtl = TextEditingController(text: p?.name ?? '');
-    _cli = p?.cli ?? CliTool.claude;
+    _cli = widget.lockCli ?? p?.cli ?? CliTool.claude;
     _providerId = p?.provider ?? '';
     _modelId = p?.model ?? '';
     _effortId = p?.effort ?? '';
@@ -105,15 +106,19 @@ class _CliPresetEditDialogState extends State<CliPresetEditDialog> {
         .toList(growable: false);
     final selectedProvider = _selectedProvider(providers);
     final hideModelPicker = projectCliHidesModelPicker(
-      registry, _cli, selectedProvider,
+      registry,
+      _cli,
+      selectedProvider,
     );
     final showEffortPicker = projectCliShowsEffortPicker(
-      registry: registry, cli: _cli,
-      provider: selectedProvider, model: _modelId,
+      registry: registry,
+      cli: _cli,
+      provider: selectedProvider,
+      model: _modelId,
     );
 
     return AppDialog(
-      maxWidth: 480,
+      maxWidth: 640,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -139,8 +144,9 @@ class _CliPresetEditDialogState extends State<CliPresetEditDialog> {
               items: [for (final def in registry.launchable) def.id.value],
               initialItem: _cli.value,
               decoration: dropdownDeco,
+              enabled: widget.lockCli == null,
               onChanged: (value) {
-                if (value == null) return;
+                if (value == null || widget.lockCli != null) return;
                 setState(() {
                   _cli = CliTool.decode(value);
                   _providerId = '';
@@ -201,8 +207,10 @@ class _CliPresetEditDialogState extends State<CliPresetEditDialog> {
                 onChanged: (value) => setState(() {
                   _modelId = value.trim();
                   if (!projectCliShowsEffortPicker(
-                    registry: registry, cli: _cli,
-                    provider: selectedProvider, model: _modelId,
+                    registry: registry,
+                    cli: _cli,
+                    provider: selectedProvider,
+                    model: _modelId,
                   )) {
                     _effortId = '';
                   }
@@ -215,7 +223,9 @@ class _CliPresetEditDialogState extends State<CliPresetEditDialog> {
               title: l10n.projectCliEffortLevel,
               subtitle: l10n.projectCliEffortLevelSubtitle,
               trailing: CliEffortPickerField(
-                key: ValueKey('preset-effort-$_providerId-$_modelId-$_effortId'),
+                key: ValueKey(
+                  'preset-effort-$_providerId-$_modelId-$_effortId',
+                ),
                 cli: _cli,
                 value: _effortId,
                 provider: selectedProvider,

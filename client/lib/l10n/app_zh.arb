@@ -323,6 +323,34 @@
   "projectCliPresetLabel": "当前预设",
   "projectCliNoPresetHint": "未选择预设",
   "projectCliManagePresets": "管理",
+  "teamDefaultPresetLabel": "默认模型预设",
+  "teamDefaultPresetSubtitle": "可选的默认预设，未单独设置的成员将继承此配置。",
+  "teamDefaultPresetNone": "无",
+  "teamDefaultPresetChange": "更改",
+  "teamDefaultPresetManage": "管理",
+  "presetPickerTitle": "选择预设",
+  "presetPickerNoneOption": "无（不设默认）",
+  "memberPresetLabel": "预设",
+  "memberPresetInheritTeam": "继承团队默认",
+  "memberPresetInheritTeamNone": "团队未设置默认",
+  "memberPresetSelectPreset": "选择预设",
+  "memberPresetCustom": "自定义配置",
+  "memberPresetViaPreset": "{presetName}（通过预设）",
+  "@memberPresetViaPreset": {
+    "placeholders": {
+      "presetName": {
+        "type": "String"
+      }
+    }
+  },
+  "memberPresetViaTeamDefault": "{presetName}（通过团队默认）",
+  "@memberPresetViaTeamDefault": {
+    "placeholders": {
+      "presetName": {
+        "type": "String"
+      }
+    }
+  },
   "homeWorkspaceProjectSkills": "技能",
   "homeWorkspaceProjectPlugins": "插件",
   "homeWorkspaceProjectMcp": "MCP",
@@ -707,6 +735,7 @@
   "name": "名称",
   "actualModel": "实际模型",
   "noModelsConfigured": "未配置模型",
+  "providerModelBackgroundTier": "用于后台/快速任务（Claude haiku 档）",
   "missingProvider": "缺少提供商：",
   "summary": "摘要",
   "statProviders": "个提供商",
@@ -1081,10 +1110,6 @@
   "appProviderCatalogHint": "TeamPilot 在此维护统一服务商；团队启动时会为各工具生成隔离配置。",
   "appProviderPresetLabel": "预设",
   "appProviderPresetCustom": "自定义",
-  "appProviderClaudeApiFormatAnthropic": "Anthropic Messages（原生）",
-  "appProviderClaudeApiFormatOpenaiChat": "OpenAI Chat Completions",
-  "appProviderClaudeApiFormatOpenaiResponses": "OpenAI Responses",
-  "appProviderClaudeApiFormatGeminiNative": "Gemini Native",
   "appProviderClaudeAuthTokenDefault": "ANTHROPIC_AUTH_TOKEN（默认）",
   "appProviderClaudeAuthApiKey": "ANTHROPIC_API_KEY",
   "appProviderAdvancedJson": "高级 JSON 编辑",
@@ -1099,15 +1124,8 @@
   "appProviderTeamToolSection": "团队默认服务商",
   "appProviderTeamToolSubtitle": "选择本团队启动时，各工具使用的统一服务商。",
   "appProviderTeamNone": "无",
-  "appProviderClaudeApiFormat": "API 格式",
-  "appProviderClaudeApiFormatHint": "选择服务商 API 的输入格式。",
   "appProviderClaudeAuthField": "认证字段",
   "appProviderClaudeAuthFieldHint": "选择写入 settings 的认证环境变量。",
-  "appProviderClaudeModelMapping": "模型映射",
-  "appProviderClaudeModelMappingHint": "原生 Claude 服务商可留空；仅在服务商将 Claude 模型角色映射为不同模型名称时填写。",
-  "appProviderClaudeHaikuModel": "Haiku 默认模型",
-  "appProviderClaudeSonnetModel": "Sonnet 默认模型",
-  "appProviderClaudeOpusModel": "Opus 默认模型",
   "notes": "备注",
   "defaultModel": "默认模型",
   "editProvider": "编辑服务商",

@@ -88,7 +88,11 @@ void main() {
   test('toJson omits forceTeamLeadDelegateMode when false', () {
     const team = TeamConfig(id: 't', name: 'n');
     expect(team.toJson()['forceTeamLeadDelegateMode'], isTrue);
-    const off = TeamConfig(id: 't', name: 'n', forceTeamLeadDelegateMode: false);
+    const off = TeamConfig(
+      id: 't',
+      name: 'n',
+      forceTeamLeadDelegateMode: false,
+    );
     expect(off.toJson().containsKey('forceTeamLeadDelegateMode'), isFalse);
   });
 
@@ -202,7 +206,8 @@ void main() {
 
   test('TeamConfig round-trips pluginIds', () {
     const team = TeamConfig(
-      id: 't', name: 'T',
+      id: 't',
+      name: 'T',
       pluginIds: ['acme/market/p1', 'beta/market/p2'],
     );
     final decoded = TeamConfig.fromJson(team.toJson());
@@ -241,7 +246,10 @@ void main() {
     const m = TeamMemberConfig(id: 'm', name: 'a', cli: CliTool.flashskyai);
     const inherit = TeamMemberConfig(id: 'm2', name: 'b');
 
-    expect(m.cliWithin(nativeTeam), CliTool.claude); // native ignores member.cli
+    expect(
+      m.cliWithin(nativeTeam),
+      CliTool.claude,
+    ); // native ignores member.cli
     expect(m.cliWithin(mixedTeam), CliTool.flashskyai); // mixed honors it
     expect(inherit.cliWithin(mixedTeam), CliTool.claude); // mixed fallback
 

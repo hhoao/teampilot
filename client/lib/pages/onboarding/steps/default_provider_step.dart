@@ -28,9 +28,6 @@ class _OnboardingDefaultProviderStepState
     extends State<OnboardingDefaultProviderStep> {
   String? _selectedProviderId;
   String _defaultModel = '';
-  final _haikuController = TextEditingController();
-  final _sonnetController = TextEditingController();
-  final _opusController = TextEditingController();
   AppProviderCubit? _appProviderCubit;
   TeamCubit? _teamCubit;
 
@@ -49,9 +46,6 @@ class _OnboardingDefaultProviderStepState
 
   @override
   void dispose() {
-    _haikuController.dispose();
-    _sonnetController.dispose();
-    _opusController.dispose();
     super.dispose();
   }
 
@@ -89,14 +83,6 @@ class _OnboardingDefaultProviderStepState
         : providers.firstOrNull?.id;
     _selectedProviderId = initialId;
     _loadInitialDefaultModel(_selectedProvider);
-    _loadClaudeEnvFields(_selectedProvider);
-  }
-
-  void _loadClaudeEnvFields(AppProviderConfig? provider) {
-    final env = _readEnv(provider);
-    _haikuController.text = env['ANTHROPIC_DEFAULT_HAIKU_MODEL'] ?? '';
-    _sonnetController.text = env['ANTHROPIC_DEFAULT_SONNET_MODEL'] ?? '';
-    _opusController.text = env['ANTHROPIC_DEFAULT_OPUS_MODEL'] ?? '';
   }
 
   void _loadInitialDefaultModel(AppProviderConfig? provider) {
@@ -117,15 +103,6 @@ class _OnboardingDefaultProviderStepState
     );
   }
 
-  Map<String, String> _readEnv(AppProviderConfig? provider) {
-    final raw = provider?.config['env'];
-    if (raw is! Map) return const {};
-    return {
-      for (final entry in raw.entries)
-        if (entry.value != null) entry.key: entry.value.toString(),
-    };
-  }
-
   Future<void> _applySelection() async {
     if (!mounted) return;
     final provider = _selectedProvider;
@@ -136,22 +113,8 @@ class _OnboardingDefaultProviderStepState
     if (cubit == null || teamCubit == null) return;
     cubit.selectProvider(provider.id);
 
-    final env = Map<String, Object?>.from(_readEnv(provider));
-    if (_haikuController.text.trim().isNotEmpty) {
-      env['ANTHROPIC_DEFAULT_HAIKU_MODEL'] = _haikuController.text.trim();
-    }
-    if (_sonnetController.text.trim().isNotEmpty) {
-      env['ANTHROPIC_DEFAULT_SONNET_MODEL'] = _sonnetController.text.trim();
-    }
-    if (_opusController.text.trim().isNotEmpty) {
-      env['ANTHROPIC_DEFAULT_OPUS_MODEL'] = _opusController.text.trim();
-    }
-
     await cubit.upsertProvider(
-      provider.copyWith(
-        defaultModel: _defaultModel.trim(),
-        config: {...provider.config, if (env.isNotEmpty) 'env': env},
-      ),
+      provider.copyWith(defaultModel: _defaultModel.trim()),
     );
     if (!mounted) return;
     await OnboardingService.applyDefaultClaudeProviderBinding(
@@ -186,11 +149,6 @@ class _OnboardingDefaultProviderStepState
 
     final selectedProvider = _selectedProvider;
     final hideModelPicker = _hideModelPicker(context);
-    final showClaudeModels =
-        _haikuController.text.isNotEmpty ||
-        _sonnetController.text.isNotEmpty ||
-        _opusController.text.isNotEmpty ||
-        _readEnv(selectedProvider).isNotEmpty;
     final showModelSection = !hideModelPicker;
     final dropdownDeco = AppDropdownDecorations.themed(context);
 
@@ -257,7 +215,6 @@ class _OnboardingDefaultProviderStepState
                     setState(() {
                       _selectedProviderId = value;
                       _loadInitialDefaultModel(_selectedProvider);
-                      _loadClaudeEnvFields(_selectedProvider);
                     });
                     unawaited(_applySelection());
                   },
@@ -290,38 +247,6 @@ class _OnboardingDefaultProviderStepState
                             unawaited(_applySelection());
                           },
                         ),
-                  showDividerBelow: showClaudeModels,
-                ),
-              ],
-              if (showClaudeModels) ...[
-                SettingsLabeledStackedRow(
-                  title: l10n.appProviderClaudeHaikuModel,
-                  subtitle: l10n.appProviderClaudeModelMappingHint,
-                  body: TextField(
-                    controller: _haikuController,
-                    decoration: const InputDecoration(isDense: true),
-                    onSubmitted: (_) => unawaited(_applySelection()),
-                  ),
-                  showDividerBelow: true,
-                ),
-                SettingsLabeledStackedRow(
-                  title: l10n.appProviderClaudeSonnetModel,
-                  subtitle: l10n.appProviderClaudeModelMappingHint,
-                  body: TextField(
-                    controller: _sonnetController,
-                    decoration: const InputDecoration(isDense: true),
-                    onSubmitted: (_) => unawaited(_applySelection()),
-                  ),
-                  showDividerBelow: true,
-                ),
-                SettingsLabeledStackedRow(
-                  title: l10n.appProviderClaudeOpusModel,
-                  subtitle: l10n.appProviderClaudeModelMappingHint,
-                  body: TextField(
-                    controller: _opusController,
-                    decoration: const InputDecoration(isDense: true),
-                    onSubmitted: (_) => unawaited(_applySelection()),
-                  ),
                   showDividerBelow: false,
                 ),
               ],

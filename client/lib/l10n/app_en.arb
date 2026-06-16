@@ -342,6 +342,34 @@
   "projectCliPresetLabel": "Active Preset",
   "projectCliNoPresetHint": "No preset selected",
   "projectCliManagePresets": "Manage",
+  "teamDefaultPresetLabel": "Default Model Preset",
+  "teamDefaultPresetSubtitle": "Optional default preset applied to members that don't override it.",
+  "teamDefaultPresetNone": "None",
+  "teamDefaultPresetChange": "Change",
+  "teamDefaultPresetManage": "Manage",
+  "presetPickerTitle": "Select Preset",
+  "presetPickerNoneOption": "None (no default)",
+  "memberPresetLabel": "Preset",
+  "memberPresetInheritTeam": "Inherit team default",
+  "memberPresetInheritTeamNone": "No team default set",
+  "memberPresetSelectPreset": "Select a preset",
+  "memberPresetCustom": "Custom configuration",
+  "memberPresetViaPreset": "{presetName} (via preset)",
+  "@memberPresetViaPreset": {
+    "placeholders": {
+      "presetName": {
+        "type": "String"
+      }
+    }
+  },
+  "memberPresetViaTeamDefault": "{presetName} (via team default)",
+  "@memberPresetViaTeamDefault": {
+    "placeholders": {
+      "presetName": {
+        "type": "String"
+      }
+    }
+  },
   "homeWorkspaceProjectSkills": "Skills",
   "homeWorkspaceProjectPlugins": "Plugins",
   "homeWorkspaceProjectMcp": "MCP",
@@ -868,6 +896,7 @@
   "name": "Name",
   "actualModel": "Actual Model",
   "noModelsConfigured": "No models configured",
+  "providerModelBackgroundTier": "Use for background/fast tasks (Claude haiku tier)",
   "missingProvider": "Missing provider:",
   "summary": "Summary",
   "statProviders": "providers",
@@ -1393,10 +1422,6 @@
   "appProviderCatalogHint": "TeamPilot stores unified providers here; team launches generate per-tool configs.",
   "appProviderPresetLabel": "Preset",
   "appProviderPresetCustom": "Custom",
-  "appProviderClaudeApiFormatAnthropic": "Anthropic Messages (native)",
-  "appProviderClaudeApiFormatOpenaiChat": "OpenAI Chat Completions",
-  "appProviderClaudeApiFormatOpenaiResponses": "OpenAI Responses",
-  "appProviderClaudeApiFormatGeminiNative": "Gemini Native",
   "appProviderClaudeAuthTokenDefault": "ANTHROPIC_AUTH_TOKEN (default)",
   "appProviderClaudeAuthApiKey": "ANTHROPIC_API_KEY",
   "appProviderAdvancedJson": "Advanced JSON editor",
@@ -1411,15 +1436,8 @@
   "appProviderTeamToolSection": "Tool providers for this team",
   "appProviderTeamToolSubtitle": "Select which unified provider each tool uses when this team starts.",
   "appProviderTeamNone": "None",
-  "appProviderClaudeApiFormat": "API format",
-  "appProviderClaudeApiFormatHint": "Select the provider API input format.",
   "appProviderClaudeAuthField": "Authentication field",
   "appProviderClaudeAuthFieldHint": "Select the authentication environment variable written to settings.",
-  "appProviderClaudeModelMapping": "Model mapping",
-  "appProviderClaudeModelMappingHint": "Leave these empty for native Claude providers. Fill them only when a provider maps Claude model roles to different model names.",
-  "appProviderClaudeHaikuModel": "Haiku default model",
-  "appProviderClaudeSonnetModel": "Sonnet default model",
-  "appProviderClaudeOpusModel": "Opus default model",
   "notes": "Notes",
   "defaultModel": "Default model",
   "editProvider": "Edit provider",

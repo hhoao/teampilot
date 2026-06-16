@@ -48,9 +48,7 @@ class TeamPluginsSection extends StatelessWidget {
     final assignedCount = installed
         .where((p) => team.pluginIds.contains(p.id))
         .length;
-    final teamToolDef = CliToolRegistryScope.maybeOf(
-      context,
-    )?.tryGet(team.cli);
+    final teamToolDef = CliToolRegistryScope.maybeOf(context)?.tryGet(team.cli);
     final codexUnsupported = teamToolDef?.isLaunchSupported == false;
 
     return SingleChildScrollView(
@@ -80,7 +78,10 @@ class TeamPluginsSection extends StatelessWidget {
                   ),
                   trailing: OutlinedButton.icon(
                     onPressed: onManage,
-                    icon: Icon(Icons.widgets_outlined, size: context.appIconSizes.md),
+                    icon: Icon(
+                      Icons.widgets_outlined,
+                      size: context.appIconSizes.md,
+                    ),
                     label: Text(l10n.teamPluginsManage),
                   ),
                 ),
@@ -111,7 +112,8 @@ class TeamPluginsSection extends StatelessWidget {
                   TeamPluginsEmptyBlock(
                     textBase: textBase,
                     onGoPlugins:
-                        onManageGlobal ?? () => context.go('/plugins/discovery'),
+                        onManageGlobal ??
+                        () => context.go('/plugins/discovery'),
                   )
                 else
                   Column(
@@ -153,7 +155,8 @@ class TeamPluginsSection extends StatelessWidget {
 }
 
 class TeamPluginsEmptyBlock extends StatelessWidget {
-  const TeamPluginsEmptyBlock({super.key,
+  const TeamPluginsEmptyBlock({
+    super.key,
     required this.textBase,
     required this.onGoPlugins,
     this.emptyTitle,
@@ -207,7 +210,8 @@ class TeamPluginsEmptyBlock extends StatelessWidget {
 }
 
 class TeamPluginRow extends StatelessWidget {
-  const TeamPluginRow({super.key, 
+  const TeamPluginRow({
+    super.key,
     required this.plugin,
     required this.assigned,
     required this.onAssignedChanged,
@@ -322,7 +326,11 @@ class TeamPluginRow extends StatelessWidget {
 }
 
 class TeamMissingPluginRow extends StatelessWidget {
-  const TeamMissingPluginRow({super.key, required this.pluginId, required this.onRemove});
+  const TeamMissingPluginRow({
+    super.key,
+    required this.pluginId,
+    required this.onRemove,
+  });
 
   final String pluginId;
   final VoidCallback onRemove;

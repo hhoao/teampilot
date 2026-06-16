@@ -438,6 +438,7 @@ Future<AppShell> buildAppShell({
     projectProfileRepository: projectProfileRepository,
     loadInstalledSkills: () => skillRepo.loadInstalled(),
     cliPresetsRepository: cliPresetsRepo,
+    loadPresets: () => cliPresetsCubit.state.presets,
   );
   sessionRepo = SessionRepository(
     storageRoots: storageRoots,

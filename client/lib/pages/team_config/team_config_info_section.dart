@@ -1,18 +1,29 @@
 ﻿import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
 
+import '../../cubits/app_provider_cubit.dart';
+import '../../cubits/cli_presets_cubit.dart';
 import '../../cubits/team_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
+import '../../models/app_provider_config.dart';
+import '../../models/cli_preset.dart';
 import '../../models/team_config.dart';
 import '../../utils/app_keys.dart';
 import '../../services/cli/registry/capabilities/cli_effort_capability.dart';
+import '../../services/cli/registry/cli_display_name.dart';
+import '../../services/cli/registry/cli_tool_registry_scope.dart';
+import '../../theme/app_text_styles.dart';
 import '../../widgets/app_provider/cli_effort_picker_field.dart';
 import '../../widgets/app_provider/team_tool_provider_selectors.dart';
+import '../../widgets/app_provider/provider_brand_icon.dart';
 import '../../widgets/cli/cli_brand_icon.dart';
 import '../../widgets/dropdown/app_dropdown_decoration.dart';
 import '../../widgets/app_dialog.dart';
 import '../../widgets/settings/workspace_settings_widgets.dart';
+import '../home_workspace/project/config/project_cli_config_helpers.dart';
 import 'team_config_helpers.dart';
+import 'team_preset_picker_dialog.dart';
 
 class TeamInfoSection extends StatefulWidget {
   const TeamInfoSection({super.key, required this.team, required this.cubit});
@@ -63,7 +74,10 @@ class TeamInfoSectionState extends State<TeamInfoSection> {
     final loopKey = widget.team.loop == null
         ? '__default__'
         : (widget.team.loop! ? 'true' : 'false');
-    final catalogCli = catalogCliForTeam(context, widget.team.cli);
+    final showTeamCliRow = widget.team.teamMode != TeamMode.mixed;
+    final catalogCli = showTeamCliRow
+        ? catalogCliForTeam(context, widget.team.cli)
+        : null;
     final showDelegateRow =
         catalogCli == CliTool.claude || catalogCli == CliTool.flashskyai;
     final showToolProviders = catalogCli == CliTool.claude;
@@ -129,38 +143,39 @@ class TeamInfoSectionState extends State<TeamInfoSection> {
                       );
                     },
                   ),
-                  showDividerBelow: true,
+                  showDividerBelow: showTeamCliRow,
                 ),
-                SettingsLabeledStackedRow(
-                  title: l10n.teamCliLabel,
-                  subtitle: l10n.teamCliLockedSubtitle,
-                  body: Row(
-                    children: [
-                      CliBrandIcon(
-                        cli: widget.team.cli,
-                        label: teamCliDisplayLabel(
-                          context,
-                          l10n,
-                          widget.team.cli,
+                if (showTeamCliRow)
+                  SettingsLabeledStackedRow(
+                    title: l10n.teamCliLabel,
+                    subtitle: l10n.teamCliLockedSubtitle,
+                    body: Row(
+                      children: [
+                        CliBrandIcon(
+                          cli: widget.team.cli,
+                          label: teamCliDisplayLabel(
+                            context,
+                            l10n,
+                            widget.team.cli,
+                          ),
+                          size: 28,
+                          borderRadius: 7,
                         ),
-                        size: 28,
-                        borderRadius: 7,
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          teamCliDisplayLabel(context, l10n, widget.team.cli),
-                          style: Theme.of(context).textTheme.bodyMedium
-                              ?.copyWith(
-                                fontWeight: FontWeight.w500,
-                                color: Theme.of(context).colorScheme.onSurface,
-                              ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            teamCliDisplayLabel(context, l10n, widget.team.cli),
+                            style: Theme.of(context).textTheme.bodyMedium
+                                ?.copyWith(
+                                  fontWeight: FontWeight.w500,
+                                  color: Theme.of(context).colorScheme.onSurface,
+                                ),
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
+                    showDividerBelow: true,
                   ),
-                  showDividerBelow: true,
-                ),
                 SettingsLabeledStackedRow(
                   title: l10n.teamExtraArgs,
                   subtitle: l10n.teamExtraArgsHint,
@@ -190,11 +205,13 @@ class TeamInfoSectionState extends State<TeamInfoSection> {
                         widget.team.withEffortForCli(widget.team.cli, value),
                       ),
                     ),
-                    showDividerBelow:
-                        showDelegateRow ||
-                        showForceWaitRow ||
-                        showToolProviders,
+                    showDividerBelow: true,
                   ),
+                _TeamDefaultPresetRow(
+                  team: widget.team,
+                  showDividerBelow:
+                      showDelegateRow || showForceWaitRow || showToolProviders,
+                ),
                 if (showDelegateRow)
                   SettingsLabeledRow(
                     title: l10n.teamLeadDelegateOnlyTitle,
@@ -239,6 +256,194 @@ class TeamInfoSectionState extends State<TeamInfoSection> {
       ),
     );
   }
+}
+
+class _TeamDefaultPresetRow extends StatelessWidget {
+  const _TeamDefaultPresetRow({
+    required this.team,
+    required this.showDividerBelow,
+  });
+
+  final TeamConfig team;
+  final bool showDividerBelow;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final cs = Theme.of(context).colorScheme;
+    final styles = AppTextStyles.of(context);
+    final registry = CliToolRegistryScope.of(context);
+    final presets = context.watch<CliPresetsCubit>().state.presets;
+    final activePreset = team.activePresetId != null
+        ? _findPreset(presets, team.activePresetId!)
+        : null;
+    final configured = activePreset != null;
+
+    AppProviderConfig? selectedProvider;
+    var hidesModelPicker = false;
+    if (activePreset != null) {
+      final providers = context
+          .watch<AppProviderCubit>()
+          .state
+          .providersFor(activePreset.cli)
+          .toList(growable: false);
+      final prov = activePreset.provider.trim();
+      if (prov.isNotEmpty) {
+        for (final p in providers) {
+          if (p.id == prov) {
+            selectedProvider = p;
+            break;
+          }
+        }
+      }
+      hidesModelPicker = projectCliHidesModelPicker(
+        registry,
+        activePreset.cli,
+        selectedProvider,
+      );
+    }
+
+    final catalogDef =
+        activePreset != null ? registry.tryGet(activePreset.cli) : null;
+    final configLine = activePreset == null
+        ? ''
+        : teamPresetConfigLine(
+            l10n: l10n,
+            registry: registry,
+            preset: activePreset,
+            provider: selectedProvider,
+            hidesModelPicker: hidesModelPicker,
+          );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              configured &&
+                      selectedProvider != null &&
+                      selectedProvider.icon.isNotEmpty
+                  ? ProviderBrandIcon.fromConfig(
+                      selectedProvider,
+                      size: 40,
+                      borderRadius: 10,
+                    )
+                  : catalogDef != null && activePreset != null
+                  ? CliBrandIcon(
+                      cli: activePreset.cli,
+                      definition: catalogDef,
+                      label: cliDisplayName(catalogDef, l10n),
+                      size: 40,
+                      borderRadius: 10,
+                    )
+                  : _TeamPresetIcon(),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            l10n.teamDefaultPresetLabel,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: styles.prominent.copyWith(
+                              color: cs.onSurface,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        SettingsConfiguredBadge(configured: configured),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    if (!configured)
+                      Text(
+                        l10n.teamDefaultPresetSubtitle,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: styles.bodySmall.copyWith(
+                          color: cs.onSurfaceVariant,
+                          height: 1.35,
+                        ),
+                      ),
+                    if (configured) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        configLine,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: styles.bodySmall.copyWith(
+                          color: cs.onSurfaceVariant,
+                          fontWeight: FontWeight.w500,
+                          height: 1.35,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              OutlinedButton.icon(
+                onPressed: () => _openTeamPresetPicker(context),
+                icon: Icon(Icons.tune, size: context.appIconSizes.sm),
+                label: Text(l10n.projectCliConfigure),
+                style: OutlinedButton.styleFrom(
+                  visualDensity: VisualDensity.compact,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        if (showDividerBelow)
+          Divider(
+            height: 1,
+            thickness: 1,
+            color: cs.outlineVariant.withValues(alpha: 0.5),
+          ),
+      ],
+    );
+  }
+
+  void _openTeamPresetPicker(BuildContext context) {
+    showDialog<void>(
+      context: context,
+      builder: (_) => TeamPresetPickerDialog(team: team),
+    );
+  }
+}
+
+class _TeamPresetIcon extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Container(
+      width: 40,
+      height: 40,
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.45)),
+      ),
+      child: Icon(Icons.layers_outlined, size: 22, color: cs.primary),
+    );
+  }
+}
+
+CliPreset? _findPreset(List<CliPreset> presets, String id) {
+  for (final p in presets) {
+    if (p.id == id) return p;
+  }
+  return null;
 }
 
 class TeamConfigDangerZone extends StatelessWidget {

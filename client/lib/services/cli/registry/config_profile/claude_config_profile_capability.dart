@@ -831,10 +831,21 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
     final model = member.model.trim();
     if (model.isNotEmpty) {
       final env = Map<String, Object?>.from(settings['env'] as Map);
+      // The provider may pin a distinct background (haiku-tier) model; keep it
+      // even when the member overrides the main model, so "big main + cheap
+      // background" survives. Otherwise all tiers collapse to the member model.
+      final providerMain =
+          (env['ANTHROPIC_MODEL'] as String?)?.trim() ?? '';
+      final providerHaiku =
+          (env['ANTHROPIC_DEFAULT_HAIKU_MODEL'] as String?)?.trim() ?? '';
+      final background =
+          (providerHaiku.isNotEmpty && providerHaiku != providerMain)
+          ? providerHaiku
+          : model;
       env['ANTHROPIC_MODEL'] = model;
-      env['ANTHROPIC_DEFAULT_HAIKU_MODEL'] = model;
       env['ANTHROPIC_DEFAULT_SONNET_MODEL'] = model;
       env['ANTHROPIC_DEFAULT_OPUS_MODEL'] = model;
+      env['ANTHROPIC_DEFAULT_HAIKU_MODEL'] = background;
       settings['env'] = env;
     }
     return settings;

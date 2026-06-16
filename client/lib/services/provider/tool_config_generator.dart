@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:toml/toml.dart';
 import '../../models/app_provider_config.dart';
 import '../../models/llm_config.dart';
+import '../cli/registry/capabilities/provider_model_capability.dart';
 import '../storage/app_storage.dart';
 import '../io/filesystem.dart';
 
@@ -123,40 +124,45 @@ requires_openai_auth = true
         .trim();
   }
 
+  /// Materializes Claude's `settings.json` purely from the provider's canonical
+  /// fields. It emits only `env`: endpoint/credential/model are derived
+  /// authoritatively from [AppProviderConfig.baseUrl] / `apiKey` /
+  /// `defaultModel`, never read back from a frozen `config`. Policy concerns
+  /// (permissions, hooks, enabled plugins, teammateMode, effort) are owned by
+  /// the team / project / plugin scopes and merged in by the config-profile
+  /// layer — this never copies them off the provider record.
   Map<String, Object?> buildClaudeSettings(AppProviderConfig provider) {
-    final config = provider.config;
-    final settings = <String, Object?>{
-      for (final entry in config.entries)
-        if (entry.key != 'env') entry.key: entry.value,
-    };
     final env = <String, String>{};
-    final rawEnv = config['env'];
+    // Custom, non-derived env keys a user added (e.g. DISABLE_AUTOUPDATER) are
+    // preserved; the derived keys below are then written authoritatively.
+    final rawEnv = provider.config['env'];
     if (rawEnv is Map) {
       for (final entry in rawEnv.entries) {
         env[entry.key.toString()] = entry.value?.toString() ?? '';
       }
     }
     if (provider.apiKey.isNotEmpty) {
-      // Presets keep `ANTHROPIC_AUTH_TOKEN: ""` placeholders in catalog JSON;
-      // always overwrite so top-level [apiKey] wins at launch time.
       env[_claudeApiKeyField(provider)] = provider.apiKey;
     }
     if (provider.baseUrl.isNotEmpty) {
-      env.putIfAbsent('ANTHROPIC_BASE_URL', () => provider.baseUrl);
+      env['ANTHROPIC_BASE_URL'] = provider.baseUrl;
     }
     final model = provider.defaultModel.trim();
     if (model.isNotEmpty) {
-      env.putIfAbsent('ANTHROPIC_MODEL', () => model);
-      env.putIfAbsent('ANTHROPIC_DEFAULT_HAIKU_MODEL', () => model);
-      env.putIfAbsent('ANTHROPIC_DEFAULT_SONNET_MODEL', () => model);
-      env.putIfAbsent('ANTHROPIC_DEFAULT_OPUS_MODEL', () => model);
+      env['ANTHROPIC_MODEL'] = model;
+      env['ANTHROPIC_DEFAULT_SONNET_MODEL'] = model;
+      env['ANTHROPIC_DEFAULT_OPUS_MODEL'] = model;
+      // A model flagged as the background tier drives the cheap/fast (haiku)
+      // tier; else it collapses to [model] so a single-model third-party
+      // endpoint never targets a missing model.
+      final background = backgroundModelFromProvider(provider);
+      env['ANTHROPIC_DEFAULT_HAIKU_MODEL'] = background.isNotEmpty
+          ? background
+          : (env['ANTHROPIC_DEFAULT_HAIKU_MODEL'] ?? model);
     }
     env.putIfAbsent('CCGUI_CLI_LOGIN_AUTHORIZED', () => '1');
     env.putIfAbsent('CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC', () => '1');
-    if (env.isNotEmpty) {
-      settings['env'] = env;
-    }
-    return settings;
+    return {'env': env};
   }
 
   static const _codexConfigOnlyKeys = {
@@ -177,17 +183,8 @@ requires_openai_auth = true
   };
 
   String _claudeApiKeyField(AppProviderConfig provider) {
-    final fromConfig = provider.config['api_key_field']?.toString().trim();
-    if (fromConfig == 'ANTHROPIC_AUTH_TOKEN' ||
-        fromConfig == 'ANTHROPIC_API_KEY') {
-      return fromConfig!;
-    }
-    final fromProvider = provider.apiKeyField.trim();
-    if (fromProvider == 'ANTHROPIC_AUTH_TOKEN' ||
-        fromProvider == 'ANTHROPIC_API_KEY') {
-      return fromProvider;
-    }
-    return 'ANTHROPIC_API_KEY';
+    final field = provider.apiKeyField.trim();
+    return field == 'ANTHROPIC_AUTH_TOKEN' ? field : 'ANTHROPIC_API_KEY';
   }
 
   String? validateCodexToml(String toml) {

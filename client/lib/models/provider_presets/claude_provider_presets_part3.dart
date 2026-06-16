@@ -21,12 +21,7 @@ const List<AppProviderPreset> claudeProviderPresetsPart3 = <AppProviderPreset>[
         isPartner: true,
         partnerPromotionKey: "claudeapi",
         endpointCandidates: [],
-        config: {
-          "env": {
-            "ANTHROPIC_BASE_URL": "https://gw.claudeapi.com",
-            "ANTHROPIC_AUTH_TOKEN": "",
-          },
-        },
+        config: {}
       ),
     ),
     AppProviderPreset(
@@ -48,12 +43,7 @@ const List<AppProviderPreset> claudeProviderPresetsPart3 = <AppProviderPreset>[
         isPartner: true,
         partnerPromotionKey: "claudecn",
         endpointCandidates: [],
-        config: {
-          "env": {
-            "ANTHROPIC_BASE_URL": "https://claudecn.top",
-            "ANTHROPIC_AUTH_TOKEN": "",
-          },
-        },
+        config: {}
       ),
     ),
     AppProviderPreset(
@@ -75,12 +65,7 @@ const List<AppProviderPreset> claudeProviderPresetsPart3 = <AppProviderPreset>[
         isPartner: true,
         partnerPromotionKey: "runapi",
         endpointCandidates: [],
-        config: {
-          "env": {
-            "ANTHROPIC_BASE_URL": "https://runapi.co",
-            "ANTHROPIC_AUTH_TOKEN": "",
-          },
-        },
+        config: {}
       ),
     ),
     AppProviderPreset(
@@ -102,12 +87,7 @@ const List<AppProviderPreset> claudeProviderPresetsPart3 = <AppProviderPreset>[
         isPartner: false,
         partnerPromotionKey: "",
         endpointCandidates: [],
-        config: {
-          "env": {
-            "ANTHROPIC_BASE_URL": "https://www.relaxycode.com",
-            "ANTHROPIC_AUTH_TOKEN": "",
-          },
-        },
+        config: {}
       ),
     ),
     AppProviderPreset(
@@ -134,12 +114,7 @@ const List<AppProviderPreset> claudeProviderPresetsPart3 = <AppProviderPreset>[
           "https://api-dmit.cubence.com",
           "https://api-bwg.cubence.com",
         ],
-        config: {
-          "env": {
-            "ANTHROPIC_BASE_URL": "https://api.cubence.com",
-            "ANTHROPIC_AUTH_TOKEN": "",
-          },
-        },
+        config: {}
       ),
     ),
     AppProviderPreset(
@@ -161,12 +136,7 @@ const List<AppProviderPreset> claudeProviderPresetsPart3 = <AppProviderPreset>[
         isPartner: true,
         partnerPromotionKey: "aigocode",
         endpointCandidates: ["https://api.aigocode.com"],
-        config: {
-          "env": {
-            "ANTHROPIC_BASE_URL": "https://api.aigocode.com",
-            "ANTHROPIC_AUTH_TOKEN": "",
-          },
-        },
+        config: {}
       ),
     ),
     AppProviderPreset(
@@ -188,12 +158,7 @@ const List<AppProviderPreset> claudeProviderPresetsPart3 = <AppProviderPreset>[
         isPartner: true,
         partnerPromotionKey: "rightcode",
         endpointCandidates: [],
-        config: {
-          "env": {
-            "ANTHROPIC_BASE_URL": "https://www.right.codes/claude",
-            "ANTHROPIC_AUTH_TOKEN": "",
-          },
-        },
+        config: {}
       ),
     ),
     AppProviderPreset(
@@ -218,12 +183,7 @@ const List<AppProviderPreset> claudeProviderPresetsPart3 = <AppProviderPreset>[
           "https://api.aicodemirror.com/api/claudecode",
           "https://api.claudecode.net.cn/api/claudecode",
         ],
-        config: {
-          "env": {
-            "ANTHROPIC_BASE_URL": "https://api.aicodemirror.com/api/claudecode",
-            "ANTHROPIC_AUTH_TOKEN": "",
-          },
-        },
+        config: {}
       ),
     ),
     AppProviderPreset(
@@ -245,12 +205,7 @@ const List<AppProviderPreset> claudeProviderPresetsPart3 = <AppProviderPreset>[
         isPartner: true,
         partnerPromotionKey: "aicoding",
         endpointCandidates: ["https://api.aicoding.sh"],
-        config: {
-          "env": {
-            "ANTHROPIC_BASE_URL": "https://api.aicoding.sh",
-            "ANTHROPIC_AUTH_TOKEN": "",
-          },
-        },
+        config: {}
       ),
     ),
     AppProviderPreset(
@@ -273,12 +228,7 @@ const List<AppProviderPreset> claudeProviderPresetsPart3 = <AppProviderPreset>[
         isPartner: true,
         partnerPromotionKey: "crazyrouter",
         endpointCandidates: ["https://cn.crazyrouter.com"],
-        config: {
-          "env": {
-            "ANTHROPIC_BASE_URL": "https://cn.crazyrouter.com",
-            "ANTHROPIC_AUTH_TOKEN": "",
-          },
-        },
+        config: {}
       ),
     ),
     AppProviderPreset(
@@ -304,12 +254,7 @@ const List<AppProviderPreset> claudeProviderPresetsPart3 = <AppProviderPreset>[
           "https://claude2.sssaicode.com/api",
           "https://anti.sssaicode.com/api",
         ],
-        config: {
-          "env": {
-            "ANTHROPIC_BASE_URL": "https://node-hk.sssaicode.com/api",
-            "ANTHROPIC_AUTH_TOKEN": "",
-          },
-        },
+        config: {}
       ),
     ),
     AppProviderPreset(
@@ -332,12 +277,7 @@ const List<AppProviderPreset> claudeProviderPresetsPart3 = <AppProviderPreset>[
         isPartner: true,
         partnerPromotionKey: "ucloud",
         endpointCandidates: ["https://api.modelverse.cn"],
-        config: {
-          "env": {
-            "ANTHROPIC_BASE_URL": "https://api.modelverse.cn",
-            "ANTHROPIC_AUTH_TOKEN": "",
-          },
-        },
+        config: {}
       ),
     ),
     AppProviderPreset(
@@ -360,12 +300,7 @@ const List<AppProviderPreset> claudeProviderPresetsPart3 = <AppProviderPreset>[
         isPartner: true,
         partnerPromotionKey: "ucloud",
         endpointCandidates: ["https://cp.compshare.cn"],
-        config: {
-          "env": {
-            "ANTHROPIC_BASE_URL": "https://cp.compshare.cn",
-            "ANTHROPIC_AUTH_TOKEN": "",
-          },
-        },
+        config: {}
       ),
     ),
     AppProviderPreset(
@@ -387,12 +322,7 @@ const List<AppProviderPreset> claudeProviderPresetsPart3 = <AppProviderPreset>[
         isPartner: true,
         partnerPromotionKey: "micu",
         endpointCandidates: ["https://www.micuapi.ai"],
-        config: {
-          "env": {
-            "ANTHROPIC_BASE_URL": "https://www.micuapi.ai",
-            "ANTHROPIC_AUTH_TOKEN": "",
-          },
-        },
+        config: {}
       ),
     ),
 ];

@@ -3,12 +3,16 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
 
 import '../../cubits/app_provider_cubit.dart';
+import '../../cubits/cli_presets_cubit.dart';
 import '../../cubits/team_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/app_provider_config.dart';
+import '../../models/cli_preset.dart';
 import '../../models/team_config.dart';
+import '../../services/cli/preset_resolver.dart';
 import '../../services/cli/registry/capabilities/cli_effort_capability.dart';
 import '../../services/cli/registry/cli_display_name.dart';
+import '../../services/cli/registry/cli_tool_registry.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../theme/app_text_styles.dart';
 import '../../widgets/app_dialog.dart';
@@ -75,6 +79,7 @@ class MemberLaunchConfigRow extends StatelessWidget {
       catalogCli: catalogCli,
       provider: selectedProvider,
     );
+    final presets = context.watch<CliPresetsCubit>().state.presets;
     final configLine = memberLaunchConfigLine(
       l10n: l10n,
       registry: registry,
@@ -83,6 +88,7 @@ class MemberLaunchConfigRow extends StatelessWidget {
       configured: configured,
       provider: selectedProvider,
       hidesModelPicker: hidesModelPicker,
+      presets: presets,
     );
 
     return Column(
@@ -236,6 +242,9 @@ class MemberLaunchConfigureDialog extends StatefulWidget {
       _MemberLaunchConfigureDialogState();
 }
 
+const _presetInheritToken = '__inherit__';
+const _presetCustomToken = '__custom__';
+
 class _MemberLaunchConfigureDialogState
     extends State<MemberLaunchConfigureDialog> {
   late String _cliToken;
@@ -253,14 +262,13 @@ class _MemberLaunchConfigureDialogState
   }
 
   CliTool get _catalogCli {
-    if (widget.team.teamMode != TeamMode.mixed) {
-      return widget.team.cli;
-    }
-    if (_cliToken == _inheritCliToken) {
-      return widget.team.cli;
-    }
+    if (widget.team.teamMode != TeamMode.mixed) return widget.team.cli;
+    if (_cliToken == _inheritCliToken) return widget.team.cli;
     return CliTool.decode(_cliToken);
   }
+
+  /// Whether the member currently has a preset active (not custom).
+  bool get _isPresetActive => widget.member.activePresetId != null;
 
   AppProviderConfig? _selectedProvider(Iterable<AppProviderConfig> providers) {
     for (final provider in providers) {
@@ -278,22 +286,39 @@ class _MemberLaunchConfigureDialogState
     });
   }
 
+  /// Immediately applies a preset choice via the cubit. For inherit/preset
+  /// modes this updates activePresetId; for custom it clears to null.
+  void _applyPresetChoice(String token) {
+    if (token == _presetInheritToken) {
+      widget.cubit.setMemberActivePreset(
+        widget.member.id,
+        TeamConfig.inheritPresetId,
+      );
+    } else if (token == _presetCustomToken) {
+      widget.cubit.setMemberActivePreset(widget.member.id, null);
+    } else {
+      widget.cubit.setMemberActivePreset(widget.member.id, token);
+    }
+  }
+
   void _save() {
-    final mixed = widget.team.teamMode == TeamMode.mixed;
-    final nextCli = mixed && _cliToken != _inheritCliToken
-        ? CliTool.decode(_cliToken)
-        : null;
-    widget.cubit.updateMember(
-      widget.member.id,
-      widget.member.copyWith(
-        cli: nextCli,
-        updateCli: mixed,
-        provider: _providerId,
-        model: _modelId,
-        effort: _effortId,
-        updateEffort: true,
-      ),
-    );
+    if (!_isPresetActive) {
+      final mixed = widget.team.teamMode == TeamMode.mixed;
+      final nextCli = mixed && _cliToken != _inheritCliToken
+          ? CliTool.decode(_cliToken)
+          : null;
+      widget.cubit.updateMember(
+        widget.member.id,
+        widget.member.copyWith(
+          cli: nextCli,
+          updateCli: mixed,
+          provider: _providerId,
+          model: _modelId,
+          effort: _effortId,
+          updateEffort: true,
+        ),
+      );
+    }
     Navigator.of(context).pop();
   }
 
@@ -303,37 +328,81 @@ class _MemberLaunchConfigureDialogState
     final registry = CliToolRegistryScope.of(context);
     final dropdownDeco = AppDropdownDecorations.themed(context);
     final catalogCli = _catalogCli;
+    final allPresets = context.watch<CliPresetsCubit>().state.presets;
+    final team = context.watch<TeamCubit>().state.teams.firstWhere(
+      (t) => t.id == widget.team.id,
+      orElse: () => widget.team,
+    );
+    final member = team.members.cast<TeamMemberConfig?>().firstWhere(
+      (m) => m!.id == widget.member.id,
+      orElse: () => widget.member,
+    )!;
+    final eligiblePresetList = eligiblePresets(
+      team: team,
+      member: member,
+      allPresets: allPresets,
+    );
+
+    // Determine current preset state from the updated member.
+    final isPresetActive = member.activePresetId != null;
+    final currentPresetToken = member.activePresetId ?? _presetCustomToken;
+
+    // Resolved values when a preset is active.
+    ({String provider, String model, String effort, CliPreset? sourcePreset})?
+    resolved;
+    if (isPresetActive) {
+      resolved = resolveMemberLaunchConfig(
+        team: team,
+        member: member,
+        globalPresets: allPresets,
+      );
+    }
+    final displayProviderId = resolved?.provider ?? _providerId;
+    final displayModelId = resolved?.model ?? _modelId;
+
     final providers = context
         .watch<AppProviderCubit>()
         .state
         .providersFor(catalogCli)
         .toList(growable: false);
     final providerIds = providers.map((p) => p.id).toList()..sort();
-    if (_providerId.trim().isNotEmpty && !providerIds.contains(_providerId)) {
-      providerIds.add(_providerId);
+    if (displayProviderId.isNotEmpty &&
+        !providerIds.contains(displayProviderId)) {
+      providerIds.add(displayProviderId);
     }
     final providerLabels = {
       for (final provider in providers) provider.id: provider.name,
-      if (_providerId.trim().isNotEmpty &&
-          !providers.any((p) => p.id == _providerId))
-        _providerId: _providerId,
+      if (displayProviderId.isNotEmpty &&
+          !providers.any((p) => p.id == displayProviderId))
+        displayProviderId: displayProviderId,
     };
     final selectedProvider = _selectedProvider(providers);
+    final effectiveProvider = isPresetActive
+        ? (displayProviderId.isNotEmpty ? selectedProvider : null)
+        : selectedProvider;
     final hideModelPicker = projectCliHidesModelPicker(
       registry,
       catalogCli,
-      selectedProvider,
+      effectiveProvider,
     );
     final showEffortPicker = teamShowsEffortPicker(
       context,
       cli: catalogCli,
       placement: EffortPickerPlacement.member,
-      model: _modelId,
+      model: displayModelId,
     );
-    final mixed = widget.team.teamMode == TeamMode.mixed;
+    final mixed = team.teamMode == TeamMode.mixed;
     final cliItems = mixed
         ? [_inheritCliToken, ...registry.launchable.map((d) => d.id.value)]
         : const <String>[];
+
+    // Build preset dropdown items.
+    final presetDropdownItems = <String>[
+      _presetInheritToken,
+      ...eligiblePresetList.map((p) => p.id),
+      _presetCustomToken,
+    ];
+    final teamPresetName = _teamPresetName(team.activePresetId, allPresets);
 
     return AppDialog(
       maxWidth: 680,
@@ -348,126 +417,173 @@ class _MemberLaunchConfigureDialogState
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                if (mixed)
-                  SettingsLabeledRow(
-                    title: l10n.teamCliLabel,
-                    trailing: _memberLaunchDropdown(
-                      AppDropdownField<String>(
-                        items: cliItems,
-                        initialItem: _cliToken,
-                        decoration: dropdownDeco,
-                        itemLabel: (value) {
-                          if (value == _inheritCliToken) {
-                            return l10n.memberCliInheritHint;
-                          }
-                          final def = registry.tryGet(CliTool.decode(value));
-                          return def == null
-                              ? value
-                              : cliDisplayName(def, l10n);
-                        },
-                        onChanged: (value) {
-                          if (value == null) return;
-                          if (value == _cliToken) return;
-                          _applyCatalogCliChange(value);
-                        },
-                        itemBuilder: (context, value) {
-                          if (value == _inheritCliToken) {
-                            return Text(l10n.memberCliInheritHint);
-                          }
-                          final cli = CliTool.decode(value);
-                          final def = registry.tryGet(cli);
-                          return cliDropdownRow(
-                            context,
-                            cli: cli,
-                            label: def == null
-                                ? value
-                                : cliDisplayName(def, l10n),
-                            registry: registry,
-                          );
-                        },
-                      ),
-                    ),
-                    showDividerBelow: true,
-                  ),
+                // ── Preset dropdown ──
                 SettingsLabeledRow(
-                  title: l10n.provider,
+                  title: l10n.memberPresetLabel,
                   trailing: _memberLaunchDropdown(
                     AppDropdownField<String>(
-                      key: ValueKey(
-                        'member-launch-provider-$catalogCli-$_providerId',
-                      ),
-                      items: providerIds,
-                      initialItem: _providerId.isEmpty ? null : _providerId,
-                      hintText: l10n.selectProvider,
+                      items: presetDropdownItems,
+                      initialItem: currentPresetToken,
+                      hintText: l10n.memberPresetSelectPreset,
                       decoration: dropdownDeco,
-                      onChanged: (value) {
-                        setState(() {
-                          _providerId = value ?? '';
-                          _modelId = '';
-                          _effortId = '';
-                        });
+                      itemLabel: (value) {
+                        if (value == _presetInheritToken) {
+                          return l10n.memberPresetInheritTeam;
+                        }
+                        if (value == _presetCustomToken) {
+                          return l10n.memberPresetCustom;
+                        }
+                        for (final p in eligiblePresetList) {
+                          if (p.id == value) return p.name;
+                        }
+                        return value;
                       },
-                      itemBuilder: providerDropdownItemBuilder(
-                        providers: providers,
-                        labelFor: (value) => providerLabels[value] ?? value,
+                      itemBuilder: (ctx, value) => _presetDropdownItem(
+                        ctx,
+                        value,
+                        eligiblePresetList,
+                        l10n,
+                        registry,
+                        teamPresetName,
                       ),
+                      onChanged: (value) {
+                        if (value == null) return;
+                        _applyPresetChoice(value);
+                      },
                     ),
                   ),
-                  showDividerBelow: !hideModelPicker || showEffortPicker,
+                  showDividerBelow: true,
                 ),
-                if (!hideModelPicker)
-                  SettingsLabeledRow(
-                    title: l10n.model,
-                    trailing: _memberLaunchDropdown(
-                      ProviderModelPickerField(
-                        key: ValueKey(
-                          'member-launch-model-$_providerId-$_modelId',
+                // ── Preset info or editable fields ──
+                if (isPresetActive && resolved != null)
+                  _PresetInfoBanner(
+                    provider: resolved.provider,
+                    model: resolved.model,
+                    effort: resolved.effort,
+                    l10n: l10n,
+                  ),
+                if (!isPresetActive) ...[
+                  if (mixed)
+                    SettingsLabeledRow(
+                      title: l10n.teamCliLabel,
+                      trailing: _memberLaunchDropdown(
+                        AppDropdownField<String>(
+                          items: cliItems,
+                          initialItem: _cliToken,
+                          decoration: dropdownDeco,
+                          itemLabel: (value) {
+                            if (value == _inheritCliToken) {
+                              return l10n.memberCliInheritHint;
+                            }
+                            final def = registry.tryGet(CliTool.decode(value));
+                            return def == null
+                                ? value
+                                : cliDisplayName(def, l10n);
+                          },
+                          onChanged: (value) {
+                            if (value == null) return;
+                            if (value == _cliToken) return;
+                            _applyCatalogCliChange(value);
+                          },
+                          itemBuilder: (ctx, value) {
+                            if (value == _inheritCliToken) {
+                              return Text(l10n.memberCliInheritHint);
+                            }
+                            final cli = CliTool.decode(value);
+                            final def = registry.tryGet(cli);
+                            return cliDropdownRow(
+                              ctx,
+                              cli: cli,
+                              label: def == null
+                                  ? value
+                                  : cliDisplayName(def, l10n),
+                              registry: registry,
+                            );
+                          },
                         ),
-                        cli: catalogCli,
-                        providerId: _providerId,
-                        provider: selectedProvider,
-                        value: _modelId,
-                        hintText: l10n.selectModel,
+                      ),
+                      showDividerBelow: true,
+                    ),
+                  SettingsLabeledRow(
+                    title: l10n.provider,
+                    trailing: _memberLaunchDropdown(
+                      AppDropdownField<String>(
+                        key: ValueKey(
+                          'member-launch-provider-$catalogCli-$_providerId',
+                        ),
+                        items: providerIds,
+                        initialItem: _providerId.isEmpty ? null : _providerId,
+                        hintText: l10n.selectProvider,
                         decoration: dropdownDeco,
-                        onChanged: (value) => setState(() {
-                          _modelId = value.trim();
-                          if (!teamShowsEffortPicker(
-                            context,
-                            cli: catalogCli,
-                            placement: EffortPickerPlacement.member,
-                            model: _modelId,
-                          )) {
+                        onChanged: (value) {
+                          setState(() {
+                            _providerId = value ?? '';
+                            _modelId = '';
                             _effortId = '';
-                          }
-                        }),
-                      ),
-                    ),
-                    showDividerBelow: showEffortPicker,
-                  ),
-                if (showEffortPicker)
-                  SettingsLabeledRow(
-                    title: l10n.memberEffortLevel,
-                    subtitle: l10n.memberEffortLevelSubtitle,
-                    trailing: _memberLaunchDropdown(
-                      CliEffortPickerField(
-                        key: ValueKey(
-                          'member-launch-effort-$_providerId-$_modelId-$_effortId',
+                          });
+                        },
+                        itemBuilder: providerDropdownItemBuilder(
+                          providers: providers,
+                          labelFor: (value) => providerLabels[value] ?? value,
                         ),
-                        cli: catalogCli,
-                        value: _effortId,
-                        team: widget.team,
-                        member: widget.member,
-                        provider: selectedProvider,
-                        model: _modelId,
-                        allowInherit: true,
-                        inheritLabel: l10n.memberEffortInheritHint,
-                        decoration: dropdownDeco,
-                        onChanged: (value) =>
-                            setState(() => _effortId = value.trim()),
                       ),
                     ),
-                    showDividerBelow: false,
+                    showDividerBelow: !hideModelPicker || showEffortPicker,
                   ),
+                  if (!hideModelPicker)
+                    SettingsLabeledRow(
+                      title: l10n.model,
+                      trailing: _memberLaunchDropdown(
+                        ProviderModelPickerField(
+                          key: ValueKey(
+                            'member-launch-model-$_providerId-$_modelId',
+                          ),
+                          cli: catalogCli,
+                          providerId: _providerId,
+                          provider: selectedProvider,
+                          value: _modelId,
+                          hintText: l10n.selectModel,
+                          decoration: dropdownDeco,
+                          onChanged: (value) => setState(() {
+                            _modelId = value.trim();
+                            if (!teamShowsEffortPicker(
+                              context,
+                              cli: catalogCli,
+                              placement: EffortPickerPlacement.member,
+                              model: _modelId,
+                            )) {
+                              _effortId = '';
+                            }
+                          }),
+                        ),
+                      ),
+                      showDividerBelow: showEffortPicker,
+                    ),
+                  if (showEffortPicker)
+                    SettingsLabeledRow(
+                      title: l10n.memberEffortLevel,
+                      subtitle: l10n.memberEffortLevelSubtitle,
+                      trailing: _memberLaunchDropdown(
+                        CliEffortPickerField(
+                          key: ValueKey(
+                            'member-launch-effort-$_providerId-$_modelId-$_effortId',
+                          ),
+                          cli: catalogCli,
+                          value: _effortId,
+                          team: team,
+                          member: member,
+                          provider: selectedProvider,
+                          model: _modelId,
+                          allowInherit: true,
+                          inheritLabel: l10n.memberEffortInheritHint,
+                          decoration: dropdownDeco,
+                          onChanged: (value) =>
+                              setState(() => _effortId = value.trim()),
+                        ),
+                      ),
+                      showDividerBelow: false,
+                    ),
+                ],
               ],
             ),
           ),
@@ -477,15 +593,72 @@ class _MemberLaunchConfigureDialogState
                 onPressed: () => Navigator.of(context).pop(),
                 child: Text(l10n.cancel),
               ),
-              FilledButton(
-                onPressed: _providerId.trim().isEmpty ? null : _save,
-                child: Text(l10n.save),
-              ),
+              if (!isPresetActive)
+                FilledButton(
+                  onPressed: _providerId.trim().isEmpty ? null : _save,
+                  child: Text(l10n.save),
+                )
+              else
+                FilledButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: Text(l10n.save),
+                ),
             ],
           ),
         ],
       ),
     );
+  }
+
+  Widget _presetDropdownItem(
+    BuildContext ctx,
+    String value,
+    List<CliPreset> eligible,
+    AppLocalizations l10n,
+    CliToolRegistry registry,
+    String? teamPresetName,
+  ) {
+    if (value == _presetInheritToken) {
+      final enabled = teamPresetName != null;
+      return _PresetDropdownOption(
+        title: l10n.memberPresetInheritTeam,
+        subtitle: teamPresetName ?? l10n.memberPresetInheritTeamNone,
+        enabled: enabled,
+      );
+    }
+    if (value == _presetCustomToken) {
+      return _PresetDropdownOption(
+        title: l10n.memberPresetCustom,
+        enabled: true,
+      );
+    }
+    for (final p in eligible) {
+      if (p.id == value) {
+        final def = registry.tryGet(p.cli);
+        final cliName = def != null ? cliDisplayName(def, l10n) : p.cli.value;
+        final parts = <String>[
+          if (p.provider.isNotEmpty) p.provider,
+          if (p.model.isNotEmpty) p.model,
+        ];
+        final subtitle = parts.isNotEmpty
+            ? '$cliName · ${parts.join(' · ')}'
+            : cliName;
+        return _PresetDropdownOption(
+          title: p.name,
+          subtitle: subtitle,
+          enabled: true,
+        );
+      }
+    }
+    return Text(value);
+  }
+
+  String? _teamPresetName(String? teamPresetId, List<CliPreset> presets) {
+    if (teamPresetId == null) return null;
+    for (final p in presets) {
+      if (p.id == teamPresetId) return p.name;
+    }
+    return null;
   }
 }
 
@@ -496,4 +669,110 @@ Widget _memberLaunchDropdown(Widget child) {
     constraints: const BoxConstraints(minWidth: _memberLaunchDropdownMinWidth),
     child: child,
   );
+}
+
+/// Dropdown item for the preset picker dropdown.
+class _PresetDropdownOption extends StatelessWidget {
+  const _PresetDropdownOption({
+    required this.title,
+    this.subtitle,
+    required this.enabled,
+  });
+
+  final String title;
+  final String? subtitle;
+  final bool enabled;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final styles = AppTextStyles.of(context);
+    final alpha = enabled ? 1.0 : 0.38;
+    return Opacity(
+      opacity: alpha,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(title, style: styles.body.copyWith(color: cs.onSurface)),
+          if (subtitle != null)
+            Text(
+              subtitle!,
+              style: styles.bodySmall.copyWith(color: cs.onSurfaceVariant),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Read-only card showing resolved preset provider/model/effort.
+class _PresetInfoBanner extends StatelessWidget {
+  const _PresetInfoBanner({
+    required this.provider,
+    required this.model,
+    required this.effort,
+    required this.l10n,
+  });
+
+  final String provider;
+  final String model;
+  final String effort;
+  final AppLocalizations l10n;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final styles = AppTextStyles.of(context);
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.4)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (provider.isNotEmpty)
+            _infoRow(l10n.provider, provider, styles, cs),
+          if (model.isNotEmpty) _infoRow(l10n.model, model, styles, cs),
+          if (effort.isNotEmpty)
+            _infoRow(l10n.memberEffortLevel, effort, styles, cs),
+        ],
+      ),
+    );
+  }
+
+  Widget _infoRow(
+    String label,
+    String value,
+    AppTextStyles styles,
+    ColorScheme cs,
+  ) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 72,
+            child: Text(
+              label,
+              style: styles.bodySmall.copyWith(color: cs.onSurfaceVariant),
+            ),
+          ),
+          Flexible(
+            child: Text(
+              value,
+              style: styles.bodySmall.copyWith(
+                color: cs.onSurface,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }

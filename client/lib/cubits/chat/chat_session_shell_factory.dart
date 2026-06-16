@@ -19,15 +19,15 @@ class ChatSessionShellFactory {
     bool Function()? sshUseLoginShellResolver,
     ConnectionMode Function()? connectionModeResolver,
     int Function()? terminalScrollbackLinesResolver,
-  })  : _executableResolver = executableResolver,
-        _cliExecutableResolver = cliExecutableResolver,
-        _terminalSessionFactory = terminalSessionFactory,
-        _transportFactory = transportFactory,
-        _sshProfileResolver = sshProfileResolver,
-        _sshDefaultWorkingDirectoryResolver = sshDefaultWorkingDirectoryResolver,
-        _sshUseLoginShellResolver = sshUseLoginShellResolver,
-        _connectionModeResolver = connectionModeResolver,
-        _terminalScrollbackLinesResolver = terminalScrollbackLinesResolver;
+  }) : _executableResolver = executableResolver,
+       _cliExecutableResolver = cliExecutableResolver,
+       _terminalSessionFactory = terminalSessionFactory,
+       _transportFactory = transportFactory,
+       _sshProfileResolver = sshProfileResolver,
+       _sshDefaultWorkingDirectoryResolver = sshDefaultWorkingDirectoryResolver,
+       _sshUseLoginShellResolver = sshUseLoginShellResolver,
+       _connectionModeResolver = connectionModeResolver,
+       _terminalScrollbackLinesResolver = terminalScrollbackLinesResolver;
 
   final String Function() _executableResolver;
   final CliExecutableResolver? _cliExecutableResolver;

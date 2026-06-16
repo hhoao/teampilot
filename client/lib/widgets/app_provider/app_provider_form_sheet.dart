@@ -22,6 +22,7 @@ import 'brand_dropdown_rows.dart';
 import 'cli_effort_picker_field.dart';
 import 'provider_credential_action_bar.dart';
 import 'provider_model_picker_field.dart';
+import 'provider_models_editor.dart';
 import '../dropdown/app_dropdown_field.dart';
 
 class AppProviderFormPage extends StatefulWidget {
@@ -421,6 +422,26 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
                     controller: _defaultModelCtl,
                     label: l10n.defaultModel,
                     onChanged: () => setState(() {}),
+                  ),
+                  const SizedBox(height: 12),
+                  ProviderModelsEditor(
+                    cli: widget.cli,
+                    draftProvider: _buildNormalDraft,
+                    models: _config['models'] is Map
+                        ? Map<String, Object?>.from(_config['models'] as Map)
+                        : null,
+                    defaultModel: _defaultModelCtl.text,
+                    onChanged: (models, defaultModel) => setState(() {
+                      if (models.isEmpty) {
+                        _config = Map<String, Object?>.from(_config)
+                          ..remove('models');
+                      } else {
+                        _config = {..._config, 'models': models};
+                      }
+                      if (defaultModel != _defaultModelCtl.text) {
+                        _defaultModelCtl.text = defaultModel;
+                      }
+                    }),
                   ),
                   if (_showsProviderEffortPicker(context)) ...[
                     const SizedBox(height: 12),

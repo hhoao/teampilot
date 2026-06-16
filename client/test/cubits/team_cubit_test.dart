@@ -18,8 +18,7 @@ import 'package:teampilot/utils/team_member_naming.dart';
 import '../support/post_frame_test_harness.dart';
 
 class _RecordingPluginLinker extends TeamPluginLinkerService {
-  _RecordingPluginLinker()
-    : super(appPluginsRoot: '/tmp');
+  _RecordingPluginLinker() : super(appPluginsRoot: '/tmp');
 
   final syncs =
       <({String teamId, List<String> pluginIds, List<Plugin> installed})>[];
@@ -265,12 +264,15 @@ void main() {
     expect(await cubit.addTeam('Alpha'), isTrue);
     expect(cubit.state.selectedTeam?.id, 'alpha');
     expect(cubit.state.selectedTeam?.name, 'Alpha');
+    expect(cubit.state.selectedTeam?.members.map((m) => m.id).toList(), [
+      'team-lead',
+      'developer',
+      'reviewer',
+    ]);
     expect(
-      cubit.state.selectedTeam?.members.map((m) => m.id).toList(),
-      ['team-lead', 'developer', 'reviewer'],
-    );
-    expect(
-      cubit.state.selectedTeam?.members.every((m) => m.prompt.trim().isNotEmpty),
+      cubit.state.selectedTeam?.members.every(
+        (m) => m.prompt.trim().isNotEmpty,
+      ),
       isTrue,
     );
     expect(await cubit.addTeam('Alpha'), isFalse);
@@ -316,7 +318,7 @@ void main() {
         sessionRepository: SessionRepository(),
         reloadProjects: () async {},
         executableResolver: () => 'flashskyai',
-      pluginLinker: _RecordingPluginLinker(),
+        pluginLinker: _RecordingPluginLinker(),
       );
       const team = TeamConfig(
         id: 'old',
@@ -428,11 +430,7 @@ void main() {
     );
 
     expect(
-      await cubit.addTeam(
-        'beta',
-        cli: CliTool.codex,
-        teamMode: TeamMode.mixed,
-      ),
+      await cubit.addTeam('beta', cli: CliTool.codex, teamMode: TeamMode.mixed),
       isTrue,
     );
     expect(cubit.state.teams.single.cli, CliTool.codex);
@@ -528,9 +526,7 @@ void main() {
     expect(dev.provider, 'moonshot');
     expect(dev.model, 'kimi-k2');
     expect(
-      cubit.state.selectedTeam!.members.any(
-        (m) => m.id == 'team-lead',
-      ),
+      cubit.state.selectedTeam!.members.any((m) => m.id == 'team-lead'),
       isTrue,
     );
 
@@ -591,11 +587,7 @@ void main() {
 
     await cubit.load(awaitProfiles: true);
 
-    final teamRoot = p.join(
-      base.path,
-      'teams-runtime',
-      'default-team',
-    );
+    final teamRoot = p.join(base.path, 'teams-runtime', 'default-team');
     expect(await Directory(teamRoot).exists(), isTrue);
     expect(await Directory(p.join(teamRoot, 'flashskyai')).exists(), isFalse);
 
@@ -603,70 +595,70 @@ void main() {
     await base.delete(recursive: true);
   });
 
-  test('bindClaudeProviderForTeamsWithoutBinding sets claude team provider', () async {
-    final dir = await Directory.systemTemp.createTemp('team-bind-provider-');
-    final repo = _repo(dir);
-    final cubit = TeamCubit(
-      repository: repo,
-      sessionRepository: SessionRepository(),
-      reloadProjects: () async {},
-      executableResolver: () => 'claude',
-      pluginLinker: _RecordingPluginLinker(),
-    );
+  test(
+    'bindClaudeProviderForTeamsWithoutBinding sets claude team provider',
+    () async {
+      final dir = await Directory.systemTemp.createTemp('team-bind-provider-');
+      final repo = _repo(dir);
+      final cubit = TeamCubit(
+        repository: repo,
+        sessionRepository: SessionRepository(),
+        reloadProjects: () async {},
+        executableResolver: () => 'claude',
+        pluginLinker: _RecordingPluginLinker(),
+      );
 
-    const team = TeamConfig(
-      id: 'default-team',
-      name: 'Default Team',
-      cli: CliTool.claude,
-      members: [TeamMemberConfig(id: 'team-lead', name: 'team-lead')],
-    );
-    await repo.saveTeams([team]);
-    await cubit.load();
+      const team = TeamConfig(
+        id: 'default-team',
+        name: 'Default Team',
+        cli: CliTool.claude,
+        members: [TeamMemberConfig(id: 'team-lead', name: 'team-lead')],
+      );
+      await repo.saveTeams([team]);
+      await cubit.load();
 
-    await cubit.bindClaudeProviderForTeamsWithoutBinding('deepseek');
+      await cubit.bindClaudeProviderForTeamsWithoutBinding('deepseek');
 
-    expect(
-      cubit.state.selectedTeam!.providerIdsByTool['claude'],
-      'deepseek',
-    );
-    final reloaded = await repo.loadTeams();
-    expect(reloaded.single.providerIdsByTool['claude'], 'deepseek');
+      expect(cubit.state.selectedTeam!.providerIdsByTool['claude'], 'deepseek');
+      final reloaded = await repo.loadTeams();
+      expect(reloaded.single.providerIdsByTool['claude'], 'deepseek');
 
-    await _drainAndCloseTeamCubit(cubit);
-    await dir.delete(recursive: true);
-  });
+      await _drainAndCloseTeamCubit(cubit);
+      await dir.delete(recursive: true);
+    },
+  );
 
-  test('bindClaudeProviderForTeamsWithoutBinding keeps existing binding', () async {
-    final dir = await Directory.systemTemp.createTemp('team-bind-existing-');
-    final repo = _repo(dir);
-    final cubit = TeamCubit(
-      repository: repo,
-      sessionRepository: SessionRepository(),
-      reloadProjects: () async {},
-      executableResolver: () => 'claude',
-      pluginLinker: _RecordingPluginLinker(),
-    );
+  test(
+    'bindClaudeProviderForTeamsWithoutBinding keeps existing binding',
+    () async {
+      final dir = await Directory.systemTemp.createTemp('team-bind-existing-');
+      final repo = _repo(dir);
+      final cubit = TeamCubit(
+        repository: repo,
+        sessionRepository: SessionRepository(),
+        reloadProjects: () async {},
+        executableResolver: () => 'claude',
+        pluginLinker: _RecordingPluginLinker(),
+      );
 
-    const team = TeamConfig(
-      id: 'default-team',
-      name: 'Default Team',
-      cli: CliTool.claude,
-      members: [TeamMemberConfig(id: 'team-lead', name: 'team-lead')],
-      providerIdsByTool: {'claude': 'official'},
-    );
-    await repo.saveTeams([team]);
-    await cubit.load();
+      const team = TeamConfig(
+        id: 'default-team',
+        name: 'Default Team',
+        cli: CliTool.claude,
+        members: [TeamMemberConfig(id: 'team-lead', name: 'team-lead')],
+        providerIdsByTool: {'claude': 'official'},
+      );
+      await repo.saveTeams([team]);
+      await cubit.load();
 
-    await cubit.bindClaudeProviderForTeamsWithoutBinding('deepseek');
+      await cubit.bindClaudeProviderForTeamsWithoutBinding('deepseek');
 
-    expect(
-      cubit.state.selectedTeam!.providerIdsByTool['claude'],
-      'official',
-    );
+      expect(cubit.state.selectedTeam!.providerIdsByTool['claude'], 'official');
 
-    await _drainAndCloseTeamCubit(cubit);
-    await dir.delete(recursive: true);
-  });
+      await _drainAndCloseTeamCubit(cubit);
+      await dir.delete(recursive: true);
+    },
+  );
 
   test('reorderTeams persists sortOrder for all teams', () async {
     final dir = await Directory.systemTemp.createTemp('team-reorder-');

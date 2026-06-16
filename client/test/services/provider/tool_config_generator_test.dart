@@ -123,6 +123,36 @@ requires_openai_auth = true
     expect(env['CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC'], '1');
   });
 
+  test('background-tier model drives the haiku tier only', () {
+    const provider = AppProviderConfig(
+      id: 'tiered',
+      cli: CliTool.claude,
+      name: 'Tiered',
+      defaultModel: 'main-model',
+      config: {
+        'models': {
+          'main-model': {
+            'name': 'Main',
+            'model': 'main-model',
+            'enabled': true,
+          },
+          'cheap': {
+            'name': 'Cheap',
+            'model': 'cheap-model',
+            'enabled': true,
+            'role': 'background',
+          },
+        },
+      },
+    );
+
+    final env = generator.buildClaudeSettings(provider)['env'] as Map;
+    expect(env['ANTHROPIC_MODEL'], 'main-model');
+    expect(env['ANTHROPIC_DEFAULT_SONNET_MODEL'], 'main-model');
+    expect(env['ANTHROPIC_DEFAULT_OPUS_MODEL'], 'main-model');
+    expect(env['ANTHROPIC_DEFAULT_HAIKU_MODEL'], 'cheap-model');
+  });
+
   test('uses configured claude api key field', () {
     const provider = AppProviderConfig(
       id: 'claude-proxy',

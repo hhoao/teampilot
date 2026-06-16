@@ -3,8 +3,26 @@ import '../../cli/registry/capabilities/provider_model_capability.dart';
 import 'claude_model_catalog.dart';
 import 'claude_official_provider.dart';
 
-final class ClaudeProviderModelCapability implements ProviderModelCapability {
+/// Claude's built-in official aliases + frontier model ids.
+final class ClaudeCatalogSource implements ModelCatalogSource {
+  const ClaudeCatalogSource();
+
+  @override
+  List<String> modelsFor({
+    required AppProviderConfig? provider,
+    required String providerId,
+  }) =>
+      ClaudeModelCatalog.knownModelsForProviderId(providerId, provider: provider);
+}
+
+final class ClaudeProviderModelCapability extends CatalogModelCapability {
   const ClaudeProviderModelCapability();
+
+  @override
+  bool get supportsModelTiers => true;
+
+  @override
+  List<ModelCatalogSource> get catalogSources => const [ClaudeCatalogSource()];
 
   @override
   ProviderModelPickerMode pickerMode(AppProviderConfig provider) {
@@ -12,23 +30,6 @@ final class ClaudeProviderModelCapability implements ProviderModelCapability {
       return ProviderModelPickerMode.hidden;
     }
     return ProviderModelPickerMode.catalogWithCustomEntry;
-  }
-
-  @override
-  List<String> modelCandidates({
-    required AppProviderConfig? provider,
-    required String providerId,
-    required String currentModel,
-  }) {
-    final catalog = ClaudeModelCatalog.knownModelsForProviderId(
-      providerId,
-      provider: provider,
-    );
-    return mergeProviderModelCandidates(
-      builtInCatalog: catalog,
-      provider: provider,
-      currentModel: currentModel,
-    );
   }
 
   @override

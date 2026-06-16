@@ -21,12 +21,7 @@ const List<AppProviderPreset> claudeProviderPresetsPart2 = <AppProviderPreset>[
         isPartner: false,
         partnerPromotionKey: "",
         endpointCandidates: [],
-        config: {
-          "env": {
-            "ANTHROPIC_BASE_URL": "https://api.kimi.com/coding/",
-            "ANTHROPIC_AUTH_TOKEN": "",
-          },
-        },
+        config: {}
       ),
     ),
     AppProviderPreset(
@@ -48,16 +43,7 @@ const List<AppProviderPreset> claudeProviderPresetsPart2 = <AppProviderPreset>[
         isPartner: false,
         partnerPromotionKey: "",
         endpointCandidates: ["https://api.stepfun.com/step_plan"],
-        config: {
-          "env": {
-            "ANTHROPIC_BASE_URL": "https://api.stepfun.com/step_plan",
-            "ANTHROPIC_AUTH_TOKEN": "",
-            "ANTHROPIC_MODEL": "step-3.5-flash-2603",
-            "ANTHROPIC_DEFAULT_HAIKU_MODEL": "step-3.5-flash-2603",
-            "ANTHROPIC_DEFAULT_SONNET_MODEL": "step-3.5-flash-2603",
-            "ANTHROPIC_DEFAULT_OPUS_MODEL": "step-3.5-flash-2603",
-          },
-        },
+        config: {}
       ),
     ),
     AppProviderPreset(
@@ -79,16 +65,7 @@ const List<AppProviderPreset> claudeProviderPresetsPart2 = <AppProviderPreset>[
         isPartner: false,
         partnerPromotionKey: "",
         endpointCandidates: ["https://api.stepfun.ai/step_plan"],
-        config: {
-          "env": {
-            "ANTHROPIC_BASE_URL": "https://api.stepfun.ai/step_plan",
-            "ANTHROPIC_AUTH_TOKEN": "",
-            "ANTHROPIC_MODEL": "step-3.5-flash-2603",
-            "ANTHROPIC_DEFAULT_HAIKU_MODEL": "step-3.5-flash-2603",
-            "ANTHROPIC_DEFAULT_SONNET_MODEL": "step-3.5-flash-2603",
-            "ANTHROPIC_DEFAULT_OPUS_MODEL": "step-3.5-flash-2603",
-          },
-        },
+        config: {}
       ),
     ),
     AppProviderPreset(
@@ -110,16 +87,7 @@ const List<AppProviderPreset> claudeProviderPresetsPart2 = <AppProviderPreset>[
         isPartner: false,
         partnerPromotionKey: "",
         endpointCandidates: [],
-        config: {
-          "env": {
-            "ANTHROPIC_BASE_URL": "https://api-inference.modelscope.cn",
-            "ANTHROPIC_AUTH_TOKEN": "",
-            "ANTHROPIC_MODEL": "ZhipuAI/GLM-5",
-            "ANTHROPIC_DEFAULT_HAIKU_MODEL": "ZhipuAI/GLM-5",
-            "ANTHROPIC_DEFAULT_SONNET_MODEL": "ZhipuAI/GLM-5",
-            "ANTHROPIC_DEFAULT_OPUS_MODEL": "ZhipuAI/GLM-5",
-          },
-        },
+        config: {}
       ),
     ),
     AppProviderPreset(
@@ -143,14 +111,9 @@ const List<AppProviderPreset> claudeProviderPresetsPart2 = <AppProviderPreset>[
         partnerPromotionKey: "",
         endpointCandidates: [],
         config: {
-          "env": {
-            "ANTHROPIC_BASE_URL":
-                "https://vanchin.streamlake.ai/api/gateway/v1/endpoints/\${ENDPOINT_ID}/claude-code-proxy",
-            "ANTHROPIC_AUTH_TOKEN": "",
-            "ANTHROPIC_MODEL": "KAT-Coder-Pro V1",
-            "ANTHROPIC_DEFAULT_HAIKU_MODEL": "KAT-Coder-Air V1",
-            "ANTHROPIC_DEFAULT_SONNET_MODEL": "KAT-Coder-Pro V1",
-            "ANTHROPIC_DEFAULT_OPUS_MODEL": "KAT-Coder-Pro V1",
+          "models": {
+            "KAT-Coder-Pro V1": {"name": "KAT-Coder-Pro V1", "model": "KAT-Coder-Pro V1", "enabled": true},
+            "KAT-Coder-Air V1": {"name": "KAT-Coder-Air V1", "model": "KAT-Coder-Air V1", "enabled": true, "role": "background"},
           },
           "templateValues": {
             "ENDPOINT_ID": {
@@ -160,7 +123,7 @@ const List<AppProviderPreset> claudeProviderPresetsPart2 = <AppProviderPreset>[
               "editorValue": "",
             },
           },
-        },
+        }
       ),
     ),
     AppProviderPreset(
@@ -184,16 +147,9 @@ const List<AppProviderPreset> claudeProviderPresetsPart2 = <AppProviderPreset>[
         endpointCandidates: [],
         config: {
           "env": {
-            "ANTHROPIC_BASE_URL": "https://api.longcat.chat/anthropic",
-            "ANTHROPIC_AUTH_TOKEN": "",
-            "ANTHROPIC_MODEL": "LongCat-Flash-Chat",
-            "ANTHROPIC_DEFAULT_HAIKU_MODEL": "LongCat-Flash-Chat",
-            "ANTHROPIC_DEFAULT_SONNET_MODEL": "LongCat-Flash-Chat",
-            "ANTHROPIC_DEFAULT_OPUS_MODEL": "LongCat-Flash-Chat",
             "CLAUDE_CODE_MAX_OUTPUT_TOKENS": "6000",
-            "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": 1,
           },
-        },
+        }
       ),
     ),
     AppProviderPreset(
@@ -217,16 +173,9 @@ const List<AppProviderPreset> claudeProviderPresetsPart2 = <AppProviderPreset>[
         endpointCandidates: [],
         config: {
           "env": {
-            "ANTHROPIC_BASE_URL": "https://api.minimaxi.com/anthropic",
-            "ANTHROPIC_AUTH_TOKEN": "",
             "API_TIMEOUT_MS": "3000000",
-            "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": 1,
-            "ANTHROPIC_MODEL": "MiniMax-M2.7",
-            "ANTHROPIC_DEFAULT_SONNET_MODEL": "MiniMax-M2.7",
-            "ANTHROPIC_DEFAULT_OPUS_MODEL": "MiniMax-M2.7",
-            "ANTHROPIC_DEFAULT_HAIKU_MODEL": "MiniMax-M2.7",
           },
-        },
+        }
       ),
     ),
     AppProviderPreset(
@@ -250,16 +199,9 @@ const List<AppProviderPreset> claudeProviderPresetsPart2 = <AppProviderPreset>[
         endpointCandidates: [],
         config: {
           "env": {
-            "ANTHROPIC_BASE_URL": "https://api.minimax.io/anthropic",
-            "ANTHROPIC_AUTH_TOKEN": "",
             "API_TIMEOUT_MS": "3000000",
-            "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": 1,
-            "ANTHROPIC_MODEL": "MiniMax-M2.7",
-            "ANTHROPIC_DEFAULT_SONNET_MODEL": "MiniMax-M2.7",
-            "ANTHROPIC_DEFAULT_OPUS_MODEL": "MiniMax-M2.7",
-            "ANTHROPIC_DEFAULT_HAIKU_MODEL": "MiniMax-M2.7",
           },
-        },
+        }
       ),
     ),
     AppProviderPreset(
@@ -281,16 +223,7 @@ const List<AppProviderPreset> claudeProviderPresetsPart2 = <AppProviderPreset>[
         isPartner: false,
         partnerPromotionKey: "",
         endpointCandidates: [],
-        config: {
-          "env": {
-            "ANTHROPIC_BASE_URL": "https://api.tbox.cn/api/anthropic",
-            "ANTHROPIC_AUTH_TOKEN": "",
-            "ANTHROPIC_MODEL": "Ling-2.5-1T",
-            "ANTHROPIC_DEFAULT_HAIKU_MODEL": "Ling-2.5-1T",
-            "ANTHROPIC_DEFAULT_SONNET_MODEL": "Ling-2.5-1T",
-            "ANTHROPIC_DEFAULT_OPUS_MODEL": "Ling-2.5-1T",
-          },
-        },
+        config: {}
       ),
     ),
     AppProviderPreset(
@@ -315,12 +248,7 @@ const List<AppProviderPreset> claudeProviderPresetsPart2 = <AppProviderPreset>[
           "https://aihubmix.com",
           "https://api.aihubmix.com",
         ],
-        config: {
-          "env": {
-            "ANTHROPIC_BASE_URL": "https://aihubmix.com",
-            "ANTHROPIC_API_KEY": "",
-          },
-        },
+        config: {}
       ),
     ),
     AppProviderPreset(
@@ -342,16 +270,7 @@ const List<AppProviderPreset> claudeProviderPresetsPart2 = <AppProviderPreset>[
         isPartner: true,
         partnerPromotionKey: "siliconflow",
         endpointCandidates: [],
-        config: {
-          "env": {
-            "ANTHROPIC_BASE_URL": "https://api.siliconflow.cn",
-            "ANTHROPIC_AUTH_TOKEN": "",
-            "ANTHROPIC_MODEL": "Pro/MiniMaxAI/MiniMax-M2.7",
-            "ANTHROPIC_DEFAULT_HAIKU_MODEL": "Pro/MiniMaxAI/MiniMax-M2.7",
-            "ANTHROPIC_DEFAULT_SONNET_MODEL": "Pro/MiniMaxAI/MiniMax-M2.7",
-            "ANTHROPIC_DEFAULT_OPUS_MODEL": "Pro/MiniMaxAI/MiniMax-M2.7",
-          },
-        },
+        config: {}
       ),
     ),
     AppProviderPreset(
@@ -373,16 +292,7 @@ const List<AppProviderPreset> claudeProviderPresetsPart2 = <AppProviderPreset>[
         isPartner: true,
         partnerPromotionKey: "siliconflow",
         endpointCandidates: [],
-        config: {
-          "env": {
-            "ANTHROPIC_BASE_URL": "https://api.siliconflow.com",
-            "ANTHROPIC_AUTH_TOKEN": "",
-            "ANTHROPIC_MODEL": "MiniMaxAI/MiniMax-M2.7",
-            "ANTHROPIC_DEFAULT_HAIKU_MODEL": "MiniMaxAI/MiniMax-M2.7",
-            "ANTHROPIC_DEFAULT_SONNET_MODEL": "MiniMaxAI/MiniMax-M2.7",
-            "ANTHROPIC_DEFAULT_OPUS_MODEL": "MiniMaxAI/MiniMax-M2.7",
-          },
-        },
+        config: {}
       ),
     ),
     AppProviderPreset(
@@ -404,12 +314,7 @@ const List<AppProviderPreset> claudeProviderPresetsPart2 = <AppProviderPreset>[
         isPartner: true,
         partnerPromotionKey: "dmxapi",
         endpointCandidates: ["https://www.dmxapi.cn", "https://api.dmxapi.cn"],
-        config: {
-          "env": {
-            "ANTHROPIC_BASE_URL": "https://www.dmxapi.cn",
-            "ANTHROPIC_AUTH_TOKEN": "",
-          },
-        },
+        config: {}
       ),
     ),
     AppProviderPreset(
@@ -434,12 +339,7 @@ const List<AppProviderPreset> claudeProviderPresetsPart2 = <AppProviderPreset>[
           "https://www.packyapi.com",
           "https://api-slb.packyapi.com",
         ],
-        config: {
-          "env": {
-            "ANTHROPIC_BASE_URL": "https://www.packyapi.com",
-            "ANTHROPIC_AUTH_TOKEN": "",
-          },
-        },
+        config: {}
       ),
     ),
 ];

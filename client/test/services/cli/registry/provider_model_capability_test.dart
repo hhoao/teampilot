@@ -5,6 +5,42 @@ import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/provider/claude/claude_provider_model_capability.dart';
 
 void main() {
+  test('backgroundModelFromProvider returns the role-flagged model id', () {
+    const provider = AppProviderConfig(
+      id: 'tiered',
+      cli: CliTool.claude,
+      name: 'Tiered',
+      defaultModel: 'main',
+      config: {
+        'models': {
+          'main': {'name': 'Main', 'model': 'main', 'enabled': true},
+          'cheap': {
+            'name': 'Cheap',
+            'model': 'cheap-model',
+            'enabled': true,
+            'role': 'background',
+          },
+        },
+      },
+    );
+    expect(backgroundModelFromProvider(provider), 'cheap-model');
+    expect(const ClaudeProviderModelCapability().supportsModelTiers, isTrue);
+  });
+
+  test('backgroundModelFromProvider is empty without a background role', () {
+    const provider = AppProviderConfig(
+      id: 'flat',
+      cli: CliTool.claude,
+      name: 'Flat',
+      config: {
+        'models': {
+          'main': {'name': 'Main', 'model': 'main', 'enabled': true},
+        },
+      },
+    );
+    expect(backgroundModelFromProvider(provider), '');
+  });
+
   test('mergeProviderModelCandidates merges catalog, record, and current', () {
     const provider = AppProviderConfig(
       id: 'deepseek',

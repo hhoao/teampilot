@@ -21,12 +21,7 @@ const List<AppProviderPreset> claudeProviderPresetsPart4 = <AppProviderPreset>[
         isPartner: true,
         partnerPromotionKey: "ctok",
         endpointCandidates: [],
-        config: {
-          "env": {
-            "ANTHROPIC_BASE_URL": "https://api.ctok.ai",
-            "ANTHROPIC_AUTH_TOKEN": "",
-          },
-        },
+        config: {}
       ),
     ),
     AppProviderPreset(
@@ -48,12 +43,7 @@ const List<AppProviderPreset> claudeProviderPresetsPart4 = <AppProviderPreset>[
         isPartner: false,
         partnerPromotionKey: "",
         endpointCandidates: ["https://e-flowcode.cc"],
-        config: {
-          "env": {
-            "ANTHROPIC_AUTH_TOKEN": "",
-            "ANTHROPIC_BASE_URL": "https://e-flowcode.cc",
-          },
-        },
+        config: {}
       ),
     ),
     AppProviderPreset(
@@ -75,12 +65,7 @@ const List<AppProviderPreset> claudeProviderPresetsPart4 = <AppProviderPreset>[
         isPartner: true,
         partnerPromotionKey: "lionccapi",
         endpointCandidates: [],
-        config: {
-          "env": {
-            "ANTHROPIC_BASE_URL": "https://vibecodingapi.ai",
-            "ANTHROPIC_AUTH_TOKEN": "",
-          },
-        },
+        config: {}
       ),
     ),
     AppProviderPreset(
@@ -103,15 +88,11 @@ const List<AppProviderPreset> claudeProviderPresetsPart4 = <AppProviderPreset>[
         partnerPromotionKey: "",
         endpointCandidates: [],
         config: {
-          "env": {
-            "ANTHROPIC_BASE_URL": "https://openrouter.ai/api",
-            "ANTHROPIC_AUTH_TOKEN": "",
-            "ANTHROPIC_MODEL": "anthropic/claude-sonnet-4.6",
-            "ANTHROPIC_DEFAULT_HAIKU_MODEL": "anthropic/claude-haiku-4.5",
-            "ANTHROPIC_DEFAULT_SONNET_MODEL": "anthropic/claude-sonnet-4.6",
-            "ANTHROPIC_DEFAULT_OPUS_MODEL": "anthropic/claude-opus-4.7",
+          "models": {
+            "anthropic/claude-sonnet-4.6": {"name": "anthropic/claude-sonnet-4.6", "model": "anthropic/claude-sonnet-4.6", "enabled": true},
+            "anthropic/claude-haiku-4.5": {"name": "anthropic/claude-haiku-4.5", "model": "anthropic/claude-haiku-4.5", "enabled": true, "role": "background"},
           },
-        },
+        }
       ),
     ),
     AppProviderPreset(
@@ -134,16 +115,11 @@ const List<AppProviderPreset> claudeProviderPresetsPart4 = <AppProviderPreset>[
         partnerPromotionKey: "",
         endpointCandidates: ["https://api.therouter.ai"],
         config: {
-          "env": {
-            "ANTHROPIC_BASE_URL": "https://api.therouter.ai",
-            "ANTHROPIC_AUTH_TOKEN": "",
-            "ANTHROPIC_API_KEY": "",
-            "ANTHROPIC_MODEL": "anthropic/claude-sonnet-4.6",
-            "ANTHROPIC_DEFAULT_HAIKU_MODEL": "anthropic/claude-haiku-4.5",
-            "ANTHROPIC_DEFAULT_SONNET_MODEL": "anthropic/claude-sonnet-4.6",
-            "ANTHROPIC_DEFAULT_OPUS_MODEL": "anthropic/claude-opus-4.7",
+          "models": {
+            "anthropic/claude-sonnet-4.6": {"name": "anthropic/claude-sonnet-4.6", "model": "anthropic/claude-sonnet-4.6", "enabled": true},
+            "anthropic/claude-haiku-4.5": {"name": "anthropic/claude-haiku-4.5", "model": "anthropic/claude-haiku-4.5", "enabled": true, "role": "background"},
           },
-        },
+        }
       ),
     ),
     AppProviderPreset(
@@ -165,16 +141,7 @@ const List<AppProviderPreset> claudeProviderPresetsPart4 = <AppProviderPreset>[
         isPartner: false,
         partnerPromotionKey: "",
         endpointCandidates: ["https://api.novita.ai/anthropic"],
-        config: {
-          "env": {
-            "ANTHROPIC_BASE_URL": "https://api.novita.ai/anthropic",
-            "ANTHROPIC_AUTH_TOKEN": "",
-            "ANTHROPIC_MODEL": "zai-org/glm-5",
-            "ANTHROPIC_DEFAULT_HAIKU_MODEL": "zai-org/glm-5",
-            "ANTHROPIC_DEFAULT_SONNET_MODEL": "zai-org/glm-5",
-            "ANTHROPIC_DEFAULT_OPUS_MODEL": "zai-org/glm-5",
-          },
-        },
+        config: {}
       ),
     ),
     AppProviderPreset(
@@ -197,17 +164,14 @@ const List<AppProviderPreset> claudeProviderPresetsPart4 = <AppProviderPreset>[
         partnerPromotionKey: "",
         endpointCandidates: [],
         config: {
-          "env": {
-            "ANTHROPIC_BASE_URL": "https://api.githubcopilot.com",
-            "ANTHROPIC_MODEL": "claude-sonnet-4.6",
-            "ANTHROPIC_DEFAULT_HAIKU_MODEL": "claude-haiku-4.5",
-            "ANTHROPIC_DEFAULT_SONNET_MODEL": "claude-sonnet-4.6",
-            "ANTHROPIC_DEFAULT_OPUS_MODEL": "claude-sonnet-4.6",
+          "models": {
+            "claude-sonnet-4.6": {"name": "claude-sonnet-4.6", "model": "claude-sonnet-4.6", "enabled": true},
+            "claude-haiku-4.5": {"name": "claude-haiku-4.5", "model": "claude-haiku-4.5", "enabled": true, "role": "background"},
           },
           "apiFormat": "openai_chat",
           "providerType": "github_copilot",
           "requiresOAuth": true,
-        },
+        }
       ),
     ),
     AppProviderPreset(
@@ -230,17 +194,14 @@ const List<AppProviderPreset> claudeProviderPresetsPart4 = <AppProviderPreset>[
         partnerPromotionKey: "",
         endpointCandidates: [],
         config: {
-          "env": {
-            "ANTHROPIC_BASE_URL": "https://chatgpt.com/backend-api/codex",
-            "ANTHROPIC_MODEL": "gpt-5.4",
-            "ANTHROPIC_DEFAULT_HAIKU_MODEL": "gpt-5.4-mini",
-            "ANTHROPIC_DEFAULT_SONNET_MODEL": "gpt-5.4",
-            "ANTHROPIC_DEFAULT_OPUS_MODEL": "gpt-5.4",
+          "models": {
+            "gpt-5.4": {"name": "gpt-5.4", "model": "gpt-5.4", "enabled": true},
+            "gpt-5.4-mini": {"name": "gpt-5.4-mini", "model": "gpt-5.4-mini", "enabled": true, "role": "background"},
           },
           "apiFormat": "openai_responses",
           "providerType": "codex_oauth",
           "requiresOAuth": true,
-        },
+        }
       ),
     ),
     AppProviderPreset(
@@ -262,12 +223,7 @@ const List<AppProviderPreset> claudeProviderPresetsPart4 = <AppProviderPreset>[
         isPartner: true,
         partnerPromotionKey: "lemondata",
         endpointCandidates: [],
-        config: {
-          "env": {
-            "ANTHROPIC_BASE_URL": "https://api.lemondata.cc",
-            "ANTHROPIC_API_KEY": "",
-          },
-        },
+        config: {}
       ),
     ),
     AppProviderPreset(
@@ -290,16 +246,8 @@ const List<AppProviderPreset> claudeProviderPresetsPart4 = <AppProviderPreset>[
         partnerPromotionKey: "",
         endpointCandidates: [],
         config: {
-          "env": {
-            "ANTHROPIC_BASE_URL": "https://integrate.api.nvidia.com",
-            "ANTHROPIC_AUTH_TOKEN": "",
-            "ANTHROPIC_MODEL": "moonshotai/kimi-k2.5",
-            "ANTHROPIC_DEFAULT_HAIKU_MODEL": "moonshotai/kimi-k2.5",
-            "ANTHROPIC_DEFAULT_SONNET_MODEL": "moonshotai/kimi-k2.5",
-            "ANTHROPIC_DEFAULT_OPUS_MODEL": "moonshotai/kimi-k2.5",
-          },
           "apiFormat": "openai_chat",
-        },
+        }
       ),
     ),
     AppProviderPreset(
@@ -322,15 +270,11 @@ const List<AppProviderPreset> claudeProviderPresetsPart4 = <AppProviderPreset>[
         partnerPromotionKey: "",
         endpointCandidates: [],
         config: {
-          "env": {
-            "ANTHROPIC_BASE_URL": "https://cc-api.pipellm.ai",
-            "ANTHROPIC_AUTH_TOKEN": "",
-            "ANTHROPIC_MODEL": "claude-opus-4-7",
-            "ANTHROPIC_DEFAULT_HAIKU_MODEL": "claude-haiku-4-5-20251001",
-            "ANTHROPIC_DEFAULT_SONNET_MODEL": "claude-sonnet-4-6",
-            "ANTHROPIC_DEFAULT_OPUS_MODEL": "claude-opus-4-7",
+          "models": {
+            "claude-opus-4-7": {"name": "claude-opus-4-7", "model": "claude-opus-4-7", "enabled": true},
+            "claude-haiku-4-5-20251001": {"name": "claude-haiku-4-5-20251001", "model": "claude-haiku-4-5-20251001", "enabled": true, "role": "background"},
           },
-        },
+        }
       ),
     ),
     AppProviderPreset(
@@ -352,16 +296,7 @@ const List<AppProviderPreset> claudeProviderPresetsPart4 = <AppProviderPreset>[
         isPartner: false,
         partnerPromotionKey: "",
         endpointCandidates: [],
-        config: {
-          "env": {
-            "ANTHROPIC_BASE_URL": "https://api.xiaomimimo.com/anthropic",
-            "ANTHROPIC_AUTH_TOKEN": "",
-            "ANTHROPIC_MODEL": "mimo-v2-pro",
-            "ANTHROPIC_DEFAULT_HAIKU_MODEL": "mimo-v2-pro",
-            "ANTHROPIC_DEFAULT_SONNET_MODEL": "mimo-v2-pro",
-            "ANTHROPIC_DEFAULT_OPUS_MODEL": "mimo-v2-pro",
-          },
-        },
+        config: {}
       ),
     ),
     AppProviderPreset(
@@ -384,18 +319,14 @@ const List<AppProviderPreset> claudeProviderPresetsPart4 = <AppProviderPreset>[
         partnerPromotionKey: "",
         endpointCandidates: [],
         config: {
+          "models": {
+            "global.anthropic.claude-opus-4-7": {"name": "global.anthropic.claude-opus-4-7", "model": "global.anthropic.claude-opus-4-7", "enabled": true},
+            "global.anthropic.claude-haiku-4-5-20251001-v1:0": {"name": "global.anthropic.claude-haiku-4-5-20251001-v1:0", "model": "global.anthropic.claude-haiku-4-5-20251001-v1:0", "enabled": true, "role": "background"},
+          },
           "env": {
-            "ANTHROPIC_BASE_URL":
-                "https://bedrock-runtime.\${AWS_REGION}.amazonaws.com",
             "AWS_ACCESS_KEY_ID": "\${AWS_ACCESS_KEY_ID}",
             "AWS_SECRET_ACCESS_KEY": "\${AWS_SECRET_ACCESS_KEY}",
             "AWS_REGION": "\${AWS_REGION}",
-            "ANTHROPIC_MODEL": "global.anthropic.claude-opus-4-7",
-            "ANTHROPIC_DEFAULT_HAIKU_MODEL":
-                "global.anthropic.claude-haiku-4-5-20251001-v1:0",
-            "ANTHROPIC_DEFAULT_SONNET_MODEL":
-                "global.anthropic.claude-sonnet-4-6",
-            "ANTHROPIC_DEFAULT_OPUS_MODEL": "global.anthropic.claude-opus-4-7",
             "CLAUDE_CODE_USE_BEDROCK": "1",
           },
           "templateValues": {
@@ -415,7 +346,7 @@ const List<AppProviderPreset> claudeProviderPresetsPart4 = <AppProviderPreset>[
               "editorValue": "",
             },
           },
-        },
+        }
       ),
     ),
     AppProviderPreset(
@@ -438,16 +369,12 @@ const List<AppProviderPreset> claudeProviderPresetsPart4 = <AppProviderPreset>[
         partnerPromotionKey: "",
         endpointCandidates: [],
         config: {
+          "models": {
+            "global.anthropic.claude-opus-4-7": {"name": "global.anthropic.claude-opus-4-7", "model": "global.anthropic.claude-opus-4-7", "enabled": true},
+            "global.anthropic.claude-haiku-4-5-20251001-v1:0": {"name": "global.anthropic.claude-haiku-4-5-20251001-v1:0", "model": "global.anthropic.claude-haiku-4-5-20251001-v1:0", "enabled": true, "role": "background"},
+          },
           "env": {
-            "ANTHROPIC_BASE_URL":
-                "https://bedrock-runtime.\${AWS_REGION}.amazonaws.com",
             "AWS_REGION": "\${AWS_REGION}",
-            "ANTHROPIC_MODEL": "global.anthropic.claude-opus-4-7",
-            "ANTHROPIC_DEFAULT_HAIKU_MODEL":
-                "global.anthropic.claude-haiku-4-5-20251001-v1:0",
-            "ANTHROPIC_DEFAULT_SONNET_MODEL":
-                "global.anthropic.claude-sonnet-4-6",
-            "ANTHROPIC_DEFAULT_OPUS_MODEL": "global.anthropic.claude-opus-4-7",
             "CLAUDE_CODE_USE_BEDROCK": "1",
           },
           "templateValues": {
@@ -457,7 +384,7 @@ const List<AppProviderPreset> claudeProviderPresetsPart4 = <AppProviderPreset>[
               "editorValue": "us-west-2",
             },
           },
-        },
+        }
       ),
     ),
 ];

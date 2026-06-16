@@ -4,13 +4,34 @@ import '../../../models/app_provider_config.dart';
 import '../../cli/registry/capabilities/provider_model_capability.dart';
 import 'cursor_agent_models_service.dart';
 
+/// Live `cursor-agent models` catalog (cached per provider account).
+final class CursorAgentCatalogSource implements ModelCatalogSource {
+  const CursorAgentCatalogSource(this._modelsService);
+
+  final CursorAgentModelsService? _modelsService;
+
+  @override
+  List<String> modelsFor({
+    required AppProviderConfig? provider,
+    required String providerId,
+  }) =>
+      _modelsService?.modelIdsFor(providerId: providerId) ?? const [];
+}
+
 /// Cursor models from `cursor-agent models` (cached per provider account).
-final class CursorProviderModelCapability
+final class CursorProviderModelCapability extends CatalogModelCapability
     implements RefreshableProviderModelCapability {
   CursorProviderModelCapability({CursorAgentModelsService? modelsService})
     : _modelsService = modelsService;
 
   final CursorAgentModelsService? _modelsService;
+
+  @override
+  bool get supportsModelTiers => false;
+
+  @override
+  List<ModelCatalogSource> get catalogSources =>
+      [CursorAgentCatalogSource(_modelsService)];
 
   @override
   Listenable get catalogUpdates =>
@@ -34,20 +55,6 @@ final class CursorProviderModelCapability
   @override
   ProviderModelPickerMode pickerMode(AppProviderConfig provider) =>
       ProviderModelPickerMode.catalogWithCustomEntry;
-
-  @override
-  List<String> modelCandidates({
-    required AppProviderConfig? provider,
-    required String providerId,
-    required String currentModel,
-  }) {
-    final catalog = _modelsService?.modelIdsFor(providerId: providerId) ?? const [];
-    return mergeProviderModelCandidates(
-      builtInCatalog: catalog,
-      provider: provider,
-      currentModel: currentModel,
-    );
-  }
 
   @override
   String defaultModel({

@@ -78,6 +78,7 @@ class TeamMemberConfig {
     this.effort = '',
     this.replicas = 1,
     this.forceWaitBeforeStop,
+    this.activePresetId,
   });
 
   static bool decodeDangerouslySkipPermissions(Object? raw) {
@@ -122,6 +123,7 @@ class TeamMemberConfig {
       forceWaitBeforeStop: json['forceWaitBeforeStop'] is bool
           ? json['forceWaitBeforeStop'] as bool
           : null,
+      activePresetId: json['activePresetId'] as String?,
     );
   }
 
@@ -167,6 +169,22 @@ class TeamMemberConfig {
   /// 见 [effectiveForceWaitBeforeStop]。
   final bool? forceWaitBeforeStop;
 
+  /// Active preset id for this member.
+  /// - `null` ⇒ member uses custom config (no preset).
+  /// - `TeamConfig.inheritPresetId` ⇒ inherits the team's [TeamConfig.activePresetId].
+  /// - any other value ⇒ member has an explicit preset override.
+  final String? activePresetId;
+
+  /// Whether this member inherits the team's active preset ([TeamConfig.activePresetId]).
+  bool get inheritsTeamPreset => activePresetId == TeamConfig.inheritPresetId;
+
+  /// Whether this member has an explicit, non-inherit preset id.
+  bool get hasExplicitPreset =>
+      activePresetId != null && activePresetId != TeamConfig.inheritPresetId;
+
+  /// Whether this member uses fully custom config (no preset at all).
+  bool get usesCustomConfig => activePresetId == null;
+
   /// 成员有效 CLI：native 一律 team.cli；mixed 用成员覆盖、否则 team 默认。
   CliTool cliWithin(TeamConfig team) =>
       team.teamMode == TeamMode.mixed ? (cli ?? team.cli) : team.cli;
@@ -205,6 +223,8 @@ class TeamMemberConfig {
     int? replicas,
     bool? forceWaitBeforeStop,
     bool updateForceWaitBeforeStop = false,
+    String? activePresetId,
+    bool updateActivePresetId = false,
   }) {
     return TeamMemberConfig(
       id: id ?? this.id,
@@ -226,6 +246,9 @@ class TeamMemberConfig {
       forceWaitBeforeStop: updateForceWaitBeforeStop
           ? forceWaitBeforeStop
           : this.forceWaitBeforeStop,
+      activePresetId: updateActivePresetId
+          ? activePresetId
+          : this.activePresetId,
     );
   }
 
@@ -248,6 +271,7 @@ class TeamMemberConfig {
       if (replicas != 1) 'replicas': replicas,
       if (forceWaitBeforeStop != null)
         'forceWaitBeforeStop': forceWaitBeforeStop,
+      if (activePresetId != null) 'activePresetId': activePresetId,
     };
   }
 
@@ -272,7 +296,8 @@ class TeamMemberConfig {
             cli == other.cli &&
             effort == other.effort &&
             replicas == other.replicas &&
-            forceWaitBeforeStop == other.forceWaitBeforeStop;
+            forceWaitBeforeStop == other.forceWaitBeforeStop &&
+            activePresetId == other.activePresetId;
   }
 
   @override
@@ -293,11 +318,16 @@ class TeamMemberConfig {
     effort,
     replicas,
     forceWaitBeforeStop,
+    activePresetId,
   );
 }
 
 @immutable
 class TeamConfig {
+  /// Sentinel value for [TeamMemberConfig.activePresetId] meaning "inherit the
+  /// team's [activePresetId]".
+  static const inheritPresetId = '__inherit__';
+
   const TeamConfig({
     required this.id,
     required this.name,
@@ -319,6 +349,7 @@ class TeamConfig {
     this.autoLaunchMembers,
     this.forceTeamLeadDelegateMode = true,
     this.forceWaitBeforeStop = true,
+    this.activePresetId,
   });
 
   static bool decodeForceTeamLeadDelegateMode(Object? raw) =>
@@ -415,6 +446,7 @@ class TeamConfig {
       forceWaitBeforeStop: decodeForceWaitBeforeStop(
         json['forceWaitBeforeStop'],
       ),
+      activePresetId: json['activePresetId'] as String?,
     );
   }
 
@@ -514,6 +546,9 @@ class TeamConfig {
   /// stop-hook 生效;空闲检测(`/idle` → onMemberIdle)无论开关都照常上报。
   final bool forceWaitBeforeStop;
 
+  /// Active preset id for this team. `null` means no preset is active.
+  final String? activePresetId;
+
   bool get isValid => name.trim().isNotEmpty;
 
   TeamConfig copyWith({
@@ -541,6 +576,8 @@ class TeamConfig {
     bool updateForceTeamLeadDelegateMode = false,
     bool? forceWaitBeforeStop,
     bool updateForceWaitBeforeStop = false,
+    String? activePresetId,
+    bool updateActivePresetId = false,
   }) {
     return TeamConfig(
       id: id ?? this.id,
@@ -569,6 +606,9 @@ class TeamConfig {
       forceWaitBeforeStop: updateForceWaitBeforeStop
           ? (forceWaitBeforeStop ?? true)
           : this.forceWaitBeforeStop,
+      activePresetId: updateActivePresetId
+          ? activePresetId
+          : this.activePresetId,
     );
   }
 
@@ -596,6 +636,7 @@ class TeamConfig {
       if (forceTeamLeadDelegateMode)
         'forceTeamLeadDelegateMode': forceTeamLeadDelegateMode,
       if (!forceWaitBeforeStop) 'forceWaitBeforeStop': forceWaitBeforeStop,
+      if (activePresetId != null) 'activePresetId': activePresetId,
     };
   }
 
@@ -623,7 +664,8 @@ class TeamConfig {
             mapEquals(cliEffortLevels, other.cliEffortLevels) &&
             autoLaunchMembers == other.autoLaunchMembers &&
             forceTeamLeadDelegateMode == other.forceTeamLeadDelegateMode &&
-            forceWaitBeforeStop == other.forceWaitBeforeStop;
+            forceWaitBeforeStop == other.forceWaitBeforeStop &&
+            activePresetId == other.activePresetId;
   }
 
   @override
@@ -646,7 +688,7 @@ class TeamConfig {
     claudeEffortLevel,
     Object.hashAll(cliEffortLevels.entries),
     autoLaunchMembers,
-    forceTeamLeadDelegateMode,
-    forceWaitBeforeStop,
+    Object.hash(forceTeamLeadDelegateMode, forceWaitBeforeStop),
+    activePresetId,
   );
 }

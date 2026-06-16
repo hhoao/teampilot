@@ -15,6 +15,7 @@ import '../cli/registry/capabilities/transcript_probe_capability.dart';
 import '../cli/registry/cli_tool_registry.dart';
 import '../cli/registry/config_profile/config_profile_scope.dart';
 import '../cli/registry/config_profile/flashskyai_config_profile_capability.dart';
+import '../cli/preset_resolver.dart';
 import '../provider/config_profile_service.dart';
 import '../storage/storage_resolver.dart';
 import '../io/filesystem.dart';
@@ -43,6 +44,7 @@ class SessionLifecycleService {
     ProjectProfileRepository? projectProfileRepository,
     Future<List<Skill>> Function()? loadInstalledSkills,
     CliPresetsRepository? cliPresetsRepository,
+    List<CliPreset> Function()? loadPresets,
   }) : _appDataBasePath = appDataBasePath,
        _llmConfigPathOverride = llmConfigPathOverride,
        _configProfileService = configProfileService,
@@ -51,7 +53,8 @@ class SessionLifecycleService {
        _cliToolRegistry = cliToolRegistry ?? _defaultCliRegistry,
        _projectProfileRepository = projectProfileRepository,
        _loadInstalledSkills = loadInstalledSkills,
-       _cliPresetsRepository = cliPresetsRepository;
+       _cliPresetsRepository = cliPresetsRepository,
+       _loadPresets = loadPresets;
 
   final String? _appDataBasePath;
   final String? Function()? _llmConfigPathOverride;
@@ -63,6 +66,7 @@ class SessionLifecycleService {
   final ProjectProfileRepository? _projectProfileRepository;
   final Future<List<Skill>> Function()? _loadInstalledSkills;
   final CliPresetsRepository? _cliPresetsRepository;
+  final List<CliPreset> Function()? _loadPresets;
 
   Future<ProjectProfile> loadProjectProfile(
     String projectId, {
@@ -122,6 +126,25 @@ class SessionLifecycleService {
       extraMcpServers: extraMcpServers,
       busIdleUrl: busIdleUrl,
     );
+
+    // Resolve preset for team sessions so the CLI launches with the
+    // preset's provider/model/effort rather than the member's raw fields.
+    TeamMemberConfig? resolvedMember = member;
+    if (!prepared.isPersonal && team != null && member != null) {
+      final presets = _loadPresets?.call() ?? [];
+      final resolved = resolveMemberLaunchConfig(
+        team: team,
+        member: member,
+        globalPresets: presets,
+      );
+      resolvedMember = member.copyWith(
+        provider: resolved.provider,
+        model: resolved.model,
+        effort: resolved.effort,
+        updateEffort: true,
+      );
+    }
+
     return ShellLaunchSpec(
       plan: prepared.plan,
       launchContext: _buildShellLaunchContext(
@@ -131,7 +154,7 @@ class SessionLifecycleService {
         project: project,
         profile: prepared.resolvedProfile,
         team: team,
-        member: member,
+        member: resolvedMember,
         preset: prepared.activePreset,
       ),
       sessionTeam: _resolveSessionTeam(session, prepared.plan, prepared.isPersonal),

@@ -43,16 +43,6 @@ extension AppLocalizationsX on AppLocalizations {
     };
   }
 
-  String appProviderClaudeApiFormatOption(String value) {
-    return switch (value) {
-      'anthropic' => appProviderClaudeApiFormatAnthropic,
-      'openai_chat' => appProviderClaudeApiFormatOpenaiChat,
-      'openai_responses' => appProviderClaudeApiFormatOpenaiResponses,
-      'gemini_native' => appProviderClaudeApiFormatGeminiNative,
-      _ => value,
-    };
-  }
-
   String appProviderClaudeAuthFieldOption(String value) {
     return switch (value) {
       'ANTHROPIC_AUTH_TOKEN' => appProviderClaudeAuthTokenDefault,

@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../cubits/cli_presets_cubit.dart';
 import '../../../../l10n/l10n_extensions.dart';
 import '../../../../models/cli_preset.dart';
+import '../../../../models/team_config.dart';
 import '../../../../services/cli/registry/cli_display_name.dart';
 import '../../../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../../../theme/app_text_styles.dart';
@@ -12,7 +13,11 @@ import '../../../../widgets/settings/workspace_settings_widgets.dart';
 import 'cli_preset_edit_dialog.dart';
 
 class CliPresetsManageDialog extends StatelessWidget {
-  const CliPresetsManageDialog({super.key});
+  const CliPresetsManageDialog({this.lockCli, super.key});
+
+  /// When non-null, passed through to [CliPresetEditDialog] to lock the CLI
+  /// dropdown. Used in native mode to restrict presets to the team CLI.
+  final CliTool? lockCli;
 
   @override
   Widget build(BuildContext context) {
@@ -21,7 +26,7 @@ class CliPresetsManageDialog extends StatelessWidget {
     final presets = state.presets;
 
     return AppDialog(
-      maxWidth: 560,
+      maxWidth: 640,
       scrollable: true,
       maxHeight: MediaQuery.sizeOf(context).height * 0.85,
       child: Column(
@@ -63,14 +68,14 @@ class CliPresetsManageDialog extends StatelessWidget {
   void _openAddDialog(BuildContext context) {
     showDialog<void>(
       context: context,
-      builder: (_) => const CliPresetEditDialog(),
+      builder: (_) => CliPresetEditDialog(lockCli: lockCli),
     );
   }
 
   void _openEditDialog(BuildContext context, CliPreset preset) {
     showDialog<void>(
       context: context,
-      builder: (_) => CliPresetEditDialog(existing: preset),
+      builder: (_) => CliPresetEditDialog(existing: preset, lockCli: lockCli),
     );
   }
 

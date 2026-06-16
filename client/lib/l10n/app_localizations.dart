@@ -1568,6 +1568,90 @@ abstract class AppLocalizations {
   /// **'Manage'**
   String get projectCliManagePresets;
 
+  /// No description provided for @teamDefaultPresetLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Default Model Preset'**
+  String get teamDefaultPresetLabel;
+
+  /// No description provided for @teamDefaultPresetSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Optional default preset applied to members that don\'t override it.'**
+  String get teamDefaultPresetSubtitle;
+
+  /// No description provided for @teamDefaultPresetNone.
+  ///
+  /// In en, this message translates to:
+  /// **'None'**
+  String get teamDefaultPresetNone;
+
+  /// No description provided for @teamDefaultPresetChange.
+  ///
+  /// In en, this message translates to:
+  /// **'Change'**
+  String get teamDefaultPresetChange;
+
+  /// No description provided for @teamDefaultPresetManage.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage'**
+  String get teamDefaultPresetManage;
+
+  /// No description provided for @presetPickerTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Select Preset'**
+  String get presetPickerTitle;
+
+  /// No description provided for @presetPickerNoneOption.
+  ///
+  /// In en, this message translates to:
+  /// **'None (no default)'**
+  String get presetPickerNoneOption;
+
+  /// No description provided for @memberPresetLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Preset'**
+  String get memberPresetLabel;
+
+  /// No description provided for @memberPresetInheritTeam.
+  ///
+  /// In en, this message translates to:
+  /// **'Inherit team default'**
+  String get memberPresetInheritTeam;
+
+  /// No description provided for @memberPresetInheritTeamNone.
+  ///
+  /// In en, this message translates to:
+  /// **'No team default set'**
+  String get memberPresetInheritTeamNone;
+
+  /// No description provided for @memberPresetSelectPreset.
+  ///
+  /// In en, this message translates to:
+  /// **'Select a preset'**
+  String get memberPresetSelectPreset;
+
+  /// No description provided for @memberPresetCustom.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom configuration'**
+  String get memberPresetCustom;
+
+  /// No description provided for @memberPresetViaPreset.
+  ///
+  /// In en, this message translates to:
+  /// **'{presetName} (via preset)'**
+  String memberPresetViaPreset(String presetName);
+
+  /// No description provided for @memberPresetViaTeamDefault.
+  ///
+  /// In en, this message translates to:
+  /// **'{presetName} (via team default)'**
+  String memberPresetViaTeamDefault(String presetName);
+
   /// No description provided for @homeWorkspaceProjectSkills.
   ///
   /// In en, this message translates to:
@@ -3475,6 +3559,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No models configured'**
   String get noModelsConfigured;
+
+  /// No description provided for @providerModelBackgroundTier.
+  ///
+  /// In en, this message translates to:
+  /// **'Use for background/fast tasks (Claude haiku tier)'**
+  String get providerModelBackgroundTier;
 
   /// No description provided for @missingProvider.
   ///
@@ -5498,30 +5588,6 @@ abstract class AppLocalizations {
   /// **'Custom'**
   String get appProviderPresetCustom;
 
-  /// No description provided for @appProviderClaudeApiFormatAnthropic.
-  ///
-  /// In en, this message translates to:
-  /// **'Anthropic Messages (native)'**
-  String get appProviderClaudeApiFormatAnthropic;
-
-  /// No description provided for @appProviderClaudeApiFormatOpenaiChat.
-  ///
-  /// In en, this message translates to:
-  /// **'OpenAI Chat Completions'**
-  String get appProviderClaudeApiFormatOpenaiChat;
-
-  /// No description provided for @appProviderClaudeApiFormatOpenaiResponses.
-  ///
-  /// In en, this message translates to:
-  /// **'OpenAI Responses'**
-  String get appProviderClaudeApiFormatOpenaiResponses;
-
-  /// No description provided for @appProviderClaudeApiFormatGeminiNative.
-  ///
-  /// In en, this message translates to:
-  /// **'Gemini Native'**
-  String get appProviderClaudeApiFormatGeminiNative;
-
   /// No description provided for @appProviderClaudeAuthTokenDefault.
   ///
   /// In en, this message translates to:
@@ -5606,18 +5672,6 @@ abstract class AppLocalizations {
   /// **'None'**
   String get appProviderTeamNone;
 
-  /// No description provided for @appProviderClaudeApiFormat.
-  ///
-  /// In en, this message translates to:
-  /// **'API format'**
-  String get appProviderClaudeApiFormat;
-
-  /// No description provided for @appProviderClaudeApiFormatHint.
-  ///
-  /// In en, this message translates to:
-  /// **'Select the provider API input format.'**
-  String get appProviderClaudeApiFormatHint;
-
   /// No description provided for @appProviderClaudeAuthField.
   ///
   /// In en, this message translates to:
@@ -5629,36 +5683,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Select the authentication environment variable written to settings.'**
   String get appProviderClaudeAuthFieldHint;
-
-  /// No description provided for @appProviderClaudeModelMapping.
-  ///
-  /// In en, this message translates to:
-  /// **'Model mapping'**
-  String get appProviderClaudeModelMapping;
-
-  /// No description provided for @appProviderClaudeModelMappingHint.
-  ///
-  /// In en, this message translates to:
-  /// **'Leave these empty for native Claude providers. Fill them only when a provider maps Claude model roles to different model names.'**
-  String get appProviderClaudeModelMappingHint;
-
-  /// No description provided for @appProviderClaudeHaikuModel.
-  ///
-  /// In en, this message translates to:
-  /// **'Haiku default model'**
-  String get appProviderClaudeHaikuModel;
-
-  /// No description provided for @appProviderClaudeSonnetModel.
-  ///
-  /// In en, this message translates to:
-  /// **'Sonnet default model'**
-  String get appProviderClaudeSonnetModel;
-
-  /// No description provided for @appProviderClaudeOpusModel.
-  ///
-  /// In en, this message translates to:
-  /// **'Opus default model'**
-  String get appProviderClaudeOpusModel;
 
   /// No description provided for @notes.
   ///

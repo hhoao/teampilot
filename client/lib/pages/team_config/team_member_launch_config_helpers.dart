@@ -1,5 +1,6 @@
 import '../../l10n/app_localizations.dart';
 import '../../models/app_provider_config.dart';
+import '../../models/cli_preset.dart';
 import '../../models/team_config.dart';
 import '../../services/cli/registry/cli_display_name.dart';
 import '../../services/cli/registry/cli_tool_registry.dart';
@@ -22,6 +23,66 @@ bool memberLaunchIsConfigured({
 }
 
 String memberLaunchConfigLine({
+  required AppLocalizations l10n,
+  required CliToolRegistry registry,
+  required TeamConfig team,
+  required TeamMemberConfig member,
+  required bool configured,
+  AppProviderConfig? provider,
+  required bool hidesModelPicker,
+  List<CliPreset> presets = const [],
+}) {
+  final presetLine = memberPresetSummaryLine(
+    l10n: l10n,
+    team: team,
+    member: member,
+    presets: presets,
+  );
+  final configPart = _rawConfigLine(
+    l10n: l10n,
+    registry: registry,
+    team: team,
+    member: member,
+    configured: configured,
+    provider: provider,
+    hidesModelPicker: hidesModelPicker,
+  );
+  if (presetLine != null) return '$presetLine  ·  $configPart';
+  return configPart;
+}
+
+/// Returns a preset summary label for display, or `null` when the member uses
+/// custom config (no preset).
+String? memberPresetSummaryLine({
+  required AppLocalizations l10n,
+  required TeamConfig team,
+  required TeamMemberConfig member,
+  required List<CliPreset> presets,
+}) {
+  if (member.hasExplicitPreset) {
+    final preset = _findPreset(presets, member.activePresetId!);
+    if (preset != null) return l10n.memberPresetViaPreset(preset.name);
+    return member.activePresetId;
+  }
+  if (member.inheritsTeamPreset) {
+    if (team.activePresetId != null) {
+      final preset = _findPreset(presets, team.activePresetId!);
+      if (preset != null) return l10n.memberPresetViaTeamDefault(preset.name);
+    }
+    return l10n.memberPresetInheritTeamNone;
+  }
+  // member.usesCustomConfig — no preset label
+  return null;
+}
+
+CliPreset? _findPreset(List<CliPreset> presets, String id) {
+  for (final p in presets) {
+    if (p.id == id) return p;
+  }
+  return null;
+}
+
+String _rawConfigLine({
   required AppLocalizations l10n,
   required CliToolRegistry registry,
   required TeamConfig team,
