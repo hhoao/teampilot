@@ -184,11 +184,30 @@ the model.
 
 ### Phase 2b — UI (separate plan)
 
-- Member-config form (`team_config_member_section.dart`) gains a **Replicas** stepper
-  (integer ≥ 1) on the type, with l10n `memberReplicas`/`memberReplicasSubtitle`
-  (`app_en.arb` + `app_zh.arb`; re-run `flutter pub get` + `gen_warmup_glyphs.dart`).
-- Tab strip / member sidebar present pods grouped under their type (`builder #0`,
-  `builder #1`). Selection becomes per-instance.
+The runtime members panel ([`widgets/right_tools/right_tools_panel.dart`] →
+`MembersPanel`) already renders a **flat, selectable `List<TeamMemberConfig>`** with a
+per-member presence indicator and shell, keyed by `member.id`. Phase 2a already keyed
+shells / bus nodes / bindings by instance id. So pods surface with near-zero new UI by
+feeding the panel instance projections instead of types.
+
+1. **Members panel shows pods (flat rows).** In `right_tools_panel.dart`, replace the
+   `team.members` list source (and the `team.members.firstWhere((m) => m.id == id)`
+   selection/action lookups) with `runtimeRosterMembers(team)`. Pods render as flat rows
+   `Builder #0`, `Builder #1` (singletons stay `Builder`), each with its own presence
+   indicator and shell; selection/actions resolve the chosen **instance id** to its
+   projection. No grouping/collapse UI (YAGNI; matches the existing flat list and k8s pod
+   list intuition).
+2. **Per-pod presence.** `member_presence_cubit.dart` passes `team.members` to
+   `MemberPresenceService.compute`; change it to `runtimeRosterMembers(team)` so presence
+   is computed per pod.
+3. **Replicas stepper.** The member-config form (`team_config_member_section.dart`) gains a
+   small integer **Replicas** stepper (min 1) in the advanced section, editing the type's
+   `replicas`. l10n `memberReplicas`/`memberReplicasSubtitle` in `app_en.arb` + `app_zh.arb`
+   (re-run `flutter pub get` + `gen_warmup_glyphs.dart`).
+4. **Out of scope:** per-instance *distinct* config (instances of a type are identical by
+   definition); per-instance provider isolation — already correct, because each pod launches
+   with the instance projection (which carries the type's `provider`) and its own
+   config-profile leaf, resolved per-launch by `resolveMemberClaudeSettings(member: <pod>)`.
 
 ### Persistence
 
