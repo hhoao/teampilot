@@ -167,6 +167,7 @@ class DiscoverableTeamMember {
     this.model = '',
     this.agent = '',
     this.agentType = '',
+    this.capabilities = const {},
     this.prompt = '',
     this.playbook = '',
     this.extraArgs = '',
@@ -177,6 +178,10 @@ class DiscoverableTeamMember {
   final String model;
   final String agent;
   final String agentType;
+
+  /// Capability tags for TeamBus task routing — maps to
+  /// [TeamMemberConfig.capabilities].
+  final Set<String> capabilities;
 
   /// Responsibilities (WHAT) — maps to [TeamMemberConfig.prompt].
   final String prompt;
@@ -192,6 +197,10 @@ class DiscoverableTeamMember {
         model: json['model'] as String? ?? '',
         agent: json['agent'] as String? ?? '',
         agentType: json['agentType'] as String? ?? '',
+        capabilities: {
+          for (final c in (json['capabilities'] as List?) ?? const [])
+            if (c is String && c.trim().isNotEmpty) c.trim(),
+        },
         prompt: json['prompt'] as String? ?? '',
         playbook: json['playbook'] as String? ?? '',
         extraArgs: json['extraArgs'] as String? ?? '',
@@ -203,6 +212,7 @@ class DiscoverableTeamMember {
         'model': model,
         'agent': agent,
         if (agentType.isNotEmpty) 'agentType': agentType,
+        if (capabilities.isNotEmpty) 'capabilities': capabilities.toList(),
         'prompt': prompt,
         if (playbook.isNotEmpty) 'playbook': playbook,
         'extraArgs': extraArgs,
@@ -219,6 +229,7 @@ class DiscoverableTeamMember {
       model: model,
       agent: agent,
       agentType: agentType,
+      capabilities: capabilities,
       prompt: prompt,
       playbook: playbook,
       extraArgs: extraArgs,
@@ -234,6 +245,8 @@ class DiscoverableTeamMember {
       model == other.model &&
       agent == other.agent &&
       agentType == other.agentType &&
+      capabilities.length == other.capabilities.length &&
+      capabilities.containsAll(other.capabilities) &&
       prompt == other.prompt &&
       playbook == other.playbook &&
       extraArgs == other.extraArgs;
@@ -245,6 +258,7 @@ class DiscoverableTeamMember {
         model,
         agent,
         agentType,
+        Object.hashAllUnordered(capabilities),
         prompt,
         playbook,
         extraArgs,

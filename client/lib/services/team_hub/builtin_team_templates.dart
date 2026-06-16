@@ -36,7 +36,7 @@ final DiscoverableTeam kSuperpowersTrioTeamTemplate = DiscoverableTeam(
       '(wait_for_message / send_message).',
   category: 'Workflow',
   author: 'TeamPilot',
-  updatedAt: 1_781_481_600_000, // 2026-06-15 — stable sort bump when edited
+  updatedAt: 1_781_568_000_000, // 2026-06-16 — stable sort bump when edited
   cli: CliTool.flashskyai,
   teamMode: TeamMode.mixed,
   members: [
@@ -51,17 +51,24 @@ final DiscoverableTeam kSuperpowersTrioTeamTemplate = DiscoverableTeam(
           'Do NOT brainstorm, write plans, implement code, or review — '
           'delegate-only mode blocks those tools in this tab anyway.',
       playbook:
-          'Idle loop: wait_for_message only. On user input, assign design+plan '
-          'to architect; once the design is approved and the plan is ready, '
-          'assign execution to builder and review to reviewer. Coordinate ONLY '
-          'via send_message and update_task (Skill / workflow / Write / Edit / '
-          'Bash are disabled here). Track phase gates (design approved → plan '
-          'ready → implementation done → review pass) and relay questions and '
-          'blockers between members and the user. Never stand down; escalate '
-          'blockers to the user.',
+          'Idle loop: wait_for_message only. Enqueue work with add_tasks and '
+          'ROUTE every task by required_capabilities so only the right member '
+          'can claim it — never leave a task untagged (untagged work is '
+          'claimable by anyone, including the reviewer): design+plan → '
+          'required_capabilities ["design"] (architect); implementation → '
+          '["implement"] (builder); review → ["review"] (reviewer) AND '
+          'depends_on the implementation task ids, so review unlocks only after '
+          'the build is done. Honor phase gates (design approved → plan ready '
+          '→ implementation done → review pass): do not enqueue implementation '
+          'before the plan is ready, nor a review task before its '
+          'implementation tasks exist. Use send_message only to relay '
+          'clarifying questions and blockers between members and the user, and '
+          'update_task to track gates (Skill / workflow / Write / Edit / Bash '
+          'are disabled here). Never stand down; escalate blockers to the user.',
     ),
     DiscoverableTeamMember(
       name: 'architect',
+      capabilities: {'design'},
       prompt:
           'Own the design and planning phases the lead cannot run: clarify '
           'scope through brainstorming with the user, lock an approved design, '
@@ -78,6 +85,7 @@ final DiscoverableTeam kSuperpowersTrioTeamTemplate = DiscoverableTeam(
     ),
     DiscoverableTeamMember(
       name: 'builder',
+      capabilities: {'implement'},
       prompt:
           'Turn the architect\'s approved plan into working code with '
           'test-first discipline within assigned scope. '
@@ -93,6 +101,7 @@ final DiscoverableTeam kSuperpowersTrioTeamTemplate = DiscoverableTeam(
     ),
     DiscoverableTeamMember(
       name: 'reviewer',
+      capabilities: {'review'},
       prompt:
           'Validate traceability from the user request through approved design, '
           'plan, diff, and test evidence; block on gaps. '

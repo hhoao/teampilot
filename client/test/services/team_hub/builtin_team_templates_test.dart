@@ -24,4 +24,23 @@ void main() {
     expect(text, isNot(contains('brainstorming')));
     expect(text, isNot(contains('dispatching-parallel-agents')));
   });
+
+  test('quartet members carry routing capabilities', () {
+    final byId = {
+      for (final m in kSuperpowersTrioTeamTemplate.members)
+        m.toMemberConfig(joinedAt: 1).id: m.toMemberConfig(joinedAt: 1),
+    };
+    // team-lead never auto-claims; capabilities are for the workers.
+    expect(byId['architect']!.capabilities, contains('design'));
+    expect(byId['builder']!.capabilities, {'implement'});
+    expect(byId['reviewer']!.capabilities, {'review'});
+  });
+
+  test('lead routes tasks by required_capabilities and gates review', () {
+    final lead = kSuperpowersTrioTeamTemplate.members
+        .firstWhere((m) => TeamMemberNaming.isTeamLeadName(m.name));
+    final text = '${lead.prompt}\n${lead.playbook}';
+    expect(text, contains('required_capabilities'));
+    expect(text, contains('depends_on'));
+  });
 }
