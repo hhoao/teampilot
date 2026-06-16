@@ -141,7 +141,12 @@ void main() {
       RuntimeStorageContext.resetForTesting();
       AppPathsBootstrapper.resetForTesting();
       if (await appDataRoot.exists()) {
-        await appDataRoot.delete(recursive: true);
+        try {
+          await appDataRoot.delete(recursive: true);
+        } on FileSystemException catch (_) {
+          // Directory may still be in use on some platforms (macOS).
+          // The OS will clean up the temp dir eventually.
+        }
       }
     });
 
