@@ -1598,6 +1598,18 @@ abstract class AppLocalizations {
   /// **'Manage'**
   String get teamDefaultPresetManage;
 
+  /// No description provided for @teamDefaultCliMixedSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'When a member has no CLI override.'**
+  String get teamDefaultCliMixedSubtitle;
+
+  /// No description provided for @teamDefaultDialogEffortSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Team default effort.'**
+  String get teamDefaultDialogEffortSubtitle;
+
   /// No description provided for @presetPickerTitle.
   ///
   /// In en, this message translates to:

@@ -19,7 +19,6 @@ void registerBuiltInCliTools(
   CliToolRegistry registry, {
   CliBootstrap bootstrap = const CliBootstrap(),
 }) {
-  registry.register(const FlashskyaiCliTool());
   registry.register(
     ClaudeCliTool(
       providerCredential: ClaudeProviderCredentialCapability(
@@ -52,6 +51,8 @@ void registerBuiltInCliTools(
     ),
   );
 
+  registry.register(const FlashskyaiCliTool());
+
   assert(
     CliTool.values.every((cli) => registry.tryGet(cli) != null),
     'Every CliTool must have a registered definition',
@@ -83,7 +84,8 @@ void _verifyMemberAgentPresetRegistration(CliToolRegistry registry) {
     for (final def in registry.withCapability<MemberAgentPresetCapability>())
       def.id,
   };
-  if (presetIds.length != allowed.length || !allowed.every(presetIds.contains)) {
+  if (presetIds.length != allowed.length ||
+      !allowed.every(presetIds.contains)) {
     throw StateError(
       'Member agent preset is limited to CLIs with MemberAgentPresetCapability; '
       'got ${presetIds.map((c) => c.value).join(', ')}',
@@ -93,10 +95,9 @@ void _verifyMemberAgentPresetRegistration(CliToolRegistry registry) {
 
 void _verifyNativeTeamRegistration(CliToolRegistry registry) {
   const allowed = {CliTool.claude, CliTool.flashskyai};
-  final nativeIds = {
-    for (final def in registry.nativeTeamLaunchable) def.id,
-  };
-  if (nativeIds.length != allowed.length || !allowed.every(nativeIds.contains)) {
+  final nativeIds = {for (final def in registry.nativeTeamLaunchable) def.id};
+  if (nativeIds.length != allowed.length ||
+      !allowed.every(nativeIds.contains)) {
     throw StateError(
       'Native team mode is limited to CLIs with NativeTeamCapability; '
       'got ${nativeIds.map((c) => c.value).join(', ')}',

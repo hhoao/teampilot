@@ -835,6 +835,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get teamDefaultPresetManage => 'Manage';
 
   @override
+  String get teamDefaultCliMixedSubtitle =>
+      'When a member has no CLI override.';
+
+  @override
+  String get teamDefaultDialogEffortSubtitle => 'Team default effort.';
+
+  @override
   String get presetPickerTitle => 'Select Preset';
 
   @override

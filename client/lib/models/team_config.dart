@@ -338,6 +338,7 @@ class TeamConfig {
     this.pluginIds = const [],
     this.mcpServerIds = const [],
     this.providerIdsByTool = const {},
+    this.modelsByTool = const {},
     this.cli = CliTool.claude,
     this.teamMode = TeamMode.native,
     this.createdAt = 0,
@@ -426,6 +427,7 @@ class TeamConfig {
       pluginIds: decodePluginIds(json['pluginIds']),
       mcpServerIds: decodeMcpServerIds(json['mcpServerIds']),
       providerIdsByTool: _decodeProviderIdsByTool(json['providerIdsByTool']),
+      modelsByTool: _decodeProviderIdsByTool(json['modelsByTool']),
       cli: json.containsKey('cli')
           ? CliTool.parse(json['cli'])
           : CliTool.claude,
@@ -478,6 +480,51 @@ class TeamConfig {
     return '';
   }
 
+  /// App-level provider id for [cli] from team custom defaults.
+  String providerForCli(CliTool cli) =>
+      providerIdsByTool[cli.value]?.trim() ?? '';
+
+  /// Model id for [cli] from team custom defaults.
+  String modelForCli(CliTool cli) => modelsByTool[cli.value]?.trim() ?? '';
+
+  /// Whether team custom defaults include a provider for [cli].
+  bool hasCustomLaunchDefaultsFor(CliTool cli) =>
+      providerForCli(cli).isNotEmpty;
+
+  /// Whether the team has a preset reference or custom launch defaults for [cli].
+  bool hasLaunchDefaultsFor(
+    CliTool cli, {
+    required bool presetExists,
+  }) =>
+      (activePresetId != null && presetExists) ||
+      hasCustomLaunchDefaultsFor(cli);
+
+  TeamConfig withLaunchDefaultsForCli({
+    required CliTool cli,
+    required String providerId,
+    required String model,
+    required String effort,
+  }) {
+    final trimmedProvider = providerId.trim();
+    final trimmedModel = model.trim();
+    final nextProviders = Map<String, String>.from(providerIdsByTool);
+    final nextModels = Map<String, String>.from(modelsByTool);
+    if (trimmedProvider.isEmpty) {
+      nextProviders.remove(cli.value);
+    } else {
+      nextProviders[cli.value] = trimmedProvider;
+    }
+    if (trimmedModel.isEmpty) {
+      nextModels.remove(cli.value);
+    } else {
+      nextModels[cli.value] = trimmedModel;
+    }
+    return withEffortForCli(cli, effort).copyWith(
+      providerIdsByTool: nextProviders,
+      modelsByTool: nextModels,
+    );
+  }
+
   TeamConfig withEffortForCli(CliTool cli, String effort) {
     final trimmed = effort.trim();
     final next = Map<String, String>.from(cliEffortLevels);
@@ -512,6 +559,9 @@ class TeamConfig {
 
   /// App-level provider id per tool (`flashskyai`, `codex`, `claude`).
   final Map<String, String> providerIdsByTool;
+
+  /// Default model id per CLI tool for team-level custom launch defaults.
+  final Map<String, String> modelsByTool;
 
   /// CLI backend for this team. Set at creation; not user-editable afterward.
   final CliTool cli;
@@ -561,6 +611,7 @@ class TeamConfig {
     List<String>? pluginIds,
     List<String>? mcpServerIds,
     Map<String, String>? providerIdsByTool,
+    Map<String, String>? modelsByTool,
     CliTool? cli,
     TeamMode? teamMode,
     int? createdAt,
@@ -589,6 +640,7 @@ class TeamConfig {
       pluginIds: pluginIds ?? this.pluginIds,
       mcpServerIds: mcpServerIds ?? this.mcpServerIds,
       providerIdsByTool: providerIdsByTool ?? this.providerIdsByTool,
+      modelsByTool: modelsByTool ?? this.modelsByTool,
       cli: cli ?? this.cli,
       teamMode: teamMode ?? this.teamMode,
       createdAt: createdAt ?? this.createdAt,
@@ -623,6 +675,7 @@ class TeamConfig {
       if (pluginIds.isNotEmpty) 'pluginIds': pluginIds,
       if (mcpServerIds.isNotEmpty) 'mcpServerIds': mcpServerIds,
       if (providerIdsByTool.isNotEmpty) 'providerIdsByTool': providerIdsByTool,
+      if (modelsByTool.isNotEmpty) 'modelsByTool': modelsByTool,
       'cli': cli.value,
       if (teamMode != TeamMode.native) 'teamMode': teamMode.value,
       'createdAt': createdAt,
@@ -654,6 +707,7 @@ class TeamConfig {
             listEquals(pluginIds, other.pluginIds) &&
             listEquals(mcpServerIds, other.mcpServerIds) &&
             mapEquals(providerIdsByTool, other.providerIdsByTool) &&
+            mapEquals(modelsByTool, other.modelsByTool) &&
             cli == other.cli &&
             teamMode == other.teamMode &&
             createdAt == other.createdAt &&
@@ -678,17 +732,23 @@ class TeamConfig {
     Object.hashAll(skillIds),
     Object.hashAll(pluginIds),
     Object.hashAll(mcpServerIds),
-    Object.hashAll(providerIdsByTool.entries),
+    Object.hash(
+      Object.hashAll(providerIdsByTool.entries),
+      Object.hashAll(modelsByTool.entries),
+    ),
     cli,
     teamMode,
     createdAt,
     sortOrder,
     loop,
-    claudeTeammateMode,
-    claudeEffortLevel,
-    Object.hashAll(cliEffortLevels.entries),
-    autoLaunchMembers,
-    Object.hash(forceTeamLeadDelegateMode, forceWaitBeforeStop),
-    activePresetId,
+    Object.hash(
+      claudeTeammateMode,
+      claudeEffortLevel,
+      Object.hashAll(cliEffortLevels.entries),
+      autoLaunchMembers,
+      forceTeamLeadDelegateMode,
+      forceWaitBeforeStop,
+      activePresetId,
+    ),
   );
 }

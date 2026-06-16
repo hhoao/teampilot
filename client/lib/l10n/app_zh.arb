@@ -328,6 +328,8 @@
   "teamDefaultPresetNone": "无",
   "teamDefaultPresetChange": "更改",
   "teamDefaultPresetManage": "管理",
+  "teamDefaultCliMixedSubtitle": "成员未指定时使用。",
+  "teamDefaultDialogEffortSubtitle": "团队默认力度。",
   "presetPickerTitle": "选择预设",
   "presetPickerNoneOption": "无（不设默认）",
   "memberPresetLabel": "预设",

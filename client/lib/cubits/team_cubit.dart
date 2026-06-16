@@ -528,6 +528,30 @@ class TeamCubit extends Cubit<TeamState> implements TeamCubitHost {
     );
   }
 
+  /// Persists team custom launch defaults for [catalogCli] and clears any preset.
+  void updateTeamCustomLaunch({
+    required CliTool catalogCli,
+    CliTool? defaultCli,
+    required String providerId,
+    required String model,
+    required String effort,
+  }) {
+    final team = state.selectedTeam;
+    if (team == null) return;
+    var next = team
+        .copyWith(activePresetId: null, updateActivePresetId: true)
+        .withLaunchDefaultsForCli(
+          cli: catalogCli,
+          providerId: providerId,
+          model: model,
+          effort: effort,
+        );
+    if (defaultCli != null && team.teamMode == TeamMode.mixed) {
+      next = next.copyWith(cli: defaultCli);
+    }
+    updateSelected(next);
+  }
+
   /// Sets the active preset for a member of the selected team.
   ///
   /// [presetId] may be a preset UUID ([CliPreset.id]),

@@ -105,6 +105,89 @@ bool teamShowsEffortPicker(
   return capability.isApplicable(model: model);
 }
 
+/// Resolves a preset's provider id to a catalog [AppProviderConfig], if present.
+AppProviderConfig? providerConfigForPreset({
+  required Iterable<AppProviderConfig> providers,
+  required CliPreset preset,
+}) {
+  final id = preset.provider.trim();
+  if (id.isEmpty) return null;
+  for (final provider in providers) {
+    if (provider.id == id) return provider;
+  }
+  return null;
+}
+
+/// Subtitle for preset picker list items (CLI · provider · model · effort).
+String presetPickerSubtitle({
+  required CliToolRegistry registry,
+  required AppLocalizations l10n,
+  required CliPreset preset,
+  AppProviderConfig? provider,
+}) {
+  final def = registry.tryGet(preset.cli);
+  final cliName = def != null ? cliDisplayName(def, l10n) : preset.cli.value;
+  final providerName = provider?.name.trim().isNotEmpty == true
+      ? provider!.name.trim()
+      : preset.provider.trim();
+  final parts = <String>[
+    if (providerName.isNotEmpty) providerName,
+    if (preset.model.trim().isNotEmpty) preset.model.trim(),
+    if (preset.effort.trim().isNotEmpty) preset.effort.trim(),
+  ];
+  if (parts.isEmpty) return cliName;
+  return '$cliName · ${parts.join(' · ')}';
+}
+
+/// Whether team default launch config is set (preset or custom for [catalogCli]).
+bool teamLaunchDefaultsConfigured({
+  required TeamConfig team,
+  required List<CliPreset> presets,
+  required CliTool catalogCli,
+}) {
+  if (team.activePresetId != null) {
+    CliPreset? activePreset;
+    for (final preset in presets) {
+      if (preset.id == team.activePresetId) {
+        activePreset = preset;
+        break;
+      }
+    }
+    return activePreset != null && activePreset.cli == catalogCli;
+  }
+  return team.hasCustomLaunchDefaultsFor(catalogCli);
+}
+
+/// Summary line for team custom defaults (not preset-backed).
+String teamCustomLaunchConfigLine({
+  required AppLocalizations l10n,
+  required CliToolRegistry registry,
+  required TeamConfig team,
+  required CliTool catalogCli,
+  AppProviderConfig? provider,
+  required bool hidesModelPicker,
+}) {
+  final def = registry.tryGet(catalogCli);
+  final cliLabel = def == null ? catalogCli.value : cliDisplayName(def, l10n);
+  final providerName = provider?.name.trim() ?? team.providerForCli(catalogCli);
+  final modelLabel = team.modelForCli(catalogCli);
+  final effortLabel = team.effortForCli(catalogCli);
+
+  if (providerName.isEmpty) return cliLabel;
+  if (modelLabel.isEmpty && hidesModelPicker) {
+    if (effortLabel.isEmpty) return '$cliLabel · $providerName';
+    return '$cliLabel · $providerName · $effortLabel';
+  }
+  if (modelLabel.isEmpty) {
+    if (effortLabel.isEmpty) return '$cliLabel · $providerName';
+    return '$cliLabel · $providerName · $effortLabel';
+  }
+  if (effortLabel.isEmpty) {
+    return l10n.aiFeatureConfigSummary(cliLabel, providerName, modelLabel);
+  }
+  return '${l10n.aiFeatureConfigSummary(cliLabel, providerName, modelLabel)} · $effortLabel';
+}
+
 /// Summary line for the team default preset row (CLI · provider · model · effort).
 String teamPresetConfigLine({
   required AppLocalizations l10n,

@@ -15,7 +15,6 @@ import '../../services/cli/registry/cli_display_name.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../theme/app_text_styles.dart';
 import '../../widgets/app_provider/cli_effort_picker_field.dart';
-import '../../widgets/app_provider/team_tool_provider_selectors.dart';
 import '../../widgets/app_provider/provider_brand_icon.dart';
 import '../../widgets/cli/cli_brand_icon.dart';
 import '../../widgets/dropdown/app_dropdown_decoration.dart';
@@ -23,7 +22,7 @@ import '../../widgets/app_dialog.dart';
 import '../../widgets/settings/workspace_settings_widgets.dart';
 import '../home_workspace/project/config/project_cli_config_helpers.dart';
 import 'team_config_helpers.dart';
-import 'team_preset_picker_dialog.dart';
+import 'team_default_preset_configure_dialog.dart';
 
 class TeamInfoSection extends StatefulWidget {
   const TeamInfoSection({super.key, required this.team, required this.cubit});
@@ -80,7 +79,6 @@ class TeamInfoSectionState extends State<TeamInfoSection> {
         : null;
     final showDelegateRow =
         catalogCli == CliTool.claude || catalogCli == CliTool.flashskyai;
-    final showToolProviders = catalogCli == CliTool.claude;
     // Stop-hook/bus 仅 mixed 模式接线,故此开关只在 mixed 团队出现。
     final showForceWaitRow = widget.team.teamMode == TeamMode.mixed;
     final showTeamEffort = teamShowsEffortPicker(
@@ -187,10 +185,7 @@ class TeamInfoSectionState extends State<TeamInfoSection> {
                     ),
                   ),
                   showDividerBelow:
-                      showDelegateRow ||
-                      showToolProviders ||
-                      showTeamEffort ||
-                      showForceWaitRow,
+                      showDelegateRow || showTeamEffort || showForceWaitRow,
                 ),
                 if (showTeamEffort)
                   SettingsLabeledStackedRow(
@@ -209,8 +204,8 @@ class TeamInfoSectionState extends State<TeamInfoSection> {
                   ),
                 _TeamDefaultPresetRow(
                   team: widget.team,
-                  showDividerBelow:
-                      showDelegateRow || showForceWaitRow || showToolProviders,
+                  cubit: widget.cubit,
+                  showDividerBelow: showDelegateRow || showForceWaitRow,
                 ),
                 if (showDelegateRow)
                   SettingsLabeledRow(
@@ -225,7 +220,7 @@ class TeamInfoSectionState extends State<TeamInfoSection> {
                         ),
                       ),
                     ),
-                    showDividerBelow: showForceWaitRow || showToolProviders,
+                    showDividerBelow: showForceWaitRow,
                   ),
                 if (showForceWaitRow)
                   SettingsLabeledRow(
@@ -240,12 +235,7 @@ class TeamInfoSectionState extends State<TeamInfoSection> {
                         ),
                       ),
                     ),
-                    showDividerBelow: showToolProviders,
-                  ),
-                if (showToolProviders)
-                  TeamToolProviderSelectors(
-                    team: widget.team,
-                    onChanged: widget.cubit.updateSelected,
+                    showDividerBelow: false,
                   ),
               ],
             ),
@@ -261,10 +251,12 @@ class TeamInfoSectionState extends State<TeamInfoSection> {
 class _TeamDefaultPresetRow extends StatelessWidget {
   const _TeamDefaultPresetRow({
     required this.team,
+    required this.cubit,
     required this.showDividerBelow,
   });
 
   final TeamConfig team;
+  final TeamCubit cubit;
   final bool showDividerBelow;
 
   @override
@@ -274,14 +266,26 @@ class _TeamDefaultPresetRow extends StatelessWidget {
     final styles = AppTextStyles.of(context);
     final registry = CliToolRegistryScope.of(context);
     final presets = context.watch<CliPresetsCubit>().state.presets;
-    final activePreset = team.activePresetId != null
-        ? _findPreset(presets, team.activePresetId!)
+    final currentTeam = context.watch<TeamCubit>().state.teams.firstWhere(
+      (t) => t.id == team.id,
+      orElse: () => team,
+    );
+    final catalogCli = currentTeam.cli;
+    final activePreset = currentTeam.activePresetId != null
+        ? _findPreset(presets, currentTeam.activePresetId!)
         : null;
-    final configured = activePreset != null;
+    final configured = teamLaunchDefaultsConfigured(
+      team: currentTeam,
+      presets: presets,
+      catalogCli: catalogCli,
+    );
 
     AppProviderConfig? selectedProvider;
     var hidesModelPicker = false;
+    String configLine;
+    CliTool displayCli = catalogCli;
     if (activePreset != null) {
+      displayCli = activePreset.cli;
       final providers = context
           .watch<AppProviderCubit>()
           .state
@@ -301,19 +305,44 @@ class _TeamDefaultPresetRow extends StatelessWidget {
         activePreset.cli,
         selectedProvider,
       );
+      configLine = teamPresetConfigLine(
+        l10n: l10n,
+        registry: registry,
+        preset: activePreset,
+        provider: selectedProvider,
+        hidesModelPicker: hidesModelPicker,
+      );
+    } else {
+      final providers = context
+          .watch<AppProviderCubit>()
+          .state
+          .providersFor(catalogCli)
+          .toList(growable: false);
+      final prov = currentTeam.providerForCli(catalogCli);
+      if (prov.isNotEmpty) {
+        for (final p in providers) {
+          if (p.id == prov) {
+            selectedProvider = p;
+            break;
+          }
+        }
+      }
+      hidesModelPicker = projectCliHidesModelPicker(
+        registry,
+        catalogCli,
+        selectedProvider,
+      );
+      configLine = teamCustomLaunchConfigLine(
+        l10n: l10n,
+        registry: registry,
+        team: currentTeam,
+        catalogCli: catalogCli,
+        provider: selectedProvider,
+        hidesModelPicker: hidesModelPicker,
+      );
     }
 
-    final catalogDef =
-        activePreset != null ? registry.tryGet(activePreset.cli) : null;
-    final configLine = activePreset == null
-        ? ''
-        : teamPresetConfigLine(
-            l10n: l10n,
-            registry: registry,
-            preset: activePreset,
-            provider: selectedProvider,
-            hidesModelPicker: hidesModelPicker,
-          );
+    final catalogDef = registry.tryGet(displayCli);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -331,9 +360,9 @@ class _TeamDefaultPresetRow extends StatelessWidget {
                       size: 40,
                       borderRadius: 10,
                     )
-                  : catalogDef != null && activePreset != null
+                  : catalogDef != null
                   ? CliBrandIcon(
-                      cli: activePreset.cli,
+                      cli: displayCli,
                       definition: catalogDef,
                       label: cliDisplayName(catalogDef, l10n),
                       size: 40,
@@ -390,7 +419,11 @@ class _TeamDefaultPresetRow extends StatelessWidget {
               ),
               const SizedBox(width: 12),
               OutlinedButton.icon(
-                onPressed: () => _openTeamPresetPicker(context),
+                onPressed: () => openTeamDefaultPresetConfigureDialog(
+                  context,
+                  team: currentTeam,
+                  cubit: cubit,
+                ),
                 icon: Icon(Icons.tune, size: context.appIconSizes.sm),
                 label: Text(l10n.projectCliConfigure),
                 style: OutlinedButton.styleFrom(
@@ -411,13 +444,6 @@ class _TeamDefaultPresetRow extends StatelessWidget {
             color: cs.outlineVariant.withValues(alpha: 0.5),
           ),
       ],
-    );
-  }
-
-  void _openTeamPresetPicker(BuildContext context) {
-    showDialog<void>(
-      context: context,
-      builder: (_) => TeamPresetPickerDialog(team: team),
     );
   }
 }

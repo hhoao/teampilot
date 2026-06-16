@@ -4,13 +4,16 @@ import '../../models/team_config.dart';
 /// Resolved launch configuration for a team member.
 ///
 /// Returns provider/model/effort resolved from the preset hierarchy:
-/// member explicit preset → member inherits team preset → member flat fields.
+/// member explicit preset → member inherits team preset (CLI-matched) →
+/// member flat fields merged with team custom defaults per effective CLI.
 ({String provider, String model, String effort, CliPreset? sourcePreset})
 resolveMemberLaunchConfig({
   required TeamConfig team,
   required TeamMemberConfig member,
   required List<CliPreset> globalPresets,
 }) {
+  final effectiveCli = member.cliWithin(team);
+
   // 1) Member has an explicit preset override.
   if (member.hasExplicitPreset) {
     final preset = _findPreset(member.activePresetId!, globalPresets);
@@ -24,10 +27,10 @@ resolveMemberLaunchConfig({
     }
   }
 
-  // 2) Member inherits team default and team has a preset set.
+  // 2) Member inherits team preset when CLI matches.
   if (member.inheritsTeamPreset && team.activePresetId != null) {
     final preset = _findPreset(team.activePresetId!, globalPresets);
-    if (preset != null) {
+    if (preset != null && preset.cli == effectiveCli) {
       return (
         provider: preset.provider,
         model: preset.model,
@@ -37,11 +40,25 @@ resolveMemberLaunchConfig({
     }
   }
 
-  // 3) Fall back to member's own flat fields (may be empty strings).
+  // 3) Member flat fields, with team custom defaults filling gaps.
+  var provider = member.provider.trim();
+  var model = member.model.trim();
+  var effort = member.effort.trim();
+
+  if (provider.isEmpty) {
+    provider = team.providerForCli(effectiveCli);
+  }
+  if (model.isEmpty) {
+    model = team.modelForCli(effectiveCli);
+  }
+  if (effort.isEmpty) {
+    effort = team.effortForCli(effectiveCli);
+  }
+
   return (
-    provider: member.provider,
-    model: member.model,
-    effort: member.effort,
+    provider: provider,
+    model: model,
+    effort: effort,
     sourcePreset: null,
   );
 }
@@ -60,12 +77,26 @@ List<CliPreset> eligiblePresets({
 
 /// Presets whose [CliPreset.cli] matches [teamCli].
 ///
-/// Use in team-level preset pickers.
+/// Use in native team-level preset pickers.
 List<CliPreset> teamEligiblePresets({
   required CliTool teamCli,
   required List<CliPreset> allPresets,
 }) {
   return allPresets.where((p) => p.cli == teamCli).toList(growable: false);
+}
+
+/// Presets for a team-level picker; mixed teams see all presets, native teams
+/// are filtered to [team.cli].
+List<CliPreset> teamPresetPickerItems({
+  required TeamConfig team,
+  required List<CliPreset> allPresets,
+  CliTool? catalogCli,
+}) {
+  if (team.teamMode == TeamMode.mixed) {
+    final cli = catalogCli ?? team.cli;
+    return allPresets.where((p) => p.cli == cli).toList(growable: false);
+  }
+  return teamEligiblePresets(teamCli: team.cli, allPresets: allPresets);
 }
 
 CliPreset? _findPreset(String id, List<CliPreset> presets) {

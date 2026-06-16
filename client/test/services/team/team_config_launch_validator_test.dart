@@ -24,13 +24,14 @@ void main() {
   );
 
   group('native mode', () {
-    test('passes when team has an explicit default provider', () async {
+    test('passes when team has an explicit default provider and model', () async {
       final team = TeamConfig(
         id: 'team',
         name: 'Team',
         cli: CliTool.claude,
         teamMode: TeamMode.native,
         providerIdsByTool: const {'claude': 'prov-1'},
+        modelsByTool: const {'claude': 'sonnet'},
         members: [member('alice')],
       );
 
@@ -101,6 +102,22 @@ void main() {
       );
     });
 
+    test('passes when team custom defaults satisfy empty members', () async {
+      final team = TeamConfig(
+        id: 'team',
+        name: 'Team',
+        cli: CliTool.claude,
+        teamMode: TeamMode.native,
+        providerIdsByTool: const {'claude': 'prov-1'},
+        modelsByTool: const {'claude': 'sonnet'},
+        members: [member('alice')],
+      );
+
+      final result = await validator.validate(team);
+
+      expect(result.hasIssues, isFalse);
+    });
+
     test('flags missing model for a non-official member provider', () async {
       final team = TeamConfig(
         id: 'team',
@@ -135,7 +152,7 @@ void main() {
   });
 
   group('mixed mode', () {
-    test('flags missing cli and provider per member', () async {
+    test('flags missing provider when team and member defaults are empty', () async {
       final team = TeamConfig(
         id: 'team',
         name: 'Team',
@@ -148,16 +165,28 @@ void main() {
 
       expect(
         result.issues.map((i) => i.kind),
-        containsAll([
-          TeamConfigIssueKind.memberCliMissing,
-          TeamConfigIssueKind.memberProviderMissing,
-        ]),
+        contains(TeamConfigIssueKind.memberProviderMissing),
       );
-      // No provider yet → model requirement is unknown, so not flagged.
       expect(
         result.issues.map((i) => i.kind),
         isNot(contains(TeamConfigIssueKind.memberModelMissing)),
       );
+    });
+
+    test('passes when member is empty but team custom defaults apply', () async {
+      final team = TeamConfig(
+        id: 'team',
+        name: 'Team',
+        cli: CliTool.claude,
+        teamMode: TeamMode.mixed,
+        providerIdsByTool: const {'claude': 'prov-1'},
+        modelsByTool: const {'claude': 'sonnet'},
+        members: [member('alice')],
+      );
+
+      final result = await validator.validate(team);
+
+      expect(result.hasIssues, isFalse);
     });
 
     test('flags missing model for a non-official member provider', () async {
@@ -217,6 +246,7 @@ void main() {
       cli: CliTool.claude,
       teamMode: TeamMode.native,
       providerIdsByTool: const {'claude': 'prov-1'},
+      modelsByTool: const {'claude': 'sonnet'},
       members: [const TeamMemberConfig(id: '', name: '  ')],
     );
 

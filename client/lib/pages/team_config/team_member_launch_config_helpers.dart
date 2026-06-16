@@ -2,6 +2,7 @@ import '../../l10n/app_localizations.dart';
 import '../../models/app_provider_config.dart';
 import '../../models/cli_preset.dart';
 import '../../models/team_config.dart';
+import '../../services/cli/preset_resolver.dart';
 import '../../services/cli/registry/cli_display_name.dart';
 import '../../services/cli/registry/cli_tool_registry.dart';
 import '../home_workspace/project/config/project_cli_config_helpers.dart';
@@ -12,14 +13,21 @@ CliTool memberCatalogCliFor(TeamConfig team, TeamMemberConfig member) {
 }
 
 bool memberLaunchIsConfigured({
+  required TeamConfig team,
   required TeamMemberConfig member,
   required CliToolRegistry registry,
   required CliTool catalogCli,
   AppProviderConfig? provider,
+  List<CliPreset> presets = const [],
 }) {
-  if (member.provider.trim().isEmpty) return false;
+  final resolved = resolveMemberLaunchConfig(
+    team: team,
+    member: member,
+    globalPresets: presets,
+  );
+  if (resolved.provider.trim().isEmpty) return false;
   return projectCliHidesModelPicker(registry, catalogCli, provider) ||
-      member.model.trim().isNotEmpty;
+      resolved.model.trim().isNotEmpty;
 }
 
 String memberLaunchConfigLine({
@@ -46,6 +54,7 @@ String memberLaunchConfigLine({
     configured: configured,
     provider: provider,
     hidesModelPicker: hidesModelPicker,
+    presets: presets,
   );
   if (presetLine != null) return '$presetLine  ·  $configPart';
   return configPart;
@@ -67,7 +76,12 @@ String? memberPresetSummaryLine({
   if (member.inheritsTeamPreset) {
     if (team.activePresetId != null) {
       final preset = _findPreset(presets, team.activePresetId!);
-      if (preset != null) return l10n.memberPresetViaTeamDefault(preset.name);
+      if (preset != null) {
+        return l10n.memberPresetViaTeamDefault(preset.name);
+      }
+    }
+    if (team.hasCustomLaunchDefaultsFor(member.cliWithin(team))) {
+      return l10n.memberPresetInheritTeam;
     }
     return l10n.memberPresetInheritTeamNone;
   }
@@ -90,6 +104,7 @@ String _rawConfigLine({
   required bool configured,
   AppProviderConfig? provider,
   required bool hidesModelPicker,
+  List<CliPreset> presets = const [],
 }) {
   if (!configured) return l10n.projectCliNotConfiguredHint;
 
@@ -100,9 +115,14 @@ String _rawConfigLine({
     cliLabel = '$cliLabel · ${l10n.memberCliInheritHint}';
   }
 
-  final providerName = provider?.name.trim() ?? '';
-  final modelLabel = member.model.trim();
-  final effortLabel = member.effort.trim();
+  final resolved = resolveMemberLaunchConfig(
+    team: team,
+    member: member,
+    globalPresets: presets,
+  );
+  final providerName = provider?.name.trim() ?? resolved.provider.trim();
+  final modelLabel = resolved.model.trim();
+  final effortLabel = resolved.effort.trim();
 
   if (providerName.isEmpty) return cliLabel;
   if (modelLabel.isEmpty && hidesModelPicker) {

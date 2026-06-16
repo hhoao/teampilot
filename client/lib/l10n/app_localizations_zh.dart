@@ -798,6 +798,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get teamDefaultPresetManage => '管理';
 
   @override
+  String get teamDefaultCliMixedSubtitle => '成员未指定时使用。';
+
+  @override
+  String get teamDefaultDialogEffortSubtitle => '团队默认力度。';
+
+  @override
   String get presetPickerTitle => '选择预设';
 
   @override

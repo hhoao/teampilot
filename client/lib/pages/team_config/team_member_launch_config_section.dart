@@ -58,8 +58,14 @@ class MemberLaunchConfigRow extends StatelessWidget {
         .state
         .providersFor(catalogCli)
         .toList(growable: false);
+    final presets = context.watch<CliPresetsCubit>().state.presets;
+    final resolved = resolveMemberLaunchConfig(
+      team: team,
+      member: member,
+      globalPresets: presets,
+    );
     AppProviderConfig? selectedProvider;
-    final prov = member.provider.trim();
+    final prov = resolved.provider.trim();
     if (prov.isNotEmpty) {
       for (final p in providers) {
         if (p.id == prov) {
@@ -74,12 +80,13 @@ class MemberLaunchConfigRow extends StatelessWidget {
       selectedProvider,
     );
     final configured = memberLaunchIsConfigured(
+      team: team,
       member: member,
       registry: registry,
       catalogCli: catalogCli,
       provider: selectedProvider,
+      presets: presets,
     );
-    final presets = context.watch<CliPresetsCubit>().state.presets;
     final configLine = memberLaunchConfigLine(
       l10n: l10n,
       registry: registry,
@@ -438,13 +445,14 @@ class _MemberLaunchConfigureDialogState
                         }
                         return value;
                       },
-                      itemBuilder: (ctx, value) => _presetDropdownItem(
+                      listItemBuilder: (ctx, value) => _presetDropdownItem(
                         ctx,
                         value,
                         eligiblePresetList,
                         l10n,
                         registry,
                         teamPresetName,
+                        context.watch<AppProviderCubit>().state,
                       ),
                       onChanged: (value) {
                         if (value == null) return;
@@ -454,14 +462,6 @@ class _MemberLaunchConfigureDialogState
                   ),
                   showDividerBelow: true,
                 ),
-                // ── Preset info or editable fields ──
-                if (isPresetActive && resolved != null)
-                  _PresetInfoBanner(
-                    provider: resolved.provider,
-                    model: resolved.model,
-                    effort: resolved.effort,
-                    l10n: l10n,
-                  ),
                 if (!isPresetActive) ...[
                   if (mixed)
                     SettingsLabeledRow(
@@ -617,6 +617,7 @@ class _MemberLaunchConfigureDialogState
     AppLocalizations l10n,
     CliToolRegistry registry,
     String? teamPresetName,
+    AppProviderState providerState,
   ) {
     if (value == _presetInheritToken) {
       final enabled = teamPresetName != null;
@@ -634,15 +635,16 @@ class _MemberLaunchConfigureDialogState
     }
     for (final p in eligible) {
       if (p.id == value) {
-        final def = registry.tryGet(p.cli);
-        final cliName = def != null ? cliDisplayName(def, l10n) : p.cli.value;
-        final parts = <String>[
-          if (p.provider.isNotEmpty) p.provider,
-          if (p.model.isNotEmpty) p.model,
-        ];
-        final subtitle = parts.isNotEmpty
-            ? '$cliName · ${parts.join(' · ')}'
-            : cliName;
+        final provider = providerConfigForPreset(
+          providers: providerState.providersFor(p.cli),
+          preset: p,
+        );
+        final subtitle = presetPickerSubtitle(
+          registry: registry,
+          l10n: l10n,
+          preset: p,
+          provider: provider,
+        );
         return _PresetDropdownOption(
           title: p.name,
           subtitle: subtitle,
@@ -700,77 +702,6 @@ class _PresetDropdownOption extends StatelessWidget {
               subtitle!,
               style: styles.bodySmall.copyWith(color: cs.onSurfaceVariant),
             ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Read-only card showing resolved preset provider/model/effort.
-class _PresetInfoBanner extends StatelessWidget {
-  const _PresetInfoBanner({
-    required this.provider,
-    required this.model,
-    required this.effort,
-    required this.l10n,
-  });
-
-  final String provider;
-  final String model;
-  final String effort;
-  final AppLocalizations l10n;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final styles = AppTextStyles.of(context);
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: cs.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.4)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (provider.isNotEmpty)
-            _infoRow(l10n.provider, provider, styles, cs),
-          if (model.isNotEmpty) _infoRow(l10n.model, model, styles, cs),
-          if (effort.isNotEmpty)
-            _infoRow(l10n.memberEffortLevel, effort, styles, cs),
-        ],
-      ),
-    );
-  }
-
-  Widget _infoRow(
-    String label,
-    String value,
-    AppTextStyles styles,
-    ColorScheme cs,
-  ) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2),
-      child: Row(
-        children: [
-          SizedBox(
-            width: 72,
-            child: Text(
-              label,
-              style: styles.bodySmall.copyWith(color: cs.onSurfaceVariant),
-            ),
-          ),
-          Flexible(
-            child: Text(
-              value,
-              style: styles.bodySmall.copyWith(
-                color: cs.onSurface,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
         ],
       ),
     );

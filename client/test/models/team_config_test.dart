@@ -42,6 +42,20 @@ void main() {
     expect(decoded.mcpServerIds, ['fetch', 'github']);
   });
 
+  test('round trips modelsByTool and defaults to empty for legacy json', () {
+    const team = TeamConfig(
+      id: 'team-1',
+      name: 'hello',
+      modelsByTool: const {'claude': 'sonnet'},
+    );
+
+    final decoded = TeamConfig.fromJson(team.toJson());
+    expect(decoded.modelsByTool, team.modelsByTool);
+
+    final legacy = TeamConfig.fromJson({'id': 't', 'name': 'T'});
+    expect(legacy.modelsByTool, isEmpty);
+  });
+
   test(
     'round trips providerIdsByTool and defaults to empty for legacy json',
     () {

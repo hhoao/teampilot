@@ -347,6 +347,8 @@
   "teamDefaultPresetNone": "None",
   "teamDefaultPresetChange": "Change",
   "teamDefaultPresetManage": "Manage",
+  "teamDefaultCliMixedSubtitle": "When a member has no CLI override.",
+  "teamDefaultDialogEffortSubtitle": "Team default effort.",
   "presetPickerTitle": "Select Preset",
   "presetPickerNoneOption": "None (no default)",
   "memberPresetLabel": "Preset",
