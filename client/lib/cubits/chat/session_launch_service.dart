@@ -4,6 +4,7 @@ import 'package:uuid/uuid.dart';
 
 import '../../models/app_project.dart';
 import '../../models/app_session.dart';
+import '../../models/member_instance.dart';
 import '../../models/project_profile.dart';
 import '../../models/session_member_binding.dart';
 import '../../models/team_config.dart';
@@ -227,11 +228,12 @@ class SessionLaunchService implements MemberConnector {
     String keepSelectedMemberId,
     ChatTab tab,
   ) {
-    for (final candidate in team.members.where((m) => m.isValid)) {
+    final instances = runtimeRosterMembers(team).where((m) => m.isValid);
+    for (final candidate in instances) {
       if (candidate.id == keepSelectedMemberId) continue;
       _scheduleMemberConnect(team, candidate, tab);
     }
-    if (team.members.any((m) => m.id == keepSelectedMemberId)) {
+    if (instances.any((m) => m.id == keepSelectedMemberId)) {
       _h.selectMember(keepSelectedMemberId);
     }
   }
