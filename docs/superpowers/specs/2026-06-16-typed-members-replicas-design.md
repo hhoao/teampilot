@@ -43,6 +43,12 @@ Replicas are "just more memberIds." No new isolation machinery is required.
 | Replica count | **Fixed** — `replicas` is an exact pool size, not an autoscaling min/max range |
 | Rollout | **Phased**: Phase 1 (id-as-capability + route Quartet by type — fixes the bug) then Phase 2 (replicas) |
 | Routing key | The member's **`id` (= the type name)** is an implicit capability; free-form capability tags become an optional advanced detail, not the primary model |
+| Compatibility | **None required.** No migration of existing sessions/roster; pick the cleanest uniform model even where it diverges from today's single-instance behavior |
+
+> **No backward/forward compatibility.** This design optimizes for the cleanest end-state.
+> Where a compatibility-driven special case would otherwise exist (e.g. preserving a bare
+> member id for a singleton), the uniform rule wins. New team sessions adopt the model;
+> there is no migration path for old ones and none is needed.
 
 ## How it sits on the committed engine
 
@@ -108,12 +114,15 @@ as their routing capability, and self-balance the type's task queue.
 - **`TeamMemberConfig.replicas: int`** (default `1`). The member *is* the type; `replicas`
   is the fixed pool size. `provider`/`model`/`cli`/`prompt`/`playbook`/`capabilities` are
   the shared spec every instance inherits.
-- **Instance id scheme:** `replicas == 1` → instance id is the type id unchanged (full
-  backward compatibility with today's single-instance members); `replicas > 1` → instance
-  ids are `{typeId}-{ordinal}` for `ordinal` in `0..N-1`.
-- Each instance's routing capability is `{ typeId }` (Phase 1 rule applied to the *type*,
-  not the instance id), so all `builder-*` instances match `required_capabilities:
-  ["builder"]`.
+- **Instance id scheme (uniform, no special-case):** every non-lead worker **type**
+  expands to instances `{typeId}-{ordinal}` for `ordinal` in `0..N-1` — *including
+  `replicas == 1`* (a singleton builder is `builder-0`). No bare-id special case. The
+  **team-lead** is the one distinguished singleton coordinator (never a pooled type) and
+  keeps its canonical id `team-lead`.
+- Each instance's routing capability is `{ typeId }` (Phase 1's id-as-capability rule
+  applied to the *type*, not the per-instance id), so all `builder-*` instances match
+  `required_capabilities: ["builder"]` and self-balance the type's queue.
+- `displayName` = `{typeName} #{ordinal}` for every worker instance (e.g. `builder #0`).
 
 ### Expansion point (fixed count, created at session creation)
 
@@ -129,11 +138,12 @@ Becomes, expanding each type into its fixed `replicas` instances:
 
 ```dart
 for (final m in valid)
-  for (final instanceId in expandInstanceIds(m))   // [m.id] when replicas==1, else m.id-0..N-1
+  for (final instanceId in expandInstanceIds(m))   // lead → [m.id]; worker → m.id-0..N-1
     SessionMemberBinding(rosterMemberId: instanceId, taskId: const Uuid().v4()),
 ```
 
-`expandInstanceIds` is a small pure helper (testable in isolation). The same expansion is
+`expandInstanceIds` is a small pure helper (testable in isolation): the team-lead yields its
+canonical id; every other type yields `{id}-0 .. {id}-(replicas-1)`. The same expansion is
 applied wherever bindings are (re)built (`copySession`/import paths around
 `session_repository.dart:673-686`).
 
@@ -162,13 +172,14 @@ applied wherever bindings are (re)built (`copySession`/import paths around
 - l10n strings `memberReplicas` / `memberReplicasSubtitle` in `app_en.arb` + `app_zh.arb`;
   re-run `flutter pub get` + `gen_warmup_glyphs.dart` per repo convention.
 
-### Persistence / compatibility
+### Persistence
 
-- `TeamMemberConfig.replicas` serializes only when `> 1` (omit default).
+- `TeamMemberConfig.replicas` serializes only when `> 1` (default-omit JSON hygiene).
   `DiscoverableTeamMember.replicas` mirrors it for templates.
-- Existing sessions: bindings are already persisted; `replicas==1` expansion is identity, so
-  old single-instance sessions are unaffected. New replica counts apply to **new** sessions
-  (consistent with the existing "create a new team session after changing roster" rule).
+- A session's roster is fixed at creation (bindings are allocated and persisted then), so a
+  later `replicas` change only affects **new** sessions — an inherent property of how
+  sessions bind their roster, not a compatibility concession. No migration of existing
+  sessions or rosters is performed.
 
 ## Components (single responsibility)
 
