@@ -40,7 +40,7 @@ class TeammateRosterProfile {
       agentType: TeamMemberNaming.isTeamLeadName(memberId)
           ? TeamMemberNaming.teamLeadName
           : memberId,
-      capabilities: capabilities,
+      capabilities: {memberId, ...capabilities},
     );
   }
 
@@ -60,14 +60,7 @@ class TeammateRosterProfile {
         ? member.joinedAt
         : DateTime.now().millisecondsSinceEpoch;
     final cli = member.cliWithin(team);
-    final caps = member.capabilities.isNotEmpty
-        ? member.capabilities
-        : <String>{
-            if (member.agentType.trim().isNotEmpty)
-              member.agentType.trim()
-            else if (member.agent.trim().isNotEmpty)
-              member.agent.trim(),
-          };
+    final caps = <String>{rosterName, ...member.capabilities};
     return TeammateRosterProfile(
       memberId: rosterName,
       displayName: member.name,

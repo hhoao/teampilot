@@ -92,4 +92,28 @@ void main() {
       bus.dispose();
     });
   });
+
+  test('a member cannot claim a task routed to another type', () {
+    final bus = _busWithQueue(FakeMemberLauncher());
+    // ids become capabilities: builder→{builder}, reviewer→{reviewer}
+    bus.declareMember(AgentNode.test(
+      memberId: 'builder',
+      lifecycle: MemberLifecycle.running,
+      activity: MemberActivity.active,
+    ));
+    bus.declareMember(AgentNode.test(
+      memberId: 'reviewer',
+      lifecycle: MemberLifecycle.running,
+      activity: MemberActivity.active,
+    ));
+    bus.addTasks('lead', [
+      const TeamTaskDraft(title: 'impl', brief: 'b',
+          requiredCapabilities: {'builder'}),
+    ]);
+
+    // reviewer is ineligible for builder-routed work
+    expect(bus.claimNextTask('reviewer'), isNull);
+    // builder claims it
+    expect(bus.claimNextTask('builder')!.title, 'impl');
+  });
 }

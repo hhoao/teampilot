@@ -10,36 +10,31 @@ void main() {
         teamMode: TeamMode.mixed,
       );
 
-  test('explicit member capabilities flow into the roster profile', () {
-    final member = const TeamMemberConfig(
+  TeammateRosterProfile profile(TeamMemberConfig m) =>
+      TeammateRosterProfile.fromMember(
+        member: m,
+        team: team(),
+        cliTeamName: 'team-1-1',
+        cwd: '/tmp',
+      );
+
+  test('member id is always an implicit capability', () {
+    expect(
+      profile(const TeamMemberConfig(id: 'builder', name: 'Builder')).capabilities,
+      {'builder'},
+    );
+  });
+
+  test('explicit capabilities are unioned with the member id', () {
+    final caps = profile(const TeamMemberConfig(
       id: 'dev',
       name: 'Dev',
       capabilities: {'backend', 'rust'},
-    );
-    final profile = TeammateRosterProfile.fromMember(
-      member: member,
-      team: team(),
-      cliTeamName: 'team-1-1',
-      cwd: '/tmp',
-    );
-    expect(profile.capabilities, {'backend', 'rust'});
+    )).capabilities;
+    expect(caps, {'dev', 'backend', 'rust'});
   });
 
-  test('empty capabilities derive from agentType then agent', () {
-    final fromType = TeammateRosterProfile.fromMember(
-      member: const TeamMemberConfig(id: 'fe', name: 'FE', agentType: 'frontend'),
-      team: team(),
-      cliTeamName: 'team-1-1',
-      cwd: '/tmp',
-    );
-    expect(fromType.capabilities, {'frontend'});
-
-    final fromAgent = TeammateRosterProfile.fromMember(
-      member: const TeamMemberConfig(id: 'qa', name: 'QA', agent: 'tester'),
-      team: team(),
-      cliTeamName: 'team-1-1',
-      cwd: '/tmp',
-    );
-    expect(fromAgent.capabilities, {'tester'});
+  test('minimal profile carries its member id as a capability', () {
+    expect(TeammateRosterProfile.minimal('reviewer').capabilities, {'reviewer'});
   });
 }
