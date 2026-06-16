@@ -45,10 +45,11 @@ Replicas are "just more memberIds." No new isolation machinery is required.
 | Routing key | The member's **`id` (= the type name)** is an implicit capability; free-form capability tags become an optional advanced detail, not the primary model |
 | Compatibility | **None required.** No migration of existing sessions/roster; pick the cleanest uniform model even where it diverges from today's single-instance behavior |
 
-> **No backward/forward compatibility.** This design optimizes for the cleanest end-state.
-> Where a compatibility-driven special case would otherwise exist (e.g. preserving a bare
-> member id for a singleton), the uniform rule wins. New team sessions adopt the model;
-> there is no migration path for old ones and none is needed.
+> **No backward/forward compatibility.** This design optimizes for the cleanest end-state:
+> no migration of existing sessions/rosters; new team sessions adopt the model. Note that
+> the singleton-pod-named-after-its-type rule (`replicas == 1` → `instanceId == typeId`) is
+> chosen on *architectural* merit (a sole pod is its deployment), not for compatibility —
+> it happens to also make the runtime reroute non-breaking for the common case.
 
 ## How it sits on the committed engine
 
@@ -104,82 +105,97 @@ covers the common case.)
 
 ---
 
-## Phase 2 — Replicas (Deployment → Pods)
+## Phase 2 — Replicas via first-class MemberType / MemberInstance
 
-**Goal:** a type can declare `replicas: N`; N fixed identical instances run, share the type
-as their routing capability, and self-balance the type's task queue.
+**Goal:** a type can declare `replicas: N`; N fixed identical instances run as distinct
+runtime pods, share the type as their routing capability, and self-balance the type's queue.
 
-### Model
+### Architecture: two concepts, one bridge
 
-- **`TeamMemberConfig.replicas: int`** (default `1`). The member *is* the type; `replicas`
-  is the fixed pool size. `provider`/`model`/`cli`/`prompt`/`playbook`/`capabilities` are
-  the shared spec every instance inherits.
-- **Instance id scheme (uniform, no special-case):** every non-lead worker **type**
-  expands to instances `{typeId}-{ordinal}` for `ordinal` in `0..N-1` — *including
-  `replicas == 1`* (a singleton builder is `builder-0`). No bare-id special case. The
-  **team-lead** is the one distinguished singleton coordinator (never a pooled type) and
-  keeps its canonical id `team-lead`.
-- Each instance's routing capability is `{ typeId }` (Phase 1's id-as-capability rule
-  applied to the *type*, not the per-instance id), so all `builder-*` instances match
-  `required_capabilities: ["builder"]` and self-balance the type's queue.
-- `displayName` = `{typeName} #{ordinal}` for every worker instance (e.g. `builder #0`).
+The decisive choice is **not** to overload `TeamMemberConfig` with id-string-encoded
+instances. Instead:
 
-### Expansion point (fixed count, created at session creation)
+- **`TeamMemberConfig` = MemberType (Deployment spec).** What is persisted in
+  `TeamConfig.members` and edited in the UI. Gains `replicas: int` (default `1`). Holds the
+  shared spec (`prompt`/`playbook`/`cli`/`model`/`provider`/`effort`/`capabilities`). Not
+  renamed — renaming a 30+ file class adds churn, not architecture.
+- **`MemberInstance` = Pod (new value type).** A lightweight runtime handle
+  `{ TeamMemberConfig type, int ordinal }`. It does **not** copy the spec — it resolves
+  prompt/playbook/model through `type`. `instanceId` is a computed property.
+- **`expandTeamRoster(TeamConfig) → List<MemberInstance>`** is the *single* Deployment→Pod
+  fan-out (pure, exhaustively testable). The runtime layer (launch loop, bus, config-profile,
+  tabs) operates on `MemberInstance`s; the config/UI layer operates on `TeamMemberConfig`
+  types. No other code expands replicas.
 
-`SessionRepository.createSession` currently emits one `SessionMemberBinding` per member
-([session_repository.dart:376](../../../client/lib/repositories/session_repository.dart)):
+**Crucial invariant:** instances never hold their own copy of the spec. Per-instance state
+(future: health, resume, affinity, metrics) gets a home on `MemberInstance`; the type stays
+the spec. Switching fixed→dynamic scaling later is a change to the *expansion policy*, not
+the model.
 
-```dart
-for (final m in valid)
-  SessionMemberBinding(rosterMemberId: m.id, taskId: const Uuid().v4()),
-```
+### Instance identity (singleton pod = type name)
 
-Becomes, expanding each type into its fixed `replicas` instances:
+- `instanceId`: a type with `replicas == 1` yields a single instance whose id **is the type
+  id** (`builder`, `team-lead`, …) — a sole pod is named after its deployment. A type with
+  `replicas > 1` yields `{typeId}-{ordinal}` for `ordinal` in `0..replicas-1`
+  (`builder-0`, `builder-1`, …). This is the cleaner rule (no redundant `-0` on singletons)
+  **and** it keeps every existing single-instance team and the lead byte-identical, so the
+  runtime reroute lands without a breaking change to the common case.
+- `displayName`: the type name for a singleton; `{typeName} #{ordinal}` when `replicas > 1`.
+- **Routing capability:** `{ typeId, instanceId } ∪ type.capabilities`. `typeId` makes the
+  whole pool match `required_capabilities: ["builder"]` (load-balanced); `instanceId` lets
+  the leader address one pod directly (`["builder-1"]` or `send_message(to: "builder-1")`).
+  Phase 1's "id is a capability" rule is exactly this with `typeId == instanceId` (singleton).
 
-```dart
-for (final m in valid)
-  for (final instanceId in expandInstanceIds(m))   // lead → [m.id]; worker → m.id-0..N-1
-    SessionMemberBinding(rosterMemberId: instanceId, taskId: const Uuid().v4()),
-```
+### Phase 2a — backend core (independently testable, no UI)
 
-`expandInstanceIds` is a small pure helper (testable in isolation): the team-lead yields its
-canonical id; every other type yields `{id}-0 .. {id}-(replicas-1)`. The same expansion is
-applied wherever bindings are (re)built (`copySession`/import paths around
-`session_repository.dart:673-686`).
+1. **`TeamMemberConfig.replicas: int`** (default 1; serialize when `> 1`).
+   `DiscoverableTeamMember.replicas` mirrors it for templates.
+2. **`MemberInstance` value type** + **`expandTeamRoster`** pure function
+   (`models/member_instance.dart`).
+3. **`SessionMemberBinding`** becomes `{ instanceId, typeId, taskId }` (rename
+   `rosterMemberId` → `instanceId`; add explicit `typeId` so instance→type needs no string
+   parsing).
+4. **`SessionRepository.createSession`** (and the copy/import paths around
+   `session_repository.dart:673-686`) allocate one binding per instance via
+   `expandTeamRoster`:
+   ```dart
+   for (final inst in expandTeamRoster(team))
+     SessionMemberBinding(instanceId: inst.instanceId, typeId: inst.type.id,
+         taskId: const Uuid().v4()),
+   ```
+5. **`TeammateRosterProfile.fromInstance(MemberInstance, team, …)`** — `memberId =
+   instanceId`, `capabilities = {typeId, instanceId} ∪ type.capabilities`, spec from the
+   type, `displayName` per the rule. (`fromMember` becomes a thin `fromInstance` with a
+   singleton instance, preserving Phase-1 behavior.)
+6. **Reroute the runtime to iterate instances:**
+   - **Launch loop** ([session_launch_service.dart:230](../../../client/lib/cubits/chat/session_launch_service.dart)
+     `for (final candidate in team.members …) _scheduleMemberConnect`) → iterate
+     `expandTeamRoster(team)`; `_scheduleMemberConnect` receives an instance identity (its
+     `instanceId`) while resolving spec from the type. Config-profile CONFIG_DIR is the
+     existing `{cliTeamName}/{instanceId}` leaf; CLI `--session-id` is the binding `taskId`.
+   - **Bus declaration** ([tab_team_bus_coordinator.dart:94](../../../client/lib/cubits/chat/tab_team_bus_coordinator.dart))
+     → iterate the session's instances (rebuilt from bindings via their `typeId`), declaring
+     one `AgentNode` per instance with `fromInstance`.
+   - **`forceWaitForMember` resolver** (same file) → resolve `memberId` (instanceId) to its
+     type via `binding.typeId`, then `effectiveForceWaitBeforeStop`.
 
-### Runtime wiring
+   Fixed count means the pool is exactly N; instances follow the existing
+   declared → materialize lifecycle (no autoscaling range).
 
-- **Bus declaration / launch:** the roster is driven by the session's binding list, so each
-  instance is declared and launched as its own member exactly as today — its CONFIG_DIR is
-  the existing `{cliTeamName}/{memberId}` leaf, its CLI `--session-id` is its binding
-  `taskId`. No config-profile layout change.
-- **Per-instance roster profile:** when building each instance's `TeammateRosterProfile`,
-  the spec (prompt/playbook/model/cli) comes from the parent type; `capabilities = {typeId}`;
-  `memberId` = instance id; `displayName` = `{typeName} #{ordinal}` for N>1.
-- **Materialization:** instances follow the existing declared → materialize lifecycle. Fixed
-  count means the pool is exactly N; there is **no** on-demand autoscaling range. (Whether
-  a declared instance comes online eagerly or lazily is the existing lifecycle's behavior
-  and is unchanged by this design.)
-- **Leader's view:** `list_teammates` shows each instance (`builder-0`, `builder-1`, …) so
-  the leader can still address one directly via `send_message` when needed, while
-  `add_tasks` with `required_capabilities: ["builder"]` fans out across the pool.
-
-### UI
+### Phase 2b — UI (separate plan)
 
 - Member-config form (`team_config_member_section.dart`) gains a **Replicas** stepper
-  (integer ≥ 1) in the advanced section. `replicas == 1` hides nothing else; `> 1` shows a
-  short hint that the role runs as an interchangeable pool.
-- l10n strings `memberReplicas` / `memberReplicasSubtitle` in `app_en.arb` + `app_zh.arb`;
-  re-run `flutter pub get` + `gen_warmup_glyphs.dart` per repo convention.
+  (integer ≥ 1) on the type, with l10n `memberReplicas`/`memberReplicasSubtitle`
+  (`app_en.arb` + `app_zh.arb`; re-run `flutter pub get` + `gen_warmup_glyphs.dart`).
+- Tab strip / member sidebar present pods grouped under their type (`builder #0`,
+  `builder #1`). Selection becomes per-instance.
 
 ### Persistence
 
-- `TeamMemberConfig.replicas` serializes only when `> 1` (default-omit JSON hygiene).
-  `DiscoverableTeamMember.replicas` mirrors it for templates.
-- A session's roster is fixed at creation (bindings are allocated and persisted then), so a
-  later `replicas` change only affects **new** sessions — an inherent property of how
-  sessions bind their roster, not a compatibility concession. No migration of existing
-  sessions or rosters is performed.
+- `TeamMemberConfig.replicas` / `DiscoverableTeamMember.replicas` serialize only when `> 1`.
+- A session's roster is fixed at creation (bindings allocated + persisted then), so a later
+  `replicas` change affects only **new** sessions — an inherent property, not a compat
+  concession. No migration is performed.
 
 ## Components (single responsibility)
 
@@ -187,11 +203,13 @@ applied wherever bindings are (re)built (`copySession`/import paths around
 |------|----------------|-------|
 | `TeammateRosterProfile` | `capabilities` always includes own/type id | 1 |
 | `builtin_team_templates.dart` | Quartet routes by type name; lead playbook gating | 1 |
-| `TeamMemberConfig` / `DiscoverableTeamMember` | `replicas` field (default 1) | 2 |
-| `expandInstanceIds(member)` (pure helper) | type → fixed instance id list | 2 |
-| `SessionRepository.createSession` / copy paths | emit one binding per instance | 2 |
-| instance roster-profile builder | spec from type, `capabilities={typeId}`, id=instance | 2 |
-| `team_config_member_section.dart` + ARB | Replicas stepper | 2 |
+| `TeamMemberConfig` (= MemberType) / `DiscoverableTeamMember` | `replicas` field (default 1) | 2a |
+| `MemberInstance` + `expandTeamRoster` (`models/member_instance.dart`, pure) | Deployment→Pod fan-out; `instanceId`/`displayName`/capability rule | 2a |
+| `SessionMemberBinding` | `{ instanceId, typeId, taskId }` | 2a |
+| `SessionRepository.createSession` / copy paths | one binding per instance via `expandTeamRoster` | 2a |
+| `TeammateRosterProfile.fromInstance` | id=instanceId, caps=`{typeId,instanceId}∪explicit`, spec from type | 2a |
+| launch loop / bus coordinator / forceWait resolver | iterate instances, resolve spec via type | 2a |
+| `team_config_member_section.dart` + ARB; tab/sidebar pod grouping | Replicas stepper; per-instance presentation | 2b |
 
 ## Error handling & edge cases
 
@@ -211,11 +229,14 @@ applied wherever bindings are (re)built (`copySession`/import paths around
   asserts type-name routing + `depends_on` gating in the lead playbook; an end-to-end
   TeamBus test that a `reviewer`-capability member cannot `claimNext` a
   `required:["builder"]` task while the `builder` member can.
-- **Phase 2:** `expandInstanceIds` pure tests (N=1 identity; N=3 → `id-0/1/2`);
-  `createSession` emits N bindings per replicated member with distinct taskIds; instance
-  roster profiles carry `capabilities={typeId}`; two builder instances both eligible for a
-  `["builder"]` task and exactly one claims each (atomicity preserved); widget/cubit test
-  for the Replicas stepper round-trip.
+- **Phase 2a:** `expandTeamRoster`/`MemberInstance` pure tests (lead → canonical id;
+  worker N=3 → `builder-0/1/2`; instanceId/displayName/capability rule); `createSession`
+  emits N bindings per replicated type with distinct taskIds and correct `typeId`;
+  `fromInstance` carries `capabilities={typeId,instanceId}∪explicit` with spec from the type;
+  two builder instances both eligible for a `["builder"]` task and exactly one claims each
+  (atomicity preserved); launch loop / bus coordinator declare one node per instance.
+- **Phase 2b:** widget/cubit test for the Replicas stepper round-trip; pod grouping in the
+  tab/sidebar.
 
 ## Out of scope (YAGNI)
 
