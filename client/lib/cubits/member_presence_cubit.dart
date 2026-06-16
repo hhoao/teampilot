@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../models/member_instance.dart';
 import '../models/member_presence.dart';
 import '../models/team_config.dart';
 import '../services/team/member_presence_service.dart';
@@ -177,7 +178,7 @@ class MemberPresenceCubit extends Cubit<MemberPresenceState> {
     try {
       final next = await _memberPresenceService.compute(
         teamCli: team.cli,
-        members: team.members,
+        members: runtimeRosterMembers(team),
         cliTeamName: target.cliTeamName,
         memberToolConfigDir: target.memberToolConfigDir,
         memberShells: target.memberShells,

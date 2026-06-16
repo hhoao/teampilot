@@ -10,6 +10,7 @@ import '../../cubits/team_cubit.dart';
 import '../../cubits/workspace_tools_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/layout_preferences.dart';
+import '../../models/member_instance.dart';
 import '../../models/team_config.dart';
 import '../../pages/home_workspace/project/member_detail_dialog.dart';
 import '../../services/cli/member_config/member_config_inspector.dart';
@@ -98,13 +99,13 @@ class _RightToolsPanelState extends State<RightToolsPanel> {
       return const SizedBox.shrink();
     }
 
-    final members = team == null
-        ? const <TeamMemberConfig>[]
-        : ([...team.members]..sort((a, b) {
-            if (TeamMemberNaming.isTeamLead(a)) return -1;
-            if (TeamMemberNaming.isTeamLead(b)) return 1;
-            return a.name.compareTo(b.name);
-          }));
+    final runtimeMembers =
+        team == null ? const <TeamMemberConfig>[] : runtimeRosterMembers(team);
+    final members = [...runtimeMembers]..sort((a, b) {
+      if (TeamMemberNaming.isTeamLead(a)) return -1;
+      if (TeamMemberNaming.isTeamLead(b)) return 1;
+      return a.name.compareTo(b.name);
+    });
     void maybeDismissDrawer() {
       if (widget.dismissDrawerOnAction) {
         Navigator.of(context).maybePop();
@@ -147,7 +148,7 @@ class _RightToolsPanelState extends State<RightToolsPanel> {
           memberPresence: context.watch<MemberPresenceCubit>().state.presence,
           selectedMemberId: chatCubit.state.selectedMemberId,
           onSelected: (id) {
-            final member = team.members.firstWhere((m) => m.id == id);
+            final member = runtimeMembers.firstWhere((m) => m.id == id);
             final cubit = _chatCubit;
             if (cubit == null) return;
             unawaited(
@@ -156,7 +157,7 @@ class _RightToolsPanelState extends State<RightToolsPanel> {
             maybeDismissDrawer();
           },
           onOpen: (id) {
-            final member = team.members.firstWhere((m) => m.id == id);
+            final member = runtimeMembers.firstWhere((m) => m.id == id);
             final cubit = _chatCubit;
             if (cubit == null) return;
             unawaited(
@@ -172,7 +173,7 @@ class _RightToolsPanelState extends State<RightToolsPanel> {
           }),
           canViewDetail: chatCubit.activeTab != null,
           onViewDetail: (id) {
-            final member = team.members.firstWhere((m) => m.id == id);
+            final member = runtimeMembers.firstWhere((m) => m.id == id);
             final cliTeamName = chatCubit.activeTab?.cliTeamName ?? '';
             unawaited(showMemberDetailDialog(
               context,
@@ -183,7 +184,7 @@ class _RightToolsPanelState extends State<RightToolsPanel> {
             maybeDismissDrawer();
           },
           onOpenConfigDir: (id) {
-            final member = team.members.firstWhere((m) => m.id == id);
+            final member = runtimeMembers.firstWhere((m) => m.id == id);
             final cliTeamName = chatCubit.activeTab?.cliTeamName ?? '';
             unawaited(() async {
               final detail = await MemberConfigInspector().inspect(
