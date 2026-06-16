@@ -1327,5 +1327,15 @@
   "memberDetailSourceTeam": "团队层配置（该成员未在此会话中启动）",
   "memberDetailEmpty": "该成员尚未在此会话中启动，且团队层无配置。",
   "memberDetailLoadError": "读取该成员的配置目录失败。",
-  "memberDetailSectionEmpty": "无"
+  "memberDetailSectionEmpty": "无",
+  "cliConfigAiCliGroup": "AI CLI",
+  "cliConfigToolchainGroup": "工具链",
+  "toolchainGitLabel": "Git 可执行文件路径",
+  "toolchainNodeLabel": "Node.js / npm 路径",
+  "toolchainPathDescription": "{tool} 可执行文件的绝对路径。留空则使用 PATH 中的版本。",
+  "toolchainPathDescriptionSsh": "远程 SSH 主机上 {tool} 的绝对路径。留空则自动发现。",
+  "cliCursorExecutablePathLabel": "Cursor CLI 路径",
+  "toolchainInstallProgressChecking": "正在检查 {tool}...",
+  "toolchainGit": "Git",
+  "toolchainNode": "Node.js"
 }

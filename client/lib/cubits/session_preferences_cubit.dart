@@ -88,6 +88,32 @@ class SessionPreferencesCubit extends Cubit<SessionPreferencesState> {
     return _save(state.preferences.copyWith(cliExecutablePaths: next));
   }
 
+  /// Returns the stored toolchain executable path for [toolId], or empty.
+  String toolchainPath(String toolId) =>
+      state.preferences.toolchainPaths[toolId]?.trim() ?? '';
+
+  /// Persists a toolchain executable path keyed by [toolId].
+  Future<void> setToolchainPath(String toolId, String path) {
+    final next = Map<String, String>.of(state.preferences.toolchainPaths);
+    final trimmed = path.trim();
+    if (trimmed.isEmpty) {
+      next.remove(toolId);
+    } else {
+      next[toolId] = trimmed;
+    }
+    return _save(state.preferences.copyWith(toolchainPaths: next));
+  }
+
+  /// Returns the resolved executable string for a toolchain tool.
+  ///
+  /// Checks the user-configured [toolchainPath] first, then falls back to
+  /// [fallback] (typically the bare command name for PATH lookup).
+  String resolveToolchainExecutable(String toolId, String fallback) {
+    final configured = toolchainPath(toolId);
+    if (configured.isNotEmpty) return configured;
+    return fallback;
+  }
+
   Future<void> setDefaultSshWorkingDirectory(String value) {
     return _save(
       state.preferences.copyWith(defaultSshWorkingDirectory: value.trim()),

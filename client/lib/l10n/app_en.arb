@@ -1660,5 +1660,57 @@
   "memberDetailSourceTeam": "Team-level config (member not launched in this session)",
   "memberDetailEmpty": "This member has no config yet in this session, and the team layer is empty.",
   "memberDetailLoadError": "Failed to read this member's config directory.",
-  "memberDetailSectionEmpty": "None"
+  "memberDetailSectionEmpty": "None",
+  "cliConfigAiCliGroup": "AI CLI",
+  "@cliConfigAiCliGroup": {
+    "description": "Section header for AI CLI tools in CLI config page"
+  },
+  "cliConfigToolchainGroup": "Toolchain",
+  "@cliConfigToolchainGroup": {
+    "description": "Section header for toolchain tools (git, node) in CLI config page"
+  },
+  "toolchainGitLabel": "Git executable path",
+  "@toolchainGitLabel": {
+    "description": "Label for Git executable path setting"
+  },
+  "toolchainNodeLabel": "Node.js / npm path",
+  "@toolchainNodeLabel": {
+    "description": "Label for Node.js/npm path setting"
+  },
+  "toolchainPathDescription": "Absolute path to the {tool} executable. Leave empty to use the one on PATH.",
+  "@toolchainPathDescription": {
+    "description": "Description for toolchain path setting",
+    "placeholders": {
+      "tool": {
+        "type": "String",
+        "example": "git"
+      }
+    }
+  },
+  "toolchainPathDescriptionSsh": "Absolute path to {tool} on the remote SSH host. Leave empty to auto-discover.",
+  "@toolchainPathDescriptionSsh": {
+    "description": "Description for toolchain path setting in SSH mode",
+    "placeholders": {
+      "tool": {
+        "type": "String",
+        "example": "git"
+      }
+    }
+  },
+  "cliCursorExecutablePathLabel": "Cursor CLI path",
+  "@cliCursorExecutablePathLabel": {
+    "description": "Label for Cursor CLI executable path setting"
+  },
+  "toolchainInstallProgressChecking": "Checking for {tool}...",
+  "@toolchainInstallProgressChecking": {
+    "description": "Progress message when checking for a toolchain tool",
+    "placeholders": {
+      "tool": {
+        "type": "String",
+        "example": "Git"
+      }
+    }
+  },
+  "toolchainGit": "Git",
+  "toolchainNode": "Node.js"
 }

@@ -6601,6 +6601,66 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'None'**
   String get memberDetailSectionEmpty;
+
+  /// Section header for AI CLI tools in CLI config page
+  ///
+  /// In en, this message translates to:
+  /// **'AI CLI'**
+  String get cliConfigAiCliGroup;
+
+  /// Section header for toolchain tools (git, node) in CLI config page
+  ///
+  /// In en, this message translates to:
+  /// **'Toolchain'**
+  String get cliConfigToolchainGroup;
+
+  /// Label for Git executable path setting
+  ///
+  /// In en, this message translates to:
+  /// **'Git executable path'**
+  String get toolchainGitLabel;
+
+  /// Label for Node.js/npm path setting
+  ///
+  /// In en, this message translates to:
+  /// **'Node.js / npm path'**
+  String get toolchainNodeLabel;
+
+  /// Description for toolchain path setting
+  ///
+  /// In en, this message translates to:
+  /// **'Absolute path to the {tool} executable. Leave empty to use the one on PATH.'**
+  String toolchainPathDescription(String tool);
+
+  /// Description for toolchain path setting in SSH mode
+  ///
+  /// In en, this message translates to:
+  /// **'Absolute path to {tool} on the remote SSH host. Leave empty to auto-discover.'**
+  String toolchainPathDescriptionSsh(String tool);
+
+  /// Label for Cursor CLI executable path setting
+  ///
+  /// In en, this message translates to:
+  /// **'Cursor CLI path'**
+  String get cliCursorExecutablePathLabel;
+
+  /// Progress message when checking for a toolchain tool
+  ///
+  /// In en, this message translates to:
+  /// **'Checking for {tool}...'**
+  String toolchainInstallProgressChecking(String tool);
+
+  /// No description provided for @toolchainGit.
+  ///
+  /// In en, this message translates to:
+  /// **'Git'**
+  String get toolchainGit;
+
+  /// No description provided for @toolchainNode.
+  ///
+  /// In en, this message translates to:
+  /// **'Node.js'**
+  String get toolchainNode;
 }
 
 class _AppLocalizationsDelegate

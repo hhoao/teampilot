@@ -3622,4 +3622,40 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get memberDetailSectionEmpty => 'None';
+
+  @override
+  String get cliConfigAiCliGroup => 'AI CLI';
+
+  @override
+  String get cliConfigToolchainGroup => 'Toolchain';
+
+  @override
+  String get toolchainGitLabel => 'Git executable path';
+
+  @override
+  String get toolchainNodeLabel => 'Node.js / npm path';
+
+  @override
+  String toolchainPathDescription(String tool) {
+    return 'Absolute path to the $tool executable. Leave empty to use the one on PATH.';
+  }
+
+  @override
+  String toolchainPathDescriptionSsh(String tool) {
+    return 'Absolute path to $tool on the remote SSH host. Leave empty to auto-discover.';
+  }
+
+  @override
+  String get cliCursorExecutablePathLabel => 'Cursor CLI path';
+
+  @override
+  String toolchainInstallProgressChecking(String tool) {
+    return 'Checking for $tool...';
+  }
+
+  @override
+  String get toolchainGit => 'Git';
+
+  @override
+  String get toolchainNode => 'Node.js';
 }

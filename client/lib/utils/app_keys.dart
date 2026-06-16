@@ -93,6 +93,33 @@ class AppKeys {
     'opencode-cli-executable-path-reset-button',
   );
   static const opencodeCliInstallButton = Key('opencode-cli-install-button');
+  static const cursorCliExecutablePathField = Key(
+    'cursor-cli-executable-path-field',
+  );
+  static const cursorCliExecutablePathBrowseButton = Key(
+    'cursor-cli-executable-path-browse-button',
+  );
+  static const cursorCliExecutablePathResetButton = Key(
+    'cursor-cli-executable-path-reset-button',
+  );
+  static const gitToolchainPathField = Key('git-toolchain-path-field');
+  static const gitToolchainPathBrowseButton = Key(
+    'git-toolchain-path-browse-button',
+  );
+  static const gitToolchainPathResetButton = Key(
+    'git-toolchain-path-reset-button',
+  );
+  static const gitToolchainInstallButton = Key('git-toolchain-install-button');
+  static const nodeToolchainPathField = Key('node-toolchain-path-field');
+  static const nodeToolchainPathBrowseButton = Key(
+    'node-toolchain-path-browse-button',
+  );
+  static const nodeToolchainPathResetButton = Key(
+    'node-toolchain-path-reset-button',
+  );
+  static const nodeToolchainInstallButton = Key(
+    'node-toolchain-install-button',
+  );
   static const llmConfigPathOverrideField = Key(
     'llm-config-path-override-field',
   );

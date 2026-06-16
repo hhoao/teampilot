@@ -6,6 +6,7 @@ class SessionPreferences {
   SessionPreferences({
     ConnectionMode? connectionMode,
     Map<String, String> cliExecutablePaths = const {},
+    Map<String, String> toolchainPaths = const {},
     this.defaultSshWorkingDirectory = '',
     this.sshUseLoginShell = false,
     this.autoLaunchAllMembersOnConnect = true,
@@ -17,7 +18,14 @@ class SessionPreferences {
            windowsStorageBackend ?? WindowsStorageBackend.native,
        cliExecutablePaths = Map.unmodifiable(
          _normalizeCliExecutablePaths(cliExecutablePaths),
+       ),
+       toolchainPaths = Map.unmodifiable(
+         _normalizeCliExecutablePaths(toolchainPaths),
        );
+
+  /// Well-known keys for [toolchainPaths].
+  static const toolchainGit = 'git';
+  static const toolchainNode = 'node';
 
   factory SessionPreferences.fromJson(Map<String, Object?> json) {
     return SessionPreferences(
@@ -27,6 +35,9 @@ class SessionPreferences {
       ),
       cliExecutablePaths: _cliExecutablePathsFromJson(
         json['cliExecutablePaths'],
+      ),
+      toolchainPaths: _cliExecutablePathsFromJson(
+        json['toolchainPaths'],
       ),
       defaultSshWorkingDirectory:
           json['defaultSshWorkingDirectory'] as String? ?? '',
@@ -49,6 +60,11 @@ class SessionPreferences {
   /// CLI executable paths keyed by [CliTool.value]. Empty value means fall
   /// back to startup discovery, then the tool name on PATH.
   final Map<String, String> cliExecutablePaths;
+
+  /// Toolchain executable paths keyed by toolchain constant (e.g.
+  /// [toolchainGit], [toolchainNode]). Empty value means the tool is not
+  /// configured — callers should fall back to PATH lookup.
+  final Map<String, String> toolchainPaths;
 
   /// Default remote working directory used when an SSH launch has no project
   /// path yet. Empty means "do not cd before launching".
@@ -78,6 +94,7 @@ class SessionPreferences {
   SessionPreferences copyWith({
     ConnectionMode? connectionMode,
     Map<String, String>? cliExecutablePaths,
+    Map<String, String>? toolchainPaths,
     String? defaultSshWorkingDirectory,
     bool? sshUseLoginShell,
     bool? autoLaunchAllMembersOnConnect,
@@ -88,6 +105,7 @@ class SessionPreferences {
     return SessionPreferences(
       connectionMode: connectionMode ?? this.connectionMode,
       cliExecutablePaths: cliExecutablePaths ?? this.cliExecutablePaths,
+      toolchainPaths: toolchainPaths ?? this.toolchainPaths,
       defaultSshWorkingDirectory:
           defaultSshWorkingDirectory ?? this.defaultSshWorkingDirectory,
       sshUseLoginShell: sshUseLoginShell ?? this.sshUseLoginShell,
@@ -106,6 +124,7 @@ class SessionPreferences {
     return <String, Object?>{
       'connectionMode': connectionMode.toJson(),
       'cliExecutablePaths': cliExecutablePaths,
+      'toolchainPaths': toolchainPaths,
       'defaultSshWorkingDirectory': defaultSshWorkingDirectory,
       'sshUseLoginShell': sshUseLoginShell,
       'autoLaunchAllMembersOnConnect': autoLaunchAllMembersOnConnect,

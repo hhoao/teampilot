@@ -3488,4 +3488,40 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get memberDetailSectionEmpty => '无';
+
+  @override
+  String get cliConfigAiCliGroup => 'AI CLI';
+
+  @override
+  String get cliConfigToolchainGroup => '工具链';
+
+  @override
+  String get toolchainGitLabel => 'Git 可执行文件路径';
+
+  @override
+  String get toolchainNodeLabel => 'Node.js / npm 路径';
+
+  @override
+  String toolchainPathDescription(String tool) {
+    return '$tool 可执行文件的绝对路径。留空则使用 PATH 中的版本。';
+  }
+
+  @override
+  String toolchainPathDescriptionSsh(String tool) {
+    return '远程 SSH 主机上 $tool 的绝对路径。留空则自动发现。';
+  }
+
+  @override
+  String get cliCursorExecutablePathLabel => 'Cursor CLI 路径';
+
+  @override
+  String toolchainInstallProgressChecking(String tool) {
+    return '正在检查 $tool...';
+  }
+
+  @override
+  String get toolchainGit => 'Git';
+
+  @override
+  String get toolchainNode => 'Node.js';
 }
